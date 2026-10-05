@@ -43,6 +43,11 @@ Design phase (M0). There is no compiler yet. What exists:
 Next: grow the corpus to thirty programs, run the readability test, then start
 the Rust implementation (lexer, parser, formatter) in M1.
 
+## Working on this repository
+
+`CLAUDE.md` holds the conventions for Claude Code sessions and
+`docs/HANDOFF.md` the current state and next steps; start there.
+
 ## License
 
 Apache-2.0. See `LICENSE`.
