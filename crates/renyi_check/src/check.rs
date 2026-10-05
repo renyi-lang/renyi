@@ -1694,15 +1694,24 @@ impl<'w> Checker<'w> {
             );
             return Info::plain(Ty::Error);
         }
-        self.error(
-            "unknown-name",
-            format!(
-                "there is no binding, constant or function named `{}`",
-                name.text
-            ),
-            name.span,
+        let message = format!(
+            "there is no binding, constant or function named `{}`",
+            name.text
         );
+        match self.suggest_module_import(&name.text) {
+            Some(fix) => self.error_fix("unknown-name", message, name.span, fix),
+            None => self.error("unknown-name", message, name.span),
+        }
         Info::plain(Ty::Error)
+    }
+
+    /// `environment.arguments()` without `import std.environment`: name the import.
+    fn suggest_module_import(&self, name: &str) -> Option<String> {
+        self.world
+            .modules
+            .iter()
+            .find(|m| m.is_library && m.name.rsplit('.').next() == Some(name))
+            .map(|m| format!("write `import {}` at the top of the module", m.name))
     }
 
     /// The type of a function used as a value (passed by name).
@@ -2007,6 +2016,30 @@ impl<'w> Checker<'w> {
                                     Info::plain(Ty::Error)
                                 }
                             };
+                        }
+                    }
+                }
+                if let ExprKind::Name(namespace) = &base.kind {
+                    if self.lookup(&namespace.text).is_none()
+                        && self
+                            .world
+                            .lookup_function(self.module, &namespace.text)
+                            .is_none()
+                        && !self.world.modules[self.module]
+                            .constants
+                            .contains_key(&namespace.text)
+                    {
+                        if let Some(fix) = self.suggest_module_import(&namespace.text) {
+                            self.error_fix(
+                                "unknown-name",
+                                format!("`{}` is not imported", namespace.text),
+                                namespace.span,
+                                fix,
+                            );
+                            for arg in args {
+                                self.infer(&arg.value, None);
+                            }
+                            return Info::plain(Ty::Error);
                         }
                     }
                 }
