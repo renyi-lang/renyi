@@ -8,7 +8,8 @@ Subcommands, run from the repository root:
             never holds the answer key (reference output, original body)
   run       send every prompt to one model and store the raw samples
   score     score the stored samples (Predict exactly, Complete and Write with
-            the lint plus a judgement file, Explain with a grading model);
+            the lint, then `renyi check`, then a judgement file, Explain with a
+            grading model whose grades are cached in grades.json);
             `renyi format` runs before the lint unless --no-format is given,
             and --scores names the output file so that both tallies can be kept
   report    print pass rates per model and task
@@ -22,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import hashlib
 import json
 import os
 import pathlib
@@ -73,12 +75,24 @@ PROMPTS = {
     ),
 }
 EXPLAIN_GRADER = (
-    "A program's documentation clauses say what it does:\n\n{purposes}\n\n"
+    "The author of a program describes what it does:\n\n{reference}\n\n"
     "A reader who saw only the program wrote this explanation:\n\n{explanation}\n\n"
-    "Grade the explanation from 1 to 5: 5 means it states the program's purpose and "
-    "effects correctly and completely, 3 means it is right but misses an important "
-    "part, 1 means it is wrong. Answer with the digit only."
+    "Grade the explanation from 1 to 5 by these rules, judging only against the "
+    "author's description. A statement the description contradicts is wrong; a "
+    "statement it neither confirms nor contradicts is ignored; style, length, opinions "
+    "about usefulness and cautions or doubts the reader adds are ignored.\n"
+    "5: nothing is wrong, and the overall purpose, the effects (what the program needs: "
+    "console, files, network, environment, clock) and the main behaviours are stated.\n"
+    "4: nothing is wrong; one of those is missing.\n"
+    "3: nothing is wrong, but the overall purpose is vague or several of those are "
+    "missing.\n"
+    "2: one statement is wrong.\n"
+    "1: the explanation describes a different program or is mostly wrong.\n"
+    "Answer with the digit only."
 )
+# grades are cached per grader and per wording of the rubric, so that a change
+# to the rubric grades everything afresh without discarding the old grades
+RUBRIC_ID = hashlib.sha256(EXPLAIN_GRADER.encode("utf-8")).hexdigest()[:8]
 
 
 # ----------------------------------------------------------------- helpers
@@ -135,18 +149,40 @@ def extract_code(answer: str) -> str:
     return (fenced[0] if fenced else answer).strip("\n") + "\n"
 
 
-def lint_text(code: str, format_first: bool = False) -> list[str]:
-    scratch = HERE / ".scratch.ry"
-    scratch.write_text(code, encoding="utf-8")
+def lint_text(code: str, format_first: bool = False) -> tuple[list[str], list[str]]:
+    """The lint's problems and, when the lint is clean, the checker's errors.
+
+    The scratch file lives in the examples directory so that a program's
+    imports of other corpus modules resolve (the checker reads imports from
+    the file's own directory).
+    """
+    scratch = EXAMPLES / ".scratch.ry"
+    # LF on every platform: Python would otherwise write CRLF on Windows, and
+    # the formatter and the checker reject carriage returns
+    scratch.write_text(code.replace("\r\n", "\n"), encoding="utf-8", newline="\n")
     try:
         if format_first:
             # layout is the formatter's job; a program that does not parse is left as it is
             subprocess.run([str(renyi_binary()), "format", str(scratch)], capture_output=True)
         known = lint_examples.declared_functions(
             [lint_examples.STDLIB_SKETCH, *sorted(EXAMPLES.glob("*.ry")), scratch])
-        return lint_examples.lint_file(scratch, known)
+        problems = lint_examples.lint_file(scratch, known)
+        if problems:
+            return problems, []
+        return [], check_errors(scratch)
     finally:
         scratch.unlink(missing_ok=True)
+
+
+def check_errors(path: pathlib.Path) -> list[str]:
+    """The errors `renyi check --json` reports, as `[code] message`."""
+    result = subprocess.run([str(renyi_binary()), "check", "--json", str(path)],
+                            capture_output=True, text=True, encoding="utf-8")
+    try:
+        diagnostics = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return [f"[check] renyi check produced no diagnostics: {result.stderr.strip()[:200]}"]
+    return [f"[{d['code']}] {d['message']}" for d in diagnostics if d["severity"] == "error"]
 
 
 def renyi_binary() -> pathlib.Path:
@@ -258,16 +294,19 @@ def cmd_prepare(args: argparse.Namespace) -> None:
             assert (HERE / "reference" / f"{name}.out").exists(), f"no reference output for {name}"
             arguments = entry["predict"].get("arguments", [])
             write_prompt(prompts / "predict" / f"{name}.json", "predict", name,
-                         PROMPTS["predict"].format(arguments=json.dumps(arguments), program=program),
+                         PROMPTS["predict"].format(arguments=json.dumps(arguments),
+                                                   program=with_imports(program)),
                          {"arguments": arguments})
             count += 1
         write_prompt(prompts / "explain" / f"{name}.json", "explain", name,
-                     PROMPTS["explain"].format(program=program), {"purposes": purposes(program)})
+                     PROMPTS["explain"].format(program=with_imports(program)),
+                     {"purposes": purposes(program)})
         count += 1
         if "complete" in entry:
             function = entry["complete"]
             write_prompt(prompts / "complete" / f"{name}.json", "complete", name,
-                         PROMPTS["complete"].format(target=function, program=remove_body(program, function)),
+                         PROMPTS["complete"].format(
+                             target=function, program=with_imports(remove_body(program, function))),
                          {"target": function})
             count += 1
     for task_id, description in write_tasks.items():
@@ -279,6 +318,21 @@ def cmd_prepare(args: argparse.Namespace) -> None:
         "date": dt.date.today().isoformat(), "revision": revision,
         "cheatsheet_bytes": CHEATSHEET.stat().st_size, "programs": len(programs)}, indent=2))
     print(f"{count} prompts written to {target.relative_to(ROOT)}")
+
+
+def with_imports(program: str) -> str:
+    """The program followed by every corpus module it imports.
+
+    A program's behaviour depends on the modules it imports, so a reader who
+    is asked to predict, explain or complete it must see them too. Library
+    modules (`std.*`) are described by the cheat sheet and are not repeated.
+    """
+    text = program
+    for module in re.findall(r"^import ([a-z_][a-z0-9_]*)(?: exposing [^\n]*)?$", program, re.M):
+        path = EXAMPLES / f"{module}.ry"
+        if path.exists():
+            text += f"\nThe program imports the module `{module}`, which is this file:\n\n{read(path)}"
+    return text
 
 
 def write_prompt(path: pathlib.Path, task: str, name: str, prompt: str, extra: dict) -> None:
@@ -330,21 +384,31 @@ def cmd_score(args: argparse.Namespace) -> None:
         scores = {}
         judgement_file = label_dir / "judgement.json"
         judgement = json.loads(read(judgement_file)) if judgement_file.exists() else {}
+        # grades already obtained from a grading model, by grader, so that a
+        # re-score does not pay for them again
+        grades_file = label_dir / "grades.json"
+        grades = json.loads(read(grades_file)) if grades_file.exists() else {}
         for task in TASKS:
             for out_file in sorted((label_dir / task).glob("*.json")):
                 prompt = json.loads(read(target / "prompts" / task / out_file.name))
                 record = json.loads(read(out_file))
                 results = []
+                before = json.dumps(grades, sort_keys=True)
                 for index, sample in enumerate(record["samples"]):
                     key = f"{task}/{out_file.stem}.{index}"
-                    results.append(score_sample(task, prompt, sample, judgement.get(key), args, target))
+                    results.append(score_sample(task, prompt, sample, judgement.get(key), args,
+                                                target, key, grades))
                 scores[f"{task}/{out_file.stem}"] = results
+                if json.dumps(grades, sort_keys=True) != before:
+                    grades_file.write_text(json.dumps(grades, indent=2, sort_keys=True),
+                                           encoding="utf-8")
         (label_dir / args.scores).write_text(json.dumps(scores, indent=2), encoding="utf-8")
         pending = sum(1 for results in scores.values() for r in results if r.get("pending"))
         print(f"{label_dir.name}: {len(scores)} items scored, {pending} samples await judgement")
 
 
-def score_sample(task: str, prompt: dict, sample: str, judged, args, target) -> dict:
+def score_sample(task: str, prompt: dict, sample: str, judged, args, target,
+                 key: str, grades: dict) -> dict:
     if isinstance(judged, dict):
         judged = judged.get("verdict")  # {"verdict": ..., "reason": "..."} form
     if task == "predict":
@@ -356,11 +420,16 @@ def score_sample(task: str, prompt: dict, sample: str, judged, args, target) -> 
         if task == "complete":
             original = read(EXAMPLES / f"{prompt['name']}.ry")
             code = splice(original, prompt["target"], code)
-        problems = lint_text(code, format_first=args.format)
+        problems, errors = lint_text(code, format_first=args.format)
         result = {"lint_problems": problems}
         if problems:
             result["pass"] = False
             result["rules"] = sorted({rule_of(p) for p in problems})
+        elif errors:
+            # the type and effect checker decides before any judgement does
+            result["check_errors"] = errors
+            result["pass"] = False
+            result["rules"] = sorted({"check:" + e[1:e.index("]")] for e in errors})
         elif judged is None:
             result["pending"] = True
         else:
@@ -368,17 +437,69 @@ def score_sample(task: str, prompt: dict, sample: str, judged, args, target) -> 
         return result
     if task == "explain":
         if judged is not None:
-            return {"grade": judged, "pass": judged >= 4}
+            return {"grade": judged, "pass": judged >= 4, "grader": "judgement"}
         if not args.grader:
             return {"pending": True}
-        provider, model = args.grader.split(":", 1)
-        answer = complete(provider, model, "You grade explanations of programs.",
-                          EXPLAIN_GRADER.format(purposes=prompt["purposes"], explanation=sample),
-                          args.temperature, args.base_url, None, "")
-        digits = re.findall(r"[1-5]", answer)
-        grade = int(digits[0]) if digits else 0
-        return {"grade": grade, "pass": grade >= 4}
+        # both graders grade every explanation (protocol: two graders where they
+        # disagree by more than one); the first grader's grade stands when the
+        # second is within one of it, a wider disagreement awaits adjudication
+        # in judgement.json, and a grader that answers without a digit (a
+        # refusal) decides nothing
+        # the author's description of the program (reference/<name>.explain.txt);
+        # the purpose and example lines stand in when there is none
+        description = HERE / "reference" / f"{prompt['name']}.explain.txt"
+        reference = read(description) if description.exists() else prompt["purposes"]
+        first = grade_of(args.grader, key, sample, reference, args, grades)
+        second = (grade_of(args.second_grader, key, sample, reference, args, grades)
+                  if args.second_grader else 0)
+        if first and second and abs(first - second) > 1:
+            return {"pending": True, "grades": {args.grader: first, args.second_grader: second},
+                    "note": "the graders disagree by more than one"}
+        grade = first or second
+        if not grade:
+            return {"pending": True, "note": "no grader gave a grade"}
+        result = {"grade": grade, "pass": grade >= 4,
+                  "grader": args.grader if first else args.second_grader}
+        if first and second:
+            result["second_grade"] = second
+        return result
     return {"pending": True}
+
+
+def grade_of(grader: str, key: str, sample: str, reference: str, args, grades: dict) -> int:
+    """The grader's grade for the sample, from the cache or from a call; 0 when it gave none.
+
+    The cache is kept by grader and rubric; an entry names the answer and the
+    reference it graded, so that a regenerated answer or a changed reference
+    is graded afresh, and an answer without a digit is not cached.
+    """
+    digest = hashlib.sha256((reference + "\n" + sample).encode("utf-8")).hexdigest()[:16]
+    bucket = f"{grader}#{RUBRIC_ID}"
+    cached = grades.setdefault(bucket, {}).get(key)
+    if isinstance(cached, dict) and cached.get("sample") == digest:
+        return cached["grade"]
+    provider, model = grader.split(":", 1)
+    answer = complete(provider, model, "You grade explanations of programs.",
+                      EXPLAIN_GRADER.format(reference=reference, explanation=sample),
+                      args.temperature, args.base_url, None, "")
+    grade = parse_grade(answer)
+    if not grade:
+        print(f"{key}: {grader} gave no grade: {answer[:80]!r}", file=sys.stderr)
+        return 0
+    grades[bucket][key] = {"grade": grade, "sample": digest, "answer": answer.strip()[-2000:]}
+    return grade
+
+
+def parse_grade(answer: str) -> int:
+    """The grade in a grader's answer: the last digit from 1 to 5 that stands alone.
+
+    A grader asked for the digit only sometimes reasons first and ends with
+    the digit; taking the first digit then returned the 1 of "18" or "10%"
+    and failed correct explanations. A digit next to another digit or a dot
+    ("18", "1.4.2", "0.50") is never the grade.
+    """
+    found = re.findall(r"(?<![\d.])[1-5](?![\d.])", answer)
+    return int(found[-1]) if found else 0
 
 
 def splice(original: str, target: str, function_text: str) -> str:
@@ -405,6 +526,7 @@ RULES = [
     ("is never used", "unused-binding"),
     ("not declared in the standard library sketch", "unknown-function"),
 ]
+# a checker failure is reported under its diagnostic code, `check:<code>`
 
 
 def rule_of(problem: str) -> str:
@@ -467,6 +589,9 @@ def main() -> None:
     s = sub.add_parser("score")
     s.add_argument("--run"); s.add_argument("--label")
     s.add_argument("--grader", help="provider:model used to grade Explain, for example anthropic:claude-sonnet-5-5")
+    s.add_argument("--second-grader",
+                   help="provider:model that grades every explanation as well; a grade more than one "
+                        "away from the grader's leaves the sample to adjudication")
     s.add_argument("--base-url", default="https://api.openai.com/v1")
     s.add_argument("--temperature", default="0", help="the grader's temperature; `none` omits it")
     s.add_argument("--no-format", dest="format", action="store_false",

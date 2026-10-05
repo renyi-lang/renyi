@@ -17,7 +17,7 @@ cheat sheet (`docs/cheatsheet.md`) and the task; no other Renyi material.
 | Task | Prompt | Scored by |
 |------|--------|-----------|
 | Predict | "Here is a Renyi program and its input. What does it print?" | exact match of the predicted output against the reference output |
-| Explain | "Explain what this program does in three sentences." | a second model grades the explanation against the purpose clauses, blind to which grammar revision produced the program |
+| Explain | "Explain what this program does in three sentences." | a second model grades the explanation against the author's language-neutral description of the program (`tests/readability/reference/<program>.explain.txt`), blind to which grammar revision produced the program; a second grader grades every explanation too, and a disagreement of more than one point is adjudicated by hand |
 | Complete | a program with one function body removed, the signature and purpose kept | the completed body passes the program's `example:` and `test` blocks, judged by hand until M3 and by the VM afterwards |
 | Write | a one-paragraph task description | the written program, after `renyi format`, passes the lint, then the same acceptance tests as Complete |
 

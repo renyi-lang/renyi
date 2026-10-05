@@ -1,6 +1,6 @@
 target/
 __pycache__/
-tests/readability/.scratch.ry
+examples/.scratch.ry
 .ce/
 .ccm/
 .claude/
