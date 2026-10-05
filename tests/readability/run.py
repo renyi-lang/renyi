@@ -28,6 +28,7 @@ import pathlib
 import re
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -95,12 +96,21 @@ def git_revision() -> str:
 
 
 def run_dir(name: str | None) -> pathlib.Path:
+    """The run directory named, or else the one `prepare` wrote most recently.
+
+    Two runs prepared on one day differ only in the revision hash, which sorts
+    arbitrarily, so the choice goes by the time `prepare` wrote `meta.json`.
+    """
     if name:
-        return HERE / name
-    runs = sorted(p for p in HERE.iterdir() if p.is_dir() and re.match(r"\d{4}-\d{2}-\d{2}-", p.name))
+        target = HERE / name
+        if not target.is_dir():
+            sys.exit(f"no run directory {target.relative_to(ROOT)}")
+        return target
+    runs = [p for p in HERE.iterdir() if p.is_dir() and re.match(r"\d{4}-\d{2}-\d{2}-", p.name)]
     if not runs:
         sys.exit("no run directory; use `prepare` first")
-    return runs[-1]
+    return max(runs, key=lambda p: ((p / "meta.json").stat().st_mtime
+                                     if (p / "meta.json").exists() else 0.0, p.name))
 
 
 def remove_body(program: str, target: str) -> str:
@@ -141,7 +151,7 @@ def lint_text(code: str, format_first: bool = False) -> list[str]:
 
 def renyi_binary() -> pathlib.Path:
     """The `renyi` binary, built with `cargo build` when it is missing."""
-    binary = ROOT / "target" / "debug" / "renyi"
+    binary = ROOT / "target" / "debug" / ("renyi.exe" if os.name == "nt" else "renyi")
     if not binary.exists():
         subprocess.run(["cargo", "build", "--quiet"], cwd=ROOT, check=True)
     return binary
@@ -149,40 +159,73 @@ def renyi_binary() -> pathlib.Path:
 
 # ----------------------------------------------------------------- providers
 
-def call_anthropic(model: str, system: str, user: str, temperature: float) -> str:
+def call_anthropic(model: str, system: str, user: str, temperature: float | None) -> str:
     key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
         sys.exit("ANTHROPIC_API_KEY is not set")
     base = os.environ.get("ANTHROPIC_BASE_URL", "https://api.anthropic.com").rstrip("/")
-    body = {"model": model, "max_tokens": 4000, "temperature": temperature, "system": system,
+    body = {"model": model, "max_tokens": 4000, "system": system,
             "messages": [{"role": "user", "content": user}]}
+    if temperature is not None:  # some models reject the field outright
+        body["temperature"] = temperature
     data = post_json(f"{base}/v1/messages", body,
                      {"x-api-key": key, "anthropic-version": "2023-06-01"})
     return "".join(block.get("text", "") for block in data["content"])
 
 
-def call_openai(model: str, system: str, user: str, temperature: float, base_url: str) -> str:
+def call_openai(model: str, system: str, user: str, temperature: float | None,
+                base_url: str) -> str:
     key = os.environ.get("OPENAI_API_KEY")
     if not key:
         sys.exit("OPENAI_API_KEY is not set")
-    body = {"model": model, "temperature": temperature,
+    body = {"model": model,
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
+    if temperature is not None:
+        body["temperature"] = temperature
     data = post_json(f"{base_url.rstrip('/')}/chat/completions", body,
                      {"Authorization": f"Bearer {key}"})
     return data["choices"][0]["message"]["content"]
 
 
+TRANSIENT_STATUS = {408, 409, 429, 500, 502, 503, 504, 529}
+ATTEMPTS = 6
+
+
 def post_json(url: str, body: dict, headers: dict) -> dict:
-    request = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), method="POST",
-                                     headers={"Content-Type": "application/json", **headers})
-    try:
-        with urllib.request.urlopen(request, timeout=300) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as error:
-        sys.exit(f"{url}: HTTP {error.code}: {error.read().decode('utf-8', 'replace')[:500]}")
+    """POST and decode JSON; waits and retries on transient failures.
+
+    A round is several hundred sequential calls, so a rate limit or an overloaded
+    vendor would otherwise end the run on its first occurrence. Only transient
+    statuses and connection errors are retried, with exponential backoff; any
+    other error still stops the run.
+    """
+    data = json.dumps(body).encode("utf-8")
+    for attempt in range(1, ATTEMPTS + 1):
+        request = urllib.request.Request(url, data=data, method="POST",
+                                         headers={"Content-Type": "application/json", **headers})
+        delay = 5.0 * 2 ** (attempt - 1)
+        try:
+            with urllib.request.urlopen(request, timeout=300) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as error:
+            detail = error.read().decode("utf-8", "replace")[:500]
+            if error.code not in TRANSIENT_STATUS or attempt == ATTEMPTS:
+                sys.exit(f"{url}: HTTP {error.code}: {detail}")
+            try:
+                delay = max(delay, float(error.headers.get("retry-after") or 0))
+            except ValueError:
+                pass  # a date-valued retry-after is rare; the backoff delay stands
+            print(f"HTTP {error.code}, retry {attempt}/{ATTEMPTS} in {delay:.0f}s: {detail[:120]}",
+                  file=sys.stderr)
+        except OSError as error:  # connection reset, DNS failure, read timeout
+            if attempt == ATTEMPTS:
+                sys.exit(f"{url}: {error}")
+            print(f"{error}, retry {attempt}/{ATTEMPTS} in {delay:.0f}s", file=sys.stderr)
+        time.sleep(delay)  # because the failure was transient, waiting is the fix
+    raise AssertionError("unreachable: every path above returns or exits")
 
 
-def complete(provider: str, model: str, system: str, user: str, temperature: float,
+def complete(provider: str, model: str, system: str, user: str, temperature: float | None,
              base_url: str, answers_dir: pathlib.Path | None, key: str) -> str:
     if provider == "anthropic":
         return call_anthropic(model, system, user, temperature)
@@ -266,6 +309,7 @@ def cmd_run(args: argparse.Namespace) -> None:
                     break
                 record["samples"].append(answer)
                 record["model"] = args.model
+                record["temperature"] = args.temperature
                 out_file.write_text(json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8")
                 done += 1
     print(f"{done} samples stored under {outputs.relative_to(ROOT)}")
@@ -330,7 +374,7 @@ def score_sample(task: str, prompt: dict, sample: str, judged, args, target) -> 
         provider, model = args.grader.split(":", 1)
         answer = complete(provider, model, "You grade explanations of programs.",
                           EXPLAIN_GRADER.format(purposes=prompt["purposes"], explanation=sample),
-                          0.0, args.base_url, None, "")
+                          args.temperature, args.base_url, None, "")
         digits = re.findall(r"[1-5]", answer)
         grade = int(digits[0]) if digits else 0
         return {"grade": grade, "pass": grade >= 4}
@@ -412,7 +456,8 @@ def main() -> None:
     r.add_argument("--model", required=True)
     r.add_argument("--label", help="directory name for the outputs; defaults to the model id")
     r.add_argument("--samples", type=int, default=5)
-    r.add_argument("--temperature", type=float, default=0.0)
+    r.add_argument("--temperature", default="0",
+                   help="sampling temperature; `none` omits the field for models that reject it")
     r.add_argument("--base-url", default="https://api.openai.com/v1",
                    help="OpenAI-compatible endpoint for --provider openai")
     r.add_argument("--answers", type=pathlib.Path, help="directory of <task>/<name>.<index>.txt for --provider file")
@@ -423,6 +468,7 @@ def main() -> None:
     s.add_argument("--run"); s.add_argument("--label")
     s.add_argument("--grader", help="provider:model used to grade Explain, for example anthropic:claude-sonnet-5-5")
     s.add_argument("--base-url", default="https://api.openai.com/v1")
+    s.add_argument("--temperature", default="0", help="the grader's temperature; `none` omits it")
     s.add_argument("--no-format", dest="format", action="store_false",
                    help="skip `renyi format` before the lint (the strict tally; decision M5 formats first)")
     s.add_argument("--scores", default="scores.json", help="file name for the scores under outputs/<label>/")
@@ -433,6 +479,8 @@ def main() -> None:
     args = parser.parse_args()
     if args.command == "run" and not args.label:
         args.label = re.sub(r"[^A-Za-z0-9_.-]", "_", args.model)
+    if args.command in ("run", "score"):
+        args.temperature = None if args.temperature.lower() == "none" else float(args.temperature)
     args.func(args)
 
 

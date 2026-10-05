@@ -28,9 +28,12 @@ python3 tests/readability/run.py report --scores scores-strict.json
 ```
 
 `run` stores five samples per prompt at temperature 0 and is restartable: it
-only fetches the samples that are missing. `--provider file --answers <dir>`
-reads answers from `<dir>/<task>/<name>.<index>.txt`, for a model that has to
-be driven by hand.
+only fetches the samples that are missing. `--temperature none` omits the
+field for a model that rejects it (Claude Sonnet 5.5 does); the temperature
+used is recorded with the samples. `--provider file --answers <dir>` reads
+answers from `<dir>/<task>/<name>.<index>.txt`, for a model that has to be
+driven by hand. Every command works on the run `prepare` wrote most recently
+unless `--run <directory name>` names another one.
 
 ## Scoring
 
