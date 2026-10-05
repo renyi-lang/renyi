@@ -1,0 +1,22 @@
+module std.csv
+  purpose: Reading and writing comma-separated values.
+
+public type Row
+  purpose: One data row of a file with a header line.
+  has line: Integer
+end
+
+public type CsvError is one of
+  purpose: Why a text is not valid CSV.
+  Malformed(line: Integer, detail: Text)
+  MissingHeader
+end
+
+public function get(self: Row, column: Text) returns maybe Text
+  purpose: The cell under the named header, or nothing when the column is missing or empty.
+public function cells(self: Row) returns List of Text
+public function parse(text: Text) returns List of Row or fails with CsvError
+  purpose: Read a file whose first line names the columns.
+public function parse_without_header(text: Text) returns List of List of Text or fails with CsvError
+public function render(header: List of Text, rows: List of List of Text) returns Text
+  purpose: Quote cells that contain commas, quotes or line breaks.

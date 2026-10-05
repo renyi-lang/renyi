@@ -1,0 +1,60 @@
+module std.time
+  purpose: The clock, calendar dates, instants and durations.
+
+public type Instant
+  purpose: A point in time, UTC, millisecond precision.
+  can Compare
+  can ToText
+end
+
+public type Date
+  purpose: A calendar date in the proleptic Gregorian calendar.
+  has year: Integer
+  has month: Integer where month is at least 1 and month is at most 12
+  has day: Integer where day is at least 1 and day is at most 31
+  can Compare by year, month, day
+  can ToText
+end
+
+public type Weekday is one of
+  purpose: The day of the week.
+  Monday
+  Tuesday
+  Wednesday
+  Thursday
+  Friday
+  Saturday
+  Sunday
+end
+
+public type InvalidDate
+  purpose: Text that is not a date of the form YYYY-MM-DD, or names a day that does not exist.
+  has input: Text
+end
+
+public function now() returns Instant needs time
+public function today() returns Date needs time
+  purpose: The current date in UTC.
+public function sleep(duration: Duration) needs time
+public function milliseconds(amount: Integer) returns Duration
+public function seconds(amount: Integer) returns Duration
+public function minutes(amount: Integer) returns Duration
+public function hours(amount: Integer) returns Duration
+public function parse_date(text: Text) returns Date or fails with InvalidDate
+public function parse_instant(text: Text) returns Instant or fails with InvalidDate
+  purpose: Read an ISO 8601 timestamp such as 2024-05-01T13:45:00Z.
+
+public function plus_days(self: Date, days: Integer) returns Date
+public function minus_days(self: Date, days: Integer) returns Date
+public function days_until(self: Date, other: Date) returns Integer
+  purpose: Days from self to other; negative when other is earlier.
+public function weekday(self: Date) returns Weekday
+public function to_text(self: Date) returns Text
+  purpose: YYYY-MM-DD.
+
+public function plus(self: Instant, duration: Duration) returns Instant
+public function minus(self: Instant, duration: Duration) returns Instant
+public function elapsed_since(self: Instant, other: Instant) returns Duration
+public function date(self: Instant) returns Date
+public function to_text(self: Instant) returns Text
+  purpose: ISO 8601 in UTC, such as 2024-05-01T13:45:00Z.

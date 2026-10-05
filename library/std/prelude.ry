@@ -1,0 +1,269 @@
+module std.prelude
+  purpose: Base types, their methods, the core abilities and the built-in errors, available everywhere without an import.
+
+public type Integer
+  purpose: A whole number of any size.
+  can Compare
+  can Hash
+  can ToText
+end
+
+public type Decimal
+  purpose: An exact decimal number (IEEE 754 decimal128); the type of literals such as 19.99.
+  can Compare
+  can Hash
+  can ToText
+end
+
+public type Float
+  purpose: A binary floating-point number (IEEE 754 binary64), chosen explicitly.
+  can Compare
+  can Hash
+  can ToText
+end
+
+public type Boolean
+  purpose: true or false.
+  can Hash
+  can ToText
+end
+
+public type Text
+  purpose: Immutable UTF-8 text; indices and lengths count characters.
+  can Compare
+  can Hash
+  can ToText
+end
+
+public type Bytes
+  purpose: An immutable byte sequence.
+  can Hash
+end
+
+public type List of Item
+  purpose: An ordered sequence of items.
+end
+
+public type Map of Key, Value
+  purpose: Keys bound to values, in insertion order; keys need Hash.
+end
+
+public type Set of Item
+  purpose: Distinct items in insertion order; items need Hash.
+end
+
+public type Range
+  purpose: An inclusive range of Integers with an optional step.
+end
+
+public type Pair of Left, Right
+  purpose: Two values side by side: the entries of a map, the items of with_index.
+  has left: Left
+  has right: Right
+end
+
+public type Duration
+  purpose: A length of time with millisecond precision; constructed by std.time.
+  can Compare
+  can ToText
+end
+
+public type Ordering is one of
+  purpose: The outcome of comparing two values.
+  Less
+  Same
+  Greater
+end
+
+public ability Equal
+  purpose: Values that can be compared for equality; derived for every data type.
+  function equals(self, other: Self) returns Boolean
+end
+
+public ability Compare
+  purpose: Values with a total order; drives the four ordering phrases, sorted and sorted by.
+  function compare(self, other: Self) returns Ordering
+end
+
+public ability Hash
+  purpose: Values that can be Set items and Map keys.
+  function hash(self) returns Integer
+end
+
+public ability ToText
+  purpose: Values that interpolation and console printing can render.
+  function to_text(self) returns Text
+end
+
+public ability ToJson
+  purpose: Values that std.json can render; derivable, with the rules in the library sketch.
+end
+
+public ability FromJson
+  purpose: Values that std.json can decode; derivable.
+end
+
+public type ConstraintViolation
+  purpose: A refined type was constructed from a value that fails its condition.
+  has type_name: Text
+  has detail: Text
+end
+
+public type InvalidNumber
+  purpose: Text that is not a number of the requested kind.
+  has input: Text
+end
+
+public type InvalidEncoding
+  purpose: Bytes that are not valid UTF-8.
+  has detail: Text
+end
+
+public type TimedOut
+  purpose: A `within` deadline expired before every task finished.
+  has after: Duration
+end
+
+public function to_decimal(self: Integer) returns Decimal
+public function to_float(self: Integer) returns Float
+public function to_text(self: Integer) returns Text
+public function quotient(self: Integer, divisor: Integer) returns Integer
+  purpose: Division rounded toward zero; the remainder is `self remainder divisor`.
+public function absolute(self: Integer) returns Integer
+public function at_least(self: Integer, other: Integer) returns Integer
+  purpose: The larger of the two values.
+public function at_most(self: Integer, other: Integer) returns Integer
+  purpose: The smaller of the two values.
+
+public function rounded(self: Decimal, places: Integer) returns Decimal
+  purpose: Rounded half away from zero to the given number of decimal places; renders with exactly that many.
+public function truncated(self: Decimal) returns Integer
+  purpose: The integer part, rounded toward zero.
+public function to_float(self: Decimal) returns Float
+public function to_text(self: Decimal) returns Text
+  purpose: Plain decimal notation, never exponent notation.
+public function absolute(self: Decimal) returns Decimal
+public function at_least(self: Decimal, other: Decimal) returns Decimal
+public function at_most(self: Decimal, other: Decimal) returns Decimal
+
+public function rounded(self: Float, places: Integer) returns Float
+public function truncated(self: Float) returns Integer
+public function square_root(self: Float) returns Float
+public function to_decimal(self: Float) returns Decimal
+  purpose: The nearest decimal128 value.
+public function to_text(self: Float) returns Text
+  purpose: The shortest text that reads back as the same value, always with a decimal point (5.0).
+public function absolute(self: Float) returns Float
+public function at_least(self: Float, other: Float) returns Float
+public function at_most(self: Float, other: Float) returns Float
+
+public function to_text(self: Boolean) returns Text
+
+public function length(self: Text) returns Integer
+public function is_empty(self: Text) returns Boolean
+public function trim(self: Text) returns Text
+public function trim_start(self: Text) returns Text
+public function trim_end(self: Text) returns Text
+public function to_lower(self: Text) returns Text
+public function to_upper(self: Text) returns Text
+public function split(self: Text, separator: Text) returns List of Text
+  purpose: Pieces between separators; adjacent separators give empty pieces.
+public function lines(self: Text) returns List of Text
+  purpose: Split at line breaks, without the breaks.
+public function characters(self: Text) returns List of Text
+public function contains(self: Text, part: Text) returns Boolean
+public function starts_with(self: Text, prefix: Text) returns Boolean
+public function ends_with(self: Text, suffix: Text) returns Boolean
+public function index_of(self: Text, part: Text) returns maybe Integer
+public function replace(self: Text, old: Text, new: Text) returns Text
+  purpose: Every occurrence of old replaced by new.
+public function pad_left(self: Text, width: Integer) returns Text
+  purpose: Spaces added on the left until the text is at least width characters.
+public function pad_right(self: Text, width: Integer) returns Text
+public function repeat(self: Text, times: Integer) returns Text
+public function take(self: Text, length: Integer) returns Text
+  purpose: The first length characters, or the whole text when it is shorter.
+public function drop(self: Text, length: Integer) returns Text
+public function reversed(self: Text) returns Text
+public function matches(self: Text, pattern: Text) returns Boolean
+  purpose: Whether the whole text matches the regular expression (decision K3).
+public function to_integer(self: Text) returns Integer or fails with InvalidNumber
+public function to_decimal(self: Text) returns Decimal or fails with InvalidNumber
+public function to_float(self: Text) returns Float or fails with InvalidNumber
+public function to_bytes(self: Text) returns Bytes
+  purpose: The UTF-8 encoding.
+public function to_text(self: Text) returns Text
+  purpose: The text itself; exists so generic code can call to_text on anything.
+
+public function length(self: Bytes) returns Integer
+public function is_empty(self: Bytes) returns Boolean
+public function to_text(self: Bytes) returns Text or fails with InvalidEncoding
+  purpose: Decode as UTF-8.
+public function to_base64(self: Bytes) returns Text
+
+public function length(self: List of Item) returns Integer for any Item
+public function is_empty(self: List of Item) returns Boolean for any Item
+public function at(self: List of Item, index: Integer) returns maybe Item for any Item
+  purpose: The item at a zero-based index, or nothing when the index is out of range.
+public function first(self: List of Item) returns maybe Item for any Item
+public function last(self: List of Item) returns maybe Item for any Item
+public function rest(self: List of Item) returns List of Item for any Item
+  purpose: Everything after the first item; empty for an empty list.
+public function without_last(self: List of Item) returns List of Item for any Item
+public function without_index(self: List of Item, index: Integer) returns List of Item for any Item
+public function take(self: List of Item, length: Integer) returns List of Item for any Item
+public function drop(self: List of Item, length: Integer) returns List of Item for any Item
+public function append(self: List of Item, item: Item) returns List of Item for any Item
+public function append_all(self: List of Item, others: List of Item) returns List of Item for any Item
+public function reversed(self: List of Item) returns List of Item for any Item
+public function sorted(self: List of Item) returns List of Item for any Item where Item can Compare
+public function distinct(self: List of Item) returns List of Item for any Item where Item can Hash
+  purpose: First occurrences only, order kept.
+public function contains(self: List of Item, item: Item) returns Boolean for any Item
+public function index_of(self: List of Item, item: Item) returns maybe Integer for any Item
+public function largest(self: List of Item) returns maybe Item for any Item where Item can Compare
+public function smallest(self: List of Item) returns maybe Item for any Item where Item can Compare
+public function with_index(self: List of Item) returns List of Pair of Item, Integer for any Item
+public function to_set(self: List of Item) returns Set of Item for any Item where Item can Hash
+public function flattened(self: List of List of Item) returns List of Item for any Item
+public function join(self: List of Text, separator: Text) returns Text
+public function sum(self: List of Integer) returns Integer
+public function sum(self: List of Decimal) returns Decimal
+public function sum(self: List of Float) returns Float
+
+public function length(self: Map of Key to Value) returns Integer for any Key, Value
+public function is_empty(self: Map of Key to Value) returns Boolean for any Key, Value
+public function get(self: Map of Key to Value, key: Key) returns maybe Value for any Key, Value
+public function set(self: Map of Key to Value, key: Key, value: Value) returns Map of Key to Value
+  for any Key, Value
+  purpose: A copy with the key bound to the value, added or replaced.
+public function without(self: Map of Key to Value, key: Key) returns Map of Key to Value
+  for any Key, Value
+public function contains_key(self: Map of Key to Value, key: Key) returns Boolean for any Key, Value
+public function keys(self: Map of Key to Value) returns List of Key for any Key, Value
+public function values(self: Map of Key to Value) returns List of Value for any Key, Value
+public function entries(self: Map of Key to Value) returns List of Pair of Key, Value
+  for any Key, Value
+public function merged(self: Map of Key to Value, other: Map of Key to Value) returns Map of Key to Value
+  for any Key, Value
+  purpose: Both maps; on a shared key the other map wins.
+
+public function length(self: Set of Item) returns Integer for any Item
+public function is_empty(self: Set of Item) returns Boolean for any Item
+public function contains(self: Set of Item, item: Item) returns Boolean for any Item
+public function add(self: Set of Item, item: Item) returns Set of Item for any Item
+public function without(self: Set of Item, item: Item) returns Set of Item for any Item
+public function union(self: Set of Item, other: Set of Item) returns Set of Item for any Item
+public function intersection(self: Set of Item, other: Set of Item) returns Set of Item for any Item
+public function difference(self: Set of Item, other: Set of Item) returns Set of Item for any Item
+  purpose: The items of self that are not in other.
+public function is_subset_of(self: Set of Item, other: Set of Item) returns Boolean for any Item
+public function sorted(self: Set of Item) returns List of Item for any Item where Item can Compare
+public function to_list(self: Set of Item) returns List of Item for any Item
+
+public function contains(self: Range, value: Integer) returns Boolean
+public function to_list(self: Range) returns List of Integer
+public function length(self: Range) returns Integer
+
+public function to_milliseconds(self: Duration) returns Integer
+public function to_seconds(self: Duration) returns Decimal

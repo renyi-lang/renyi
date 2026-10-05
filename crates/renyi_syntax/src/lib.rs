@@ -19,6 +19,6 @@ pub use diagnostics::{Diagnostic, Severity};
 pub use format::format;
 pub use json::module_to_json;
 pub use lexer::{lex, Lexed};
-pub use parser::{parse, Parsed};
+pub use parser::{parse, parse_declarations, Parsed};
 pub use span::{Position, SourceFile, Span};
 pub use token::{TextPart, Token, TokenKind, Word};

@@ -1,0 +1,42 @@
+module std.http
+  purpose: An HTTP client.
+
+public type Url is Text
+  purpose: An absolute URL with a scheme and a host; literals are checked at compile time, other values by the request.
+
+public type Response
+  purpose: A successful (2xx) answer to a request.
+  has status: Integer
+  has headers: Map of Text to Text
+  has body: Text
+  has bytes: Bytes
+end
+
+public type HttpError is one of
+  purpose: Why a request produced no 2xx response.
+  Unreachable(url: Url, detail: Text)
+  Timeout(url: Url)
+  HostNotAllowed(host: Text)
+  Status(url: Url, status: Integer, body: Text)
+end
+
+public function get(url: Url) returns Response or fails with HttpError needs network.http
+public function get_with(url: Url, headers: Map of Text to Text) returns Response
+  or fails with HttpError
+  needs network.http
+public function post(url: Url, body: Text, headers: Map of Text to Text) returns Response
+  or fails with HttpError
+  needs network.http
+public function post_json(url: Url, value: Value) returns Response
+  or fails with HttpError
+  needs network.http
+  for any Value where Value can ToJson
+  purpose: POST the value as JSON with the matching content type.
+public function put(url: Url, body: Text, headers: Map of Text to Text) returns Response
+  or fails with HttpError
+  needs network.http
+public function delete(url: Url) returns Response or fails with HttpError needs network.http
+public function request(method: Text, url: Url, body: Text, headers: Map of Text to Text)
+  returns Response
+  or fails with HttpError
+  needs network.http

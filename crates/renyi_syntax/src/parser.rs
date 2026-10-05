@@ -23,6 +23,16 @@ pub struct Parsed {
 
 /// Lex and parse one module.
 pub fn parse(source: &str) -> Parsed {
+    parse_with(source, false)
+}
+
+/// Lex and parse a declaration file: a module whose functions have no
+/// bodies, as the standard library declares its types and signatures.
+pub fn parse_declarations(source: &str) -> Parsed {
+    parse_with(source, true)
+}
+
+fn parse_with(source: &str, declarations: bool) -> Parsed {
     let lexed = lex(source);
     let mut comments = Vec::new();
     let tokens: Vec<Token> = lexed
@@ -39,6 +49,7 @@ pub fn parse(source: &str) -> Parsed {
         .collect();
     let mut parser = Parser {
         src: source,
+        declarations,
         tokens,
         pos: 0,
         diagnostics: lexed.diagnostics,
@@ -63,6 +74,7 @@ fn parse_hole(src: &str, tokens: Vec<Token>, diagnostics: &mut Vec<Diagnostic>) 
     tokens.push(Token::new(TokenKind::Eof, Span::new(span.end, span.end)));
     let mut parser = Parser {
         src,
+        declarations: false,
         tokens,
         pos: 0,
         diagnostics: Vec::new(),
@@ -88,6 +100,8 @@ struct Continuation {
 
 struct Parser<'s> {
     src: &'s str,
+    /// Functions have no bodies (a library declaration file).
+    declarations: bool,
     tokens: Vec<Token>,
     pos: usize,
     diagnostics: Vec<Diagnostic>,
@@ -525,7 +539,8 @@ impl<'s> Parser<'s> {
         let token = self.peek().clone();
         match token.kind {
             TokenKind::Word(Word::Function) => {
-                self.function(public, start, true).map(Item::Function)
+                let with_body = !self.declarations;
+                self.function(public, start, with_body).map(Item::Function)
             }
             TokenKind::Word(Word::Type) => self.type_def(public, start).map(Item::Type),
             TokenKind::Word(Word::Ability) => self.ability(public, start),
@@ -546,7 +561,7 @@ impl<'s> Parser<'s> {
     fn function(&mut self, public: bool, start: usize, with_body: bool) -> ParseResult<Function> {
         let head_column = self.column(start);
         self.expect_word(Word::Function)?;
-        let name = self.identifier("a function name")?;
+        let name = self.method_or_function_name()?;
         let params = self.params()?;
         let (returns, fails, needs, type_params) =
             self.with_continuation(head_column, false, |parser| parser.signature_clauses())?;
@@ -575,6 +590,25 @@ impl<'s> Parser<'s> {
             body,
             span: Span::new(start, end),
         })
+    }
+
+    /// A function name. A method, whose first parameter is `self`, is only
+    /// ever called after a dot, so like a member name it may be any word,
+    /// reserved words included (`first`, `at`, `set`, `sum`, `repeat`).
+    fn method_or_function_name(&mut self) -> ParseResult<Name> {
+        let token = self.peek().clone();
+        let is_method = matches!(token.kind, TokenKind::Word(_))
+            && self.tokens.get(self.pos + 1).map(|t| &t.kind) == Some(&TokenKind::LeftParen)
+            && self.tokens.get(self.pos + 2).map(|t| &t.kind)
+                == Some(&TokenKind::Word(Word::SelfValue));
+        if is_method {
+            self.advance();
+            return Ok(Name {
+                text: self.src[token.span.start..token.span.end].to_string(),
+                span: token.span,
+            });
+        }
+        self.identifier("a function name")
     }
 
     fn params(&mut self) -> ParseResult<Vec<Param>> {

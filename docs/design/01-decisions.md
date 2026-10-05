@@ -694,3 +694,27 @@ opposite condition. The owner asked for a simpler, fixed loop shape;
 **M10. No bottom-tested loop.** The "do, then test" case (pagination) keeps
 its flag variable or uses `break`; the corpus has one such loop. Revisit after
 the live readability round. (user)
+
+---
+
+## N. Decisions forced by the type checker (session 4, M2)
+
+Derived while turning the library sketch into declaration files the compiler
+reads (`library/std/*.ry`) and writing the checker; each follows from an
+earlier decision and is recorded so that it can be questioned.
+
+**N1. A method may be named with a reserved word.** The library declares
+`first`, `at`, `set`, `sum`, `sorted` and `repeat` as methods, and the
+corpus calls them after a dot, where any word is allowed (C4a). A function
+whose first parameter is `self` is only ever called after a dot, so the
+parser accepts any word as its name; an ordinary function keeps the rule.
+Parameters are bound as plain names and keep the rule too, so the library's
+`count` parameters became `length`, `days` and `amount`. (derived)
+
+**N2. `Path`, `Url` and `Pattern` are plain subtypes of `Text`.** Their
+validity is checked by the operations that use them (a missing or malformed
+path fails with `FileError`, a malformed URL with `Unreachable`) and, for
+literals, at compile time by the toolchain. Constructing them from runtime
+text therefore needs no `otherwise`, which is how the corpus already writes
+`Url("{base}?{query}")` and `Path(path_text)`; the sketch's `where value is
+not ""` on `Path` is dropped. (derived)

@@ -39,7 +39,11 @@ line. Indentation is two spaces and carries no meaning. Maximum line width is
 
 ASCII only. Single-letter names are rejected. A name that equals a reserved word
 is rejected with a rename suggestion (`count` becomes `item_count`). After a
-dot, any word is allowed as a member name (`event.type`).
+dot, any word is allowed as a member name (`event.type`), and for the same
+reason a method, a function whose first parameter is `self` and which is
+therefore only ever called after a dot, may be declared under any word
+(`function first(self: List of Item)`, `function set(self: Map of Key to
+Value, ...)`; decision N1).
 
 **Reserved words.** 85 words, listed in section 17. Multi-word keywords such as
 `is at least` and `or fails with` are single tokens; the lexer matches the

@@ -36,7 +36,9 @@ Rules that generate the library:
 
 Every declaration below is a Renyi signature without a body. The corpus lint
 reads the `function` lines of this file and rejects any method or module
-function the examples call that is not declared here.
+function the examples call that is not declared here. The compiler reads the
+same declarations from `library/std/*.ry`, one declaration file per module;
+a test keeps the two in step.
 
 ---
 
@@ -116,9 +118,9 @@ function pad_left(self: Text, width: Integer) returns Text
   purpose: Spaces added on the left until the text is at least width characters.
 function pad_right(self: Text, width: Integer) returns Text
 function repeat(self: Text, times: Integer) returns Text
-function take(self: Text, count: Integer) returns Text
-  purpose: The first count characters, or the whole text when it is shorter.
-function drop(self: Text, count: Integer) returns Text
+function take(self: Text, length: Integer) returns Text
+  purpose: The first length characters, or the whole text when it is shorter.
+function drop(self: Text, length: Integer) returns Text
 function reversed(self: Text) returns Text
 function matches(self: Text, pattern: Text) returns Boolean
   purpose: Whether the whole text matches the regular expression (decision K3).
@@ -156,8 +158,8 @@ function rest(self: List of Item) returns List of Item for any Item
   purpose: Everything after the first item; empty for an empty list.
 function without_last(self: List of Item) returns List of Item for any Item
 function without_index(self: List of Item, index: Integer) returns List of Item for any Item
-function take(self: List of Item, count: Integer) returns List of Item for any Item
-function drop(self: List of Item, count: Integer) returns List of Item for any Item
+function take(self: List of Item, length: Integer) returns List of Item for any Item
+function drop(self: List of Item, length: Integer) returns List of Item for any Item
 function append(self: List of Item, item: Item) returns List of Item for any Item
 function append_all(self: List of Item, others: List of Item) returns List of Item for any Item
 function reversed(self: List of Item) returns List of Item for any Item
@@ -334,16 +336,16 @@ public function now() returns Instant needs time
 public function today() returns Date needs time
   purpose: The current date in UTC.
 public function sleep(duration: Duration) needs time
-public function milliseconds(count: Integer) returns Duration
-public function seconds(count: Integer) returns Duration
-public function minutes(count: Integer) returns Duration
-public function hours(count: Integer) returns Duration
+public function milliseconds(amount: Integer) returns Duration
+public function seconds(amount: Integer) returns Duration
+public function minutes(amount: Integer) returns Duration
+public function hours(amount: Integer) returns Duration
 public function parse_date(text: Text) returns Date or fails with InvalidDate
 public function parse_instant(text: Text) returns Instant or fails with InvalidDate
   purpose: Read an ISO 8601 timestamp such as 2024-05-01T13:45:00Z.
 
-public function plus_days(self: Date, count: Integer) returns Date
-public function minus_days(self: Date, count: Integer) returns Date
+public function plus_days(self: Date, days: Integer) returns Date
+public function minus_days(self: Date, days: Integer) returns Date
 public function days_until(self: Date, other: Date) returns Integer
   purpose: Days from self to other; negative when other is earlier.
 public function weekday(self: Date) returns Weekday
@@ -369,8 +371,8 @@ public function integer(lowest: Integer, highest: Integer) returns Integer needs
   purpose: A uniformly distributed integer, both bounds included.
 public function decimal() returns Decimal needs random
   purpose: A uniformly distributed value from 0 up to but excluding 1.
-public function choice(items: List of Item) returns maybe Item for any Item needs random
-public function shuffled(items: List of Item) returns List of Item for any Item needs random
+public function choice(items: List of Item) returns maybe Item needs random for any Item
+public function shuffled(items: List of Item) returns List of Item needs random for any Item
 ```
 
 ---
@@ -378,8 +380,8 @@ public function shuffled(items: List of Item) returns List of Item for any Item 
 ## 6. std.filesystem
 
 ```
-public type Path is Text where value is not ""
-  purpose: A file-system path, absolute or relative to the working directory.
+public type Path is Text
+  purpose: A file-system path, absolute or relative to the working directory; an empty or malformed path fails where it is used.
 public type Entry is one of
   purpose: What a path points at.
   File(size: Integer)
@@ -473,8 +475,8 @@ base64. Refinements are checked while decoding and reported as `Constraint`.
 ## 8. std.http
 
 ```
-public type Url is Text where value is an absolute URL with a scheme and a host
-  purpose: Checked at compile time for literals.
+public type Url is Text
+  purpose: An absolute URL with a scheme and a host; literals are checked at compile time, other values by the request.
 public type Response
   has status: Integer
   has headers: Map of Text to Text
@@ -631,8 +633,8 @@ backreferences, no look-around, linear-time matching. `Text.matches` lives in
 the prelude (decision K3); everything else is here.
 
 ```
-public type Pattern is Text where value is a valid regular expression
-  purpose: Checked at compile time for literals.
+public type Pattern is Text
+  purpose: A regular expression; literals are checked at compile time.
 
 public function find_all(self: Pattern, text: Text) returns List of Text
   purpose: Every non-overlapping match, in order.

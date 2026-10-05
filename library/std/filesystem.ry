@@ -1,0 +1,45 @@
+module std.filesystem
+  purpose: Files and directories.
+
+public type Path is Text
+  purpose: A file-system path, absolute or relative to the working directory; an empty or malformed path fails where it is used.
+
+public type Entry is one of
+  purpose: What a path points at.
+  File(size: Integer)
+  Directory
+  Other
+end
+
+public type FileError is one of
+  purpose: Why a file operation failed.
+  NotFound(path: Path)
+  PermissionDenied(path: Path)
+  AlreadyExists(path: Path)
+  InvalidEncoding(path: Path)
+  Io(path: Path, detail: Text)
+end
+
+public function name(self: Path) returns Text
+  purpose: The last segment.
+public function parent(self: Path) returns maybe Path
+public function join(self: Path, segment: Text) returns Path
+public function extension(self: Path) returns maybe Text
+  purpose: The part after the last dot of the name, without the dot.
+
+public function read_text(path: Path) returns Text or fails with FileError needs filesystem.read
+public function read_bytes(path: Path) returns Bytes or fails with FileError needs filesystem.read
+public function write_text(path: Path, content: Text) or fails with FileError needs filesystem.write
+  purpose: Create or replace the file.
+public function write_bytes(path: Path, content: Bytes) or fails with FileError needs filesystem.write
+public function append_text(path: Path, content: Text) or fails with FileError needs filesystem.write
+public function exists(path: Path) returns Boolean needs filesystem.read
+public function inspect(path: Path) returns Entry or fails with FileError needs filesystem.read
+public function list(path: Path) returns List of Path or fails with FileError needs filesystem.read
+  purpose: The direct children of a directory, sorted by name.
+public function create_directory(path: Path) or fails with FileError needs filesystem.write
+  purpose: Create the directory and any missing parents.
+public function remove(path: Path) or fails with FileError needs filesystem.write
+  purpose: Delete a file or an empty directory.
+public function copy(source: Path, target: Path) or fails with FileError needs filesystem
+public function move(source: Path, target: Path) or fails with FileError needs filesystem
