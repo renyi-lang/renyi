@@ -46,11 +46,8 @@ end
 public function parse_line(line: Text) returns Entry or fails with ParseError
   purpose: Split a line of the form "timestamp LEVEL message" into an entry.
   tags: logs, parsing
-  example: parse_line("2024-05-01T13:45:00 INFO server started") is Entry(
-    timestamp: Timestamp("2024-05-01T13:45:00"),
-    level: Info,
-    message: "server started"
-  )
+  example: parse_line("2024-05-01T13:45:00 INFO server started")
+    is Entry(timestamp: Timestamp("2024-05-01T13:45:00"), level: Info, message: "server started")
   example: parse_line("garbage") fails with Malformed(line: "garbage")
 
   let words be line.split(" ")

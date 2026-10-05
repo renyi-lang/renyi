@@ -32,9 +32,7 @@ public function parse(input: Text) returns Version or fails with VersionError
   example: parse("1.x.2") fails with NotANumber(input: "1.x.2", part: "x")
 
   let parts be input.trim().split(".")
-  if parts.length() is not 3 then
-    fail with WrongPartCount(input: input, found: parts.length())
-  end
+  if parts.length() is not 3 then fail with WrongPartCount(input: input, found: parts.length()) end
   let major be number_at(parts: parts, index: 0, input: input) otherwise fail
   let minor be number_at(parts: parts, index: 1, input: input) otherwise fail
   let patch be number_at(parts: parts, index: 2, input: input) otherwise fail

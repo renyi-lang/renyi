@@ -28,10 +28,7 @@ let create_table: Text be """
   )
   """
 
-public function open_inventory(path: Path)
-  returns Connection
-  or fails with DbError
-  needs filesystem
+public function open_inventory(path: Path) returns Connection or fails with DbError needs filesystem
   purpose: Open the database file and make sure the items table exists.
 
   let connection be sqlite.open(path) otherwise fail
@@ -68,9 +65,7 @@ public function main() or fails with DbError or InventoryError needs console, fi
   let connection be open_inventory(Path("data/inventory.db")) otherwise fail
   record_delivery(connection: connection, sku: "BOLT-10", amount: 500) otherwise fail
   let items be low_stock(connection) otherwise fail
-  if items.is_empty() then
-    console.print("nothing to reorder")
-  end
+  if items.is_empty() then console.print("nothing to reorder") end
   for each item in items
     console.print("{item.sku} {item.name}: {item.quantity} left, reorder at {item.reorder_level}")
   end

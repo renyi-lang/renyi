@@ -714,6 +714,17 @@ base types).
   signature clauses then follow on their own lines.
 - A refinement `where` that does not fit breaks before `where` and before each
   `and` / `or`.
+- An `if` statement with one statement and no `otherwise` is written on one
+  line when it fits (`if done then break end`); every other `if`, and every
+  `match`, loop and `run concurrently`, spans lines.
+- A `when ... then` or `otherwise` arm keeps a single statement on its line
+  when it fits.
+- An `example:` that does not fit breaks before `is` or `fails with`, indented
+  one level; when the call itself does not fit, its arguments go one per line
+  and `) is value` follows the closing parenthesis.
+- Documentation prose (`purpose:`, `tags:`, `deprecated:`) wraps at the width
+  onto lines indented one level deeper than the clause word.
+- A single blank line between statements is kept; several collapse to one.
 - A single token that cannot be broken (a long string literal) may exceed the
   width; the formatter leaves it alone.
 - The formatter never changes tokens: it cannot rename, add `end`, or convert

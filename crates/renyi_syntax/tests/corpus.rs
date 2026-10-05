@@ -116,3 +116,78 @@ fn every_corpus_program_parses_cleanly() {
         "programs with parse diagnostics:\n{report}"
     );
 }
+
+fn strip_spans(debug: &str) -> String {
+    // spans differ between a source and its formatted text; everything else must match
+    let mut out = String::new();
+    let mut rest = debug;
+    while let Some(index) = rest.find("Span {") {
+        out.push_str(&rest[..index]);
+        let after = &rest[index..];
+        let close = after.find('}').expect("span closes");
+        out.push('_');
+        rest = &after[close + 1..];
+    }
+    out.push_str(rest);
+    out
+}
+
+#[test]
+fn formatting_the_corpus_is_idempotent_and_preserves_the_tree() {
+    let mut report = String::new();
+    for path in corpus() {
+        let text = std::fs::read_to_string(&path).expect("read");
+        let file = SourceFile::new(path.display().to_string(), text.clone());
+        let once = match renyi_syntax::format(&file) {
+            Ok(formatted) => formatted,
+            Err(diagnostics) => {
+                report.push_str(&renyi_syntax::diagnostics::render_text(&file, &diagnostics));
+                continue;
+            }
+        };
+        let twice = renyi_syntax::format(&SourceFile::new("formatted.ry", once.clone()))
+            .expect("formatted text parses");
+        if once != twice {
+            report.push_str(&format!(
+                "{}: formatting is not idempotent\n",
+                path.display()
+            ));
+        }
+        let before = strip_spans(&format!("{:?}", renyi_syntax::parse(&text).module));
+        let after = strip_spans(&format!("{:?}", renyi_syntax::parse(&once).module));
+        if before != after {
+            report.push_str(&format!(
+                "{}: formatting changed the syntax tree\n",
+                path.display()
+            ));
+        }
+        for (number, line) in once.lines().enumerate() {
+            if line.chars().count() > 100 && !line.contains('"') {
+                report.push_str(&format!(
+                    "{}:{}: formatted line is wider than 100 columns\n",
+                    path.display(),
+                    number + 1
+                ));
+            }
+        }
+    }
+    assert!(report.is_empty(), "{report}");
+}
+
+#[test]
+fn the_corpus_is_in_canonical_form() {
+    let mut report = String::new();
+    for path in corpus() {
+        let text = std::fs::read_to_string(&path).expect("read");
+        let file = SourceFile::new(path.display().to_string(), text.clone());
+        if let Ok(formatted) = renyi_syntax::format(&file) {
+            if formatted != text {
+                report.push_str(&format!(
+                    "{} differs from its formatted form (run `renyi format`)\n",
+                    path.display()
+                ));
+            }
+        }
+    }
+    assert!(report.is_empty(), "{report}");
+}

@@ -79,6 +79,14 @@ runtime exists. No design question is open.
    parse` dumps the tree. All thirty corpus programs parse without a
    diagnostic, and the corpus test also checks that every public item has a
    `purpose:` clause.
+9. Wrote the formatter (`format.rs`): a document model (text, soft and hard
+   line breaks, nesting, groups, ordered alternatives, wrapped words) printed
+   at 100 columns, with the layout rules of sketch section 16 (which gained
+   the rules the implementation forced: one-line `if`, arm bodies, example
+   breaking, prose wrapping, blank lines). `renyi format [--check]` rewrites
+   files. Corpus tests: formatting is idempotent, preserves the syntax tree
+   (spans aside), stays within 100 columns, and every corpus file is in
+   canonical form (nine files were reformatted by the tool).
 
 ## Next steps, in order
 
@@ -90,15 +98,16 @@ runtime exists. No design question is open.
    the run directory. Compare against the acceptance thresholds in
    `03-readability-test.md`; a failing threshold becomes a grammar question
    for the owner, not a silent change.
-2. **M1, continued.** Next in `crates/renyi_syntax`: the formatter
-   (`format.rs`, canonical layout of sketch section 16, comments preserved)
-   with the property tests of decision H6 (formatting is idempotent; parsing
-   the formatted text gives the same tree; every corpus program is already
-   in canonical form), `renyi format`, and `renyi parse --json` for tools.
-   Then M2: name resolution, the type and effect checker with the rules of
-   decisions J8, J9, J11 and J15 (unused bindings and results, Integer
-   division, scoped capabilities). The owner chose M3 (a VM running the
-   corpus) as the first demo.
+2. **M1 wrap-up, then M2.** Remaining M1 polish: `renyi parse --json` for
+   tools, and comments inside multi-line expressions (the formatter moves
+   them before the statement). Then M2 in a new crate `renyi_check`: name
+   resolution over the prelude and library sketch, the type checker
+   (records, variants, refinements, generics with `for any`, abilities,
+   `maybe` and failure wrapping, `otherwise` typing), the effect checker
+   with scoped capabilities (J11), and the rules of J8, J9 and J15 (unused
+   bindings and results, no Integer division). Diagnostics follow the
+   `check` command's text and JSON output. The owner chose M3 (a VM running
+   the corpus) as the first demo.
 
 ## Known gaps and risks
 

@@ -1,17 +1,18 @@
 //! The `renyi` command. M1 provides `check` (lexer, parser and layout
-//! diagnostics, text or JSON), `tokens` (a token dump) and `parse` (a syntax
-//! tree dump). Formatting, type checking and running follow in later
-//! milestones.
+//! diagnostics, text or JSON), `format` (canonical layout, in place or
+//! `--check`), `tokens` (a token dump) and `parse` (a syntax tree dump). Type
+//! checking and running follow in later milestones.
 
 use std::io::Write;
 use std::process::ExitCode;
 
 use renyi_syntax::diagnostics::{render_json, render_text};
 use renyi_syntax::layout::check_layout;
-use renyi_syntax::{lex, parse, SourceFile, TokenKind};
+use renyi_syntax::{format, lex, parse, SourceFile, TokenKind};
 
 const USAGE: &str = "usage:
   renyi check [--json] <file.ry>...   report diagnostics (exit 1 when any error)
+  renyi format [--check] <file.ry>... rewrite files in canonical layout (--check: report only)
   renyi tokens <file.ry>              dump the token stream
   renyi parse <file.ry>               dump the syntax tree
   renyi version";
@@ -20,6 +21,7 @@ fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.first().map(String::as_str) {
         Some("check") => check(&args[1..]),
+        Some("format") => format_command(&args[1..]),
         Some("tokens") => tokens(&args[1..]),
         Some("parse") => parse_command(&args[1..]),
         Some("version") | Some("--version") => {
@@ -139,6 +141,47 @@ fn parse_command(args: &[String]) -> ExitCode {
         .iter()
         .any(|diagnostic| diagnostic.is_error())
     {
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
+    }
+}
+
+fn format_command(args: &[String]) -> ExitCode {
+    let check_only = args.iter().any(|arg| arg == "--check");
+    let files: Vec<&String> = args.iter().filter(|arg| !arg.starts_with("--")).collect();
+    if files.is_empty() {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    }
+    let mut failed = false;
+    for path in files {
+        let file = match load(path) {
+            Ok(file) => file,
+            Err(code) => return code,
+        };
+        match format(&file) {
+            Ok(formatted) => {
+                if formatted == file.text {
+                    continue;
+                }
+                if check_only {
+                    println!("{path}: not in canonical layout");
+                    failed = true;
+                } else if let Err(error) = std::fs::write(path, formatted) {
+                    eprintln!("renyi: cannot write {path}: {error}");
+                    failed = true;
+                } else {
+                    println!("{path}: formatted");
+                }
+            }
+            Err(diagnostics) => {
+                print!("{}", render_text(&file, &diagnostics));
+                failed = true;
+            }
+        }
+    }
+    if failed {
         ExitCode::FAILURE
     } else {
         ExitCode::SUCCESS

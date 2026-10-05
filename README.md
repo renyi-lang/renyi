@@ -42,18 +42,20 @@ Design is complete (M0) and the implementation has started (M1). What exists:
 - `examples/`: thirty example programs, checked by
   `python3 tools/lint_examples.py`.
 - `crates/`: the Rust toolchain. `renyi check` reports lexer, parser and layout
-  diagnostics as text or JSON; `renyi tokens` and `renyi parse` dump the token
-  stream and the syntax tree. Every example parses cleanly.
+  diagnostics as text or JSON; `renyi format` rewrites files in the canonical
+  layout; `renyi tokens` and `renyi parse` dump the token stream and the
+  syntax tree. Every example parses cleanly and is in canonical form.
 
 ```
 cargo build
 ./target/debug/renyi check examples/hello.ry
 ./target/debug/renyi check --json examples/hello.ry
+./target/debug/renyi format --check examples/*.ry
 cargo test
 ```
 
-Next: the formatter (`renyi format`), then the type and effect checker (M2)
-and the bytecode VM (M3), which is the first milestone that runs a program.
+Next: the type and effect checker (M2), then the bytecode VM (M3), which is
+the first milestone that runs a program.
 
 ## Working on this repository
 

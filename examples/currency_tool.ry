@@ -4,9 +4,7 @@ module currency_tool
 import std.http exposing Url, HttpError
 import std.json exposing JsonError
 
-public type Currency is Text
-  where value.length() is 3
-  and value is value.to_upper()
+public type Currency is Text where value.length() is 3 and value is value.to_upper()
   purpose: A three-letter ISO 4217 currency code.
 
 type RateTable

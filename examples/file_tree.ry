@@ -5,10 +5,7 @@ import std.console
 import std.environment
 import std.filesystem exposing Path, Entry, FileError
 
-public function total_size(path: Path)
-  returns Integer
-  or fails with FileError
-  needs filesystem.read
+public function total_size(path: Path) returns Integer or fails with FileError needs filesystem.read
   purpose: The size of a file, or the sum of the sizes of everything under a directory.
   tags: filesystem, recursion
 

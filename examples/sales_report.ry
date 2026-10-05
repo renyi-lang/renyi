@@ -36,8 +36,7 @@ public function load_sales(path: Path)
   needs filesystem.read("data")
   purpose: Read and validate every row of the sales file.
 
-  let text be filesystem.read_text(path)
-    otherwise fail with Io(detail: "cannot read {path}")
+  let text be filesystem.read_text(path) otherwise fail with Io(detail: "cannot read {path}")
   let rows be csv.parse(text) otherwise fail with Io(detail: "file is not valid CSV")
   return for each row in rows collect parse_sale(row) otherwise fail
 end

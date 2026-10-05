@@ -22,9 +22,7 @@ public function median(values: List of Float) returns maybe Float
 
   let sorted_values be values.sorted()
   let middle be sorted_values.length().quotient(2)
-  if sorted_values.length() remainder 2 is 1 then
-    return sorted_values.at(middle)
-  end
+  if sorted_values.length() remainder 2 is 1 then return sorted_values.at(middle) end
   let lower be sorted_values.at(middle - 1) otherwise return nothing
   let upper be sorted_values.at(middle) otherwise return nothing
   return (lower + upper) / 2.0

@@ -14,10 +14,8 @@ end
 
 public function count_words(text: Text) returns List of WordCount
   purpose: Count every lower-cased word, most frequent first.
-  example: count_words("a b a") is [
-    WordCount(word: "a", occurrences: 2),
-    WordCount(word: "b", occurrences: 1)
-  ]
+  example: count_words("a b a")
+    is [WordCount(word: "a", occurrences: 2), WordCount(word: "b", occurrences: 1)]
   example: count_words("") is []
 
   let words be
