@@ -1,7 +1,8 @@
 # Handoff
 
 Last updated: 2026-10-05, end of session 4 (pre-test finished and decided,
-M1 wrapped up, M2 type and effect checker written and green on the corpus).
+M1 wrapped up, M2 type and effect checker green on the corpus, runtime
+memory model and agent tooling designed).
 Branches: `main` holds the session-1 handoff; `claude/renyi-language-design-hbrie3`
 carries session 2; `claude/nifty-knuth-r5sntt` carries sessions 3 and 4 on top
 of it. The owner decides when `main` moves.
@@ -9,8 +10,10 @@ of it. The owner decides when `main` moves.
 ## Where the project stands
 
 Milestones M0 (design), M1 (front end) and M2 (type and effect checker) are
-done; M3 (the VM) is next. Four rounds of design decisions are recorded
-(sections 0 to N of `01-decisions.md`); the surface syntax and the standard
+done; the project map (`renyi index`) and M3 (the VM) are next. Design
+decisions are recorded in sections 0 to O of `01-decisions.md`, and the
+agent tooling (project map, budgets, diffs, `renyi mcp`) has its own design
+document, `05-agent-tooling.md`; the surface syntax and the standard
 library are sketched in full, and the library also exists as declaration
 files the compiler reads (`library/std/*.ry`). The corpus has its target 30
 programs, passes the lint, is in canonical layout, and type- and
@@ -189,6 +192,26 @@ recorded and applied:
   cheat sheet, sketch and three corpus programs were changed together.
 - M10 no bottom-tested loop for now.
 
+## Decisions taken at the end of session 4 (entries O1 to O5)
+
+The owner asked how memory is managed, what sets the language apart and
+what it can offer agents, and took the recommendations as given:
+
+- O1 memory is reference counting with in-place reuse of uniquely held
+  values (the value graph is acyclic: immutable values, no references, no
+  closures); supersedes E2's tracing collector. v1 runs green threads on
+  one OS thread, so counts are not atomic.
+- O2 the project map (`renyi index`, JSON, incremental by content hash) is
+  the agent's view of a project: one record per definition with signature,
+  purpose, declared and transitive effects and failures, edges and six
+  metrics (lines, depth, branches, effects, fan-in/out, coverage).
+- O3 module-level complexity budgets are reported by the map and gated in
+  CI as warnings; thresholds after measuring the corpus.
+- O4 `renyi index --diff` reports semantic changes (signatures, effects,
+  failures, hashes) with the callers they reach; G1's version bump reads it.
+- O5 the toolchain MCP server is `renyi mcp` (JSON-RPC over stdio), distinct
+  from `renyi serve --mcp` of D6; `serde_json` is taken as a dependency.
+
 ## Next steps
 
 0. **Confirm the cheat-sheet token count** with `python3 tools/count_tokens.py`
@@ -203,17 +226,28 @@ recorded and applied:
    Compare against the acceptance thresholds in `03-readability-test.md`; a
    failing threshold becomes a grammar question for the owner, not a silent
    change. `repeat until` (M9) gets its first measurement here.
-2. **M3: the bytecode VM** (`renyi run`, `renyi test`), the owner's first
-   demo: run the thirty corpus programs; the ten reference outputs under
+2. **`renyi index`, the project map** (`05-agent-tooling.md`, sections 1
+   to 4): a new crate `renyi_index` over `renyi_check::World`: the
+   definition and module records, the six metrics with the definitions
+   given there, content hashes (a 256-bit hash of the canonical text with
+   the definition's own name removed and dependency names replaced by
+   hashes; strongly connected components hashed together), the text form
+   and `--json`. Measure the corpus and write the numbers into the design
+   document as the first budget data (R5-1). About a day of work.
+3. **M3: the bytecode VM** (`renyi run`, `renyi test`), the owner's first
+   demo, under decision O1 (reference counting, in-place reuse, last-use
+   moves): run the thirty corpus programs; the ten reference outputs under
    `tests/readability/reference/` and the `example:` lines and `test` blocks
    of the corpus are the first conformance expectations, and the 40 judged
-   pre-test samples are a second check (decision L2). Decimal128 arithmetic,
-   the capability sandbox at startup, structured concurrency and the library
-   primitives (console, filesystem, json, http, csv, sqlite, regex, time)
-   are the bulk of it; the checker's `World` and `Ty` are the input.
-3. **After M2: the toolchain MCP server** (decision M8): cheat sheet, library
-   lookup, `check`, `format`; decide the subcommand and whether to take a
-   JSON dependency then.
+   pre-test samples are a second check (decision L2). Decimal128
+   arithmetic, the capability sandbox at startup, structured concurrency on
+   one OS thread and the library primitives (console, filesystem, json,
+   http, csv, sqlite, regex, time) are the bulk of it; the checker's
+   `World` and `Ty` are the input.
+4. **`renyi mcp`** (decision O5, `05-agent-tooling.md` section 7): the first
+   seven tools, then `run`, `run_tests` and `diff` as M3 and `--diff` land.
+5. **Budgets and the semantic diff** (O3, O4), then M4 reads budgets from
+   the manifest.
 
 ## Known gaps and risks
 
@@ -262,11 +296,18 @@ recorded and applied:
   per call and are uniformly high; the live round should use two graders.
 - The GitHub default branch was set automatically to the first pushed branch;
   the owner should switch it to `main` in the repository settings.
+- Decision O1 (reference counting) rests on the value graph being acyclic;
+  any future feature that lets a value refer to itself (a `lazy` thunk over
+  its own binding, mutable fields, closures) would need a cycle collector
+  and must be checked against O1 first.
 
 ## Owner actions pending
 
 - Set `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` in the cloud environment so the
   next session can run the readability round (decision L1).
+- Choose the language's signature capability (the owner asked for one
+  feature no other language has had; the candidates and the recommendation
+  are in the session-4 chat and, once chosen, become a decision entry).
 - Switch the GitHub default branch to `main`, and say when `main` should be
   updated from the session branch.
 

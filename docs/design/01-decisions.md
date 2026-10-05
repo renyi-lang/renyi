@@ -724,3 +724,62 @@ not ""` on `Path` is dropped. (derived)
 every error type the library declares carries `can ToText`; a program's own
 error type adds the clause when it is rendered. `ToText` stays opt-in for
 other types. (derived)
+
+---
+
+## O. Runtime and agent tooling (session 4)
+
+Asked by the owner as three questions (how memory is managed, what sets the
+language apart, what the language can offer LLM agents); the owner took the
+recommendations as given. The design is in `05-agent-tooling.md`.
+
+**O1. Memory is reference counting with in-place reuse; supersedes E2.**
+Renyi's values are immutable, there are no references, no closures (a
+function is passed by name and captures nothing), and no shared mutable
+state, so the value graph is acyclic: a value cannot contain itself.
+Acyclic data needs no tracing collector. The VM counts references, frees a
+value when its count reaches zero (so a file or a connection closes as soon
+as it is dropped, deterministically), and updates a value in place when its
+count is one, which makes `set items to items.append(item)` an O(1) append
+when nothing else holds the list (the Perceus/Koka and Roc model; the
+compiler marks last uses so that arguments are moved, not copied). The v1
+scheduler runs green threads on one OS thread, so counts are not atomic;
+when tasks move to several threads, values that cross a task boundary get
+atomic counts. The user-facing promise of E2 stands unchanged: ownership
+and lifetimes never appear in the language or in a diagnostic. A future
+`lazy` must keep the graph acyclic (a thunk may not refer to its own
+binding). (user, on Claude's recommendation)
+
+**O2. The project map is the agent's view of a project.** `renyi index`
+(decision D5) emits one record per definition and one per module, as JSON:
+identity (content hash), kind, signature, purpose, tags, declared and
+transitive effects, declared and transitive failure types, the edges
+(calls, type uses, implementations, tests), six metrics (lines, nesting
+depth, branch points, effects, fan-in and fan-out, example and test
+coverage) and the source location. Every number is exact because the
+language has no macros, no overloading and no dynamic dispatch outside
+abilities. The map is incremental by hash and is what an agent reads
+instead of files; granularity is module to definition, with tests as nodes
+of their own. (user)
+
+**O3. Complexity budgets.** The per-definition limits of D4 (nesting depth
+4, about 60 lines) stay compile errors. Module-level budgets (public
+definitions per module, size of the transitive effect set, fan-out) are
+reported by the map and gated in CI as warnings first; thresholds are set
+once the map has been measured on the corpus (open item R5-1). (user)
+
+**O4. Effect and semantic diffs.** `renyi index --diff` compares two maps
+and reports changed signatures, effects and failure types with the callers
+each change reaches; the version-bump rule of G1 reads the same diff, and
+an agent checks that its change did not widen any grant. Scheduled after
+M3. (user)
+
+**O5. The toolchain MCP server is `renyi mcp`.** Decision M8's server gets
+its own subcommand, distinct from `renyi serve --mcp` (D6), which serves a
+program's own `expose as tool` functions. `renyi mcp` speaks JSON-RPC over
+stdio and offers `project_map`, `definition`, `effects`, `check`,
+`format`, `cheat_sheet`, `library_lookup`, and after M3 `run`, `run_tests`
+and `diff`. The checker's `World` stays resident and is refreshed by
+content hash. `serde_json` is taken as a dependency: the zero-dependency
+rule ended when `regex` entered the checker, and a hand-written parser
+would buy nothing. (derived)
