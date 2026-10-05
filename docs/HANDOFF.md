@@ -4,9 +4,8 @@ Last updated: 2026-10-05, end of session 4 (pre-test finished and decided,
 M1 wrapped up, M2 type and effect checker green on the corpus, runtime
 memory model, agent tooling, the three signature capabilities and the four
 system-level commitments designed; the new syntax is in the grammar).
-Branches: `main` holds the session-1 handoff; `claude/renyi-language-design-hbrie3`
-carries session 2; `claude/nifty-knuth-r5sntt` carries sessions 3 and 4 on top
-of it. The owner decides when `main` moves.
+Branch: `main` is the only branch (owner's decision, 2026-10-05); the session
+branches were fast-forwarded into it and deleted, and it is the GitHub default.
 
 ## Where the project stands
 
@@ -357,8 +356,6 @@ the first ones.
   Complete and Write verdicts in the pre-test's `judgement.json` files.
 - The pre-test's Explain grades came from Sonnet subagents grading ten items
   per call and are uniformly high; the live round should use two graders.
-- The GitHub default branch was set automatically to the first pushed branch;
-  the owner should switch it to `main` in the repository settings.
 - Decision O1 (reference counting) rests on the value graph being acyclic;
   any future feature that lets a value refer to itself (a `lazy` thunk over
   its own binding, mutable fields, closures) would need a cycle collector
@@ -368,8 +365,6 @@ the first ones.
 
 - Set `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` in the cloud environment so the
   next session can run the readability round (decision L1).
-- Switch the GitHub default branch to `main`, and say when `main` should be
-  updated from the session branch.
 
 ## Owner preferences observed
 

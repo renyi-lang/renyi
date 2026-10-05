@@ -37,8 +37,8 @@ implementation.
   `cargo test` must be clean. The corpus tests also require every example to
   be in canonical layout: run `cargo run -- format examples/*.ry` after
   editing an example.
-- Work on a `claude/...` branch and push there. Push to `main` only when the
-  owner asks.
+- `main` is the only branch (owner's decision, 2026-10-05). Commit and push
+  there directly; do not create other branches, local or remote.
 - Before ending a session, rewrite `docs/HANDOFF.md` so the next session can
   start without this conversation.
 
