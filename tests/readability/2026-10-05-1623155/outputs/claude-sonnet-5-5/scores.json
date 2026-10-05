@@ -1145,7 +1145,7 @@
   "complete/deadlines": [
     {
       "lint_problems": [
-        ".scratch-85088.ry:54: reserved word 'count' used as an identifier"
+        "line 54: reserved word 'count' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -1154,7 +1154,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-85088.ry:54: reserved word 'count' used as an identifier"
+        "line 54: reserved word 'count' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -1185,7 +1185,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-85088.ry:36: condition without 'then'"
+        "line 36: condition without 'then'"
       ],
       "pass": false,
       "rules": [
@@ -1288,7 +1288,7 @@
   "complete/invoice_report": [
     {
       "lint_problems": [
-        ".scratch-85088.ry:13: reserved word 'count' used as an identifier"
+        "line 13: reserved word 'count' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -1297,7 +1297,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-85088.ry:13: reserved word 'count' used as an identifier"
+        "line 13: reserved word 'count' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -1306,7 +1306,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-85088.ry:13: reserved word 'count' used as an identifier"
+        "line 13: reserved word 'count' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -1347,9 +1347,9 @@
   "complete/markdown_table": [
     {
       "lint_problems": [
-        ".scratch-85088.ry:51: '=' is not Renyi; use 'let x be', 'set x to', or 'is'",
-        ".scratch-85088.ry:56: '=' is not Renyi; use 'let x be', 'set x to', or 'is'",
-        ".scratch-85088.ry: block starters 11 vs 'end' 9 (heuristic)"
+        "line 51: '=' is not Renyi; use 'let x be', 'set x to', or 'is'",
+        "line 56: '=' is not Renyi; use 'let x be', 'set x to', or 'is'",
+        "block starters 11 vs 'end' 9 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -1537,7 +1537,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-85088.ry:25: reserved word 'count' used as an identifier"
+        "line 25: reserved word 'count' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -1608,7 +1608,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-85088.ry: block starters 10 vs 'end' 11 (heuristic)"
+        "block starters 10 vs 'end' 11 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -1704,11 +1704,11 @@
     },
     {
       "lint_problems": [
-        ".scratch-85088.ry:42: line is 152 columns (limit 100)",
-        ".scratch-85088.ry:49: line is 112 columns (limit 100)",
-        ".scratch-85088.ry:64: line is 124 columns (limit 100)",
-        ".scratch-85088.ry:65: line is 118 columns (limit 100)",
-        ".scratch-85088.ry:66: line is 130 columns (limit 100)"
+        "line 42: line is 152 columns (limit 100)",
+        "line 49: line is 112 columns (limit 100)",
+        "line 64: line is 124 columns (limit 100)",
+        "line 65: line is 118 columns (limit 100)",
+        "line 66: line is 130 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -1779,8 +1779,8 @@
     },
     {
       "lint_problems": [
-        ".scratch-85088.ry:2: line is 110 columns (limit 100)",
-        ".scratch-85088.ry:53: line is 136 columns (limit 100)"
+        "line 2: line is 110 columns (limit 100)",
+        "line 53: line is 136 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -1837,12 +1837,12 @@
   "write/low_stock_report": [
     {
       "lint_problems": [
-        ".scratch-85088.ry:27: line is 178 columns (limit 100)",
-        ".scratch-85088.ry:28: line is 228 columns (limit 100)",
-        ".scratch-85088.ry:42: line is 111 columns (limit 100)",
-        ".scratch-85088.ry:49: line is 101 columns (limit 100)",
-        ".scratch-85088.ry:54: line is 106 columns (limit 100)",
-        ".scratch-85088.ry:55: line is 115 columns (limit 100)"
+        "line 27: line is 178 columns (limit 100)",
+        "line 28: line is 228 columns (limit 100)",
+        "line 42: line is 111 columns (limit 100)",
+        "line 49: line is 101 columns (limit 100)",
+        "line 54: line is 106 columns (limit 100)",
+        "line 55: line is 115 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -1889,8 +1889,8 @@
     },
     {
       "lint_problems": [
-        ".scratch-85088.ry:28: line is 135 columns (limit 100)",
-        ".scratch-85088.ry:68: line is 103 columns (limit 100)"
+        "line 28: line is 135 columns (limit 100)",
+        "line 68: line is 103 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -1933,7 +1933,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-85088.ry:40: keyword from another language"
+        "line 40: keyword from another language"
       ],
       "pass": false,
       "rules": [
@@ -1942,9 +1942,9 @@
     },
     {
       "lint_problems": [
-        ".scratch-85088.ry:13: line is 126 columns (limit 100)",
-        ".scratch-85088.ry:24: line is 110 columns (limit 100)",
-        ".scratch-85088.ry:26: line is 140 columns (limit 100)"
+        "line 13: line is 126 columns (limit 100)",
+        "line 24: line is 110 columns (limit 100)",
+        "line 26: line is 140 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -1953,9 +1953,9 @@
     },
     {
       "lint_problems": [
-        ".scratch-85088.ry:13: line is 126 columns (limit 100)",
-        ".scratch-85088.ry:22: line is 101 columns (limit 100)",
-        ".scratch-85088.ry:24: line is 104 columns (limit 100)"
+        "line 13: line is 126 columns (limit 100)",
+        "line 22: line is 101 columns (limit 100)",
+        "line 24: line is 104 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -1974,7 +1974,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-85088.ry: block starters 5 vs 'end' 4 (heuristic)"
+        "block starters 5 vs 'end' 4 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -2050,7 +2050,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-85088.ry:61: keyword from another language"
+        "line 61: keyword from another language"
       ],
       "pass": false,
       "rules": [
@@ -2077,9 +2077,9 @@
     },
     {
       "lint_problems": [
-        ".scratch-85088.ry:15: line is 114 columns (limit 100)",
-        ".scratch-85088.ry:33: line is 205 columns (limit 100)",
-        ".scratch-85088.ry:38: reserved word 'count' used as an identifier"
+        "line 15: line is 114 columns (limit 100)",
+        "line 33: line is 205 columns (limit 100)",
+        "line 38: reserved word 'count' used as an identifier"
       ],
       "pass": false,
       "rules": [

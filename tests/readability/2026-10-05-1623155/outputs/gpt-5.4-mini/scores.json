@@ -1140,7 +1140,7 @@
   "complete/deadlines": [
     {
       "lint_problems": [
-        ".scratch-69092.ry:54: reserved word 'count' used as an identifier"
+        "line 54: reserved word 'count' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -1149,7 +1149,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:54: reserved word 'count' used as an identifier"
+        "line 54: reserved word 'count' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -1158,7 +1158,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:54: reserved word 'count' used as an identifier"
+        "line 54: reserved word 'count' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -1167,7 +1167,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:54: reserved word 'count' used as an identifier"
+        "line 54: reserved word 'count' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -1176,7 +1176,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:54: reserved word 'count' used as an identifier"
+        "line 54: reserved word 'count' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -1187,7 +1187,7 @@
   "complete/dependency_order": [
     {
       "lint_problems": [
-        ".scratch-69092.ry:36: line is 105 columns (limit 100)"
+        "line 36: line is 105 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -1196,7 +1196,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:36: 'all' is not declared in the standard library sketch or the corpus"
+        "line 36: 'all' is not declared in the standard library sketch or the corpus"
       ],
       "pass": false,
       "rules": [
@@ -1205,9 +1205,9 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:29: 'all' is not declared in the standard library sketch or the corpus",
-        ".scratch-69092.ry:45: 'all' is not declared in the standard library sketch or the corpus",
-        ".scratch-69092.ry:46: condition without 'then'"
+        "line 29: 'all' is not declared in the standard library sketch or the corpus",
+        "line 45: 'all' is not declared in the standard library sketch or the corpus",
+        "line 46: condition without 'then'"
       ],
       "pass": false,
       "rules": [
@@ -1230,9 +1230,9 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:27: line is 106 columns (limit 100)",
-        ".scratch-69092.ry:38: line is 105 columns (limit 100)",
-        ".scratch-69092.ry:39: 'all' is not declared in the standard library sketch or the corpus"
+        "line 27: line is 106 columns (limit 100)",
+        "line 38: line is 105 columns (limit 100)",
+        "line 39: 'all' is not declared in the standard library sketch or the corpus"
       ],
       "pass": false,
       "rules": [
@@ -1328,7 +1328,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:15: line is 104 columns (limit 100)"
+        "line 15: line is 104 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -1337,7 +1337,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:15: line is 104 columns (limit 100)"
+        "line 15: line is 104 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -1356,7 +1356,7 @@
   "complete/log_parser": [
     {
       "lint_problems": [
-        ".scratch-69092.ry:61: line is 107 columns (limit 100)"
+        "line 61: line is 107 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -1387,7 +1387,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:61: line is 107 columns (limit 100)"
+        "line 61: line is 107 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -1409,7 +1409,7 @@
   "complete/markdown_table": [
     {
       "lint_problems": [
-        ".scratch-69092.ry:52: 'map' is not declared in the standard library sketch or the corpus"
+        "line 52: 'map' is not declared in the standard library sketch or the corpus"
       ],
       "pass": false,
       "rules": [
@@ -1430,7 +1430,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:52: line is 104 columns (limit 100)"
+        "line 52: line is 104 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -1581,10 +1581,10 @@
   "complete/shipping_rules": [
     {
       "lint_problems": [
-        ".scratch-69092.ry:38: line is 110 columns (limit 100)",
-        ".scratch-69092.ry:39: line is 112 columns (limit 100)",
-        ".scratch-69092.ry:40: keyword from another language",
-        ".scratch-69092.ry:41: line is 106 columns (limit 100)"
+        "line 38: line is 110 columns (limit 100)",
+        "line 39: line is 112 columns (limit 100)",
+        "line 40: keyword from another language",
+        "line 41: line is 106 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -1598,10 +1598,10 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:38: line is 110 columns (limit 100)",
-        ".scratch-69092.ry:39: line is 112 columns (limit 100)",
-        ".scratch-69092.ry:40: keyword from another language",
-        ".scratch-69092.ry:41: line is 106 columns (limit 100)"
+        "line 38: line is 110 columns (limit 100)",
+        "line 39: line is 112 columns (limit 100)",
+        "line 40: keyword from another language",
+        "line 41: line is 106 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -1650,8 +1650,8 @@
   "complete/statistics": [
     {
       "lint_problems": [
-        ".scratch-69092.ry:25: reserved word 'sorted' used as an identifier",
-        ".scratch-69092.ry:28: 'remainder' is not declared in the standard library sketch or the corpus"
+        "line 25: reserved word 'sorted' used as an identifier",
+        "line 28: 'remainder' is not declared in the standard library sketch or the corpus"
       ],
       "pass": false,
       "rules": [
@@ -1661,8 +1661,8 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:25: reserved word 'sorted' used as an identifier",
-        ".scratch-69092.ry:28: 'remainder' is not declared in the standard library sketch or the corpus"
+        "line 25: reserved word 'sorted' used as an identifier",
+        "line 28: 'remainder' is not declared in the standard library sketch or the corpus"
       ],
       "pass": false,
       "rules": [
@@ -1672,8 +1672,8 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:25: reserved word 'sorted' used as an identifier",
-        ".scratch-69092.ry:28: 'remainder' is not declared in the standard library sketch or the corpus"
+        "line 25: reserved word 'sorted' used as an identifier",
+        "line 28: 'remainder' is not declared in the standard library sketch or the corpus"
       ],
       "pass": false,
       "rules": [
@@ -1683,7 +1683,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:28: 'remainder' is not declared in the standard library sketch or the corpus"
+        "line 28: 'remainder' is not declared in the standard library sketch or the corpus"
       ],
       "pass": false,
       "rules": [
@@ -1692,7 +1692,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:28: 'remainder' is not declared in the standard library sketch or the corpus"
+        "line 28: 'remainder' is not declared in the standard library sketch or the corpus"
       ],
       "pass": false,
       "rules": [
@@ -1725,8 +1725,8 @@
   "complete/todo_cli": [
     {
       "lint_problems": [
-        ".scratch-69092.ry:27: binding 'first' is never used (heuristic)",
-        ".scratch-69092.ry:27: binding 'rest' is never used (heuristic)"
+        "line 27: binding 'first' is never used (heuristic)",
+        "line 27: binding 'rest' is never used (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -1735,8 +1735,8 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:30: binding 'first' is never used (heuristic)",
-        ".scratch-69092.ry:30: binding 'rest' is never used (heuristic)"
+        "line 30: binding 'first' is never used (heuristic)",
+        "line 30: binding 'rest' is never used (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -1784,8 +1784,8 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:27: binding 'first' is never used (heuristic)",
-        ".scratch-69092.ry:27: binding 'rest' is never used (heuristic)"
+        "line 27: binding 'first' is never used (heuristic)",
+        "line 27: binding 'rest' is never used (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -1794,7 +1794,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:32: binding 'error' is never used (heuristic)"
+        "line 32: binding 'error' is never used (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -1827,7 +1827,7 @@
   "complete/word_count": [
     {
       "lint_problems": [
-        ".scratch-69092.ry:24: line is 109 columns (limit 100)"
+        "line 24: line is 109 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -1836,7 +1836,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:24: line is 109 columns (limit 100)"
+        "line 24: line is 109 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -1855,7 +1855,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:24: line is 109 columns (limit 100)"
+        "line 24: line is 109 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -1876,7 +1876,7 @@
   "write/compound_interest": [
     {
       "lint_problems": [
-        ".scratch-69092.ry: block starters 3 vs 'end' 6 (heuristic)"
+        "block starters 3 vs 'end' 6 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -1897,9 +1897,9 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:21: line is 119 columns (limit 100)",
-        ".scratch-69092.ry:22: line is 114 columns (limit 100)",
-        ".scratch-69092.ry:23: line is 105 columns (limit 100)"
+        "line 21: line is 119 columns (limit 100)",
+        "line 22: line is 114 columns (limit 100)",
+        "line 23: line is 105 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -1908,12 +1908,12 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:12: line is 112 columns (limit 100)",
-        ".scratch-69092.ry:13: line is 104 columns (limit 100)",
-        ".scratch-69092.ry:14: line is 102 columns (limit 100)",
-        ".scratch-69092.ry:16: line is 125 columns (limit 100)",
-        ".scratch-69092.ry:17: line is 121 columns (limit 100)",
-        ".scratch-69092.ry:18: line is 105 columns (limit 100)"
+        "line 12: line is 112 columns (limit 100)",
+        "line 13: line is 104 columns (limit 100)",
+        "line 14: line is 102 columns (limit 100)",
+        "line 16: line is 125 columns (limit 100)",
+        "line 17: line is 121 columns (limit 100)",
+        "line 18: line is 105 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -1922,9 +1922,9 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:12: line is 112 columns (limit 100)",
-        ".scratch-69092.ry:13: line is 104 columns (limit 100)",
-        ".scratch-69092.ry:14: line is 102 columns (limit 100)"
+        "line 12: line is 112 columns (limit 100)",
+        "line 13: line is 104 columns (limit 100)",
+        "line 14: line is 102 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -2147,7 +2147,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:34: line is 101 columns (limit 100)"
+        "line 34: line is 101 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -2219,7 +2219,7 @@
   "write/low_stock_report": [
     {
       "lint_problems": [
-        ".scratch-69092.ry: block starters 3 vs 'end' 4 (heuristic)"
+        "block starters 3 vs 'end' 4 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -2228,7 +2228,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:25: line is 109 columns (limit 100)"
+        "line 25: line is 109 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -2237,7 +2237,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry: block starters 3 vs 'end' 4 (heuristic)"
+        "block starters 3 vs 'end' 4 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -2246,7 +2246,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry: block starters 3 vs 'end' 4 (heuristic)"
+        "block starters 3 vs 'end' 4 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -2255,7 +2255,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry: block starters 3 vs 'end' 4 (heuristic)"
+        "block starters 3 vs 'end' 4 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -2276,8 +2276,8 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:10: single-letter identifier 'i'",
-        ".scratch-69092.ry:11: single-letter identifier 'j'"
+        "line 10: single-letter identifier 'i'",
+        "line 11: single-letter identifier 'j'"
       ],
       "pass": false,
       "rules": [
@@ -2296,7 +2296,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:10: reserved word 'sorted' used as an identifier"
+        "line 10: reserved word 'sorted' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -2317,7 +2317,7 @@
   "write/password_strength": [
     {
       "lint_problems": [
-        ".scratch-69092.ry:20: condition without 'then'"
+        "line 20: condition without 'then'"
       ],
       "pass": false,
       "rules": [
@@ -2326,7 +2326,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:15: condition without 'then'"
+        "line 15: condition without 'then'"
       ],
       "pass": false,
       "rules": [
@@ -2372,7 +2372,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:15: condition without 'then'"
+        "line 15: condition without 'then'"
       ],
       "pass": false,
       "rules": [
@@ -2445,9 +2445,9 @@
   "write/roman_numerals": [
     {
       "lint_problems": [
-        ".scratch-69092.ry:17: 'remainder' is not declared in the standard library sketch or the corpus",
-        ".scratch-69092.ry:18: 'remainder' is not declared in the standard library sketch or the corpus",
-        ".scratch-69092.ry:19: 'remainder' is not declared in the standard library sketch or the corpus"
+        "line 17: 'remainder' is not declared in the standard library sketch or the corpus",
+        "line 18: 'remainder' is not declared in the standard library sketch or the corpus",
+        "line 19: 'remainder' is not declared in the standard library sketch or the corpus"
       ],
       "pass": false,
       "rules": [
@@ -2456,8 +2456,8 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:111: line is 114 columns (limit 100)",
-        ".scratch-69092.ry:114: line is 126 columns (limit 100)"
+        "line 111: line is 114 columns (limit 100)",
+        "line 114: line is 126 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -2466,9 +2466,9 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:17: 'remainder' is not declared in the standard library sketch or the corpus",
-        ".scratch-69092.ry:18: 'remainder' is not declared in the standard library sketch or the corpus",
-        ".scratch-69092.ry:19: 'remainder' is not declared in the standard library sketch or the corpus"
+        "line 17: 'remainder' is not declared in the standard library sketch or the corpus",
+        "line 18: 'remainder' is not declared in the standard library sketch or the corpus",
+        "line 19: 'remainder' is not declared in the standard library sketch or the corpus"
       ],
       "pass": false,
       "rules": [
@@ -2477,16 +2477,16 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:21: 'remainder' is not declared in the standard library sketch or the corpus",
-        ".scratch-69092.ry:22: 'remainder' is not declared in the standard library sketch or the corpus",
-        ".scratch-69092.ry:23: 'remainder' is not declared in the standard library sketch or the corpus",
-        ".scratch-69092.ry:27: reserved word 'one' used as an identifier",
-        ".scratch-69092.ry:28: reserved word 'one' used as an identifier",
-        ".scratch-69092.ry:29: reserved word 'one' used as an identifier",
-        ".scratch-69092.ry:113: reserved word 'count' used as an identifier",
-        ".scratch-69092.ry:116: reserved word 'count' used as an identifier",
-        ".scratch-69092.ry:127: reserved word 'one' used as an identifier",
-        ".scratch-69092.ry:130: reserved word 'one' used as an identifier"
+        "line 21: 'remainder' is not declared in the standard library sketch or the corpus",
+        "line 22: 'remainder' is not declared in the standard library sketch or the corpus",
+        "line 23: 'remainder' is not declared in the standard library sketch or the corpus",
+        "line 27: reserved word 'one' used as an identifier",
+        "line 28: reserved word 'one' used as an identifier",
+        "line 29: reserved word 'one' used as an identifier",
+        "line 113: reserved word 'count' used as an identifier",
+        "line 116: reserved word 'count' used as an identifier",
+        "line 127: reserved word 'one' used as an identifier",
+        "line 130: reserved word 'one' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -2496,16 +2496,16 @@
     },
     {
       "lint_problems": [
-        ".scratch-69092.ry:21: 'remainder' is not declared in the standard library sketch or the corpus",
-        ".scratch-69092.ry:22: 'remainder' is not declared in the standard library sketch or the corpus",
-        ".scratch-69092.ry:23: 'remainder' is not declared in the standard library sketch or the corpus",
-        ".scratch-69092.ry:28: reserved word 'one' used as an identifier",
-        ".scratch-69092.ry:29: reserved word 'one' used as an identifier",
-        ".scratch-69092.ry:30: reserved word 'one' used as an identifier",
-        ".scratch-69092.ry:98: reserved word 'count' used as an identifier",
-        ".scratch-69092.ry:101: reserved word 'count' used as an identifier",
-        ".scratch-69092.ry:114: reserved word 'one' used as an identifier",
-        ".scratch-69092.ry:117: reserved word 'one' used as an identifier"
+        "line 21: 'remainder' is not declared in the standard library sketch or the corpus",
+        "line 22: 'remainder' is not declared in the standard library sketch or the corpus",
+        "line 23: 'remainder' is not declared in the standard library sketch or the corpus",
+        "line 28: reserved word 'one' used as an identifier",
+        "line 29: reserved word 'one' used as an identifier",
+        "line 30: reserved word 'one' used as an identifier",
+        "line 98: reserved word 'count' used as an identifier",
+        "line 101: reserved word 'count' used as an identifier",
+        "line 114: reserved word 'one' used as an identifier",
+        "line 117: reserved word 'one' used as an identifier"
       ],
       "pass": false,
       "rules": [

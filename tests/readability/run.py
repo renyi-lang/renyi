@@ -101,6 +101,12 @@ def read(path: pathlib.Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def write(path: pathlib.Path, text: str) -> None:
+    """Write UTF-8 with LF line endings on every platform (Python would write
+    CRLF on Windows, and the repository pins LF)."""
+    path.write_text(text, encoding="utf-8", newline="\n")
+
+
 def git_revision() -> str:
     try:
         return subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT,
@@ -161,7 +167,7 @@ def lint_text(code: str, format_first: bool = False) -> tuple[list[str], list[st
     scratch = EXAMPLES / f".scratch-{os.getpid()}.ry"
     # LF on every platform: Python would otherwise write CRLF on Windows, and
     # the formatter and the checker reject carriage returns
-    scratch.write_text(code.replace("\r\n", "\n"), encoding="utf-8", newline="\n")
+    write(scratch, code.replace("\r\n", "\n"))
     try:
         if format_first:
             # layout is the formatter's job; a program that does not parse is left as it is
@@ -170,12 +176,19 @@ def lint_text(code: str, format_first: bool = False) -> tuple[list[str], list[st
         # not lend its declarations to this one)
         corpus = sorted(p for p in EXAMPLES.glob("*.ry") if not p.name.startswith("."))
         known = lint_examples.declared_functions([lint_examples.STDLIB_SKETCH, *corpus, scratch])
-        problems = lint_examples.lint_file(scratch, known)
+        problems = [unnamed(p, scratch.name) for p in lint_examples.lint_file(scratch, known)]
         if problems:
             return problems, []
         return [], check_errors(scratch)
     finally:
         scratch.unlink(missing_ok=True)
+
+
+def unnamed(problem: str, name: str) -> str:
+    """A lint message without the scratch file's name, which varies per process:
+    `line 54: ...` for a located problem, the bare message otherwise."""
+    rest = problem.removeprefix(name).lstrip(":").strip()
+    return f"line {rest}" if rest[:1].isdigit() else rest
 
 
 def check_errors(path: pathlib.Path) -> list[str]:
@@ -317,8 +330,8 @@ def cmd_prepare(args: argparse.Namespace) -> None:
         write_prompt(prompts / "write" / f"{task_id}.json", "write", task_id,
                      PROMPTS["write"].format(task=description), {"description": description})
         count += 1
-    (target / "system.txt").write_text(SYSTEM.format(cheatsheet=read(CHEATSHEET)), encoding="utf-8")
-    (target / "meta.json").write_text(json.dumps({
+    write(target / "system.txt", SYSTEM.format(cheatsheet=read(CHEATSHEET)))
+    write(target / "meta.json", json.dumps({
         "date": dt.date.today().isoformat(), "revision": revision,
         "cheatsheet_bytes": CHEATSHEET.stat().st_size, "programs": len(programs)}, indent=2))
     print(f"{count} prompts written to {target.relative_to(ROOT)}")
@@ -340,8 +353,8 @@ def with_imports(program: str) -> str:
 
 
 def write_prompt(path: pathlib.Path, task: str, name: str, prompt: str, extra: dict) -> None:
-    path.write_text(json.dumps({"task": task, "name": name, "prompt": prompt, **extra},
-                               indent=2, ensure_ascii=False), encoding="utf-8")
+    write(path, json.dumps({"task": task, "name": name, "prompt": prompt, **extra},
+                           indent=2, ensure_ascii=False))
 
 
 def cmd_run(args: argparse.Namespace) -> None:
@@ -368,7 +381,7 @@ def cmd_run(args: argparse.Namespace) -> None:
                 record["samples"].append(answer)
                 record["model"] = args.model
                 record["temperature"] = args.temperature
-                out_file.write_text(json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8")
+                write(out_file, json.dumps(record, indent=2, ensure_ascii=False))
                 done += 1
     print(f"{done} samples stored under {outputs.relative_to(ROOT)}")
 
@@ -404,9 +417,8 @@ def cmd_score(args: argparse.Namespace) -> None:
                                                 target, key, grades))
                 scores[f"{task}/{out_file.stem}"] = results
                 if json.dumps(grades, sort_keys=True) != before:
-                    grades_file.write_text(json.dumps(grades, indent=2, sort_keys=True),
-                                           encoding="utf-8")
-        (label_dir / args.scores).write_text(json.dumps(scores, indent=2), encoding="utf-8")
+                    write(grades_file, json.dumps(grades, indent=2, sort_keys=True))
+        write(label_dir / args.scores, json.dumps(scores, indent=2))
         pending = sum(1 for results in scores.values() for r in results if r.get("pending"))
         print(f"{label_dir.name}: {len(scores)} items scored, {pending} samples await judgement")
 

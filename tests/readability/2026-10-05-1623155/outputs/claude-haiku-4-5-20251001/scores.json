@@ -1134,8 +1134,8 @@
   "complete/deadlines": [
     {
       "lint_problems": [
-        ".scratch-14132.ry:54: reserved word 'count' used as an identifier",
-        ".scratch-14132.ry:56: 'is_after' is not declared in the standard library sketch or the corpus"
+        "line 54: reserved word 'count' used as an identifier",
+        "line 56: 'is_after' is not declared in the standard library sketch or the corpus"
       ],
       "pass": false,
       "rules": [
@@ -1145,8 +1145,8 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:54: reserved word 'count' used as an identifier",
-        ".scratch-14132.ry:56: 'is_after' is not declared in the standard library sketch or the corpus"
+        "line 54: reserved word 'count' used as an identifier",
+        "line 56: 'is_after' is not declared in the standard library sketch or the corpus"
       ],
       "pass": false,
       "rules": [
@@ -1156,8 +1156,8 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:54: reserved word 'count' used as an identifier",
-        ".scratch-14132.ry:56: 'is_after' is not declared in the standard library sketch or the corpus"
+        "line 54: reserved word 'count' used as an identifier",
+        "line 56: 'is_after' is not declared in the standard library sketch or the corpus"
       ],
       "pass": false,
       "rules": [
@@ -1167,8 +1167,8 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:54: reserved word 'count' used as an identifier",
-        ".scratch-14132.ry:56: 'is_after' is not declared in the standard library sketch or the corpus"
+        "line 54: reserved word 'count' used as an identifier",
+        "line 56: 'is_after' is not declared in the standard library sketch or the corpus"
       ],
       "pass": false,
       "rules": [
@@ -1178,8 +1178,8 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:54: reserved word 'count' used as an identifier",
-        ".scratch-14132.ry:56: 'is_after' is not declared in the standard library sketch or the corpus"
+        "line 54: reserved word 'count' used as an identifier",
+        "line 56: 'is_after' is not declared in the standard library sketch or the corpus"
       ],
       "pass": false,
       "rules": [
@@ -1191,13 +1191,13 @@
   "complete/dependency_order": [
     {
       "lint_problems": [
-        ".scratch-14132.ry:22: trailing whitespace",
-        ".scratch-14132.ry:30: trailing whitespace",
-        ".scratch-14132.ry:34: trailing whitespace",
-        ".scratch-14132.ry:42: trailing whitespace",
-        ".scratch-14132.ry:47: trailing whitespace",
-        ".scratch-14132.ry:53: trailing whitespace",
-        ".scratch-14132.ry:33: binding 'previous_count' is never used (heuristic)"
+        "line 22: trailing whitespace",
+        "line 30: trailing whitespace",
+        "line 34: trailing whitespace",
+        "line 42: trailing whitespace",
+        "line 47: trailing whitespace",
+        "line 53: trailing whitespace",
+        "line 33: binding 'previous_count' is never used (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -1207,13 +1207,13 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:22: trailing whitespace",
-        ".scratch-14132.ry:30: trailing whitespace",
-        ".scratch-14132.ry:34: trailing whitespace",
-        ".scratch-14132.ry:42: trailing whitespace",
-        ".scratch-14132.ry:47: trailing whitespace",
-        ".scratch-14132.ry:53: trailing whitespace",
-        ".scratch-14132.ry:33: binding 'previous_count' is never used (heuristic)"
+        "line 22: trailing whitespace",
+        "line 30: trailing whitespace",
+        "line 34: trailing whitespace",
+        "line 42: trailing whitespace",
+        "line 47: trailing whitespace",
+        "line 53: trailing whitespace",
+        "line 33: binding 'previous_count' is never used (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -1223,13 +1223,13 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:22: trailing whitespace",
-        ".scratch-14132.ry:30: trailing whitespace",
-        ".scratch-14132.ry:34: trailing whitespace",
-        ".scratch-14132.ry:42: trailing whitespace",
-        ".scratch-14132.ry:47: trailing whitespace",
-        ".scratch-14132.ry:53: trailing whitespace",
-        ".scratch-14132.ry:33: binding 'previous_count' is never used (heuristic)"
+        "line 22: trailing whitespace",
+        "line 30: trailing whitespace",
+        "line 34: trailing whitespace",
+        "line 42: trailing whitespace",
+        "line 47: trailing whitespace",
+        "line 53: trailing whitespace",
+        "line 33: binding 'previous_count' is never used (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -1239,13 +1239,13 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:22: trailing whitespace",
-        ".scratch-14132.ry:30: trailing whitespace",
-        ".scratch-14132.ry:34: trailing whitespace",
-        ".scratch-14132.ry:42: trailing whitespace",
-        ".scratch-14132.ry:47: trailing whitespace",
-        ".scratch-14132.ry:53: trailing whitespace",
-        ".scratch-14132.ry:33: binding 'previous_count' is never used (heuristic)"
+        "line 22: trailing whitespace",
+        "line 30: trailing whitespace",
+        "line 34: trailing whitespace",
+        "line 42: trailing whitespace",
+        "line 47: trailing whitespace",
+        "line 53: trailing whitespace",
+        "line 33: binding 'previous_count' is never used (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -1255,13 +1255,13 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:22: trailing whitespace",
-        ".scratch-14132.ry:30: trailing whitespace",
-        ".scratch-14132.ry:34: trailing whitespace",
-        ".scratch-14132.ry:42: trailing whitespace",
-        ".scratch-14132.ry:47: trailing whitespace",
-        ".scratch-14132.ry:53: trailing whitespace",
-        ".scratch-14132.ry:33: binding 'previous_count' is never used (heuristic)"
+        "line 22: trailing whitespace",
+        "line 30: trailing whitespace",
+        "line 34: trailing whitespace",
+        "line 42: trailing whitespace",
+        "line 47: trailing whitespace",
+        "line 53: trailing whitespace",
+        "line 33: binding 'previous_count' is never used (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -1674,7 +1674,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:38: line is 106 columns (limit 100)"
+        "line 38: line is 106 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -1683,7 +1683,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:38: line is 106 columns (limit 100)"
+        "line 38: line is 106 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -1720,7 +1720,7 @@
   "complete/statistics": [
     {
       "lint_problems": [
-        ".scratch-14132.ry:24: reserved word 'sorted' used as an identifier"
+        "line 24: reserved word 'sorted' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -1729,7 +1729,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:24: reserved word 'sorted' used as an identifier"
+        "line 24: reserved word 'sorted' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -1738,7 +1738,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:24: reserved word 'sorted' used as an identifier"
+        "line 24: reserved word 'sorted' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -1747,7 +1747,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:24: reserved word 'sorted' used as an identifier"
+        "line 24: reserved word 'sorted' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -1756,7 +1756,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:24: reserved word 'sorted' used as an identifier"
+        "line 24: reserved word 'sorted' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -1789,7 +1789,7 @@
   "complete/todo_cli": [
     {
       "lint_problems": [
-        ".scratch-14132.ry:28: reserved word 'first' used as an identifier"
+        "line 28: reserved word 'first' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -1798,7 +1798,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:28: reserved word 'first' used as an identifier"
+        "line 28: reserved word 'first' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -1807,7 +1807,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:28: reserved word 'first' used as an identifier"
+        "line 28: reserved word 'first' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -1816,7 +1816,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:28: reserved word 'first' used as an identifier"
+        "line 28: reserved word 'first' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -1825,7 +1825,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:28: reserved word 'first' used as an identifier"
+        "line 28: reserved word 'first' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -1836,7 +1836,7 @@
   "complete/traffic_light": [
     {
       "lint_problems": [
-        ".scratch-14132.ry: block starters 9 vs 'end' 10 (heuristic)"
+        "block starters 9 vs 'end' 10 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -1845,7 +1845,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry: block starters 9 vs 'end' 10 (heuristic)"
+        "block starters 9 vs 'end' 10 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -1854,7 +1854,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry: block starters 9 vs 'end' 10 (heuristic)"
+        "block starters 9 vs 'end' 10 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -1863,7 +1863,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry: block starters 9 vs 'end' 10 (heuristic)"
+        "block starters 9 vs 'end' 10 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -1872,7 +1872,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry: block starters 9 vs 'end' 10 (heuristic)"
+        "block starters 9 vs 'end' 10 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -1883,7 +1883,7 @@
   "complete/word_count": [
     {
       "lint_problems": [
-        ".scratch-14132.ry:28: reserved word 'count' used as an identifier"
+        "line 28: reserved word 'count' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -1892,7 +1892,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:28: reserved word 'count' used as an identifier"
+        "line 28: reserved word 'count' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -1901,7 +1901,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:28: reserved word 'count' used as an identifier"
+        "line 28: reserved word 'count' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -1920,7 +1920,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:28: reserved word 'count' used as an identifier"
+        "line 28: reserved word 'count' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -1948,9 +1948,9 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:21: line is 108 columns (limit 100)",
-        ".scratch-14132.ry:22: line is 104 columns (limit 100)",
-        ".scratch-14132.ry: block starters 11 vs 'end' 12 (heuristic)"
+        "line 21: line is 108 columns (limit 100)",
+        "line 22: line is 104 columns (limit 100)",
+        "block starters 11 vs 'end' 12 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -1981,10 +1981,10 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:21: line is 108 columns (limit 100)",
-        ".scratch-14132.ry:22: line is 104 columns (limit 100)",
-        ".scratch-14132.ry:64: reserved word 'with' used as an identifier",
-        ".scratch-14132.ry: block starters 9 vs 'end' 10 (heuristic)"
+        "line 21: line is 108 columns (limit 100)",
+        "line 22: line is 104 columns (limit 100)",
+        "line 64: reserved word 'with' used as an identifier",
+        "block starters 9 vs 'end' 10 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -1995,9 +1995,9 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:21: line is 108 columns (limit 100)",
-        ".scratch-14132.ry:22: line is 104 columns (limit 100)",
-        ".scratch-14132.ry:63: reserved word 'with' used as an identifier"
+        "line 21: line is 108 columns (limit 100)",
+        "line 22: line is 104 columns (limit 100)",
+        "line 63: reserved word 'with' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -2095,7 +2095,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry: block starters 1 vs 'end' 3 (heuristic)"
+        "block starters 1 vs 'end' 3 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -2104,7 +2104,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry: block starters 1 vs 'end' 3 (heuristic)"
+        "block starters 1 vs 'end' 3 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -2113,7 +2113,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry: block starters 1 vs 'end' 3 (heuristic)"
+        "block starters 1 vs 'end' 3 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -2122,7 +2122,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry: block starters 1 vs 'end' 3 (heuristic)"
+        "block starters 1 vs 'end' 3 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -2268,19 +2268,19 @@
   "write/low_stock_report": [
     {
       "lint_problems": [
-        ".scratch-14132.ry:21: trailing whitespace",
-        ".scratch-14132.ry:22: line is 102 columns (limit 100)",
-        ".scratch-14132.ry:24: trailing whitespace",
-        ".scratch-14132.ry:25: line is 108 columns (limit 100)",
-        ".scratch-14132.ry:26: trailing whitespace",
-        ".scratch-14132.ry:32: trailing whitespace",
-        ".scratch-14132.ry:40: trailing whitespace",
-        ".scratch-14132.ry:57: line is 133 columns (limit 100)",
-        ".scratch-14132.ry:58: trailing whitespace",
-        ".scratch-14132.ry:61: line is 110 columns (limit 100)",
-        ".scratch-14132.ry:62: trailing whitespace",
-        ".scratch-14132.ry:64: line is 111 columns (limit 100)",
-        ".scratch-14132.ry:65: trailing whitespace"
+        "line 21: trailing whitespace",
+        "line 22: line is 102 columns (limit 100)",
+        "line 24: trailing whitespace",
+        "line 25: line is 108 columns (limit 100)",
+        "line 26: trailing whitespace",
+        "line 32: trailing whitespace",
+        "line 40: trailing whitespace",
+        "line 57: line is 133 columns (limit 100)",
+        "line 58: trailing whitespace",
+        "line 61: line is 110 columns (limit 100)",
+        "line 62: trailing whitespace",
+        "line 64: line is 111 columns (limit 100)",
+        "line 65: trailing whitespace"
       ],
       "pass": false,
       "rules": [
@@ -2290,9 +2290,9 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:30: line is 103 columns (limit 100)",
-        ".scratch-14132.ry:31: line is 104 columns (limit 100)",
-        ".scratch-14132.ry: block starters 5 vs 'end' 7 (heuristic)"
+        "line 30: line is 103 columns (limit 100)",
+        "line 31: line is 104 columns (limit 100)",
+        "block starters 5 vs 'end' 7 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -2302,11 +2302,11 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:30: line is 107 columns (limit 100)",
-        ".scratch-14132.ry:68: line is 116 columns (limit 100)",
-        ".scratch-14132.ry:79: line is 117 columns (limit 100)",
-        ".scratch-14132.ry:86: line is 125 columns (limit 100)",
-        ".scratch-14132.ry: block starters 14 vs 'end' 21 (heuristic)"
+        "line 30: line is 107 columns (limit 100)",
+        "line 68: line is 116 columns (limit 100)",
+        "line 79: line is 117 columns (limit 100)",
+        "line 86: line is 125 columns (limit 100)",
+        "block starters 14 vs 'end' 21 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -2316,11 +2316,11 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:30: line is 107 columns (limit 100)",
-        ".scratch-14132.ry:68: line is 116 columns (limit 100)",
-        ".scratch-14132.ry:79: line is 117 columns (limit 100)",
-        ".scratch-14132.ry:86: line is 125 columns (limit 100)",
-        ".scratch-14132.ry: block starters 14 vs 'end' 21 (heuristic)"
+        "line 30: line is 107 columns (limit 100)",
+        "line 68: line is 116 columns (limit 100)",
+        "line 79: line is 117 columns (limit 100)",
+        "line 86: line is 125 columns (limit 100)",
+        "block starters 14 vs 'end' 21 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -2330,11 +2330,11 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:29: line is 107 columns (limit 100)",
-        ".scratch-14132.ry:67: line is 116 columns (limit 100)",
-        ".scratch-14132.ry:78: line is 117 columns (limit 100)",
-        ".scratch-14132.ry:85: line is 125 columns (limit 100)",
-        ".scratch-14132.ry: block starters 14 vs 'end' 21 (heuristic)"
+        "line 29: line is 107 columns (limit 100)",
+        "line 67: line is 116 columns (limit 100)",
+        "line 78: line is 117 columns (limit 100)",
+        "line 85: line is 125 columns (limit 100)",
+        "block starters 14 vs 'end' 21 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -2376,12 +2376,12 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:4: reserved word 'first' used as an identifier",
-        ".scratch-14132.ry:7: reserved word 'first' used as an identifier",
-        ".scratch-14132.ry:8: reserved word 'first' used as an identifier",
-        ".scratch-14132.ry:9: reserved word 'first' used as an identifier",
-        ".scratch-14132.ry:70: reserved word 'first' used as an identifier",
-        ".scratch-14132.ry: block starters 14 vs 'end' 15 (heuristic)"
+        "line 4: reserved word 'first' used as an identifier",
+        "line 7: reserved word 'first' used as an identifier",
+        "line 8: reserved word 'first' used as an identifier",
+        "line 9: reserved word 'first' used as an identifier",
+        "line 70: reserved word 'first' used as an identifier",
+        "block starters 14 vs 'end' 15 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -2391,11 +2391,11 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:4: reserved word 'first' used as an identifier",
-        ".scratch-14132.ry:7: reserved word 'first' used as an identifier",
-        ".scratch-14132.ry:8: reserved word 'first' used as an identifier",
-        ".scratch-14132.ry:9: reserved word 'first' used as an identifier",
-        ".scratch-14132.ry:49: reserved word 'first' used as an identifier"
+        "line 4: reserved word 'first' used as an identifier",
+        "line 7: reserved word 'first' used as an identifier",
+        "line 8: reserved word 'first' used as an identifier",
+        "line 9: reserved word 'first' used as an identifier",
+        "line 49: reserved word 'first' used as an identifier"
       ],
       "pass": false,
       "rules": [
@@ -2404,12 +2404,12 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:4: reserved word 'first' used as an identifier",
-        ".scratch-14132.ry:7: reserved word 'first' used as an identifier",
-        ".scratch-14132.ry:8: reserved word 'first' used as an identifier",
-        ".scratch-14132.ry:9: reserved word 'first' used as an identifier",
-        ".scratch-14132.ry:70: reserved word 'first' used as an identifier",
-        ".scratch-14132.ry: block starters 14 vs 'end' 15 (heuristic)"
+        "line 4: reserved word 'first' used as an identifier",
+        "line 7: reserved word 'first' used as an identifier",
+        "line 8: reserved word 'first' used as an identifier",
+        "line 9: reserved word 'first' used as an identifier",
+        "line 70: reserved word 'first' used as an identifier",
+        "block starters 14 vs 'end' 15 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -2451,7 +2451,7 @@
   "write/password_strength": [
     {
       "lint_problems": [
-        ".scratch-14132.ry: block starters 6 vs 'end' 4 (heuristic)"
+        "block starters 6 vs 'end' 4 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -2472,7 +2472,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry: block starters 6 vs 'end' 4 (heuristic)"
+        "block starters 6 vs 'end' 4 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -2481,7 +2481,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry: block starters 6 vs 'end' 4 (heuristic)"
+        "block starters 6 vs 'end' 4 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -2490,7 +2490,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry: block starters 6 vs 'end' 4 (heuristic)"
+        "block starters 6 vs 'end' 4 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -2505,12 +2505,12 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:7: line is 110 columns (limit 100)",
-        ".scratch-14132.ry:14: trailing whitespace",
-        ".scratch-14132.ry:15: keyword from another language",
-        ".scratch-14132.ry:18: trailing whitespace",
-        ".scratch-14132.ry:20: trailing whitespace",
-        ".scratch-14132.ry: block starters 3 vs 'end' 4 (heuristic)"
+        "line 7: line is 110 columns (limit 100)",
+        "line 14: trailing whitespace",
+        "line 15: keyword from another language",
+        "line 18: trailing whitespace",
+        "line 20: trailing whitespace",
+        "block starters 3 vs 'end' 4 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -2522,8 +2522,8 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:7: line is 110 columns (limit 100)",
-        ".scratch-14132.ry:12: binding 'index' is never used (heuristic)"
+        "line 7: line is 110 columns (limit 100)",
+        "line 12: binding 'index' is never used (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -2533,12 +2533,12 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:7: line is 117 columns (limit 100)",
-        ".scratch-14132.ry:14: trailing whitespace",
-        ".scratch-14132.ry:15: keyword from another language",
-        ".scratch-14132.ry:18: trailing whitespace",
-        ".scratch-14132.ry:20: trailing whitespace",
-        ".scratch-14132.ry: block starters 3 vs 'end' 4 (heuristic)"
+        "line 7: line is 117 columns (limit 100)",
+        "line 14: trailing whitespace",
+        "line 15: keyword from another language",
+        "line 18: trailing whitespace",
+        "line 20: trailing whitespace",
+        "block starters 3 vs 'end' 4 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -2550,12 +2550,12 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:7: line is 110 columns (limit 100)",
-        ".scratch-14132.ry:14: trailing whitespace",
-        ".scratch-14132.ry:15: keyword from another language",
-        ".scratch-14132.ry:18: trailing whitespace",
-        ".scratch-14132.ry:20: trailing whitespace",
-        ".scratch-14132.ry: block starters 3 vs 'end' 4 (heuristic)"
+        "line 7: line is 110 columns (limit 100)",
+        "line 14: trailing whitespace",
+        "line 15: keyword from another language",
+        "line 18: trailing whitespace",
+        "line 20: trailing whitespace",
+        "block starters 3 vs 'end' 4 (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -2776,8 +2776,8 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:16: 'find' is not declared in the standard library sketch or the corpus",
-        ".scratch-14132.ry:19: 'group' is not declared in the standard library sketch or the corpus"
+        "line 16: 'find' is not declared in the standard library sketch or the corpus",
+        "line 19: 'group' is not declared in the standard library sketch or the corpus"
       ],
       "pass": false,
       "rules": [
@@ -2786,7 +2786,7 @@
     },
     {
       "lint_problems": [
-        ".scratch-14132.ry:13: 'find' is not declared in the standard library sketch or the corpus"
+        "line 13: 'find' is not declared in the standard library sketch or the corpus"
       ],
       "pass": false,
       "rules": [
