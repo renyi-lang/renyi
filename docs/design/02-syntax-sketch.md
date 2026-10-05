@@ -41,7 +41,7 @@ ASCII only. Single-letter names are rejected. A name that equals a reserved word
 is rejected with a rename suggestion (`count` becomes `item_count`). After a
 dot, any word is allowed as a member name (`event.type`).
 
-**Reserved words.** 81 words, listed in section 17. Multi-word keywords such as
+**Reserved words.** 84 words, listed in section 17. Multi-word keywords such as
 `is at least` and `or fails with` are single tokens; the lexer matches the
 longest phrase in the fixed phrase table (section 17). Exactly one space
 separates the words of a phrase; a phrase cannot span lines.
@@ -54,6 +54,7 @@ separates the words of a phrase; a phrase cannot span lines.
 | `19.99`, `0.5` | `Decimal` | exact; takes type `Float` only when the context expects `Float` |
 | `"text"` | `Text` | `{expression}` interpolates any value that `can ToText`; escapes `\n \t \" \\ \{` |
 | `"""` ... `"""` | `Text` | multi-line; the text runs from the line after the opening quotes to the line before the closing quotes, without a trailing newline; common leading indentation is removed |
+| `raw "text"` | `Text` | no interpolation and no escapes; for regular expressions and for JSON or SQL samples |
 | `true`, `false` | `Boolean` | |
 | `nothing` | `maybe T` | the absent value |
 | `[1, 2, 3]`, `[]` | `List of T` | |
@@ -62,8 +63,8 @@ separates the words of a phrase; a phrase cannot span lines.
 
 **Interpolation.** Every `"..."` literal interpolates `{expression}`, so a
 literal brace is written `\{`. A hole may not contain a string literal; bind the
-text first (`let separator be ", "` then `"{items.join(separator)}"`). Whether a
-raw form without interpolation is needed is open item R2-14.
+text first (`let separator be ", "` then `"{items.join(separator)}"`).
+`raw "^[0-9]{4}$"` has no holes and no escapes (decision J5).
 
 **Statement continuation.** A statement ends at the newline unless a bracket is
 open or the next non-blank line starts with a continuation word: `otherwise`,
@@ -214,7 +215,10 @@ public type UserId is Integer
 **Records** (`has`). Fields are public. Construction names every field unless
 there is exactly one: `User(id: UserId(7), name: "Ann", age: 30, email:
 nothing)`; `UserId(7)`. Update copies with changes: `let older be user with
-age: user.age + 1`.
+age: user.age + 1`. `has kind: Text as "type"` gives a field the external name
+that `ToJson`, `FromJson` and `FromRow` use, for keys that are reserved words
+or contain punctuation; `json.parse(text: text, naming: CamelCase)` maps a
+whole record by convention (decision J14).
 
 **Variants** (`is one of`). Each variant is a record with zero or more fields;
 `Point` has none. Construction: `Circle(radius: 2.5)`, `Point`. Matching is
@@ -324,6 +328,12 @@ set total to total + line.amount
 - A name is bound once per scope. Rebinding it, or shadowing it in a nested
   scope, is a compile error. Sibling scopes (two loop bodies, two `when`
   branches) may reuse a name.
+- Every binding must be used. A `let`, loop variable, parameter or pattern
+  binding that is never read is a compile error with the fix "remove it"
+  (decision J8).
+- A call whose result is not used is a compile error; the message proposes the
+  likely fix (`set items to items.append(item)`). `ignore expression` discards
+  a result deliberately (decision J15).
 - Top-level `let` requires a type and is a constant: `public let max_retries:
   Integer be 3`, followed by a `purpose:` clause when public.
 
@@ -334,8 +344,15 @@ The language has no `=`.
 ## 7. Expressions
 
 **Arithmetic.** `+ - * /` on two values of the same numeric type. `2 power 10`,
-`total remainder 7`. `/` on two `Integer`s yields a `Decimal`;
-`dividend.quotient(divisor)` is integer division. Division by zero is a crash.
+`total remainder 7`. `/` requires `Decimal` or `Float` operands; dividing two
+`Integer`s is a compile error that points to `dividend.quotient(divisor)`
+(integer division) or `dividend.to_decimal() / divisor` (decision J9).
+Division by zero is a crash. `Decimal` is IEEE 754 decimal128: 34 significant
+digits, exact for literals, sums and products of everyday values, division
+rounded half-even at the 34th digit, overflow a crash (decision J16). `Float`
+is IEEE 754 binary64. `value.at_least(other)` and `value.at_most(other)` give
+the larger or the smaller of two values; there is no two-argument `max`
+(decision J13).
 Precedence, high to low: `power`; `* / remainder`; `+ -`; comparison phrases;
 `not`; `and`; `or`. Parentheses group.
 
@@ -426,9 +443,11 @@ end
   `end`. `then` is mandatory; `end` is mandatory even for one-line bodies.
 - `match value` with `when pattern [where guard] then` branches and an optional
   `otherwise` default. Matching must be exhaustive. Patterns: variant with
-  punned fields `Circle(radius)`, renamed fields `Circle(radius: outer)`,
-  literals, `nothing`, `some(name)`, a typed binding `error: HttpError` for
-  error unions, `otherwise` for the rest.
+  punned fields `Circle(radius)`, renamed fields `Circle(radius: outer)`, a
+  bare variant name `Circle` when no field is needed, literals, `nothing`,
+  `some(name)`, a typed binding `error: HttpError` for error unions,
+  `otherwise` for the rest. Binding a field and not using it is a compile
+  error (decision J8).
 - `for each item in collection` iterates lists, sets, ranges and text
   (by character); `for each key, value in map` destructures pairs. A loop
   header accepts the query clauses `where` and `sorted by`: `for each size in
@@ -538,8 +557,22 @@ process              start other processes
 foreign              call code across the FFI boundary
 ```
 
-Naming a parent (`needs filesystem`) grants its children. A program's entry
-point declares what the whole program may do:
+Naming a parent (`needs filesystem`) grants its children.
+
+**Scopes.** A capability may carry one literal argument that narrows it: a
+path prefix for `filesystem` and its children (`filesystem.read("data")`), a
+host for `network` and its children (`network.http("api.example.com")`), a
+variable name for `environment("HOME")`, a program name for `process("git")`.
+`console`, `time`, `random` and `foreign` take no argument. A declaration
+without an argument covers every scope. The checker requires a caller to cover
+each callee: the same or an ancestor capability, with no argument or with one
+that contains the callee's (`filesystem` covers `filesystem.read("data")`,
+which covers `filesystem.read("data/2024")`). At run time a primitive compares
+the actual path or host with the calling function's declared scope and reports
+a mismatch through its ordinary error type: `PermissionDenied(path)` in
+`FileError`, `HostNotAllowed(host)` in `HttpError` (decision J11).
+
+A program's entry point declares what the whole program may do:
 
 ```
 public function main() or fails with AppError
@@ -551,7 +584,8 @@ end
 
 `renyi run report.ry` grants exactly `console` and `network.http`. `renyi run
 --deny network report.ry` fails at startup with the list of functions that need
-the denied capability. `example:` clauses run only on pure functions; effectful
+the denied capability; `--allow-host api.example.com` and `--allow-read data`
+narrow a scope from the command line. `example:` clauses run only on pure functions; effectful
 code is tested with `test` blocks that declare their own `needs`.
 
 ---
@@ -571,7 +605,12 @@ tasks; the first failure cancels the others and propagates through the
 enclosing function's `or fails with`. Bindings made inside are visible after
 the block. `for each ... concurrently collect ...` is the parallel query. There
 is no `async`, no `await`, no thread handle, and no shared mutable state.
-Timeouts and cancellation scopes are open item R2-7.
+
+`run concurrently within time.seconds(5)` and `for each url in urls
+concurrently within time.seconds(5) collect ...` set a deadline. When it
+expires the remaining tasks are cancelled and the block fails with the
+built-in `TimedOut`, which the enclosing function lists in `or fails with`
+(decision J12).
 
 ---
 
@@ -662,17 +701,17 @@ base types).
 
 ## 17. Reserved words and phrases
 
-81 reserved words. Any of them used as an identifier is a compile error with a
+84 reserved words. Any of them used as an identifier is a compile error with a
 rename suggestion; after a dot they are allowed as member names.
 
 ```
 ability all also and any as at be break by can check collect concurrently
 continue count crash deprecated descending each end example expose exposing
-fail fails failure false first for from function greater group has if import
-in is lazy least less let match maybe module most mutable needs not nothing of
-one or otherwise power public purpose remainder return returns run see self
-set some sorted success sum tags test than then to tool true type when where
-while with
+fail fails failure false first for from function greater group has if ignore
+import in is lazy least less let match maybe module most mutable needs not
+nothing of one or otherwise power public purpose raw remainder return returns
+run see self set some sorted success sum tags test than then to tool true type
+when where while with within
 ```
 
 Phrase table (single tokens, longest match):
@@ -689,23 +728,8 @@ Words that appear only inside a phrase (`at`, `least`, `most`, `than`, `less`,
 
 ---
 
-## 18. Open items for round 2
+## 18. Round 2 items (settled)
 
-| Id | Question | Current sketch |
-|----|----------|----------------|
-| R2-1 | Map literals with `{}` braces, or a word form? | braces, as universal JSON notation |
-| R2-2 | Are documentation clause heads (`purpose`, `tags`, `example`) reserved as identifiers, or recognized only at clause position? | reserved, to be revisited if the corpus shows frequent collisions |
-| R2-3 | List patterns in `match` (empty, head and rest)? | not in v1; use `items.first()` and `items.rest()` |
-| R2-4 | `/` on two Integers yields Decimal; is `quotient` the right name for integer division? | yes |
-| R2-5 | Default method bodies in abilities? | not in v1 |
-| R2-6 | Parameterized capabilities such as `filesystem.read("/data")`? | not in v1 |
-| R2-7 | Timeouts and cancellation in `run concurrently`? | not in v1 |
-| R2-8 | Positional arguments for two-argument commutative functions? | no; the standard library avoids the need |
-| R2-9 | Field renaming for JSON (`firstName`)? | an option on `json.parse`, not syntax |
-| R2-10 | How does `.ry` single-file scripting name its module outside a project? | file stem |
-| R2-11 | Is subtyping for `type X is Base` (section 4) the right call, or should every named type be fully distinct? | subtyping, upward only |
-| R2-12 | Should `if` and `match` be expressions, or statements only with helper functions for computed values? | expressions, single-expression branches |
-| R2-13 | Contracts on parameters (`attempts: Integer where attempts is at least 1`): compile-time for literals, but what happens for runtime values, a fallible call or a crash? | not in v1; use a refined named type |
-| R2-14 | Every `"..."` literal interpolates, so a literal brace is `\{` and a hole may not contain a string literal. Is a raw form (regular expressions, JSON samples) needed, or an opt-in interpolation prefix? | always interpolate, `\{`, no raw form |
-| R2-15 | A call whose non-empty result is unused: compile error, warning, or allowed? | undecided; the corpus avoids it (effectful functions return nothing) |
-| R2-16 | Matching a variant without binding its fields (`when Circle then`), or a wildcard for one field? | not in v1; every field is bound |
+The open items R2-1 to R2-17 were decided in round 2 and are recorded as
+entries J1 to J17 of `01-decisions.md`; the sketch above reflects them. New
+open items start at R3-1 and are listed here when they arise.

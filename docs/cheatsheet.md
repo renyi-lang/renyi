@@ -40,7 +40,7 @@ the head line. `purpose:` is required on public definitions and modules.
 ## Calls
 ```
 let page be web.get(url) otherwise fail            # one argument: positional
-let total be math.add(left: 1, right: 2)           # two or more: all named, in order
+let total be money.add(left: 1, right: 2)          # two or more: all named, in order
 let trimmed be text.trim()                         # ability method on a value
 retry.run(action: fetch_page, attempts: 3)         # pass a function by name
 ```
@@ -51,8 +51,10 @@ let total be 0                       # immutable
 let users: List of User be json.parse(text) otherwise fail   # pin a type
 let mutable count be 0               # mutable local
 set count to count + 1               # the only way to change it
+ignore connection.execute(sql)       # discard a result on purpose
 ```
-A name is bound once per function; shadowing is an error.
+A name is bound once per scope; shadowing is an error. Every binding must be
+used, and an unused result is an error (`set items to items.append(item)`).
 
 ## Types
 ```
@@ -61,6 +63,7 @@ public type User
   has name: Text
   has age: Integer where age is at least 0      # refinement
   has email: maybe Email                        # optional field
+  has kind: Text as "type"                      # external name for JSON
   can Compare by name                           # derived ability
   can ToJson
 end
@@ -109,13 +112,15 @@ a + b   a - b   a * b   a / b   a remainder b   a power b
 a is b   a is not b   a is less than b   a is at most b
 a is greater than b   a is at least b
 a and b   a or b   not a
-"Hello {user.name}, total {total}"         # interpolation
+"Hello {user.name}, total {total}"         # interpolation; a literal brace is \{
+raw "^[0-9]{4}$"                           # no holes, no escapes
 from 1 to 10   from 0 to 100 by 5         # inclusive ranges
 [1, 2, 3]   {"key": value}   nothing   true   false
 ```
-Numbers: `Integer` (unbounded), `Decimal` (exact, literals like `19.99`),
-`Float` (explicit). No implicit conversion: `count.to_decimal()`.
-`Integer / Integer` is a `Decimal`; `a.quotient(b)` divides down.
+Numbers: `Integer` (unbounded), `Decimal` (decimal128, literals like `19.99`),
+`Float` (explicit). No implicit conversion: `count.to_decimal()`. `/` needs
+`Decimal` or `Float` operands; `a.quotient(b)` divides two Integers down.
+`a.at_least(b)` is the larger of two values, `a.at_most(b)` the smaller.
 
 ## Optionals and errors
 ```
@@ -169,8 +174,10 @@ while attempts is less than 3
   if done then break end
 end
 ```
-Matching is exhaustive. `if` and `match` are also expressions when every
-branch is one expression: `let label be if done then "yes" otherwise "no" end`.
+Matching is exhaustive. A variant with fields matches by its bare name when
+no field is needed: `when Circle then`. `if` and `match` are also expressions
+when every branch is one expression: `let label be if done then "yes"
+otherwise "no" end`.
 Loop headers accept `where` and `sorted by`. Max nesting depth is 4; max body
 about 60 lines.
 
@@ -196,8 +203,10 @@ for each url in urls concurrently collect web.get(url) otherwise fail
 `needs` lists capabilities; callers must declare a superset; no `needs` means
 pure. Capabilities: `console`, `filesystem.read`, `filesystem.write`,
 `network.http`, `network.socket`, `environment`, `time`, `random`, `process`,
-`foreign`. A parent covers its children. `main` declares the program's whole
-grant; `renyi run` enforces it.
+`foreign`. A parent covers its children. A literal argument narrows a scope:
+`filesystem.read("data")`, `network.http("api.example.com")`; no argument
+covers every scope. `main` declares the program's whole grant; `renyi run`
+enforces it.
 ```
 public function main() or fails with AppError
   needs console, network.http
@@ -208,12 +217,13 @@ end
 
 ## Concurrency
 ```
-run concurrently
+run concurrently within time.seconds(5)
   let users be accounts.fetch_all() otherwise fail
   let orders be billing.fetch_open() otherwise fail
 end
 ```
-All tasks finish or the first failure cancels the rest. No `async`/`await`.
+All tasks finish or the first failure cancels the rest; an expired `within`
+deadline cancels them and fails with `TimedOut`. No `async`/`await`.
 
 ## Tests and tools
 ```
@@ -228,15 +238,15 @@ discovery, warns existing callers, and lets `renyi migrate` rewrite them.
 
 ## Names and reserved words
 snake_case for values and functions, PascalCase for types, abilities and
-variants. ASCII only. No single-letter names. Reserved (81):
+variants. ASCII only. No single-letter names. Reserved (84):
 ```
 ability all also and any as at be break by can check collect concurrently
 continue count crash deprecated descending each end example expose exposing
-fail fails failure false first for from function greater group has if import
-in is lazy least less let match maybe module most mutable needs not nothing of
-one or otherwise power public purpose remainder return returns run see self
-set some sorted success sum tags test than then to tool true type when where
-while with
+fail fails failure false first for from function greater group has if ignore
+import in is lazy least less let match maybe module most mutable needs not
+nothing of one or otherwise power public purpose raw remainder return returns
+run see self set some sorted success sum tags test than then to tool true type
+when where while with within
 ```
 Phrases are single tokens: `is not`, `is less than`, `is at most`,
 `is greater than`, `is at least`, `or fails with`, `is one of`, `for each`,

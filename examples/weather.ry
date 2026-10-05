@@ -25,7 +25,7 @@ end
 public function fetch_forecast(latitude: Decimal, longitude: Decimal)
   returns Forecast
   or fails with HttpError or JsonError
-  needs network.http
+  needs network.http("api.open-meteo.com")
   purpose: Download the current weather for one coordinate.
   tags: weather, http, json
 

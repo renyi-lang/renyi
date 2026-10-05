@@ -40,8 +40,8 @@ Rust implementation.
 
 | Path | Content |
 |------|---------|
-| `docs/design/01-decisions.md` | round-1 decisions with reasons |
-| `docs/design/02-syntax-sketch.md` | concrete syntax; section 18 lists open items R2-1 to R2-13 |
+| `docs/design/01-decisions.md` | round-1 (sections 0 to I) and round-2 (section J) decisions with reasons |
+| `docs/design/02-syntax-sketch.md` | concrete syntax; section 18 tracks open items (round 2 is settled, new items start at R3-1) |
 | `docs/design/03-readability-test.md` | protocol that freezes the grammar by measuring LLM comprehension |
 | `docs/cheatsheet.md` | the whole language on one page; token-budgeted |
 | `examples/` | the corpus, one program per file, index in `examples/README.md` |

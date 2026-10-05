@@ -428,3 +428,114 @@ Unison (content addressing, documentation as a first-class citizen). Explicitly
 avoided: Haskell's obscure surface (custom operators, point-free style,
 transformer stacks, extension maze) and Python's dynamism and significant
 indentation. (user)
+
+---
+
+## J. Round 2 decisions (session 2)
+
+Round 2 settled the open items R2-1 to R2-17 of the syntax sketch. Each entry
+names the item it closes. The sketch was updated in the same commit.
+
+**J1. Named types are upward-only subtypes (R2-11).** `type X is Base` makes
+`X` a subtype of `Base`: an `X` is accepted wherever a `Base` is expected and
+keeps its methods; a `Base` becomes an `X` only through construction, which is
+fallible when `X` is refined. This is the one subtyping relation in the type
+system. Rejected: fully distinct newtypes (every arithmetic step unwraps and
+rewraps), plain aliases (no safety). (user)
+
+**J2. Map literals use JSON braces (R2-1).** `{"a": 1, "b": 2}` and `{}`. The
+notation is universal and matches the data the programs consume; a word form
+would be long and error-prone. (user)
+
+**J3. Documentation clause words are reserved (R2-2).** `purpose`, `tags`,
+`example`, `see`, `also`, `deprecated` stay in the reserved list. One word,
+one role; the compiler suggests renames (`tags` to `labels`). (user)
+
+**J4. No contracts on parameters (R2-13).** Constraints live on named types
+(`type Attempts is Integer where value is at least 1`) and are checked at
+construction. Parameter signatures stay plain and call sites do not sprout
+`otherwise`. (user)
+
+**J5. Interpolation everywhere, plus `raw` (R2-14).** Every `"..."` and
+`"""..."""` literal interpolates `{expression}`; a literal brace is `\{`; a
+hole may not contain a string literal. `raw "..."` is a literal with no holes
+and no escapes, for regular expressions and for JSON or SQL samples. One new
+reserved word. Rejected: `\{` alone (regular expressions become unreadable),
+opt-in interpolation (the common case gets longer and the prefix gets
+forgotten). (user)
+
+**J6. `if` and `match` are expressions (R2-12).** Allowed where a value is
+expected when every branch is a single expression or a way out (`fail`,
+`fail with`, `return`, `crash with`); an `if` expression needs `otherwise`.
+Six of the thirty corpus programs use the form where other languages use a
+ternary operator. (user)
+
+**J7. No list patterns in v1 (R2-3).** `is_empty()`, `first()` and `rest()`
+cover the corpus. Revisit after the readability test if recursion over lists
+turns out to be common. (user)
+
+**J8. Bare variant patterns; unused bindings are errors (R2-16).**
+`when Circle then` matches a variant without binding its fields. Any binding
+that is never read, whether from `let`, a loop header, a parameter or a
+pattern, is a compile error with the fix "remove it". Patterns therefore name
+exactly what the branch uses, and no wildcard is needed. (user)
+
+**J9. `/` needs Decimal or Float operands (R2-4).** Dividing two Integers is a
+compile error that points to `a.quotient(b)` (integer division) or
+`a.to_decimal() / b`. No operation changes the type of its operands. The
+corpus never divided two Integers, so the rule costs nothing. Supersedes the
+sketch's earlier "Integer / Integer yields Decimal". (user)
+
+**J10. No default method bodies in v1 (R2-5).** Every implementation block
+spells out every method, so a retrieved implementation is complete on its
+own. Revisit if the corpus shows repeated identical implementations. (user)
+
+**J11. Scoped capabilities are in v1 (R2-6).** A capability may carry one
+literal argument naming its scope: a path prefix for `filesystem` and its
+children, a host for `network` and its children, a variable name for
+`environment`, a program name for `process`. A declaration without an
+argument covers every scope. The checker requires each caller to cover its
+callees: the same or an ancestor capability, with no argument or with one
+that contains the callee's. At run time a primitive compares the actual path
+or host with the calling function's declared scope and reports a mismatch
+through its ordinary error type (`PermissionDenied(path)`,
+`HostNotAllowed(host)`). `renyi run` can narrow scopes further from the
+command line. Claude recommended deferring this to keep the checker simple;
+the owner chose precision in the source. (user)
+
+**J12. Deadlines on concurrency with `within` (R2-7).** `run concurrently
+within duration` and `for each ... concurrently within duration ...` cancel
+the remaining tasks when the duration expires and fail with the built-in
+`TimedOut`, which the enclosing function lists in `or fails with`. Durations
+come from `std.time` (`time.seconds(5)`). One new reserved word. (user)
+
+**J13. No positional exception for commutative functions (R2-8).** Two or
+more arguments are always named. The standard library expresses the common
+cases as single-argument methods: `width.at_least(minimum)`,
+`width.at_most(limit)`, `items.largest()`, `items.smallest()`. (user)
+
+**J14. External field names with `as` (R2-9).** `has kind: Text as "type"`
+gives a field the name that `ToJson`, `FromJson` and `FromRow` use; it is the
+only way to map keys that are reserved words or contain punctuation. A
+convention-wide mapping is a decoder option:
+`json.parse(text: text, naming: CamelCase)`. `as` is already reserved. (user)
+
+**J15. Unused results are errors; `ignore` discards (R2-15).** A call whose
+non-empty result is not used is a compile error whose message proposes the
+likely fix (`set items to items.append(item)`). `ignore expression` discards
+a result on purpose. One new reserved word. (user)
+
+**J16. Decimal is IEEE 754 decimal128 (R2-17).** 34 significant digits;
+literals, sums and products of everyday values are exact; division rounds
+half-even at the 34th digit; overflow crashes like any arithmetic domain
+error. `Float` is IEEE 754 binary64. Rejected: exact rationals (unbounded
+denominators, and printing needs a rounding rule anyway), fixed scale
+(truncates rates and scientific values). (user)
+
+**J17. Single-file module names (R2-10).** A `.ry` file run outside a project
+is the module named after its file stem, and its header must say so. The
+rule "module name equals path" holds with the file's directory as the project
+root. (derived)
+
+**J18. Reserved words after round 2: 84.** `ignore`, `raw` and `within` join
+the 81 words of C4a. The phrase table is unchanged. (derived)

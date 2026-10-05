@@ -16,11 +16,11 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 RESERVED = set("""ability all also and any as at be break by can check collect
 concurrently continue count crash deprecated descending each end example expose
 exposing fail fails failure false first for from function greater group has if
-import in is lazy least less let match maybe module most mutable needs not
-nothing of one or otherwise power public purpose remainder return returns run
-see self set some sorted success sum tags test than then to tool true type when
-where while with""".split())
-assert len(RESERVED) == 81, len(RESERVED)
+ignore import in is lazy least less let match maybe module most mutable needs
+not nothing of one or otherwise power public purpose raw remainder return
+returns run see self set some sorted success sum tags test than then to tool
+true type when where while with within""".split())
+assert len(RESERVED) == 84, len(RESERVED)
 
 FORBIDDEN = [
     (r"(?<![=!<>])=(?![=>])", "'=' is not Renyi; use 'let x be', 'set x to', or 'is'"),
@@ -39,8 +39,31 @@ BINDING_PATTERNS = [
     re.compile(r"[(,] *([a-z_][a-z0-9_]*):(?!:)"),
 ]
 STARTERS = re.compile(
-    r"^\s*(?:public )?(?:function |ability |test |if |match |while |run concurrently$|type \w+( is one of)?$|type \w+ of )")
+    r"^\s*(?:public )?(?:function |ability |test |if |match |while |run concurrently( within .*)?$|type \w+( is one of)?$|type \w+ of )")
 QUERY_TAIL = re.compile(r"\b(collect|sum|count|first|any|all|group by)\b")
+PATTERN_WORDS = {"nothing", "some", "success", "failure", "true", "false", "and", "or",
+                 "not", "is"}
+
+
+def bound_names(code: str) -> list[str]:
+    """Names a line binds: let, loop variables, and pattern variables after `when`."""
+    names = []
+    for match in re.finditer(r"\blet (?:mutable )?([a-z][a-z0-9_]*)", code):
+        names.append(match.group(1))
+    for match in re.finditer(r"\bfor each ([a-z][a-z0-9_]*)(?:, ([a-z][a-z0-9_]*))?", code):
+        names.extend(name for name in match.groups() if name)
+    when = re.match(r"^\s*when (.*?)(?: where .*)?(?: then\b.*)?$", code)
+    if when:
+        pattern = when.group(1)
+        for match in re.finditer(r"\b([a-z][a-z0-9_]*)(?:: *([A-Za-z][A-Za-z0-9_]*))?", pattern):
+            label, after = match.group(1), match.group(2)
+            if label in PATTERN_WORDS:
+                continue
+            if after and after[0].islower():
+                names.append(after)      # renamed field: the new name is the binding
+            else:
+                names.append(label)      # punned field or typed binding
+    return names
 
 
 def strip_strings(line: str) -> str:
@@ -55,6 +78,8 @@ def lint_file(path: pathlib.Path) -> list[str]:
     previous = ""
     in_ability_declaration = False
     in_block_string = False
+    full_text = path.read_text(encoding="utf-8")
+    bindings: list[tuple[str, str]] = []
     for number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
         where = f"{path.name}:{number}"
         if in_block_string:
@@ -85,6 +110,7 @@ def lint_file(path: pathlib.Path) -> list[str]:
                     if len(name) == 1:
                         problems.append(f"{where}: single-letter identifier '{name}'")
         stripped = code.strip()
+        bindings.extend((name, where) for name in bound_names(code))
         if re.match(r"^(if |otherwise if |when )", stripped) and " then" not in stripped:
             problems.append(f"{where}: condition without 'then'")
         expression_context = previous.endswith(" be") or previous == "return"
@@ -104,6 +130,9 @@ def lint_file(path: pathlib.Path) -> list[str]:
             previous = stripped
     if opened != closed:
         problems.append(f"{path.name}: block starters {opened} vs 'end' {closed} (heuristic)")
+    for name, where in bindings:
+        if len(re.findall(rf"\b{name}\b", full_text)) < 2:
+            problems.append(f"{where}: binding '{name}' is never used (heuristic)")
     return problems
 
 

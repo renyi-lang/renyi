@@ -3,6 +3,7 @@ module concurrent_fetch
 
 import std.console
 import std.http exposing Url, HttpError
+import std.time
 
 public type PageSize
   purpose: How many characters one page has.
@@ -17,7 +18,7 @@ public function measure(url: Url) returns PageSize or fails with HttpError needs
   return PageSize(url: url, characters: response.body.length())
 end
 
-public function main() or fails with HttpError needs console, network.http
+public function main() or fails with HttpError or TimedOut needs console, network.http
   purpose: Measure three sites in parallel and print the largest first.
 
   let urls be [Url("https://example.com"), Url("https://example.org"), Url("https://example.net")]
@@ -26,7 +27,7 @@ public function main() or fails with HttpError needs console, network.http
     console.print("{size.url}: {size.characters} characters")
   end
 
-  run concurrently
+  run concurrently within time.seconds(10)
     let home be measure(Url("https://example.com")) otherwise fail
     let docs be measure(Url("https://example.com/docs")) otherwise fail
   end

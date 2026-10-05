@@ -33,7 +33,7 @@ end
 public function load_sales(path: Path)
   returns List of Sale
   or fails with ReportError
-  needs filesystem.read
+  needs filesystem.read("data")
   purpose: Read and validate every row of the sales file.
 
   let text be filesystem.read_text(path)
@@ -54,7 +54,7 @@ public function totals_by_region(sales: List of Sale) returns Map of Text to Dec
   return totals
 end
 
-public function main() or fails with ReportError needs console, filesystem
+public function main() or fails with ReportError needs console, filesystem("data")
   purpose: Print the regional totals and save them as a CSV report.
 
   let sales be load_sales(Path("data/sales.csv")) otherwise fail

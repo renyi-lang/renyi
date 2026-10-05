@@ -23,7 +23,7 @@ end
 public function convert(amount: Decimal, source: Currency, target: Currency)
   returns Decimal
   or fails with RateUnavailable or HttpError or JsonError
-  needs network.http
+  needs network.http("api.frankfurter.app")
   purpose: Convert an amount from one currency to another at today's rate, rounded to cents.
   tags: money, exchange-rate
   expose as tool

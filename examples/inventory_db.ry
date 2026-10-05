@@ -5,6 +5,11 @@ import std.console
 import std.filesystem exposing Path
 import std.sqlite exposing Connection, DbError
 
+public type InventoryError is one of
+  purpose: Why a stock change could not be applied.
+  UnknownSku(sku: Text)
+end
+
 public type Item
   purpose: One product as stored in the items table; field names match the column names.
   has sku: Text
@@ -30,7 +35,7 @@ public function open_inventory(path: Path)
   purpose: Open the database file and make sure the items table exists.
 
   let connection be sqlite.open(path) otherwise fail
-  connection.execute(sql: create_table, parameters: []) otherwise fail
+  ignore connection.execute(sql: create_table, parameters: []) otherwise fail
   return connection
 end
 
@@ -47,16 +52,17 @@ public function low_stock(connection: Connection)
 end
 
 public function record_delivery(connection: Connection, sku: Text, amount: Integer)
-  or fails with DbError
+  or fails with DbError or InventoryError
   needs filesystem
-  purpose: Add the delivered amount to the stock of one item.
+  purpose: Add the delivered amount to the stock of one item; the item must exist.
 
   let sql be "UPDATE items SET quantity = quantity + ? WHERE sku = ?"
   let parameters be [sqlite.integer(amount), sqlite.text(sku)]
-  connection.execute(sql: sql, parameters: parameters) otherwise fail
+  let changed_rows be connection.execute(sql: sql, parameters: parameters) otherwise fail
+  if changed_rows is 0 then fail with UnknownSku(sku: sku) end
 end
 
-public function main() or fails with DbError needs console, filesystem
+public function main() or fails with DbError or InventoryError needs console, filesystem
   purpose: Record one delivery, then list every item that still needs reordering.
 
   let connection be open_inventory(Path("data/inventory.db")) otherwise fail

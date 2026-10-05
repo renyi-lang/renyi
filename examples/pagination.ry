@@ -15,7 +15,7 @@ end
 
 type Page
   has items: List of Customer
-  has next_cursor: maybe Text
+  has next_cursor: maybe Text as "nextCursor"
   can FromJson
 end
 
