@@ -28,23 +28,33 @@ Source files use the `.renyi` or `.ry` extension; the two are equivalent.
 
 ## Status
 
-Design is complete (M0) and the implementation has started (M1). What exists:
+The design is complete (M0), the front end (M1) and the type and effect
+checker (M2) exist; the VM (M3) is next. What exists:
 
 - `docs/design/01-decisions.md`: every design decision taken so far, with the
-  reasoning, in three rounds.
+  reasoning.
 - `docs/design/02-syntax-sketch.md`: the concrete surface those decisions
   produce; `docs/design/04-stdlib-sketch.md`: the prelude and the standard
-  library modules.
+  library modules, which also exist as declaration files under
+  `library/std/`.
 - `docs/design/03-readability-test.md`: how the grammar is frozen by measuring
-  LLM comprehension; the harness is under `tests/readability/`.
+  LLM comprehension; the harness and a first pre-test round are under
+  `tests/readability/`.
+- `docs/design/05-agent-tooling.md`: the project map (`renyi index`) and the
+  `renyi mcp` server for agents; `docs/design/06-runtime-guarantees.md`:
+  recorded and replayable runs, budgets in grants, provenance guards;
+  `docs/design/07-system-design.md`: the trade-offs the language claims to
+  resolve, capability-safe packages, reproducibility, in-process sandboxing
+  and checked live update.
 - `docs/cheatsheet.md`: the whole language on one page, kept under 3000 tokens
   (`python3 tools/count_tokens.py`).
 - `examples/`: thirty example programs, checked by
   `python3 tools/lint_examples.py`.
-- `crates/`: the Rust toolchain. `renyi check` reports lexer, parser and layout
-  diagnostics as text or JSON; `renyi format` rewrites files in the canonical
-  layout; `renyi tokens` and `renyi parse` dump the token stream and the
-  syntax tree. Every example parses cleanly and is in canonical form.
+- `crates/`: the Rust toolchain. `renyi check` reports lexer, parser, type,
+  effect and layout diagnostics as text or JSON, each with a suggested fix;
+  `renyi format` rewrites files in the canonical layout; `renyi tokens` and
+  `renyi parse [--json]` dump the token stream and the syntax tree. Every
+  example checks cleanly and is in canonical form.
 
 ```
 cargo build
@@ -54,8 +64,9 @@ cargo build
 cargo test
 ```
 
-Next: the type and effect checker (M2), then the bytecode VM (M3), which is
-the first milestone that runs a program.
+Next: the project map (`renyi index`), then the bytecode VM (M3), which is
+the first milestone that runs a program and carries recorded runs, budgets
+and the grant stack from its first version.
 
 ## Working on this repository
 
