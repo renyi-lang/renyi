@@ -103,6 +103,9 @@ pub fn resolve_edges(
                     edges.splices.push((*span, target));
                 }
             }
+            // a literal's number type and a context-decided result type are for
+            // the VM, not edges
+            Target::Number(_) | Target::Result(_) => {}
         }
     }
     edges.callees.sort_unstable();

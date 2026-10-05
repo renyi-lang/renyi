@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 
 use renyi_syntax::{parse, parse_declarations, Diagnostic, SourceFile, Span};
 
-pub use check::{Reference, Target};
+pub use check::{NumberKind, Reference, Target};
 pub use types::{AbilityId, FunctionId, ModuleId, TypeId};
 pub use world::{BodyLocation, World};
 

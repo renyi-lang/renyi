@@ -92,11 +92,26 @@ pub struct FunctionInfo {
     pub span: Span,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum BodyLocation {
     None,
     Item(usize),
     Implementation(usize, usize),
+    /// The `example` lines of a function: the item, the function's index when
+    /// the item is an implementation, and the example's index.
+    Example {
+        item: usize,
+        method: Option<usize>,
+        example: usize,
+    },
+    /// A refinement condition of a type item: `where value ...` of a subtype
+    /// (no variant, no field), or the condition of a field of a record or of
+    /// a variant.
+    Condition {
+        item: usize,
+        variant: Option<usize>,
+        field: Option<usize>,
+    },
 }
 
 pub struct AbilityInfo {

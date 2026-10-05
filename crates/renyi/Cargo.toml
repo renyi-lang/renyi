@@ -14,3 +14,4 @@ path = "src/main.rs"
 renyi_syntax = { path = "../renyi_syntax" }
 renyi_check = { path = "../renyi_check" }
 renyi_index = { path = "../renyi_index" }
+renyi_vm = { path = "../renyi_vm" }

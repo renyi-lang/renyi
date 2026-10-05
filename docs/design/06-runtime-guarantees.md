@@ -1,8 +1,12 @@
 # Renyi Runtime Guarantees: Recorded Runs, Budgets and Provenance Guards
 
-Status: design accepted (decisions P1 to P4); syntax in the grammar, runtime
-parts scheduled in M3 (recordings, budgets) and M4 (guards). Date:
-2026-10-05. Companion to `02-syntax-sketch.md` sections 11 and 14.
+Status: design accepted (decisions P1 to P4); syntax in the grammar. The
+VM's first slice (`crates/renyi_vm`, `renyi run`, `renyi test`) runs
+programs without a recorder: `replays` tests are reported as skipped,
+budgets are not counted, and the primitive boundary (section 4) exists as
+the native-call dispatch only; recordings and budgets are the next M3 work,
+guards M4. Date: 2026-10-05. Companion to `02-syntax-sketch.md` sections 11
+and 14.
 
 The three capabilities in this document are the ones the owner chose as the
 language's signature: each is new as a language feature, each is practical

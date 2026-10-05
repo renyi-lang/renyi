@@ -7,10 +7,11 @@ under `docs/design/` in order.
 ## What this repository is
 
 Renyi is a programming language. Its design (M0) is complete; the Rust front
-end (M1: lexer, parser, formatter) and the type and effect checker (M2) exist;
-the VM (M3) does not yet. The owner (GitHub `skymanbp`) makes design decisions and
-reviews; Claude writes the documents, the example corpus and the Rust
-implementation.
+end (M1: lexer, parser, formatter), the type and effect checker (M2) and the
+first slice of the VM (M3: `renyi run`, `renyi test`; no recorder, no
+network, tasks run one after the other) exist. The owner (GitHub `skymanbp`)
+makes design decisions and reviews; Claude writes the documents, the example
+corpus and the Rust implementation.
 
 ## Conventions
 
@@ -61,4 +62,5 @@ implementation.
 | `crates/renyi_syntax/` | spans, diagnostics, lexer, AST, parser, JSON encoder, formatter; `tests/corpus.rs` runs the corpus through all of them, `tests/library.rs` parses the library declarations |
 | `crates/renyi_check/` | the type and effect checker (M2): `world.rs` declares modules, `check.rs` checks bodies, `effects.rs` covers capabilities, `refine.rs` evaluates refinements on literals; `tests/corpus.rs` and `tests/rules.rs` |
 | `library/std/` | the standard library as Renyi declaration files (one per module), compiled into the checker; kept in step with `04-stdlib-sketch.md` by a test |
-| `crates/renyi/` | the `renyi` binary: `check` (parse, type and effect check), `format`, `tokens`, `parse [--json]` |
+| `crates/renyi_vm/` | the VM (M3): `compile/` lowers the checked tree to bytecode (`bytecode.rs`) through the checker's recorded references, `vm.rs` runs it, `natives/` holds the library primitives behind one boundary, `runner.rs` runs `main`, examples and tests; `tests/corpus.rs` checks the ten reference outputs and every `example:` and `test` block |
+| `crates/renyi/` | the `renyi` binary: `check` (parse, type and effect check), `format`, `tokens`, `parse [--json]`, `index [--json \| --budgets]`, `run <file> [arguments]`, `test <file>...` |

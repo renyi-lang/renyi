@@ -4,6 +4,7 @@ members = [
     "crates/renyi_syntax",
     "crates/renyi_check",
     "crates/renyi_index",
+    "crates/renyi_vm",
     "crates/renyi",
 ]
 

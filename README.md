@@ -28,9 +28,9 @@ Source files use the `.renyi` or `.ry` extension; the two are equivalent.
 
 ## Status
 
-The design is complete (M0), the front end (M1), the type and effect
-checker (M2) and the project map (`renyi index`) exist; the VM (M3) is
-next. What exists:
+The design is complete (M0); the front end (M1), the type and effect
+checker (M2), the project map (`renyi index`) and the first slice of the VM
+(M3: `renyi run` and `renyi test`) exist. What exists:
 
 - `docs/design/01-decisions.md`: every design decision taken so far, with the
   reasoning.
@@ -57,8 +57,14 @@ next. What exists:
   `renyi parse [--json]` dump the token stream and the syntax tree;
   `renyi index [--json]` prints the project map: one record per definition
   with its signature, purpose, declared and transitive effects and
-  failures, edges, metrics and content hash. Every example checks cleanly
-  and is in canonical form.
+  failures, edges, metrics and content hash; `renyi run` checks a program
+  and runs its `main` on the bytecode VM; `renyi test` runs every
+  `example:` line and `test` block. Every example checks cleanly, is in
+  canonical form, and its examples and tests pass; the ten programs with a
+  reference output print it. The VM's first slice covers the prelude,
+  console, environment, time, random, filesystem, JSON, CSV and regular
+  expressions; `run concurrently` runs its tasks one after the other, and
+  the network, the server, SQLite and recorded runs are not built yet.
 
 ```
 cargo build
@@ -66,11 +72,13 @@ cargo build
 ./target/debug/renyi check --json examples/hello.ry
 ./target/debug/renyi format --check examples/*.ry
 ./target/debug/renyi index examples
+./target/debug/renyi run examples/hello.ry Renyi
+./target/debug/renyi test examples/invoice.ry
 cargo test
 ```
 
-Next: the bytecode VM (M3), the first milestone that runs a program, which
-carries recorded runs, budgets and the grant stack from its first version.
+Next: the rest of M3 (the recorder and replayer, budgets, the network
+primitives, concurrent tasks), then the MCP server and the semantic diff.
 
 ## Working on this repository
 

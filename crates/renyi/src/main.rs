@@ -1,8 +1,9 @@
 //! The `renyi` command: `check` (lexer, parser, type and effect checker and
 //! layout diagnostics, text or JSON), `format` (canonical layout, in place or
 //! `--check`), `tokens` (a token dump), `parse` (a syntax tree dump, as Rust
-//! debug output or as JSON for tools) and `index` (the project map, text or
-//! JSON). Running follows at M3.
+//! debug output or as JSON for tools), `index` (the project map, text or
+//! JSON), `run` (check, then execute `main` on the VM) and `test` (every
+//! `example:` line and `test` block).
 
 use std::io::Write;
 use std::path::Path;
@@ -19,6 +20,8 @@ const USAGE: &str = "usage:
   renyi parse [--json] <file.ry>      dump the syntax tree (--json: for tools)
   renyi index [--json] [path]         the project map of a directory or a file with its imports
   renyi index --budgets [path]        every value of the map over its budget (exit 0 either way)
+  renyi run <file.ry> [argument...]   check the program, then run its `main` (exit 1 when it fails, 2 on a crash)
+  renyi test <file.ry>...             run every `example:` line and `test` block (exit 1 when any fails)
   renyi version";
 
 fn main() -> ExitCode {
@@ -29,6 +32,8 @@ fn main() -> ExitCode {
         Some("tokens") => tokens(&args[1..]),
         Some("parse") => parse_command(&args[1..]),
         Some("index") => index_command(&args[1..]),
+        Some("run") => run_command(&args[1..]),
+        Some("test") => test_command(&args[1..]),
         Some("version") | Some("--version") => {
             println!("renyi {}", env!("CARGO_PKG_VERSION"));
             ExitCode::SUCCESS
@@ -198,6 +203,80 @@ fn format_command(args: &[String]) -> ExitCode {
                 failed = true;
             }
         }
+    }
+    if failed {
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
+    }
+}
+
+/// Check a file with its imports and compile it; diagnostics go to stdout as
+/// `check` prints them, and an error stops here.
+fn compile(path: &str) -> Result<renyi_vm::Program, ExitCode> {
+    let file = load(path)?;
+    let mut files = vec![file.clone()];
+    files.extend(renyi_check::imported_files(&file));
+    let checked = renyi_check::check_project(&files);
+    let mut failed = false;
+    for module in &checked.modules {
+        if module.diagnostics.is_empty() {
+            continue;
+        }
+        failed |= module.diagnostics.iter().any(|d| d.is_error());
+        print!("{}", render_text(&files[module.file], &module.diagnostics));
+    }
+    if failed {
+        return Err(ExitCode::FAILURE);
+    }
+    Ok(renyi_vm::compile_project(&checked, &files))
+}
+
+fn run_command(args: &[String]) -> ExitCode {
+    let Some(path) = args.first() else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    let program = match compile(path) {
+        Ok(program) => program,
+        Err(code) => return code,
+    };
+    let options = renyi_vm::Options {
+        arguments: args[1..].to_vec(),
+        ..renyi_vm::Options::default()
+    };
+    match renyi_vm::run_main(&program, options) {
+        renyi_vm::RunOutcome::Finished => ExitCode::SUCCESS,
+        renyi_vm::RunOutcome::Failed(error) => {
+            eprintln!("{path}: main failed with {error}");
+            ExitCode::FAILURE
+        }
+        renyi_vm::RunOutcome::Crashed { message, location } => {
+            match location {
+                Some(location) => eprintln!("{path}: crash: {message}\n  at {location}"),
+                None => eprintln!("{path}: crash: {message}"),
+            }
+            ExitCode::from(2)
+        }
+        renyi_vm::RunOutcome::Exited(code) => ExitCode::from(code.clamp(0, 255) as u8),
+    }
+}
+
+fn test_command(args: &[String]) -> ExitCode {
+    let files: Vec<&String> = args.iter().filter(|arg| !arg.starts_with("--")).collect();
+    if files.is_empty() {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    }
+    let mut failed = false;
+    for path in files {
+        let program = match compile(path) {
+            Ok(program) => program,
+            Err(code) => return code,
+        };
+        let report = renyi_vm::run_tests(&program, renyi_vm::Options::default());
+        print!("{}", report.render());
+        failed |= report.failed() > 0;
     }
     if failed {
         ExitCode::FAILURE

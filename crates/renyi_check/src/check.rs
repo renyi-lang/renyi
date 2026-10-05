@@ -116,6 +116,21 @@ pub enum Target {
     /// An ability named in a signature or an implementation head; the checker
     /// itself never records one, tools that read signatures do.
     Ability(AbilityId),
+    /// A numeric literal, with the number type the body gave it (a literal
+    /// takes the type its context expects); the VM reads it, the map ignores it.
+    Number(NumberKind),
+    /// A call of a library function whose result type comes from the context
+    /// alone (`json.parse`), at the call's span, with that type resolved; the
+    /// VM decodes by it, the map ignores it.
+    Result(Ty),
+}
+
+/// The runtime type of a numeric literal.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum NumberKind {
+    Integer,
+    Decimal,
+    Float,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -146,6 +161,11 @@ pub struct Checker<'w> {
     /// The error union of the fallible call a `match` is examining, for its
     /// `failure(...)` arms.
     current_errors: Option<Ty>,
+    /// Every numeric literal of the body with its type (often still a
+    /// variable), recorded as `Target::Number` once the body is finished.
+    literals: Vec<(Span, Ty)>,
+    /// Calls whose result type the context decides, resolved by `finish_body`.
+    results: Vec<(Span, Ty)>,
 }
 
 impl<'w> Checker<'w> {
@@ -171,6 +191,8 @@ impl<'w> Checker<'w> {
             effect_calls: 0,
             concurrent_depth: 0,
             current_errors: None,
+            literals: Vec::new(),
+            results: Vec::new(),
         }
     }
 
@@ -812,6 +834,106 @@ impl<'w> Checker<'w> {
         self.finish_body();
     }
 
+    /// The refinement conditions of a type, the `index`th item of the
+    /// module: a subtype's `where value ...` and the field conditions of a
+    /// record or a variant, each a Boolean expression over the fields.
+    pub fn check_type_conditions(&mut self, index: usize, def: &TypeDef) {
+        let Some(type_id) = self.world.modules[self.module]
+            .types
+            .get(&def.name.text)
+            .copied()
+        else {
+            return;
+        };
+        match &self.world.types[type_id].kind {
+            TypeKindInfo::Subtype {
+                base,
+                refinement: Some(condition),
+            } => {
+                let bindings = vec![("value".to_string(), base.clone())];
+                let owner = BodyLocation::Condition {
+                    item: index,
+                    variant: None,
+                    field: None,
+                };
+                self.check_condition_body(owner, &bindings, condition);
+            }
+            TypeKindInfo::Record(fields) => {
+                let bindings: Vec<(String, Ty)> = fields
+                    .iter()
+                    .map(|f| (f.name.clone(), f.ty.clone()))
+                    .collect();
+                for (field_index, field) in fields.iter().enumerate() {
+                    if let Some(condition) = &field.refinement {
+                        let owner = BodyLocation::Condition {
+                            item: index,
+                            variant: None,
+                            field: Some(field_index),
+                        };
+                        self.check_condition_body(owner, &bindings, condition);
+                    }
+                }
+            }
+            TypeKindInfo::Sum(variants) => {
+                for (tag, variant) in variants.iter().enumerate() {
+                    let bindings: Vec<(String, Ty)> = variant
+                        .fields
+                        .iter()
+                        .map(|f| (f.name.clone(), f.ty.clone()))
+                        .collect();
+                    for (field_index, field) in variant.fields.iter().enumerate() {
+                        if let Some(condition) = &field.refinement {
+                            let owner = BodyLocation::Condition {
+                                item: index,
+                                variant: Some(tag),
+                                field: Some(field_index),
+                            };
+                            self.check_condition_body(owner, &bindings, condition);
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// One condition as a small body: the fields are its parameters.
+    fn check_condition_body(
+        &mut self,
+        owner: BodyLocation,
+        bindings: &[(String, Ty)],
+        condition: &Expr,
+    ) {
+        self.owner = owner;
+        self.context = Context {
+            name: "a refinement".to_string(),
+            returns: None,
+            fails: Vec::new(),
+            fails_any: false,
+            needs: Vec::new(),
+            is_test: false,
+        };
+        self.vars.clear();
+        self.deferred.clear();
+        self.push_scope();
+        for (name, ty) in bindings {
+            let name = Name {
+                text: name.clone(),
+                span: condition.span,
+            };
+            self.bind(&name, ty.clone(), false, BindingKind::Param);
+        }
+        self.check_condition(condition);
+        // a condition need not mention every field
+        if let Some(scope) = self.scopes.last_mut() {
+            for binding in &mut scope.bindings {
+                binding.used = true;
+            }
+        }
+        self.pop_scope();
+        self.finish_body();
+    }
+
     /// A top-level constant, the `index`th item of the module.
     pub fn check_constant(&mut self, index: usize, constant: &Constant, ty: &Ty) {
         self.owner = BodyLocation::Item(index);
@@ -835,10 +957,17 @@ impl<'w> Checker<'w> {
 
     /// Example clauses: `expression is value` and `expression fails with Pattern`.
     fn check_examples(&mut self, id: FunctionId, function: &Function) {
-        let info = &self.world.functions[id];
-        let _ = info;
-        self.owner = BodyLocation::None;
-        for example in &function.docs.examples {
+        let (item, method) = match self.world.functions[id].body {
+            BodyLocation::Item(item) => (item, None),
+            BodyLocation::Implementation(item, method) => (item, Some(method)),
+            _ => return,
+        };
+        for (index, example) in function.docs.examples.iter().enumerate() {
+            self.owner = BodyLocation::Example {
+                item,
+                method,
+                example: index,
+            };
             self.context = Context {
                 name: format!("example of {}", function.name.text),
                 returns: None,
@@ -894,6 +1023,31 @@ impl<'w> Checker<'w> {
         }
     }
 
+    /// The number type behind a literal's type: a numeric base type or a
+    /// refined subtype of one, else `None` (an error type).
+    fn number_kind(&self, ty: &Ty) -> Option<NumberKind> {
+        let b = &self.world.builtins;
+        let mut ty = self.resolve(ty);
+        loop {
+            let Ty::App(id, _) = ty else {
+                return None;
+            };
+            if id == b.integer {
+                return Some(NumberKind::Integer);
+            }
+            if id == b.decimal {
+                return Some(NumberKind::Decimal);
+            }
+            if id == b.float {
+                return Some(NumberKind::Float);
+            }
+            match &self.world.types[id].kind {
+                TypeKindInfo::Subtype { base, .. } => ty = self.resolve(base),
+                _ => return None,
+            }
+        }
+    }
+
     /// Defaults for literal variables and the deferred ability checks.
     fn finish_body(&mut self) {
         let b = self.world.builtins.clone();
@@ -907,6 +1061,19 @@ impl<'w> Checker<'w> {
                 if let Some(default) = default {
                     self.vars[id].binding = Some(default);
                 }
+            }
+        }
+        let literals = std::mem::take(&mut self.literals);
+        for (span, ty) in literals {
+            if let Some(kind) = self.number_kind(&ty) {
+                self.record(Target::Number(kind), span);
+            }
+        }
+        let results = std::mem::take(&mut self.results);
+        for (span, ty) in results {
+            let ty = self.zonk(&ty);
+            if !ty.has_vars() {
+                self.record(Target::Result(ty), span);
             }
         }
         let deferred = std::mem::take(&mut self.deferred);
@@ -1490,10 +1657,13 @@ impl<'w> Checker<'w> {
                                 expr.span,
                             );
                         }
+                        self.literals.push((expr.span, resolved.clone()));
                         return Info::plain(resolved);
                     }
                 }
-                Info::plain(self.fresh(VarKind::IntegerLiteral(literal)))
+                let ty = self.fresh(VarKind::IntegerLiteral(literal));
+                self.literals.push((expr.span, ty.clone()));
+                Info::plain(ty)
             }
             ExprKind::Decimal(digits) => {
                 let literal = refine::literal_of(expr);
@@ -1507,10 +1677,13 @@ impl<'w> Checker<'w> {
                         } else if let Some(literal) = &literal {
                             self.check_subtype_refinements(&resolved, literal, expr.span);
                         }
+                        self.literals.push((expr.span, resolved.clone()));
                         return Info::plain(resolved);
                     }
                 }
-                Info::plain(self.fresh(VarKind::DecimalLiteral(literal)))
+                let ty = self.fresh(VarKind::DecimalLiteral(literal));
+                self.literals.push((expr.span, ty.clone()));
+                Info::plain(ty)
             }
             ExprKind::Text { pieces, .. } => {
                 for piece in pieces {
@@ -2390,6 +2563,19 @@ impl<'w> Checker<'w> {
         let needs = info.needs.clone();
         let is_library = info.is_library;
         let is_method = info.is_method;
+        // a result type that only the context decides (`json.parse`): the VM
+        // needs it, so note the call and record the resolved type at the end
+        let context_only = is_library
+            && info.returns.as_ref().is_some_and(|r| {
+                type_params.iter().any(|&p| {
+                    mentions_param(r, p) && !info.params.iter().any(|(_, t)| mentions_param(t, p))
+                })
+            });
+        if context_only {
+            if let Some(returns) = &returns {
+                self.results.push((span, returns.clone()));
+            }
+        }
         // the receiver fills `self`
         let mut explicit_params = params.clone();
         match receiver {
@@ -3300,6 +3486,17 @@ impl<'w> Checker<'w> {
                         Ty::Error => None,
                         _ => None,
                     };
+                // the VM matches by the type and the variant's position
+                if let Some((Ty::App(type_id, _), _, _)) = &target {
+                    match &self.world.types[*type_id].kind {
+                        TypeKindInfo::Sum(variants) => {
+                            if let Some(index) = variants.iter().position(|v| v.name == name.text) {
+                                self.record(Target::Variant(*type_id, index), name.span);
+                            }
+                        }
+                        _ => self.record(Target::Type(*type_id), name.span),
+                    }
+                }
                 let subject_args: Vec<Ty> = match &subject_ty {
                     Ty::App(_, args) => args.clone(),
                     Ty::Union(members) => members
@@ -3575,7 +3772,10 @@ impl<'w> Checker<'w> {
                         value.span,
                     );
                 }
-                self.base_of(&info.ty)
+                let result = self.base_of(&info.ty);
+                // the VM starts the sum at the zero of this type
+                self.literals.push((query.span, result.clone()));
+                result
             }
             QueryTerminal::Count => {
                 // the loop variable is not read by `count` (decision M2)
@@ -3629,6 +3829,24 @@ fn callee_of(expr: &Expr) -> Option<&Expr> {
         ExprKind::Call { callee, .. } => Some(callee),
         ExprKind::Otherwise { value, .. } => callee_of(value),
         _ => None,
+    }
+}
+
+/// Whether a type parameter occurs in a type.
+fn mentions_param(ty: &Ty, param: ParamId) -> bool {
+    match ty {
+        Ty::Param(id) => *id == param,
+        Ty::App(_, args) | Ty::Union(args) => args.iter().any(|a| mentions_param(a, param)),
+        Ty::Maybe(inner) => mentions_param(inner, param),
+        Ty::Function(function) => {
+            function.params.iter().any(|p| mentions_param(p, param))
+                || function
+                    .returns
+                    .as_ref()
+                    .is_some_and(|r| mentions_param(r, param))
+                || function.fails.iter().any(|f| mentions_param(f, param))
+        }
+        _ => false,
     }
 }
 
@@ -3766,7 +3984,8 @@ pub fn check_module_with_references(
                     checker.check_constant(index, constant, &ty);
                 }
             }
-            _ => {}
+            Item::Type(def) => checker.check_type_conditions(index, def),
+            Item::Ability(_) => {}
         }
     }
     if info.ast.docs.purpose.is_none() {

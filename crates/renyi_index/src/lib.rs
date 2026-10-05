@@ -244,13 +244,32 @@ pub fn project_name(path: &Path) -> String {
 
 // ---------------------------------------------------------------- building
 
-type BodyKey = (usize, usize, usize);
+type BodyKey = (usize, usize, usize, usize);
 
 fn body_key(body: BodyLocation) -> BodyKey {
     match body {
-        BodyLocation::None => (0, 0, 0),
-        BodyLocation::Item(index) => (1, index, 0),
-        BodyLocation::Implementation(item, function) => (2, item, function),
+        BodyLocation::None => (0, 0, 0, 0),
+        BodyLocation::Item(index) => (1, index, 0, 0),
+        BodyLocation::Implementation(item, function) => (2, item, function, 0),
+        // the references of `example:` lines are not a body's (they are not
+        // calls the definition makes)
+        BodyLocation::Example {
+            item,
+            method,
+            example,
+        } => (3, item, method.map_or(usize::MAX, |m| m), example),
+        // a refinement's calls belong to the type: tracked with the type's
+        // other references once conditions count as a body (not yet)
+        BodyLocation::Condition {
+            item,
+            variant,
+            field,
+        } => (
+            4,
+            item,
+            variant.map_or(usize::MAX, |v| v),
+            field.map_or(usize::MAX, |f| f),
+        ),
     }
 }
 

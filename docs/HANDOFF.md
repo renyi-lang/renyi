@@ -1,109 +1,144 @@
 # Handoff
 
-Last updated: 2026-10-05, end of session 5 (the first live readability
-round run, scored, judged and adjudicated; the owner's decisions R1 to R8
-from it recorded and applied; `renyi index` built, measured and given
-`--budgets`; `main` made the only branch). Branch: `main` is the only
-branch (owner's decision, 2026-10-05); commit and push there directly.
+Last updated: 2026-10-05, end of session 6 (the first slice of the VM:
+`renyi run` and `renyi test`; the ten reference outputs and every
+`example:` line and `test` block of the corpus pass on it). Branch: `main`
+is the only branch (owner's decision, 2026-10-05); commit and push there
+directly.
 
 ## Where the project stands
 
 Milestones M0 (design), M1 (front end) and M2 (type and effect checker) are
-done, and the project map (`renyi index`, decision O2) exists with its
-budget report (`--budgets`, decisions O3 and R7); M3 (the VM) is next.
-Design decisions are in sections 0 to R of `01-decisions.md`; the agent
-tooling in `05-agent-tooling.md`, the signature capabilities in
+done; the project map (`renyi index`, decision O2) exists with its budget
+report (`--budgets`, decisions O3 and R7); M3 (the VM) has its first slice:
+programs run. Design decisions are in sections 0 to R of `01-decisions.md`;
+the agent tooling in `05-agent-tooling.md`, the signature capabilities in
 `06-runtime-guarantees.md`, the system-level commitments in
 `07-system-design.md`. The corpus has 30 programs, passes the lint, is in
-canonical layout, checks cleanly and has nothing over budget. The cheat
-sheet measures 2977 of 3000 tokens with tiktoken (the gate's maximum over
-`o200k_base` and `cl100k_base`); it has 23 tokens of headroom, so the next
-addition must trim something. The Rust workspace has four crates:
-`renyi_syntax`, `renyi_check`, `renyi_index` and the `renyi` binary with
-`check`, `format`, `tokens`, `parse [--json]`, `index [--json | --budgets]`
-and `version`; 94 tests, clippy and fmt clean on Windows. Nothing runs yet:
-that is M3.
+canonical layout, checks cleanly, has nothing over budget, and its 82
+`example:` lines and `test` blocks pass on the VM. The cheat sheet measures
+2977 of 3000 tokens (unchanged this session). The Rust workspace has five
+crates: `renyi_syntax`, `renyi_check`, `renyi_index`, `renyi_vm` and the
+`renyi` binary with `check`, `format`, `tokens`, `parse [--json]`, `index
+[--json | --budgets]`, `run <file> [arguments]`, `test <file>...` and
+`version`; 111 tests, clippy and fmt clean on Windows.
 
-The first live readability round (`tests/readability/2026-10-05-1623155/`,
-its `notes.md` has the method, every deviation, the results and the
-analysis) ran Sonnet 5.5, Haiku 4.5 and gpt-5.4-mini with five samples per
-prompt. Results by the four-of-five rule against the thresholds (Predict and
-Explain at least 90, Complete at least 80, Write at least 70; the protocol
-tally formats before the lint, the strict one does not):
+The first live readability round (`tests/readability/2026-10-05-1623155/`)
+stands as session 5 left it: Sonnet 5.5 passes Predict (90) and Explain
+(97), misses Complete by one item (79) and Write by three (40); Haiku 4.5
+and gpt-5.4-mini are below on all but Explain. Since decision R1 only the
+large model of each vendor gates the freeze. The grammar is not frozen; the
+owner's decisions R1 to R8 are applied; the cheat sheet changes of R3, R5
+and R6 are unmeasured (round 2, below).
 
-| Label | Predict | Explain | Complete (protocol / strict) | Write (protocol / strict) |
-|-------|---------|---------|----------|-------|
-| claude-sonnet-5-5 | 90% | 97% | 79% / 63% | 40% / 10% |
-| claude-haiku-4-5-20251001 | 30% | 90% | 37% / 32% | 0% / 0% |
-| gpt-5.4-mini | 80% | 97% | 32% / 32% | 0% / 0% |
+## The VM as it exists (`crates/renyi_vm`)
 
-Since decision R1 the thresholds apply to the gating models (the current
-large model of each vendor); Sonnet passes Predict and Explain and misses
-Complete by one item and Write by three, with `purpose-missing` at 28
-percent of its Write violations (over the protocol's quarter rule). The
-grammar is not frozen. The owner answered every question the round raised
-(decisions R1 to R8, below); the grammar itself did not change, the cheat
-sheet, the checker and the protocol did.
+- **Pipeline.** `renyi run file.ry` reads the file and its imports,
+  `check_project`s them (an error stops here, printed as `check` prints
+  it), `compile_project` lowers every non-library body to bytecode, and
+  `run_main` runs `main` with the command-line arguments. `renyi test`
+  compiles the same way and runs every `example:` line and `test` block in
+  source order, one line each, then `N passed, M failed[, K skipped]`;
+  exit 1 when any fails. A failing `main` prints `main failed with <error>`
+  (exit 1); a crash prints the message and `file:line` (exit 2);
+  `environment.exit(code)` exits with the code.
+- **Compiler** (`compile/`). One `Code` per function body, test, constant,
+  `example:` line (one for the call, one for the expected value or the
+  `fails with` pattern) and refinement condition. Names are never resolved
+  by the compiler: it reads the references the checker recorded
+  (`Target::Function`, `AbilityMethod`, `Constant`, `Type`, `Variant`,
+  `Number` for the type of every numeric literal and of every `sum`,
+  `Result` for a call whose result type only the context decides, such as
+  `json.parse`). Locals are slots on the value stack; `set x to
+  x.method(...)` loads the receiver with `LoadMove` when the arguments do
+  not read `x`, so lists, maps and sets grow in place (decision O1).
+- **Failures.** A fallible call that fails leaves a `Failure` value. The
+  value of an `otherwise` and the subject of a `match` with
+  `success`/`failure` arms are *handled regions* (`PushHandler` /
+  `PopHandler`); a failure inside one unwinds the operand stack to the
+  region's start and jumps to the handler, where the fallback outcome runs
+  (`otherwise fail` passes the same failure on). Outside any region a
+  failure is the result of an example or test, and a crash
+  (`unhandled failure: ...`) in a function, which the checker should have
+  prevented. Constructing a refined type runs its compiled conditions;
+  one that does not hold gives `Failure(ConstraintViolation(type_name,
+  detail))` with the condition's source text as the detail.
+- **Values** (`value.rs`). `Integer` is `i64` with a `BigInt` spill
+  (decision B9), `Decimal` an emulation of IEEE decimal128 (34 digits,
+  round half even, exponent kept, so `9.50 + 5.00` prints `14.50`; division
+  exact when it terminates, else rounded; decision J16, R5: equality by
+  value), `Float` is `f64`. `maybe` is the value or `Nothing`. Records,
+  variants, lists, maps and sets (insertion order, K9) are `Rc`; a subtype
+  value (`Path`, `Permission`) is its base value. `Date` is the library's
+  record, `Instant` and `Duration` are milliseconds.
+- **Derived abilities** (`render.rs`). `ToText`: a declared `to_text` of
+  the value's type (a user implementation or a library primitive such as
+  `Date`'s) when there is one, else a variant as its bare name, a record in
+  constructor form with nested text quoted, lists `[1, 2]`, maps `{k: v}`,
+  sets `[a, b].to_set()`, `nothing`. `Compare`: a declared `compare`, else
+  records by their `can Compare by` fields or every field, variants by
+  position then fields; `Equal` and `Hash` are structural.
+- **Natives** (`natives/`). All of the prelude; `std.console`,
+  `std.environment`, `std.time` (civil-date arithmetic, ISO instants),
+  `std.random` (xorshift, seeded from the clock), `std.filesystem`,
+  `std.json` (own reader and writer; decoding by the context type with the
+  derivation rules of `04-stdlib-sketch.md` section 7, `as` names and
+  `Naming`; `Constraint` errors from refinements), `std.csv` (RFC 4180
+  cells, rows with line numbers), `std.regex` and `Text.matches` on the
+  `regex` crate. `std.http`, `std.server` and `std.sqlite` have no
+  primitives: a call crashes with `... is not available in this build of
+  the VM`.
+- **Not in this slice.** `run concurrently` and `concurrently` queries run
+  their tasks one after the other (`within` sets a deadline that is checked
+  between statements or items and fails with `TimedOut`); no recorder,
+  replayer, `--explain`, budget counters or runtime scope checks (a
+  `replays` test is reported as skipped; the grant is carried but nothing
+  reads it); no green threads.
 
-## Done in session 5
+## Done in session 6
 
-1. **Branch consolidation.** The session branches were fast-forwarded into
-   `main` and deleted; `main` is the GitHub default and the only branch.
-   `CLAUDE.md` says so.
-2. **Windows build.** `.gitattributes` pins LF (the checkout had CRLF, which
-   the layout check rejects); 485 files were rewritten to LF once. `cargo
-   test`, clippy and fmt are clean. The token count was confirmed with real
-   tiktoken encodings.
-3. **`renyi index`** (`crates/renyi_index`): definition and module records,
-   the six metrics, content hashes (SHA-256 over canonical text with the own
-   name removed and references replaced by dependency hashes; strongly
-   connected components hashed together), text and `--json` forms, and
-   `--budgets` (`budgets.rs`: values over the R7 thresholds, one line each,
-   exit 0 either way; the corpus has none, a test keeps it so). The checker
-   records every reference it resolves (`renyi_check::Reference`) and
-   `check_project` checks a project as a whole. The corpus is measured in
-   `05-agent-tooling.md` section 5.
-4. **The live readability round** (step 1 of the previous handoff). The
-   harness gained, each change forced by the round: run selection by newest
-   `meta.json` and `--run`; retries with backoff; `--temperature none`
-   (Sonnet 5.5 rejects the field); imported corpus modules shown in the
-   prompts; `renyi check` after the lint for Complete and Write; every
-   written file LF, the scratch file one per process (three `score`
-   processes run at once shared one file and crashed) and lint messages
-   without its name; Explain graded against author's descriptions of every
-   program (`tests/readability/reference/<program>.explain.txt`, written
-   this session) with a rubric, two graders, adjudication of disagreements
-   over one point and refusals deciding nothing; the grade parsed as the
-   last standalone digit (the first digit was the 1 of "18" when the grader
-   reasoned first); grades cached with the grader's answer. The 182 lint-
-   and check-clean Complete and Write samples were judged by ten subagents
-   with reasons (`outputs/<label>/judgement.json`, decision L2): 83 of 91
-   distinct programs pass. The 49 Explain samples the graders disagreed on
-   were adjudicated by hand in the same file (36 pass); `shipping_rules`
-   fails Explain on every model because its `weight_steps` purpose line
-   said "whole kilograms" where the code counts started kilograms.
-5. **Cheat sheet**: states that a derived `ToText` prints a variant as its
-   bare name (Sonnet's only Predict failure came from doubting it); says in
-   one sentence that the module and every public function, type and
-   constant carry `purpose:`, and every public type in its examples has one
-   (R3); says `ignore` takes only a call with effects (R6) and that `is`
-   compares values of one type, `32.0 is 32.00` (R5).
-6. **Corpus**: the purpose line of `weight_steps` in `shipping_rules.ry`
-   now says "started kilograms beyond the first" (the round's stored
-   prompts keep the old wording).
-7. **Decisions R1 to R8** (`01-decisions.md` section R), each applied:
-   the protocol gates the freeze on the large models (R1,
-   `03-readability-test.md`); J3 and M4 stand (R2, R4); `purpose:` stays
-   (R3); `is` on numbers (R5, sketch section 7); `ignore` only on calls
-   with effects (R6: the checker's `ignore-pure` error with a `set` fix for
-   a mutable receiver, `check.rs` counts capability-needing calls around
-   the ignored expression; a rule test); budgets 10 / 5 / 7 (R7,
-   `renyi index --budgets`); gpt-5.5 joins the next round (R8).
-8. **Local tooling**: `ce.toml` at the repository root (untracked, listed in
-   `.git/info/exclude`) sets CodeEraser's guard to `warn`, because its
-   750-line budget refused appends to `01-decisions.md` (873 lines, the
-   append-only log) and `02-syntax-sketch.md` (835 lines, the syntax source
-   of truth). Owner's decision; the file must be recreated on a fresh clone.
+1. **`crates/renyi_vm`** (about 8300 lines with tests): `bytecode.rs`,
+   `value.rs`, `integer.rs`, `decimal.rs`, `types.rs`, `compile/{mod, expr,
+   stmt, pattern, query}.rs`, `vm.rs`, `render.rs`, `natives/{mod, prelude,
+   system, time, filesystem, json, csv, regex}.rs`, `runner.rs`;
+   `tests/corpus.rs` runs the ten Predict programs of the readability
+   manifest against `tests/readability/reference/*.out` (all ten match: the
+   hand-derived references are confirmed), every `example:` and `test` of
+   the corpus (82 items, all pass), and a failing and a crashing `main`.
+2. **Checker changes the VM needed**, each recorded as a reference so the
+   map is unaffected: `Target::Number(NumberKind)` on every numeric literal
+   and on a `sum` query (the literal takes the type its context expects, so
+   `Number(value: 4)` carries a Decimal); `Target::Result(Ty)` at a call
+   whose return type mentions a type parameter no argument mentions
+   (`json.parse`, `sqlite.query`), resolved at the end of the body;
+   `Target::Variant`/`Target::Type` on variant patterns;
+   `BodyLocation::Example` for the references of `example:` lines and
+   `BodyLocation::Condition` for refinement conditions.
+3. **Refinement conditions are now checked** (`check_type_conditions`): a
+   subtype's `where value ...` and every field condition of a record or a
+   variant is checked as a small body over the fields (previously they were
+   not checked at all; a condition calling an unknown method passed). The
+   corpus and the library needed no change; `rules.rs` has a test.
+4. **`renyi run` and `renyi test`** in `crates/renyi/src/main.rs`.
+5. `CLAUDE.md`, `README.md` and the status line of `06-runtime-guarantees.md`
+   say what runs.
+
+## Done in session 5 (condensed)
+
+Branch consolidation into `main`; the Windows build (LF pinned by
+`.gitattributes`); `renyi index` with metrics, content hashes and
+`--budgets`; the first live readability round (harness fixes 1 to 9, 182
+judged Complete and Write samples, 49 adjudicated Explain samples, the
+results table above and the analysis in the round's `notes.md`); cheat
+sheet clarifications (derived `ToText`, `purpose:`, `ignore`, `is` on
+numbers); the `weight_steps` purpose line; decisions R1 to R8 applied (the
+protocol gates on large models; J3 and M4 stand; `purpose:` stays; `is` on
+numbers compares values of one type; `ignore` only on calls with effects,
+the checker's `ignore-pure`; budgets 10 / 5 / 7; gpt-5.5 joins round 2);
+`ce.toml` at the repository root (untracked, in `.git/info/exclude`) sets
+CodeEraser's guard to `warn` because its 750-line budget refused appends to
+`01-decisions.md` and `02-syntax-sketch.md` (owner's decision; recreate it
+on a fresh clone).
 
 ## Owner actions pending
 
@@ -122,106 +157,92 @@ sheet, the checker and the protocol did.
   the library sketch (`04-stdlib-sketch.md`) with decisions K1 to K11; the
   readability harness with the file provider; M1 started: lexer, parser,
   formatter, `renyi check`, `tokens`, `parse`, corpus conformance tests.
-- Sessions 3 and 4: the subagent pre-test (`2026-10-05-e41258c/`, one sample
-  per item, two Claude models) and decisions M1 to M10 from it (`group by`
-  with any terminal, `count` leaves its loop variable unused, superfluous
-  `otherwise` and a named single argument are errors, format before lint,
-  the cheat sheet's library section, Haiku stays the floor model, an MCP
-  server after M2, `repeat until` replaces `while`, no bottom-tested loop);
-  `renyi parse --json`; the standard library as declaration files
-  (`library/std/*.ry`, decisions N1 to N3); **M2, `crates/renyi_check`**
-  (world, bodies with bidirectional inference, subtyping, implicit `maybe`,
-  generics, abilities, refinements on literals, fallible calls, error unions,
-  exhaustiveness, queries, scoped effects; the 40 judged pre-test samples
-  agree with the checker); decisions O1 to O5 (reference counting with
-  in-place reuse supersedes the tracing collector; the project map; budgets;
-  the semantic diff; `renyi mcp`), P1 to P4 (recorded runs and `replays`
-  tests, budgets in grants, provenance guards, the reserved words `only`,
-  `per`, `replays` and phrases `at most`, `only to`) and Q1 to Q4
-  (capability-safe packages, reproducibility, in-process sandboxing,
-  checked live update), each with its design document.
+- Sessions 3 and 4: the subagent pre-test (`2026-10-05-e41258c/`) and
+  decisions M1 to M10 from it; `renyi parse --json`; the standard library
+  as declaration files (`library/std/*.ry`, decisions N1 to N3); **M2,
+  `crates/renyi_check`** (world, bodies with bidirectional inference,
+  subtyping, implicit `maybe`, generics, abilities, refinements on literals,
+  fallible calls, error unions, exhaustiveness, queries, scoped effects);
+  decisions O1 to O5 (reference counting with in-place reuse; the project
+  map; budgets; the semantic diff; `renyi mcp`), P1 to P4 (recorded runs
+  and `replays` tests, budgets in grants, provenance guards, the reserved
+  words `only`, `per`, `replays`) and Q1 to Q4 (capability-safe packages,
+  reproducibility, in-process sandboxing, checked live update), each with
+  its design document.
 
 ## Next steps
 
-1. **M3: the bytecode VM** (`renyi run`, `renyi test`, `renyi record`), the
-   owner's first demo, under decision O1 (reference counting, in-place
-   reuse, last-use moves). Plan: a new crate `renyi_vm` over
-   `renyi_check::World` and `Ty`; values (Integer i64 with overflow crash,
-   Decimal as IEEE decimal128 through the `dec` crate, libdecnumber
-   bindings, since `rust_decimal` has 28 digits and is not J16; Float f64
-   without NaN; Text, Bytes, List, Map and Set with insertion order, records,
-   variants, maybe, functions by name); a compiler from the checked AST to
-   bytecode with last-use marks; green threads on one OS thread for `run
-   concurrently`, `concurrently` queries and `within`; the capability
-   sandbox at startup (`--deny`, `--allow-host`, `--allow-read`, the grant
-   stack of Q1 with scope checks at primitives); the primitive boundary
-   carrying the recorder, the replayer, the budget counters and the
-   narration hook from the first version (`06-runtime-guarantees.md`
-   section 4); the library primitives (console, environment, time, random,
-   filesystem, json, csv, http, server, sqlite, regex). Conformance: the
-   thirty corpus programs, the ten reference outputs, every `example:` line
-   and `test` block, and the 182 judged samples of the live round plus the
-   40 of the pre-test (decision L2: the VM re-runs every verdict and the two
-   sets are compared; `is` on Decimals compares values, R5). The five
-   network programs get recordings and `replays` tests.
+1. **The rest of M3**, in this order: (a) the primitive boundary of
+   `06-runtime-guarantees.md` section 4 around `Vm::invoke`'s native call:
+   the recorder (`renyi record`, the JSON recording of section 1.1), the
+   replayer (`renyi run --replay`, `replays` tests answered from the
+   recording, unused entries reported with `--strict`), budget counters for
+   `at most` (decision P2, `--at-most` from the command line) and runtime
+   scope checks of `filesystem` and `network` grants (the grant is already
+   on the `Vm`); (b) `--explain` narration (section 3); (c) `std.http` (a
+   small client; `HostNotAllowed` from the grant), `std.server` and
+   `std.sqlite` primitives, with recordings and `replays` tests for the
+   five network programs; (d) real concurrency for `run concurrently` and
+   `concurrently` queries (green threads on one OS thread, or an explicit
+   decision to keep them sequential with deadlines); (e) decision L2: re-run
+   the 182 judged Complete and Write samples of the live round and the 40
+   of the pre-test on the VM and compare with the subagents' verdicts (the
+   `judgement.json` files hold the verdicts; the VM now decides `is` on
+   Decimals by value, R5).
 2. **Readability round 2** on the revised cheat sheet, with gpt-5.5 at its
-   default temperature as the fourth model (R8) and the R1 gating: the
-   cheat sheet changes of R3, R5 and R6 are unmeasured, and the protocol
-   reverts a change that lowers a passing rate by more than five points.
-   The round costs API calls; it can run before or after M3 (the VM would
-   replace the subagent judges for Complete and Write).
+   default temperature as the fourth model (R8) and the R1 gating; the
+   protocol reverts a change that lowers a passing rate by more than five
+   points. The round costs API calls; the VM can replace the subagent
+   judges for Complete and Write once (e) above has shown it agrees with
+   them.
 3. **`renyi mcp`** (O5, `05-agent-tooling.md` section 7), then the semantic
    diff (O4), then M4 (provenance guards, package manager, budgets in the
    manifest) and M5 (embedding API, `serve --watch`, LSP) as before.
 
 ## Known gaps and risks
 
-- The live round's Explain grades come from two models with a rubric and
-  author's descriptions; the 49 disagreements over one point were
-  adjudicated by Claude in the session (reasons in `judgement.json`).
-  Haiku's Explain pass sits exactly at the 90 percent threshold and rests on
-  those adjudications (it no longer gates the freeze, R1). The descriptions
-  were written by Claude from the programs; the owner may want to
-  spot-check a few.
-- The Complete and Write verdicts come from Claude Code subagents (decision
-  L2); three semantic assumptions are recorded in their reasons (Decimal
-  `is` ignores scale, now decision R5; a sliding window excludes its far
-  edge; `EmergencyCleared` outside an emergency gives `Red`). The VM
-  re-runs them at M3.
-- The ten Predict reference outputs were derived by hand (and re-derived
-  this session for the seven items Haiku failed); the VM is the first
-  independent check.
-- Sonnet 5.5 cannot be sampled at temperature 0 (the field is rejected), so
-  its five samples vary; the protocol's "temperature 0 where allowed" is
-  met, but Sonnet's rates carry more sampling noise than the others'.
-- The `ignore-pure` rule (R6) counts a call with effects anywhere inside
-  the ignored expression, arguments included; `ignore pure(effectful())`
-  passes. No corpus program does this.
-- The standard library sketch is a first draft from the corpus; JSON
-  derivation rules, the SQLite type mapping and HTTP defaults are not
-  validated against real data.
-- 88 reserved words include common identifiers (`count`, `first`, `sum`,
-  `sorted`, ...); the round measured their cost and the owner kept them
-  (R2).
-- The grant clauses (`at most`, `only to`, `replays`) have not been through
-  a readability round; no corpus program uses them yet.
-- `tools/lint_examples.py` is regex-based; its block balance and unused
-  binding checks are heuristics (they caught real errors in the round but
-  also decide samples before the checker sees them).
-- The checker is first-generation (local inference, covariant type
-  arguments, structural ability checks, capabilities checked at call sites
-  only; no `example:` literal check, no `see also` check, no `deprecated`
-  warnings, no unreachable-pattern detection).
-- Decision O1 (reference counting) rests on the value graph being acyclic;
-  any feature that lets a value refer to itself must be checked against it.
+- **VM.** `break` or `continue` as the outcome of an `if` or `match`
+  *expression* nested inside another expression leaves that expression's
+  partial operands on the stack (statements and loop bodies are clean); no
+  corpus program does this. `Equal` and `Hash` are always structural: a
+  user implementation of either is not called (the sketch derives `Equal`
+  for every data type; `Hash` implementations are not in the corpus). A
+  value's `IsType` test for a builtin (`when failure(error: Text)`) is by
+  kind. `random` is seeded from the clock, so a run is not reproducible
+  until the recorder exists. `Float.to_text` is Rust's shortest
+  round-trip form. `Text.matches` compiles its pattern at every call.
+  Durations print as `1.5s` / `250ms` (no decision covers the format).
+  A refinement condition on a library type (`Date`, `Port`) runs on
+  construction but its references are not recorded (the checker does not
+  walk library bodies); only literals and local names occur there today.
+- **Checker.** First-generation (local inference, covariant type arguments,
+  structural ability checks, capabilities checked at call sites only; no
+  `example:` literal check, no `see also` check, no `deprecated` warnings,
+  no unreachable-pattern detection). The `ignore-pure` rule counts a call
+  with effects anywhere inside the ignored expression. The new condition
+  bodies bind every field of the record or variant, which the sketch
+  (section 4: "over the field name") does not promise; a condition that
+  reads another field type-checks and runs.
+- **Readability.** The live round's Explain grades rest on two grader
+  models and 49 adjudications by Claude; Haiku's Explain sits at exactly 90.
+  The Complete and Write verdicts come from subagents (L2) until step 1(e)
+  re-runs them. Sonnet 5.5 cannot be sampled at temperature 0, so its rates
+  carry more sampling noise. The grant clauses (`at most`, `only to`,
+  `replays`) have not been through a round; no corpus program uses them.
+- **Library.** The standard library sketch is a first draft from the
+  corpus; the JSON derivation rules are now exercised by the VM's decoder
+  but not against real data; the SQLite type mapping and HTTP defaults are
+  unvalidated.
+- 88 reserved words include common identifiers; the round measured their
+  cost and the owner kept them (R2). `tools/lint_examples.py` is
+  regex-based. Decision O1 rests on the value graph being acyclic.
 
 ## Owner preferences observed
 
 - Wants principled reasoning, asked explicitly for a mathematical angle on
   syntax; accepts recommendations readily but counters with concrete
-  alternatives (for example deriving comparisons from `is`; in session 5,
-  typed comparison for `is` on numbers, and keeping J3 and M4 against the
-  measured cost).
+  alternatives (deriving comparisons from `is`; typed comparison for `is`
+  on numbers; keeping J3 and M4 against the measured cost).
 - Chat in Chinese; all artifacts in English.
 - Prefers questions as interactive option batches of four, recommended
   option first, over prose; answers within minutes.

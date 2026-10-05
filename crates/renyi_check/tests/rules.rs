@@ -411,3 +411,25 @@ fn grant_clauses_belong_to_main_and_tests() {
         "unknown-capability",
     );
 }
+
+#[test]
+fn refinement_conditions_are_checked_as_bodies() {
+    // a condition is a Boolean expression over the fields, resolved like any body
+    clean(&program(
+        "public type Email is Text where value.matches(\"^[^@]+@[^@]+$\")\n  purpose: An address.\n\npublic type Line\n  purpose: A line.\n  has quantity: Integer where quantity is at least 1\n  has price: Decimal where price is at least 0 and quantity is at most 1000\nend\n",
+    ));
+    raises(
+        &program("public type Email is Text where value.nonsense()\n  purpose: An address.\n"),
+        "unknown-method",
+    );
+    raises(
+        &program("public type Line\n  purpose: A line.\n  has quantity: Integer where quantity is at least \"one\"\nend\n"),
+        "type-mismatch",
+    );
+    raises(
+        &program(
+            "public type Line\n  purpose: A line.\n  has quantity: Integer where quantity\nend\n",
+        ),
+        "type-mismatch",
+    );
+}
