@@ -138,6 +138,9 @@ pub struct Checker<'w> {
     context: Context,
     deferred: Vec<Deferred>,
     loop_depth: usize,
+    /// Calls that needed a capability so far; `ignore` compares it before
+    /// and after the ignored expression (decision R6).
+    effect_calls: usize,
     /// Inside `run concurrently`: `break` and `continue` are not allowed.
     concurrent_depth: usize,
     /// The error union of the fallible call a `match` is examining, for its
@@ -165,6 +168,7 @@ impl<'w> Checker<'w> {
             },
             deferred: Vec::new(),
             loop_depth: 0,
+            effect_calls: 0,
             concurrent_depth: 0,
             current_errors: None,
         }
@@ -1158,14 +1162,25 @@ impl<'w> Checker<'w> {
                 true
             }
             StmtKind::Ignore(value) => {
+                let before = self.effect_calls;
                 let info = self.infer(value, None);
                 self.require_handled(&info, value.span);
-                if matches!(self.resolve(&info.ty), Ty::Unit) {
+                let ty = self.resolve(&info.ty);
+                if matches!(ty, Ty::Unit) {
                     self.error_fix(
                         "ignore-nothing",
                         "this call returns nothing; there is no result to ignore",
                         value.span,
                         "call it without `ignore`",
+                    );
+                } else if self.effect_calls == before && !matches!(ty, Ty::Error | Ty::Never) {
+                    // decision R6: a discarded pure result is dead code
+                    let fix = self.ignored_pure_fix(value);
+                    self.error_fix(
+                        "ignore-pure",
+                        "this call has no effects, so discarding its result does nothing",
+                        value.span,
+                        fix,
                     );
                 }
                 false
@@ -1203,6 +1218,27 @@ impl<'w> Checker<'w> {
     /// The fix for an unused result: `set x to x.method(...)` when the call is
     /// a method on a mutable binding (decision J15), else `let` or `ignore`.
     fn unused_result_fix(&mut self, value: &Expr) -> String {
+        match self.mutable_method_call(value) {
+            Some((receiver, method)) => format!(
+                "write `set {receiver} to {receiver}.{method}(...)`, or bind it with `let`, or discard it with `ignore`"
+            ),
+            None => "bind it with `let`, or discard it with `ignore`".to_string(),
+        }
+    }
+
+    /// The fix for `ignore` of a pure result (decision R6): the same `set`
+    /// proposal, else bind or remove.
+    fn ignored_pure_fix(&mut self, value: &Expr) -> String {
+        match self.mutable_method_call(value) {
+            Some((receiver, method)) => {
+                format!("write `set {receiver} to {receiver}.{method}(...)`, or remove the call")
+            }
+            None => "bind the result with `let`, or remove the call".to_string(),
+        }
+    }
+
+    /// The receiver and method of `x.method(...)` when `x` is a mutable binding.
+    fn mutable_method_call(&mut self, value: &Expr) -> Option<(String, String)> {
         if let Some(Expr {
             kind: ExprKind::Member { base, name },
             ..
@@ -1210,11 +1246,11 @@ impl<'w> Checker<'w> {
         {
             if let ExprKind::Name(receiver) = &base.kind {
                 if self.lookup(&receiver.text).is_some_and(|b| b.mutable) {
-                    return format!("write `set {0} to {0}.{1}(...)`, or bind it with `let`, or discard it with `ignore`", receiver.text, name.text);
+                    return Some((receiver.text.clone(), name.text.clone()));
                 }
             }
         }
-        "bind it with `let`, or discard it with `ignore`".to_string()
+        None
     }
 
     fn check_condition(&mut self, condition: &Expr) {
@@ -2405,6 +2441,9 @@ impl<'w> Checker<'w> {
                 ));
             }
         }
+        if !needed.is_empty() {
+            self.effect_calls += 1;
+        }
         for (capability, runtime_scoped, source) in needed {
             self.require_capability(&capability, runtime_scoped, &source, span);
         }
@@ -2452,6 +2491,9 @@ impl<'w> Checker<'w> {
                 );
             }
             self.infer_value(&arg.value, param, "the argument");
+        }
+        if !function.needs.is_empty() {
+            self.effect_calls += 1;
         }
         for capability in &function.needs {
             self.require_capability(capability, false, name, span);

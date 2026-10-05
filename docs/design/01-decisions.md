@@ -871,3 +871,73 @@ definitions of a type-checked new version between requests, by content
 hash, after the semantic diff shows no public signature a running
 definition calls has changed; there is no state to migrate because the
 language has no hidden mutable state. M5. (user)
+
+---
+
+## R. Decisions from the first live readability round (session 5)
+
+The round (`tests/readability/2026-10-05-1623155/`, its `notes.md`) ran
+Sonnet 5.5, Haiku 4.5 and gpt-5.4-mini with five samples per prompt. By the
+four-of-five rule: Sonnet Predict 90, Explain 97, Complete 79, Write 40;
+Haiku 30, 90, 37, 0; gpt 80, 97, 32, 0. Each measured cost below was put to
+the owner as a question with the recommendation first.
+
+**R1. The freeze is gated on the large models.** The acceptance thresholds
+of `03-readability-test.md` apply to the current large model of each vendor
+(Sonnet 5.5 and its successors, gpt-5.5 from the next round); the floor
+model of M7 (Haiku 4.5) is run and reported as a trend and does not gate
+the freeze. Haiku failed Predict at 30 percent through arithmetic and
+attention errors (mis-added means, dropped parentheses, wrong column
+widths), none of them a grammar misreading, so "every model" would never
+freeze the grammar. Supersedes the wording "on every model" of the
+protocol; M7 stands. (user)
+
+**R2. J3 stands: reserved words are reserved everywhere.** The query words
+(`count`, `sorted`, `first`, `sum`, ...) stay reserved outside queries too.
+Measured cost: Sonnet loses two Complete items to `count` as a local name
+(79 percent against 89 without the rule); Haiku and gpt lose more to
+`sorted` and `first`. One word, one role, is worth it. (user)
+
+**R3. `purpose:` stays required on public types and on the module.** It is
+the largest single Write rule (28 percent of Sonnet's violations, over the
+protocol's quarter; 25 percent of gpt's). The rule is kept because the
+project map (O2) reads those purposes; the cheat sheet states it in one
+explicit sentence and every public type in its examples carries one, since
+the readers copy the examples. (user)
+
+**R4. M4 stands: a named single argument is an error.** It is the largest
+checker rule for Haiku (92 samples) and gpt (77). The uniformity (one
+argument positional, two or more named) is kept over the pass rate. (user)
+
+**R5. `is` on numbers.** Both operands must have one type: an `Integer` and
+a `Decimal` do not compare (no implicit conversion, as the cheat sheet
+says). A numeric literal takes the numeric type its context expects (an
+Integer literal fits `Decimal` and `Float`, a Decimal literal fits `Float`),
+so `total is 0` with `total: Decimal` compares two Decimals. Two Decimals
+compare by numeric value; the scale is not significant: `32.0 is 32.00` is
+true, and so is `0.00 is 0` through the literal rule. This is what the
+judges of the round, the checker's refinement evaluation and IEEE
+decimal128 comparison already do. (user; the value reading derived from
+J16)
+
+**R6. `ignore` discards only the result of a call with effects.** Supersedes
+the wording of J15: `ignore call` is allowed when the call needs a
+capability (the callee's `needs`, or those of a function passed to it);
+discarding the result of a pure call is a compile error, `ignore-pure`,
+whose fix proposes `set x to x.method(...)` for a method on a mutable
+binding and otherwise "bind the result with `let`, or remove the call".
+Three judged samples of the round wrote `ignore pop(stack)` on an immutable
+value and so never shrank the stack; under this rule the checker catches
+it. The error for a call returning nothing (`ignore-nothing`) stays. (user)
+
+**R7. Budget thresholds (R5-1).** The first defaults of `renyi index
+--budgets` are 10 public definitions per module, 5 transitive effect paths
+per module and fan-out 7 per definition, each just above the corpus
+maximum; a value over budget is reported, never a compile error (O3). The
+thresholds move to the project manifest with the package manager (M4).
+(user)
+
+**R8. A fourth model from the next round.** `gpt-5.5` rejects temperature 0
+and was not run; it joins the next round at its default temperature, as
+Sonnet 5.5 ran in this one, so that each vendor has a large model gating
+the freeze (R1). (user)

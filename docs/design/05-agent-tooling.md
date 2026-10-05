@@ -2,9 +2,9 @@
 
 Status: design accepted (decisions O2 to O5). `renyi index` (sections 1 to
 4) is implemented in `crates/renyi_index` and measured on the corpus
-(section 5, R5-1); budgets, diffs and the MCP server are not yet
-implemented. Date: 2026-10-05. Companion to `01-decisions.md` (D5, D6, M8,
-O1 to O5).
+(section 5); `renyi index --budgets` reports the values over the thresholds
+of decision R7; diffs and the MCP server are not yet implemented. Date:
+2026-10-05. Companion to `01-decisions.md` (D5, D6, M8, O1 to O5, R7).
 
 Renyi programs are written mostly by LLM agents (decision A3). An agent works
 inside a token budget and cannot hold a project in its context, so it needs
@@ -180,11 +180,13 @@ that are reported, not enforced by the compiler (decision O3):
 | transitive effect set per module | how much of the world a module can touch |
 | fan-out per definition | how much a reader must know to understand one definition |
 
-`renyi index --budgets` prints every value over its threshold; CI treats it
-as a warning until the thresholds have been measured on real projects (open
-item R5-1). Thresholds live in the project manifest once the package
-manager exists (M4); until then they are command-line flags with the
-corpus-derived defaults.
+`renyi index --budgets` prints every value over its threshold, one line
+each (`module m: 11 public definitions (budget 10)`), or "nothing over
+budget", and exits 0 either way: CI treats it as a warning until the
+thresholds have been measured on real projects. The thresholds are the
+defaults of decision R7 (public definitions per module 10, transitive
+effect paths per module 5, fan-out per definition 7, `renyi_index::Budgets`);
+they live in the project manifest once the package manager exists (M4).
 
 First measurements, the corpus at revision 3c7ee41 (30 modules, 166
 definitions: 95 functions, 4 methods, 52 types, 2 abilities, 3
@@ -202,10 +204,11 @@ implementations, 4 constants, 6 tests), from `renyi index --json examples`:
 
 Of the 82 public functions and methods, 43 have neither an `example:` line
 nor a test that refers to them. The corpus is thirty small programs, not a
-project, so the thresholds proposed from it (public definitions per module
-10, transitive effect paths per module 5, fan-out per definition 7: each
-one just above the corpus maximum) are a first setting for the owner to
-confirm, not a measurement on real projects.
+project, so the thresholds taken from it (public definitions per module 10,
+transitive effect paths per module 5, fan-out per definition 7: each one
+just above the corpus maximum) are a first setting (decision R7,
+2026-10-05), not a measurement on real projects; the corpus itself has
+nothing over budget, which a test of `renyi_index` keeps true.
 
 ## 6. Diffs
 
@@ -251,13 +254,13 @@ what an agent reads instead of files.
 2. M3 (the VM) under decision O1.
 3. `renyi mcp` with the first seven tools, then `run`, `run_tests` and
    `diff` as M3 and `--diff` land.
-4. Budgets with corpus-derived thresholds; the diff; M4 reads budgets from
-   the manifest.
+4. Budgets with corpus-derived thresholds (done 2026-10-05, decision R7:
+   `renyi index --budgets`); the diff; M4 reads budgets from the manifest.
 
 ## 9. Open items
 
-- R5-1: budget thresholds. The corpus is measured (section 5); the
-  thresholds proposed there await the owner and real projects.
+- R5-1: budget thresholds. Settled by decision R7 (10 / 5 / 7) as the first
+  defaults; to be revisited on real projects.
 - R5-2: whether local names are normalized away in the content hash.
 - R5-3: whether `branches` should count `and`/`or` (cyclomatic style, as
   specified) or only statements; decided by what correlates with the

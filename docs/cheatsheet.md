@@ -36,7 +36,8 @@ A function whose first parameter is `self: Text` is a method: `text.trim()`.
 Clause order: `returns`, `or fails with`, `needs`, `for any`, `purpose:`,
 `tags:`, `see also:`, `deprecated:`, `expose as tool`, `example:` lines, blank
 line, body. Omit `returns` when nothing is returned. Short signatures stay on
-the head line. `purpose:` is required on public definitions and modules.
+the head line. The `module` line and every `public` function, type and
+constant must carry a `purpose:` line; the checker rejects one without it.
 
 ## Calls
 ```
@@ -52,10 +53,11 @@ let total be 0                       # immutable
 let users: List of User be json.parse(text) otherwise fail   # pin a type
 let mutable count be 0               # mutable local
 set count to count + 1               # the only way to change it
-ignore connection.execute(sql)       # discard a result on purpose
+ignore connection.execute(sql)       # discard the result of a call with effects
 ```
 A name is bound once per scope; shadowing is an error. Every binding must be
-used, and an unused result is an error (`set items to items.append(item)`).
+used, and an unused result is an error (`set items to items.append(item)`);
+`ignore` of a pure call's result is an error too (the call would do nothing).
 
 ## Types
 ```
@@ -70,14 +72,18 @@ public type User
 end
 
 public type Shape is one of
+  purpose: What the plotter can draw.
   Circle(radius: Decimal)
   Rectangle(width: Decimal, height: Decimal)
   Point
 end
 
 public type Email is Text where value.matches(email_pattern)
+  purpose: A syntactically valid address.
 public type UserId is Integer                   # distinct alias
+  purpose: The key of a user row.
 public type Pair of Left, Right
+  purpose: Two values carried together.
   has left: Left
   has right: Right
 end
@@ -120,8 +126,9 @@ from 1 to 10   from 0 to 100 by 5         # inclusive ranges
 [1, 2, 3]   {"key": value}   nothing   true   false
 ```
 Numbers: `Integer` (unbounded), `Decimal` (decimal128, literals like `19.99`),
-`Float` (explicit). No implicit conversion: `count.to_decimal()`. `/` needs
-`Decimal` or `Float` operands; `a.quotient(b)` divides two Integers down.
+`Float` (explicit). No implicit conversion: `count.to_decimal()`. `is` compares
+values of one type: `32.0 is 32.00`. `/` needs `Decimal` or `Float` operands;
+`a.quotient(b)` divides two Integers down.
 `a.at_least(b)` is the larger of two values, `a.at_most(b)` the smaller.
 
 ## Optionals and errors

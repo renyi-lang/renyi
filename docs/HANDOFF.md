@@ -1,31 +1,35 @@
 # Handoff
 
 Last updated: 2026-10-05, end of session 5 (the first live readability
-round run, scored, judged and adjudicated; `renyi index` built and measured;
-`main` made the only branch). Branch: `main` is the only branch (owner's
-decision, 2026-10-05); commit and push there directly.
+round run, scored, judged and adjudicated; the owner's decisions R1 to R8
+from it recorded and applied; `renyi index` built, measured and given
+`--budgets`; `main` made the only branch). Branch: `main` is the only
+branch (owner's decision, 2026-10-05); commit and push there directly.
 
 ## Where the project stands
 
 Milestones M0 (design), M1 (front end) and M2 (type and effect checker) are
-done, and the project map (`renyi index`, decision O2) exists; M3 (the VM)
-is next. Design decisions are in sections 0 to Q of `01-decisions.md`; the
-agent tooling in `05-agent-tooling.md`, the signature capabilities in
+done, and the project map (`renyi index`, decision O2) exists with its
+budget report (`--budgets`, decisions O3 and R7); M3 (the VM) is next.
+Design decisions are in sections 0 to R of `01-decisions.md`; the agent
+tooling in `05-agent-tooling.md`, the signature capabilities in
 `06-runtime-guarantees.md`, the system-level commitments in
 `07-system-design.md`. The corpus has 30 programs, passes the lint, is in
-canonical layout and checks cleanly. The cheat sheet measures 2877 of 3000
-tokens with tiktoken (the gate's maximum over `o200k_base` and
-`cl100k_base`). The Rust workspace has four crates: `renyi_syntax`,
-`renyi_check`, `renyi_index` and the `renyi` binary with `check`, `format`,
-`tokens`, `parse [--json]`, `index [--json]` and `version`; 91 tests, clippy
-and fmt clean on Windows and Linux. Nothing runs yet: that is M3.
+canonical layout, checks cleanly and has nothing over budget. The cheat
+sheet measures 2977 of 3000 tokens with tiktoken (the gate's maximum over
+`o200k_base` and `cl100k_base`); it has 23 tokens of headroom, so the next
+addition must trim something. The Rust workspace has four crates:
+`renyi_syntax`, `renyi_check`, `renyi_index` and the `renyi` binary with
+`check`, `format`, `tokens`, `parse [--json]`, `index [--json | --budgets]`
+and `version`; 94 tests, clippy and fmt clean on Windows. Nothing runs yet:
+that is M3.
 
 The first live readability round (`tests/readability/2026-10-05-1623155/`,
 its `notes.md` has the method, every deviation, the results and the
 analysis) ran Sonnet 5.5, Haiku 4.5 and gpt-5.4-mini with five samples per
 prompt. Results by the four-of-five rule against the thresholds (Predict and
-Explain at least 90, Complete at least 80, Write at least 70, every model;
-the protocol tally formats before the lint, the strict one does not):
+Explain at least 90, Complete at least 80, Write at least 70; the protocol
+tally formats before the lint, the strict one does not):
 
 | Label | Predict | Explain | Complete (protocol / strict) | Write (protocol / strict) |
 |-------|---------|---------|----------|-------|
@@ -33,10 +37,13 @@ the protocol tally formats before the lint, the strict one does not):
 | claude-haiku-4-5-20251001 | 30% | 90% | 37% / 32% | 0% / 0% |
 | gpt-5.4-mini | 80% | 97% | 32% / 32% | 0% / 0% |
 
-No model meets every threshold, so the grammar is not frozen; the failing
-thresholds are questions for the owner (below), not silent changes. Sonnet
-passes Predict and Explain and misses Complete by one item; `purpose-missing`
-is 28 percent of its Write violations, over the protocol's quarter rule.
+Since decision R1 the thresholds apply to the gating models (the current
+large model of each vendor); Sonnet passes Predict and Explain and misses
+Complete by one item and Write by three, with `purpose-missing` at 28
+percent of its Write violations (over the protocol's quarter rule). The
+grammar is not frozen. The owner answered every question the round raised
+(decisions R1 to R8, below); the grammar itself did not change, the cheat
+sheet, the checker and the protocol did.
 
 ## Done in session 5
 
@@ -50,24 +57,24 @@ is 28 percent of its Write violations, over the protocol's quarter rule.
 3. **`renyi index`** (`crates/renyi_index`): definition and module records,
    the six metrics, content hashes (SHA-256 over canonical text with the own
    name removed and references replaced by dependency hashes; strongly
-   connected components hashed together), text and `--json` forms. The
-   checker records every reference it resolves (`renyi_check::Reference`)
-   and `check_project` checks a project as a whole. The corpus is measured
-   in `05-agent-tooling.md` section 5 (R5-1): proposed budget thresholds 10
-   public definitions per module, 5 transitive effect paths per module,
-   fan-out 7, awaiting the owner.
+   connected components hashed together), text and `--json` forms, and
+   `--budgets` (`budgets.rs`: values over the R7 thresholds, one line each,
+   exit 0 either way; the corpus has none, a test keeps it so). The checker
+   records every reference it resolves (`renyi_check::Reference`) and
+   `check_project` checks a project as a whole. The corpus is measured in
+   `05-agent-tooling.md` section 5.
 4. **The live readability round** (step 1 of the previous handoff). The
    harness gained, each change forced by the round: run selection by newest
    `meta.json` and `--run`; retries with backoff; `--temperature none`
    (Sonnet 5.5 rejects the field); imported corpus modules shown in the
-   prompts; `renyi check` after the lint for Complete and Write; LF scratch
-   files on Windows, one per process (three `score` processes run at once
-   shared one file and crashed); Explain graded against author's
-   descriptions of every program
-   (`tests/readability/reference/<program>.explain.txt`, written this
-   session) with a rubric, two graders, adjudication of disagreements over
-   one point and refusals deciding nothing; the grade parsed as the last
-   standalone digit (the first digit was the 1 of "18" when the grader
+   prompts; `renyi check` after the lint for Complete and Write; every
+   written file LF, the scratch file one per process (three `score`
+   processes run at once shared one file and crashed) and lint messages
+   without its name; Explain graded against author's descriptions of every
+   program (`tests/readability/reference/<program>.explain.txt`, written
+   this session) with a rubric, two graders, adjudication of disagreements
+   over one point and refusals deciding nothing; the grade parsed as the
+   last standalone digit (the first digit was the 1 of "18" when the grader
    reasoned first); grades cached with the grader's answer. The 182 lint-
    and check-clean Complete and Write samples were judged by ten subagents
    with reasons (`outputs/<label>/judgement.json`, decision L2): 83 of 91
@@ -76,10 +83,27 @@ is 28 percent of its Write violations, over the protocol's quarter rule.
    fails Explain on every model because its `weight_steps` purpose line
    said "whole kilograms" where the code counts started kilograms.
 5. **Cheat sheet**: states that a derived `ToText` prints a variant as its
-   bare name (Sonnet's only Predict failure came from doubting it).
+   bare name (Sonnet's only Predict failure came from doubting it); says in
+   one sentence that the module and every public function, type and
+   constant carry `purpose:`, and every public type in its examples has one
+   (R3); says `ignore` takes only a call with effects (R6) and that `is`
+   compares values of one type, `32.0 is 32.00` (R5).
 6. **Corpus**: the purpose line of `weight_steps` in `shipping_rules.ry`
    now says "started kilograms beyond the first" (the round's stored
    prompts keep the old wording).
+7. **Decisions R1 to R8** (`01-decisions.md` section R), each applied:
+   the protocol gates the freeze on the large models (R1,
+   `03-readability-test.md`); J3 and M4 stand (R2, R4); `purpose:` stays
+   (R3); `is` on numbers (R5, sketch section 7); `ignore` only on calls
+   with effects (R6: the checker's `ignore-pure` error with a `set` fix for
+   a mutable receiver, `check.rs` counts capability-needing calls around
+   the ignored expression; a rule test); budgets 10 / 5 / 7 (R7,
+   `renyi index --budgets`); gpt-5.5 joins the next round (R8).
+8. **Local tooling**: `ce.toml` at the repository root (untracked, listed in
+   `.git/info/exclude`) sets CodeEraser's guard to `warn`, because its
+   750-line budget refused appends to `01-decisions.md` (873 lines, the
+   append-only log) and `02-syntax-sketch.md` (835 lines, the syntax source
+   of truth). Owner's decision; the file must be recreated on a fresh clone.
 
 ## Owner actions pending
 
@@ -87,37 +111,6 @@ is 28 percent of its Write violations, over the protocol's quarter rule.
   both values into a tool result once while checking that the variables
   were set (not committed, but in the session transcript). Rotate both and
   set the new values in the environment.
-- Answer the question batches of session 5 (below); if the session ended
-  before they were asked, the next session asks them first.
-
-## Questions for the owner from the round (session 5)
-
-Each is a measured cost, with the recommendation first:
-
-1. Haiku 4.5 as the floor model (M7) fails Predict at 30 percent from
-   arithmetic and attention errors, not grammar; the thresholds say "every
-   model". Gate the freeze on Sonnet-class models and keep Haiku as a
-   reported trend, or keep "every model".
-2. The reserved word `count` as a local name costs Sonnet two Complete items
-   (17 of 19 without it, 89 percent, above the threshold); `sorted` and
-   `first` cost the small models more. Make the query words contextual
-   (reserved only inside a query) or keep J3.
-3. `purpose:` on public types and on the module is the largest single Write
-   rule for Sonnet and gpt (28 and 25 percent of violations; the protocol's
-   quarter rule). Keep it (and say it louder in the cheat sheet) or require
-   it on functions only.
-4. A named single argument (M4) is the largest checker rule for Haiku (92
-   samples) and gpt (77). Accept the named form when the name matches the
-   parameter (the formatter drops it) or keep the error.
-5. Decimal `is` and scale: `0.00 is 0` and `32.0 is 32` are undefined in the
-   documents; the judges and the checker's refinement evaluation assume
-   IEEE value equality. State it, or make scale significant.
-6. `ignore pop(stack)` on an immutable value silently does nothing (three
-   judged failures). Restrict `ignore` to calls with effects (a discarded
-   pure result is dead code) or leave J15 as it is.
-7. R5-1 budget thresholds (10 / 5 / 7) as the first defaults.
-8. A fourth model: `gpt-5.5` rejects temperature 0 and was not run; run it
-   at its default temperature as Sonnet was, or leave three models.
 
 ## Done in sessions 1 to 4 (condensed)
 
@@ -139,26 +132,18 @@ Each is a measured cost, with the recommendation first:
   (`library/std/*.ry`, decisions N1 to N3); **M2, `crates/renyi_check`**
   (world, bodies with bidirectional inference, subtyping, implicit `maybe`,
   generics, abilities, refinements on literals, fallible calls, error unions,
-  exhaustiveness, queries, scoped effects; 21 rule tests; the 40 judged
-  pre-test samples agree with the checker); decisions O1 to O5 (reference
-  counting with in-place reuse supersedes the tracing collector; the project
-  map; budgets; the semantic diff; `renyi mcp`), P1 to P4 (recorded runs
-  and `replays` tests, budgets in grants, provenance guards, the reserved
-  words `only`, `per`, `replays` and phrases `at most`, `only to`) and Q1 to
-  Q4 (capability-safe packages, reproducibility, in-process sandboxing,
+  exhaustiveness, queries, scoped effects; the 40 judged pre-test samples
+  agree with the checker); decisions O1 to O5 (reference counting with
+  in-place reuse supersedes the tracing collector; the project map; budgets;
+  the semantic diff; `renyi mcp`), P1 to P4 (recorded runs and `replays`
+  tests, budgets in grants, provenance guards, the reserved words `only`,
+  `per`, `replays` and phrases `at most`, `only to`) and Q1 to Q4
+  (capability-safe packages, reproducibility, in-process sandboxing,
   checked live update), each with its design document.
 
 ## Next steps
 
-1. **Close the round with the owner**: ask the eight questions above
-   (batches of four, recommended option first); record the answers as
-   decision entries (section R of `01-decisions.md`); apply any grammar
-   change to the sketch, the cheat sheet (token gate), the lint, the parser,
-   the checker and the corpus together; re-run the readability round on the
-   changed grammar (a change that lowers a passing rate by more than five
-   points is reverted, protocol rule). `renyi index --budgets` can take the
-   R5-1 defaults once confirmed.
-2. **M3: the bytecode VM** (`renyi run`, `renyi test`, `renyi record`), the
+1. **M3: the bytecode VM** (`renyi run`, `renyi test`, `renyi record`), the
    owner's first demo, under decision O1 (reference counting, in-place
    reuse, last-use moves). Plan: a new crate `renyi_vm` over
    `renyi_check::World` and `Ty`; values (Integer i64 with overflow crash,
@@ -177,11 +162,17 @@ Each is a measured cost, with the recommendation first:
    thirty corpus programs, the ten reference outputs, every `example:` line
    and `test` block, and the 182 judged samples of the live round plus the
    40 of the pre-test (decision L2: the VM re-runs every verdict and the two
-   sets are compared). The five network programs get recordings and
-   `replays` tests.
-3. **`renyi mcp`** (O5, `05-agent-tooling.md` section 7), then budgets and
-   the semantic diff (O3, O4), then M4 (provenance guards, package manager)
-   and M5 (embedding API, `serve --watch`, LSP) as before.
+   sets are compared; `is` on Decimals compares values, R5). The five
+   network programs get recordings and `replays` tests.
+2. **Readability round 2** on the revised cheat sheet, with gpt-5.5 at its
+   default temperature as the fourth model (R8) and the R1 gating: the
+   cheat sheet changes of R3, R5 and R6 are unmeasured, and the protocol
+   reverts a change that lowers a passing rate by more than five points.
+   The round costs API calls; it can run before or after M3 (the VM would
+   replace the subagent judges for Complete and Write).
+3. **`renyi mcp`** (O5, `05-agent-tooling.md` section 7), then the semantic
+   diff (O4), then M4 (provenance guards, package manager, budgets in the
+   manifest) and M5 (embedding API, `serve --watch`, LSP) as before.
 
 ## Known gaps and risks
 
@@ -189,24 +180,29 @@ Each is a measured cost, with the recommendation first:
   author's descriptions; the 49 disagreements over one point were
   adjudicated by Claude in the session (reasons in `judgement.json`).
   Haiku's Explain pass sits exactly at the 90 percent threshold and rests on
-  those adjudications. The descriptions were written by Claude from the
-  programs; the owner may want to spot-check a few.
+  those adjudications (it no longer gates the freeze, R1). The descriptions
+  were written by Claude from the programs; the owner may want to
+  spot-check a few.
 - The Complete and Write verdicts come from Claude Code subagents (decision
   L2); three semantic assumptions are recorded in their reasons (Decimal
-  `is` ignores scale, a sliding window excludes its far edge,
-  `EmergencyCleared` outside an emergency gives `Red`). The VM re-runs them
-  at M3.
+  `is` ignores scale, now decision R5; a sliding window excludes its far
+  edge; `EmergencyCleared` outside an emergency gives `Red`). The VM
+  re-runs them at M3.
 - The ten Predict reference outputs were derived by hand (and re-derived
   this session for the seven items Haiku failed); the VM is the first
   independent check.
 - Sonnet 5.5 cannot be sampled at temperature 0 (the field is rejected), so
   its five samples vary; the protocol's "temperature 0 where allowed" is
   met, but Sonnet's rates carry more sampling noise than the others'.
+- The `ignore-pure` rule (R6) counts a call with effects anywhere inside
+  the ignored expression, arguments included; `ignore pure(effectful())`
+  passes. No corpus program does this.
 - The standard library sketch is a first draft from the corpus; JSON
   derivation rules, the SQLite type mapping and HTTP defaults are not
   validated against real data.
 - 88 reserved words include common identifiers (`count`, `first`, `sum`,
-  `sorted`, ...); the round measured their cost (question 2 above).
+  `sorted`, ...); the round measured their cost and the owner kept them
+  (R2).
 - The grant clauses (`at most`, `only to`, `replays`) have not been through
   a readability round; no corpus program uses them yet.
 - `tools/lint_examples.py` is regex-based; its block balance and unused
@@ -223,9 +219,11 @@ Each is a measured cost, with the recommendation first:
 
 - Wants principled reasoning, asked explicitly for a mathematical angle on
   syntax; accepts recommendations readily but counters with concrete
-  alternatives (for example deriving comparisons from `is`).
+  alternatives (for example deriving comparisons from `is`; in session 5,
+  typed comparison for `is` on numbers, and keeping J3 and M4 against the
+  measured cost).
 - Chat in Chinese; all artifacts in English.
 - Prefers questions as interactive option batches of four, recommended
-  option first, over prose.
+  option first, over prose; answers within minutes.
 - Implementation is to be written mainly by Claude in sessions; the owner
   reviews. `main` is the only branch.

@@ -210,7 +210,11 @@ tally; the README describes the behaviour as it now is.
 
 ## 6. Open questions for the owner
 
-Raised as decision questions after this round (see `docs/HANDOFF.md`):
+Raised as decision questions after this round and answered the same day
+(decisions R1 to R8 in `docs/design/01-decisions.md`: the freeze is gated on
+the large models, J3 and M4 stand, `purpose:` stays and the cheat sheet says
+it louder, `is` compares values of one type, `ignore` only on calls with
+effects, budgets 10 / 5 / 7, gpt-5.5 joins the next round):
 
 - Haiku 4.5 as the floor model (M7) fails Predict at 30 percent before any
   grammar question arises; the thresholds say "every model".

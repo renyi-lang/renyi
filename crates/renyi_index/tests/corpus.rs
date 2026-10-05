@@ -372,6 +372,44 @@ end
 }
 
 #[test]
+fn the_corpus_is_within_the_default_budgets() {
+    // decision R7: the defaults sit just above the corpus maxima
+    let over = renyi_index::over_budget(&corpus(), &renyi_index::Budgets::default());
+    assert!(over.is_empty(), "{over:?}");
+}
+
+#[test]
+fn values_over_budget_are_reported() {
+    let mut source = String::from("module demo\n  purpose: Too wide.\n\nimport std.console\nimport std.environment\nimport std.time\nimport std.random\nimport std.filesystem exposing Path\nimport std.http exposing Url\n\n");
+    for n in 0..11 {
+        source.push_str(&format!(
+            "public function f{n}() returns Integer\n  purpose: Number {n}.\n\n  return {n}\nend\n\n"
+        ));
+    }
+    source.push_str(
+        "public function wide() returns Integer needs console, environment, time, random, filesystem, network.http\n  purpose: Touches everything and calls every f.\n\n  console.print(\"x\")\n  ignore environment.arguments()\n  ignore time.now()\n  ignore random.integer(lowest: 0, highest: 1)\n  ignore filesystem.read_text(Path(\"x\")) otherwise \"\"\n  ignore http.get(Url(\"https://example.com\")) otherwise return 0\n  return f0() + f1() + f2() + f3() + f4() + f5() + f6() + f7()\nend\n",
+    );
+    let index = program(&source);
+    assert_eq!(index.modules[0].errors, 0, "the program must check");
+    let over = renyi_index::over_budget(&index, &renyi_index::Budgets::default());
+    assert!(
+        over.iter()
+            .any(|l| l.starts_with("module demo: 12 public definitions (budget 10)")),
+        "{over:?}"
+    );
+    assert!(
+        over.iter()
+            .any(|l| l.contains("transitive effect paths (budget 5)")),
+        "{over:?}"
+    );
+    assert!(
+        over.iter()
+            .any(|l| l.starts_with("function demo.wide: fan-out 8 (budget 7)")),
+        "{over:?}"
+    );
+}
+
+#[test]
 fn a_file_with_errors_is_still_indexed() {
     let index = program(
         "module demo

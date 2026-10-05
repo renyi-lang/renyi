@@ -1,7 +1,9 @@
 # LLM Readability Test Protocol
 
-Status: protocol defined, harness written, one subagent pre-test run (see
-`tests/readability/2026-10-05-e41258c/notes.md`). Date: 2026-10-05.
+Status: protocol defined, harness written, one subagent pre-test run
+(`tests/readability/2026-10-05-e41258c/notes.md`) and one live round
+(`tests/readability/2026-10-05-1623155/notes.md`; decisions R1 to R8 came
+from it). Date: 2026-10-05.
 
 Decision H2 freezes the grammar by measurement, not by implementation: before
 the parser is written, several models must read the cheat sheet and work with
@@ -30,17 +32,22 @@ do not fail a sample; the harness keeps a strict tally on request.
 ## Models and settings
 
 At least three models from at least two vendors, including the smallest model
-the project intends to support. Temperature 0 where the API allows it. Five
-samples per task per program; a task passes for a program when at least four
-of five samples are correct. Prompts, raw outputs and scores are committed
-under `tests/readability/<date>-<grammar-revision>/`.
+the project intends to support (the floor model, decision M7). The gating
+models are the current large model of each vendor (decision R1: Sonnet 5.5,
+and gpt-5.5 from the second round, decision R8); the floor model is run and
+reported as a trend and does not gate the freeze. Temperature 0 where the API
+allows it, the model's default otherwise. Five samples per task per program;
+a task passes for a program when at least four of five samples are correct.
+Prompts, raw outputs and scores are committed under
+`tests/readability/<date>-<grammar-revision>/`.
 
 ## Acceptance for freezing the grammar
 
-- Predict and Explain: at least 90 percent of programs pass on every model.
-- Complete: at least 80 percent on every model.
-- Write: at least 70 percent on every model, and no single lint rule accounts
-  for more than a quarter of the violations.
+- Predict and Explain: at least 90 percent of programs pass on every gating
+  model.
+- Complete: at least 80 percent on every gating model.
+- Write: at least 70 percent on every gating model, and no single lint rule
+  accounts for more than a quarter of the violations.
 - The cheat sheet stays within its 3000-token budget (`tools/count_tokens.py`).
 
 A grammar change that lowers any passing rate by more than five points is

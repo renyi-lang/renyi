@@ -351,8 +351,10 @@ set total to total + line.amount
   binding that is never read is a compile error with the fix "remove it"
   (decision J8).
 - A call whose result is not used is a compile error; the message proposes the
-  likely fix (`set items to items.append(item)`). `ignore expression` discards
-  a result deliberately (decision J15).
+  likely fix (`set items to items.append(item)`). `ignore call` discards the
+  result of a call that has effects (a `needs` clause on the callee, or on a
+  function passed to it) deliberately; discarding the result of a pure call is
+  a compile error, since the call then does nothing (decisions J15, R6).
 - Top-level `let` requires a type and is a constant: `public let max_retries:
   Integer be 3`, followed by a `purpose:` clause when public.
 
@@ -376,7 +378,11 @@ Precedence, high to low: `power`; `* / remainder`; `+ -`; comparison phrases;
 `not`; `and`; `or`. Parentheses group.
 
 **Comparison.** Six phrases, no symbols: `is`, `is not`, `is less than`, `is at
-most`, `is greater than`, `is at least`. Ordering requires `can Compare`.
+most`, `is greater than`, `is at least`. Ordering requires `can Compare`. Both
+operands have one type: an `Integer` and a `Decimal` do not compare; a numeric
+literal takes the type its context expects, so `total is 0` compares two
+`Decimal`s when `total` is one. Two `Decimal`s compare by numeric value, the
+scale is not significant: `32.0 is 32.00` is true (decision R5).
 
 **Logic.** `and`, `or`, `not`. Both `and` and `or` short-circuit.
 

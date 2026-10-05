@@ -49,6 +49,22 @@ fn a_pure_function_with_an_example_is_clean() {
 }
 
 #[test]
+fn ignore_discards_only_the_result_of_a_call_with_effects() {
+    // decision R6: a discarded pure result is dead code
+    clean(&program(
+        "function go() needs console\n  ignore console.read_line()\nend\n",
+    ));
+    raises(
+        &program("function go() returns Integer\n  ignore \"x\".trim()\n  return 1\nend\n"),
+        "ignore-pure",
+    );
+    raises(
+        &program("function go() needs console\n  ignore console.print(\"x\")\nend\n"),
+        "ignore-nothing",
+    );
+}
+
+#[test]
 fn unknown_names_and_types() {
     raises(
         &program("function go() returns Integer\n  return missing\nend\n"),

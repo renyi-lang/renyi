@@ -18,6 +18,7 @@ const USAGE: &str = "usage:
   renyi tokens <file.ry>              dump the token stream
   renyi parse [--json] <file.ry>      dump the syntax tree (--json: for tools)
   renyi index [--json] [path]         the project map of a directory or a file with its imports
+  renyi index --budgets [path]        every value of the map over its budget (exit 0 either way)
   renyi version";
 
 fn main() -> ExitCode {
@@ -226,7 +227,15 @@ fn index_command(args: &[String]) -> ExitCode {
         toolchain: format!("renyi {}", env!("CARGO_PKG_VERSION")),
     };
     let index = renyi_index::index_files(&files, header);
-    let rendered = if json {
+    let rendered = if args.iter().any(|arg| arg == "--budgets") {
+        // a report, not a gate: CI treats it as a warning (decision O3)
+        let over = renyi_index::over_budget(&index, &renyi_index::Budgets::default());
+        if over.is_empty() {
+            "nothing over budget\n".to_string()
+        } else {
+            format!("{}\n", over.join("\n"))
+        }
+    } else if json {
         renyi_index::to_json(&index)
     } else {
         renyi_index::to_text(&index)
