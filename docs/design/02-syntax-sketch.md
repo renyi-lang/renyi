@@ -229,9 +229,9 @@ public type UserId is Integer
   purpose: Identifies a user; distinct from other integers.
 ```
 
-**Records** (`has`). Fields are public. Construction names every field unless
-there is exactly one: `User(id: UserId(7), name: "Ann", age: 30, email:
-nothing)`; `UserId(7)`. Update copies with changes: `let older be user with
+**Records** (`has`). Fields are public. Construction names every field,
+`User(id: UserId(7), name: "Ann", age: 30, email: nothing)`, `Circle(radius:
+2.5)`; a subtype wraps one positional value, `UserId(7)`. Update copies with changes: `let older be user with
 age: user.age + 1`. `has kind: Text as "type"` gives a field the external name
 that `ToJson`, `FromJson` and `FromRow` use, for keys that are reserved words
 or contain punctuation; `json.parse(text: text, naming: CamelCase)` maps a

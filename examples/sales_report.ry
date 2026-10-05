@@ -61,7 +61,7 @@ public function main() or fails with ReportError needs console, filesystem("data
   let mutable report be "region,total\n"
   for each region, amount in totals sorted by amount descending
     console.print("{region}: {amount}")
-    set report to report + "{region},{amount}\n"
+    set report to "{report}{region},{amount}\n"
   end
   filesystem.write_text(path: Path("data/report.csv"), content: report)
     otherwise fail with Io(detail: "cannot write the report")

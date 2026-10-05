@@ -718,3 +718,9 @@ literals, at compile time by the toolchain. Constructing them from runtime
 text therefore needs no `otherwise`, which is how the corpus already writes
 `Url("{base}?{query}")` and `Path(path_text)`; the sketch's `where value is
 not ""` on `Path` is dropped. (derived)
+
+**N3. Library error types derive `ToText`.** The corpus logs errors with
+`error.to_text()` in `failure` arms, and the cheat sheet shows the same, so
+every error type the library declares carries `can ToText`; a program's own
+error type adds the clause when it is rendered. `ToText` stays opt-in for
+other types. (derived)

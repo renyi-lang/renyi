@@ -25,6 +25,7 @@ public type JsonError is one of
   Malformed(detail: Text, line: Integer)
   Mismatch(path: Text, expected: Text, found: Text)
   Constraint(path: Text, detail: Text)
+  can ToText
 end
 
 public function parse(text: Text) returns Value or fails with JsonError

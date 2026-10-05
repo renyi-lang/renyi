@@ -82,8 +82,8 @@ public type Pair of Left, Right
   has right: Right
 end
 ```
-Construct: `User(name: "Ann", age: 30, email: nothing)`, `Circle(radius: 2.5)`,
-`Point`, `UserId(7)`. Update: `user with age: 31`. Refined construction can
+Construct: `User(name: "Ann", age: 30, email: nothing)`, `Circle(radius: 2.5)`
+(fields always named), `Point`, `UserId(7)` (a subtype wraps one value). Update: `user with age: 31`. Refined construction can
 fail: `Email(input) otherwise fail with BadInput`. Generic types:
 `List of T`, `Map of K to V`, `Set of T`, `maybe T`.
 

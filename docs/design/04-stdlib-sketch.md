@@ -274,7 +274,10 @@ end
 ```
 
 Error types are records; a record is matched like a single variant
-(`when InvalidNumber(input) then`, decision K6).
+(`when InvalidNumber(input) then`, decision K6). Every error type of the
+library derives `ToText`, so `error.to_text()` always works in a `failure`
+arm; a program's own error types say `can ToText` when they need it
+(decision N3).
 
 ---
 

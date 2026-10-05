@@ -1,8 +1,7 @@
-//! The `renyi` command. M1 provides `check` (lexer, parser and layout
-//! diagnostics, text or JSON), `format` (canonical layout, in place or
+//! The `renyi` command: `check` (lexer, parser, type and effect checker and
+//! layout diagnostics, text or JSON), `format` (canonical layout, in place or
 //! `--check`), `tokens` (a token dump) and `parse` (a syntax tree dump, as
-//! Rust debug output or as JSON for tools). Type checking and running follow
-//! in later milestones.
+//! Rust debug output or as JSON for tools). Running follows at M3.
 
 use std::io::Write;
 use std::process::ExitCode;
@@ -59,7 +58,11 @@ fn check(args: &[String]) -> ExitCode {
             Ok(file) => file,
             Err(code) => return code,
         };
-        let mut diagnostics = parse(&file.text).diagnostics;
+        let parsed = parse(&file.text);
+        let mut diagnostics = parsed.diagnostics;
+        if !diagnostics.iter().any(|diagnostic| diagnostic.is_error()) {
+            diagnostics.extend(renyi_check::check_file(&file));
+        }
         diagnostics.extend(check_layout(&file));
         diagnostics.sort_by_key(|diagnostic| diagnostic.span.start);
         failed |= diagnostics.iter().any(|diagnostic| diagnostic.is_error());

@@ -18,6 +18,7 @@ public type FileError is one of
   AlreadyExists(path: Path)
   InvalidEncoding(path: Path)
   Io(path: Path, detail: Text)
+  can ToText
 end
 
 public function name(self: Path) returns Text

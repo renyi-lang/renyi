@@ -1,0 +1,11 @@
+[package]
+name = "renyi_check"
+description = "Name resolution, type checking and effect checking for Renyi programs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+renyi_syntax = { path = "../renyi_syntax" }
+regex = "1"

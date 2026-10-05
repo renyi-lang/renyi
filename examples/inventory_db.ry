@@ -3,7 +3,7 @@ module inventory_db
 
 import std.console
 import std.filesystem exposing Path
-import std.sqlite exposing Connection, DbError
+import std.sqlite exposing Connection, DbError, FromRow
 
 public type InventoryError is one of
   purpose: Why a stock change could not be applied.

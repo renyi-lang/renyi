@@ -107,21 +107,25 @@ public type ConstraintViolation
   purpose: A refined type was constructed from a value that fails its condition.
   has type_name: Text
   has detail: Text
+  can ToText
 end
 
 public type InvalidNumber
   purpose: Text that is not a number of the requested kind.
   has input: Text
+  can ToText
 end
 
 public type InvalidEncoding
   purpose: Bytes that are not valid UTF-8.
   has detail: Text
+  can ToText
 end
 
 public type TimedOut
   purpose: A `within` deadline expired before every task finished.
   has after: Duration
+  can ToText
 end
 
 public function to_decimal(self: Integer) returns Decimal

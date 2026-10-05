@@ -30,6 +30,7 @@ end
 public type InvalidDate
   purpose: Text that is not a date of the form YYYY-MM-DD, or names a day that does not exist.
   has input: Text
+  can ToText
 end
 
 public function now() returns Instant needs time

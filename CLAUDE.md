@@ -6,9 +6,9 @@ under `docs/design/` in order.
 
 ## What this repository is
 
-Renyi is a programming language. Its design (M0) is complete and the Rust
-front end (M1: lexer, parser, formatter) exists; the type checker (M2) and the
-VM (M3) do not yet. The owner (GitHub `skymanbp`) makes design decisions and
+Renyi is a programming language. Its design (M0) is complete; the Rust front
+end (M1: lexer, parser, formatter) and the type and effect checker (M2) exist;
+the VM (M3) does not yet. The owner (GitHub `skymanbp`) makes design decisions and
 reviews; Claude writes the documents, the example corpus and the Rust
 implementation.
 
@@ -55,5 +55,7 @@ implementation.
 | `tools/count_tokens.py` | cheat-sheet budget gate |
 | `tools/lint_examples.py` | regex-level checks for the corpus, including calls against the library sketch |
 | `tests/readability/` | harness for the readability protocol: `run.py`, manifest, reference outputs, Write tasks |
-| `crates/renyi_syntax/` | spans, diagnostics, lexer, AST, parser, formatter; `tests/corpus.rs` runs the corpus through all of them |
-| `crates/renyi/` | the `renyi` binary: `check`, `format`, `tokens`, `parse` |
+| `crates/renyi_syntax/` | spans, diagnostics, lexer, AST, parser, JSON encoder, formatter; `tests/corpus.rs` runs the corpus through all of them, `tests/library.rs` parses the library declarations |
+| `crates/renyi_check/` | the type and effect checker (M2): `world.rs` declares modules, `check.rs` checks bodies, `effects.rs` covers capabilities, `refine.rs` evaluates refinements on literals; `tests/corpus.rs` and `tests/rules.rs` |
+| `library/std/` | the standard library as Renyi declaration files (one per module), compiled into the checker; kept in step with `04-stdlib-sketch.md` by a test |
+| `crates/renyi/` | the `renyi` binary: `check` (parse, type and effect check), `format`, `tokens`, `parse [--json]` |

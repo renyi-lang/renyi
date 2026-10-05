@@ -94,14 +94,12 @@ fn the_library_declares_what_the_sketch_lists() {
     for path in library_files() {
         let text = std::fs::read_to_string(&path).expect("read");
         let parsed = parse_declarations(&text);
+        // ability methods (equals, compare, hash, to_text) are listed in a
+        // table of the sketch, not in a code block, so only free functions and
+        // methods are compared
         for item in &parsed.module.items {
-            match item {
-                Item::Function(function) => {
-                    declared.insert(function.name.text.clone());
-                }
-                // ability methods (equals, compare, hash, to_text) are listed in
-                // a table of the sketch, not in a code block
-                _ => {}
+            if let Item::Function(function) = item {
+                declared.insert(function.name.text.clone());
             }
         }
     }

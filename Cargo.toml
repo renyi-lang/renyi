@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/renyi_syntax", "crates/renyi"]
+members = ["crates/renyi_syntax", "crates/renyi_check", "crates/renyi"]
 
 [workspace.package]
 version = "0.0.1"

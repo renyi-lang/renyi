@@ -1,24 +1,27 @@
 # Handoff
 
-Last updated: 2026-10-05, session 4 (the readability pre-test is finished and
-its results are with the owner as questions).
+Last updated: 2026-10-05, end of session 4 (pre-test finished and decided,
+M1 wrapped up, M2 type and effect checker written and green on the corpus).
 Branches: `main` holds the session-1 handoff; `claude/renyi-language-design-hbrie3`
 carries session 2; `claude/nifty-knuth-r5sntt` carries sessions 3 and 4 on top
 of it. The owner decides when `main` moves.
 
 ## Where the project stands
 
-Milestone M0 (design) is complete and M1 (front end) is essentially done.
-Three rounds of design decisions are recorded; the surface syntax and the
-standard library are sketched in full, and no design question is open. The
-corpus has its target 30 programs, passes the lint, and is in canonical
-layout. The cheat sheet measures 2451 tokens against a 3000-token budget. The
-Rust workspace under `crates/` has the lexer, parser and formatter with
-`renyi check`, `renyi format`, `renyi tokens` and `renyi parse` (also
-`--json`); every corpus program lexes, parses, formats and encodes cleanly
-(45 tests, clippy and fmt clean). Nothing type-checks or runs yet: that is M2
-and M3. The readability harness has run once as a subagent pre-test (below);
-the live round still waits for API keys.
+Milestones M0 (design), M1 (front end) and M2 (type and effect checker) are
+done; M3 (the VM) is next. Four rounds of design decisions are recorded
+(sections 0 to N of `01-decisions.md`); the surface syntax and the standard
+library are sketched in full, and the library also exists as declaration
+files the compiler reads (`library/std/*.ry`). The corpus has its target 30
+programs, passes the lint, is in canonical layout, and type- and
+effect-checks without a diagnostic. The cheat sheet measures about 2770
+tokens (byte estimate) against the 3000-token budget. The Rust workspace has
+three crates: `renyi_syntax` (lexer, parser, JSON encoder, formatter),
+`renyi_check` (the checker) and the `renyi` binary with `check` (parse plus
+type and effect check), `format`, `tokens` and `parse [--json]`. 71 tests,
+clippy and fmt clean. Nothing runs yet: that is M3. The readability harness
+has run once as a subagent pre-test (below); the live round still waits for
+API keys.
 
 ## Done in session 1
 
@@ -125,6 +128,43 @@ also fixed two lint false positives found by the scoring, added
 
 Session 4 also added `renyi parse --json` (`crates/renyi_syntax/src/json.rs`).
 
+## Done in session 4: M1 wrap-up and M2
+
+1. `renyi parse --json` (`crates/renyi_syntax/src/json.rs`), and the
+   formatter keeps comments inside multi-line expressions where they were
+   written (lists, arguments, query clauses, `otherwise` lines, arms,
+   fields); an `otherwise` wrapped around a query lays out like the query.
+2. `repeat until` replaced `while` (M9) throughout the front end, the lint,
+   the corpus and the documents; the parser reports foreign statement
+   keywords (`while`, `else`, `def`, `var`, ...) with the Renyi form.
+3. The standard library as declaration files, `library/std/*.ry`, parsed in
+   a declaration-only mode (`parse_declarations`); a test keeps them in step
+   with the sketch. Decisions N1 (methods may carry reserved-word names) and
+   N2 (Path, Url and Pattern are plain Text subtypes) came out of this.
+4. **M2, `crates/renyi_check`**: `world.rs` declares every module (library
+   and user) into tables of types, abilities, implementations, functions and
+   constants and resolves imports and `exposing`; `check.rs` checks bodies
+   with bidirectional inference and unification variables (number literals
+   stay open until something fixes their type, then default to Integer or
+   Decimal), subtyping through `type X is Base`, implicit `maybe` wrapping,
+   generics with `for any` instantiated per call and constraints checked
+   when known, methods by receiver type (overloads such as `sum` chosen by
+   the receiver), ability methods and derived abilities, record and variant
+   constructions with compile-time refinement checks on literals
+   (`refine.rs`, with the `regex` crate for `matches`), fallible calls that
+   must be handled by `otherwise` or `match`, error unions that narrow after
+   `failure(error: T)` arms, `match` exhaustiveness, queries with per-group
+   terminals, effects with scoped capabilities (`effects.rs`, J11; library
+   primitives are scoped at run time) and the effects of functions passed by
+   name, and the rules J8, J9, J15, M2, M3, M4. `renyi check` runs it after
+   parsing. Tests: the 30 corpus programs check cleanly; `tests/rules.rs`
+   has 21 rule tests; the 40 judged pre-test samples agree with the checker
+   (every sample judged correct checks cleanly, every one judged wrong for a
+   type-level reason raises an error).
+5. Corpus fixes the checker forced: `inventory_db.ry` exposes `FromRow`,
+   `sales_report.ry` joins text by interpolation instead of `+`, `retry.ry`
+   reads its loop counter. Decision N3: library error types derive `ToText`.
+
 ## Decisions taken in session 4 (entries M1 to M10 of `01-decisions.md`)
 
 The pre-test results were put to the owner as questions; every answer is
@@ -163,17 +203,14 @@ recorded and applied:
    Compare against the acceptance thresholds in `03-readability-test.md`; a
    failing threshold becomes a grammar question for the owner, not a silent
    change. `repeat until` (M9) gets its first measurement here.
-2. **M1 wrap-up, then M2.** Remaining M1 polish: comments inside multi-line
-   expressions (the formatter moves them after the statement, before the
-   next one). Then M2 in a new crate `renyi_check`: name resolution over the
-   prelude and library sketch, the type checker (records, variants,
-   refinements, generics with `for any`, abilities, `maybe` and failure
-   wrapping, `otherwise` typing), the effect checker with scoped
-   capabilities (J11), and the rules of J8, J9, J15 and M2 to M4 (unused
-   bindings and results, no Integer division, no superfluous `otherwise`, no
-   named single argument). Diagnostics follow the `check` command's text and
-   JSON output. The owner chose M3 (a VM running the corpus) as the first
-   demo.
+2. **M3: the bytecode VM** (`renyi run`, `renyi test`), the owner's first
+   demo: run the thirty corpus programs; the ten reference outputs under
+   `tests/readability/reference/` and the `example:` lines and `test` blocks
+   of the corpus are the first conformance expectations, and the 40 judged
+   pre-test samples are a second check (decision L2). Decimal128 arithmetic,
+   the capability sandbox at startup, structured concurrency and the library
+   primitives (console, filesystem, json, http, csv, sqlite, regex, time)
+   are the bulk of it; the checker's `World` and `Ty` are the input.
 3. **After M2: the toolchain MCP server** (decision M8): cheat sheet, library
    lookup, `check`, `format`; decide the subcommand and whether to take a
    JSON dependency then.
@@ -206,6 +243,17 @@ recorded and applied:
 - The parser accepts the corpus but has only been tested against it and its
   unit tests; malformed input beyond the unit tests may still cascade into
   several diagnostics for one mistake.
+- The checker is first-generation: inference is local to a body, `assign`
+  treats type arguments covariantly (sound for immutable values), ability
+  checks for `ToJson`/`FromJson`/`FromRow` are structural only (M4 validates
+  derivations against real data), `Equal` is assumed for every data type,
+  and a function's capabilities are checked at call sites only. Known gaps:
+  no check that an `example:` argument is a literal, no check of `see also`
+  references, no `deprecated` warnings, no unreachable-pattern detection,
+  and `with` on a refined field re-checks only literals.
+- J8 makes the counter of a counted loop (`for each attempt from 1 to
+  attempts`) an error when the body never reads it; the corpus now reads
+  it. Watch the live round for this cost.
 - The ten reference outputs under `tests/readability/reference/` were derived
   by hand from the sketches (Decimal and Float rendering rules included); the
   VM at M3 is the first independent check of them, as it is of the 29

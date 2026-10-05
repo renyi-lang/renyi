@@ -21,6 +21,7 @@ public type DbError is one of
   CannotOpen(path: Path, detail: Text)
   Failed(sql: Text, detail: Text)
   Mismatch(column: Text, expected: Text, found: Text)
+  can ToText
 end
 
 public ability FromRow

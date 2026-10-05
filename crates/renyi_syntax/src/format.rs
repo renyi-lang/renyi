@@ -1019,7 +1019,13 @@ impl Formatter<'_> {
     /// The value after `be`, `to` or `return`: queries and conditionals may
     /// move to the next line; a `match` always does.
     fn value_after(&mut self, value: &Expr) -> Doc {
-        match &value.kind {
+        // an `otherwise` wrapped around a query or conditional lays out like the
+        // value itself, so that the clauses stay nested under `be`
+        let inner = match &value.kind {
+            ExprKind::Otherwise { value: inner, .. } => &inner.kind,
+            other => other,
+        };
+        match inner {
             ExprKind::Query(_) | ExprKind::If { .. } => {
                 group(nest(concat(vec![Doc::Line, self.expr(value)])))
             }
@@ -1629,6 +1635,27 @@ mod tests {
     fn stays(source: &str) {
         let out = formatted(source);
         assert_eq!(out, source);
+        assert_eq!(formatted(&out), out);
+    }
+
+    #[test]
+    fn a_query_with_otherwise_stays_nested_under_be() {
+        // fits on the line after `be`: one line, nested
+        let source = "module demo\n\nfunction find(words: List of Text, wanted: Text) returns Text\n  let found be for each word in words where word is wanted first otherwise fail with Missing(word: wanted)\n  return found\nend\n";
+        let out = formatted(source);
+        assert_eq!(out, "module demo\n\nfunction find(words: List of Text, wanted: Text) returns Text\n  let found be\n    for each word in words where word is wanted first otherwise fail with Missing(word: wanted)\n  return found\nend\n");
+        assert!(parse(&out).diagnostics.is_empty());
+        assert_eq!(formatted(&out), out);
+        // too long for one line: one clause per line, `otherwise` nested deeper
+        let long = "module demo\n\nfunction find(candidate_words: List of Text, wanted_word: Text) returns Text\n  let found be for each candidate_word in candidate_words where candidate_word is wanted_word first otherwise fail with MissingWord(wanted: wanted_word)\n  return found\nend\n";
+        let out = formatted(long);
+        assert_eq!(out, "module demo\n\nfunction find(candidate_words: List of Text, wanted_word: Text) returns Text\n  let found be\n    for each candidate_word in candidate_words\n    where candidate_word is wanted_word\n    first\n      otherwise fail with MissingWord(wanted: wanted_word)\n  return found\nend\n");
+        let reparsed = parse(&out);
+        assert!(
+            reparsed.diagnostics.is_empty(),
+            "{:?}",
+            reparsed.diagnostics
+        );
         assert_eq!(formatted(&out), out);
     }
 

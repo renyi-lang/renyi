@@ -1,0 +1,154 @@
+//! Name resolution, type checking and effect checking (milestone M2). The
+//! standard library's declarations are compiled in from `library/std/*.ry`;
+//! a program's own imports are read from the directory of its file.
+
+pub mod check;
+pub mod effects;
+pub mod refine;
+pub mod types;
+pub mod world;
+
+use std::collections::HashSet;
+use std::path::{Path, PathBuf};
+
+use renyi_syntax::{parse, parse_declarations, Diagnostic, SourceFile, Span};
+
+use world::World;
+
+/// The standard library, one declaration file per module.
+pub const LIBRARY: &[(&str, &str)] = &[
+    (
+        "std.prelude",
+        include_str!("../../../library/std/prelude.ry"),
+    ),
+    (
+        "std.console",
+        include_str!("../../../library/std/console.ry"),
+    ),
+    (
+        "std.environment",
+        include_str!("../../../library/std/environment.ry"),
+    ),
+    ("std.time", include_str!("../../../library/std/time.ry")),
+    ("std.random", include_str!("../../../library/std/random.ry")),
+    (
+        "std.filesystem",
+        include_str!("../../../library/std/filesystem.ry"),
+    ),
+    ("std.json", include_str!("../../../library/std/json.ry")),
+    ("std.http", include_str!("../../../library/std/http.ry")),
+    ("std.server", include_str!("../../../library/std/server.ry")),
+    ("std.csv", include_str!("../../../library/std/csv.ry")),
+    ("std.sqlite", include_str!("../../../library/std/sqlite.ry")),
+    ("std.regex", include_str!("../../../library/std/regex.ry")),
+];
+
+/// A world with the standard library declared.
+pub fn library_world() -> World {
+    let mut world = World::new();
+    for (name, source) in LIBRARY {
+        let parsed = parse_declarations(source);
+        assert!(
+            parsed.diagnostics.is_empty(),
+            "the library file {name} does not parse: {:?}",
+            parsed.diagnostics
+        );
+        world.add_module(parsed.module, true);
+    }
+    world
+}
+
+/// Check a parsed program whose imports are given as sources, for tests and
+/// tools that hold everything in memory. The main module comes first.
+pub fn check_sources(main: &SourceFile, imports: &[SourceFile]) -> Vec<Diagnostic> {
+    let parsed = parse(&main.text);
+    if parsed.diagnostics.iter().any(Diagnostic::is_error) {
+        return parsed.diagnostics;
+    }
+    let mut world = library_world();
+    let mut import_modules = Vec::new();
+    for import in imports {
+        let parsed_import = parse(&import.text);
+        if parsed_import.diagnostics.iter().any(Diagnostic::is_error) {
+            continue;
+        }
+        let id = world.add_module(parsed_import.module, false);
+        import_modules.push((import.name.clone(), id));
+    }
+    let main_id = world.add_module(parsed.module, false);
+    world.resolve_all();
+    let mut diagnostics: Vec<Diagnostic> = world
+        .diagnostics
+        .iter()
+        .filter(|(module, _)| *module == main_id)
+        .map(|(_, d)| d.clone())
+        .collect();
+    diagnostics.extend(check::check_module(&world, main_id));
+    for (name, id) in import_modules {
+        let count = world
+            .diagnostics
+            .iter()
+            .filter(|(m, d)| *m == id && d.is_error())
+            .count()
+            + check::check_module(&world, id)
+                .iter()
+                .filter(|d| d.is_error())
+                .count();
+        if count > 0 {
+            diagnostics.push(Diagnostic::error(
+                "import-errors",
+                format!(
+                    "the imported module `{name}` has {count} error{}",
+                    if count == 1 { "" } else { "s" }
+                ),
+                Span::new(0, 0),
+            ));
+        }
+    }
+    diagnostics.sort_by_key(|d| d.span.start);
+    diagnostics
+}
+
+/// Check a file on disk; its non-library imports are read from the same
+/// directory (decision J17: the file's directory is the project root).
+pub fn check_file(file: &SourceFile) -> Vec<Diagnostic> {
+    let directory = Path::new(&file.name)
+        .parent()
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| PathBuf::from("."));
+    let parsed = parse(&file.text);
+    if parsed.diagnostics.iter().any(Diagnostic::is_error) {
+        return parsed.diagnostics;
+    }
+    let mut imports = Vec::new();
+    let mut seen: HashSet<String> = HashSet::new();
+    let mut queue: Vec<Vec<String>> = parsed
+        .module
+        .imports
+        .iter()
+        .map(|i| i.path.iter().map(|n| n.text.clone()).collect())
+        .collect();
+    while let Some(path) = queue.pop() {
+        if path.first().map(String::as_str) == Some("std") {
+            continue;
+        }
+        let name = path.join(".");
+        if !seen.insert(name.clone()) {
+            continue;
+        }
+        let mut file_path = directory.clone();
+        for segment in &path {
+            file_path.push(segment);
+        }
+        file_path.set_extension("ry");
+        let Ok(text) = std::fs::read_to_string(&file_path) else {
+            continue; // reported as an unknown module by the resolver
+        };
+        let imported = parse(&text);
+        for import in &imported.module.imports {
+            queue.push(import.path.iter().map(|n| n.text.clone()).collect());
+        }
+        imports.push(SourceFile::new(file_path.display().to_string(), text));
+    }
+    check_sources(file, &imports)
+}
