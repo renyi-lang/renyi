@@ -125,43 +125,71 @@ also fixed two lint false positives found by the scoring, added
 
 Session 4 also added `renyi parse --json` (`crates/renyi_syntax/src/json.rs`).
 
-## Questions put to the owner at the end of session 4
+## Decisions taken in session 4 (entries M1 to M10 of `01-decisions.md`)
 
-Asked with AskUserQuestion; the answers, once given, become decision entries
-(section M of `01-decisions.md`) and sketch or cheat-sheet changes:
+The pre-test results were put to the owner as questions; every answer is
+recorded and applied:
 
-1. Query grammar: let `group by key` combine with `sum`, `count`, `first`,
-   `any`, `all` and `collect` per group (both models wrote
-   `group by sale.region sum sale.amount`; the parser already accepts it)?
-2. J8 for query variables: is the loop variable of a bare `count` query
-   (`for each line in order.lines count`) unused (fix: `order.lines.length()`)
-   or consumed by `count`? (`first` returns the variable, so it counts as read.)
-3. `otherwise` on a value that cannot fail (`Port(8080) otherwise crash`,
-   `line.split(" ") otherwise fail`): error with the fix "remove otherwise",
-   warning, or allowed?
-4. A named single argument (`column_widths(table: table)`): error with the fix
-   "drop the name", or accepted and normalized by the formatter?
-5. Protocol: should Write and Complete scoring run `renyi format` before the
-   lint (line width was 60% of Sonnet's Write violations, all fixable)?
-6. Cheat sheet: add a library section (prelude text, list and map methods,
-   module names) with the remaining budget (about 550 tokens)?
-7. Haiku as the floor model (decision L1): keep it and iterate the cheat
-   sheet, or move the floor up?
+- M1 `group by key` combines with any terminal clause (per-group `sum`, ...).
+- M2 the loop variable of a bare `count` query is unused (J8 applies; fix
+  `.length()`); the variable of a `first` query counts as read.
+- M3 `otherwise` on a value that cannot fail is a compile error.
+- M4 a named single argument is a compile error ("drop the name").
+- M5 the readability scoring runs `renyi format` before the lint (harness
+  default; `--no-format` keeps the strict tally).
+- M6 the cheat sheet has a library section (names only); it measures about
+  2770 tokens by two byte-based estimates because the tiktoken encodings
+  could not be downloaded through the proxy; CI with network access must
+  confirm the count.
+- M7 Haiku 4.5 stays the floor model.
+- M8 an MCP server for the toolchain is scheduled after M2.
+- M9 `repeat until condition ... end` replaces `while` (85 reserved words,
+  15 phrases); `while` and other foreign keywords at statement start get a
+  diagnostic with the Renyi form. Lexer, parser, formatter, JSON, lint,
+  cheat sheet, sketch and three corpus programs were changed together.
+- M10 no bottom-tested loop for now.
 
 ## Next steps
 
-0. **Record the owner's answers** to the questions above as decisions, apply
-   them (sketch, cheat sheet within budget, lint, the checker's rules), and
-   re-judge the affected pre-test samples if a rule changed.
+0. **Confirm the cheat-sheet token count** with `python3 tools/count_tokens.py`
+   where the tiktoken encodings can be fetched (the gate falls back to a
+   byte estimate offline and says so).
+1. **Run the first live readability round** once the two API keys are present
+   in the environment (a new session picks them up): `prepare`, then `run` for
+   `claude-sonnet-5-5`, `claude-haiku-4-5-20251001` and one OpenAI model,
+   `score --grader anthropic:claude-sonnet-5-5` (two graders where they
+   disagree), judge the pending Complete and Write samples into
+   `judgement.json` with reasons, `report`, and commit the run directory.
+   Compare against the acceptance thresholds in `03-readability-test.md`; a
+   failing threshold becomes a grammar question for the owner, not a silent
+   change. `repeat until` (M9) gets its first measurement here.
+2. **M1 wrap-up, then M2.** Remaining M1 polish: comments inside multi-line
+   expressions (the formatter moves them after the statement, before the
+   next one). Then M2 in a new crate `renyi_check`: name resolution over the
+   prelude and library sketch, the type checker (records, variants,
+   refinements, generics with `for any`, abilities, `maybe` and failure
+   wrapping, `otherwise` typing), the effect checker with scoped
+   capabilities (J11), and the rules of J8, J9, J15 and M2 to M4 (unused
+   bindings and results, no Integer division, no superfluous `otherwise`, no
+   named single argument). Diagnostics follow the `check` command's text and
+   JSON output. The owner chose M3 (a VM running the corpus) as the first
+   demo.
+3. **After M2: the toolchain MCP server** (decision M8): cheat sheet, library
+   lookup, `check`, `format`; decide the subcommand and whether to take a
+   JSON dependency then.
+
 ## Known gaps and risks
 
 - The standard library sketch is a first draft written from the corpus; its
   JSON derivation rules, SQLite type mapping and HTTP timeout default have
   not been validated against real data.
-- 84 reserved words include common identifiers (`count`, `first`, `sum`,
-  `set`, `type`, `test`, `check`, `run`, `group`, `power`, `tags`, `example`).
-  The owner confirmed in round 2 (J3) that they stay reserved; the fix for a
-  collision is a rename suggestion from the compiler.
+- 85 reserved words include common identifiers (`count`, `first`, `sum`,
+  `set`, `type`, `test`, `check`, `run`, `group`, `power`, `tags`, `example`,
+  `repeat`, `until`). The owner confirmed in round 2 (J3) that they stay
+  reserved; the fix for a collision is a rename suggestion from the compiler.
+- `repeat until` (M9) has not been through a readability round yet; the
+  pre-test samples were written with `while`. A drop of more than five
+  points in the live round reverts it (protocol rule).
 - Scoped capabilities (J11) make the effect checker compare path prefixes and
   host names; the containment rules in sketch section 11 are the first draft
   and have not been exercised beyond three corpus programs.
@@ -189,7 +217,6 @@ Asked with AskUserQuestion; the answers, once given, become decision entries
 
 ## Owner actions pending
 
-- Answer the seven questions above (or say which to defer).
 - Set `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` in the cloud environment so the
   next session can run the readability round (decision L1).
 - Switch the GitHub default branch to `main`, and say when `main` should be
