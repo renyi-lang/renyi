@@ -626,3 +626,71 @@ sample in the session and records the verdict with a one-sentence reason in
 `judgement.json`; the owner spot-checks. The judge shares its origin with some
 of the tested models, so every verdict is re-run by the VM at M3 and the two
 sets of results are compared. (user)
+
+---
+
+## M. Pre-test round decisions (session 4)
+
+The readability pre-test (`tests/readability/2026-10-05-e41258c/notes.md`)
+raised these questions; the owner answered them in one batch.
+
+**M1. `group by` combines with every terminal clause.** `for each sale in
+sales group by sale.region sum sale.amount` is a `Map of Text to Decimal`:
+the terminal after `group by` is applied to each group, so `collect`, `sum`,
+`count`, `first`, `any` and `all` all work per group, and a bare `group by`
+keeps whole items as before. Both models of the pre-test wrote this form for
+the same program and the parser already accepted it. (user)
+
+**M2. The loop variable of a bare `count` query is unused.** In `for each
+line in order.lines count` the variable `line` is never read, so decision J8
+applies and the fix is `order.lines.length()`; one concept keeps one spelling.
+The variable of a `first` query counts as read because `first` returns it.
+(user)
+
+**M3. `otherwise` on a value that cannot fail is an error.** `otherwise` is
+allowed only after a `maybe` value or a fallible call. `Port(8080) otherwise
+crash with ...` (a literal checked at compile time) and `line.split(" ")
+otherwise fail` are compile errors whose fix is "remove `otherwise`: this
+cannot fail". (user)
+
+**M4. A named single argument is an error.** `column_widths(table: table)`
+is rejected with the fix "drop the name": one argument is positional, two or
+more are named, and the formatter never changes tokens. The same holds for a
+construction with one field (`UserId(id: 7)`). (user)
+
+**M5. The readability scoring formats before it lints.** `renyi format` runs
+on every Complete and Write program before the lint, since an agent runs the
+formatter anyway; layout violations are still counted and reported per rule
+but no longer fail a sample. `03-readability-test.md` is updated. (user)
+
+**M6. The cheat sheet gains a library section.** Names only (prelude text,
+list, map and set methods; the standard modules), within the 3000-token
+budget. Invented library names were the largest cause of Sonnet failures.
+(user)
+
+**M7. Haiku 4.5 stays the floor model (L1).** Its pre-test rates (Complete
+37%, Write 0%) are from one sample per item; the cheat sheet is iterated on
+the failure causes first, and the live round with five samples decides.
+(user)
+
+**M8. An MCP server for the toolchain, after M2.** A server that offers the
+cheat sheet, a library-name lookup, `check` and `format` (later `run` and
+`test`) to any agent host is scheduled after the type checker, when `check`
+has substance; whether it reuses the `renyi serve --mcp` command of decision
+D6 or gets its own subcommand, and whether a JSON dependency is taken, is
+decided then. (user)
+
+**M9. `repeat until` replaces `while`.** The only condition loop is
+`repeat until condition` ... `end`: the condition is tested before each pass
+and names the state that holds when the loop is over, so the reader gets the
+postcondition without negating anything (`repeat until remaining.is_empty()`
+instead of `while not remaining.is_empty()`). `repeat until` is one phrase
+token; `repeat` and `until` are reserved and `while` leaves the list, which
+has 85 words (supersedes the count in J18). `while` becomes a foreign
+keyword: the compiler rejects it and suggests `repeat until` with the
+opposite condition. The owner asked for a simpler, fixed loop shape;
+`for each` is unchanged. (user)
+
+**M10. No bottom-tested loop.** The "do, then test" case (pagination) keeps
+its flag variable or uses `break`; the corpus has one such loop. Revisit after
+the live readability round. (user)

@@ -138,8 +138,9 @@ match action()                                      # when the error is needed
 end
 ```
 A `T` is accepted where `maybe T` or a success is expected. Reading out always
-names the other case. `otherwise` takes a default value or a way out: `fail`,
-`fail with E(...)`, `return value`, `break`, `continue`, `crash with "text"`.
+names the other case, and `otherwise` is allowed only there. It takes a default
+value or a way out: `fail`, `fail with E(...)`, `return value`, `break`,
+`continue`, `crash with "text"`.
 `type X is Base` is a subtype: an `X` passes as a `Base`, never the reverse.
 
 ## Control flow
@@ -170,7 +171,7 @@ end
 for each key, value in settings
   console.print("{key}: {value}")
 end
-while attempts is less than 3
+repeat until attempts is at least 3
   set attempts to attempts + 1
   if done then break end
 end
@@ -196,6 +197,7 @@ for each order in orders sorted by order.created_at first        # maybe Order
 for each order in orders all order.is_shipped                    # Boolean
 for each order in orders any order.is_refunded                   # Boolean
 for each user in users group by user.country collect user.email # Map
+for each sale in sales group by sale.region sum sale.amount     # Map of Text to Decimal
 for each order in orders, line in order.lines collect line.sku   # flatten
 for each url in urls concurrently collect web.get(url) otherwise fail
 ```
@@ -237,19 +239,39 @@ parameters, description from `purpose:`, permissions from `needs`.
 `deprecated: since 2.0, replaced by new_name` hides a definition from
 discovery, warns existing callers, and lets `renyi migrate` rewrite them.
 
+## Library (names only; nothing else exists)
+```
+Text: length is_empty trim trim_start trim_end to_lower to_upper split lines
+  characters contains starts_with ends_with index_of replace pad_left pad_right
+  repeat take drop reversed matches to_integer to_decimal to_float to_bytes
+List: length is_empty at first last rest without_last without_index take drop
+  append append_all reversed sorted distinct contains index_of largest smallest
+  with_index to_set flattened join sum
+Map: length is_empty get set without contains_key keys values entries merged
+Set: length is_empty contains add without union intersection difference
+  is_subset_of sorted to_list
+Numbers: to_decimal to_float to_text quotient absolute at_least at_most
+  rounded truncated square_root
+Modules: std.console (print, print_error, read_line); std.environment
+  (arguments, get, exit); std.time (now, today, seconds, parse_date, Date,
+  Instant, Duration); std.random; std.filesystem (Path, read_text, write_text,
+  exists, list); std.json (parse, render); std.http (Url, get, post_json);
+  std.server; std.csv; std.sqlite; std.regex
+```
+
 ## Names and reserved words
 snake_case for values and functions, PascalCase for types, abilities and
-variants. ASCII only. No single-letter names. Reserved (84):
+variants. ASCII only. No single-letter names. Reserved (85):
 ```
 ability all also and any as at be break by can check collect concurrently
 continue count crash deprecated descending each end example expose exposing
 fail fails failure false first for from function greater group has if ignore
 import in is lazy least less let match maybe module most mutable needs not
-nothing of one or otherwise power public purpose raw remainder return returns
-run see self set some sorted success sum tags test than then to tool true type
-when where while with within
+nothing of one or otherwise power public purpose raw remainder repeat return
+returns run see self set some sorted success sum tags test than then to tool
+true type until when where with within
 ```
 Phrases are single tokens: `is not`, `is less than`, `is at most`,
 `is greater than`, `is at least`, `or fails with`, `is one of`, `for each`,
-`for any`, `run concurrently`, `sorted by`, `group by`, `see also`,
-`expose as tool`. After a dot any word is a valid member name.
+`for any`, `run concurrently`, `repeat until`, `sorted by`, `group by`,
+`see also`, `expose as tool`. After a dot any word is a valid member name.

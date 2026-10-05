@@ -23,8 +23,8 @@ OPENAI_API_KEY=...    python3 tests/readability/run.py run --provider openai --m
 OPENAI_API_KEY=...    python3 tests/readability/run.py run --provider openai --base-url https://<vendor>/v1 --model <id>
 python3 tests/readability/run.py score --grader anthropic:claude-sonnet-5-5
 python3 tests/readability/run.py report
-python3 tests/readability/run.py score --format --scores scores-formatted.json   # layout fixed first
-python3 tests/readability/run.py report --scores scores-formatted.json
+python3 tests/readability/run.py score --no-format --scores scores-strict.json   # layout counts too
+python3 tests/readability/run.py report --scores scores-strict.json
 ```
 
 `run` stores five samples per prompt at temperature 0 and is restartable: it
@@ -37,7 +37,8 @@ be driven by hand.
 - **Predict**: the sample must equal `reference/<program>.out` exactly after
   trailing whitespace is removed.
 - **Complete** and **Write**: the code is spliced into the program (Complete)
-  or taken whole (Write) and must pass `tools/lint_examples.py`. A lint-clean
+  or taken whole (Write), formatted with `renyi format` when it parses, and
+  must pass `tools/lint_examples.py`. A lint-clean
   answer is then `pending` until a human records a verdict in
   `outputs/<model>/judgement.json` as `{"complete/shapes.0": true, ...}`; an
   entry may also be an object, `{"verdict": true, "reason": "..."}`, so that the
@@ -48,9 +49,10 @@ be driven by hand.
   overridden in `judgement.json` with an integer.
 - `report` applies the four-of-five rule per item and prints pass rates and,
   for Write, which lint rules the models violated.
-- `score --format` runs `renyi format` on every Complete and Write program
-  before the lint, so that layout problems the formatter fixes do not count;
-  `--scores <name>` keeps that tally in a second file next to the strict one.
+- `score` runs `renyi format` on every Complete and Write program before the
+  lint (decision M5), so that layout problems the formatter fixes do not
+  count; `--no-format` gives the strict tally and `--scores <name>` keeps it
+  in a second file.
 
 ## Status
 

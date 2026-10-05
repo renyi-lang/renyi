@@ -42,17 +42,19 @@ words! {
     Module => "module", Most => "most", Mutable => "mutable", Needs => "needs", Not => "not",
     Nothing => "nothing", Of => "of", One => "one", Or => "or", Otherwise => "otherwise",
     Power => "power", Public => "public", Purpose => "purpose", Raw => "raw",
-    Remainder => "remainder", Return => "return", Returns => "returns", Run => "run",
+    Remainder => "remainder", Repeat => "repeat", Return => "return", Returns => "returns",
+    Run => "run",
     See => "see", SelfValue => "self", Set => "set", Some => "some", Sorted => "sorted",
     Success => "success", Sum => "sum", Tags => "tags", Test => "test", Than => "than",
-    Then => "then", To => "to", Tool => "tool", True => "true", Type => "type", When => "when",
-    Where => "where", While => "while", With => "with", Within => "within",
+    Then => "then", To => "to", Tool => "tool", True => "true", Type => "type", Until => "until",
+    When => "when", Where => "where", With => "with", Within => "within",
     // phrases: single tokens, matched longest first
     IsNot => "is not", IsLessThan => "is less than", IsAtMost => "is at most",
     IsGreaterThan => "is greater than", IsAtLeast => "is at least",
     OrFailsWith => "or fails with", IsOneOf => "is one of", ForEach => "for each",
     ForAny => "for any", RunConcurrently => "run concurrently", SortedBy => "sorted by",
     GroupBy => "group by", SeeAlso => "see also", ExposeAsTool => "expose as tool",
+    RepeatUntil => "repeat until",
 }
 
 impl Word {
@@ -69,6 +71,7 @@ impl Word {
                 | Word::Or
                 | Word::For
                 | Word::Run
+                | Word::Repeat
                 | Word::Sorted
                 | Word::Group
                 | Word::See
@@ -192,11 +195,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn eighty_four_reserved_words_and_fourteen_phrases() {
+    fn eighty_five_reserved_words_and_fifteen_phrases() {
         let words = Word::ALL.iter().filter(|w| !w.is_phrase()).count();
         let phrases = Word::ALL.iter().filter(|w| w.is_phrase()).count();
-        assert_eq!(words, 84);
-        assert_eq!(phrases, 14);
+        assert_eq!(words, 85);
+        assert_eq!(phrases, 15);
     }
 
     #[test]

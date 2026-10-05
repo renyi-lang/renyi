@@ -307,7 +307,7 @@
   "complete/sales_report": [
     {
       "lint_problems": [],
-      "pass": false
+      "pass": true
     }
   ],
   "complete/semver": [
@@ -318,8 +318,13 @@
   ],
   "complete/shapes": [
     {
-      "lint_problems": [],
-      "pass": false
+      "lint_problems": [
+        ".scratch.ry:38: line is 104 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
     }
   ],
   "complete/shipping_rules": [
@@ -377,7 +382,7 @@
   "write/compound_interest": [
     {
       "lint_problems": [
-        ".scratch.ry:18: 'args' is not declared in the standard library sketch or the corpus"
+        ".scratch.ry:19: 'args' is not declared in the standard library sketch or the corpus"
       ],
       "pass": false,
       "rules": [
@@ -405,7 +410,7 @@
   "write/initials": [
     {
       "lint_problems": [
-        ".scratch.ry:14: 'to_upper_case' is not declared in the standard library sketch or the corpus"
+        ".scratch.ry:15: 'to_upper_case' is not declared in the standard library sketch or the corpus"
       ],
       "pass": false,
       "rules": [

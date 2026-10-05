@@ -9,8 +9,8 @@ Subcommands, run from the repository root:
   run       send every prompt to one model and store the raw samples
   score     score the stored samples (Predict exactly, Complete and Write with
             the lint plus a judgement file, Explain with a grading model);
-            --format runs `renyi format` before the lint, --scores names the
-            output file so that both tallies can be kept
+            `renyi format` runs before the lint unless --no-format is given,
+            and --scores names the output file so that both tallies can be kept
   report    print pass rates per model and task
 
 Only the standard library is used; vendors are reached over HTTPS with the
@@ -423,8 +423,8 @@ def main() -> None:
     s.add_argument("--run"); s.add_argument("--label")
     s.add_argument("--grader", help="provider:model used to grade Explain, for example anthropic:claude-sonnet-5-5")
     s.add_argument("--base-url", default="https://api.openai.com/v1")
-    s.add_argument("--format", action="store_true",
-                   help="run `renyi format` on each Complete and Write program before the lint")
+    s.add_argument("--no-format", dest="format", action="store_false",
+                   help="skip `renyi format` before the lint (the strict tally; decision M5 formats first)")
     s.add_argument("--scores", default="scores.json", help="file name for the scores under outputs/<label>/")
     s.set_defaults(func=cmd_score)
     t = sub.add_parser("report"); t.add_argument("--run")

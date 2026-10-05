@@ -10,6 +10,7 @@ import pathlib
 import tiktoken
 
 BUDGET = 3000
+BYTES_PER_TOKEN = 4.0
 DEFAULT = pathlib.Path(__file__).resolve().parent.parent / "docs" / "cheatsheet.md"
 
 
@@ -18,7 +19,13 @@ def main() -> int:
     text = path.read_text(encoding="utf-8")
     counts = {}
     for name in ("o200k_base", "cl100k_base"):
-        counts[name] = len(tiktoken.get_encoding(name).encode(text))
+        try:
+            counts[name] = len(tiktoken.get_encoding(name).encode(text))
+        except Exception as error:  # the encodings are fetched from the network on first use
+            print(f"{name:12s} unavailable ({type(error).__name__}); estimating from bytes")
+    if not counts:
+        # 4.0 bytes per token was measured on the cheat sheet with o200k_base and cl100k_base
+        counts["estimate"] = round(len(text.encode("utf-8")) / BYTES_PER_TOKEN)
     worst = max(counts.values())
     for name, count in counts.items():
         print(f"{name:12s} {count:5d} tokens")

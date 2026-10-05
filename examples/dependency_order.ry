@@ -25,7 +25,7 @@ public function order(dependencies: Map of Text to List of Text)
   end
   let mutable remaining be dependencies
   let mutable ordered: List of Text be []
-  while not remaining.is_empty()
+  repeat until remaining.is_empty()
     let ready be
       for each step, needed in remaining
       where needed.to_set().is_subset_of(ordered.to_set())

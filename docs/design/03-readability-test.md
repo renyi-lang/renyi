@@ -1,6 +1,7 @@
 # LLM Readability Test Protocol
 
-Status: protocol defined, harness not yet written. Date: 2026-10-05.
+Status: protocol defined, harness written, one subagent pre-test run (see
+`tests/readability/2026-10-05-e41258c/notes.md`). Date: 2026-10-05.
 
 Decision H2 freezes the grammar by measurement, not by implementation: before
 the parser is written, several models must read the cheat sheet and work with
@@ -18,10 +19,13 @@ cheat sheet (`docs/cheatsheet.md`) and the task; no other Renyi material.
 | Predict | "Here is a Renyi program and its input. What does it print?" | exact match of the predicted output against the reference output |
 | Explain | "Explain what this program does in three sentences." | a second model grades the explanation against the purpose clauses, blind to which grammar revision produced the program |
 | Complete | a program with one function body removed, the signature and purpose kept | the completed body passes the program's `example:` and `test` blocks, judged by hand until M3 and by the VM afterwards |
-| Write | a one-paragraph task description | the written program passes the lint, then the same acceptance tests as Complete |
+| Write | a one-paragraph task description | the written program, after `renyi format`, passes the lint, then the same acceptance tests as Complete |
 
 The Write task also records the number of lint violations per program, broken
 down by rule, so that each grammar rule's cost in model errors is visible.
+`renyi format` runs before the lint for Complete and Write (decision M5): an
+agent runs the formatter anyway, so layout problems it fixes are reported but
+do not fail a sample; the harness keeps a strict tally on request.
 
 ## Models and settings
 

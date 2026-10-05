@@ -1286,13 +1286,13 @@ impl<'s> Parser<'s> {
             TokenKind::Word(Word::If) => self.if_statement(),
             TokenKind::Word(Word::Match) => self.match_statement(),
             TokenKind::Word(Word::ForEach) => self.for_each(),
-            TokenKind::Word(Word::While) => {
+            TokenKind::Word(Word::RepeatUntil) => {
                 self.advance();
                 let condition = self.expr()?;
                 self.end_of_statement()?;
                 let body = self.block(&[Word::End])?;
                 self.expect_word(Word::End)?;
-                Ok(StmtKind::While { condition, body })
+                Ok(StmtKind::RepeatUntil { condition, body })
             }
             TokenKind::Word(Word::RunConcurrently) => {
                 self.advance();
@@ -1344,6 +1344,29 @@ impl<'s> Parser<'s> {
                 self.advance();
                 Ok(StmtKind::Check(self.expr()?))
             }
+            TokenKind::Word(Word::Until) | TokenKind::Word(Word::Repeat) => {
+                self.diagnostics.push(
+                    Diagnostic::error(
+                        "expected",
+                        "a loop starts with the phrase `repeat until`, then its condition",
+                        token.span,
+                    )
+                    .with_fix("write `repeat until condition` on one line"),
+                );
+                Err(())
+            }
+            TokenKind::Identifier if self.foreign_statement_word(token).is_some() => {
+                let (word, fix) = self.foreign_statement_word(token).expect("checked above");
+                self.diagnostics.push(
+                    Diagnostic::error(
+                        "foreign-keyword",
+                        format!("`{word}` is not Renyi"),
+                        token.span,
+                    )
+                    .with_fix(fix),
+                );
+                Err(())
+            }
             _ => {
                 let expr = self.expr()?;
                 if !matches!(
@@ -1352,7 +1375,7 @@ impl<'s> Parser<'s> {
                 ) {
                     self.error(
                         "statement-shape",
-                        "a statement is a call, or starts with `let`, `set`, `if`, `match`, `for each`, `while`, `return`, `fail`, `crash`, `ignore` or `check`",
+                        "a statement is a call, or starts with `let`, `set`, `if`, `match`, `for each`, `repeat until`, `return`, `fail`, `crash`, `ignore` or `check`",
                         expr.span,
                     );
                     return Err(());
@@ -1360,6 +1383,30 @@ impl<'s> Parser<'s> {
                 Ok(StmtKind::Expression(expr))
             }
         }
+    }
+
+    /// A keyword of another language at the start of a statement, with the
+    /// Renyi form to write instead (decision C4). An identifier followed by `(`
+    /// or `.` is a call and never foreign.
+    fn foreign_statement_word(&self, token: &Token) -> Option<(String, &'static str)> {
+        let word = &self.src[token.span.start..token.span.end];
+        let next = self.tokens.get(self.pos + 1).map(|t| &t.kind);
+        if matches!(next, Some(TokenKind::LeftParen) | Some(TokenKind::Dot)) {
+            return None;
+        }
+        let fix = match word {
+            "while" => "write `repeat until` with the opposite condition",
+            "loop" | "do" => "write `repeat until condition`",
+            "else" | "elif" | "elsif" => "write `otherwise`, or `otherwise if condition then`",
+            "def" | "fn" | "func" => "write `function`",
+            "var" | "const" => "write `let`, or `let mutable` for a value that changes",
+            "switch" => "write `match`",
+            "case" => "write `when pattern then`",
+            "foreach" => "write `for each`",
+            "throw" | "raise" => "write `fail with`",
+            _ => return None,
+        };
+        Some((word.to_string(), fix))
     }
 
     fn statement_ends_here(&self) -> bool {
@@ -2307,7 +2354,7 @@ mod tests {
     #[test]
     fn statements_and_continuation_lines() {
         let statements = function_body(
-            "  let text be files.read_text(path)\n    otherwise fail\n  let users: List of User be json.parse(text) otherwise fail with Bad(detail: \"x\")\n  let mutable total be 0\n  set total to total + 1\n  if total is at least 18 then\n    set total to 1\n  otherwise if total is 2 then\n    set total to 2\n  otherwise\n    set total to 3\n  end\n  for each user in users where user.is_active sorted by user.name descending\n    console.print(user.name)\n  end\n  while total is less than 3\n    set total to total + 1\n    if done then break end\n  end\n  return total",
+            "  let text be files.read_text(path)\n    otherwise fail\n  let users: List of User be json.parse(text) otherwise fail with Bad(detail: \"x\")\n  let mutable total be 0\n  set total to total + 1\n  if total is at least 18 then\n    set total to 1\n  otherwise if total is 2 then\n    set total to 2\n  otherwise\n    set total to 3\n  end\n  for each user in users where user.is_active sorted by user.name descending\n    console.print(user.name)\n  end\n  repeat until total is at least 3\n    set total to total + 1\n    if done then break end\n  end\n  return total",
         );
         assert_eq!(statements.len(), 8);
         assert!(matches!(
@@ -2331,8 +2378,40 @@ mod tests {
                 ..
             }
         ));
-        assert!(matches!(&statements[6].kind, StmtKind::While { .. }));
+        assert!(matches!(&statements[6].kind, StmtKind::RepeatUntil { .. }));
         assert!(matches!(&statements[7].kind, StmtKind::Return(Some(_))));
+    }
+
+    #[test]
+    fn foreign_loop_keywords_get_the_renyi_form() {
+        let parsed = parse(
+            "module demo\n\nfunction run_all() returns Integer\n  let mutable total be 0\n  while total is less than 3\n    set total to total + 1\n  end\n  return total\nend\n",
+        );
+        let foreign: Vec<_> = parsed
+            .diagnostics
+            .iter()
+            .filter(|d| d.code == "foreign-keyword")
+            .collect();
+        assert_eq!(foreign.len(), 1, "{:?}", parsed.diagnostics);
+        assert!(foreign[0].message.contains("`while`"));
+        assert!(foreign[0].fix.as_deref().unwrap().contains("repeat until"));
+
+        let parsed = parse("module demo\n\nfunction wait()\n  until done\n  end\nend\n");
+        assert!(parsed.diagnostics.iter().any(|d| d
+            .fix
+            .as_deref()
+            .is_some_and(|f| f.contains("repeat until condition"))));
+
+        // an own-module function may be called `loop` or `print`: a call is never foreign
+        let parsed = parse("module demo\n\nfunction go()\n  loop(3)\nend\n\nfunction loop(times: Integer)\n  ignore times\nend\n");
+        assert!(
+            parsed
+                .diagnostics
+                .iter()
+                .all(|d| d.code != "foreign-keyword"),
+            "{:?}",
+            parsed.diagnostics
+        );
     }
 
     #[test]

@@ -19,17 +19,17 @@ RESERVED = set("""ability all also and any as at be break by can check collect
 concurrently continue count crash deprecated descending each end example expose
 exposing fail fails failure false first for from function greater group has if
 ignore import in is lazy least less let match maybe module most mutable needs
-not nothing of one or otherwise power public purpose raw remainder return
+not nothing of one or otherwise power public purpose raw remainder repeat return
 returns run see self set some sorted success sum tags test than then to tool
-true type when where while with within""".split())
-assert len(RESERVED) == 84, len(RESERVED)
+true type until when where with within""".split())
+assert len(RESERVED) == 85, len(RESERVED)
 
 FORBIDDEN = [
     (r"(?<![=!<>])=(?![=>])", "'=' is not Renyi; use 'let x be', 'set x to', or 'is'"),
     (r"==|!=|<=|>=|&&|\|\||->|=>|\|>|::", "symbolic operator; use the English phrase"),
     (r"(?<![\w.\"'])[<>](?![\w.\"'])", "'<' or '>' comparison; use 'is less than' / 'is greater than'"),
     (r";\s*$", "semicolon"),
-    (r"\b(else|elif|fn|def|null|None|lambda|var|const|elsif|unless|switch|case)\b",
+    (r"\b(else|elif|fn|def|null|None|lambda|var|const|elsif|unless|switch|case|while)\b",
      "keyword from another language"),
 ]
 BINDING_PATTERNS = [
@@ -39,7 +39,7 @@ BINDING_PATTERNS = [
     re.compile(r"[(,] *([a-z_][a-z0-9_]*):(?!:)"),
 ]
 STARTERS = re.compile(
-    r"^\s*(?:public )?(?:function |ability |test |if |match |while |run concurrently( within .*)?$|type \w+( is one of)?$|type \w+ of )")
+    r"^\s*(?:public )?(?:function |ability |test |if |match |repeat until |run concurrently( within .*)?$|type \w+( is one of)?$|type \w+ of )")
 QUERY_TAIL = re.compile(r"\b(collect|sum|count|first|any|all|group by)\b")
 STDLIB_SKETCH = ROOT / "docs" / "design" / "04-stdlib-sketch.md"
 CALL = re.compile(r"\.([a-z][a-z0-9_]*)\(")

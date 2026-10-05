@@ -50,28 +50,25 @@ Six Sonnet samples had been failing on the first bug alone.
 
 ## Results
 
-Strict protocol (the lint as written; layout problems count):
+The tally below follows the protocol as amended by decision M5 (`renyi
+format` runs before the lint; the formatter leaves a program that does not
+parse alone) and decision M1 (`group by ... sum` is a valid query, which
+turned the two `totals_by_region` samples from failing to passing). It is in
+`outputs/<label>/scores.json`; the strict tally, in which layout problems
+count, is kept in `scores-strict.json` (`score --no-format`).
 
-| Label | Predict | Explain | Complete | Write |
-|-------|---------|---------|----------|-------|
-| agent-sonnet | 10/10 (100%) | 30/30 (100%) | 14/19 (74%) | 5/10 (50%) |
-| agent-haiku | 8/10 (80%) | 29/30 (97%) | 7/19 (37%) | 0/10 (0%) |
-
-With `renyi format` run on each program before the lint (`score --format`,
-stored as `scores-formatted.json`; the formatter leaves a program that does
-not parse alone):
-
-| Label | Complete | Write |
-|-------|----------|-------|
-| agent-sonnet | 14/19 (74%) | 7/10 (70%) |
-| agent-haiku | 7/19 (37%) | 0/10 (0%) |
+| Label | Predict | Explain | Complete | Write (protocol / strict) |
+|-------|---------|---------|----------|------|
+| agent-sonnet | 10/10 (100%) | 30/30 (100%) | 15/19 (79%) | 7/10 (70%) / 5/10 (50%) |
+| agent-haiku | 8/10 (80%) | 29/30 (97%) | 8/19 (42%) | 0/10 (0%) / 0/10 (0%) |
 
 Against the acceptance thresholds of `03-readability-test.md` (Predict and
 Explain 90%, Complete 80%, Write 70% with no lint rule above a quarter of the
-violations): Sonnet passes Predict and Explain, misses Complete by one sample
-(15 of 19 would be 79%, 16 would pass) and passes Write only after
-formatting; Haiku passes Explain only. One sample per item makes every rate
-coarse: the protocol's five samples and four-of-five rule are still owed.
+violations): Sonnet passes Predict, Explain and Write and misses Complete by
+one sample (16 of 19 would pass); Haiku passes Explain only. One sample per
+item makes every rate coarse: the protocol's five samples and four-of-five
+rule are still owed. With two Write violations in total (both invented
+library names) the quarter rule has no meaning at this sample size.
 
 The Explain grades are suspiciously uniform (Sonnet: thirty 5s; Haiku:
 sixteen 5s, thirteen 4s, one 3), which is the known generosity of a model
@@ -87,8 +84,8 @@ rule name from `report`.
 | Cause | Sonnet | Haiku | Examples |
 |-------|--------|-------|----------|
 | invented library names | 4 | 4 | `split(separator:, limit:)`, `List.get`, `lowercase`, `words`, `first_character`, `uppercase`, `between`, `std.files`; Haiku `args`, `to_upper_case`, `find`, `substring` |
-| layout only (line width, fixed by `renyi format`) | 3 | 1 | example lines of 102 to 283 columns |
-| `group by key sum expression` (not in the sketch) | 1 | 1 | both models, same program (`totals_by_region`) |
+| layout only (line width, fixed by `renyi format`; no longer counted since decision M5) | 3 | 1 | example lines of 102 to 283 columns |
+| `group by key sum expression` (not in the sketch; allowed since decision M1, so these two samples now pass) | 1 | 1 | both models, same program (`totals_by_region`) |
 | unused query variable in `for each line in order.lines count` | 1 | 1 | both models, same program (`statement_line`) |
 | `otherwise` on a value that cannot fail | 1 | 1 | `Port(8080) otherwise crash with ...`, `line.split(" ") otherwise fail with ...` |
 | fallible call or refined construction without `otherwise` | 0 | 2 | `number_at(...)` without `otherwise fail`, `Done(position: position)` from a runtime value |
@@ -125,5 +122,10 @@ Other observations:
   sheet (prelude text, list and map methods; the module names) would address
   the larger Sonnet cause; the budget has about 550 tokens left.
 
-The questions these results raise for the owner are listed in
-`docs/HANDOFF.md`.
+The owner's answers to the questions these results raised are decisions M1
+to M10 in `docs/design/01-decisions.md`: per-group terminals after `group
+by`, the `count` loop variable stays unused, a superfluous `otherwise` and a
+named single argument are errors, scoring formats first, the cheat sheet
+gains a library section, Haiku stays the floor model, an MCP server for the
+toolchain follows M2, and `repeat until` replaces `while` (the loops of the
+pre-test samples were written under the old grammar and are judged as such).

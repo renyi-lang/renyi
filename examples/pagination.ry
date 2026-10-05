@@ -29,7 +29,7 @@ public function fetch_all(base_url: Url)
   let mutable customers: List of Customer be []
   let mutable cursor: maybe Text be nothing
   let mutable has_more be true
-  while has_more
+  repeat until not has_more
     let url be
       match cursor
         when some(token) then Url("{base_url}?cursor={token}")

@@ -619,8 +619,8 @@ impl Encoder<'_> {
                     ("body", self.block(body)),
                 ],
             ),
-            StmtKind::While { condition, body } => self.node(
-                "While",
+            StmtKind::RepeatUntil { condition, body } => self.node(
+                "RepeatUntil",
                 span,
                 vec![
                     ("condition", self.expr(condition)),

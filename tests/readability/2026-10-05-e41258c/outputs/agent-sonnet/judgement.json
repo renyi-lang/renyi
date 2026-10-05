@@ -32,8 +32,8 @@
     "reason": "Collects every required permission that no candidate in granted_by(roles) equals and converts to a set; the example holds."
   },
   "complete/sales_report.0": {
-    "verdict": false,
-    "reason": "[undefined-form] `group by sale.region sum sale.amount` is not a query form the sketch defines (group by takes only collect); with it the example would hold."
+    "verdict": true,
+    "reason": "group by sale.region sum sale.amount, a per-group sum (decision M1); the example holds."
   },
   "complete/semver.0": {
     "verdict": true,

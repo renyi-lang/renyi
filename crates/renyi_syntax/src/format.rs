@@ -870,8 +870,8 @@ impl Formatter<'_> {
                     text("end"),
                 ])
             }
-            StmtKind::While { condition, body } => concat(vec![
-                text("while "),
+            StmtKind::RepeatUntil { condition, body } => concat(vec![
+                text("repeat until "),
                 self.expr(condition),
                 nest(self.block(body)),
                 Doc::HardLine,

@@ -284,7 +284,9 @@ pub enum StmtKind {
         order: Option<Ordering>,
         body: Block,
     },
-    While {
+    /// `repeat until condition` ... `end`: the condition is tested before each
+    /// pass and the body runs until it holds (decision M9).
+    RepeatUntil {
         condition: Expr,
         body: Block,
     },

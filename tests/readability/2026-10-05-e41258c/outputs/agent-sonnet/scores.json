@@ -291,7 +291,7 @@
   "complete/sales_report": [
     {
       "lint_problems": [],
-      "pass": false
+      "pass": true
     }
   ],
   "complete/semver": [
@@ -358,14 +358,8 @@
   ],
   "write/compound_interest": [
     {
-      "lint_problems": [
-        ".scratch.ry:57: line is 104 columns (limit 100)",
-        ".scratch.ry:71: line is 110 columns (limit 100)"
-      ],
-      "pass": false,
-      "rules": [
-        "line-width"
-      ]
+      "lint_problems": [],
+      "pass": true
     }
   ],
   "write/fizz_words": [
@@ -394,16 +388,8 @@
   ],
   "write/low_stock_report": [
     {
-      "lint_problems": [
-        ".scratch.ry:35: line is 283 columns (limit 100)",
-        ".scratch.ry:47: line is 114 columns (limit 100)",
-        ".scratch.ry:57: line is 102 columns (limit 100)",
-        ".scratch.ry:59: line is 114 columns (limit 100)"
-      ],
-      "pass": false,
-      "rules": [
-        "line-width"
-      ]
+      "lint_problems": [],
+      "pass": false
     }
   ],
   "write/merge_sorted": [
@@ -420,13 +406,8 @@
   ],
   "write/request_window": [
     {
-      "lint_problems": [
-        ".scratch.ry:9: line is 102 columns (limit 100)"
-      ],
-      "pass": false,
-      "rules": [
-        "line-width"
-      ]
+      "lint_problems": [],
+      "pass": true
     }
   ],
   "write/roman_numerals": [

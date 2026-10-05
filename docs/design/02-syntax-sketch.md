@@ -41,7 +41,7 @@ ASCII only. Single-letter names are rejected. A name that equals a reserved word
 is rejected with a rename suggestion (`count` becomes `item_count`). After a
 dot, any word is allowed as a member name (`event.type`).
 
-**Reserved words.** 84 words, listed in section 17. Multi-word keywords such as
+**Reserved words.** 85 words, listed in section 17. Multi-word keywords such as
 `is at least` and `or fails with` are single tokens; the lexer matches the
 longest phrase in the fixed phrase table (section 17). Exactly one space
 separates the words of a phrase; a phrase cannot span lines.
@@ -171,7 +171,8 @@ let trimmed be text.trim()
 let page be web.get(url) otherwise fail
 ```
 
-- A call with one argument is positional. A call with two or more arguments
+- A call with one argument is positional; naming it is a compile error with
+  the fix "drop the name" (decision M4). A call with two or more arguments
   names every argument, in declaration order. Names are mandatory because a
   swapped pair of same-typed arguments is the most common silent error in
   generated code.
@@ -451,7 +452,7 @@ for each key, value in settings
   console.print("{key} = {value}")
 end
 
-while attempts is less than 3
+repeat until attempts is at least 3
   set attempts to attempts + 1
   if web.get(url) is not nothing then break end
 end
@@ -475,7 +476,11 @@ end
   header accepts the query clauses `where` and `sorted by`: `for each size in
   sizes sorted by size.characters descending`. `break` and `continue` are
   allowed.
-- `while condition` loops while true.
+- `repeat until condition` runs the body until the condition holds; the
+  condition is tested before each pass, so the body may run zero times
+  (decision M9). `while` is a foreign keyword that the compiler rewrites to
+  `repeat until` with the opposite condition. There is no bottom-tested loop:
+  a flag or `break` covers that case (decision M10).
 - Four levels of nesting is the maximum; the fix is a named function.
 
 ---
@@ -504,8 +509,10 @@ end
   types are joined with `or`; the compiler builds the anonymous union.
 - `fail with ErrorValue` returns a failure. `return value` returns a success;
   success values are wrapped implicitly.
-- On a fallible call, `otherwise` is mandatory. It takes either a default
-  value (`otherwise 0`) or a way out: `otherwise fail` propagates the same
+- On a fallible call, `otherwise` is mandatory, and it is allowed only there
+  and on a `maybe` value: `otherwise` after a value that cannot fail is a
+  compile error with the fix "remove `otherwise`" (decision M3). It takes
+  either a default value (`otherwise 0`) or a way out: `otherwise fail` propagates the same
   error, `otherwise fail with E(...)` translates it, `otherwise return value`
   leaves the function, `otherwise break` and `otherwise continue` leave or
   advance a loop, `otherwise crash with "text"` stops the program.
@@ -552,10 +559,17 @@ let pages be for each url in urls concurrently collect web.get(url) otherwise fa
 | `count` | how many | `Integer` |
 | `first` | first match | `maybe T` |
 | `any condition` / `all condition` | existential / universal | `Boolean` |
-| `group by key [collect expression]` | partition | `Map of K to List of T` |
+| `group by key [terminal]` | partition; a terminal clause after it applies per group | `Map of K to List of T`, or `Map of K to` the terminal's result |
 
 A query on one line is allowed when it fits; otherwise it starts on the line
 after `be` with one clause per line.
+
+`group by key` may be followed by any terminal clause, which is then applied
+to each group: `for each sale in sales group by sale.region sum sale.amount`
+is a `Map of Text to Decimal` (decision M1). The loop variable of a query is
+read when a clause mentions it or when the terminal is `first`, which returns
+it; `for each line in lines count` leaves `line` unread, which decision J8
+rejects with the fix `lines.length()` (decision M2).
 
 ---
 
@@ -734,7 +748,7 @@ base types).
 
 ## 17. Reserved words and phrases
 
-84 reserved words. Any of them used as an identifier is a compile error with a
+85 reserved words. Any of them used as an identifier is a compile error with a
 rename suggestion; after a dot they are allowed as member names.
 
 ```
@@ -742,9 +756,9 @@ ability all also and any as at be break by can check collect concurrently
 continue count crash deprecated descending each end example expose exposing
 fail fails failure false first for from function greater group has if ignore
 import in is lazy least less let match maybe module most mutable needs not
-nothing of one or otherwise power public purpose raw remainder return returns
-run see self set some sorted success sum tags test than then to tool true type
-when where while with within
+nothing of one or otherwise power public purpose raw remainder repeat return
+returns run see self set some sorted success sum tags test than then to tool
+true type until when where with within
 ```
 
 Phrase table (single tokens, longest match):
@@ -752,12 +766,12 @@ Phrase table (single tokens, longest match):
 ```
 is not | is less than | is at most | is greater than | is at least
 or fails with | is one of | for each | for any | run concurrently
-sorted by | group by | see also | expose as tool
+repeat until | sorted by | group by | see also | expose as tool
 ```
 
 Words that appear only inside a phrase (`at`, `least`, `most`, `than`, `less`,
 `greater`, `also`, `see`, `tool`, `expose`, `sorted`, `group`, `one`, `each`,
-`fails`, `run`) are still reserved so that a word has one role everywhere.
+`fails`, `run`, `repeat`, `until`) are still reserved so that a word has one role everywhere.
 
 ---
 
