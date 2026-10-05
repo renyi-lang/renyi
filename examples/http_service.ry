@@ -1,0 +1,37 @@
+module http_service
+  purpose: A small JSON API that converts temperatures.
+
+import std.console
+import std.server exposing Request, Response, Port, StartError
+
+type Conversion
+  has celsius: Decimal
+  has fahrenheit: Decimal
+  can ToJson
+end
+
+function handle(request: Request) returns Response
+  purpose: Route one request by its path.
+
+  match request.path
+    when "/health" then return server.ok("ok")
+    when "/convert" then return convert(request)
+    otherwise return server.not_found()
+  end
+end
+
+function convert(request: Request) returns Response
+  let celsius_text be request.query.get("celsius")
+    otherwise return server.bad_request("celsius is required")
+  let celsius be celsius_text.to_decimal()
+    otherwise return server.bad_request("celsius must be a number")
+  let conversion be Conversion(celsius: celsius, fahrenheit: celsius * 9 / 5 + 32)
+  return server.ok_json(conversion)
+end
+
+public function main() or fails with StartError needs console, network.socket
+  purpose: Serve the API on port 8080 until the process is stopped.
+
+  console.print("listening on http://localhost:8080")
+  server.serve(port: Port(8080), handler: handle) otherwise fail
+end

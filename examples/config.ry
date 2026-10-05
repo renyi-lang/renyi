@@ -1,0 +1,61 @@
+module config
+  purpose: Load and validate the service configuration.
+
+import std.filesystem exposing Path
+import std.json
+
+public type Port is Integer where value is at least 1 and value is at most 65535
+  purpose: A TCP port number.
+
+public type LogLevel is one of
+  purpose: How much the service writes to its log.
+  Quiet
+  Normal
+  Verbose
+end
+
+public type Config
+  purpose: Everything the service needs in order to start.
+  has port: Port
+  has workers: Integer where workers is at least 1 and workers is at most 64
+  has log_level: LogLevel
+  can FromJson
+end
+
+public type ConfigError is one of
+  purpose: Why the configuration could not be loaded.
+  Unreadable(path: Path)
+  Invalid(detail: Text)
+end
+
+public function load(path: Path) returns Config or fails with ConfigError needs filesystem.read
+  purpose: Read the JSON configuration file and check every constraint.
+  see also: default_config, load_with_fallback
+
+  let text be filesystem.read_text(path) otherwise fail with Unreadable(path: path)
+  let config: Config be json.parse(text)
+    otherwise fail with Invalid(detail: "the file does not match the Config shape")
+  return config
+end
+
+public function default_config() returns Config
+  purpose: The configuration used when no file is present.
+  example: default_config().port is Port(8080)
+
+  return Config(port: Port(8080), workers: 4, log_level: Normal)
+end
+
+public function load_or_default(path: Path) returns Config needs filesystem.read
+  purpose: Load the file, falling back to the defaults when it cannot be loaded.
+  deprecated: since 0.2, replaced by load_with_fallback
+
+  return load(path) otherwise default_config()
+end
+
+public function load_with_fallback(path: Path, fallback: Config)
+  returns Config
+  needs filesystem.read
+  purpose: Load the file, falling back to the given configuration when it cannot be loaded.
+
+  return load(path) otherwise fallback
+end

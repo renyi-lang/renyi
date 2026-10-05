@@ -1,0 +1,45 @@
+module active_users
+  purpose: Load users from a JSON file and list the e-mail addresses of active adults.
+
+import std.console
+import std.filesystem exposing Path, FileError
+import std.json exposing JsonError
+
+public type Email is Text where value.matches("^[^@ ]+@[^@ ]+$")
+  purpose: A syntactically plausible e-mail address.
+
+public type User
+  purpose: One account as stored in the export file.
+  has name: Text
+  has age: Integer where age is at least 0
+  has is_active: Boolean
+  has email: Email
+  can FromJson
+end
+
+public function active_adult_emails(path: Path)
+  returns List of Email
+  or fails with FileError or JsonError
+  needs filesystem.read
+  purpose: Read users from a JSON file and return the e-mails of active users who are at least 18.
+  tags: users, export
+
+  let text be filesystem.read_text(path) otherwise fail
+  let users: List of User be json.parse(text) otherwise fail
+  let emails be
+    for each user in users
+    where user.is_active and user.age is at least 18
+    sorted by user.name
+    collect user.email
+  return emails
+end
+
+public function main() or fails with FileError or JsonError needs console, filesystem.read
+  purpose: Print one e-mail address per line.
+
+  let emails be active_adult_emails(Path("data/users.json")) otherwise fail
+  for each email in emails
+    console.print(email)
+  end
+  console.print("{emails.length()} active adults")
+end

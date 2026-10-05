@@ -1,0 +1,243 @@
+# Renyi Cheat Sheet
+
+Renyi is a statically typed language whose syntax is regular English. Every
+concept has one spelling. Blocks end with `end`. Indentation is never meaning.
+There is no `=`, no `==`, no `null`, no exceptions, no anonymous functions.
+
+## Module
+```
+module billing.invoices
+  purpose: Compute customer invoices.
+
+import std.json                              # use as json.parse(...)
+import std.http as web                       # renamed namespace
+import accounts.models exposing User, UserId # types and abilities only
+```
+Functions are always called qualified: `json.parse(text)`. Own-module
+functions are unqualified. Definitions are private unless `public`.
+
+## Function
+```
+public function total_price(items: List of Item, rate: TaxRate)
+  returns Money
+  or fails with PricingError
+  needs network.http
+  for any Item where Item can Priced
+  purpose: Add up every item and apply the tax rate.
+  tags: billing, money
+  see also: tax_for
+  example: total_price(items: [Item(price: 10.00)], rate: TaxRate(0.1)) is 11.00
+
+  let subtotal be for each item in items sum item.price
+  return subtotal + tax.tax_for(amount: subtotal, rate: rate)
+end
+```
+Clause order: `returns`, `or fails with`, `needs`, `for any`, `purpose:`,
+`tags:`, `see also:`, `deprecated:`, `expose as tool`, `example:` lines, blank
+line, body. Omit `returns` when nothing is returned. Short signatures stay on
+the head line. `purpose:` is required on public definitions and modules.
+
+## Calls
+```
+let page be web.get(url) otherwise fail            # one argument: positional
+let total be math.add(left: 1, right: 2)           # two or more: all named, in order
+let trimmed be text.trim()                         # ability method on a value
+retry.run(action: fetch_page, attempts: 3)         # pass a function by name
+```
+
+## Bindings
+```
+let total be 0                       # immutable
+let users: List of User be json.parse(text) otherwise fail   # pin a type
+let mutable count be 0               # mutable local
+set count to count + 1               # the only way to change it
+```
+A name is bound once per function; shadowing is an error.
+
+## Types
+```
+public type User
+  purpose: A registered account holder.
+  has name: Text
+  has age: Integer where age is at least 0      # refinement
+  has email: maybe Email                        # optional field
+  can Compare by name                           # derived ability
+  can ToJson
+end
+
+public type Shape is one of
+  Circle(radius: Decimal)
+  Rectangle(width: Decimal, height: Decimal)
+  Point
+end
+
+public type Email is Text where value.matches(email_pattern)
+public type UserId is Integer                   # distinct alias
+public type Pair of Left, Right
+  has left: Left
+  has right: Right
+end
+```
+Construct: `User(name: "Ann", age: 30, email: nothing)`, `Circle(radius: 2.5)`,
+`Point`, `UserId(7)`. Update: `user with age: 31`. Refined construction can
+fail: `Email(input) otherwise fail with BadInput`. Generic types:
+`List of T`, `Map of K to V`, `Set of T`, `maybe T`.
+
+## Abilities
+```
+public ability Describable
+  function describe(self) returns Text
+end
+
+ability Describable for Shape
+  function describe(self) returns Text
+    match self
+      when Circle(radius) then return "circle of radius {radius}"
+      when Rectangle(width, height) then return "{width} by {height}"
+      when Point then return "point"
+    end
+  end
+end
+```
+Call: `shape.describe()`. Derivable: `Equal` (automatic), `Compare by`,
+`Hash`, `ToText`, `ToJson`, `FromJson`.
+
+## Expressions
+```
+a + b   a - b   a * b   a / b   a remainder b   a power b
+a is b   a is not b   a is less than b   a is at most b
+a is greater than b   a is at least b
+a and b   a or b   not a
+"Hello {user.name}, total {total}"         # interpolation
+from 1 to 10   from 0 to 100 by 5         # inclusive ranges
+[1, 2, 3]   {"key": value}   nothing   true   false
+```
+Numbers: `Integer` (unbounded), `Decimal` (exact, literals like `19.99`),
+`Float` (explicit). No implicit conversion: `count.to_decimal()`.
+`Integer / Integer` is a `Decimal`; `a.quotient(b)` divides down.
+
+## Optionals and errors
+```
+let name be user.nickname otherwise user.name       # default
+let text be files.read_text(path) otherwise fail    # propagate
+let config: Config be json.parse(text) otherwise fail with BadConfig(detail: "not JSON")
+let user be accounts.find(id) otherwise return nothing
+fail with NotFound(path: path)                      # return a failure
+crash with "unreachable: {state}"                   # terminate; bugs only
+
+match action()                                      # when the error is needed
+  when success(outcome) then return outcome
+  when failure(error) then log.warn(error.to_text())
+end
+```
+A `T` is accepted where `maybe T` or a success is expected. Reading out always
+names the other case. `otherwise` takes a default value or a way out: `fail`,
+`fail with E(...)`, `return value`, `break`, `continue`, `crash with "text"`.
+`type X is Base` is a subtype: an `X` passes as a `Base`, never the reverse.
+
+## Control flow
+```
+if age is at least 18 then
+  set adults to adults + 1
+otherwise if age is at least 13 then
+  set teens to teens + 1
+otherwise
+  set children to children + 1
+end
+
+match shape
+  when Circle(radius) where radius is greater than 10 then return Large
+  when Circle(radius) then return Small
+  when Rectangle(width: wide, height: tall) then return area.classify(width: wide, height: tall)
+  otherwise return Unknown
+end
+
+match user.nickname
+  when some(nickname) then console.print(nickname)
+  when nothing then console.print(user.name)
+end
+
+for each line in invoice.lines
+  set total to total + line.amount
+end
+for each key, value in settings
+  console.print("{key}: {value}")
+end
+while attempts is less than 3
+  set attempts to attempts + 1
+  if done then break end
+end
+```
+Matching is exhaustive. `if` and `match` are also expressions when every
+branch is one expression: `let label be if done then "yes" otherwise "no" end`.
+Loop headers accept `where` and `sorted by`. Max nesting depth is 4; max body
+about 60 lines.
+
+## Queries (instead of lambdas)
+```
+let emails be
+  for each user in users
+  where user.is_active and user.age is at least 18
+  sorted by user.created_at descending
+  collect user.email
+
+for each order in orders where order.is_paid sum order.total     # Decimal
+for each order in orders where order.is_paid count               # Integer
+for each order in orders sorted by order.created_at first        # maybe Order
+for each order in orders all order.is_shipped                    # Boolean
+for each order in orders any order.is_refunded                   # Boolean
+for each user in users group by user.country collect user.email # Map
+for each order in orders, line in order.lines collect line.sku   # flatten
+for each url in urls concurrently collect web.get(url) otherwise fail
+```
+
+## Effects
+`needs` lists capabilities; callers must declare a superset; no `needs` means
+pure. Capabilities: `console`, `filesystem.read`, `filesystem.write`,
+`network.http`, `network.socket`, `environment`, `time`, `random`, `process`,
+`foreign`. A parent covers its children. `main` declares the program's whole
+grant; `renyi run` enforces it.
+```
+public function main() or fails with AppError
+  needs console, network.http
+  purpose: Print today's report.
+  ...
+end
+```
+
+## Concurrency
+```
+run concurrently
+  let users be accounts.fetch_all() otherwise fail
+  let orders be billing.fetch_open() otherwise fail
+end
+```
+All tasks finish or the first failure cancels the rest. No `async`/`await`.
+
+## Tests and tools
+```
+test "tax is applied to the subtotal"
+  check invoices.total_price(items: items, rate: TaxRate(0.1)) is 11.00
+end
+```
+`expose as tool` on a function publishes it to agents: JSON Schema from the
+parameters, description from `purpose:`, permissions from `needs`.
+`deprecated: since 2.0, replaced by new_name` hides a definition from
+discovery, warns existing callers, and lets `renyi migrate` rewrite them.
+
+## Names and reserved words
+snake_case for values and functions, PascalCase for types, abilities and
+variants. ASCII only. No single-letter names. Reserved (81):
+```
+ability all also and any as at be break by can check collect concurrently
+continue count crash deprecated descending each end example expose exposing
+fail fails failure false first for from function greater group has if import
+in is lazy least less let match maybe module most mutable needs not nothing of
+one or otherwise power public purpose remainder return returns run see self
+set some sorted success sum tags test than then to tool true type when where
+while with
+```
+Phrases are single tokens: `is not`, `is less than`, `is at most`,
+`is greater than`, `is at least`, `or fails with`, `is one of`, `for each`,
+`for any`, `run concurrently`, `sorted by`, `group by`, `see also`,
+`expose as tool`. After a dot any word is a valid member name.

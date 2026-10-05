@@ -1,0 +1,23 @@
+module temperature_table
+  purpose: Print a Celsius to Fahrenheit conversion table.
+
+import std.console
+
+public function to_fahrenheit(celsius: Decimal) returns Decimal
+  purpose: Convert a Celsius temperature to Fahrenheit.
+  example: to_fahrenheit(0) is 32
+  example: to_fahrenheit(100) is 212
+  example: to_fahrenheit(-40) is -40
+
+  return celsius * 9 / 5 + 32
+end
+
+public function main() needs console
+  purpose: Print the table from -10 to 40 degrees in steps of 10.
+
+  console.print("Celsius  Fahrenheit")
+  for each celsius from -10 to 40 by 10
+    let fahrenheit be to_fahrenheit(celsius.to_decimal())
+    console.print("{celsius.to_text().pad_left(7)}  {fahrenheit.to_text().pad_left(10)}")
+  end
+end

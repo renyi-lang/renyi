@@ -1,0 +1,69 @@
+module sales_report
+  purpose: Summarize a CSV of sales by region and write the totals to a report file.
+
+import std.console
+import std.csv exposing Row
+import std.filesystem exposing Path
+
+public type Sale
+  purpose: One row of the sales export after cleaning.
+  has region: Text
+  has product: Text
+  has amount: Decimal
+end
+
+public type ReportError is one of
+  purpose: Why the report could not be produced.
+  BadRow(line: Integer, detail: Text)
+  Io(detail: Text)
+end
+
+function parse_sale(row: Row) returns Sale or fails with ReportError
+  let region be row.get("region")
+    otherwise fail with BadRow(line: row.line, detail: "missing region")
+  let product be row.get("product")
+    otherwise fail with BadRow(line: row.line, detail: "missing product")
+  let amount_text be row.get("amount")
+    otherwise fail with BadRow(line: row.line, detail: "missing amount")
+  let amount be amount_text.trim().to_decimal()
+    otherwise fail with BadRow(line: row.line, detail: "amount is not a number: {amount_text}")
+  return Sale(region: region.trim(), product: product.trim(), amount: amount)
+end
+
+public function load_sales(path: Path)
+  returns List of Sale
+  or fails with ReportError
+  needs filesystem.read
+  purpose: Read and validate every row of the sales file.
+
+  let text be filesystem.read_text(path)
+    otherwise fail with Io(detail: "cannot read {path}")
+  let rows be csv.parse(text) otherwise fail with Io(detail: "file is not valid CSV")
+  return for each row in rows collect parse_sale(row) otherwise fail
+end
+
+public function totals_by_region(sales: List of Sale) returns Map of Text to Decimal
+  purpose: Sum of amounts per region.
+  example: totals_by_region([]) is {}
+
+  let grouped be for each sale in sales group by sale.region collect sale.amount
+  let mutable totals: Map of Text to Decimal be {}
+  for each region, amounts in grouped
+    set totals to totals.set(key: region, value: amounts.sum())
+  end
+  return totals
+end
+
+public function main() or fails with ReportError needs console, filesystem
+  purpose: Print the regional totals and save them as a CSV report.
+
+  let sales be load_sales(Path("data/sales.csv")) otherwise fail
+  let totals be totals_by_region(sales)
+  let mutable report be "region,total\n"
+  for each region, amount in totals sorted by amount descending
+    console.print("{region}: {amount}")
+    set report to report + "{region},{amount}\n"
+  end
+  filesystem.write_text(path: Path("data/report.csv"), content: report)
+    otherwise fail with Io(detail: "cannot write the report")
+end

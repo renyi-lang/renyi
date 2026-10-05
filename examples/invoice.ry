@@ -1,0 +1,53 @@
+module invoice
+  purpose: Compute invoice totals with a percentage discount, exact to the cent.
+
+public type Line
+  purpose: One billable line of an invoice.
+  has description: Text
+  has quantity: Integer where quantity is at least 1
+  has unit_price: Decimal where unit_price is at least 0
+end
+
+public type Invoice
+  purpose: A set of lines billed to one customer.
+  has customer: Text
+  has lines: List of Line
+  has discount_percent: Decimal
+    where discount_percent is at least 0
+    and discount_percent is at most 100
+end
+
+public function line_total(line: Line) returns Decimal
+  purpose: Quantity times unit price for one line.
+  example: line_total(Line(description: "pen", quantity: 3, unit_price: 1.50)) is 4.50
+
+  return line.quantity.to_decimal() * line.unit_price
+end
+
+public function subtotal(invoice: Invoice) returns Decimal
+  purpose: Sum of all line totals before the discount.
+  see also: total
+
+  return for each line in invoice.lines sum line_total(line)
+end
+
+public function total(invoice: Invoice) returns Decimal
+  purpose: Subtotal after the percentage discount, rounded to cents.
+  see also: subtotal
+
+  let before_discount be subtotal(invoice)
+  let discount be before_discount * invoice.discount_percent / 100
+  return (before_discount - discount).rounded(2)
+end
+
+test "a ten percent discount is taken from the subtotal"
+  let pens be Line(description: "pen", quantity: 10, unit_price: 1.00)
+  let order be Invoice(customer: "ACME", lines: [pens], discount_percent: 10)
+  check subtotal(order) is 10.00
+  check total(order) is 9.00
+end
+
+test "an invoice without lines totals zero"
+  let empty be Invoice(customer: "ACME", lines: [], discount_percent: 0)
+  check total(empty) is 0
+end

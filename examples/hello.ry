@@ -1,0 +1,13 @@
+module hello
+  purpose: Greet whoever runs the program.
+
+import std.console
+import std.environment
+
+public function main() needs console, environment
+  purpose: Print a greeting that uses the first command-line argument as the name.
+
+  let arguments be environment.arguments()
+  let name be arguments.first() otherwise "world"
+  console.print("Hello, {name}!")
+end

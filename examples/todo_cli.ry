@@ -1,0 +1,67 @@
+module todo_cli
+  purpose: Keep a to-do list in a text file from the command line.
+
+import std.console
+import std.environment
+import std.filesystem exposing Path, FileError
+
+let todo_path: Path be Path("todo.txt")
+
+public type Command is one of
+  purpose: What the user asked for.
+  Add(task: Text)
+  Done(position: Integer where position is at least 1)
+  Show
+  Help
+end
+
+public function parse_command(arguments: List of Text) returns Command
+  purpose: Turn command-line words into a command; anything unrecognized is Help.
+  example: parse_command(["add", "buy", "milk"]) is Add(task: "buy milk")
+  example: parse_command(["done", "2"]) is Done(position: 2)
+  example: parse_command([]) is Help
+
+  let verb be arguments.first() otherwise return Help
+  match verb
+    when "add" then return Add(task: arguments.rest().join(" "))
+    when "done" then
+      let position_text be arguments.at(1) otherwise return Help
+      let position be position_text.to_integer() otherwise return Help
+      return Done(position: position) otherwise Help
+    when "show" then return Show
+    otherwise return Help
+  end
+end
+
+function load_tasks() returns List of Text needs filesystem.read
+  let text be filesystem.read_text(todo_path) otherwise ""
+  return for each line in text.lines() where line.trim() is not "" collect line
+end
+
+function save_tasks(tasks: List of Text) or fails with FileError needs filesystem.write
+  filesystem.write_text(path: todo_path, content: tasks.join("\n")) otherwise fail
+end
+
+function show_tasks(tasks: List of Text) needs console
+  for each task, position in tasks.with_index()
+    console.print("{position + 1}. {task}")
+  end
+end
+
+public function main() or fails with FileError needs console, environment, filesystem
+  purpose: Run one command and show the resulting list.
+
+  let tasks be load_tasks()
+  match parse_command(environment.arguments())
+    when Add(task) then
+      let updated be tasks.append(task)
+      save_tasks(updated) otherwise fail
+      show_tasks(updated)
+    when Done(position) then
+      let updated be tasks.without_index(position - 1)
+      save_tasks(updated) otherwise fail
+      show_tasks(updated)
+    when Show then show_tasks(tasks)
+    when Help then console.print("usage: todo add <task> | todo done <number> | todo show")
+  end
+end

@@ -1,0 +1,34 @@
+module concurrent_fetch
+  purpose: Download several pages at once and report their sizes.
+
+import std.console
+import std.http exposing Url, HttpError
+
+public type PageSize
+  purpose: How many characters one page has.
+  has url: Url
+  has characters: Integer
+end
+
+public function measure(url: Url) returns PageSize or fails with HttpError needs network.http
+  purpose: Download one page and measure its body.
+
+  let response be http.get(url) otherwise fail
+  return PageSize(url: url, characters: response.body.length())
+end
+
+public function main() or fails with HttpError needs console, network.http
+  purpose: Measure three sites in parallel and print the largest first.
+
+  let urls be [Url("https://example.com"), Url("https://example.org"), Url("https://example.net")]
+  let sizes be for each url in urls concurrently collect measure(url) otherwise fail
+  for each size in sizes sorted by size.characters descending
+    console.print("{size.url}: {size.characters} characters")
+  end
+
+  run concurrently
+    let home be measure(Url("https://example.com")) otherwise fail
+    let docs be measure(Url("https://example.com/docs")) otherwise fail
+  end
+  console.print("home and docs together: {home.characters + docs.characters} characters")
+end

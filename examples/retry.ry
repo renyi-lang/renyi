@@ -1,0 +1,37 @@
+module retry
+  purpose: Retry a failing action with exponential backoff and jitter.
+
+import std.time
+import std.random
+
+public type GaveUp
+  purpose: The action still failed after the last attempt.
+  has attempts: Integer
+  has last_error: Text
+end
+
+public function with_backoff(
+  action: function() returns Outcome or fails with Failure,
+  attempts: Integer
+)
+  returns Outcome
+  or fails with GaveUp
+  needs time, random
+  for any Outcome, Failure where Failure can ToText
+  purpose: Run the action until it succeeds, waiting roughly twice as long after each failure.
+  tags: resilience, backoff
+
+  let mutable last_error be "no attempt was made"
+  let mutable delay_ms be 100
+  for each attempt from 1 to attempts
+    match action()
+      when success(outcome) then return outcome
+      when failure(error) then
+        set last_error to error.to_text()
+        let jitter_ms be random.integer(lowest: 0, highest: delay_ms.quotient(4))
+        time.sleep(time.milliseconds(delay_ms + jitter_ms))
+        set delay_ms to delay_ms * 2
+    end
+  end
+  fail with GaveUp(attempts: attempts, last_error: last_error)
+end

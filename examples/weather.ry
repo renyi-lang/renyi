@@ -1,0 +1,51 @@
+module weather
+  purpose: Show the current temperature for Berlin using the Open-Meteo API.
+
+import std.console
+import std.http exposing Url, HttpError
+import std.json exposing JsonError
+
+type CurrentWeather
+  has temperature_2m: Decimal
+  has wind_speed_10m: Decimal
+  can FromJson
+end
+
+type Forecast
+  has current: CurrentWeather
+  can FromJson
+end
+
+public type WeatherError is one of
+  purpose: Why a forecast could not be shown.
+  Unreachable(detail: Text)
+  BadResponse(detail: Text)
+end
+
+public function fetch_forecast(latitude: Decimal, longitude: Decimal)
+  returns Forecast
+  or fails with HttpError or JsonError
+  needs network.http
+  purpose: Download the current weather for one coordinate.
+  tags: weather, http, json
+
+  let base be "https://api.open-meteo.com/v1/forecast"
+  let query be "latitude={latitude}&longitude={longitude}&current=temperature_2m,wind_speed_10m"
+  let url be Url("{base}?{query}")
+  let response be http.get(url) otherwise fail
+  let forecast: Forecast be json.parse(response.body) otherwise fail
+  return forecast
+end
+
+public function main() or fails with WeatherError needs console, network.http
+  purpose: Print the temperature and wind speed in Berlin.
+
+  let forecast be
+    match fetch_forecast(latitude: 52.52, longitude: 13.41)
+      when success(result) then result
+      when failure(error: HttpError) then fail with Unreachable(detail: error.to_text())
+      when failure(error: JsonError) then fail with BadResponse(detail: error.to_text())
+    end
+  let current be forecast.current
+  console.print("Berlin: {current.temperature_2m} C, wind {current.wind_speed_10m} km/h")
+end

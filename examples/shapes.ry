@@ -1,0 +1,63 @@
+module shapes
+  purpose: Describe and measure plane shapes.
+
+import std.console
+
+public type Shape is one of
+  purpose: A closed plane figure.
+  Circle(radius: Decimal where radius is greater than 0)
+  Rectangle(
+    width: Decimal where width is greater than 0,
+    height: Decimal where height is greater than 0
+  )
+  Point
+end
+
+public ability Measurable
+  purpose: Anything that has an area.
+  function area(self) returns Decimal
+end
+
+ability Measurable for Shape
+  function area(self) returns Decimal
+    match self
+      when Circle(radius) then return 3.14159 * radius * radius
+      when Rectangle(width, height) then return width * height
+      when Point then return 0
+    end
+  end
+end
+
+public function describe(shape: Shape) returns Text
+  purpose: One line naming the shape and giving its area.
+  example: describe(Point) is "a point with area 0.00"
+  example: describe(Rectangle(width: 2, height: 3)) is "a 2 by 3 rectangle with area 6.00"
+
+  let kind be
+    match shape
+      when Circle(radius) then "a circle of radius {radius}"
+      when Rectangle(width, height) then "a {width} by {height} rectangle"
+      when Point then "a point"
+    end
+  return "{kind} with area {shape.area().rounded(2)}"
+end
+
+public function largest(shapes: List of Shape) returns maybe Shape
+  purpose: The shape with the greatest area, or nothing for an empty list.
+  example: largest([]) is nothing
+
+  return for each shape in shapes sorted by shape.area() descending first
+end
+
+public function main() needs console
+  purpose: Describe a few shapes and name the largest.
+
+  let shapes be [Circle(radius: 1.5), Rectangle(width: 2, height: 3), Point]
+  for each shape in shapes
+    console.print(describe(shape))
+  end
+  match largest(shapes)
+    when some(shape) then console.print("largest: {describe(shape)}")
+    when nothing then console.print("no shapes")
+  end
+end

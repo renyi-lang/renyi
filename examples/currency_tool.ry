@@ -1,0 +1,37 @@
+module currency_tool
+  purpose: Convert amounts between currencies; published to agents as a tool.
+
+import std.http exposing Url, HttpError
+import std.json exposing JsonError
+
+public type Currency is Text
+  where value.length() is 3
+  and value is value.to_upper()
+  purpose: A three-letter ISO 4217 currency code.
+
+type RateTable
+  has rates: Map of Text to Decimal
+  can FromJson
+end
+
+public type RateUnavailable
+  purpose: The rate service had no rate for the requested pair.
+  has source: Currency
+  has target: Currency
+end
+
+public function convert(amount: Decimal, source: Currency, target: Currency)
+  returns Decimal
+  or fails with RateUnavailable or HttpError or JsonError
+  needs network.http
+  purpose: Convert an amount from one currency to another at today's rate, rounded to cents.
+  tags: money, exchange-rate
+  expose as tool
+
+  let url be Url("https://api.frankfurter.app/latest?from={source}&to={target}")
+  let response be http.get(url) otherwise fail
+  let table: RateTable be json.parse(response.body) otherwise fail
+  let rate be table.rates.get(target)
+    otherwise fail with RateUnavailable(source: source, target: target)
+  return (amount * rate).rounded(2)
+end

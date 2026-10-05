@@ -1,0 +1,42 @@
+module word_count
+  purpose: Count how often each word appears in a text file and show the ten most common.
+
+import std.console
+import std.environment
+import std.filesystem exposing Path, FileError
+
+public type WordCount
+  purpose: A word and the number of times it occurred.
+  has word: Text
+  has occurrences: Integer
+  can Compare by occurrences
+end
+
+public function count_words(text: Text) returns List of WordCount
+  purpose: Count every lower-cased word, most frequent first.
+  example: count_words("a b a") is [
+    WordCount(word: "a", occurrences: 2),
+    WordCount(word: "b", occurrences: 1)
+  ]
+  example: count_words("") is []
+
+  let words be
+    for each line in text.lines(), raw_word in line.split(" ")
+    where raw_word.trim() is not ""
+    collect raw_word.trim().to_lower()
+  let grouped be for each word in words group by word
+  return
+    for each word, repeats in grouped
+    sorted by repeats.length() descending
+    collect WordCount(word: word, occurrences: repeats.length())
+end
+
+public function main() or fails with FileError needs console, environment, filesystem.read
+  purpose: Read the file named on the command line and print its top ten words.
+
+  let path_text be environment.arguments().first() otherwise "data/sample.txt"
+  let text be filesystem.read_text(Path(path_text)) otherwise fail
+  for each entry in count_words(text).take(10)
+    console.print("{entry.occurrences.to_text().pad_left(6)}  {entry.word}")
+  end
+end
