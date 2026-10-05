@@ -64,6 +64,13 @@ runtime exists. No design question is open.
    `file` provider. The owner will set `ANTHROPIC_API_KEY` and
    `OPENAI_API_KEY` in the cloud environment (decision L1) and Claude judges
    Complete and Write samples before M3 (decision L2).
+7. Started M1: a Cargo workspace (`crates/renyi_syntax`, `crates/renyi`) with
+   spans, diagnostics (text and JSON), layout checks, the complete lexer
+   (phrase table with longest match, dot members, interpolation holes, block
+   and raw text, clause text) with unit tests, the `renyi check` and
+   `renyi tokens` commands, and a corpus conformance test that lexes all
+   thirty programs. `cargo test`, `cargo clippy --all-targets` and
+   `cargo fmt --check` are clean.
 
 ## Next steps, in order
 
@@ -75,10 +82,13 @@ runtime exists. No design question is open.
    the run directory. Compare against the acceptance thresholds in
    `03-readability-test.md`; a failing threshold becomes a grammar question
    for the owner, not a silent change.
-2. **M1 in Rust.** Cargo workspace with crates for lexer (phrase table, longest
-   match), parser (clause grammar, continuation rules), formatter (canonical
-   layout from sketch section 16), and a conformance test runner driven by the
-   corpus. The owner chose M3 (a VM running the corpus) as the first demo.
+2. **M1, continued.** Next in `crates/renyi_syntax`: the AST (`ast.rs`) and the
+   parser (`parser.rs`, clause grammar with the continuation rules of sketch
+   section 1 and the indentation rule for multi-line `example:` clauses),
+   then the formatter (`format.rs`, sketch section 16) with the idempotence
+   and round-trip property tests of decision H6. Extend the corpus test so
+   every program parses; add `renyi format` and `renyi parse --json`. The
+   owner chose M3 (a VM running the corpus) as the first demo.
 
 ## Known gaps and risks
 
