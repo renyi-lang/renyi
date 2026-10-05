@@ -1,0 +1,3 @@
+# Renyi source files require LF line endings (the layout check rejects CR), and
+# nothing in this repository wants CRLF: normalize every text file on checkout.
+* text=auto eol=lf

@@ -3633,9 +3633,12 @@ pub fn check_module(world: &World, module: ModuleId) -> Vec<Diagnostic> {
 fn find_function(world: &World, module: ModuleId, body: BodyLocation) -> Option<FunctionId> {
     world.functions.iter().position(|f| {
         f.module == module
-            && matches!(
-                (f.body, body),
-                (BodyLocation::Item(a), BodyLocation::Item(b)) if a == b
-            ) || (f.module == module && matches!((f.body, body), (BodyLocation::Implementation(a, c), BodyLocation::Implementation(b, d)) if a == b && c == d))
+            && match (f.body, body) {
+                (BodyLocation::Item(a), BodyLocation::Item(b)) => a == b,
+                (BodyLocation::Implementation(a, c), BodyLocation::Implementation(b, d)) => {
+                    a == b && c == d
+                }
+                _ => false,
+            }
     })
 }
