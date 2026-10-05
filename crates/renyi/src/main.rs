@@ -1,20 +1,21 @@
 //! The `renyi` command. M1 provides `check` (lexer, parser and layout
 //! diagnostics, text or JSON), `format` (canonical layout, in place or
-//! `--check`), `tokens` (a token dump) and `parse` (a syntax tree dump). Type
-//! checking and running follow in later milestones.
+//! `--check`), `tokens` (a token dump) and `parse` (a syntax tree dump, as
+//! Rust debug output or as JSON for tools). Type checking and running follow
+//! in later milestones.
 
 use std::io::Write;
 use std::process::ExitCode;
 
 use renyi_syntax::diagnostics::{render_json, render_text};
 use renyi_syntax::layout::check_layout;
-use renyi_syntax::{format, lex, parse, SourceFile, TokenKind};
+use renyi_syntax::{format, lex, module_to_json, parse, SourceFile, TokenKind};
 
 const USAGE: &str = "usage:
   renyi check [--json] <file.ry>...   report diagnostics (exit 1 when any error)
   renyi format [--check] <file.ry>... rewrite files in canonical layout (--check: report only)
   renyi tokens <file.ry>              dump the token stream
-  renyi parse <file.ry>               dump the syntax tree
+  renyi parse [--json] <file.ry>      dump the syntax tree (--json: for tools)
   renyi version";
 
 fn main() -> ExitCode {
@@ -123,7 +124,8 @@ fn tokens(args: &[String]) -> ExitCode {
 }
 
 fn parse_command(args: &[String]) -> ExitCode {
-    let Some(path) = args.first() else {
+    let json = args.iter().any(|arg| arg == "--json");
+    let Some(path) = args.iter().find(|arg| !arg.starts_with("--")) else {
         eprintln!("{USAGE}");
         return ExitCode::FAILURE;
     };
@@ -134,8 +136,16 @@ fn parse_command(args: &[String]) -> ExitCode {
     let parsed = parse(&file.text);
     let stdout = std::io::stdout();
     let mut out = stdout.lock();
-    let _ = writeln!(out, "{:#?}", parsed.module);
-    let _ = write!(out, "{}", render_text(&file, &parsed.diagnostics));
+    if json {
+        // the tree first, then the diagnostics, each a complete JSON document on its own
+        let _ = write!(out, "{}", module_to_json(&file, &parsed.module));
+        if !parsed.diagnostics.is_empty() {
+            let _ = write!(out, "{}", render_json(&file, &parsed.diagnostics));
+        }
+    } else {
+        let _ = writeln!(out, "{:#?}", parsed.module);
+        let _ = write!(out, "{}", render_text(&file, &parsed.diagnostics));
+    }
     if parsed
         .diagnostics
         .iter()

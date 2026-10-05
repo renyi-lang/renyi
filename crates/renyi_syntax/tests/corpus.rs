@@ -191,3 +191,59 @@ fn the_corpus_is_in_canonical_form() {
     }
     assert!(report.is_empty(), "{report}");
 }
+
+/// Braces and brackets balance outside string literals: a cheap guard that
+/// the JSON encoder closes every object and array it opens.
+fn json_is_balanced(text: &str) -> bool {
+    let mut depth: i64 = 0;
+    let mut in_string = false;
+    let mut escaped = false;
+    for character in text.chars() {
+        if in_string {
+            if escaped {
+                escaped = false;
+            } else if character == '\\' {
+                escaped = true;
+            } else if character == '"' {
+                in_string = false;
+            }
+            continue;
+        }
+        match character {
+            '"' => in_string = true,
+            '{' | '[' => depth += 1,
+            '}' | ']' => depth -= 1,
+            _ => {}
+        }
+        if depth < 0 {
+            return false;
+        }
+    }
+    depth == 0 && !in_string
+}
+
+#[test]
+fn every_corpus_program_encodes_as_json() {
+    for path in corpus() {
+        let text = std::fs::read_to_string(&path).expect("read");
+        let file = SourceFile::new(path.display().to_string(), text);
+        let parsed = renyi_syntax::parse(&file.text);
+        let json = renyi_syntax::module_to_json(&file, &parsed.module);
+        assert!(
+            json.starts_with("{\n  \"node\": \"Module\""),
+            "{}",
+            path.display()
+        );
+        assert!(json.ends_with("}\n"), "{}", path.display());
+        assert!(
+            json_is_balanced(&json),
+            "{}: unbalanced JSON",
+            path.display()
+        );
+        assert!(
+            json.contains("\"node\": \"Function\""),
+            "{}: no function in the JSON",
+            path.display()
+        );
+    }
+}
