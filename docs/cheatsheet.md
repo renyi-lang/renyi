@@ -209,10 +209,11 @@ pure. Capabilities: `console`, `filesystem.read`, `filesystem.write`,
 `foreign`. A parent covers its children. A literal argument narrows a scope:
 `filesystem.read("data")`, `network.http("api.example.com")`; no argument
 covers every scope. `main` declares the program's whole grant; `renyi run`
-enforces it.
+enforces it. Only there: `at most 60 per minute` (budget; also `per run`) and
+`only to console` (data read through it may leave only there).
 ```
 public function main() or fails with AppError
-  needs console, network.http
+  needs console, network.http("api.example.com") at most 60 per minute
   purpose: Print today's report.
   ...
 end
@@ -233,7 +234,11 @@ deadline cancels them and fails with `TimedOut`. No `async`/`await`.
 test "tax is applied to the subtotal"
   check invoices.total_price(items: items, rate: TaxRate(0.1)) is 11.00
 end
+test "the forecast is read" needs network.http replays "fixtures/forecast.json"
+  check weather.fetch(city: "Berlin").temperature is 21.5
+end
 ```
+A recording (`renyi record`) answers every effect of a `replays` test offline.
 `expose as tool` on a function publishes it to agents: JSON Schema from the
 parameters, description from `purpose:`, permissions from `needs`.
 `deprecated: since 2.0, replaced by new_name` hides a definition from
@@ -261,17 +266,17 @@ Modules: std.console (print, print_error, read_line); std.environment
 
 ## Names and reserved words
 snake_case for values and functions, PascalCase for types, abilities and
-variants. ASCII only. No single-letter names. Reserved (85):
+variants. ASCII only. No single-letter names. Reserved (88):
 ```
 ability all also and any as at be break by can check collect concurrently
 continue count crash deprecated descending each end example expose exposing
 fail fails failure false first for from function greater group has if ignore
 import in is lazy least less let match maybe module most mutable needs not
-nothing of one or otherwise power public purpose raw remainder repeat return
-returns run see self set some sorted success sum tags test than then to tool
-true type until when where with within
+nothing of one only or otherwise per power public purpose raw remainder repeat
+replays return returns run see self set some sorted success sum tags test than
+then to tool true type until when where with within
 ```
 Phrases are single tokens: `is not`, `is less than`, `is at most`,
 `is greater than`, `is at least`, `or fails with`, `is one of`, `for each`,
 `for any`, `run concurrently`, `repeat until`, `sorted by`, `group by`,
-`see also`, `expose as tool`. After a dot any word is a valid member name.
+`see also`, `expose as tool`, `at most`, `only to`. After a dot any word is a valid member name.

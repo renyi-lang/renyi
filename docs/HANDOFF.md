@@ -2,7 +2,8 @@
 
 Last updated: 2026-10-05, end of session 4 (pre-test finished and decided,
 M1 wrapped up, M2 type and effect checker green on the corpus, runtime
-memory model and agent tooling designed).
+memory model, agent tooling and the three signature capabilities designed;
+their syntax is in the grammar).
 Branches: `main` holds the session-1 handoff; `claude/renyi-language-design-hbrie3`
 carries session 2; `claude/nifty-knuth-r5sntt` carries sessions 3 and 4 on top
 of it. The owner decides when `main` moves.
@@ -11,14 +12,17 @@ of it. The owner decides when `main` moves.
 
 Milestones M0 (design), M1 (front end) and M2 (type and effect checker) are
 done; the project map (`renyi index`) and M3 (the VM) are next. Design
-decisions are recorded in sections 0 to O of `01-decisions.md`, and the
-agent tooling (project map, budgets, diffs, `renyi mcp`) has its own design
-document, `05-agent-tooling.md`; the surface syntax and the standard
+decisions are recorded in sections 0 to P of `01-decisions.md`; the agent
+tooling (project map, budgets, diffs, `renyi mcp`) is designed in
+`05-agent-tooling.md` and the signature capabilities (recorded runs with
+`replays` tests and narration, budgets in grants, provenance guards) in
+`06-runtime-guarantees.md`; the surface syntax and the standard
 library are sketched in full, and the library also exists as declaration
 files the compiler reads (`library/std/*.ry`). The corpus has its target 30
 programs, passes the lint, is in canonical layout, and type- and
 effect-checks without a diagnostic. The cheat sheet measures about 2770
-tokens (byte estimate) against the 3000-token budget. The Rust workspace has
+tokens (byte estimate; 2890 after the grant and `replays` lines) against the
+3000-token budget, so the sheet is nearly full. The Rust workspace has
 three crates: `renyi_syntax` (lexer, parser, JSON encoder, formatter),
 `renyi_check` (the checker) and the `renyi` binary with `check` (parse plus
 type and effect check), `format`, `tokens` and `parse [--json]`. 77 tests,
@@ -212,6 +216,28 @@ what it can offer agents, and took the recommendations as given:
 - O5 the toolchain MCP server is `renyi mcp` (JSON-RPC over stdio), distinct
   from `renyi serve --mcp` of D6; `serde_json` is taken as a dependency.
 
+## Decisions P1 to P4: the signature capabilities
+
+The owner asked for at least one capability no other language has had and
+chose three of four candidates (the fourth, nothing, was not chosen):
+
+- P1 **recorded runs**: `renyi record` writes every effect call of a run;
+  `test ... replays "path"` answers a test's effects from the recording,
+  offline and deterministic; `renyi run --replay` re-executes a run;
+  `--explain` narrates any run with the `purpose:` clauses (the
+  self-narrating layer). M3.
+- P2 **budgets in grants**: `needs network.http("host") at most 60 per
+  minute` on `main` or a test; the runtime counts and fails the call over
+  budget. M3.
+- P3 **provenance guards**: `needs filesystem.read("secrets") only to
+  network.http("host")`; values from a guarded capability carry their
+  origin at run time and may leave only through the listed sinks; the
+  answer to exfiltration by prompt injection. Design now, runtime in M4.
+- P4 reserved words 88, phrases 17 (`only`, `per`, `replays`; `at most`,
+  `only to`). The parser, formatter, JSON encoder, lint, checker
+  (`grant-clause`: budgets and guards belong on `main` or a test), sketch
+  and cheat sheet carry the syntax; no corpus program uses it yet.
+
 ## Next steps
 
 0. **Confirm the cheat-sheet token count** with `python3 tools/count_tokens.py`
@@ -234,20 +260,27 @@ what it can offer agents, and took the recommendations as given:
    hashes; strongly connected components hashed together), the text form
    and `--json`. Measure the corpus and write the numbers into the design
    document as the first budget data (R5-1). About a day of work.
-3. **M3: the bytecode VM** (`renyi run`, `renyi test`), the owner's first
-   demo, under decision O1 (reference counting, in-place reuse, last-use
-   moves): run the thirty corpus programs; the ten reference outputs under
-   `tests/readability/reference/` and the `example:` lines and `test` blocks
-   of the corpus are the first conformance expectations, and the 40 judged
-   pre-test samples are a second check (decision L2). Decimal128
-   arithmetic, the capability sandbox at startup, structured concurrency on
-   one OS thread and the library primitives (console, filesystem, json,
-   http, csv, sqlite, regex, time) are the bulk of it; the checker's
-   `World` and `Ty` are the input.
+3. **M3: the bytecode VM** (`renyi run`, `renyi test`, `renyi record`), the
+   owner's first demo, under decision O1 (reference counting, in-place
+   reuse, last-use moves): run the thirty corpus programs; the ten reference
+   outputs under `tests/readability/reference/` and the `example:` lines
+   and `test` blocks of the corpus are the first conformance expectations,
+   and the 40 judged pre-test samples are a second check (decision L2).
+   Decimal128 arithmetic, the capability sandbox at startup, structured
+   concurrency on one OS thread and the library primitives (console,
+   filesystem, json, http, csv, sqlite, regex, time) are the bulk of it;
+   the checker's `World` and `Ty` are the input. The primitive boundary
+   carries the recorder, the replayer, the budget counters and the
+   narration hook from the first version (`06-runtime-guarantees.md`,
+   section 4); the five network programs of the corpus get recordings and
+   `replays` tests.
 4. **`renyi mcp`** (decision O5, `05-agent-tooling.md` section 7): the first
    seven tools, then `run`, `run_tests` and `diff` as M3 and `--diff` land.
-5. **Budgets and the semantic diff** (O3, O4), then M4 reads budgets from
-   the manifest.
+5. **Complexity budgets and the semantic diff** (O3, O4), then M4 reads
+   them from the manifest.
+6. **M4 also carries the provenance guards** (P3, `06-runtime-guarantees.md`
+   section 3): origin sets on heap values, the `only to` check at outgoing
+   primitives, the `environment` default (R6-6).
 
 ## Known gaps and risks
 
@@ -258,9 +291,13 @@ what it can offer agents, and took the recommendations as given:
   `set`, `type`, `test`, `check`, `run`, `group`, `power`, `tags`, `example`,
   `repeat`, `until`). The owner confirmed in round 2 (J3) that they stay
   reserved; the fix for a collision is a rename suggestion from the compiler.
-- `repeat until` (M9) has not been through a readability round yet; the
+- `repeat until` (M9) and the grant clauses `at most`, `only to` and
+  `replays` (P1 to P3) have not been through a readability round yet; the
   pre-test samples were written with `while`. A drop of more than five
-  points in the live round reverts it (protocol rule).
+  points in the live round reverts a change (protocol rule).
+- The cheat sheet is at about 2890 of 3000 tokens by byte estimate; the
+  next grammar addition must make room, and the real tokenizer count is
+  still owed.
 - Scoped capabilities (J11) make the effect checker compare path prefixes and
   host names; the containment rules in sketch section 11 are the first draft
   and have not been exercised beyond three corpus programs.
@@ -305,9 +342,6 @@ what it can offer agents, and took the recommendations as given:
 
 - Set `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` in the cloud environment so the
   next session can run the readability round (decision L1).
-- Choose the language's signature capability (the owner asked for one
-  feature no other language has had; the candidates and the recommendation
-  are in the session-4 chat and, once chosen, become a decision entry).
 - Switch the GitHub default branch to `main`, and say when `main` should be
   updated from the session branch.
 

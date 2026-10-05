@@ -783,3 +783,53 @@ and `diff`. The checker's `World` stays resident and is refreshed by
 content hash. `serde_json` is taken as a dependency: the zero-dependency
 rule ended when `regex` entered the checker, and a hand-written parser
 would buy nothing. (derived)
+
+---
+
+## P. Signature capabilities (session 4)
+
+The owner asked for at least one capability no other language has had, new,
+practical and elegant, and chose three of the four candidates. Each rests on
+the effect system: every effect goes through a declared capability and a
+small set of library primitives, so the runtime sees all of them. Design:
+`06-runtime-guarantees.md`.
+
+**P1. Recorded runs.** `renyi record program.ry` runs a program under its
+grant and writes every effect call (capability, primitive, arguments, result
+or failure, clock and random values) to a recording. A test declared with
+`replays "path"` answers its effects from the recording, deterministically
+and offline; a call the recording lacks fails the test. `renyi run --replay`
+re-executes a recorded run for debugging, and `--explain` narrates any run
+with the `purpose:` clauses of the definitions it passes through, the data
+they produced and the effects they used (the self-narrating layer). The
+effect system guarantees the recording is complete; the ToJson rules give
+it a readable format that the replay validates against the declared types.
+One new reserved word, `replays`. Nearest prior art: VCR-style HTTP
+recording libraries and Darklang's trace-driven development, neither a
+language feature with a completeness guarantee. Scheduled in M3. (user)
+
+**P2. Budgets in grants.** A capability in the grant of `main` or of a
+test may carry `at most COUNT per UNIT` (units `second`, `minute`, `hour`,
+`day`, `run`); the runtime counts primitive calls under it and fails the
+call that exceeds the budget with the module's error type. Budgets apply to
+`network`, `process` and `filesystem`. One new reserved word, `per`, and
+the phrase `at most`. Scheduled in M3. (user)
+
+**P3. Provenance guards.** A capability in the grant may carry `only to
+SINK or SINK`: values that enter through it, and values computed from them,
+carry that origin and may leave the program only through the listed sinks;
+any other outgoing primitive fails with `Guarded(origin, sink)`. This is the
+language-level answer to exfiltration through prompt injection, the central
+risk of agent sandboxes. The runtime tracks origins as a small set per heap
+value, which Renyi's immutable values and explicit effects make cheap.
+One new reserved word, `only`, and the phrase `only to`. The syntax is in
+the grammar now so that the cheat sheet, the parser and the live
+readability round see it; the runtime part is designed first and scheduled
+in M4. Prior art: information-flow languages (Jif, FlowCaml, LIO) and
+runtime taint modes (Perl, Ruby); none ties the policy to the capability
+grant. (user)
+
+**P4. Reserved words after P1 to P3: 88, phrases 17.** `only`, `per`,
+`replays` join the list (supersedes the count in M9); `at most` and `only
+to` join the phrase table. Budget units are plain words after `per`, not
+reserved. (derived)

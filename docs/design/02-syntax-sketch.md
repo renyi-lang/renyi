@@ -45,7 +45,7 @@ therefore only ever called after a dot, may be declared under any word
 (`function first(self: List of Item)`, `function set(self: Map of Key to
 Value, ...)`; decision N1).
 
-**Reserved words.** 85 words, listed in section 17. Multi-word keywords such as
+**Reserved words.** 88 words, listed in section 17. Multi-word keywords such as
 `is at least` and `or fails with` are single tokens; the lexer matches the
 longest phrase in the fixed phrase table (section 17). Exactly one space
 separates the words of a phrase; a phrase cannot span lines.
@@ -625,7 +625,32 @@ end
 `renyi run report.ry` grants exactly `console` and `network.http`. `renyi run
 --deny network report.ry` fails at startup with the list of functions that need
 the denied capability; `--allow-host api.example.com` and `--allow-read data`
-narrow a scope from the command line. `example:` clauses run only on pure functions; effectful
+narrow a scope from the command line.
+
+**Grant clauses.** Two clauses may follow a capability in the `needs` of
+`main` or of a `test`, and only there; the checker rejects them on any other
+function.
+
+```
+public function main() or fails with AppError
+  needs console,
+    network.http("api.example.com") at most 60 per minute,
+    filesystem.read("secrets") only to network.http("api.example.com")
+```
+
+- `at most COUNT per UNIT` is a **budget** (decision P2): the runtime counts
+  the primitive calls made under the capability and fails the call that
+  exceeds the budget with the module's error type (`HttpError.OverBudget`).
+  Units: `second`, `minute`, `hour`, `day` (sliding windows) and `run` (the
+  whole program). Budgets apply to `network`, `process` and `filesystem`;
+  `renyi run --at-most network.http=60/minute` narrows one from the command
+  line.
+- `only to SINK or SINK` is a **guard** (decision P3): every value that
+  entered the program through the capability carries that origin, as does
+  every value computed from it, and it may leave the program only through
+  the listed sinks; any other primitive that would send it out fails with
+  `Guarded(origin, sink)`. A capability without `only to` is unguarded.
+  Design: `06-runtime-guarantees.md`. `example:` clauses run only on pure functions; effectful
 code is tested with `test` blocks that declare their own `needs`.
 
 ---
@@ -687,11 +712,20 @@ test "loading a missing config reports the path" needs filesystem.read
 end
 ```
 
-`test "name" [needs caps]` ... `end` at the top level of any module. `check
-condition` is the assertion. Inside a test, `otherwise fail` and `fail with`
-end the test as failed with the error value as the message, so set-up needs no
-ceremony: `let older be parse("1.9.9") otherwise fail`. `renyi test` runs tests
-and `example:` clauses.
+`test "name" [needs caps] [replays "path"]` ... `end` at the top level of any
+module. `check condition` is the assertion. Inside a test, `otherwise fail`
+and `fail with` end the test as failed with the error value as the message, so
+set-up needs no ceremony: `let older be parse("1.9.9") otherwise fail`.
+`renyi test` runs tests and `example:` clauses.
+
+`replays "fixtures/forecast.json"` runs the test against a **recording**
+(decision P1): a file written by `renyi record` that holds every effect call
+of one real run (capability, primitive, arguments, result or failure, time
+and random values). During the test every effectful call is answered from
+the recording, so the test is deterministic and offline; a call the
+recording does not hold fails the test and names the call. The test's
+`needs` still names the capabilities, because the recording is checked
+against them. Design: `06-runtime-guarantees.md`.
 
 ---
 
@@ -757,7 +791,7 @@ base types).
 
 ## 17. Reserved words and phrases
 
-85 reserved words. Any of them used as an identifier is a compile error with a
+88 reserved words. Any of them used as an identifier is a compile error with a
 rename suggestion; after a dot they are allowed as member names.
 
 ```
@@ -765,9 +799,9 @@ ability all also and any as at be break by can check collect concurrently
 continue count crash deprecated descending each end example expose exposing
 fail fails failure false first for from function greater group has if ignore
 import in is lazy least less let match maybe module most mutable needs not
-nothing of one or otherwise power public purpose raw remainder repeat return
-returns run see self set some sorted success sum tags test than then to tool
-true type until when where with within
+nothing of one only or otherwise per power public purpose raw remainder repeat
+replays return returns run see self set some sorted success sum tags test than
+then to tool true type until when where with within
 ```
 
 Phrase table (single tokens, longest match):
@@ -776,11 +810,12 @@ Phrase table (single tokens, longest match):
 is not | is less than | is at most | is greater than | is at least
 or fails with | is one of | for each | for any | run concurrently
 repeat until | sorted by | group by | see also | expose as tool
+at most | only to
 ```
 
 Words that appear only inside a phrase (`at`, `least`, `most`, `than`, `less`,
 `greater`, `also`, `see`, `tool`, `expose`, `sorted`, `group`, `one`, `each`,
-`fails`, `run`, `repeat`, `until`) are still reserved so that a word has one role everywhere.
+`fails`, `run`, `repeat`, `until`, `only`) are still reserved so that a word has one role everywhere.
 
 ---
 

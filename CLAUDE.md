@@ -1,7 +1,7 @@
 # Renyi: notes for Claude Code sessions
 
 Read `docs/HANDOFF.md` first. It is the current state of the project and is
-rewritten at the end of every session. Then read the five design documents
+rewritten at the end of every session. Then read the six design documents
 under `docs/design/` in order.
 
 ## What this repository is
@@ -46,11 +46,12 @@ implementation.
 
 | Path | Content |
 |------|---------|
-| `docs/design/01-decisions.md` | design decisions with reasons: rounds 1 and 2 (sections 0 to J), library (K), readability (L), pre-test (M), checker (N), runtime and agent tooling (O) |
+| `docs/design/01-decisions.md` | design decisions with reasons: rounds 1 and 2 (sections 0 to J), library (K), readability (L), pre-test (M), checker (N), runtime and agent tooling (O), signature capabilities (P) |
 | `docs/design/02-syntax-sketch.md` | concrete syntax; section 18 tracks open items (round 2 is settled, new items start at R3-1) |
 | `docs/design/03-readability-test.md` | protocol that freezes the grammar by measuring LLM comprehension |
 | `docs/design/04-stdlib-sketch.md` | prelude, core modules and extension packages; the lint checks corpus calls against its `function` lines |
 | `docs/design/05-agent-tooling.md` | the project map (`renyi index`), metrics, content hashes, budgets, diffs and the `renyi mcp` server |
+| `docs/design/06-runtime-guarantees.md` | recorded runs and `replays` tests, narrated runs, budgets in grants (`at most`), provenance guards (`only to`) |
 | `docs/cheatsheet.md` | the whole language on one page; token-budgeted |
 | `examples/` | the corpus, one program per file, index in `examples/README.md` |
 | `tools/count_tokens.py` | cheat-sheet budget gate |

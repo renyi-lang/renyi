@@ -373,3 +373,25 @@ fn imports_are_checked() {
     raises("module demo\n  purpose: Imports.\n\nimport std.time\n\nfunction go() returns Date\n  return time.today()\nend\n", "unknown-type");
     clean("module demo\n  purpose: Imports.\n\nimport std.time exposing Date\n\nfunction go() returns Date needs time\n  return time.today()\nend\n");
 }
+
+#[test]
+fn grant_clauses_belong_to_main_and_tests() {
+    clean(&program(
+        "public function main() needs console, network.http(\"api.example.com\") at most 60 per minute\n  purpose: Budgeted.\n\n  console.print(\"hi\")\nend\n",
+    ));
+    clean(&program(
+        "test \"budgeted\" needs network.http at most 3 per run replays \"fixtures/x.json\"\n  check true\nend\n",
+    ));
+    raises(
+        &program("function helper() needs network.http at most 60 per minute\n  ignore 1\nend\n"),
+        "grant-clause",
+    );
+    raises(
+        &program("public function main() needs console at most 3 per run\n  purpose: Budgeted console.\n\n  console.print(\"hi\")\nend\n"),
+        "grant-clause",
+    );
+    raises(
+        &program("public function main() needs filesystem.read(\"secrets\") only to nowhere\n  purpose: Guarded.\n\n  console.print(\"hi\")\nend\n"),
+        "unknown-capability",
+    );
+}

@@ -1014,6 +1014,45 @@ impl World {
             .collect();
         let needs: Vec<Capability> = function.needs.iter().map(Capability::from_ast).collect();
         for (capability, syntax) in needs.iter().zip(&function.needs) {
+            if capability.has_grant_clauses() && function.name.text != "main" {
+                self.error_with_fix(
+                    module,
+                    "grant-clause",
+                    "a budget (`at most`) or a guard (`only to`) belongs to the program's grant"
+                        .into(),
+                    syntax.span,
+                    "move it to the `needs` of `main` or of a `test`".into(),
+                );
+            }
+            for (sink_path, _) in &capability.only_to {
+                let sink = Capability {
+                    path: sink_path.clone(),
+                    scope: None,
+                    budget: None,
+                    only_to: Vec::new(),
+                };
+                if !sink.is_known() {
+                    self.error(
+                        module,
+                        "unknown-capability",
+                        format!(
+                            "unknown capability `{}` after `only to`",
+                            sink_path.join(".")
+                        ),
+                        syntax.span,
+                    );
+                }
+            }
+            if let Some((_, unit)) = &capability.budget {
+                let budgeted = matches!(
+                    capability.path.first().map(String::as_str),
+                    Some("network") | Some("process") | Some("filesystem")
+                );
+                if !budgeted {
+                    self.error(module, "grant-clause", format!("`{}` takes no budget; budgets apply to network, process and filesystem", capability.path.join(".")), syntax.span);
+                }
+                let _ = unit;
+            }
             if !capability.is_known() {
                 let message = format!("unknown capability `{}`", capability.path.join("."));
                 self.error_with_fix(

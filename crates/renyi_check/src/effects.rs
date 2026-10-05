@@ -8,6 +8,10 @@ use renyi_syntax::ast;
 pub struct Capability {
     pub path: Vec<String>,
     pub scope: Option<String>,
+    /// `at most COUNT per UNIT` on a grant (decision P2); not part of coverage.
+    pub budget: Option<(String, String)>,
+    /// `only to` sinks on a grant (decision P3); not part of coverage.
+    pub only_to: Vec<(Vec<String>, Option<String>)>,
 }
 
 /// The built-in tree: a parent covers its children.
@@ -40,7 +44,27 @@ impl Capability {
         Capability {
             path: capability.path.iter().map(|n| n.text.clone()).collect(),
             scope: capability.scope.clone(),
+            budget: capability
+                .budget
+                .as_ref()
+                .map(|b| (b.count.clone(), b.per.text.clone())),
+            only_to: capability
+                .only_to
+                .iter()
+                .map(|sink| {
+                    (
+                        sink.path.iter().map(|n| n.text.clone()).collect(),
+                        sink.scope.clone(),
+                    )
+                })
+                .collect(),
         }
+    }
+
+    /// Whether the grant carries a budget or a guard, which belong on `main`
+    /// and on tests only.
+    pub fn has_grant_clauses(&self) -> bool {
+        self.budget.is_some() || !self.only_to.is_empty()
     }
 
     pub fn is_known(&self) -> bool {
@@ -97,6 +121,8 @@ mod tests {
         Capability {
             path: spelling.split('.').map(str::to_string).collect(),
             scope: scope.map(str::to_string),
+            budget: None,
+            only_to: Vec::new(),
         }
     }
 

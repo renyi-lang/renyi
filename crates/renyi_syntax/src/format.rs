@@ -492,6 +492,9 @@ impl Formatter<'_> {
                 if !test.needs.is_empty() {
                     head.push_str(&format!(" needs {}", self.capabilities(&test.needs)));
                 }
+                if let Some(recording) = &test.replays {
+                    head.push_str(&format!(" replays {}", quote_text(recording)));
+                }
                 concat(vec![
                     text(head),
                     nest(self.block(&test.body)),
@@ -773,10 +776,32 @@ impl Formatter<'_> {
                     .iter()
                     .map(|name| name.text.as_str())
                     .collect();
-                match &capability.scope {
+                let mut out = match &capability.scope {
                     Some(scope) => format!("{}({})", path.join("."), quote_text(scope)),
                     None => path.join("."),
+                };
+                if let Some(budget) = &capability.budget {
+                    out.push_str(&format!(
+                        " at most {} per {}",
+                        budget.count, budget.per.text
+                    ));
                 }
+                if !capability.only_to.is_empty() {
+                    let sinks: Vec<String> = capability
+                        .only_to
+                        .iter()
+                        .map(|sink| {
+                            let path: Vec<&str> =
+                                sink.path.iter().map(|name| name.text.as_str()).collect();
+                            match &sink.scope {
+                                Some(scope) => format!("{}({})", path.join("."), quote_text(scope)),
+                                None => path.join("."),
+                            }
+                        })
+                        .collect();
+                    out.push_str(&format!(" only to {}", sinks.join(" or ")));
+                }
+                out
             })
             .collect::<Vec<_>>()
             .join(", ")
@@ -1657,6 +1682,12 @@ mod tests {
             reparsed.diagnostics
         );
         assert_eq!(formatted(&out), out);
+    }
+
+    #[test]
+    fn grant_clauses_and_replays_round_trip() {
+        stays("module demo\n\npublic function main()\n  or fails with AppError\n  needs console, network.http(\"api.example.com\") at most 60 per minute\n  purpose: Try the grant clauses.\n\n  console.print(\"hi\")\nend\n\ntest \"the forecast is read\" needs network.http replays \"fixtures/forecast.json\"\n  check true\nend\n");
+        stays("module demo\n\npublic function main()\n  needs filesystem.read(\"secrets\") only to console or network.http(\"api.example.com\")\n  purpose: Guard the secrets.\n\n  console.print(\"hi\")\nend\n");
     }
 
     #[test]

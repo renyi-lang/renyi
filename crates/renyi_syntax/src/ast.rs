@@ -111,6 +111,28 @@ pub struct Param {
 pub struct Capability {
     pub path: Vec<Name>,
     pub scope: Option<String>,
+    /// `at most 60 per minute`: a budget on the grant (decision P2).
+    pub budget: Option<Budget>,
+    /// `only to console or network.http("host")`: where data that entered
+    /// through this capability may leave (decision P3).
+    pub only_to: Vec<Sink>,
+    pub span: Span,
+}
+
+/// `at most COUNT per UNIT`; the unit is `second`, `minute`, `hour`, `day`
+/// or `run`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Budget {
+    pub count: String,
+    pub per: Name,
+    pub span: Span,
+}
+
+/// A capability path with an optional scope, as the target of `only to`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Sink {
+    pub path: Vec<Name>,
+    pub scope: Option<String>,
     pub span: Span,
 }
 
@@ -240,6 +262,8 @@ pub struct Constant {
 pub struct Test {
     pub name: String,
     pub needs: Vec<Capability>,
+    /// `replays "fixtures/x.json"`: the recording the test runs against (decision P1).
+    pub replays: Option<String>,
     pub body: Block,
     pub span: Span,
 }

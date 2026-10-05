@@ -40,9 +40,11 @@ words! {
     Ignore => "ignore", Import => "import", In => "in", Is => "is", Lazy => "lazy",
     Least => "least", Less => "less", Let => "let", Match => "match", Maybe => "maybe",
     Module => "module", Most => "most", Mutable => "mutable", Needs => "needs", Not => "not",
-    Nothing => "nothing", Of => "of", One => "one", Or => "or", Otherwise => "otherwise",
+    Nothing => "nothing", Of => "of", One => "one", Only => "only", Or => "or",
+    Otherwise => "otherwise", Per => "per",
     Power => "power", Public => "public", Purpose => "purpose", Raw => "raw",
-    Remainder => "remainder", Repeat => "repeat", Return => "return", Returns => "returns",
+    Remainder => "remainder", Repeat => "repeat", Replays => "replays", Return => "return",
+    Returns => "returns",
     Run => "run",
     See => "see", SelfValue => "self", Set => "set", Some => "some", Sorted => "sorted",
     Success => "success", Sum => "sum", Tags => "tags", Test => "test", Than => "than",
@@ -54,7 +56,7 @@ words! {
     OrFailsWith => "or fails with", IsOneOf => "is one of", ForEach => "for each",
     ForAny => "for any", RunConcurrently => "run concurrently", SortedBy => "sorted by",
     GroupBy => "group by", SeeAlso => "see also", ExposeAsTool => "expose as tool",
-    RepeatUntil => "repeat until",
+    RepeatUntil => "repeat until", AtMost => "at most", OnlyTo => "only to",
 }
 
 impl Word {
@@ -72,6 +74,8 @@ impl Word {
                 | Word::For
                 | Word::Run
                 | Word::Repeat
+                | Word::At
+                | Word::Only
                 | Word::Sorted
                 | Word::Group
                 | Word::See
@@ -195,11 +199,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn eighty_five_reserved_words_and_fifteen_phrases() {
+    fn eighty_eight_reserved_words_and_seventeen_phrases() {
         let words = Word::ALL.iter().filter(|w| !w.is_phrase()).count();
         let phrases = Word::ALL.iter().filter(|w| w.is_phrase()).count();
-        assert_eq!(words, 85);
-        assert_eq!(phrases, 15);
+        assert_eq!(words, 88);
+        assert_eq!(phrases, 17);
     }
 
     #[test]

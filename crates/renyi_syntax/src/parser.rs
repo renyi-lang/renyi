@@ -688,28 +688,34 @@ impl<'s> Parser<'s> {
         let mut capabilities = Vec::new();
         loop {
             let start = self.peek().span;
-            let path = self.dotted_name()?;
-            let mut scope = None;
-            if self.eat(&TokenKind::LeftParen) {
-                let token = self.advance();
-                match token.kind {
-                    TokenKind::Text { parts, .. } => scope = Some(literal_text(&parts)),
-                    TokenKind::RawText(text) => scope = Some(text),
-                    _ => {
-                        self.error(
-                            "capability-scope",
-                            "a capability scope is a text literal",
-                            token.span,
-                        );
-                        return Err(());
+            let (path, scope) = self.capability_path()?;
+            let budget = if self.at_word(Word::AtMost) {
+                Some(self.budget()?)
+            } else {
+                None
+            };
+            let mut only_to = Vec::new();
+            if self.eat_word(Word::OnlyTo) {
+                loop {
+                    let sink_start = self.peek().span;
+                    let (sink_path, sink_scope) = self.capability_path()?;
+                    let sink_end = self.tokens[self.pos - 1].span;
+                    only_to.push(Sink {
+                        path: sink_path,
+                        scope: sink_scope,
+                        span: sink_start.join(sink_end),
+                    });
+                    if !self.eat_word(Word::Or) {
+                        break;
                     }
                 }
-                self.expect(&TokenKind::RightParen, "`)`")?;
             }
             let end = self.tokens[self.pos - 1].span;
             capabilities.push(Capability {
                 path,
                 scope,
+                budget,
+                only_to,
                 span: start.join(end),
             });
             if !self.eat(&TokenKind::Comma) {
@@ -717,6 +723,65 @@ impl<'s> Parser<'s> {
             }
         }
         Ok(capabilities)
+    }
+
+    /// `filesystem.read("data")`: a capability path with an optional scope.
+    fn capability_path(&mut self) -> ParseResult<(Vec<Name>, Option<String>)> {
+        let path = self.dotted_name()?;
+        let mut scope = None;
+        if self.eat(&TokenKind::LeftParen) {
+            let token = self.advance();
+            match token.kind {
+                TokenKind::Text { parts, .. } => scope = Some(literal_text(&parts)),
+                TokenKind::RawText(text) => scope = Some(text),
+                _ => {
+                    self.error(
+                        "capability-scope",
+                        "a capability scope is a text literal",
+                        token.span,
+                    );
+                    return Err(());
+                }
+            }
+            self.expect(&TokenKind::RightParen, "`)`")?;
+        }
+        Ok((path, scope))
+    }
+
+    /// `at most 60 per minute` (decision P2).
+    fn budget(&mut self) -> ParseResult<Budget> {
+        let start = self.expect_word(Word::AtMost)?.span;
+        let count_token = self.advance();
+        if count_token.kind != TokenKind::Integer {
+            self.error(
+                "expected",
+                "expected a whole number after `at most`",
+                count_token.span,
+            );
+            return Err(());
+        }
+        let count = self.text_of(&count_token);
+        self.expect_word(Word::Per)?;
+        let unit_token = self.advance();
+        let unit = self.text_of(&unit_token);
+        if !matches!(unit.as_str(), "second" | "minute" | "hour" | "day" | "run") {
+            self.error(
+                "expected",
+                format!(
+                    "a budget is per `second`, `minute`, `hour`, `day` or `run`, found `{unit}`"
+                ),
+                unit_token.span,
+            );
+            return Err(());
+        }
+        Ok(Budget {
+            count,
+            per: Name {
+                text: unit,
+                span: unit_token.span,
+            },
+            span: start.join(unit_token.span),
+        })
     }
 
     fn for_any(&mut self) -> ParseResult<ForAny> {
@@ -1078,6 +1143,22 @@ impl<'s> Parser<'s> {
         } else {
             Vec::new()
         };
+        let replays = if self.eat_word(Word::Replays) {
+            let token = self.advance();
+            match token.kind {
+                TokenKind::Text { parts, .. } => Some(literal_text(&parts)),
+                _ => {
+                    self.error(
+                        "expected",
+                        "expected the recording's path as a text literal after `replays`",
+                        token.span,
+                    );
+                    return Err(());
+                }
+            }
+        } else {
+            None
+        };
         self.end_of_statement()?;
         let body = self.block(&[Word::End])?;
         self.expect_word(Word::End)?;
@@ -1086,6 +1167,7 @@ impl<'s> Parser<'s> {
         Ok(Test {
             name,
             needs,
+            replays,
             body,
             span: Span::new(start, end),
         })
@@ -2414,6 +2496,39 @@ mod tests {
         ));
         assert!(matches!(&statements[6].kind, StmtKind::RepeatUntil { .. }));
         assert!(matches!(&statements[7].kind, StmtKind::Return(Some(_))));
+    }
+
+    #[test]
+    fn grant_clauses_and_replays_parse() {
+        let parsed = parse(
+            "module demo\n\npublic function main() or fails with AppError\n  needs console, network.http(\"api.example.com\") at most 60 per minute, filesystem.read(\"secrets\") only to console or network.http(\"api.example.com\")\n  purpose: Try the grant clauses.\n\n  console.print(\"hi\")\nend\n\ntest \"the forecast is read\" needs network.http replays \"fixtures/forecast.json\"\n  check true\nend\n",
+        );
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let Item::Function(main) = &parsed.module.items[0] else {
+            panic!()
+        };
+        assert_eq!(main.needs.len(), 3);
+        let budget = main.needs[1].budget.as_ref().expect("budget");
+        assert_eq!(
+            (budget.count.as_str(), budget.per.text.as_str()),
+            ("60", "minute")
+        );
+        assert_eq!(main.needs[2].only_to.len(), 2);
+        assert_eq!(
+            main.needs[2].only_to[1].scope.as_deref(),
+            Some("api.example.com")
+        );
+        let Item::Test(test) = &parsed.module.items[1] else {
+            panic!()
+        };
+        assert_eq!(test.replays.as_deref(), Some("fixtures/forecast.json"));
+        // a budget is per one of five units
+        let bad =
+            parse("module demo\n\nfunction main() needs network.http at most 3 per week\nend\n");
+        assert!(bad
+            .diagnostics
+            .iter()
+            .any(|d| d.message.contains("per `second`")));
     }
 
     #[test]

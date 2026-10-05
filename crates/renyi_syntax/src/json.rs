@@ -286,6 +286,33 @@ impl Encoder<'_> {
                         vec![
                             ("path", self.names(&capability.path)),
                             ("scope", optional(capability.scope.as_deref().map(string))),
+                            (
+                                "budget",
+                                optional(capability.budget.as_ref().map(|budget| {
+                                    Json::Object(vec![
+                                        ("count", string(&budget.count)),
+                                        ("per", string(&budget.per.text)),
+                                    ])
+                                })),
+                            ),
+                            (
+                                "only_to",
+                                Json::Array(
+                                    capability
+                                        .only_to
+                                        .iter()
+                                        .map(|sink| {
+                                            Json::Object(vec![
+                                                ("path", self.names(&sink.path)),
+                                                (
+                                                    "scope",
+                                                    optional(sink.scope.as_deref().map(string)),
+                                                ),
+                                            ])
+                                        })
+                                        .collect(),
+                                ),
+                            ),
                         ],
                     )
                 })
@@ -510,6 +537,7 @@ impl Encoder<'_> {
             vec![
                 ("name", string(&test.name)),
                 ("needs", self.capabilities(&test.needs)),
+                ("replays", optional(test.replays.as_deref().map(string))),
                 ("body", self.block(&test.body)),
             ],
         )
