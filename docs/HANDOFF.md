@@ -71,6 +71,14 @@ runtime exists. No design question is open.
    `renyi tokens` commands, and a corpus conformance test that lexes all
    thirty programs. `cargo test`, `cargo clippy --all-targets` and
    `cargo fmt --check` are clean.
+8. Wrote the AST (`ast.rs`) and the parser (`parser.rs`): clause grammar,
+   statements, expressions with the precedence of sketch section 7, queries,
+   patterns, `if` and `match` as statements and expressions, the
+   indentation-sensitive continuation rules (now stated in sketch section 1),
+   error recovery to the next line. `renyi check` runs the parser; `renyi
+   parse` dumps the tree. All thirty corpus programs parse without a
+   diagnostic, and the corpus test also checks that every public item has a
+   `purpose:` clause.
 
 ## Next steps, in order
 
@@ -82,13 +90,15 @@ runtime exists. No design question is open.
    the run directory. Compare against the acceptance thresholds in
    `03-readability-test.md`; a failing threshold becomes a grammar question
    for the owner, not a silent change.
-2. **M1, continued.** Next in `crates/renyi_syntax`: the AST (`ast.rs`) and the
-   parser (`parser.rs`, clause grammar with the continuation rules of sketch
-   section 1 and the indentation rule for multi-line `example:` clauses),
-   then the formatter (`format.rs`, sketch section 16) with the idempotence
-   and round-trip property tests of decision H6. Extend the corpus test so
-   every program parses; add `renyi format` and `renyi parse --json`. The
-   owner chose M3 (a VM running the corpus) as the first demo.
+2. **M1, continued.** Next in `crates/renyi_syntax`: the formatter
+   (`format.rs`, canonical layout of sketch section 16, comments preserved)
+   with the property tests of decision H6 (formatting is idempotent; parsing
+   the formatted text gives the same tree; every corpus program is already
+   in canonical form), `renyi format`, and `renyi parse --json` for tools.
+   Then M2: name resolution, the type and effect checker with the rules of
+   decisions J8, J9, J11 and J15 (unused bindings and results, Integer
+   division, scoped capabilities). The owner chose M3 (a VM running the
+   corpus) as the first demo.
 
 ## Known gaps and risks
 
@@ -110,6 +120,9 @@ runtime exists. No design question is open.
   now stated in the library sketch; the examples depend on that.
 - The lint's call check is coarse: it accepts any name declared anywhere in
   the library sketch or the corpus, not per receiver type.
+- The parser accepts the corpus but has only been tested against it and its
+  unit tests; malformed input beyond the unit tests may still cascade into
+  several diagnostics for one mistake.
 - The ten reference outputs under `tests/readability/reference/` were derived
   by hand from the sketches (Decimal and Float rendering rules included); the
   VM at M3 is the first independent check of them.

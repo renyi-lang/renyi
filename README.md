@@ -28,20 +28,32 @@ Source files use the `.renyi` or `.ry` extension; the two are equivalent.
 
 ## Status
 
-Design phase (M0). There is no compiler yet. What exists:
+Design is complete (M0) and the implementation has started (M1). What exists:
 
 - `docs/design/01-decisions.md`: every design decision taken so far, with the
-  reasoning.
+  reasoning, in three rounds.
 - `docs/design/02-syntax-sketch.md`: the concrete surface those decisions
-  produce, and the open items for the next round.
+  produce; `docs/design/04-stdlib-sketch.md`: the prelude and the standard
+  library modules.
 - `docs/design/03-readability-test.md`: how the grammar is frozen by measuring
-  LLM comprehension before the parser is written.
+  LLM comprehension; the harness is under `tests/readability/`.
 - `docs/cheatsheet.md`: the whole language on one page, kept under 3000 tokens
   (`python3 tools/count_tokens.py`).
-- `examples/`: the example corpus, checked by `python3 tools/lint_examples.py`.
+- `examples/`: thirty example programs, checked by
+  `python3 tools/lint_examples.py`.
+- `crates/`: the Rust toolchain. `renyi check` reports lexer, parser and layout
+  diagnostics as text or JSON; `renyi tokens` and `renyi parse` dump the token
+  stream and the syntax tree. Every example parses cleanly.
 
-Next: grow the corpus to thirty programs, run the readability test, then start
-the Rust implementation (lexer, parser, formatter) in M1.
+```
+cargo build
+./target/debug/renyi check examples/hello.ry
+./target/debug/renyi check --json examples/hello.ry
+cargo test
+```
+
+Next: the formatter (`renyi format`), then the type and effect checker (M2)
+and the bytecode VM (M3), which is the first milestone that runs a program.
 
 ## Working on this repository
 

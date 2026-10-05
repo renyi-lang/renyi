@@ -67,10 +67,15 @@ text first (`let separator be ", "` then `"{items.join(separator)}"`).
 `raw "^[0-9]{4}$"` has no holes and no escapes (decision J5).
 
 **Statement continuation.** A statement ends at the newline unless a bracket is
-open or the next non-blank line starts with a continuation word: `otherwise`,
-`where`, `sorted by`, `group by`, `collect`, `sum`, `count`, `first`, `any`,
-`all`, `returns`, `or fails with`, `needs`, `for any`, `with`, `and`, `or`.
-The formatter breaks long lines only before these words.
+open or the next non-blank line is indented deeper than the line that started
+the statement and starts with a continuation word: `otherwise`, `where`,
+`sorted by`, `group by`, `collect`, `sum`, `count`, `first`, `any`, `all`,
+`returns`, `or fails with`, `needs`, `for any`, `with`, `and`, `or`. The
+indentation condition is what tells the `otherwise` of an `if` statement, at
+the `if`'s column, from the `otherwise` of a fallible call, one level deeper.
+The value after `be` or `return` may start on the next, deeper line; a
+documentation clause continues on any deeper line. The formatter breaks long
+lines only before continuation words.
 
 ---
 
@@ -453,7 +458,10 @@ end
 ```
 
 - `if condition then` ... `otherwise if condition then` ... `otherwise` ...
-  `end`. `then` is mandatory; `end` is mandatory even for one-line bodies.
+  `end`. `then` is mandatory; `end` is mandatory even for one-line bodies. A
+  one-line `if` statement has no `otherwise`: an `if` with branches spans
+  lines, so that `otherwise` at the `if`'s column is never read as the
+  fallback of the statement before it.
 - `match value` with `when pattern [where guard] then` branches and an optional
   `otherwise` default. Matching must be exhaustive. Patterns: variant with
   punned fields `Circle(radius)`, renamed fields `Circle(radius: outer)`, a

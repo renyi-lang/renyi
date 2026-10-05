@@ -5,13 +5,16 @@
 //! lexer follows its sections 1 and 17 (lexical structure, reserved words and
 //! phrases).
 
+pub mod ast;
 pub mod diagnostics;
 pub mod layout;
 pub mod lexer;
+pub mod parser;
 pub mod span;
 pub mod token;
 
 pub use diagnostics::{Diagnostic, Severity};
 pub use lexer::{lex, Lexed};
+pub use parser::{parse, Parsed};
 pub use span::{Position, SourceFile, Span};
 pub use token::{TextPart, Token, TokenKind, Word};

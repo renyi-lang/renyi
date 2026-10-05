@@ -1,17 +1,19 @@
-//! The `renyi` command. M1 provides `check` (lexer and layout diagnostics,
-//! text or JSON) and `tokens` (a token dump for debugging). Formatting,
-//! type checking and running follow in later milestones.
+//! The `renyi` command. M1 provides `check` (lexer, parser and layout
+//! diagnostics, text or JSON), `tokens` (a token dump) and `parse` (a syntax
+//! tree dump). Formatting, type checking and running follow in later
+//! milestones.
 
 use std::io::Write;
 use std::process::ExitCode;
 
 use renyi_syntax::diagnostics::{render_json, render_text};
 use renyi_syntax::layout::check_layout;
-use renyi_syntax::{lex, SourceFile, TokenKind};
+use renyi_syntax::{lex, parse, SourceFile, TokenKind};
 
 const USAGE: &str = "usage:
   renyi check [--json] <file.ry>...   report diagnostics (exit 1 when any error)
   renyi tokens <file.ry>              dump the token stream
+  renyi parse <file.ry>               dump the syntax tree
   renyi version";
 
 fn main() -> ExitCode {
@@ -19,6 +21,7 @@ fn main() -> ExitCode {
     match args.first().map(String::as_str) {
         Some("check") => check(&args[1..]),
         Some("tokens") => tokens(&args[1..]),
+        Some("parse") => parse_command(&args[1..]),
         Some("version") | Some("--version") => {
             println!("renyi {}", env!("CARGO_PKG_VERSION"));
             ExitCode::SUCCESS
@@ -53,7 +56,7 @@ fn check(args: &[String]) -> ExitCode {
             Ok(file) => file,
             Err(code) => return code,
         };
-        let mut diagnostics = lex(&file.text).diagnostics;
+        let mut diagnostics = parse(&file.text).diagnostics;
         diagnostics.extend(check_layout(&file));
         diagnostics.sort_by_key(|diagnostic| diagnostic.span.start);
         failed |= diagnostics.iter().any(|diagnostic| diagnostic.is_error());
@@ -107,6 +110,31 @@ fn tokens(args: &[String]) -> ExitCode {
     }
     let _ = write!(out, "{}", render_text(&file, &lexed.diagnostics));
     if lexed
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.is_error())
+    {
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
+    }
+}
+
+fn parse_command(args: &[String]) -> ExitCode {
+    let Some(path) = args.first() else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    let file = match load(path) {
+        Ok(file) => file,
+        Err(code) => return code,
+    };
+    let parsed = parse(&file.text);
+    let stdout = std::io::stdout();
+    let mut out = stdout.lock();
+    let _ = writeln!(out, "{:#?}", parsed.module);
+    let _ = write!(out, "{}", render_text(&file, &parsed.diagnostics));
+    if parsed
         .diagnostics
         .iter()
         .any(|diagnostic| diagnostic.is_error())

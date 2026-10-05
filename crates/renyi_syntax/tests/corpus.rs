@@ -70,3 +70,49 @@ fn every_corpus_program_starts_with_a_module_header() {
         );
     }
 }
+
+#[test]
+fn every_corpus_program_parses_cleanly() {
+    let mut report = String::new();
+    for path in corpus() {
+        let text = std::fs::read_to_string(&path).expect("read");
+        let file = SourceFile::new(path.display().to_string(), text);
+        let parsed = renyi_syntax::parse(&file.text);
+        if !parsed.diagnostics.is_empty() {
+            report.push_str(&renyi_syntax::diagnostics::render_text(
+                &file,
+                &parsed.diagnostics,
+            ));
+            continue;
+        }
+        assert!(!parsed.module.name.is_empty(), "{}", path.display());
+        assert!(!parsed.module.items.is_empty(), "{}", path.display());
+        // every public item of the corpus carries a purpose clause
+        for item in &parsed.module.items {
+            let (public, purpose, what) = match item {
+                renyi_syntax::ast::Item::Function(f) => {
+                    (f.public, f.docs.purpose.is_some(), f.name.text.clone())
+                }
+                renyi_syntax::ast::Item::Type(t) => {
+                    (t.public, t.docs.purpose.is_some(), t.name.text.clone())
+                }
+                renyi_syntax::ast::Item::Ability(a) => {
+                    (a.public, a.docs.purpose.is_some(), a.name.text.clone())
+                }
+                renyi_syntax::ast::Item::Constant(c) => {
+                    (c.public, c.docs.purpose.is_some(), c.name.text.clone())
+                }
+                _ => continue,
+            };
+            assert!(
+                !public || purpose,
+                "{}: public {what} has no purpose clause",
+                path.display()
+            );
+        }
+    }
+    assert!(
+        report.is_empty(),
+        "programs with parse diagnostics:\n{report}"
+    );
+}
