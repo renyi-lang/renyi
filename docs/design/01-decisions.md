@@ -833,3 +833,41 @@ grant. (user)
 `replays` join the list (supersedes the count in M9); `at most` and `only
 to` join the phrase table. Budget units are plain words after `per`, not
 reserved. (derived)
+
+---
+
+## Q. System-level commitments (session 4)
+
+The owner asked for system-level innovations that solve pain points of
+mainstream languages outright and resolve their "cannot have both"
+trade-offs; all four candidates were taken. Design: `07-system-design.md`,
+whose section 1 states the trade-offs the language claims to resolve.
+
+**Q1. Capability-safe packages.** A package's effect manifest is computed
+by the toolchain at publish and recomputed by the registry; `main`'s grant
+must cover the transitive effects of every dependency the program reaches,
+with the package and capability named in the error; an update whose
+effects widen is refused unless the grant covers them and the user accepts;
+scopes narrow dynamically across package boundaries through the grant
+stack (the effective grant is the intersection along the call chain, which
+every primitive checks); native code is visible as `foreign`. Supersedes
+the wording of J11 for cross-package calls; within a program the static
+coverage rule stands. M3 (grant stack), M4 (packages). (user)
+
+**Q2. Reproducibility by construction.** A run manifest names everything a
+run depends on (toolchain, code and dependency hashes, grant, arguments,
+environment variables read, recording); `renyi reproduce` replays it and
+compares byte for byte; builds are functions of the same hashes. Rests on
+P1, K9 and D5. M3 and M4. (user)
+
+**Q3. In-process sandboxing.** The effect grant is the isolation boundary:
+a host loads a module with a grant (capabilities, scopes, budgets, guards,
+a memory budget) and the module can reach nothing else, with no process or
+container; several modules with different grants share one process through
+the grant stack on the task tree. After Q1; embedding API at M5. (user)
+
+**Q4. Checked live update.** A running service swaps the changed
+definitions of a type-checked new version between requests, by content
+hash, after the semantic diff shows no public signature a running
+definition calls has changed; there is no state to migrate because the
+language has no hidden mutable state. M5. (user)

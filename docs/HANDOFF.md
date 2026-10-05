@@ -2,8 +2,8 @@
 
 Last updated: 2026-10-05, end of session 4 (pre-test finished and decided,
 M1 wrapped up, M2 type and effect checker green on the corpus, runtime
-memory model, agent tooling and the three signature capabilities designed;
-their syntax is in the grammar).
+memory model, agent tooling, the three signature capabilities and the four
+system-level commitments designed; the new syntax is in the grammar).
 Branches: `main` holds the session-1 handoff; `claude/renyi-language-design-hbrie3`
 carries session 2; `claude/nifty-knuth-r5sntt` carries sessions 3 and 4 on top
 of it. The owner decides when `main` moves.
@@ -16,7 +16,9 @@ decisions are recorded in sections 0 to P of `01-decisions.md`; the agent
 tooling (project map, budgets, diffs, `renyi mcp`) is designed in
 `05-agent-tooling.md` and the signature capabilities (recorded runs with
 `replays` tests and narration, budgets in grants, provenance guards) in
-`06-runtime-guarantees.md`; the surface syntax and the standard
+`06-runtime-guarantees.md`, and the system-level commitments (capability-safe
+packages, reproducibility, in-process sandboxing, checked live update) with
+the trade-offs the language claims to resolve in `07-system-design.md`; the surface syntax and the standard
 library are sketched in full, and the library also exists as declaration
 files the compiler reads (`library/std/*.ry`). The corpus has its target 30
 programs, passes the lint, is in canonical layout, and type- and
@@ -238,6 +240,24 @@ chose three of four candidates (the fourth, nothing, was not chosen):
   (`grant-clause`: budgets and guards belong on `main` or a test), sketch
   and cheat sheet carry the syntax; no corpus program uses it yet.
 
+## Decisions Q1 to Q4: system-level commitments
+
+The owner asked for system-level innovations and took all four:
+
+- Q1 **capability-safe packages**: computed effect manifests in the
+  registry, `main`'s grant covers every dependency, no silent widening on
+  update, scopes narrow dynamically through the grant stack. M3/M4.
+- Q2 **reproducibility by construction**: a run manifest and `renyi
+  reproduce`. M3/M4.
+- Q3 **in-process sandboxing**: the grant is the isolation boundary; a host
+  loads a module with a grant (plus a memory budget, R7-1). After Q1, M5.
+- Q4 **checked live update**: swap changed definitions by hash between
+  requests after the semantic diff passes; no hidden state to migrate. M5.
+
+`07-system-design.md` section 1 states the eight trade-offs Renyi claims to
+resolve; they are claims to test, and the readability round and M3 test
+the first ones.
+
 ## Next steps
 
 0. **Confirm the cheat-sheet token count** with `python3 tools/count_tokens.py`
@@ -273,14 +293,20 @@ chose three of four candidates (the fourth, nothing, was not chosen):
    carries the recorder, the replayer, the budget counters and the
    narration hook from the first version (`06-runtime-guarantees.md`,
    section 4); the five network programs of the corpus get recordings and
-   `replays` tests.
+   `replays` tests. The grant stack (Q1, Q3) and the run manifest with
+   `renyi reproduce` (Q2) belong to the same runtime.
 4. **`renyi mcp`** (decision O5, `05-agent-tooling.md` section 7): the first
    seven tools, then `run`, `run_tests` and `diff` as M3 and `--diff` land.
 5. **Complexity budgets and the semantic diff** (O3, O4), then M4 reads
    them from the manifest.
 6. **M4 also carries the provenance guards** (P3, `06-runtime-guarantees.md`
    section 3): origin sets on heap values, the `only to` check at outgoing
-   primitives, the `environment` default (R6-6).
+   primitives, the `environment` default (R6-6); and the package manager
+   with computed effect manifests, `renyi add`, `update --accept-effects`
+   and `audit` (Q1, `07-system-design.md` section 2).
+7. **M5**: the embedding API with grants and memory budgets (Q3), `renyi
+   serve --watch` and checked swaps (Q4), the LSP, index and compiler API
+   as planned.
 
 ## Known gaps and risks
 

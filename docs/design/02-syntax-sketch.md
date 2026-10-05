@@ -608,9 +608,12 @@ without an argument covers every scope. The checker requires a caller to cover
 each callee: the same or an ancestor capability, with no argument or with one
 that contains the callee's (`filesystem` covers `filesystem.read("data")`,
 which covers `filesystem.read("data/2024")`). At run time a primitive compares
-the actual path or host with the calling function's declared scope and reports
-a mismatch through its ordinary error type: `PermissionDenied(path)` in
-`FileError`, `HostNotAllowed(host)` in `HttpError` (decision J11).
+the actual path or host with the effective grant, the intersection of the
+program's grant with the declared scopes along the call chain (the grant
+stack, decision Q1), and reports a mismatch through its ordinary error type:
+`PermissionDenied(path)` in `FileError`, `HostNotAllowed(host)` in
+`HttpError` (decision J11). Across a package boundary only the capability
+kind is checked statically; the scope is the grant stack's business.
 
 A program's entry point declares what the whole program may do:
 
