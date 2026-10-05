@@ -1,0 +1,113 @@
+{
+  "_comment": "Per program: `predict` lists the command-line arguments for the Predict task (the reference output is reference/<name>.out); `complete` names the function whose body is removed for the Complete task. Programs that read files or the network have no Predict entry.",
+  "programs": {
+    "hello": {
+      "predict": {
+        "arguments": []
+      }
+    },
+    "temperature_table": {
+      "predict": {
+        "arguments": []
+      },
+      "complete": "to_fahrenheit"
+    },
+    "shapes": {
+      "predict": {
+        "arguments": []
+      },
+      "complete": "describe"
+    },
+    "active_users": {},
+    "word_count": {
+      "complete": "count_words"
+    },
+    "weather": {},
+    "invoice": {
+      "complete": "total"
+    },
+    "retry": {},
+    "concurrent_fetch": {},
+    "currency_tool": {},
+    "sales_report": {
+      "complete": "totals_by_region"
+    },
+    "config": {
+      "complete": "default_config"
+    },
+    "http_service": {},
+    "todo_cli": {
+      "complete": "parse_command"
+    },
+    "traffic_light": {
+      "predict": {
+        "arguments": []
+      },
+      "complete": "next_light"
+    },
+    "expression_tree": {
+      "predict": {
+        "arguments": []
+      },
+      "complete": "evaluate"
+    },
+    "permissions": {
+      "predict": {
+        "arguments": []
+      },
+      "complete": "missing"
+    },
+    "log_parser": {
+      "complete": "parse_line"
+    },
+    "deadlines": {
+      "complete": "working_days_between"
+    },
+    "inventory_db": {},
+    "stacks": {
+      "complete": "balanced"
+    },
+    "invoice_report": {
+      "predict": {
+        "arguments": []
+      },
+      "complete": "statement_line"
+    },
+    "shipping_rules": {
+      "complete": "quote"
+    },
+    "semver": {
+      "complete": "parse"
+    },
+    "pagination": {},
+    "statistics": {
+      "predict": {
+        "arguments": [
+          "2",
+          "4",
+          "4",
+          "4",
+          "5",
+          "5",
+          "7",
+          "9"
+        ]
+      },
+      "complete": "median"
+    },
+    "dependency_order": {
+      "predict": {
+        "arguments": []
+      },
+      "complete": "order"
+    },
+    "assistant": {},
+    "file_tree": {},
+    "markdown_table": {
+      "predict": {
+        "arguments": []
+      },
+      "complete": "render"
+    }
+  }
+}

@@ -80,7 +80,7 @@ function square_root(self: Float) returns Float
 function to_decimal(self: Float) returns Decimal
   purpose: The nearest decimal128 value.
 function to_text(self: Float) returns Text
-  purpose: The shortest text that reads back as the same value.
+  purpose: The shortest text that reads back as the same value, always with a decimal point (5.0).
 function absolute(self: Float) returns Float
 function at_least(self: Float, other: Float) returns Float
 function at_most(self: Float, other: Float) returns Float

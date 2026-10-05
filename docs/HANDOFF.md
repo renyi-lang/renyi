@@ -57,12 +57,24 @@ runtime exists. No design question is open.
    `matches` in the prelude, minimal `Bytes`). The lint now rejects any corpus
    call not declared there. Three follow-up questions (R3-1 to R3-3) were
    answered and recorded as K9 to K11.
+6. Wrote the readability test harness under `tests/readability/` (`run.py`
+   with `prepare`, `run`, `score`, `report`; `manifest.json`; ten reference
+   outputs for the deterministic programs, which double as the first
+   conformance expectations; ten fresh Write tasks). Smoke-tested with the
+   `file` provider. The owner will set `ANTHROPIC_API_KEY` and
+   `OPENAI_API_KEY` in the cloud environment (decision L1) and Claude judges
+   Complete and Write samples before M3 (decision L2).
 
 ## Next steps, in order
 
-1. **Readability test harness.** Implement `docs/design/03-readability-test.md`
-   under `tests/readability/`. It needs API access to at least three models
-   from two vendors; confirm credentials with the owner first.
+1. **Run the first live readability round** once the two API keys are present
+   in the environment (a new session picks them up): `prepare`, then `run` for
+   `claude-sonnet-5-5`, `claude-haiku-4-5-20251001` and one OpenAI model,
+   `score --grader anthropic:claude-sonnet-5-5`, judge the pending Complete
+   and Write samples into `judgement.json` with reasons, `report`, and commit
+   the run directory. Compare against the acceptance thresholds in
+   `03-readability-test.md`; a failing threshold becomes a grammar question
+   for the owner, not a silent change.
 2. **M1 in Rust.** Cargo workspace with crates for lexer (phrase table, longest
    match), parser (clause grammar, continuation rules), formatter (canonical
    layout from sketch section 16), and a conformance test runner driven by the
@@ -88,6 +100,9 @@ runtime exists. No design question is open.
   now stated in the library sketch; the examples depend on that.
 - The lint's call check is coarse: it accepts any name declared anywhere in
   the library sketch or the corpus, not per receiver type.
+- The ten reference outputs under `tests/readability/reference/` were derived
+  by hand from the sketches (Decimal and Float rendering rules included); the
+  VM at M3 is the first independent check of them.
 - The GitHub default branch was set automatically to the first pushed branch;
   the owner should switch it to `main` in the repository settings.
 

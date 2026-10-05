@@ -1,0 +1,12 @@
+{
+  "initials": "A library module with a public function that returns the initials of a full name, upper-cased and separated by nothing: \"ada marie lovelace\" gives \"AML\". Blank or extra spaces are ignored. Include example lines.",
+  "low_stock_report": "A command-line program that reads a JSON file of products (name, stock, reorder_level) whose path is the first argument, and prints one line per product whose stock is below its reorder level, lowest stock first.",
+  "letter_grades": "A library module that turns a list of scores (0 to 100) into letter grades A to F using the usual 90/80/70/60 cut-offs, plus a function that counts how many students got each grade.",
+  "password_strength": "A library module with a sum type Weak, Fair or Strong and a function that classifies a password: Strong needs at least 12 characters with letters, digits and another kind of character; Fair needs at least 8 characters; everything else is Weak. Include example lines.",
+  "title_length_tool": "An agent tool, exposed to agents, that downloads a web page and returns the number of characters in its <title> element, failing with a clear error when the page has no title.",
+  "roman_numerals": "A library module that converts an Integer from 1 to 3999 to a Roman numeral and a Roman numeral back to an Integer, failing with a typed error for invalid input. Include example lines for both directions.",
+  "compound_interest": "A command-line program that prints a yearly schedule of a savings balance with compound interest, exact to the cent: starting amount, yearly rate in percent and number of years come from the command line.",
+  "fizz_words": "A command-line program that prints the numbers from 1 to 100, replacing multiples of 3 with Fizz, multiples of 5 with Buzz, and multiples of both with FizzBuzz, using a pure function with example lines for the word choice.",
+  "request_window": "A library module with a function that takes a sorted list of request times in seconds and a window length, and returns how many requests would be rejected if at most 10 requests are allowed in any window.",
+  "merge_sorted": "A library module with a function that merges two sorted lists of Integers into one sorted list without duplicates, with example lines, and a test block for two empty lists."
+}

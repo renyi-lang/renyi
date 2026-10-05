@@ -604,3 +604,25 @@ version of the library sketch. (user)
 **K11. `console.print` takes only `Text` (R3-3).** Other values are printed
 through interpolation, `console.print("{total}")`. No generic entry point
 converts to text implicitly. (user)
+
+**K12. Float renders with a decimal point.** `Float.to_text()` is the shortest
+text that reads back as the same value and always contains a decimal point
+(`5.0`), so a `Float` is never mistaken for an `Integer` in output. `Decimal`
+keeps the digits of its exponent instead (`6.00` after `rounded(2)`).
+(derived)
+
+---
+
+## L. Readability test round (session 2)
+
+**L1. Models and credentials.** The first live round uses Anthropic and OpenAI
+models, at least three in total including the smallest model the project
+intends to support (`claude-haiku-4-5`). Credentials are environment variables
+of the cloud environment (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`), never part of
+the repository or the conversation. (user)
+
+**L2. Who judges Complete and Write before M3.** Claude judges each lint-clean
+sample in the session and records the verdict with a one-sentence reason in
+`judgement.json`; the owner spot-checks. The judge shares its origin with some
+of the tested models, so every verdict is re-run by the VM at M3 and the two
+sets of results are compared. (user)
