@@ -140,8 +140,8 @@ function to_base64(self: Bytes) returns Text
 ### 1.3 Collections
 
 `List of Item` is ordered. `Map of Key to Value` and `Set of Item` keep
-insertion order, so iteration and `keys()` are deterministic; their keys and
-items need `Hash`. `Pair of Left, Right` has fields `left` and `right`; a
+insertion order (decision K9), so iteration and `keys()` are deterministic;
+their keys and items need `Hash`. `Pair of Left, Right` has fields `left` and `right`; a
 two-variable loop header (`for each key, value in map`) destructures a pair
 (decision K8). `Range` is an inclusive range of `Integer`.
 
@@ -285,7 +285,7 @@ public function read_line() returns maybe Text needs console
 ```
 
 Values that are not `Text` are printed through interpolation:
-`console.print("{total}")`.
+`console.print("{total}")` (decision K11).
 
 ## 3. std.environment
 
@@ -458,13 +458,14 @@ public function render_with(value: Value, naming: Naming) returns Text
 ```
 
 Derivation rules for `ToJson` and `FromJson`: a record is an object keyed by
-its field names, or by the `as` names (decision J14); a variant without fields
-is its name as a string; a variant with fields is an object with one key, the
-variant name, holding the object of its fields; `maybe` is the value or
-`null`, and a missing key reads as `nothing`; `List` is an array; `Map of Text
-to V` is an object; `Integer`, `Decimal` and `Float` are numbers; `Date` and
-`Instant` are their `to_text()` strings; `Bytes` is base64. Refinements are
-checked while decoding and reported as `Constraint`.
+its field names, or by the `as` names (decision J14); a sum type is a flat
+object with a `kind` key holding the variant name next to the variant's
+fields, `{"kind": "Circle", "radius": 2.5}` and `{"kind": "Point"}`, and a
+variant with a field named `kind` cannot derive the abilities (decision K10);
+`maybe` is the value or `null`, and a missing key reads as `nothing`; `List`
+is an array; `Map of Text to V` is an object; `Integer`, `Decimal` and `Float`
+are numbers; `Date` and `Instant` are their `to_text()` strings; `Bytes` is
+base64. Refinements are checked while decoding and reported as `Constraint`.
 
 ## 8. std.http
 
@@ -649,10 +650,7 @@ with persistent settings (default headers, per-client timeouts, retries), and
 streaming variants of the file and HTTP functions for data that does not fit
 in memory.
 
-## 14. Open questions for the owner
+## 14. Open questions
 
-| Id | Question | Current sketch |
-|----|----------|----------------|
-| R3-1 | Should `Map` and `Set` keep insertion order (deterministic, slightly slower) or be unordered? | insertion order |
-| R3-2 | Variants with fields in JSON: externally tagged `{"Circle": {"radius": 2.5}}` as sketched, or a `kind` key? | externally tagged |
-| R3-3 | Does `console.print` accept any `ToText` value directly, or only `Text` as sketched? | only `Text`; interpolate otherwise |
+R3-1 to R3-3 were decided (decisions K9 to K11). New questions are listed here
+as they arise.

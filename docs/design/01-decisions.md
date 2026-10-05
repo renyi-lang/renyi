@@ -588,3 +588,19 @@ Self)`. It is a predefined type name like `Integer`, not a reserved word.
 `right`. A two-variable loop or query header destructures a pair;
 `map.entries()` and `items.with_index()` return lists of pairs, and iterating
 a map yields its entries. (derived)
+
+**K9. Maps and sets keep insertion order (R3-1).** Iteration, `keys()`,
+`values()` and `entries()` follow insertion order, so output is deterministic
+and examples can compare whole maps. Python and JavaScript behave the same
+way, which is what generated code assumes. (user)
+
+**K10. Variants encode as a flat object with a `kind` key (R3-2).**
+`Circle(radius: 2.5)` is `{"kind": "Circle", "radius": 2.5}` and `Point` is
+`{"kind": "Point"}`; a variant with a field named `kind` is a compile error
+when the type derives `ToJson` or `FromJson`. This is the discriminated-union
+shape most APIs use. Supersedes the externally tagged draft in the first
+version of the library sketch. (user)
+
+**K11. `console.print` takes only `Text` (R3-3).** Other values are printed
+through interpolation, `console.print("{total}")`. No generic entry point
+converts to text implicitly. (user)

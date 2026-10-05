@@ -11,8 +11,7 @@ complete and recorded; the surface syntax is sketched in full; the standard
 library is sketched and every corpus call is checked against it. The corpus
 has reached its target of 30 programs and passes the lint. The cheat sheet
 measures 2451 tokens against a 3000-token budget. No compiler, parser or
-runtime exists. Three library questions (R3-1 to R3-3 at the end of
-`04-stdlib-sketch.md`) await the owner.
+runtime exists. No design question is open.
 
 ## Done in session 1
 
@@ -56,17 +55,15 @@ runtime exists. Three library questions (R3-1 to R3-3 at the end of
    `std.csv`, `std.sqlite`, `std.regex`) after four owner decisions (K1 to
    K4: methods are `self: Type` functions, non-2xx HTTP is a failure,
    `matches` in the prelude, minimal `Bytes`). The lint now rejects any corpus
-   call not declared there.
+   call not declared there. Three follow-up questions (R3-1 to R3-3) were
+   answered and recorded as K9 to K11.
 
 ## Next steps, in order
 
-1. **Ask R3-1 to R3-3** (end of `04-stdlib-sketch.md`): map and set ordering,
-   JSON encoding of variants with fields, whether `console.print` takes any
-   `ToText` value. Record answers in `01-decisions.md` section K or a new L.
-2. **Readability test harness.** Implement `docs/design/03-readability-test.md`
+1. **Readability test harness.** Implement `docs/design/03-readability-test.md`
    under `tests/readability/`. It needs API access to at least three models
    from two vendors; confirm credentials with the owner first.
-3. **M1 in Rust.** Cargo workspace with crates for lexer (phrase table, longest
+2. **M1 in Rust.** Cargo workspace with crates for lexer (phrase table, longest
    match), parser (clause grammar, continuation rules), formatter (canonical
    layout from sketch section 16), and a conformance test runner driven by the
    corpus. The owner chose M3 (a VM running the corpus) as the first demo.
