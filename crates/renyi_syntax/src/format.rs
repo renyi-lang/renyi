@@ -479,7 +479,7 @@ impl Formatter<'_> {
                     "{}let {}: {} be",
                     if constant.public { "public " } else { "" },
                     constant.name.text,
-                    self.type_(&constant.ty)
+                    type_text(&constant.ty)
                 );
                 concat(vec![
                     text(head),
@@ -490,7 +490,7 @@ impl Formatter<'_> {
             Item::Test(test) => {
                 let mut head = format!("test {}", quote_text(&test.name));
                 if !test.needs.is_empty() {
-                    head.push_str(&format!(" needs {}", self.capabilities(&test.needs)));
+                    head.push_str(&format!(" needs {}", capabilities_text(&test.needs)));
                 }
                 if let Some(recording) = &test.replays {
                     head.push_str(&format!(" replays {}", quote_text(recording)));
@@ -517,7 +517,7 @@ impl Formatter<'_> {
             .params
             .iter()
             .map(|param| match &param.ty {
-                Some(ty) => text(format!("{}: {}", param.name.text, self.type_(ty))),
+                Some(ty) => text(format!("{}: {}", param.name.text, type_text(ty))),
                 None => text(param.name.text.clone()),
             })
             .collect();
@@ -528,20 +528,20 @@ impl Formatter<'_> {
         };
         let mut clauses = Vec::new();
         if let Some(returns) = &function.returns {
-            clauses.push(text(format!("returns {}", self.type_(returns))));
+            clauses.push(text(format!("returns {}", type_text(returns))));
         }
         if !function.fails.is_empty() {
-            let names: Vec<String> = function.fails.iter().map(|ty| self.type_(ty)).collect();
+            let names: Vec<String> = function.fails.iter().map(type_text).collect();
             clauses.push(text(format!("or fails with {}", names.join(" or "))));
         }
         if !function.needs.is_empty() {
             clauses.push(text(format!(
                 "needs {}",
-                self.capabilities(&function.needs)
+                capabilities_text(&function.needs)
             )));
         }
         if let Some(for_any) = &function.type_params {
-            clauses.push(text(self.for_any(for_any)));
+            clauses.push(text(for_any_text(for_any)));
         }
         let has_clauses = !clauses.is_empty();
         let mut clause_docs = Vec::new();
@@ -583,7 +583,7 @@ impl Formatter<'_> {
         }
         match &type_def.kind {
             TypeKind::Subtype { base, refinement } => {
-                let mut parts = vec![text(format!("{head} is {}", self.type_(base)))];
+                let mut parts = vec![text(format!("{head} is {}", type_text(base)))];
                 if let Some(refinement) = refinement {
                     parts.push(nest(self.refinement(refinement)));
                 }
@@ -651,7 +651,7 @@ impl Formatter<'_> {
         if with_has {
             head.push_str("has ");
         }
-        head.push_str(&format!("{}: {}", field.name.text, self.type_(&field.ty)));
+        head.push_str(&format!("{}: {}", field.name.text, type_text(&field.ty)));
         let mut parts = vec![text(head)];
         if let Some(refinement) = &field.refinement {
             parts.push(nest(self.refinement(refinement)));
@@ -704,7 +704,7 @@ impl Formatter<'_> {
             let requirements: Vec<String> = ability
                 .requirements
                 .iter()
-                .map(|ty| format!("self can {}", self.type_(ty)))
+                .map(|ty| format!("self can {}", type_text(ty)))
                 .collect();
             head.push_str(&format!(" where {}", requirements.join(" and ")));
         }
@@ -723,13 +723,13 @@ impl Formatter<'_> {
     fn implementation(&mut self, implementation: &AbilityImpl) -> Doc {
         let mut parts = vec![text(format!(
             "ability {} for {}",
-            self.type_(&implementation.ability),
-            self.type_(&implementation.target)
+            type_text(&implementation.ability),
+            type_text(&implementation.target)
         ))];
         if let Some(for_any) = &implementation.type_params {
             parts.push(nest(concat(vec![
                 Doc::HardLine,
-                text(self.for_any(for_any)),
+                text(for_any_text(for_any)),
             ])));
         }
         for function in &implementation.functions {
@@ -741,112 +741,6 @@ impl Formatter<'_> {
         parts.push(Doc::HardLine);
         parts.push(text("end"));
         concat(parts)
-    }
-
-    fn for_any(&self, for_any: &ForAny) -> String {
-        let params: Vec<&str> = for_any
-            .params
-            .iter()
-            .map(|param| param.text.as_str())
-            .collect();
-        let mut out = format!("for any {}", params.join(", "));
-        if !for_any.constraints.is_empty() {
-            let constraints: Vec<String> = for_any
-                .constraints
-                .iter()
-                .map(|constraint| {
-                    format!(
-                        "{} can {}",
-                        constraint.param.text,
-                        self.type_(&constraint.ability)
-                    )
-                })
-                .collect();
-            out.push_str(&format!(" where {}", constraints.join(" and ")));
-        }
-        out
-    }
-
-    fn capabilities(&self, capabilities: &[Capability]) -> String {
-        capabilities
-            .iter()
-            .map(|capability| {
-                let path: Vec<&str> = capability
-                    .path
-                    .iter()
-                    .map(|name| name.text.as_str())
-                    .collect();
-                let mut out = match &capability.scope {
-                    Some(scope) => format!("{}({})", path.join("."), quote_text(scope)),
-                    None => path.join("."),
-                };
-                if let Some(budget) = &capability.budget {
-                    out.push_str(&format!(
-                        " at most {} per {}",
-                        budget.count, budget.per.text
-                    ));
-                }
-                if !capability.only_to.is_empty() {
-                    let sinks: Vec<String> = capability
-                        .only_to
-                        .iter()
-                        .map(|sink| {
-                            let path: Vec<&str> =
-                                sink.path.iter().map(|name| name.text.as_str()).collect();
-                            match &sink.scope {
-                                Some(scope) => format!("{}({})", path.join("."), quote_text(scope)),
-                                None => path.join("."),
-                            }
-                        })
-                        .collect();
-                    out.push_str(&format!(" only to {}", sinks.join(" or ")));
-                }
-                out
-            })
-            .collect::<Vec<_>>()
-            .join(", ")
-    }
-
-    fn type_(&self, ty: &Type) -> String {
-        match ty {
-            Type::Named { name, args, .. } => {
-                if args.is_empty() {
-                    name.text.clone()
-                } else if name.text == "Map" && args.len() == 2 {
-                    format!(
-                        "{} of {} to {}",
-                        name.text,
-                        self.type_(&args[0]),
-                        self.type_(&args[1])
-                    )
-                } else {
-                    let args: Vec<String> = args.iter().map(|arg| self.type_(arg)).collect();
-                    format!("{} of {}", name.text, args.join(", "))
-                }
-            }
-            Type::Maybe(inner, _) => format!("maybe {}", self.type_(inner)),
-            Type::Function {
-                params,
-                returns,
-                fails,
-                needs,
-                ..
-            } => {
-                let params: Vec<String> = params.iter().map(|param| self.type_(param)).collect();
-                let mut out = format!("function({})", params.join(", "));
-                if let Some(returns) = returns {
-                    out.push_str(&format!(" returns {}", self.type_(returns)));
-                }
-                if !fails.is_empty() {
-                    let fails: Vec<String> = fails.iter().map(|ty| self.type_(ty)).collect();
-                    out.push_str(&format!(" or fails with {}", fails.join(" or ")));
-                }
-                if !needs.is_empty() {
-                    out.push_str(&format!(" needs {}", self.capabilities(needs)));
-                }
-                out
-            }
-        }
     }
 
     // -------------------------------------------------------------- statements
@@ -889,7 +783,7 @@ impl Formatter<'_> {
                 }
                 head.push_str(&name.text);
                 if let Some(ty) = ty {
-                    head.push_str(&format!(": {}", self.type_(ty)));
+                    head.push_str(&format!(": {}", type_text(ty)));
                 }
                 head.push_str(" be");
                 concat(vec![text(head), self.value_after(value)])
@@ -1477,7 +1371,7 @@ impl Formatter<'_> {
                 concat(vec![text("failure("), self.pattern(inner), text(")")])
             }
             Pattern::Binding(name) => text(name.text.clone()),
-            Pattern::Typed { name, ty, .. } => text(format!("{}: {}", name.text, self.type_(ty))),
+            Pattern::Typed { name, ty, .. } => text(format!("{}: {}", name.text, type_text(ty))),
         }
     }
 
@@ -1576,6 +1470,115 @@ fn escape_text(value: &str, block: bool) -> String {
 
 fn quote_text(value: &str) -> String {
     format!("\"{}\"", escape_text(value, false))
+}
+
+/// `for any T, U where T can Compare` as one line.
+pub fn for_any_text(for_any: &ForAny) -> String {
+    let params: Vec<&str> = for_any
+        .params
+        .iter()
+        .map(|param| param.text.as_str())
+        .collect();
+    let mut out = format!("for any {}", params.join(", "));
+    if !for_any.constraints.is_empty() {
+        let constraints: Vec<String> = for_any
+            .constraints
+            .iter()
+            .map(|constraint| {
+                format!(
+                    "{} can {}",
+                    constraint.param.text,
+                    type_text(&constraint.ability)
+                )
+            })
+            .collect();
+        out.push_str(&format!(" where {}", constraints.join(" and ")));
+    }
+    out
+}
+
+/// A `needs` list as one line, grant clauses included.
+pub fn capabilities_text(capabilities: &[Capability]) -> String {
+    capabilities
+        .iter()
+        .map(|capability| {
+            let path: Vec<&str> = capability
+                .path
+                .iter()
+                .map(|name| name.text.as_str())
+                .collect();
+            let mut out = match &capability.scope {
+                Some(scope) => format!("{}({})", path.join("."), quote_text(scope)),
+                None => path.join("."),
+            };
+            if let Some(budget) = &capability.budget {
+                out.push_str(&format!(
+                    " at most {} per {}",
+                    budget.count, budget.per.text
+                ));
+            }
+            if !capability.only_to.is_empty() {
+                let sinks: Vec<String> = capability
+                    .only_to
+                    .iter()
+                    .map(|sink| {
+                        let path: Vec<&str> =
+                            sink.path.iter().map(|name| name.text.as_str()).collect();
+                        match &sink.scope {
+                            Some(scope) => format!("{}({})", path.join("."), quote_text(scope)),
+                            None => path.join("."),
+                        }
+                    })
+                    .collect();
+                out.push_str(&format!(" only to {}", sinks.join(" or ")));
+            }
+            out
+        })
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+/// A type as one line, as the formatter spells it.
+pub fn type_text(ty: &Type) -> String {
+    match ty {
+        Type::Named { name, args, .. } => {
+            if args.is_empty() {
+                name.text.clone()
+            } else if name.text == "Map" && args.len() == 2 {
+                format!(
+                    "{} of {} to {}",
+                    name.text,
+                    type_text(&args[0]),
+                    type_text(&args[1])
+                )
+            } else {
+                let args: Vec<String> = args.iter().map(type_text).collect();
+                format!("{} of {}", name.text, args.join(", "))
+            }
+        }
+        Type::Maybe(inner, _) => format!("maybe {}", type_text(inner)),
+        Type::Function {
+            params,
+            returns,
+            fails,
+            needs,
+            ..
+        } => {
+            let params: Vec<String> = params.iter().map(type_text).collect();
+            let mut out = format!("function({})", params.join(", "));
+            if let Some(returns) = returns {
+                out.push_str(&format!(" returns {}", type_text(returns)));
+            }
+            if !fails.is_empty() {
+                let fails: Vec<String> = fails.iter().map(type_text).collect();
+                out.push_str(&format!(" or fails with {}", fails.join(" or ")));
+            }
+            if !needs.is_empty() {
+                out.push_str(&format!(" needs {}", capabilities_text(needs)));
+            }
+            out
+        }
+    }
 }
 
 #[cfg(test)]

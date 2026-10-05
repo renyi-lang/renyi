@@ -16,7 +16,7 @@ pub mod span;
 pub mod token;
 
 pub use diagnostics::{Diagnostic, Severity};
-pub use format::format;
+pub use format::{capabilities_text, for_any_text, format, type_text};
 pub use json::module_to_json;
 pub use lexer::{lex, Lexed};
 pub use parser::{parse, parse_declarations, Parsed};

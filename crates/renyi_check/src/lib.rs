@@ -162,17 +162,16 @@ pub fn check_sources(main: &SourceFile, imports: &[SourceFile]) -> Vec<Diagnosti
     diagnostics
 }
 
-/// Check a file on disk; its non-library imports are read from the same
-/// directory (decision J17: the file's directory is the project root).
-pub fn check_file(file: &SourceFile) -> Vec<Diagnostic> {
+/// The non-library modules a file imports, transitively, read from its
+/// directory (decision J17: the file's directory is the project root). A
+/// file that cannot be read is left out; the resolver then reports an
+/// unknown module.
+pub fn imported_files(file: &SourceFile) -> Vec<SourceFile> {
     let directory = Path::new(&file.name)
         .parent()
         .map(Path::to_path_buf)
         .unwrap_or_else(|| PathBuf::from("."));
     let parsed = parse(&file.text);
-    if parsed.diagnostics.iter().any(Diagnostic::is_error) {
-        return parsed.diagnostics;
-    }
     let mut imports = Vec::new();
     let mut seen: HashSet<String> = HashSet::new();
     let mut queue: Vec<Vec<String>> = parsed
@@ -195,7 +194,7 @@ pub fn check_file(file: &SourceFile) -> Vec<Diagnostic> {
         }
         file_path.set_extension("ry");
         let Ok(text) = std::fs::read_to_string(&file_path) else {
-            continue; // reported as an unknown module by the resolver
+            continue;
         };
         let imported = parse(&text);
         for import in &imported.module.imports {
@@ -203,5 +202,10 @@ pub fn check_file(file: &SourceFile) -> Vec<Diagnostic> {
         }
         imports.push(SourceFile::new(file_path.display().to_string(), text));
     }
-    check_sources(file, &imports)
+    imports
+}
+
+/// Check a file on disk together with the imports read from its directory.
+pub fn check_file(file: &SourceFile) -> Vec<Diagnostic> {
+    check_sources(file, &imported_files(file))
 }
