@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This program models a traffic light that cycles through red, green, and yellow phases in sequence. It can be interrupted by emergency events that override the normal cycle and put the light into a flashing red state. The program provides functions to compute state transitions and simulate complete sequences of light changes.\n"
+  ],
+  "model": "agent-haiku"
+}

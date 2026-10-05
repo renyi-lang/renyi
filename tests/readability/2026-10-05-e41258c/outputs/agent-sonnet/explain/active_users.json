@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This program reads a JSON file of user records, keeps the users who are flagged active and are at least 18, orders them by name, and prints their e-mail addresses one per line, followed by a last line stating how many active adults there are. It is read-only, requesting only console output and file reading (not limited to a particular folder) with no network access or writing, and it fails with a file error or a JSON error if the file cannot be read or parsed as a list of user records. The filtering is a separate public function that accepts any file path and returns the e-mail list, whereas the runnable entry point always reads the same hard-coded file in the data folder, so using other input means calling that function or editing the program.\n"
+  ],
+  "model": "agent-sonnet"
+}

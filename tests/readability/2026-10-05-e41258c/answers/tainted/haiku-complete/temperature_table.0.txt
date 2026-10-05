@@ -1,0 +1,8 @@
+public function to_fahrenheit(celsius: Decimal) returns Decimal
+  purpose: Convert a Celsius temperature to Fahrenheit.
+  example: to_fahrenheit(0) is 32
+  example: to_fahrenheit(100) is 212
+  example: to_fahrenheit(-40) is -40
+
+  return celsius * 9 / 5 + 32
+end

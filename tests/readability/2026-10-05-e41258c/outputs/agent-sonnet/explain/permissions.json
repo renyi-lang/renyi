@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This module implements a small role-based access check: a permission is a validated name made of a lowercase resource, a colon and an action, a role is a named set of permissions, and the module can pool the permissions of several roles, list the required permissions that no role grants, say whether the roles together cover every requirement (a permission granted by any one role counts), and find the permissions two roles have in common. These helpers are pure, needing no console, file or network access, and they compare exact permission names with no wildcards or role hierarchy; only the sample entry point needs console output. That sample checks a viewer and an editor together against the read, write and publish permissions on posts, so it prints that publish is missing and then that the one permission the two roles share is read.\n"
+  ],
+  "model": "agent-sonnet"
+}

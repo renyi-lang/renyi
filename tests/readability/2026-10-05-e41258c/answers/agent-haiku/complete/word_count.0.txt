@@ -1,0 +1,28 @@
+```
+public function count_words(text: Text) returns List of WordCount
+  purpose: Count every lower-cased word, most frequent first.
+  example: count_words("a b a")
+    is [WordCount(word: "a", occurrences: 2), WordCount(word: "b", occurrences: 1)]
+  example: count_words("") is []
+
+  let words be text.split(" ")
+  let cleaned be
+    for each word in words
+    where word.trim() is not ""
+    collect word.trim().to_lower()
+
+  let grouped be
+    for each word in cleaned
+    group by word
+    collect word
+
+  let with_counts be
+    for each w, instances in grouped
+    collect WordCount(word: w, occurrences: instances.size())
+
+  return
+    for each entry in with_counts
+    sorted by entry.occurrences descending
+    collect entry
+end
+```

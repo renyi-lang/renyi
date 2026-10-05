@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This program reads a single log file whose path is hard-coded, parses every non-blank line into a timestamp, severity level and message, and prints the number of error-level entries for each date-and-hour, earliest first, omitting hours that had no errors. It is strict about input: a line must consist of an ISO 8601 timestamp to the second (a T between date and time, no time zone), an upper-case level word (debug, info, warn or error) and a message, separated by spaces, and the first line that does not fit, including one with another level name such as trace, makes the whole run fail with an error instead of being skipped. It needs only permission to read files and print to the console, but since it takes no arguments and the file is fixed, it works better as a demo or as a source of reusable public parsing and counting functions than as a general-purpose log tool.\n"
+  ],
+  "model": "agent-sonnet"
+}

@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This module models plane shapes as a circle, a rectangle or a point (circles and rectangles must have strictly positive sizes) and offers a public area contract for them, with a circle's area using a five-decimal approximation of pi, a rectangle's being width times height, and a point's being zero. It also lets other code turn any shape into a one-line description giving its kind, size and area rounded to two decimals, and pick the largest-area shape from a list, getting nothing back when the list is empty. Running it just prints a small demo (three sample shapes, then the largest, which is the circle) and needs nothing beyond console output, so it is a compact, self-contained helper for these three shapes rather than a general geometry library.\n"
+  ],
+  "model": "agent-sonnet"
+}

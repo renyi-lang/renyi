@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "It reads a sales CSV from a fixed path in its data folder, totals the amounts for each region, prints the totals to the console from largest to smallest, and saves them as a CSV report with a header row in the same folder. Input is checked strictly: an unreadable or invalid file, or any row with a missing region, product or amount or a non-numeric amount, stops the run with an error before anything is printed or written, and bad rows are reported by line number (the product is required even though the totals ignore it). It may only use the console and files under the data folder, with no network access, but both file paths are hard-coded and the report is written without CSV quoting, so as written it suits only a sales export that sits at that exact location and has region, product and amount columns.\n"
+  ],
+  "model": "agent-sonnet"
+}

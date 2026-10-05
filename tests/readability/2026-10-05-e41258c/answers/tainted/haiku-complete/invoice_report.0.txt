@@ -1,0 +1,10 @@
+public function statement_line(order: Invoice) returns Text
+  purpose: One row of the statement: customer, number of lines and total, in fixed columns.
+  example: statement_line(Invoice(customer: "ACME", lines: [], discount_percent: 0))
+    is "ACME          0 lines      0.00"
+
+  let customer be order.customer.pad_right(12)
+  let line_count be order.lines.length().to_text().pad_left(3)
+  let total be invoice.total(order).to_text().pad_left(10)
+  return "{customer}{line_count} lines{total}"
+end

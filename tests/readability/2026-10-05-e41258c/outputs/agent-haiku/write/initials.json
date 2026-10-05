@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "```renyi\nmodule initials\n  purpose: Extract initials from full names.\n\npublic function initials_of(name: Text)\n  returns Text\n  purpose: Return the initials of a full name, upper-cased and separated by nothing.\n  example: initials_of(name: \"ada marie lovelace\") is \"AML\"\n  example: initials_of(name: \"john doe\") is \"JD\"\n\n  let trimmed be name.trim()\n  let words be trimmed.split(\" \")\n  let initials_list be\n    for each word in words\n    where word.length() is greater than 0\n    collect word.first().to_upper_case()\n  return initials_list.join(\"\")\nend\n```\n"
+  ],
+  "model": "agent-haiku"
+}

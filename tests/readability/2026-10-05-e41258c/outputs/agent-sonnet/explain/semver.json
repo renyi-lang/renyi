@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This is a small, pure module (no capabilities needed) for plain three-part semantic versions, which it represents as non-negative major, minor and patch numbers, prints as dotted text, and orders by major, then minor, then patch. Parsing text into a version trims surrounding whitespace and requires exactly three dot-separated parts that are each non-negative whole numbers, failing with an error that reports either the number of parts found or the offending part; pre-release and build suffixes are not supported. It also provides a compatibility check that is true when a candidate has the same major version as the required one and is not older than it, and a function that returns the greatest version in a list, or no value when the list is empty.\n"
+  ],
+  "model": "agent-sonnet"
+}

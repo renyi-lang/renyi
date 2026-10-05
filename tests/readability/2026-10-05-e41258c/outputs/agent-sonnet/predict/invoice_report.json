@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "ACME          1 lines      9.00\nGlobex        2 lines     21.00\ngrand total: 30.00\n"
+  ],
+  "model": "agent-sonnet"
+}

@@ -1,0 +1,31 @@
+module request_limiter
+  purpose: Rate limiting for sliding windows.
+
+public function count_rejected_requests(
+  request_times: List of Decimal,
+  window_length: Decimal
+)
+  returns Integer
+  purpose: Count requests rejected with at most 10 allowed in any window.
+  example: count_rejected_requests(request_times: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0], window_length: 10.0) is 1
+
+  let mutable accepted_times be []
+  let mutable rejected_count be 0
+
+  for each time in request_times
+    let window_start be time - window_length
+    let in_window_count be
+      for each accepted_time in accepted_times
+      where accepted_time is at least window_start
+      count
+    end
+
+    if in_window_count is less than 10 then
+      set accepted_times to accepted_times.append(time)
+    otherwise
+      set rejected_count to rejected_count + 1
+    end
+  end
+
+  return rejected_count
+end

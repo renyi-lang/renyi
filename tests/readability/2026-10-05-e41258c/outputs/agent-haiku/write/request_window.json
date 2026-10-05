@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "module request_limiter\n  purpose: Rate limiting for sliding windows.\n\npublic function count_rejected_requests(\n  request_times: List of Decimal,\n  window_length: Decimal\n)\n  returns Integer\n  purpose: Count requests rejected with at most 10 allowed in any window.\n  example: count_rejected_requests(request_times: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0], window_length: 10.0) is 1\n\n  let mutable accepted_times be []\n  let mutable rejected_count be 0\n\n  for each time in request_times\n    let window_start be time - window_length\n    let in_window_count be\n      for each accepted_time in accepted_times\n      where accepted_time is at least window_start\n      count\n    end\n\n    if in_window_count is less than 10 then\n      set accepted_times to accepted_times.append(time)\n    otherwise\n      set rejected_count to rejected_count + 1\n    end\n  end\n\n  return rejected_count\nend\n"
+  ],
+  "model": "agent-haiku"
+}

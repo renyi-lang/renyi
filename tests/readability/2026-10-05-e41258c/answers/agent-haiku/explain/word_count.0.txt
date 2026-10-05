@@ -1,0 +1,1 @@
+This program reads a text file and counts how often each word appears in it. Words are normalized to lowercase before counting, and the results are sorted by frequency. It displays the ten most common words with their occurrence counts, making it useful for analyzing word frequency patterns in text.

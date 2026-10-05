@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This program solves the problem of ordering build steps so each step runs only after all its dependencies are complete. It takes a map describing which steps depend on which other steps and returns a topologically sorted list where dependencies always come first. It also detects and reports two types of errors: circular dependencies that make ordering impossible, and references to steps that do not exist.\n"
+  ],
+  "model": "agent-haiku"
+}

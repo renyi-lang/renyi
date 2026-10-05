@@ -1,0 +1,1 @@
+This program is a currency conversion tool that converts monetary amounts between different currencies at current exchange rates. It fetches live rates from an external API service and rounds the result to cents for practical use. The tool is published as an agent capability, making it available for automated decision-making systems.

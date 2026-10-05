@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This program queries a remote chat model API by sending a user-provided question, passing authentication through an environment variable, and returns the model's response. It reads the question from command-line arguments and the API credentials from the environment, making it suitable for shell integration. Use this if you need a simple command-line interface to send individual queries to a chat API and display answers directly in your terminal.\n"
+  ],
+  "model": "agent-haiku"
+}

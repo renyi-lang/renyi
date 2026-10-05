@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This program reads a text file, whose path is the first command-line argument or else a default sample file in a data folder, and prints the ten most frequent words, one per line, each preceded by its count padded to a width of six. It counts words by splitting each line on single spaces, trimming each piece, dropping blank ones and lower-casing the rest, so case is ignored, but punctuation stays attached to words (a word followed by a comma counts separately from the bare word) and no tie-break is defined among equal counts. Its permissions are limited to the console, the environment and reading files, and it fails with a file error if the file cannot be read; it suits quick frequency checks on plain text but not text where punctuation or tabs matter.\n"
+  ],
+  "model": "agent-sonnet"
+}

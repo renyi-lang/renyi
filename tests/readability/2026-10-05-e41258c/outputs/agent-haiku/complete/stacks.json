@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "public function balanced(text: Text) returns Boolean\n  purpose: Whether every round and square bracket is closed by its partner in the right order.\n  tags: parsing, brackets\n  example: balanced(\"(a[b])\") is true\n  example: balanced(\"(]\") is false\n  example: balanced(\"((\") is false\n  example: balanced(\"a]\") is false\n  example: balanced(\"\") is true\n\n  let mutable stack be empty()\n  for each char in text\n    match char\n      when \"(\" then set stack to push(stack: stack, item: \"(\")\n      when \"[\" then set stack to push(stack: stack, item: \"[\")\n      when \")\" then\n        match pop(stack)\n          when some(popped) then\n            if popped.top is not \"(\" then return false end\n            set stack to popped.rest\n          when nothing then return false\n        end\n      when \"]\" then\n        match pop(stack)\n          when some(popped) then\n            if popped.top is not \"[\" then return false end\n            set stack to popped.rest\n          when nothing then return false\n        end\n      otherwise\n    end\n  end\n  return stack.is_empty()\nend\n"
+  ],
+  "model": "agent-haiku"
+}

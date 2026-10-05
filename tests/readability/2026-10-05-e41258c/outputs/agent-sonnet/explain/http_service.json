@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This is a small, single-purpose HTTP service that listens on the fixed port 8080 and turns a Celsius temperature, passed in the query string of its conversion path, into a JSON reply holding both the Celsius and Fahrenheit values, with no support for the reverse direction or other units. Besides a health-check path that simply answers OK, it responds with a bad-request error and a short explanation when the Celsius value is missing or not a number, and with not-found for every other path. It prints a startup message to the console and then runs until the process is stopped, failing with a start error if the server cannot be started, and its declared permissions are limited to console output and network sockets, so it cannot read or write files.\n"
+  ],
+  "model": "agent-sonnet"
+}

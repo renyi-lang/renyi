@@ -1,0 +1,13 @@
+public function describe(shape: Shape) returns Text
+  purpose: One line naming the shape and giving its area.
+  example: describe(Point) is "a point with area 0.00"
+  example: describe(Rectangle(width: 2, height: 3)) is "a 2 by 3 rectangle with area 6.00"
+
+  let kind be
+    match shape
+      when Circle(radius) then "a circle of radius {radius}"
+      when Rectangle(width, height) then "a {width} by {height} rectangle"
+      when Point then "a point"
+    end
+  return "{kind} with area {shape.area().rounded(2)}"
+end

@@ -1,0 +1,30 @@
+public function order(dependencies: Map of Text to List of Text)
+  returns List of Text
+  or fails with OrderError
+  purpose: A topological order of the steps; ties are broken alphabetically so the result is stable.
+  tags: graph, topological-sort, build
+  example: order({"test": ["build"], "build": ["fetch"], "fetch": []}) is ["fetch", "build", "test"]
+  example: order({"a": ["b"], "b": ["a"]}) fails with Cycle(remaining: ["a", "b"])
+  example: order({"test": ["lint"]}) fails with UnknownDependency(step: "test", depends_on: "lint")
+
+  for each step, needed in dependencies
+    for each dependency in needed where not dependencies.contains_key(dependency)
+      fail with UnknownDependency(step: step, depends_on: dependency)
+    end
+  end
+  let mutable remaining be dependencies
+  let mutable ordered: List of Text be []
+  while not remaining.is_empty()
+    let ready be
+      for each step, needed in remaining
+      where needed.to_set().is_subset_of(ordered.to_set())
+      sorted by step
+      collect step
+    if ready.is_empty() then fail with Cycle(remaining: remaining.keys().sorted()) end
+    set ordered to ordered.append_all(ready)
+    for each step in ready
+      set remaining to remaining.without(step)
+    end
+  end
+  return ordered
+end

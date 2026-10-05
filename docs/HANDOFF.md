@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated: 2026-10-05, end of session 2.
+Last updated: 2026-10-05, session 3 paused at the account usage limit.
 Branches: `main` holds the session-1 handoff; `claude/renyi-language-design-hbrie3`
 carries all of session 2 (eight commits ahead of `main` at handoff). The owner
 decides when `main` moves.
@@ -93,8 +93,25 @@ written but has not run live, for lack of API keys in the environment.
    (spans aside), stays within 100 columns, and every corpus file is in
    canonical form (eight files were reformatted by the tool).
 
-## Next steps, in order
+## Session 3 (paused, unfinished)
 
+The owner asked whether the readability test needs API keys at all, and
+approved a free pre-test: fresh Claude Code subagents (Haiku and Sonnet) that
+read only the cheat sheet and one prompt file. Run directory:
+`tests/readability/2026-10-05-e41258c/`. Its `notes.md` is the full record:
+method, deviations, an answer-key leak in the prompt files (fixed in
+`run.py`, tainted samples quarantined and re-collected), and the collection
+status at the pause. All raw answers are saved under `answers/` there.
+
+The session stopped when the account hit its weekly limit (Sonnet returned
+HTTP 429 until Oct 8, 3pm UTC). In flight and cut off at that moment: 15
+Sonnet Complete and 10 Sonnet Write samples, never collected. Nothing has
+been judged or graded yet. Resume with the "Remaining steps" list at the end
+of `notes.md`. That is step 0 below.
+
+
+0. **Finish the subagent pre-test** (see above), then report the results to
+   the owner in Chinese and raise any failing threshold as a question.
 1. **Run the first live readability round** once the two API keys are present
    in the environment (a new session picks them up): `prepare`, then `run` for
    `claude-sonnet-5-5`, `claude-haiku-4-5-20251001` and one OpenAI model,
@@ -144,6 +161,9 @@ written but has not run live, for lack of API keys in the environment.
   the owner should switch it to `main` in the repository settings.
 
 ## Owner actions pending
+
+- Usage limit: the Sonnet subagents of the pre-test can resume after
+  Oct 8, 3pm UTC.
 
 - Set `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` in the cloud environment so the
   next session can run the readability round (decision L1).

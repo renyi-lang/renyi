@@ -1,0 +1,10 @@
+```renyi
+public function total(invoice: Invoice) returns Decimal
+  purpose: Subtotal after the percentage discount, rounded to cents.
+  see also: subtotal
+
+  let before_discount be subtotal(invoice)
+  let discount be before_discount * invoice.discount_percent / 100
+  return (before_discount - discount).rounded(2)
+end
+```

@@ -1,0 +1,53 @@
+```
+module grading.scores
+  purpose: Convert scores to letter grades and count grade distributions.
+
+public type Grade is one of
+  A
+  B
+  C
+  D
+  F
+end
+
+public function score_to_grade(score: Integer) returns Grade
+  purpose: Convert a score from 0-100 to a letter grade.
+  example: score_to_grade(score: 95) is A
+
+  if score is at least 90 then
+    return A
+  otherwise if score is at least 80 then
+    return B
+  otherwise if score is at least 70 then
+    return C
+  otherwise if score is at least 60 then
+    return D
+  otherwise
+    return F
+  end
+end
+
+public function count_by_grade(scores: List of Integer) returns Map of Text to Integer
+  purpose: Count how many students received each grade.
+  example: count_by_grade(scores: [95, 85, 75, 65, 50]) is {"A": 1, "B": 1, "C": 1, "D": 1, "F": 1}
+
+  let mutable a_count be 0
+  let mutable b_count be 0
+  let mutable c_count be 0
+  let mutable d_count be 0
+  let mutable f_count be 0
+
+  for each score in scores
+    let grade be score_to_grade(score: score)
+    match grade
+      when A then set a_count to a_count + 1
+      when B then set b_count to b_count + 1
+      when C then set c_count to c_count + 1
+      when D then set d_count to d_count + 1
+      when F then set f_count to f_count + 1
+    end
+  end
+
+  return {"A": a_count, "B": b_count, "C": c_count, "D": d_count, "F": f_count}
+end
+```

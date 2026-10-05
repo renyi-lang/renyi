@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "missing: posts:publish\nshared: posts:read\n"
+  ],
+  "model": "agent-sonnet"
+}

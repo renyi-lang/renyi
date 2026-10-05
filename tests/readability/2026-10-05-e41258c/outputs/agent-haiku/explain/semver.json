@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This module handles semantic version numbers consisting of three numeric parts. It can parse version strings from text, validate that they have exactly three numeric parts with no invalid characters, and compare versions to determine which is newer. It also checks whether one version satisfies the requirements of another version and finds the latest version from a collection, making it useful for version compatibility checks and version management.\n"
+  ],
+  "model": "agent-haiku"
+}

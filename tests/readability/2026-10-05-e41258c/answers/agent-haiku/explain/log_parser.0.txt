@@ -1,0 +1,1 @@
+This program reads a server log file and parses each line into structured entries containing a timestamp, severity level, and message. It filters for entries with error level and groups them by hour. Finally, it prints the count of errors for each hour in chronological order.

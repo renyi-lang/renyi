@@ -1,0 +1,1 @@
+This module calculates customer invoice totals by summing line items, each with a quantity and unit price, and applies a percentage discount to the subtotal. The final amount is always rounded to the nearest cent for accuracy. It is suitable for billing systems that need to generate invoice totals with percentage-based discounts applied.

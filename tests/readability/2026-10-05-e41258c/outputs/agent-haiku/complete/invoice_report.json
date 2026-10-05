@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "public function statement_line(order: Invoice) returns Text\n  purpose: One row of the statement: customer, number of lines and total, in fixed columns.\n  example: statement_line(Invoice(customer: \"ACME\", lines: [], discount_percent: 0))\n    is \"ACME          0 lines      0.00\"\n\n  let line_count be for each line in order.lines count\n  let total be invoice.total(order)\n  return \"{order.customer}          {line_count} lines      {total}\"\nend\n"
+  ],
+  "model": "agent-haiku"
+}

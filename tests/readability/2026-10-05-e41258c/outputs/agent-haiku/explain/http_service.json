@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This program is a simple HTTP server that provides a temperature conversion API. It exposes two endpoints: a health check endpoint at `/health` that confirms the server is running, and a conversion endpoint at `/convert` that accepts a temperature in Celsius as a query parameter and returns both the Celsius value and its Fahrenheit equivalent as JSON. The server listens on port 8080 and will continue running until the process is stopped.\n"
+  ],
+  "model": "agent-haiku"
+}

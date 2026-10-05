@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This is a minimal command-line to-do tool that keeps one task per line in a plain text file in the current directory, and each run does one thing: add a task, mark a task done by its number in the list, or show the list. Adding or finishing a task saves the file and prints the updated numbered list, finishing a task deletes it outright instead of recording it as completed, and any unrecognized input, including a missing or invalid number, just prints a one-line usage reminder. A missing or unreadable file counts as an empty list, a failed save is reported as a file error, and the program declares console, environment and unrestricted filesystem permissions even though it only touches that one file."
+  ],
+  "model": "agent-sonnet"
+}

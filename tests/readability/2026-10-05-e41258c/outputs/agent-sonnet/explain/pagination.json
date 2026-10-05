@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "It downloads every customer from a cursor-paginated JSON web API by requesting one page at a time, passing along the cursor from the previous page until a response arrives without one, and then prints how many customers each country has, from the most customers to the fewest. The download step is a reusable public function for any base address, but the runnable entry point is hard-wired to a single placeholder address, and the code only fits APIs that take the cursor as a URL query parameter and reply with JSON containing a list of customers (id, name, country) and an optional camelCase next-cursor field. It needs only network and console permissions, but it is strictly sequential, holds every customer in memory, and has no retries, timeout or page limit, so any HTTP or JSON error aborts the whole run before anything is printed and an API that never stops returning cursors would make it loop forever.\n"
+  ],
+  "model": "agent-sonnet"
+}

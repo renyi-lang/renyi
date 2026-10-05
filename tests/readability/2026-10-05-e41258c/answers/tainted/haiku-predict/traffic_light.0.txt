@@ -1,0 +1,5 @@
+Green
+Yellow
+FlashingRed
+FlashingRed
+Red

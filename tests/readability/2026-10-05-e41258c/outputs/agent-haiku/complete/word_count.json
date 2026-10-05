@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "```\npublic function count_words(text: Text) returns List of WordCount\n  purpose: Count every lower-cased word, most frequent first.\n  example: count_words(\"a b a\")\n    is [WordCount(word: \"a\", occurrences: 2), WordCount(word: \"b\", occurrences: 1)]\n  example: count_words(\"\") is []\n\n  let words be text.split(\" \")\n  let cleaned be\n    for each word in words\n    where word.trim() is not \"\"\n    collect word.trim().to_lower()\n\n  let grouped be\n    for each word in cleaned\n    group by word\n    collect word\n\n  let with_counts be\n    for each w, instances in grouped\n    collect WordCount(word: w, occurrences: instances.size())\n\n  return\n    for each entry in with_counts\n    sorted by entry.occurrences descending\n    collect entry\nend\n```\n"
+  ],
+  "model": "agent-haiku"
+}

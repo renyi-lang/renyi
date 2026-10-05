@@ -1,0 +1,1 @@
+This program takes a command-line argument as a name and prints a personalized greeting. If no name is provided, it defaults to greeting the world. It's a minimal example of how to read command-line arguments and output text in Renyi.

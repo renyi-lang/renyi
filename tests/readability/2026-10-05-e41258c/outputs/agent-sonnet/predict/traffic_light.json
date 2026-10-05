@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "Green\nYellow\nFlashingRed\nFlashingRed\nRed\n"
+  ],
+  "model": "agent-sonnet"
+}

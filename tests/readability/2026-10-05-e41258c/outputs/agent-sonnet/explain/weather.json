@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This program makes one HTTP request to the Open-Meteo weather service for Berlin's fixed coordinates, parses the JSON reply, and prints a single line giving the current temperature (labelled in Celsius) and wind speed (labelled in km/h). It needs permission for console output and network access (the download routine is limited to the Open-Meteo host, but the program's entry point asks for network access to any host), takes no input, and always reports Berlin, so another city means changing the code, although the download routine itself accepts any coordinates. If the request fails or the reply cannot be parsed, it prints nothing and fails with an error that tells those two cases apart, with no retry or fallback.\n"
+  ],
+  "model": "agent-sonnet"
+}

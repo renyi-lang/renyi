@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This program computes three fundamental statistical measures—mean, median, and standard deviation—for any set of numbers you provide on the command line. It gracefully handles non-numeric inputs by skipping them and continuing with valid numbers. Use this tool when you need quick statistical analysis of command-line data without requiring the numbers to be in a specific format or pre-filtered.\n"
+  ],
+  "model": "agent-haiku"
+}

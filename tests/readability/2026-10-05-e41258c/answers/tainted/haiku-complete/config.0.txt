@@ -1,0 +1,6 @@
+public function default_config() returns Config
+  purpose: The configuration used when no file is present.
+  example: default_config().port is Port(8080)
+
+  return Config(port: Port(8080), workers: 4, log_level: Normal)
+end

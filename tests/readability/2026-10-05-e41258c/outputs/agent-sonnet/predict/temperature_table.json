@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "Celsius  Fahrenheit\n    -10          14\n      0          32\n     10          50\n     20          68\n     30          86\n     40         104\n"
+  ],
+  "model": "agent-sonnet"
+}

@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "It converts a header row plus any number of body rows of text into a Markdown table returned as one multi-line text, made of the header line, a dashed divider line and one line per body row, with every cell padded on the right to the width of the widest cell in its column (header included) so the vertical bars line up in plain text. The formatting itself is pure, with no input or output, and a public helper also reports the column widths, while only the bundled demo, which prints a three-column fruit price table, touches the console. It suits quick, tidy output for well-formed text tables, but the header alone sets the column count (extra cells in longer rows are silently dropped and missing cells in shorter rows come out blank), every column is left-aligned with no alignment markers, and cell text is not escaped, so a vertical bar or line break inside a cell would break the table.\n"
+  ],
+  "model": "agent-sonnet"
+}

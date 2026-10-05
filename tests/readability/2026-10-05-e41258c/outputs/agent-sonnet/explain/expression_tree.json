@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "It models arithmetic on decimal numbers as a tree of numbers, additions, multiplications and negations, and gives you two reusable functions for such trees: one that recursively computes the value, and one that writes the tree as text with every addition and multiplication in parentheses and negation as a leading minus sign. Both functions are pure and need no permissions, and the demo entry point, which needs only console output, builds a sample tree that multiplies the sum of one and two by negative four and prints its text form followed by its value, negative twelve. It is a compact building block or teaching example rather than a full calculator: there is no text parser, no division or variables, and subtraction is possible only by adding a negation, so every tree must be built by hand.\n"
+  ],
+  "model": "agent-sonnet"
+}

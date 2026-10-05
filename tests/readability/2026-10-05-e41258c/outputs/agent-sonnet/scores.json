@@ -1,0 +1,233 @@
+{
+  "predict/dependency_order": [
+    {
+      "pass": true
+    }
+  ],
+  "predict/expression_tree": [
+    {
+      "pass": true
+    }
+  ],
+  "predict/hello": [
+    {
+      "pass": true
+    }
+  ],
+  "predict/invoice_report": [
+    {
+      "pass": true
+    }
+  ],
+  "predict/markdown_table": [
+    {
+      "pass": true
+    }
+  ],
+  "predict/permissions": [
+    {
+      "pass": true
+    }
+  ],
+  "predict/shapes": [
+    {
+      "pass": true
+    }
+  ],
+  "predict/statistics": [
+    {
+      "pass": true
+    }
+  ],
+  "predict/temperature_table": [
+    {
+      "pass": true
+    }
+  ],
+  "predict/traffic_light": [
+    {
+      "pass": true
+    }
+  ],
+  "explain/active_users": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/assistant": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/concurrent_fetch": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/config": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/currency_tool": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/deadlines": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/dependency_order": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/expression_tree": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/file_tree": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/hello": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/http_service": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/inventory_db": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/invoice": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/invoice_report": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/log_parser": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/markdown_table": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/pagination": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/permissions": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/retry": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/sales_report": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/semver": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/shapes": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/shipping_rules": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/stacks": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/statistics": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/temperature_table": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/todo_cli": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/traffic_light": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/weather": [
+    {
+      "pending": true
+    }
+  ],
+  "explain/word_count": [
+    {
+      "pending": true
+    }
+  ],
+  "complete/config": [
+    {
+      "lint_problems": [],
+      "pending": true
+    }
+  ],
+  "complete/deadlines": [
+    {
+      "lint_problems": [],
+      "pending": true
+    }
+  ],
+  "complete/dependency_order": [
+    {
+      "lint_problems": [
+        ".scratch.ry:21: trailing whitespace",
+        ".scratch.ry:31: trailing whitespace",
+        ".scratch.ry:46: trailing whitespace"
+      ],
+      "pass": false,
+      "rules": [
+        "whitespace"
+      ]
+    }
+  ],
+  "complete/expression_tree": [
+    {
+      "lint_problems": [],
+      "pending": true
+    }
+  ]
+}

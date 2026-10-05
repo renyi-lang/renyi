@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "The program generates and displays a conversion table showing equivalent temperatures in Celsius and Fahrenheit. It covers a range from negative 10 to 40 degrees Celsius, displaying each temperature and its Fahrenheit equivalent in increments of 10 degrees. This utility is useful for anyone who needs a quick reference for converting between the two temperature scales.\n"
+  ],
+  "model": "agent-haiku"
+}

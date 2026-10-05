@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "1. fetch\n2. build\n3. docs\n4. test\n5. package\n"
+  ],
+  "model": "agent-sonnet"
+}

@@ -1,0 +1,35 @@
+```renyi
+module low_stock_report
+  purpose: Report products whose inventory is below their reorder level.
+
+import std.json
+import std.filesystem as files
+import std.environment
+
+public type Product
+  has name: Text
+  has stock: Integer where stock is at least 0
+  has reorder_level: Integer where reorder_level is at least 0
+end
+
+public function main() or fails with AppError
+  needs console, filesystem.read, environment
+  purpose: Read a JSON file of products and report those with stock below reorder level, sorted by lowest stock first.
+
+  let args be std.environment.arguments otherwise fail with AppError(detail: "cannot access arguments")
+  let path be args.first otherwise fail with AppError(detail: "missing file path argument")
+
+  let text be files.read_text(path) otherwise fail
+  let products: List of Product be json.parse(text) otherwise fail
+
+  let low_stock be
+    for each product in products
+    where product.stock is less than product.reorder_level
+    sorted by product.stock ascending
+    collect product
+
+  for each product in low_stock
+    console.print("{product.name}: {product.stock} units (reorder at {product.reorder_level})")
+  end
+end
+```

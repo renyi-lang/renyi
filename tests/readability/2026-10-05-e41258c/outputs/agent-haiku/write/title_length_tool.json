@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "```renyi\nmodule title_length\n\nimport std.http as web\n\npublic type NoTitleFound\n\npublic function get_title_length(url: Text)\n  returns Integer\n  or fails with NoTitleFound\n  needs network.http\n  purpose: Download a web page and return the number of characters in its title element, failing if no title is found.\n  expose as tool\n  example: get_title_length(url: \"https://example.com\") is 11\n\n  let content be web.get(url) otherwise fail with NoTitleFound()\n  let title_start be content.find(\"<title>\") otherwise fail with NoTitleFound()\n  let after_tag be title_start + 7\n  let remaining be content.substring(after_tag)\n  let title_end be remaining.find(\"</title>\") otherwise fail with NoTitleFound()\n  let title_text be remaining.substring(0, title_end)\n  return title_text.length()\nend\n```\n"
+  ],
+  "model": "agent-haiku"
+}

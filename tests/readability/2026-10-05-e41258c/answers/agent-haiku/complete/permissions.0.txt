@@ -1,0 +1,10 @@
+public function missing(required: Set of Permission, roles: List of Role) returns Set of Permission
+  purpose: The required permissions that none of the roles grants.
+  tags: authorization, sets
+  example: missing(
+    required: [Permission("orders:read"), Permission("orders:write")].to_set(),
+    roles: [Role(name: "viewer", granted: [Permission("orders:read")].to_set())]
+  ) is [Permission("orders:write")].to_set()
+
+  return required.difference(granted_by(roles))
+end

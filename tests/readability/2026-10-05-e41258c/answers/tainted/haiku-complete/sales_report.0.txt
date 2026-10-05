@@ -1,0 +1,13 @@
+```
+public function totals_by_region(sales: List of Sale) returns Map of Text to Decimal
+  purpose: Sum of amounts per region.
+  example: totals_by_region([]) is {}
+
+  let grouped be for each sale in sales group by sale.region collect sale.amount
+  let mutable totals: Map of Text to Decimal be {}
+  for each region, amounts in grouped
+    set totals to totals.set(key: region, value: amounts.sum())
+  end
+  return totals
+end
+```

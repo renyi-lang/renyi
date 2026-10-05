@@ -1,0 +1,20 @@
+public function working_days_between(start: Date, finish: Date) returns Integer
+  purpose: Count the Monday to Friday days after the start, up to and including the finish.
+  tags: dates, calendar
+  example: working_days_between(
+    start: Date(year: 2024, month: 5, day: 3),
+    finish: Date(year: 2024, month: 5, day: 6)
+  ) is 1
+  example: working_days_between(
+    start: Date(year: 2024, month: 5, day: 6),
+    finish: Date(year: 2024, month: 5, day: 6)
+  ) is 0
+
+  let mutable total be 0
+  let mutable current be start
+  while current is less than finish
+    set current to current.plus_days(1)
+    if is_working_day(current) then set total to total + 1 end
+  end
+  return total
+end

@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This program selects the tasks whose due date falls from today up to a chosen number of days ahead (overdue tasks are dropped, tasks due today are kept), lists them earliest first, and counts for each the working days left, meaning the Monday-to-Friday days after today up to and including the due date, so weekends are skipped but public holidays are not considered. It also contains a reader that turns a line made of a title, a comma and a date into a task, failing with a specific error if the line does not split into exactly two parts (so a title containing a comma is rejected) or if the date is not a real calendar date. Its runnable main part reads no input: it checks three built-in sample tasks against a ten-day window from the clock's current date and prints each match with its due date and remaining working days, so on its own it is only a demonstration, while the line reader, the working-day counter and the due-soon selection are public pieces you would call from your own code, and it needs only console output and the clock.\n"
+  ],
+  "model": "agent-sonnet"
+}

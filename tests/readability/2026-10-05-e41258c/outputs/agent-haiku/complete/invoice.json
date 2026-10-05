@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "public function total(invoice: Invoice) returns Decimal\n  purpose: Subtotal after the percentage discount, rounded to cents.\n  see also: subtotal\n\n  let sub be subtotal(invoice)\n  let discount_amount be sub * invoice.discount_percent / 100\n  return sub - discount_amount\nend\n"
+  ],
+  "model": "agent-haiku"
+}

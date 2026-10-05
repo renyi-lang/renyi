@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This module loads a service's settings (a port, a worker count and a quiet, normal or verbose log level) from a JSON file, accepting only ports from 1 to 65535 and worker counts from 1 to 64. The main loader needs only read access to the filesystem and either returns the validated settings or fails with one of two errors, an unreadable file or invalid contents, the latter always carrying the same generic message. It also supplies built-in defaults (port 8080, four workers, normal logging) and two fallback loaders that never fail but silently substitute a replacement configuration on any error, even when the file exists but is invalid, and the one that uses the built-in defaults is deprecated in favor of the one that takes a caller-supplied fallback.\n"
+  ],
+  "model": "agent-sonnet"
+}

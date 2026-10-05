@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "It downloads three hard-coded example web sites at the same time, counts the characters in each page's body, and prints each site's address with its count, largest first. It then downloads two more pages from the first site (its home page again, plus its docs page) at the same time within a ten-second limit and prints their combined character count, a step that the main routine's purpose line does not mention. It needs permission to use the network and the console, fails with an HTTP error if any download fails or with a timeout if that second pair runs past ten seconds (the first three have no limit), and, since the addresses are fixed, is a demonstration rather than a configurable tool.\n"
+  ],
+  "model": "agent-sonnet"
+}

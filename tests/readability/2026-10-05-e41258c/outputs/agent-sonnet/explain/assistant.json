@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This command-line program reads a question from its command-line arguments and an API key from an environment variable, sends the question as a single user message in a JSON POST request (with the key as a bearer token) to a chat-completions endpoint, and prints the text of the first answer in the reply. It fails with a distinct error if the key is missing or the reply holds no answer, and it wraps any HTTP or JSON problem as a transport error that carries the original error text. It is strictly one-shot (no conversation history or retries), the endpoint and model name are fixed in the source and look like placeholders you would have to edit, and its only permissions are network access, console output and environment access, so it works as a minimal, easily audited starting point rather than a full chat client.\n"
+  ],
+  "model": "agent-sonnet"
+}

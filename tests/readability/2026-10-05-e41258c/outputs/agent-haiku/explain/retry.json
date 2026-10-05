@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This module provides a function that automatically retries a failing action multiple times instead of giving up immediately. After each failure, it waits before trying again, with the wait time doubling each attempt and a bit of randomness added to prevent multiple retries from happening simultaneously. If all retry attempts are exhausted, the function returns an error containing the number of attempts made and the error message from the final failure.\n"
+  ],
+  "model": "agent-haiku"
+}

@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This program downloads several web pages simultaneously and measures their size in characters. The results are displayed sorted by size with the largest first, and all operations complete within a 10-second timeout. It is useful for quickly assessing and comparing the sizes of multiple web pages in parallel.\n"
+  ],
+  "model": "agent-haiku"
+}

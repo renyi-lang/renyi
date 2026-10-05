@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This program prints a directory tree showing the size in bytes of each file and folder. It recursively calculates the total size of each directory by summing all files and subdirectories within it. Use it to visualize your file system structure and identify which directories or files are consuming the most space.\n"
+  ],
+  "model": "agent-haiku"
+}

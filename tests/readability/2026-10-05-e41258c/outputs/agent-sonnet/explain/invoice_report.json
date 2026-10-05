@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This program prints a plain-text statement for several invoices, one fixed-width row each (customer, number of lines, total) followed by a grand-total line, taking every invoice's amount from the separate invoice module it reuses rather than calculating it itself. Run on its own it only demonstrates itself with built-in sample data: the entry point creates two hard-coded invoices (one with a single line and a 10 percent discount, one with two lines and no discount), prints their rows in customer-name order, then prints the grand total. Its only permission requirement is console output (no files or network), and its two public helpers, one that formats a row and one that sums totals, are pure and reusable, so it suits a demo or a building block, but real use means supplying your own invoices and relying on the invoice module for pricing and discounts.\n"
+  ],
+  "model": "agent-sonnet"
+}

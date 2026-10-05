@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This program defines geometric shapes—circles, rectangles, and points—and provides functionality to measure and describe them. It includes a describe function that returns a one-line summary of each shape with its computed area, and a largest function that identifies which shape in a list has the maximum area. The main function demonstrates these capabilities by describing several example shapes and finding the largest among them.\n"
+  ],
+  "model": "agent-haiku"
+}

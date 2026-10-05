@@ -1,0 +1,1 @@
+This program manages tasks with due dates and shows which ones are coming up soon. It filters tasks due within the next 10 days and calculates the number of working days remaining for each task, excluding weekends. When run, it prints out the upcoming tasks with their titles, due dates, and how many working days are left before each deadline.

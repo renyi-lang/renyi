@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This module implements a generic last-in-first-out stack data structure with operations to create an empty stack, push and pop items, and peek at the top element. It also provides a bracket checker that uses the stack to efficiently verify that round and square brackets in text are properly paired and closed in the correct order. The module includes tests demonstrating stack operations and various bracket matching scenarios.\n"
+  ],
+  "model": "agent-haiku"
+}

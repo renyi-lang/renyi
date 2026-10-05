@@ -1,0 +1,1 @@
+The program provides a module for working with cursor-paginated APIs. It fetches all customer records from an API by following pagination cursors through multiple requests until there are no more pages. It then groups these customers by country and prints a sorted count of how many customers are in each country.

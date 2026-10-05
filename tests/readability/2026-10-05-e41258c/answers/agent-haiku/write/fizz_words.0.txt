@@ -1,0 +1,31 @@
+```renyi
+module main
+  purpose: Classic FizzBuzz program.
+
+public function fizz_buzz_word(n: Integer) returns Text
+  purpose: Return the FizzBuzz word for a number.
+  example: fizz_buzz_word(n: 3) is "Fizz"
+  example: fizz_buzz_word(n: 5) is "Buzz"
+  example: fizz_buzz_word(n: 15) is "FizzBuzz"
+  example: fizz_buzz_word(n: 7) is "7"
+
+  if n remainder 15 is 0 then
+    return "FizzBuzz"
+  otherwise if n remainder 3 is 0 then
+    return "Fizz"
+  otherwise if n remainder 5 is 0 then
+    return "Buzz"
+  otherwise
+    return "{n}"
+  end
+end
+
+public function main() or fails with AppError
+  needs console
+  purpose: Print FizzBuzz for numbers 1 to 100.
+
+  for each n in from 1 to 100
+    console.print(fizz_buzz_word(n: n))
+  end
+end
+```

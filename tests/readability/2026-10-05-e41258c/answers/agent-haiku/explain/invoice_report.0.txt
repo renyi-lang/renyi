@@ -1,0 +1,1 @@
+This program generates a formatted text report of multiple invoices. It displays each invoice as a row with the customer name, number of line items, and total amount, then prints the combined total of all invoices. It's useful for producing simple invoice summaries in plain text format.

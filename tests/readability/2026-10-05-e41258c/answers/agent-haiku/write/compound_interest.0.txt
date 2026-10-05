@@ -1,0 +1,38 @@
+```renyi
+module savings
+  purpose: Calculate and display compound interest savings schedules.
+
+import environment
+import console
+
+public function calculate_balance(principal: Decimal, annual_rate: Decimal, years: Integer)
+  returns Decimal
+  purpose: Calculate the balance after compound interest over given years.
+  example: calculate_balance(principal: 1000.00, annual_rate: 0.05, years: 1) is 1050.00
+
+  return principal * (1 + annual_rate) power years
+end
+
+public function main() or fails with AppError
+  needs console, environment
+  purpose: Display a compound interest savings schedule from command-line arguments.
+
+  let args be environment.args() otherwise fail with AppError
+  if args.count is less than 3 then
+    console.print("Usage: renyi run savings <starting_amount> <rate_percent> <years>")
+    fail with AppError
+  end
+
+  let principal be args.at(0).to_decimal() otherwise fail with AppError
+  let rate_percent be args.at(1).to_decimal() otherwise fail with AppError
+  let total_years be args.at(2).to_integer() otherwise fail with AppError
+
+  let annual_rate be rate_percent / 100.00
+
+  console.print("Year,Balance")
+  for each year from 1 to total_years
+    let balance be calculate_balance(principal: principal, annual_rate: annual_rate, years: year)
+    console.print("{year},{balance}")
+  end
+end
+```

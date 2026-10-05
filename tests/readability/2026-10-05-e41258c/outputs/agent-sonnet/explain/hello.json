@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This program prints a one-line hello greeting to the console, addressed to the first command-line argument if one is given and to the world if none is. Any further arguments are ignored, and the program declares no failure outcomes. It asks only for permission to print to the console and read the program's environment (no network, file or other access), so it is safe to run but does nothing beyond this trivial greeting.\n"
+  ],
+  "model": "agent-sonnet"
+}

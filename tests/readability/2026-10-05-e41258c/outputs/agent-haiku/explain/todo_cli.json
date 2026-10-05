@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This is a command-line to-do list application that stores tasks persistently in a text file called todo.txt. It allows users to add new tasks, remove completed tasks by their position number, view all current tasks, or display usage help. The program reads the task list from disk, applies the requested command, displays the updated list, and saves any changes back to the file.\n"
+  ],
+  "model": "agent-haiku"
+}

@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "```renyi\npublic function parse_line(line: Text) returns Entry or fails with ParseError\n  purpose: Split a line of the form \"timestamp LEVEL message\" into an entry.\n  tags: logs, parsing\n  example: parse_line(\"2024-05-01T13:45:00 INFO server started\")\n    is Entry(timestamp: Timestamp(\"2024-05-01T13:45:00\"), level: Info, message: \"server started\")\n  example: parse_line(\"garbage\") fails with Malformed(line: \"garbage\")\n\n  let parts be line.split(\" \") otherwise fail with Malformed(line: line)\n\n  if parts.length() is less than 3 then\n    fail with Malformed(line: line)\n  end\n\n  let timestamp_text be parts.at(0) otherwise fail with Malformed(line: line)\n  let level_word be parts.at(1) otherwise fail with Malformed(line: line)\n\n  if not timestamp_text.matches(raw \"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$\") then\n    fail with Malformed(line: line)\n  end\n\n  let timestamp be Timestamp(timestamp_text) otherwise fail with Malformed(line: line)\n  let level be parse_level(level_word) otherwise fail\n\n  let message_start be timestamp_text.length() + 1 + level_word.length() + 1\n  let message be line.drop(message_start)\n\n  return Entry(timestamp: timestamp, level: level, message: message)\nend\n```\n"
+  ],
+  "model": "agent-haiku"
+}

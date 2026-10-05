@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This is a pure invoice-pricing module (it requires no capabilities such as file or network access): an invoice holds a customer name, a list of lines (each with a description, a whole-number quantity of at least one and a non-negative decimal unit price) and a required discount percentage between 0 and 100. It computes each line's amount (quantity times unit price), the subtotal over all lines, and a final total that takes the percentage off the whole subtotal and rounds to cents, using exact decimal rather than floating-point arithmetic. It suits a single invoice-wide percentage discount, but it has no tax, shipping, currency or per-line and fixed-amount discounts, it rounds only the final total (not line amounts or the subtotal), and its tests cover just two cases: ten percent off a subtotal of 10 giving 9, and an empty invoice totaling zero.\n"
+  ],
+  "model": "agent-sonnet"
+}

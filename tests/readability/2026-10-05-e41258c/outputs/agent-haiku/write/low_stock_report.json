@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "```renyi\nmodule low_stock_report\n  purpose: Report products whose inventory is below their reorder level.\n\nimport std.json\nimport std.filesystem as files\nimport std.environment\n\npublic type Product\n  has name: Text\n  has stock: Integer where stock is at least 0\n  has reorder_level: Integer where reorder_level is at least 0\nend\n\npublic function main() or fails with AppError\n  needs console, filesystem.read, environment\n  purpose: Read a JSON file of products and report those with stock below reorder level, sorted by lowest stock first.\n\n  let args be std.environment.arguments otherwise fail with AppError(detail: \"cannot access arguments\")\n  let path be args.first otherwise fail with AppError(detail: \"missing file path argument\")\n\n  let text be files.read_text(path) otherwise fail\n  let products: List of Product be json.parse(text) otherwise fail\n\n  let low_stock be\n    for each product in products\n    where product.stock is less than product.reorder_level\n    sorted by product.stock ascending\n    collect product\n\n  for each product in low_stock\n    console.print(\"{product.name}: {product.stock} units (reorder at {product.reorder_level})\")\n  end\nend\n```"
+  ],
+  "model": "agent-haiku"
+}

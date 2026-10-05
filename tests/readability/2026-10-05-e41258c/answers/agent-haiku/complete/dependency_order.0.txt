@@ -1,0 +1,72 @@
+```
+public function order(dependencies: Map of Text to List of Text)
+  returns List of Text
+  or fails with OrderError
+  purpose: A topological order of the steps; ties are broken alphabetically so the result is stable.
+  tags: graph, topological-sort, build
+  example: order({"test": ["build"], "build": ["fetch"], "fetch": []}) is ["fetch", "build", "test"]
+  example: order({"a": ["b"], "b": ["a"]}) fails with Cycle(remaining: ["a", "b"])
+  example: order({"test": ["lint"]}) fails with UnknownDependency(step: "test", depends_on: "lint")
+
+  let all_steps be for each step, _ in dependencies collect step
+  let total_steps be for each _ in all_steps count
+
+  # Check all dependencies exist
+  for each step, deps in dependencies
+    for each dep in deps
+      if not (for each s in all_steps any s is dep) then
+        fail with UnknownDependency(step: step, depends_on: dep)
+      end
+    end
+  end
+
+  # Initialize in-degree map
+  let mutable in_degree be {}
+  for each step in all_steps
+    let deps be dependencies.get(step) otherwise []
+    let count be for each _ in deps count
+    set in_degree to in_degree.add(step, count)
+  end
+
+  let mutable result be []
+
+  # Kahn's algorithm
+  let mutable iterations be 0
+  while iterations is less than total_steps
+    set iterations to iterations + 1
+
+    # Find available nodes (in-degree 0) in alphabetical order
+    let available be
+      for each step in all_steps
+      where (in_degree.get(step) otherwise 0) is 0
+      sorted by step
+      collect step
+
+    if available.is_empty() then
+      # Cycle detected
+      let remaining be
+        for each step in all_steps
+        where (in_degree.get(step) otherwise 0) is greater than 0
+        sorted by step
+        collect step
+      fail with Cycle(remaining: remaining)
+    end
+
+    let step be available.first() otherwise ""
+    set result to result.append(step)
+
+    # Update in-degrees and mark as processed
+    for each other, deps in dependencies
+      if (for each d in deps any d is step) then
+        let current be in_degree.get(other) otherwise 0
+        set in_degree to in_degree.add(other, current - 1)
+      end
+    end
+
+    # Remove processed step from consideration
+    set in_degree to in_degree.add(step, -1)
+  end
+
+  return result
+end
+```

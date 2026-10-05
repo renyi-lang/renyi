@@ -1,0 +1,24 @@
+```renyi
+module title_length
+
+import std.http as web
+
+public type NoTitleFound
+
+public function get_title_length(url: Text)
+  returns Integer
+  or fails with NoTitleFound
+  needs network.http
+  purpose: Download a web page and return the number of characters in its title element, failing if no title is found.
+  expose as tool
+  example: get_title_length(url: "https://example.com") is 11
+
+  let content be web.get(url) otherwise fail with NoTitleFound()
+  let title_start be content.find("<title>") otherwise fail with NoTitleFound()
+  let after_tag be title_start + 7
+  let remaining be content.substring(after_tag)
+  let title_end be remaining.find("</title>") otherwise fail with NoTitleFound()
+  let title_text be remaining.substring(0, title_end)
+  return title_text.length()
+end
+```

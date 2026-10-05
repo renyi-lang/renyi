@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "```renyi\nmodule main\n  purpose: Classic FizzBuzz program.\n\npublic function fizz_buzz_word(n: Integer) returns Text\n  purpose: Return the FizzBuzz word for a number.\n  example: fizz_buzz_word(n: 3) is \"Fizz\"\n  example: fizz_buzz_word(n: 5) is \"Buzz\"\n  example: fizz_buzz_word(n: 15) is \"FizzBuzz\"\n  example: fizz_buzz_word(n: 7) is \"7\"\n\n  if n remainder 15 is 0 then\n    return \"FizzBuzz\"\n  otherwise if n remainder 3 is 0 then\n    return \"Fizz\"\n  otherwise if n remainder 5 is 0 then\n    return \"Buzz\"\n  otherwise\n    return \"{n}\"\n  end\nend\n\npublic function main() or fails with AppError\n  needs console\n  purpose: Print FizzBuzz for numbers 1 to 100.\n\n  for each n in from 1 to 100\n    console.print(fizz_buzz_word(n: n))\n  end\nend\n```"
+  ],
+  "model": "agent-haiku"
+}

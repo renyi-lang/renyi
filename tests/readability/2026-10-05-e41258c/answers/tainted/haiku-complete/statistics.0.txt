@@ -1,0 +1,13 @@
+public function median(values: List of Float) returns maybe Float
+  purpose: The middle value of the sorted list, or the mean of the two middle values.
+  example: median([3.0, 1.0, 2.0]) is 2.0
+  example: median([4.0, 1.0, 3.0, 2.0]) is 2.5
+  example: median([]) is nothing
+
+  let sorted_values be values.sorted()
+  let middle be sorted_values.length().quotient(2)
+  if sorted_values.length() remainder 2 is 1 then return sorted_values.at(middle) end
+  let lower be sorted_values.at(middle - 1) otherwise return nothing
+  let upper be sorted_values.at(middle) otherwise return nothing
+  return (lower + upper) / 2.0
+end

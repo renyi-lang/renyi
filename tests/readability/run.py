@@ -4,7 +4,8 @@
 Subcommands, run from the repository root:
 
   prepare   build the prompts for one grammar revision into
-            tests/readability/<date>-<revision>/prompts/
+            tests/readability/<date>-<revision>/prompts/; a prompt file
+            never holds the answer key (reference output, original body)
   run       send every prompt to one model and store the raw samples
   score     score the stored samples (Predict exactly, Complete and Write with
             the lint plus a judgement file, Explain with a grading model)
@@ -198,11 +199,11 @@ def cmd_prepare(args: argparse.Namespace) -> None:
         name, program = path.stem, read(path)
         entry = manifest["programs"].get(name, {})
         if "predict" in entry:
-            reference = read(HERE / "reference" / f"{name}.out")
+            assert (HERE / "reference" / f"{name}.out").exists(), f"no reference output for {name}"
             arguments = entry["predict"].get("arguments", [])
             write_prompt(prompts / "predict" / f"{name}.json", "predict", name,
                          PROMPTS["predict"].format(arguments=json.dumps(arguments), program=program),
-                         {"reference": reference, "arguments": arguments})
+                         {"arguments": arguments})
             count += 1
         write_prompt(prompts / "explain" / f"{name}.json", "explain", name,
                      PROMPTS["explain"].format(program=program), {"purposes": purposes(program)})
@@ -211,7 +212,7 @@ def cmd_prepare(args: argparse.Namespace) -> None:
             function = entry["complete"]
             write_prompt(prompts / "complete" / f"{name}.json", "complete", name,
                          PROMPTS["complete"].format(target=function, program=remove_body(program, function)),
-                         {"target": function, "original": program})
+                         {"target": function})
             count += 1
     for task_id, description in write_tasks.items():
         write_prompt(prompts / "write" / f"{task_id}.json", "write", task_id,
@@ -288,13 +289,14 @@ def cmd_score(args: argparse.Namespace) -> None:
 
 def score_sample(task: str, prompt: dict, sample: str, judged, args, target) -> dict:
     if task == "predict":
-        expected = prompt["reference"].rstrip()
+        expected = read(HERE / "reference" / f"{prompt['name']}.out").rstrip()
         actual = sample.strip().strip("`").rstrip()
         return {"pass": actual == expected}
     if task in ("complete", "write"):
         code = extract_code(sample)
         if task == "complete":
-            code = splice(prompt["original"], prompt["target"], code)
+            original = read(EXAMPLES / f"{prompt['name']}.ry")
+            code = splice(original, prompt["target"], code)
         problems = lint_text(code)
         result = {"lint_problems": problems}
         if problems:

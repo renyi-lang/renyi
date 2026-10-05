@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This program reads a JSON file containing user account information and filters for active users who are adults (18 or older). It extracts their email addresses, sorts them by user name, and prints them one per line to the console, followed by a count of how many active adults were found. This would be useful for anyone needing to generate a mailing list or export of active adult users from a user database.\n"
+  ],
+  "model": "agent-haiku"
+}

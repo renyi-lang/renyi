@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "Hello, world!\n"
+  ],
+  "model": "agent-sonnet"
+}

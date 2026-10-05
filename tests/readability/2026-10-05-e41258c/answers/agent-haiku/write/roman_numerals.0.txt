@@ -1,0 +1,90 @@
+```renyi
+module roman_numerals
+  purpose: Convert between integers and Roman numerals.
+
+public type RomanError is one of
+  OutOfRange
+  InvalidFormat
+
+public function to_roman(value: Integer)
+  returns Text
+  or fails with RomanError
+  purpose: Convert an integer from 1 to 3999 to a Roman numeral string.
+  example: to_roman(value: 4) is "IV"
+  example: to_roman(value: 1994) is "MCMXCIV"
+
+  if value is less than 1 or value is greater than 3999 then
+    fail with OutOfRange
+  end
+
+  let mutable result be ""
+  let mutable num be value
+
+  let pairs be [
+    {amount: 1000, symbol: "M"},
+    {amount: 900, symbol: "CM"},
+    {amount: 500, symbol: "D"},
+    {amount: 400, symbol: "CD"},
+    {amount: 100, symbol: "C"},
+    {amount: 90, symbol: "XC"},
+    {amount: 50, symbol: "L"},
+    {amount: 40, symbol: "XL"},
+    {amount: 10, symbol: "X"},
+    {amount: 9, symbol: "IX"},
+    {amount: 5, symbol: "V"},
+    {amount: 4, symbol: "IV"},
+    {amount: 1, symbol: "I"}
+  ]
+
+  for each pair in pairs
+    while num is at least pair.amount
+      set result to result + pair.symbol
+      set num to num - pair.amount
+    end
+  end
+
+  return result
+end
+
+public function from_roman(roman: Text)
+  returns Integer
+  or fails with RomanError
+  purpose: Convert a Roman numeral string to an integer from 1 to 3999.
+  example: from_roman(roman: "IV") is 4
+  example: from_roman(roman: "MCMXCIV") is 1994
+
+  let values be {
+    "M": 1000,
+    "D": 500,
+    "C": 100,
+    "L": 50,
+    "X": 10,
+    "V": 5,
+    "I": 1
+  }
+
+  let mutable total be 0
+  let mutable prev_value be 0
+  let mutable index be 0
+  let length be roman.length()
+
+  while index is less than length
+    let char be roman.at(index)
+    let current_value be values.get(char) otherwise fail with InvalidFormat
+
+    if current_value is less than prev_value then
+      fail with InvalidFormat
+    end
+
+    set total to total + current_value
+    set prev_value to current_value
+    set index to index + 1
+  end
+
+  if total is less than 1 or total is greater than 3999 then
+    fail with OutOfRange
+  end
+
+  return total
+end
+```

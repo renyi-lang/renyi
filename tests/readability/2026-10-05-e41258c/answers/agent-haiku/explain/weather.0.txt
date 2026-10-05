@@ -1,0 +1,1 @@
+This module fetches the current temperature and wind speed for Berlin from the Open-Meteo weather API. It demonstrates how to make HTTP requests to external services, parse JSON responses, and handle errors from both network failures and malformed data. You could adapt this example to display weather for any location by changing the coordinates.

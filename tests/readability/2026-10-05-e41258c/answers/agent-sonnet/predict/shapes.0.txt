@@ -1,0 +1,4 @@
+a circle of radius 1.5 with area 7.07
+a 2 by 3 rectangle with area 6.00
+a point with area 0.00
+largest: a circle of radius 1.5 with area 7.07

@@ -1,0 +1,38 @@
+```renyi
+module merge_sorted
+  purpose: Merge sorted lists into one sorted list without duplicates.
+
+public function merge(left: List of Integer, right: List of Integer)
+  returns List of Integer
+  purpose: Merge two sorted lists into one sorted list without duplicates.
+  example: merge(left: [], right: []) is []
+  example: merge(left: [1, 3], right: [2, 3, 4]) is [1, 2, 3, 4]
+
+  let mutable result be []
+  let mutable left_idx be 0
+  let mutable right_idx be 0
+
+  while left_idx is less than left.length() or right_idx is less than right.length()
+    let next_val be
+      if left_idx is less than left.length() and (right_idx is at least right.length() or left.at(left_idx) is less than right.at(right_idx))
+        then left.at(left_idx)
+        otherwise right.at(right_idx)
+      end
+
+    if result.is_empty() or result.last() is not next_val then
+      set result to result.append(next_val)
+    end
+
+    if left_idx is less than left.length() and (right_idx is at least right.length() or left.at(left_idx) is less than right.at(right_idx))
+      then set left_idx to left_idx + 1
+      otherwise set right_idx to right_idx + 1
+    end
+  end
+
+  return result
+end
+
+test "merge two empty lists"
+  check merge(left: [], right: []) is []
+end
+```

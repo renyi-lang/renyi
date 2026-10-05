@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This module formats tabular data as aligned Markdown tables. It calculates the width needed for each column based on the longest cell in that column, then renders the table with headers, a divider row, and body rows where all cells are padded to their column width. Use it to convert structured text data into properly formatted Markdown output for documentation or reports.\n"
+  ],
+  "model": "agent-haiku"
+}

@@ -1,0 +1,19 @@
+```renyi
+module initials
+  purpose: Extract initials from full names.
+
+public function initials_of(name: Text)
+  returns Text
+  purpose: Return the initials of a full name, upper-cased and separated by nothing.
+  example: initials_of(name: "ada marie lovelace") is "AML"
+  example: initials_of(name: "john doe") is "JD"
+
+  let trimmed be name.trim()
+  let words be trimmed.split(" ")
+  let initials_list be
+    for each word in words
+    where word.length() is greater than 0
+    collect word.first().to_upper_case()
+  return initials_list.join("")
+end
+```

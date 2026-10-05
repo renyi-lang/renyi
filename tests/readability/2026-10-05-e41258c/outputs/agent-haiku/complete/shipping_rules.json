@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "public function quote(parcel: Parcel) returns Quote\n  purpose: Price and delivery time for one parcel; the host calls this at every checkout.\n  example: quote(Parcel(weight_grams: 500, destination: Domestic, order_total: 60.00))\n    is Quote(cost: 0, business_days: 2, free_shipping: true)\n  example: quote(Parcel(weight_grams: 2500, destination: Europe, order_total: 20.00))\n    is Quote(cost: 14.50, business_days: 5, free_shipping: false)\n\n  let is_free be\n    match parcel.destination\n      when Domestic then parcel.order_total is at least free_shipping_threshold\n      otherwise false\n    end\n  end\n\n  let cost be\n    if is_free then 0.00\n    otherwise base_cost(parcel.destination) + weight_steps(parcel.weight_grams).to_decimal() * 2.50\n    end\n  end\n\n  return Quote(cost: cost, business_days: delivery_days(parcel.destination), free_shipping: is_free)\nend\n"
+  ],
+  "model": "agent-haiku"
+}

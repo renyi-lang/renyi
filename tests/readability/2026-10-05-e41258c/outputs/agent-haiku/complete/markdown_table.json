@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "public function render(table: Table) returns Text\n  purpose: The table as Markdown, every column padded to its widest cell.\n  tags: markdown, formatting\n  example: render(Table(header: [\"name\", \"qty\"], rows: [[\"apple\", \"1\"], [\"kiwi\", \"12\"]])) is \"\"\"\n    | name  | qty |\n    | ----- | --- |\n    | apple | 1   |\n    | kiwi  | 12  |\n    \"\"\"\n\n  let widths be column_widths(table: table)\n  let header_row be render_row(cells: table.header, widths: widths)\n\n  let separators be\n    for each width in widths\n    collect (for each index in from 1 to width collect \"-\").join(\"\")\n  let separator_row be render_row(cells: separators, widths: widths)\n\n  let body_rows be\n    for each row in table.rows\n    collect render_row(cells: row, widths: widths)\n\n  let mutable lines be [header_row, separator_row]\n  for each body_row in body_rows\n    set lines to lines.append(body_row)\n  end\n\n  return lines.join(\"\\n\")\nend\n"
+  ],
+  "model": "agent-haiku"
+}

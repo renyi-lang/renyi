@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This is a pure shipping-rules library (no I/O, no permissions needed, no entry point of its own) meant to be embedded in the web shop: at every checkout the host application passes in a parcel (weight in grams above zero, destination domestic, Europe or international, and a non-negative order total, readable from JSON) and gets back a quote with the shipping cost, the delivery time in business days and a free-shipping flag, writable as JSON. The cost is a fixed base price per destination (4.90 domestic, 9.50 Europe, 19.90 international) plus 2.50 for each started kilogram after the first, delivery takes 2, 5 or 10 business days respectively, and only domestic orders totalling at least 50.00 ship free, with the same two-day delivery. All rates are hard-coded and cover just those three zones, with no currency, tax, size or carrier handling, so it fits a shop whose tariff is exactly this and would need source edits for anything else.\n"
+  ],
+  "model": "agent-sonnet"
+}

@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "This program reads a CSV file containing sales data organized by region, product, and amount. It validates each row and calculates the total sales amount for each region. Finally, it prints the regional totals to the console in descending order by amount and saves them to a report file in CSV format.\n"
+  ],
+  "model": "agent-haiku"
+}

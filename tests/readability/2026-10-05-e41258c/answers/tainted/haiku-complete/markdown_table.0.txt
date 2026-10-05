@@ -1,0 +1,21 @@
+```
+public function render(table: Table) returns Text
+  purpose: The table as Markdown, every column padded to its widest cell.
+  tags: markdown, formatting
+  example: render(Table(header: ["name", "qty"], rows: [["apple", "1"], ["kiwi", "12"]])) is """
+    | name  | qty |
+    | ----- | --- |
+    | apple | 1   |
+    | kiwi  | 12  |
+    """
+
+  let widths be column_widths(table)
+  let divider be for each width in widths collect "-".repeat(width)
+  let mutable lines be [render_row(cells: table.header, widths: widths)]
+  set lines to lines.append(render_row(cells: divider, widths: widths))
+  for each row in table.rows
+    set lines to lines.append(render_row(cells: row, widths: widths))
+  end
+  return lines.join("\n")
+end
+```

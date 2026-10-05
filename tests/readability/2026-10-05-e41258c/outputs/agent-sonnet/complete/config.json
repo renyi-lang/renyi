@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "```\npublic function default_config() returns Config\n  purpose: The configuration used when no file is present.\n  example: default_config().port is Port(8080)\n\n  let port be Port(8080) otherwise crash with \"unreachable: 8080 is a valid port\"\n  return Config(port: port, workers: 4, log_level: Normal)\nend\n```\n"
+  ],
+  "model": "agent-sonnet"
+}
