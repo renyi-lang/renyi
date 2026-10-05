@@ -102,9 +102,10 @@ import accounts.models exposing User, UserId
 - There is no wildcard import.
 - Functions defined in the current module are called unqualified.
 - The prelude provides the base types (`Integer`, `Decimal`, `Float`, `Text`,
-  `Boolean`, `List`, `Map`, `Set`, `Range`), `maybe`, and the core abilities.
-  It provides no free functions; operations on base types are ability methods
-  (`items.length()`, `text.trim()`).
+  `Bytes`, `Boolean`, `List`, `Map`, `Set`, `Range`, `Pair`, `Duration`),
+  `maybe`, the core abilities and the built-in error types. It provides no
+  free functions; operations on base types are methods (`items.length()`,
+  `text.trim()`), listed in `04-stdlib-sketch.md`.
 
 Definitions are private unless marked `public`. A module's public definitions
 are its API; the compiler diffs this API to decide version numbers.
@@ -174,6 +175,12 @@ let page be web.get(url) otherwise fail
   with a field.
 - `namespace.function(args)` calls a function from an imported module.
 - A function is passed as a value by name: `retry(action: fetch_page)`.
+
+**Methods.** A function whose first parameter is `self: T` is a method of `T`
+and is called with the dot: `public function trim(self: Text) returns Text`
+makes `text.trim()`. It must be declared in the module that defines `T`.
+Base-type and standard-library methods are declared this way (decision K1);
+abilities are for polymorphism.
 
 **Function types.** `function(Url) returns Page or fails with HttpError needs
 network.http`. Effects of a function-typed parameter flow to the call site
@@ -290,7 +297,9 @@ ability Describable for Shape
 end
 ```
 
-Calls use the dot: `shape.describe()`. Abilities can require other abilities
+Calls use the dot: `shape.describe()`. Inside a declaration `Self` names the
+implementing type: `function compare(self, other: Self) returns Ordering`
+(decision K7). Abilities can require other abilities
 (`ability Printable where self can ToText`). An implementation for a generic
 type introduces the type parameters with a `for any` clause after its head:
 
@@ -380,10 +389,14 @@ Maps: `map.get(key)` (`maybe V`), `map.set(key: k, value: v)`,
 `map.without(key)`, `map.contains_key(key)`, `map.keys()`, `map.values()`.
 Sets: `set.contains(item)`, `set.union(other)`, `set.intersection(other)`,
 `set.difference(other)`, `set.is_subset_of(other)`, `set.sorted()` (a list).
+`items.with_index()` and `map.entries()` return lists of `Pair of Left,
+Right`; a two-variable loop header destructures a pair (decision K8). `Bytes`
+holds binary data: `bytes.length()`, `bytes.to_text()` (fails with
+`InvalidEncoding`), `text.to_bytes()` (decision K4).
 Every operation returns a new value; mutation is always `set xs to
 xs.append(item)`, and the VM mutates in place when the value is uniquely
 referenced. The complete surface of the base types belongs to the standard
-library sketch (`04-stdlib-sketch.md`).
+library sketch (`04-stdlib-sketch.md`), which the corpus lint checks against.
 
 **Ranges.** `from 1 to 10` is inclusive on both ends; `from 0 to 100 by 5` adds
 a step. Lists are zero-indexed, so a loop over indices is `for each position
@@ -446,8 +459,9 @@ end
   punned fields `Circle(radius)`, renamed fields `Circle(radius: outer)`, a
   bare variant name `Circle` when no field is needed, literals, `nothing`,
   `some(name)`, a typed binding `error: HttpError` for error unions,
-  `otherwise` for the rest. Binding a field and not using it is a compile
-  error (decision J8).
+  `otherwise` for the rest. A record type is matched like a single variant,
+  `GaveUp(attempts)` (decision K6). Binding a field and not using it is a
+  compile error (decision J8).
 - `for each item in collection` iterates lists, sets, ranges and text
   (by character); `for each key, value in map` destructures pairs. A loop
   header accepts the query clauses `where` and `sorted by`: `for each size in

@@ -5,7 +5,9 @@ The compiler does not exist yet, so this script enforces the parts of the
 syntax sketch that a regular expression can see: forbidden symbols and foreign
 keywords, reserved words used as identifiers, single-letter names, `then` on
 conditions, line width, tabs and trailing whitespace, and a heuristic
-block/`end` balance. It is a safety net for hand-written examples, not a
+block/`end` balance, unused bindings, and every called method or module
+function against the declarations in `docs/design/04-stdlib-sketch.md` and the
+corpus itself. It is a safety net for hand-written examples, not a
 grammar check; M1 replaces it with the real parser.
 """
 import pathlib
@@ -41,6 +43,19 @@ BINDING_PATTERNS = [
 STARTERS = re.compile(
     r"^\s*(?:public )?(?:function |ability |test |if |match |while |run concurrently( within .*)?$|type \w+( is one of)?$|type \w+ of )")
 QUERY_TAIL = re.compile(r"\b(collect|sum|count|first|any|all|group by)\b")
+STDLIB_SKETCH = ROOT / "docs" / "design" / "04-stdlib-sketch.md"
+CALL = re.compile(r"\.([a-z][a-z0-9_]*)\(")
+DECLARATION = re.compile(r"\bfunction ([a-z][a-z0-9_]*)\(")
+
+
+def declared_functions(paths) -> set[str]:
+    """Function names declared in the standard library sketch and in the corpus."""
+    names = set()
+    for path in paths:
+        names.update(DECLARATION.findall(path.read_text(encoding="utf-8")))
+    return names
+
+
 PATTERN_WORDS = {"nothing", "some", "success", "failure", "true", "false", "and", "or",
                  "not", "is"}
 
@@ -71,7 +86,7 @@ def strip_strings(line: str) -> str:
     return re.sub(r'"(?:[^"\\]|\\.)*"', lambda m: '"' + " " * (len(m.group(0)) - 2) + '"', line)
 
 
-def lint_file(path: pathlib.Path) -> list[str]:
+def lint_file(path: pathlib.Path, known: set[str]) -> list[str]:
     problems = []
     opened = 0
     closed = 0
@@ -100,6 +115,9 @@ def lint_file(path: pathlib.Path) -> list[str]:
         for pattern, message in FORBIDDEN:
             if re.search(pattern, code):
                 problems.append(f"{where}: {message}")
+        for call in CALL.findall(re.sub(r"\bneeds .*$", "", code)):
+            if call not in known:
+                problems.append(f"{where}: '{call}' is not declared in the standard library sketch or the corpus")
         for pattern in BINDING_PATTERNS:
             for match in pattern.finditer(code):
                 for name in match.groups():
@@ -138,9 +156,10 @@ def lint_file(path: pathlib.Path) -> list[str]:
 
 def main() -> int:
     files = sorted((ROOT / "examples").glob("*.ry")) + sorted((ROOT / "examples").glob("*.renyi"))
+    known = declared_functions([STDLIB_SKETCH, *files])
     all_problems = []
     for path in files:
-        all_problems.extend(lint_file(path))
+        all_problems.extend(lint_file(path, known))
     for problem in all_problems:
         print(problem)
     print(f"{len(files)} files, {len(all_problems)} problems")

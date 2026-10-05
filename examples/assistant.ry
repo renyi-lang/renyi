@@ -50,9 +50,6 @@ public function ask(question: Text, api_key: Text)
   let headers be {"Authorization": "Bearer {api_key}", "Content-Type": "application/json"}
   let response be http.post(url: endpoint, body: json.render(request), headers: headers)
     otherwise fail
-  if response.status is not 200 then
-    fail with Transport(detail: "unexpected status {response.status}")
-  end
   let parsed: ChatResponse be json.parse(response.body) otherwise fail
   let first_choice be parsed.choices.first() otherwise fail with NoAnswer
   return first_choice.message.content

@@ -539,3 +539,52 @@ root. (derived)
 
 **J18. Reserved words after round 2: 84.** `ignore`, `raw` and `within` join
 the 81 words of C4a. The phrase table is unchanged. (derived)
+
+---
+
+## K. Standard library round (session 2)
+
+Asked while writing `04-stdlib-sketch.md`; answers shape every module.
+
+**K1. Methods are functions with `self: Type` (S1).** A function whose first
+parameter is `self: T` is a method of `T`, called `value.name(...)`, and must
+be declared in the module that defines `T`. Base-type methods (`text.trim()`)
+and standard-library methods (`connection.query(...)`) follow this one rule;
+abilities exist for polymorphism, not for attaching methods. Rejected: one
+single-implementation ability per type (ceremony, longer retrieval results),
+module functions only (no chaining). (user)
+
+**K2. Non-2xx HTTP statuses are failures (S2).** `http.get(url) otherwise fail`
+leaves a 2xx response on the success path; other statuses fail with
+`HttpError.Status(url, status, body)`. The classic forgotten status check
+cannot happen; a program that expects a 404 matches the failure. (user)
+
+**K3. `matches` in the prelude, the rest in `std.regex` (S3).**
+`text.matches(pattern)` needs no import, so refined text types stay short;
+capture groups, find-all, replace and split live in `std.regex` on a `Pattern`
+type. The engine is in the runtime; literal patterns are checked at compile
+time. (user)
+
+**K4. Minimal `Bytes` in v1 (S4).** `Bytes` is a prelude type with `length`,
+`is_empty`, `to_text` (fallible UTF-8 decode) and `to_base64`;
+`text.to_bytes()`, `filesystem.read_bytes`, `filesystem.write_bytes`, and
+`Response.bytes` use it. (user)
+
+**K5. `json.parse_with` clarifies J14.** There is no overloading and there are
+no default arguments, so the convention-mapping decoder is a separate
+function: `json.parse_with(text:, naming:)`, `json.render_with(value:,
+naming:)`. (derived)
+
+**K6. Record patterns.** A record type is matched like a single variant:
+`when InvalidDate(input) then`. Error types such as `InvalidDate` and `GaveUp`
+are records, so `match` and `example: ... fails with ...` need this. (derived)
+
+**K7. `Self` in ability declarations.** Inside an `ability` declaration `Self`
+names the implementing type, for binary methods such as `compare(self, other:
+Self)`. It is a predefined type name like `Integer`, not a reserved word.
+(derived)
+
+**K8. Pairs.** `Pair of Left, Right` is a prelude record with fields `left` and
+`right`. A two-variable loop or query header destructures a pair;
+`map.entries()` and `items.with_index()` return lists of pairs, and iterating
+a map yields its entries. (derived)

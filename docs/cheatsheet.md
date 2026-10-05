@@ -32,6 +32,7 @@ public function total_price(items: List of Item, rate: TaxRate)
   return subtotal + tax.tax_for(amount: subtotal, rate: rate)
 end
 ```
+A function whose first parameter is `self: Text` is a method: `text.trim()`.
 Clause order: `returns`, `or fails with`, `needs`, `for any`, `purpose:`,
 `tags:`, `see also:`, `deprecated:`, `expose as tool`, `example:` lines, blank
 line, body. Omit `returns` when nothing is returned. Short signatures stay on

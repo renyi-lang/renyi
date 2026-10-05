@@ -41,6 +41,6 @@ parts a regular expression can see.
 
 The corpus is at its target size of thirty programs. It grows from here only
 when the readability test or the conformance suite needs a construct that no
-program covers. The standard library functions and methods the programs use
-are collected in the standard library sketch (handoff step 3) so that their
-names stay consistent.
+program covers. Every method and module function the programs call is
+declared in `docs/design/04-stdlib-sketch.md`; the lint rejects a call that is
+not.

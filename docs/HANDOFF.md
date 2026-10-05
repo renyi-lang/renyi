@@ -7,10 +7,12 @@ carries session 2.
 ## Where the project stands
 
 Milestone M0 (design) is nearly done. Rounds 1 and 2 of design decisions are
-complete and recorded; the surface syntax is sketched in full with no open
-items. The corpus has reached its target of 30 programs and passes the lint.
-The cheat sheet measures 2431 tokens against a 3000-token budget. No compiler,
-parser or runtime exists.
+complete and recorded; the surface syntax is sketched in full; the standard
+library is sketched and every corpus call is checked against it. The corpus
+has reached its target of 30 programs and passes the lint. The cheat sheet
+measures 2451 tokens against a 3000-token budget. No compiler, parser or
+runtime exists. Three library questions (R3-1 to R3-3 at the end of
+`04-stdlib-sketch.md`) await the owner.
 
 ## Done in session 1
 
@@ -48,19 +50,19 @@ parser or runtime exists.
    every recommendation except R2-6 (scoped capabilities are in v1). New
    reserved words: `raw`, `within`, `ignore` (84 in total). The sketch, the
    cheat sheet and six corpus programs were updated to match.
+5. Wrote `docs/design/04-stdlib-sketch.md` (prelude types and methods, core
+   abilities, built-in errors, `std.console`, `std.environment`, `std.time`,
+   `std.random`, `std.filesystem`, `std.json`, `std.http`, `std.server`,
+   `std.csv`, `std.sqlite`, `std.regex`) after four owner decisions (K1 to
+   K4: methods are `self: Type` functions, non-2xx HTTP is a failure,
+   `matches` in the prelude, minimal `Bytes`). The lint now rejects any corpus
+   call not declared there.
 
 ## Next steps, in order
 
-1. **Standard library sketch.** The corpus uses `std.console`,
-   `std.environment`, `std.filesystem`, `std.json`, `std.http`, `std.csv`,
-   `std.server`, `std.time`, `std.random`, `std.sqlite` with ad hoc function
-   and method names, plus the list, map, set, text and number methods listed
-   in sketch section 7. Collect them into `docs/design/04-stdlib-sketch.md` so
-   the names stay consistent and the lint can check them. Round 2 added
-   names that the sketch must define: `time.seconds`, the built-in
-   `TimedOut`, `at_least`, `at_most`, `largest`, `smallest`,
-   `json.parse(text:, naming:)`, `connection.execute` returning the changed
-   row count, `PermissionDenied` and `HostNotAllowed`.
+1. **Ask R3-1 to R3-3** (end of `04-stdlib-sketch.md`): map and set ordering,
+   JSON encoding of variants with fields, whether `console.print` takes any
+   `ToText` value. Record answers in `01-decisions.md` section K or a new L.
 2. **Readability test harness.** Implement `docs/design/03-readability-test.md`
    under `tests/readability/`. It needs API access to at least three models
    from two vendors; confirm credentials with the owner first.
@@ -71,14 +73,9 @@ parser or runtime exists.
 
 ## Known gaps and risks
 
-- The standard library surface is invented per example and not yet specified
-  (see step 1). New in session 2: `std.time` (`Date`, `Weekday`,
-  `InvalidDate`, `time.today`, `time.parse_date`, `plus_days`, `weekday`),
-  `std.sqlite` (`Connection`, `DbError`, `open`, `query`, `execute`,
-  `integer`, `text`, `close`, derived `FromRow`), `std.filesystem`
-  (`inspect`, `list`, `Entry` with `File(size)`, `Directory`, `Other`,
-  `path.name()`), `std.http` (`post` with `url`, `body`, `headers`;
-  `response.status`), `std.json.render`, `std.environment.get`.
+- The standard library sketch is a first draft written from the corpus; its
+  JSON derivation rules, SQLite type mapping and HTTP timeout default have
+  not been validated against real data.
 - 84 reserved words include common identifiers (`count`, `first`, `sum`,
   `set`, `type`, `test`, `check`, `run`, `group`, `power`, `tags`, `example`).
   The owner confirmed in round 2 (J3) that they stay reserved; the fix for a
@@ -90,8 +87,10 @@ parser or runtime exists.
   proxies; no tokenizer for Claude models is public.
 - `tools/lint_examples.py` is regex-based; its block/`end` balance check is a
   heuristic and can miss errors.
-- Decimal rendering: the sketch assumes `rounded(2)` renders with exactly two
-  decimals (`6.00`); the examples depend on that.
+- Decimal rendering: `rounded(2)` renders with exactly two decimals (`6.00`),
+  now stated in the library sketch; the examples depend on that.
+- The lint's call check is coarse: it accepts any name declared anywhere in
+  the library sketch or the corpus, not per receiver type.
 - The GitHub default branch was set automatically to the first pushed branch;
   the owner should switch it to `main` in the repository settings.
 
