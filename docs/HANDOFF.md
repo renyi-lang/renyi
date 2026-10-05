@@ -18,7 +18,7 @@ effect-checks without a diagnostic. The cheat sheet measures about 2770
 tokens (byte estimate) against the 3000-token budget. The Rust workspace has
 three crates: `renyi_syntax` (lexer, parser, JSON encoder, formatter),
 `renyi_check` (the checker) and the `renyi` binary with `check` (parse plus
-type and effect check), `format`, `tokens` and `parse [--json]`. 71 tests,
+type and effect check), `format`, `tokens` and `parse [--json]`. 77 tests,
 clippy and fmt clean. Nothing runs yet: that is M3. The readability harness
 has run once as a subagent pre-test (below); the live round still waits for
 API keys.
