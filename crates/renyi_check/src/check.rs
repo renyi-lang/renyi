@@ -107,9 +107,15 @@ pub enum Target {
     AbilityMethod(AbilityId, usize),
     /// A constant of the module.
     Constant(ModuleId, String),
-    /// A type mentioned in a construction, a bare variant, a pattern or an
-    /// annotation inside the body.
+    /// A type named in a construction, a pattern or an annotation inside the
+    /// body, at its name token.
     Type(TypeId),
+    /// A variant of a sum type, constructed or named bare, at the variant's
+    /// name token.
+    Variant(TypeId, usize),
+    /// An ability named in a signature or an implementation head; the checker
+    /// itself never records one, tools that read signatures do.
+    Ability(AbilityId),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -1835,7 +1841,7 @@ impl<'w> Checker<'w> {
         };
         match chosen {
             Some((type_id, index)) => {
-                self.record(Target::Type(type_id), name.span);
+                self.record(Target::Variant(type_id, index), name.span);
                 let TypeKindInfo::Sum(variants) = &self.world.types[type_id].kind else {
                     unreachable!()
                 };
@@ -2656,7 +2662,7 @@ impl<'w> Checker<'w> {
                 }
                 return Info::plain(Ty::Error);
             };
-            self.record(Target::Type(type_id), name.span);
+            self.record(Target::Variant(type_id, index), name.span);
             let TypeKindInfo::Sum(variant_list) = &self.world.types[type_id].kind else {
                 unreachable!()
             };

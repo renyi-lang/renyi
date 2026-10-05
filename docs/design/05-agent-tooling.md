@@ -1,7 +1,10 @@
 # Renyi Agent Tooling: the Project Map, Budgets, Diffs and the MCP Server
 
-Status: design accepted (decisions O2 to O5), not yet implemented. Date:
-2026-10-05. Companion to `01-decisions.md` (D5, D6, M8, O1 to O5).
+Status: design accepted (decisions O2 to O5). `renyi index` (sections 1 to
+4) is implemented in `crates/renyi_index` and measured on the corpus
+(section 5, R5-1); budgets, diffs and the MCP server are not yet
+implemented. Date: 2026-10-05. Companion to `01-decisions.md` (D5, D6, M8,
+O1 to O5).
 
 Renyi programs are written mostly by LLM agents (decision A3). An agent works
 inside a token budget and cannot hold a project in its context, so it needs
@@ -25,7 +28,9 @@ its imports) and emits one record per definition and one per module. The
 checker (`renyi_check::World`) already resolves every call, type reference
 and effect, so the index is a projection of the checked program; a program
 with errors is indexed as far as it checks and the record carries the
-error count.
+error count. The map is computed on the canonical text of every file (the
+formatter's output), so that lines and hashes do not depend on layout; a
+module record says whether its file was already canonical.
 
 A definition record:
 
@@ -36,18 +41,24 @@ A definition record:
 | `public` | whether the definition is part of the module's API |
 | `signature` | the head and signature clauses in canonical form, one line |
 | `purpose`, `tags`, `see_also`, `deprecated`, `exposed_as_tool` | the documentation clauses |
-| `effects.declared`, `effects.transitive` | the `needs` clause, and the union over everything the body reaches, library primitives included |
-| `fails.declared`, `fails.transitive` | the `or fails with` types, and the union of what the body can propagate |
-| `calls`, `uses`, `implements`, `tested_by` | edges: the definitions it calls (own project and library, qualified), the types it mentions, the ability and target of an implementation, the tests that call it |
+| `effects.declared`, `effects.transitive` | the `needs` clause, and the union over everything the body reaches, library primitives included; a call of an ability method reaches every implementation of it |
+| `fails.declared`, `fails.transitive` | the `or fails with` types, and the union of the declared failure types over everything the body reaches |
+| `calls`, `uses`, `implements`, `tested_by` | edges: the functions and ability methods it calls or passes by name (own project and library, qualified: `module.name`, `module.Type.method`, `module.Ability.method`), the types, constants and abilities it mentions, the ability and target of an implementation (`{"ability", "target"}`), the tests whose bodies refer to it |
 | `metrics` | section 2 |
-| `coverage.examples`, `coverage.tests` | the number of `example:` lines, and of `test` blocks that call the definition |
+| `coverage.examples`, `coverage.tests` | the number of `example:` lines, and of `test` blocks whose bodies refer to the definition |
 | `location` | file, first and last line |
 
+The kinds are `function`, `method` (a function with a `self` parameter,
+named `Type.method`), `type`, `ability`, `implementation` (named `Ability
+for Target`; it refers to everything its methods refer to), `constant` and
+`test` (named `test:` and its name).
+
 A module record carries the module name and file, its purpose, its imports,
-the number of public definitions, total lines, the union of its definitions'
-transitive effects, and the list of definition ids. The map is the list of
-module records; its header names the project, the revision and the toolchain
-version.
+the number of definitions and of public ones, total lines, the union of its
+definitions' transitive effects, the list of definition ids, the number of
+errors the checker reported and whether the file was in canonical layout.
+The map is the list of module records and the list of definition records;
+its header names the project, the revision and the toolchain version.
 
 ## 2. Metrics
 
@@ -59,9 +70,9 @@ on the same canonical text agree exactly.
 | `lines` | lines from the head line to `end` inclusive, in canonical layout (documentation clauses included; a type's lines are its whole block) |
 | `depth` | the deepest block nesting inside the body; the body itself is 0, every `if`, `match`, loop, `run concurrently` body adds 1 (the language rejects more than 4) |
 | `branches` | decision points: one per `if` and `otherwise if` condition, per `when` and `otherwise` arm, per loop header and query, per `otherwise` fallback on a `maybe` or fallible value, and per `and` or `or` inside a condition |
-| `effects` | the size of the transitive effect set (scoped capabilities count once per path) |
-| `fan_in`, `fan_out` | distinct definitions that reference this one; distinct definitions this one references, with `library_calls` counted separately |
-| `coverage` | the number of `example:` lines plus the number of tests that call the definition |
+| `effects` | the number of distinct capability paths in the transitive effect set (scopes do not count; a parent and a child declared at different levels count as two paths) |
+| `fan_in`, `fan_out` | distinct project definitions that reference this one (tests included); distinct project definitions this one references by a call or a use, itself excluded, with `library_calls` (distinct library functions called) counted separately |
+| `coverage` | the number of `example:` lines plus the number of tests that refer to the definition (reported as `coverage.examples` and `coverage.tests`) |
 
 Module-level aggregates: definitions, public definitions, lines, the union
 of transitive effects, and the maximum of each metric.
@@ -83,6 +94,17 @@ Local names (parameters, bindings) are part of the text in v1; replacing
 them by positions so that renaming a local keeps the hash is open item
 R5-2.
 
+As implemented (`crates/renyi_index/src/hash.rs`): the name tokens that
+refer to other project definitions are those of calls, functions passed by
+name, constants, type names in signatures, constructions, patterns and
+annotations, and ability names in `for any`, `can` and implementation
+heads. A variant's name token is left as it is (its type is a dependency,
+so a change to the type still changes the hash). References to the library
+stay spelled as written, and the qualified library names used are appended
+with the toolchain version. The members of a component are hashed in
+definition order, so reordering two mutually recursive definitions changes
+their hashes; reordering independent definitions does not.
+
 The hash makes the map incremental: a file whose definitions' hashes are
 unchanged needs no new record, and `renyi mcp` refreshes only the changed
 components.
@@ -92,7 +114,7 @@ components.
 ```json
 {
   "project": "examples",
-  "revision": "f520dc0",
+  "revision": "3c7ee41",
   "toolchain": "renyi 0.0.1",
   "modules": [
     {
@@ -101,15 +123,17 @@ components.
       "purpose": "Compute invoice totals with a percentage discount, exact to the cent.",
       "imports": [],
       "definitions": 7,
-      "public": 4,
+      "public": 5,
       "lines": 53,
       "effects": [],
-      "ids": ["sha256:3f9c...", "sha256:a71e..."]
+      "ids": ["sha256:3f9c...", "sha256:7b31..."],
+      "errors": 0,
+      "canonical": true
     }
   ],
   "definitions": [
     {
-      "id": "sha256:a71e...",
+      "id": "sha256:7b31...",
       "module": "invoice",
       "name": "total",
       "kind": "function",
@@ -122,11 +146,14 @@ components.
       "exposed_as_tool": false,
       "effects": {"declared": [], "transitive": []},
       "fails": {"declared": [], "transitive": []},
-      "calls": ["invoice.subtotal", "std.prelude.rounded"],
+      "calls": ["invoice.subtotal", "std.prelude.Decimal.rounded"],
       "uses": ["invoice.Invoice", "std.prelude.Decimal"],
       "implements": null,
-      "tested_by": ["invoice.test:a ten percent discount is taken from the subtotal"],
-      "metrics": {"lines": 8, "depth": 0, "branches": 0, "effects": 0, "fan_in": 2, "fan_out": 1, "library_calls": 1},
+      "tested_by": [
+        "invoice.test:a ten percent discount is taken from the subtotal",
+        "invoice.test:an invoice without lines totals zero"
+      ],
+      "metrics": {"lines": 8, "depth": 0, "branches": 0, "effects": 0, "fan_in": 4, "fan_out": 2, "library_calls": 1},
       "coverage": {"examples": 0, "tests": 2},
       "location": {"file": "examples/invoice.ry", "line": 34, "end_line": 41}
     }
@@ -134,9 +161,12 @@ components.
 }
 ```
 
-Hashes are abbreviated here; the real ones are full. The text form (without
-`--json`) prints one line per definition: kind, qualified name, signature,
-transitive effects and the metrics, sorted by module and line.
+Hashes are abbreviated here; the real ones are full. The record is the one
+`renyi index --json examples` prints for `invoice.total` (its `fan_in` of 4
+counts the two tests of `invoice` and the two functions of `invoice_report`,
+which imports it). The text form (without `--json`) prints one line per
+definition: kind, qualified name, signature, transitive effects and the
+metrics, sorted by module and line.
 
 ## 5. Budgets
 
@@ -155,6 +185,27 @@ as a warning until the thresholds have been measured on real projects (open
 item R5-1). Thresholds live in the project manifest once the package
 manager exists (M4); until then they are command-line flags with the
 corpus-derived defaults.
+
+First measurements, the corpus at revision 3c7ee41 (30 modules, 166
+definitions: 95 functions, 4 methods, 52 types, 2 abilities, 3
+implementations, 4 constants, 6 tests), from `renyi index --json examples`:
+
+| Measure | median | 90th percentile | maximum |
+|---------|--------|-----------------|---------|
+| public definitions per module | 4 | 7 | 9 (`log_parser`) |
+| transitive effect paths per module | 2 | 3 | 5 (`sales_report`, `todo_cli`) |
+| fan-out per definition | 1 | 3 | 7 (`shipping_rules.quote`) |
+| lines per function, method or test | 9 | 17 | 30 (`dependency_order.order`) |
+| depth per body | 0 | 1 | 3 (`stacks.balanced`) |
+| branches per body | 2 | 5 | 8 (`todo_cli.parse_command`) |
+| library calls per body | 2 | 5 | 9 |
+
+Of the 82 public functions and methods, 43 have neither an `example:` line
+nor a test that refers to them. The corpus is thirty small programs, not a
+project, so the thresholds proposed from it (public definitions per module
+10, transitive effect paths per module 5, fan-out per definition 7: each
+one just above the corpus maximum) are a first setting for the owner to
+confirm, not a measurement on real projects.
 
 ## 6. Diffs
 
@@ -194,7 +245,9 @@ what an agent reads instead of files.
 ## 8. Order of work
 
 1. `renyi index` with the record, the six metrics and the hashes, measured
-   on the corpus; the text form and `--json`.
+   on the corpus; the text form and `--json`. Done 2026-10-05
+   (`crates/renyi_index`; the checker records every reference it resolves
+   and `renyi_check::check_project` checks a project as a whole).
 2. M3 (the VM) under decision O1.
 3. `renyi mcp` with the first seven tools, then `run`, `run_tests` and
    `diff` as M3 and `--diff` land.
@@ -203,7 +256,8 @@ what an agent reads instead of files.
 
 ## 9. Open items
 
-- R5-1: budget thresholds, after measuring the corpus.
+- R5-1: budget thresholds. The corpus is measured (section 5); the
+  thresholds proposed there await the owner and real projects.
 - R5-2: whether local names are normalized away in the content hash.
 - R5-3: whether `branches` should count `and`/`or` (cyclomatic style, as
   specified) or only statements; decided by what correlates with the

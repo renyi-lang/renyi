@@ -1,9 +1,11 @@
 //! The `renyi` command: `check` (lexer, parser, type and effect checker and
 //! layout diagnostics, text or JSON), `format` (canonical layout, in place or
-//! `--check`), `tokens` (a token dump) and `parse` (a syntax tree dump, as
-//! Rust debug output or as JSON for tools). Running follows at M3.
+//! `--check`), `tokens` (a token dump), `parse` (a syntax tree dump, as Rust
+//! debug output or as JSON for tools) and `index` (the project map, text or
+//! JSON). Running follows at M3.
 
 use std::io::Write;
+use std::path::Path;
 use std::process::ExitCode;
 
 use renyi_syntax::diagnostics::{render_json, render_text};
@@ -15,6 +17,7 @@ const USAGE: &str = "usage:
   renyi format [--check] <file.ry>... rewrite files in canonical layout (--check: report only)
   renyi tokens <file.ry>              dump the token stream
   renyi parse [--json] <file.ry>      dump the syntax tree (--json: for tools)
+  renyi index [--json] [path]         the project map of a directory or a file with its imports
   renyi version";
 
 fn main() -> ExitCode {
@@ -24,6 +27,7 @@ fn main() -> ExitCode {
         Some("format") => format_command(&args[1..]),
         Some("tokens") => tokens(&args[1..]),
         Some("parse") => parse_command(&args[1..]),
+        Some("index") => index_command(&args[1..]),
         Some("version") | Some("--version") => {
             println!("renyi {}", env!("CARGO_PKG_VERSION"));
             ExitCode::SUCCESS
@@ -199,4 +203,36 @@ fn format_command(args: &[String]) -> ExitCode {
     } else {
         ExitCode::SUCCESS
     }
+}
+
+fn index_command(args: &[String]) -> ExitCode {
+    let json = args.iter().any(|arg| arg == "--json");
+    let path = args
+        .iter()
+        .find(|arg| !arg.starts_with("--"))
+        .map(String::as_str)
+        .unwrap_or(".");
+    let path = Path::new(path);
+    let files = match renyi_index::load_project(path) {
+        Ok(files) => files,
+        Err(error) => {
+            eprintln!("renyi: {error}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let header = renyi_index::Header {
+        project: renyi_index::project_name(path),
+        revision: renyi_index::git_revision(path),
+        toolchain: format!("renyi {}", env!("CARGO_PKG_VERSION")),
+    };
+    let index = renyi_index::index_files(&files, header);
+    let rendered = if json {
+        renyi_index::to_json(&index)
+    } else {
+        renyi_index::to_text(&index)
+    };
+    let stdout = std::io::stdout();
+    let mut out = stdout.lock();
+    let _ = write!(out, "{rendered}");
+    ExitCode::SUCCESS
 }
