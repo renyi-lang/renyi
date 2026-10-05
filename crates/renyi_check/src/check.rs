@@ -97,10 +97,36 @@ enum Cover {
     Other,
 }
 
+/// What a body refers to, as the checker resolved it: for tools that need
+/// the reference graph (the project map) rather than diagnostics.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Target {
+    /// A declared function or method, called or passed by name.
+    Function(FunctionId),
+    /// A method of an ability, called on a value whose type has the ability.
+    AbilityMethod(AbilityId, usize),
+    /// A constant of the module.
+    Constant(ModuleId, String),
+    /// A type mentioned in a construction, a bare variant, a pattern or an
+    /// annotation inside the body.
+    Type(TypeId),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Reference {
+    pub target: Target,
+    pub span: Span,
+}
+
 pub struct Checker<'w> {
     world: &'w World,
     module: ModuleId,
     pub diagnostics: Vec<Diagnostic>,
+    /// Every reference resolved so far, with the body it occurs in.
+    pub references: Vec<(BodyLocation, Reference)>,
+    /// The body being checked; `None` while checking `example:` lines, whose
+    /// references are not body references.
+    owner: BodyLocation,
     vars: Vec<VarInfo>,
     scopes: Vec<Scope>,
     context: Context,
@@ -119,6 +145,8 @@ impl<'w> Checker<'w> {
             world,
             module,
             diagnostics: Vec::new(),
+            references: Vec::new(),
+            owner: BodyLocation::None,
             vars: Vec::new(),
             scopes: Vec::new(),
             context: Context {
@@ -161,6 +189,47 @@ impl<'w> Checker<'w> {
 
     fn show(&self, ty: &Ty) -> String {
         self.world.show(&self.zonk(ty))
+    }
+
+    // ------------------------------------------------------------- references
+
+    fn record(&mut self, target: Target, span: Span) {
+        if !matches!(self.owner, BodyLocation::None) {
+            self.references
+                .push((self.owner, Reference { target, span }));
+        }
+    }
+
+    /// Record every type an annotation names, each at its own name token, so
+    /// that a tool can replace the name alone.
+    fn record_type_names(&mut self, ty: &Type) {
+        match ty {
+            Type::Named { name, args, .. } => {
+                if let Some(id) = self.world.lookup_type(self.module, &name.text) {
+                    self.record(Target::Type(id), name.span);
+                }
+                for arg in args {
+                    self.record_type_names(arg);
+                }
+            }
+            Type::Maybe(inner, _) => self.record_type_names(inner),
+            Type::Function {
+                params,
+                returns,
+                fails,
+                ..
+            } => {
+                for param in params {
+                    self.record_type_names(param);
+                }
+                if let Some(returns) = returns {
+                    self.record_type_names(returns);
+                }
+                for fails in fails {
+                    self.record_type_names(fails);
+                }
+            }
+        }
     }
 
     // ------------------------------------------------------------- variables
@@ -674,6 +743,7 @@ impl<'w> Checker<'w> {
     /// bindings and the deferred constraints.
     pub fn check_function(&mut self, id: FunctionId, function: &Function) {
         let info = &self.world.functions[id];
+        self.owner = info.body;
         self.context = Context {
             name: info.name.clone(),
             returns: info.returns.clone(),
@@ -713,8 +783,9 @@ impl<'w> Checker<'w> {
         self.check_examples(id, function);
     }
 
-    /// A `test` block.
-    pub fn check_test(&mut self, test: &Test) {
+    /// A `test` block, the `index`th item of the module.
+    pub fn check_test(&mut self, index: usize, test: &Test) {
+        self.owner = BodyLocation::Item(index);
         self.context = Context {
             name: format!("test {:?}", test.name),
             returns: None,
@@ -731,8 +802,9 @@ impl<'w> Checker<'w> {
         self.finish_body();
     }
 
-    /// A top-level constant.
-    pub fn check_constant(&mut self, constant: &Constant, ty: &Ty) {
+    /// A top-level constant, the `index`th item of the module.
+    pub fn check_constant(&mut self, index: usize, constant: &Constant, ty: &Ty) {
+        self.owner = BodyLocation::Item(index);
         self.context = Context {
             name: constant.name.text.clone(),
             returns: None,
@@ -755,6 +827,7 @@ impl<'w> Checker<'w> {
     fn check_examples(&mut self, id: FunctionId, function: &Function) {
         let info = &self.world.functions[id];
         let _ = info;
+        self.owner = BodyLocation::None;
         for example in &function.docs.examples {
             self.context = Context {
                 name: format!("example of {}", function.name.text),
@@ -1673,9 +1746,12 @@ impl<'w> Checker<'w> {
             return Info::plain(binding.ty.clone());
         }
         if let Some(constant) = self.world.modules[self.module].constants.get(&name.text) {
-            return Info::plain(constant.ty.clone());
+            let ty = constant.ty.clone();
+            self.record(Target::Constant(self.module, name.text.clone()), name.span);
+            return Info::plain(ty);
         }
         if let Some(function) = self.world.lookup_function(self.module, &name.text) {
+            self.record(Target::Function(function), name.span);
             return Info {
                 ty: self.function_type(function),
                 fails: Vec::new(),
@@ -1759,6 +1835,7 @@ impl<'w> Checker<'w> {
         };
         match chosen {
             Some((type_id, index)) => {
+                self.record(Target::Type(type_id), name.span);
                 let TypeKindInfo::Sum(variants) = &self.world.types[type_id].kind else {
                     unreachable!()
                 };
@@ -1839,11 +1916,14 @@ impl<'w> Checker<'w> {
                 if let Some(&target) = self.world.modules[self.module].imports.get(&namespace.text)
                 {
                     return match self.world.lookup_function(target, &name.text) {
-                        Some(function) => Info {
-                            ty: self.function_type(function),
-                            fails: Vec::new(),
-                            function: Some(function),
-                        },
+                        Some(function) => {
+                            self.record(Target::Function(function), name.span);
+                            Info {
+                                ty: self.function_type(function),
+                                fails: Vec::new(),
+                                function: Some(function),
+                            }
+                        }
                         None => {
                             let module_name = self.world.modules[target].name.clone();
                             self.error(
@@ -1960,7 +2040,9 @@ impl<'w> Checker<'w> {
                     };
                 }
                 match self.world.lookup_function(self.module, &name.text) {
-                    Some(function) => self.call_known(function, None, args, span, expected),
+                    Some(function) => {
+                        self.call_known(function, None, args, span, name.span, expected)
+                    }
                     None => {
                         let message =
                             format!("there is no function named `{}` in this module", name.text);
@@ -1986,7 +2068,7 @@ impl<'w> Checker<'w> {
                         {
                             return match self.world.lookup_function(target, &name.text) {
                                 Some(function) => {
-                                    self.call_known(function, None, args, span, expected)
+                                    self.call_known(function, None, args, span, name.span, expected)
                                 }
                                 None => {
                                     let module_name = self.world.modules[target].name.clone();
@@ -2090,9 +2172,17 @@ impl<'w> Checker<'w> {
         match self.find_method(&ty, &name.text) {
             Some(Method::Declared(function)) => {
                 let function = self.choose_overload(function, &ty, &name.text, receiver_span);
-                self.call_known(function, Some((ty, receiver_span)), args, span, expected)
+                self.call_known(
+                    function,
+                    Some((ty, receiver_span)),
+                    args,
+                    span,
+                    name.span,
+                    expected,
+                )
             }
             Some(Method::Ability(ability, index)) => {
+                self.record(Target::AbilityMethod(ability, index), name.span);
                 let method = &self.world.abilities[ability].methods[index];
                 let params: Vec<(String, Ty)> = method
                     .params
@@ -2230,8 +2320,10 @@ impl<'w> Checker<'w> {
         receiver: Option<(Ty, Span)>,
         args: &[Arg],
         span: Span,
+        name_span: Span,
         expected: Option<&Ty>,
     ) -> Info {
+        self.record(Target::Function(id), name_span);
         let info: &FunctionInfo = &self.world.functions[id];
         let name = info.name.clone();
         let type_params = info.type_params.clone();
@@ -2564,6 +2656,7 @@ impl<'w> Checker<'w> {
                 }
                 return Info::plain(Ty::Error);
             };
+            self.record(Target::Type(type_id), name.span);
             let TypeKindInfo::Sum(variant_list) = &self.world.types[type_id].kind else {
                 unreachable!()
             };
@@ -2593,6 +2686,7 @@ impl<'w> Checker<'w> {
             }
             return Info::plain(Ty::Error);
         };
+        self.record(Target::Type(type_id), name.span);
         let params = self.world.types[type_id].params.clone();
         let args_tys: Vec<Ty> = params.iter().map(|_| self.fresh(VarKind::Any)).collect();
         if type_id == b.pair {
@@ -3471,6 +3565,7 @@ impl<'w> Checker<'w> {
         let mut world_diagnostics = Vec::new();
         let resolved = resolve_in_body(self.world, self.module, ty, &mut world_diagnostics);
         self.diagnostics.extend(world_diagnostics);
+        self.record_type_names(ty);
         resolved
     }
 }
@@ -3587,6 +3682,15 @@ fn edit_distance(a: &str, b: &str) -> usize {
 
 /// The per-module driver: check every body of a user module.
 pub fn check_module(world: &World, module: ModuleId) -> Vec<Diagnostic> {
+    check_module_with_references(world, module).0
+}
+
+/// Check a module and also hand back every reference its bodies make, by
+/// body (the project map is built from them).
+pub fn check_module_with_references(
+    world: &World,
+    module: ModuleId,
+) -> (Vec<Diagnostic>, Vec<(BodyLocation, Reference)>) {
     let mut checker = Checker::new(world, module);
     let info = &world.modules[module];
     for (index, item) in info.ast.items.iter().enumerate() {
@@ -3607,11 +3711,11 @@ pub fn check_module(world: &World, module: ModuleId) -> Vec<Diagnostic> {
                     }
                 }
             }
-            Item::Test(test) => checker.check_test(test),
+            Item::Test(test) => checker.check_test(index, test),
             Item::Constant(constant) => {
                 if let Some(constant_info) = info.constants.get(&constant.name.text) {
                     let ty = constant_info.ty.clone();
-                    checker.check_constant(constant, &ty);
+                    checker.check_constant(index, constant, &ty);
                 }
             }
             _ => {}
@@ -3627,7 +3731,7 @@ pub fn check_module(world: &World, module: ModuleId) -> Vec<Diagnostic> {
             .with_fix("add a `purpose:` clause under the `module` line"),
         );
     }
-    checker.diagnostics
+    (checker.diagnostics, checker.references)
 }
 
 fn find_function(world: &World, module: ModuleId, body: BodyLocation) -> Option<FunctionId> {

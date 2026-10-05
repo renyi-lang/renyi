@@ -13,7 +13,9 @@ use std::path::{Path, PathBuf};
 
 use renyi_syntax::{parse, parse_declarations, Diagnostic, SourceFile, Span};
 
-use world::World;
+pub use check::{Reference, Target};
+pub use types::{AbilityId, FunctionId, ModuleId, TypeId};
+pub use world::{BodyLocation, World};
 
 /// The standard library, one declaration file per module.
 pub const LIBRARY: &[(&str, &str)] = &[
@@ -58,47 +60,98 @@ pub fn library_world() -> World {
     world
 }
 
-/// Check a parsed program whose imports are given as sources, for tests and
-/// tools that hold everything in memory. The main module comes first.
-pub fn check_sources(main: &SourceFile, imports: &[SourceFile]) -> Vec<Diagnostic> {
-    let parsed = parse(&main.text);
-    if parsed.diagnostics.iter().any(Diagnostic::is_error) {
-        return parsed.diagnostics;
-    }
+/// One file of a project after `check_project`.
+pub struct CheckedModule {
+    /// The index of the file in the list given.
+    pub file: usize,
+    /// The module declared from the file, or `None` when the file does not
+    /// parse.
+    pub id: Option<ModuleId>,
+    /// Parse, declaration and body diagnostics, in source order.
+    pub diagnostics: Vec<Diagnostic>,
+}
+
+/// A project checked as a whole: the world with every module declared, one
+/// entry per file, and every reference the bodies make, for tools such as
+/// the project map.
+pub struct CheckedProject {
+    pub world: World,
+    pub modules: Vec<CheckedModule>,
+    pub references: Vec<(ModuleId, BodyLocation, Reference)>,
+}
+
+/// Declare and check every file of a project together. A file that does not
+/// parse keeps its parse diagnostics and declares no module, so a module
+/// that imports it sees an unknown module.
+pub fn check_project(files: &[SourceFile]) -> CheckedProject {
     let mut world = library_world();
-    let mut import_modules = Vec::new();
-    for import in imports {
-        let parsed_import = parse(&import.text);
-        if parsed_import.diagnostics.iter().any(Diagnostic::is_error) {
-            continue;
-        }
-        let id = world.add_module(parsed_import.module, false);
-        import_modules.push((import.name.clone(), id));
+    let mut modules = Vec::new();
+    for (index, file) in files.iter().enumerate() {
+        let parsed = parse(&file.text);
+        let id = if parsed.diagnostics.iter().any(Diagnostic::is_error) {
+            None
+        } else {
+            Some(world.add_module(parsed.module, false))
+        };
+        modules.push(CheckedModule {
+            file: index,
+            id,
+            diagnostics: parsed.diagnostics,
+        });
     }
-    let main_id = world.add_module(parsed.module, false);
     world.resolve_all();
-    let mut diagnostics: Vec<Diagnostic> = world
-        .diagnostics
-        .iter()
-        .filter(|(module, _)| *module == main_id)
-        .map(|(_, d)| d.clone())
-        .collect();
-    diagnostics.extend(check::check_module(&world, main_id));
-    for (name, id) in import_modules {
-        let count = world
-            .diagnostics
-            .iter()
-            .filter(|(m, d)| *m == id && d.is_error())
-            .count()
-            + check::check_module(&world, id)
+    let mut references = Vec::new();
+    for module in &mut modules {
+        let Some(id) = module.id else {
+            continue;
+        };
+        module.diagnostics.extend(
+            world
+                .diagnostics
                 .iter()
-                .filter(|d| d.is_error())
-                .count();
+                .filter(|(m, _)| *m == id)
+                .map(|(_, d)| d.clone()),
+        );
+        let (body_diagnostics, body_references) = check::check_module_with_references(&world, id);
+        module.diagnostics.extend(body_diagnostics);
+        module.diagnostics.sort_by_key(|d| d.span.start);
+        references.extend(
+            body_references
+                .into_iter()
+                .map(|(body, reference)| (id, body, reference)),
+        );
+    }
+    CheckedProject {
+        world,
+        modules,
+        references,
+    }
+}
+
+/// Check a parsed program whose imports are given as sources, for tests and
+/// tools that hold everything in memory. The main module comes first; an
+/// import with errors is summarized as one diagnostic of the main module.
+pub fn check_sources(main: &SourceFile, imports: &[SourceFile]) -> Vec<Diagnostic> {
+    let mut files = Vec::with_capacity(imports.len() + 1);
+    files.push(main.clone());
+    files.extend(imports.iter().cloned());
+    let checked = check_project(&files);
+    let main_module = &checked.modules[0];
+    if main_module.id.is_none() {
+        return main_module.diagnostics.clone();
+    }
+    let mut diagnostics = main_module.diagnostics.clone();
+    for (import, module) in imports.iter().zip(&checked.modules[1..]) {
+        if module.id.is_none() {
+            continue; // reported as an unknown module by the resolver
+        }
+        let count = module.diagnostics.iter().filter(|d| d.is_error()).count();
         if count > 0 {
             diagnostics.push(Diagnostic::error(
                 "import-errors",
                 format!(
-                    "the imported module `{name}` has {count} error{}",
+                    "the imported module `{}` has {count} error{}",
+                    import.name,
                     if count == 1 { "" } else { "s" }
                 ),
                 Span::new(0, 0),
