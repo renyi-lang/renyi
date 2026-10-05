@@ -1,0 +1,6 @@
+{
+  "task": "explain",
+  "name": "hello",
+  "prompt": "Explain what this Renyi program does in at most three sentences, for a reader who will decide whether to use it. Do not quote code.\n\nmodule hello\n  purpose: Greet whoever runs the program.\n\nimport std.console\nimport std.environment\n\npublic function main() needs console, environment\n  purpose: Print a greeting that uses the first command-line argument as the name.\n\n  let arguments be environment.arguments()\n  let name be arguments.first() otherwise \"world\"\n  console.print(\"Hello, {name}!\")\nend\n",
+  "purposes": "purpose: Greet whoever runs the program.\npurpose: Print a greeting that uses the first command-line argument as the name."
+}
