@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "```\npublic function statement_line(order: Invoice) returns Text\n  purpose: One row of the statement: customer, number of lines and total, in fixed columns.\n  example: statement_line(Invoice(customer: \"ACME\", lines: [], discount_percent: 0))\n    is \"ACME          0 lines      0.00\"\n\n  let number_of_lines be for each line in order.lines count\n  # adding 0.00 keeps at least two decimal places\n  let amount be invoice.total(order) + 0.00\n  # pad each column with spaces to its fixed width\n  let mutable customer_column be order.customer\n  while not customer_column.matches(raw \"^.{12,}$\")\n    set customer_column to \"{customer_column} \"\n  end\n  let mutable lines_column be \"{number_of_lines}\"\n  while not lines_column.matches(raw \"^.{3,}$\")\n    set lines_column to \" {lines_column}\"\n  end\n  let mutable amount_column be \"{amount}\"\n  while not amount_column.matches(raw \"^.{10,}$\")\n    set amount_column to \" {amount_column}\"\n  end\n  return \"{customer_column}{lines_column} lines{amount_column}\"\nend\n```\n"
+  ],
+  "model": "agent-sonnet"
+}

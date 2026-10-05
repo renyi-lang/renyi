@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "```\npublic function describe(shape: Shape) returns Text\n  purpose: One line naming the shape and giving its area.\n  example: describe(Point) is \"a point with area 0.00\"\n  example: describe(Rectangle(width: 2, height: 3)) is \"a 2 by 3 rectangle with area 6.00\"\n\n  # adding 0.00 pads a whole-number area to two decimals, as the examples show\n  let measure be shape.area() + 0.00\n  match shape\n    when Circle(radius) then return \"a circle of radius {radius} with area {measure}\"\n    when Rectangle(width, height) then return \"a {width} by {height} rectangle with area {measure}\"\n    when Point then return \"a point with area {measure}\"\n  end\nend\n```\n"
+  ],
+  "model": "agent-sonnet"
+}

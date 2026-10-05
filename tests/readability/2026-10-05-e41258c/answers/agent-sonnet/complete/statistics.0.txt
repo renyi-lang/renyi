@@ -1,0 +1,23 @@
+```
+public function median(values: List of Float) returns maybe Float
+  purpose: The middle value of the sorted list, or the mean of the two middle values.
+  example: median([3.0, 1.0, 2.0]) is 2.0
+  example: median([4.0, 1.0, 3.0, 2.0]) is 2.5
+  example: median([]) is nothing
+
+  if values.is_empty() then return nothing end
+  let size be values.length()
+  let lower_index be (size - 1).quotient(2)
+  let upper_index be size.quotient(2)
+  # With an odd length both positions are the same, so only one value is kept.
+  let mutable middle: List of Float be []
+  let mutable index be 0
+  for each number in values sorted by number
+    if index is lower_index or index is upper_index then
+      set middle to middle.append(number)
+    end
+    set index to index + 1
+  end
+  return mean(middle)
+end
+```

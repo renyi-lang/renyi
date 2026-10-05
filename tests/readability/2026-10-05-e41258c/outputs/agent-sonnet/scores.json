@@ -51,183 +51,399 @@
   ],
   "explain/active_users": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/assistant": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/concurrent_fetch": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/config": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/currency_tool": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/deadlines": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/dependency_order": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/expression_tree": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/file_tree": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/hello": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/http_service": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/inventory_db": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/invoice": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/invoice_report": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/log_parser": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/markdown_table": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/pagination": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/permissions": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/retry": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/sales_report": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/semver": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/shapes": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/shipping_rules": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/stacks": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/statistics": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/temperature_table": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/todo_cli": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/traffic_light": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/weather": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/word_count": [
     {
-      "pending": true
+      "grade": 5,
+      "pass": true
     }
   ],
   "complete/config": [
     {
       "lint_problems": [],
-      "pending": true
+      "pass": false
     }
   ],
   "complete/deadlines": [
     {
       "lint_problems": [],
-      "pending": true
+      "pass": true
     }
   ],
   "complete/dependency_order": [
     {
-      "lint_problems": [
-        ".scratch.ry:21: trailing whitespace",
-        ".scratch.ry:31: trailing whitespace",
-        ".scratch.ry:46: trailing whitespace"
-      ],
-      "pass": false,
-      "rules": [
-        "whitespace"
-      ]
+      "lint_problems": [],
+      "pass": true
     }
   ],
   "complete/expression_tree": [
     {
       "lint_problems": [],
-      "pending": true
+      "pass": true
+    }
+  ],
+  "complete/invoice": [
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/invoice_report": [
+    {
+      "lint_problems": [
+        ".scratch.ry:12: binding 'line' is never used (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "unused-binding"
+      ]
+    }
+  ],
+  "complete/log_parser": [
+    {
+      "lint_problems": [],
+      "pass": false
+    }
+  ],
+  "complete/markdown_table": [
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/permissions": [
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/sales_report": [
+    {
+      "lint_problems": [],
+      "pass": false
+    }
+  ],
+  "complete/semver": [
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/shapes": [
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/shipping_rules": [
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/stacks": [
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/statistics": [
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/temperature_table": [
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/todo_cli": [
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/traffic_light": [
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/word_count": [
+    {
+      "lint_problems": [
+        ".scratch.ry:21: 'lowercase' is not declared in the standard library sketch or the corpus",
+        ".scratch.ry:21: 'words' is not declared in the standard library sketch or the corpus",
+        ".scratch.ry:25: binding 'copy' is never used (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "unknown-function",
+        "unused-binding"
+      ]
+    }
+  ],
+  "write/compound_interest": [
+    {
+      "lint_problems": [
+        ".scratch.ry:57: line is 104 columns (limit 100)",
+        ".scratch.ry:71: line is 110 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    }
+  ],
+  "write/fizz_words": [
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "write/initials": [
+    {
+      "lint_problems": [
+        ".scratch.ry:15: 'first_character' is not declared in the standard library sketch or the corpus",
+        ".scratch.ry:15: 'uppercase' is not declared in the standard library sketch or the corpus"
+      ],
+      "pass": false,
+      "rules": [
+        "unknown-function"
+      ]
+    }
+  ],
+  "write/letter_grades": [
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "write/low_stock_report": [
+    {
+      "lint_problems": [
+        ".scratch.ry:35: line is 283 columns (limit 100)",
+        ".scratch.ry:47: line is 114 columns (limit 100)",
+        ".scratch.ry:57: line is 102 columns (limit 100)",
+        ".scratch.ry:59: line is 114 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    }
+  ],
+  "write/merge_sorted": [
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "write/password_strength": [
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "write/request_window": [
+    {
+      "lint_problems": [
+        ".scratch.ry:9: line is 102 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    }
+  ],
+  "write/roman_numerals": [
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "write/title_length_tool": [
+    {
+      "lint_problems": [
+        ".scratch.ry:17: 'between' is not declared in the standard library sketch or the corpus"
+      ],
+      "pass": false,
+      "rules": [
+        "unknown-function"
+      ]
     }
   ]
 }

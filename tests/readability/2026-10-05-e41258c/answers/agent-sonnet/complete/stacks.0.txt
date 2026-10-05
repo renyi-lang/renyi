@@ -1,0 +1,26 @@
+```
+public function balanced(text: Text) returns Boolean
+  purpose: Whether every round and square bracket is closed by its partner in the right order.
+  tags: parsing, brackets
+  example: balanced("(a[b])") is true
+  example: balanced("(]") is false
+  example: balanced("((") is false
+  example: balanced("a]") is false
+  example: balanced("") is true
+
+  let mutable pending: Stack of Text be empty()
+  for each character in text.characters()
+    if character is "(" or character is "[" then
+      set pending to push(stack: pending, item: character)
+    otherwise if character is ")" or character is "]" then
+      let popped be pop(pending) otherwise return false
+      let expected be if character is ")" then "(" otherwise "[" end
+      if popped.top is not expected then
+        return false
+      end
+      set pending to popped.rest
+    end
+  end
+  return pending.is_empty()
+end
+```

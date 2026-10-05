@@ -1,0 +1,31 @@
+```
+module pages.titles
+  purpose: Agent tool that measures the length of a web page title.
+
+import std.http as web
+
+public type TitleError
+  purpose: Why the title of a web page could not be measured.
+  has url: Text
+  has detail: Text
+end
+
+function title_of(html: Text) returns maybe Text
+  purpose: Find the text inside the first title element of an HTML page.
+  example: title_of("<head><title>Renyi</title></head>") is "Renyi"
+  example: title_of("<head></head>") is nothing
+
+  return html.between(after: "<title>", before: "</title>")
+end
+
+public function title_length(url: Text) returns Integer or fails with TitleError
+  needs network.http
+  purpose: Download a web page and count the characters in its title element.
+  tags: web, html
+  expose as tool
+
+  let page be web.get(url) otherwise fail with TitleError(url: url, detail: "download failed")
+  let title be title_of(page) otherwise fail with TitleError(url: url, detail: "page has no title")
+  return title.length()
+end
+```

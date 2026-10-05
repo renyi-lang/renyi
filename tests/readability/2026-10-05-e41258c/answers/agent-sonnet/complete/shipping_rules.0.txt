@@ -1,0 +1,20 @@
+```
+public function quote(parcel: Parcel) returns Quote
+  purpose: Price and delivery time for one parcel; the host calls this at every checkout.
+  example: quote(Parcel(weight_grams: 500, destination: Domestic, order_total: 60.00))
+    is Quote(cost: 0, business_days: 2, free_shipping: true)
+  example: quote(Parcel(weight_grams: 2500, destination: Europe, order_total: 20.00))
+    is Quote(cost: 14.50, business_days: 5, free_shipping: false)
+
+  let days be delivery_days(parcel.destination)
+  let domestic be parcel.destination is Domestic
+  let reaches_threshold be parcel.order_total is at least free_shipping_threshold
+  if domestic and reaches_threshold then
+    return Quote(cost: 0, business_days: days, free_shipping: true)
+  end
+  let step_price be 2.50
+  let steps be weight_steps(parcel.weight_grams)
+  let cost be base_cost(parcel.destination) + steps.to_decimal() * step_price
+  return Quote(cost: cost, business_days: days, free_shipping: false)
+end
+```

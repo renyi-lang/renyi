@@ -1,0 +1,22 @@
+```
+public function next_light(current: Light, event: Event) returns Light
+  purpose: The light shown after the event; an emergency overrides the normal cycle.
+  tags: state-machine, traffic
+  example: next_light(current: Red, event: TimerExpired) is Green
+  example: next_light(current: Green, event: TimerExpired) is Yellow
+  example: next_light(current: Yellow, event: TimerExpired) is Red
+  example: next_light(current: Green, event: EmergencyDeclared) is FlashingRed
+  example: next_light(current: FlashingRed, event: TimerExpired) is FlashingRed
+  example: next_light(current: FlashingRed, event: EmergencyCleared) is Red
+
+  match event
+    when EmergencyDeclared then return FlashingRed
+    when EmergencyCleared where current is FlashingRed then return Red
+    when EmergencyCleared then return current
+    when TimerExpired where current is Red then return Green
+    when TimerExpired where current is Green then return Yellow
+    when TimerExpired where current is Yellow then return Red
+    when TimerExpired then return current
+  end
+end
+```

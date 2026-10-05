@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "```\nmodule traffic.rate_limit\n  purpose: Sliding window rate limit checks for lists of request times.\n\npublic function rejected_count(request_times: List of Integer, window_seconds: Integer)\n  returns Integer\n  purpose: Count requests rejected by a limit of 10 per window, given sorted request times.\n  example: rejected_count(request_times: [], window_seconds: 5) is 0\n  example: rejected_count(request_times: [1, 2, 3], window_seconds: 5) is 0\n  example: rejected_count(request_times: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], window_seconds: 5) is 2\n  example: rejected_count(request_times: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5], window_seconds: 5) is 1\n  example: rejected_count(request_times: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 6], window_seconds: 5) is 0\n\n  let mutable accepted: List of Integer be []\n  let mutable rejected be 0\n  for each request_time in request_times\n    let cutoff be request_time - window_seconds   # requests at or before this time have expired\n    let recent be for each earlier in accepted where earlier is greater than cutoff count\n    if recent is less than 10 then\n      set accepted to accepted.append(request_time)\n    otherwise\n      set rejected to rejected + 1\n    end\n  end\n  return rejected\nend\n```\n"
+  ],
+  "model": "agent-sonnet"
+}

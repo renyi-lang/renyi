@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "```\npublic function median(values: List of Float) returns maybe Float\n  purpose: The middle value of the sorted list, or the mean of the two middle values.\n  example: median([3.0, 1.0, 2.0]) is 2.0\n  example: median([4.0, 1.0, 3.0, 2.0]) is 2.5\n  example: median([]) is nothing\n\n  if values.is_empty() then return nothing end\n  let size be values.length()\n  let lower_index be (size - 1).quotient(2)\n  let upper_index be size.quotient(2)\n  # With an odd length both positions are the same, so only one value is kept.\n  let mutable middle: List of Float be []\n  let mutable index be 0\n  for each number in values sorted by number\n    if index is lower_index or index is upper_index then\n      set middle to middle.append(number)\n    end\n    set index to index + 1\n  end\n  return mean(middle)\nend\n```\n"
+  ],
+  "model": "agent-sonnet"
+}

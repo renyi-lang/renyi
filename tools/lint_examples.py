@@ -31,8 +31,6 @@ FORBIDDEN = [
     (r";\s*$", "semicolon"),
     (r"\b(else|elif|fn|def|null|None|lambda|var|const|elsif|unless|switch|case)\b",
      "keyword from another language"),
-    (r"\t", "tab character"),
-    (r"\s+$", "trailing whitespace"),
 ]
 BINDING_PATTERNS = [
     re.compile(r"\blet (?:mutable )?([a-z_][a-z0-9_]*)"),
@@ -86,6 +84,14 @@ def strip_strings(line: str) -> str:
     return re.sub(r'"(?:[^"\\]|\\.)*"', lambda m: '"' + " " * (len(m.group(0)) - 2) + '"', line)
 
 
+CLAUSE_TEXT = re.compile(r"^(\s*(?:purpose|tags|see also|deprecated):)(.*)$")
+
+
+def strip_clause_text(line: str) -> str:
+    """Blank out the free text of a documentation clause, which is not code."""
+    return CLAUSE_TEXT.sub(lambda m: m.group(1), line)
+
+
 def lint_file(path: pathlib.Path, known: set[str]) -> list[str]:
     problems = []
     opened = 0
@@ -108,10 +114,14 @@ def lint_file(path: pathlib.Path, known: set[str]) -> list[str]:
         if raw.count('"""') % 2 == 1:
             in_block_string = True
             raw = raw.split('"""', 1)[0].rstrip()
-        line = strip_strings(raw)
+        line = strip_clause_text(strip_strings(raw))
         code = line.split("#", 1)[0] if " #" in line or line.lstrip().startswith("#") else line
         if len(raw) > 100:
             problems.append(f"{where}: line is {len(raw)} columns (limit 100)")
+        if "\t" in raw:
+            problems.append(f"{where}: tab character")
+        if raw != raw.rstrip():
+            problems.append(f"{where}: trailing whitespace")
         for pattern, message in FORBIDDEN:
             if re.search(pattern, code):
                 problems.append(f"{where}: {message}")

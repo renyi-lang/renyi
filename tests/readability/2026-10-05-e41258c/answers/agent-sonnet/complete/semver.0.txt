@@ -1,0 +1,18 @@
+```
+public function parse(input: Text) returns Version or fails with VersionError
+  purpose: Read "major.minor.patch" into a version.
+  tags: semver, parsing
+  example: parse("1.4.2") is Version(major: 1, minor: 4, patch: 2)
+  example: parse("1.4") fails with WrongPartCount(input: "1.4", found: 2)
+  example: parse("1.x.2") fails with NotANumber(input: "1.x.2", part: "x")
+
+  let parts be input.split(".")
+  if parts.length() is not 3 then
+    fail with WrongPartCount(input: input, found: parts.length())
+  end
+  let major be number_at(parts: parts, index: 0, input: input) otherwise fail
+  let minor be number_at(parts: parts, index: 1, input: input) otherwise fail
+  let patch be number_at(parts: parts, index: 2, input: input) otherwise fail
+  return Version(major: major, minor: minor, patch: patch)
+end
+```

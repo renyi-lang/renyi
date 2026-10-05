@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "```\nmodule people.names\n  purpose: Helpers for working with personal names.\n\npublic function initials(full_name: Text) returns Text\n  purpose: Return the upper case first letters of the words in a full name.\n  example: initials(\"ada marie lovelace\") is \"AML\"\n  example: initials(\"  ada   marie  lovelace \") is \"AML\"\n  example: initials(\"grace Brewster murray HOPPER\") is \"GBMH\"\n  example: initials(\"plato\") is \"P\"\n  example: initials(\"   \") is \"\"\n\n  let words be full_name.split(\" \")\n  let mutable result be \"\"\n  for each word in words where word is not \"\"\n    let letter be word.first_character().uppercase()\n    set result to \"{result}{letter}\"\n  end\n  return result\nend\n```\n"
+  ],
+  "model": "agent-sonnet"
+}

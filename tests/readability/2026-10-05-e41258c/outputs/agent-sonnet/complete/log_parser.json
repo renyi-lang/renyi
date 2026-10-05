@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "```\npublic function parse_line(line: Text) returns Entry or fails with ParseError\n  purpose: Split a line of the form \"timestamp LEVEL message\" into an entry.\n  tags: logs, parsing\n  example: parse_line(\"2024-05-01T13:45:00 INFO server started\")\n    is Entry(timestamp: Timestamp(\"2024-05-01T13:45:00\"), level: Info, message: \"server started\")\n  example: parse_line(\"garbage\") fails with Malformed(line: \"garbage\")\n\n  let parts be line.split(separator: \" \", limit: 3)\n  let stamp_text be parts.get(0) otherwise fail with Malformed(line: line)\n  let level_word be parts.get(1) otherwise fail with Malformed(line: line)\n  let message be parts.get(2) otherwise fail with Malformed(line: line)\n  let timestamp be Timestamp(stamp_text) otherwise fail with Malformed(line: line)\n  let level be parse_level(level_word) otherwise fail\n  return Entry(timestamp: timestamp, level: level, message: message)\nend\n```\n"
+  ],
+  "model": "agent-sonnet"
+}

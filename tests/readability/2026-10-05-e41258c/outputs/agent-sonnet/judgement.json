@@ -1,0 +1,222 @@
+{
+  "complete/config.0": {
+    "verdict": false,
+    "reason": "[superfluous-otherwise] `Port(8080) otherwise crash with ...`: a construction from a literal is checked at compile time and cannot fail; the value returned is right."
+  },
+  "complete/deadlines.0": {
+    "verdict": true,
+    "reason": "Walks from the day after start to finish inclusive and counts is_working_day; both examples hold (Friday to Monday gives 1, same day gives 0)."
+  },
+  "complete/dependency_order.0": {
+    "verdict": true,
+    "reason": "Checks every prerequisite is a known step, places the alphabetically first ready step until none is ready, reports the rest as a cycle; all three examples hold."
+  },
+  "complete/expression_tree.0": {
+    "verdict": true,
+    "reason": "Recursive match over the four variants, 0 - evaluate(inner) for Negate; all three examples hold."
+  },
+  "complete/invoice.0": {
+    "verdict": true,
+    "reason": "gross - gross * percent / 100.00; both tests hold; the rounding named in purpose is omitted but no test exercises it."
+  },
+  "complete/log_parser.0": {
+    "verdict": false,
+    "reason": "[unknown-function] invents a `limit` argument for split and calls get on a List (Lists have at); the rest of the body is sound."
+  },
+  "complete/markdown_table.0": {
+    "verdict": true,
+    "reason": "Builds the dashes with a while loop, reuses render_row and column_widths; the rendered table matches the example exactly."
+  },
+  "complete/permissions.0": {
+    "verdict": true,
+    "reason": "Collects every required permission that no candidate in granted_by(roles) equals and converts to a set; the example holds."
+  },
+  "complete/sales_report.0": {
+    "verdict": false,
+    "reason": "[undefined-form] `group by sale.region sum sale.amount` is not a query form the sketch defines (group by takes only collect); with it the example would hold."
+  },
+  "complete/semver.0": {
+    "verdict": true,
+    "reason": "Checks the part count, then number_at with `otherwise fail` for each part; all three examples hold."
+  },
+  "complete/shapes.0": {
+    "verdict": true,
+    "reason": "Adds 0.00 to the area so that whole-number areas render with two decimals; both examples hold (a circle's area would keep every digit, which no example covers)."
+  },
+  "complete/shipping_rules.0": {
+    "verdict": true,
+    "reason": "Free domestic shipping above the threshold returned early, otherwise base cost plus 2.50 per weight step; both examples hold."
+  },
+  "complete/stacks.0": {
+    "verdict": true,
+    "reason": "Pushes openers, pops on closers with `otherwise return false`, compares against the expected partner; all five examples hold."
+  },
+  "complete/statistics.0": {
+    "verdict": true,
+    "reason": "Collects the one or two middle values of the sorted list by index and returns their mean; all three examples hold."
+  },
+  "complete/temperature_table.0": {
+    "verdict": true,
+    "reason": "celsius * 1.8 + 32.0; the three examples hold as Decimal values."
+  },
+  "complete/todo_cli.0": {
+    "verdict": true,
+    "reason": "First word as the verb through a `first` query (whose loop variable is its result), rest joined as the operand, Done built with `otherwise Help`; all three examples hold."
+  },
+  "complete/traffic_light.0": {
+    "verdict": true,
+    "reason": "Match on the event with guards on the current light; all six examples hold and the arms are exhaustive (EmergencyCleared from a non-flashing light keeps the light, which no example covers)."
+  },
+  "explain/active_users.0": {
+    "verdict": 5,
+    "reason": "It captures the documented purpose (JSON file, active users aged 18 or over, one e-mail per line), the console and file-read effects, the file and JSON failures, and the split between the path-taking function and the fixed-file entry point."
+  },
+  "explain/assistant.0": {
+    "verdict": 5,
+    "reason": "It covers the one-shot question sent over HTTP, the command-line question and environment API key, the first-answer output, the missing-key, no-answer and transport failures, and the network, console and environment permissions."
+  },
+  "explain/concurrent_fetch.0": {
+    "verdict": 5,
+    "reason": "It states the parallel download of three sites with character counts printed largest first, openly notes the extra bounded two-page step that the purpose line omits, and gives the network and console effects and the HTTP and timeout failures."
+  },
+  "explain/config.0": {
+    "verdict": 5,
+    "reason": "It covers loading and validating the JSON configuration with its constraints, the two failure kinds, the built-in defaults (port 8080) and the two silent fallback loaders, consistent with every clause."
+  },
+  "explain/currency_tool.0": {
+    "verdict": 5,
+    "reason": "It correctly describes an agent-published tool that converts an amount at the live rate rounded to cents, the three-letter currency codes, the network-only effect, and the failure cases including a missing rate for the requested pair."
+  },
+  "explain/deadlines.0": {
+    "verdict": 5,
+    "reason": "It matches every clause: due-soon selection from today to the window earliest first, Monday-to-Friday working days after the start up to and including the finish, the line parser with its missing-comma and invalid-date failures, and the ten-day sample demo with console and clock effects."
+  },
+  "explain/dependency_order.0": {
+    "verdict": 5,
+    "reason": "It correctly describes a stable alphabetical topological order, the unknown-dependency and cycle failures consistent with the examples, the pure ordering function and the console-only demo on a sample project."
+  },
+  "explain/expression_tree.0": {
+    "verdict": 5,
+    "reason": "It correctly describes the number, add, multiply and negate tree, the recursive evaluation and the fully parenthesised rendering with a leading minus for negation, the pure functions, and the console-only demo that prints a sample tree beside its value."
+  },
+  "explain/file_tree.0": {
+    "verdict": 5,
+    "reason": "It correctly states that the tool prints the tree of the named or current directory with byte sizes where a folder's size is the sum beneath it, and gives the console, argument and read-only effects and the failure on unreadable entries."
+  },
+  "explain/hello.0": {
+    "verdict": 5,
+    "reason": "It correctly says the program prints a greeting using the first command-line argument as the name, with console and environment effects only, which fully covers both clauses of this trivial program."
+  },
+  "explain/http_service.0": {
+    "verdict": 5,
+    "reason": "It covers the Celsius to Fahrenheit JSON conversion, routing by path with health-check and error replies, the fixed port 8080 and running until stopped, all consistent with the documented purposes."
+  },
+  "explain/inventory_db.0": {
+    "verdict": 5,
+    "reason": "It correctly covers opening the SQLite database and creating the items table, recording a delivery for an existing item, listing items at or below reorder level lowest first, and the demo run, with nothing contradicting the clauses."
+  },
+  "explain/invoice.0": {
+    "verdict": 5,
+    "reason": "It correctly describes the line total, subtotal and discounted total computations with exact decimal arithmetic and rounding to cents, matching every documented clause."
+  },
+  "explain/invoice_report.0": {
+    "verdict": 5,
+    "reason": "It correctly describes the fixed-column statement rows, the grand total, the reuse of the invoice module and the two-sample-invoice demo, matching all documented clauses."
+  },
+  "explain/log_parser.0": {
+    "verdict": 5,
+    "reason": "It correctly covers strict parsing of timestamp, level and message lines, per-hour error counts printed earliest first, and the failure on malformed or unknown-level lines, matching the documented purposes and examples."
+  },
+  "explain/markdown_table.0": {
+    "verdict": 5,
+    "reason": "It correctly describes the Markdown rendering with every column padded to its widest cell, the column-width helper and the fruit-price demo, consistent with every documented clause."
+  },
+  "explain/pagination.0": {
+    "verdict": 5,
+    "reason": "It correctly describes following the cursor page by page until none is returned, counting customers per country and printing the largest first, consistent with all documented purposes."
+  },
+  "explain/permissions.0": {
+    "verdict": 5,
+    "reason": "It correctly covers resource:action permissions, role pooling, missing permissions, the all-required check, the permissions two roles share and the viewer-and-editor demo, matching every documented clause."
+  },
+  "explain/retry.0": {
+    "verdict": 5,
+    "reason": "It correctly describes retrying up to a maximum number of attempts with a doubling delay plus random jitter and a gave-up error after the last failure, matching the documented purposes."
+  },
+  "explain/sales_report.0": {
+    "verdict": 5,
+    "reason": "It correctly describes reading and validating the sales CSV, summing amounts per region, printing the totals and saving a CSV report, including the error cases, matching all documented clauses."
+  },
+  "explain/semver.0": {
+    "verdict": 5,
+    "reason": "Every clause is covered correctly: non-negative three-part versions, printing and ordering, errors for a wrong part count or a non-numeric part, the same-major-and-not-older check, and the greatest version or nothing for an empty list."
+  },
+  "explain/shapes.0": {
+    "verdict": 5,
+    "reason": "It correctly covers the three shapes, the area contract, the two-decimal one-line description, the largest-or-nothing function and the console demo, with no conflict with the clauses or examples."
+  },
+  "explain/shipping_rules.0": {
+    "verdict": 5,
+    "reason": "It correctly describes a pure host-embedded quote library whose started-kilogram surcharge matches the weight_steps examples and whose domestic free-shipping threshold matches the clause."
+  },
+  "explain/stacks.0": {
+    "verdict": 5,
+    "reason": "It accurately covers the immutable stack, pop returning the top plus the rest or nothing, peek, the size ability and the round-and-square bracket checker, and its true or false outcomes match all five examples."
+  },
+  "explain/statistics.0": {
+    "verdict": 5,
+    "reason": "It correctly states that the program prints the mean, median and population standard deviation of the numeric arguments, skips other words, and yields nothing for an empty list, matching every example."
+  },
+  "explain/temperature_table.0": {
+    "verdict": 5,
+    "reason": "The rows from -10 to 40 in steps of 10, the 14 to 104 Fahrenheit values and the nine-fifths-plus-32 conversion all agree with the clauses and examples."
+  },
+  "explain/todo_cli.0": {
+    "verdict": 5,
+    "reason": "It faithfully describes the text-file to-do tool with add, done by position, help for anything unrecognized, and display of the resulting list, with nothing that conflicts with the clauses."
+  },
+  "explain/traffic_light.0": {
+    "verdict": 5,
+    "reason": "The red-green-yellow cycle, the emergency override, the flashing-red behavior and the one-entry-per-event sequence helper all match the examples, and the console-only demo is described correctly."
+  },
+  "explain/weather.0": {
+    "verdict": 5,
+    "reason": "It correctly describes one Open-Meteo request for Berlin that prints temperature and wind speed, a download routine for any coordinate, and an error covering why no forecast could be shown."
+  },
+  "explain/word_count.0": {
+    "verdict": 5,
+    "reason": "It correctly describes counting lower-cased words in the file named on the command line and printing the ten most frequent, consistent with the clauses and examples."
+  },
+  "write/compound_interest.0": {
+    "verdict": true,
+    "reason": "Reads amount, rate and years from the arguments through json.parse into Decimal and Integer, rounds each year's interest to the cent with a remainder trick, prints the schedule; every example holds."
+  },
+  "write/fizz_words.0": {
+    "verdict": true,
+    "reason": "Pure fizz_word with six examples that all hold, main loops over from 1 to 100 under needs console; every public definition has a purpose."
+  },
+  "write/letter_grades.0": {
+    "verdict": true,
+    "reason": "letter_grade with the four cut-offs, letter_grades as a collect query, count_grades with five count queries into a map; every example holds and every public definition has a purpose."
+  },
+  "write/low_stock_report.0": {
+    "verdict": false,
+    "reason": "[unknown-function] imports std.files, which does not exist (the module is std.filesystem), and passes a Text where read_text needs a Path; the filtering and sorting query itself is right."
+  },
+  "write/merge_sorted.0": {
+    "verdict": true,
+    "reason": "Flattens both lists through a two-source query sorted by entry, then drops duplicates with an `any` query; the four examples and the empty-lists test hold."
+  },
+  "write/password_strength.0": {
+    "verdict": true,
+    "reason": "Sum type with purpose, classification through five raw regular expressions on length, letters, digits and other characters; all eight examples hold."
+  },
+  "write/request_window.0": {
+    "verdict": true,
+    "reason": "Sliding window over the accepted requests, rejecting a request when ten accepted ones fall inside its window; all five examples hold."
+  },
+  "write/roman_numerals.0": {
+    "verdict": true,
+    "reason": "Greedy symbol table for to_roman with an OutOfRange check, from_roman by searching 1 to 3999 for the numeral that spells back; every example holds."
+  }
+}

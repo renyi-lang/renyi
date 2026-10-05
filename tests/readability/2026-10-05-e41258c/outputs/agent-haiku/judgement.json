@@ -1,0 +1,182 @@
+{
+  "complete/config.0": {
+    "verdict": true,
+    "reason": "Config(port: Port(8080), workers: 4, log_level: Normal) with literal arguments; the example holds."
+  },
+  "complete/expression_tree.0": {
+    "verdict": true,
+    "reason": "Recursive match over the four variants, 0 - evaluate(inner) for Negate; all three examples hold."
+  },
+  "complete/invoice.0": {
+    "verdict": true,
+    "reason": "Subtotal minus subtotal * percent / 100; both tests hold (10.00 gives 9.00, no lines gives 0); the rounding named in purpose is omitted but no test exercises it."
+  },
+  "complete/log_parser.0": {
+    "verdict": false,
+    "reason": "[superfluous-otherwise] applies `otherwise` to line.split(\" \"), which cannot fail; the logic gives both examples the right outcome."
+  },
+  "complete/markdown_table.0": {
+    "verdict": false,
+    "reason": "[unused-binding] the separator query `for each index in from 1 to width collect \"-\"` never reads its loop variable; the rendered table matches the example."
+  },
+  "complete/permissions.0": {
+    "verdict": true,
+    "reason": "required.difference(granted_by(roles)); the example holds."
+  },
+  "complete/sales_report.0": {
+    "verdict": false,
+    "reason": "[undefined-form] `group by sale.region sum sale.amount` is not a query form the sketch defines (group by takes only collect); with it the example would hold."
+  },
+  "complete/semver.0": {
+    "verdict": false,
+    "reason": "[missing-otherwise] calls the fallible helper number_at three times without `otherwise`; a second copy of number_at is also declared, and the helper's logic would give the three examples the right outcomes."
+  },
+  "complete/shapes.0": {
+    "verdict": false,
+    "reason": "[wrong-output] interpolates shape.area() directly, which renders 6 for the 2 by 3 rectangle where the example expects 6.00 (the Point case is hard-coded)."
+  },
+  "complete/stacks.0": {
+    "verdict": true,
+    "reason": "Pushes on ( and [, pops and compares on ) and ], false on mismatch or underflow, is_empty() at the end; all five examples hold."
+  },
+  "complete/statistics.0": {
+    "verdict": false,
+    "reason": "[parse-error] writes `length quotient 2` as an infix operator; quotient is a method; the two middle values are also maybe Float and are added without unwrapping."
+  },
+  "complete/temperature_table.0": {
+    "verdict": true,
+    "reason": "celsius * 9.0 / 5.0 + 32.0; the three examples hold as Decimal values (32, 212, -40)."
+  },
+  "complete/todo_cli.0": {
+    "verdict": false,
+    "reason": "[missing-otherwise] constructs Done(position: position) from a runtime Integer without `otherwise` although the field is refined to at least 1; [unused-binding] the loop variable of `for each arg in arguments first` is never read."
+  },
+  "complete/traffic_light.0": {
+    "verdict": true,
+    "reason": "Matches the event first and the current light inside TimerExpired; all six examples hold and both matches are exhaustive."
+  },
+  "explain/active_users.0": {
+    "verdict": 5,
+    "reason": "It correctly states that the program reads users from a JSON file, keeps active users aged 18 or over, and prints their e-mail addresses one per line, and the added details do not contradict the clauses."
+  },
+  "explain/assistant.0": {
+    "verdict": 5,
+    "reason": "It correctly covers sending one question to a chat model over HTTP, reading the question from the command line and the API key from the environment, and showing the answer, omitting only the minor failure-reason type."
+  },
+  "explain/concurrent_fetch.0": {
+    "verdict": 5,
+    "reason": "It correctly states that several pages are downloaded in parallel, measured in characters, and printed largest first, and the extra timeout detail does not contradict the clauses."
+  },
+  "explain/config.0": {
+    "verdict": 4,
+    "reason": "It is right that the configuration is loaded from JSON with validation and with default or caller-supplied fallbacks, but it omits the log level, the error reporting and what the configuration contains."
+  },
+  "explain/currency_tool.0": {
+    "verdict": 5,
+    "reason": "It correctly states that amounts are converted at the current rate, rounded to cents and published to agents as a tool, omitting only the minor no-rate failure case and the currency code type."
+  },
+  "explain/deadlines.0": {
+    "verdict": 4,
+    "reason": "It correctly states the due-soon filter, the weekday-only working-day count and the printed output, but omits parsing of title-and-date lines with its errors and the earliest-first ordering."
+  },
+  "explain/dependency_order.0": {
+    "verdict": 4,
+    "reason": "It correctly states the topological ordering and the cycle and unknown-dependency errors, but omits the alphabetical tie-breaking and that running it prints the order of a sample project."
+  },
+  "explain/expression_tree.0": {
+    "verdict": 4,
+    "reason": "It correctly states that expression trees are evaluated and rendered in fully parenthesised infix form, but omits that the program builds a sample tree and prints it next to its value."
+  },
+  "explain/file_tree.0": {
+    "verdict": 4,
+    "reason": "It correctly states that a directory tree is printed with byte sizes and recursive directory totals, but omits that the directory comes from the command line and defaults to the current one."
+  },
+  "explain/hello.0": {
+    "verdict": 5,
+    "reason": "It correctly states that the first command-line argument is used as the name in a printed greeting, and the default-to-world detail does not contradict the clauses."
+  },
+  "explain/http_service.0": {
+    "verdict": 5,
+    "reason": "It correctly describes a small JSON temperature-conversion API routed by path and served on port 8080 until the process is stopped, which covers all three documented purposes."
+  },
+  "explain/inventory_db.0": {
+    "verdict": 4,
+    "reason": "It correctly covers the SQLite inventory, adding deliveries to existing items and the main that records one delivery and lists the reorder items, but it omits that opening the database also creates the items table and says nothing about the stock-change failure case."
+  },
+  "explain/invoice.0": {
+    "verdict": 5,
+    "reason": "It accurately states that line items (quantity times unit price) are summed, a percentage discount is applied and the result is rounded to cents, which covers every documented clause."
+  },
+  "explain/invoice_report.0": {
+    "verdict": 5,
+    "reason": "It correctly describes the plain-text statement with one row per invoice (customer, line count, total) followed by the grand total, missing only minor details such as the sample data and the reuse of the invoice module."
+  },
+  "explain/log_parser.0": {
+    "verdict": 3,
+    "reason": "The parse, error filter, hourly grouping and chronological printing are right, but it says the program reads a log file although the clauses describe a built-in sample log, and it omits the documented parse failures (Malformed and UnknownLevel)."
+  },
+  "explain/markdown_table.0": {
+    "verdict": 4,
+    "reason": "It correctly explains the widest-cell column widths and the padded Markdown rendering but does not mention that running the program prints a small fruit-price table."
+  },
+  "explain/pagination.0": {
+    "verdict": 5,
+    "reason": "It correctly describes following next_cursor across pages until none remain and then printing per-country customer counts, leaving only the largest-first order stated loosely as sorted."
+  },
+  "explain/permissions.0": {
+    "verdict": 5,
+    "reason": "It accurately covers the union of role grants, the missing permissions, the all-required check, the permissions two roles share and the viewer-and-editor publishing sample."
+  },
+  "explain/retry.0": {
+    "verdict": 5,
+    "reason": "It correctly describes retrying a failing action with doubling waits plus random jitter and returning an error once the attempts are exhausted."
+  },
+  "explain/sales_report.0": {
+    "verdict": 4,
+    "reason": "It correctly covers reading and validating the CSV, summing per region, printing the totals and saving a CSV report, but it omits the failure case in which the report cannot be produced."
+  },
+  "explain/semver.0": {
+    "verdict": 4,
+    "reason": "Correctly covers parsing with validation, comparison, satisfies and latest, but omits printing, the same-major-and-not-older rule for satisfies, and the empty-list result of latest."
+  },
+  "explain/shapes.0": {
+    "verdict": 5,
+    "reason": "Accurately covers the shape types, describe's one-line summary with area, largest, and the demo main; only the nothing-for-an-empty-list detail is left out."
+  },
+  "explain/shipping_rules.0": {
+    "verdict": 4,
+    "reason": "Correct on zones, cost and delivery time, free domestic shipping and the per-kilogram steps, but says over fifty dollars where the clause says domestic orders at or above the threshold ship free."
+  },
+  "explain/stacks.0": {
+    "verdict": 4,
+    "reason": "Correctly describes the generic last-in first-out stack operations and the bracket checker, but omits the element-count interface, the Popped result and the copy-returning behaviour."
+  },
+  "explain/statistics.0": {
+    "verdict": 4,
+    "reason": "Correctly states mean, median and standard deviation of command-line numbers with other words skipped, but omits that results are printed, that the deviation is the population one, and the nothing result for an empty list."
+  },
+  "explain/temperature_table.0": {
+    "verdict": 5,
+    "reason": "Accurately states that it prints a Celsius to Fahrenheit table from -10 to 40 in steps of 10."
+  },
+  "explain/todo_cli.0": {
+    "verdict": 5,
+    "reason": "Correctly describes a command-line to-do list kept in a text file with add, done, view and help commands and a read, apply, show, save flow."
+  },
+  "explain/traffic_light.0": {
+    "verdict": 4,
+    "reason": "Correctly describes the red-green-yellow cycle, the emergency override to flashing red and sequence simulation, but omits the emergency-cleared return to red and the printed demo sequence."
+  },
+  "explain/weather.0": {
+    "verdict": 5,
+    "reason": "Correctly states that it fetches the current temperature and wind speed for Berlin from Open-Meteo, reports failures, and can be pointed at other coordinates."
+  },
+  "explain/word_count.0": {
+    "verdict": 5,
+    "reason": "Accurately covers reading a text file, lower-cased word counting, most-frequent-first ordering and showing the ten most common words with counts."
+  },
+  "write/letter_grades.0": {
+    "verdict": false,
+    "reason": "[missing-purpose] the public type Grade has no purpose: clause, which the language requires and the task asked for; the cut-offs and the counting function are otherwise correct."
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "```\nmodule fizz.words\n  purpose: Print FizzBuzz for the numbers from 1 to 100.\n\nimport std.console\n\npublic function fizz_word(number: Integer) returns Text\n  purpose: Choose Fizz, Buzz, FizzBuzz or the number itself for one number.\n  example: fizz_word(1) is \"1\"\n  example: fizz_word(3) is \"Fizz\"\n  example: fizz_word(5) is \"Buzz\"\n  example: fizz_word(15) is \"FizzBuzz\"\n  example: fizz_word(30) is \"FizzBuzz\"\n  example: fizz_word(98) is \"98\"\n\n  let multiple_of_three be number remainder 3 is 0\n  let multiple_of_five be number remainder 5 is 0\n  if multiple_of_three and multiple_of_five then\n    return \"FizzBuzz\"\n  otherwise if multiple_of_three then\n    return \"Fizz\"\n  otherwise if multiple_of_five then\n    return \"Buzz\"\n  otherwise\n    return \"{number}\"\n  end\nend\n\npublic function main()\n  needs console\n  purpose: Print the numbers from 1 to 100, replacing multiples of 3 and 5.\n\n  for each number in from 1 to 100\n    console.print(fizz_word(number))\n  end\nend\n```\n"
+  ],
+  "model": "agent-sonnet"
+}

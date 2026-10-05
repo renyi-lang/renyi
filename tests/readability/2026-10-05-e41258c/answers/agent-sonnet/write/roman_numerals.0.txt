@@ -1,0 +1,79 @@
+```
+module roman.numerals
+  purpose: Convert whole numbers from 1 to 3999 to Roman numerals and back.
+
+public type RomanError is one of
+  purpose: Why a conversion to or from a Roman numeral was refused.
+  OutOfRange(number: Integer)
+  InvalidNumeral(input: Text)
+end
+
+type Symbol
+  purpose: One Roman symbol or subtractive pair and the amount it stands for.
+  has amount: Integer
+  has letters: Text
+end
+
+function letters_for(number: Integer) returns Text
+  purpose: Spell a positive Integer in Roman letters, largest symbol first.
+  example: letters_for(14) is "XIV"
+  example: letters_for(1994) is "MCMXCIV"
+
+  let table be [
+    Symbol(amount: 1000, letters: "M"),
+    Symbol(amount: 900, letters: "CM"),
+    Symbol(amount: 500, letters: "D"),
+    Symbol(amount: 400, letters: "CD"),
+    Symbol(amount: 100, letters: "C"),
+    Symbol(amount: 90, letters: "XC"),
+    Symbol(amount: 50, letters: "L"),
+    Symbol(amount: 40, letters: "XL"),
+    Symbol(amount: 10, letters: "X"),
+    Symbol(amount: 9, letters: "IX"),
+    Symbol(amount: 5, letters: "V"),
+    Symbol(amount: 4, letters: "IV"),
+    Symbol(amount: 1, letters: "I")
+  ]
+  let mutable remaining be number
+  let mutable spelled be ""
+  for each symbol in table
+    while remaining is at least symbol.amount
+      set spelled to "{spelled}{symbol.letters}"
+      set remaining to remaining - symbol.amount
+    end
+  end
+  return spelled
+end
+
+public function to_roman(number: Integer)
+  returns Text
+  or fails with RomanError
+  purpose: Write an Integer from 1 to 3999 as a Roman numeral, or fail with OutOfRange.
+  example: to_roman(4) is "IV"
+  example: to_roman(58) is "LVIII"
+  example: to_roman(1994) is "MCMXCIV"
+  example: to_roman(3999) is "MMMCMXCIX"
+
+  if number is less than 1 or number is greater than 3999 then
+    fail with OutOfRange(number: number)
+  end
+  return letters_for(number)
+end
+
+public function from_roman(numeral: Text)
+  returns Integer
+  or fails with RomanError
+  purpose: Read a Roman numeral as an Integer, or fail with InvalidNumeral.
+  example: from_roman("IV") is 4
+  example: from_roman("LVIII") is 58
+  example: from_roman("MCMXCIV") is 1994
+  example: from_roman("MMMCMXCIX") is 3999
+
+  # Each valid numeral spells exactly one Integer from 1 to 3999, so search for it.
+  let amount be
+    for each candidate in from 1 to 3999
+    where letters_for(candidate) is numeral
+    first otherwise fail with InvalidNumeral(input: numeral)
+  return amount
+end
+```

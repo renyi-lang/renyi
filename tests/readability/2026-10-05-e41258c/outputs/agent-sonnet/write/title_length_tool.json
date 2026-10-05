@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "```\nmodule pages.titles\n  purpose: Agent tool that measures the length of a web page title.\n\nimport std.http as web\n\npublic type TitleError\n  purpose: Why the title of a web page could not be measured.\n  has url: Text\n  has detail: Text\nend\n\nfunction title_of(html: Text) returns maybe Text\n  purpose: Find the text inside the first title element of an HTML page.\n  example: title_of(\"<head><title>Renyi</title></head>\") is \"Renyi\"\n  example: title_of(\"<head></head>\") is nothing\n\n  return html.between(after: \"<title>\", before: \"</title>\")\nend\n\npublic function title_length(url: Text) returns Integer or fails with TitleError\n  needs network.http\n  purpose: Download a web page and count the characters in its title element.\n  tags: web, html\n  expose as tool\n\n  let page be web.get(url) otherwise fail with TitleError(url: url, detail: \"download failed\")\n  let title be title_of(page) otherwise fail with TitleError(url: url, detail: \"page has no title\")\n  return title.length()\nend\n```\n"
+  ],
+  "model": "agent-sonnet"
+}

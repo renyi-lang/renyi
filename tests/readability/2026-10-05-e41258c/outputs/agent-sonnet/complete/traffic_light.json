@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "```\npublic function next_light(current: Light, event: Event) returns Light\n  purpose: The light shown after the event; an emergency overrides the normal cycle.\n  tags: state-machine, traffic\n  example: next_light(current: Red, event: TimerExpired) is Green\n  example: next_light(current: Green, event: TimerExpired) is Yellow\n  example: next_light(current: Yellow, event: TimerExpired) is Red\n  example: next_light(current: Green, event: EmergencyDeclared) is FlashingRed\n  example: next_light(current: FlashingRed, event: TimerExpired) is FlashingRed\n  example: next_light(current: FlashingRed, event: EmergencyCleared) is Red\n\n  match event\n    when EmergencyDeclared then return FlashingRed\n    when EmergencyCleared where current is FlashingRed then return Red\n    when EmergencyCleared then return current\n    when TimerExpired where current is Red then return Green\n    when TimerExpired where current is Green then return Yellow\n    when TimerExpired where current is Yellow then return Red\n    when TimerExpired then return current\n  end\nend\n```\n"
+  ],
+  "model": "agent-sonnet"
+}

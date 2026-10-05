@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "```\npublic function missing(required: Set of Permission, roles: List of Role) returns Set of Permission\n  purpose: The required permissions that none of the roles grants.\n  tags: authorization, sets\n  example: missing(\n    required: [Permission(\"orders:read\"), Permission(\"orders:write\")].to_set(),\n    roles: [Role(name: \"viewer\", granted: [Permission(\"orders:read\")].to_set())]\n  ) is [Permission(\"orders:write\")].to_set()\n\n  let available be granted_by(roles)\n  let mutable absent: List of Permission be []\n  for each permission in required\n    let covered be for each candidate in available any candidate is permission\n    if not covered then\n      set absent to absent.append(permission)\n    end\n  end\n  return absent.to_set()\nend\n```\n"
+  ],
+  "model": "agent-sonnet"
+}

@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "```\npublic function totals_by_region(sales: List of Sale) returns Map of Text to Decimal\n  purpose: Sum of amounts per region.\n  example: totals_by_region([]) is {}\n\n  return for each sale in sales group by sale.region sum sale.amount\nend\n```\n"
+  ],
+  "model": "agent-sonnet"
+}

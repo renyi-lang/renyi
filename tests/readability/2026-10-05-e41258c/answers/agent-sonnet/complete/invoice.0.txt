@@ -1,0 +1,10 @@
+```
+public function total(invoice: Invoice) returns Decimal
+  purpose: Subtotal after the percentage discount, rounded to cents.
+  see also: subtotal
+
+  let gross be subtotal(invoice)
+  let discount be gross * invoice.discount_percent / 100.00
+  return gross - discount
+end
+```

@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "```\npublic function count_words(text: Text) returns List of WordCount\n  purpose: Count every lower-cased word, most frequent first.\n  example: count_words(\"a b a\")\n    is [WordCount(word: \"a\", occurrences: 2), WordCount(word: \"b\", occurrences: 1)]\n  example: count_words(\"\") is []\n\n  let tokens be text.lowercase().words()\n  let groups be for each token in tokens group by token collect token\n  let mutable entries: List of WordCount be []\n  for each word, copies in groups\n    let occurrences be for each copy in copies count\n    set entries to entries.append(WordCount(word: word, occurrences: occurrences))\n  end\n  let ranked be\n    for each entry in entries\n    sorted by entry.occurrences descending\n    collect entry\n  return ranked\nend\n```\n"
+  ],
+  "model": "agent-sonnet"
+}

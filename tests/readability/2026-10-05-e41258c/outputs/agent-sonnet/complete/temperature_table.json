@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "```\npublic function to_fahrenheit(celsius: Decimal) returns Decimal\n  purpose: Convert a Celsius temperature to Fahrenheit.\n  example: to_fahrenheit(0) is 32\n  example: to_fahrenheit(100) is 212\n  example: to_fahrenheit(-40) is -40\n\n  return celsius * 1.8 + 32.0\nend\n```\n"
+  ],
+  "model": "agent-sonnet"
+}

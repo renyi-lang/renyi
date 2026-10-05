@@ -1,0 +1,25 @@
+```
+public function statement_line(order: Invoice) returns Text
+  purpose: One row of the statement: customer, number of lines and total, in fixed columns.
+  example: statement_line(Invoice(customer: "ACME", lines: [], discount_percent: 0))
+    is "ACME          0 lines      0.00"
+
+  let number_of_lines be for each line in order.lines count
+  # adding 0.00 keeps at least two decimal places
+  let amount be invoice.total(order) + 0.00
+  # pad each column with spaces to its fixed width
+  let mutable customer_column be order.customer
+  while not customer_column.matches(raw "^.{12,}$")
+    set customer_column to "{customer_column} "
+  end
+  let mutable lines_column be "{number_of_lines}"
+  while not lines_column.matches(raw "^.{3,}$")
+    set lines_column to " {lines_column}"
+  end
+  let mutable amount_column be "{amount}"
+  while not amount_column.matches(raw "^.{10,}$")
+    set amount_column to " {amount_column}"
+  end
+  return "{customer_column}{lines_column} lines{amount_column}"
+end
+```

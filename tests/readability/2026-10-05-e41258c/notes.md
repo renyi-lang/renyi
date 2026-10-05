@@ -24,53 +24,106 @@ the whole file, and two of them reported seeing the key. All Predict and
 Complete samples produced before the fix were discarded and re-collected
 from prompt files that hold no key; Explain and Write prompts never held one.
 
-## Collection status at the pause (2026-10-05, end of session 3)
+## Collection
 
-The session paused on the owner's request when the account reached its usage
-limit. The Sonnet subagents had already failed with HTTP 429 ("weekly limit,
-resets Oct 8, 3pm UTC"). Every raw answer collected so far is saved under
-`answers/` (`agent-haiku/`, `agent-sonnet/`, and `tainted/` for the samples
-quarantined after the answer-key leak). `outputs/` was rebuilt from `answers/`
-with `run --provider file` and scored with `score`; no judgement exists yet.
+Session 3 collected every Haiku sample and the Sonnet Predict and Explain
+samples before the account's usage limit stopped the Sonnet subagents.
+Session 4 collected the missing 15 Sonnet Complete and 10 Sonnet Write
+samples the same way (one fresh `sonnet` subagent per prompt, reading only
+`system.txt` and the prompt file, writing its answer to `answers/`), imported
+everything with `run --provider file`, judged the Complete and Write samples,
+graded the explanations and ran `score` and `report`.
+
+Explain grading deviates from the harness in one more way: instead of one
+grader call per explanation, six Sonnet subagents each graded a batch of ten
+items, every item being exactly the text `EXPLAIN_GRADER` would send, with
+the instruction to grade items independently. The grades are in
+`outputs/<label>/judgement.json` next to the Complete and Write verdicts;
+every entry carries a one-sentence reason (decision L2).
+
+Two lint bugs surfaced while scoring and were fixed in `tools/lint_examples.py`
+before the final tally: an indented comment line or a trailing comment was
+reported as trailing whitespace (the check ran on the line with the comment
+cut off), and a word such as `case` inside `purpose:` text was reported as a
+foreign keyword. Neither affects the corpus, which has no indented comments.
+Six Sonnet samples had been failing on the first bug alone.
+
+## Results
+
+Strict protocol (the lint as written; layout problems count):
 
 | Label | Predict | Explain | Complete | Write |
 |-------|---------|---------|----------|-------|
-| agent-haiku | 10/10 collected, 8 pass | 30/30 collected, ungraded | 19/19 collected | 10/10 collected |
-| agent-sonnet | 10/10 collected, 10 pass | 30/30 collected, ungraded | 4/19 collected | 0/10 collected |
+| agent-sonnet | 10/10 (100%) | 30/30 (100%) | 14/19 (74%) | 5/10 (50%) |
+| agent-haiku | 8/10 (80%) | 29/30 (97%) | 7/19 (37%) | 0/10 (0%) |
 
-Sonnet Complete answers present: config, deadlines, dependency_order,
-expression_tree. Those four agents wrote their file and then failed on their
-final reply with the 429, so the files are complete and usable.
+With `renyi format` run on each program before the lint (`score --format`,
+stored as `scores-formatted.json`; the formatter leaves a program that does
+not parse alone):
 
-Missing, to collect after the limit resets (same prompt template as above,
-one fresh subagent per item, model `sonnet`, answer file under
-`answers/agent-sonnet/<task>/<name>.0.txt`):
+| Label | Complete | Write |
+|-------|----------|-------|
+| agent-sonnet | 14/19 (74%) | 7/10 (70%) |
+| agent-haiku | 7/19 (37%) | 0/10 (0%) |
 
-- Complete (15): invoice, invoice_report, log_parser, markdown_table,
-  permissions, sales_report, semver, shapes, shipping_rules, stacks,
-  statistics, temperature_table, todo_cli, traffic_light, word_count.
-- Write (10): compound_interest, fizz_words, initials, letter_grades,
-  low_stock_report, merge_sorted, password_strength, request_window,
-  roman_numerals, title_length_tool.
+Against the acceptance thresholds of `03-readability-test.md` (Predict and
+Explain 90%, Complete 80%, Write 70% with no lint rule above a quarter of the
+violations): Sonnet passes Predict and Explain, misses Complete by one sample
+(15 of 19 would be 79%, 16 would pass) and passes Write only after
+formatting; Haiku passes Explain only. One sample per item makes every rate
+coarse: the protocol's five samples and four-of-five rule are still owed.
 
-Observations so far, before judging:
+The Explain grades are suspiciously uniform (Sonnet: thirty 5s; Haiku:
+sixteen 5s, thirteen 4s, one 3), which is the known generosity of a model
+grader; the live round should use the second grader the protocol provides
+for disagreements, and the owner may want to spot-check a few grades.
 
-- Both Haiku Predict misses are column-padding arithmetic (`pad_left` width
-  off by one or more), not misreadings of the language: `invoice_report`
-  shifted one column, `temperature_table` printed `104` one column left.
-- Haiku Write: 9 of 10 samples fail the lint. Causes: lines over 100 columns
-  (4, all fixable by `renyi format`), calls to undeclared functions
-  (`to_upper_case`, `find`, `substring`, `args`), `if` without `then` (2),
-  block/`end` imbalance (3), single-letter names. Haiku Complete: 6 lint
-  failures, including the reserved word `count` used as a name twice.
-- A Sonnet participant noted a cheat-sheet gap: it does not say what a
-  derived `ToText` prints for a variant without fields (presumably the bare
-  variant name).
+## Why samples failed
 
-Remaining steps: collect the 25 missing Sonnet samples; re-import with
-`run --provider file --answers tests/readability/2026-10-05-e41258c/answers/<label> --model <label> --samples 1`;
-run `score`; check every lint-clean Complete and Write sample with
-`renyi check` as well as by reading, and record booleans with reasons in
-`outputs/<label>/judgement.json` (decision L2); grade the 60 explanations
-(integer grades in the same file, or `score --grader`); `report`; write the
-findings here and turn any failing threshold into questions for the owner.
+Every failing Complete or Write sample is explained by one of these causes;
+the judgement reasons carry the tag in brackets, lint failures carry the
+rule name from `report`.
+
+| Cause | Sonnet | Haiku | Examples |
+|-------|--------|-------|----------|
+| invented library names | 4 | 4 | `split(separator:, limit:)`, `List.get`, `lowercase`, `words`, `first_character`, `uppercase`, `between`, `std.files`; Haiku `args`, `to_upper_case`, `find`, `substring` |
+| layout only (line width, fixed by `renyi format`) | 3 | 1 | example lines of 102 to 283 columns |
+| `group by key sum expression` (not in the sketch) | 1 | 1 | both models, same program (`totals_by_region`) |
+| unused query variable in `for each line in order.lines count` | 1 | 1 | both models, same program (`statement_line`) |
+| `otherwise` on a value that cannot fail | 1 | 1 | `Port(8080) otherwise crash with ...`, `line.split(" ") otherwise fail with ...` |
+| fallible call or refined construction without `otherwise` | 0 | 2 | `number_at(...)` without `otherwise fail`, `Done(position: position)` from a runtime value |
+| unused loop variable in a `collect` query | 0 | 1 | `for each index in from 1 to width collect "-"` |
+| reserved word as a name | 0 | 2 | `count` |
+| single-letter name | 0 | 3 | `n`, `w`, `s`, `_` |
+| `if` without `then`, block/`end` imbalance, top-level `let` without a type | 0 | 6 | Haiku Write and `shipping_rules` |
+| missing `purpose:` on a public type | 0 | 1 | `type Grade` |
+| infix `quotient`, wrong rendering | 0 | 2 | `length quotient 2`; `{shape.area()}` prints 6 where 6.00 is expected |
+
+Judging rules applied, beyond the lint: a sample passes when it parses
+(`renyi check`), would type-check under the sketch (named arguments for two
+or more, `otherwise` exactly on `maybe` values and fallible calls, every
+binding read, no library name the sketch does not declare), and its
+`example:` lines and `test` blocks hold by hand evaluation. The loop variable
+of a `first` query counts as read, because `first` returns it. The VM re-runs
+every verdict at M3 (decision L2).
+
+Other observations:
+
+- Both models wrote `for each x in from 1 to 100`, which the parser accepts
+  and the formatter normalizes to `for each x from 1 to 100`; no cost.
+- Both models sometimes name a single argument (`column_widths(table: table)`,
+  `score_to_grade(score: 95)`); the sketch says one argument is positional,
+  the parser accepts the name. Not counted against any sample here, but the
+  checker must decide (an error with the fix "drop the name" keeps one
+  spelling).
+- A Sonnet participant noted that the cheat sheet does not say what a derived
+  `ToText` prints for a variant without fields; the reference outputs assume
+  the bare variant name.
+- Haiku's errors are mostly the rules the cheat sheet states outright (`then`,
+  `end`, reserved words, single-letter names); Sonnet's are mostly library
+  names the cheat sheet does not list. A short library section in the cheat
+  sheet (prelude text, list and map methods; the module names) would address
+  the larger Sonnet cause; the budget has about 550 tokens left.
+
+The questions these results raise for the owner are listed in
+`docs/HANDOFF.md`.

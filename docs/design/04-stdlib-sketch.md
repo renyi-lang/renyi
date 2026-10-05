@@ -229,7 +229,10 @@ data type without being named.
 | `FromRow` | `from_row(row: Row) returns Self or fails with DbError` | `std.sqlite` |
 
 `Ordering is one of Less, Same, Greater`. `can Compare by field, field`
-derives lexicographic comparison over the listed fields.
+derives lexicographic comparison over the listed fields. A derived `ToText`
+renders a variant without fields as its bare name (`Green`) and a record or
+a variant with fields in constructor spelling, `Circle(radius: 2.5)`, with
+`Text` values quoted; the corpus reference outputs rely on the first rule.
 
 ### 1.5 Built-in types and errors
 

@@ -1,0 +1,37 @@
+```
+module fizz.words
+  purpose: Print FizzBuzz for the numbers from 1 to 100.
+
+import std.console
+
+public function fizz_word(number: Integer) returns Text
+  purpose: Choose Fizz, Buzz, FizzBuzz or the number itself for one number.
+  example: fizz_word(1) is "1"
+  example: fizz_word(3) is "Fizz"
+  example: fizz_word(5) is "Buzz"
+  example: fizz_word(15) is "FizzBuzz"
+  example: fizz_word(30) is "FizzBuzz"
+  example: fizz_word(98) is "98"
+
+  let multiple_of_three be number remainder 3 is 0
+  let multiple_of_five be number remainder 5 is 0
+  if multiple_of_three and multiple_of_five then
+    return "FizzBuzz"
+  otherwise if multiple_of_three then
+    return "Fizz"
+  otherwise if multiple_of_five then
+    return "Buzz"
+  otherwise
+    return "{number}"
+  end
+end
+
+public function main()
+  needs console
+  purpose: Print the numbers from 1 to 100, replacing multiples of 3 and 5.
+
+  for each number in from 1 to 100
+    console.print(fizz_word(number))
+  end
+end
+```

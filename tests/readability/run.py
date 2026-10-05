@@ -8,7 +8,9 @@ Subcommands, run from the repository root:
             never holds the answer key (reference output, original body)
   run       send every prompt to one model and store the raw samples
   score     score the stored samples (Predict exactly, Complete and Write with
-            the lint plus a judgement file, Explain with a grading model)
+            the lint plus a judgement file, Explain with a grading model);
+            --format runs `renyi format` before the lint, --scores names the
+            output file so that both tallies can be kept
   report    print pass rates per model and task
 
 Only the standard library is used; vendors are reached over HTTPS with the
@@ -123,15 +125,26 @@ def extract_code(answer: str) -> str:
     return (fenced[0] if fenced else answer).strip("\n") + "\n"
 
 
-def lint_text(code: str) -> list[str]:
+def lint_text(code: str, format_first: bool = False) -> list[str]:
     scratch = HERE / ".scratch.ry"
     scratch.write_text(code, encoding="utf-8")
     try:
+        if format_first:
+            # layout is the formatter's job; a program that does not parse is left as it is
+            subprocess.run([str(renyi_binary()), "format", str(scratch)], capture_output=True)
         known = lint_examples.declared_functions(
             [lint_examples.STDLIB_SKETCH, *sorted(EXAMPLES.glob("*.ry")), scratch])
         return lint_examples.lint_file(scratch, known)
     finally:
         scratch.unlink(missing_ok=True)
+
+
+def renyi_binary() -> pathlib.Path:
+    """The `renyi` binary, built with `cargo build` when it is missing."""
+    binary = ROOT / "target" / "debug" / "renyi"
+    if not binary.exists():
+        subprocess.run(["cargo", "build", "--quiet"], cwd=ROOT, check=True)
+    return binary
 
 
 # ----------------------------------------------------------------- providers
@@ -282,12 +295,14 @@ def cmd_score(args: argparse.Namespace) -> None:
                     key = f"{task}/{out_file.stem}.{index}"
                     results.append(score_sample(task, prompt, sample, judgement.get(key), args, target))
                 scores[f"{task}/{out_file.stem}"] = results
-        (label_dir / "scores.json").write_text(json.dumps(scores, indent=2), encoding="utf-8")
+        (label_dir / args.scores).write_text(json.dumps(scores, indent=2), encoding="utf-8")
         pending = sum(1 for results in scores.values() for r in results if r.get("pending"))
         print(f"{label_dir.name}: {len(scores)} items scored, {pending} samples await judgement")
 
 
 def score_sample(task: str, prompt: dict, sample: str, judged, args, target) -> dict:
+    if isinstance(judged, dict):
+        judged = judged.get("verdict")  # {"verdict": ..., "reason": "..."} form
     if task == "predict":
         expected = read(HERE / "reference" / f"{prompt['name']}.out").rstrip()
         actual = sample.strip().strip("`").rstrip()
@@ -297,7 +312,7 @@ def score_sample(task: str, prompt: dict, sample: str, judged, args, target) -> 
         if task == "complete":
             original = read(EXAMPLES / f"{prompt['name']}.ry")
             code = splice(original, prompt["target"], code)
-        problems = lint_text(code)
+        problems = lint_text(code, format_first=args.format)
         result = {"lint_problems": problems}
         if problems:
             result["pass"] = False
@@ -361,7 +376,7 @@ def cmd_report(args: argparse.Namespace) -> None:
     print(f"run {target.name}")
     print(f"{'model':30} {'task':9} {'items':>5} {'pass':>5} {'pending':>7} {'rate':>6}")
     for label_dir in output_dirs(target):
-        scores_file = label_dir / "scores.json"
+        scores_file = label_dir / args.scores
         if not scores_file.exists():
             continue
         scores = json.loads(read(scores_file))
@@ -408,8 +423,12 @@ def main() -> None:
     s.add_argument("--run"); s.add_argument("--label")
     s.add_argument("--grader", help="provider:model used to grade Explain, for example anthropic:claude-sonnet-5-5")
     s.add_argument("--base-url", default="https://api.openai.com/v1")
+    s.add_argument("--format", action="store_true",
+                   help="run `renyi format` on each Complete and Write program before the lint")
+    s.add_argument("--scores", default="scores.json", help="file name for the scores under outputs/<label>/")
     s.set_defaults(func=cmd_score)
     t = sub.add_parser("report"); t.add_argument("--run")
+    t.add_argument("--scores", default="scores.json", help="file name of the scores under outputs/<label>/")
     t.set_defaults(func=cmd_report)
     args = parser.parse_args()
     if args.command == "run" and not args.label:

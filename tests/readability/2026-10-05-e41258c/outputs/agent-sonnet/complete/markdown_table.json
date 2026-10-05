@@ -1,0 +1,6 @@
+{
+  "samples": [
+    "```\npublic function render(table: Table) returns Text\n  purpose: The table as Markdown, every column padded to its widest cell.\n  tags: markdown, formatting\n  example: render(Table(header: [\"name\", \"qty\"], rows: [[\"apple\", \"1\"], [\"kiwi\", \"12\"]])) is \"\"\"\n    | name  | qty |\n    | ----- | --- |\n    | apple | 1   |\n    | kiwi  | 12  |\n    \"\"\"\n\n  let widths be column_widths(table)\n  let mutable rule_cells: List of Text be []\n  for each width in widths\n    let mutable dashes be \"\"\n    while dashes.length() is less than width\n      set dashes to \"{dashes}-\"\n    end\n    set rule_cells to rule_cells.append(dashes)\n  end\n  let header_line be render_row(cells: table.header, widths: widths)\n  let rule_line be render_row(cells: rule_cells, widths: widths)\n  let mutable lines be [header_line, rule_line]\n  for each row in table.rows\n    set lines to lines.append(render_row(cells: row, widths: widths))\n  end\n  return lines.join(\"\\n\")\nend\n```\n"
+  ],
+  "model": "agent-sonnet"
+}

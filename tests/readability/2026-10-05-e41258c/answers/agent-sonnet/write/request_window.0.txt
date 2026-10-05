@@ -1,0 +1,27 @@
+```
+module traffic.rate_limit
+  purpose: Sliding window rate limit checks for lists of request times.
+
+public function rejected_count(request_times: List of Integer, window_seconds: Integer)
+  returns Integer
+  purpose: Count requests rejected by a limit of 10 per window, given sorted request times.
+  example: rejected_count(request_times: [], window_seconds: 5) is 0
+  example: rejected_count(request_times: [1, 2, 3], window_seconds: 5) is 0
+  example: rejected_count(request_times: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], window_seconds: 5) is 2
+  example: rejected_count(request_times: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5], window_seconds: 5) is 1
+  example: rejected_count(request_times: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 6], window_seconds: 5) is 0
+
+  let mutable accepted: List of Integer be []
+  let mutable rejected be 0
+  for each request_time in request_times
+    let cutoff be request_time - window_seconds   # requests at or before this time have expired
+    let recent be for each earlier in accepted where earlier is greater than cutoff count
+    if recent is less than 10 then
+      set accepted to accepted.append(request_time)
+    otherwise
+      set rejected to rejected + 1
+    end
+  end
+  return rejected
+end
+```

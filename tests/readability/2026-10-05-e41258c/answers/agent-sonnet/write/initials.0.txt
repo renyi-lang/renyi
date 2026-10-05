@@ -1,0 +1,21 @@
+```
+module people.names
+  purpose: Helpers for working with personal names.
+
+public function initials(full_name: Text) returns Text
+  purpose: Return the upper case first letters of the words in a full name.
+  example: initials("ada marie lovelace") is "AML"
+  example: initials("  ada   marie  lovelace ") is "AML"
+  example: initials("grace Brewster murray HOPPER") is "GBMH"
+  example: initials("plato") is "P"
+  example: initials("   ") is ""
+
+  let words be full_name.split(" ")
+  let mutable result be ""
+  for each word in words where word is not ""
+    let letter be word.first_character().uppercase()
+    set result to "{result}{letter}"
+  end
+  return result
+end
+```

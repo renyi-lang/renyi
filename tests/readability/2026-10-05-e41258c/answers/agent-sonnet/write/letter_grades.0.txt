@@ -1,0 +1,53 @@
+```
+module school.grading
+  purpose: Grade scores from 0 to 100 as letters A to F and tally the results.
+
+public function letter_grade(score: Integer) returns Text
+  purpose: Turn one score into a letter grade with the usual 90/80/70/60 cut-offs.
+  example: letter_grade(100) is "A"
+  example: letter_grade(90) is "A"
+  example: letter_grade(89) is "B"
+  example: letter_grade(80) is "B"
+  example: letter_grade(79) is "C"
+  example: letter_grade(70) is "C"
+  example: letter_grade(69) is "D"
+  example: letter_grade(60) is "D"
+  example: letter_grade(59) is "F"
+  example: letter_grade(0) is "F"
+
+  if score is at least 90 then
+    return "A"
+  otherwise if score is at least 80 then
+    return "B"
+  otherwise if score is at least 70 then
+    return "C"
+  otherwise if score is at least 60 then
+    return "D"
+  otherwise
+    return "F"
+  end
+end
+
+public function letter_grades(scores: List of Integer) returns List of Text
+  purpose: Turn every score in a list into its letter grade and keep the order.
+  example: letter_grades([95, 85, 75, 65, 55]) is ["A", "B", "C", "D", "F"]
+
+  let grades be for each score in scores collect letter_grade(score)
+  return grades
+end
+
+public function count_grades(scores: List of Integer) returns Map of Text to Integer
+  purpose: Count how many students earned each letter grade from A to F.
+  example: count_grades([95, 91, 85, 72, 65, 55]) is {"A": 2, "B": 1, "C": 1, "D": 1, "F": 1}
+  example: count_grades([100, 59, 40]) is {"A": 1, "B": 0, "C": 0, "D": 0, "F": 2}
+
+  let grades be letter_grades(scores)
+  let got_a be for each grade in grades where grade is "A" count
+  let got_b be for each grade in grades where grade is "B" count
+  let got_c be for each grade in grades where grade is "C" count
+  let got_d be for each grade in grades where grade is "D" count
+  let got_f be for each grade in grades where grade is "F" count
+  let tally be {"A": got_a, "B": got_b, "C": got_c, "D": got_d, "F": got_f}
+  return tally
+end
+```

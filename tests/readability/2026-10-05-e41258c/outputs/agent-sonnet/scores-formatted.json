@@ -16,7 +16,7 @@
   ],
   "predict/invoice_report": [
     {
-      "pass": false
+      "pass": true
     }
   ],
   "predict/markdown_table": [
@@ -41,7 +41,7 @@
   ],
   "predict/temperature_table": [
     {
-      "pass": false
+      "pass": true
     }
   ],
   "predict/traffic_light": [
@@ -69,7 +69,7 @@
   ],
   "explain/config": [
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true
     }
   ],
@@ -81,25 +81,25 @@
   ],
   "explain/deadlines": [
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true
     }
   ],
   "explain/dependency_order": [
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true
     }
   ],
   "explain/expression_tree": [
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true
     }
   ],
   "explain/file_tree": [
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true
     }
   ],
@@ -117,7 +117,7 @@
   ],
   "explain/inventory_db": [
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true
     }
   ],
@@ -135,13 +135,13 @@
   ],
   "explain/log_parser": [
     {
-      "grade": 3,
-      "pass": false
+      "grade": 5,
+      "pass": true
     }
   ],
   "explain/markdown_table": [
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true
     }
   ],
@@ -165,13 +165,13 @@
   ],
   "explain/sales_report": [
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true
     }
   ],
   "explain/semver": [
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true
     }
   ],
@@ -183,19 +183,19 @@
   ],
   "explain/shipping_rules": [
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true
     }
   ],
   "explain/stacks": [
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true
     }
   ],
   "explain/statistics": [
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true
     }
   ],
@@ -213,7 +213,7 @@
   ],
   "explain/traffic_light": [
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true
     }
   ],
@@ -232,35 +232,19 @@
   "complete/config": [
     {
       "lint_problems": [],
-      "pass": true
+      "pass": false
     }
   ],
   "complete/deadlines": [
     {
-      "lint_problems": [
-        ".scratch.ry:54: reserved word 'count' used as an identifier"
-      ],
-      "pass": false,
-      "rules": [
-        "reserved-word-identifier"
-      ]
+      "lint_problems": [],
+      "pass": true
     }
   ],
   "complete/dependency_order": [
     {
-      "lint_problems": [
-        ".scratch.ry:21: single-letter identifier '_'",
-        ".scratch.ry:22: single-letter identifier '_'",
-        ".scratch.ry:27: single-letter identifier 's'",
-        ".scratch.ry:37: reserved word 'count' used as an identifier",
-        ".scratch.ry:37: single-letter identifier '_'",
-        ".scratch.ry:70: single-letter identifier 'd'"
-      ],
-      "pass": false,
-      "rules": [
-        "reserved-word-identifier",
-        "single-letter-identifier"
-      ]
+      "lint_problems": [],
+      "pass": true
     }
   ],
   "complete/expression_tree": [
@@ -295,7 +279,7 @@
   "complete/markdown_table": [
     {
       "lint_problems": [],
-      "pass": false
+      "pass": true
     }
   ],
   "complete/permissions": [
@@ -313,29 +297,19 @@
   "complete/semver": [
     {
       "lint_problems": [],
-      "pass": false
+      "pass": true
     }
   ],
   "complete/shapes": [
     {
-      "lint_problems": [
-        ".scratch.ry:38: line is 104 columns (limit 100)"
-      ],
-      "pass": false,
-      "rules": [
-        "line-width"
-      ]
+      "lint_problems": [],
+      "pass": true
     }
   ],
   "complete/shipping_rules": [
     {
-      "lint_problems": [
-        ".scratch.ry: block starters 11 vs 'end' 13 (heuristic)"
-      ],
-      "pass": false,
-      "rules": [
-        "block-balance"
-      ]
+      "lint_problems": [],
+      "pass": true
     }
   ],
   "complete/stacks": [
@@ -347,7 +321,7 @@
   "complete/statistics": [
     {
       "lint_problems": [],
-      "pass": false
+      "pass": true
     }
   ],
   "complete/temperature_table": [
@@ -359,7 +333,7 @@
   "complete/todo_cli": [
     {
       "lint_problems": [],
-      "pass": false
+      "pass": true
     }
   ],
   "complete/traffic_light": [
@@ -371,46 +345,34 @@
   "complete/word_count": [
     {
       "lint_problems": [
-        ".scratch.ry:33: single-letter identifier 'w'"
+        ".scratch.ry:21: 'lowercase' is not declared in the standard library sketch or the corpus",
+        ".scratch.ry:21: 'words' is not declared in the standard library sketch or the corpus",
+        ".scratch.ry:25: binding 'copy' is never used (heuristic)"
       ],
       "pass": false,
       "rules": [
-        "single-letter-identifier"
+        "unknown-function",
+        "unused-binding"
       ]
     }
   ],
   "write/compound_interest": [
     {
-      "lint_problems": [
-        ".scratch.ry:19: 'args' is not declared in the standard library sketch or the corpus"
-      ],
-      "pass": false,
-      "rules": [
-        "unknown-function"
-      ]
+      "lint_problems": [],
+      "pass": true
     }
   ],
   "write/fizz_words": [
     {
-      "lint_problems": [
-        ".scratch.ry:4: single-letter identifier 'n'",
-        ".scratch.ry:6: single-letter identifier 'n'",
-        ".scratch.ry:7: single-letter identifier 'n'",
-        ".scratch.ry:8: single-letter identifier 'n'",
-        ".scratch.ry:9: single-letter identifier 'n'",
-        ".scratch.ry:26: single-letter identifier 'n'",
-        ".scratch.ry:27: single-letter identifier 'n'"
-      ],
-      "pass": false,
-      "rules": [
-        "single-letter-identifier"
-      ]
+      "lint_problems": [],
+      "pass": true
     }
   ],
   "write/initials": [
     {
       "lint_problems": [
-        ".scratch.ry:15: 'to_upper_case' is not declared in the standard library sketch or the corpus"
+        ".scratch.ry:15: 'first_character' is not declared in the standard library sketch or the corpus",
+        ".scratch.ry:15: 'uppercase' is not declared in the standard library sketch or the corpus"
       ],
       "pass": false,
       "rules": [
@@ -421,86 +383,46 @@
   "write/letter_grades": [
     {
       "lint_problems": [],
-      "pass": false
+      "pass": true
     }
   ],
   "write/low_stock_report": [
     {
-      "lint_problems": [
-        ".scratch.ry:16: line is 118 columns (limit 100)",
-        ".scratch.ry:18: line is 103 columns (limit 100)"
-      ],
-      "pass": false,
-      "rules": [
-        "line-width"
-      ]
+      "lint_problems": [],
+      "pass": false
     }
   ],
   "write/merge_sorted": [
     {
-      "lint_problems": [
-        ".scratch.ry:16: line is 141 columns (limit 100)",
-        ".scratch.ry:16: condition without 'then'",
-        ".scratch.ry:25: line is 139 columns (limit 100)",
-        ".scratch.ry:25: condition without 'then'"
-      ],
-      "pass": false,
-      "rules": [
-        "line-width",
-        "missing-then"
-      ]
+      "lint_problems": [],
+      "pass": true
     }
   ],
   "write/password_strength": [
     {
-      "lint_problems": [
-        ".scratch.ry:16: condition without 'then'",
-        ".scratch.ry:22: condition without 'then'"
-      ],
-      "pass": false,
-      "rules": [
-        "missing-then"
-      ]
+      "lint_problems": [],
+      "pass": true
     }
   ],
   "write/request_window": [
     {
-      "lint_problems": [
-        ".scratch.ry:10: line is 134 columns (limit 100)",
-        ".scratch.ry: block starters 3 vs 'end' 4 (heuristic)"
-      ],
-      "pass": false,
-      "rules": [
-        "block-balance",
-        "line-width"
-      ]
+      "lint_problems": [],
+      "pass": true
     }
   ],
   "write/roman_numerals": [
     {
-      "lint_problems": [
-        ".scratch.ry: block starters 9 vs 'end' 8 (heuristic)"
-      ],
-      "pass": false,
-      "rules": [
-        "block-balance"
-      ]
+      "lint_problems": [],
+      "pass": true
     }
   ],
   "write/title_length_tool": [
     {
       "lint_problems": [
-        ".scratch.ry:11: line is 118 columns (limit 100)",
-        ".scratch.ry:16: 'find' is not declared in the standard library sketch or the corpus",
-        ".scratch.ry:18: 'substring' is not declared in the standard library sketch or the corpus",
-        ".scratch.ry:19: 'find' is not declared in the standard library sketch or the corpus",
-        ".scratch.ry:20: 'substring' is not declared in the standard library sketch or the corpus",
-        ".scratch.ry: block starters 2 vs 'end' 1 (heuristic)"
+        ".scratch.ry:17: 'between' is not declared in the standard library sketch or the corpus"
       ],
       "pass": false,
       "rules": [
-        "block-balance",
-        "line-width",
         "unknown-function"
       ]
     }

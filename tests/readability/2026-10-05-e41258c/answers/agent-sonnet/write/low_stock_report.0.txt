@@ -1,0 +1,66 @@
+```
+module inventory.low_stock_report
+  purpose: Print the products whose stock is below their reorder level, lowest stock first.
+
+import std.console
+import std.environment
+import std.files
+import std.json
+
+type Product
+  purpose: One product in the inventory file.
+  has name: Text
+  has stock: Integer
+  has reorder_level: Integer
+  can FromJson
+end
+
+public type AppError
+  purpose: A reason the report could not be produced.
+  has detail: Text
+  can ToText
+end
+
+function first_argument(arguments: List of Text) returns maybe Text
+  purpose: Give the first command-line argument, or nothing when there is none.
+  example: first_argument(["products.json", "extra"]) is "products.json"
+
+  for each argument in arguments
+    return argument
+  end
+  return nothing
+end
+
+function low_stock(products: List of Product) returns List of Product
+  purpose: Keep the products whose stock is below their reorder level, lowest stock first.
+  example: low_stock([Product(name: "Nut", stock: 5, reorder_level: 20), Product(name: "Gear", stock: 9, reorder_level: 4), Product(name: "Bolt", stock: 2, reorder_level: 10)]) is [Product(name: "Bolt", stock: 2, reorder_level: 10), Product(name: "Nut", stock: 5, reorder_level: 20)]
+
+  let low_products be
+    for each product in products
+    where product.stock is less than product.reorder_level
+    sorted by product.stock
+    collect product
+  return low_products
+end
+
+function report_line(product: Product) returns Text
+  purpose: Format one product as a line of the report.
+  example: report_line(Product(name: "Bolt", stock: 2, reorder_level: 10)) is "Bolt: 2 in stock, reorder level 10"
+
+  return "{product.name}: {product.stock} in stock, reorder level {product.reorder_level}"
+end
+
+public function main() or fails with AppError
+  needs console, environment, filesystem.read
+  purpose: Print one line for each product below its reorder level, lowest stock first.
+
+  let arguments be environment.arguments()
+  let path be first_argument(arguments) otherwise fail with AppError(detail: "no products file given")
+  let text be files.read_text(path) otherwise fail with AppError(detail: "cannot read {path}")
+  let products: List of Product be json.parse(text) otherwise fail with AppError(detail: "bad products in {path}")
+  let low_products be low_stock(products)
+  for each product in low_products
+    console.print(report_line(product))
+  end
+end
+```

@@ -1,0 +1,25 @@
+```
+public function parse_command(arguments: List of Text) returns Command
+  purpose: Turn command-line words into a command; anything unrecognized is Help.
+  example: parse_command(["add", "buy", "milk"]) is Add(task: "buy milk")
+  example: parse_command(["done", "2"]) is Done(position: 2)
+  example: parse_command([]) is Help
+
+  # The verb is the first word; everything after it is the operand.
+  let first_word be for each word in arguments first
+  let verb be first_word otherwise return Help
+  let rest be arguments.without_index(0)
+  let operand be rest.join(" ")
+  if verb is "add" and operand is not "" then
+    return Add(task: operand)
+  otherwise if verb is "done" then
+    let number be operand.to_integer() otherwise return Help
+    let done_command be Done(position: number) otherwise Help
+    return done_command
+  otherwise if verb is "show" then
+    return Show
+  otherwise
+    return Help
+  end
+end
+```

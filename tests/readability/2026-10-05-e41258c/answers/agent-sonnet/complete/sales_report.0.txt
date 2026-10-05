@@ -1,0 +1,8 @@
+```
+public function totals_by_region(sales: List of Sale) returns Map of Text to Decimal
+  purpose: Sum of amounts per region.
+  example: totals_by_region([]) is {}
+
+  return for each sale in sales group by sale.region sum sale.amount
+end
+```
