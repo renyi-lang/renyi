@@ -1,0 +1,46 @@
+module file_tree
+  purpose: Print a directory tree with the size of every file and folder in bytes.
+
+import std.console
+import std.environment
+import std.filesystem exposing Path, Entry, FileError
+
+public function total_size(path: Path)
+  returns Integer
+  or fails with FileError
+  needs filesystem.read
+  purpose: The size of a file, or the sum of the sizes of everything under a directory.
+  tags: filesystem, recursion
+
+  let entry be filesystem.inspect(path) otherwise fail
+  match entry
+    when File(size) then return size
+    when Directory then
+      let children be filesystem.list(path) otherwise fail
+      return for each child in children sum total_size(child) otherwise fail
+    when Other then return 0
+  end
+end
+
+public function print_tree(path: Path, depth: Integer)
+  or fails with FileError
+  needs console, filesystem.read
+  purpose: Print the entry at the path and, for a directory, every child one level deeper.
+
+  let indent be "  ".repeat(depth)
+  let size be total_size(path) otherwise fail
+  console.print("{indent}{path.name()} ({size} bytes)")
+  let entry be filesystem.inspect(path) otherwise fail
+  if entry is not Directory then return end
+  let children be filesystem.list(path) otherwise fail
+  for each child in children sorted by child.name()
+    print_tree(path: child, depth: depth + 1) otherwise fail
+  end
+end
+
+public function main() or fails with FileError needs console, environment, filesystem.read
+  purpose: Print the tree of the directory named on the command line, or of the current one.
+
+  let root be environment.arguments().first() otherwise "."
+  print_tree(path: Path(root), depth: 0) otherwise fail
+end

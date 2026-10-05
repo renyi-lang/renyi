@@ -22,9 +22,25 @@ parts a regular expression can see.
 | `config.ry` | service | refined subtypes, decoder-enforced constraints, `deprecated: ... replaced by`, fallback with `otherwise` |
 | `http_service.ry` | backend service | pure request handler passed by name, `match` on text, `otherwise return` early exit |
 | `todo_cli.ry` | CLI | commands as a sum type, `example:` on parsing, `with_index`, fallible construction with `otherwise` default |
+| `traffic_light.ry` | library | state machine as nested `match` over two sum types, `can ToText` on a sum type, accumulating loop |
+| `expression_tree.ry` | library | recursive sum type and recursive functions over it, nested constructors in `example:` lines |
+| `permissions.ry` | library | `Set` union, intersection, difference and subset, `to_set()`, refined `Text` subtype checked with `matches` |
+| `log_parser.ry` | data | `match` on text literals, `example: ... fails with ...`, `group by` with a computed key, one-line `if ... end` |
+| `deadlines.ry` | script | `Date` arithmetic and ordering from `std.time`, `Weekday` variants through `exposing`, `while`, multi-line `example:` clauses |
+| `inventory_db.ry` | data | SQLite through `std.sqlite`, `can FromRow`, typed `let` to decode rows, multi-line string constant, query parameters |
+| `stacks.ry` | library | generic record `Stack of Item`, own ability `Sized` with a generic implementation (`for any Item`), generic functions, `test` blocks with typed `let` |
+| `invoice_report.ry` | script | imports the corpus module `invoice` and calls its functions qualified, `sum` over a call, nested record literals |
+| `shipping_rules.ry` | embedded library | no `main` and no capabilities: the host application loads the module and calls `quote` with a JSON parcel; `public let` constant; `if` as an expression |
+| `semver.ry` | library | hand-written `ToText` implementation, `can Compare by` three fields, refined `Part` subtype, `example: ... fails with ...`, `otherwise fail` inside tests |
+| `pagination.ry` | agent / API glue | cursor loop with `while`, `maybe Text` state, `match` as an expression, `append_all`, `group by` |
+| `statistics.ry` | script | `Float` arithmetic with `power`, `remainder` and `square_root`, `maybe Float` results, `success` / `failure` matching on a conversion |
+| `dependency_order.ry` | library | topological sort over a `Map` with `Set` subset tests, nested loops with `where`, `while` over a shrinking map |
+| `assistant.ry` | agent / API glue | HTTP POST with headers and a JSON body, `environment.get`, re-raising a matched error with `fail with error`, top-level typed constant |
+| `file_tree.ry` | CLI | recursion with effects, `filesystem.inspect` and `filesystem.list`, `Entry` variants through `exposing`, early `return` from a one-line `if` |
+| `markdown_table.ry` | library | multi-line `"""` literal in an `example:`, `with_index` queries, `pad_right` and `repeat`, building a list with `set ... to ... append` |
 
-Still to write before the readability test reaches thirty programs: a state
-machine, a recursive tree walk, Set operations, Text processing with
-`matches`, date arithmetic with `time`, an SQLite query, a generic container
-type with its own ability, a module that imports another corpus module, an
-embedded-host example, and an `example: ... fails with ...` clause.
+The corpus is at its target size of thirty programs. It grows from here only
+when the readability test or the conformance suite needs a construct that no
+program covers. The standard library functions and methods the programs use
+are collected in the standard library sketch (handoff step 3) so that their
+names stay consistent.

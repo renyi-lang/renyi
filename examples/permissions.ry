@@ -1,0 +1,72 @@
+module permissions
+  purpose: Decide whether a set of roles grants everything an action requires.
+
+import std.console
+
+public type Permission is Text where value.matches("^[a-z]+:[a-z_]+$")
+  purpose: A permission name of the form resource:action, such as orders:read.
+
+public type Role
+  purpose: A named bundle of permissions.
+  has name: Text
+  has granted: Set of Permission
+end
+
+public function granted_by(roles: List of Role) returns Set of Permission
+  purpose: The union of everything the roles grant.
+  example: granted_by([]) is [].to_set()
+
+  let mutable granted: Set of Permission be [].to_set()
+  for each role in roles
+    set granted to granted.union(role.granted)
+  end
+  return granted
+end
+
+public function missing(required: Set of Permission, roles: List of Role) returns Set of Permission
+  purpose: The required permissions that none of the roles grants.
+  tags: authorization, sets
+  example: missing(
+    required: [Permission("orders:read"), Permission("orders:write")].to_set(),
+    roles: [Role(name: "viewer", granted: [Permission("orders:read")].to_set())]
+  ) is [Permission("orders:write")].to_set()
+
+  return required.difference(granted_by(roles))
+end
+
+public function allowed(required: Set of Permission, roles: List of Role) returns Boolean
+  purpose: Whether the roles together grant every required permission.
+  see also: missing
+
+  return required.is_subset_of(granted_by(roles))
+end
+
+public function shared(first_role: Role, second_role: Role) returns Set of Permission
+  purpose: The permissions both roles grant.
+
+  return first_role.granted.intersection(second_role.granted)
+end
+
+public function main() needs console
+  purpose: Check a sample viewer and editor against the permissions that publishing needs.
+
+  let viewer be Role(name: "viewer", granted: [Permission("posts:read")].to_set())
+  let editor be Role(
+    name: "editor",
+    granted: [Permission("posts:read"), Permission("posts:write")].to_set()
+  )
+  let publishing be [
+    Permission("posts:read"),
+    Permission("posts:write"),
+    Permission("posts:publish")
+  ].to_set()
+  if allowed(required: publishing, roles: [viewer, editor]) then
+    console.print("the editor may publish")
+  otherwise
+    for each permission in missing(required: publishing, roles: [viewer, editor]).sorted()
+      console.print("missing: {permission}")
+    end
+  end
+  let both be shared(first_role: viewer, second_role: editor).sorted().join(", ")
+  console.print("shared: {both}")
+end

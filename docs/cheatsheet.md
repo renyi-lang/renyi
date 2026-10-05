@@ -100,7 +100,8 @@ ability Describable for Shape
 end
 ```
 Call: `shape.describe()`. Derivable: `Equal` (automatic), `Compare by`,
-`Hash`, `ToText`, `ToJson`, `FromJson`.
+`Hash`, `ToText`, `ToJson`, `FromJson`. A generic implementation adds a clause:
+`ability Sized for Stack of Item` then `for any Item` on the next line.
 
 ## Expressions
 ```

@@ -1,0 +1,96 @@
+module stacks
+  purpose: A last-in first-out stack and a bracket checker built on it.
+
+public type Stack of Item
+  purpose: Items in the order they were pushed; the last one pushed is on top.
+  has items: List of Item
+end
+
+public type Popped of Item
+  purpose: The outcome of taking the top item off a stack.
+  has top: Item
+  has rest: Stack of Item
+end
+
+public ability Sized
+  purpose: Anything that can say how many elements it holds.
+  function size(self) returns Integer
+  function is_empty(self) returns Boolean
+end
+
+ability Sized for Stack of Item
+  for any Item
+  function size(self) returns Integer
+    return self.items.length()
+  end
+  function is_empty(self) returns Boolean
+    return self.items.is_empty()
+  end
+end
+
+public function empty() returns Stack of Item for any Item
+  purpose: A stack with nothing on it; the item type comes from the context.
+
+  return Stack(items: [])
+end
+
+public function push(stack: Stack of Item, item: Item) returns Stack of Item for any Item
+  purpose: A copy of the stack with the item on top.
+  example: push(stack: Stack(items: [1]), item: 2) is Stack(items: [1, 2])
+
+  return Stack(items: stack.items.append(item))
+end
+
+public function pop(stack: Stack of Item) returns maybe Popped of Item for any Item
+  purpose: The top item and the remaining stack, or nothing when the stack is empty.
+  example: pop(Stack(items: [1, 2])) is Popped(top: 2, rest: Stack(items: [1]))
+
+  let top be stack.items.last() otherwise return nothing
+  return Popped(top: top, rest: Stack(items: stack.items.without_last()))
+end
+
+public function peek(stack: Stack of Item) returns maybe Item for any Item
+  purpose: The top item without removing it.
+  example: peek(Stack(items: ["a", "b"])) is "b"
+
+  return stack.items.last()
+end
+
+public function balanced(text: Text) returns Boolean
+  purpose: Whether every round and square bracket is closed by its partner in the right order.
+  tags: parsing, brackets
+  example: balanced("(a[b])") is true
+  example: balanced("(]") is false
+  example: balanced("((") is false
+  example: balanced("a]") is false
+  example: balanced("") is true
+
+  let pairs be {")": "(", "]": "["}
+  let mutable opened: Stack of Text be empty()
+  for each character in text
+    match pairs.get(character)
+      when some(expected) then
+        match pop(opened)
+          when some(popped) where popped.top is expected then set opened to popped.rest
+          otherwise return false
+        end
+      when nothing then
+        if pairs.values().contains(character) then
+          set opened to push(stack: opened, item: character)
+        end
+    end
+  end
+  return opened.is_empty()
+end
+
+test "popping an empty stack gives nothing"
+  let none: Stack of Integer be empty()
+  check pop(none) is nothing
+  check none.size() is 0
+end
+
+test "the last item pushed is the one on top"
+  let filled be push(stack: push(stack: empty(), item: "first"), item: "second")
+  check peek(filled) is "second"
+  check filled.size() is 2
+end

@@ -54,10 +54,22 @@ def lint_file(path: pathlib.Path) -> list[str]:
     closed = 0
     previous = ""
     in_ability_declaration = False
+    in_block_string = False
     for number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        where = f"{path.name}:{number}"
+        if in_block_string:
+            if len(raw) > 100:
+                problems.append(f"{where}: line is {len(raw)} columns (limit 100)")
+            if "\t" in raw:
+                problems.append(f"{where}: tab character")
+            if raw.count('"""') % 2 == 1:
+                in_block_string = False
+            continue
+        if raw.count('"""') % 2 == 1:
+            in_block_string = True
+            raw = raw.split('"""', 1)[0].rstrip()
         line = strip_strings(raw)
         code = line.split("#", 1)[0] if " #" in line or line.lstrip().startswith("#") else line
-        where = f"{path.name}:{number}"
         if len(raw) > 100:
             problems.append(f"{where}: line is {len(raw)} columns (limit 100)")
         for pattern, message in FORBIDDEN:
@@ -76,7 +88,7 @@ def lint_file(path: pathlib.Path) -> list[str]:
         if re.match(r"^(if |otherwise if |when )", stripped) and " then" not in stripped:
             problems.append(f"{where}: condition without 'then'")
         expression_context = previous.endswith(" be") or previous == "return"
-        if re.match(r"^(public )?ability \w+$", stripped):
+        if re.match(r"^(public )?ability \w+( of [A-Z]\w*(, [A-Z]\w*)*)?$", stripped):
             in_ability_declaration = True
         if stripped.startswith("for each"):
             if not expression_context and not QUERY_TAIL.search(stripped):
@@ -84,7 +96,7 @@ def lint_file(path: pathlib.Path) -> list[str]:
         elif STARTERS.match(code):
             if not (in_ability_declaration and stripped.startswith("function ")):
                 opened += 1
-        if stripped == "end":
+        if stripped == "end" or (stripped.startswith("if ") and stripped.endswith(" end")):
             closed += 1
             if in_ability_declaration and opened == closed:
                 in_ability_declaration = False

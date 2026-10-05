@@ -1,0 +1,47 @@
+module invoice_report
+  purpose: Print a plain-text statement for several invoices, reusing the invoice module.
+
+import std.console
+import invoice exposing Invoice, Line
+
+public function statement_line(order: Invoice) returns Text
+  purpose: One row of the statement: customer, number of lines and total, in fixed columns.
+  example: statement_line(Invoice(customer: "ACME", lines: [], discount_percent: 0))
+    is "ACME          0 lines      0.00"
+
+  let customer be order.customer.pad_right(12)
+  let line_count be order.lines.length().to_text().pad_left(3)
+  let total be invoice.total(order).to_text().pad_left(10)
+  return "{customer}{line_count} lines{total}"
+end
+
+public function grand_total(orders: List of Invoice) returns Decimal
+  purpose: The sum of every invoice total.
+  example: grand_total([]) is 0
+
+  return for each order in orders sum invoice.total(order)
+end
+
+public function main() needs console
+  purpose: Print a statement for two sample invoices and their grand total.
+
+  let orders be [
+    Invoice(
+      customer: "ACME",
+      lines: [Line(description: "pen", quantity: 10, unit_price: 1.00)],
+      discount_percent: 10
+    ),
+    Invoice(
+      customer: "Globex",
+      lines: [
+        Line(description: "notebook", quantity: 2, unit_price: 4.50),
+        Line(description: "stapler", quantity: 1, unit_price: 12.00)
+      ],
+      discount_percent: 0
+    )
+  ]
+  for each order in orders sorted by order.customer
+    console.print(statement_line(order))
+  end
+  console.print("grand total: {grand_total(orders)}")
+end

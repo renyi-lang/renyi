@@ -1,0 +1,84 @@
+module semver
+  purpose: Parse, print and compare semantic version numbers such as 1.4.2.
+
+public type Part is Integer where value is at least 0
+  purpose: One numeric component of a version.
+
+public type Version
+  purpose: A semantic version without pre-release or build parts.
+  has major: Part
+  has minor: Part
+  has patch: Part
+  can Compare by major, minor, patch
+end
+
+ability ToText for Version
+  function to_text(self) returns Text
+    return "{self.major}.{self.minor}.{self.patch}"
+  end
+end
+
+public type VersionError is one of
+  purpose: Why a text is not a version.
+  WrongPartCount(input: Text, found: Integer)
+  NotANumber(input: Text, part: Text)
+end
+
+public function parse(input: Text) returns Version or fails with VersionError
+  purpose: Read "major.minor.patch" into a version.
+  tags: semver, parsing
+  example: parse("1.4.2") is Version(major: 1, minor: 4, patch: 2)
+  example: parse("1.4") fails with WrongPartCount(input: "1.4", found: 2)
+  example: parse("1.x.2") fails with NotANumber(input: "1.x.2", part: "x")
+
+  let parts be input.trim().split(".")
+  if parts.length() is not 3 then
+    fail with WrongPartCount(input: input, found: parts.length())
+  end
+  let major be number_at(parts: parts, index: 0, input: input) otherwise fail
+  let minor be number_at(parts: parts, index: 1, input: input) otherwise fail
+  let patch be number_at(parts: parts, index: 2, input: input) otherwise fail
+  return Version(major: major, minor: minor, patch: patch)
+end
+
+function number_at(parts: List of Text, index: Integer, input: Text)
+  returns Part
+  or fails with VersionError
+
+  let part be parts.at(index)
+    otherwise fail with WrongPartCount(input: input, found: parts.length())
+  let number be part.to_integer() otherwise fail with NotANumber(input: input, part: part)
+  return Part(number) otherwise fail with NotANumber(input: input, part: part)
+end
+
+public function satisfies(candidate: Version, required: Version) returns Boolean
+  purpose: Whether the candidate can stand in for the required version: same major and not older.
+  example: satisfies(
+    candidate: Version(major: 1, minor: 5, patch: 0),
+    required: Version(major: 1, minor: 4, patch: 2)
+  ) is true
+  example: satisfies(
+    candidate: Version(major: 2, minor: 0, patch: 0),
+    required: Version(major: 1, minor: 4, patch: 2)
+  ) is false
+
+  return candidate.major is required.major and candidate is at least required
+end
+
+public function latest(versions: List of Version) returns maybe Version
+  purpose: The greatest version in the list, or nothing for an empty list.
+  example: latest([]) is nothing
+
+  return for each version in versions sorted by version descending first
+end
+
+test "a version prints as three numbers separated by dots"
+  check Version(major: 1, minor: 4, patch: 2).to_text() is "1.4.2"
+end
+
+test "versions compare by major, then minor, then patch"
+  let older be parse("1.9.9") otherwise fail
+  let newer be parse("2.0.0") otherwise fail
+  check older is less than newer
+  check latest([older, newer]) is newer
+end

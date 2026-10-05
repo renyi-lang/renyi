@@ -53,12 +53,17 @@ separates the words of a phrase; a phrase cannot span lines.
 | `42`, `1_000_000` | `Integer` | arbitrary precision; takes type `Decimal` or `Float` when the context expects it |
 | `19.99`, `0.5` | `Decimal` | exact; takes type `Float` only when the context expects `Float` |
 | `"text"` | `Text` | `{expression}` interpolates any value that `can ToText`; escapes `\n \t \" \\ \{` |
-| `"""` ... `"""` | `Text` | multi-line; common leading indentation is removed |
+| `"""` ... `"""` | `Text` | multi-line; the text runs from the line after the opening quotes to the line before the closing quotes, without a trailing newline; common leading indentation is removed |
 | `true`, `false` | `Boolean` | |
 | `nothing` | `maybe T` | the absent value |
 | `[1, 2, 3]`, `[]` | `List of T` | |
 | `{"a": 1, "b": 2}`, `{}` | `Map of K to V` | JSON notation, kept as universal (open item R2-1) |
 | `from 1 to 10`, `from 0 to 100 by 5` | `Range` | inclusive on both ends; optional step |
+
+**Interpolation.** Every `"..."` literal interpolates `{expression}`, so a
+literal brace is written `\{`. A hole may not contain a string literal; bind the
+text first (`let separator be ", "` then `"{items.join(separator)}"`). Whether a
+raw form without interpolation is needed is open item R2-14.
 
 **Statement continuation.** A statement ends at the newline unless a bracket is
 open or the next non-blank line starts with a continuation word: `otherwise`,
@@ -87,9 +92,12 @@ import accounts.models exposing User, UserId
 - `import a.b.c` brings the module in as the namespace `c`; its functions are
   called as `c.function(...)`. `as` renames the namespace when two modules
   share a last segment.
-- `exposing` lists **types and abilities** to use unqualified. Functions are
-  never imported unqualified: every call site names its module, which is what
-  makes a chunk self-describing.
+- `exposing` lists **types and abilities** to use unqualified. Exposing a sum
+  type also exposes its variants, so `import std.time exposing Weekday` lets a
+  module match on `Saturday`. Functions are never imported unqualified: every
+  call site names its module, which is what makes a chunk self-describing.
+- A namespace name is taken within the importing module: after
+  `import invoice`, no local binding or parameter may be called `invoice`.
 - There is no wildcard import.
 - Functions defined in the current module are called unqualified.
 - The prelude provides the base types (`Integer`, `Decimal`, `Float`, `Text`,
@@ -210,7 +218,7 @@ age: user.age + 1`.
 
 **Variants** (`is one of`). Each variant is a record with zero or more fields;
 `Point` has none. Construction: `Circle(radius: 2.5)`, `Point`. Matching is
-exhaustive (section 8).
+exhaustive (section 8). `can` clauses follow the variants.
 
 **Refinements** (`where`). The condition is a pure Boolean expression over the
 field name, or over `value` for a refined alias. When every refined argument is
@@ -279,8 +287,19 @@ end
 ```
 
 Calls use the dot: `shape.describe()`. Abilities can require other abilities
-(`ability Printable where self can ToText`) and can be generic. Default method
-bodies are not in v1 (open item R2-5).
+(`ability Printable where self can ToText`). An implementation for a generic
+type introduces the type parameters with a `for any` clause after its head:
+
+```
+ability Sized for Stack of Item
+  for any Item
+  function size(self) returns Integer
+    return self.items.length()
+  end
+end
+```
+
+Default method bodies are not in v1 (open item R2-5).
 
 Core abilities in the prelude: `Equal`, `Compare`, `Hash`, `ToText`, `ToJson`,
 `FromJson`, `Iterable`.
@@ -302,8 +321,9 @@ set total to total + line.amount
 - `let mutable name be expression` defines a mutable local. `set name to
   expression` is the only way to change it. Mutable bindings cannot escape the
   function; there are no references.
-- A name is bound once per function. Rebinding or shadowing is a compile
-  error.
+- A name is bound once per scope. Rebinding it, or shadowing it in a nested
+  scope, is a compile error. Sibling scopes (two loop bodies, two `when`
+  branches) may reuse a name.
 - Top-level `let` requires a type and is a constant: `public let max_retries:
   Integer be 3`, followed by a `purpose:` clause when public.
 
@@ -325,19 +345,28 @@ most`, `is greater than`, `is at least`. Ordering requires `can Compare`.
 **Logic.** `and`, `or`, `not`. Both `and` and `or` short-circuit.
 
 **Text.** `"Hello {user.name}, you owe {amount}"`. Interpolated values use
-`ToText`.
+`ToText`. Methods used by the corpus: `trim()`, `split(separator)`, `lines()`,
+`to_lower()`, `to_upper()`, `pad_left(width)`, `pad_right(width)`,
+`repeat(times)`, `take(count)`, `matches(pattern)`, `length()`.
 
 **Optionals.** A `T` is accepted where a `maybe T` is expected (implicit wrap).
 Reading requires `otherwise`: `let name be user.nickname otherwise user.name`,
 or a `match` with `when some(name)` and `when nothing`.
 
-**Collections.** `items.length()`, `items.at(index)` (returns `maybe T`),
-`items.first()`, `items.rest()`, `items.take(count)`, `items.append(item)`
-(returns a new list), `items.sorted()`, `items.contains(item)`,
-`items.join(", ")`, `items.with_index()` (pairs of `item, index`); `map.get(key)` (returns `maybe V`),
-`map.set(key: k, value: v)` (returns a new map); `set.contains(item)`. Mutation
-is always `set xs to xs.append(item)`; the VM mutates in place when the value is
-uniquely referenced.
+**Collections.** Lists: `items.length()`, `items.is_empty()`, `items.at(index)`,
+`items.first()` and `items.last()` (all three `maybe T`), `items.rest()`,
+`items.without_last()`, `items.without_index(index)`, `items.take(count)`,
+`items.drop(count)`, `items.append(item)`, `items.append_all(others)`,
+`items.sorted()`, `items.contains(item)`, `items.join(separator)`,
+`items.sum()`, `items.with_index()` (pairs of `item, index`), `items.to_set()`.
+Maps: `map.get(key)` (`maybe V`), `map.set(key: k, value: v)`,
+`map.without(key)`, `map.contains_key(key)`, `map.keys()`, `map.values()`.
+Sets: `set.contains(item)`, `set.union(other)`, `set.intersection(other)`,
+`set.difference(other)`, `set.is_subset_of(other)`, `set.sorted()` (a list).
+Every operation returns a new value; mutation is always `set xs to
+xs.append(item)`, and the VM mutates in place when the value is uniquely
+referenced. The complete surface of the base types belongs to the standard
+library sketch (`04-stdlib-sketch.md`).
 
 **Ranges.** `from 1 to 10` is inclusive on both ends; `from 0 to 100 by 5` adds
 a step. Lists are zero-indexed, so a loop over indices is `for each position
@@ -350,8 +379,10 @@ branch is then a single expression or a way out (`fail`, `fail with`, `return`,
 branches have one type, and an `if` expression must have an `otherwise`.
 
 **Conversions.** Always explicit and always methods: `count.to_decimal()`,
-`price.to_float()`, `amount.to_text()`, `text.to_integer()` (fails with
-`InvalidNumber`).
+`price.to_float()`, `amount.to_text()`, `text.to_integer()`, `text.to_decimal()`
+and `text.to_float()` (the three parsers fail with `InvalidNumber`).
+`value.rounded(places)` on `Decimal` and `Float`; `value.square_root()` on
+`Float`.
 
 ---
 
@@ -578,7 +609,10 @@ end
 ```
 
 `test "name" [needs caps]` ... `end` at the top level of any module. `check
-condition` is the assertion. `renyi test` runs tests and `example:` clauses.
+condition` is the assertion. Inside a test, `otherwise fail` and `fail with`
+end the test as failed with the error value as the message, so set-up needs no
+ceremony: `let older be parse("1.9.9") otherwise fail`. `renyi test` runs tests
+and `example:` clauses.
 
 ---
 
@@ -672,3 +706,6 @@ Words that appear only inside a phrase (`at`, `least`, `most`, `than`, `less`,
 | R2-11 | Is subtyping for `type X is Base` (section 4) the right call, or should every named type be fully distinct? | subtyping, upward only |
 | R2-12 | Should `if` and `match` be expressions, or statements only with helper functions for computed values? | expressions, single-expression branches |
 | R2-13 | Contracts on parameters (`attempts: Integer where attempts is at least 1`): compile-time for literals, but what happens for runtime values, a fallible call or a crash? | not in v1; use a refined named type |
+| R2-14 | Every `"..."` literal interpolates, so a literal brace is `\{` and a hole may not contain a string literal. Is a raw form (regular expressions, JSON samples) needed, or an opt-in interpolation prefix? | always interpolate, `\{`, no raw form |
+| R2-15 | A call whose non-empty result is unused: compile error, warning, or allowed? | undecided; the corpus avoids it (effectful functions return nothing) |
+| R2-16 | Matching a variant without binding its fields (`when Circle then`), or a wildcard for one field? | not in v1; every field is bound |

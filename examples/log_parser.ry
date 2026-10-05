@@ -1,0 +1,94 @@
+module log_parser
+  purpose: Parse server log lines and count the errors in each hour.
+
+import std.console
+import std.filesystem exposing Path, FileError
+
+public type Timestamp is Text where value.length() is 19 and value.matches("^[0-9-]+T[0-9:]+$")
+  purpose: An ISO 8601 timestamp to the second, such as 2024-05-01T13:45:00.
+
+public type Level is one of
+  purpose: Severity of a log entry.
+  Debug
+  Info
+  Warning
+  Error
+end
+
+public type Entry
+  purpose: One parsed log line.
+  has timestamp: Timestamp
+  has level: Level
+  has message: Text
+end
+
+public type ParseError is one of
+  purpose: Why a line could not be parsed.
+  Malformed(line: Text)
+  UnknownLevel(word: Text)
+end
+
+public function parse_level(word: Text) returns Level or fails with ParseError
+  purpose: The level named by the capitalized word used in log lines.
+  example: parse_level("ERROR") is Error
+  example: parse_level("TRACE") fails with UnknownLevel(word: "TRACE")
+
+  match word
+    when "DEBUG" then return Debug
+    when "INFO" then return Info
+    when "WARN" then return Warning
+    when "ERROR" then return Error
+    otherwise fail with UnknownLevel(word: word)
+  end
+end
+
+public function parse_line(line: Text) returns Entry or fails with ParseError
+  purpose: Split a line of the form "timestamp LEVEL message" into an entry.
+  tags: logs, parsing
+  example: parse_line("2024-05-01T13:45:00 INFO server started") is Entry(
+    timestamp: Timestamp("2024-05-01T13:45:00"),
+    level: Info,
+    message: "server started"
+  )
+  example: parse_line("garbage") fails with Malformed(line: "garbage")
+
+  let words be line.split(" ")
+  if words.length() is less than 3 then fail with Malformed(line: line) end
+  let first_word be words.at(0) otherwise fail with Malformed(line: line)
+  let timestamp be Timestamp(first_word) otherwise fail with Malformed(line: line)
+  let level_word be words.at(1) otherwise fail with Malformed(line: line)
+  let level be parse_level(level_word) otherwise fail
+  return Entry(timestamp: timestamp, level: level, message: words.drop(2).join(" "))
+end
+
+public function hour_of(timestamp: Timestamp) returns Text
+  purpose: The date and hour of a timestamp, used as the bucket key.
+  example: hour_of(Timestamp("2024-05-01T13:45:00")) is "2024-05-01T13"
+
+  return timestamp.take(13)
+end
+
+public function errors_per_hour(entries: List of Entry) returns Map of Text to Integer
+  purpose: How many error entries fall into each hour.
+
+  let errors be for each entry in entries where entry.level is Error collect entry
+  let grouped be for each entry in errors group by hour_of(entry.timestamp)
+  let mutable totals: Map of Text to Integer be {}
+  for each hour, bucket in grouped
+    set totals to totals.set(key: hour, value: bucket.length())
+  end
+  return totals
+end
+
+public function main() or fails with FileError or ParseError needs console, filesystem.read
+  purpose: Print the number of errors in each hour of the sample log, earliest hour first.
+
+  let text be filesystem.read_text(Path("data/server.log")) otherwise fail
+  let entries be
+    for each line in text.lines()
+    where line.trim() is not ""
+    collect parse_line(line) otherwise fail
+  for each hour, total in errors_per_hour(entries) sorted by hour
+    console.print("{hour}: {total} errors")
+  end
+end

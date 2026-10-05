@@ -1,0 +1,63 @@
+module statistics
+  purpose: Mean, median and standard deviation of the numbers given on the command line.
+
+import std.console
+import std.environment
+
+public function mean(values: List of Float) returns maybe Float
+  purpose: The arithmetic mean, or nothing for an empty list.
+  example: mean([2.0, 4.0]) is 3.0
+  example: mean([]) is nothing
+
+  if values.is_empty() then return nothing end
+  let total be for each value in values sum value
+  return total / values.length().to_float()
+end
+
+public function median(values: List of Float) returns maybe Float
+  purpose: The middle value of the sorted list, or the mean of the two middle values.
+  example: median([3.0, 1.0, 2.0]) is 2.0
+  example: median([4.0, 1.0, 3.0, 2.0]) is 2.5
+  example: median([]) is nothing
+
+  let sorted_values be values.sorted()
+  let middle be sorted_values.length().quotient(2)
+  if sorted_values.length() remainder 2 is 1 then
+    return sorted_values.at(middle)
+  end
+  let lower be sorted_values.at(middle - 1) otherwise return nothing
+  let upper be sorted_values.at(middle) otherwise return nothing
+  return (lower + upper) / 2.0
+end
+
+public function standard_deviation(values: List of Float) returns maybe Float
+  purpose: The population standard deviation, or nothing for an empty list.
+  tags: statistics, float
+  example: standard_deviation([2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0]) is 2.0
+
+  let average be mean(values) otherwise return nothing
+  let squared_total be for each value in values sum (value - average) power 2
+  return (squared_total / values.length().to_float()).square_root()
+end
+
+function describe(label: Text, value: maybe Float) returns Text
+  match value
+    when some(number) then return "{label}: {number.rounded(3)}"
+    when nothing then return "{label}: no data"
+  end
+end
+
+public function main() needs console, environment
+  purpose: Print the statistics of the numbers on the command line, skipping other words.
+
+  let mutable values: List of Float be []
+  for each argument in environment.arguments()
+    match argument.to_float()
+      when success(value) then set values to values.append(value)
+      when failure(error) then console.print("skipping {argument}: {error.to_text()}")
+    end
+  end
+  console.print(describe(label: "mean", value: mean(values)))
+  console.print(describe(label: "median", value: median(values)))
+  console.print(describe(label: "standard deviation", value: standard_deviation(values)))
+end

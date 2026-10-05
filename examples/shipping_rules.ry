@@ -1,0 +1,69 @@
+module shipping_rules
+  purpose: Shipping cost and delivery rules for the web shop, called from the host application.
+  tags: shipping, pricing, embedding
+
+public type Destination is one of
+  purpose: Where the parcel goes, as the shop groups its markets.
+  Domestic
+  Europe
+  International
+end
+
+public type Parcel
+  purpose: What the host passes in when it asks for a quote.
+  has weight_grams: Integer where weight_grams is greater than 0
+  has destination: Destination
+  has order_total: Decimal where order_total is at least 0
+  can FromJson
+end
+
+public type Quote
+  purpose: What the host gets back for one parcel.
+  has cost: Decimal
+  has business_days: Integer
+  has free_shipping: Boolean
+  can ToJson
+end
+
+public let free_shipping_threshold: Decimal be 50.00
+  purpose: Domestic orders at or above this total ship free.
+
+public function quote(parcel: Parcel) returns Quote
+  purpose: Price and delivery time for one parcel; the host calls this at every checkout.
+  example: quote(Parcel(weight_grams: 500, destination: Domestic, order_total: 60.00))
+    is Quote(cost: 0, business_days: 2, free_shipping: true)
+  example: quote(Parcel(weight_grams: 2500, destination: Europe, order_total: 20.00))
+    is Quote(cost: 14.50, business_days: 5, free_shipping: false)
+
+  let free be parcel.destination is Domestic
+    and parcel.order_total is at least free_shipping_threshold
+  let weight_cost be weight_steps(parcel.weight_grams).to_decimal() * 2.50
+  let cost be if free then 0 otherwise base_cost(parcel.destination) + weight_cost end
+  return Quote(cost: cost, business_days: delivery_days(parcel.destination), free_shipping: free)
+end
+
+public function weight_steps(weight_grams: Integer) returns Integer
+  purpose: How many whole kilograms beyond the first the parcel weighs; each one adds a step.
+  example: weight_steps(500) is 0
+  example: weight_steps(1000) is 0
+  example: weight_steps(1001) is 1
+  example: weight_steps(2500) is 2
+
+  return (weight_grams - 1).quotient(1000)
+end
+
+function base_cost(destination: Destination) returns Decimal
+  match destination
+    when Domestic then return 4.90
+    when Europe then return 9.50
+    when International then return 19.90
+  end
+end
+
+function delivery_days(destination: Destination) returns Integer
+  match destination
+    when Domestic then return 2
+    when Europe then return 5
+    when International then return 10
+  end
+end

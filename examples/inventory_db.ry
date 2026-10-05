@@ -1,0 +1,72 @@
+module inventory_db
+  purpose: Keep a small stock inventory in SQLite and report what needs reordering.
+
+import std.console
+import std.filesystem exposing Path
+import std.sqlite exposing Connection, DbError
+
+public type Item
+  purpose: One product as stored in the items table; field names match the column names.
+  has sku: Text
+  has name: Text
+  has quantity: Integer where quantity is at least 0
+  has reorder_level: Integer where reorder_level is at least 0
+  can FromRow
+end
+
+let create_table: Text be """
+  CREATE TABLE IF NOT EXISTS items (
+    sku TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    quantity INTEGER NOT NULL,
+    reorder_level INTEGER NOT NULL
+  )
+  """
+
+public function open_inventory(path: Path)
+  returns Connection
+  or fails with DbError
+  needs filesystem
+  purpose: Open the database file and make sure the items table exists.
+
+  let connection be sqlite.open(path) otherwise fail
+  connection.execute(sql: create_table, parameters: []) otherwise fail
+  return connection
+end
+
+public function low_stock(connection: Connection)
+  returns List of Item
+  or fails with DbError
+  needs filesystem.read
+  purpose: Items whose quantity is at or below their reorder level, lowest quantity first.
+  tags: inventory, sqlite
+
+  let sql be "SELECT * FROM items WHERE quantity <= reorder_level ORDER BY quantity"
+  let items: List of Item be connection.query(sql: sql, parameters: []) otherwise fail
+  return items
+end
+
+public function record_delivery(connection: Connection, sku: Text, amount: Integer)
+  or fails with DbError
+  needs filesystem
+  purpose: Add the delivered amount to the stock of one item.
+
+  let sql be "UPDATE items SET quantity = quantity + ? WHERE sku = ?"
+  let parameters be [sqlite.integer(amount), sqlite.text(sku)]
+  connection.execute(sql: sql, parameters: parameters) otherwise fail
+end
+
+public function main() or fails with DbError needs console, filesystem
+  purpose: Record one delivery, then list every item that still needs reordering.
+
+  let connection be open_inventory(Path("data/inventory.db")) otherwise fail
+  record_delivery(connection: connection, sku: "BOLT-10", amount: 500) otherwise fail
+  let items be low_stock(connection) otherwise fail
+  if items.is_empty() then
+    console.print("nothing to reorder")
+  end
+  for each item in items
+    console.print("{item.sku} {item.name}: {item.quantity} left, reorder at {item.reorder_level}")
+  end
+  connection.close()
+end

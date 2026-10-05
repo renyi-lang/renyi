@@ -1,0 +1,73 @@
+module assistant
+  purpose: Send one question to a chat model over HTTP and print its answer.
+
+import std.console
+import std.environment
+import std.http exposing Url, HttpError
+import std.json exposing JsonError
+
+type Message
+  has role: Text
+  has content: Text
+  can ToJson
+  can FromJson
+end
+
+type ChatRequest
+  has model: Text
+  has messages: List of Message
+  can ToJson
+end
+
+type Choice
+  has message: Message
+  can FromJson
+end
+
+type ChatResponse
+  has choices: List of Choice
+  can FromJson
+end
+
+public type AssistantError is one of
+  purpose: Why no answer could be shown.
+  MissingApiKey
+  NoAnswer
+  Transport(detail: Text)
+end
+
+let endpoint: Url be Url("https://api.example.com/v1/chat/completions")
+
+public function ask(question: Text, api_key: Text)
+  returns Text
+  or fails with HttpError or JsonError or AssistantError
+  needs network.http
+  purpose: Ask the model one question and return the text of its first answer.
+  tags: llm, chat, http
+
+  let messages be [Message(role: "user", content: question)]
+  let request be ChatRequest(model: "example-model", messages: messages)
+  let headers be {"Authorization": "Bearer {api_key}", "Content-Type": "application/json"}
+  let response be http.post(url: endpoint, body: json.render(request), headers: headers)
+    otherwise fail
+  if response.status is not 200 then
+    fail with Transport(detail: "unexpected status {response.status}")
+  end
+  let parsed: ChatResponse be json.parse(response.body) otherwise fail
+  let first_choice be parsed.choices.first() otherwise fail with NoAnswer
+  return first_choice.message.content
+end
+
+public function main() or fails with AssistantError needs console, environment, network.http
+  purpose: Read the question from the command line and the API key from the environment.
+
+  let api_key be environment.get("CHAT_API_KEY") otherwise fail with MissingApiKey
+  let question be environment.arguments().join(" ")
+  let answer be
+    match ask(question: question, api_key: api_key)
+      when success(text) then text
+      when failure(error: AssistantError) then fail with error
+      when failure(error) then fail with Transport(detail: error.to_text())
+    end
+  console.print(answer)
+end
