@@ -269,12 +269,89 @@ impl Formatter<'_> {
 
     /// A comment on the same line as the construct that ends at `end`.
     fn trailing_comment(&mut self, end: usize) -> Option<Doc> {
+        self.trailing_comment_before(end, usize::MAX)
+    }
+
+    /// A comment on the same line as the construct that ends at `end` and
+    /// before `limit`: the trailing comment of an element inside a bracket,
+    /// a clause or an arm, never the comment that closes the whole statement.
+    fn trailing_comment_before(&mut self, end: usize, limit: usize) -> Option<Doc> {
         let span = *self.comments.get(self.next_comment)?;
-        if self.line_of(span.start) == self.line_of(end.saturating_sub(1)) && span.start >= end {
+        if self.line_of(span.start) == self.line_of(end.saturating_sub(1))
+            && span.start >= end
+            && span.start < limit
+        {
             self.next_comment += 1;
             return Some(text(format!("  {}", self.file.slice(span).trim_end())));
         }
         None
+    }
+
+    fn has_comments_before(&self, offset: usize) -> bool {
+        self.comments
+            .get(self.next_comment)
+            .is_some_and(|span| span.start < offset)
+    }
+
+    /// The break before a clause or an arm that starts at `offset`: a soft line
+    /// when nothing precedes it, otherwise a hard line with the full-line
+    /// comments that stand before it, each on its own line. `after_trailing`
+    /// makes the break hard because the previous element ended in a comment.
+    fn clause_break(&mut self, offset: usize, after_trailing: bool) -> Doc {
+        let comments = self.comments_before(offset);
+        if comments.is_empty() && !after_trailing {
+            return Doc::Line;
+        }
+        let mut parts = vec![Doc::HardLine];
+        parts.extend(comments);
+        concat(parts)
+    }
+
+    /// A bracketed list whose elements keep the comments written around them.
+    /// Without comments it is the ordinary `bracketed` group; with any, the
+    /// list breaks one element per line and each comment stays on its line.
+    fn list_with_comments<E>(
+        &mut self,
+        open: &str,
+        elements: &[E],
+        span_of: impl Fn(&E) -> Span,
+        mut print: impl FnMut(&mut Self, &E) -> Doc,
+        close: &str,
+        limit: usize,
+    ) -> Doc {
+        let mut items = Vec::new();
+        let mut any_comment = false;
+        for element in elements {
+            let span = span_of(element);
+            let leading = self.comments_before(span.start);
+            let doc = print(self, element);
+            let trailing = self.trailing_comment_before(span.end, limit);
+            any_comment |= !leading.is_empty() || trailing.is_some();
+            items.push((leading, doc, trailing));
+        }
+        if !any_comment {
+            let docs = items.into_iter().map(|(_, doc, _)| doc).collect();
+            return bracketed(open, docs, close);
+        }
+        let last = items.len() - 1;
+        let mut inner = Vec::new();
+        for (index, (leading, doc, trailing)) in items.into_iter().enumerate() {
+            inner.push(Doc::HardLine);
+            inner.extend(leading);
+            inner.push(doc);
+            if index < last {
+                inner.push(text(","));
+            }
+            if let Some(trailing) = trailing {
+                inner.push(trailing);
+            }
+        }
+        concat(vec![
+            text(open),
+            nest(concat(inner)),
+            Doc::HardLine,
+            text(close),
+        ])
     }
 
     fn module(&mut self, module: &Module) -> Doc {
@@ -325,7 +402,7 @@ impl Formatter<'_> {
 
     /// Documentation clauses, each on its own line; long prose wraps onto
     /// lines indented one level deeper than the clause word.
-    fn docs(&self, docs: &Docs) -> Doc {
+    fn docs(&mut self, docs: &Docs) -> Doc {
         let mut parts = Vec::new();
         if let Some(purpose) = &docs.purpose {
             parts.push(Doc::HardLine);
@@ -354,7 +431,8 @@ impl Formatter<'_> {
         concat(parts)
     }
 
-    fn example(&self, example: &Example) -> Doc {
+    fn example(&mut self, example: &Example) -> Doc {
+        let mark = self.next_comment;
         let expression = self.expr(&example.expression);
         let outcome = match &example.outcome {
             ExampleOutcome::Is(value) => concat(vec![text("is "), self.expr(value)]),
@@ -376,6 +454,7 @@ impl Formatter<'_> {
             nest(concat(vec![Doc::HardLine, outcome.clone()])),
         ]);
         let mut alternatives = vec![flat, before_is];
+        self.next_comment = mark;
         if let Some(broken_call) = self.expr_with_broken_arguments(&example.expression) {
             alternatives.push(concat(vec![
                 text("example: "),
@@ -510,10 +589,18 @@ impl Formatter<'_> {
             TypeKind::Record { fields, derives } => {
                 let mut parts = vec![text(head), nest(self.docs(&type_def.docs))];
                 for field in fields {
-                    parts.push(nest(concat(vec![Doc::HardLine, self.field(field, true)])));
+                    let mut line = vec![Doc::HardLine];
+                    line.extend(self.comments_before(field.span.start));
+                    line.push(self.field(field, true));
+                    line.extend(self.trailing_comment_before(field.span.end, type_def.span.end));
+                    parts.push(nest(concat(line)));
                 }
                 for derive in derives {
-                    parts.push(nest(concat(vec![Doc::HardLine, self.derive(derive)])));
+                    let mut line = vec![Doc::HardLine];
+                    line.extend(self.comments_before(derive.span.start));
+                    line.push(self.derive(derive));
+                    line.extend(self.trailing_comment_before(derive.span.end, type_def.span.end));
+                    parts.push(nest(concat(line)));
                 }
                 parts.push(Doc::HardLine);
                 parts.push(text("end"));
@@ -525,19 +612,29 @@ impl Formatter<'_> {
                     nest(self.docs(&type_def.docs)),
                 ];
                 for variant in variants {
+                    let mut line = vec![Doc::HardLine];
+                    line.extend(self.comments_before(variant.span.start));
                     let mut variant_doc = vec![text(variant.name.text.clone())];
                     if !variant.fields.is_empty() {
-                        let fields: Vec<Doc> = variant
-                            .fields
-                            .iter()
-                            .map(|field| self.field(field, false))
-                            .collect();
-                        variant_doc.push(bracketed("(", fields, ")"));
+                        variant_doc.push(self.list_with_comments(
+                            "(",
+                            &variant.fields,
+                            |field| field.span,
+                            |this, field| this.field(field, false),
+                            ")",
+                            variant.span.end,
+                        ));
                     }
-                    parts.push(nest(concat(vec![Doc::HardLine, concat(variant_doc)])));
+                    line.push(concat(variant_doc));
+                    line.extend(self.trailing_comment_before(variant.span.end, type_def.span.end));
+                    parts.push(nest(concat(line)));
                 }
                 for derive in derives {
-                    parts.push(nest(concat(vec![Doc::HardLine, self.derive(derive)])));
+                    let mut line = vec![Doc::HardLine];
+                    line.extend(self.comments_before(derive.span.start));
+                    line.push(self.derive(derive));
+                    line.extend(self.trailing_comment_before(derive.span.end, type_def.span.end));
+                    parts.push(nest(concat(line)));
                 }
                 parts.push(Doc::HardLine);
                 parts.push(text("end"));
@@ -546,7 +643,7 @@ impl Formatter<'_> {
         }
     }
 
-    fn field(&self, field: &Field, with_has: bool) -> Doc {
+    fn field(&mut self, field: &Field, with_has: bool) -> Doc {
         let mut head = String::new();
         if with_has {
             head.push_str("has ");
@@ -564,7 +661,7 @@ impl Formatter<'_> {
 
     /// ` where a and b`, breaking before `where` and before each `and` / `or`
     /// together when the line is too long.
-    fn refinement(&self, condition: &Expr) -> Doc {
+    fn refinement(&mut self, condition: &Expr) -> Doc {
         let mut operands = Vec::new();
         let mut operators = Vec::new();
         flatten_logic(condition, &mut operands, &mut operators);
@@ -577,7 +674,7 @@ impl Formatter<'_> {
         concat(parts)
     }
 
-    fn derive(&self, derive: &Derive) -> Doc {
+    fn derive(&mut self, derive: &Derive) -> Doc {
         let mut line = format!("can {}", derive.ability.text);
         if !derive.by.is_empty() {
             let names: Vec<&str> = derive.by.iter().map(|name| name.text.as_str()).collect();
@@ -797,6 +894,7 @@ impl Formatter<'_> {
                 for (index, (condition, block)) in branches.iter().enumerate() {
                     if index > 0 {
                         parts.push(Doc::HardLine);
+                        parts.extend(self.comments_before(condition.span.start));
                         parts.push(text("otherwise "));
                     }
                     parts.push(text("if "));
@@ -820,16 +918,17 @@ impl Formatter<'_> {
             } => {
                 let mut parts = vec![text("match "), self.expr(subject)];
                 for arm in arms {
+                    let comments = self.comments_before(arm.span.start);
                     let mut head = vec![text("when "), self.pattern(&arm.pattern)];
                     if let Some(guard) = &arm.guard {
                         head.push(text(" where "));
                         head.push(self.expr(guard));
                     }
                     head.push(text(" then"));
-                    parts.push(nest(concat(vec![
-                        Doc::HardLine,
-                        self.arm_body(concat(head), &arm.body),
-                    ])));
+                    let mut arm_doc = vec![Doc::HardLine];
+                    arm_doc.extend(comments);
+                    arm_doc.push(self.arm_body(concat(head), &arm.body));
+                    parts.push(nest(concat(arm_doc)));
                 }
                 if let Some(block) = otherwise {
                     parts.push(nest(concat(vec![
@@ -906,10 +1005,7 @@ impl Formatter<'_> {
     /// A `when ... then` or `otherwise` head with its block: one statement
     /// stays on the head line when it fits, otherwise the block follows.
     fn arm_body(&mut self, head: Doc, block: &Block) -> Doc {
-        if block.statements.len() == 1
-            && self
-                .comments_before(block.statements[0].span.start)
-                .is_empty()
+        if block.statements.len() == 1 && !self.has_comments_before(block.statements[0].span.start)
         {
             let body = self.statement(&block.statements[0]);
             if flat_width(&body).is_some() {
@@ -922,7 +1018,7 @@ impl Formatter<'_> {
 
     /// The value after `be`, `to` or `return`: queries and conditionals may
     /// move to the next line; a `match` always does.
-    fn value_after(&self, value: &Expr) -> Doc {
+    fn value_after(&mut self, value: &Expr) -> Doc {
         match &value.kind {
             ExprKind::Query(_) | ExprKind::If { .. } => {
                 group(nest(concat(vec![Doc::Line, self.expr(value)])))
@@ -932,14 +1028,14 @@ impl Formatter<'_> {
         }
     }
 
-    fn loop_source(&self, source: &Expr) -> Doc {
+    fn loop_source(&mut self, source: &Expr) -> Doc {
         match &source.kind {
             ExprKind::Range { .. } => self.expr(source),
             _ => concat(vec![text("in "), self.expr(source)]),
         }
     }
 
-    fn ordering(&self, order: &Ordering) -> Doc {
+    fn ordering(&mut self, order: &Ordering) -> Doc {
         let mut parts = vec![text("sorted by "), self.expr(&order.key)];
         if order.descending {
             parts.push(text(" descending"));
@@ -949,7 +1045,7 @@ impl Formatter<'_> {
 
     // -------------------------------------------------------------- expressions
 
-    fn expr(&self, expr: &Expr) -> Doc {
+    fn expr(&mut self, expr: &Expr) -> Doc {
         match &expr.kind {
             ExprKind::Integer(value) | ExprKind::Decimal(value) => text(value.clone()),
             ExprKind::Text { pieces, block } => self.text_literal(pieces, *block),
@@ -964,21 +1060,31 @@ impl Formatter<'_> {
                 concat(vec![self.expr(base), text(format!(".{}", name.text))])
             }
             ExprKind::Call { callee, args } => {
-                concat(vec![self.expr(callee), self.arguments(args)])
+                let callee = self.expr(callee);
+                concat(vec![callee, self.arguments(args, expr.span.end)])
             }
-            ExprKind::Construct { name, args } => {
-                concat(vec![text(name.text.clone()), self.arguments(args)])
-            }
-            ExprKind::List(items) => {
-                bracketed("[", items.iter().map(|item| self.expr(item)).collect(), "]")
-            }
-            ExprKind::Map(entries) => bracketed(
+            ExprKind::Construct { name, args } => concat(vec![
+                text(name.text.clone()),
+                self.arguments(args, expr.span.end),
+            ]),
+            ExprKind::List(items) => self.list_with_comments(
+                "[",
+                items,
+                |item| item.span,
+                |this, item| this.expr(item),
+                "]",
+                expr.span.end,
+            ),
+            ExprKind::Map(entries) => self.list_with_comments(
                 "{",
-                entries
-                    .iter()
-                    .map(|(key, value)| concat(vec![self.expr(key), text(": "), self.expr(value)]))
-                    .collect(),
+                entries,
+                |(key, value)| key.span.join(value.span),
+                |this, (key, value)| {
+                    let key = this.expr(key);
+                    concat(vec![key, text(": "), this.expr(value)])
+                },
                 "}",
+                expr.span.end,
             ),
             ExprKind::Range { from, to, by } => {
                 let mut parts = vec![text("from "), self.expr(from), text(" to "), self.expr(to)];
@@ -1020,33 +1126,49 @@ impl Formatter<'_> {
                     nest(join(updates, concat(vec![text(","), Doc::Line]))),
                 ]))
             }
-            ExprKind::Otherwise { value, fallback } => group(concat(vec![
-                self.expr(value),
-                nest(concat(vec![
-                    Doc::Line,
+            ExprKind::Otherwise { value, fallback } => {
+                let value_doc = self.expr(value);
+                let trailing = self.trailing_comment_before(value.span.end, fallback.span().start);
+                let separator = self.clause_break(fallback.span().start, trailing.is_some());
+                let mut parts = vec![value_doc];
+                parts.extend(trailing);
+                parts.push(nest(concat(vec![
+                    separator,
                     text("otherwise "),
                     self.outcome(fallback),
-                ])),
-            ])),
+                ])));
+                group(concat(parts))
+            }
             ExprKind::If {
                 branches,
                 otherwise,
             } => {
                 let mut parts = Vec::new();
+                let mut after_trailing = false;
                 for (index, (condition, outcome)) in branches.iter().enumerate() {
                     if index > 0 {
-                        parts.push(Doc::Line);
+                        parts.push(self.clause_break(condition.span.start, after_trailing));
                         parts.push(text("otherwise "));
                     }
                     parts.push(text("if "));
                     parts.push(self.expr(condition));
                     parts.push(text(" then "));
                     parts.push(self.outcome(outcome));
+                    let trailing = self.trailing_comment_before(outcome.span().end, expr.span.end);
+                    after_trailing = trailing.is_some();
+                    parts.extend(trailing);
                 }
-                parts.push(Doc::Line);
+                parts.push(self.clause_break(otherwise.span().start, after_trailing));
                 parts.push(text("otherwise "));
                 parts.push(self.outcome(otherwise));
-                parts.push(Doc::Line);
+                let trailing = self.trailing_comment_before(otherwise.span().end, expr.span.end);
+                after_trailing = trailing.is_some();
+                parts.extend(trailing);
+                parts.push(if after_trailing {
+                    Doc::HardLine
+                } else {
+                    Doc::Line
+                });
                 parts.push(text("end"));
                 group(concat(parts))
             }
@@ -1057,6 +1179,7 @@ impl Formatter<'_> {
             } => {
                 let mut parts = vec![text("match "), self.expr(subject)];
                 for arm in arms {
+                    let comments = self.comments_before(arm.span.start);
                     let mut head = vec![text("when "), self.pattern(&arm.pattern)];
                     if let Some(guard) = &arm.guard {
                         head.push(text(" where "));
@@ -1064,23 +1187,26 @@ impl Formatter<'_> {
                     }
                     head.push(text(" then"));
                     let body = self.outcome(&arm.body);
-                    parts.push(nest(concat(vec![
-                        Doc::HardLine,
-                        group(concat(vec![
-                            concat(head),
-                            nest(concat(vec![Doc::Line, body])),
-                        ])),
+                    let mut arm_doc = vec![Doc::HardLine];
+                    arm_doc.extend(comments);
+                    arm_doc.push(group(concat(vec![
+                        concat(head),
+                        nest(concat(vec![Doc::Line, body])),
                     ])));
+                    arm_doc.extend(self.trailing_comment_before(arm.span.end, expr.span.end));
+                    parts.push(nest(concat(arm_doc)));
                 }
                 if let Some(outcome) = otherwise {
+                    let comments = self.comments_before(outcome.span().start);
                     let body = self.outcome(outcome);
-                    parts.push(nest(concat(vec![
-                        Doc::HardLine,
-                        group(concat(vec![
-                            text("otherwise"),
-                            nest(concat(vec![Doc::Line, body])),
-                        ])),
+                    let mut arm_doc = vec![Doc::HardLine];
+                    arm_doc.extend(comments);
+                    arm_doc.push(group(concat(vec![
+                        text("otherwise"),
+                        nest(concat(vec![Doc::Line, body])),
                     ])));
+                    arm_doc.extend(self.trailing_comment_before(outcome.span().end, expr.span.end));
+                    parts.push(nest(concat(arm_doc)));
                 }
                 parts.push(Doc::HardLine);
                 parts.push(text("end"));
@@ -1093,7 +1219,7 @@ impl Formatter<'_> {
 
     /// The expression with the arguments of its outermost call broken one per
     /// line, for the third layout of an example clause.
-    fn expr_with_broken_arguments(&self, expr: &Expr) -> Option<Doc> {
+    fn expr_with_broken_arguments(&mut self, expr: &Expr) -> Option<Doc> {
         let (head, args) = match &expr.kind {
             ExprKind::Call { callee, args } if !args.is_empty() => (self.expr(callee), args),
             ExprKind::Construct { name, args } if !args.is_empty() => {
@@ -1114,15 +1240,20 @@ impl Formatter<'_> {
         ]))
     }
 
-    fn arguments(&self, args: &[Arg]) -> Doc {
-        bracketed(
+    /// `(a, b)`; `limit` is where the closing parenthesis is, so that a comment
+    /// after the last argument is only taken when the list already spans lines.
+    fn arguments(&mut self, args: &[Arg], limit: usize) -> Doc {
+        self.list_with_comments(
             "(",
-            args.iter().map(|arg| self.argument(arg)).collect(),
+            args,
+            |arg| arg.span,
+            |this, arg| this.argument(arg),
             ")",
+            limit,
         )
     }
 
-    fn argument(&self, arg: &Arg) -> Doc {
+    fn argument(&mut self, arg: &Arg) -> Doc {
         match &arg.name {
             Some(name) => concat(vec![
                 text(format!("{}: ", name.text)),
@@ -1132,7 +1263,7 @@ impl Formatter<'_> {
         }
     }
 
-    fn outcome(&self, outcome: &Outcome) -> Doc {
+    fn outcome(&mut self, outcome: &Outcome) -> Doc {
         match outcome {
             Outcome::Value(expr) => self.expr(expr),
             Outcome::Fail(None, _) => text("fail"),
@@ -1145,7 +1276,7 @@ impl Formatter<'_> {
         }
     }
 
-    fn query(&self, query: &Query) -> Doc {
+    fn query(&mut self, query: &Query) -> Doc {
         let sources: Vec<Doc> = query
             .sources
             .iter()
@@ -1164,55 +1295,130 @@ impl Formatter<'_> {
                 parts.push(self.expr(within));
             }
         }
+        // the end of the sources line, for a trailing comment on it
+        let sources_end = query
+            .within
+            .as_ref()
+            .map(|within| within.span.end)
+            .unwrap_or_else(|| {
+                query
+                    .sources
+                    .last()
+                    .map_or(query.span.start, |s| s.source.span.end)
+            });
+        let limit = query.span.end;
+        let mut trailing = self.trailing_comment_before(sources_end, limit);
+        let mut after_trailing = trailing.is_some();
+        parts.extend(trailing.take());
         if let Some(filter) = &query.filter {
-            parts.push(Doc::Line);
-            parts.push(text("where "));
-            parts.push(self.expr(filter));
+            self.query_clause(
+                &mut parts,
+                "where ",
+                Some(filter),
+                filter.span,
+                limit,
+                &mut after_trailing,
+            );
         }
         if let Some(order) = &query.order {
-            parts.push(Doc::Line);
-            parts.push(self.ordering(order));
+            parts.push(self.clause_break(order.key.span.start, after_trailing));
+            parts.push(text("sorted by "));
+            parts.push(self.expr(&order.key));
+            if order.descending {
+                parts.push(text(" descending"));
+            }
+            let trailing = self.trailing_comment_before(order.key.span.end, limit);
+            after_trailing = trailing.is_some();
+            parts.extend(trailing);
         }
         if let Some(key) = &query.group_by {
-            parts.push(Doc::Line);
-            parts.push(text("group by "));
-            parts.push(self.expr(key));
+            self.query_clause(
+                &mut parts,
+                "group by ",
+                Some(key),
+                key.span,
+                limit,
+                &mut after_trailing,
+            );
         }
+        let terminal_span = Span::new(limit, limit);
         match &query.terminal {
-            QueryTerminal::Collect(value) => {
-                parts.push(Doc::Line);
-                parts.push(text("collect "));
-                parts.push(self.expr(value));
-            }
-            QueryTerminal::Sum(value) => {
-                parts.push(Doc::Line);
-                parts.push(text("sum "));
-                parts.push(self.expr(value));
-            }
-            QueryTerminal::Count => {
-                parts.push(Doc::Line);
-                parts.push(text("count"));
-            }
-            QueryTerminal::First => {
-                parts.push(Doc::Line);
-                parts.push(text("first"));
-            }
-            QueryTerminal::Any(value) => {
-                parts.push(Doc::Line);
-                parts.push(text("any "));
-                parts.push(self.expr(value));
-            }
-            QueryTerminal::All(value) => {
-                parts.push(Doc::Line);
-                parts.push(text("all "));
-                parts.push(self.expr(value));
-            }
+            QueryTerminal::Collect(value) => self.query_clause(
+                &mut parts,
+                "collect ",
+                Some(value),
+                value.span,
+                limit,
+                &mut after_trailing,
+            ),
+            QueryTerminal::Sum(value) => self.query_clause(
+                &mut parts,
+                "sum ",
+                Some(value),
+                value.span,
+                limit,
+                &mut after_trailing,
+            ),
+            QueryTerminal::Count => self.query_clause(
+                &mut parts,
+                "count",
+                None,
+                terminal_span,
+                limit,
+                &mut after_trailing,
+            ),
+            QueryTerminal::First => self.query_clause(
+                &mut parts,
+                "first",
+                None,
+                terminal_span,
+                limit,
+                &mut after_trailing,
+            ),
+            QueryTerminal::Any(value) => self.query_clause(
+                &mut parts,
+                "any ",
+                Some(value),
+                value.span,
+                limit,
+                &mut after_trailing,
+            ),
+            QueryTerminal::All(value) => self.query_clause(
+                &mut parts,
+                "all ",
+                Some(value),
+                value.span,
+                limit,
+                &mut after_trailing,
+            ),
             QueryTerminal::None => {}
         }
         concat(parts)
     }
 
-    fn pattern(&self, pattern: &Pattern) -> Doc {
+    /// One clause of a query: the break before it (with the comments that
+    /// stand before the clause), the keyword and value, and a trailing comment.
+    #[allow(clippy::too_many_arguments)]
+    fn query_clause(
+        &mut self,
+        parts: &mut Vec<Doc>,
+        keyword: &str,
+        value: Option<&Expr>,
+        span: Span,
+        limit: usize,
+        after_trailing: &mut bool,
+    ) {
+        parts.push(self.clause_break(span.start, *after_trailing));
+        parts.push(text(keyword));
+        if let Some(value) = value {
+            parts.push(self.expr(value));
+        }
+        let trailing = self.trailing_comment_before(span.end, limit);
+        *after_trailing = trailing.is_some();
+        parts.extend(trailing);
+    }
+
+    fn pattern(&mut self, pattern: &Pattern) -> Doc {
         match pattern {
             Pattern::Variant { name, fields, .. } => {
                 if fields.is_empty() {
@@ -1244,7 +1450,7 @@ impl Formatter<'_> {
         }
     }
 
-    fn text_literal(&self, pieces: &[TextPiece], block: bool) -> Doc {
+    fn text_literal(&mut self, pieces: &[TextPiece], block: bool) -> Doc {
         if block {
             let mut rendered = String::new();
             for piece in pieces {
@@ -1416,5 +1622,46 @@ mod tests {
         let source = "module demo\n\npublic function load()\n  purpose: This purpose clause is deliberately long so that the formatter has to wrap it onto a second line of text.\n  return 1\nend\n";
         let out = formatted(source);
         assert!(out.contains("  purpose: This purpose clause is deliberately long so that the formatter has to wrap it onto a\n    second line of text.\n"), "{out}");
+    }
+
+    /// Formatting a canonical source with interior comments leaves it alone
+    /// and is idempotent.
+    fn stays(source: &str) {
+        let out = formatted(source);
+        assert_eq!(out, source);
+        assert_eq!(formatted(&out), out);
+    }
+
+    #[test]
+    fn comments_stay_inside_lists_and_arguments() {
+        stays("module demo\n\nfunction items() returns List of Integer\n  return [\n    1,\n    # the second one\n    2,  # trailing\n    3\n  ]\nend\n");
+        stays("module demo\n\nfunction run_it() returns Integer\n  return compute(\n    # the first operand\n    left: 1,\n    right: 2  # the second\n  )\nend\n");
+        // a comment after a one-line list closes the statement, not the list
+        stays("module demo\n\nfunction items() returns List of Integer\n  return [1, 2, 3]  # all of them\nend\n");
+    }
+
+    #[test]
+    fn comments_stay_inside_queries() {
+        stays("module demo\n\nfunction emails(users: List of User) returns List of Text\n  let result be\n    for each user in users\n    # only grown-ups\n    where user.age is at least 18  # inclusive\n    sorted by user.name\n    collect user.email\n  return result\nend\n");
+        stays("module demo\n\nfunction total(orders: List of Order) returns Integer\n  return\n    for each order in orders  # every order\n    where order.is_paid\n    count\nend\n");
+    }
+
+    #[test]
+    fn comments_stay_before_otherwise_lines() {
+        stays("module demo\n\nfunction load(path: Path) returns Text\n  let text be filesystem.read_text(path)\n    # the file is optional\n    otherwise \"\"\n  return text\nend\n");
+    }
+
+    #[test]
+    fn comments_stay_inside_match_and_if_expressions() {
+        stays("module demo\n\nfunction label(shape: Shape) returns Text\n  let kind be\n    match shape\n      # round things\n      when Circle then \"circle\"\n      when Point then \"point\"  # degenerate\n      otherwise \"other\"\n    end\n  return kind\nend\n");
+        stays("module demo\n\nfunction label(done: Boolean) returns Text\n  let kind be\n    if done then \"yes\"\n    # the other case\n    otherwise \"no\"\n    end\n  return kind\nend\n");
+    }
+
+    #[test]
+    fn comments_stay_between_fields_and_arms() {
+        stays("module demo\n\npublic type User\n  purpose: A person.\n  # identity\n  has name: Text\n  has age: Integer  # in years\n  can Compare by name\nend\n");
+        stays("module demo\n\npublic type Shape is one of\n  purpose: A figure.\n  # the round one\n  Circle(radius: Decimal)\n  Point  # no size\nend\n");
+        stays("module demo\n\nfunction pick(flag: Boolean) returns Integer\n  match flag\n    when true then\n      # the common case\n      return 1\n    otherwise return 2\n  end\nend\n");
+        stays("module demo\n\nfunction pick(flag: Boolean) returns Integer\n  if flag then\n    return 1\n  # the rare case\n  otherwise if not flag then\n    return 2\n  otherwise\n    return 3\n  end\nend\n");
     }
 }

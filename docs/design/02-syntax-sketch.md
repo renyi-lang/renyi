@@ -741,6 +741,11 @@ base types).
 - A single blank line between statements is kept; several collapse to one.
 - A single token that cannot be broken (a long string literal) may exceed the
   width; the formatter leaves it alone.
+- Comments stay where they were written: a full-line comment before a
+  statement, a list element, a query clause, an `otherwise` line, a `when`
+  arm or a field keeps its line, and a comment at the end of a line stays on
+  that line; a comment inside a bracketed list or a clause group makes the
+  group break one element per line.
 - The formatter never changes tokens: it cannot rename, add `end`, or convert
   `=` to `be`. Those are compiler errors with suggested fixes.
 
