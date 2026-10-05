@@ -6,10 +6,11 @@ under `docs/design/` in order.
 
 ## What this repository is
 
-Renyi is a programming language in its design phase (milestone M0). No
-compiler exists yet. The owner (GitHub `skymanbp`) makes design decisions and
-reviews; Claude writes the documents, the example corpus and, from M1 on, the
-Rust implementation.
+Renyi is a programming language. Its design (M0) is complete and the Rust
+front end (M1: lexer, parser, formatter) exists; the type checker (M2) and the
+VM (M3) do not yet. The owner (GitHub `skymanbp`) makes design decisions and
+reviews; Claude writes the documents, the example corpus and the Rust
+implementation.
 
 ## Conventions
 
@@ -31,7 +32,11 @@ Rust implementation.
   of four, recommended option first and labelled "(Recommended)". The owner
   asked for this format explicitly and answers quickly in it.
 - The implementation language is Rust, one binary named `renyi` (decision H1).
-  The Python scripts in `tools/` are development aids only.
+  The Python scripts in `tools/` are development aids only. Before a commit
+  that touches `crates/`: `cargo fmt`, `cargo clippy --all-targets` and
+  `cargo test` must be clean. The corpus tests also require every example to
+  be in canonical layout: run `cargo run -- format examples/*.ry` after
+  editing an example.
 - Work on a `claude/...` branch and push there. Push to `main` only when the
   owner asks.
 - Before ending a session, rewrite `docs/HANDOFF.md` so the next session can
@@ -48,4 +53,7 @@ Rust implementation.
 | `docs/cheatsheet.md` | the whole language on one page; token-budgeted |
 | `examples/` | the corpus, one program per file, index in `examples/README.md` |
 | `tools/count_tokens.py` | cheat-sheet budget gate |
-| `tools/lint_examples.py` | regex-level checks for the corpus |
+| `tools/lint_examples.py` | regex-level checks for the corpus, including calls against the library sketch |
+| `tests/readability/` | harness for the readability protocol: `run.py`, manifest, reference outputs, Write tasks |
+| `crates/renyi_syntax/` | spans, diagnostics, lexer, AST, parser, formatter; `tests/corpus.rs` runs the corpus through all of them |
+| `crates/renyi/` | the `renyi` binary: `check`, `format`, `tokens`, `parse` |

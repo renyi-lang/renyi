@@ -1,17 +1,22 @@
 # Handoff
 
-Last updated: 2026-10-05, session 2 in progress.
+Last updated: 2026-10-05, end of session 2.
 Branches: `main` holds the session-1 handoff; `claude/renyi-language-design-hbrie3`
-carries session 2.
+carries all of session 2 (eight commits ahead of `main` at handoff). The owner
+decides when `main` moves.
 
 ## Where the project stands
 
-Milestone M0 (design) is nearly done. Rounds 1 and 2 of design decisions are
-complete and recorded; the surface syntax is sketched in full; the standard
-library is sketched and every corpus call is checked against it. The corpus
-has reached its target of 30 programs and passes the lint. The cheat sheet
-measures 2451 tokens against a 3000-token budget. No compiler, parser or
-runtime exists. No design question is open.
+Milestone M0 (design) is complete and M1 (front end) is essentially done.
+Three rounds of design decisions are recorded; the surface syntax and the
+standard library are sketched in full, and no design question is open. The
+corpus has its target 30 programs, passes the lint, and is in canonical
+layout. The cheat sheet measures 2451 tokens against a 3000-token budget. The
+Rust workspace under `crates/` has the lexer, parser and formatter with
+`renyi check`, `renyi format`, `renyi tokens` and `renyi parse`; every corpus
+program lexes, parses and formats cleanly (39 tests, clippy and fmt clean).
+Nothing type-checks or runs yet: that is M2 and M3. The readability harness is
+written but has not run live, for lack of API keys in the environment.
 
 ## Done in session 1
 
@@ -86,7 +91,7 @@ runtime exists. No design question is open.
    breaking, prose wrapping, blank lines). `renyi format [--check]` rewrites
    files. Corpus tests: formatting is idempotent, preserves the syntax tree
    (spans aside), stays within 100 columns, and every corpus file is in
-   canonical form (nine files were reformatted by the tool).
+   canonical form (eight files were reformatted by the tool).
 
 ## Next steps, in order
 
@@ -137,6 +142,13 @@ runtime exists. No design question is open.
   VM at M3 is the first independent check of them.
 - The GitHub default branch was set automatically to the first pushed branch;
   the owner should switch it to `main` in the repository settings.
+
+## Owner actions pending
+
+- Set `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` in the cloud environment so the
+  next session can run the readability round (decision L1).
+- Switch the GitHub default branch to `main`, and say when `main` should be
+  updated from the session branch.
 
 ## Owner preferences observed
 
