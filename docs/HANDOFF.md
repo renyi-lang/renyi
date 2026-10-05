@@ -1,9 +1,10 @@
 # Handoff
 
-Last updated: 2026-10-05, session 3 paused at the account usage limit.
+Last updated: 2026-10-05, session 4 (the readability pre-test is finished and
+its results are with the owner as questions).
 Branches: `main` holds the session-1 handoff; `claude/renyi-language-design-hbrie3`
-carries all of session 2 (eight commits ahead of `main` at handoff). The owner
-decides when `main` moves.
+carries session 2; `claude/nifty-knuth-r5sntt` carries sessions 3 and 4 on top
+of it. The owner decides when `main` moves.
 
 ## Where the project stands
 
@@ -13,10 +14,11 @@ standard library are sketched in full, and no design question is open. The
 corpus has its target 30 programs, passes the lint, and is in canonical
 layout. The cheat sheet measures 2451 tokens against a 3000-token budget. The
 Rust workspace under `crates/` has the lexer, parser and formatter with
-`renyi check`, `renyi format`, `renyi tokens` and `renyi parse`; every corpus
-program lexes, parses and formats cleanly (39 tests, clippy and fmt clean).
-Nothing type-checks or runs yet: that is M2 and M3. The readability harness is
-written but has not run live, for lack of API keys in the environment.
+`renyi check`, `renyi format`, `renyi tokens` and `renyi parse` (also
+`--json`); every corpus program lexes, parses, formats and encodes cleanly
+(45 tests, clippy and fmt clean). Nothing type-checks or runs yet: that is M2
+and M3. The readability harness has run once as a subagent pre-test (below);
+the live round still waits for API keys.
 
 ## Done in session 1
 
@@ -93,44 +95,64 @@ written but has not run live, for lack of API keys in the environment.
    (spans aside), stays within 100 columns, and every corpus file is in
    canonical form (eight files were reformatted by the tool).
 
-## Session 3 (paused, unfinished)
+## Done in sessions 3 and 4: the readability pre-test
 
-The owner asked whether the readability test needs API keys at all, and
+The owner asked whether the readability test needs API keys at all and
 approved a free pre-test: fresh Claude Code subagents (Haiku and Sonnet) that
-read only the cheat sheet and one prompt file. Run directory:
-`tests/readability/2026-10-05-e41258c/`. Its `notes.md` is the full record:
-method, deviations, an answer-key leak in the prompt files (fixed in
-`run.py`, tainted samples quarantined and re-collected), and the collection
-status at the pause. All raw answers are saved under `answers/` there.
+read only the cheat sheet and one prompt file, one sample per item. Run
+directory: `tests/readability/2026-10-05-e41258c/`; its `notes.md` holds the
+method, every deviation from the protocol, the results and the analysis of
+every failing sample. Session 3 collected the Haiku samples and part of the
+Sonnet ones and fixed an answer-key leak in `prepare`; session 4 collected
+the rest, judged every lint-clean Complete and Write sample with a reason
+(`outputs/<label>/judgement.json`), graded the sixty explanations with
+Sonnet subagents, and ran `score` and `report`.
 
-The session stopped when the account hit its weekly limit (Sonnet returned
-HTTP 429 until Oct 8, 3pm UTC). In flight and cut off at that moment: 15
-Sonnet Complete and 10 Sonnet Write samples, never collected. Nothing has
-been judged or graded yet. Resume with the "Remaining steps" list at the end
-of `notes.md`. That is step 0 below.
+Results against the thresholds (Predict and Explain 90, Complete 80, Write 70):
 
+| Label | Predict | Explain | Complete | Write (strict / after `renyi format`) |
+|-------|---------|---------|----------|------|
+| agent-sonnet | 100% | 100% | 74% | 50% / 70% |
+| agent-haiku | 80% | 97% | 37% | 0% / 0% |
 
-0. **Finish the subagent pre-test** (see above), then report the results to
-   the owner in Chinese and raise any failing threshold as a question.
-1. **Run the first live readability round** once the two API keys are present
-   in the environment (a new session picks them up): `prepare`, then `run` for
-   `claude-sonnet-5-5`, `claude-haiku-4-5-20251001` and one OpenAI model,
-   `score --grader anthropic:claude-sonnet-5-5`, judge the pending Complete
-   and Write samples into `judgement.json` with reasons, `report`, and commit
-   the run directory. Compare against the acceptance thresholds in
-   `03-readability-test.md`; a failing threshold becomes a grammar question
-   for the owner, not a silent change.
-2. **M1 wrap-up, then M2.** Remaining M1 polish: `renyi parse --json` for
-   tools, and comments inside multi-line expressions (the formatter moves
-   them before the statement). Then M2 in a new crate `renyi_check`: name
-   resolution over the prelude and library sketch, the type checker
-   (records, variants, refinements, generics with `for any`, abilities,
-   `maybe` and failure wrapping, `otherwise` typing), the effect checker
-   with scoped capabilities (J11), and the rules of J8, J9 and J15 (unused
-   bindings and results, no Integer division). Diagnostics follow the
-   `check` command's text and JSON output. The owner chose M3 (a VM running
-   the corpus) as the first demo.
+Sonnet's failures are mostly invented library names (the cheat sheet lists
+none), plus one each of `group by ... sum`, an unused `count` loop variable,
+and a superfluous `otherwise`. Haiku's are the rules the cheat sheet states
+outright (`then`, `end`, reserved words, single-letter names). Session 4
+also fixed two lint false positives found by the scoring, added
+`score --format` and `--scores` to the harness, and stated the derived
+`ToText` rule for variants in the library sketch.
 
+Session 4 also added `renyi parse --json` (`crates/renyi_syntax/src/json.rs`).
+
+## Questions put to the owner at the end of session 4
+
+Asked with AskUserQuestion; the answers, once given, become decision entries
+(section M of `01-decisions.md`) and sketch or cheat-sheet changes:
+
+1. Query grammar: let `group by key` combine with `sum`, `count`, `first`,
+   `any`, `all` and `collect` per group (both models wrote
+   `group by sale.region sum sale.amount`; the parser already accepts it)?
+2. J8 for query variables: is the loop variable of a bare `count` query
+   (`for each line in order.lines count`) unused (fix: `order.lines.length()`)
+   or consumed by `count`? (`first` returns the variable, so it counts as read.)
+3. `otherwise` on a value that cannot fail (`Port(8080) otherwise crash`,
+   `line.split(" ") otherwise fail`): error with the fix "remove otherwise",
+   warning, or allowed?
+4. A named single argument (`column_widths(table: table)`): error with the fix
+   "drop the name", or accepted and normalized by the formatter?
+5. Protocol: should Write and Complete scoring run `renyi format` before the
+   lint (line width was 60% of Sonnet's Write violations, all fixable)?
+6. Cheat sheet: add a library section (prelude text, list and map methods,
+   module names) with the remaining budget (about 550 tokens)?
+7. Haiku as the floor model (decision L1): keep it and iterate the cheat
+   sheet, or move the floor up?
+
+## Next steps
+
+0. **Record the owner's answers** to the questions above as decisions, apply
+   them (sketch, cheat sheet within budget, lint, the checker's rules), and
+   re-judge the affected pre-test samples if a rule changed.
 ## Known gaps and risks
 
 - The standard library sketch is a first draft written from the corpus; its
@@ -145,8 +167,10 @@ of `notes.md`. That is step 0 below.
   and have not been exercised beyond three corpus programs.
 - The token budget is measured with tiktoken `o200k_base` and `cl100k_base` as
   proxies; no tokenizer for Claude models is public.
-- `tools/lint_examples.py` is regex-based; its block/`end` balance check is a
-  heuristic and can miss errors.
+- `tools/lint_examples.py` is regex-based; its block/`end` balance and
+  unused-binding checks are heuristics and can miss errors or flag correct
+  code (two false positives were fixed in session 4; the whitespace and
+  foreign-keyword checks now skip comments and clause text).
 - Decimal rendering: `rounded(2)` renders with exactly two decimals (`6.00`),
   now stated in the library sketch; the examples depend on that.
 - The lint's call check is coarse: it accepts any name declared anywhere in
@@ -156,15 +180,16 @@ of `notes.md`. That is step 0 below.
   several diagnostics for one mistake.
 - The ten reference outputs under `tests/readability/reference/` were derived
   by hand from the sketches (Decimal and Float rendering rules included); the
-  VM at M3 is the first independent check of them.
+  VM at M3 is the first independent check of them, as it is of the 29
+  Complete and Write verdicts in the pre-test's `judgement.json` files.
+- The pre-test's Explain grades came from Sonnet subagents grading ten items
+  per call and are uniformly high; the live round should use two graders.
 - The GitHub default branch was set automatically to the first pushed branch;
   the owner should switch it to `main` in the repository settings.
 
 ## Owner actions pending
 
-- Usage limit: the Sonnet subagents of the pre-test can resume after
-  Oct 8, 3pm UTC.
-
+- Answer the seven questions above (or say which to defer).
 - Set `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` in the cloud environment so the
   next session can run the readability round (decision L1).
 - Switch the GitHub default branch to `main`, and say when `main` should be
