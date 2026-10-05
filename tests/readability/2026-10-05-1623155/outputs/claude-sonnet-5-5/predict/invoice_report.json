@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "ACME          1 lines      9.00\nGlobex        2 lines     21.00\ngrand total: 30.00",
+    "ACME          1 lines      9.00\nGlobex        2 lines     21.00\ngrand total: 30.00",
+    "ACME          1 lines      9.00\nGlobex        2 lines     21.00\ngrand total: 30.00",
+    "ACME          1 lines      9.00\nGlobex        2 lines     21.00\ngrand total: 30.00",
+    "ACME          1 lines      9.00\nGlobex        3 lines     21.00\ngrand total: 30.00"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null
+}

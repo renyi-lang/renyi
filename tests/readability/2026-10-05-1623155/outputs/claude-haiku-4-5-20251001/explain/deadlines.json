@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program manages a task list by parsing task entries (title and due date) and identifying which tasks are due soon. It calculates how many working days (Monday through Friday) remain until each upcoming deadline, then displays tasks due within a specified window sorted by due date. The main function demonstrates this by showing sample tasks due within the next ten days with their remaining working days.",
+    "This program manages a task list by parsing task entries (title and due date) and identifying which tasks are due soon. It calculates how many working days (Monday through Friday) remain until each upcoming deadline, filtering to show only tasks due within a specified window. The main function demonstrates this by displaying sample tasks due within the next ten days along with their remaining working days.",
+    "This program manages a task list by parsing task entries (title and due date) and identifying which tasks are due soon. It calculates how many working days (Monday through Friday) remain until each upcoming deadline, then displays tasks due within a specified window sorted by due date. The main function demonstrates this by showing sample tasks due within the next ten days with their remaining working days.",
+    "This program manages a task list by parsing task entries (title and due date) and identifying which tasks are due soon. It calculates how many working days (Monday through Friday) remain until each upcoming deadline, filtering to show only tasks due within a specified window. The main function demonstrates this by displaying sample tasks due within the next ten days along with their remaining working days.",
+    "This program manages a task list by parsing task entries (title and due date) and identifying which tasks are due soon. It calculates how many working days (Monday through Friday) remain until each upcoming deadline, filtering to show only tasks due within a specified window. The main function demonstrates this by displaying sample tasks due within the next ten days along with their remaining working days."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

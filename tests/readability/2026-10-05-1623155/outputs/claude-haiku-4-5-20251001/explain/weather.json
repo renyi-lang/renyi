@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program fetches and displays the current temperature and wind speed for Berlin by querying the Open-Meteo weather API. It defines types to parse the JSON response and a main function that retrieves the forecast data, handles potential errors, and prints the results to the console. The program demonstrates how to make HTTP requests, parse JSON, and manage errors in Renyi.",
+    "This program fetches and displays the current temperature and wind speed for Berlin by querying the Open-Meteo weather API. It defines types to parse the JSON response and a main function that retrieves the forecast data, handles potential errors, and prints the results to the console. The program demonstrates how to make HTTP requests, parse JSON, and manage errors in Renyi.",
+    "This program fetches and displays the current temperature and wind speed for Berlin by querying the Open-Meteo weather API. It defines types to parse the JSON response and a main function that retrieves the forecast data, handles potential errors, and prints the results to the console. The program demonstrates how to make HTTP requests, parse JSON, and manage errors in Renyi.",
+    "This program fetches and displays the current temperature and wind speed for Berlin by querying the Open-Meteo weather API. It defines types to parse the JSON response and a main function that retrieves the forecast data, handles potential errors, and prints the results to the console. The program demonstrates how to make HTTP requests, parse JSON, and manage errors in Renyi.",
+    "This program fetches and displays the current temperature and wind speed for Berlin by querying the Open-Meteo weather API. It defines types to parse the JSON response and a main function that retrieves the forecast data, handles potential errors, and prints the results to the console. The program demonstrates how to make HTTP requests, parse JSON, and manage errors in Renyi."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

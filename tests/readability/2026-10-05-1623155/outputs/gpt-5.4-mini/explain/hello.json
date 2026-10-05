@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program prints a greeting to the console when run. It uses the first command-line argument as the name, and if no argument is provided it defaults to “world.” It is a very small utility, useful if you want a simple customizable hello message.",
+    "This program prints a greeting to the console when run. It takes the first command-line argument as the name, and if no argument is provided it uses “world” instead. It is a simple command-line hello program with no other side effects beyond reading arguments and printing text.",
+    "This program prints a greeting to the console when run. It uses the first command-line argument as the name, and if no argument is provided it defaults to “world.” It is a very small utility for producing a personalized hello message.",
+    "This program prints a greeting to the console when run. It takes the first command-line argument as the name, and if no argument is provided it uses “world” instead. It is a very small utility for producing a personalized hello message.",
+    "This program prints a greeting to the console when run. It uses the first command-line argument as the name, and if no argument is provided it defaults to “world.” It is a very small utility for producing a personalized hello message."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

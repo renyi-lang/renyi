@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program fetches all customer records from a cursor-paginated HTTP API by repeatedly following the server’s next-cursor field until there are no more pages. It then groups the customers by country and prints each country with its customer count, sorted from largest to smallest. It’s useful if you want a simple pagination helper plus a country breakdown, but it depends on network access and will fail if the HTTP request or JSON parsing fails.",
+    "This program fetches all customer records from a cursor-based HTTP API by repeatedly following the server’s next-cursor field until there are no more pages. It then groups the customers by country and prints each country with its customer count, sorted from largest to smallest. It is useful if you want a simple pagination helper plus a country breakdown, but it depends on network access and assumes the API returns the expected JSON shape.",
+    "This program fetches all customer records from a cursor-paginated HTTP API by repeatedly following the server’s next-cursor field until there are no more pages. It then groups the customers by country and prints each country with its customer count, sorted from largest to smallest. It is useful if you want a simple pagination helper plus a country breakdown, but it depends on network access and will fail if the HTTP request or JSON parsing fails.",
+    "This program fetches all customer records from a cursor-paginated HTTP API by repeatedly following the server’s next-cursor field until there are no more pages. It then groups the customers by country and prints each country with its customer count, sorted from largest to smallest. It is useful if you want a simple pagination helper plus a country breakdown, but it depends on network access and assumes the API returns the expected JSON shape.",
+    "This program fetches all customer records from a cursor-paginated HTTP API by repeatedly following the server’s next-cursor field until there are no more pages. It then groups the customers by country and prints each country with its customer count, sorted from largest group to smallest. It is useful if you want a simple pagination helper plus a country breakdown, but it depends on network access and only reports counts, not the customer details themselves."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

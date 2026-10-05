@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program parses server log lines into structured entries, validates timestamps and severity levels, and reports how many error entries occurred in each hour. It reads `data/server.log`, skips blank lines, and prints hourly error counts sorted by hour. It is useful if you want a simple log-summary tool, but it only handles a very specific log format and will fail on malformed lines or unknown levels.",
+    "This program parses server log lines into structured entries, recognizing only four severity levels and rejecting malformed lines or unknown levels with explicit parse errors. It then groups the parsed entries by hour and counts only the error-level entries in each hour. When run as the main program, it reads `data/server.log`, skips blank lines, parses the rest, and prints hourly error counts in hour order.",
+    "This program parses server log lines into structured entries, recognizing timestamps, severity levels, and messages, and it reports a clear error if a line is malformed or uses an unknown level. It then groups only the error-level entries by hour and counts how many occurred in each hour. Its main entry point reads `data/server.log`, ignores blank lines, and prints the hourly error counts in chronological order, so it is useful if you want a simple log-summary tool rather than a full log analysis system.",
+    "This program parses server log lines into structured entries with a timestamp, severity level, and message, rejecting malformed lines or unknown severity words. It then groups only the error entries by hour and counts how many occur in each hour. When run as the main program, it reads `data/server.log`, skips blank lines, parses the file, and prints hourly error totals in hour order.",
+    "This program parses server log lines into structured entries, recognizing timestamps, severity levels, and messages, and it reports a clear parse error if a line is malformed or uses an unknown level. It then groups only the error-level entries by hour and counts how many occurred in each hour. Its main program reads `data/server.log`, skips blank lines, and prints the hourly error counts in sorted order, so it is useful if you want a simple log-summary tool rather than a full log analysis system."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

@@ -1,0 +1,6 @@
+{
+  "task": "write",
+  "name": "title_length_tool",
+  "prompt": "Write a complete Renyi program for the task below. Follow the cheat sheet exactly: no features it does not list. Give every public definition a `purpose:` clause and give pure functions `example:` lines. Answer with the program only, in one code fence.\n\nTask: An agent tool, exposed to agents, that downloads a web page and returns the number of characters in its <title> element, failing with a clear error when the page has no title.",
+  "description": "An agent tool, exposed to agents, that downloads a web page and returns the number of characters in its <title> element, failing with a clear error when the page has no title."
+}

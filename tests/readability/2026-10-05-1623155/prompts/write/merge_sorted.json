@@ -1,0 +1,6 @@
+{
+  "task": "write",
+  "name": "merge_sorted",
+  "prompt": "Write a complete Renyi program for the task below. Follow the cheat sheet exactly: no features it does not list. Give every public definition a `purpose:` clause and give pure functions `example:` lines. Answer with the program only, in one code fence.\n\nTask: A library module with a function that merges two sorted lists of Integers into one sorted list without duplicates, with example lines, and a test block for two empty lists.",
+  "description": "A library module with a function that merges two sorted lists of Integers into one sorted list without duplicates, with example lines, and a test block for two empty lists."
+}

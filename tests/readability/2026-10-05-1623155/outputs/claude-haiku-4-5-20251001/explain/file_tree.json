@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program displays a directory tree structure, showing each file and folder name along with its size in bytes. It recursively traverses directories and indents nested entries to visualize the hierarchy. You run it from the command line with an optional directory path argument, defaulting to the current directory if none is provided.",
+    "This program displays a directory tree structure, showing each file and folder name along with its size in bytes. It recursively traverses directories and indents nested entries to visualize the hierarchy. You run it from the command line with an optional directory path argument, defaulting to the current directory if none is provided.",
+    "This program displays a directory tree structure, showing each file and folder name along with its size in bytes. It recursively traverses directories and indents nested entries to visualize the hierarchy. You run it from the command line with an optional directory path argument, defaulting to the current directory if none is provided.",
+    "This program displays a directory tree structure, showing each file and folder name along with its size in bytes. It recursively traverses directories and indents nested entries to visualize the hierarchy. You run it from the command line with an optional directory path argument, defaulting to the current directory if none is provided.",
+    "This program displays a directory tree structure, showing each file and folder name along with its size in bytes. It recursively traverses directories and indents nested entries to visualize the hierarchy. You run it from the command line with an optional directory path argument, defaulting to the current directory if none is provided."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

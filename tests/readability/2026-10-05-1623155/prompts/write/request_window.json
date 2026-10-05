@@ -1,0 +1,6 @@
+{
+  "task": "write",
+  "name": "request_window",
+  "prompt": "Write a complete Renyi program for the task below. Follow the cheat sheet exactly: no features it does not list. Give every public definition a `purpose:` clause and give pure functions `example:` lines. Answer with the program only, in one code fence.\n\nTask: A library module with a function that takes a sorted list of request times in seconds and a window length, and returns how many requests would be rejected if at most 10 requests are allowed in any window.",
+  "description": "A library module with a function that takes a sorted list of request times in seconds and a window length, and returns how many requests would be rejected if at most 10 requests are allowed in any window."
+}

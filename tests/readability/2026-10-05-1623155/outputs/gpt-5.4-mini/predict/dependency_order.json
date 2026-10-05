@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "1. fetch\n2. build\n3. docs\n4. test\n5. package",
+    "1. fetch\n2. build\n3. docs\n4. test\n5. package",
+    "1. fetch\n2. build\n3. docs\n4. test\n5. package",
+    "1. fetch\n2. build\n3. docs\n4. test\n5. package",
+    "1. fetch\n2. build\n3. docs\n4. test\n5. package"
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

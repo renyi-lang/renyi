@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program is a command-line to-do list manager that stores tasks in a text file. It supports adding new tasks, marking tasks as done (by removing them), and displaying the current list. Users interact with it through simple commands like `todo add buy milk`, `todo done 2`, or `todo show`.",
+    "This program is a command-line to-do list manager that stores tasks in a text file. It supports adding new tasks, marking tasks as done by removing them, and displaying the current list. Users interact with it through simple commands like `todo add buy milk`, `todo done 2`, or `todo show`.",
+    "This program is a command-line to-do list manager that stores tasks in a text file. It supports adding new tasks, marking tasks as done by their position number, and displaying the current list. Running it with no arguments or an unrecognized command shows usage instructions.",
+    "This program is a command-line to-do list manager that stores tasks in a text file. It supports adding new tasks, marking tasks as done (by removing them), and displaying the current list. Users interact with it through simple commands like `todo add buy milk`, `todo done 2`, or `todo show`.",
+    "This program is a command-line to-do list manager that stores tasks in a text file. It supports adding new tasks, marking tasks as done by removing them, and displaying the current list. Users interact with it through simple commands like `todo add buy milk`, `todo done 2`, or `todo show`."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

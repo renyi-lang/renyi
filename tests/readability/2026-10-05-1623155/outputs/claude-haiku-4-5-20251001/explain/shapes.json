@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program defines a library for working with plane shapes—circles, rectangles, and points—that can calculate their areas and generate human-readable descriptions. It provides functions to describe individual shapes with their computed areas and to find the largest shape in a list. The main function demonstrates the library by printing descriptions of sample shapes and identifying which one has the greatest area.",
+    "This program defines a library for working with plane shapes—circles, rectangles, and points—that can calculate their areas and generate human-readable descriptions. It provides functions to describe individual shapes with their computed areas and to find the largest shape in a list. The main function demonstrates the library by printing descriptions of a few sample shapes and identifying which one has the greatest area.",
+    "This program defines a library for working with plane shapes—circles, rectangles, and points—that can calculate their areas and generate human-readable descriptions. It provides functions to describe individual shapes with their computed areas and to find the largest shape in a list. The main function demonstrates the library by printing descriptions of sample shapes and identifying which one has the greatest area.",
+    "This program defines a library for working with plane shapes—circles, rectangles, and points—that can calculate their areas and generate human-readable descriptions. It provides functions to describe individual shapes with their computed areas and to find the largest shape in a list. The main function demonstrates the library by printing descriptions of sample shapes and identifying which one has the greatest area.",
+    "This program defines a library for working with plane shapes—circles, rectangles, and points—that can calculate their areas and generate human-readable descriptions. It provides functions to describe individual shapes with their computed areas and to find the largest shape in a list. The main function demonstrates the library by printing descriptions of a few sample shapes and identifying which one has the greatest area."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

@@ -1,0 +1,2199 @@
+{
+  "predict/dependency_order": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/expression_tree": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/hello": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/invoice_report": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": false
+    }
+  ],
+  "predict/markdown_table": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/permissions": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/shapes": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/statistics": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/temperature_table": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/traffic_light": [
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    }
+  ],
+  "explain/active_users": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/assistant": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/concurrent_fetch": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/config": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/currency_tool": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/deadlines": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/dependency_order": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/expression_tree": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/file_tree": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/hello": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/http_service": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/inventory_db": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/invoice": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/invoice_report": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 3
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/log_parser": [
+    {
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/markdown_table": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "judgement"
+    }
+  ],
+  "explain/pagination": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/permissions": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/retry": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 2,
+      "pass": false,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 2
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/sales_report": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/semver": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/shapes": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/shipping_rules": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 2,
+      "pass": false,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 2
+    },
+    {
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
+    },
+    {
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/stacks": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/statistics": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/temperature_table": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "judgement"
+    }
+  ],
+  "explain/todo_cli": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/traffic_light": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/weather": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "judgement"
+    }
+  ],
+  "explain/word_count": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "complete/config": [
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[superfluous-otherwise] `otherwise` after a value that cannot fail and is not optional (it is `Port`)"
+      ],
+      "pass": false,
+      "rules": [
+        "check:superfluous-otherwise"
+      ]
+    }
+  ],
+  "complete/deadlines": [
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:54: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:54: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/dependency_order": [
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:36: line is 107 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:47: line is 104 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/expression_tree": [
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/invoice": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[unknown-method] `Decimal` has no method named `to_decimal`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:unknown-method"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[unknown-method] `Decimal` has no method named `to_decimal`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:unknown-method"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[unknown-method] `Decimal` has no method named `to_decimal`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:unknown-method"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[unknown-method] `Decimal` has no method named `to_decimal`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:unknown-method"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[unknown-method] `Decimal` has no method named `to_decimal`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:unknown-method"
+      ]
+    }
+  ],
+  "complete/invoice_report": [
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:13: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:13: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:13: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/log_parser": [
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/markdown_table": [
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:51: '=' is not Renyi; use 'let x be', 'set x to', or 'is'",
+        ".scratch-117720.ry:56: '=' is not Renyi; use 'let x be', 'set x to', or 'is'",
+        ".scratch-117720.ry: block starters 11 vs 'end' 9 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance",
+        "equals-sign"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:54: line is 127 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/permissions": [
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/sales_report": [
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/semver": [
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/shapes": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[unknown-method] `Decimal` has no method named `quotient`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:unknown-method"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:39: line is 101 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:39: line is 101 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:40: line is 101 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    }
+  ],
+  "complete/shipping_rules": [
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:38: line is 106 columns (limit 100)",
+        ".scratch-117720.ry:40: line is 115 columns (limit 100)",
+        ".scratch-117720.ry:41: line is 109 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:39: line is 108 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:39: line is 106 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:39: line is 106 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    }
+  ],
+  "complete/stacks": [
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/statistics": [
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:25: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/temperature_table": [
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/todo_cli": [
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/traffic_light": [
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry: block starters 10 vs 'end' 11 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/word_count": [
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "write/compound_interest": [
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:39: line is 117 columns (limit 100)",
+        ".scratch-117720.ry:53: line is 108 columns (limit 100)",
+        ".scratch-117720.ry:62: line is 111 columns (limit 100)",
+        ".scratch-117720.ry:63: line is 101 columns (limit 100)",
+        ".scratch-117720.ry:64: line is 106 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:44: line is 143 columns (limit 100)",
+        ".scratch-117720.ry:52: line is 105 columns (limit 100)",
+        ".scratch-117720.ry:59: line is 102 columns (limit 100)",
+        ".scratch-117720.ry:63: line is 113 columns (limit 100)",
+        ".scratch-117720.ry:64: line is 114 columns (limit 100)",
+        ".scratch-117720.ry:65: line is 114 columns (limit 100)",
+        ".scratch-117720.ry:66: line is 101 columns (limit 100)",
+        ".scratch-117720.ry:67: line is 110 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:29: line is 103 columns (limit 100)",
+        ".scratch-117720.ry:45: line is 115 columns (limit 100)",
+        ".scratch-117720.ry:46: line is 114 columns (limit 100)",
+        ".scratch-117720.ry:47: line is 115 columns (limit 100)",
+        ".scratch-117720.ry:48: line is 114 columns (limit 100)",
+        ".scratch-117720.ry:49: line is 110 columns (limit 100)",
+        ".scratch-117720.ry:50: line is 111 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:27: line is 115 columns (limit 100)",
+        ".scratch-117720.ry:44: line is 109 columns (limit 100)",
+        ".scratch-117720.ry:57: line is 113 columns (limit 100)",
+        ".scratch-117720.ry:66: line is 110 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:42: line is 152 columns (limit 100)",
+        ".scratch-117720.ry:49: line is 112 columns (limit 100)",
+        ".scratch-117720.ry:64: line is 124 columns (limit 100)",
+        ".scratch-117720.ry:65: line is 118 columns (limit 100)",
+        ".scratch-117720.ry:66: line is 130 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    }
+  ],
+  "write/fizz_words": [
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:8: line is 157 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:8: line is 127 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    }
+  ],
+  "write/initials": [
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:6: line is 129 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:6: line is 128 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:6: line is 129 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:6: line is 137 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    }
+  ],
+  "write/letter_grades": [
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:2: line is 106 columns (limit 100)",
+        ".scratch-117720.ry:32: line is 209 columns (limit 100)",
+        ".scratch-117720.ry:63: line is 104 columns (limit 100)",
+        ".scratch-117720.ry:66: line is 225 columns (limit 100)",
+        ".scratch-117720.ry:74: line is 224 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:2: line is 110 columns (limit 100)",
+        ".scratch-117720.ry:53: line is 136 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:2: line is 110 columns (limit 100)",
+        ".scratch-117720.ry:91: line is 120 columns (limit 100)",
+        ".scratch-117720.ry:99: line is 110 columns (limit 100)",
+        ".scratch-117720.ry:112: line is 122 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:67: line is 123 columns (limit 100)",
+        ".scratch-117720.ry:70: line is 102 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:2: line is 110 columns (limit 100)",
+        ".scratch-117720.ry:90: line is 124 columns (limit 100)",
+        ".scratch-117720.ry:97: line is 110 columns (limit 100)",
+        ".scratch-117720.ry:106: line is 124 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    }
+  ],
+  "write/low_stock_report": [
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:27: line is 178 columns (limit 100)",
+        ".scratch-117720.ry:28: line is 228 columns (limit 100)",
+        ".scratch-117720.ry:42: line is 111 columns (limit 100)",
+        ".scratch-117720.ry:49: line is 101 columns (limit 100)",
+        ".scratch-117720.ry:54: line is 106 columns (limit 100)",
+        ".scratch-117720.ry:55: line is 115 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:29: line is 178 columns (limit 100)",
+        ".scratch-117720.ry:41: line is 111 columns (limit 100)",
+        ".scratch-117720.ry:53: line is 103 columns (limit 100)",
+        ".scratch-117720.ry:54: line is 113 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:28: line is 130 columns (limit 100)",
+        ".scratch-117720.ry:42: line is 103 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:42: line is 109 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:29: line is 140 columns (limit 100)",
+        ".scratch-117720.ry:42: line is 113 columns (limit 100)",
+        ".scratch-117720.ry:62: line is 175 columns (limit 100)",
+        ".scratch-117720.ry:65: line is 103 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    }
+  ],
+  "write/merge_sorted": [
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:6: line is 101 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "write/password_strength": [
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:12: line is 140 columns (limit 100)",
+        ".scratch-117720.ry:20: line is 103 columns (limit 100)",
+        ".scratch-117720.ry:22: line is 106 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:19: line is 106 columns (limit 100)",
+        ".scratch-117720.ry:38: line is 150 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:13: line is 126 columns (limit 100)",
+        ".scratch-117720.ry:24: line is 110 columns (limit 100)",
+        ".scratch-117720.ry:26: line is 140 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:13: line is 126 columns (limit 100)",
+        ".scratch-117720.ry:22: line is 101 columns (limit 100)",
+        ".scratch-117720.ry:24: line is 104 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:13: line is 140 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    }
+  ],
+  "write/request_window": [
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:6: line is 169 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:13: line is 234 columns (limit 100)",
+        ".scratch-117720.ry:22: line is 106 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:6: line is 214 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:14: line is 158 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:6: line is 180 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    }
+  ],
+  "write/roman_numerals": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the public type `RomanError` has no purpose",
+        "[missing-otherwise] this call can fail with RomanError",
+        "[missing-otherwise] this call can fail with RomanError"
+      ],
+      "pass": false,
+      "rules": [
+        "check:missing-otherwise",
+        "check:purpose-missing"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the public type `RomanError` has no purpose",
+        "[type-mismatch] the condition is `Text`, but `Boolean` is needed",
+        "[type-mismatch] the default is `Boolean`, but `Text` is needed",
+        "[type-mismatch] the condition is `Integer`, but `Boolean` is needed",
+        "[type-mismatch] the default is `Boolean`, but `Integer` is needed"
+      ],
+      "pass": false,
+      "rules": [
+        "check:purpose-missing",
+        "check:type-mismatch"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[missing-otherwise] this call can fail with RomanError",
+        "[missing-otherwise] this call can fail with RomanError",
+        "[missing-otherwise] this call can fail with RomanError"
+      ],
+      "pass": false,
+      "rules": [
+        "check:missing-otherwise"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the public type `RomanError` has no purpose",
+        "[missing-otherwise] this call can fail with RomanError",
+        "[missing-otherwise] this call can fail with RomanError"
+      ],
+      "pass": false,
+      "rules": [
+        "check:missing-otherwise",
+        "check:purpose-missing"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:40: line is 101 columns (limit 100)",
+        ".scratch-117720.ry:66: line is 117 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    }
+  ],
+  "write/title_length_tool": [
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:16: line is 114 columns (limit 100)",
+        ".scratch-117720.ry:26: line is 103 columns (limit 100)",
+        ".scratch-117720.ry:34: line is 166 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:15: line is 114 columns (limit 100)",
+        ".scratch-117720.ry:33: line is 205 columns (limit 100)",
+        ".scratch-117720.ry:38: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width",
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:20: line is 110 columns (limit 100)",
+        ".scratch-117720.ry:22: line is 135 columns (limit 100)",
+        ".scratch-117720.ry:24: line is 133 columns (limit 100)",
+        ".scratch-117720.ry:33: line is 156 columns (limit 100)",
+        ".scratch-117720.ry:37: line is 102 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:15: line is 105 columns (limit 100)",
+        ".scratch-117720.ry:34: line is 157 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-117720.ry:15: line is 136 columns (limit 100)",
+        ".scratch-117720.ry:34: line is 156 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    }
+  ]
+}

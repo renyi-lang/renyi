@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This module builds Markdown tables from a header row and body rows, padding each column to the width of its widest cell so the output lines up neatly. It exposes helpers to compute column widths and render a table as text, and its `main` function prints a sample fruit-pricing table to the console. If you need simple, formatted Markdown table output from text data, it looks useful and focused.",
+    "This module builds Markdown tables from a header row and body rows, padding each column to the width of its widest cell so the output lines up neatly. It exposes a reusable table type plus functions to compute column widths and render the table as text. Its `main` function just prints a sample fruit-price table to the console, so it’s mainly a formatting utility with a demo entry point.",
+    "This module builds Markdown tables from a header row and body rows, padding each column to the width of its widest cell so the output lines up neatly. It exposes a reusable table type plus functions to measure column widths and render the table as text. Its `main` function is just a demo that prints a small fruit-prices table to the console.",
+    "This module builds Markdown tables from a header row and body rows, padding each column to the width of its widest cell so the output lines up neatly. It exposes a reusable table type plus functions to compute column widths and render the table as text. Its `main` function just prints a sample fruit-price table to the console, so it’s mainly a formatting utility with a demo entry point.",
+    "This module builds Markdown tables from a header row and body rows, padding each column to the width of its widest cell so the output is neatly aligned. It exposes reusable functions to compute column widths and render any table, and it also defines a small demo `main` that prints a fruit-prices table to the console. If you need simple, dependency-light Markdown table formatting, it looks useful; if you need richer table features like escaping, numeric formatting, or nested content, it may be too minimal."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

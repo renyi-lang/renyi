@@ -81,9 +81,11 @@ unless `--run <directory name>` names another one.
 
 ## Status
 
-Prompts, references and scoring are in place. One pre-test round exists,
-`2026-10-05-e41258c/`, collected from Claude Code subagents (one sample per
-item, two Claude models) with its results and deviations in its `notes.md`.
-No live round has been run yet: it needs API credentials for at least three
-models from two vendors, which the owner provides as environment variables
-of the cloud environment.
+Prompts, references and scoring are in place. One pre-test round,
+`2026-10-05-e41258c/`, was collected from Claude Code subagents (one sample
+per item, two Claude models). The first live round, `2026-10-05-1623155/`,
+ran Sonnet 5.5, Haiku 4.5 and gpt-5.4-mini through the vendor APIs with
+five samples per prompt; its `notes.md` has the method, every deviation,
+the results against the thresholds and the analysis of the failures. The
+credentials are the environment variables `ANTHROPIC_API_KEY` and
+`OPENAI_API_KEY` (decision L1).

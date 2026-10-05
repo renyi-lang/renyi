@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "```\npublic function total(invoice: Invoice) returns Decimal\n  purpose: Subtotal after the percentage discount, rounded to cents.\n  see also: subtotal\n\n  let kept be 100.00 - invoice.discount_percent\n  let cents be (subtotal(invoice) * kept).rounded().to_decimal()\n  return cents / 100.00\nend\n```",
+    "```\npublic function total(invoice: Invoice) returns Decimal\n  purpose: Subtotal after the percentage discount, rounded to cents.\n  see also: subtotal\n\n  let remaining be 100.00 - invoice.discount_percent\n  let discounted be subtotal(invoice) * remaining / 100.00\n  let cents be (discounted * 100.00).rounded()\n  return cents.to_decimal() / 100.00\nend\n```",
+    "```\npublic function total(invoice: Invoice) returns Decimal\n  purpose: Subtotal after the percentage discount, rounded to cents.\n  see also: subtotal\n\n  let gross be subtotal(invoice)\n  let discounted be gross * (100.00 - invoice.discount_percent) / 100.00\n  let cents be (discounted * 100.00).rounded()\n  return cents.to_decimal() / 100.00\nend\n```",
+    "```\npublic function total(invoice: Invoice) returns Decimal\n  purpose: Subtotal after the percentage discount, rounded to cents.\n  see also: subtotal\n\n  let kept_percent be 100.00 - invoice.discount_percent\n  let discounted be subtotal(invoice) * kept_percent / 100.00\n  let scaled be discounted * 100.00\n  let cents be scaled.rounded().to_decimal()\n  return cents / 100.00\nend\n```",
+    "```\npublic function total(invoice: Invoice) returns Decimal\n  purpose: Subtotal after the percentage discount, rounded to cents.\n  see also: subtotal\n\n  let before_discount be subtotal(invoice)\n  let remaining_percent be 100.00 - invoice.discount_percent\n  let discounted be before_discount * remaining_percent / 100.00\n  let scaled be discounted * 100.00\n  let cents be scaled.rounded()\n  return cents.to_decimal() / 100.00\nend\n```\n\nThis assumes `rounded()` on a `Decimal` returns an `Integer`, as `truncated` does. The cheat sheet doesn't give its return type or any rounding arguments, so I scale by 100, round, and divide back to get cents."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null
+}

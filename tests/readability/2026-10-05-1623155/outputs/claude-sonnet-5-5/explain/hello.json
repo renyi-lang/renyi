@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program prints a greeting to the console, using the first command-line argument as the name, or \"world\" if no argument is given. It only needs permission to print output and read the environment (where the arguments come from), and it does nothing else, such as touching files or the network. It is a simple, safe hello-world-style starter, useful as a template but not a tool with real functionality.",
+    "This program prints a greeting to the console, using the first command-line argument as the name, or \"world\" if no argument is given. It only needs permission to write to the console and read the environment (command-line arguments), so it does nothing else, such as touching files or the network. It is a simple, safe hello-world style utility, useful as a starter example but not for anything more involved.",
+    "This program prints a greeting to the console, using the first command-line argument as the name, or \"world\" if you don't give any arguments. It only needs permission to read the command-line environment and to print to the console, so it does nothing else, such as touching files or the network. It is a simple, safe hello-world utility, useful as a starter template but not as anything more substantial.",
+    "This program prints a greeting to the console, using the first command-line argument as the name and falling back to \"world\" when no argument is given. It needs only permission to print to the console and read the environment (command-line arguments), and it does no file, network, or other work. It is a simple, safe hello-world style utility, useful as a starter example but not much more.",
+    "This program prints a greeting to the console, using the first command-line argument as the name and falling back to \"world\" when no argument is given. It only needs permission to write to the console and read the environment (command-line arguments), and it does nothing else, such as touching files or the network. It's a simple, safe hello-world style utility that is useful as a starter or a template, but it has no further features such as options or validation of the name."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null
+}

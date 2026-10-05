@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program converts tabular data into formatted Markdown tables. It takes a table structure with a header row and body rows, calculates the width needed for each column based on its widest cell, and renders the entire table as Markdown-formatted text with properly aligned columns separated by pipes. When run, it demonstrates the functionality by printing a sample fruit price table.",
+    "This program converts tabular data into formatted Markdown tables. It takes a table structure with a header row and body rows, calculates the width needed for each column based on its widest cell, and renders the entire table as Markdown-formatted text with properly aligned columns separated by pipes. When run, it demonstrates the functionality by printing a sample fruit price table.",
+    "This program converts tabular data into formatted Markdown tables. It takes a table structure with a header row and body rows, calculates the width needed for each column based on its widest cell, and renders the entire table as Markdown-formatted text with properly aligned columns separated by pipes. When run, it demonstrates the functionality by printing a sample fruit price table.",
+    "This program converts tabular data into formatted Markdown tables. It takes a table structure with a header row and body rows, calculates the width needed for each column based on its widest cell, and renders the entire table as Markdown-formatted text with properly aligned columns separated by pipes. When run, it demonstrates the functionality by printing a sample fruit price table.",
+    "This program converts tabular data into formatted Markdown tables. It takes a table structure with a header row and body rows, calculates the width needed for each column based on its widest cell, and renders the entire table as Markdown-formatted text with properly aligned columns separated by pipes. When run, it demonstrates the functionality by printing a sample fruit price table."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

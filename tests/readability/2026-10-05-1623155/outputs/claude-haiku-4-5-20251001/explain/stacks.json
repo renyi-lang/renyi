@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This module provides a generic stack data structure with push, pop, and peek operations, along with a practical bracket-matching function that uses the stack to verify whether parentheses and square brackets are properly balanced and nested in text. The stack implementation is generic and works with any item type, making it reusable for various applications beyond bracket checking.",
+    "This module provides a generic stack data structure with push, pop, and peek operations, along with a practical bracket-matching function that uses the stack to verify whether parentheses and square brackets are properly balanced and nested in text. The stack implementation is generic and works with any item type, making it reusable for various applications beyond bracket checking.",
+    "This module provides a generic stack data structure with push, pop, and peek operations, along with a practical bracket-matching function that uses the stack to verify whether parentheses and square brackets are properly balanced and nested in text. The stack implementation is generic and works with any item type, making it reusable for various applications beyond bracket checking.",
+    "This module provides a generic stack data structure with push, pop, and peek operations, along with a practical bracket-matching function that uses the stack to verify whether parentheses and square brackets are properly balanced and nested in text. The stack implementation is generic and works with any item type, making it reusable for various applications beyond bracket checking.",
+    "This module provides a generic stack data structure with push, pop, and peek operations, along with a practical bracket-matching function that uses the stack to verify whether parentheses and square brackets are properly balanced and nested in text. The stack implementation is generic and works with any item type, making it reusable for various applications beyond bracket checking."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

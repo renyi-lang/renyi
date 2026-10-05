@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "| fruit      | price | stock |\n| ---------- | ----- | ----- |\n| apple      | 0.50  | 120   |\n| kiwi       | 0.80  | 7     |\n| watermelon | 3.20  | 2     |",
+    "| fruit      | price | stock |\n| ---------- | ----- | ----- |\n| apple      | 0.50  | 120   |\n| kiwi       | 0.80  | 7     |\n| watermelon | 3.20  | 2     |",
+    "| fruit      | price | stock |\n| ---------- | ----- | ----- |\n| apple      | 0.50  | 120   |\n| kiwi       | 0.80  | 7     |\n| watermelon | 3.20  | 2     |",
+    "| fruit      | price | stock |\n| ---------- | ----- | ----- |\n| apple      | 0.50  | 120   |\n| kiwi       | 0.80  | 7     |\n| watermelon | 3.20  | 2     |",
+    "| fruit      | price | stock |\n| ---------- | ----- | ----- |\n| apple      | 0.50  | 120   |\n| kiwi       | 0.80  | 7     |\n| watermelon | 3.20  | 2     |"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null
+}

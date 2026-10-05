@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "(1 + 2) * -4 evaluates to -12",
+    "(1 + 2) * -4 evaluates to -12",
+    "(1 + 2) * -4 evaluates to -12",
+    "(1 + 2) * -4 evaluates to -12",
+    "(1 + 2) * -4 evaluates to -12"
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

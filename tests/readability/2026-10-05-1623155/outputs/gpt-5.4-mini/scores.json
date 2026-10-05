@@ -1,0 +1,2638 @@
+{
+  "predict/dependency_order": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/expression_tree": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/hello": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/invoice_report": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/markdown_table": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/permissions": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/shapes": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/statistics": [
+    {
+      "pass": false
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/temperature_table": [
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    }
+  ],
+  "predict/traffic_light": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "explain/active_users": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/assistant": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/concurrent_fetch": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/config": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/currency_tool": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/deadlines": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/dependency_order": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/expression_tree": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/file_tree": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/hello": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/http_service": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/inventory_db": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/invoice": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/invoice_report": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/log_parser": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 3
+    }
+  ],
+  "explain/markdown_table": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/pagination": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/permissions": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/retry": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/sales_report": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "judgement"
+    }
+  ],
+  "explain/semver": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/shapes": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/shipping_rules": [
+    {
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
+    },
+    {
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
+    },
+    {
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
+    },
+    {
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
+    },
+    {
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
+    }
+  ],
+  "explain/stacks": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/statistics": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/temperature_table": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "judgement"
+    }
+  ],
+  "explain/todo_cli": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/traffic_light": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/weather": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/word_count": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 3,
+      "pass": false,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "complete/config": [
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/deadlines": [
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:54: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:54: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:54: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:54: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:54: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    }
+  ],
+  "complete/dependency_order": [
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:36: line is 105 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:36: 'all' is not declared in the standard library sketch or the corpus"
+      ],
+      "pass": false,
+      "rules": [
+        "unknown-function"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:29: 'all' is not declared in the standard library sketch or the corpus",
+        ".scratch-69092.ry:45: 'all' is not declared in the standard library sketch or the corpus",
+        ".scratch-69092.ry:46: condition without 'then'"
+      ],
+      "pass": false,
+      "rules": [
+        "missing-then",
+        "unknown-function"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[expected] expected an expression, found `otherwise`",
+        "[query-shape] a query ends with `collect`, `sum`, `count`, `first`, `any`, `all` or `group by`, found `otherwise`",
+        "[expected] expected an expression, found `collect`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:expected",
+        "check:query-shape"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:27: line is 106 columns (limit 100)",
+        ".scratch-69092.ry:38: line is 105 columns (limit 100)",
+        ".scratch-69092.ry:39: 'all' is not declared in the standard library sketch or the corpus"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width",
+        "unknown-function"
+      ]
+    }
+  ],
+  "complete/expression_tree": [
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[unary-minus] `-` negates only a number literal; write `0 - value` for a computed value"
+      ],
+      "pass": false,
+      "rules": [
+        "check:unary-minus"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/invoice": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[shadowing] `subtotal` is a function of this module"
+      ],
+      "pass": false,
+      "rules": [
+        "check:shadowing"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[shadowing] `subtotal` is a function of this module"
+      ],
+      "pass": false,
+      "rules": [
+        "check:shadowing"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[shadowing] `subtotal` is a function of this module"
+      ],
+      "pass": false,
+      "rules": [
+        "check:shadowing"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[shadowing] `subtotal` is a function of this module"
+      ],
+      "pass": false,
+      "rules": [
+        "check:shadowing"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[shadowing] `subtotal` is a function of this module"
+      ],
+      "pass": false,
+      "rules": [
+        "check:shadowing"
+      ]
+    }
+  ],
+  "complete/invoice_report": [
+    {
+      "lint_problems": [],
+      "pass": false
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:15: line is 104 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:15: line is 104 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "pass": false
+    },
+    {
+      "lint_problems": [],
+      "pass": false
+    }
+  ],
+  "complete/log_parser": [
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:61: line is 107 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[maybe-value] the value may be nothing (it is `maybe Text`) where `Text` is needed",
+        "[maybe-value] the argument may be nothing (it is `maybe Text`) where `Text` is needed"
+      ],
+      "pass": false,
+      "rules": [
+        "check:maybe-value"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[maybe-value] the value may be nothing (it is `maybe Text`) where `Text` is needed",
+        "[maybe-value] the argument may be nothing (it is `maybe Text`) where `Text` is needed"
+      ],
+      "pass": false,
+      "rules": [
+        "check:maybe-value"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:61: line is 107 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[maybe-value] the value may be nothing (it is `maybe Text`) where `Text` is needed",
+        "[maybe-value] the argument may be nothing (it is `maybe Text`) where `Text` is needed"
+      ],
+      "pass": false,
+      "rules": [
+        "check:maybe-value"
+      ]
+    }
+  ],
+  "complete/markdown_table": [
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:52: 'map' is not declared in the standard library sketch or the corpus"
+      ],
+      "pass": false,
+      "rules": [
+        "unknown-function"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:52: line is 104 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    }
+  ],
+  "complete/permissions": [
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/sales_report": [
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/semver": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[missing-otherwise] this call can fail with VersionError",
+        "[missing-otherwise] this call can fail with VersionError",
+        "[missing-otherwise] this call can fail with VersionError"
+      ],
+      "pass": false,
+      "rules": [
+        "check:missing-otherwise"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[missing-otherwise] this call can fail with VersionError",
+        "[missing-otherwise] this call can fail with VersionError",
+        "[missing-otherwise] this call can fail with VersionError"
+      ],
+      "pass": false,
+      "rules": [
+        "check:missing-otherwise"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[missing-otherwise] this call can fail with VersionError",
+        "[missing-otherwise] this call can fail with VersionError",
+        "[missing-otherwise] this call can fail with VersionError"
+      ],
+      "pass": false,
+      "rules": [
+        "check:missing-otherwise"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[missing-otherwise] this call can fail with VersionError",
+        "[missing-otherwise] this call can fail with VersionError",
+        "[missing-otherwise] this call can fail with VersionError"
+      ],
+      "pass": false,
+      "rules": [
+        "check:missing-otherwise"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[missing-otherwise] this call can fail with VersionError",
+        "[missing-otherwise] this call can fail with VersionError",
+        "[missing-otherwise] this call can fail with VersionError"
+      ],
+      "pass": false,
+      "rules": [
+        "check:missing-otherwise"
+      ]
+    }
+  ],
+  "complete/shapes": [
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[unused-binding] the pattern binding `radius` is never used"
+      ],
+      "pass": false,
+      "rules": [
+        "check:unused-binding"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[unknown-method] `Decimal` has no method named `to_decimal`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:unknown-method"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/shipping_rules": [
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:38: line is 110 columns (limit 100)",
+        ".scratch-69092.ry:39: line is 112 columns (limit 100)",
+        ".scratch-69092.ry:40: keyword from another language",
+        ".scratch-69092.ry:41: line is 106 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "foreign-keyword",
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "pass": false
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:38: line is 110 columns (limit 100)",
+        ".scratch-69092.ry:39: line is 112 columns (limit 100)",
+        ".scratch-69092.ry:40: keyword from another language",
+        ".scratch-69092.ry:41: line is 106 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "foreign-keyword",
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": false
+    }
+  ],
+  "complete/stacks": [
+    {
+      "lint_problems": [],
+      "pass": false
+    },
+    {
+      "lint_problems": [],
+      "pass": false
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[maybe-value] this value may be nothing (it is `maybe Popped of Text`) where `?` is needed",
+        "[maybe-value] this value may be nothing (it is `maybe Popped of Text`) where `?` is needed"
+      ],
+      "pass": false,
+      "rules": [
+        "check:maybe-value"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": false
+    }
+  ],
+  "complete/statistics": [
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:25: reserved word 'sorted' used as an identifier",
+        ".scratch-69092.ry:28: 'remainder' is not declared in the standard library sketch or the corpus"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier",
+        "unknown-function"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:25: reserved word 'sorted' used as an identifier",
+        ".scratch-69092.ry:28: 'remainder' is not declared in the standard library sketch or the corpus"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier",
+        "unknown-function"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:25: reserved word 'sorted' used as an identifier",
+        ".scratch-69092.ry:28: 'remainder' is not declared in the standard library sketch or the corpus"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier",
+        "unknown-function"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:28: 'remainder' is not declared in the standard library sketch or the corpus"
+      ],
+      "pass": false,
+      "rules": [
+        "unknown-function"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:28: 'remainder' is not declared in the standard library sketch or the corpus"
+      ],
+      "pass": false,
+      "rules": [
+        "unknown-function"
+      ]
+    }
+  ],
+  "complete/temperature_table": [
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/todo_cli": [
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:27: binding 'first' is never used (heuristic)",
+        ".scratch-69092.ry:27: binding 'rest' is never used (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "unused-binding"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:30: binding 'first' is never used (heuristic)",
+        ".scratch-69092.ry:30: binding 'rest' is never used (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "unused-binding"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[expected] expected an expression, found `first`",
+        "[expected] expected an expression, found `first`",
+        "[hole-syntax] a hole holds exactly one expression",
+        "[expected] expected an expression, found `when`",
+        "[expected] expected an expression, found `first`",
+        "[hole-syntax] a hole holds exactly one expression",
+        "[expected] expected an expression, found `when`",
+        "[expected] expected an expression, found `first`",
+        "[hole-syntax] a hole holds exactly one expression",
+        "[expected] expected an expression, found `when`",
+        "[expected] expected an expression, found `first`",
+        "[hole-syntax] a hole holds exactly one expression",
+        "[expected] expected an expression, found `when`",
+        "[expected] expected an expression, found `first`",
+        "[hole-syntax] a hole holds exactly one expression",
+        "[expected] expected an expression, found `when`",
+        "[expected] expected an expression, found `first`",
+        "[hole-syntax] a hole holds exactly one expression",
+        "[expected] expected an expression, found `when`",
+        "[expected] expected an expression, found `first`",
+        "[hole-syntax] a hole holds exactly one expression",
+        "[expected] expected an expression, found `when`",
+        "[expected] expected an expression, found `first`",
+        "[hole-syntax] a hole holds exactly one expression",
+        "[expected] expected an expression, found `when`",
+        "[expected] expected an expression, found `when`",
+        "[expected] expected an expression, found `when`",
+        "[expected] expected an expression, found `otherwise`",
+        "[expected] expected `function`, `type`, `ability`, `let` or `test` at the top level, found `end`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:expected",
+        "check:hole-syntax"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:27: binding 'first' is never used (heuristic)",
+        ".scratch-69092.ry:27: binding 'rest' is never used (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "unused-binding"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:32: binding 'error' is never used (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "unused-binding"
+      ]
+    }
+  ],
+  "complete/traffic_light": [
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "pass": true
+    }
+  ],
+  "complete/word_count": [
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:24: line is 109 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:24: line is 109 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[expected] expected the end of the line, found `by`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:expected"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:24: line is 109 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[expected] expected the end of the line, found `by`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:expected"
+      ]
+    }
+  ],
+  "write/compound_interest": [
+    {
+      "lint_problems": [
+        ".scratch-69092.ry: block starters 3 vs 'end' 6 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[expected] expected `:`, found `[`",
+        "[single-letter-identifier] single-letter name `a`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:expected",
+        "check:single-letter-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:21: line is 119 columns (limit 100)",
+        ".scratch-69092.ry:22: line is 114 columns (limit 100)",
+        ".scratch-69092.ry:23: line is 105 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:12: line is 112 columns (limit 100)",
+        ".scratch-69092.ry:13: line is 104 columns (limit 100)",
+        ".scratch-69092.ry:14: line is 102 columns (limit 100)",
+        ".scratch-69092.ry:16: line is 125 columns (limit 100)",
+        ".scratch-69092.ry:17: line is 121 columns (limit 100)",
+        ".scratch-69092.ry:18: line is 105 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:12: line is 112 columns (limit 100)",
+        ".scratch-69092.ry:13: line is 104 columns (limit 100)",
+        ".scratch-69092.ry:14: line is 102 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    }
+  ],
+  "write/fizz_words": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:purpose-missing"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:purpose-missing"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:purpose-missing"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:purpose-missing"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:purpose-missing"
+      ]
+    }
+  ],
+  "write/initials": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:purpose-missing"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:purpose-missing"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:purpose-missing"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:purpose-missing"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:purpose-missing"
+      ]
+    }
+  ],
+  "write/letter_grades": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose",
+        "[purpose-missing] the public type `Grade` has no purpose",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[missing-ability] a map key needs `Hash`, which `Grade` does not have",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[missing-ability] a map key needs `Hash`, which `Grade` does not have"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:missing-ability",
+        "check:purpose-missing",
+        "check:type-mismatch"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose",
+        "[purpose-missing] the public type `Grade` has no purpose",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[missing-ability] a map key needs `Hash`, which `Grade` does not have",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[missing-ability] a map key needs `Hash`, which `Grade` does not have",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:missing-ability",
+        "check:purpose-missing",
+        "check:type-mismatch"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:34: line is 101 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose",
+        "[purpose-missing] the public type `Grade` has no purpose",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[missing-ability] a map key needs `Hash`, which `Grade` does not have",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[missing-ability] a map key needs `Hash`, which `Grade` does not have",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:missing-ability",
+        "check:purpose-missing",
+        "check:type-mismatch"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose",
+        "[purpose-missing] the public type `Grade` has no purpose",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[missing-ability] a map key needs `Hash`, which `Grade` does not have",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[type-mismatch] the key is `Text`, but `Grade` is needed",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[missing-ability] a map key needs `Hash`, which `Grade` does not have"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:missing-ability",
+        "check:purpose-missing",
+        "check:type-mismatch"
+      ]
+    }
+  ],
+  "write/low_stock_report": [
+    {
+      "lint_problems": [
+        ".scratch-69092.ry: block starters 3 vs 'end' 4 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:25: line is 109 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry: block starters 3 vs 'end' 4 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry: block starters 3 vs 'end' 4 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry: block starters 3 vs 'end' 4 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance"
+      ]
+    }
+  ],
+  "write/merge_sorted": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose"
+      ],
+      "pass": false,
+      "rules": [
+        "check:purpose-missing"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:10: single-letter identifier 'i'",
+        ".scratch-69092.ry:11: single-letter identifier 'j'"
+      ],
+      "pass": false,
+      "rules": [
+        "single-letter-identifier"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose"
+      ],
+      "pass": false,
+      "rules": [
+        "check:purpose-missing"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:10: reserved word 'sorted' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose"
+      ],
+      "pass": false,
+      "rules": [
+        "check:purpose-missing"
+      ]
+    }
+  ],
+  "write/password_strength": [
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:20: condition without 'then'"
+      ],
+      "pass": false,
+      "rules": [
+        "missing-then"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:15: condition without 'then'"
+      ],
+      "pass": false,
+      "rules": [
+        "missing-then"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose",
+        "[purpose-missing] the public type `Strength` has no purpose",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[unknown-field] `Text` has no field named `length`",
+        "[unknown-field] `Text` has no field named `length`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:purpose-missing",
+        "check:unknown-field"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose",
+        "[purpose-missing] the public type `Strength` has no purpose",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[unknown-field] `Text` has no field named `length`",
+        "[unknown-field] `Text` has no field named `length`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:purpose-missing",
+        "check:unknown-field"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:15: condition without 'then'"
+      ],
+      "pass": false,
+      "rules": [
+        "missing-then"
+      ]
+    }
+  ],
+  "write/request_window": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose",
+        "[immutable-binding] `count_in_window` cannot be changed"
+      ],
+      "pass": false,
+      "rules": [
+        "check:immutable-binding",
+        "check:purpose-missing"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose",
+        "[maybe-value] the right operand may be nothing (it is `maybe Integer`) where `Integer` is needed",
+        "[immutable-binding] `rejected` cannot be changed",
+        "[missing-ability] `is greater than` needs `Compare`, which `maybe Integer` does not have"
+      ],
+      "pass": false,
+      "rules": [
+        "check:immutable-binding",
+        "check:maybe-value",
+        "check:missing-ability",
+        "check:purpose-missing"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose"
+      ],
+      "pass": false,
+      "rules": [
+        "check:purpose-missing"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose"
+      ],
+      "pass": false,
+      "rules": [
+        "check:purpose-missing"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose",
+        "[immutable-binding] `count_in_window` cannot be changed"
+      ],
+      "pass": false,
+      "rules": [
+        "check:immutable-binding",
+        "check:purpose-missing"
+      ]
+    }
+  ],
+  "write/roman_numerals": [
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:17: 'remainder' is not declared in the standard library sketch or the corpus",
+        ".scratch-69092.ry:18: 'remainder' is not declared in the standard library sketch or the corpus",
+        ".scratch-69092.ry:19: 'remainder' is not declared in the standard library sketch or the corpus"
+      ],
+      "pass": false,
+      "rules": [
+        "unknown-function"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:111: line is 114 columns (limit 100)",
+        ".scratch-69092.ry:114: line is 126 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:17: 'remainder' is not declared in the standard library sketch or the corpus",
+        ".scratch-69092.ry:18: 'remainder' is not declared in the standard library sketch or the corpus",
+        ".scratch-69092.ry:19: 'remainder' is not declared in the standard library sketch or the corpus"
+      ],
+      "pass": false,
+      "rules": [
+        "unknown-function"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:21: 'remainder' is not declared in the standard library sketch or the corpus",
+        ".scratch-69092.ry:22: 'remainder' is not declared in the standard library sketch or the corpus",
+        ".scratch-69092.ry:23: 'remainder' is not declared in the standard library sketch or the corpus",
+        ".scratch-69092.ry:27: reserved word 'one' used as an identifier",
+        ".scratch-69092.ry:28: reserved word 'one' used as an identifier",
+        ".scratch-69092.ry:29: reserved word 'one' used as an identifier",
+        ".scratch-69092.ry:113: reserved word 'count' used as an identifier",
+        ".scratch-69092.ry:116: reserved word 'count' used as an identifier",
+        ".scratch-69092.ry:127: reserved word 'one' used as an identifier",
+        ".scratch-69092.ry:130: reserved word 'one' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier",
+        "unknown-function"
+      ]
+    },
+    {
+      "lint_problems": [
+        ".scratch-69092.ry:21: 'remainder' is not declared in the standard library sketch or the corpus",
+        ".scratch-69092.ry:22: 'remainder' is not declared in the standard library sketch or the corpus",
+        ".scratch-69092.ry:23: 'remainder' is not declared in the standard library sketch or the corpus",
+        ".scratch-69092.ry:28: reserved word 'one' used as an identifier",
+        ".scratch-69092.ry:29: reserved word 'one' used as an identifier",
+        ".scratch-69092.ry:30: reserved word 'one' used as an identifier",
+        ".scratch-69092.ry:98: reserved word 'count' used as an identifier",
+        ".scratch-69092.ry:101: reserved word 'count' used as an identifier",
+        ".scratch-69092.ry:114: reserved word 'one' used as an identifier",
+        ".scratch-69092.ry:117: reserved word 'one' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier",
+        "unknown-function"
+      ]
+    }
+  ],
+  "write/title_length_tool": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[example-effects] `title_character_count` has `example:` lines but needs network.http; examples run only on pure functions",
+        "[unknown-type] unknown type `Url`",
+        "[capability-missing] `title_character_count` needs `network.http`, which `example of title_character_count` does not declare",
+        "[argument-name] a call with one argument does not name it",
+        "[unknown-type] unknown type `Url`",
+        "[error-not-declared] `title_character_count` does not declare that it fails with `HttpError`",
+        "[unknown-method] `Response` has no method named `matches`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:capability-missing",
+        "check:error-not-declared",
+        "check:example-effects",
+        "check:unknown-method",
+        "check:unknown-type"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose",
+        "[purpose-missing] the public type `TitleError` has no purpose",
+        "[example-effects] `title_character_count` has `example:` lines but needs network.http; examples run only on pure functions",
+        "[unknown-type] unknown type `Url`",
+        "[capability-missing] `title_character_count` needs `network.http`, which `example of title_character_count` does not declare",
+        "[argument-name] a call with one argument does not name it",
+        "[unknown-type] unknown type `Url`",
+        "[unknown-method] `Response` has no method named `index_of`",
+        "[unknown-method] `Response` has no method named `index_of`",
+        "[unknown-method] `Response` has no method named `drop`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:capability-missing",
+        "check:example-effects",
+        "check:purpose-missing",
+        "check:unknown-method",
+        "check:unknown-type"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose",
+        "[example-effects] `title_character_count` has `example:` lines but needs network.http; examples run only on pure functions",
+        "[unknown-type] unknown type `Url`",
+        "[capability-missing] `title_character_count` needs `network.http`, which `example of title_character_count` does not declare",
+        "[argument-name] a call with one argument does not name it",
+        "[unknown-type] unknown type `Url`",
+        "[error-not-declared] `title_character_count` does not declare that it fails with `HttpError`",
+        "[unknown-method] `Response` has no method named `index_of`",
+        "[unknown-method] `Response` has no method named `index_of`",
+        "[unknown-method] `Response` has no method named `drop`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:capability-missing",
+        "check:error-not-declared",
+        "check:example-effects",
+        "check:purpose-missing",
+        "check:unknown-method",
+        "check:unknown-type"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose",
+        "[example-effects] `title_character_count` has `example:` lines but needs network.http; examples run only on pure functions",
+        "[unknown-type] unknown type `Url`",
+        "[capability-missing] `title_character_count` needs `network.http`, which `example of title_character_count` does not declare",
+        "[argument-name] a call with one argument does not name it",
+        "[unknown-type] unknown type `Url`",
+        "[error-not-declared] `title_character_count` does not declare that it fails with `HttpError`",
+        "[unknown-method] `Response` has no method named `index_of`",
+        "[unknown-method] `Response` has no method named `index_of`",
+        "[unknown-method] `Response` has no method named `drop`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:capability-missing",
+        "check:error-not-declared",
+        "check:example-effects",
+        "check:purpose-missing",
+        "check:unknown-method",
+        "check:unknown-type"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose",
+        "[example-effects] `title_character_count` has `example:` lines but needs network.http; examples run only on pure functions",
+        "[capability-missing] `title_character_count` needs `network.http`, which `example of title_character_count` does not declare",
+        "[argument-name] a call with one argument does not name it",
+        "[type-mismatch] the argument is `Text`, but `Url` is needed",
+        "[error-not-declared] `title_character_count` does not declare that it fails with `HttpError`",
+        "[unknown-method] `Response` has no method named `index_of`",
+        "[unknown-method] `Response` has no method named `index_of`",
+        "[unknown-method] `Response` has no method named `drop`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:capability-missing",
+        "check:error-not-declared",
+        "check:example-effects",
+        "check:purpose-missing",
+        "check:type-mismatch",
+        "check:unknown-method"
+      ]
+    }
+  ]
+}

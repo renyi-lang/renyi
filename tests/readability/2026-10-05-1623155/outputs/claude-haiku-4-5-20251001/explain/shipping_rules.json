@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This module calculates shipping costs and delivery times for an e-commerce shop based on parcel weight, destination region, and order total. It offers free domestic shipping on orders above 50.00 and charges tiered rates for international destinations, with delivery estimates ranging from 2 to 10 business days. The host application calls the public `quote` function at checkout to get pricing and delivery information for each parcel.",
+    "This module calculates shipping costs and delivery times for an e-commerce shop based on parcel weight, destination region, and order total. It offers free domestic shipping on orders above 50.00 and charges tiered rates for international destinations, with delivery estimates ranging from 2 to 10 business days. The host application calls the public `quote` function at checkout to get pricing and delivery information for each parcel.",
+    "This module calculates shipping costs and delivery times for an e-commerce shop based on parcel weight, destination region, and order total. It offers free domestic shipping on orders above 50.00 and charges tiered rates for international destinations, with delivery estimates ranging from 2 to 10 business days. The host application calls the public `quote` function at checkout to get pricing and delivery information for each parcel.",
+    "This module calculates shipping costs and delivery times for an e-commerce shop based on parcel weight, destination region, and order total. It offers free domestic shipping on orders above 50.00 and charges tiered rates for international destinations, with delivery estimates ranging from 2 to 10 business days. The host application calls the public `quote` function at checkout to get pricing and delivery information for each parcel.",
+    "This module calculates shipping costs and delivery times for an e-commerce shop based on parcel weight, destination region, and order total. It offers free domestic shipping on orders above 50.00 and charges tiered rates for international destinations, with delivery estimates ranging from 2 to 10 business days. The host application calls the public `quote` function at checkout to get pricing and delivery information for each parcel."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program is a simple greeting application that prints a personalized hello message to the console. It reads the first command-line argument provided by the user and uses it as a name in the greeting; if no argument is given, it defaults to greeting \"world\". You can run it with or without a name parameter to see different greetings.",
+    "This program is a simple greeting application that prints a personalized hello message. It reads the first command-line argument provided by the user and uses it as a name in the greeting; if no argument is given, it defaults to greeting \"world\". When run, it outputs \"Hello, [name]!\" to the console.",
+    "This program is a simple greeting application that prints a personalized hello message to the console. It reads the first command-line argument provided by the user and uses it as a name in the greeting; if no argument is given, it defaults to greeting \"world\". You can run it with or without a name parameter to see different greetings.",
+    "This program is a simple greeting application that prints a personalized hello message. It reads the first command-line argument provided by the user and uses it as a name in the greeting; if no argument is given, it defaults to greeting \"world\". When run, it outputs \"Hello, [name]!\" to the console.",
+    "This program is a simple greeting application that prints a personalized hello message to the console. It reads the first command-line argument provided by the user and uses it as a name in the greeting; if no argument is given, it defaults to greeting \"world\". You can run it with or without a name parameter to see a customized or generic greeting."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

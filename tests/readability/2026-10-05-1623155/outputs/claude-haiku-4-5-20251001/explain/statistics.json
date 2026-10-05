@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program computes and displays three statistical measures—mean, median, and standard deviation—for floating-point numbers provided as command-line arguments. It skips any arguments that cannot be parsed as numbers and reports \"no data\" if the input list is empty. The results are printed to the console, rounded to three decimal places for readability.",
+    "This program computes and displays three statistical measures—mean, median, and standard deviation—for floating-point numbers provided as command-line arguments. It skips any arguments that cannot be parsed as numbers and reports \"no data\" if the input list is empty. The results are printed to the console, rounded to three decimal places for readability.",
+    "This program computes and displays three statistical measures—mean, median, and standard deviation—for floating-point numbers provided as command-line arguments. It skips any arguments that cannot be parsed as numbers and reports \"no data\" if the input list is empty. The results are printed to the console, rounded to three decimal places for readability.",
+    "This program computes and displays three statistical measures—mean, median, and standard deviation—for floating-point numbers provided as command-line arguments. It skips any arguments that cannot be parsed as numbers and reports \"no data\" if the input list is empty. The results are printed to the console, rounded to three decimal places for readability.",
+    "This program computes and displays three statistical measures—mean, median, and standard deviation—for floating-point numbers provided as command-line arguments. It skips any arguments that cannot be parsed as numbers and reports \"no data\" if the input list is empty. The results are printed to the console, rounded to three decimal places for readability."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

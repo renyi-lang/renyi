@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program reads the command-line arguments, keeps only the ones that can be parsed as floating-point numbers, and prints the mean, median, and population standard deviation of those numbers. If an argument is not numeric, it reports that it is skipping it and continues. If there are no valid numbers, each statistic is reported as “no data.”",
+    "This program reads the command-line arguments, keeps only those that can be parsed as floating-point numbers, and prints the mean, median, and population standard deviation of the valid numbers. If an argument is not numeric, it reports that it is being skipped rather than stopping. The helper functions are reusable and return nothing for empty input, so the tool is safe to run on mixed or empty argument lists.",
+    "This program reads the command-line arguments, keeps only the ones that can be parsed as floating-point numbers, and prints the mean, median, and population standard deviation of those numbers. If an argument is not numeric, it reports that it is being skipped. If there are no valid numbers, each statistic is shown as “no data.”",
+    "This program reads the command-line arguments, keeps only the ones that can be parsed as floating-point numbers, and prints the mean, median, and population standard deviation of those numbers. If an input list is empty, each statistic is reported as “no data,” and non-numeric arguments are skipped with a message. It is useful as a simple command-line statistics tool when you want quick summaries without preprocessing your input.",
+    "This program reads the command-line arguments, keeps only those that can be parsed as floating-point numbers, and prints the mean, median, and population standard deviation of the valid numbers. If an argument is not numeric, it reports that it is being skipped instead of stopping. The helper functions also return nothing for empty input, so the output clearly says “no data” when there are no usable numbers."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

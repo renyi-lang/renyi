@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "a circle of radius 1.5 with area 7.07\na 2 by 3 rectangle with area 6.00\na point with area 0.00\nlargest: a circle of radius 1.5 with area 7.07",
+    "a circle of radius 1.5 with area 7.07\na 2 by 3 rectangle with area 6.00\na point with area 0.00\nlargest: a circle of radius 1.5 with area 7.07",
+    "a circle of radius 1.5 with area 7.07\na 2 by 3 rectangle with area 6.00\na point with area 0.00\nlargest: a circle of radius 1.5 with area 7.07",
+    "a circle of radius 1.5 with area 7.07\na 2 by 3 rectangle with area 6.00\na point with area 0.00\nlargest: a circle of radius 1.5 with area 7.07",
+    "a circle of radius 1.5 with area 7.07\na 2 by 3 rectangle with area 6.00\na point with area 0.00\nlargest: a circle of radius 1.5 with area 7.07"
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

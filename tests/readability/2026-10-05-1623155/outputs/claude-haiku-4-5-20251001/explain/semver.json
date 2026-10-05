@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This module parses, formats, and compares semantic version numbers in the standard \"major.minor.patch\" format. It provides functions to parse version strings, check whether one version is compatible with another (same major version and not older), and find the greatest version in a list. The implementation includes validation to ensure each component is a non-negative integer and rejects malformed input with descriptive error messages.",
+    "This module parses, formats, and compares semantic version numbers in the standard \"major.minor.patch\" format. It provides functions to parse version strings, check whether one version can substitute for another (same major version, not older), and find the greatest version in a list. The implementation includes validation to ensure each component is a non-negative integer and rejects malformed input with specific error messages.",
+    "This module parses, formats, and compares semantic version numbers in the standard \"major.minor.patch\" format. It provides functions to parse version strings, check whether one version can substitute for another (same major version, not older), and find the greatest version in a list. The implementation includes validation to ensure each component is a non-negative integer and rejects malformed input with specific error messages.",
+    "This module parses, formats, and compares semantic version numbers in the standard \"major.minor.patch\" format. It provides functions to parse version strings, check whether one version can substitute for another (same major version, not older), and find the greatest version in a list. The implementation includes validation to ensure each component is a non-negative integer and rejects malformed input with specific error messages.",
+    "This module provides tools for working with semantic version numbers in the format \"major.minor.patch\". It can parse version strings into structured data, compare versions to determine compatibility (checking if a candidate version can substitute for a required one), and find the latest version from a list. The module includes validation to ensure version strings have exactly three numeric parts and provides detailed error messages when parsing fails."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

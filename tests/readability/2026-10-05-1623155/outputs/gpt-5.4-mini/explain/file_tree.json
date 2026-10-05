@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program prints a directory tree starting from a path given on the command line, or the current directory if none is provided. For each file and folder, it shows the name and the total size in bytes, with folder sizes computed recursively from everything inside them. It is useful if you want a simple text-based disk-usage tree, but it depends on filesystem access and console output.",
+    "This program prints a directory tree starting from a path given on the command line, or the current directory if no path is provided. For each file and folder, it shows the name and the total size in bytes, with folder sizes computed recursively from everything inside them. It is useful if you want a simple text-based disk-usage view, but it depends on filesystem access and console output.",
+    "This program prints a directory tree starting from a path given on the command line, or the current directory if no path is provided. For each file and folder, it shows the name and total size in bytes, with folder sizes computed recursively from all contents. It is useful if you want a simple text-based disk-usage tree, but it depends on filesystem access and console output and will fail if it cannot read the directory.",
+    "This program prints a directory tree starting from a path given on the command line, or the current directory if none is provided. For each file and folder, it shows the name and total size in bytes, with folder sizes computed recursively from everything inside them. It is useful if you want a simple text-based disk-usage tree, but it depends on filesystem access and will fail if it cannot read the target path.",
+    "This program prints a directory tree starting from a path given on the command line, or the current directory if none is provided. For each file or folder, it shows the name and total size in bytes, and it recursively lists subdirectories in name order with indentation to show depth. It is useful if you want a simple size-aware tree view, but it depends on filesystem access and will fail if it cannot inspect or list a path."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

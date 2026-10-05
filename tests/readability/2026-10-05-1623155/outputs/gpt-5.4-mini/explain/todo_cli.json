@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This is a simple command-line to-do list tool that stores tasks in a text file named `todo.txt`. It supports adding a task, marking a task done by removing it from the list, showing the current tasks, and printing a usage message for anything unrecognized. It is lightweight and easy to understand, but it has no task metadata, no persistence beyond plain text, and no safeguards against invalid delete positions beyond falling back to help in some cases.",
+    "This is a simple command-line to-do list app that stores tasks in a text file named `todo.txt`. It supports adding a task, marking a task done by removing it from the list, showing all current tasks, and printing a usage message for anything unrecognized. It is lightweight and easy to understand, but it has no task metadata, no persistence beyond the plain text file, and “done” deletes items rather than tracking completion.",
+    "This is a simple command-line to-do list app that stores tasks in a text file named `todo.txt`. It supports adding a task, marking a task done by removing it from the list, showing the current tasks, and printing a usage message for anything unrecognized. It is lightweight and easy to understand, but it has no task metadata, no persistence beyond a plain text file, and no safeguards against invalid delete positions beyond what the language/runtime may reject.",
+    "This is a simple command-line to-do list app that stores tasks in a text file named `todo.txt`. It supports adding a task, marking a task done by removing it from the list, showing the current tasks, or printing usage help for anything unrecognized. It is lightweight and easy to understand, but it has no task metadata, no persistence beyond a plain text file, and no safeguards against invalid “done” positions beyond basic parsing.",
+    "This is a simple command-line to-do list app that stores tasks in a text file named `todo.txt`. It supports adding a task, marking a task done by its 1-based position, showing the current list, or printing a usage message for anything unrecognized. It is lightweight and easy to understand, but it only handles plain text tasks and has no safeguards for things like duplicate entries or invalid “done” positions beyond falling back to help or letting file operations fail."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

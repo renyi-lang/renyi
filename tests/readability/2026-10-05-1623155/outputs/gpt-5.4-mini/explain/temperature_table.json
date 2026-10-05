@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program prints a simple Celsius-to-Fahrenheit conversion table, with a header and rows for temperatures from -10 to 40 in steps of 10. It also provides a reusable conversion function that turns any Celsius decimal into Fahrenheit using the standard formula. Use it if you want a small, console-only utility for displaying temperature conversions; it does not read input or save anything.",
+    "This program prints a simple Celsius-to-Fahrenheit conversion table, with headings and rows from -10 to 40 in steps of 10. It also provides a reusable conversion function that turns any Celsius decimal into Fahrenheit using the standard formula. Use it if you want a tiny, console-only utility for displaying temperature conversions; it does not read input or do anything beyond printing.",
+    "This program prints a simple Celsius-to-Fahrenheit conversion table, with a header and rows for temperatures from -10 to 40 in steps of 10. It also provides a reusable conversion function that turns any Celsius decimal into Fahrenheit using the standard formula. It is useful if you want a tiny console utility for displaying temperature conversions, but it does not read input or offer any customization.",
+    "This program prints a small Celsius-to-Fahrenheit conversion table to the console, covering temperatures from -10 to 40 in steps of 10. It also provides a reusable conversion function that turns any Celsius decimal into Fahrenheit using the standard formula. It’s useful if you want a simple, dependency-light table printer or a basic temperature conversion helper.",
+    "This program prints a simple Celsius-to-Fahrenheit conversion table, showing values from -10 to 40 in steps of 10. It also provides a reusable conversion function that turns any Celsius decimal into Fahrenheit. Use it if you want a tiny, straightforward temperature table generator or a basic conversion helper."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

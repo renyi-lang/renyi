@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This module handles semantic versions with three nonnegative numeric parts: major, minor, and patch. It can parse version text, print versions back to text, compare them, check whether one version satisfies another by being in the same major line and not older, and find the newest version in a list. It rejects malformed input with clear errors for the wrong number of parts or non-numeric parts.",
+    "This module handles semantic versions with three nonnegative numeric parts: major, minor, and patch. It can parse version text, print versions back to text, compare them in the usual order, check whether one version satisfies another by having the same major and being at least as new, and find the latest version in a list. It rejects malformed input with clear errors for the wrong number of parts or non-numeric parts.",
+    "This module handles semantic versions with three nonnegative numeric parts: major, minor, and patch. It can parse version text, format versions back to text, compare them, check whether one version satisfies another by having the same major and being at least as new, and find the latest version in a list. It rejects malformed input with clear errors for the wrong number of parts or non-numeric parts.",
+    "This module handles semantic versions with three nonnegative numeric parts: major, minor, and patch. It can parse version text, print versions back to text, compare versions in the usual order, check whether one version satisfies another by matching the major version and being at least as new, and find the newest version in a list. It rejects malformed input with clear errors for the wrong number of parts or non-numeric parts.",
+    "This module handles semantic versions with three nonnegative numeric parts: it can parse them from text, print them back out, compare them in major/minor/patch order, and find the newest version in a list. It rejects malformed input with clear errors for the wrong number of parts or non-numeric parts. If you need simple semver handling without pre-release or build metadata, it looks small and focused."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

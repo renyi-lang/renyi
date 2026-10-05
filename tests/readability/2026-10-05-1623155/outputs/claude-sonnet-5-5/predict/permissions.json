@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "missing: posts:publish\nshared: posts:read",
+    "missing: posts:publish\nshared: posts:read",
+    "missing: posts:publish\nshared: posts:read",
+    "missing: posts:publish\nshared: posts:read",
+    "missing: posts:publish\nshared: posts:read"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null
+}

@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program reads a CSV file of sales data, validates each row, and produces a summary report grouped by region. It calculates the total sales amount for each region, prints them to the console in descending order, and writes the results to an output CSV file. The program handles errors gracefully, reporting issues like missing fields, invalid numbers, or file access problems.",
+    "This program reads a CSV file of sales data, validates each row, and produces a summary report grouped by region. It calculates the total sales amount for each region, prints them to the console in descending order, and writes the results to an output CSV file. The program handles errors gracefully, reporting issues like missing fields, invalid numbers, or file access problems.",
+    "This program reads a CSV file of sales data, validates each row, and produces a summary report grouped by region. It calculates the total sales amount for each region, prints them to the console in descending order, and writes the results to an output CSV file. The program handles errors gracefully, reporting issues like missing fields, invalid numbers, or file access problems.",
+    "This program reads a CSV file of sales data, validates each row, and produces a summary report grouped by region. It calculates the total sales amount for each region, prints them to the console in descending order, and writes the results to an output CSV file. The program handles errors gracefully, reporting issues like missing fields, invalid numbers, or file access problems.",
+    "This program reads a CSV file of sales data, validates each row, and produces a summary report grouped by region. It calculates the total sales amount for each region, prints them to the console in descending order, and writes the results to an output CSV file. The program handles errors gracefully, reporting issues like missing fields, invalid numbers, or file access problems."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

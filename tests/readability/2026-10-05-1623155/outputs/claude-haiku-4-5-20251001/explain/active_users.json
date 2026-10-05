@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program reads a JSON file containing user accounts, filters for active users who are at least 18 years old, and outputs their email addresses sorted by name. It validates that email addresses match a basic format and provides a count of matching users at the end. The program is designed to be run from the command line and will report errors if the file cannot be read or the JSON is malformed.",
+    "This program reads a JSON file containing user accounts, filters for active users who are at least 18 years old, and outputs their email addresses sorted by name. It validates that email addresses match a basic format and provides a count of matching users at the end. The program is designed to be run from the command line and will report errors if the file cannot be read or the JSON is malformed.",
+    "This program reads a JSON file containing user accounts, filters for active users who are at least 18 years old, and outputs their email addresses sorted by name. It validates that email addresses match a basic format and provides a count of matching users at the end. The program is designed to be run from the command line and will report errors if the file cannot be read or the JSON is malformed.",
+    "This program reads a JSON file containing user accounts, filters for active users who are at least 18 years old, and outputs their email addresses sorted by name. It validates that email addresses match a basic format and provides a count of matching users at the end. The program is designed to be run from the command line and will report errors if the file cannot be read or the JSON is malformed.",
+    "This program reads a JSON file containing user accounts, filters for active users who are at least 18 years old, and outputs their email addresses sorted by name. It validates that email addresses match a basic format and provides a count of matching users at the end. The program is designed to be run from the command line and will report errors if the file cannot be read or the JSON is malformed."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

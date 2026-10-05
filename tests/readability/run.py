@@ -154,9 +154,11 @@ def lint_text(code: str, format_first: bool = False) -> tuple[list[str], list[st
 
     The scratch file lives in the examples directory so that a program's
     imports of other corpus modules resolve (the checker reads imports from
-    the file's own directory).
+    the file's own directory). Its name carries the process id so that
+    several `score` processes can run at once: a shared name let one process
+    read, format or delete another's sample.
     """
-    scratch = EXAMPLES / ".scratch.ry"
+    scratch = EXAMPLES / f".scratch-{os.getpid()}.ry"
     # LF on every platform: Python would otherwise write CRLF on Windows, and
     # the formatter and the checker reject carriage returns
     scratch.write_text(code.replace("\r\n", "\n"), encoding="utf-8", newline="\n")
@@ -164,8 +166,10 @@ def lint_text(code: str, format_first: bool = False) -> tuple[list[str], list[st
         if format_first:
             # layout is the formatter's job; a program that does not parse is left as it is
             subprocess.run([str(renyi_binary()), "format", str(scratch)], capture_output=True)
-        known = lint_examples.declared_functions(
-            [lint_examples.STDLIB_SKETCH, *sorted(EXAMPLES.glob("*.ry")), scratch])
+        # the corpus without any scratch file (another process's sample must
+        # not lend its declarations to this one)
+        corpus = sorted(p for p in EXAMPLES.glob("*.ry") if not p.name.startswith("."))
+        known = lint_examples.declared_functions([lint_examples.STDLIB_SKETCH, *corpus, scratch])
         problems = lint_examples.lint_file(scratch, known)
         if problems:
             return problems, []

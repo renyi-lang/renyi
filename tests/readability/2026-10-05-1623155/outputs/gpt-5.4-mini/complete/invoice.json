@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "```renyi\npublic function total(invoice: Invoice) returns Decimal\n  purpose: Subtotal after the percentage discount, rounded to cents.\n  see also: subtotal\n\n  let subtotal be subtotal(invoice)\n  let discount be subtotal * invoice.discount_percent / 100\n  return (subtotal - discount).rounded(2)\nend\n```",
+    "```renyi\npublic function total(invoice: Invoice) returns Decimal\n  purpose: Subtotal after the percentage discount, rounded to cents.\n  see also: subtotal\n\n  let subtotal be subtotal(invoice)\n  let discount be subtotal * invoice.discount_percent / 100\n  return (subtotal - discount).rounded(2)\nend\n```",
+    "```renyi\npublic function total(invoice: Invoice) returns Decimal\n  purpose: Subtotal after the percentage discount, rounded to cents.\n  see also: subtotal\n\n  let subtotal be subtotal(invoice)\n  let discount be subtotal * invoice.discount_percent / 100.to_decimal()\n  return (subtotal - discount).rounded(2)\nend\n```",
+    "```renyi\npublic function total(invoice: Invoice) returns Decimal\n  purpose: Subtotal after the percentage discount, rounded to cents.\n  see also: subtotal\n\n  let subtotal be subtotal(invoice)\n  let discount be subtotal * invoice.discount_percent / 100\n  return (subtotal - discount).rounded(2)\nend\n```",
+    "```renyi\npublic function total(invoice: Invoice) returns Decimal\n  purpose: Subtotal after the percentage discount, rounded to cents.\n  see also: subtotal\n\n  let subtotal be subtotal(invoice)\n  let discount be subtotal * invoice.discount_percent / 100\n  return (subtotal - discount).rounded(2)\nend\n```"
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

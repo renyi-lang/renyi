@@ -1,0 +1,283 @@
+{
+  "complete/config.0": {
+    "verdict": true,
+    "reason": "default_config returns Config(port: Port(8080), workers: 4, log_level: Normal), so the only example `default_config().port is Port(8080)` holds, workers 4 satisfies the 1..64 refinement, and a fixed fallback configuration is what the purpose asks for.",
+    "packet": "complete-config-2e21cb7dd1"
+  },
+  "complete/config.1": {
+    "verdict": true,
+    "reason": "default_config returns Config(port: Port(8080), workers: 4, log_level: Normal), so the only example `default_config().port is Port(8080)` holds, workers 4 satisfies the 1..64 refinement, and a fixed fallback configuration is what the purpose asks for.",
+    "packet": "complete-config-2e21cb7dd1"
+  },
+  "complete/config.2": {
+    "verdict": true,
+    "reason": "default_config returns Config(port: Port(8080), workers: 4, log_level: Normal), so the only example `default_config().port is Port(8080)` holds, workers 4 satisfies the 1..64 refinement, and a fixed fallback configuration is what the purpose asks for.",
+    "packet": "complete-config-2e21cb7dd1"
+  },
+  "complete/config.3": {
+    "verdict": true,
+    "reason": "default_config returns Config(port: Port(8080), workers: 4, log_level: Normal), so the only example `default_config().port is Port(8080)` holds, workers 4 satisfies the 1..64 refinement, and a fixed fallback configuration is what the purpose asks for.",
+    "packet": "complete-config-2e21cb7dd1"
+  },
+  "complete/config.4": {
+    "verdict": true,
+    "reason": "default_config returns Config(port: Port(8080), workers: 4, log_level: Normal), so the only example `default_config().port is Port(8080)` holds, workers 4 satisfies the 1..64 refinement, and a fixed fallback configuration is what the purpose asks for.",
+    "packet": "complete-config-2e21cb7dd1"
+  },
+  "complete/expression_tree.0": {
+    "verdict": true,
+    "reason": "All three examples hold: Number(value: 4) evaluates to 4, Add(1, 2) to 1 + 2 = 3, and Negate(Multiply(2, 3)) to 0 - 6 = -6, and the match recurses over every variant as the purpose requires.",
+    "packet": "complete-expression_tree-af62d55fd7"
+  },
+  "complete/expression_tree.1": {
+    "verdict": true,
+    "reason": "All three examples hold: Number(value: 4) evaluates to 4, Add(1, 2) to 1 + 2 = 3, and Negate(Multiply(2, 3)) to 0 - 6 = -6, and the match recurses over every variant as the purpose requires.",
+    "packet": "complete-expression_tree-af62d55fd7"
+  },
+  "complete/expression_tree.2": {
+    "verdict": true,
+    "reason": "All three examples hold: Number(value: 4) evaluates to 4, Add(1, 2) to 1 + 2 = 3, and Negate(Multiply(2, 3)) to 0 - 6 = -6, and the match recurses over every variant as the purpose requires.",
+    "packet": "complete-expression_tree-af62d55fd7"
+  },
+  "complete/expression_tree.4": {
+    "verdict": true,
+    "reason": "All three examples hold: Number(value: 4) evaluates to 4, Add(1, 2) to 1 + 2 = 3, and Negate(Multiply(2, 3)) to 0 - 6 = -6, and the match recurses over every variant as the purpose requires.",
+    "packet": "complete-expression_tree-af62d55fd7"
+  },
+  "complete/invoice_report.0": {
+    "verdict": false,
+    "reason": "The example statement_line(Invoice(customer: \"ACME\", lines: [], discount_percent: 0)) is \"ACME          0 lines      0.00\" fails: \"0 lines\".pad_right(12) leaves only 5 spaces before the total where the expected text has 6, and the total is appended as a bare invoice.total(order).to_text() (no pad_left, no rounded(2)), which can never start with a space, so the result differs at the 27th character whatever invoice.total returns.",
+    "packet": "complete-invoice_report-7ac738c098"
+  },
+  "complete/invoice_report.3": {
+    "verdict": false,
+    "reason": "The example statement_line(Invoice(customer: 'ACME', lines: [], discount_percent: 0)) expects the 31-character 'ACME' + 10 spaces + '0 lines' + 6 spaces + '0.00', but pad_right(14) + pad_right(12) + pad_left(6) yields 32 characters with 7 spaces between 'lines' and '0.00'.",
+    "packet": "complete-invoice_report-4bc67eac14"
+  },
+  "complete/invoice_report.4": {
+    "verdict": false,
+    "reason": "The example statement_line(Invoice(customer: 'ACME', lines: [], discount_percent: 0)) expects the 31-character 'ACME' + 10 spaces + '0 lines' + 6 spaces + '0.00', but pad_right(14) + pad_right(12) + pad_left(6) yields 32 characters with 7 spaces between 'lines' and '0.00'.",
+    "packet": "complete-invoice_report-4bc67eac14"
+  },
+  "complete/markdown_table.1": {
+    "verdict": true,
+    "reason": "With widths [5, 3] the header, the dash row built from \"-\".repeat(width) and the two body rows render as \"| name  | qty |\", \"| ----- | --- |\", \"| apple | 1   |\", \"| kiwi  | 12  |\" joined by newlines with no trailing newline, exactly the triple-quoted example, and every column is padded to its widest cell as the purpose says.",
+    "packet": "complete-markdown_table-9082160700"
+  },
+  "complete/markdown_table.2": {
+    "verdict": true,
+    "reason": "With widths [5, 3] the render example produces exactly '| name  | qty |', '| ----- | --- |', '| apple | 1   |', '| kiwi  | 12  |' joined by newlines without a trailing newline, matching the triple-quoted expected text.",
+    "packet": "complete-markdown_table-8709e90450"
+  },
+  "complete/markdown_table.3": {
+    "verdict": true,
+    "reason": "With widths [5, 3] the header, dash row and body rows render as '| name  | qty |', '| ----- | --- |', '| apple | 1   |', '| kiwi  | 12  |' joined by line breaks with no trailing newline, exactly the example's multi-line text.",
+    "packet": "complete-markdown_table-4bd03822bc"
+  },
+  "complete/permissions.0": {
+    "verdict": true,
+    "reason": "The example holds because granted_by gives {orders:read} and {orders:read, orders:write}.difference({orders:read}) is {orders:write}, and required minus the union of all granted sets is exactly the required permissions no role grants.",
+    "packet": "complete-permissions-9c12c43bdc"
+  },
+  "complete/permissions.1": {
+    "verdict": true,
+    "reason": "The example holds because granted_by gives {orders:read} and {orders:read, orders:write}.difference({orders:read}) is {orders:write}, and required minus the union of all granted sets is exactly the required permissions no role grants.",
+    "packet": "complete-permissions-9c12c43bdc"
+  },
+  "complete/permissions.2": {
+    "verdict": true,
+    "reason": "The example holds because granted_by gives {orders:read} and {orders:read, orders:write}.difference({orders:read}) is {orders:write}, and required minus the union of all granted sets is exactly the required permissions no role grants.",
+    "packet": "complete-permissions-9c12c43bdc"
+  },
+  "complete/permissions.3": {
+    "verdict": true,
+    "reason": "The example holds because granted_by gives {orders:read} and {orders:read, orders:write}.difference({orders:read}) is {orders:write}, and required minus the union of all granted sets is exactly the required permissions no role grants.",
+    "packet": "complete-permissions-9c12c43bdc"
+  },
+  "complete/permissions.4": {
+    "verdict": true,
+    "reason": "The example holds because granted_by gives {orders:read} and {orders:read, orders:write}.difference({orders:read}) is {orders:write}, and required minus the union of all granted sets is exactly the required permissions no role grants.",
+    "packet": "complete-permissions-9c12c43bdc"
+  },
+  "complete/sales_report.0": {
+    "verdict": true,
+    "reason": "totals_by_region([]) returns the empty map {}, and for each sale the region's running total (0 when absent) plus the amount is stored back under the region, which is the per-region sum the purpose asks for.",
+    "packet": "complete-sales_report-b098359718"
+  },
+  "complete/sales_report.1": {
+    "verdict": true,
+    "reason": "totals_by_region([]) returns the empty map {}, and for each sale the region's running total (0 when absent) plus the amount is stored back under the region, which is the per-region sum the purpose asks for.",
+    "packet": "complete-sales_report-b098359718"
+  },
+  "complete/sales_report.2": {
+    "verdict": true,
+    "reason": "totals_by_region([]) returns the empty map {}, and for each sale the region's running total (0 when absent) plus the amount is stored back under the region, which is the per-region sum the purpose asks for.",
+    "packet": "complete-sales_report-b098359718"
+  },
+  "complete/sales_report.3": {
+    "verdict": true,
+    "reason": "totals_by_region([]) returns the empty map {}, and for each sale the region's running total (0 when absent) plus the amount is stored back under the region, which is the per-region sum the purpose asks for.",
+    "packet": "complete-sales_report-b098359718"
+  },
+  "complete/sales_report.4": {
+    "verdict": true,
+    "reason": "totals_by_region([]) returns the empty map {}, and for each sale the region's running total (0 when absent) plus the amount is stored back under the region, which is the per-region sum the purpose asks for.",
+    "packet": "complete-sales_report-b098359718"
+  },
+  "complete/shapes.0": {
+    "verdict": true,
+    "reason": "describe(Point) gives \"a point with area 0.00\" and describe(Rectangle(width: 2, height: 3)) gives \"a 2 by 3 rectangle with area 6.00\" (integer-valued Decimals print as 2 and 3, area 6 rounded to 6.00), and the circle wording the examples leave open (\"a 1.5 circle with area 7.07\") still names the shape and its area as the purpose asks.",
+    "packet": "complete-shapes-81e2581ab2"
+  },
+  "complete/shapes.2": {
+    "verdict": true,
+    "reason": "describe(Point) gives \"a point with area 0.00\" and describe(Rectangle(width: 2, height: 3)) gives \"a 2 by 3 rectangle with area 6.00\" (integer-valued Decimals print as 2 and 3, area 6 rounded to 6.00), and the circle wording the examples leave open (\"a 1.5 circle with area 7.07\") still names the shape and its area as the purpose asks.",
+    "packet": "complete-shapes-81e2581ab2"
+  },
+  "complete/shapes.4": {
+    "verdict": true,
+    "reason": "describe(Point) gives \"a point with area 0.00\" and describe(Rectangle(width: 2, height: 3)) gives \"a 2 by 3 rectangle with area 6.00\" (integer-valued Decimals print as 2 and 3, area 6 rounded to 6.00), and the circle wording the examples leave open (\"a 1.5 circle with area 7.07\") still names the shape and its area as the purpose asks.",
+    "packet": "complete-shapes-81e2581ab2"
+  },
+  "complete/shipping_rules.1": {
+    "verdict": false,
+    "reason": "The second example fails: for 2500 g to Europe weight_steps gives 2 and the body computes 9.50 + 2 * 2.00 = 13.50, but the example requires cost 14.50 (2.50 per step); only the free-shipping example holds.",
+    "packet": "complete-shipping_rules-164dc8bf91"
+  },
+  "complete/shipping_rules.3": {
+    "verdict": true,
+    "reason": "Domestic 500 g with total 60.00 reaches the 50.00 threshold and returns Quote(cost: 0, business_days: 2, free_shipping: true), and Europe 2500 g gives 9.50 + 2 steps * 2.50 = 14.50 with 5 days and no free shipping, so both examples hold (the 2.50 per-step price is the one the Europe example implies).",
+    "packet": "complete-shipping_rules-74c40b49ed"
+  },
+  "complete/shipping_rules.4": {
+    "verdict": false,
+    "reason": "The second example fails: for the 2500 g parcel to Europe the function computes 9.50 + 2 * 2.00 = 13.50, not the expected cost 14.50.",
+    "packet": "complete-shipping_rules-74e13b4b5c"
+  },
+  "complete/stacks.0": {
+    "verdict": false,
+    "reason": "`ignore pop(stack)` throws away the popped copy, so the stack never shrinks and on the first example \"(a[b])\" the closing \")\" still sees \"[\" on top and returns false instead of true (even \"()\" returns false).",
+    "packet": "complete-stacks-9d5a682a30"
+  },
+  "complete/stacks.1": {
+    "verdict": false,
+    "reason": "The example balanced(\"(a[b])\") is true fails: `ignore pop(stack)` discards the popped stack instead of setting stack to its rest, so after \"]\" matches, \"[\" stays on top and the following \")\" makes the function return false (for the same reason \"()\" would be reported unbalanced).",
+    "packet": "complete-stacks-3cc9c0256d"
+  },
+  "complete/stacks.3": {
+    "verdict": true,
+    "reason": "All five examples hold (\"(a[b])\" pushes ( and [ and pops each against its partner down to an empty stack: true; \"(]\" sees ( on top for ]: false; \"((\" leaves two items: false; \"a]\" peeks an empty stack: false; \"\" never loops: true), and both tests pass.",
+    "packet": "complete-stacks-72eeaf3986"
+  },
+  "complete/stacks.4": {
+    "verdict": false,
+    "reason": "`ignore pop(open_brackets)` throws away the popped stack, so the stack never shrinks: in balanced(\"(a[b])\") the \"[\" is still on top when \")\" arrives, ok becomes false and the stack is non-empty, so it returns false where the example requires true (any non-empty balanced text, even \"()\", returns false).",
+    "packet": "complete-stacks-9a3fa4dc34"
+  },
+  "complete/temperature_table.0": {
+    "verdict": true,
+    "reason": "celsius * 9 / 5 + 32 is the correct, exact Decimal conversion: 0 gives 32, 100 gives 900 / 5 + 32 = 212 and -40 gives -360 / 5 + 32 = -40, so all three examples hold.",
+    "packet": "complete-temperature_table-1ccb766fae"
+  },
+  "complete/temperature_table.1": {
+    "verdict": true,
+    "reason": "celsius * 9 / 5 + 32 is the correct, exact Decimal conversion: 0 gives 32, 100 gives 900 / 5 + 32 = 212 and -40 gives -360 / 5 + 32 = -40, so all three examples hold.",
+    "packet": "complete-temperature_table-1ccb766fae"
+  },
+  "complete/temperature_table.2": {
+    "verdict": true,
+    "reason": "celsius * 9 / 5 + 32 is the correct, exact Decimal conversion: 0 gives 32, 100 gives 900 / 5 + 32 = 212 and -40 gives -360 / 5 + 32 = -40, so all three examples hold.",
+    "packet": "complete-temperature_table-1ccb766fae"
+  },
+  "complete/temperature_table.3": {
+    "verdict": true,
+    "reason": "celsius * 9 / 5 + 32 is the correct, exact Decimal conversion: 0 gives 32, 100 gives 900 / 5 + 32 = 212 and -40 gives -360 / 5 + 32 = -40, so all three examples hold.",
+    "packet": "complete-temperature_table-1ccb766fae"
+  },
+  "complete/temperature_table.4": {
+    "verdict": true,
+    "reason": "celsius * 9 / 5 + 32 is the correct, exact Decimal conversion: 0 gives 32, 100 gives 900 / 5 + 32 = 212 and -40 gives -360 / 5 + 32 = -40, so all three examples hold.",
+    "packet": "complete-temperature_table-1ccb766fae"
+  },
+  "complete/traffic_light.0": {
+    "verdict": true,
+    "reason": "All six examples hold (on the timer Red goes to Green, Green to Yellow, Yellow to Red and FlashingRed stays FlashingRed; EmergencyDeclared gives FlashingRed; EmergencyCleared gives Red), and so do run_sequence's examples [Green, Yellow] and [].",
+    "packet": "complete-traffic_light-7de7adc2d0"
+  },
+  "complete/traffic_light.1": {
+    "verdict": true,
+    "reason": "All six next_light examples and both run_sequence examples hold (TimerExpired cycles Red to Green to Yellow to Red and keeps FlashingRed, EmergencyDeclared gives FlashingRed, EmergencyCleared turns FlashingRed into Red), and leaving a non-flashing light unchanged on EmergencyCleared is a reasonable reading of a case the purpose leaves open.",
+    "packet": "complete-traffic_light-8687c48b2c"
+  },
+  "complete/traffic_light.2": {
+    "verdict": true,
+    "reason": "All six next_light examples and both run_sequence examples hold (TimerExpired cycles Red to Green to Yellow to Red and keeps FlashingRed, EmergencyDeclared gives FlashingRed, EmergencyCleared turns FlashingRed into Red), and leaving a non-flashing light unchanged on EmergencyCleared is a reasonable reading of a case the purpose leaves open.",
+    "packet": "complete-traffic_light-8687c48b2c"
+  },
+  "complete/traffic_light.3": {
+    "verdict": true,
+    "reason": "All six next_light examples and both run_sequence examples hold (TimerExpired cycles Red to Green to Yellow to Red and keeps FlashingRed, EmergencyDeclared gives FlashingRed, EmergencyCleared turns FlashingRed into Red), and leaving a non-flashing light unchanged on EmergencyCleared is a reasonable reading of a case the purpose leaves open.",
+    "packet": "complete-traffic_light-8687c48b2c"
+  },
+  "complete/traffic_light.4": {
+    "verdict": true,
+    "reason": "All six examples hold (on the timer Red goes to Green, Green to Yellow, Yellow to Red and FlashingRed stays FlashingRed; EmergencyDeclared gives FlashingRed; EmergencyCleared gives Red), and so do run_sequence's examples [Green, Yellow] and [].",
+    "packet": "complete-traffic_light-7de7adc2d0"
+  },
+  "explain/deadlines.2": {
+    "verdict": 4,
+    "reason": "Line parsing, working days between dates, the window filter, today's date, the hard-coded tasks, the ten-day window and the printed working days left are correct, and 'holiday-aware logic' is indeed absent; the clock and console needs are only implied and the two parse failures are not mentioned."
+  },
+  "explain/sales_report.4": {
+    "verdict": 4,
+    "reason": "Reading and validating the CSV, the totals per region, the descending print, the CSV report and the three failure kinds are correct; the file paths and the data-directory restriction of the filesystem need are not stated."
+  },
+  "explain/shipping_rules.0": {
+    "verdict": 2,
+    "reason": "'2.50 per full kilogram beyond the first' contradicts the program: weight_steps is (grams - 1) quotient 1000, every started kilogram beyond the first (1001 grams is one step, and the program's own example prices 2500 grams to Europe at 9.50 plus 5.00); the rest is correct."
+  },
+  "explain/shipping_rules.1": {
+    "verdict": 2,
+    "reason": "'2.50 for each full kilogram beyond the first' is the same contradiction as .0; the rest, including 'at or above 50.00', is correct."
+  },
+  "explain/shipping_rules.2": {
+    "verdict": 2,
+    "reason": "'2.50 for each full kilogram beyond the first' is the same contradiction as .0; the delivery days and the rest are correct."
+  },
+  "explain/shipping_rules.3": {
+    "verdict": 2,
+    "reason": "'2.50 per full kilogram beyond the first' is the same contradiction as .0; the rest is correct."
+  },
+  "explain/shipping_rules.4": {
+    "verdict": 2,
+    "reason": "'2.50 for each full kilogram beyond the first' is the same contradiction as .0; the rest is correct."
+  },
+  "explain/temperature_table.1": {
+    "verdict": 5,
+    "reason": "The table with its header and rows from -10 to 40 in steps of 10, the reusable conversion, the console-only effect and the absence of input are all correct."
+  },
+  "explain/temperature_table.2": {
+    "verdict": 5,
+    "reason": "Same facts as .1 with 'tiny console utility' stating the effect; all correct."
+  },
+  "explain/temperature_table.3": {
+    "verdict": 5,
+    "reason": "The table printed to the console over -10 to 40 in steps of 10 and the reusable conversion are correct; nothing is wrong."
+  },
+  "explain/temperature_table.4": {
+    "verdict": 4,
+    "reason": "The table over -10 to 40 in steps of 10 and the conversion function are correct; the console need is only implied by 'prints' and the header is not mentioned."
+  },
+  "explain/todo_cli.2": {
+    "verdict": 4,
+    "reason": "The todo.txt file, add, done by removal, show and the usage message are correct; 'no safeguards against invalid delete positions beyond what the language may reject' is true (a non-positive position is rejected by the refinement and prints usage, a too-large one is silently ignored by without_index); the console, environment and filesystem needs and the file-error failure are not stated."
+  },
+  "explain/todo_cli.3": {
+    "verdict": 4,
+    "reason": "Same facts as .2, all correct; the effects and the file-error failure are not stated."
+  },
+  "explain/traffic_light.2": {
+    "verdict": 4,
+    "reason": "The four lights, an emergency forcing FlashingRed, clearing giving Red, the sequence function and the entry point printing one fixed sequence are correct; the timer cycle Red, Green, Yellow is not described and the console need is only implied."
+  }
+}

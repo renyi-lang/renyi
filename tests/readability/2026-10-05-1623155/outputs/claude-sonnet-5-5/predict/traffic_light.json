@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "Start Red.\n1. TimerExpired: Red → Green\n2. TimerExpired: Green → Yellow\n3. EmergencyDeclared: FlashingRed\n4. TimerExpired: FlashingRed stays FlashingRed\n5. EmergencyCleared: Red\n\nThe to_text of a variant is presumably its name.\n\nGreen\nYellow\nFlashingRed\nFlashingRed\nRed",
+    "Start Red.\n1. TimerExpired: Red → Green\n2. TimerExpired: Green → Yellow\n3. EmergencyDeclared: FlashingRed\n4. TimerExpired: FlashingRed stays FlashingRed\n5. EmergencyCleared: Red\n\nAssuming to_text on a variant prints its name:\n\nGreen\nYellow\nFlashingRed\nFlashingRed\nRed",
+    "Starting from Red, the events apply in order:\n\n1. TimerExpired: Red becomes Green.\n2. TimerExpired: Green becomes Yellow.\n3. EmergencyDeclared: the light becomes FlashingRed.\n4. TimerExpired: FlashingRed stays FlashingRed.\n5. EmergencyCleared: the light becomes Red.\n\nThe program assumes `to_text()` on a variant prints its bare name.\n\nGreen\nYellow\nFlashingRed\nFlashingRed\nRed",
+    "Start Red.\n1. TimerExpired: Red → Green\n2. TimerExpired: Green → Yellow\n3. EmergencyDeclared: FlashingRed\n4. TimerExpired: FlashingRed stays FlashingRed\n5. EmergencyCleared: Red\n\nThe to_text of a variant without fields is presumably its name.\n\nGreen\nYellow\nFlashingRed\nFlashingRed\nRed",
+    "Start Red.\n1. TimerExpired: Red → Green\n2. TimerExpired: Green → Yellow\n3. EmergencyDeclared → FlashingRed\n4. TimerExpired: FlashingRed → FlashingRed\n5. EmergencyCleared → Red\n\nGreen\nYellow\nFlashingRed\nFlashingRed\nRed"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null
+}

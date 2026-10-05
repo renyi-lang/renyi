@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "Hello, world!",
+    "Hello, world!",
+    "Hello, world!",
+    "Hello, world!",
+    "Hello, world!"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null
+}

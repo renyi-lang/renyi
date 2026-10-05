@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program fetches all customer records from a paginated API by following cursor links across multiple pages, then groups the customers by country and prints a sorted count of how many customers are in each country. It demonstrates cursor-based pagination handling and data aggregation. The module would be useful if you need to retrieve and analyze customer distribution across countries from an API that returns results in pages.",
+    "This program fetches all customer records from a paginated API by following cursor links across multiple pages, then groups the customers by country and prints a sorted count of how many customers are in each country. It demonstrates cursor-based pagination handling and data aggregation in Renyi. You would use this if you need to retrieve and analyze customer distribution across countries from an API that returns results in pages.",
+    "This program fetches all customer records from a paginated API by following cursor links across multiple pages, then groups the customers by country and prints a sorted count of how many customers are in each country. It demonstrates cursor-based pagination handling and data aggregation in Renyi. Use this if you need a template for consuming paginated APIs and performing basic analytics on the results.",
+    "This program fetches all customer records from a paginated API by following cursor links across multiple pages, then groups the customers by country and prints a sorted count of how many customers are in each country. It demonstrates cursor-based pagination handling and data aggregation. The module would be useful if you need to retrieve and analyze customer distribution across countries from an API that returns results in pages.",
+    "This program fetches all customer records from a paginated API by following cursor links across multiple pages, then groups the customers by country and prints a sorted count of how many customers are in each country. It demonstrates cursor-based pagination handling and data aggregation in Renyi. Use this if you need a template for consuming paginated APIs and performing basic analytics on the results."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

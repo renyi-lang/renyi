@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program downloads multiple web pages in parallel and reports their sizes in characters. It fetches three example sites concurrently, sorts them by size in descending order, and prints each URL with its character count. It then fetches two additional pages from the same domain within a 10-second timeout and prints their combined size.",
+    "This program downloads multiple web pages in parallel and reports their sizes in characters. It fetches three example sites concurrently, sorts them by size in descending order, and prints each URL with its character count. It then fetches two additional pages from the same domain within a 10-second timeout and prints their combined size.",
+    "This program downloads multiple web pages in parallel and reports their sizes in characters. It fetches three example sites concurrently, sorts them by size in descending order, and prints each URL with its character count. It then fetches two additional pages from the same domain within a 10-second timeout and prints their combined size.",
+    "This program downloads multiple web pages in parallel and reports their sizes in characters. It fetches three example sites concurrently, sorts them by size in descending order, and prints each URL with its character count. It then fetches two additional pages from the same domain within a 10-second timeout and prints their combined size.",
+    "This program downloads multiple web pages in parallel and reports their sizes in characters. It fetches three example sites concurrently, sorts them by size in descending order, and prints each URL with its character count. It then fetches two additional pages from the same domain within a 10-second timeout and prints their combined size."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

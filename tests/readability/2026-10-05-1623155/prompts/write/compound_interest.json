@@ -1,0 +1,6 @@
+{
+  "task": "write",
+  "name": "compound_interest",
+  "prompt": "Write a complete Renyi program for the task below. Follow the cheat sheet exactly: no features it does not list. Give every public definition a `purpose:` clause and give pure functions `example:` lines. Answer with the program only, in one code fence.\n\nTask: A command-line program that prints a yearly schedule of a savings balance with compound interest, exact to the cent: starting amount, yearly rate in percent and number of years come from the command line.",
+  "description": "A command-line program that prints a yearly schedule of a savings balance with compound interest, exact to the cent: starting amount, yearly rate in percent and number of years come from the command line."
+}

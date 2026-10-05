@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "```renyi\npublic function total(invoice: Invoice) returns Decimal\n  purpose: Subtotal after the percentage discount, rounded to cents.\n  see also: subtotal\n\n  let sub be subtotal(invoice)\n  let discount_amount be sub * invoice.discount_percent / 100\n  let after_discount be sub - discount_amount\n  return after_discount.rounded()\nend\n```",
+    "```renyi\npublic function total(invoice: Invoice) returns Decimal\n  purpose: Subtotal after the percentage discount, rounded to cents.\n  see also: subtotal\n\n  let sub be subtotal(invoice)\n  let discount_amount be sub * invoice.discount_percent / 100\n  let after_discount be sub - discount_amount\n  return after_discount.rounded()\nend\n```",
+    "```renyi\npublic function total(invoice: Invoice) returns Decimal\n  purpose: Subtotal after the percentage discount, rounded to cents.\n  see also: subtotal\n\n  let sub be subtotal(invoice)\n  let discount_amount be sub * invoice.discount_percent / 100\n  let after_discount be sub - discount_amount\n  return after_discount.rounded()\nend\n```",
+    "```renyi\npublic function total(invoice: Invoice) returns Decimal\n  purpose: Subtotal after the percentage discount, rounded to cents.\n  see also: subtotal\n\n  let sub be subtotal(invoice)\n  let discount_amount be sub * invoice.discount_percent / 100\n  let after_discount be sub - discount_amount\n  return after_discount.rounded()\nend\n```",
+    "```renyi\npublic function total(invoice: Invoice) returns Decimal\n  purpose: Subtotal after the percentage discount, rounded to cents.\n  see also: subtotal\n\n  let sub be subtotal(invoice)\n  let discount_amount be sub * invoice.discount_percent / 100\n  let after_discount be sub - discount_amount\n  return after_discount.rounded()\nend\n```"
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

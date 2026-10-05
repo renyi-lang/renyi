@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program sends a user's question to a remote chat API and prints the model's response. It reads the question from command-line arguments and the API key from an environment variable, then handles errors like missing credentials or network failures. It's a minimal CLI tool for interacting with a chat service over HTTP.",
+    "This program sends a user's question to a remote chat API and prints the model's response. It reads the question from command-line arguments and the API key from an environment variable, then handles errors like missing credentials or network failures. It's a simple command-line interface to interact with a chat model over HTTP.",
+    "This program sends a user's question to a remote chat API and prints the model's response. It reads the question from command-line arguments and the API key from an environment variable, then handles errors like missing credentials or network failures. It's a minimal CLI tool for interacting with a chat service over HTTP.",
+    "This program sends a user's question to a remote chat API and prints the model's response. It reads the question from command-line arguments and the API key from an environment variable, then handles errors like missing credentials or network failures. It's a minimal CLI tool for interacting with a chat service over HTTP.",
+    "This program sends a user's question to a remote chat API and prints the model's response. It reads the question from command-line arguments and the API key from an environment variable, then handles errors like missing credentials or network failures. It's a minimal CLI tool for interacting with a chat service over HTTP."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

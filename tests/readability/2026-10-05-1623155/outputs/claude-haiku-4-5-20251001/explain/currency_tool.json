@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program provides a currency conversion tool that fetches real-time exchange rates from an online API and converts amounts between any two ISO 4217 currency codes. It is published as an agent tool, meaning it can be called by external systems through a standardized interface. The conversion result is rounded to two decimal places (cents) and fails gracefully if the rate service is unavailable or returns an error.",
+    "This program provides a currency conversion tool that fetches real-time exchange rates from an online API and converts amounts between any two ISO 4217 currency codes. It is published as an agent tool, meaning it can be called by external systems through a standardized interface. The conversion result is rounded to two decimal places (cents) and fails gracefully if the rate service is unavailable or doesn't support the requested currency pair.",
+    "This program provides a currency conversion tool that fetches real-time exchange rates from an online API and converts amounts between any two ISO 4217 currency codes. It is published as an agent tool, meaning it can be called by external systems through a standardized interface. The conversion result is rounded to two decimal places (cents) and fails gracefully if the rate service is unavailable or returns an error.",
+    "This program provides a currency conversion tool that fetches real-time exchange rates from an online API and converts amounts between any two ISO 4217 currency codes. It is published as an agent tool, meaning it can be called by external systems through a standardized interface. The conversion result is rounded to two decimal places (cents) and fails gracefully if the rate service is unavailable or returns an error.",
+    "This program provides a currency conversion tool that fetches real-time exchange rates from an online API and converts amounts between any two ISO 4217 currency codes. It is published as an agent tool, meaning it can be called by external systems through a standardized interface. The conversion result is rounded to two decimal places (cents) and fails gracefully if the rate service is unavailable or returns an error."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

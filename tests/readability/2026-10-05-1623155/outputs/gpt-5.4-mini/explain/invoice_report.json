@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program prints a plain-text invoice statement for two sample customers, showing each customer name, the number of line items, and the invoice total in fixed-width columns. It sorts the sample invoices by customer name before printing them, then prints a final grand total across both invoices. The imported invoice module is responsible for calculating each invoice total with its percentage discount, so this program is mainly a reporting/formatting wrapper rather than the billing logic itself.",
+    "This program prints a simple plain-text report for two sample invoices, showing each customer, how many line items they have, and their discounted total in fixed-width columns. It sorts the invoices by customer name before printing, then prints a final grand total for both invoices combined. The imported invoice module provides the data types and the exact cent-rounded total calculations, so this is useful if you want a small reporting entry point rather than invoice math itself.",
+    "This program prints a simple plain-text report for two sample invoices, showing each customer, how many line items they have, and their discounted total in fixed-width columns. It then prints the grand total across both invoices. It is useful if you want a tiny example of formatting invoice data for console output, but it is hard-coded to two sample orders rather than reading real input.",
+    "This program prints a plain-text statement for two sample invoices, showing each customer name, the number of line items, and the invoice total in fixed-width columns. It sorts the invoices by customer name before printing, then prints a final grand total that sums both invoices. The imported invoice module defines the invoice data types and the discount-based total calculation, so this is mainly a reporting wrapper around that logic.",
+    "This program prints a simple plain-text report for two sample invoices, showing each customer, how many line items they have, and their discounted total in fixed-width columns. It then prints the grand total across both invoices. It is useful if you want a tiny example of formatting and reporting invoice data, but it is hard-coded to two sample orders rather than reading real input."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

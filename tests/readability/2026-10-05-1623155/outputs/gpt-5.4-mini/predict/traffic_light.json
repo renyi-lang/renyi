@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "Green\nYellow\nFlashingRed\nFlashingRed\nRed",
+    "Green\nYellow\nFlashingRed\nFlashingRed\nRed",
+    "Green\nYellow\nFlashingRed\nFlashingRed\nRed",
+    "Green\nYellow\nFlashingRed\nFlashingRed\nRed",
+    "Green\nYellow\nFlashingRed\nFlashingRed\nRed"
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This module models invoice lines and invoices with basic validation: quantities must be at least 1, unit prices cannot be negative, and discounts must be between 0 and 100 percent. It provides helpers to compute a single line total, the subtotal before discount, and the final invoice total after applying the percentage discount and rounding to cents. The included tests show that it handles a normal discount correctly and returns zero for an empty invoice.",
+    "This module models invoice lines and invoices with basic validation: each line must have at least one item and a nonnegative unit price, and each invoice has a discount percentage from 0 to 100. It provides helpers to compute a line’s total, the invoice subtotal, and the final total after applying the percentage discount and rounding to the nearest cent. The included tests show that it handles a simple 10% discount correctly and returns zero for an empty invoice.",
+    "This module models invoice lines and invoices, enforcing that quantities are at least 1, unit prices are nonnegative, and discounts stay between 0 and 100 percent. It provides helpers to compute a line’s total, sum all lines into a subtotal, and then apply the discount and round the final invoice total to the nearest cent. The included tests show that it handles a simple percentage discount correctly and returns zero for an empty invoice.",
+    "This module computes invoice amounts from line items, applying a percentage discount and rounding the final total to the nearest cent. It defines validated data types for invoice lines and invoices, plus helper functions for a single line total, the pre-discount subtotal, and the final discounted total. It also includes tests showing that discounts are applied correctly and that an empty invoice totals zero.",
+    "This module models invoice lines and invoices, enforcing that quantities are at least 1, unit prices are nonnegative, and discounts stay between 0 and 100 percent. It provides helpers to compute a line’s total, sum all lines into a subtotal, and then apply the discount and round the final invoice total to the nearest cent. The included tests show that it handles a simple 10% discount correctly and returns zero for an empty invoice."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

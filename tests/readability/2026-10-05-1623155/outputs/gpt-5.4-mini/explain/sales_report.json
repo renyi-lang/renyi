@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program reads a sales CSV file, validates each row into a cleaned `Sale` record, and reports clear errors if rows are missing fields, amounts are invalid, or the file cannot be read. It then totals sales by region, prints the regions in descending order of total amount, and writes the results to `data/report.csv`. It is useful if you want a simple, strict reporting tool for a local sales export, but it only works with the expected CSV columns and requires filesystem and console access.",
+    "This program reads a sales CSV file, validates each row, and turns it into cleaned sales records with region, product, and numeric amount fields. It then totals the amounts by region, prints the regions in descending total order, and writes a CSV report file with those totals. It is useful if you want a simple, strict report generator that fails fast on bad input or file I/O problems.",
+    "This program reads a sales CSV file, validates each row into a cleaned `Sale`, and fails with a structured error if the file is missing, malformed, or has bad data. It then totals sales by region, prints the regions in descending order of total amount, and writes a CSV report to `data/report.csv`. It is useful if you want a simple, strict reporting tool with clear failure reasons, but it only handles one input file format and writes to a fixed output path.",
+    "This program reads a sales CSV file, validates each row, and turns it into cleaned sales records with region, product, and amount fields. It then totals sales by region, prints those totals in descending order, and writes a CSV report file to disk. It is useful if you want a simple regional sales summary with basic input validation, but it depends on local file access and will fail if the CSV is missing, malformed, or unreadable.",
+    "This program reads a sales CSV file, validates each row into a cleaned `Sale` record, and groups the sales by region to compute total revenue per region. It then prints the regions in descending order of total and writes a CSV report file with the same totals. If the input file is missing, malformed, or the report cannot be written, it fails with a structured `ReportError`."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This module provides a retry helper that repeatedly runs a failing action until it succeeds or the attempt limit is reached. After each failure it waits longer than before, with a small random jitter, and if it still never succeeds it fails with a `GaveUp` error that records how many attempts were made and the last error message. It is useful for resilience around flaky operations, but it requires time and randomness effects and only works for actions whose failure can be converted to text.",
+    "This module provides a retry helper that repeatedly runs a failing action until it succeeds or the attempt limit is reached. After each failure it waits longer than before, with a small random jitter, and it records the most recent error message. If all attempts fail, it returns a `GaveUp` error containing how many tries were made and the last failure text.",
+    "This module provides a retry helper that repeatedly runs a failing action until it succeeds or the attempt limit is reached. After each failure it waits longer than before, with a small random jitter, and it records the most recent error message. If all attempts fail, it returns a `GaveUp` failure containing how many attempts were made and the last error text.",
+    "This module provides a retry helper that repeatedly runs a failing action until it succeeds or the attempt limit is reached. After each failure it waits longer, roughly doubling the delay each time and adding a small random jitter to avoid synchronized retries. If it still never succeeds, it fails with a `GaveUp` error that records how many attempts were made and the last error message, so it is useful for resilience but not for actions that must fail fast.",
+    "This module provides a retry helper that repeatedly runs a failing action until it succeeds or the attempt limit is reached. After each failure it waits longer than before, with a small random jitter to avoid synchronized retries, and it requires time and random capabilities. If all attempts fail, it returns a `GaveUp` error containing how many tries were made and the last failure message, so it is useful for resilience around flaky operations."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

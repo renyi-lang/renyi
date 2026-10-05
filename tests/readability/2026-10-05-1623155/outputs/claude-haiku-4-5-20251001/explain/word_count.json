@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program reads a text file and analyzes word frequency, counting how many times each word appears after converting them to lowercase. It displays the ten most frequently occurring words in a formatted table showing the count and word for each entry. You can specify which file to analyze via command-line argument, or it defaults to reading from `data/sample.txt`.",
+    "This program reads a text file (specified as a command-line argument or defaulting to `data/sample.txt`), counts how many times each word appears after converting them to lowercase, and displays the ten most frequently occurring words with their counts in a formatted table. It provides a reusable function for word frequency analysis that could be called from other programs.",
+    "This program reads a text file and analyzes word frequency, counting how many times each word appears after converting them to lowercase. It displays the ten most frequently occurring words in a formatted table showing the count and word for each entry. You can specify which file to analyze via command-line argument, or it defaults to reading from `data/sample.txt`.",
+    "This program reads a text file and analyzes word frequency, counting how many times each word appears after converting them to lowercase. It displays the ten most frequently occurring words in a formatted table showing the count and word for each entry. You can specify which file to analyze via command-line argument, or it defaults to reading from `data/sample.txt`.",
+    "This program reads a text file and analyzes word frequency, counting how many times each word appears after converting them to lowercase. It displays the ten most frequently occurring words in a formatted table showing the count and word for each entry. You can specify which file to analyze via command-line argument, or it defaults to reading from `data/sample.txt`."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

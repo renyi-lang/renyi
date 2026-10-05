@@ -43,7 +43,7 @@ public function quote(parcel: Parcel) returns Quote
 end
 
 public function weight_steps(weight_grams: Integer) returns Integer
-  purpose: How many whole kilograms beyond the first the parcel weighs; each one adds a step.
+  purpose: How many started kilograms beyond the first the parcel weighs; each one adds a step.
   example: weight_steps(500) is 0
   example: weight_steps(1000) is 0
   example: weight_steps(1001) is 1
