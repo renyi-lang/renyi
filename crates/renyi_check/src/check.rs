@@ -2563,15 +2563,19 @@ impl<'w> Checker<'w> {
         let needs = info.needs.clone();
         let is_library = info.is_library;
         let is_method = info.is_method;
-        // a result type that only the context decides (`json.parse`): the VM
-        // needs it, so note the call and record the resolved type at the end
-        let context_only = is_library
+        // a result type that only the context decides (`json.parse`), or the
+        // result of an effectful primitive whose type depends on a parameter
+        // (`random.choice`): the VM decodes a recorded result by it, so note
+        // the call and record the resolved type at the end
+        let records_result = is_library
             && info.returns.as_ref().is_some_and(|r| {
                 type_params.iter().any(|&p| {
-                    mentions_param(r, p) && !info.params.iter().any(|(_, t)| mentions_param(t, p))
+                    mentions_param(r, p)
+                        && (!info.needs.is_empty()
+                            || !info.params.iter().any(|(_, t)| mentions_param(t, p)))
                 })
             });
-        if context_only {
+        if records_result {
             if let Some(returns) = &returns {
                 self.results.push((span, returns.clone()));
             }

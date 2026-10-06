@@ -58,13 +58,18 @@ checker (M2), the project map (`renyi index`) and the first slice of the VM
   `renyi index [--json]` prints the project map: one record per definition
   with its signature, purpose, declared and transitive effects and
   failures, edges, metrics and content hash; `renyi run` checks a program
-  and runs its `main` on the bytecode VM; `renyi test` runs every
-  `example:` line and `test` block. Every example checks cleanly, is in
+  and runs its `main` on the bytecode VM under the grant `main` declares,
+  narrowed by `--deny`, `--allow-host`, `--allow-read`, `--allow-write`
+  and `--at-most`; `renyi record` writes a recording of every effect of a
+  run, `renyi run --replay` re-executes one offline, and `--explain`
+  narrates a run through the `purpose:` clauses it passes; `renyi test`
+  runs every `example:` line and `test` block, a `replays` test from its
+  recording (`--strict`, `--refresh`). Every example checks cleanly, is in
   canonical form, and its examples and tests pass; the ten programs with a
-  reference output print it. The VM's first slice covers the prelude,
-  console, environment, time, random, filesystem, JSON, CSV and regular
+  reference output print it. The VM covers the prelude, console,
+  environment, time, random, filesystem, JSON, CSV and regular
   expressions; `run concurrently` runs its tasks one after the other, and
-  the network, the server, SQLite and recorded runs are not built yet.
+  the network, the server and SQLite are not built yet.
 
 ```
 cargo build
@@ -73,12 +78,16 @@ cargo build
 ./target/debug/renyi format --check examples/*.ry
 ./target/debug/renyi index examples
 ./target/debug/renyi run examples/hello.ry Renyi
+./target/debug/renyi run --explain examples/statistics.ry 2 4 4 4 5 5 7 9
+./target/debug/renyi record --to hello.json examples/hello.ry Renyi
+./target/debug/renyi run --replay hello.json examples/hello.ry
 ./target/debug/renyi test examples/invoice.ry
 cargo test
 ```
 
-Next: the rest of M3 (the recorder and replayer, budgets, the network
-primitives, concurrent tasks), then the MCP server and the semantic diff.
+Next: the rest of M3 (the network, server and SQLite primitives with
+recordings for the corpus, concurrent tasks), then the MCP server and the
+semantic diff.
 
 ## Working on this repository
 

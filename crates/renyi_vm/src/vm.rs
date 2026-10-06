@@ -9,7 +9,7 @@ use std::io::{BufRead, Write};
 use std::rc::Rc;
 
 use indexmap::IndexMap;
-use renyi_check::effects::Capability;
+use renyi_check::effects::{self, Capability};
 use renyi_check::types::Ty;
 use renyi_check::{AbilityId, FunctionId, TypeId};
 use renyi_syntax::ast::BinaryOp;
@@ -17,8 +17,12 @@ use renyi_syntax::ast::BinaryOp;
 use crate::bytecode::{CodeKind, Op};
 use crate::compile::{CodeId, Program};
 use crate::decimal::{Decimal, DecimalError};
+use crate::grant::{self, Counter, Narrowing};
 use crate::integer::Int;
+use crate::natives::json::{self, Json, Naming};
+use crate::natives::time::instant_text;
 use crate::natives::{self, NativeFn};
+use crate::recording::{clip, Call, Outcome, Recording, Replay};
 use crate::types::TypeShape;
 use crate::value::{take_list, take_map, Native, RangeValue, Value};
 
@@ -45,13 +49,29 @@ impl Interrupt {
     }
 }
 
-/// How a program is run: its arguments, its streams and its grant.
+/// How a program is run: its arguments, its streams, what the command line
+/// changes about its grant, and whether the run is recorded, replayed or
+/// narrated.
 pub struct Options {
     pub arguments: Vec<String>,
     pub stdout: Box<dyn Write>,
     pub stderr: Box<dyn Write>,
     pub stdin: Box<dyn BufRead>,
-    pub grant: Vec<Capability>,
+    /// `--deny`, `--allow-*` and `--at-most`.
+    pub narrowing: Narrowing,
+    /// Write a recording of every effect (`renyi record`).
+    pub record: bool,
+    /// Answer every effect from this recording (`renyi run --replay`).
+    pub replay: Option<Recording>,
+    /// The source revision a recording names.
+    pub revision: Option<String>,
+    /// Narrate the run on stderr (`--explain`).
+    pub explain: bool,
+    /// `renyi test --strict`: a recorded call a test never reaches fails it.
+    pub strict: bool,
+    /// `renyi test --refresh NAME`: run this test live and re-record its
+    /// fixture.
+    pub refresh: Option<String>,
 }
 
 impl Default for Options {
@@ -61,7 +81,13 @@ impl Default for Options {
             stdout: Box::new(std::io::stdout()),
             stderr: Box::new(std::io::stderr()),
             stdin: Box::new(std::io::BufReader::new(std::io::stdin())),
-            grant: Vec::new(),
+            narrowing: Narrowing::default(),
+            record: false,
+            replay: None,
+            revision: None,
+            explain: false,
+            strict: false,
+            refresh: None,
         }
     }
 }
@@ -85,7 +111,19 @@ pub struct Vm<'p> {
     pub stderr: Box<dyn Write>,
     pub stdin: Box<dyn BufRead>,
     pub arguments: Vec<String>,
+    /// The effective grant of the run, set by `begin_run`.
     pub grant: Vec<Capability>,
+    narrowing: Narrowing,
+    counters: Vec<Counter>,
+    /// Whether `begin_run` starts a recording.
+    pub record: bool,
+    revision: Option<String>,
+    recording: Option<Recording>,
+    pending_replay: Option<Recording>,
+    replay: Option<Replay>,
+    /// When the run began, in milliseconds since the epoch.
+    started: i64,
+    pub explain: bool,
     /// The context type of the next library call (`Op::ResultType`).
     expected: Option<Ty>,
     pub random_state: u64,
@@ -119,10 +157,443 @@ impl<'p> Vm<'p> {
             stderr: options.stderr,
             stdin: options.stdin,
             arguments: options.arguments,
-            grant: options.grant,
+            grant: Vec::new(),
+            narrowing: options.narrowing,
+            counters: Vec::new(),
+            record: options.record,
+            revision: options.revision,
+            recording: None,
+            pending_replay: options.replay,
+            replay: None,
+            started: natives::now_millis(),
+            explain: options.explain,
             expected: None,
             random_state: seed,
         }
+    }
+
+    // ------------------------------------------------------ grant and record
+
+    /// Start a run under a declared grant: the effective grant with its
+    /// budget counters, the clock, a fresh recording when recording, and
+    /// the replay the options carried, checked against the grant.
+    pub fn begin_run(&mut self, declared: &[Capability], program_name: &str) -> Result<(), String> {
+        let grant = grant::effective(declared, &self.narrowing);
+        self.grant = grant.capabilities;
+        self.counters = grant.counters;
+        self.started = natives::now_millis();
+        self.replay = None;
+        self.recording = self.record.then(|| {
+            Recording::new(
+                program_name,
+                self.revision.clone(),
+                instant_text(self.started),
+                self.grant.iter().map(grant::spell).collect(),
+            )
+        });
+        match self.pending_replay.take() {
+            Some(recording) => self.replay_with(recording),
+            None => Ok(()),
+        }
+    }
+
+    /// Answer every effect of the run from a recording, once each recorded
+    /// call is checked against the grant.
+    pub fn replay_with(&mut self, recording: Recording) -> Result<(), String> {
+        for call in &recording.calls {
+            let capability = grant::parse_capability(&call.capability)
+                .map_err(|detail| format!("the recording's call #{}: {detail}", call.sequence))?;
+            if !effects::covered(&self.grant, &capability, true) {
+                return Err(format!(
+                    "the recording's call #{} uses {}, which the grant {} does not cover",
+                    call.sequence,
+                    call.capability,
+                    self.grant_text()
+                ));
+            }
+        }
+        self.replay = Some(Replay::new(recording));
+        Ok(())
+    }
+
+    /// End a replay: the recorded calls the run never reached, described.
+    pub fn end_replay(&mut self) -> Vec<String> {
+        match self.replay.take() {
+            Some(replay) => replay
+                .unused()
+                .iter()
+                .map(|call| format!("#{} {}", call.sequence, call.describe()))
+                .collect(),
+            None => Vec::new(),
+        }
+    }
+
+    /// The recording of the run so far, ending it.
+    pub fn take_recording(&mut self) -> Option<Recording> {
+        self.recording.take()
+    }
+
+    fn grant_text(&self) -> String {
+        if self.grant.is_empty() {
+            return "(nothing)".to_string();
+        }
+        self.grant
+            .iter()
+            .map(grant::spell)
+            .collect::<Vec<_>>()
+            .join(", ")
+    }
+
+    fn unavailable(&self, function: FunctionId) -> Interrupt {
+        Interrupt::crash(format!(
+            "`{}` is not available in this build of the VM",
+            self.qualified(function)
+        ))
+    }
+
+    /// A library primitive. A pure one runs. One under a capability is
+    /// checked against the grant and the budgets, then runs live and is
+    /// recorded, or is answered from the replay: this is the boundary of
+    /// `06-runtime-guarantees.md` section 4.
+    fn call_native(&mut self, function: FunctionId, args: Vec<Value>) -> Result<Value, Interrupt> {
+        let program = self.program;
+        let native = self.natives.get(function).copied().flatten();
+        let meta = &program.function_metas[function];
+        let Some(effect) = grant::effect_of(meta, &args) else {
+            return match native {
+                Some(native) => native(self, args),
+                None => Err(self.unavailable(function)),
+            };
+        };
+        let expected = self.expected.take();
+        if !effects::covered(&self.grant, &effect, true) {
+            return self.denied(function, &effect);
+        }
+        let arguments = self.encode_arguments(function, &args)?;
+        if self.replay.is_some() {
+            return self.replay_call(function, &effect, arguments, &args, expected);
+        }
+        let at_ms = natives::now_millis() - self.started;
+        if let Some(budget) = self.exhausted(&effect, at_ms) {
+            return self.over_budget(function, &effect, &budget);
+        }
+        let Some(native) = native else {
+            return Err(self.unavailable(function));
+        };
+        let shown_args = self.explain.then(|| args.clone());
+        let result = native(self, args);
+        let duration_ms = natives::now_millis() - self.started - at_ms;
+        let value = match &result {
+            Ok(value) => value.clone(),
+            // an exit is recorded as a call that returned nothing
+            Err(Interrupt::Exit(_)) => Value::Nothing,
+            Err(_) => return result,
+        };
+        if let Some(shown_args) = shown_args {
+            self.narrate_effect(&effect, function, &shown_args, &value, Some(duration_ms));
+        }
+        if self.recording.is_some() {
+            let outcome = self.encode_outcome(&value)?;
+            let primitive = self.qualified(function);
+            if let Some(recording) = &mut self.recording {
+                recording.push(Call {
+                    sequence: 0,
+                    capability: effect.spelling(),
+                    primitive,
+                    arguments,
+                    outcome,
+                    duration_ms: Some(duration_ms),
+                    at_ms,
+                });
+            }
+        }
+        result
+    }
+
+    /// Whether the budgets covering an effect admit a call at `now`; the
+    /// call is counted when they do, and the exhausted budget is named
+    /// when they do not.
+    fn exhausted(&mut self, effect: &Capability, now: i64) -> Option<String> {
+        let mut covering = Vec::new();
+        for (index, counter) in self.counters.iter_mut().enumerate() {
+            if counter.capability.covers(effect, true) {
+                if !counter.fits(now) {
+                    return Some(counter.spelling());
+                }
+                covering.push(index);
+            }
+        }
+        for index in covering {
+            self.counters[index].note(now);
+        }
+        None
+    }
+
+    /// A call outside the grant: the module's error when the primitive can
+    /// fail (decision J11), else a crash.
+    fn denied(&mut self, function: FunctionId, effect: &Capability) -> Result<Value, Interrupt> {
+        let program = self.program;
+        let meta = &program.function_metas[function];
+        let scope = Value::text(effect.scope.clone().unwrap_or_default());
+        match (meta.module.as_str(), meta.fails.is_empty()) {
+            ("std.filesystem", false) => self.fail_variant(
+                "std.filesystem",
+                "FileError",
+                "PermissionDenied",
+                vec![scope],
+            ),
+            ("std.http", false) => {
+                self.fail_variant("std.http", "HttpError", "HostNotAllowed", vec![scope])
+            }
+            _ => Err(Interrupt::crash(format!(
+                "`{}` needs {}, which the grant {} does not allow",
+                self.qualified(function),
+                effect.spelling(),
+                self.grant_text()
+            ))),
+        }
+    }
+
+    /// A call past a budget (decision P2): the module's `OverBudget`, else
+    /// a crash.
+    fn over_budget(
+        &mut self,
+        function: FunctionId,
+        effect: &Capability,
+        budget: &str,
+    ) -> Result<Value, Interrupt> {
+        let program = self.program;
+        let meta = &program.function_metas[function];
+        let scope = Value::text(effect.scope.clone().unwrap_or_default());
+        match (meta.module.as_str(), meta.fails.is_empty()) {
+            ("std.filesystem", false) => {
+                self.fail_variant("std.filesystem", "FileError", "OverBudget", vec![scope])
+            }
+            ("std.http", false) => {
+                self.fail_variant("std.http", "HttpError", "OverBudget", vec![scope])
+            }
+            _ => Err(Interrupt::crash(format!(
+                "`{}` exceeds the budget `{budget}`",
+                self.qualified(function)
+            ))),
+        }
+    }
+
+    fn encode_arguments(
+        &mut self,
+        function: FunctionId,
+        args: &[Value],
+    ) -> Result<Vec<(String, Json)>, Interrupt> {
+        let program = self.program;
+        let meta = &program.function_metas[function];
+        let mut out = Vec::with_capacity(args.len());
+        for (name, value) in meta.params.iter().zip(args) {
+            let json = match value {
+                Value::Function(id) => Json::Text(format!("function {}", self.qualified(*id))),
+                Value::Native(_) => Json::Text(format!("<{}>", value.kind_name())),
+                other => json::encode(self, other, Naming::Exact)?,
+            };
+            out.push((name.clone(), json));
+        }
+        Ok(out)
+    }
+
+    fn encode_outcome(&mut self, value: &Value) -> Result<Outcome, Interrupt> {
+        Ok(match value {
+            Value::Failure(error) => Outcome::Failure(json::encode(self, error, Naming::Exact)?),
+            Value::Native(_) => Outcome::Success(Json::Text(format!("<{}>", value.kind_name()))),
+            other => Outcome::Success(json::encode(self, other, Naming::Exact)?),
+        })
+    }
+
+    /// The recorded answer to a call: the entry with the same primitive and
+    /// arguments, its outcome decoded by the primitive's declared types.
+    fn replay_call(
+        &mut self,
+        function: FunctionId,
+        effect: &Capability,
+        arguments: Vec<(String, Json)>,
+        args: &[Value],
+        expected: Option<Ty>,
+    ) -> Result<Value, Interrupt> {
+        let primitive = self.qualified(function);
+        let replay = self.replay.as_mut().expect("a replay");
+        let index = replay
+            .take(&primitive, &arguments)
+            .map_err(Interrupt::crash)?;
+        let call = replay.recording.calls[index].clone();
+        if let Some(budget) = self.exhausted(effect, call.at_ms) {
+            return Err(Interrupt::crash(format!(
+                "the recording exceeds the budget `{budget}` at call #{}",
+                call.sequence
+            )));
+        }
+        let value = match &call.outcome {
+            Outcome::Success(_) if primitive == "std.environment.exit" => {
+                let code = args.first().and_then(Value::as_i64).unwrap_or(0) as i32;
+                return Err(Interrupt::Exit(code));
+            }
+            Outcome::Success(json) => self.decode_result(function, json, expected)?,
+            Outcome::Failure(json) => Value::failure(self.decode_error(function, json)?),
+        };
+        if self.explain {
+            self.narrate_effect(effect, function, args, &value, None);
+        }
+        Ok(value)
+    }
+
+    fn decode_result(
+        &mut self,
+        function: FunctionId,
+        json: &Json,
+        expected: Option<Ty>,
+    ) -> Result<Value, Interrupt> {
+        let program = self.program;
+        let ty = expected
+            .or_else(|| program.function_metas[function].returns.clone())
+            .unwrap_or(Ty::Unit);
+        match json::decode(self, json, &ty, "$", Naming::Exact)? {
+            Ok(value) => Ok(value),
+            Err(error) => {
+                let shown = self.to_text(&error)?;
+                Err(Interrupt::crash(format!(
+                    "the recorded result of `{}` does not fit its type: {shown}",
+                    self.qualified(function)
+                )))
+            }
+        }
+    }
+
+    fn decode_error(&mut self, function: FunctionId, json: &Json) -> Result<Value, Interrupt> {
+        let program = self.program;
+        let mut reasons = Vec::new();
+        for ty in &program.function_metas[function].fails {
+            match json::decode(self, json, ty, "$", Naming::Exact)? {
+                Ok(value) => return Ok(value),
+                Err(error) => reasons.push(self.to_text(&error)?),
+            }
+        }
+        Err(Interrupt::crash(format!(
+            "the recorded failure of `{}` fits none of its error types: {}",
+            self.qualified(function),
+            reasons.join("; ")
+        )))
+    }
+
+    // ------------------------------------------------------------ narration
+
+    /// How many declared functions are running: the indentation of a
+    /// narrated line.
+    fn function_depth(&self) -> usize {
+        let program = self.program;
+        self.frames
+            .iter()
+            .filter(|frame| program.codes[frame.code].kind == CodeKind::Function)
+            .count()
+    }
+
+    fn narrate(&mut self, depth: usize, line: &str) {
+        let _ = writeln!(self.stderr, "{}{line}", "  ".repeat(depth));
+    }
+
+    fn label(&self, function: FunctionId) -> String {
+        if self.program.main == Some(function) {
+            "main".to_string()
+        } else {
+            self.qualified(function)
+        }
+    }
+
+    fn shown(&mut self, value: &Value) -> String {
+        let text = self.render(value, true).unwrap_or_else(|_| "?".to_string());
+        clip(&text, 100)
+    }
+
+    /// `Purpose. (module.name, param: value)` on entering a declared
+    /// function; a function without a purpose is narrated by its name.
+    fn narrate_entry(&mut self, code: CodeId, base: usize) {
+        let program = self.program;
+        let code = &program.codes[code];
+        let (CodeKind::Function, Some(id)) = (code.kind, code.function) else {
+            return;
+        };
+        let meta = &program.function_metas[id];
+        let depth = self.function_depth() - 1;
+        let head = meta.purpose.clone().unwrap_or_else(|| meta.name.clone());
+        let mut line = format!("{head} ({}", self.label(id));
+        let args = self.stack[base..base + code.params as usize].to_vec();
+        for (name, value) in meta.params.iter().zip(&args) {
+            let shown = self.shown(value);
+            line.push_str(&format!(", {name}: {shown}"));
+        }
+        line.push(')');
+        self.narrate(depth, &line);
+    }
+
+    /// `-> value` on leaving a declared function.
+    fn narrate_exit(&mut self, code: CodeId, value: &Value) {
+        let program = self.program;
+        let code = &program.codes[code];
+        if code.kind != CodeKind::Function || code.function.is_none() {
+            return;
+        }
+        let line = match value {
+            Value::Nothing => return,
+            Value::Failure(error) => format!("-> failed with {}", self.shown(error)),
+            other => format!("-> {}", self.shown(other)),
+        };
+        let depth = self.function_depth() + 1;
+        self.narrate(depth, &line);
+    }
+
+    /// One effect: `console "text"`, or the capability, the primitive with
+    /// its arguments, and the result.
+    fn narrate_effect(
+        &mut self,
+        effect: &Capability,
+        function: FunctionId,
+        args: &[Value],
+        result: &Value,
+        duration_ms: Option<i64>,
+    ) {
+        let program = self.program;
+        let meta = &program.function_metas[function];
+        let depth = self.function_depth();
+        let mut line = match (meta.module.as_str(), meta.name.as_str()) {
+            ("std.console", "print" | "print_error") => {
+                let text = args.first().map(|arg| self.shown(arg)).unwrap_or_default();
+                format!("console {text}")
+            }
+            _ => {
+                let mut line = format!("{} {}(", effect.path.join("."), meta.name);
+                for (index, (name, value)) in meta.params.iter().zip(args).enumerate() {
+                    if index > 0 {
+                        line.push_str(", ");
+                    }
+                    let shown = self.shown(value);
+                    line.push_str(&format!("{name}: {shown}"));
+                }
+                line.push(')');
+                line
+            }
+        };
+        match result {
+            Value::Nothing => {}
+            Value::Failure(error) => {
+                let shown = self.shown(error);
+                line.push_str(&format!(" -> failed with {shown}"));
+            }
+            other => {
+                let shown = self.shown(other);
+                line.push_str(&format!(" -> {shown}"));
+            }
+        }
+        if let Some(ms) = duration_ms {
+            if ms > 0 {
+                line.push_str(&format!(", {ms} ms"));
+            }
+        }
+        self.narrate(depth, &line);
     }
 
     /// The context type recorded for the library call now running.
@@ -150,13 +621,7 @@ impl<'p> Vm<'p> {
         if let Some(&code) = self.program.functions.get(&id) {
             return self.call_code(code, args);
         }
-        if let Some(native) = self.natives.get(id).copied().flatten() {
-            return native(self, args);
-        }
-        Err(Interrupt::crash(format!(
-            "`{}` is not available in this build of the VM",
-            self.qualified(id)
-        )))
+        self.call_native(id, args)
     }
 
     /// Run a code object to its end; the result may be a `Failure`.
@@ -184,6 +649,9 @@ impl<'p> Vm<'p> {
             base,
             handlers: Vec::new(),
         });
+        if self.explain {
+            self.narrate_entry(code, base);
+        }
     }
 
     /// Run until the frame at `entry` (and every frame above it) has
@@ -276,6 +744,9 @@ impl<'p> Vm<'p> {
     fn leave_frame(&mut self, value: Value, entry: usize) -> Result<Option<Value>, Interrupt> {
         let frame = self.frames.pop().expect("a frame");
         self.stack.truncate(frame.base);
+        if self.explain {
+            self.narrate_exit(frame.code, &value);
+        }
         if self.frames.len() < entry {
             return Ok(Some(value));
         }
@@ -666,14 +1137,8 @@ impl<'p> Vm<'p> {
             self.push_frame(code, args);
             return Ok(None);
         }
-        if let Some(native) = self.natives.get(function).copied().flatten() {
-            let value = native(self, args)?;
-            return self.settle(value, entry);
-        }
-        Err(Interrupt::crash(format!(
-            "`{}` is not available in this build of the VM",
-            self.qualified(function)
-        )))
+        let value = self.call_native(function, args)?;
+        self.settle(value, entry)
     }
 
     fn call_ability(

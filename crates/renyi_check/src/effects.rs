@@ -96,8 +96,9 @@ impl Capability {
 }
 
 /// A path prefix contains its sub-paths; a host, a variable or a program
-/// name contains only itself.
-fn scope_contains(path: &[String], granted: &str, wanted: &str) -> bool {
+/// name contains only itself. The runtime uses the same rule for the grant
+/// it narrows and the paths it checks.
+pub fn scope_contains(path: &[String], granted: &str, wanted: &str) -> bool {
     if path.first().map(String::as_str) == Some("filesystem") {
         let granted = granted.trim_end_matches('/');
         wanted == granted || wanted.starts_with(&format!("{granted}/"))

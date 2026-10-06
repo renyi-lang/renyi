@@ -397,6 +397,7 @@ public type FileError is one of
   AlreadyExists(path: Path)
   InvalidEncoding(path: Path)
   Io(path: Path, detail: Text)
+  OverBudget(path: Path)
 end
 
 public function name(self: Path) returns Text
@@ -491,6 +492,7 @@ public type HttpError is one of
   Timeout(url: Url)
   HostNotAllowed(host: Text)
   Status(url: Url, status: Integer, body: Text)
+  OverBudget(host: Text)
 end
 
 public function get(url: Url) returns Response or fails with HttpError needs network.http

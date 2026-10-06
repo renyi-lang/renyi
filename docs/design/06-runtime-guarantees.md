@@ -1,12 +1,15 @@
 # Renyi Runtime Guarantees: Recorded Runs, Budgets and Provenance Guards
 
 Status: design accepted (decisions P1 to P4); syntax in the grammar. The
-VM's first slice (`crates/renyi_vm`, `renyi run`, `renyi test`) runs
-programs without a recorder: `replays` tests are reported as skipped,
-budgets are not counted, and the primitive boundary (section 4) exists as
-the native-call dispatch only; recordings and budgets are the next M3 work,
-guards M4. Date: 2026-10-05. Companion to `02-syntax-sketch.md` sections 11
-and 14.
+VM (`crates/renyi_vm`) implements sections 1 and 2: `renyi record`,
+`renyi run --replay`, `--explain`, `replays` tests with `renyi test
+--strict` and `--refresh`, budgets with `--at-most`, and the scope check of
+section 11 of the syntax sketch, all at one primitive boundary
+(`Vm::call_native`, section 4). Each recorded call also carries `at_ms`,
+its time since the run began, which a replay's budget check uses. The
+network, server and SQLite primitives do not exist yet, so the corpus has
+no recordings of them; guards (section 3) are M4. Date: 2026-10-06.
+Companion to `02-syntax-sketch.md` sections 11 and 14.
 
 The three capabilities in this document are the ones the owner chose as the
 language's signature: each is new as a language feature, each is practical
@@ -27,7 +30,8 @@ record it, count it, or tag the data that flows through it.
 `renyi record program.ry [arguments]` runs the program under the grant its
 `main` declares, exactly as `renyi run` would, and writes a **recording**: a
 JSON document with one entry per primitive call made under a capability,
-in the order the calls completed.
+in the order the calls completed. It goes to `--to FILE`, by default
+`<program>.recording.json` in the working directory.
 
 ```json
 {

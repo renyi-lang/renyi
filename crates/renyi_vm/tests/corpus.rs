@@ -70,7 +70,7 @@ fn run(program: &Program, arguments: &[&str]) -> (RunOutcome, String, String) {
         stdout: Box::new(stdout.clone()),
         stderr: Box::new(stderr.clone()),
         stdin: Box::new(std::io::Cursor::new(Vec::new())),
-        grant: Vec::new(),
+        ..Options::default()
     };
     let outcome = renyi_vm::run_main(program, options);
     (outcome, stdout.text(), stderr.text())

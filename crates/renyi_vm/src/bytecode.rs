@@ -140,6 +140,8 @@ pub struct Code {
     pub name: String,
     pub module: ModuleId,
     pub kind: CodeKind,
+    /// The declared function this is the body of, for narrated runs.
+    pub function: Option<FunctionId>,
     /// Parameters first, then the other locals.
     pub params: u16,
     pub locals: u16,
@@ -155,6 +157,7 @@ impl Code {
             name: name.into(),
             module,
             kind,
+            function: None,
             params: 0,
             locals: 0,
             ops: Vec::new(),

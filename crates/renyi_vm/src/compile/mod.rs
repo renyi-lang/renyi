@@ -74,8 +74,13 @@ pub struct FunctionMeta {
     /// The type of the first parameter as the checker spells it: `Text`,
     /// `List of Item`, `Map of Key to Value`.
     pub receiver: Option<String>,
+    /// The declared result type; a recorded result is decoded by it.
+    pub returns: Option<Ty>,
+    /// The declared error types; a recorded failure is decoded by them.
+    pub fails: Vec<Ty>,
     pub needs: Vec<Capability>,
-    pub fails: bool,
+    /// The `purpose:` clause, for narrated runs.
+    pub purpose: Option<String>,
 }
 
 /// The compiled project.
@@ -204,15 +209,32 @@ pub fn compile_project(checked: &CheckedProject, files: &[SourceFile]) -> Progra
         main: main_module.and_then(|m| world.lookup_function(m, "main")),
     };
     for info in &world.functions {
+        let module = &world.modules[info.module];
+        let purpose = match info.body {
+            BodyLocation::Item(item) => match module.ast.items.get(item) {
+                Some(Item::Function(function)) => function.docs.purpose.clone(),
+                _ => None,
+            },
+            BodyLocation::Implementation(item, index) => match module.ast.items.get(item) {
+                Some(Item::Implementation(implementation)) => implementation
+                    .functions
+                    .get(index)
+                    .and_then(|function| function.docs.purpose.clone()),
+                _ => None,
+            },
+            _ => None,
+        };
         program.function_metas.push(FunctionMeta {
-            module: world.modules[info.module].name.clone(),
+            module: module.name.clone(),
             name: info.name.clone(),
             is_library: info.is_library,
             is_method: info.is_method,
             params: info.params.iter().map(|(n, _)| n.clone()).collect(),
             receiver: info.params.first().map(|(_, ty)| world.show(ty)),
+            returns: info.returns.clone(),
+            fails: info.fails.clone(),
             needs: info.needs.clone(),
-            fails: !info.fails.is_empty(),
+            purpose,
         });
     }
     // constants by name per module, so that bodies can refer to them
@@ -328,7 +350,8 @@ fn compile_function(
         return;
     };
     let refs = ctx.take_refs(module, body);
-    let code = Code::new(function.name.text.clone(), module, CodeKind::Function);
+    let mut code = Code::new(function.name.text.clone(), module, CodeKind::Function);
+    code.function = Some(id);
     let mut compiler = Compiler::new(ctx, module, refs, code);
     for param in &function.params {
         compiler.declare(&param.name.text);

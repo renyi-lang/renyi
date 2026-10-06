@@ -343,7 +343,7 @@ fn write_string(text: &str, out: &mut String) {
 // ------------------------------------------------------------------ naming
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Naming {
+pub enum Naming {
     Exact,
     Camel,
     Kebab,
@@ -387,7 +387,7 @@ impl Naming {
 // ---------------------------------------------------------------- decoding
 
 /// The outcome of decoding: a value, or the `JsonError` to fail with.
-type Decoded = Result<Value, Value>;
+pub type Decoded = Result<Value, Value>;
 
 fn json_error(vm: &Vm, variant: &str, fields: Vec<Value>) -> Result<Decoded, Interrupt> {
     Ok(Err(vm.library_variant(
@@ -420,7 +420,9 @@ fn decimal_of(text: &str) -> Option<Decimal> {
     }
 }
 
-fn decode(
+/// Decode a document into a value of the type, with the derivation rules of
+/// the library sketch; `path` names the position for error messages.
+pub fn decode(
     vm: &mut Vm,
     json: &Json,
     ty: &Ty,
@@ -436,12 +438,27 @@ fn decode(
             return decode(vm, json, inner, path, naming);
         }
         Ty::App(id, args) => (*id, args.clone()),
+        Ty::Unit => {
+            return Ok(match json {
+                Json::Null => Ok(Value::Nothing),
+                _ => return mismatch(vm, path, "null", json),
+            })
+        }
         _ => {
             return Err(crash(
                 "cannot decode JSON into a type the context leaves open",
             ))
         }
     };
+    if id == b.duration {
+        return Ok(match json {
+            Json::Number(text) => match text.parse::<i64>() {
+                Ok(ms) => Ok(Value::Duration(ms)),
+                Err(_) => return mismatch(vm, path, "a Duration in milliseconds", json),
+            },
+            _ => return mismatch(vm, path, "a Duration in milliseconds", json),
+        });
+    }
     if id == b.integer {
         return Ok(match json {
             Json::Number(text) if !text.contains(['.', 'e', 'E']) => match Int::parse(text) {
@@ -680,7 +697,9 @@ fn json_value(vm: &Vm, json: &Json) -> Result<Value, Interrupt> {
 
 // ---------------------------------------------------------------- encoding
 
-fn encode(vm: &mut Vm, value: &Value, naming: Naming) -> Result<Json, Interrupt> {
+/// Encode a value by its shape, with the derivation rules of the library
+/// sketch.
+pub fn encode(vm: &mut Vm, value: &Value, naming: Naming) -> Result<Json, Interrupt> {
     Ok(match value {
         Value::Nothing => Json::Null,
         Value::Boolean(value) => Json::Boolean(*value),
