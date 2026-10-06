@@ -89,7 +89,6 @@ fn definition_from_json(json: &Json) -> Result<Definition, String> {
         purpose: optional_text_field(json, "purpose")?,
         tags: texts_field(json, "tags")?,
         see_also: texts_field(json, "see_also")?,
-        deprecated: optional_text_field(json, "deprecated")?,
         exposed_as_tool: boolean_field(json, "exposed_as_tool")?,
         effects_declared: texts_field(effects, "declared")?,
         effects_transitive: texts_field(effects, "transitive")?,

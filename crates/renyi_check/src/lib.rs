@@ -91,7 +91,9 @@ pub fn check_project(files: &[SourceFile]) -> CheckedProject {
         let id = if parsed.diagnostics.iter().any(Diagnostic::is_error) {
             None
         } else {
-            Some(world.add_module(parsed.module, false))
+            let id = world.add_module(parsed.module, false);
+            world.set_source_lines(id, &file.text);
+            Some(id)
         };
         modules.push(CheckedModule {
             file: index,

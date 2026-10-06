@@ -26,12 +26,16 @@ pub struct ModuleInfo {
     pub imports: HashMap<String, ModuleId>,
     pub exposed_types: HashMap<String, TypeId>,
     pub exposed_abilities: HashMap<String, AbilityId>,
+    /// The byte offset of every line start of the module's file, for the
+    /// body-length rule (decision V5); empty for a library module.
+    pub line_starts: Vec<usize>,
 }
 
 pub struct ConstantInfo {
     pub ty: Ty,
     pub public: bool,
     pub item_index: usize,
+    pub deprecated: Option<String>,
     pub span: Span,
 }
 
@@ -43,6 +47,7 @@ pub struct TypeInfo {
     /// Abilities derived with `can`.
     pub derives: Vec<AbilityId>,
     pub public: bool,
+    pub deprecated: Option<String>,
     pub span: Span,
 }
 
@@ -89,6 +94,10 @@ pub struct FunctionInfo {
     /// implementation item.
     pub body: BodyLocation,
     pub has_examples: bool,
+    /// The text of the `deprecated:` clause (decision C8c).
+    pub deprecated: Option<String>,
+    /// `expose as tool` (decision D6).
+    pub expose_as_tool: bool,
     pub span: Span,
 }
 
@@ -208,6 +217,7 @@ impl World {
             imports: HashMap::new(),
             exposed_types: HashMap::new(),
             exposed_abilities: HashMap::new(),
+            line_starts: Vec::new(),
         };
         if name == "std.prelude" {
             self.prelude = Some(id);
@@ -224,6 +234,7 @@ impl World {
                         kind: TypeKindInfo::Unresolved,
                         derives: Vec::new(),
                         public: def.public,
+                        deprecated: def.docs.deprecated.clone(),
                         span: def.span,
                     });
                     if info.types.insert(def.name.text.clone(), type_id).is_some() {
@@ -269,6 +280,19 @@ impl World {
 
     pub fn module_id(&self, name: &str) -> Option<ModuleId> {
         self.modules.iter().position(|m| m.name == name)
+    }
+
+    /// Remember where the lines of a module's file start, so that the body
+    /// checker can count lines.
+    pub fn set_source_lines(&mut self, id: ModuleId, text: &str) {
+        let mut starts = vec![0];
+        starts.extend(
+            text.bytes()
+                .enumerate()
+                .filter(|(_, byte)| *byte == b'\n')
+                .map(|(offset, _)| offset + 1),
+        );
+        self.modules[id].line_starts = starts;
     }
 
     /// Resolve imports, type details, abilities, implementations, functions
@@ -344,6 +368,20 @@ impl World {
     ) {
         self.diagnostics
             .push((module, Diagnostic::error(code, message, span).with_fix(fix)));
+    }
+
+    fn warning_with_fix(
+        &mut self,
+        module: ModuleId,
+        code: &'static str,
+        message: String,
+        span: Span,
+        fix: String,
+    ) {
+        self.diagnostics.push((
+            module,
+            Diagnostic::warning(code, message, span).with_fix(fix),
+        ));
     }
 
     fn resolve_imports(&mut self, id: ModuleId) {
@@ -956,6 +994,7 @@ impl World {
                             ty,
                             public: constant.public,
                             item_index: index,
+                            deprecated: constant.docs.deprecated.clone(),
                             span: constant.span,
                         },
                     );
@@ -1029,6 +1068,20 @@ impl World {
             .collect();
         let needs: Vec<Capability> = function.needs.iter().map(Capability::from_ast).collect();
         for (capability, syntax) in needs.iter().zip(&function.needs) {
+            // decision V6: `process` and `foreign` wait for the package manager
+            let unavailable = std::iter::once(&capability.path)
+                .chain(capability.only_to.iter().map(|(path, _)| path))
+                .find(|path| crate::effects::unavailable(path));
+            if let Some(path) = unavailable {
+                self.error_with_fix(
+                    module,
+                    "capability-unavailable",
+                    crate::effects::unavailable_message(path),
+                    syntax.span,
+                    "remove it from `needs`".into(),
+                );
+                continue;
+            }
             if capability.has_grant_clauses() && function.name.text != "main" {
                 self.error_with_fix(
                     module,
@@ -1058,7 +1111,7 @@ impl World {
                     );
                 }
             }
-            if let Some((_, unit)) = &capability.budget {
+            if capability.budget.is_some() {
                 let budgeted = matches!(
                     capability.path.first().map(String::as_str),
                     Some("network") | Some("process") | Some("filesystem")
@@ -1066,7 +1119,33 @@ impl World {
                 if !budgeted {
                     self.error(module, "grant-clause", format!("`{}` takes no budget; budgets apply to network, process and filesystem", capability.path.join(".")), syntax.span);
                 }
-                let _ = unit;
+            }
+            // a guard whose sinks the grant itself never allows keeps the
+            // data from ever leaving (06-runtime-guarantees.md section 3.3)
+            if !capability.only_to.is_empty() && function.name.text == "main" {
+                let reachable = capability.only_to.iter().any(|(path, scope)| {
+                    let sink = Capability {
+                        path: path.clone(),
+                        scope: scope.clone(),
+                        budget: None,
+                        only_to: Vec::new(),
+                    };
+                    needs
+                        .iter()
+                        .any(|granted| granted.covers(&sink, true) || sink.covers(granted, true))
+                });
+                if !reachable {
+                    self.warning_with_fix(
+                        module,
+                        "guard-no-sink",
+                        format!(
+                            "no sink after `only to` is in the grant, so what enters through `{}` can never leave",
+                            capability.spelling()
+                        ),
+                        syntax.span,
+                        "add the sink to `needs`, or drop `only to` if nothing should leave".into(),
+                    );
+                }
             }
             if !capability.is_known() {
                 let message = format!("unknown capability `{}`", capability.path.join("."));
@@ -1133,6 +1212,8 @@ impl World {
             is_library,
             body,
             has_examples: !function.docs.examples.is_empty(),
+            deprecated: function.docs.deprecated.clone(),
+            expose_as_tool: function.docs.expose_as_tool,
             span: function.span,
         });
         if is_method {

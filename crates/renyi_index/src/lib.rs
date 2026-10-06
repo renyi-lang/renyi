@@ -114,7 +114,6 @@ pub struct Definition {
     pub purpose: Option<String>,
     pub tags: Vec<String>,
     pub see_also: Vec<String>,
-    pub deprecated: Option<String>,
     pub exposed_as_tool: bool,
     /// The `needs` clause, and the union over everything the body reaches
     /// (library primitives included; an ability method reaches every
@@ -430,6 +429,11 @@ pub fn index_files(files: &[SourceFile], header: Header) -> Index {
 
     let mut definitions = Vec::new();
     for (index, (draft, edges)) in drafts.iter().zip(&edges).enumerate() {
+        // decision C8c, tier 1: a deprecated definition is compiled for its
+        // callers but is not discoverable, so the map leaves it out
+        if draft.docs.deprecated.is_some() {
+            continue;
+        }
         let text = &canonical[draft.file];
         let (effects, fails) = edges::transitive(world, &callees, draft, edges);
         let line = text.position(draft.span.start).line;
@@ -451,7 +455,6 @@ pub fn index_files(files: &[SourceFile], header: Header) -> Index {
             purpose: draft.docs.purpose.clone(),
             tags: draft.docs.tags.clone(),
             see_also: draft.docs.see_also.clone(),
-            deprecated: draft.docs.deprecated.clone(),
             exposed_as_tool: draft.docs.expose_as_tool,
             effects_declared: draft.needs.iter().map(Capability::spelling).collect(),
             effects_transitive: effects.iter().cloned().collect(),

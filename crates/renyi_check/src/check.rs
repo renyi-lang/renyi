@@ -45,6 +45,21 @@ struct Scope {
     bindings: Vec<Binding>,
 }
 
+/// What a task of `run concurrently` may not touch (decision V7): the
+/// bindings declared before the block, which it may not `set`, and the
+/// bindings of the tasks before it, which it may not read.
+struct TaskScope {
+    outer: Vec<String>,
+    siblings: Vec<String>,
+}
+
+/// Decision V5: a statement may sit inside at most this many blocks.
+const NESTING_DEPTH: usize = 4;
+/// Decision V5: the statements of a body may span at most this many lines.
+const BODY_LINES: usize = 60;
+const TASK_FIX: &str =
+    "bind the result with `let` inside the task, or run the statements in sequence";
+
 struct Context {
     name: String,
     returns: Option<Ty>,
@@ -170,6 +185,11 @@ pub struct Checker<'w> {
     literals: Vec<(Span, Ty)>,
     /// Calls whose result type the context decides, resolved by `finish_body`.
     results: Vec<(Span, Ty)>,
+    /// How many blocks enclose the statement being checked; the body itself
+    /// is 0 (decision V5).
+    depth: usize,
+    /// Inside a task of `run concurrently` (decision V7).
+    task: Option<TaskScope>,
 }
 
 impl<'w> Checker<'w> {
@@ -197,6 +217,8 @@ impl<'w> Checker<'w> {
             current_errors: None,
             literals: Vec::new(),
             results: Vec::new(),
+            depth: 0,
+            task: None,
         }
     }
 
@@ -225,6 +247,74 @@ impl<'w> Checker<'w> {
 
     fn show(&self, ty: &Ty) -> String {
         self.world.show(&self.zonk(ty))
+    }
+
+    /// The one-based line of a byte offset of the module's file.
+    fn line_of(&self, offset: usize) -> usize {
+        let starts = &self.world.modules[self.module].line_starts;
+        match starts.binary_search(&offset) {
+            Ok(index) => index + 1,
+            Err(index) => index,
+        }
+    }
+
+    /// A call or a use of a deprecated definition (decision C8c, tier 2): a
+    /// warning that `renyi check --strict` turns into an error.
+    fn note_deprecated(&mut self, name: &str, deprecated: Option<&str>, span: Span) {
+        let Some(text) = deprecated else {
+            return;
+        };
+        let fix = match text.split_once("replaced by ") {
+            Some((_, replacement)) => format!(
+                "call `{}` instead",
+                replacement.trim().trim_end_matches('.')
+            ),
+            None => "find a replacement before the definition is removed".to_string(),
+        };
+        self.diagnostics.push(
+            Diagnostic::warning(
+                "deprecated",
+                format!("`{name}` is deprecated: {text}"),
+                span,
+            )
+            .with_fix(fix),
+        );
+    }
+
+    /// Whether the body being checked is the function's own body or one of
+    /// its examples, where a deprecated function may name itself.
+    fn inside(&self, function: FunctionId) -> bool {
+        match (self.world.functions[function].body, self.owner) {
+            (BodyLocation::Item(a), BodyLocation::Item(b)) => a == b,
+            (BodyLocation::Implementation(a, c), BodyLocation::Implementation(b, d)) => {
+                a == b && c == d
+            }
+            (BodyLocation::Item(a), BodyLocation::Example { item, method, .. }) => {
+                a == item && method.is_none()
+            }
+            (BodyLocation::Implementation(a, c), BodyLocation::Example { item, method, .. }) => {
+                a == item && method == Some(c)
+            }
+            _ => false,
+        }
+    }
+
+    /// Decision V7: inside a task of `run concurrently`, a name bound by
+    /// another task of the block may not be used, and a name bound before
+    /// the block may not be changed.
+    fn task_conflict(&self, name: &str, changing: bool) -> Option<String> {
+        let task = self.task.as_ref()?;
+        if task.siblings.iter().any(|n| n == name) {
+            return Some(format!(
+                "`{name}` is bound by another task of this `run concurrently` block"
+            ));
+        }
+        if changing && task.outer.iter().any(|n| n == name) {
+            return Some(format!(
+                "a task of `run concurrently` cannot change `{name}`, which is bound outside the block"
+            ));
+        }
+        None
     }
 
     // ------------------------------------------------------------- references
@@ -790,6 +880,8 @@ impl<'w> Checker<'w> {
         };
         self.vars.clear();
         self.deferred.clear();
+        self.depth = 0;
+        self.task = None;
         self.push_scope();
         for ((_, ty), param) in info.params.iter().zip(&function.params) {
             let ty = match ty {
@@ -798,7 +890,13 @@ impl<'w> Checker<'w> {
             };
             self.bind(&param.name, ty, false, BindingKind::Param);
         }
+        if function.docs.expose_as_tool {
+            self.check_tool_signature(id, function);
+        }
         if let Some(body) = &function.body {
+            if !info.is_library {
+                self.check_body_length(function, body);
+            }
             let diverges = self.check_block_in_scope(body);
             if let (Some(returns_ty), false) = (&info.returns, diverges) {
                 let end = Span::new(function.span.end.saturating_sub(3), function.span.end);
@@ -819,19 +917,101 @@ impl<'w> Checker<'w> {
         self.check_examples(id, function);
     }
 
+    /// Decision V5: the statements of a body may span at most 60 source
+    /// lines.
+    fn check_body_length(&mut self, function: &Function, body: &Block) {
+        let (Some(first), Some(last)) = (body.statements.first(), body.statements.last()) else {
+            return;
+        };
+        let from = self.line_of(first.span.start);
+        let to = self.line_of(last.span.end.saturating_sub(1));
+        let lines = to + 1 - from;
+        if lines > BODY_LINES {
+            self.error_fix(
+                "body-length",
+                format!(
+                    "the body of `{}` spans {lines} lines; {BODY_LINES} is the limit",
+                    function.name.text
+                ),
+                function.name.span,
+                "move the inner part into a function",
+            );
+        }
+    }
+
+    /// Decision D6 (V6): a tool's parameters are decoded from JSON and its
+    /// result is encoded to it, so every type must have the ability; its
+    /// `purpose:` is the tool's description.
+    fn check_tool_signature(&mut self, id: FunctionId, function: &Function) {
+        if function.docs.purpose.is_none() {
+            self.error_fix(
+                "purpose-missing",
+                format!(
+                    "`{}` is exposed as a tool but has no purpose, which is the tool's description",
+                    function.name.text
+                ),
+                function.name.span,
+                "add a `purpose:` clause after the signature",
+            );
+        }
+        let (Some(from_json), Some(to_json)) = (
+            self.world.lookup_ability(self.module, "FromJson"),
+            self.world.lookup_ability(self.module, "ToJson"),
+        ) else {
+            return;
+        };
+        let info = &self.world.functions[id];
+        let fix = "use a record, a variant, a list, a map keyed by Text or a base type";
+        for ((name, ty), param) in info.params.iter().zip(&function.params) {
+            if self.has_ability(ty, from_json) == Some(false) {
+                let shown = self.show(ty);
+                self.error_fix(
+                    "tool-type",
+                    format!("the parameter `{name}` of a tool must be JSON; `{shown}` cannot be decoded"),
+                    param.span,
+                    fix,
+                );
+            }
+        }
+        if let (Some(ty), Some(returns)) = (&info.returns, &function.returns) {
+            if self.has_ability(ty, to_json) == Some(false) {
+                let shown = self.show(ty);
+                self.error_fix(
+                    "tool-type",
+                    format!("the result of a tool must be JSON; `{shown}` cannot be encoded"),
+                    returns.span(),
+                    fix,
+                );
+            }
+        }
+    }
+
     /// A `test` block, the `index`th item of the module.
     pub fn check_test(&mut self, index: usize, test: &Test) {
         self.owner = BodyLocation::Item(index);
+        let needs: Vec<Capability> = test.needs.iter().map(Capability::from_ast).collect();
+        for (capability, syntax) in needs.iter().zip(&test.needs) {
+            if crate::effects::unavailable(&capability.path) {
+                self.error_fix(
+                    "capability-unavailable",
+                    crate::effects::unavailable_message(&capability.path),
+                    syntax.span,
+                    "remove it from `needs`",
+                );
+            }
+        }
         self.context = Context {
             name: format!("test {:?}", test.name),
             returns: None,
             fails: Vec::new(),
             fails_any: true,
-            needs: test.needs.iter().map(Capability::from_ast).collect(),
+            needs,
             is_test: true,
         };
         self.vars.clear();
         self.deferred.clear();
+        self.depth = 0;
+        self.task = None;
         self.push_scope();
         self.check_block_in_scope(&test.body);
         self.pop_scope();
@@ -1133,8 +1313,37 @@ impl<'w> Checker<'w> {
     }
 
     /// Returns whether the statement always leaves (return, fail, crash,
-    /// break, continue, or a conditional whose every branch does).
+    /// break, continue, or a conditional whose every branch does). A block
+    /// statement counts the nesting of decision V5 on the way in.
     fn check_statement(&mut self, statement: &Stmt) -> bool {
+        let opens = match &statement.kind {
+            StmtKind::If { .. } => Some("if"),
+            StmtKind::Match { .. } => Some("match"),
+            StmtKind::ForEach { .. } => Some("for each"),
+            StmtKind::RepeatUntil { .. } => Some("repeat until"),
+            StmtKind::RunConcurrently { .. } => Some("run concurrently"),
+            _ => None,
+        };
+        if let Some(word) = opens {
+            self.depth += 1;
+            if self.depth == NESTING_DEPTH + 1 {
+                let head = Span::new(statement.span.start, statement.span.start + word.len());
+                self.error_fix(
+                    "nesting-depth",
+                    format!("`{word}` opens a fifth level of nesting; four is the limit"),
+                    head,
+                    "move the inner part into a function",
+                );
+            }
+        }
+        let diverges = self.check_statement_kind(statement);
+        if opens.is_some() {
+            self.depth -= 1;
+        }
+        diverges
+    }
+
+    fn check_statement_kind(&mut self, statement: &Stmt) -> bool {
         match &statement.kind {
             StmtKind::Let {
                 mutable,
@@ -1167,6 +1376,9 @@ impl<'w> Checker<'w> {
                 false
             }
             StmtKind::Set { name, value } => {
+                if let Some(reason) = self.task_conflict(&name.text, true) {
+                    self.error_fix("task-independence", reason, name.span, TASK_FIX);
+                }
                 let target = match self.lookup(&name.text) {
                     Some(binding) => Some((binding.ty.clone(), binding.mutable)),
                     None => None,
@@ -1290,9 +1502,42 @@ impl<'w> Checker<'w> {
                 if let Some(within) = within {
                     self.check_within(within);
                 }
-                // bindings made inside are visible after the block
+                // each statement is a task (decision V7): it may not change a
+                // binding made before the block nor read one made by an
+                // earlier task; bindings made inside are visible after the
+                // block, so they go into the enclosing scope
                 self.concurrent_depth += 1;
-                let diverges = self.check_block_in_scope(body);
+                let saved = self.task.take();
+                let outer: Vec<String> = self
+                    .scopes
+                    .iter()
+                    .flat_map(|scope| scope.bindings.iter().map(|b| b.name.clone()))
+                    .collect();
+                let mut siblings: Vec<String> = Vec::new();
+                let mut diverges = false;
+                let mut reported_unreachable = false;
+                for statement in &body.statements {
+                    if diverges && !reported_unreachable {
+                        self.warning(
+                            "unreachable",
+                            "this statement can never run",
+                            statement.span,
+                        );
+                        reported_unreachable = true;
+                    }
+                    self.task = Some(TaskScope {
+                        outer: outer.clone(),
+                        siblings: siblings.clone(),
+                    });
+                    let before = self.scopes.last().map_or(0, |scope| scope.bindings.len());
+                    if self.check_statement(statement) {
+                        diverges = true;
+                    }
+                    if let Some(scope) = self.scopes.last() {
+                        siblings.extend(scope.bindings[before..].iter().map(|b| b.name.clone()));
+                    }
+                }
+                self.task = saved;
                 self.concurrent_depth -= 1;
                 diverges
             }
@@ -1960,6 +2205,9 @@ impl<'w> Checker<'w> {
     }
 
     fn infer_name(&mut self, name: &Name) -> Info {
+        if let Some(reason) = self.task_conflict(&name.text, false) {
+            self.error_fix("task-independence", reason, name.span, TASK_FIX);
+        }
         if let Some(binding) = self.lookup(&name.text) {
             binding.used = true;
             return Info::plain(binding.ty.clone());
@@ -1967,10 +2215,15 @@ impl<'w> Checker<'w> {
         if let Some(constant) = self.world.modules[self.module].constants.get(&name.text) {
             let ty = constant.ty.clone();
             self.record(Target::Constant(self.module, name.text.clone()), name.span);
+            self.note_deprecated(&name.text, constant.deprecated.as_deref(), name.span);
             return Info::plain(ty);
         }
         if let Some(function) = self.world.lookup_function(self.module, &name.text) {
             self.record(Target::Function(function), name.span);
+            if !self.inside(function) {
+                let deprecated = self.world.functions[function].deprecated.as_deref();
+                self.note_deprecated(&name.text, deprecated, name.span);
+            }
             return Info {
                 ty: self.function_type(function),
                 fails: Vec::new(),
@@ -2137,6 +2390,8 @@ impl<'w> Checker<'w> {
                     return match self.world.lookup_function(target, &name.text) {
                         Some(function) => {
                             self.record(Target::Function(function), name.span);
+                            let deprecated = self.world.functions[function].deprecated.as_deref();
+                            self.note_deprecated(&name.text, deprecated, name.span);
                             Info {
                                 ty: self.function_type(function),
                                 fails: Vec::new(),
@@ -2229,6 +2484,9 @@ impl<'w> Checker<'w> {
         match &callee.kind {
             ExprKind::Name(name) => {
                 // a function-typed binding (a parameter passed by name)
+                if let Some(reason) = self.task_conflict(&name.text, false) {
+                    self.error_fix("task-independence", reason, name.span, TASK_FIX);
+                }
                 let binding_ty = self.lookup(&name.text).map(|b| {
                     b.used = true;
                     b.ty.clone()
@@ -2545,6 +2803,9 @@ impl<'w> Checker<'w> {
         self.record(Target::Function(id), name_span);
         let info: &FunctionInfo = &self.world.functions[id];
         let name = info.name.clone();
+        if !self.inside(id) {
+            self.note_deprecated(&name, info.deprecated.as_deref(), name_span);
+        }
         let type_params = info.type_params.clone();
         // instantiate `for any` parameters with fresh variables
         let instances: Vec<(ParamId, Ty)> = type_params
@@ -2899,6 +3160,8 @@ impl<'w> Checker<'w> {
                 return Info::plain(Ty::Error);
             };
             self.record(Target::Variant(type_id, index), name.span);
+            let deprecated = self.world.types[type_id].deprecated.as_deref();
+            self.note_deprecated(&self.world.types[type_id].name, deprecated, name.span);
             let TypeKindInfo::Sum(variant_list) = &self.world.types[type_id].kind else {
                 unreachable!()
             };
@@ -2929,6 +3192,8 @@ impl<'w> Checker<'w> {
             return Info::plain(Ty::Error);
         };
         self.record(Target::Type(type_id), name.span);
+        let deprecated = self.world.types[type_id].deprecated.as_deref();
+        self.note_deprecated(&name.text, deprecated, name.span);
         let params = self.world.types[type_id].params.clone();
         let args_tys: Vec<Ty> = params.iter().map(|_| self.fresh(VarKind::Any)).collect();
         if type_id == b.pair {

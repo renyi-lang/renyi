@@ -25,7 +25,9 @@ use renyi_vm::grant::{parse_capability, Unit};
 use renyi_vm::Manifest;
 
 const USAGE: &str = "usage:
-  renyi check [--json] <file.ry>...   report diagnostics (exit 1 when any error)
+  renyi check [--json] [--strict] <file.ry>...
+                                      report diagnostics (exit 1 when any error; --strict: a call
+                                      to a deprecated definition is an error)
   renyi format [--check] <file.ry>... rewrite files in canonical layout (--check: report only)
   renyi tokens <file.ry>              dump the token stream
   renyi parse [--json] <file.ry>      dump the syntax tree (--json: for tools)
@@ -115,6 +117,15 @@ pub(crate) fn diagnose(file: &SourceFile) -> Vec<renyi_syntax::Diagnostic> {
 
 fn check(args: &[String]) -> ExitCode {
     let json = args.iter().any(|arg| arg == "--json");
+    let strict = args.iter().any(|arg| arg == "--strict");
+    if let Some(unknown) = args
+        .iter()
+        .find(|arg| arg.starts_with("--") && *arg != "--json" && *arg != "--strict")
+    {
+        eprintln!("renyi: unknown option `{unknown}`");
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    }
     let files: Vec<&String> = args.iter().filter(|arg| !arg.starts_with("--")).collect();
     if files.is_empty() {
         eprintln!("{USAGE}");
@@ -126,7 +137,15 @@ fn check(args: &[String]) -> ExitCode {
             Ok(file) => file,
             Err(code) => return code,
         };
-        let diagnostics = diagnose(&file);
+        let mut diagnostics = diagnose(&file);
+        if strict {
+            // decision C8c, tier 2: a call to a deprecated definition is an error
+            for diagnostic in &mut diagnostics {
+                if diagnostic.code == "deprecated" {
+                    diagnostic.severity = renyi_syntax::diagnostics::Severity::Error;
+                }
+            }
+        }
         failed |= diagnostics.iter().any(|diagnostic| diagnostic.is_error());
         if json {
             print!("{}", render_json(&file, &diagnostics));

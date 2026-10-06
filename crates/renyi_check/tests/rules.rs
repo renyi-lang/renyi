@@ -412,6 +412,132 @@ fn grant_clauses_belong_to_main_and_tests() {
     );
 }
 
+/// The codes of every diagnostic, warnings included.
+fn all_codes(source: &str) -> Vec<String> {
+    check(source).iter().map(|d| d.code.to_string()).collect()
+}
+
+#[test]
+fn nesting_is_limited_to_four_blocks() {
+    // decision V5: the body is depth 0; the fifth block is the error
+    let four = "function go(items: List of Integer) returns Integer needs console\n  let mutable total be 0\n  for each item in items\n    if item is greater than 0 then\n      match item\n        when 1 then\n          repeat until total is greater than 9\n            set total to total + 1\n          end\n        otherwise set total to total + item\n      end\n    end\n  end\n  return total\nend\n";
+    clean(&program(four));
+    let five = "function go(items: List of Integer) returns Integer needs console\n  let mutable total be 0\n  for each item in items\n    if item is greater than 0 then\n      match item\n        when 1 then\n          repeat until total is greater than 9\n            if total is 3 then\n              set total to total + 2\n            end\n            set total to total + 1\n          end\n        otherwise set total to total + item\n      end\n    end\n  end\n  return total\nend\n";
+    raises(&program(five), "nesting-depth");
+    assert_eq!(
+        codes(&program(five))
+            .iter()
+            .filter(|c| *c == "nesting-depth")
+            .count(),
+        1,
+        "the fifth level is reported once"
+    );
+}
+
+#[test]
+fn a_body_spans_at_most_sixty_lines() {
+    let mut long = String::from("function go() returns Integer\n  let mutable total be 0\n");
+    for _ in 0..60 {
+        long.push_str("  set total to total + 1\n");
+    }
+    long.push_str("  return total\nend\n");
+    raises(&program(&long), "body-length");
+    let mut fits = String::from("function go() returns Integer\n  let mutable total be 0\n");
+    for _ in 0..58 {
+        fits.push_str("  set total to total + 1\n");
+    }
+    fits.push_str("  return total\nend\n");
+    clean(&program(&fits));
+}
+
+#[test]
+fn tasks_of_run_concurrently_are_independent() {
+    // decision V7: a task may not change a binding made before the block
+    raises(
+        &program("function go() returns Integer\n  let mutable total be 0\n  run concurrently\n    set total to total + 1\n    set total to total + 2\n  end\n  return total\nend\n"),
+        "task-independence",
+    );
+    // nor read a binding another task made
+    raises(
+        &program("function go() returns Integer\n  run concurrently\n    let alpha be 1\n    let beta be alpha + 1\n  end\n  return alpha + beta\nend\n"),
+        "task-independence",
+    );
+    // independent tasks, read after the block, are fine
+    clean(&program(
+        "function go() returns Integer\n  let base be 10\n  run concurrently\n    let alpha be base + 1\n    let beta be base + 2\n  end\n  return alpha + beta\nend\n",
+    ));
+    // a task's own loop variable and its own mutable binding are its business
+    clean(&program(
+        "function go(items: List of Integer) returns Integer needs console\n  run concurrently\n    let total be for each item in items sum item\n    for each item in items\n      let mutable seen be 0\n      set seen to seen + item\n      console.print(\"{seen}\")\n    end\n  end\n  return total\nend\n",
+    ));
+}
+
+#[test]
+fn process_and_foreign_wait_for_the_package_manager() {
+    raises(
+        &program("public function main() needs console, process(\"git\")\n  purpose: Not yet.\n\n  console.print(\"hi\")\nend\n"),
+        "capability-unavailable",
+    );
+    raises(
+        &program("function go() needs foreign\n  ignore 1\nend\n"),
+        "capability-unavailable",
+    );
+    raises(
+        &program("test \"spawning\" needs process\n  check true\nend\n"),
+        "capability-unavailable",
+    );
+}
+
+#[test]
+fn a_deprecated_definition_warns_its_callers() {
+    let old = "function old(value: Integer) returns Integer\n  deprecated: since 0.2, replaced by fresh\n  example: old(1) is 2\n\n  return value + 1\nend\n\nfunction fresh(value: Integer) returns Integer\n  return value + 1\nend\n\n";
+    let caller = format!("{old}function go() returns Integer\n  return old(1)\nend\n");
+    let diagnostics = check(&program(&caller));
+    let warning = diagnostics
+        .iter()
+        .find(|d| d.code == "deprecated")
+        .expect("a deprecation warning");
+    assert!(!warning.is_error());
+    assert_eq!(
+        warning.message,
+        "`old` is deprecated: since 0.2, replaced by fresh"
+    );
+    assert_eq!(warning.fix.as_deref(), Some("call `fresh` instead"));
+    // the definition's own body and examples do not warn
+    assert_eq!(
+        all_codes(&program(&format!(
+            "{old}function go() returns Integer\n  return fresh(1)\nend\n"
+        ))),
+        Vec::<String>::new()
+    );
+}
+
+#[test]
+fn a_tool_takes_and_returns_json() {
+    clean(&program(
+        "public type Money is Decimal where value is at least 0\n  purpose: An amount.\n\npublic function convert(amount: Money, rate: Decimal) returns Decimal\n  purpose: Apply a rate.\n  expose as tool\n\n  return amount * rate\nend\n",
+    ));
+    raises(
+        &program("public function apply(action: function(Integer) returns Integer, value: Integer) returns Integer\n  purpose: Call it.\n  expose as tool\n\n  return action(value)\nend\n"),
+        "tool-type",
+    );
+    raises(
+        &program("function convert(amount: Decimal) returns Decimal\n  expose as tool\n\n  return amount\nend\n"),
+        "purpose-missing",
+    );
+}
+
+#[test]
+fn a_guard_without_a_reachable_sink_warns() {
+    let codes = all_codes(&program(
+        "public function main() needs console, filesystem.read(\"secrets\") only to network.http(\"api.example.com\")\n  purpose: Guarded.\n\n  console.print(\"hi\")\nend\n",
+    ));
+    assert_eq!(codes, vec!["guard-no-sink".to_string()]);
+    clean(&program(
+        "public function main() needs console, filesystem.read(\"secrets\") only to console\n  purpose: Guarded.\n\n  console.print(\"hi\")\nend\n",
+    ));
+}
+
 #[test]
 fn refinement_conditions_are_checked_as_bodies() {
     // a condition is a Boolean expression over the fields, resolved like any body

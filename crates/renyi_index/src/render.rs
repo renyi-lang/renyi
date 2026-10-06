@@ -118,7 +118,6 @@ pub fn definition_json(definition: &Definition) -> Json {
         ("purpose", optional(definition.purpose.as_deref())),
         ("tags", strings(&definition.tags)),
         ("see_also", strings(&definition.see_also)),
-        ("deprecated", optional(definition.deprecated.as_deref())),
         ("exposed_as_tool", Json::Bool(definition.exposed_as_tool)),
         (
             "effects",

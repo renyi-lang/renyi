@@ -215,8 +215,8 @@ for each url in urls concurrently collect web.get(url) otherwise fail
 ## Effects
 `needs` lists capabilities; callers must declare a superset; no `needs` means
 pure. Capabilities: `console`, `filesystem.read`, `filesystem.write`,
-`network.http`, `network.socket`, `environment`, `time`, `random`, `process`,
-`foreign`. A parent covers its children. A literal argument narrows a scope:
+`network.http`, `network.socket`, `environment`, `time`, `random`. A parent
+covers its children. A literal argument narrows a scope:
 `filesystem.read("data")`, `network.http("api.example.com")`; no argument
 covers every scope. `main` declares the program's whole grant. Only there: `at most 60 per minute` (budget; also `per run`) and
 `only to console` (data read through it may leave only there).
