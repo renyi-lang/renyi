@@ -1,0 +1,202 @@
+module types
+  purpose: The checker's types: named types, `maybe`, function types, parameters, variables, unions.
+
+import effects exposing Grant
+
+public type Ty is one of
+  purpose: A type as the checker reasons about it.
+  App(id: Integer, args: List of Ty)
+  MaybeTy(inner: Ty)
+  FunctionTy(signature: FunctionSignature)
+  Param(id: Integer)
+  Var(id: Integer)
+  SelfTy
+  Union(members: List of Ty)
+  Unit
+  Never
+  ErrorTy
+end
+
+public type FunctionSignature
+  purpose: The type of a function value: its parameters, result, failures and needs.
+  has params: List of Ty
+  has result: maybe Ty
+  has failures: List of Ty
+  has capabilities: List of Grant
+end
+
+public type Substitution
+  purpose: One type parameter bound to a type.
+  has param: Integer
+  has ty: Ty
+end
+
+public function maybe_of(inner: Ty) returns Ty
+  purpose: `maybe T`.
+
+  return MaybeTy(inner: inner)
+end
+
+public function is_error(ty: Ty) returns Boolean
+  purpose: Whether the type is the unknown after a reported error.
+
+  return ty is ErrorTy
+end
+
+public function head_type(ty: Ty) returns maybe Integer
+  purpose: The nominal type at the head of a type, for method lookup.
+
+  match ty
+    when App(id) then return id
+    otherwise return nothing
+  end
+end
+
+public function lookup_param(bindings: List of Substitution, param: Integer) returns maybe Ty
+  purpose: What a substitution binds a parameter to.
+
+  for each binding in bindings
+    if binding.param is param then return binding.ty end
+  end
+  return nothing
+end
+
+public function substitute(ty: Ty, bindings: List of Substitution) returns Ty
+  purpose: The type with the bound parameters replaced.
+
+  match ty
+    when App(id, args) then return App(id: id, args: substitute_all(tys: args, bindings: bindings))
+    when MaybeTy(inner) then return MaybeTy(inner: substitute(ty: inner, bindings: bindings))
+    when FunctionTy(signature) then
+      let params be substitute_all(tys: signature.params, bindings: bindings)
+      let result be substitute_maybe(ty: signature.result, bindings: bindings)
+      let failures be substitute_all(tys: signature.failures, bindings: bindings)
+      return FunctionTy(
+        signature: signature with params: params, result: result, failures: failures
+      )
+    when Param(id) then return lookup_param(bindings: bindings, param: id) otherwise ty
+    when Union(members) then return Union(members: substitute_all(tys: members, bindings: bindings))
+    otherwise return ty
+  end
+end
+
+public function substitute_all(tys: List of Ty, bindings: List of Substitution) returns List of Ty
+  purpose: Every type with the bound parameters replaced.
+
+  return for each ty in tys collect substitute(ty: ty, bindings: bindings)
+end
+
+function substitute_maybe(ty: maybe Ty, bindings: List of Substitution) returns maybe Ty
+  purpose: An optional type with the bound parameters replaced.
+
+  match ty
+    when some(inner) then return substitute(ty: inner, bindings: bindings)
+    when nothing then return nothing
+  end
+end
+
+public function with_self(ty: Ty, self_type: Ty) returns Ty
+  purpose: The type with `Self` replaced.
+
+  match ty
+    when SelfTy then return self_type
+    when App(id, args) then return App(id: id, args: with_self_all(tys: args, self_type: self_type))
+    when MaybeTy(inner) then return MaybeTy(inner: with_self(ty: inner, self_type: self_type))
+    when FunctionTy(signature) then
+      let params be with_self_all(tys: signature.params, self_type: self_type)
+      let result be with_self_maybe(ty: signature.result, self_type: self_type)
+      let failures be with_self_all(tys: signature.failures, self_type: self_type)
+      return FunctionTy(
+        signature: signature with params: params, result: result, failures: failures
+      )
+    when Union(members) then
+      return Union(members: with_self_all(tys: members, self_type: self_type))
+    otherwise return ty
+  end
+end
+
+public function with_self_all(tys: List of Ty, self_type: Ty) returns List of Ty
+  purpose: Every type with `Self` replaced.
+
+  return for each ty in tys collect with_self(ty: ty, self_type: self_type)
+end
+
+public function with_self_maybe(ty: maybe Ty, self_type: Ty) returns maybe Ty
+  purpose: An optional type with `Self` replaced.
+
+  match ty
+    when some(inner) then return with_self(ty: inner, self_type: self_type)
+    when nothing then return nothing
+  end
+end
+
+public function mentions_var(ty: Ty, var: Integer) returns Boolean
+  purpose: Whether an inference variable occurs in the type.
+
+  match ty
+    when Var(id) then return id is var
+    when App(args) then return for each arg in args any mentions_var(ty: arg, var: var)
+    when Union(members) then
+      return for each member in members any mentions_var(ty: member, var: var)
+    when MaybeTy(inner) then return mentions_var(ty: inner, var: var)
+    when FunctionTy(signature) then
+      if for each param in signature.params
+      any mentions_var(ty: param, var: var) then
+        return true
+      end
+      if for each failing in signature.failures
+      any mentions_var(ty: failing, var: var) then
+        return true
+      end
+      match signature.result
+        when some(result) then return mentions_var(ty: result, var: var)
+        when nothing then return false
+      end
+    otherwise return false
+  end
+end
+
+public function has_vars(ty: Ty) returns Boolean
+  purpose: Whether any inference variable occurs in the type.
+
+  match ty
+    when Var then return true
+    when App(args) then return for each arg in args any has_vars(arg)
+    when Union(members) then return for each member in members any has_vars(member)
+    when MaybeTy(inner) then return has_vars(inner)
+    when FunctionTy(signature) then
+      if for each param in signature.params any has_vars(param) then return true end
+      if for each failing in signature.failures any has_vars(failing) then return true end
+      match signature.result
+        when some(result) then return has_vars(result)
+        when nothing then return false
+      end
+    otherwise return false
+  end
+end
+
+public function mentions_param(ty: Ty, param: Integer) returns Boolean
+  purpose: Whether a type parameter occurs in the type.
+
+  match ty
+    when Param(id) then return id is param
+    when App(args) then return for each arg in args any mentions_param(ty: arg, param: param)
+    when Union(members) then
+      return for each member in members any mentions_param(ty: member, param: param)
+    when MaybeTy(inner) then return mentions_param(ty: inner, param: param)
+    when FunctionTy(signature) then
+      if for each item in signature.params
+      any mentions_param(ty: item, param: param) then
+        return true
+      end
+      if for each item in signature.failures
+      any mentions_param(ty: item, param: param) then
+        return true
+      end
+      match signature.result
+        when some(result) then return mentions_param(ty: result, param: param)
+        when nothing then return false
+      end
+    otherwise return false
+  end
+end

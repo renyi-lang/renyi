@@ -1,0 +1,182 @@
+module report
+  purpose: Diagnostics as the checker raises them, rendered as text and JSON like `renyi check`.
+
+import ast exposing Span
+
+public type Diagnostic
+  purpose: One finding: an error or a warning with its stable code, message, span and fix.
+  has is_error: Boolean
+  has code: Text
+  has message: Text
+  has span: Span
+  has fix: maybe Text
+end
+
+public type Position
+  purpose: A one-based line and column; columns count characters.
+  has line: Integer
+  has column: Integer
+end
+
+public function error(code: Text, message: Text, span: Span, fix: Text) returns Diagnostic
+  purpose: An error with its fix (decision D3).
+
+  return Diagnostic(is_error: true, code: code, message: message, span: span, fix: fix)
+end
+
+public function warning(code: Text, message: Text, span: Span, fix: Text) returns Diagnostic
+  purpose: A warning with its fix.
+
+  return Diagnostic(is_error: false, code: code, message: message, span: span, fix: fix)
+end
+
+public function bare_error(code: Text, message: Text, span: Span) returns Diagnostic
+  purpose: An error without a fix, as the Rust checker raises a few inside bodies.
+
+  return Diagnostic(is_error: true, code: code, message: message, span: span, fix: nothing)
+end
+
+public function line_starts(chars: List of Text) returns List of Integer
+  purpose: The character offset of every line start of a text.
+
+  let mutable starts be [0]
+  let mutable index be 0
+  for each ch in chars
+    if ch is "\n" then set starts to starts.append(index + 1) end
+    set index to index + 1
+  end
+  return starts
+end
+
+public function position(starts: List of Integer, offset: Integer, length: Integer) returns Position
+  purpose: The line and column of a character offset, clamped to the text's length.
+
+  let clamped be offset.at_most(length)
+  let mutable low be 0
+  let mutable high be starts.length() - 1
+  repeat until low is at least high
+    let middle be (low + high + 1).quotient(2)
+    let start be starts.at(middle) otherwise crash with "a line start"
+    if start is at most clamped then
+      set low to middle
+    otherwise
+      set high to middle - 1
+    end
+  end
+  let line_start be starts.at(low) otherwise crash with "a line start"
+  return Position(line: low + 1, column: clamped - line_start + 1)
+end
+
+public function json_string(text: Text) returns Text
+  purpose: The text as a JSON string with quotes, backslashes and control characters escaped.
+
+  let mutable out be "\""
+  for each ch in text.characters()
+    let piece be escaped(ch)
+    set out to "{out}{piece}"
+  end
+  return "{out}\""
+end
+
+function escaped(ch: Text) returns Text
+  purpose: One character as JSON writes it inside a string.
+
+  if ch is "\"" then return "\\\"" end
+  if ch is "\\" then return "\\\\" end
+  if ch is "\n" then return "\\n" end
+  if ch is "\t" then return "\\t" end
+  if ch is " " then return ch end
+  if ch.trim() is "" then return "\\r" end
+  return ch
+end
+
+public function render_json(
+  file_name: Text,
+  starts: List of Integer,
+  length: Integer,
+  diagnostics: List of Diagnostic
+)
+  returns Text
+  purpose: The JSON array `renyi check --json` prints: one object per diagnostic.
+
+  let mutable out be "["
+  let mutable index be 0
+  let name be json_string(file_name)
+  for each diagnostic in diagnostics
+    let separator be if index is greater than 0 then "," otherwise "" end
+    let start be position(starts: starts, offset: diagnostic.span.start, length: length)
+    let stop be position(starts: starts, offset: diagnostic.span.stop, length: length)
+    let severity be severity_name(diagnostic)
+    let code be json_string(diagnostic.code)
+    let message be json_string(diagnostic.message)
+    let fix be fix_text(diagnostic)
+    let head be "\{\"file\": {name}, \"line\": {start.line}, \"column\": {start.column}"
+    let tail be "\"end_line\": {stop.line}, \"end_column\": {stop.column}, \"severity\": {severity}"
+    let rest be "\"code\": {code}, \"message\": {message}, \"fix\": {fix}}"
+    set out to "{out}{separator}\n  {head}, {tail}, {rest}"
+    set index to index + 1
+  end
+  if index is greater than 0 then set out to "{out}\n" end
+  return "{out}]\n"
+end
+
+public function render_text(
+  file_name: Text,
+  starts: List of Integer,
+  length: Integer,
+  diagnostics: List of Diagnostic
+)
+  returns Text
+  purpose: The lines `renyi check` prints, each fix under its diagnostic.
+
+  let mutable out be ""
+  for each diagnostic in diagnostics
+    let start be position(starts: starts, offset: diagnostic.span.start, length: length)
+    let severity be if diagnostic.is_error then "error" otherwise "warning" end
+    let head be "{file_name}:{start.line}:{start.column}"
+    let line be "{head}: {severity} [{diagnostic.code}]: {diagnostic.message}\n"
+    set out to "{out}{line}"
+    match diagnostic.fix
+      when some(fix) then set out to "{out}  fix: {fix}\n"
+      when nothing then continue
+    end
+  end
+  return out
+end
+
+function severity_name(diagnostic: Diagnostic) returns Text
+  purpose: The severity as a JSON string.
+
+  if diagnostic.is_error then return "\"error\"" end
+  return "\"warning\""
+end
+
+function fix_text(diagnostic: Diagnostic) returns Text
+  purpose: The fix as a JSON string, or `null`.
+
+  match diagnostic.fix
+    when some(fix) then return json_string(fix)
+    when nothing then return "null"
+  end
+end
+
+public function sorted_by_start(diagnostics: List of Diagnostic) returns List of Diagnostic
+  purpose: The diagnostics in order of their start offsets; equal starts keep their order.
+
+  let mutable ordered: List of Diagnostic be []
+  for each diagnostic in diagnostics
+    set ordered to insert_by_start(items: ordered, item: diagnostic)
+  end
+  return ordered
+end
+
+function insert_by_start(items: List of Diagnostic, item: Diagnostic) returns List of Diagnostic
+  purpose: The item placed before the first diagnostic that starts after it.
+
+  let mutable index be 0
+  for each existing in items
+    if existing.span.start is greater than item.span.start then break end
+    set index to index + 1
+  end
+  return items.take(index).append(item).append_all(items.drop(index))
+end

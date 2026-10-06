@@ -1,0 +1,174 @@
+module effects
+  purpose: Capabilities as the checker reads them: the built-in tree, scopes and coverage.
+
+import ast exposing Capability, Name
+
+public type Grant
+  purpose: A capability of a `needs` clause: its path, scope, budget and `only to` sinks.
+  has path: List of Text
+  has scope: maybe Text
+  has budget: maybe BudgetSpelling
+  has only_to: List of SinkPath
+end
+
+public type BudgetSpelling
+  purpose: `at most LIMIT per UNIT` on a grant (decision P2); not part of coverage.
+  has limit: Text
+  has unit: Text
+end
+
+public type SinkPath
+  purpose: A sink after `only to` (decision P3): a capability path with its optional scope.
+  has path: List of Text
+  has scope: maybe Text
+end
+
+let tree: List of Text be [
+  "console",
+  "filesystem",
+  "filesystem.read",
+  "filesystem.write",
+  "network",
+  "network.http",
+  "network.socket",
+  "environment",
+  "time",
+  "random",
+  "process",
+  "foreign"
+]
+
+public function tree_spelling() returns Text
+  purpose: The built-in tree as a fix lists it.
+
+  return tree.join(", ")
+end
+
+public function takes_scope(path: List of Text) returns Boolean
+  purpose: Whether the capability takes a scope argument (a path, a host, a variable, a program).
+
+  let head be path.first() otherwise ""
+  return ["filesystem", "network", "environment", "process"].contains(head)
+end
+
+public function unavailable(path: List of Text) returns Boolean
+  purpose: Whether the capability waits for milestone M4 (decision V6): `process` and `foreign`.
+
+  let head be path.first() otherwise ""
+  return head is "process" or head is "foreign"
+end
+
+public function unavailable_message(path: List of Text) returns Text
+  purpose: The message of `capability-unavailable`.
+
+  let head be path.first() otherwise ""
+  let brings be
+    if head is "process" then "`std.process`" otherwise "the foreign function interface" end
+  let joined be path.join(".")
+  return "`{joined}` is not available until the package manager brings {brings} (milestone M4)"
+end
+
+public function names_of(names: List of Name) returns List of Text
+  purpose: The spellings of a dotted path.
+
+  return for each name in names collect name.text
+end
+
+public function from_ast(capability: Capability) returns Grant
+  purpose: The grant a `needs` clause declares.
+
+  let budget: maybe BudgetSpelling be
+    match capability.budget
+      when some(found) then BudgetSpelling(limit: found.limit, unit: found.unit.text)
+      when nothing then nothing
+    end
+  let sinks be
+    for each sink in capability.only_to
+    collect SinkPath(path: names_of(sink.path), scope: sink.scope)
+  return Grant(
+    path: names_of(capability.path),
+    scope: capability.scope,
+    budget: budget,
+    only_to: sinks
+  )
+end
+
+public function plain(path: List of Text, scope: maybe Text) returns Grant
+  purpose: A grant without a budget or a guard.
+
+  return Grant(path: path, scope: scope, budget: nothing, only_to: [])
+end
+
+public function has_grant_clauses(grant: Grant) returns Boolean
+  purpose: Whether the grant carries a budget or a guard, which belong on `main` and on tests only.
+
+  return grant.budget is not nothing or not grant.only_to.is_empty()
+end
+
+public function is_known(grant: Grant) returns Boolean
+  purpose: Whether the path is in the built-in tree.
+
+  return tree.contains(grant.path.join("."))
+end
+
+public function spelling(grant: Grant) returns Text
+  purpose: The grant as a message spells it: `filesystem.read("data")`.
+
+  let joined be grant.path.join(".")
+  match grant.scope
+    when some(scope) then return "{joined}(\"{scope}\")"
+    when nothing then return joined
+  end
+end
+
+public function spellings(grants: List of Grant) returns List of Text
+  purpose: Every grant spelled.
+
+  return for each grant in grants collect spelling(grant)
+end
+
+public function covers(granted: Grant, needed: Grant, runtime_scoped: Boolean) returns Boolean
+  purpose: Whether a grant covers a need: an ancestor path and a containing scope.
+
+  let width be granted.path.length()
+  if needed.path.length() is less than width then return false end
+  if needed.path.take(width) is not granted.path then return false end
+  match granted.scope
+    when nothing then return true
+    when some(given) then
+      match needed.scope
+        when nothing then return runtime_scoped
+        when some(wanted) then
+          return scope_contains(path: granted.path, granted: given, wanted: wanted)
+      end
+  end
+end
+
+public function scope_contains(path: List of Text, granted: Text, wanted: Text) returns Boolean
+  purpose: A path prefix contains its sub-paths; a host or a variable contains only itself.
+
+  let head be path.first() otherwise ""
+  if head is "filesystem" then
+    let trimmed be without_trailing_slashes(granted)
+    return wanted is trimmed or wanted.starts_with("{trimmed}/")
+  end
+  return granted is wanted
+end
+
+function without_trailing_slashes(text: Text) returns Text
+  purpose: The text without its trailing slashes.
+
+  let mutable trimmed be text
+  repeat until not trimmed.ends_with("/")
+    set trimmed to trimmed.take(trimmed.length() - 1)
+  end
+  return trimmed
+end
+
+public function covered(granted: List of Grant, needed: Grant, runtime_scoped: Boolean)
+  returns Boolean
+  purpose: Whether any granted capability covers the needed one.
+
+  return for each grant in granted
+    any covers(granted: grant, needed: needed, runtime_scoped: runtime_scoped)
+end

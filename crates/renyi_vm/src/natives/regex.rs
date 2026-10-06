@@ -12,12 +12,28 @@ pub fn lookup(name: &str, head: Option<&str>) -> Option<NativeFn> {
         (Some("Pattern"), "captures") => captures,
         (Some("Pattern"), "replace_all") => replace_all,
         (Some("Pattern"), "split") => split,
+        (Some("Text"), "problem") => problem,
         _ => return None,
     })
 }
 
 fn compile(pattern: &str) -> Result<Regex, Interrupt> {
     Regex::new(pattern).map_err(|error| crash(format!("invalid regular expression: {error}")))
+}
+
+/// `regex.problem(pattern)`: the engine's complaint about a pattern, as the
+/// checker reports it for a literal (its report ends with the one line that
+/// names the problem), or nothing when the pattern compiles.
+fn problem(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
+    let pattern = text(arg(&args, 0))?;
+    Ok(match Regex::new(pattern) {
+        Ok(_) => Value::Nothing,
+        Err(error) => {
+            let report = error.to_string();
+            let line = report.lines().last().unwrap_or(&report);
+            Value::text(line.trim_start_matches("error: "))
+        }
+    })
 }
 
 /// `Text.matches(pattern)`: whether the whole text matches.

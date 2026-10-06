@@ -60,10 +60,14 @@ exists:
   `python3 tools/lint_examples.py`.
 - `compiler/`: the front end written in Renyi itself, run by the Rust VM:
   the syntax tree as Renyi types (whose derived JSON is what `renyi parse
-  --json` prints), the lexer and the parser; `renyi run compiler/parse.ry
-  <file>` prints the same tree as `renyi parse --json <file>`, byte for
-  byte on every program of the corpus, the conformance suite, the library
-  and the compiler itself, and a test holds the two equal.
+  --json` prints), the lexer, the parser and the type and effect checker;
+  `renyi run compiler/parse.ry <file>` prints the same tree as `renyi
+  parse --json <file>`, byte for byte on every program of the corpus, the
+  conformance suite, the library and the compiler itself, and `renyi run
+  compiler/checker.ry --json <file>` prints the same diagnostics as
+  `renyi check --json <file>`, with and without `--strict`, on every
+  program of the corpus, the conformance suite and the compiler itself;
+  a test holds both pairs equal.
 - `crates/`: the Rust toolchain. `renyi check` reports lexer, parser, type,
   effect and layout diagnostics as text or JSON, each with a suggested fix;
   `renyi format` rewrites files in the canonical layout; `renyi tokens` and
@@ -109,6 +113,7 @@ cargo build
 ./target/debug/renyi test examples/invoice.ry
 ./target/debug/renyi mcp examples        # the toolchain for an agent host, over standard input and output
 ./target/debug/renyi run compiler/parse.ry examples/hello.ry   # the parser written in Renyi, on the VM
+./target/debug/renyi run compiler/checker.ry --json examples/hello.ry   # the checker written in Renyi, on the VM
 cargo test
 ```
 

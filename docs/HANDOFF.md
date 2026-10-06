@@ -4,8 +4,10 @@ Last updated: 2026-10-06, session 8 (stage 2 of the gap audit of
 `docs/GAPS.md`: the formal grammar `docs/grammar.ebnf` with decision V12;
 the language reference `docs/reference.md`, normative, held to the
 grammar file and the crates by a test; the sketch retired to the design
-record; then the front end written in Renyi under `compiler/`, decisions
-W1 to W4, held equal to the Rust parser by `crates/renyi/tests/selfhost.rs`).
+record; the front end written in Renyi under `compiler/`, decisions W1
+to W4, held equal to the Rust parser by `crates/renyi/tests/selfhost.rs`;
+then the checker written in Renyi, decisions W5 to W8, held equal to
+`renyi check --json` by the same test).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -41,9 +43,9 @@ and `tests/reference.rs` hold them to the parser and to each other); the
 sketch is the design record.
 
 Stage 2 of `docs/GAPS.md` section 7 is under way in the order the owner
-set (W4): the lexer and the parser written in Renyi exist under
-`compiler/` (next section); the checker, the emitter and the performance
-items follow.
+set (W4, W5): the lexer, the parser and the checker written in Renyi
+exist under `compiler/` (the next two sections); the profile of the VM
+(W6), the bytecode emitter and the performance items follow.
 
 The corpus has 30 programs, passes the lint, is in canonical layout,
 checks cleanly, has nothing over budget, and its `example:` lines and
@@ -56,7 +58,7 @@ binary with `check`, `format`, `tokens`, `parse [--json]
 revision>]`, `run [--manifest] [options] <file> [arguments]`, `record
 [--to file] [options] <file> [arguments]`, `reproduce <recording>
 [<file>]`, `test [--strict] [--refresh name [--redact name]] [--explain]
-<file>...`, `tools [path]`, `mcp [path]` and `version`; 215 tests, clippy
+<file>...`, `tools [path]`, `mcp [path]` and `version`; 216 tests, clippy
 and fmt clean on Windows with rustc 1.94.1. CI
 (`.github/workflows/ci.yml`) runs the same gates, `renyi check
 compiler/*.ry` and the conformance suite (`tests/conformance/`, 37 cases;
@@ -115,10 +117,11 @@ R8 and U1 to U9 came from them; they continue only if the owner asks
   `renyi run compiler/parse.ry` over `examples/`,
   `tests/conformance/programs/`, `compiler/` and, with `--declarations`,
   `library/std/` on a few threads and compares with `renyi parse --json
-  [--declarations]` byte for byte (74 programs: 71 equal, 3 rejected by
-  both); a second test checks `renyi format --check compiler/*.ry`. CI
-  runs `renyi check compiler/*.ry` besides. Every compiler source is
-  `renyi check` clean (no warnings) and in canonical layout.
+  [--declarations]` byte for byte (83 programs: 80 equal, 3 rejected by
+  both); a second test does the same for the checker (next section);
+  a third checks `renyi format --check compiler/*.ry`. CI runs `renyi
+  check compiler/*.ry` besides. Every compiler source is `renyi check`
+  clean (no warnings) and in canonical layout.
 - **Speed, the first measurement** (W4): on the VM the lexer and the
   parser take about 0.3 s on `examples/hello.ry`, 0.6 s on the prelude
   declarations, 1.0 s on the 750-line `lexer.ry` and 3.9 s on the
@@ -131,7 +134,7 @@ R8 and U1 to U9 came from them; they continue only if the owner asks
   `LoadMove` moves the receiver out of its slot and `take_list` in
   `value.rs` reuses the vector), so the list growth is not where the
   time goes; where it does go has not been profiled. That profile is
-  the first performance item, before the checker is written in Renyi.
+  the first performance item, now that the checker is written (W6).
 - **Writing Renyi at this size, what bit**: field and binding names
   cannot be reserved words (`exposing`, `first`, `least`, `raw`,
   `module`, `within`, `end` ...); a text literal cannot appear inside a
@@ -146,6 +149,109 @@ R8 and U1 to U9 came from them; they continue only if the owner asks
   records (`Parsed of Node`) and function-typed parameters with `for
   any` work, so `bracketed` and `binary_chain` are shared across the
   grammar.
+
+## The self-hosted checker as it exists (`compiler/`)
+
+- **The files** (decision W5), each a transcription of one Rust file,
+  every message and fix verbatim. `lists.ry` (`replace_at`).
+  `report.ry` (`crates/renyi_syntax/src/diagnostics.rs`): `Diagnostic`
+  (`is_error`, `code`, `message`, `span`, `fix: maybe Text`),
+  `line_starts` and `position` over a character list, `json_string`,
+  `render_json` and `render_text` as `renyi check` prints them,
+  `sorted_by_start` (stable, as Rust's `sort_by_key`). `effects.ry`
+  (`effects.rs`: `Grant`, capability parsing, scopes, `names_of`).
+  `suggest.ry` (the closest name in scope, the Renyi spelling of a
+  foreign name, `quoted`). `types.ry` (`types.rs`: `Ty`,
+  `FunctionSignature`, substitution, `head_type`). `refine.ry`
+  (refinements evaluated on literals, `Literal`, `Verdict`).
+  `declare.ry` (3000 lines, `world.rs`): `World` with its modules,
+  types, functions, abilities, implementations, params and `Builtins`;
+  `add_module` registers names, `resolve_all` resolves imports, types,
+  abilities, functions, implementations and constants in the Rust order,
+  then the lookups, the suggestions, `resolve_type`, `declare_function`,
+  `check_capabilities`, the method-signature check and `conforms`; the
+  diagnostics are kept per module (`module_diagnostics`). `bodies.ry`
+  (7550 lines, `check.rs`): the Rust `Checker` struct is a `Checker`
+  record (world, module, diagnostics, references, variables, scopes,
+  context, deferred checks, loop and task depth, literals and results
+  noted for the VM) threaded through every function, each returning the
+  record or `Done of Value` (a value and the record); `check_function`,
+  `check_test`, `check_type_conditions`, `check_constant` and
+  `check_module` are public, the rest mirrors the Rust methods one for
+  one (inference, assignment and unification, abilities, scopes,
+  statements, calls and overloads, constructions, patterns and
+  exhaustiveness with witnesses, queries, the recorded references of
+  W8). `checker.ry` is the command line: `renyi run compiler/checker.ry
+  [--json] [--strict] [--library <dir>] <file>...` reads the twelve
+  library declaration files from `library/std` under the working
+  directory (`--library` names another), lexes and parses with the
+  Renyi front end, reads the imports from the file's directory as
+  `renyi_check::imported_files` does (a stack, the last import first;
+  `.ry` then `.renyi`; `std` skipped), declares, resolves, checks the
+  bodies, adds `module-name` (G3) and `import-errors`, the layout
+  warnings of `layout.rs` (`line-width`, `trailing-whitespace`), sorts
+  by start, turns `deprecated` into an error under `--strict`, prints
+  the JSON or the text, and exits 1 on any error. A file that does not
+  lex or parse gets one `syntax` diagnostic (the message and the
+  position of the Renyi front end, not the Rust codes) and exit 1.
+- **The judge** (decision W7): the test
+  `the_renyi_checker_prints_what_the_rust_checker_prints` in
+  `crates/renyi/tests/selfhost.rs` runs `renyi parse` to learn whether
+  the Rust parser accepts a program, then `renyi run compiler/checker.ry
+  --json [--strict]` against `renyi check --json [--strict]` on every
+  program of `examples/`, `tests/conformance/programs/` and `compiler/`
+  (71 programs, 142 cases: output byte for byte and exit status; a
+  rejected program must make the Renyi checker fail). All equal at the
+  first full comparison after the compiler's own sources were made
+  clean; the run takes about 170 s on eight threads (about 1.5 s per
+  small program, the library's twelve files lexed and parsed each run;
+  32 s on `bodies.ry`, 39 s on `checker.ry` with its imports). The lane
+  `D:\Projects\.worktrees\Renyi\selfhost\compare.py` runs the same
+  comparison outside `cargo test` and names the first differing line.
+- **The references** (decision W8) are recorded as `check.rs` records
+  them (`Reference(body, target, span)`, `Target`, `NumberKind`, the
+  `literals` and `results` lists) and returned by `check_module` in
+  `Checked`; nothing reads them yet, and nothing judges them until the
+  emitter exists.
+- **Where the two checkers could differ, by construction** (none shows
+  on a program in the repository): the Rust checker iterates `HashMap`s
+  in `suggest_*`, the imports and the method index, so a tie between
+  two equally close names may be broken differently; `json_string`
+  escapes `\n`, `\t` and `\r` and cannot write `\u00xx` for another
+  control character; the `Path` literal check tests only `"\n"` (a
+  NUL cannot be written in Renyi); `debug_quoted` escapes `"`, `\`,
+  `\n` and `\t` where Rust's `{:?}` escapes every control character;
+  the `import-errors` message joins the import's path with `/` where
+  Rust uses the platform separator (no program in the repository
+  imports a module with errors); an import that does not parse
+  contributes none of its own imports (Rust parses with recovery and
+  follows them); the Renyi front end stops at the first syntax error
+  where the Rust one reports several with codes and fixes (the judge
+  only requires failure there). Positions are characters on the Renyi
+  side and bytes on the Rust side, printed as line and column in both,
+  so they agree on any text.
+- **Writing the checker in Renyi, what bit** (besides the parser's
+  list above): a qualified type name (`ast.Branch`) cannot stand in a
+  type position, so every type used is in an `exposing` list (a type
+  brings its variants; the first name must follow `exposing` on the
+  same line); a `with` must stay on one line, cannot nest, and swallows
+  any `name: value` pairs that follow it in a call (compute the updated
+  record into a local first); a `match` expression's arm holds one
+  expression or an outcome (`return`, `crash with`), never a statement,
+  and a `let x: maybe T be match ... end` needs the annotation when an
+  arm is `nothing`; a one-line `if c then set a to x otherwise set a to
+  y end` statement does not parse (write it on several lines); a call
+  with one argument must not name it; an unused loop or pattern binding
+  is an error, so `for each x in xs collect Constant` needs a helper; a
+  local cannot share a function's name; `count`, `needs`, `all`, `any`,
+  `first`, `from`, `to`, `by`, `within`, `at`, `test`, `example`,
+  `failure`, `success`, `ability`, `only`, `run`, `import` and the other
+  reserved words cannot name a binding or a parameter; a `failure(x)`
+  binding's fields are unreadable (destructure: `when
+  failure(UsageError(message))`); the formatter puts every argument of
+  a wrapped call on its own line, so a function near the 60-line limit
+  before formatting must be split; `renyi format` must run before
+  anchors for a patch script are taken from the file.
 
 ## The VM as it exists (`crates/renyi_vm`)
 
@@ -401,7 +507,7 @@ Three commits on `main`, each gated as in session 7:
    `docs/GAPS.md`, the sketch's status line and its section 17 follow.
    Every claim of the reference was read back from the lexer, the
    parser, the checker, the VM and the library before it was written.
-3. The front end in Renyi (the last commit; decisions W1 to W4 from the
+3. `63aa5ba` the front end in Renyi (decisions W1 to W4 from the
    owner's batch: the Renyi sources in `compiler/`, a Rust integration
    test as the judge, the lexer and the parser first, the JSON defined
    by the Renyi types with the Rust encoder changed to match).
@@ -422,6 +528,27 @@ Three commits on `main`, each gated as in session 7:
    appendix B) was written by a second Claude Code session the owner
    ran in parallel; the two sessions split the files by message and
    this session ran the gates and committed.
+4. The checker in Renyi (the last commit; decisions W5 to W8 from the
+   owner's batch: the checker next, transcribed from
+   `crates/renyi_check`; the profile after it; full equality with
+   `renyi check --json` as the judge; the references produced and not
+   yet judged). `compiler/lists.ry`, `report.ry`, `effects.ry`,
+   `suggest.ry`, `types.ry`, `refine.ry`, `declare.ry`, `bodies.ry`
+   and `checker.ry` as described above; `regex.problem(pattern)
+   returns maybe Text` added to the library (`library/std/regex.ry`,
+   the sketch, `natives/regex.rs`) so that `bodies.ry` can report
+   `regex-invalid` with the engine's own message; the checker judge in
+   `crates/renyi/tests/selfhost.rs` (`judge_all` generic over the case
+   type); `CLAUDE.md`, `README.md`, `docs/GAPS.md` (status at the end
+   of session 8, continued), the reference's appendix B, section W of
+   the decisions. `declare.ry` and `bodies.ry` were each written in one
+   pass from a reading of `world.rs` and `check.rs`, then taken through
+   `renyi check` (reserved words, qualified type names, `with`, the
+   match-arm rules, unused bindings, the body-length and line-width
+   limits: the formatter's wrapping pushed six functions over sixty
+   lines, each split into named helpers) until clean; the first full
+   comparison with the Rust checker found no difference on any of the
+   142 cases.
 
 ## Done in session 7 (stage 1 of the gap audit)
 
@@ -769,13 +896,13 @@ on a fresh clone).
   `needs`, `Hash` implementations are never called, entry 1.18, and
   open item R3-2 (constraints with type arguments). None blocks stage
   2; the owner decides their order when stage 2 is planned.
-- **Stage 2, the next piece**: the lexer and the parser in Renyi are
-  done and judged (W3). What comes next is the owner's call, asked as a
-  batch before anything is written: the checker in Renyi (its shape:
-  one module or several, how its diagnostics are compared with `renyi
-  check --json`), the profile of the VM on `parser.ry` (where the 3.9 s
-  go: before the checker, or after a measurement of the checker), and
-  the bytecode emitter with its file format or loader.
+- **Stage 2, the next piece**: the lexer, the parser and the checker in
+  Renyi are done and judged (W3, W7). By W6 the profile of the VM comes
+  next (the parser's 3.9 s on `parser.ry`, the checker's 32 s on
+  `bodies.ry`); the owner decides, asked as a batch before anything is
+  written, what the profile's findings are spent on (the performance
+  items of `docs/GAPS.md` section 7) and the shape of the bytecode
+  emitter with its file format or loader.
 - **Readability**: the scores are no longer the gate (decision V1).
   Round 5 (U9's sentence) and gpt-5.5 run only if the owner asks.
 - Session 5 printed the values of `ANTHROPIC_API_KEY` and
@@ -811,17 +938,18 @@ on a fresh clone).
 1. **Stage 2 of `docs/GAPS.md`, section 7, continued** (the grammar is
    frozen, V11; the formal grammar is `docs/grammar.ebnf`, V12; the
    language reference is `docs/reference.md`; the lexer and the parser
-   in Renyi are `compiler/`, W1 to W4): the checker in Renyi (the world
-   of declarations, the bodies, the effects; judged against `renyi check
-   --json` as the parser is judged against `parse --json`), then the
+   in Renyi are `compiler/`, W1 to W4; the checker in Renyi is
+   `compiler/declare.ry`, `bodies.ry` and `checker.ry`, W5 to W8): the
+   profile of the VM on the parser's and the checker's runs (W6), then
+   the performance items the profile names (in-place collections,
+   string building, the pattern cache of `Text.matches`), then the
    bytecode emitter with a file format or a loader so that the Rust VM
    runs what the Renyi compiler emits, with the Rust toolchain as stage
-   0; the performance items as the measurements call for them (a profile
-   of the 3.9 s on `parser.ry` first, then string building and the
-   pattern cache of `Text.matches`). The owner's batch of four comes
-   before the checker is written. The parser in Renyi reports one error with a position and
-   no fix; parity with the Rust parser's diagnostics (codes, fixes,
-   recovery) is a later step, after the checker.
+   0, which is where the references of W8 get their judge. The owner's
+   batch of four comes before the emitter is written. The front end in
+   Renyi reports one syntax error with a position and no fix; parity
+   with the Rust parser's diagnostics (codes, fixes, recovery) is a
+   later step.
 2. **Readability, only on request**: round 5 on Sonnet measures U9
    (`run.py prepare`, the Sonnet command at the end of this item after
    its probe, the graders, `score`, the U5 search, `report`, the
@@ -858,7 +986,9 @@ on a fresh clone).
 - **The front end in Renyi.** The parser stops at the first error with
   a message and a character offset: no diagnostic codes, no fixes, no
   recovery, so it is not yet a replacement for `renyi check`'s
-  front-end diagnostics; the judge covers acceptance and the tree only.
+  front-end diagnostics; the judge covers acceptance and the tree only
+  (the checker's judge likewise requires only failure on a program the
+  Rust parser rejects).
   Its equality with the Rust parser is exact on every program in the
   repository, by construction of its `peek` (the Rust parser's
   side-effecting peek is simulated, line-break spans included); a new
@@ -870,6 +1000,19 @@ on a fresh clone).
   (negligible for tokens, visible on a long block text). `json.rs` and
   `ast.ry` must change together (W1); nothing checks that the Rust
   encoder's keys match `ast.ry` except the judge's byte comparison.
+- **The checker in Renyi.** It is a transcription: a change to a
+  message, a fix, a rule or the order of checks in `crates/renyi_check`
+  is a change to `declare.ry` or `bodies.ry` in the same commit, or the
+  judge fails (CLAUDE.md says so). The by-construction differences
+  listed above (hash-map ties, control characters in `json_string`,
+  the NUL in a `Path`, `debug_quoted`, the import path separator, the
+  imports of a broken import) show on no program in the repository and
+  have no test. The checker's run time (32 s on `bodies.ry`) is
+  unprofiled, like the parser's; the judge adds about three minutes to
+  `cargo test` on eight threads and more on CI's runners. The Rust
+  checker's quirk that a `failure(x)` binding's fields are unknown is
+  reproduced on purpose (W7: equality first); fixing it is a change to
+  both checkers and a conformance case.
 - **VM.** `break` or `continue` as the outcome of an `if` or `match`
   *expression* nested inside another expression leaves that expression's
   partial operands on the stack (statements and loop bodies are clean); no
@@ -887,8 +1030,10 @@ on a fresh clone).
   only literals and local names occur there today. An untyped `failure(x)`
   pattern on a call declared `or fails with Fault` gives `x` a type on
   which the record's fields are unknown (`unknown-field` on `x.message`);
-  a typed pattern `failure(x: Fault)` works. Not yet reported as a
-  checker item; found while writing the compiler.
+  a typed pattern `failure(x: Fault)` or a destructuring one
+  (`failure(Fault(message))`) works. Not yet reported as a checker
+  item; found while writing the compiler, and met again in the checker
+  (`checker.ry` destructures).
 - **Boundary.** A scope denial of a primitive that cannot fail
   (`filesystem.exists`, `environment.get` under `environment("HOME")`)
   is a crash, since the module has no error to return. A budget on a

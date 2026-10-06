@@ -1,10 +1,14 @@
-//! The judge of the self-hosted front end (decision W3): the parser written
+//! The judges of the self-hosted front end. Decision W3: the parser written
 //! in Renyi (`compiler/parse.ry`, run on the VM) must print, for every
 //! program the Rust parser accepts, the document `renyi parse --json`
 //! prints, byte for byte, and must reject every program the Rust parser
-//! rejects. The inputs are the corpus, the conformance programs, the
+//! rejects; the inputs are the corpus, the conformance programs, the
 //! compiler's own sources and, with `--declarations`, the library
-//! declarations.
+//! declarations. Decision W7: the checker written in Renyi
+//! (`compiler/checker.ry`) must print, for every program the Rust parser
+//! accepts, what `renyi check --json` prints, with and without `--strict`,
+//! and exit as it exits; the library declarations are not programs, so
+//! they are left out.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -18,7 +22,7 @@ fn root() -> PathBuf {
 }
 
 /// The `.ry` files of a directory, in name order.
-fn programs(directory: &str) -> Vec<PathBuf> {
+fn programs_in(directory: &str) -> Vec<PathBuf> {
     let mut files: Vec<PathBuf> = std::fs::read_dir(root().join(directory))
         .unwrap_or_else(|error| panic!("{directory}: {error}"))
         .map(|entry| entry.expect("a directory entry").path())
@@ -90,21 +94,63 @@ fn judge(program: &Path, declarations: bool) -> Option<String> {
     None
 }
 
-/// Judge every program on a few threads: each run of the Renyi parser
-/// checks and loads the whole front end first.
-fn judge_all(cases: Vec<(PathBuf, bool)>) -> Vec<String> {
+/// What the Renyi checker got wrong on one program, in one mode; `None`
+/// when it agreed with the Rust checker. A program the Rust parser
+/// rejects only has to fail.
+fn judge_checker(program: &Path, parses: bool, strict: bool) -> Option<String> {
+    let mut rust_args = vec!["check", "--json"];
+    let mut self_args = vec!["run", "compiler/checker.ry", "--json"];
+    if strict {
+        rust_args.push("--strict");
+        self_args.push("--strict");
+    }
+    let own = renyi(&self_args, program);
+    let name = program
+        .strip_prefix(root())
+        .unwrap_or(program)
+        .display()
+        .to_string();
+    let mode = if strict { " (--strict)" } else { "" };
+    if !parses {
+        if own.status.success() {
+            return Some(format!(
+                "{name}{mode}: the Rust parser rejects it, the Renyi checker accepts it"
+            ));
+        }
+        return None;
+    }
+    let rust = renyi(&rust_args, program);
+    if rust.status.code() != own.status.code() {
+        return Some(format!(
+            "{name}{mode}: `renyi check` exits with {:?}, the Renyi checker with {:?}:\n  {}",
+            rust.status.code(),
+            own.status.code(),
+            String::from_utf8_lossy(&own.stderr).trim()
+        ));
+    }
+    if rust.stdout != own.stdout {
+        return Some(format!(
+            "{name}{mode}: the diagnostics differ at {}",
+            first_difference(&rust.stdout, &own.stdout)
+        ));
+    }
+    None
+}
+
+/// Judge every case on a few threads: each run of a Renyi program checks
+/// and loads the whole front end first.
+fn judge_all<Case: Sync>(
+    cases: Vec<Case>,
+    judge: impl Fn(&Case) -> Option<String> + Sync,
+) -> Vec<String> {
     let workers = std::thread::available_parallelism().map_or(4, |count| count.get().min(8));
     let chunk = cases.len().div_ceil(workers).max(1);
+    let judge = &judge;
     std::thread::scope(|scope| {
         let handles: Vec<_> = cases
             .chunks(chunk)
             .map(|chunk| {
-                scope.spawn(move || {
-                    chunk
-                        .iter()
-                        .filter_map(|(program, declarations)| judge(program, *declarations))
-                        .collect::<Vec<String>>()
-                })
+                scope.spawn(move || chunk.iter().filter_map(judge).collect::<Vec<String>>())
             })
             .collect();
         handles
@@ -118,11 +164,31 @@ fn judge_all(cases: Vec<(PathBuf, bool)>) -> Vec<String> {
 fn the_renyi_parser_prints_what_the_rust_parser_prints() {
     let mut cases: Vec<(PathBuf, bool)> = Vec::new();
     for directory in ["examples", "tests/conformance/programs", "compiler"] {
-        cases.extend(programs(directory).into_iter().map(|path| (path, false)));
+        cases.extend(programs_in(directory).into_iter().map(|path| (path, false)));
     }
-    cases.extend(programs("library/std").into_iter().map(|path| (path, true)));
+    cases.extend(
+        programs_in("library/std")
+            .into_iter()
+            .map(|path| (path, true)),
+    );
     assert!(cases.len() >= 70, "{} programs", cases.len());
-    let problems = judge_all(cases);
+    let problems = judge_all(cases, |(program, declarations)| {
+        judge(program, *declarations)
+    });
+    assert!(problems.is_empty(), "\n{}", problems.join("\n"));
+}
+
+#[test]
+fn the_renyi_checker_prints_what_the_rust_checker_prints() {
+    let mut programs: Vec<PathBuf> = Vec::new();
+    for directory in ["examples", "tests/conformance/programs", "compiler"] {
+        programs.extend(programs_in(directory));
+    }
+    assert!(programs.len() >= 70, "{} programs", programs.len());
+    let problems = judge_all(programs, |program| {
+        let parses = renyi(&["parse"], program).status.success();
+        judge_checker(program, parses, false).or_else(|| judge_checker(program, parses, true))
+    });
     assert!(problems.is_empty(), "\n{}", problems.join("\n"));
 }
 
@@ -131,7 +197,7 @@ fn the_front_end_is_in_canonical_layout() {
     let output = Command::new(env!("CARGO_BIN_EXE_renyi"))
         .current_dir(root())
         .args(["format", "--check"])
-        .args(programs("compiler"))
+        .args(programs_in("compiler"))
         .output()
         .expect("the renyi binary runs");
     assert!(

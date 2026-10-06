@@ -408,6 +408,21 @@ lexer stopped slicing the source text with `drop` and `take`, which
 copy the whole text per token: 79 s before); a list grown with `append`
 in a loop is linear (80 000 appends in 0.26 s, the in-place update of
 decision O1), and where the rest of the time goes has not been
-profiled. Next: the self-hosted checker, then the bytecode emitter with
-its file format or loader, and the performance items as the
-measurements call for them, a profile of the parser's run first.
+profiled.
+
+The checker written in Renyi followed in the same session (decisions W5
+to W8): `lists.ry`, `report.ry`, `effects.ry`, `suggest.ry`, `types.ry`,
+`refine.ry`, `declare.ry` (the port of `world.rs`), `bodies.ry` (the
+port of `check.rs`) and the command line `checker.ry`; `renyi run
+compiler/checker.ry --json <file>` prints what `renyi check --json`
+prints, and the same test holds the two equal, with and without
+`--strict`, over the corpus, the conformance programs and the
+compiler's own sources (W7: 71 programs, every diagnostic, fix and exit
+status equal). The references the VM's compiler needs are produced and
+not yet judged (W8). The second measurement: the Renyi checker takes
+about 1.5 s on a small program (the twelve library declaration files
+lexed, parsed and declared each run), 32 s on the 7500-line `bodies.ry`
+and 39 s on `checker.ry` with its imports; the judge takes about three
+minutes on eight threads. Next: the profile of the VM on those runs
+(W6), then the bytecode emitter with its file format or loader, and the
+performance items as the profile calls for them.

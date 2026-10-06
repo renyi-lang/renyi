@@ -10,3 +10,5 @@ public function captures(self: Pattern, text: Text) returns maybe List of Text
   purpose: The capture groups of the first match, or nothing when there is none.
 public function replace_all(self: Pattern, text: Text, replacement: Text) returns Text
 public function split(self: Pattern, text: Text) returns List of Text
+public function problem(pattern: Text) returns maybe Text
+  purpose: What the engine refuses in a pattern, or nothing when it compiles; the checker reports it for a literal.

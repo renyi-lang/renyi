@@ -1462,7 +1462,15 @@ value `null`, and a span `{"start", "stop"}` in characters, the end
 exclusive. `renyi run compiler/parse.ry [--declarations] <file>` prints
 the same document, and `crates/renyi/tests/selfhost.rs` holds the two
 equal byte for byte over the corpus, the conformance programs, the
-library and the compiler's own sources.
+library and the compiler's own sources. `renyi run compiler/checker.ry
+[--json] [--strict] [--library <dir>] <file>...` prints what `renyi
+check [--json] [--strict]` prints, computed by the checker written in
+Renyi (`compiler/declare.ry` and `compiler/bodies.ry`, decision W5; the
+library's declaration files are read from `library/std` under the
+working directory unless `--library` names another directory), and the
+same test holds the two equal, with and without `--strict`, over the
+corpus, the conformance programs and the compiler's own sources
+(decision W7).
 
 Diagnostics are printed as `file:line:column: severity [code]: message`
 with the fix on the next line, or as JSON with `--json`. The conformance

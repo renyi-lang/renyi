@@ -1,0 +1,523 @@
+module checker
+  purpose: The self-hosted checker's command line: what `renyi check` prints, computed in Renyi.
+
+import std.console
+import std.environment
+import std.filesystem exposing Path
+import ast exposing Module, Span
+import lexer exposing LexError
+import parser exposing ParseError
+import report exposing Diagnostic
+import declare exposing World
+import bodies
+import effects
+
+type Front is one of
+  purpose: What the front end made of a text: a tree, or the diagnostic that stopped it.
+  Parsed(tree: Module)
+  Rejected(diagnostic: Diagnostic)
+end
+
+type Source
+  purpose: A file by the name the command line gave, its text, and what the front end made of it.
+  has name: Text
+  has text: Text
+  has front: Front
+end
+
+type Checked
+  purpose: One file after the project is checked: its module, if it declared one, its diagnostics.
+  has id: maybe Integer
+  has diagnostics: List of Diagnostic
+end
+
+type Options
+  purpose: What the command line asked for: the output format, strictness, the library, the files.
+  has json: Boolean
+  has strict: Boolean
+  has library: Text
+  has files: List of Text
+end
+
+type UsageError
+  purpose: A command line the checker cannot act on.
+  has message: Text
+  can ToText
+end
+
+let library_modules: List of Text be [
+  "prelude",
+  "console",
+  "environment",
+  "time",
+  "random",
+  "filesystem",
+  "json",
+  "http",
+  "server",
+  "csv",
+  "sqlite",
+  "regex"
+]
+
+let max_columns: Integer be 100
+
+public function main() needs console, environment, filesystem.read
+  purpose: Check every file named; `--json` prints JSON, `--strict` makes a deprecation an error.
+
+  match read_options(environment.arguments())
+    when success(options) then check_files(options)
+    when failure(UsageError(message)) then
+      console.print_error("renyi: {message}")
+      console.print_error(usage())
+      environment.exit(1)
+  end
+end
+
+function usage() returns Text
+  purpose: The command line as the checker reads it.
+
+  return "usage: renyi run compiler/checker.ry [--json] [--strict] [--library <dir>] <file>..."
+end
+
+function read_options(arguments: List of Text) returns Options or fails with UsageError
+  purpose: The options and the files from the arguments; `--library` names the declaration files.
+
+  let mutable options be Options(json: false, strict: false, library: "library/std", files: [])
+  let mutable library_next be false
+  for each argument in arguments
+    if library_next then
+      set options to options with library: argument
+      set library_next to false
+      continue
+    end
+    if argument is "--json" then
+      set options to options with json: true
+    otherwise if argument is "--strict" then
+      set options to options with strict: true
+    otherwise if argument is "--library" then
+      set library_next to true
+    otherwise if argument.starts_with("--") then
+      fail with UsageError(message: "unknown option `{argument}`")
+    otherwise
+      set options to options with files: options.files.append(argument)
+    end
+  end
+  if library_next then fail with UsageError(message: "`--library` needs a directory") end
+  if options.files.is_empty() then fail with UsageError(message: "no file to check") end
+  return options
+end
+
+function check_files(options: Options) needs console, environment, filesystem.read
+  purpose: Check the files one after the other and print their diagnostics; exit 1 on any error.
+
+  let library be library_trees(options.library)
+  let mutable failed be false
+  for each path in options.files
+    let text be read_file(path)
+    let source be Source(name: path, text: text, front: front_end(text: text, declarations: false))
+    let found be diagnose(source: source, library: library, strict: options.strict)
+    if has_error(found) then set failed to true end
+    let chars be text.characters()
+    let starts be report.line_starts(chars)
+    let length be chars.length()
+    let rendered be
+      if options.json then report.render_json(
+        file_name: path,
+        starts: starts,
+        length: length,
+        diagnostics: found
+      )
+      otherwise report.render_text(
+        file_name: path,
+        starts: starts,
+        length: length,
+        diagnostics: found
+      )
+      end
+    print_block(rendered)
+  end
+  if failed then environment.exit(1) end
+end
+
+function read_file(path: Text) returns Text needs console, environment, filesystem.read
+  purpose: The text of a file named on the command line; a file that cannot be read ends the run.
+
+  match filesystem.read_text(Path(path))
+    when success(text) then return text
+    when failure(error) then
+      console.print_error("renyi: cannot read {path}: {error}")
+      environment.exit(1)
+      return ""
+  end
+end
+
+function print_block(rendered: Text) needs console
+  purpose: Print a rendering that ends with a line break, or nothing when it is empty.
+
+  if rendered.is_empty() then return end
+  console.print(rendered.take(rendered.length() - 1))
+end
+
+function has_error(diagnostics: List of Diagnostic) returns Boolean
+  purpose: Whether any diagnostic is an error.
+
+  for each diagnostic in diagnostics
+    if diagnostic.is_error then return true end
+  end
+  return false
+end
+
+function diagnose(source: Source, library: List of Module, strict: Boolean)
+  returns List of Diagnostic
+  needs filesystem.read
+  purpose: Every diagnostic of a file: the parser's, the checker's if it parses, the layout's.
+
+  let mutable diagnostics be
+    match source.front
+      when Parsed then check_file(source: source, library: library)
+      when Rejected(diagnostic) then [diagnostic]
+    end
+  set diagnostics to diagnostics.append_all(check_layout(source.text.characters()))
+  set diagnostics to report.sorted_by_start(diagnostics)
+  if not strict then return diagnostics end
+  return for each diagnostic in diagnostics collect as_strict(diagnostic)
+end
+
+function as_strict(diagnostic: Diagnostic) returns Diagnostic
+  purpose: Decision C8c, tier 2: a call to a deprecated definition is an error under `--strict`.
+
+  if diagnostic.code is "deprecated" then return diagnostic with is_error: true end
+  return diagnostic
+end
+
+function front_end(text: Text, declarations: Boolean) returns Front
+  purpose: Lex and parse a text; the first problem stops the front end.
+
+  let tokens be
+    match lexer.lex(text)
+      when success(tokens) then tokens
+      when failure(LexError(message, position)) then
+        return Rejected(diagnostic: syntax_error(message: message, position: position))
+    end
+  match parser.parse(tokens: tokens, declarations: declarations)
+    when success(tree) then return Parsed(tree: tree)
+    when failure(ParseError(message, position)) then
+      return Rejected(diagnostic: syntax_error(message: message, position: position))
+  end
+end
+
+function syntax_error(message: Text, position: Integer) returns Diagnostic
+  purpose: A lexer's or parser's problem as a diagnostic.
+
+  return report.error(
+    code: "syntax",
+    message: message,
+    span: Span(start: position, stop: position),
+    fix: "fix the syntax first; `renyi check` names the problem and its fix"
+  )
+end
+
+function library_trees(directory: Text) returns List of Module needs filesystem.read
+  purpose: The standard library's declaration files, parsed in the order the Rust checker uses.
+
+  return for each name in library_modules collect library_tree(directory: directory, name: name)
+end
+
+function library_tree(directory: Text, name: Text) returns Module needs filesystem.read
+  purpose: One library declaration file; a file that is missing or does not parse is a crash.
+
+  let path be "{directory}/{name}.ry"
+  let text be filesystem.read_text(
+    Path(path)
+  ) otherwise crash with "cannot read the library file {path}"
+  match front_end(text: text, declarations: true)
+    when Parsed(tree) then return tree
+    when Rejected(diagnostic) then
+      crash with "the library file {path} does not parse: {diagnostic.message}"
+  end
+end
+
+function check_file(source: Source, library: List of Module)
+  returns List of Diagnostic
+  needs filesystem.read
+  purpose: A file checked together with the imports read from its directory.
+
+  let imports be imported_files(source)
+  return check_sources(program: source, imports: imports, library: library)
+end
+
+function check_sources(program: Source, imports: List of Source, library: List of Module)
+  returns List of Diagnostic
+  purpose: The main file's diagnostics; an import with errors is summarized as one diagnostic.
+
+  let modules be check_project(files: [program].append_all(imports), library: library)
+  let main_module be modules.first() otherwise crash with "the main module"
+  if main_module.id is nothing then return main_module.diagnostics end
+  let mutable diagnostics be main_module.diagnostics
+  let mutable index be 1
+  for each imported in imports
+    let entry be modules.at(index) otherwise crash with "a checked import"
+    set index to index + 1
+    if entry.id is nothing then continue end
+    let errors be error_count(entry.diagnostics)
+    if errors is 0 then continue end
+    let plural be if errors is 1 then "" otherwise "s" end
+    set diagnostics to diagnostics.append(
+      report.error(
+        code: "import-errors",
+        message: "the imported module `{imported.name}` has {errors} error{plural}",
+        span: Span(start: 0, stop: 0),
+        fix: "run `renyi check` on `{imported.name}` and fix them first"
+      )
+    )
+  end
+  return report.sorted_by_start(diagnostics)
+end
+
+function error_count(diagnostics: List of Diagnostic) returns Integer
+  purpose: How many of the diagnostics are errors.
+
+  let mutable errors be 0
+  for each diagnostic in diagnostics
+    if diagnostic.is_error then set errors to errors + 1 end
+  end
+  return errors
+end
+
+function check_project(files: List of Source, library: List of Module) returns List of Checked
+  purpose: Declare and check every file together; a file that does not parse declares no module.
+
+  let mutable world be library_world(library)
+  let mutable modules: List of Checked be []
+  for each file in files
+    match file.front
+      when Rejected(diagnostic) then
+        set modules to modules.append(Checked(id: nothing, diagnostics: [diagnostic]))
+      when Parsed(tree) then
+        let mutable diagnostics: List of Diagnostic be []
+        match module_name_mismatch(file_name: file.name, tree: tree)
+          when some(diagnostic) then set diagnostics to [diagnostic]
+          when nothing then set diagnostics to diagnostics
+        end
+        let built be declare.add_module(world: world, tree: tree, is_library: false)
+        let chars be file.text.characters()
+        set world to declare.set_source_lines(world: built.world, id: built.value, chars: chars)
+        set modules to modules.append(Checked(id: built.value, diagnostics: diagnostics))
+    end
+  end
+  set world to declare.resolve_all(world)
+  return for each entry in modules collect finish_module(world: world, entry: entry)
+end
+
+function finish_module(world: World, entry: Checked) returns Checked
+  purpose: A declared module's diagnostics: the parser's, the declarations', the bodies', in order.
+
+  let id be entry.id otherwise return entry
+  let declared be declare.module_diagnostics(world: world, owner: id)
+  let checked be bodies.check_module(world: world, module_id: id)
+  let every be entry.diagnostics.append_all(declared).append_all(checked.diagnostics)
+  return entry with diagnostics: report.sorted_by_start(every)
+end
+
+function library_world(library: List of Module) returns World
+  purpose: A world with the standard library declared.
+
+  let mutable world be declare.new_world()
+  for each tree in library
+    let built be declare.add_module(world: world, tree: tree, is_library: true)
+    set world to built.world
+  end
+  return world
+end
+
+function module_name_mismatch(file_name: Text, tree: Module) returns maybe Diagnostic
+  purpose: Decision G3: the module name equals the path, the last segment being the file's stem.
+
+  let segments be effects.names_of(tree.name)
+  let components be path_components(file_name)
+  let last be components.last() otherwise ""
+  let parent_components be components.without_last()
+  let stem be without_extension(last)
+  let name be segments.last() otherwise return nothing
+  let parents be segments.without_last()
+  let fits be parent_components.length() is at least parents.length()
+  if stem is name and fits and tail_matches(parents: parents, components: parent_components) then
+    return nothing
+  end
+  let head be tree.name.first() otherwise crash with "a module name"
+  let tail be tree.name.last() otherwise crash with "a module name"
+  let dotted be segments.join(".")
+  let slashed be segments.join("/")
+  let expected be "{slashed}.ry"
+  let named be "the module is named `{dotted}`, but its file is `{last}`"
+  return report.error(
+    code: "module-name",
+    message: "{named}; the module name equals the path",
+    span: Span(start: head.span.start, stop: tail.span.stop),
+    fix: "rename the module after the file, or the file to `{expected}` (decision G3)"
+  )
+end
+
+function tail_matches(parents: List of Text, components: List of Text) returns Boolean
+  purpose: Whether the module's parent segments equal the path's last directories, from the end.
+
+  let mutable index be 0
+  let parent_count be parents.length()
+  let component_count be components.length()
+  repeat until index is parent_count
+    let parent be parents.at(parent_count - 1 - index) otherwise crash with "a parent segment"
+    let component be components.at(component_count - 1 - index) otherwise return false
+    if parent is not component then return false end
+    set index to index + 1
+  end
+  return true
+end
+
+function path_components(file_name: Text) returns List of Text
+  purpose: The non-empty components of a path, split at either separator.
+
+  let components be
+    for each component in file_name.replace(old: "\\", new: "/").split("/")
+    where component is not ""
+    collect component
+  return components
+end
+
+function without_extension(last: Text) returns Text
+  purpose: The stem of a file name: `.ry` or `.renyi` taken off.
+
+  if last.ends_with(".ry") then return last.take(last.length() - 3) end
+  if last.ends_with(".renyi") then return last.take(last.length() - 6) end
+  return last
+end
+
+function imported_files(program: Source) returns List of Source needs filesystem.read
+  purpose: The non-library modules a file imports, transitively, read from its directory (J17).
+
+  let directory be directory_of(program.name)
+  let mutable imports: List of Source be []
+  let mutable seen: List of Text be []
+  let mutable queue be import_paths(program.front)
+  repeat until queue.is_empty()
+    let path be queue.last() otherwise break
+    set queue to queue.without_last()
+    let head be path.first() otherwise continue
+    if head is "std" then continue end
+    let name be path.join(".")
+    if seen.contains(name) then continue end
+    set seen to seen.append(name)
+    let base be join_path(directory: directory, segments: path)
+    let found be read_import(base) otherwise continue
+    set queue to queue.append_all(import_paths(found.front))
+    set imports to imports.append(found)
+  end
+  return imports
+end
+
+function import_paths(front: Front) returns List of List of Text
+  purpose: The dotted paths a parsed module imports, in order; none when it did not parse.
+
+  match front
+    when Parsed(tree) then
+      return for each imported in tree.imports collect effects.names_of(imported.path)
+    when Rejected then return []
+  end
+end
+
+function read_import(base: Text) returns maybe Source needs filesystem.read
+  purpose: An imported file with the `.ry` or the `.renyi` extension (decision G3), parsed.
+
+  for each extension in ["ry", "renyi"]
+    let path be "{base}.{extension}"
+    let text be filesystem.read_text(Path(path)) otherwise continue
+    return Source(name: path, text: text, front: front_end(text: text, declarations: false))
+  end
+  return nothing
+end
+
+function directory_of(file_name: Text) returns Text
+  purpose: The part of a path before its last separator; empty for a bare file name.
+
+  let mutable last_separator: maybe Integer be nothing
+  let mutable index be 0
+  for each ch in file_name.characters()
+    if ch is "/" or ch is "\\" then set last_separator to index end
+    set index to index + 1
+  end
+  let cut be last_separator otherwise return ""
+  return file_name.take(cut)
+end
+
+function join_path(directory: Text, segments: List of Text) returns Text
+  purpose: The directory and the segments joined with `/`; a bare name when the directory is empty.
+
+  let mutable path be directory
+  for each segment in segments
+    if path.is_empty() then
+      set path to segment
+    otherwise
+      set path to "{path}/{segment}"
+    end
+  end
+  return path
+end
+
+function check_layout(chars: List of Text) returns List of Diagnostic
+  purpose: Layout checks the formatter would fix: line width and trailing whitespace, line by line.
+
+  let mutable diagnostics: List of Diagnostic be []
+  let mutable line_start be 0
+  let mutable width be 0
+  let mutable trailing be 0
+  let mutable index be 0
+  for each ch in chars
+    if ch is "\n" then
+      let finished be line_layout(start: line_start, width: width, trailing: trailing)
+      set diagnostics to diagnostics.append_all(finished)
+      set line_start to index + 1
+      set width to 0
+      set trailing to 0
+    otherwise
+      set width to width + 1
+      if ch is " " or ch is "\t" then
+        set trailing to trailing + 1
+      otherwise
+        set trailing to 0
+      end
+    end
+    set index to index + 1
+  end
+  if width is greater than 0 then
+    let finished be line_layout(start: line_start, width: width, trailing: trailing)
+    set diagnostics to diagnostics.append_all(finished)
+  end
+  return diagnostics
+end
+
+function line_layout(start: Integer, width: Integer, trailing: Integer) returns List of Diagnostic
+  purpose: The layout warnings of one line: too wide, and ending in spaces or tabs.
+
+  let mutable diagnostics: List of Diagnostic be []
+  if width is greater than max_columns then
+    set diagnostics to diagnostics.append(
+      report.warning(
+        code: "line-width",
+        message: "line is {width} columns; the limit is {max_columns}",
+        span: Span(start: start, stop: start + width),
+        fix: "run `renyi format`, or break inside parentheses or before `where`, `and` or `or`"
+      )
+    )
+  end
+  if trailing is greater than 0 then
+    set diagnostics to diagnostics.append(
+      report.warning(
+        code: "trailing-whitespace",
+        message: "trailing whitespace",
+        span: Span(start: start + width - trailing, stop: start + width),
+        fix: "run `renyi format`"
+      )
+    )
+  end
+  return diagnostics
+end

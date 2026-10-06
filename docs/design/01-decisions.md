@@ -1442,3 +1442,47 @@ collections, string building, a pattern cache), wait until the
 self-hosted checker or emitter needs them or a measurement shows the VM
 too slow; the parser's own run over the corpus is the first measurement.
 (user)
+
+**W5. The checker is the next piece, transcribed from `crates/renyi_check`.**
+The checker written in Renyi lives in `compiler/` beside the parser, one
+module per Rust file where the Rust has one: `lists`, `report` (the
+diagnostics, their rendering and the layout checks of `renyi_syntax`),
+`effects`, `suggest`, `types`, `refine`, `declare` (`world.rs`: the
+modules, types, functions, abilities and implementations of a project
+and the library, resolved after every module is in), `bodies`
+(`check.rs`: every function body, test, example, constant and refinement
+condition, with the Rust checker's mutable state as a `Checker` record
+threaded through every function) and the command line `checker`
+(`renyi run compiler/checker.ry [--json] [--strict] [--library <dir>]
+<file>...`, which reads the library's declaration files, the file and
+its imports, and prints what `renyi check` prints). It is written in one
+pass as a transcription, as the parser was, and committed as one piece;
+every message and fix is the Rust checker's, verbatim. (user)
+
+**W6. The profile of the VM waits until the checker exists.** Where the
+3.9 s of the parser's run on `parser.ry` go is measured after the
+checker is written in Renyi, so that one profile covers the parser's
+and the checker's runs; the checker's run over the compiler's own
+sources is the second measurement. (user)
+
+**W7. The judge of the checker is full equality with `renyi check --json`.**
+`crates/renyi/tests/selfhost.rs` runs `renyi run compiler/checker.ry
+--json` over every program of the repository (the corpus, the
+conformance programs and the compiler's own sources; the library
+declaration files are not checkable programs) with and without
+`--strict`, and compares the output with `renyi check --json
+[--strict]` byte for byte (codes, severities, positions, messages, fixes
+and order) and the exit status with the Rust one; a program the Rust
+parser rejects must make the Renyi checker fail. It runs in `cargo
+test` and in CI with the parser's judge. (user)
+
+**W8. The checker also produces the reference table the VM's compiler
+needs.** `bodies.ry` records what `check.rs` records for the VM: the
+target of every name (`Target`: a function, an ability method, a
+constant, a type, a variant, an ability), the kind of every number
+literal (`NumberKind`), the context type of every call whose result the
+context alone decides, whether every `otherwise` guards a fallible
+value, and the literals and results noted while a body is checked
+(`Reference`, `SpanTy`), as Renyi values keyed by span. They are
+produced now and judged when the emitter exists, which is the piece
+that consumes them. (user)
