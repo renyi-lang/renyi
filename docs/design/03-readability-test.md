@@ -6,7 +6,10 @@ Status: protocol defined, harness written, one subagent pre-test run
 from it; `tests/readability/2026-10-05-ed37120/notes.md`, the four models
 of R8 on the cheat sheet after R1 to R8). Explain is graded by Claude Code
 subagents since the second round, and the first round was re-graded by them
-(decision U4). Date: 2026-10-06.
+(decision U4); a hand verdict extends to every sample repeating the
+sentence it called wrong (U5), the five-point rule names the gating
+models (U6), and the samples come through the subscription channels
+unless the owner authorizes the keys (U7). Date: 2026-10-06.
 
 Decision H2 freezes the grammar by measurement, not by implementation: before
 the parser is written, several models must read the cheat sheet and work with
@@ -22,7 +25,7 @@ cheat sheet (`docs/cheatsheet.md`) and the task; no other Renyi material.
 | Task | Prompt | Scored by |
 |------|--------|-----------|
 | Predict | "Here is a Renyi program and its input. What does it print?" | exact match of the predicted output against the reference output |
-| Explain | "Explain what this program does in three sentences." | a second model grades the explanation against the author's language-neutral description of the program (`tests/readability/reference/<program>.explain.txt`), blind to which grammar revision produced the program; a second grader grades every explanation too, and a disagreement of more than one point is adjudicated by hand |
+| Explain | "Explain what this program does in three sentences." | a second model grades the explanation against the author's language-neutral description of the program (`tests/readability/reference/<program>.explain.txt`), blind to which grammar revision produced the program; a second grader grades every explanation too, and a disagreement of more than one point is adjudicated by hand; a hand verdict on a wrong sentence extends to every sample that repeats it (decision U5) |
 | Complete | a program with one function body removed, the signature and purpose kept | the completed body passes the program's `example:` and `test` blocks, judged by hand until M3 and by the VM afterwards |
 | Write | a one-paragraph task description | the written program, after `renyi format`, passes the lint, then the same acceptance tests as Complete |
 
@@ -39,7 +42,11 @@ the project intends to support (the floor model, decision M7). The gating
 models are the current large model of each vendor (decision R1: Sonnet 5.5,
 and gpt-5.5 from the second round, decision R8); the floor model is run and
 reported as a trend and does not gate the freeze. Temperature 0 where the API
-allows it, the model's default otherwise. Five samples per task per program;
+allows it, the model's default otherwise. The samples come through the
+vendor APIs when the owner authorizes the keys for the round, otherwise
+through Claude Code subagents (the Claude models) and the Codex CLI (the
+OpenAI models), fed to the harness with `run --provider file` (decision
+U7); the channel is recorded with the samples. Five samples per task per program;
 a task passes for a program when at least four of five samples are correct.
 Prompts, raw outputs and scores are committed under
 `tests/readability/<date>-<grammar-revision>/`.
@@ -53,9 +60,10 @@ Prompts, raw outputs and scores are committed under
   accounts for more than a quarter of the violations.
 - The cheat sheet stays within its 3000-token budget (`tools/count_tokens.py`).
 
-A grammar change that lowers any passing rate by more than five points is
-reverted or accompanied by a decision entry explaining why the loss is worth
-it.
+A grammar change that lowers a gating model's passing rate by more than
+five points is reverted or accompanied by a decision entry explaining why
+the loss is worth it; the floor model's moves are reported and explained in
+the round's notes (decision U6).
 
 ## Regression
 

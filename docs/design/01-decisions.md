@@ -1125,3 +1125,50 @@ only when the owner authorizes the keys for a round. The harness now
 snapshots the references into each run directory at `prepare`, after a
 description went stale between the rounds. L1's credentials sentence
 stands for the API path; this entry adds the default. (user)
+
+**U5. A hand verdict extends to every sample that repeats the sentence it
+called wrong.** The re-grade of round 1 (U4) showed the subagent graders
+agreeing on a passing grade for three statements the hand verdicts call
+wrong (Sonnet's `retry.3`, Haiku's `inventory_db.2` and
+`shipping_rules.0`), and the adjudication rule of the protocol reaches
+only samples the two graders disagree on by more than one point. From
+here a hand verdict of 2 on a sentence applies to every sample, of any
+model in any round, that repeats the sentence or makes the same statement
+about the same program; the adjudicator searches the program's samples
+for it and records a verdict that names the originating one. Applied to
+both rounds in session 6, fourteen verdicts: in round 1 Haiku's
+`inventory_db.1` to `.4`, `shipping_rules.0`, `invoice.2` and `.4` (where
+a session 5 verdict of 4 had read "quantities and prices are
+non-negative" as correct and is withdrawn, the quantity being at least
+1), Sonnet's `shipping_rules.1` and `retry.3`; in round 2 Haiku's
+`inventory_db.0` to `.4` ("items that have fallen below their reorder
+threshold" for at or below). Haiku's Explain is 27 of 30 in round 1 and
+26 of 30 in round 2 after it; no gating model's item moved. The
+alternatives were to keep the rule (the floor model's number then
+carries grades the hand would not give) and a hand pass over every
+agreed grade (1050 samples, declined as not worth it while the gating
+models are unaffected). (user)
+
+**U6. The five-point rule applies to the gating models.** The protocol's
+rule that a grammar change lowering any passing rate by more than five
+points is reverted or explained did not exempt the floor model, and
+Haiku 4.5's Explain fell between the rounds on the one scale (97 to 90
+before U5, 90 to 87 after it) on wrong statements about `todo_cli`,
+`invoice` and `inventory_db`, not on any changed rule. The floor model is
+reported as a trend and does not gate (R1), and its reading errors would
+trigger the rule every round. The rule now names the gating models; the
+floor model's moves are reported and explained in the round's notes.
+`03-readability-test.md` amended. (user)
+
+**U7. Round 3's samples come through the subscription channels.** The
+default of U4 (no pay-per-token keys unless the owner says so for the
+round) applies to collecting samples too: the Claude models are sampled
+by Claude Code subagents and the OpenAI models by the Codex CLI on the
+ChatGPT subscription, each sample fed to the harness with `run --provider
+file` (round 2's gpt-5.5 Write samples came that way). The cost is
+comparability: a subagent cannot be sampled at temperature 0 and sees the
+host's system prompt around the cheat sheet, so the floor model's rates
+carry more noise than in rounds 1 and 2; the gating models already ran at
+their default temperature. The owner may still authorize the keys for a
+round, and then the API path of `run` is used as in rounds 1 and 2.
+`03-readability-test.md` amended. (user)

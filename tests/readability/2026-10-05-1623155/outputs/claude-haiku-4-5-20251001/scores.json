@@ -523,28 +523,24 @@
       "grader": "judgement"
     },
     {
-      "grade": 5,
-      "pass": true,
-      "grader": "agent:claude-sonnet-5-5",
-      "second_grade": 5
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
     },
     {
-      "grade": 5,
-      "pass": true,
-      "grader": "agent:claude-sonnet-5-5",
-      "second_grade": 5
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
     },
     {
-      "grade": 5,
-      "pass": true,
-      "grader": "agent:claude-sonnet-5-5",
-      "second_grade": 5
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
     },
     {
-      "grade": 5,
-      "pass": true,
-      "grader": "agent:claude-sonnet-5-5",
-      "second_grade": 5
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
     }
   ],
   "explain/invoice": [
@@ -561,8 +557,8 @@
       "second_grade": 4
     },
     {
-      "grade": 4,
-      "pass": true,
+      "grade": 2,
+      "pass": false,
       "grader": "judgement"
     },
     {
@@ -572,8 +568,8 @@
       "second_grade": 4
     },
     {
-      "grade": 4,
-      "pass": true,
+      "grade": 2,
+      "pass": false,
       "grader": "judgement"
     }
   ],
@@ -864,10 +860,9 @@
   ],
   "explain/shipping_rules": [
     {
-      "grade": 4,
-      "pass": true,
-      "grader": "agent:claude-sonnet-5-5",
-      "second_grade": 4
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
     },
     {
       "grade": 2,
@@ -1718,7 +1713,7 @@
       "lint_problems": [],
       "vm": "5 passed, 1 failed",
       "failures": [
-        "FAIL  example of quote: example: quote(Parcel(weight_grams: 2500, destination: Europe, order_total: 20.00)) is Quote(cost: 14.50, business_days: 5, free_shipping: false) (D:\\Projects\\Renyi\\examples\\.scratch-115048.ry:35)",
+        "FAIL  example of quote: example: quote(Parcel(weight_grams: 2500, destination: Europe, order_total: 20.00)) is Quote(cost: 14.50, business_days: 5, free_shipping: false) (D:\\Projects\\Renyi\\examples\\.scratch-38592.ry:35)",
         "got Quote(cost: 13.50, business_days: 5, free_shipping: false), expected Quote(cost: 14.50, business_days: 5, free_shipping: false)"
       ],
       "pass": false,
@@ -1728,7 +1723,7 @@
       "lint_problems": [],
       "vm": "5 passed, 1 failed",
       "failures": [
-        "FAIL  example of quote: example: quote(Parcel(weight_grams: 2500, destination: Europe, order_total: 20.00)) is Quote(cost: 14.50, business_days: 5, free_shipping: false) (D:\\Projects\\Renyi\\examples\\.scratch-115048.ry:35)",
+        "FAIL  example of quote: example: quote(Parcel(weight_grams: 2500, destination: Europe, order_total: 20.00)) is Quote(cost: 14.50, business_days: 5, free_shipping: false) (D:\\Projects\\Renyi\\examples\\.scratch-38592.ry:35)",
         "got Quote(cost: 13.50, business_days: 5, free_shipping: false), expected Quote(cost: 14.50, business_days: 5, free_shipping: false)"
       ],
       "pass": false,
@@ -1756,7 +1751,7 @@
       "lint_problems": [],
       "vm": "5 passed, 1 failed",
       "failures": [
-        "FAIL  example of quote: example: quote(Parcel(weight_grams: 2500, destination: Europe, order_total: 20.00)) is Quote(cost: 14.50, business_days: 5, free_shipping: false) (D:\\Projects\\Renyi\\examples\\.scratch-115048.ry:35)",
+        "FAIL  example of quote: example: quote(Parcel(weight_grams: 2500, destination: Europe, order_total: 20.00)) is Quote(cost: 14.50, business_days: 5, free_shipping: false) (D:\\Projects\\Renyi\\examples\\.scratch-38592.ry:35)",
         "got Quote(cost: 13.50, business_days: 5, free_shipping: false), expected Quote(cost: 14.50, business_days: 5, free_shipping: false)"
       ],
       "pass": false,
@@ -2591,7 +2586,7 @@
       "lint_problems": [],
       "vm": "0 passed, 1 failed",
       "failures": [
-        "FAIL  example of count_rejected: example: count_rejected( times: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0], window_length: 10.0 ) is 1 (D:\\Projects\\Renyi\\examples\\.scratch-115048.ry:6)",
+        "FAIL  example of count_rejected: example: count_rejected( times: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0], window_length: 10.0 ) is 1 (D:\\Projects\\Renyi\\examples\\.scratch-38592.ry:6)",
         "got 0, expected 1"
       ],
       "pass": false,

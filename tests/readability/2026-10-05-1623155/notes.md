@@ -36,8 +36,8 @@ pass Explain only. The tally of this scoring is kept in
 `outputs/<label>/scores-api.json`, the strict tally in
 `scores-strict-api.json`, the per-sample reasons in `judgement.json`.
 Explain was re-graded by the subagent graders in session 6 (section 8,
-decision U4): 29, 29 and 29 of 30 on that scale, which is round 2's;
-`scores.json` and `scores-strict.json` hold that tally.
+decisions U4 and U5): 29, 27 and 29 of 30 on that scale, which is round
+2's; `scores.json` and `scores-strict.json` hold that tally.
 
 ## 2. Predict
 
@@ -297,54 +297,66 @@ reaches only samples the graders disagree on by more than one point. The
 two subagents never disagreed by more than one point on any of the 450
 samples, so nothing was adjudicated anew.
 
-Explain now passes 29 of 30 items for every model (Sonnet 29, Haiku 29,
-gpt-5.4-mini 29); `shipping_rules` is the one failing item everywhere,
-through the hand verdicts. Under the API graders Haiku had 27:
-`file_tree` and `inventory_db` pass now. The first grader's grades over
-the 150 samples per model: Sonnet 141 fives, 5 fours, 4 twos; Haiku 118
-fives, 32 fours; gpt-5.4-mini 142 fives, 3 fours, 5 twos. The two
-subagents give the same grade on 145, 121 and 133 of the 150 samples;
-where they differ, Opus is the stricter on 5, 19 and 17 samples and
-Sonnet on 0, 10 and 0. Sample by
-sample against the API first grader, the subagent never grades lower: it
-gives the same grade on 108, 31 and 36 samples (Sonnet, Haiku, gpt), one
-point more on 38, 102 and 111, two more on 0, 15 and 2, three more on 4,
-2 and 1. Most of the difference is the API grader's fours for needs left
-unnamed becoming fives: the subagent takes "prints" and "reads a file" as
-stating the console and the filesystem.
+On the subagents' grades and the hand verdicts of section 3, Explain
+passed 29 of 30 items for every model (Sonnet 29, Haiku 29, gpt-5.4-mini
+29), `shipping_rules` the one failing item everywhere; under the API
+graders Haiku had 27, and `file_tree` and `inventory_db` passed on the
+subagents' grades. The first grader's grades over the 150 samples per
+model: Sonnet 141 fives, 5 fours, 4 twos; Haiku 118 fives, 32 fours;
+gpt-5.4-mini 142 fives, 3 fours, 5 twos. The two subagents give the same
+grade on 145, 121 and 133 of the 150 samples; where they differ, Opus is
+the stricter on 5, 19 and 17 samples and Sonnet on 0, 10 and 0. Sample
+by sample against the API first grader, the subagent never grades lower:
+it gives the same grade on 108, 31 and 36 samples (Sonnet, Haiku, gpt),
+one point more on 38, 102 and 111, two more on 0, 15 and 2, three more
+on 4, 2 and 1. Most of the difference is the API grader's fours for
+needs left unnamed becoming fives: the subagent takes "prints" and
+"reads a file" as stating the console and the filesystem.
 
-With the hand verdicts applied, 1, 9 and 1 samples flip from fail to
-pass and none the other way. Eight of the eleven are the API grader's
-threes ("several things missing": the needs, an error case, a detail of
-the output) that both subagents read as complete or as one thing
-missing: Haiku's `file_tree.0`, `.2` and `.3`, `inventory_db.1`,
+With the hand verdicts of section 3 applied, 1, 9 and 1 samples flipped
+from fail to pass and none the other way. Eight of the eleven were the
+API grader's threes ("several things missing": the needs, an error case,
+a detail of the output) that both subagents read as complete or as one
+thing missing: Haiku's `file_tree.0`, `.2` and `.3`, `inventory_db.1`,
 `todo_cli.2`, `traffic_light.1` and `word_count.0`, and gpt-5.4-mini's
-`word_count.3`. The other three are wrong statements that both subagents
-let pass, so the adjudication rule does not reach them:
+`word_count.3`. The other three were wrong statements that both
+subagents let pass, which the adjudication rule did not reach:
 
 - Sonnet `retry.3`: "the last error, which includes its attempt number"
   contradicts the description (GaveUp carries the last error text only;
   the attempt prefix is in the per-attempt records). The API graders
   gave 2 and 2, the subagents 5 and 5 ("complete"). Round 2 adjudicated
-  the same statement in Sonnet's `retry.4` as wrong. The item passed
-  either way.
+  the same statement in Sonnet's `retry.4` as wrong.
 - Haiku `inventory_db.2`: "items that have fallen below their reorder
   thresholds" for at or below, the sentence the hand verdict on `.0`
   calls wrong (all five samples share it; the API grader gave `.2` a 3,
   calling the sentence "technically contradicted at equality"). The
-  subagents gave 5 and 5. The item passes on `.1` to `.4` and would fail
-  under the hand's reading.
+  subagents gave 5 and 5.
 - Haiku `shipping_rules.0`: "orders above 50.00" for at least 50.00; the
   API graders gave 2 and 2, the subagents 4 and 4, the first grader
   noting the threshold "given loosely as 'above' rather than 'at least'"
   without counting it wrong, while in round 2 the same subagent grader
-  counted the same sentence of Haiku's as wrong. The item still fails
-  through the hand verdicts on `.1` to `.4`.
+  counted the same sentence of Haiku's as wrong.
 
 So the subagent graders miss a contradiction carried in a subordinate
 clause and read a boundary word loosely in one batch and strictly in
-another. None of it moves a gating model's item; it moves the floor
-model's `inventory_db`. The remedy, if the floor model's Explain number
-is to carry weight, is a hand pass over the agreed grades of samples
-that repeat a sentence a hand verdict called wrong; it is put to the
-owner in the handoff.
+another. The owner then decided (U5) that a hand verdict on a sentence
+extends to every sample that repeats it, in any round, and nine verdicts
+were added here, each naming the originating one: Haiku's
+`inventory_db.1` to `.4` (the sentence of `.0`), `shipping_rules.0` (the
+sentence of `.1` to `.4`), `invoice.2` and `.4` ("quantities and prices
+are non-negative", the sentence round 2's `invoice.0` verdict calls
+wrong; the session 5 verdicts of 4 on these two had read it as correct
+and are withdrawn, the quantity being at least 1 at this revision too);
+Sonnet's `shipping_rules.1` (the statement of `.3`) and `retry.3` (the
+statement of round 2's `retry.4`). Round 2 got five, its Haiku
+`inventory_db`. After U5 Explain passes 29, 27 and 29 of 30 (Sonnet,
+Haiku, gpt-5.4-mini): Haiku fails `shipping_rules`, `inventory_db` and
+`invoice`, the count it had under the API graders, with `file_tree`
+passing and `invoice` failing instead. Against the API tally sample by
+sample the tallies now differ on 0, 10 and 1 samples: Haiku's six API
+threes above pass and `inventory_db.3`, `.4`, `invoice.2` and `.4` fail
+by the new verdicts; gpt-5.4-mini's `word_count.3` passes. A wrong
+statement that neither grader catches and no hand verdict names still
+passes; a hand pass over every agreed grade was declined with U5 as not
+worth it while the gating models are unaffected.

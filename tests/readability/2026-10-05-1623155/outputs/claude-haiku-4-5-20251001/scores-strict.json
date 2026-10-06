@@ -523,28 +523,24 @@
       "grader": "judgement"
     },
     {
-      "grade": 5,
-      "pass": true,
-      "grader": "agent:claude-sonnet-5-5",
-      "second_grade": 5
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
     },
     {
-      "grade": 5,
-      "pass": true,
-      "grader": "agent:claude-sonnet-5-5",
-      "second_grade": 5
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
     },
     {
-      "grade": 5,
-      "pass": true,
-      "grader": "agent:claude-sonnet-5-5",
-      "second_grade": 5
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
     },
     {
-      "grade": 5,
-      "pass": true,
-      "grader": "agent:claude-sonnet-5-5",
-      "second_grade": 5
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
     }
   ],
   "explain/invoice": [
@@ -561,8 +557,8 @@
       "second_grade": 4
     },
     {
-      "grade": 4,
-      "pass": true,
+      "grade": 2,
+      "pass": false,
       "grader": "judgement"
     },
     {
@@ -572,8 +568,8 @@
       "second_grade": 4
     },
     {
-      "grade": 4,
-      "pass": true,
+      "grade": 2,
+      "pass": false,
       "grader": "judgement"
     }
   ],
@@ -864,10 +860,9 @@
   ],
   "explain/shipping_rules": [
     {
-      "grade": 4,
-      "pass": true,
-      "grader": "agent:claude-sonnet-5-5",
-      "second_grade": 4
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
     },
     {
       "grade": 2,

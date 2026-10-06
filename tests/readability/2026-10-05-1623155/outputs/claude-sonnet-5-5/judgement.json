@@ -1,552 +1,560 @@
 {
   "complete/config.0": {
-    "verdict": true,
+    "packet": "complete-config-2e21cb7dd1",
     "reason": "default_config returns Config(port: Port(8080), workers: 4, log_level: Normal), so the only example `default_config().port is Port(8080)` holds, workers 4 satisfies the 1..64 refinement, and a fixed fallback configuration is what the purpose asks for.",
-    "packet": "complete-config-2e21cb7dd1"
+    "verdict": true
   },
   "complete/config.1": {
-    "verdict": true,
+    "packet": "complete-config-2e21cb7dd1",
     "reason": "default_config returns Config(port: Port(8080), workers: 4, log_level: Normal), so the only example `default_config().port is Port(8080)` holds, workers 4 satisfies the 1..64 refinement, and a fixed fallback configuration is what the purpose asks for.",
-    "packet": "complete-config-2e21cb7dd1"
+    "verdict": true
   },
   "complete/config.2": {
-    "verdict": true,
+    "packet": "complete-config-2e21cb7dd1",
     "reason": "default_config returns Config(port: Port(8080), workers: 4, log_level: Normal), so the only example `default_config().port is Port(8080)` holds, workers 4 satisfies the 1..64 refinement, and a fixed fallback configuration is what the purpose asks for.",
-    "packet": "complete-config-2e21cb7dd1"
+    "verdict": true
   },
   "complete/config.3": {
-    "verdict": true,
+    "packet": "complete-config-2e21cb7dd1",
     "reason": "default_config returns Config(port: Port(8080), workers: 4, log_level: Normal), so the only example `default_config().port is Port(8080)` holds, workers 4 satisfies the 1..64 refinement, and a fixed fallback configuration is what the purpose asks for.",
-    "packet": "complete-config-2e21cb7dd1"
+    "verdict": true
   },
   "complete/deadlines.2": {
-    "verdict": true,
+    "packet": "complete-deadlines-72989e9bc8",
     "reason": "The repeat-until loop is tested before each pass (decision M9), so from Friday 2024-05-03 it steps through Sat 4 and Sun 5 (not counted) to Monday 6 and returns 1, and with start equal to finish it never runs and returns 0, which matches the purpose of counting weekdays after the start up to and including the finish.",
-    "packet": "complete-deadlines-72989e9bc8"
+    "verdict": true
   },
   "complete/deadlines.3": {
-    "verdict": true,
+    "packet": "complete-deadlines-b1c803a128",
     "reason": "Both examples hold: from Friday 2024-05-03 the loop steps through Saturday 4, Sunday 5 and Monday 6 and counts 1, and with start equal to finish the repeat-until condition is tested before the first pass (decision M9) so the result is 0, matching the purpose of counting the Monday-to-Friday days after the start up to and including the finish.",
-    "packet": "complete-deadlines-b1c803a128"
+    "verdict": true
   },
   "complete/deadlines.4": {
-    "verdict": true,
+    "packet": "complete-deadlines-72989e9bc8",
     "reason": "The repeat-until loop is tested before each pass (decision M9), so from Friday 2024-05-03 it steps through Sat 4 and Sun 5 (not counted) to Monday 6 and returns 1, and with start equal to finish it never runs and returns 0, which matches the purpose of counting weekdays after the start up to and including the finish.",
-    "packet": "complete-deadlines-72989e9bc8"
+    "verdict": true
   },
   "complete/dependency_order.0": {
-    "verdict": true,
+    "packet": "complete-dependency_order-16394537ac",
     "reason": "All three examples hold: with names sorted to [build, fetch, test], taking the alphabetically first step whose dependencies are done each pass gives [\"fetch\", \"build\", \"test\"], {a: [b], b: [a]} has no ready step and fails with Cycle(remaining: [\"a\", \"b\"]), and the up-front scan fails test -> lint with UnknownDependency, which is a topological order with alphabetical tie-breaking as the purpose asks (an empty map gives [] because repeat until is top-tested).",
-    "packet": "complete-dependency_order-16394537ac"
+    "verdict": true
   },
   "complete/dependency_order.1": {
-    "verdict": true,
+    "packet": "complete-dependency_order-4fca97a0fc",
     "reason": "Taking the alphabetically first unplaced step whose dependencies are all placed gives [\"fetch\", \"build\", \"test\"] for the chain example, finds no ready step for {\"a\": [\"b\"], \"b\": [\"a\"]} and fails with Cycle(remaining: [\"a\", \"b\"]), and the up-front key check fails {\"test\": [\"lint\"]} with UnknownDependency(step: \"test\", depends_on: \"lint\"), so all three examples hold and ties are broken alphabetically as the purpose says.",
-    "packet": "complete-dependency_order-4fca97a0fc"
+    "verdict": true
   },
   "complete/dependency_order.3": {
-    "verdict": true,
+    "packet": "complete-dependency_order-abf51d5889",
     "reason": "All three examples hold: repeatedly placing the alphabetically first unplaced step whose dependencies are all placed gives [\"fetch\", \"build\", \"test\"], the a/b loop leaves no ready step and fails with Cycle(remaining: [\"a\", \"b\"]) in sorted order, and the unknown \"lint\" is reported as UnknownDependency(step: \"test\", depends_on: \"lint\") before ordering starts, which is a topological order with alphabetical tie-breaking as the purpose asks.",
-    "packet": "complete-dependency_order-abf51d5889"
+    "verdict": true
   },
   "complete/dependency_order.4": {
-    "verdict": true,
+    "packet": "complete-dependency_order-bf159aa6cf",
     "reason": "Every example holds by hand: choosing the alphabetically first ready step each round yields [\"fetch\", \"build\", \"test\"], the two-step loop has no ready step and fails with Cycle(remaining: [\"a\", \"b\"]), and the missing \"lint\" is reported as UnknownDependency(step: \"test\", depends_on: \"lint\") before ordering, which matches the purpose's alphabetical tie-break.",
-    "packet": "complete-dependency_order-bf159aa6cf"
+    "verdict": true
   },
   "complete/expression_tree.0": {
-    "verdict": true,
+    "packet": "complete-expression_tree-af62d55fd7",
     "reason": "All three examples hold: Number(value: 4) evaluates to 4, Add(1, 2) to 1 + 2 = 3, and Negate(Multiply(2, 3)) to 0 - 6 = -6, and the match recurses over every variant as the purpose requires.",
-    "packet": "complete-expression_tree-af62d55fd7"
+    "verdict": true
   },
   "complete/expression_tree.1": {
-    "verdict": true,
+    "packet": "complete-expression_tree-af62d55fd7",
     "reason": "All three examples hold: Number(value: 4) evaluates to 4, Add(1, 2) to 1 + 2 = 3, and Negate(Multiply(2, 3)) to 0 - 6 = -6, and the match recurses over every variant as the purpose requires.",
-    "packet": "complete-expression_tree-af62d55fd7"
+    "verdict": true
   },
   "complete/expression_tree.2": {
-    "verdict": true,
+    "packet": "complete-expression_tree-af62d55fd7",
     "reason": "All three examples hold: Number(value: 4) evaluates to 4, Add(1, 2) to 1 + 2 = 3, and Negate(Multiply(2, 3)) to 0 - 6 = -6, and the match recurses over every variant as the purpose requires.",
-    "packet": "complete-expression_tree-af62d55fd7"
+    "verdict": true
   },
   "complete/expression_tree.3": {
-    "verdict": true,
+    "packet": "complete-expression_tree-af62d55fd7",
     "reason": "All three examples hold: Number(value: 4) evaluates to 4, Add(1, 2) to 1 + 2 = 3, and Negate(Multiply(2, 3)) to 0 - 6 = -6, and the match recurses over every variant as the purpose requires.",
-    "packet": "complete-expression_tree-af62d55fd7"
+    "verdict": true
   },
   "complete/expression_tree.4": {
-    "verdict": true,
+    "packet": "complete-expression_tree-af62d55fd7",
     "reason": "All three examples hold: Number(value: 4) evaluates to 4, Add(1, 2) to 1 + 2 = 3, and Negate(Multiply(2, 3)) to 0 - 6 = -6, and the match recurses over every variant as the purpose requires.",
-    "packet": "complete-expression_tree-af62d55fd7"
+    "verdict": true
   },
   "complete/invoice_report.3": {
-    "verdict": true,
+    "packet": "complete-invoice_report-9b38fdfb96",
     "reason": "For the empty ACME invoice, \"ACME\".pad_right(10) + \"0\".pad_left(5) + \" lines\" + invoice.total(order).to_text().pad_left(10), where the imported total is (0 - 0).rounded(2) rendering \"0.00\", gives exactly \"ACME          0 lines      0.00\" (ACME, 10 spaces, 0, ' lines', 6 spaces, 0.00), so the example holds.",
-    "packet": "complete-invoice_report-9b38fdfb96"
+    "verdict": true
   },
   "complete/invoice_report.4": {
-    "verdict": true,
+    "packet": "complete-invoice_report-9b38fdfb96",
     "reason": "For the empty ACME invoice, \"ACME\".pad_right(10) + \"0\".pad_left(5) + \" lines\" + invoice.total(order).to_text().pad_left(10), where the imported total is (0 - 0).rounded(2) rendering \"0.00\", gives exactly \"ACME          0 lines      0.00\" (ACME, 10 spaces, 0, ' lines', 6 spaces, 0.00), so the example holds.",
-    "packet": "complete-invoice_report-9b38fdfb96"
+    "verdict": true
   },
   "complete/log_parser.0": {
-    "verdict": true,
+    "packet": "complete-log_parser-0ba77bd03a",
     "reason": "Splitting on spaces gives [\"2024-05-01T13:45:00\", \"INFO\", \"server\", \"started\"], hence a valid Timestamp, level Info and the rejoined message \"server started\", while \"garbage\" has fewer than three parts and fails with Malformed(line: \"garbage\"); an unknown level propagates UnknownLevel from parse_level, and a line with no message is Malformed, which fits the stated \"timestamp LEVEL message\" form.",
-    "packet": "complete-log_parser-0ba77bd03a"
+    "verdict": true
   },
   "complete/log_parser.1": {
-    "verdict": true,
+    "packet": "complete-log_parser-a00c86ba04",
     "reason": "Splitting on spaces gives the valid Timestamp(\"2024-05-01T13:45:00\"), \"INFO\" -> Info and the rejoined message \"server started\", while \"garbage\" has no second word and fails with Malformed(line: \"garbage\"), so both examples hold and unknown levels still propagate UnknownLevel from parse_level.",
-    "packet": "complete-log_parser-a00c86ba04"
+    "verdict": true
   },
   "complete/log_parser.2": {
-    "verdict": true,
+    "packet": "complete-log_parser-0ba77bd03a",
     "reason": "Splitting on spaces gives [\"2024-05-01T13:45:00\", \"INFO\", \"server\", \"started\"], hence a valid Timestamp, level Info and the rejoined message \"server started\", while \"garbage\" has fewer than three parts and fails with Malformed(line: \"garbage\"); an unknown level propagates UnknownLevel from parse_level, and a line with no message is Malformed, which fits the stated \"timestamp LEVEL message\" form.",
-    "packet": "complete-log_parser-0ba77bd03a"
+    "verdict": true
   },
   "complete/log_parser.3": {
-    "verdict": true,
+    "packet": "complete-log_parser-80f99294cf",
     "reason": "Splitting \"2024-05-01T13:45:00 INFO server started\" on spaces gives four pieces, so the first example yields Entry(timestamp: Timestamp(\"2024-05-01T13:45:00\"), level: Info, message: \"server started\") with the message rejoined by single spaces, and \"garbage\" gives one piece and fails with Malformed(line: \"garbage\"), so both examples hold.",
-    "packet": "complete-log_parser-80f99294cf"
+    "verdict": true
   },
   "complete/log_parser.4": {
-    "verdict": true,
+    "packet": "complete-log_parser-2c07ddb897",
     "reason": "Both examples hold: \"2024-05-01T13:45:00 INFO server started\" splits into a valid Timestamp, the level Info and the remaining words rejoined as \"server started\", and \"garbage\" has fewer than three pieces so it fails with Malformed(line: \"garbage\"), while an unknown level word still propagates UnknownLevel from parse_level.",
-    "packet": "complete-log_parser-2c07ddb897"
+    "verdict": true
   },
   "complete/markdown_table.1": {
-    "verdict": true,
+    "packet": "complete-markdown_table-b5567a6cd1",
     "reason": "With widths [5, 3] the header, dash rule and two body rows render as \"| name  | qty |\", \"| ----- | --- |\", \"| apple | 1   |\", \"| kiwi  | 12  |\" joined by newlines with no trailing newline, which is exactly the example's dedented text block.",
-    "packet": "complete-markdown_table-b5567a6cd1"
+    "verdict": true
   },
   "complete/markdown_table.2": {
-    "verdict": true,
+    "packet": "complete-markdown_table-d15f45d91c",
     "reason": "With widths [5, 3] the header row, the rule row of 5 and 3 dashes and the two body rows render as \"| name  | qty |\", \"| ----- | --- |\", \"| apple | 1   |\" and \"| kiwi  | 12  |\", joined by newlines with no trailing newline, which is exactly the triple-quoted example.",
-    "packet": "complete-markdown_table-d15f45d91c"
+    "verdict": true
   },
   "complete/markdown_table.3": {
-    "verdict": true,
+    "packet": "complete-markdown_table-d3fc38af07",
     "reason": "The example holds exactly: widths are [5, 3], every row is padded with pad_right and wrapped as \"| name  | qty |\", the rule row is \"| ----- | --- |\", and the four lines are joined with a line break and no trailing newline, which is precisely the triple-quoted literal once its common indentation is removed.",
-    "packet": "complete-markdown_table-d3fc38af07"
+    "verdict": true
   },
   "complete/markdown_table.4": {
-    "verdict": true,
+    "packet": "complete-markdown_table-4b28201d66",
     "reason": "The example evaluates exactly: widths are [5, 3], the rows render as \"| name  | qty |\", \"| ----- | --- |\", \"| apple | 1   |\" and \"| kiwi  | 12  |\", and joining them with newlines and no trailing newline gives the triple-quoted literal once its common indentation is removed.",
-    "packet": "complete-markdown_table-4b28201d66"
+    "verdict": true
   },
   "complete/permissions.0": {
-    "verdict": true,
+    "packet": "complete-permissions-9c12c43bdc",
     "reason": "The example holds because granted_by gives {orders:read} and {orders:read, orders:write}.difference({orders:read}) is {orders:write}, and required minus the union of all granted sets is exactly the required permissions no role grants.",
-    "packet": "complete-permissions-9c12c43bdc"
+    "verdict": true
   },
   "complete/permissions.1": {
-    "verdict": true,
+    "packet": "complete-permissions-9c12c43bdc",
     "reason": "The example holds because granted_by gives {orders:read} and {orders:read, orders:write}.difference({orders:read}) is {orders:write}, and required minus the union of all granted sets is exactly the required permissions no role grants.",
-    "packet": "complete-permissions-9c12c43bdc"
+    "verdict": true
   },
   "complete/permissions.2": {
-    "verdict": true,
+    "packet": "complete-permissions-9c12c43bdc",
     "reason": "The example holds because granted_by gives {orders:read} and {orders:read, orders:write}.difference({orders:read}) is {orders:write}, and required minus the union of all granted sets is exactly the required permissions no role grants.",
-    "packet": "complete-permissions-9c12c43bdc"
+    "verdict": true
   },
   "complete/permissions.3": {
-    "verdict": true,
+    "packet": "complete-permissions-9c12c43bdc",
     "reason": "The example holds because granted_by gives {orders:read} and {orders:read, orders:write}.difference({orders:read}) is {orders:write}, and required minus the union of all granted sets is exactly the required permissions no role grants.",
-    "packet": "complete-permissions-9c12c43bdc"
+    "verdict": true
   },
   "complete/permissions.4": {
-    "verdict": true,
+    "packet": "complete-permissions-9c12c43bdc",
     "reason": "The example holds because granted_by gives {orders:read} and {orders:read, orders:write}.difference({orders:read}) is {orders:write}, and required minus the union of all granted sets is exactly the required permissions no role grants.",
-    "packet": "complete-permissions-9c12c43bdc"
+    "verdict": true
   },
   "complete/sales_report.0": {
-    "verdict": true,
+    "packet": "complete-sales_report-21f3b4a765",
     "reason": "The query `for each sale in sales group by sale.region sum sale.amount` is exactly the per-region Decimal sum the purpose asks for, and on an empty list it gives {} as the only example requires.",
-    "packet": "complete-sales_report-21f3b4a765"
+    "verdict": true
   },
   "complete/sales_report.1": {
-    "verdict": true,
+    "packet": "complete-sales_report-21f3b4a765",
     "reason": "The query `for each sale in sales group by sale.region sum sale.amount` is exactly the per-region Decimal sum the purpose asks for, and on an empty list it gives {} as the only example requires.",
-    "packet": "complete-sales_report-21f3b4a765"
+    "verdict": true
   },
   "complete/sales_report.2": {
-    "verdict": true,
+    "packet": "complete-sales_report-21f3b4a765",
     "reason": "The query `for each sale in sales group by sale.region sum sale.amount` is exactly the per-region Decimal sum the purpose asks for, and on an empty list it gives {} as the only example requires.",
-    "packet": "complete-sales_report-21f3b4a765"
+    "verdict": true
   },
   "complete/sales_report.3": {
-    "verdict": true,
+    "packet": "complete-sales_report-21f3b4a765",
     "reason": "The query `for each sale in sales group by sale.region sum sale.amount` is exactly the per-region Decimal sum the purpose asks for, and on an empty list it gives {} as the only example requires.",
-    "packet": "complete-sales_report-21f3b4a765"
+    "verdict": true
   },
   "complete/sales_report.4": {
-    "verdict": true,
+    "packet": "complete-sales_report-21f3b4a765",
     "reason": "The query `for each sale in sales group by sale.region sum sale.amount` is exactly the per-region Decimal sum the purpose asks for, and on an empty list it gives {} as the only example requires.",
-    "packet": "complete-sales_report-21f3b4a765"
+    "verdict": true
   },
   "complete/semver.0": {
-    "verdict": true,
+    "packet": "complete-semver-f404843c81",
     "reason": "parse('1.4.2') gives Version(1, 4, 2), parse('1.4') fails with WrongPartCount(found: 2) before any number is read, parse('1.x.2') fails with NotANumber(part: 'x'), and the comparison test (1.9.9 less than 2.0.0, latest is 2.0.0) passes.",
-    "packet": "complete-semver-f404843c81"
+    "verdict": true
   },
   "complete/semver.1": {
-    "verdict": true,
+    "packet": "complete-semver-1a4e46d579",
     "reason": "parse('1.4.2') gives Version(major: 1, minor: 4, patch: 2), '1.4' fails with WrongPartCount(found: 2), '1.x.2' fails with NotANumber(part: 'x'), and the comparison test (1.9.9 less than 2.0.0, latest is 2.0.0) passes.",
-    "packet": "complete-semver-1a4e46d579"
+    "verdict": true
   },
   "complete/semver.2": {
-    "verdict": true,
+    "packet": "complete-semver-1a4e46d579",
     "reason": "parse('1.4.2') gives Version(major: 1, minor: 4, patch: 2), '1.4' fails with WrongPartCount(found: 2), '1.x.2' fails with NotANumber(part: 'x'), and the comparison test (1.9.9 less than 2.0.0, latest is 2.0.0) passes.",
-    "packet": "complete-semver-1a4e46d579"
+    "verdict": true
   },
   "complete/semver.3": {
-    "verdict": true,
+    "packet": "complete-semver-1a4e46d579",
     "reason": "parse('1.4.2') gives Version(major: 1, minor: 4, patch: 2), '1.4' fails with WrongPartCount(found: 2), '1.x.2' fails with NotANumber(part: 'x'), and the comparison test (1.9.9 less than 2.0.0, latest is 2.0.0) passes.",
-    "packet": "complete-semver-1a4e46d579"
+    "verdict": true
   },
   "complete/semver.4": {
-    "verdict": true,
+    "packet": "complete-semver-1a4e46d579",
     "reason": "parse('1.4.2') gives Version(major: 1, minor: 4, patch: 2), '1.4' fails with WrongPartCount(found: 2), '1.x.2' fails with NotANumber(part: 'x'), and the comparison test (1.9.9 less than 2.0.0, latest is 2.0.0) passes.",
-    "packet": "complete-semver-1a4e46d579"
+    "verdict": true
   },
   "complete/shapes.1": {
-    "verdict": true,
+    "packet": "complete-shapes-7de0402a37",
     "reason": "describe(Point) gives \"a point with area 0.00\" (0 rounded to 2 places) and describe(Rectangle(width: 2, height: 3)) gives \"a 2 by 3 rectangle with area 6.00\" (integer-valued Decimals print as \"2\" and \"3\", the area 6 rounds to \"6.00\"), and the circle branch also names the shape and its area as the purpose asks.",
-    "packet": "complete-shapes-7de0402a37"
+    "verdict": true
   },
   "complete/shapes.2": {
-    "verdict": true,
+    "packet": "complete-shapes-bb87eb4a75",
     "reason": "Both examples hold: Point has area 0, which rounded(2) renders as \"0.00\" in \"a point with area 0.00\", and Rectangle(width: 2, height: 3) gives \"a 2 by 3 rectangle with area 6.00\"; the circle branch, which no example covers, also names the shape and its area (\"a circle of radius 1.5 with area 7.07\").",
-    "packet": "complete-shapes-bb87eb4a75"
+    "verdict": true
   },
   "complete/shapes.3": {
-    "verdict": true,
+    "packet": "complete-shapes-a842b8ac4d",
     "reason": "Rounding the area to two places gives 0.00 for Point and 6.00 for the 2 by 3 rectangle, and the integer-valued Decimal fields render as \"2\" and \"3\", so both examples hold and every variant gets one line naming it with its area.",
-    "packet": "complete-shapes-a842b8ac4d"
+    "verdict": true
   },
   "complete/shipping_rules.0": {
-    "verdict": true,
+    "packet": "complete-shipping_rules-9b51782249",
     "reason": "The domestic 60.00 parcel returns Quote(cost: 0.00, business_days: 2, free_shipping: true), equal to cost 0 under decimal128 numeric equality, and the 2500 g Europe parcel costs 9.50 + 2 * 2.50 = 14.50 with 5 days and no free shipping, as both examples require.",
-    "packet": "complete-shipping_rules-9b51782249"
+    "verdict": true
   },
   "complete/shipping_rules.1": {
-    "verdict": true,
+    "packet": "complete-shipping_rules-c095783bfa",
     "reason": "The domestic 60.00 order is free (cost 0.00, equal in value to 0, 2 days, true) and the 2500 g Europe parcel costs 9.50 + 2.50 * weight_steps(2500) = 9.50 + 5.00 = 14.50 with 5 days and no free shipping, so both examples hold.",
-    "packet": "complete-shipping_rules-c095783bfa"
+    "verdict": true
   },
   "complete/shipping_rules.2": {
-    "verdict": true,
+    "packet": "complete-shipping_rules-bf576e50f8",
     "reason": "The Domestic parcel with order_total 60.00 qualifies (60.00 is at least 50.00) and returns Quote(cost: 0, business_days: 2, free_shipping: true), and the 2500 g Europe parcel takes weight_steps 2 and costs 9.50 + 2 * 2.50 = 14.50 with 5 days and free_shipping false, so both examples hold.",
-    "packet": "complete-shipping_rules-bf576e50f8"
+    "verdict": true
   },
   "complete/shipping_rules.3": {
-    "verdict": true,
+    "packet": "complete-shipping_rules-238f2a387d",
     "reason": "The Domestic parcel with order_total 60.00 meets the 50.00 threshold and returns Quote(cost: 0.00, business_days: 2, free_shipping: true), equal to the expected cost 0 under decimal128 value equality (the documents do not make Decimal equality scale-sensitive), and the 2500 g Europe parcel costs 9.50 + 2 * 2.50 = 14.50 with 5 days, so both examples hold.",
-    "packet": "complete-shipping_rules-238f2a387d"
+    "verdict": true
   },
   "complete/shipping_rules.4": {
-    "verdict": true,
+    "packet": "complete-shipping_rules-238f2a387d",
     "reason": "The Domestic parcel with order_total 60.00 meets the 50.00 threshold and returns Quote(cost: 0.00, business_days: 2, free_shipping: true), equal to the expected cost 0 under decimal128 value equality (the documents do not make Decimal equality scale-sensitive), and the 2500 g Europe parcel costs 9.50 + 2 * 2.50 = 14.50 with 5 days, so both examples hold.",
-    "packet": "complete-shipping_rules-238f2a387d"
+    "verdict": true
   },
   "complete/stacks.0": {
-    "verdict": true,
+    "packet": "complete-stacks-e17a454268",
     "reason": "All five examples hold when traced: '(a[b])' empties the stack (true), '(]' pops '(' against expected '[' (false), '((' leaves two items (false), 'a]' pops an empty stack (false), and '' is true.",
-    "packet": "complete-stacks-e17a454268"
+    "verdict": true
   },
   "complete/stacks.1": {
-    "verdict": true,
+    "packet": "complete-stacks-3bfef0eb43",
     "reason": "The stack check returns true for \"(a[b])\" and \"\", and false for \"(]\" (the top \"(\" is not the expected \"[\"), \"((\" (the stack is left non-empty) and \"a]\" (pop on an empty stack returns false), so all five examples hold, and both test blocks pass.",
-    "packet": "complete-stacks-3bfef0eb43"
+    "verdict": true
   },
   "complete/stacks.2": {
-    "verdict": true,
+    "packet": "complete-stacks-3bfef0eb43",
     "reason": "The stack check returns true for \"(a[b])\" and \"\", and false for \"(]\" (the top \"(\" is not the expected \"[\"), \"((\" (the stack is left non-empty) and \"a]\" (pop on an empty stack returns false), so all five examples hold, and both test blocks pass.",
-    "packet": "complete-stacks-3bfef0eb43"
+    "verdict": true
   },
   "complete/stacks.3": {
-    "verdict": true,
+    "packet": "complete-stacks-3bfef0eb43",
     "reason": "The stack check returns true for \"(a[b])\" and \"\", and false for \"(]\" (the top \"(\" is not the expected \"[\"), \"((\" (the stack is left non-empty) and \"a]\" (pop on an empty stack returns false), so all five examples hold, and both test blocks pass.",
-    "packet": "complete-stacks-3bfef0eb43"
+    "verdict": true
   },
   "complete/stacks.4": {
-    "verdict": true,
+    "packet": "complete-stacks-3bfef0eb43",
     "reason": "The stack check returns true for \"(a[b])\" and \"\", and false for \"(]\" (the top \"(\" is not the expected \"[\"), \"((\" (the stack is left non-empty) and \"a]\" (pop on an empty stack returns false), so all five examples hold, and both test blocks pass.",
-    "packet": "complete-stacks-3bfef0eb43"
+    "verdict": true
   },
   "complete/statistics.0": {
-    "verdict": true,
+    "packet": "complete-statistics-80d47d1536",
     "reason": "median([3.0, 1.0, 2.0]) sorts to [1.0, 2.0, 3.0] and takes index 1 giving 2.0, median([4.0, 1.0, 3.0, 2.0]) averages indices 1 and 2 giving (2.0 + 3.0) / 2.0 = 2.5, and median([]) is nothing.",
-    "packet": "complete-statistics-80d47d1536"
+    "verdict": true
   },
   "complete/statistics.1": {
-    "verdict": true,
+    "packet": "complete-statistics-cf7c80eadd",
     "reason": "[3.0, 1.0, 2.0] sorts to [1.0, 2.0, 3.0] and returns index 3.quotient(2) = 1, i.e. 2.0; [4.0, 1.0, 3.0, 2.0] sorts to [1.0, 2.0, 3.0, 4.0] and returns (2.0 + 3.0) / 2.0 = 2.5; the empty list returns nothing; so all three examples hold.",
-    "packet": "complete-statistics-cf7c80eadd"
+    "verdict": true
   },
   "complete/statistics.2": {
-    "verdict": true,
+    "packet": "complete-statistics-a4a1142eab",
     "reason": "median([3.0, 1.0, 2.0]) sorts to [1.0, 2.0, 3.0], half 1, odd size returns drop(1).first() = 2.0; median([4.0, 1.0, 3.0, 2.0]) averages drop(1).first() = 2.0 and drop(2).first() = 3.0 to 2.5; median([]) is nothing; the otherwise-return-nothing arms cannot fire on a non-empty list.",
-    "packet": "complete-statistics-a4a1142eab"
+    "verdict": true
   },
   "complete/statistics.4": {
-    "verdict": true,
+    "packet": "complete-statistics-a4a1142eab",
     "reason": "median([3.0, 1.0, 2.0]) sorts to [1.0, 2.0, 3.0], half 1, odd size returns drop(1).first() = 2.0; median([4.0, 1.0, 3.0, 2.0]) averages drop(1).first() = 2.0 and drop(2).first() = 3.0 to 2.5; median([]) is nothing; the otherwise-return-nothing arms cannot fire on a non-empty list.",
-    "packet": "complete-statistics-a4a1142eab"
+    "verdict": true
   },
   "complete/temperature_table.0": {
-    "verdict": true,
+    "packet": "complete-temperature_table-20c601a1f4",
     "reason": "All three examples hold by value (0 -> 32.0, 100 -> 212.0, -40 -> -40.0) under IEEE 754 decimal128 equality, which ignores scale so 32.0 is 32 (the documents do not state Decimal equality explicitly, but the checker's refine.rs compares Decimals the same way), and celsius * 1.8 + 32.0 is the correct conversion; the only visible difference is that main prints \"32.0\" where an integer-scaled formula would print \"32\".",
-    "packet": "complete-temperature_table-20c601a1f4"
+    "verdict": true
   },
   "complete/temperature_table.1": {
-    "verdict": true,
+    "packet": "complete-temperature_table-5ce732afb4",
     "reason": "All three examples hold numerically (0 * 9.0 / 5.0 + 32.0 = 32.0, 100 gives 900.0 / 5.0 + 32.0 = 212.0, -40 gives -360.0 / 5.0 + 32.0 = -40.0); the results keep one decimal place and print as \"32.0\", and since the documents do not define `is` between Decimals with different exponents I applied decimal128 numeric equality (32.0 is 32), the most reasonable reading of decision J16.",
-    "packet": "complete-temperature_table-5ce732afb4"
+    "verdict": true
   },
   "complete/temperature_table.2": {
-    "verdict": true,
+    "packet": "complete-temperature_table-6617326e85",
     "reason": "celsius * 1.8 + 32 gives 32.0, 212.0 and -40.0, which equal the expected 32, 212 and -40 under decimal128 value equality, so all three examples hold; the documents do not say whether Decimal equality ignores scale, and main would print these values as 32.0 rather than 32.",
-    "packet": "complete-temperature_table-6617326e85"
+    "verdict": true
   },
   "complete/temperature_table.3": {
-    "verdict": true,
+    "packet": "complete-temperature_table-6617326e85",
     "reason": "celsius * 1.8 + 32 gives 32.0, 212.0 and -40.0, which equal the expected 32, 212 and -40 under decimal128 value equality, so all three examples hold; the documents do not say whether Decimal equality ignores scale, and main would print these values as 32.0 rather than 32.",
-    "packet": "complete-temperature_table-6617326e85"
+    "verdict": true
   },
   "complete/temperature_table.4": {
-    "verdict": true,
+    "packet": "complete-temperature_table-5ce732afb4",
     "reason": "All three examples hold numerically (0 * 9.0 / 5.0 + 32.0 = 32.0, 100 gives 900.0 / 5.0 + 32.0 = 212.0, -40 gives -360.0 / 5.0 + 32.0 = -40.0); the results keep one decimal place and print as \"32.0\", and since the documents do not define `is` between Decimals with different exponents I applied decimal128 numeric equality (32.0 is 32), the most reasonable reading of decision J16.",
-    "packet": "complete-temperature_table-5ce732afb4"
+    "verdict": true
   },
   "complete/todo_cli.0": {
-    "verdict": true,
+    "packet": "complete-todo_cli-2e4438049f",
     "reason": "['add', 'buy', 'milk'] gives Add(task: 'buy milk'), ['done', '2'] gives Done(position: 2) and [] gives Help, and unknown verbs, non-numbers and positions below 1 all fall back to Help as the purpose says.",
-    "packet": "complete-todo_cli-2e4438049f"
+    "verdict": true
   },
   "complete/todo_cli.1": {
-    "verdict": true,
+    "packet": "complete-todo_cli-79355652cb",
     "reason": "['add', 'buy', 'milk'] gives Add(task: 'buy milk'), ['done', '2'] gives Done(position: 2), [] gives Help, 'show' gives Show, and a missing, non-numeric or out-of-range number or an unknown word falls back to Help as the purpose says.",
-    "packet": "complete-todo_cli-79355652cb"
+    "verdict": true
   },
   "complete/todo_cli.2": {
-    "verdict": true,
+    "packet": "complete-todo_cli-2c4688e19d",
     "reason": "All three examples hold: [\"add\", \"buy\", \"milk\"] joins the rest into Add(task: \"buy milk\"), [\"done\", \"2\"] parses to Done(position: 2) while a missing, non-numeric or non-positive number falls back to Help, and [] has no first word so it returns Help.",
-    "packet": "complete-todo_cli-2c4688e19d"
+    "verdict": true
   },
   "complete/todo_cli.3": {
-    "verdict": true,
+    "packet": "complete-todo_cli-c7ac7b0b8e",
     "reason": "[\"add\", \"buy\", \"milk\"] joins the rest into Add(task: \"buy milk\"), [\"done\", \"2\"] parses 2 and builds Done(position: 2), [] hits first() otherwise return Help, and a missing, non-numeric or below-1 position or an unknown word falls back to Help as the purpose says.",
-    "packet": "complete-todo_cli-c7ac7b0b8e"
+    "verdict": true
   },
   "complete/todo_cli.4": {
-    "verdict": true,
+    "packet": "complete-todo_cli-1b641e7176",
     "reason": "[\"add\", \"buy\", \"milk\"] joins the remaining words into Add(task: \"buy milk\"), [\"done\", \"2\"] parses to Done(position: 2), [] returns Help, and an unknown word, an empty add, or a missing, non-numeric or below-1 position all fall back to Help as the purpose says.",
-    "packet": "complete-todo_cli-1b641e7176"
+    "verdict": true
   },
   "complete/traffic_light.0": {
-    "verdict": true,
+    "packet": "complete-traffic_light-09517fb079",
     "reason": "All six next_light examples hold (Red to Green to Yellow to Red on TimerExpired, EmergencyDeclared gives FlashingRed, FlashingRed stays on TimerExpired and returns to Red on EmergencyCleared), and so do the run_sequence examples [Green, Yellow] and [].",
-    "packet": "complete-traffic_light-09517fb079"
+    "verdict": true
   },
   "complete/traffic_light.1": {
-    "verdict": true,
+    "packet": "complete-traffic_light-82eabf29e5",
     "reason": "All six next_light examples hold (TimerExpired cycles Red to Green to Yellow to Red, EmergencyDeclared gives FlashingRed, FlashingRed stays FlashingRed on TimerExpired and becomes Red on EmergencyCleared), and both run_sequence examples ([Green, Yellow] and []) follow from it.",
-    "packet": "complete-traffic_light-82eabf29e5"
+    "verdict": true
   },
   "complete/traffic_light.2": {
-    "verdict": true,
+    "packet": "complete-traffic_light-8e9efcf298",
     "reason": "EmergencyDeclared always gives FlashingRed, EmergencyCleared turns FlashingRed into Red, and TimerExpired cycles Red to Green to Yellow to Red while FlashingRed stays, so all six next_light examples and both run_sequence examples ([Green, Yellow] and []) hold.",
-    "packet": "complete-traffic_light-8e9efcf298"
+    "verdict": true
   },
   "complete/traffic_light.4": {
-    "verdict": true,
+    "packet": "complete-traffic_light-8e9efcf298",
     "reason": "EmergencyDeclared always gives FlashingRed, EmergencyCleared turns FlashingRed into Red, and TimerExpired cycles Red to Green to Yellow to Red while FlashingRed stays, so all six next_light examples and both run_sequence examples ([Green, Yellow] and []) hold.",
-    "packet": "complete-traffic_light-8e9efcf298"
+    "verdict": true
   },
   "complete/word_count.0": {
-    "verdict": true,
+    "packet": "complete-word_count-67e7cafb24",
     "reason": "\"a b a\" lower-cases and splits into a, b, a, groups in insertion order to a:2 and b:1, and sorted by occurrences descending gives [WordCount(word: \"a\", occurrences: 2), WordCount(word: \"b\", occurrences: 1)], while \"\" yields [] because empty pieces are filtered out, so both examples hold and the purpose is met.",
-    "packet": "complete-word_count-67e7cafb24"
+    "verdict": true
   },
   "complete/word_count.1": {
-    "verdict": true,
+    "packet": "complete-word_count-a84053700e",
     "reason": "count_words('a b a') groups to {a: 2, b: 1} in insertion order and sorts by occurrences descending to [WordCount('a', 2), WordCount('b', 1)], and count_words('') yields [] because empty pieces are filtered out.",
-    "packet": "complete-word_count-a84053700e"
+    "verdict": true
   },
   "complete/word_count.2": {
-    "verdict": true,
+    "packet": "complete-word_count-9985f056f0",
     "reason": "'a b a' groups into a with 2 and b with 1, sorted descending to [WordCount(word: 'a', occurrences: 2), WordCount(word: 'b', occurrences: 1)], and '' gives [] because empty pieces are filtered out.",
-    "packet": "complete-word_count-9985f056f0"
+    "verdict": true
   },
   "complete/word_count.3": {
-    "verdict": true,
+    "packet": "complete-word_count-ff8c2aa145",
     "reason": "\"a b a\" lower-cases and splits into [\"a\", \"b\", \"a\"], groups in insertion order to a: 2 and b: 1 and sorts by occurrences descending to [WordCount(word: \"a\", occurrences: 2), WordCount(word: \"b\", occurrences: 1)], and \"\" yields no non-empty words and so [], so both examples hold.",
-    "packet": "complete-word_count-ff8c2aa145"
+    "verdict": true
   },
   "complete/word_count.4": {
-    "verdict": true,
+    "packet": "complete-word_count-94032e0ffb",
     "reason": "count_words(\"a b a\") collects the words [\"a\", \"b\", \"a\"], counts the distinct ones as a:2 and b:1 and sorts by occurrences descending, matching the first example, and \"\" gives no non-empty words so the result is [].",
-    "packet": "complete-word_count-94032e0ffb"
+    "verdict": true
   },
   "explain/assistant.3": {
-    "verdict": 5,
-    "reason": "Question from the arguments, key from CHAT_API_KEY, the post to the placeholder endpoint, the first answer printed, the three failure kinds and the three needs are all correct."
+    "reason": "Question from the arguments, key from CHAT_API_KEY, the post to the placeholder endpoint, the first answer printed, the three failure kinds and the three needs are all correct.",
+    "verdict": 5
   },
   "explain/log_parser.0": {
-    "verdict": 2,
-    "reason": "'needs read access to the filesystem and nothing else' contradicts the description: the program also needs the console; everything else (fixed file, per-hour error counts earliest first, a bad line ends the run, blank lines skipped) is correct."
+    "reason": "'needs read access to the filesystem and nothing else' contradicts the description: the program also needs the console; everything else (fixed file, per-hour error counts earliest first, a bad line ends the run, blank lines skipped) is correct.",
+    "verdict": 2
   },
   "explain/markdown_table.1": {
-    "verdict": 5,
-    "reason": "Widths from the widest cell with the header, the dashed divider, blank cells for short rows and the console demo are correct; extra cells beyond the header are indeed dropped (render_row walks the header's widths), which the description does not contradict."
+    "reason": "Widths from the widest cell with the header, the dashed divider, blank cells for short rows and the console demo are correct; extra cells beyond the header are indeed dropped (render_row walks the header's widths), which the description does not contradict.",
+    "verdict": 5
   },
   "explain/markdown_table.4": {
-    "verdict": 5,
-    "reason": "Same facts as .1, all correct; the remarks on escaping and extra cells are true and not contradicted."
+    "reason": "Same facts as .1, all correct; the remarks on escaping and extra cells are true and not contradicted.",
+    "verdict": 5
   },
   "explain/permissions.0": {
-    "verdict": 4,
-    "reason": "The permission form, roles, the four functions and the demo's missing posts:publish and shared posts:read are correct, but the console need is never stated."
+    "reason": "The permission form, roles, the four functions and the demo's missing posts:publish and shared posts:read are correct, but the console need is never stated.",
+    "verdict": 4
   },
   "explain/permissions.2": {
-    "verdict": 5,
-    "reason": "The four functions, purity apart from the demo's console output, and the demo's missing publish permission and shared read permission are all correct."
+    "reason": "The four functions, purity apart from the demo's console output, and the demo's missing publish permission and shared read permission are all correct.",
+    "verdict": 5
+  },
+  "explain/retry.3": {
+    "reason": "'the last error, which includes its attempt number' is the statement round 2's retry.4 verdict calls wrong: GaveUp carries the last error text only, the 'attempt <n>:' prefix is in the per-attempt records; decision U5, session 6.",
+    "verdict": 2
   },
   "explain/semver.2": {
-    "verdict": 4,
-    "reason": "Parsing with trimming and its two errors, printing, the comparison order, the same-major compatibility rule, latest and the rejected suffixes are correct, but the explanation never says the module is pure with no entry point."
+    "reason": "Parsing with trimming and its two errors, printing, the comparison order, the same-major compatibility rule, latest and the rejected suffixes are correct, but the explanation never says the module is pure with no entry point.",
+    "verdict": 4
+  },
+  "explain/shipping_rules.1": {
+    "reason": "Same statement as shipping_rules.3 ('2.50 for each whole kilogram beyond the first' for every started kilogram); decision U5, session 6.",
+    "verdict": 2
   },
   "explain/shipping_rules.2": {
-    "verdict": 2,
-    "reason": "'2.50 for each full kilogram beyond the first' contradicts the rule: weight_steps counts every started kilogram (1001 grams is one step); the rest is correct."
+    "reason": "'2.50 for each full kilogram beyond the first' contradicts the rule: weight_steps counts every started kilogram (1001 grams is one step); the rest is correct.",
+    "verdict": 2
   },
   "explain/shipping_rules.3": {
-    "verdict": 2,
-    "reason": "'2.50 for each whole kilogram beyond the first' is the same contradiction as .2; the rest is correct."
+    "reason": "'2.50 for each whole kilogram beyond the first' is the same contradiction as .2; the rest is correct.",
+    "verdict": 2
   },
   "explain/stacks.3": {
-    "verdict": 5,
-    "reason": "The immutable stack, size and emptiness, the bracket checker and purity are correct; 'the balanced examples and the stack tests cover empty and mismatched input' is true of the examples and tests together."
+    "reason": "The immutable stack, size and emptiness, the bracket checker and purity are correct; 'the balanced examples and the stack tests cover empty and mismatched input' is true of the examples and tests together.",
+    "verdict": 5
   },
   "explain/temperature_table.2": {
-    "verdict": 5,
-    "reason": "Header, six rows from -10 to 40, right-aligned columns, the pure conversion function and the console-only effect are all correct."
+    "reason": "Header, six rows from -10 to 40, right-aligned columns, the pure conversion function and the console-only effect are all correct.",
+    "verdict": 5
   },
   "explain/temperature_table.4": {
-    "verdict": 5,
-    "reason": "Same facts as .2, all correct."
+    "reason": "Same facts as .2, all correct.",
+    "verdict": 5
   },
   "explain/weather.1": {
-    "verdict": 5,
-    "reason": "One request for Berlin, the printed temperature and wind, the two failure kinds and the effects are correct; the fetch function is indeed scoped to api.open-meteo.com while main declares unscoped network.http."
+    "reason": "One request for Berlin, the printed temperature and wind, the two failure kinds and the effects are correct; the fetch function is indeed scoped to api.open-meteo.com while main declares unscoped network.http.",
+    "verdict": 5
   },
   "explain/weather.4": {
-    "verdict": 5,
-    "reason": "Same facts as .1, all correct; the entry point's network permission is indeed broader than the fetch function's."
+    "reason": "Same facts as .1, all correct; the entry point's network permission is indeed broader than the fetch function's.",
+    "verdict": 5
   },
   "explain/word_count.1": {
-    "verdict": 5,
-    "reason": "The argument or sample-file path, the top ten with right-aligned counts, lower-casing, splitting on spaces, punctuation kept, the three needs and the file-error failure are all correct."
+    "reason": "The argument or sample-file path, the top ten with right-aligned counts, lower-casing, splitting on spaces, punctuation kept, the three needs and the file-error failure are all correct.",
+    "verdict": 5
   },
   "write/fizz_words.0": {
-    "verdict": true,
+    "packet": "write-fizz_words-4b51b91a46",
     "reason": "The pure fizz_word tests for both divisors first, so 1, 3, 5, 10, 15, 30 and 98 give \"1\", \"Fizz\", \"Buzz\", \"Buzz\", \"FizzBuzz\", \"FizzBuzz\" and \"98\", both tests pass (45 gives \"FizzBuzz\", 7 gives \"7\"), and main prints the inclusive range 1 to 100 as the task asks.",
-    "packet": "write-fizz_words-4b51b91a46"
+    "verdict": true
   },
   "write/fizz_words.1": {
-    "verdict": true,
+    "packet": "write-fizz_words-1a29db6dd5",
     "reason": "The pure fizz_word gives \"1\", \"Fizz\", \"Buzz\", \"Buzz\", \"FizzBuzz\", \"FizzBuzz\", \"98\" for the seven examples and \"FizzBuzz\" and \"7\" for the two tests (remainder binds tighter than is), and main prints fizz_word for every number from 1 to 100 inclusive, as the task asks.",
-    "packet": "write-fizz_words-1a29db6dd5"
+    "verdict": true
   },
   "write/fizz_words.2": {
-    "verdict": true,
+    "packet": "write-fizz_words-eecd4ec881",
     "reason": "fizz_word tests divisibility by both 3 and 5 before either alone, so the examples give \"1\", \"Fizz\", \"Buzz\", \"7\", \"Buzz\", \"FizzBuzz\", \"FizzBuzz\" for 1, 3, 5, 7, 10, 15, 30, both tests (15 is \"FizzBuzz\", 98 is \"98\") pass, and main prints the pure function's word for every number from 1 to 100 as the task asks.",
-    "packet": "write-fizz_words-eecd4ec881"
+    "verdict": true
   },
   "write/fizz_words.3": {
-    "verdict": true,
+    "packet": "write-fizz_words-ab8bca6859",
     "reason": "The pure fizz_word tests remainder 15, then 3, then 5, so all six examples (1, 3, 5, 10, 15, 98) and both tests (30 gives FizzBuzz, 7 gives \"7\") hold, and main prints fizz_word for every number of the inclusive range 1 to 100 as the task asks.",
-    "packet": "write-fizz_words-ab8bca6859"
+    "verdict": true
   },
   "write/fizz_words.4": {
-    "verdict": true,
+    "packet": "write-fizz_words-a1680d9fa4",
     "reason": "All six examples (1 -> \"1\", 3 -> \"Fizz\", 5 and 10 -> \"Buzz\", 15 -> \"FizzBuzz\", 98 -> \"98\") and both tests (30 -> \"FizzBuzz\", 7 -> \"7\") hold with remainder binding tighter than is, fizz_word is pure and has example lines, and main prints it for every number from 1 to 100 inclusive as the task requires.",
-    "packet": "write-fizz_words-a1680d9fa4"
+    "verdict": true
   },
   "write/initials.0": {
-    "verdict": true,
+    "packet": "write-initials-fab20cf1b7",
     "reason": "Splitting on spaces and dropping empty pieces gives 'AML', 'GH' for '  grace   hopper ', 'A' and '' for '   ', so all four examples and three tests hold, and the library module meets the task including ignoring blank and extra spaces.",
-    "packet": "write-initials-fab20cf1b7"
+    "verdict": true
   },
   "write/initials.1": {
-    "verdict": true,
+    "packet": "write-initials-5147c91724",
     "reason": "split(\" \") with the empty pieces filtered out gives \"AML\", \"GH\" for \"  grace   hopper \", \"A\" for \"alan\", \"\" for \"   \" and \"AML\" in the test, and the library module has a public function that upper-cases first letters, joins them with nothing and ignores blank or extra spaces, as the task asks.",
-    "packet": "write-initials-5147c91724"
+    "verdict": true
   },
   "write/initials.2": {
-    "verdict": true,
+    "packet": "write-initials-9c12304d58",
     "reason": "All four examples and the three tests hold: trimming, splitting on spaces and dropping the empty pieces gives \"AML\", \"GH\" (from [\"grace\", \"\", \"\", \"hopper\"]), \"A\" and \"\" for a blank name, and the public function upper-cases each first letter and joins with nothing as the task requires.",
-    "packet": "write-initials-9c12304d58"
+    "verdict": true
   },
   "write/initials.3": {
-    "verdict": true,
+    "packet": "write-initials-fae9f1ec4a",
     "reason": "Trimming, splitting on \" \" and dropping empty pieces gives \"AML\" for \"ada marie lovelace\", \"GH\" for \"  grace   hopper \" (pieces [\"grace\", \"\", \"\", \"hopper\"]), \"A\" for \"alan\" and \"\" for both \"\" and \"   \", so all four examples and three tests hold and the public library function meets every stated requirement.",
-    "packet": "write-initials-fae9f1ec4a"
+    "verdict": true
   },
   "write/initials.4": {
-    "verdict": true,
+    "packet": "write-initials-f787a04a52",
     "reason": "Splitting on spaces and dropping empty pieces gives 'AML', 'GH' for '  grace   hopper ', 'A' for 'alan' and '' for '   ', so all four examples hold and the public function in a library module meets the task.",
-    "packet": "write-initials-f787a04a52"
+    "verdict": true
   },
   "write/merge_sorted.0": {
-    "verdict": true,
+    "packet": "write-merge_sorted-2382223eb9",
     "reason": "append_all then distinct then sorted yields [1, 2, 3, 5, 6], [1, 2, 3], [4, 5] and [] for the four examples, the required test for two empty lists passes, and the module is a library without a main as the task asks.",
-    "packet": "write-merge_sorted-2382223eb9"
+    "verdict": true
   },
   "write/merge_sorted.1": {
-    "verdict": true,
+    "packet": "write-merge_sorted-ce678a45be",
     "reason": "All four examples hold (concatenating [1, 3, 5] and [2, 3, 6], then distinct and sorted, gives [1, 2, 3, 5, 6]; [1, 1, 2] with [2, 2, 3] gives [1, 2, 3]; the empty cases give [4, 7] and []), the two-empty-lists test passes, and the module is a library with a sorted, duplicate-free merge as the task asks, even though it is not a linear merge.",
-    "packet": "write-merge_sorted-ce678a45be"
+    "verdict": true
   },
   "write/merge_sorted.2": {
-    "verdict": true,
+    "packet": "write-merge_sorted-88cd4514b5",
     "reason": "append_all followed by distinct and sorted gives [1, 2, 3, 5, 6], [1, 2, 3], [4, 7] and [] for the four examples, and the required test for two empty lists passes, so the library module meets every stated requirement; it re-sorts instead of merging in linear time, which the task does not forbid.",
-    "packet": "write-merge_sorted-88cd4514b5"
+    "verdict": true
   },
   "write/merge_sorted.3": {
-    "verdict": true,
+    "packet": "write-merge_sorted-e0f22a2850",
     "reason": "Concatenating, taking distinct items and sorting gives [1, 2, 3, 4, 5, 6], [1, 2, 3, 4], [1, 2, 3], [7, 8] and [] for the five examples, and the two-empty-lists test (is_empty is true, length is 0) passes, so the library module meets every stated requirement.",
-    "packet": "write-merge_sorted-e0f22a2850"
+    "verdict": true
   },
   "write/merge_sorted.4": {
-    "verdict": true,
+    "packet": "write-merge_sorted-b0333a7f3d",
     "reason": "All four examples ([1, 2, 3, 5, 6], [1, 2, 3], [4, 7], []) and the two-empty-lists test hold because append_all, sorted and distinct give the ascending union without duplicates, and the program is a library module with the required example lines and test block.",
-    "packet": "write-merge_sorted-b0333a7f3d"
+    "verdict": true
   },
   "write/password_strength.4": {
-    "verdict": true,
+    "packet": "write-password_strength-ff9ebf5547",
     "reason": "Every example holds (\"abc123\" has 6 characters -> Weak, \"abcdefgh\" has 8 -> Fair, \"abcdefghijkl1234\" has 16 but no other kind of character -> Fair, \"Tr0ub4dor&3x\" has 12 with a letter, a digit and \"&\" -> Strong, plus the six helper examples), and the Weak/Fair/Strong sum type with the 12-character three-kind rule and the 8-character rule matches the task (letters are read as ASCII A-Z, which the task leaves open).",
-    "packet": "write-password_strength-ff9ebf5547"
+    "verdict": true
   },
   "write/request_window.0": {
-    "verdict": true,
+    "packet": "write-request_window-fbfb6403c3",
     "reason": "The function counts only accepted requests with times greater than moment - window. That rejects the 11th and 12th of twelve requests at second 1 (2), none of [1, 2, 3] (0), and accepts the request at 10 after ten at 0 with window 10 (0), so every example and test holds under the usual half-open sliding window; the task does not say whether a window includes its far edge.",
-    "packet": "write-request_window-fbfb6403c3"
+    "verdict": true
   },
   "write/request_window.2": {
-    "verdict": true,
+    "packet": "write-request_window-b1e92569b7",
     "reason": "The sliding log with half-open window (t - window, t] counting accepted requests gives 0, 2 (twelve zeros), 0 (ten zeros then 5, all expired since 0 is not greater than 0) and 1 (ten zeros then 4), so every example and both tests hold; the boundary convention is not fixed by the task and the documented half-open reading is a reasonable one.",
-    "packet": "write-request_window-b1e92569b7"
+    "verdict": true
   },
   "write/request_window.3": {
-    "verdict": true,
+    "packet": "write-request_window-486d75c8e6",
     "reason": "All examples hold for a sliding window that keeps the accepted requests later than moment - window: twelve requests at second 0 with window 1 reject 2, the eleven requests 0 to 10 reject 1 with window 100 and 0 with window 5 (never more than 5 in a window), and three requests reject 0, which matches the at-most-10-per-window task.",
-    "packet": "write-request_window-486d75c8e6"
+    "verdict": true
   },
   "write/request_window.4": {
-    "verdict": true,
+    "packet": "write-request_window-d2f6da0eb4",
     "reason": "Counting accepted requests with moment - earlier less than window (the conventional half-open sliding log; the task does not say whether a request exactly window seconds earlier is inside, and rejected requests rightly do not use capacity) gives 0 for [], 2 for twelve requests at time 0, and 0 for times 0..11 with window 10 because at 10 and at 11 only 9 accepted requests lie within the last 10 seconds, so every example holds and the task is met.",
-    "packet": "write-request_window-d2f6da0eb4"
+    "verdict": true
   }
 }

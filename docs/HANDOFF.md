@@ -10,7 +10,7 @@ after `group by` per group; `renyi mcp`, the toolchain for agent hosts;
 the semantic diff, `renyi index --diff` and the `diff` tool; readability
 round 2 collected, graded and written up, its four questions answered as
 decisions U1 to U4 and applied; round 1 re-graded on the subagent
-scale).
+scale; decisions U5 to U7 from the re-grade).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -49,11 +49,11 @@ Code subagents (decision U4; round 1's API-graded tally is kept beside in
 `scores-api.json`). Round 1 (`tests/readability/2026-10-05-1623155/`,
 session 5, three models through the vendor APIs, Explain re-graded in
 session 6) gave decisions R1 to R8 and stands at Sonnet 5.5 Predict 90,
-Explain 97, Complete 79, Write 40; Haiku 4.5 30, 97, 37, 0; gpt-5.4-mini
+Explain 97, Complete 79, Write 40; Haiku 4.5 30, 90, 37, 0; gpt-5.4-mini
 80, 97, 32, 0. Round 2 (`tests/readability/2026-10-05-ed37120/`, session
 6, the four models of R8 on the cheat sheet after R1 to R8) gives, by the
 four-of-five rule with the VM judging Complete and Write: Sonnet 5.5 90,
-100, 89, 30; gpt-5.5 100, 100, 74, 10; Haiku 4.5 50, 90, 42, 0;
+100, 89, 30; gpt-5.5 100, 100, 74, 10; Haiku 4.5 50, 87, 42, 0;
 gpt-5.4-mini 80, 97, 37, 0 (thresholds 90, 90, 80, 70 on the two gating
 models). Sonnet passes Complete; neither gating model passes Write, and
 gpt-5.5 misses Complete by one item. The grammar is not frozen. The four
@@ -61,11 +61,12 @@ questions round 2 raised (decision M4 again, `rounded()` without
 `places`, zero-argument methods written as fields, the Explain grader
 kind) were answered by the owner in session 6 as decisions U1 to U4 and
 applied: the cheat sheet changed, the grammar and the library did not.
-On the one scale Haiku's Explain fell from 97 to 90 between the rounds
-(`invoice`, `todo_cli`: wrong statements about the programs, not
-readings of a changed rule; the floor model does not gate, R1), which is
-put to the owner under the five-point rule, with one question from the
-re-grade (see Owner actions pending).
+The re-grade raised three questions, answered the same session as
+decisions U5 (a hand verdict extends to every sample repeating the
+sentence it called wrong; fourteen verdicts added across the rounds), U6
+(the five-point rule names the gating models; Haiku's Explain moved 90
+to 87 on wrong statements about the programs) and U7 (round 3's samples
+through the subscription channels).
 
 ## The VM as it exists (`crates/renyi_vm`)
 
@@ -468,6 +469,17 @@ re-grade (see Owner actions pending).
     verdicts of session 5 stand and nothing was adjudicated anew.
     Results and the caveats in round 1's `notes.md`, section 8; round
     2's notes, `README.md` and `03-readability-test.md` updated.
+16. **Decisions U5 to U7** (thirteenth commit): the owner's answers to
+    the re-grade's three questions. U5 applied to both rounds: fourteen
+    verdicts in `judgement.json`, each naming the originating verdict and
+    the sentence (round 1: Haiku's `inventory_db.1` to `.4`,
+    `shipping_rules.0`, `invoice.2` and `.4`, the last two withdrawing
+    session 5 verdicts of 4; Sonnet's `shipping_rules.1` and `retry.3`;
+    round 2: Haiku's `inventory_db.0` to `.4`), both rounds re-scored
+    offline (Haiku's Explain 27 of 30 in round 1, 26 in round 2; nothing
+    else moved). `03-readability-test.md` amended (the Explain row, the
+    sampling channel, the five-point rule), `README.md`, the notes of
+    both rounds, section U of `01-decisions.md`.
 
 ## Done in session 5 (condensed)
 
@@ -488,30 +500,11 @@ on a fresh clone).
 
 ## Owner actions pending
 
-- **Three questions from round 1's re-grade**, asked at the end of
-  session 6 (AskUserQuestion) and possibly unanswered when this handoff
-  was written; the next session reads the answers from the chat or asks
-  again, then records them (section U of `01-decisions.md`):
-  1. The subagent graders let three wrong statements pass in round 1 that
-     the hand verdicts call wrong (Sonnet's `retry.3`, Haiku's
-     `inventory_db.2` and `shipping_rules.0`; round 1's `notes.md`,
-     section 8), and the adjudication rule reaches only samples the two
-     graders disagree on by more than one point. Extend the hand verdicts
-     to agreed grades of samples that repeat a sentence a hand verdict
-     called wrong (moves Haiku's `inventory_db` to failing, nothing on a
-     gating model), add a hand pass over every agreed grade, or keep the
-     rule as it is.
-  2. On the one scale Haiku's Explain fell from 97 (round 1) to 90 (round
-     2), two items: `invoice` (two samples call the quantity rule
-     "non-negative"; it is at least 1) and `todo_cli` (every sample says
-     every command saves the list; only `add` and `done` do). Wrong
-     statements about the programs, not readings of a changed rule; the
-     floor model does not gate (R1), but the five-point rule of
-     `03-readability-test.md` names every passing rate. A decision entry,
-     or the rule narrowed to the gating models.
-  3. How round 3's samples are collected: the API keys with the owner's
-     say-so for the round, or subagents for the Claude models and `codex
-     exec` for the OpenAI models through `run --provider file`.
+- **None open from the readability work**: the re-grade's three
+  questions were answered in session 6 as decisions U5 to U7 and applied.
+  Round 3 needs the owner's go-ahead on its volume before it starts
+  (about 1,380 samples for four models, one subagent or Codex session
+  each; see Next steps).
 - Session 5 printed the values of `ANTHROPIC_API_KEY` and
   `OPENAI_API_KEY` into a tool result once (not committed); the owner said
   in session 6 that they handle the transcript and the keys themselves, so
@@ -543,15 +536,17 @@ on a fresh clone).
 ## Next steps
 
 1. **Round 3 on the cheat sheet after U1 to U3**: `run.py prepare`, then
-   `run` through the channel the owner names (Owner actions pending,
-   question 3): the API keys only with explicit say-so for the round;
-   otherwise Claude Code subagents for the Claude models and `codex exec`
-   for the OpenAI models, fed to the harness with `run --provider file`
-   (round 2's gpt-5.5 Write samples came that way; Predict, Explain and
-   Complete at five samples per prompt would be new ground for it, 345
-   samples per model). Explain graded by subagents and merged with
-   `tests/readability/merge_agent_grades.py`, Complete and Write by the
-   VM. It measures U1 to U3 and the five-point rule on every model.
+   `run` through the subscription channels (decision U7): Claude Code
+   subagents for the Claude models and `codex exec` for the OpenAI
+   models, fed to the harness with `run --provider file` (round 2's
+   gpt-5.5 Write samples came that way; Predict, Explain and Complete at
+   five samples per prompt would be new ground for it: 69 prompts, 345
+   samples per model, 1,380 for four models, one subagent or Codex
+   session each; round 2's 45 Codex samples took about an hour). Ask the
+   owner before starting that volume. Explain graded by subagents and
+   merged with `tests/readability/merge_agent_grades.py`, Complete and
+   Write by the VM. It measures U1 to U3 and the five-point rule on the
+   gating models (U6).
 2. **Readability observations not asked**: `otherwise` binds loosest
    (Sonnet wrote `check f(x) otherwise "" is "y"`); Sonnet reasons before
    the Predict answer on `traffic_light` (0 of 5 with right lines); the
@@ -644,9 +639,11 @@ on a fresh clone).
   1 re-graded, U4). They are about a point more lenient than the API
   graders, let three wrong statements pass in round 1 that the hand
   verdicts call wrong (round 1's `notes.md`, section 8), and read a
-  boundary word strictly in one batch and loosely in another; the hand
-  verdicts reach only disagreements. The floor model's Explain number
-  carries that; the gating models' failing samples are wrong statements
+  boundary word strictly in one batch and loosely in another. Since U5 a
+  hand verdict extends to every sample repeating the sentence, but a
+  wrong statement neither grader catches and no hand verdict names still
+  passes (a hand pass over every agreed grade was declined). The floor
+  model's Explain number carries that; the gating models' failing samples are wrong statements
   both grader kinds mark 2. Sonnet 5.5 and gpt-5.5 cannot be sampled at temperature 0, so
   their rates carry sampling noise of about one item. gpt-5.5's Write
   samples came through the Codex CLI (its own system prompt around ours,

@@ -75,7 +75,10 @@ unless `--run <directory name>` names another one.
   explanation too: the first grader's grade stands when the second is within
   one of it, and a wider disagreement leaves the sample `pending` with both
   grades, for adjudication in `judgement.json` (an integer, or
-  `{"verdict": 4, "reason": "..."}`). A grader that answers without a digit
+  `{"verdict": 4, "reason": "..."}`). A verdict of 2 on a sentence extends
+  to every sample, in any run, that repeats it (decision U5): the
+  adjudicator searches the program's samples for it and records a verdict
+  naming the originating one. A grader that answers without a digit
   (Claude Sonnet 5.5 refuses a few explanations of programs that fetch web
   pages) decides nothing, and the other grader's grade stands. A grader
   named `agent:<model>` is a Claude Code subagent (decision U4): the harness

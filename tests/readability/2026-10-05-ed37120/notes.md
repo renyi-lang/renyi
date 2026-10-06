@@ -39,7 +39,7 @@ Explain on the subagent graders' scale after the re-grade of session 6
 |-------|---------|---------|----------|------|
 | claude-sonnet-5-5 | 9/10 (90%; r1 90) | 30/30 (100%; r1 97) | 17/19 (89%; r1 79) / 16/19 (84%; r1 63) | 3/10 (30%; r1 40) / 1/10 (10%; r1 10) |
 | gpt-5.5 | 10/10 (100%) | 30/30 (100%) | 14/19 (74%) / 13/19 (68%) | 1/10 (10%) / 1/10 (10%) |
-| claude-haiku-4-5-20251001 | 5/10 (50%; r1 30) | 27/30 (90%; r1 97) | 8/19 (42%; r1 37) / 6/19 (32%; r1 32) | 0/10 (0%; r1 0) / 0/10 |
+| claude-haiku-4-5-20251001 | 5/10 (50%; r1 30) | 26/30 (87%; r1 90) | 8/19 (42%; r1 37) / 6/19 (32%; r1 32) | 0/10 (0%; r1 0) / 0/10 |
 | gpt-5.4-mini | 8/10 (80%; r1 80) | 29/30 (97%; r1 97) | 7/19 (37%; r1 32) / 6/19 (32%; r1 32) | 0/10 (0%; r1 0) / 0/10 |
 
 Sonnet now passes Predict, Explain and Complete and misses Write by four
@@ -52,20 +52,20 @@ the grades and the graders' reasons in `grades.json`, the adjudications in
 Against the five-point rule of the protocol (a grammar change that lowers
 a passing rate by more than five points is reverted or explained): no rate
 of the three models of round 1 fell by more than five points except
-Sonnet's Write, 40 to 30, and Haiku's Explain, 97 to 90 on the subagent
-scale (below). Sonnet's is one item, `fizz_words` (5 of 5 samples
+Sonnet's Write, 40 to 30, and Haiku's Explain, 90 to 87 on the subagent
+scale after decision U5 (below). Sonnet's is one item, `fizz_words` (5 of 5 samples
 in round 1, 3 of 5 now): two samples call `console.print` without
 `import std.console`, a slip the checker catches (`unknown-name`), not a
 reading of any changed rule. Sonnet cannot be sampled at temperature 0,
 and with five samples and a four-of-five rule an item whose samples pass
 six times in ten passes about a third of the time, so single-item moves
-between rounds are noise for this model. Haiku's Explain loses `invoice`
-(two samples call the quantity rule "non-negative"; it is at least 1) and
-`todo_cli` (every sample says every command saves the list; only `add`
-and `done` do): wrong statements about the programs, not readings of a
-changed rule, from the floor model, which does not gate (R1); whether the
-five-point rule wants a decision entry for it is put to the owner in the
-handoff. The other moves are up:
+between rounds are noise for this model. Haiku's Explain loses `todo_cli`
+(every sample says every command saves the list; only `add` and `done`
+do) and fails `shipping_rules`, `invoice` and `inventory_db` in both
+rounds once decision U5 is applied: wrong statements about the programs,
+not readings of a changed rule, from the floor model, which does not
+gate; by decision U6 the five-point rule names the gating models and the
+floor model's moves are reported here. The other moves are up:
 Sonnet's Complete from 15 to 17 items (`deadlines`, `invoice_report` and
 `shapes` now pass, `statistics` now fails on the reserved word `count` in
 two samples), Haiku's Predict from 3 to 5 items.
@@ -105,7 +105,12 @@ grade every item on its own and to give a one-sentence reason. The first
 grader's grade stands when the second is within one point; eleven samples
 where they disagreed by more (4 Sonnet, 7 Haiku; none for gpt-5.5 and
 gpt-5.4-mini) were adjudicated by hand with a reason each in
-`judgement.json`. Round 1 adjudicated 49.
+`judgement.json`. Round 1 adjudicated 49. Five more verdicts came in
+session 6 by decision U5 (a hand verdict extends to every sample that
+repeats the sentence it called wrong): Haiku's `inventory_db.0` to `.4`,
+"items that have fallen below their reorder threshold" for at or below,
+the sentence round 1's `inventory_db.0` verdict calls wrong; both
+subagents had graded the five samples 5.
 
 Grades over the 150 samples per model: Sonnet 142 fives, 7 fours, 1 two;
 gpt-5.5 143 fives, 7 fours; Haiku 113 fives, 25 fours, 12 twos;
@@ -125,7 +130,8 @@ Failing items and the adjudications:
   unknown command prints the usage line (both graders 2); and `invoice`,
   two samples saying quantities are validated as "non-negative" where a
   line's quantity is at least 1 (Sonnet 4, Opus 2; adjudicated 2: one
-  wrong statement). Haiku's fours mostly leave the needs unnamed, as in round 1.
+  wrong statement); and `inventory_db` by decision U5, all five samples
+  (both subagents 5). Haiku's fours mostly leave the needs unnamed, as in round 1.
 - gpt-5.4-mini fails `todo_cli` on two of five samples: "no safeguards for
   invalid task numbers beyond normal failure" (a bad number prints the
   usage line) and "fails if it cannot read the task file" (a missing file
@@ -313,9 +319,9 @@ round; the README describes the harness as it now is.
    no API grades exist to compare, and their failing samples are wrong
    statements, which both kinds of grader mark 2. The owner kept the
    subagents and had round 1 re-graded with them (decision U4; round 1's
-   `notes.md`, section 8): on the one scale round 1's Explain is 97, 97
-   and 97 (Sonnet, Haiku, gpt-5.4-mini; Haiku up from 90), and the
-   parentheses of section 1 use it.
+   `notes.md`, section 8): on the one scale, after decision U5, round 1's Explain is 97, 90
+   and 97 (Sonnet, Haiku, gpt-5.4-mini) and this round's Haiku is 87,
+   and the parentheses of section 1 use it.
 4. **A stale reference** (fix 1 of this round). `reference/currency_tool.explain.txt`
    named `api.frankfurter.app`, the host of round 1's corpus; session 6
    moved the program to `api.frankfurter.dev` and gpt-5.5, the one model

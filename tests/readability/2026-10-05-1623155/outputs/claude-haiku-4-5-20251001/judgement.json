@@ -1,277 +1,297 @@
 {
   "complete/config.0": {
-    "verdict": true,
+    "packet": "complete-config-2e21cb7dd1",
     "reason": "default_config returns Config(port: Port(8080), workers: 4, log_level: Normal), so the only example `default_config().port is Port(8080)` holds, workers 4 satisfies the 1..64 refinement, and a fixed fallback configuration is what the purpose asks for.",
-    "packet": "complete-config-2e21cb7dd1"
+    "verdict": true
   },
   "complete/config.1": {
-    "verdict": true,
+    "packet": "complete-config-2e21cb7dd1",
     "reason": "default_config returns Config(port: Port(8080), workers: 4, log_level: Normal), so the only example `default_config().port is Port(8080)` holds, workers 4 satisfies the 1..64 refinement, and a fixed fallback configuration is what the purpose asks for.",
-    "packet": "complete-config-2e21cb7dd1"
+    "verdict": true
   },
   "complete/config.2": {
-    "verdict": true,
+    "packet": "complete-config-2e21cb7dd1",
     "reason": "default_config returns Config(port: Port(8080), workers: 4, log_level: Normal), so the only example `default_config().port is Port(8080)` holds, workers 4 satisfies the 1..64 refinement, and a fixed fallback configuration is what the purpose asks for.",
-    "packet": "complete-config-2e21cb7dd1"
+    "verdict": true
   },
   "complete/config.3": {
-    "verdict": true,
+    "packet": "complete-config-2e21cb7dd1",
     "reason": "default_config returns Config(port: Port(8080), workers: 4, log_level: Normal), so the only example `default_config().port is Port(8080)` holds, workers 4 satisfies the 1..64 refinement, and a fixed fallback configuration is what the purpose asks for.",
-    "packet": "complete-config-2e21cb7dd1"
+    "verdict": true
   },
   "complete/config.4": {
-    "verdict": true,
+    "packet": "complete-config-2e21cb7dd1",
     "reason": "default_config returns Config(port: Port(8080), workers: 4, log_level: Normal), so the only example `default_config().port is Port(8080)` holds, workers 4 satisfies the 1..64 refinement, and a fixed fallback configuration is what the purpose asks for.",
-    "packet": "complete-config-2e21cb7dd1"
+    "verdict": true
   },
   "complete/expression_tree.0": {
-    "verdict": true,
+    "packet": "complete-expression_tree-af62d55fd7",
     "reason": "All three examples hold: Number(value: 4) evaluates to 4, Add(1, 2) to 1 + 2 = 3, and Negate(Multiply(2, 3)) to 0 - 6 = -6, and the match recurses over every variant as the purpose requires.",
-    "packet": "complete-expression_tree-af62d55fd7"
+    "verdict": true
   },
   "complete/expression_tree.1": {
-    "verdict": true,
+    "packet": "complete-expression_tree-af62d55fd7",
     "reason": "All three examples hold: Number(value: 4) evaluates to 4, Add(1, 2) to 1 + 2 = 3, and Negate(Multiply(2, 3)) to 0 - 6 = -6, and the match recurses over every variant as the purpose requires.",
-    "packet": "complete-expression_tree-af62d55fd7"
+    "verdict": true
   },
   "complete/expression_tree.2": {
-    "verdict": true,
+    "packet": "complete-expression_tree-af62d55fd7",
     "reason": "All three examples hold: Number(value: 4) evaluates to 4, Add(1, 2) to 1 + 2 = 3, and Negate(Multiply(2, 3)) to 0 - 6 = -6, and the match recurses over every variant as the purpose requires.",
-    "packet": "complete-expression_tree-af62d55fd7"
+    "verdict": true
   },
   "complete/expression_tree.3": {
-    "verdict": true,
+    "packet": "complete-expression_tree-af62d55fd7",
     "reason": "All three examples hold: Number(value: 4) evaluates to 4, Add(1, 2) to 1 + 2 = 3, and Negate(Multiply(2, 3)) to 0 - 6 = -6, and the match recurses over every variant as the purpose requires.",
-    "packet": "complete-expression_tree-af62d55fd7"
+    "verdict": true
   },
   "complete/expression_tree.4": {
-    "verdict": true,
+    "packet": "complete-expression_tree-af62d55fd7",
     "reason": "All three examples hold: Number(value: 4) evaluates to 4, Add(1, 2) to 1 + 2 = 3, and Negate(Multiply(2, 3)) to 0 - 6 = -6, and the match recurses over every variant as the purpose requires.",
-    "packet": "complete-expression_tree-af62d55fd7"
+    "verdict": true
   },
   "complete/log_parser.0": {
-    "verdict": true,
+    "packet": "complete-log_parser-3744fe48a8",
     "reason": "Both examples hold: \"2024-05-01T13:45:00 INFO server started\" splits into 4 pieces giving Timestamp(\"2024-05-01T13:45:00\"), Info and drop(2).join(\" \") = \"server started\", and \"garbage\" has 1 piece so it fails with Malformed(line: \"garbage\"); splitting and rejoining on single spaces keeps the message exactly and an unknown level propagates UnknownLevel from parse_level.",
-    "packet": "complete-log_parser-3744fe48a8"
+    "verdict": true
   },
   "complete/log_parser.1": {
-    "verdict": true,
+    "packet": "complete-log_parser-3744fe48a8",
     "reason": "Both examples hold: \"2024-05-01T13:45:00 INFO server started\" splits into 4 pieces giving Timestamp(\"2024-05-01T13:45:00\"), Info and drop(2).join(\" \") = \"server started\", and \"garbage\" has 1 piece so it fails with Malformed(line: \"garbage\"); splitting and rejoining on single spaces keeps the message exactly and an unknown level propagates UnknownLevel from parse_level.",
-    "packet": "complete-log_parser-3744fe48a8"
+    "verdict": true
   },
   "complete/log_parser.2": {
-    "verdict": true,
+    "packet": "complete-log_parser-3744fe48a8",
     "reason": "Both examples hold: \"2024-05-01T13:45:00 INFO server started\" splits into 4 pieces giving Timestamp(\"2024-05-01T13:45:00\"), Info and drop(2).join(\" \") = \"server started\", and \"garbage\" has 1 piece so it fails with Malformed(line: \"garbage\"); splitting and rejoining on single spaces keeps the message exactly and an unknown level propagates UnknownLevel from parse_level.",
-    "packet": "complete-log_parser-3744fe48a8"
+    "verdict": true
   },
   "complete/log_parser.3": {
-    "verdict": true,
+    "packet": "complete-log_parser-3744fe48a8",
     "reason": "Both examples hold: \"2024-05-01T13:45:00 INFO server started\" splits into 4 pieces giving Timestamp(\"2024-05-01T13:45:00\"), Info and drop(2).join(\" \") = \"server started\", and \"garbage\" has 1 piece so it fails with Malformed(line: \"garbage\"); splitting and rejoining on single spaces keeps the message exactly and an unknown level propagates UnknownLevel from parse_level.",
-    "packet": "complete-log_parser-3744fe48a8"
+    "verdict": true
   },
   "complete/log_parser.4": {
-    "verdict": true,
+    "packet": "complete-log_parser-3744fe48a8",
     "reason": "Both examples hold: \"2024-05-01T13:45:00 INFO server started\" splits into 4 pieces giving Timestamp(\"2024-05-01T13:45:00\"), Info and drop(2).join(\" \") = \"server started\", and \"garbage\" has 1 piece so it fails with Malformed(line: \"garbage\"); splitting and rejoining on single spaces keeps the message exactly and an unknown level propagates UnknownLevel from parse_level.",
-    "packet": "complete-log_parser-3744fe48a8"
+    "verdict": true
   },
   "complete/permissions.0": {
-    "verdict": true,
+    "packet": "complete-permissions-d91580b8b5",
     "reason": "required.difference(granted_by(roles)) removes orders:read, which the viewer grants, and leaves exactly {orders:write}, so the example holds and the result is the required permissions that no role grants, as the purpose says.",
-    "packet": "complete-permissions-d91580b8b5"
+    "verdict": true
   },
   "complete/permissions.1": {
-    "verdict": true,
+    "packet": "complete-permissions-d91580b8b5",
     "reason": "required.difference(granted_by(roles)) removes orders:read, which the viewer grants, and leaves exactly {orders:write}, so the example holds and the result is the required permissions that no role grants, as the purpose says.",
-    "packet": "complete-permissions-d91580b8b5"
+    "verdict": true
   },
   "complete/permissions.2": {
-    "verdict": true,
+    "packet": "complete-permissions-d91580b8b5",
     "reason": "required.difference(granted_by(roles)) removes orders:read, which the viewer grants, and leaves exactly {orders:write}, so the example holds and the result is the required permissions that no role grants, as the purpose says.",
-    "packet": "complete-permissions-d91580b8b5"
+    "verdict": true
   },
   "complete/permissions.3": {
-    "verdict": true,
+    "packet": "complete-permissions-d91580b8b5",
     "reason": "required.difference(granted_by(roles)) removes orders:read, which the viewer grants, and leaves exactly {orders:write}, so the example holds and the result is the required permissions that no role grants, as the purpose says.",
-    "packet": "complete-permissions-d91580b8b5"
+    "verdict": true
   },
   "complete/permissions.4": {
-    "verdict": true,
+    "packet": "complete-permissions-d91580b8b5",
     "reason": "required.difference(granted_by(roles)) removes orders:read, which the viewer grants, and leaves exactly {orders:write}, so the example holds and the result is the required permissions that no role grants, as the purpose says.",
-    "packet": "complete-permissions-d91580b8b5"
+    "verdict": true
   },
   "complete/sales_report.0": {
-    "verdict": true,
+    "packet": "complete-sales_report-21f3b4a765",
     "reason": "The query `for each sale in sales group by sale.region sum sale.amount` is exactly the per-region Decimal sum the purpose asks for, and on an empty list it gives {} as the only example requires.",
-    "packet": "complete-sales_report-21f3b4a765"
+    "verdict": true
   },
   "complete/sales_report.1": {
-    "verdict": true,
+    "packet": "complete-sales_report-21f3b4a765",
     "reason": "The query `for each sale in sales group by sale.region sum sale.amount` is exactly the per-region Decimal sum the purpose asks for, and on an empty list it gives {} as the only example requires.",
-    "packet": "complete-sales_report-21f3b4a765"
+    "verdict": true
   },
   "complete/sales_report.2": {
-    "verdict": true,
+    "packet": "complete-sales_report-21f3b4a765",
     "reason": "The query `for each sale in sales group by sale.region sum sale.amount` is exactly the per-region Decimal sum the purpose asks for, and on an empty list it gives {} as the only example requires.",
-    "packet": "complete-sales_report-21f3b4a765"
+    "verdict": true
   },
   "complete/sales_report.3": {
-    "verdict": true,
+    "packet": "complete-sales_report-21f3b4a765",
     "reason": "The query `for each sale in sales group by sale.region sum sale.amount` is exactly the per-region Decimal sum the purpose asks for, and on an empty list it gives {} as the only example requires.",
-    "packet": "complete-sales_report-21f3b4a765"
+    "verdict": true
   },
   "complete/sales_report.4": {
-    "verdict": true,
+    "packet": "complete-sales_report-21f3b4a765",
     "reason": "The query `for each sale in sales group by sale.region sum sale.amount` is exactly the per-region Decimal sum the purpose asks for, and on an empty list it gives {} as the only example requires.",
-    "packet": "complete-sales_report-21f3b4a765"
+    "verdict": true
   },
   "complete/shipping_rules.0": {
-    "verdict": false,
+    "packet": "complete-shipping_rules-8de0429009",
     "reason": "The Europe example expects cost 14.50 but the function charges 2.00 per weight step, so the 2500 g parcel costs 9.50 + 2 * 2.00 = 13.50 (the example implies 2.50 per step).",
-    "packet": "complete-shipping_rules-8de0429009"
+    "verdict": false
   },
   "complete/shipping_rules.1": {
-    "verdict": false,
+    "packet": "complete-shipping_rules-8de0429009",
     "reason": "The Europe example expects cost 14.50 but the function charges 2.00 per weight step, so the 2500 g parcel costs 9.50 + 2 * 2.00 = 13.50 (the example implies 2.50 per step).",
-    "packet": "complete-shipping_rules-8de0429009"
+    "verdict": false
   },
   "complete/shipping_rules.4": {
-    "verdict": false,
+    "packet": "complete-shipping_rules-8de0429009",
     "reason": "The Europe example expects cost 14.50 but the function charges 2.00 per weight step, so the 2500 g parcel costs 9.50 + 2 * 2.00 = 13.50 (the example implies 2.50 per step).",
-    "packet": "complete-shipping_rules-8de0429009"
+    "verdict": false
   },
   "complete/stacks.0": {
-    "verdict": true,
+    "packet": "complete-stacks-87c6c24bb1",
     "reason": "Pushing ( and [ and popping with a partner check on ) and ] gives true for \"(a[b])\" and \"\", and false for \"(]\" (the top is \"(\"), \"((\" (the stack is not empty at the end) and \"a]\" (pop of an empty stack), and both tests exercise only the original stack functions and pass.",
-    "packet": "complete-stacks-87c6c24bb1"
+    "verdict": true
   },
   "complete/stacks.1": {
-    "verdict": true,
+    "packet": "complete-stacks-87c6c24bb1",
     "reason": "Pushing ( and [ and popping with a partner check on ) and ] gives true for \"(a[b])\" and \"\", and false for \"(]\" (the top is \"(\"), \"((\" (the stack is not empty at the end) and \"a]\" (pop of an empty stack), and both tests exercise only the original stack functions and pass.",
-    "packet": "complete-stacks-87c6c24bb1"
+    "verdict": true
   },
   "complete/stacks.2": {
-    "verdict": true,
+    "packet": "complete-stacks-87c6c24bb1",
     "reason": "Pushing ( and [ and popping with a partner check on ) and ] gives true for \"(a[b])\" and \"\", and false for \"(]\" (the top is \"(\"), \"((\" (the stack is not empty at the end) and \"a]\" (pop of an empty stack), and both tests exercise only the original stack functions and pass.",
-    "packet": "complete-stacks-87c6c24bb1"
+    "verdict": true
   },
   "complete/stacks.3": {
-    "verdict": true,
+    "packet": "complete-stacks-87c6c24bb1",
     "reason": "Pushing ( and [ and popping with a partner check on ) and ] gives true for \"(a[b])\" and \"\", and false for \"(]\" (the top is \"(\"), \"((\" (the stack is not empty at the end) and \"a]\" (pop of an empty stack), and both tests exercise only the original stack functions and pass.",
-    "packet": "complete-stacks-87c6c24bb1"
+    "verdict": true
   },
   "complete/stacks.4": {
-    "verdict": true,
+    "packet": "complete-stacks-87c6c24bb1",
     "reason": "Pushing ( and [ and popping with a partner check on ) and ] gives true for \"(a[b])\" and \"\", and false for \"(]\" (the top is \"(\"), \"((\" (the stack is not empty at the end) and \"a]\" (pop of an empty stack), and both tests exercise only the original stack functions and pass.",
-    "packet": "complete-stacks-87c6c24bb1"
+    "verdict": true
   },
   "complete/temperature_table.0": {
-    "verdict": true,
+    "packet": "complete-temperature_table-1ccb766fae",
     "reason": "celsius * 9 / 5 + 32 is the correct, exact Decimal conversion: 0 gives 32, 100 gives 900 / 5 + 32 = 212 and -40 gives -360 / 5 + 32 = -40, so all three examples hold.",
-    "packet": "complete-temperature_table-1ccb766fae"
+    "verdict": true
   },
   "complete/temperature_table.1": {
-    "verdict": true,
+    "packet": "complete-temperature_table-1ccb766fae",
     "reason": "celsius * 9 / 5 + 32 is the correct, exact Decimal conversion: 0 gives 32, 100 gives 900 / 5 + 32 = 212 and -40 gives -360 / 5 + 32 = -40, so all three examples hold.",
-    "packet": "complete-temperature_table-1ccb766fae"
+    "verdict": true
   },
   "complete/temperature_table.2": {
-    "verdict": true,
+    "packet": "complete-temperature_table-1ccb766fae",
     "reason": "celsius * 9 / 5 + 32 is the correct, exact Decimal conversion: 0 gives 32, 100 gives 900 / 5 + 32 = 212 and -40 gives -360 / 5 + 32 = -40, so all three examples hold.",
-    "packet": "complete-temperature_table-1ccb766fae"
+    "verdict": true
   },
   "complete/temperature_table.3": {
-    "verdict": true,
+    "packet": "complete-temperature_table-1ccb766fae",
     "reason": "celsius * 9 / 5 + 32 is the correct, exact Decimal conversion: 0 gives 32, 100 gives 900 / 5 + 32 = 212 and -40 gives -360 / 5 + 32 = -40, so all three examples hold.",
-    "packet": "complete-temperature_table-1ccb766fae"
+    "verdict": true
   },
   "complete/temperature_table.4": {
-    "verdict": true,
+    "packet": "complete-temperature_table-1ccb766fae",
     "reason": "celsius * 9 / 5 + 32 is the correct, exact Decimal conversion: 0 gives 32, 100 gives 900 / 5 + 32 = 212 and -40 gives -360 / 5 + 32 = -40, so all three examples hold.",
-    "packet": "complete-temperature_table-1ccb766fae"
+    "verdict": true
   },
   "explain/concurrent_fetch.1": {
-    "verdict": 4,
-    "reason": "Three sites fetched in parallel, sorted by size descending and printed with their character counts, then two pages of one domain under a ten-second deadline with their combined size: all correct; the console and network needs and the two failure kinds are only implied."
+    "reason": "Three sites fetched in parallel, sorted by size descending and printed with their character counts, then two pages of one domain under a ten-second deadline with their combined size: all correct; the console and network needs and the two failure kinds are only implied.",
+    "verdict": 4
   },
   "explain/concurrent_fetch.2": {
-    "verdict": 4,
-    "reason": "Identical to .1; same judgement."
+    "reason": "Identical to .1; same judgement.",
+    "verdict": 4
   },
   "explain/concurrent_fetch.3": {
-    "verdict": 4,
-    "reason": "Identical to .1; same judgement."
+    "reason": "Identical to .1; same judgement.",
+    "verdict": 4
   },
   "explain/concurrent_fetch.4": {
-    "verdict": 4,
-    "reason": "Identical to .1; same judgement."
+    "reason": "Identical to .1; same judgement.",
+    "verdict": 4
   },
   "explain/config.0": {
-    "verdict": 4,
-    "reason": "Loading and validating the JSON file, the port and worker ranges, the error-reporting load, the defaults and the caller-supplied fallback are correct; the log level, the deprecation and the filesystem need are not mentioned."
+    "reason": "Loading and validating the JSON file, the port and worker ranges, the error-reporting load, the defaults and the caller-supplied fallback are correct; the log level, the deprecation and the filesystem need are not mentioned.",
+    "verdict": 4
   },
   "explain/inventory_db.0": {
-    "verdict": 2,
-    "reason": "'items that have fallen below their reorder thresholds' and 'items currently below their reorder levels' contradict the query, which lists items at or below their reorder level (quantity <= reorder_level); the delivery of 500 to BOLT-10, the opening with table creation and the sort by quantity are correct."
+    "reason": "'items that have fallen below their reorder thresholds' and 'items currently below their reorder levels' contradict the query, which lists items at or below their reorder level (quantity <= reorder_level); the delivery of 500 to BOLT-10, the opening with table creation and the sort by quantity are correct.",
+    "verdict": 2
+  },
+  "explain/inventory_db.1": {
+    "reason": "Same sentence as inventory_db.0 ('items that have fallen below their reorder thresholds' for at or below their reorder level); decision U5, session 6.",
+    "verdict": 2
+  },
+  "explain/inventory_db.2": {
+    "reason": "Same sentence as inventory_db.0 ('items that have fallen below their reorder thresholds' for at or below their reorder level); decision U5, session 6.",
+    "verdict": 2
+  },
+  "explain/inventory_db.3": {
+    "reason": "Same sentence as inventory_db.0 ('items that have fallen below their reorder thresholds' for at or below their reorder level); decision U5, session 6.",
+    "verdict": 2
+  },
+  "explain/inventory_db.4": {
+    "reason": "Same sentence as inventory_db.0 ('items that have fallen below their reorder thresholds' for at or below their reorder level); decision U5, session 6.",
+    "verdict": 2
   },
   "explain/invoice.2": {
-    "verdict": 4,
-    "reason": "Line totals, the subtotal, the discounted total rounded to cents, the refinements and the two tests are correct ('non-negative quantities' understates the at-least-1 refinement but is not false); that the module is pure with no entry point is not stated."
+    "reason": "'quantities and prices are non-negative' is wrong: a line's quantity is at least 1 (examples/invoice.ry at this revision). The session 5 verdict of 4 read the sentence as correct and is withdrawn; round 2's invoice.0 verdict on the same sentence applies; decision U5, session 6.",
+    "verdict": 2
   },
   "explain/invoice.4": {
-    "verdict": 4,
-    "reason": "Identical to .2; same judgement."
+    "reason": "'quantities and prices are non-negative' is wrong: a line's quantity is at least 1 (examples/invoice.ry at this revision). The session 5 verdict of 4 read the sentence as correct and is withdrawn; round 2's invoice.0 verdict on the same sentence applies; decision U5, session 6.",
+    "verdict": 2
   },
   "explain/log_parser.2": {
-    "verdict": 4,
-    "reason": "Reading the log, parsing timestamp, level and message, counting errors per hour and printing them in time order with format and timestamp validation are correct; the fixed path, blank-line skipping, one bad line ending the run and the console and filesystem needs are not stated."
+    "reason": "Reading the log, parsing timestamp, level and message, counting errors per hour and printing them in time order with format and timestamp validation are correct; the fixed path, blank-line skipping, one bad line ending the run and the console and filesystem needs are not stated.",
+    "verdict": 4
   },
   "explain/retry.3": {
-    "verdict": 4,
-    "reason": "The retries with exponential backoff and jitter from 100 milliseconds and the GaveUp outcome with the attempt count and the last error are correct ('returns' for a failure is loose but not wrong); the clock and random needs are only implied."
+    "reason": "The retries with exponential backoff and jitter from 100 milliseconds and the GaveUp outcome with the attempt count and the last error are correct ('returns' for a failure is loose but not wrong); the clock and random needs are only implied.",
+    "verdict": 4
   },
   "explain/retry.4": {
-    "verdict": 4,
-    "reason": "Same facts as .3 plus the success path, all correct; 'to avoid overwhelming a system' is a motive, not a wrong statement; the clock and random needs are only implied."
+    "reason": "Same facts as .3 plus the success path, all correct; 'to avoid overwhelming a system' is a motive, not a wrong statement; the clock and random needs are only implied.",
+    "verdict": 4
+  },
+  "explain/shipping_rules.0": {
+    "reason": "Same sentence as shipping_rules.1 ('free domestic shipping on orders above 50.00' for at least 50.00); decision U5, session 6.",
+    "verdict": 2
   },
   "explain/shipping_rules.1": {
-    "verdict": 2,
-    "reason": "'free domestic shipping on orders above 50.00' contradicts 'at least 50.00' (an order of exactly 50.00 ships free), and 'tiered rates for international destinations' misses that every non-free parcel, Domestic included, pays the destination base price plus 2.50 per started kilogram beyond the first."
+    "reason": "'free domestic shipping on orders above 50.00' contradicts 'at least 50.00' (an order of exactly 50.00 ships free), and 'tiered rates for international destinations' misses that every non-free parcel, Domestic included, pays the destination base price plus 2.50 per started kilogram beyond the first.",
+    "verdict": 2
   },
   "explain/shipping_rules.2": {
-    "verdict": 2,
-    "reason": "Identical to .1; same judgement."
+    "reason": "Identical to .1; same judgement.",
+    "verdict": 2
   },
   "explain/shipping_rules.3": {
-    "verdict": 2,
-    "reason": "Identical to .1; same judgement."
+    "reason": "Identical to .1; same judgement.",
+    "verdict": 2
   },
   "explain/shipping_rules.4": {
-    "verdict": 2,
-    "reason": "Identical to .1; same judgement."
+    "reason": "Identical to .1; same judgement.",
+    "verdict": 2
   },
   "explain/temperature_table.0": {
-    "verdict": 4,
-    "reason": "The table from -10 to 40 in steps of 10 and the reusable conversion are correct; the console need is only implied by 'prints' and the header and alignment are not mentioned."
+    "reason": "The table from -10 to 40 in steps of 10 and the reusable conversion are correct; the console need is only implied by 'prints' and the header and alignment are not mentioned.",
+    "verdict": 4
   },
   "explain/temperature_table.1": {
-    "verdict": 4,
-    "reason": "Identical to .0; same judgement."
+    "reason": "Identical to .0; same judgement.",
+    "verdict": 4
   },
   "explain/temperature_table.2": {
-    "verdict": 4,
-    "reason": "Identical to .0; same judgement."
+    "reason": "Identical to .0; same judgement.",
+    "verdict": 4
   },
   "explain/temperature_table.3": {
-    "verdict": 4,
-    "reason": "Identical to .0; same judgement."
+    "reason": "Identical to .0; same judgement.",
+    "verdict": 4
   },
   "explain/temperature_table.4": {
-    "verdict": 4,
-    "reason": "Identical to .0; same judgement."
+    "reason": "Identical to .0; same judgement.",
+    "verdict": 4
   },
   "write/request_window.0": {
-    "verdict": false,
+    "packet": "write-request_window-4e7df9a177",
     "reason": "The only example fails: with window_start 0.0 and length 10.0, times 1.0 to 10.0 bring the count to 10 and 11.0 is greater than 10.0 so it opens a fresh window, returning 0 instead of the claimed 1; the fixed-window reset also does not check 'any window' as the task requires.",
-    "packet": "write-request_window-4e7df9a177"
+    "verdict": false
   }
 }

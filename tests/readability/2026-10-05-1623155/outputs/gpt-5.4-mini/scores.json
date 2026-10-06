@@ -1344,7 +1344,7 @@
       "lint_problems": [],
       "vm": "4 passed, 1 failed",
       "failures": [
-        "FAIL  example of statement_line: example: statement_line(Invoice(customer: \"ACME\", lines: [], discount_percent: 0)) is \"ACME 0 lines 0.00\" (D:\\Projects\\Renyi\\examples\\.scratch-115048.ry:9)",
+        "FAIL  example of statement_line: example: statement_line(Invoice(customer: \"ACME\", lines: [], discount_percent: 0)) is \"ACME 0 lines 0.00\" (D:\\Projects\\Renyi\\examples\\.scratch-38592.ry:9)",
         "got \"ACME          0 lines     0.00\", expected \"ACME          0 lines      0.00\""
       ],
       "pass": false,
@@ -1372,7 +1372,7 @@
       "lint_problems": [],
       "vm": "4 passed, 1 failed",
       "failures": [
-        "FAIL  example of statement_line: example: statement_line(Invoice(customer: \"ACME\", lines: [], discount_percent: 0)) is \"ACME 0 lines 0.00\" (D:\\Projects\\Renyi\\examples\\.scratch-115048.ry:9)",
+        "FAIL  example of statement_line: example: statement_line(Invoice(customer: \"ACME\", lines: [], discount_percent: 0)) is \"ACME 0 lines 0.00\" (D:\\Projects\\Renyi\\examples\\.scratch-38592.ry:9)",
         "got \"ACME          0 lines       0.00\", expected \"ACME          0 lines      0.00\""
       ],
       "pass": false,
@@ -1382,7 +1382,7 @@
       "lint_problems": [],
       "vm": "4 passed, 1 failed",
       "failures": [
-        "FAIL  example of statement_line: example: statement_line(Invoice(customer: \"ACME\", lines: [], discount_percent: 0)) is \"ACME 0 lines 0.00\" (D:\\Projects\\Renyi\\examples\\.scratch-115048.ry:9)",
+        "FAIL  example of statement_line: example: statement_line(Invoice(customer: \"ACME\", lines: [], discount_percent: 0)) is \"ACME 0 lines 0.00\" (D:\\Projects\\Renyi\\examples\\.scratch-38592.ry:9)",
         "got \"ACME          0 lines       0.00\", expected \"ACME          0 lines      0.00\""
       ],
       "pass": false,
@@ -1664,7 +1664,7 @@
       "lint_problems": [],
       "vm": "5 passed, 1 failed",
       "failures": [
-        "FAIL  example of quote: example: quote(Parcel(weight_grams: 2500, destination: Europe, order_total: 20.00)) is Quote(cost: 14.50, business_days: 5, free_shipping: false) (D:\\Projects\\Renyi\\examples\\.scratch-115048.ry:35)",
+        "FAIL  example of quote: example: quote(Parcel(weight_grams: 2500, destination: Europe, order_total: 20.00)) is Quote(cost: 14.50, business_days: 5, free_shipping: false) (D:\\Projects\\Renyi\\examples\\.scratch-38592.ry:35)",
         "got Quote(cost: 13.50, business_days: 5, free_shipping: false), expected Quote(cost: 14.50, business_days: 5, free_shipping: false)"
       ],
       "pass": false,
@@ -1693,7 +1693,7 @@
       "lint_problems": [],
       "vm": "5 passed, 1 failed",
       "failures": [
-        "FAIL  example of quote: example: quote(Parcel(weight_grams: 2500, destination: Europe, order_total: 20.00)) is Quote(cost: 14.50, business_days: 5, free_shipping: false) (D:\\Projects\\Renyi\\examples\\.scratch-115048.ry:35)",
+        "FAIL  example of quote: example: quote(Parcel(weight_grams: 2500, destination: Europe, order_total: 20.00)) is Quote(cost: 14.50, business_days: 5, free_shipping: false) (D:\\Projects\\Renyi\\examples\\.scratch-38592.ry:35)",
         "got Quote(cost: 13.50, business_days: 5, free_shipping: false), expected Quote(cost: 14.50, business_days: 5, free_shipping: false)"
       ],
       "pass": false,

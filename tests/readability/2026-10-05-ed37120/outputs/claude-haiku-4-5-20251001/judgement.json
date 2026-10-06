@@ -1,30 +1,50 @@
 {
+  "explain/inventory_db.0": {
+    "reason": "'retrieve items that have fallen below their reorder threshold' for at or below their reorder level (the query lists quantity <= reorder level), the sentence round 1's inventory_db.0 verdict calls wrong; decision U5, session 6.",
+    "verdict": 2
+  },
+  "explain/inventory_db.1": {
+    "reason": "'retrieve items that have fallen below their reorder threshold' for at or below their reorder level (the query lists quantity <= reorder level), the sentence round 1's inventory_db.0 verdict calls wrong; decision U5, session 6.",
+    "verdict": 2
+  },
+  "explain/inventory_db.2": {
+    "reason": "'retrieve items that have fallen below their reorder threshold' for at or below their reorder level (the query lists quantity <= reorder level), the sentence round 1's inventory_db.0 verdict calls wrong; decision U5, session 6.",
+    "verdict": 2
+  },
+  "explain/inventory_db.3": {
+    "reason": "'retrieve items that have fallen below their reorder threshold' for at or below their reorder level (the query lists quantity <= reorder level), the sentence round 1's inventory_db.0 verdict calls wrong; decision U5, session 6.",
+    "verdict": 2
+  },
+  "explain/inventory_db.4": {
+    "reason": "'retrieve items that have fallen below their reorder threshold' for at or below their reorder level (the query lists quantity <= reorder level), the sentence round 1's inventory_db.0 verdict calls wrong; decision U5, session 6.",
+    "verdict": 2
+  },
   "explain/invoice.0": {
-    "verdict": 2,
-    "reason": "Line totals, subtotal, discount, rounding and the two tests are right, but 'quantities and prices are non-negative' is wrong: a line's quantity is at least 1. One wrong statement (both graders saw it; the rubric gives 2)."
+    "reason": "Line totals, subtotal, discount, rounding and the two tests are right, but 'quantities and prices are non-negative' is wrong: a line's quantity is at least 1. One wrong statement (both graders saw it; the rubric gives 2).",
+    "verdict": 2
   },
   "explain/invoice.1": {
-    "verdict": 2,
-    "reason": "Identical to invoice.0; same judgement."
+    "reason": "Identical to invoice.0; same judgement.",
+    "verdict": 2
   },
   "explain/shipping_rules.0": {
-    "verdict": 2,
-    "reason": "'Free domestic shipping on orders above 50.00' is wrong: the rule is at least 50.00, and an order of exactly 50.00 ships free (the boundary rule of round 1). Otherwise the purpose and the pricing shape are right; the needs (none) are not stated."
+    "reason": "'Free domestic shipping on orders above 50.00' is wrong: the rule is at least 50.00, and an order of exactly 50.00 ships free (the boundary rule of round 1). Otherwise the purpose and the pricing shape are right; the needs (none) are not stated.",
+    "verdict": 2
   },
   "explain/shipping_rules.1": {
-    "verdict": 2,
-    "reason": "Identical to shipping_rules.0; same judgement."
+    "reason": "Identical to shipping_rules.0; same judgement.",
+    "verdict": 2
   },
   "explain/shipping_rules.2": {
-    "verdict": 2,
-    "reason": "Identical to shipping_rules.0; same judgement."
+    "reason": "Identical to shipping_rules.0; same judgement.",
+    "verdict": 2
   },
   "explain/shipping_rules.3": {
-    "verdict": 2,
-    "reason": "Identical to shipping_rules.0; same judgement."
+    "reason": "Identical to shipping_rules.0; same judgement.",
+    "verdict": 2
   },
   "explain/shipping_rules.4": {
-    "verdict": 2,
-    "reason": "Identical to shipping_rules.0; same judgement."
+    "reason": "Identical to shipping_rules.0; same judgement.",
+    "verdict": 2
   }
 }

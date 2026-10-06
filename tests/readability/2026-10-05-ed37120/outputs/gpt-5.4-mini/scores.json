@@ -1335,7 +1335,7 @@
       "lint_problems": [],
       "vm": "4 passed, 1 failed",
       "failures": [
-        "FAIL  example of statement_line: example: statement_line(Invoice(customer: \"ACME\", lines: [], discount_percent: 0)) is \"ACME 0 lines 0.00\" (D:\\Projects\\Renyi\\examples\\.scratch-20172.ry:9)",
+        "FAIL  example of statement_line: example: statement_line(Invoice(customer: \"ACME\", lines: [], discount_percent: 0)) is \"ACME 0 lines 0.00\" (D:\\Projects\\Renyi\\examples\\.scratch-6992.ry:9)",
         "got \"ACME          0 lines        0.00\", expected \"ACME          0 lines      0.00\""
       ],
       "pass": false
@@ -1344,7 +1344,7 @@
       "lint_problems": [],
       "vm": "4 passed, 1 failed",
       "failures": [
-        "FAIL  example of statement_line: example: statement_line(Invoice(customer: \"ACME\", lines: [], discount_percent: 0)) is \"ACME 0 lines 0.00\" (D:\\Projects\\Renyi\\examples\\.scratch-20172.ry:9)",
+        "FAIL  example of statement_line: example: statement_line(Invoice(customer: \"ACME\", lines: [], discount_percent: 0)) is \"ACME 0 lines 0.00\" (D:\\Projects\\Renyi\\examples\\.scratch-6992.ry:9)",
         "got \"ACME          0 lines        0.00\", expected \"ACME          0 lines      0.00\""
       ],
       "pass": false
@@ -1353,7 +1353,7 @@
       "lint_problems": [],
       "vm": "4 passed, 1 failed",
       "failures": [
-        "FAIL  example of statement_line: example: statement_line(Invoice(customer: \"ACME\", lines: [], discount_percent: 0)) is \"ACME 0 lines 0.00\" (D:\\Projects\\Renyi\\examples\\.scratch-20172.ry:9)",
+        "FAIL  example of statement_line: example: statement_line(Invoice(customer: \"ACME\", lines: [], discount_percent: 0)) is \"ACME 0 lines 0.00\" (D:\\Projects\\Renyi\\examples\\.scratch-6992.ry:9)",
         "got \"ACME          0 lines     0.00\", expected \"ACME          0 lines      0.00\""
       ],
       "pass": false
@@ -1367,7 +1367,7 @@
       "lint_problems": [],
       "vm": "4 passed, 1 failed",
       "failures": [
-        "FAIL  example of statement_line: example: statement_line(Invoice(customer: \"ACME\", lines: [], discount_percent: 0)) is \"ACME 0 lines 0.00\" (D:\\Projects\\Renyi\\examples\\.scratch-20172.ry:9)",
+        "FAIL  example of statement_line: example: statement_line(Invoice(customer: \"ACME\", lines: [], discount_percent: 0)) is \"ACME 0 lines 0.00\" (D:\\Projects\\Renyi\\examples\\.scratch-6992.ry:9)",
         "got \"ACME        0 lines      0.00\", expected \"ACME          0 lines      0.00\""
       ],
       "pass": false

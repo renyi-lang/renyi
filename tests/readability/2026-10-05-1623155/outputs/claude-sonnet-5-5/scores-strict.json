@@ -759,10 +759,9 @@
       "second_grade": 5
     },
     {
-      "grade": 5,
-      "pass": true,
-      "grader": "agent:claude-sonnet-5-5",
-      "second_grade": 5
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
     },
     {
       "grade": 5,
@@ -876,8 +875,7 @@
     {
       "grade": 2,
       "pass": false,
-      "grader": "agent:claude-sonnet-5-5",
-      "second_grade": 2
+      "grader": "judgement"
     },
     {
       "grade": 2,
