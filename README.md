@@ -29,8 +29,8 @@ Source files use the `.renyi` or `.ry` extension; the two are equivalent.
 ## Status
 
 The design is complete (M0); the front end (M1), the type and effect
-checker (M2), the project map (`renyi index`) and the first slice of the VM
-(M3: `renyi run` and `renyi test`) exist. What exists:
+checker (M2), the project map (`renyi index`) and the VM (M3) exist. What
+exists:
 
 - `docs/design/01-decisions.md`: every design decision taken so far, with the
   reasoning.
@@ -62,9 +62,11 @@ checker (M2), the project map (`renyi index`) and the first slice of the VM
   narrowed by `--deny`, `--allow-host`, `--allow-read`, `--allow-write`
   and `--at-most`, and inside each function by that function's own
   `needs` (the grant stack of decision Q1); `renyi record` writes a
-  recording of every effect of a run (`--redact` keeps a secret out of
-  it), `renyi run --replay` re-executes one offline, and `--explain`
-  narrates a run through the `purpose:` clauses it passes; `renyi test`
+  recording of every effect of a run with the run manifest in its header
+  (`--redact` keeps a secret out of it), `renyi run --replay` re-executes
+  one offline, `renyi reproduce` replays one under its manifest and
+  compares the outcome and the output, and `--explain` narrates a run
+  through the `purpose:` clauses it passes; `renyi test`
   runs every `example:` line and `test` block, a `replays` test from its
   recording (`--strict`, `--refresh`). Every example checks cleanly, is in
   canonical form, and its examples and tests pass, the five that reach
@@ -86,12 +88,12 @@ cargo build
 ./target/debug/renyi run --explain examples/statistics.ry 2 4 4 4 5 5 7 9
 ./target/debug/renyi record --to hello.json examples/hello.ry Renyi
 ./target/debug/renyi run --replay hello.json examples/hello.ry
+./target/debug/renyi reproduce hello.json
 ./target/debug/renyi test examples/invoice.ry
 cargo test
 ```
 
-Next: the run manifest and `renyi reproduce` (decision Q2), then the MCP
-server and the semantic diff.
+Next: the MCP server (`renyi mcp`) and the semantic diff.
 
 ## Working on this repository
 

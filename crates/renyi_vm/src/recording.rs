@@ -5,6 +5,8 @@
 //! editable, and a replay decodes an outcome by the primitive's declared
 //! types.
 
+use sha2::{Digest, Sha256};
+
 use crate::natives::json::{read_json, write_json, Json};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -15,6 +17,8 @@ pub struct Recording {
     /// The grant the run executed under, one capability per entry.
     pub grant: Vec<String>,
     pub calls: Vec<Call>,
+    /// The run manifest (decision Q2), filled in by `renyi record`.
+    pub manifest: Manifest,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -39,6 +43,32 @@ pub enum Outcome {
     Failure(Json),
 }
 
+/// What a run depended on besides its calls (decision Q2, design document
+/// 07 section 3): the header of a recording made by `renyi record`,
+/// printed alone by `renyi run --manifest`, checked by `renyi reproduce`.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Manifest {
+    /// `renyi 0.0.1`.
+    pub toolchain: Option<String>,
+    /// The program's path as the command line gave it.
+    pub source: Option<String>,
+    /// The content hash of `main`, which covers everything it reaches.
+    pub code: Option<String>,
+    pub arguments: Vec<String>,
+    /// Each environment variable read, with the hash of its value, the
+    /// redaction placeholder, or `None` when the variable was not set.
+    pub environment: Vec<(String, Option<String>)>,
+    /// `finished`, `failed with ...`, `exited with N` or `crashed: ...`.
+    pub outcome: Option<String>,
+    /// The hash of the standard output and its length in bytes.
+    pub output: Option<(String, u64)>,
+}
+
+/// `sha256:` and the hex digest, as the index spells content hashes.
+pub fn sha256_of(bytes: &[u8]) -> String {
+    format!("sha256:{:x}", Sha256::digest(bytes))
+}
+
 impl Recording {
     pub fn new(
         program: impl Into<String>,
@@ -52,6 +82,7 @@ impl Recording {
             recorded_at,
             grant,
             calls: Vec::new(),
+            manifest: Manifest::default(),
         }
     }
 
@@ -62,23 +93,106 @@ impl Recording {
     }
 
     pub fn to_json(&self) -> Json {
-        let mut fields = vec![("program".to_string(), Json::Text(self.program.clone()))];
-        if let Some(revision) = &self.revision {
-            fields.push(("revision".to_string(), Json::Text(revision.clone())));
-        }
-        fields.push((
-            "recorded_at".to_string(),
-            Json::Text(self.recorded_at.clone()),
-        ));
-        fields.push((
-            "grant".to_string(),
-            Json::Array(self.grant.iter().cloned().map(Json::Text).collect()),
-        ));
+        let mut fields = self.header();
         fields.push((
             "calls".to_string(),
             Json::Array(self.calls.iter().map(Call::to_json).collect()),
         ));
         Json::Object(fields)
+    }
+
+    /// The header: the program, the revision, the manifest and the grant,
+    /// everything but the calls.
+    fn header(&self) -> Vec<(String, Json)> {
+        let text = |value: &str| Json::Text(value.to_string());
+        let manifest = &self.manifest;
+        let mut fields = vec![("program".to_string(), text(&self.program))];
+        if let Some(revision) = &self.revision {
+            fields.push(("revision".to_string(), text(revision)));
+        }
+        for (name, value) in [
+            ("toolchain", &manifest.toolchain),
+            ("source", &manifest.source),
+            ("code", &manifest.code),
+        ] {
+            if let Some(value) = value {
+                fields.push((name.to_string(), text(value)));
+            }
+        }
+        fields.push(("recorded_at".to_string(), text(&self.recorded_at)));
+        fields.push((
+            "grant".to_string(),
+            Json::Array(self.grant.iter().cloned().map(Json::Text).collect()),
+        ));
+        if !manifest.arguments.is_empty() {
+            fields.push((
+                "arguments".to_string(),
+                Json::Array(manifest.arguments.iter().cloned().map(Json::Text).collect()),
+            ));
+        }
+        if !manifest.environment.is_empty() {
+            fields.push((
+                "environment".to_string(),
+                Json::Object(
+                    manifest
+                        .environment
+                        .iter()
+                        .map(|(name, value)| {
+                            (name.clone(), value.as_deref().map_or(Json::Null, text))
+                        })
+                        .collect(),
+                ),
+            ));
+        }
+        if let Some(outcome) = &manifest.outcome {
+            fields.push(("outcome".to_string(), text(outcome)));
+        }
+        if let Some((hash, bytes)) = &manifest.output {
+            fields.push((
+                "output".to_string(),
+                Json::Object(vec![
+                    ("stdout".to_string(), text(hash)),
+                    ("bytes".to_string(), Json::Number(bytes.to_string())),
+                ]),
+            ));
+        }
+        fields
+    }
+
+    /// The manifest alone, as indented JSON text (`renyi run --manifest`).
+    pub fn render_manifest(&self) -> String {
+        let mut out = String::new();
+        write_json(&Json::Object(self.header()), &mut out, Some(2), 0);
+        out.push('\n');
+        out
+    }
+
+    /// Complete the manifest once the run has ended: its outcome, its
+    /// output, and the environment variables its calls read (the hash of
+    /// each value; a redacted one stays the placeholder; `None` when the
+    /// variable was not set).
+    pub fn finish(&mut self, outcome: String, output: (String, u64)) {
+        self.manifest.outcome = Some(outcome);
+        self.manifest.output = Some(output);
+        let mut environment: Vec<(String, Option<String>)> = Vec::new();
+        for call in &self.calls {
+            if call.primitive != "std.environment.get" {
+                continue;
+            }
+            let Some((_, Json::Text(name))) = call.arguments.first() else {
+                continue;
+            };
+            if environment.iter().any(|(seen, _)| seen == name) {
+                continue;
+            }
+            let value = match &call.outcome {
+                Outcome::Success(Json::Text(text)) if text == REDACTED => Some(text.clone()),
+                Outcome::Success(Json::Text(text)) => Some(sha256_of(text.as_bytes())),
+                _ => None,
+            };
+            environment.push((name.clone(), value));
+        }
+        self.manifest.environment = environment;
     }
 
     /// The recording as indented JSON text ending in a newline.
@@ -114,6 +228,50 @@ impl Recording {
                 .collect::<Result<Vec<_>, _>>()?,
             _ => return Err("the recording has no `grant` list".to_string()),
         };
+        let optional_text = |name: &str| match field(fields, name) {
+            Some(Json::Text(text)) => Some(text.clone()),
+            _ => None,
+        };
+        let manifest = Manifest {
+            toolchain: optional_text("toolchain"),
+            source: optional_text("source"),
+            code: optional_text("code"),
+            arguments: match field(fields, "arguments") {
+                Some(Json::Array(items)) => items
+                    .iter()
+                    .filter_map(|item| match item {
+                        Json::Text(text) => Some(text.clone()),
+                        _ => None,
+                    })
+                    .collect(),
+                _ => Vec::new(),
+            },
+            environment: match field(fields, "environment") {
+                Some(Json::Object(entries)) => entries
+                    .iter()
+                    .map(|(name, value)| {
+                        let value = match value {
+                            Json::Text(text) => Some(text.clone()),
+                            _ => None,
+                        };
+                        (name.clone(), value)
+                    })
+                    .collect(),
+                _ => Vec::new(),
+            },
+            outcome: optional_text("outcome"),
+            output: match field(fields, "output") {
+                Some(Json::Object(entries)) => {
+                    match (field(entries, "stdout"), field(entries, "bytes")) {
+                        (Some(Json::Text(hash)), Some(Json::Number(bytes))) => {
+                            bytes.parse().ok().map(|bytes| (hash.clone(), bytes))
+                        }
+                        _ => None,
+                    }
+                }
+                _ => None,
+            },
+        };
         let Some(Json::Array(entries)) = field(fields, "calls") else {
             return Err("the recording has no `calls` list".to_string());
         };
@@ -129,6 +287,7 @@ impl Recording {
             recorded_at,
             grant,
             calls,
+            manifest,
         })
     }
 }
@@ -463,6 +622,44 @@ mod tests {
             ),
         ];
         assert_eq!(replay.take("std.http.post", &actual), Ok(0));
+    }
+
+    #[test]
+    fn the_manifest_round_trips_and_names_the_variables_read() {
+        let variable = |name: &str, outcome: Json| Call {
+            primitive: "std.environment.get".to_string(),
+            arguments: vec![("name".to_string(), Json::Text(name.to_string()))],
+            outcome: Outcome::Success(outcome),
+            ..call("std.console.print", "x")
+        };
+        let mut recording = Recording::new(
+            "demo",
+            None,
+            "t".to_string(),
+            vec!["environment".to_string()],
+        );
+        recording.manifest.toolchain = Some("renyi 0.0.1".to_string());
+        recording.manifest.code = Some("sha256:00".to_string());
+        recording.manifest.arguments = vec!["Ada".to_string()];
+        recording.push(variable("HOME", Json::Text("/home/ada".to_string())));
+        recording.push(variable("KEY", Json::Text(REDACTED.to_string())));
+        recording.push(variable("MISSING", Json::Null));
+        recording.push(variable("HOME", Json::Text("/home/ada".to_string())));
+        recording.finish("finished".to_string(), (sha256_of(b"hi\n"), 3));
+        assert_eq!(
+            recording.manifest.environment,
+            vec![
+                ("HOME".to_string(), Some(sha256_of(b"/home/ada"))),
+                ("KEY".to_string(), Some(REDACTED.to_string())),
+                ("MISSING".to_string(), None),
+            ]
+        );
+        let parsed = Recording::parse(&recording.render()).unwrap();
+        assert_eq!(parsed, recording);
+        let manifest = recording.render_manifest();
+        assert!(manifest.contains("\"code\": \"sha256:00\""), "{manifest}");
+        assert!(manifest.contains("\"MISSING\": null"), "{manifest}");
+        assert!(!manifest.contains("calls"), "{manifest}");
     }
 
     #[test]

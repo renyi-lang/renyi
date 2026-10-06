@@ -89,19 +89,26 @@ maps and sets iterate in insertion order (K9), Decimal and Float arithmetic
 are IEEE standard, and concurrent tasks' calls are matched to a recording
 by arguments. What remains is to name the inputs.
 
-- **The run manifest.** `renyi run --manifest run.json` (and every
-  `renyi record`) writes: toolchain version, the content hash of `main`'s
-  closure, the dependency hashes from the lockfile, the grant, the
-  arguments, the names of environment variables read with hashes of their
-  values, the recording's id when one was made, and the outcome.
-- **`renyi reproduce run.json`** fetches the code by hash, replays the
-  recording and compares the output byte for byte; a difference is a bug
-  in the toolchain or a dependency on something outside the manifest, and
-  the report says which call differed.
+- **The run manifest.** `renyi record` writes it into the header of the
+  recording (decision S5) and `renyi run --manifest` prints it: the
+  toolchain version, the content hash of `main` (which covers everything
+  `main` reaches, so it is the hash of the closure), the grant, the
+  arguments, the environment variables read with the hash of each value
+  (the redaction placeholder kept), the outcome, and the SHA-256 and
+  length of the standard output. The dependency hashes from the lockfile
+  join it with M4.
+- **`renyi reproduce recording.json [program.ry]`** checks that `main` of
+  the program hashes as the manifest says (fetching code by hash needs the
+  registry, M4), warns when the toolchain differs, replays the recording
+  under its arguments with the console output written, and compares the
+  outcome and the output byte for byte; a difference is a bug in the
+  toolchain or a dependency on something outside the manifest, and the
+  replay names the first call that differed.
 - **Reproducible builds.** `renyi build` output is a function of the same
   hashes; two builds of the same manifest are identical files (M6).
 
-Scheduled with M3 (manifest, reproduce) and M4 (dependency hashes).
+The manifest and `reproduce` exist (M3); the dependency hashes come with
+M4.
 
 ## 4. In-process sandboxing (decision Q3)
 

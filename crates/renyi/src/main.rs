@@ -4,8 +4,10 @@
 //! debug output or as JSON for tools), `index` (the project map, text or
 //! JSON), `run` (check, then execute `main` on the VM, optionally replaying
 //! a recording or narrating the run), `record` (run and write a recording of
-//! every effect) and `test` (every `example:` line and `test` block, with
-//! `replays` tests answered from their recordings).
+//! every effect with the run manifest in its header), `reproduce` (replay a
+//! recording under its manifest and compare) and `test` (every `example:`
+//! line and `test` block, with `replays` tests answered from their
+//! recordings).
 
 use std::io::Write;
 use std::path::Path;
@@ -16,6 +18,7 @@ use renyi_syntax::diagnostics::{render_json, render_text};
 use renyi_syntax::layout::check_layout;
 use renyi_syntax::{format, lex, module_to_json, parse, SourceFile, TokenKind};
 use renyi_vm::grant::{parse_capability, Unit};
+use renyi_vm::Manifest;
 
 const USAGE: &str = "usage:
   renyi check [--json] <file.ry>...   report diagnostics (exit 1 when any error)
@@ -26,8 +29,15 @@ const USAGE: &str = "usage:
   renyi index --budgets [path]        every value of the map over its budget (exit 0 either way)
   renyi run [option...] <file.ry> [argument...]
                                       check the program, then run its `main` (exit 1 when it fails, 2 on a crash)
+  renyi run --manifest [option...] <file.ry> [argument...]
+                                      also print the run manifest on stderr: toolchain, code hash, grant,
+                                      arguments, environment variables read, outcome, output hash
   renyi record [--to <file.json>] [option...] <file.ry> [argument...]
-                                      run `main` and write a recording of its effects (default: <name>.recording.json)
+                                      run `main` and write a recording of its effects, the manifest in its
+                                      header (default: <name>.recording.json)
+  renyi reproduce <file.json> [<file.ry>]
+                                      replay a recording under its manifest and compare the outcome and the
+                                      output byte for byte (exit 1 when they differ)
   renyi test [--strict] [--refresh <name> [--redact <name>]] [--explain] <file.ry>...
                                       run every `example:` line and `test` block (exit 1 when any fails)
   renyi version
@@ -53,6 +63,7 @@ fn main() -> ExitCode {
         Some("index") => index_command(&args[1..]),
         Some("run") => run_command(&args[1..], false),
         Some("record") => run_command(&args[1..], true),
+        Some("reproduce") => reproduce_command(&args[1..]),
         Some("test") => test_command(&args[1..]),
         Some("version") | Some("--version") => {
             println!("renyi {}", env!("CARGO_PKG_VERSION"));
@@ -234,6 +245,11 @@ fn format_command(args: &[String]) -> ExitCode {
 /// Check a file with its imports and compile it; diagnostics go to stdout as
 /// `check` prints them, and an error stops here.
 fn compile(path: &str) -> Result<renyi_vm::Program, ExitCode> {
+    compile_with_sources(path).map(|(program, _)| program)
+}
+
+/// `compile`, with the source files kept for the manifest's code hash.
+fn compile_with_sources(path: &str) -> Result<(renyi_vm::Program, Vec<SourceFile>), ExitCode> {
     let file = load(path)?;
     let mut files = vec![file.clone()];
     files.extend(renyi_check::imported_files(&file));
@@ -249,7 +265,29 @@ fn compile(path: &str) -> Result<renyi_vm::Program, ExitCode> {
     if failed {
         return Err(ExitCode::FAILURE);
     }
-    Ok(renyi_vm::compile_project(&checked, &files))
+    Ok((renyi_vm::compile_project(&checked, &files), files))
+}
+
+fn toolchain() -> String {
+    format!("renyi {}", env!("CARGO_PKG_VERSION"))
+}
+
+/// The content hash of `main` from the project map, which covers every
+/// definition `main` reaches (design document 05, section 3).
+fn code_hash(program: &renyi_vm::Program, files: &[SourceFile]) -> Option<String> {
+    let main = program.main?;
+    let module = &program.function_metas[main].module;
+    let header = renyi_index::Header {
+        project: String::new(),
+        revision: String::new(),
+        toolchain: toolchain(),
+    };
+    let index = renyi_index::index_files(files, header);
+    index
+        .definitions
+        .iter()
+        .find(|definition| definition.module == *module && definition.name == "main")
+        .map(|definition| definition.id.clone())
 }
 
 /// The options of `run`, `record` and `test`, read up to the first
@@ -263,6 +301,7 @@ struct Flags {
     strict: bool,
     refresh: Option<String>,
     redact: Vec<String>,
+    manifest: bool,
 }
 
 fn parse_flags(args: &[String]) -> Result<(Flags, &[String]), String> {
@@ -285,6 +324,11 @@ fn parse_flags(args: &[String]) -> Result<(Flags, &[String]), String> {
             }
             "--strict" => {
                 flags.strict = true;
+                index += 1;
+                continue;
+            }
+            "--manifest" => {
+                flags.manifest = true;
                 index += 1;
                 continue;
             }
@@ -385,8 +429,8 @@ fn run_command(args: &[String], record: bool) -> ExitCode {
         eprintln!("renyi: `--redact` is an option of `renyi record` and `renyi test --refresh`");
         return ExitCode::FAILURE;
     }
-    let program = match compile(path) {
-        Ok(program) => program,
+    let (program, sources) = match compile_with_sources(path) {
+        Ok(compiled) => compiled,
         Err(code) => return code,
     };
     for denied in &flags.narrowing.deny {
@@ -410,19 +454,34 @@ fn run_command(args: &[String], record: bool) -> ExitCode {
         },
         None => None,
     };
-    let revision = record.then(|| renyi_index::git_revision(Path::new(path)));
+    let with_manifest = record || flags.manifest;
+    let revision = with_manifest.then(|| renyi_index::git_revision(Path::new(path)));
+    let manifest = if with_manifest {
+        Manifest {
+            toolchain: Some(toolchain()),
+            source: Some(path.clone()),
+            code: code_hash(&program, &sources),
+            ..Manifest::default()
+        }
+    } else {
+        Manifest::default()
+    };
     let options = renyi_vm::Options {
         arguments: rest[1..].to_vec(),
         narrowing: flags.narrowing,
-        record,
+        record: with_manifest,
         replay,
         revision: revision.filter(|text| text != "unknown"),
         explain: flags.explain,
         redact: flags.redact,
+        manifest,
         ..renyi_vm::Options::default()
     };
     let run = renyi_vm::run_program(&program, options);
-    if let Some(recording) = &run.recording {
+    if let (Some(recording), false) = (&run.recording, record) {
+        eprint!("{}", recording.render_manifest());
+    }
+    if let (Some(recording), true) = (&run.recording, record) {
         let target = flags.to.clone().unwrap_or_else(|| {
             let stem = Path::new(path)
                 .file_stem()
@@ -486,6 +545,7 @@ fn test_command(args: &[String]) -> ExitCode {
     let narrowing = &flags.narrowing;
     if flags.replay.is_some()
         || flags.to.is_some()
+        || flags.manifest
         || !narrowing.deny.is_empty()
         || !narrowing.allow.is_empty()
         || !narrowing.budgets.is_empty()
@@ -517,6 +577,71 @@ fn test_command(args: &[String]) -> ExitCode {
     } else {
         ExitCode::SUCCESS
     }
+}
+
+/// `renyi reproduce <recording> [<program>]`: the code must hash as the
+/// manifest says, the toolchain should, and then the run is replayed and
+/// compared (decision Q2).
+fn reproduce_command(args: &[String]) -> ExitCode {
+    let Some(file) = args.first() else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    let recording = match load_recording(file) {
+        Ok(recording) => recording,
+        Err(message) => {
+            eprintln!("renyi: {message}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let Some(code) = recording.manifest.code.clone() else {
+        eprintln!("renyi: {file} has no manifest; record the run again with `renyi record`");
+        return ExitCode::FAILURE;
+    };
+    let Some(path) = args
+        .get(1)
+        .cloned()
+        .or_else(|| recording.manifest.source.clone())
+    else {
+        eprintln!("renyi: {file} does not name its program; give the path of the .ry file");
+        return ExitCode::FAILURE;
+    };
+    let (program, sources) = match compile_with_sources(&path) {
+        Ok(compiled) => compiled,
+        Err(code) => return code,
+    };
+    let now = code_hash(&program, &sources).unwrap_or_default();
+    if now != code {
+        eprintln!(
+            "renyi: the code differs from the manifest: `main` of {path} is {now}, the recording was made from {code}"
+        );
+        return ExitCode::FAILURE;
+    }
+    if let Some(recorded) = &recording.manifest.toolchain {
+        if *recorded != toolchain() {
+            eprintln!(
+                "renyi: warning: the recording was made with {recorded}, this is {}",
+                toolchain()
+            );
+        }
+    }
+    let reproduction = renyi_vm::reproduce(&program, recording, renyi_vm::Options::default());
+    match &reproduction.run.outcome {
+        renyi_vm::RunOutcome::Failed(error) => eprintln!("{path}: main failed with {error}"),
+        renyi_vm::RunOutcome::Crashed { message, location } => match location {
+            Some(location) => eprintln!("{path}: crash: {message}\n  at {location}"),
+            None => eprintln!("{path}: crash: {message}"),
+        },
+        _ => {}
+    }
+    if reproduction.differences.is_empty() {
+        eprintln!("renyi: reproduced {file}: the outcome and the output are the recorded ones");
+        return ExitCode::SUCCESS;
+    }
+    for difference in &reproduction.differences {
+        eprintln!("renyi: {difference}");
+    }
+    ExitCode::FAILURE
 }
 
 fn index_command(args: &[String]) -> ExitCode {

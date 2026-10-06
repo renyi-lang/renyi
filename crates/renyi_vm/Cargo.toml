@@ -14,6 +14,7 @@ num-traits = "0.2"
 num-integer = "0.1"
 indexmap = "2"
 regex = "1"
+sha2 = "0.10"
 # decision S1: the HTTP client, and SQLite compiled into the binary
 ureq = "3"
 rusqlite = { version = "0.40", features = ["bundled"] }

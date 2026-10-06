@@ -8,11 +8,12 @@ under `docs/design/` in order.
 
 Renyi is a programming language. Its design (M0) is complete; the Rust front
 end (M1: lexer, parser, formatter), the type and effect checker (M2) and
-the VM (M3: `renyi run`, `record`, `run --replay`, `--explain`, `test` with
-`replays`, budgets, scope checks and the grant stack of decision Q1, every
-library module including HTTP, the server and SQLite; tasks run one after
-the other by decision S2) exist. The owner (GitHub `skymanbp`) makes
-design decisions and reviews;
+the VM (M3: `renyi run`, `record`, `run --replay`, `reproduce`,
+`--explain`, `test` with `replays`, budgets, scope checks, the grant stack
+of decision Q1, the run manifest of Q2, every library module including
+HTTP, the server and SQLite; tasks run one after the other by decision
+S2) exist. The owner (GitHub `skymanbp`) makes design decisions and
+reviews;
 Claude writes the documents, the example corpus and the Rust
 implementation.
 
@@ -65,5 +66,5 @@ implementation.
 | `crates/renyi_syntax/` | spans, diagnostics, lexer, AST, parser, JSON encoder, formatter; `tests/corpus.rs` runs the corpus through all of them, `tests/library.rs` parses the library declarations |
 | `crates/renyi_check/` | the type and effect checker (M2): `world.rs` declares modules, `check.rs` checks bodies, `effects.rs` covers capabilities, `refine.rs` evaluates refinements on literals; `tests/corpus.rs` and `tests/rules.rs` |
 | `library/std/` | the standard library as Renyi declaration files (one per module), compiled into the checker; kept in step with `04-stdlib-sketch.md` by a test |
-| `crates/renyi_vm/` | the VM (M3): `compile/` lowers the checked tree to bytecode (`bytecode.rs`) through the checker's recorded references, `vm.rs` runs it and holds the primitive boundary (`call_native`: grant and budget checks, recording, replay, narration), `grant.rs` the effective grant and budget counters, `recording.rs` the recording format and the replay, `natives/` the library primitives, `runner.rs` runs `main`, examples and tests; `tests/corpus.rs` checks the ten reference outputs and every `example:` and `test` block, `tests/recording.rs` the boundary |
-| `crates/renyi/` | the `renyi` binary: `check` (parse, type and effect check), `format`, `tokens`, `parse [--json]`, `index [--json \| --budgets]`, `run [options] <file> [arguments]`, `record [--to file] [options] <file> [arguments]`, `test [--strict] [--refresh name] [--explain] <file>...` |
+| `crates/renyi_vm/` | the VM (M3): `compile/` lowers the checked tree to bytecode (`bytecode.rs`) through the checker's recorded references, `vm.rs` runs it and holds the primitive boundary (`call_native`: grant and budget checks, recording, replay, narration), `grant.rs` the effective grant and budget counters, `recording.rs` the recording format, the run manifest, redaction and the replay, `natives/` the library primitives, `runner.rs` runs `main`, examples and tests and reproduces a recording; `tests/corpus.rs` checks the ten reference outputs and every `example:` and `test` block, `tests/recording.rs` the boundary |
+| `crates/renyi/` | the `renyi` binary: `check` (parse, type and effect check), `format`, `tokens`, `parse [--json]`, `index [--json \| --budgets]`, `run [options] <file> [arguments]`, `run --manifest ...`, `record [--to file] [options] <file> [arguments]`, `reproduce <recording> [<file>]`, `test [--strict] [--refresh name [--redact name]] [--explain] <file>...` |

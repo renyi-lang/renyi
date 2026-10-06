@@ -2,7 +2,10 @@
 //! each under its declared grant; recorded, replayed or narrated as the
 //! options say.
 
+use std::cell::RefCell;
+use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
 use renyi_check::effects::Capability;
 use renyi_check::ModuleId;
@@ -12,6 +15,7 @@ use crate::compile::{Expected, Program};
 use crate::recording::Recording;
 use crate::value::Value;
 use crate::vm::{Interrupt, Options, Vm};
+use sha2::{Digest, Sha256};
 
 /// How `main` ended.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -41,14 +45,72 @@ pub fn run_main(program: &Program, options: Options) -> RunOutcome {
 
 /// Run `main` under the grant it declares, narrowed by the options.
 pub fn run_program(program: &Program, options: Options) -> Run {
+    run_measured(program, options).0
+}
+
+/// The standard output's hash and length, kept while a run writes it.
+type Measured = Rc<RefCell<(Sha256, u64)>>;
+
+/// A writer that passes everything through and hashes it.
+struct Hashing {
+    inner: Box<dyn Write>,
+    digest: Measured,
+}
+
+impl Write for Hashing {
+    fn write(&mut self, buffer: &[u8]) -> std::io::Result<usize> {
+        let written = self.inner.write(buffer)?;
+        let mut state = self.digest.borrow_mut();
+        state.0.update(&buffer[..written]);
+        state.1 += written as u64;
+        Ok(written)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.inner.flush()
+    }
+}
+
+fn digest_text(digest: &Measured) -> (String, u64) {
+    let state = digest.borrow();
+    (format!("sha256:{:x}", state.0.clone().finalize()), state.1)
+}
+
+/// An outcome as the manifest spells it.
+pub fn describe_outcome(outcome: &RunOutcome) -> String {
+    match outcome {
+        RunOutcome::Finished => "finished".to_string(),
+        RunOutcome::Failed(error) => format!("failed with {error}"),
+        RunOutcome::Crashed { message, .. } => format!("crashed: {message}"),
+        RunOutcome::Exited(code) => format!("exited with {code}"),
+    }
+}
+
+/// `main`, with the standard output hashed when the run is recorded or
+/// reproduced, so that the manifest can name the output.
+fn run_measured(program: &Program, mut options: Options) -> (Run, Option<(String, u64)>) {
+    let digest = (options.record || options.replay_output).then(|| {
+        let digest: Measured = Rc::new(RefCell::new((Sha256::new(), 0)));
+        let inner = std::mem::replace(&mut options.stdout, Box::new(std::io::sink()));
+        options.stdout = Box::new(Hashing {
+            inner,
+            digest: digest.clone(),
+        });
+        digest
+    });
     let mut vm = Vm::new(program, options);
-    let stopped = |message: String| Run {
-        outcome: RunOutcome::Crashed {
-            message,
-            location: None,
-        },
-        recording: None,
-        unused: Vec::new(),
+    let stopped = |message: String| {
+        (
+            Run {
+                outcome: RunOutcome::Crashed {
+                    message,
+                    location: None,
+                },
+                recording: None,
+                unused: Vec::new(),
+            },
+            None,
+        )
     };
     let Some(main) = program.main else {
         return stopped("the program has no `main` function".to_string());
@@ -67,11 +129,72 @@ pub fn run_program(program: &Program, options: Options) -> Run {
         Err(interrupt) => crashed(interrupt),
     };
     let unused = vm.end_replay();
-    Run {
-        outcome,
-        recording: vm.take_recording(),
-        unused,
+    let output = digest.as_ref().map(digest_text);
+    let mut recording = vm.take_recording();
+    if let (Some(recording), Some(output)) = (&mut recording, &output) {
+        recording.finish(describe_outcome(&outcome), output.clone());
     }
+    (
+        Run {
+            outcome,
+            recording,
+            unused,
+        },
+        output,
+    )
+}
+
+/// What `renyi reproduce` found.
+pub struct Reproduction {
+    pub run: Run,
+    /// Where the run departed from its manifest, in words; empty when the
+    /// run reproduced.
+    pub differences: Vec<String>,
+}
+
+/// Replay a recording under its own arguments with the console output
+/// written, and compare the outcome and the output with the manifest
+/// (decision Q2). The caller checks the code hash and the toolchain.
+pub fn reproduce(program: &Program, recording: Recording, mut options: Options) -> Reproduction {
+    let manifest = recording.manifest.clone();
+    options.arguments = manifest.arguments.clone();
+    options.replay = Some(recording);
+    options.replay_output = true;
+    options.record = false;
+    let (run, output) = run_measured(program, options);
+    let mut differences = Vec::new();
+    let outcome = describe_outcome(&run.outcome);
+    match &manifest.outcome {
+        Some(expected) if *expected != outcome => differences.push(format!(
+            "the outcome differs: the recording says {expected}, this run {outcome}"
+        )),
+        None => differences.push("the recording has no outcome to compare with".to_string()),
+        _ => {}
+    }
+    match (&manifest.output, &output) {
+        (Some((hash, bytes)), Some((now_hash, now_bytes)))
+            if hash != now_hash || bytes != now_bytes =>
+        {
+            differences.push(format!(
+                "the output differs: the recording says {hash} ({bytes} bytes), this run {now_hash} ({now_bytes} bytes)"
+            ))
+        }
+        (None, _) => differences.push("the recording has no output to compare with".to_string()),
+        _ => {}
+    }
+    if !run.unused.is_empty() {
+        differences.push(format!(
+            "{} recorded call{} never reached: {}",
+            run.unused.len(),
+            if run.unused.len() == 1 {
+                " was"
+            } else {
+                "s were"
+            },
+            run.unused.join("; ")
+        ));
+    }
+    Reproduction { run, differences }
 }
 
 /// The functions of the program, not the library, that need a capability

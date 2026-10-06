@@ -31,10 +31,10 @@ pub use compile::{compile_project, Program};
 pub use decimal::Decimal;
 pub use grant::Narrowing;
 pub use integer::Int;
-pub use recording::Recording;
+pub use recording::{Manifest, Recording};
 pub use runner::{
-    denied_functions, run_main, run_program, run_tests, Run, RunOutcome, TestOutcome, TestReport,
-    TestResult,
+    denied_functions, describe_outcome, reproduce, run_main, run_program, run_tests, Reproduction,
+    Run, RunOutcome, TestOutcome, TestReport, TestResult,
 };
 pub use value::Value;
 pub use vm::{Interrupt, Options, Vm};

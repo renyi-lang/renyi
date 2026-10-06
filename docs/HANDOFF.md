@@ -4,8 +4,9 @@ Last updated: 2026-10-06, session 6 (the VM: `renyi run` and `renyi test`;
 the primitive boundary: `renyi record`, `run --replay`, `--explain`,
 `replays` tests, budgets and scope checks; the HTTP client, the HTTP
 server and SQLite; the grant stack; recordings for every network and
-database program, `--redact`). Branch: `main` is the only branch (owner's
-decision, 2026-10-05); commit and push there directly.
+database program, `--redact`; the run manifest and `renyi reproduce`).
+Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
+and push there directly.
 
 ## Where the project stands
 
@@ -13,10 +14,10 @@ Milestones M0 (design), M1 (front end) and M2 (type and effect checker) are
 done; the project map (`renyi index`, decision O2) exists with its budget
 report (`--budgets`, decisions O3 and R7); M3 (the VM) runs programs with
 every module of the standard library and implements decisions P1 and P2
-(recorded runs, budgets, the grant stack of Q1) at its primitive boundary;
-what M3 still lacks is the run manifest of decision Q2 (tasks run one
-after the other by decision S2). Design decisions are in sections 0 to S
-of `01-decisions.md`;
+(recorded runs, budgets, the grant stack of Q1, the run manifest and
+`renyi reproduce` of Q2) at its primitive boundary, which completes M3
+(tasks run one after the other by decision S2). Design decisions are in
+sections 0 to S of `01-decisions.md`;
 the agent tooling in `05-agent-tooling.md`, the signature capabilities in
 `06-runtime-guarantees.md`, the system-level commitments in
 `07-system-design.md`. The corpus has 30 programs, passes the lint, is in
@@ -27,11 +28,13 @@ hand-written). The cheat sheet
 measures 2977 of 3000 tokens (unchanged this session). The Rust workspace
 has five crates: `renyi_syntax`, `renyi_check`, `renyi_index`, `renyi_vm`
 and the `renyi` binary with `check`, `format`, `tokens`, `parse [--json]`,
-`index [--json | --budgets]`, `run [options] <file> [arguments]`, `record
-[--to file] [options] <file> [arguments]`, `test [--strict] [--refresh
-name] [--explain] <file>...` and `version`; 128 tests, clippy and fmt clean
-on Windows. The VM depends on `ureq` (HTTP, with rustls) and `rusqlite`
-(SQLite compiled in), decision S1.
+`index [--json | --budgets]`, `run [--manifest] [options] <file>
+[arguments]`, `record [--to file] [options] <file> [arguments]`,
+`reproduce <recording> [<file>]`, `test [--strict] [--refresh name
+[--redact name]] [--explain] <file>...` and `version`; 130 tests, clippy
+and fmt clean on Windows. The VM depends on `ureq` (HTTP, with rustls) and
+`rusqlite` (SQLite compiled in), decision S1, and on `sha2` for the
+manifest.
 
 The first live readability round (`tests/readability/2026-10-05-1623155/`)
 stands as session 5 left it: Sonnet 5.5 passes Predict (90) and Explain
@@ -152,12 +155,30 @@ and R6 are unmeasured (round 2, below).
   narrowed the grant. The narrowed grant is remembered per function while
   the enclosing grant is the same `Rc`, so a function called in a loop
   intersects once (open item R7-4). Budgets stay the run's.
+- **The run manifest and `renyi reproduce`** (decisions Q2 and S5;
+  `recording::Manifest`, `runner::reproduce`). `renyi record` writes into
+  the recording's header the toolchain (`renyi 0.0.1`), the source path,
+  `code` (the content hash of `main` from the project map, which covers
+  everything `main` reaches), the arguments, the environment variables
+  read (`environment.get`, each with the hash of its value, `<redacted>`
+  kept, `null` when unset), the outcome (`finished`, `failed with ...`,
+  `exited with N`, `crashed: ...`) and `output` (the SHA-256 and length
+  of the standard output, hashed by a writer wrapped around stdout while
+  the run writes). `renyi run --manifest` prints the same header on
+  stderr and writes no file. `renyi reproduce FILE [program.ry]` loads
+  the recording (refused without a `code`), compiles the program named by
+  the argument or by `source`, refuses when `main` hashes differently,
+  warns when the toolchain differs, then replays under the recorded
+  arguments with the console output written (`Options::replay_output`)
+  and reports every difference: the outcome, the output hash and length,
+  and recorded calls never reached; the replay itself names the first
+  call that differs. Hand-written fixtures have no manifest and need
+  none.
 - **Not yet.** `run concurrently` and `concurrently` queries run their
   tasks one after the other by decision S2 (`within` sets a deadline that
   is checked between statements or items and fails with `TimedOut`);
   green threads would be an improvement within that decision, not a
-  reversal. The run manifest and `renyi reproduce` of decision Q2 are not
-  built.
+  reversal.
 
 ## Done in session 6
 
@@ -246,6 +267,16 @@ and R6 are unmeasured (round 2, below).
    matches the placeholder against anything (`recording::redact`,
    `arguments_match`); open item R6-1 is settled by decision S4 (bodies
    stay inline as base64).
+10. **The run manifest and `renyi reproduce`** (sixth commit; the owner
+    chose the recording's header over a separate file or the source file
+    itself, the standard output's hash and length as the comparison,
+    hashed environment values, and a warning on a toolchain mismatch;
+    decision S5). `tests/recording.rs` records a run with an argument and
+    a variable, checks the manifest, reproduces it with the same output,
+    and sees an edited recording reported on the outcome, the output and
+    the unused call. `renyi reproduce` was also run by hand on `hello`:
+    reproduced; refused after the program was edited; refused on a
+    fixture without a manifest.
 
 ## Done in session 5 (condensed)
 
@@ -296,23 +327,17 @@ on a fresh clone).
 
 ## Next steps
 
-1. **The rest of M3**, in this order: (a) the run manifest and `renyi
-   reproduce` of decision Q2 (`07-system-design.md` section 3: toolchain
-   version, content hash of `main`'s closure, grant, arguments, the
-   environment variables read with hashes of their values, the recording,
-   the outcome; `reproduce` replays and compares the output byte for
-   byte), which the design places in M3 and the owner chose as the next
-   step on 2026-10-06; (b) decision L2: re-run the 182 judged Complete and
-   Write samples of the live round and the 40 of the pre-test on the VM
-   and compare with the subagents' verdicts (the `judgement.json` files
-   hold the verdicts; the VM now decides `is` on Decimals by value, R5);
-   (c) open items R6-2 and R6-4 of `06-runtime-guarantees.md` (query
+1. **After M3**, in this order: (a) decision L2: re-run the 182 judged
+   Complete and Write samples of the live round and the 40 of the pre-test
+   on the VM and compare with the subagents' verdicts (the `judgement.json`
+   files hold the verdicts; the VM now decides `is` on Decimals by value,
+   R5); (b) open items R6-2 and R6-4 of `06-runtime-guarantees.md` (query
    narration, budgets as data).
 2. **Readability round 2** on the revised cheat sheet, with gpt-5.5 at its
    default temperature as the fourth model (R8) and the R1 gating; the
    protocol reverts a change that lowers a passing rate by more than five
    points. The round costs API calls; the VM can replace the subagent
-   judges for Complete and Write once (b) above has shown it agrees with
+   judges for Complete and Write once (a) above has shown it agrees with
    them.
 3. **`renyi mcp`** (O5, `05-agent-tooling.md` section 7), then the semantic
    diff (O4), then M4 (provenance guards, package manager, budgets in the
@@ -350,6 +375,12 @@ on a fresh clone).
   frame, where only a function value it calls can use it; the static rule
   keeps everything else out. `--redact` works by name: a secret that
   reaches another argument (a printed line, a URL) is recorded as it is.
+  The manifest hashes the standard output only: `console.print_error`
+  lines and the narration go to stderr and are not compared. `reproduce`
+  checks the local program's hash; fetching code by hash needs the
+  registry (M4). The toolchain is named by its version only, not by a
+  build hash. A `--manifest` run collects its calls in memory as `record`
+  does.
 - **Network, server, SQLite.** The server is single-threaded and answers
   one request at a time, binds `0.0.0.0`, speaks plain HTTP/1.1 without
   TLS, reads a head of at most 64 KiB and a body of at most 16 MiB, and

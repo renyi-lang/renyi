@@ -10,10 +10,10 @@ use std::rc::Rc;
 use renyi_syntax::SourceFile;
 use renyi_vm::grant::parse_capability;
 use renyi_vm::natives::json::Json;
-use renyi_vm::recording::{Call, Outcome};
+use renyi_vm::recording::{sha256_of, Call, Outcome};
 use renyi_vm::{
-    compile_project, denied_functions, run_program, run_tests, Narrowing, Options, Program,
-    Recording, Run, RunOutcome, TestOutcome,
+    compile_project, denied_functions, reproduce, run_program, run_tests, Manifest, Narrowing,
+    Options, Program, Recording, Run, RunOutcome, TestOutcome,
 };
 
 /// A scratch directory inside the workspace's `target`, forward slashes
@@ -639,4 +639,125 @@ end
     );
     assert_eq!(replayed.outcome, RunOutcome::Finished);
     assert!(replayed.unused.is_empty());
+}
+
+#[test]
+fn a_run_is_reproduced() {
+    let dir = scratch("reproduce");
+    let source = format!(
+        r#"module demo
+  purpose: Greet by name and report a variable.
+
+import std.console
+import std.environment
+import std.filesystem exposing Path, FileError
+
+public function main() or fails with FileError
+  needs console, environment, filesystem.read("{dir}")
+  purpose: Print the greeting, the first argument and the home variable.
+
+  let greeting be filesystem.read_text(Path("{dir}/data/greeting.txt")) otherwise fail
+  let name be environment.arguments().first() otherwise "nobody"
+  let home be environment.get("RENYI_DEMO_HOME") otherwise "unset"
+  console.print("{{greeting}} {{name}} at {{home}}")
+end
+"#
+    );
+    let program = compile("demo.ry", &source);
+    std::env::set_var("RENYI_DEMO_HOME", "/home/demo");
+    let streams = Streams {
+        stdout: Capture::default(),
+        stderr: Capture::default(),
+    };
+    let recorded = run(
+        &program,
+        Options {
+            arguments: vec!["Ada".to_string()],
+            record: true,
+            manifest: Manifest {
+                toolchain: Some("renyi test".to_string()),
+                source: Some("demo.ry".to_string()),
+                code: Some("sha256:0".to_string()),
+                ..Manifest::default()
+            },
+            ..options(&streams)
+        },
+    );
+    assert_eq!(recorded.outcome, RunOutcome::Finished);
+    assert_eq!(streams.stdout.text(), "hello Ada at /home/demo\n");
+    let recording = recorded.recording.expect("a recording");
+    let manifest = &recording.manifest;
+    assert_eq!(manifest.arguments, ["Ada"]);
+    assert_eq!(manifest.outcome.as_deref(), Some("finished"));
+    assert_eq!(
+        manifest.output,
+        Some((sha256_of(b"hello Ada at /home/demo\n"), 24))
+    );
+    assert_eq!(
+        manifest.environment,
+        vec![(
+            "RENYI_DEMO_HOME".to_string(),
+            Some(sha256_of(b"/home/demo"))
+        )]
+    );
+    assert_eq!(Recording::parse(&recording.render()).unwrap(), recording);
+    let rendered = recording.render_manifest();
+    assert!(
+        rendered.contains("\"toolchain\": \"renyi test\"") && !rendered.contains("\"calls\""),
+        "{rendered}"
+    );
+
+    // the reproduction writes the recorded output and finds no difference
+    std::env::remove_var("RENYI_DEMO_HOME");
+    let streams = Streams {
+        stdout: Capture::default(),
+        stderr: Capture::default(),
+    };
+    let reproduction = reproduce(
+        &program,
+        recording.clone(),
+        Options {
+            arguments: vec!["someone else".to_string()],
+            ..options(&streams)
+        },
+    );
+    assert_eq!(reproduction.run.outcome, RunOutcome::Finished);
+    assert!(
+        reproduction.differences.is_empty(),
+        "{:?}",
+        reproduction.differences
+    );
+    assert_eq!(streams.stdout.text(), "hello Ada at /home/demo\n");
+
+    // a recording whose print no longer matches stops, and both the
+    // outcome and the output are reported
+    let mut edited = recording.clone();
+    edited.calls[3].arguments[0].1 = Json::Text("hello Bob at /home/demo".to_string());
+    edited.manifest.output = Some((sha256_of(b"hello Bob at /home/demo\n"), 24));
+    let streams = Streams {
+        stdout: Capture::default(),
+        stderr: Capture::default(),
+    };
+    let reproduction = reproduce(&program, edited, options(&streams));
+    assert!(matches!(
+        reproduction.run.outcome,
+        RunOutcome::Crashed { .. }
+    ));
+    assert_eq!(reproduction.differences.len(), 3);
+    assert!(
+        reproduction.differences[0].starts_with("the outcome differs: the recording says finished, this run crashed: the recording has no call std.console.print"),
+        "{}",
+        reproduction.differences[0]
+    );
+    assert!(
+        reproduction.differences[1].starts_with("the output differs:"),
+        "{}",
+        reproduction.differences[1]
+    );
+    assert!(
+        reproduction.differences[2]
+            .starts_with("1 recorded call was never reached: #4 std.console.print"),
+        "{}",
+        reproduction.differences[2]
+    );
 }

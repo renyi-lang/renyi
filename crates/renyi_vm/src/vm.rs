@@ -22,7 +22,7 @@ use crate::integer::Int;
 use crate::natives::json::{self, Json, Naming};
 use crate::natives::time::instant_text;
 use crate::natives::{self, NativeFn};
-use crate::recording::{clip, redact, Call, Outcome, Recording, Replay};
+use crate::recording::{clip, redact, Call, Manifest, Outcome, Recording, Replay};
 use crate::types::TypeShape;
 use crate::value::{take_list, take_map, Native, RangeValue, Value};
 
@@ -78,6 +78,12 @@ pub struct Options {
     /// Names whose values a recording replaces with a placeholder
     /// (`renyi record --redact NAME`).
     pub redact: Vec<String>,
+    /// The known part of the run manifest (decision Q2): the toolchain,
+    /// the source and the code hash; the rest is filled in when the run
+    /// ends.
+    pub manifest: Manifest,
+    /// Write the console output during a replay (`renyi reproduce`).
+    pub replay_output: bool,
 }
 
 impl Default for Options {
@@ -96,6 +102,8 @@ impl Default for Options {
             refresh: None,
             serve_limit: None,
             redact: Vec::new(),
+            manifest: Manifest::default(),
+            replay_output: false,
         }
     }
 }
@@ -144,6 +152,8 @@ pub struct Vm<'p> {
     /// See `Options::serve_limit`.
     pub serve_limit: Option<usize>,
     redact: Vec<String>,
+    manifest: Manifest,
+    replay_output: bool,
     /// The context type of the next library call (`Op::ResultType`).
     expected: Option<Ty>,
     pub random_state: u64,
@@ -190,6 +200,8 @@ impl<'p> Vm<'p> {
             explain: options.explain,
             serve_limit: options.serve_limit,
             redact: options.redact,
+            manifest: options.manifest,
+            replay_output: options.replay_output,
             expected: None,
             random_state: seed,
         }
@@ -208,12 +220,17 @@ impl<'p> Vm<'p> {
         self.started = natives::now_millis();
         self.replay = None;
         self.recording = self.record.then(|| {
-            Recording::new(
+            let mut recording = Recording::new(
                 program_name,
                 self.revision.clone(),
                 instant_text(self.started),
                 self.grant.iter().map(grant::spell).collect(),
-            )
+            );
+            recording.manifest = Manifest {
+                arguments: self.arguments.clone(),
+                ..self.manifest.clone()
+            };
+            recording
         });
         match self.pending_replay.take() {
             Some(recording) => self.replay_with(recording),
@@ -331,7 +348,15 @@ impl<'p> Vm<'p> {
         if self.replay.is_some() {
             // the context type decodes the recorded result
             let expected = self.expected.take();
-            return self.replay_call(function, &effect, arguments, &args, expected);
+            let value = self.replay_call(function, &effect, arguments, &args, expected)?;
+            // `renyi reproduce` shows the console output of the replayed run
+            if self.replay_output && meta.module == "std.console" && meta.name.starts_with("print")
+            {
+                if let Some(native) = native {
+                    native(self, args)?;
+                }
+            }
+            return Ok(value);
         }
         let at_ms = natives::now_millis() - self.started;
         if let Some(budget) = self.exhausted(&effect, at_ms) {

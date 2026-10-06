@@ -416,6 +416,7 @@ dependencies = [
  "renyi_check",
  "renyi_syntax",
  "rusqlite",
+ "sha2",
  "ureq",
 ]
 

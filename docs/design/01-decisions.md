@@ -984,3 +984,20 @@ its text (`body`) and its bytes (`bytes`, base64) in the recording, with
 no size limit and no side file; the corpus fixtures are small, and a
 side-file format can be added when a recording needs one. Settles open
 item R6-1. (user)
+
+**S5. The run manifest lives in the recording.** `renyi record` writes
+the manifest of decision Q2 into the header of the recording it makes:
+the toolchain, the source path, the content hash of `main` (which covers
+everything `main` reaches), the arguments, the environment variables read
+with the hash of each value or the redaction placeholder, the outcome, and
+the SHA-256 and length of the standard output. `renyi run --manifest`
+prints the same header and writes no file. `renyi reproduce FILE
+[program]` refuses when `main` hashes differently, warns when the
+toolchain differs, replays with the console output written, and reports a
+different outcome or output and any recorded call not reached. The owner
+asked whether the manifest could live in the `.ry` file itself; declined
+because a manifest describes one run of a program rather than the program,
+every `record` would rewrite the source, and the grammar under measurement
+would grow. A separate manifest file was declined to keep one file per
+run. Until the registry (M4) the code is read from the path the manifest
+names and checked by hash. (user)

@@ -1,9 +1,10 @@
 # Renyi Runtime Guarantees: Recorded Runs, Budgets and Provenance Guards
 
 Status: design accepted (decisions P1 to P4); syntax in the grammar. The
-VM (`crates/renyi_vm`) implements sections 1 and 2: `renyi record`,
-`renyi run --replay`, `--explain`, `replays` tests with `renyi test
---strict` and `--refresh`, budgets with `--at-most`, and the scope check of
+VM (`crates/renyi_vm`) implements sections 1 and 2: `renyi record` (the
+run manifest of decision Q2 in its header), `renyi run --replay`, `renyi
+reproduce`, `--explain`, `replays` tests with `renyi test --strict` and
+`--refresh`, budgets with `--at-most`, and the scope check of
 section 11 of the syntax sketch against the grant stack of decision Q1
 (each function's `needs` narrow the grant inside it), all at one primitive
 boundary (`Vm::call_native`, section 4). Each recorded call also carries
@@ -41,8 +42,13 @@ in the order the calls completed. It goes to `--to FILE`, by default
 {
   "program": "weather",
   "revision": "f520dc0",
+  "toolchain": "renyi 0.0.1",
+  "source": "examples/weather.ry",
+  "code": "sha256:9fc7216c...562cf1b",
   "recorded_at": "2026-10-05T18:42:11Z",
   "grant": ["console", "network.http(\"api.open-meteo.com\")"],
+  "outcome": "finished",
+  "output": {"stdout": "sha256:3b1a0c2e...9d4e", "bytes": 36},
   "calls": [
     {
       "sequence": 1,
@@ -87,6 +93,18 @@ argument, the map entry (a header) or the environment variable of that
 name is written as `<redacted>`, and a replay matches the placeholder
 against any value (decision S3). The `assistant` fixture of the corpus
 carries a redacted `Authorization` header.
+
+`renyi record` also writes the run manifest of decision Q2 into the
+header (decision S5): `toolchain`, `source`, `code` (the content hash of
+`main`, which covers everything it reaches), `arguments`, `environment`
+(each variable read with the hash of its value, `<redacted>` kept, `null`
+when unset; empty lists and maps are left out), `outcome` and `output`
+(the SHA-256 and length of the standard output). `renyi run --manifest`
+prints that header without writing a file. `renyi reproduce FILE
+[program.ry]` refuses when `main` hashes differently, warns when the
+toolchain differs, replays the recording under its arguments with the
+console output written, and reports a different outcome or output and
+any recorded call not reached.
 
 ### 1.2 Replaying in tests
 
