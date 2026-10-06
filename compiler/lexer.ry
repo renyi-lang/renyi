@@ -1,0 +1,753 @@
+module lexer
+  purpose: Source text to tokens, by the rules of the reference's section 1.
+
+import ast exposing Span
+
+public type TokenKind is one of
+  purpose: What a token is; a phrase such as `is at least` is one Word.
+  Word(spelling: Text)
+  Identifier
+  TypeIdentifier
+  MemberName
+  IntegerToken
+  DecimalToken
+  TextToken(parts: List of Part, is_block: Boolean)
+  RawToken(text: Text)
+  ClauseToken(text: Text)
+  CommentToken
+  LineBreak
+  Symbol(text: Text)
+  EndOfFile
+end
+
+public type Part is one of
+  purpose: A piece of a text literal: characters, or the tokens of a `{hole}`.
+  Characters(text: Text)
+  HolePart(tokens: List of Token)
+end
+
+public type Token
+  purpose: A token with the source text it covers.
+  has kind: TokenKind
+  has text: Text
+  has span: Span
+end
+
+public type LexError
+  purpose: A character the lexer cannot read, at a character offset.
+  has message: Text
+  has position: Integer
+  can ToText
+end
+
+type Step
+  purpose: The tokens one step of the lexer produced and where the next step starts.
+  has tokens: List of Token
+  has next: Integer
+end
+
+type Phrase
+  purpose: The longest phrase starting at a word, and where it ends.
+  has spelling: Text
+  has stop: Integer
+end
+
+type BlockLines
+  purpose: The content lines of a block text and the span of its closing quotes.
+  has lines: List of Span
+  has closing: Span
+end
+
+let reserved_words: List of Text be [
+  "ability",
+  "all",
+  "also",
+  "and",
+  "any",
+  "as",
+  "at",
+  "be",
+  "break",
+  "by",
+  "can",
+  "check",
+  "collect",
+  "concurrently",
+  "continue",
+  "count",
+  "crash",
+  "deprecated",
+  "descending",
+  "each",
+  "end",
+  "example",
+  "expose",
+  "exposing",
+  "fail",
+  "fails",
+  "failure",
+  "false",
+  "first",
+  "for",
+  "from",
+  "function",
+  "greater",
+  "group",
+  "has",
+  "if",
+  "ignore",
+  "import",
+  "in",
+  "is",
+  "lazy",
+  "least",
+  "less",
+  "let",
+  "match",
+  "maybe",
+  "module",
+  "most",
+  "mutable",
+  "needs",
+  "not",
+  "nothing",
+  "of",
+  "one",
+  "only",
+  "or",
+  "otherwise",
+  "per",
+  "power",
+  "public",
+  "purpose",
+  "raw",
+  "remainder",
+  "repeat",
+  "replays",
+  "return",
+  "returns",
+  "run",
+  "see",
+  "self",
+  "set",
+  "some",
+  "sorted",
+  "success",
+  "sum",
+  "tags",
+  "test",
+  "than",
+  "then",
+  "to",
+  "tool",
+  "true",
+  "type",
+  "until",
+  "when",
+  "where",
+  "with",
+  "within"
+]
+
+let phrases: List of Text be [
+  "is not",
+  "is less than",
+  "is at most",
+  "is greater than",
+  "is at least",
+  "or fails with",
+  "is one of",
+  "for each",
+  "for any",
+  "run concurrently",
+  "sorted by",
+  "group by",
+  "see also",
+  "expose as tool",
+  "repeat until",
+  "at most",
+  "only to"
+]
+
+let phrase_starters: List of Text be [
+  "is",
+  "or",
+  "for",
+  "run",
+  "repeat",
+  "at",
+  "only",
+  "sorted",
+  "group",
+  "see",
+  "expose"
+]
+
+let clause_words: List of Text be ["purpose", "tags", "see also", "deprecated"]
+
+let symbols: List of Text be ["(", ")", "[", "]", "\{", "}", ",", ":", ".", "+", "-", "*", "/"]
+
+let foreign_symbols: List of Text be [
+  "=",
+  "<",
+  ">",
+  ";",
+  "!",
+  "&",
+  "|",
+  "%",
+  "^",
+  "~",
+  "?",
+  "@",
+  "$",
+  "`",
+  "\\",
+  "'"
+]
+
+public function lex(source: Text) returns List of Token or fails with LexError
+  purpose: The tokens of a whole source text, ending with EndOfFile.
+
+  let chars be source.characters()
+  let limit be chars.length()
+  let tokens be lex_range(chars: chars, start: 0, limit: limit) otherwise fail
+  let eof be Token(kind: EndOfFile, text: "", span: Span(start: limit, stop: limit))
+  return tokens.append(eof)
+end
+
+function lex_range(chars: List of Text, start: Integer, limit: Integer)
+  returns List of Token
+  or fails with LexError
+
+  let mutable tokens: List of Token be []
+  let mutable position be start
+  repeat until position is at least limit
+    let step be next_step(
+      chars: chars,
+      position: position,
+      limit: limit,
+      previous: tokens.last()
+    ) otherwise fail
+    set tokens to tokens.append_all(step.tokens)
+    set position to step.next
+  end
+  return tokens
+end
+
+function next_step(chars: List of Text, position: Integer, limit: Integer, previous: maybe Token)
+  returns Step
+  or fails with LexError
+
+  let ch be char_at(chars: chars, index: position)
+  if ch is " " then return Step(tokens: [], next: position + 1) end
+  if ch is "\n" then
+    return single(kind: LineBreak, chars: chars, start: position, stop: position + 1)
+  end
+  if ch is "#" then return lex_comment(chars: chars, position: position, limit: limit) end
+  if ch is "\"" then
+    return lex_text(
+      chars: chars,
+      position: position,
+      limit: limit,
+      previous: previous
+    ) otherwise fail
+  end
+  if is_digit(ch) then
+    return lex_number(chars: chars, position: position, limit: limit) otherwise fail
+  end
+  if is_lower(ch) then
+    return lex_word(
+      chars: chars,
+      position: position,
+      limit: limit,
+      previous: previous
+    ) otherwise fail
+  end
+  if is_upper(ch) then
+    return lex_type_name(chars: chars, position: position, limit: limit) otherwise fail
+  end
+  if symbols.contains(ch) then
+    return single(kind: Symbol(text: ch), chars: chars, start: position, stop: position + 1)
+  end
+  if ch is "\t" then fail with LexError(message: "tab character", position: position) end
+  if ch.trim() is "" then
+    fail with LexError(
+      message: "a carriage return or another whitespace character",
+      position: position
+    )
+  end
+  if foreign_symbols.contains(ch) then
+    fail with LexError(message: "`{ch}` is not Renyi", position: position)
+  end
+  if ch is "_" then
+    fail with LexError(message: "a name cannot start with an underscore", position: position)
+  end
+  fail with LexError(message: "unexpected character `{ch}`", position: position)
+end
+
+function single(kind: TokenKind, chars: List of Text, start: Integer, stop: Integer) returns Step
+  let token be Token(
+    kind: kind,
+    text: slice(chars: chars, start: start, stop: stop),
+    span: Span(start: start, stop: stop)
+  )
+  return Step(tokens: [token], next: stop)
+end
+
+function char_at(chars: List of Text, index: Integer) returns Text
+  return chars.at(index) otherwise ""
+end
+
+function slice(chars: List of Text, start: Integer, stop: Integer) returns Text
+  purpose: The characters from start to stop as one text; linear in their count.
+
+  let mutable text be ""
+  let mutable index be start
+  repeat until index is at least stop
+    let ch be char_at(chars: chars, index: index)
+    set text to "{text}{ch}"
+    set index to index + 1
+  end
+  return text
+end
+
+function is_lower(ch: Text) returns Boolean
+  return ch.length() is 1 and "abcdefghijklmnopqrstuvwxyz".contains(ch)
+end
+
+function is_upper(ch: Text) returns Boolean
+  return ch.length() is 1 and "ABCDEFGHIJKLMNOPQRSTUVWXYZ".contains(ch)
+end
+
+function is_digit(ch: Text) returns Boolean
+  return ch.length() is 1 and "0123456789".contains(ch)
+end
+
+function is_word_char(ch: Text) returns Boolean
+  return is_lower(ch) or is_digit(ch) or ch is "_"
+end
+
+function is_alphanumeric(ch: Text) returns Boolean
+  return is_lower(ch) or is_upper(ch) or is_digit(ch)
+end
+
+function is_alphanumeric_or_underscore(ch: Text) returns Boolean
+  return is_alphanumeric(ch) or ch is "_"
+end
+
+function is_digit_or_underscore(ch: Text) returns Boolean
+  return is_digit(ch) or ch is "_"
+end
+
+function is_space(ch: Text) returns Boolean
+  return ch is " "
+end
+
+function scan_while(
+  chars: List of Text,
+  start: Integer,
+  limit: Integer,
+  keep: function(Text) returns Boolean
+)
+  returns Integer
+
+  let mutable position be start
+  repeat until position is at least limit or not keep(char_at(chars: chars, index: position))
+    set position to position + 1
+  end
+  return position
+end
+
+function line_end(chars: List of Text, position: Integer, limit: Integer) returns Integer
+  let mutable stop be position
+  repeat until stop is at least limit or char_at(chars: chars, index: stop) is "\n"
+    set stop to stop + 1
+  end
+  return stop
+end
+
+function at_line_start(chars: List of Text, offset: Integer) returns Boolean
+  let mutable index be offset
+  repeat until index is 0 or char_at(chars: chars, index: index - 1) is not " "
+    set index to index - 1
+  end
+  return index is 0 or char_at(chars: chars, index: index - 1) is "\n"
+end
+
+function previous_is_adjacent_dot(previous: maybe Token, start: Integer) returns Boolean
+  match previous
+    when nothing then return false
+    when some(token) then return token.kind is Symbol(text: ".") and token.span.stop is start
+  end
+end
+
+function lex_comment(chars: List of Text, position: Integer, limit: Integer) returns Step
+  let stop be line_end(chars: chars, position: position, limit: limit)
+  return single(kind: CommentToken, chars: chars, start: position, stop: stop)
+end
+
+function lex_number(chars: List of Text, position: Integer, limit: Integer)
+  returns Step
+  or fails with LexError
+
+  let mutable stop be scan_while(
+    chars: chars,
+    start: position,
+    limit: limit,
+    keep: is_digit_or_underscore
+  )
+  let mutable kind be IntegerToken
+  if stop + 1 is less than limit
+    and char_at(chars: chars, index: stop) is "."
+    and is_digit(char_at(chars: chars, index: stop + 1)) then
+    set stop to scan_while(chars: chars, start: stop + 1, limit: limit, keep: is_digit)
+    set kind to DecimalToken
+  end
+  let next_char be char_at(chars: chars, index: stop)
+  if stop is less than limit and is_alphanumeric_or_underscore(next_char) then
+    fail with LexError(message: "a number cannot run into letters", position: position)
+  end
+  if char_at(chars: chars, index: stop - 1) is "_" then
+    fail with LexError(message: "a number cannot end with an underscore", position: position)
+  end
+  return single(kind: kind, chars: chars, start: position, stop: stop)
+end
+
+function lex_type_name(chars: List of Text, position: Integer, limit: Integer)
+  returns Step
+  or fails with LexError
+
+  let stop be scan_while(chars: chars, start: position, limit: limit, keep: is_alphanumeric)
+  if stop is less than limit and char_at(chars: chars, index: stop) is "_" then
+    fail with LexError(
+      message: "type, ability and variant names are PascalCase without underscores",
+      position: position
+    )
+  end
+  return single(kind: TypeIdentifier, chars: chars, start: position, stop: stop)
+end
+
+function lex_word(chars: List of Text, position: Integer, limit: Integer, previous: maybe Token)
+  returns Step
+  or fails with LexError
+
+  let stop be scan_while(chars: chars, start: position, limit: limit, keep: is_word_char)
+  let text be slice(chars: chars, start: position, stop: stop)
+  if stop is less than limit and is_upper(char_at(chars: chars, index: stop)) then
+    fail with LexError(message: "name `{text}` is not snake_case", position: position)
+  end
+  if previous_is_adjacent_dot(previous: previous, start: position) then
+    return single(kind: MemberName, chars: chars, start: position, stop: stop)
+  end
+  if reserved_words.contains(text) then
+    return lex_reserved(chars: chars, position: position, stop: stop, limit: limit)
+  end
+  if text.length() is 1 then
+    fail with LexError(message: "single-letter name `{text}`", position: position)
+  end
+  if text.ends_with("_") or text.contains("__") then
+    fail with LexError(
+      message: "name `{text}` has a trailing or doubled underscore",
+      position: position
+    )
+  end
+  return single(kind: Identifier, chars: chars, start: position, stop: stop)
+end
+
+function lex_reserved(chars: List of Text, position: Integer, stop: Integer, limit: Integer)
+  returns Step
+
+  let first_word be slice(chars: chars, start: position, stop: stop)
+  let phrase be
+    if phrase_starters.contains(first_word) then longest_phrase(
+      chars: chars,
+      first_word: first_word,
+      stop: stop,
+      limit: limit
+    )
+    otherwise Phrase(spelling: first_word, stop: stop)
+    end
+  let word be single(
+    kind: Word(spelling: phrase.spelling),
+    chars: chars,
+    start: position,
+    stop: phrase.stop
+  )
+  let colon be phrase.stop
+  if clause_words.contains(phrase.spelling)
+    and at_line_start(chars: chars, offset: position)
+    and colon is less than limit
+    and char_at(chars: chars, index: colon) is ":" then
+    let colon_token be Token(
+      kind: Symbol(text: ":"),
+      text: ":",
+      span: Span(start: colon, stop: colon + 1)
+    )
+    let text_start be scan_while(chars: chars, start: colon + 1, limit: limit, keep: is_space)
+    let text_stop be line_end(chars: chars, position: text_start, limit: limit)
+    let clause be slice(chars: chars, start: text_start, stop: text_stop)
+    let clause_token be Token(
+      kind: ClauseToken(text: clause.trim_end()),
+      text: clause,
+      span: Span(start: text_start, stop: text_stop)
+    )
+    return Step(tokens: word.tokens.append(colon_token).append(clause_token), next: text_stop)
+  end
+  return word
+end
+
+function longest_phrase(chars: List of Text, first_word: Text, stop: Integer, limit: Integer)
+  returns Phrase
+
+  let mutable spelling be first_word
+  let mutable best be Phrase(spelling: first_word, stop: stop)
+  let mutable position be stop
+  let mutable attempts be 0
+  repeat until attempts is 2
+    set attempts to attempts + 1
+    if position + 1 is less than limit
+      and char_at(chars: chars, index: position) is " "
+      and is_lower(char_at(chars: chars, index: position + 1)) then
+      let word_stop be scan_while(
+        chars: chars,
+        start: position + 1,
+        limit: limit,
+        keep: is_word_char
+      )
+      let word be slice(chars: chars, start: position + 1, stop: word_stop)
+      set spelling to "{spelling} {word}"
+      set position to word_stop
+      if phrases.contains(spelling) then set best to Phrase(spelling: spelling, stop: word_stop) end
+    otherwise
+      set attempts to 2
+    end
+  end
+  return best
+end
+
+function lex_text(chars: List of Text, position: Integer, limit: Integer, previous: maybe Token)
+  returns Step
+  or fails with LexError
+
+  if slice(chars: chars, start: position, stop: position + 3) is "\"\"\"" then
+    return lex_block_text(chars: chars, position: position, limit: limit) otherwise fail
+  end
+  let raw_pending be
+    match previous
+      when some(token) then token.kind is Word(spelling: "raw")
+      otherwise false
+    end
+  if raw_pending then
+    return lex_raw_text(chars: chars, position: position, limit: limit) otherwise fail
+  end
+  return lex_simple_text(chars: chars, position: position, limit: limit) otherwise fail
+end
+
+function lex_raw_text(chars: List of Text, position: Integer, limit: Integer)
+  returns Step
+  or fails with LexError
+
+  let mutable stop be position + 1
+  repeat until stop is at least limit
+    or char_at(chars: chars, index: stop) is "\""
+    or char_at(chars: chars, index: stop) is "\n"
+    set stop to stop + 1
+  end
+  if char_at(chars: chars, index: stop) is not "\"" then
+    fail with LexError(message: "raw text without a closing quote", position: position)
+  end
+  let content be slice(chars: chars, start: position + 1, stop: stop)
+  return single(kind: RawToken(text: content), chars: chars, start: position, stop: stop + 1)
+end
+
+function simple_text_end(chars: List of Text, position: Integer, limit: Integer) returns Integer
+  let mutable stop be position + 1
+  let mutable done be false
+  repeat until done or stop is at least limit
+    let ch be char_at(chars: chars, index: stop)
+    if ch is "\"" or ch is "\n" then
+      set done to true
+    otherwise if ch is "\\" then
+      set stop to stop + 2
+    otherwise if ch is "\{" then
+      set stop to hole_close(chars: chars, position: stop, limit: limit)
+    otherwise
+      set stop to stop + 1
+    end
+  end
+  return stop
+end
+
+function hole_close(chars: List of Text, position: Integer, limit: Integer) returns Integer
+  let stop be line_end(chars: chars, position: position, limit: limit)
+  let mutable index be position
+  repeat until index is at least stop or char_at(chars: chars, index: index) is "}"
+    set index to index + 1
+  end
+  if index is at least stop then return position + 1 end
+  return index + 1
+end
+
+function lex_simple_text(chars: List of Text, position: Integer, limit: Integer)
+  returns Step
+  or fails with LexError
+
+  let stop be simple_text_end(chars: chars, position: position, limit: limit)
+  if char_at(chars: chars, index: stop) is not "\"" then
+    fail with LexError(message: "text without a closing quote on the same line", position: position)
+  end
+  let parts be scan_segment(chars: chars, start: position + 1, stop: stop, parts: []) otherwise fail
+  return single(
+    kind: TextToken(parts: parts, is_block: false),
+    chars: chars,
+    start: position,
+    stop: stop + 1
+  )
+end
+
+function lex_block_text(chars: List of Text, position: Integer, limit: Integer)
+  returns Step
+  or fails with LexError
+
+  let after_quotes be position + 3
+  let first_line_end be line_end(chars: chars, position: after_quotes, limit: limit)
+  if slice(chars: chars, start: after_quotes, stop: first_line_end).trim() is not "" then
+    fail with LexError(
+      message: "block text starts on the line after the opening quotes",
+      position: position
+    )
+  end
+  let block be block_lines(chars: chars, cursor: first_line_end, limit: limit) otherwise fail
+  let indent be common_indent(chars: chars, lines: block.lines)
+  let mutable parts: List of Part be []
+  let mutable index be 0
+  for each line in block.lines
+    if index is greater than 0 then set parts to push_text(parts: parts, text: "\n") end
+    set index to index + 1
+    let content_start be (line.start + indent).at_most(line.stop)
+    set parts to scan_segment(
+      chars: chars,
+      start: content_start,
+      stop: line.stop,
+      parts: parts
+    ) otherwise fail
+  end
+  return single(
+    kind: TextToken(parts: parts, is_block: true),
+    chars: chars,
+    start: position,
+    stop: block.closing.stop
+  )
+end
+
+function block_lines(chars: List of Text, cursor: Integer, limit: Integer)
+  returns BlockLines
+  or fails with LexError
+
+  let mutable lines: List of Span be []
+  let mutable position be cursor
+  repeat until position is at least limit
+    let line_start be position + 1
+    let line_stop be line_end(chars: chars, position: line_start, limit: limit)
+    let line be slice(chars: chars, start: line_start, stop: line_stop)
+    if line.trim() is "\"\"\"" then
+      let quote_start be line_start + (line.index_of("\"") otherwise 0)
+      return BlockLines(lines: lines, closing: Span(start: quote_start, stop: quote_start + 3))
+    end
+    set lines to lines.append(Span(start: line_start, stop: line_stop))
+    set position to line_stop
+  end
+  fail with LexError(
+    message: "block text without closing quotes on their own line",
+    position: cursor
+  )
+end
+
+function common_indent(chars: List of Text, lines: List of Span) returns Integer
+  let mutable indent: maybe Integer be nothing
+  for each line in lines
+    where slice(chars: chars, start: line.start, stop: line.stop).trim() is not ""
+    let content be scan_while(chars: chars, start: line.start, limit: line.stop, keep: is_space)
+    let spaces be content - line.start
+    set indent to
+      match indent
+        when nothing then spaces
+        when some(smallest) then smallest.at_most(spaces)
+      end
+  end
+  return indent otherwise 0
+end
+
+function push_text(parts: List of Part, text: Text) returns List of Part
+  match parts.last()
+    when some(Characters(text: last)) then
+      return parts.without_last().append(Characters(text: "{last}{text}"))
+    otherwise return parts.append(Characters(text: text))
+  end
+end
+
+function scan_segment(chars: List of Text, start: Integer, stop: Integer, parts: List of Part)
+  returns List of Part
+  or fails with LexError
+
+  let mutable out be parts
+  let mutable buffer be ""
+  let mutable position be start
+  repeat until position is at least stop
+    let ch be char_at(chars: chars, index: position)
+    if ch is "\\" then
+      let piece be escape(chars: chars, position: position, stop: stop) otherwise fail
+      set buffer to "{buffer}{piece}"
+      set position to (position + 2).at_most(stop)
+    otherwise if ch is "\{" then
+      let hole_stop be hole_end(chars: chars, start: position + 1, stop: stop)
+      if hole_stop is at least stop then
+        fail with LexError(message: "`\{` without a closing `}` in text", position: position)
+      end
+      let hole be slice(chars: chars, start: position + 1, stop: hole_stop)
+      if hole.trim() is "" then
+        fail with LexError(message: "empty `\{}` in text", position: position)
+      end
+      if hole.contains("\"") then
+        fail with LexError(message: "a text literal inside a hole", position: position)
+      end
+      if buffer is not "" then
+        set out to push_text(parts: out, text: buffer)
+        set buffer to ""
+      end
+      let tokens be lex_range(chars: chars, start: position + 1, limit: hole_stop) otherwise fail
+      set out to out.append(HolePart(tokens: tokens))
+      set position to hole_stop + 1
+    otherwise
+      set buffer to "{buffer}{ch}"
+      set position to position + 1
+    end
+  end
+  if buffer is not "" then set out to push_text(parts: out, text: buffer) end
+  return out
+end
+
+function hole_end(chars: List of Text, start: Integer, stop: Integer) returns Integer
+  let mutable index be start
+  repeat until index is at least stop or char_at(chars: chars, index: index) is "}"
+    set index to index + 1
+  end
+  return index
+end
+
+function escape(chars: List of Text, position: Integer, stop: Integer)
+  returns Text
+  or fails with LexError
+
+  if position + 1 is at least stop then
+    fail with LexError(message: "unknown escape", position: position)
+  end
+  let code be char_at(chars: chars, index: position + 1)
+  if code is "n" then return "\n" end
+  if code is "t" then return "\t" end
+  if code is "\"" then return "\"" end
+  if code is "\\" then return "\\" end
+  if code is "\{" then return "\{" end
+  fail with LexError(message: "unknown escape `\\{code}`", position: position)
+end

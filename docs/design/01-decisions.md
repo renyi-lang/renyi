@@ -1393,3 +1393,52 @@ or an external name, and `public` on an ability's method
 inside brackets before a dot or a call's parenthesis. The grammar
 `docs/grammar.ebnf` and its test `crates/renyi_syntax/tests/grammar.rs`
 state the surface under this entry. (user)
+
+## W. The self-hosted front end (session 8)
+
+**W1. The syntax tree's JSON is the derived JSON of the Renyi AST.**
+`compiler/ast.ry` declares the syntax tree as Renyi types, one per
+construct, each `can ToJson`; the document `renyi parse --json` prints is
+their derived JSON: a record is an object whose keys are its fields in
+declaration order, a variant is an object with `kind` first and its
+fields after it, a `maybe` without a value is `null`, a list is an array,
+and a span is `{start, stop}` in character offsets, as Renyi's text
+indices count (the Rust encoder converts its byte offsets). The Rust
+encoder (`crates/renyi_syntax/src/json.rs`) produces the same document,
+so the two front ends can be compared byte for byte; the previous
+document (`node` keys, line and column positions) is gone, in one
+change. The names of the Renyi types keep the derived document
+unambiguous: no two sum types in the compiler's scope share a variant
+name (`IsValue` beside the operator `Is`, the lexer's `MemberName` beside
+the expression `Member`), no field is a reserved word (`exposed` for
+`exposing`), and `span` is the last field of every node. (user)
+
+**W2. The front end written in Renyi lives in `compiler/`.** The modules
+are `ast` (the tree), `lexer`, `parser`, `parse` (the command line:
+`renyi run compiler/parse.ry [--declarations] <file>` prints the tree)
+and `tokens` (the token dump, as `renyi tokens` prints it); they are
+named by their file stems and import one another by those names, since
+the directory of the main file is the project root (J17). They are Renyi
+programs like any other: `renyi check` clean, in canonical layout
+(`renyi format compiler/*.ry`), within the size limits of V5, run by the
+Rust VM. The parser's `import ast exposing ...` names every node type,
+wider than any line, so the formatter breaks an `exposing` list wider
+than the line after its commas, one name per line indented once, as V12
+breaks a `needs` clause (reference section 16). (user)
+
+**W3. The judge is a Rust integration test.**
+`crates/renyi/tests/selfhost.rs` runs the Renyi parser on the VM over the
+corpus, the conformance programs, the compiler's own sources and, with
+`--declarations`, the library declarations, and compares its output with
+`renyi parse --json` byte for byte; a program the Rust parser rejects
+must make the Renyi parser fail. It runs in `cargo test` and in CI, so
+the two front ends cannot drift apart. `renyi parse --declarations`
+exists for it: a library declaration file's functions have no bodies.
+(user)
+
+**W4. The lexer and the parser come first.** The bytecode file format or
+loader, and the performance items of `docs/GAPS.md` section 7 (in-place
+collections, string building, a pattern cache), wait until the
+self-hosted checker or emitter needs them or a measurement shows the VM
+too slow; the parser's own run over the corpus is the first measurement.
+(user)

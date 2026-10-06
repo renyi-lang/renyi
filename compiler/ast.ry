@@ -1,0 +1,454 @@
+module ast
+  purpose: One type per construct; the derived JSON is what `renyi parse --json` prints.
+
+public type Span
+  purpose: The characters a node covers: a half-open range of character offsets into the source.
+  has start: Integer
+  has stop: Integer
+  can ToJson
+end
+
+public type Name
+  purpose: A lowercase identifier or member name.
+  has text: Text
+  has span: Span
+  can ToJson
+end
+
+public type TypeName
+  purpose: A PascalCase type, ability or variant name.
+  has text: Text
+  has span: Span
+  can ToJson
+end
+
+public type Module
+  purpose: One source file: its name, documentation, imports, items and comments.
+  has name: List of Name
+  has docs: Docs
+  has imports: List of Import
+  has items: List of Item
+  has comments: List of Comment
+  has span: Span
+  can ToJson
+end
+
+public type Comment
+  purpose: A comment, kept for the formatter.
+  has text: Text
+  has span: Span
+  can ToJson
+end
+
+public type Import
+  purpose: `import a.b as c exposing D, E`.
+  has path: List of Name
+  has alias: maybe Name
+  has exposed: List of TypeName
+  has span: Span
+  can ToJson
+end
+
+public type Item is one of
+  purpose: A top-level definition.
+  FunctionItem(value: Function)
+  TypeItem(value: TypeDefinition)
+  AbilityItem(value: Ability)
+  ImplementationItem(value: Implementation)
+  ConstantItem(value: Constant)
+  TestItem(value: Test)
+  can ToJson
+end
+
+public type Docs
+  purpose: The documentation clauses of a module or a definition.
+  has summary: maybe Text
+  has labels: List of Text
+  has see_also: List of Text
+  has deprecation: maybe Text
+  has expose_as_tool: Boolean
+  has examples: List of Example
+  can ToJson
+end
+
+public type Example
+  purpose: `example: expression is value` or `example: expression fails with Pattern`.
+  has expression: Expr
+  has outcome: ExampleOutcome
+  has span: Span
+  can ToJson
+end
+
+public type ExampleOutcome is one of
+  purpose: What an example expects.
+  IsValue(value: Expr)
+  FailsWith(pattern: Pattern)
+  can ToJson
+end
+
+public type Function
+  purpose: A function or method; the body is absent in an ability or a declaration file.
+  has is_public: Boolean
+  has name: Name
+  has params: List of Param
+  has result: maybe Type
+  has failures: List of Type
+  has capabilities: List of Capability
+  has type_params: maybe ForAny
+  has docs: Docs
+  has body: maybe Block
+  has span: Span
+  can ToJson
+end
+
+public type Param
+  purpose: A parameter; the bare `self` of an ability method has no annotation.
+  has name: Name
+  has annotation: maybe Type
+  has span: Span
+  can ToJson
+end
+
+public type Capability
+  purpose: A capability of a `needs` clause with its scope, budget and guard.
+  has path: List of Name
+  has scope: maybe Text
+  has budget: maybe Budget
+  has only_to: List of Sink
+  has span: Span
+  can ToJson
+end
+
+public type Budget
+  purpose: `at most LIMIT per UNIT`.
+  has limit: Text
+  has unit: Name
+  has span: Span
+  can ToJson
+end
+
+public type Sink
+  purpose: A capability path with an optional scope, after `only to`.
+  has path: List of Name
+  has scope: maybe Text
+  has span: Span
+  can ToJson
+end
+
+public type ForAny
+  purpose: `for any T, U where T can Compare and U can Hash`.
+  has params: List of TypeName
+  has constraints: List of Constraint
+  has span: Span
+  can ToJson
+end
+
+public type Constraint
+  purpose: `T can Ability`.
+  has param: TypeName
+  has requirement: Type
+  can ToJson
+end
+
+public type Type is one of
+  purpose: A type expression.
+  NamedType(name: TypeName, args: List of Type, span: Span)
+  MaybeType(inner: Type, span: Span)
+  FunctionType(
+    params: List of Type,
+    result: maybe Type,
+    failures: List of Type,
+    capabilities: List of Capability,
+    span: Span
+  )
+  can ToJson
+end
+
+public type TypeDefinition
+  purpose: `type Name ...` with its record, sum or subtype definition.
+  has is_public: Boolean
+  has name: TypeName
+  has type_params: List of TypeName
+  has definition: TypeKind
+  has docs: Docs
+  has span: Span
+  can ToJson
+end
+
+public type TypeKind is one of
+  purpose: The three shapes of a type definition.
+  RecordDefinition(fields: List of Field, derives: List of Derive)
+  SumDefinition(variants: List of Variant, derives: List of Derive)
+  SubtypeDefinition(base: Type, refinement: maybe Expr)
+  can ToJson
+end
+
+public type Field
+  purpose: `has name: Type where condition as "external"`.
+  has name: Name
+  has annotation: Type
+  has refinement: maybe Expr
+  has external_name: maybe Text
+  has span: Span
+  can ToJson
+end
+
+public type Variant
+  purpose: A variant of a sum type with its fields.
+  has name: TypeName
+  has fields: List of Field
+  has span: Span
+  can ToJson
+end
+
+public type Derive
+  purpose: `can Compare by name, age`.
+  has ability_name: TypeName
+  has fields: List of Name
+  has span: Span
+  can ToJson
+end
+
+public type Ability
+  purpose: An ability declaration with its requirements and method heads.
+  has is_public: Boolean
+  has name: TypeName
+  has type_params: List of TypeName
+  has requirements: List of Type
+  has docs: Docs
+  has functions: List of Function
+  has span: Span
+  can ToJson
+end
+
+public type Implementation
+  purpose: `ability Name of Args for Target` with its methods.
+  has ability_type: Type
+  has target: Type
+  has type_params: maybe ForAny
+  has functions: List of Function
+  has span: Span
+  can ToJson
+end
+
+public type Constant
+  purpose: A top-level `let name: Type be value`.
+  has is_public: Boolean
+  has name: Name
+  has annotation: Type
+  has value: Expr
+  has docs: Docs
+  has span: Span
+  can ToJson
+end
+
+public type Test
+  purpose: `test "name" needs ... replays "..."` with its body.
+  has name: Text
+  has capabilities: List of Capability
+  has recording: maybe Text
+  has body: Block
+  has span: Span
+  can ToJson
+end
+
+public type Block
+  purpose: The statements of a body or a branch.
+  has statements: List of Statement
+  has span: Span
+  can ToJson
+end
+
+public type Statement is one of
+  purpose: One statement.
+  Let(is_mutable: Boolean, name: Name, annotation: maybe Type, value: Expr, span: Span)
+  Set(name: Name, value: Expr, span: Span)
+  If(branches: List of Branch, fallback: maybe Block, span: Span)
+  Match(subject: Expr, arms: List of Arm, fallback: maybe Block, span: Span)
+  ForEach(
+    bindings: List of Name,
+    source: Expr,
+    filter: maybe Expr,
+    order: maybe SortOrder,
+    body: Block,
+    span: Span
+  )
+  RepeatUntil(condition: Expr, body: Block, span: Span)
+  RunConcurrently(deadline: maybe Expr, body: Block, span: Span)
+  Return(value: maybe Expr, span: Span)
+  Fail(value: maybe Expr, span: Span)
+  Crash(message: Expr, span: Span)
+  Break(span: Span)
+  Continue(span: Span)
+  Ignore(value: Expr, span: Span)
+  Check(value: Expr, span: Span)
+  Expression(value: Expr, span: Span)
+  can ToJson
+end
+
+public type Branch
+  purpose: A condition and the block it guards.
+  has condition: Expr
+  has body: Block
+  can ToJson
+end
+
+public type Arm
+  purpose: `when pattern where guard then` with a block.
+  has pattern: Pattern
+  has guard: maybe Expr
+  has body: Block
+  has span: Span
+  can ToJson
+end
+
+public type SortOrder
+  purpose: `sorted by key descending`.
+  has key: Expr
+  has is_descending: Boolean
+  can ToJson
+end
+
+public type Pattern is one of
+  purpose: What an arm matches.
+  VariantPattern(name: TypeName, fields: List of FieldPattern, span: Span)
+  LiteralPattern(value: Expr, span: Span)
+  NothingPattern(span: Span)
+  SomePattern(inner: Pattern, span: Span)
+  SuccessPattern(inner: Pattern, span: Span)
+  FailurePattern(inner: Pattern, span: Span)
+  BindingPattern(name: Name, span: Span)
+  TypedPattern(name: Name, annotation: Type, span: Span)
+  can ToJson
+end
+
+public type FieldPattern
+  purpose: A field of a variant pattern; a punned field has no pattern.
+  has field: Name
+  has pattern: maybe Pattern
+  can ToJson
+end
+
+public type Expr is one of
+  purpose: An expression.
+  IntegerLiteral(text: Text, span: Span)
+  DecimalLiteral(text: Text, span: Span)
+  TextLiteral(pieces: List of TextPiece, block: Boolean, span: Span)
+  RawTextLiteral(text: Text, span: Span)
+  BooleanLiteral(value: Boolean, span: Span)
+  NothingLiteral(span: Span)
+  SelfValue(span: Span)
+  NameExpr(name: Name, span: Span)
+  TypeNameExpr(name: TypeName, span: Span)
+  Member(base: Expr, name: Name, span: Span)
+  Call(callee: Expr, args: List of Arg, span: Span)
+  Construct(name: TypeName, args: List of Arg, span: Span)
+  ListLiteral(items: List of Expr, span: Span)
+  MapLiteral(entries: List of MapEntry, span: Span)
+  RangeLiteral(lower: Expr, upper: Expr, step: maybe Expr, span: Span)
+  Not(value: Expr, span: Span)
+  Binary(operator: BinaryOp, left: Expr, right: Expr, span: Span)
+  With(base: Expr, updates: List of Arg, span: Span)
+  Otherwise(value: Expr, fallback: Outcome, span: Span)
+  IfExpr(branches: List of ExprBranch, fallback: Outcome, span: Span)
+  MatchExpr(subject: Expr, arms: List of ExprArm, fallback: maybe Outcome, span: Span)
+  QueryExpr(
+    sources: List of QuerySource,
+    is_concurrent: Boolean,
+    deadline: maybe Expr,
+    filter: maybe Expr,
+    order: maybe SortOrder,
+    group_by: maybe Expr,
+    terminal: QueryTerminal,
+    span: Span
+  )
+  Paren(value: Expr, span: Span)
+  can ToJson
+end
+
+public type TextPiece is one of
+  purpose: A run of characters or a hole of a text literal.
+  Literal(text: Text)
+  Hole(expression: Expr)
+  can ToJson
+end
+
+public type MapEntry
+  purpose: `key: value` of a map literal.
+  has key: Expr
+  has value: Expr
+  can ToJson
+end
+
+public type Arg
+  purpose: An argument, named or positional.
+  has name: maybe Name
+  has value: Expr
+  has span: Span
+  can ToJson
+end
+
+public type BinaryOp is one of
+  purpose: The binary operators by precedence group.
+  Add
+  Subtract
+  Multiply
+  Divide
+  Remainder
+  Power
+  Is
+  IsNot
+  IsLessThan
+  IsAtMost
+  IsGreaterThan
+  IsAtLeast
+  And
+  Or
+  can ToJson
+end
+
+public type Outcome is one of
+  purpose: What a branch or an `otherwise` produces: a value, or a way out.
+  ValueOutcome(value: Expr, span: Span)
+  FailOutcome(value: maybe Expr, span: Span)
+  ReturnOutcome(value: maybe Expr, span: Span)
+  CrashOutcome(message: Expr, span: Span)
+  BreakOutcome(span: Span)
+  ContinueOutcome(span: Span)
+  can ToJson
+end
+
+public type ExprBranch
+  purpose: A condition and the outcome it guards, in an `if` expression.
+  has condition: Expr
+  has outcome: Outcome
+  can ToJson
+end
+
+public type ExprArm
+  purpose: `when pattern where guard then outcome` of a `match` expression.
+  has pattern: Pattern
+  has guard: maybe Expr
+  has body: Outcome
+  has span: Span
+  can ToJson
+end
+
+public type QuerySource
+  purpose: `x in xs` or `key, value in map` of a query.
+  has bindings: List of Name
+  has source: Expr
+  can ToJson
+end
+
+public type QueryTerminal is one of
+  purpose: How a query ends.
+  Collect(value: Expr)
+  Sum(value: Expr)
+  Count
+  First
+  Any(condition: Expr)
+  All(condition: Expr)
+  GroupOnly
+  can ToJson
+end

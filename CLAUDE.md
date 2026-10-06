@@ -13,10 +13,12 @@ the VM (M3: `renyi run`, `record`, `run --replay`, `reproduce`,
 `--explain`, `test` with `replays`, budgets, scope checks, the grant stack
 of decision Q1, the run manifest of Q2, every library module including
 HTTP, the server and SQLite; tasks run one after the other by decision
-S2) exist. The owner (GitHub `skymanbp`) makes design decisions and
-reviews;
-Claude writes the documents, the example corpus and the Rust
-implementation.
+S2) exist, and the front end is being written again in Renyi under
+`compiler/` (the lexer and the parser so far, decisions W1 to W4), run
+by the Rust VM and held equal to the Rust front end by a test. The owner
+(GitHub `skymanbp`) makes design decisions and reviews; Claude writes the
+documents, the example corpus, the Rust implementation and the Renyi
+compiler.
 
 ## Conventions
 
@@ -57,6 +59,15 @@ implementation.
 - A new diagnostic or a new reference output gets a case in
   `tests/conformance/manifest.json`, which `cargo test` and
   `tools/conformance.py` both run.
+- The Renyi sources under `compiler/` are programs like any other:
+  `renyi check` clean, in canonical layout (run `cargo run -- format
+  compiler/*.ry` after editing one; a test checks it) and within the
+  size limits. `crates/renyi/tests/selfhost.rs` is the judge (decision
+  W3): the Renyi parser must print, byte for byte, what `renyi parse
+  --json` prints on every program of the corpus, the conformance suite,
+  `compiler/` and (with `--declarations`) `library/std/`. A change to
+  the tree's shape is a change to `compiler/ast.ry` and to
+  `crates/renyi_syntax/src/json.rs` in one commit (decision W1).
 - Every diagnostic carries a fix (decision D3): the lexer's, the parser's
   and the checker's helpers take the fix as an argument, and both
   conformance runners require a `fix:` line after every diagnostic.
@@ -69,7 +80,7 @@ implementation.
 
 | Path | Content |
 |------|---------|
-| `docs/design/01-decisions.md` | design decisions with reasons: rounds 1 and 2 (sections 0 to J), library (K), readability (L), pre-test (M), checker (N), runtime and agent tooling (O), signature capabilities (P), system-level commitments (Q), the live round (R), runtime dependencies and concurrency (S) |
+| `docs/design/01-decisions.md` | design decisions with reasons: rounds 1 and 2 (sections 0 to J), library (K), readability (L), pre-test (M), checker (N), runtime and agent tooling (O), signature capabilities (P), system-level commitments (Q), the live round (R), runtime dependencies and concurrency (S), the MCP server (T), readability round 2 (U), the gap audit and the road to self-hosting (V), the self-hosted front end (W) |
 | `docs/design/02-syntax-sketch.md` | concrete syntax; section 18 tracks open items (round 2 is settled, new items start at R3-1) |
 | `docs/design/03-readability-test.md` | the readability protocol: it measured the grammar before the freeze; decision V1 made the freeze a decision (V11), so the rounds run only on request |
 | `docs/design/04-stdlib-sketch.md` | prelude, core modules and extension packages; the lint checks corpus calls against its `function` lines |
@@ -90,6 +101,7 @@ implementation.
 | `crates/renyi_syntax/` | spans, diagnostics, lexer, AST, parser, JSON encoder, formatter; `tests/corpus.rs` runs the corpus through all of them, `tests/library.rs` parses the library declarations, `tests/diagnostics.rs` checks that every diagnostic carries a fix and that a foreign spelling gets the Renyi one, `tests/grammar.rs` interprets `docs/grammar.ebnf` over the corpus, the conformance programs, the library and two lists of corner programs, `tests/reference.rs` checks the rules `docs/reference.md` quotes and the codes it lists |
 | `crates/renyi_check/` | the type and effect checker (M2): `world.rs` declares modules, `check.rs` checks bodies, `effects.rs` covers capabilities, `refine.rs` evaluates refinements on literals, `suggest.rs` proposes the fixes (the closest name in scope, the Renyi spelling of a foreign name, the prelude's conversions); `tests/corpus.rs` and `tests/rules.rs` |
 | `library/std/` | the standard library as Renyi declaration files (one per module), compiled into the checker; kept in step with `04-stdlib-sketch.md` by a test |
+| `compiler/` | the front end written in Renyi (decision W2), run by the Rust VM: `ast.ry` (the syntax tree, one type per construct, `can ToJson`; its derived JSON is the format of `renyi parse --json`, decision W1), `lexer.ry` (source text to tokens, the rules of reference section 1), `parser.ry` (tokens to the tree, rule for rule as the Rust parser, with a cursor record threaded through every function that reproduces the Rust parser's line-break handling exactly), `parse.ry` (`renyi run compiler/parse.ry [--declarations] <file>` prints the tree as JSON), `tokens.ry` (`renyi run compiler/tokens.ry <file>` prints the tokens as `renyi tokens` does); `crates/renyi/tests/selfhost.rs` holds the parser equal to the Rust one |
 | `crates/renyi_index/` | the project map (`renyi index`): `lib.rs` builds the records from the checked program, `metrics.rs`, `hash.rs` (content hashes and the own-text hash), `budgets.rs`, `render.rs` (text and JSON), `diff.rs` (the semantic diff: changes, reach, version bump); `tests/corpus.rs`, `tests/diff.rs` |
 | `crates/renyi_vm/` | the VM (M3): `compile/` lowers the checked tree to bytecode (`bytecode.rs`) through the checker's recorded references, `vm.rs` runs it and holds the primitive boundary (`call_native`: grant and budget checks, recording, replay, narration), `grant.rs` the effective grant and budget counters, `recording.rs` the recording format, the run manifest, redaction and the replay, `natives/` the library primitives, `runner.rs` runs `main`, examples and tests and reproduces a recording; `tests/corpus.rs` checks the ten expected outputs and every `example:` and `test` block, `tests/recording.rs` the boundary, `tests/guards.rs` the `only to` guards, `tests/semantics.rs` the promises of the gap audit (deadlines, refined updates, the boundary's failures, `equals`, the Float range, edge cases), `tests/network.rs` the server, the client and SQLite, `tests/queries.rs` the terminals after `group by` |
-| `crates/renyi/` | the `renyi` binary: `check` (parse, type and effect check), `format`, `tokens`, `parse [--json]`, `index [--json \| --budgets \| --diff <map or revision>]` (`maps.rs` loads the base; `tests/index.rs`), `run [options] <file> [arguments]`, `run --manifest ...`, `record [--to file] [options] <file> [arguments]`, `reproduce <recording> [<file>]`, `test [--strict] [--refresh name [--redact name]] [--explain] <file>...`, `mcp [path]` (the toolchain for an agent host over standard input and output, `mcp.rs`; `tests/mcp.rs` drives the binary through both protocol eras), `tools [path]` (the tool manifest of decision D6; `tests/tools.rs`); `tests/conformance.rs` runs the conformance suite against the binary |
+| `crates/renyi/` | the `renyi` binary: `check` (parse, type and effect check), `format`, `tokens`, `parse [--json] [--declarations]`, `index [--json \| --budgets \| --diff <map or revision>]` (`maps.rs` loads the base; `tests/index.rs`), `run [options] <file> [arguments]`, `run --manifest ...`, `record [--to file] [options] <file> [arguments]`, `reproduce <recording> [<file>]`, `test [--strict] [--refresh name [--redact name]] [--explain] <file>...`, `mcp [path]` (the toolchain for an agent host over standard input and output, `mcp.rs`; `tests/mcp.rs` drives the binary through both protocol eras), `tools [path]` (the tool manifest of decision D6; `tests/tools.rs`); `tests/conformance.rs` runs the conformance suite against the binary, `tests/selfhost.rs` the Renyi parser against the Rust one |

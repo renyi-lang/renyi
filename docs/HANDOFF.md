@@ -1,12 +1,13 @@
 # Handoff
 
 Last updated: 2026-10-06, session 8 (stage 2 of the gap audit of
-`docs/GAPS.md`: the formal grammar `docs/grammar.ebnf` with decision V12
-and the parser corrected to one spelling per construct; the language
-reference `docs/reference.md`, normative, with the test that holds it to
-the grammar file and the crates; the sketch retired to the design
-record). Branch: `main` is the only branch (owner's decision,
-2026-10-05); commit and push there directly.
+`docs/GAPS.md`: the formal grammar `docs/grammar.ebnf` with decision V12;
+the language reference `docs/reference.md`, normative, held to the
+grammar file and the crates by a test; the sketch retired to the design
+record; then the front end written in Renyi under `compiler/`, decisions
+W1 to W4, held equal to the Rust parser by `crates/renyi/tests/selfhost.rs`).
+Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
+and push there directly.
 
 ## Where the project stands
 
@@ -17,7 +18,7 @@ run manifest of Q2, every library module, the `only to` guards of P3,
 tasks one after the other by S2) are done, with the project map (`renyi
 index`, `--budgets`, `--diff`), `renyi tools` and `renyi mcp` on top. M4
 to M6 are not started (`docs/GAPS.md`, section 4). Design decisions are
-in sections 0 to V of `01-decisions.md`; the agent tooling in
+in sections 0 to W of `01-decisions.md`; the agent tooling in
 `05-agent-tooling.md`, the signature capabilities in
 `06-runtime-guarantees.md`, the system-level commitments in
 `07-system-design.md`; the open items in section 18 of the sketch (R3-1,
@@ -31,15 +32,18 @@ the runtime; the repository stays private until the owner says
 otherwise; the first users are people building agent workflows and
 learners. Before any of that the design was audited against the
 implementation (`docs/GAPS.md`, session 6) and the gaps filled (stage 1
-of its section 7, session 7). Stage 1 is done; what it left open is named
-in `docs/GAPS.md` (section 7, "Status") and under "Owner actions pending"
-below. The grammar is frozen by decision V11 at commit `dc58bb3`: a
-change to the surface is a new decision entry first, then the reference,
-the grammar, the cheat sheet, the formatter and the conformance suite in
-one commit. Since session 8 the normative text is `docs/reference.md`
-with `docs/grammar.ebnf` (`crates/renyi_syntax/tests/grammar.rs` and
-`tests/reference.rs` hold them to the parser and to each other); the
+of its section 7, session 7). The grammar is frozen by decision V11 at
+commit `dc58bb3`: a change to the surface is a new decision entry first,
+then the reference, the grammar, the cheat sheet, the formatter and the
+conformance suite in one commit. Since session 8 the normative text is
+`docs/reference.md` with `docs/grammar.ebnf` (`crates/renyi_syntax/tests/grammar.rs`
+and `tests/reference.rs` hold them to the parser and to each other); the
 sketch is the design record.
+
+Stage 2 of `docs/GAPS.md` section 7 is under way in the order the owner
+set (W4): the lexer and the parser written in Renyi exist under
+`compiler/` (next section); the checker, the emitter and the performance
+items follow.
 
 The corpus has 30 programs, passes the lint, is in canonical layout,
 checks cleanly, has nothing over budget, and its `example:` lines and
@@ -47,19 +51,21 @@ checks cleanly, has nothing over budget, and its `example:` lines and
 recordings under `examples/fixtures/`). The cheat sheet measures
 2999 of 3000 tokens. The Rust workspace has five crates:
 `renyi_syntax`, `renyi_check`, `renyi_index`, `renyi_vm` and the `renyi`
-binary with `check`, `format`, `tokens`, `parse [--json]`, `index [--json
-| --budgets | --diff <map or revision>]`, `run [--manifest] [options]
-<file> [arguments]`, `record [--to file] [options] <file> [arguments]`,
-`reproduce <recording> [<file>]`, `test [--strict] [--refresh name
-[--redact name]] [--explain] <file>...`, `tools [path]`, `mcp [path]` and
-`version`; 211 tests, clippy and fmt clean on Windows with rustc 1.94.1.
-CI (`.github/workflows/ci.yml`) runs the same gates and the conformance
-suite (`tests/conformance/`, 37 cases; runners `tools/conformance.py`
-and `crates/renyi/tests/conformance.rs`) on a toolchain pinned to the
-owner's machine (rustc 1.94.1), so that CI and the local gates agree on
-clippy's lints; `gh run list --limit 3` shows the runs and `gh run view
-<id> --log-failed` a failure's log. The VM depends on `ureq` (HTTP, with
-rustls), `rusqlite` (SQLite compiled in), decision S1, and on `sha2`.
+binary with `check`, `format`, `tokens`, `parse [--json]
+[--declarations]`, `index [--json | --budgets | --diff <map or
+revision>]`, `run [--manifest] [options] <file> [arguments]`, `record
+[--to file] [options] <file> [arguments]`, `reproduce <recording>
+[<file>]`, `test [--strict] [--refresh name [--redact name]] [--explain]
+<file>...`, `tools [path]`, `mcp [path]` and `version`; 215 tests, clippy
+and fmt clean on Windows with rustc 1.94.1. CI
+(`.github/workflows/ci.yml`) runs the same gates, `renyi check
+compiler/*.ry` and the conformance suite (`tests/conformance/`, 37 cases;
+runners `tools/conformance.py` and `crates/renyi/tests/conformance.rs`)
+on a toolchain pinned to the owner's machine (rustc 1.94.1), so that CI
+and the local gates agree on clippy's lints; `gh run list --limit 3`
+shows the runs and `gh run view <id> --log-failed` a failure's log. The
+VM depends on `ureq` (HTTP, with rustls), `rusqlite` (SQLite compiled
+in), decision S1, and on `sha2`.
 
 Readability: four live rounds exist under `tests/readability/`; the last
 (round 4, `2026-10-06-c696747/`, Sonnet 5.5 through the Claude Code CLI)
@@ -67,6 +73,79 @@ stands at Predict 90, Explain 100, Complete 79, Write 40. The rounds'
 `notes.md` and "Done in session 6" below hold the detail; decisions R1 to
 R8 and U1 to U9 came from them; they continue only if the owner asks
 (decision V1).
+
+## The self-hosted front end as it exists (`compiler/`)
+
+- **The files** (decision W2). `ast.ry` declares the syntax tree, one
+  type per construct, each `can ToJson` (records for nodes with one
+  shape, sums for the alternatives: `Item`, `Type`, `TypeKind`,
+  `Statement`, `Pattern`, `Expr`, `Outcome`, `QueryTerminal`, ...; every
+  node's `span` is its last field). `lexer.ry` turns source text into
+  tokens by the rules of reference section 1: `TokenKind` is `Word`
+  (reserved words and phrases, one token each), `Identifier`,
+  `TypeIdentifier`, `MemberName`, `IntegerToken`, `DecimalToken`,
+  `TextToken(parts, is_block)` with holes lexed by a sub-lexer over the
+  same character list, `RawToken`, `ClauseToken`, `CommentToken`,
+  `LineBreak`, `Symbol(text)` and `EndOfFile`; it fails with `LexError`
+  at the first bad character. `parser.ry` turns tokens into the tree
+  rule for rule as `crates/renyi_syntax/src/parser.rs` does; the Rust
+  parser's mutable cursor is a `Cursor` record (tokens, position, open
+  brackets, whether functions have bodies) threaded through every
+  function, each returning `Parsed of Node` (the node and the cursor
+  after it); `peek` moves past the line breaks the layout rules make
+  insignificant (inside brackets, after a comma, before a continuation
+  word) exactly as the Rust `peek` does, including the spans that end at
+  a line break after such a move, so that the two trees agree byte for
+  byte; it fails with `ParseError` at the first error (a message and a
+  character offset; no recovery, no fixes). `parse.ry` is the command
+  line: `renyi run compiler/parse.ry [--declarations] <file>` lexes,
+  parses and prints `json.render_indented` of the tree; `tokens.ry`
+  prints the tokens as `renyi tokens` does (a development aid for
+  comparing the lexers line by line).
+- **The JSON** (decision W1) is the derived JSON of the `ast.ry` types:
+  a record is an object keyed by its fields in declaration order, a
+  variant an object with `kind` first, a `maybe` without a value `null`,
+  a list an array, a span `{"start", "stop"}` in character offsets. The
+  Rust encoder `crates/renyi_syntax/src/json.rs` prints the same
+  document (its byte offsets converted through a table); the names in
+  `ast.ry` keep it unambiguous (no two sums in scope share a variant
+  name: `IsValue` beside the operator `Is`, the lexer's `MemberName`
+  beside the expression `Member`; `exposed` for the reserved `exposing`).
+- **The judge** (decision W3): `crates/renyi/tests/selfhost.rs` runs
+  `renyi run compiler/parse.ry` over `examples/`,
+  `tests/conformance/programs/`, `compiler/` and, with `--declarations`,
+  `library/std/` on a few threads and compares with `renyi parse --json
+  [--declarations]` byte for byte (74 programs: 71 equal, 3 rejected by
+  both); a second test checks `renyi format --check compiler/*.ry`. CI
+  runs `renyi check compiler/*.ry` besides. Every compiler source is
+  `renyi check` clean (no warnings) and in canonical layout.
+- **Speed, the first measurement** (W4): on the VM the lexer and the
+  parser take about 0.3 s on `examples/hello.ry`, 0.6 s on the prelude
+  declarations, 1.0 s on the 750-line `lexer.ry` and 3.9 s on the
+  2700-line `parser.ry` (`renyi check` of the compiler alone, which
+  every run pays first, is 0.25 s). The lexer slices token text by
+  characters in a loop, since `Text.drop` and `take` copy the whole text
+  per call (79 s for `parser.ry` before that change). Growing a list
+  with `set xs to xs.append(x)` or `xs.append_all(step.xs)` in a loop is
+  linear (80 000 appends in 0.26 s, startup included: decision O1's
+  `LoadMove` moves the receiver out of its slot and `take_list` in
+  `value.rs` reuses the vector), so the list growth is not where the
+  time goes; where it does go has not been profiled. That profile is
+  the first performance item, before the checker is written in Renyi.
+- **Writing Renyi at this size, what bit**: field and binding names
+  cannot be reserved words (`exposing`, `first`, `least`, `raw`,
+  `module`, `within`, `end` ...); a text literal cannot appear inside a
+  hole (bind it first); `"{"` is an unterminated hole (`"\{"`); `\r` is
+  not an escape (the lexer tests `ch.trim() is ""` instead); a variant
+  of a sum type cannot share a name with a variant of another sum in
+  scope, and a field common to every variant cannot be read on the sum
+  value (hence `expr_span`, `type_span`, `outcome_span` in the parser);
+  a `failure(x)` pattern needs a type (`failure(error: Fault)`) before
+  its fields can be read; a call that can fail must be handled on its
+  own line (`otherwise fail`, or `match call()` directly); generic
+  records (`Parsed of Node`) and function-typed parameters with `for
+  any` work, so `bracketed` and `binary_chain` are shared across the
+  grammar.
 
 ## The VM as it exists (`crates/renyi_vm`)
 
@@ -294,9 +373,9 @@ R8 and U1 to U9 came from them; they continue only if the owner asks
   for the corpus and for one file; a bad base), the `diff` call in
   `tests/mcp.rs`, and a unit test of `own_text_hash`.
 
-## Done in session 8 (stage 2: the grammar and the reference)
+## Done in session 8 (stage 2: the grammar, the reference, the front end in Renyi)
 
-Two commits on `main`, each gated as in session 7:
+Three commits on `main`, each gated as in session 7:
 
 1. `fa40315` the formal grammar `docs/grammar.ebnf` (W3C EBNF over the
    lexer's tokens, two start symbols, 76 rules) and
@@ -312,9 +391,9 @@ Two commits on `main`, each gated as in session 7:
    plain text and `public` on a method are errors with fixes;
    `public-method` is the new code), a line break inside brackets
    before `.` or `(` is accepted. Conformance case 37, `one_spelling.ry`.
-2. The reference commit: `docs/reference.md` (sections 0 to 17 after the
-   sketch's, appendix A the diagnostic codes with their severities and
-   sections, appendix B the commands and exit statuses) and
+2. `17509df` the reference: `docs/reference.md` (sections 0 to 17 after
+   the sketch's, appendix A the diagnostic codes with their severities
+   and sections, appendix B the commands and exit statuses) and
    `crates/renyi_syntax/tests/reference.rs` (every quoted rule equals
    the grammar file's and every rule is quoted once; appendix A equals
    the codes the crates emit, found at every call named `error` or
@@ -322,6 +401,27 @@ Two commits on `main`, each gated as in session 7:
    `docs/GAPS.md`, the sketch's status line and its section 17 follow.
    Every claim of the reference was read back from the lexer, the
    parser, the checker, the VM and the library before it was written.
+3. The front end in Renyi (the last commit; decisions W1 to W4 from the
+   owner's batch: the Renyi sources in `compiler/`, a Rust integration
+   test as the judge, the lexer and the parser first, the JSON defined
+   by the Renyi types with the Rust encoder changed to match).
+   `compiler/ast.ry`, `lexer.ry`, `parser.ry`, `parse.ry`, `tokens.ry`
+   as described above; `crates/renyi_syntax/src/json.rs` rewritten to
+   the derived shape (character offsets through a byte-to-character
+   table; its unit tests and `tests/corpus.rs` follow); `renyi parse
+   --declarations`; `crates/renyi/tests/selfhost.rs`; the formatter's
+   rule for a wide `exposing` list (`format.rs`, a unit test, reference
+   section 16); CI's `renyi check compiler/*.ry` step; `CLAUDE.md`,
+   `README.md`, `docs/GAPS.md` (status at the end of session 8, with
+   the first measurement), appendix B of the reference. The parser was
+   written in one pass as a transcription of `parser.rs` and agreed
+   with it on the first comparison; the lexer needed one round of
+   fixes from `renyi check` (reserved words as names, `"{"` as a hole,
+   `\r` as an escape) and one performance fix (slicing by characters).
+   Part of this commit (the JSON encoder, `tokens.ry`, the CI step and
+   appendix B) was written by a second Claude Code session the owner
+   ran in parallel; the two sessions split the files by message and
+   this session ran the gates and committed.
 
 ## Done in session 7 (stage 1 of the gap audit)
 
@@ -669,13 +769,13 @@ on a fresh clone).
   `needs`, `Hash` implementations are never called, entry 1.18, and
   open item R3-2 (constraints with type arguments). None blocks stage
   2; the owner decides their order when stage 2 is planned.
-- **Stage 2 is under way** (next steps, item 1): the formal grammar
-  (`docs/grammar.ebnf`, decision V12, `tests/grammar.rs`) and the
-  language reference (`docs/reference.md`, `tests/reference.rs`) are
-  done. What comes next is the owner's call, asked as a batch before
-  anything is written: the self-hosted lexer and parser (where the Renyi
-  sources live, how they are tested against `renyi parse --json`), the
-  bytecode file format or loader, and the performance items.
+- **Stage 2, the next piece**: the lexer and the parser in Renyi are
+  done and judged (W3). What comes next is the owner's call, asked as a
+  batch before anything is written: the checker in Renyi (its shape:
+  one module or several, how its diagnostics are compared with `renyi
+  check --json`), the profile of the VM on `parser.ry` (where the 3.9 s
+  go: before the checker, or after a measurement of the checker), and
+  the bytecode emitter with its file format or loader.
 - **Readability**: the scores are no longer the gate (decision V1).
   Round 5 (U9's sentence) and gpt-5.5 run only if the owner asks.
 - Session 5 printed the values of `ANTHROPIC_API_KEY` and
@@ -708,16 +808,20 @@ on a fresh clone).
 
 ## Next steps
 
-1. **Stage 2 of `docs/GAPS.md`, section 7** (the grammar is frozen,
-   V11; the formal grammar is `docs/grammar.ebnf`, V12; the language
-   reference is `docs/reference.md`): a bytecode file format or a loader
-   so that a compiler written in Renyi has something to emit; the
-   performance items a compiler needs (in-place collections, string
-   building, a pattern cache for `Text.matches`); the self-hosted lexer
-   and parser, tested against `renyi parse --json` on the corpus, then
-   the checker and the emitter, with the Rust toolchain as stage 0 and
-   the Rust VM as the runtime. The order, and where the Renyi sources
-   live (`compiler/`?), are a design batch for the owner.
+1. **Stage 2 of `docs/GAPS.md`, section 7, continued** (the grammar is
+   frozen, V11; the formal grammar is `docs/grammar.ebnf`, V12; the
+   language reference is `docs/reference.md`; the lexer and the parser
+   in Renyi are `compiler/`, W1 to W4): the checker in Renyi (the world
+   of declarations, the bodies, the effects; judged against `renyi check
+   --json` as the parser is judged against `parse --json`), then the
+   bytecode emitter with a file format or a loader so that the Rust VM
+   runs what the Renyi compiler emits, with the Rust toolchain as stage
+   0; the performance items as the measurements call for them (a profile
+   of the 3.9 s on `parser.ry` first, then string building and the
+   pattern cache of `Text.matches`). The owner's batch of four comes
+   before the checker is written. The parser in Renyi reports one error with a position and
+   no fix; parity with the Rust parser's diagnostics (codes, fixes,
+   recovery) is a later step, after the checker.
 2. **Readability, only on request**: round 5 on Sonnet measures U9
    (`run.py prepare`, the Sonnet command at the end of this item after
    its probe, the graders, `score`, the U5 search, `report`, the
@@ -751,6 +855,21 @@ on a fresh clone).
 
 ## Known gaps and risks
 
+- **The front end in Renyi.** The parser stops at the first error with
+  a message and a character offset: no diagnostic codes, no fixes, no
+  recovery, so it is not yet a replacement for `renyi check`'s
+  front-end diagnostics; the judge covers acceptance and the tree only.
+  Its equality with the Rust parser is exact on every program in the
+  repository, by construction of its `peek` (the Rust parser's
+  side-effecting peek is simulated, line-break spans included); a new
+  layout rule in `parser.rs` must be mirrored in `parser.ry` or the judge
+  fails. The lexer's error messages are its own, not the Rust lexer's
+  codes. The run time grows with the file (3.9 s for `parser.ry`) and
+  has not been profiled; the `"{text}{ch}"` concatenation in the
+  lexer's `slice` and `scan_segment` is quadratic in a token's length
+  (negligible for tokens, visible on a long block text). `json.rs` and
+  `ast.ry` must change together (W1); nothing checks that the Rust
+  encoder's keys match `ast.ry` except the judge's byte comparison.
 - **VM.** `break` or `continue` as the outcome of an `if` or `match`
   *expression* nested inside another expression leaves that expression's
   partial operands on the stack (statements and loop bodies are clean); no
@@ -765,7 +884,11 @@ on a fresh clone).
   `1.5s` / `250ms` (no decision covers the format). A refinement condition
   on a library type (`Date`, `Port`) runs on construction but its
   references are not recorded (the checker does not walk library bodies);
-  only literals and local names occur there today.
+  only literals and local names occur there today. An untyped `failure(x)`
+  pattern on a call declared `or fails with Fault` gives `x` a type on
+  which the record's fields are unknown (`unknown-field` on `x.message`);
+  a typed pattern `failure(x: Fault)` works. Not yet reported as a
+  checker item; found while writing the compiler.
 - **Boundary.** A scope denial of a primitive that cannot fail
   (`filesystem.exists`, `environment.get` under `environment("HOME")`)
   is a crash, since the module has no error to return. A budget on a
@@ -880,7 +1003,11 @@ on a fresh clone).
 - Prefers questions as interactive option batches of four, recommended
   option first, over prose; answers within minutes.
 - Implementation is to be written mainly by Claude in sessions; the owner
-  reviews. `main` is the only branch.
+  reviews. `main` is the only branch. In session 8 the owner ran two
+  Claude Code sessions on the repository at once; they split the files
+  by cross-session message, and one ran the gates and committed. A
+  session that finds the working tree changing under it should list the
+  peer sessions and ask before editing a shared file.
 - The pay-per-token API keys are not spent by default (ruled 2026-10-06):
   subscription quota first (Claude Code subagents, the Codex CLI), the
   keys only when the owner says so in the same request, with the volume

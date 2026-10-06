@@ -1,0 +1,28 @@
+module parse
+  purpose: The self-hosted front end's command line: lex and parse one file, print its tree as JSON.
+
+import std.console
+import std.environment
+import std.filesystem exposing Path, FileError
+import std.json
+import lexer exposing LexError
+import parser exposing ParseError
+
+public function main()
+  or fails with FileError or LexError or ParseError
+  needs console, environment, filesystem.read
+  purpose: Print the tree of a file as JSON; `--declarations` reads a library declaration file.
+
+  let arguments be environment.arguments()
+  let declarations be arguments.contains("--declarations")
+  let paths be
+    for each argument in arguments
+    where argument is not "--declarations"
+    collect argument
+  let usage be "usage: renyi run compiler/parse.ry [--declarations] <file>"
+  let path be paths.first() otherwise crash with usage
+  let source be filesystem.read_text(Path(path)) otherwise fail
+  let tokens be lexer.lex(source) otherwise fail
+  let tree be parser.parse(tokens: tokens, declarations: declarations) otherwise fail
+  console.print(json.render_indented(tree))
+end

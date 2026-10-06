@@ -39,6 +39,12 @@ jobs:
       - name: Canonical corpus
         run: cargo run -q -- format --check examples/*.ry
 
+      # the front end written in Renyi (decision W2) checks clean, its
+      # development aids included; `cargo test` above holds its layout
+      # canonical and its tree equal to `renyi parse --json`
+      - name: Self-hosted front end
+        run: cargo run -q -- check compiler/*.ry
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

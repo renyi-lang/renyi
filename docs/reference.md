@@ -1233,7 +1233,8 @@ reports a file that differs from its canonical form. The canonical form:
 - Signature clauses share the head line when they fit, otherwise one per
   line indented once, in canonical order; a `needs` clause wider than the
   line breaks after its commas, one capability per line indented once
-  more.
+  more; an `exposing` list wider than the line breaks after its commas
+  likewise, one name per line indented once.
 - A long query after `be` or `to` starts on the next line, one clause per
   line; after `return` it stays on the line and its clauses nest under it.
 - Long conditions break before `and` and `or`.
@@ -1435,7 +1436,7 @@ Python scripts under `tools/` are development aids.
 | `renyi check [--json] [--strict] <file>...` | lex, parse, type and effect check; the layout warnings of section 1 | 1 when any error |
 | `renyi format [--check] <file>...` | rewrite in canonical layout (section 16) | `--check`: 1 when a file differs |
 | `renyi tokens <file>` | the token stream | 1 on a lexical error |
-| `renyi parse [--json] <file>` | the syntax tree | 1 on a parse error |
+| `renyi parse [--json] [--declarations] <file>` | the syntax tree; `--declarations` reads a library declaration file, whose functions have no bodies | 1 on a parse error |
 | `renyi index [--json \| --budgets \| --diff <base>] [path]` | the project map, its budgets, the semantic diff (`design/05-agent-tooling.md`) | |
 | `renyi tools [path]` | the tool manifest (section 15) | |
 | `renyi run [options] <file> [arguments]` | check, then run `main` under its grant | 0; 1 when `main` fails; 2 on a crash; the code of `environment.exit` |
@@ -1451,6 +1452,17 @@ standard error; `--replay <recording>` (run only) answers every effect from
 the recording; `--deny`, `--allow-host`, `--allow-read`, `--allow-write`
 and `--at-most` narrow the grant (section 11); `--redact <name>` keeps a
 secret out of a recording.
+
+The tree `renyi parse --json` prints is the derived JSON (section 7 of
+`design/04-stdlib-sketch.md`) of the types of `compiler/ast.ry`, the
+syntax tree of the front end written in Renyi (decision W1): a record is
+an object whose keys are its fields in declaration order, a variant an
+object with `kind` first and its fields after it, a `maybe` without a
+value `null`, and a span `{"start", "stop"}` in characters, the end
+exclusive. `renyi run compiler/parse.ry [--declarations] <file>` prints
+the same document, and `crates/renyi/tests/selfhost.rs` holds the two
+equal byte for byte over the corpus, the conformance programs, the
+library and the compiler's own sources.
 
 Diagnostics are printed as `file:line:column: severity [code]: message`
 with the fix on the next line, or as JSON with `--json`. The conformance

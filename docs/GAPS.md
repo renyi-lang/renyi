@@ -390,6 +390,24 @@ budget has no syntax). Section 4 is stages 2 and 3; section 6 is
 unchanged, plus R3-2 (constraints with type arguments) in the sketch.
 The freeze entry is V11; the formal grammar is `docs/grammar.ebnf`
 (decision V12, session 8) and the language reference `docs/reference.md`
-(session 8); the sketch is the design record. The next steps are the
-bytecode file format, the performance items and the self-hosted front
-end, in the order the owner sets.
+(session 8); the sketch is the design record.
+
+### Status at the end of session 8 (2026-10-06)
+
+Stage 2 is under way in the order the owner set (decision W4: the lexer
+and the parser first). The front end written in Renyi lives in
+`compiler/` (W2): `ast.ry`, `lexer.ry`, `parser.ry` and the drivers
+`parse.ry` and `tokens.ry`; the tree's JSON is the derived JSON of the
+Renyi types (W1); `crates/renyi/tests/selfhost.rs` holds the Renyi
+parser equal to the Rust one, byte for byte, over the corpus, the
+conformance programs, the library declarations and the compiler itself
+(W3). The first measurement of the VM on compiler-sized work: the lexer
+and the parser take about 0.3 s on a 13-line program, 0.6 s on the
+prelude's declarations and 3.9 s on the 2700-line parser (after the
+lexer stopped slicing the source text with `drop` and `take`, which
+copy the whole text per token: 79 s before); a list grown with `append`
+in a loop is linear (80 000 appends in 0.26 s, the in-place update of
+decision O1), and where the rest of the time goes has not been
+profiled. Next: the self-hosted checker, then the bytecode emitter with
+its file format or loader, and the performance items as the
+measurements call for them, a profile of the parser's run first.

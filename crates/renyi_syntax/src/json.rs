@@ -1,7 +1,11 @@
-//! The syntax tree as JSON, for tools (`renyi parse --json`). Every node is
-//! an object with a `node` field naming its kind and a `span` with byte
-//! offsets and the line and column where it starts; the other fields mirror
-//! the `ast` module one to one.
+//! The syntax tree as JSON, for tools (`renyi parse --json`). The document
+//! is the derived JSON of the types of `compiler/ast.ry`, the syntax tree of
+//! the front end written in Renyi (decision W1): a record is an object whose
+//! keys are its fields in declaration order, a variant is an object with
+//! `kind` first and its fields after it, a `maybe` without a value is `null`,
+//! and a span counts characters, as Renyi's text indices do. The Renyi front
+//! end prints the same document with `json.render_indented`, so the two can
+//! be compared byte for byte.
 
 use crate::ast::*;
 use crate::diagnostics::json_string;
@@ -79,11 +83,13 @@ fn newline(out: &mut String, depth: usize) {
 
 /// The whole module as a JSON document.
 pub fn module_to_json(file: &SourceFile, module: &Module) -> String {
-    Encoder { file }.module(module).render()
+    Encoder::new(file).module(module).render()
 }
 
 struct Encoder<'a> {
     file: &'a SourceFile,
+    /// The character offset at every byte offset of the text, and at its end.
+    characters: Vec<usize>,
 }
 
 fn string(value: &str) -> Json {
@@ -98,21 +104,39 @@ fn optional(value: Option<Json>) -> Json {
     value.unwrap_or(Json::Null)
 }
 
-impl Encoder<'_> {
-    fn span(&self, span: Span) -> Json {
-        let position = self.file.position(span.start);
-        Json::Object(vec![
-            ("start", Json::Number(span.start)),
-            ("end", Json::Number(span.end)),
-            ("line", Json::Number(position.line)),
-            ("column", Json::Number(position.column)),
-        ])
+fn array<T>(items: &[T], encode: impl Fn(&T) -> Json) -> Json {
+    Json::Array(items.iter().map(encode).collect())
+}
+
+/// A variant of a sum type: `kind` first, then its fields.
+fn variant(kind: &'static str, fields: Vec<(&'static str, Json)>) -> Json {
+    let mut all = vec![("kind", string(kind))];
+    all.extend(fields);
+    Json::Object(all)
+}
+
+impl<'a> Encoder<'a> {
+    fn new(file: &'a SourceFile) -> Self {
+        let text = &file.text;
+        let mut characters = vec![0; text.len() + 1];
+        let mut count = 0;
+        for (offset, c) in text.char_indices() {
+            characters[offset..offset + c.len_utf8()].fill(count);
+            count += 1;
+        }
+        characters[text.len()] = count;
+        Encoder { file, characters }
     }
 
-    fn node(&self, kind: &'static str, span: Span, fields: Vec<(&'static str, Json)>) -> Json {
-        let mut all = vec![("node", string(kind)), ("span", self.span(span))];
-        all.extend(fields);
-        Json::Object(all)
+    fn offset(&self, byte: usize) -> Json {
+        Json::Number(self.characters[byte.min(self.file.text.len())])
+    }
+
+    fn span(&self, span: Span) -> Json {
+        Json::Object(vec![
+            ("start", self.offset(span.start)),
+            ("stop", self.offset(span.end)),
+        ])
     }
 
     fn name(&self, name: &Name) -> Json {
@@ -123,7 +147,7 @@ impl Encoder<'_> {
     }
 
     fn names(&self, names: &[Name]) -> Json {
-        Json::Array(names.iter().map(|name| self.name(name)).collect())
+        array(names, |name| self.name(name))
     }
 
     fn type_name(&self, name: &TypeName) -> Json {
@@ -134,497 +158,408 @@ impl Encoder<'_> {
     }
 
     fn type_names(&self, names: &[TypeName]) -> Json {
-        Json::Array(names.iter().map(|name| self.type_name(name)).collect())
+        array(names, |name| self.type_name(name))
     }
 
+    // ------------------------------------------------------------ module
+
     fn module(&self, module: &Module) -> Json {
-        self.node(
-            "Module",
-            module.span,
-            vec![
-                ("name", self.names(&module.name)),
-                ("docs", self.docs(&module.docs)),
-                (
-                    "imports",
-                    Json::Array(module.imports.iter().map(|i| self.import(i)).collect()),
-                ),
-                (
-                    "items",
-                    Json::Array(module.items.iter().map(|i| self.item(i)).collect()),
-                ),
-                (
-                    "comments",
-                    Json::Array(
-                        module
-                            .comments
-                            .iter()
-                            .map(|span| {
-                                Json::Object(vec![
-                                    ("text", string(self.file.slice(*span).trim_end())),
-                                    ("span", self.span(*span)),
-                                ])
-                            })
-                            .collect(),
-                    ),
-                ),
-            ],
-        )
+        Json::Object(vec![
+            ("name", self.names(&module.name)),
+            ("docs", self.docs(&module.docs)),
+            (
+                "imports",
+                array(&module.imports, |import| self.import(import)),
+            ),
+            ("items", array(&module.items, |item| self.item(item))),
+            (
+                "comments",
+                array(&module.comments, |span| {
+                    Json::Object(vec![
+                        ("text", string(self.file.slice(*span).trim_end())),
+                        ("span", self.span(*span)),
+                    ])
+                }),
+            ),
+            ("span", self.span(module.span)),
+        ])
     }
 
     fn import(&self, import: &Import) -> Json {
-        self.node(
-            "Import",
-            import.span,
-            vec![
-                ("path", self.names(&import.path)),
-                (
-                    "alias",
-                    optional(import.alias.as_ref().map(|a| self.name(a))),
-                ),
-                ("exposing", self.type_names(&import.exposing)),
-            ],
-        )
+        Json::Object(vec![
+            ("path", self.names(&import.path)),
+            (
+                "alias",
+                optional(import.alias.as_ref().map(|alias| self.name(alias))),
+            ),
+            ("exposed", self.type_names(&import.exposing)),
+            ("span", self.span(import.span)),
+        ])
+    }
+
+    fn item(&self, item: &Item) -> Json {
+        let (kind, value) = match item {
+            Item::Function(function) => ("FunctionItem", self.function(function)),
+            Item::Type(def) => ("TypeItem", self.type_def(def)),
+            Item::Ability(ability) => ("AbilityItem", self.ability(ability)),
+            Item::Implementation(implementation) => {
+                ("ImplementationItem", self.implementation(implementation))
+            }
+            Item::Constant(constant) => ("ConstantItem", self.constant(constant)),
+            Item::Test(test) => ("TestItem", self.test(test)),
+        };
+        variant(kind, vec![("value", value)])
     }
 
     fn docs(&self, docs: &Docs) -> Json {
         Json::Object(vec![
-            ("purpose", optional(docs.purpose.as_deref().map(string))),
-            ("tags", strings(&docs.tags)),
+            ("summary", optional(docs.purpose.as_deref().map(string))),
+            ("labels", strings(&docs.tags)),
             ("see_also", strings(&docs.see_also)),
             (
-                "deprecated",
+                "deprecation",
                 optional(docs.deprecated.as_deref().map(string)),
             ),
             ("expose_as_tool", Json::Bool(docs.expose_as_tool)),
             (
                 "examples",
-                Json::Array(docs.examples.iter().map(|e| self.example(e)).collect()),
+                array(&docs.examples, |example| self.example(example)),
             ),
         ])
     }
 
     fn example(&self, example: &Example) -> Json {
         let outcome = match &example.outcome {
-            ExampleOutcome::Is(value) => {
-                Json::Object(vec![("kind", string("is")), ("value", self.expr(value))])
+            ExampleOutcome::Is(value) => variant("IsValue", vec![("value", self.expr(value))]),
+            ExampleOutcome::FailsWith(pattern) => {
+                variant("FailsWith", vec![("pattern", self.pattern(pattern))])
             }
-            ExampleOutcome::FailsWith(pattern) => Json::Object(vec![
-                ("kind", string("fails with")),
-                ("pattern", self.pattern(pattern)),
-            ]),
         };
-        self.node(
-            "Example",
-            example.span,
-            vec![
-                ("expression", self.expr(&example.expression)),
-                ("outcome", outcome),
-            ],
-        )
+        Json::Object(vec![
+            ("expression", self.expr(&example.expression)),
+            ("outcome", outcome),
+            ("span", self.span(example.span)),
+        ])
     }
 
-    fn item(&self, item: &Item) -> Json {
-        match item {
-            Item::Function(function) => self.function(function),
-            Item::Type(def) => self.type_def(def),
-            Item::Ability(ability) => self.ability(ability),
-            Item::Implementation(implementation) => self.implementation(implementation),
-            Item::Constant(constant) => self.constant(constant),
-            Item::Test(test) => self.test(test),
-        }
-    }
+    // ------------------------------------------------------------ items
 
     fn function(&self, function: &Function) -> Json {
-        self.node(
-            "Function",
-            function.span,
-            vec![
-                ("public", Json::Bool(function.public)),
-                ("name", self.name(&function.name)),
-                (
-                    "params",
-                    Json::Array(function.params.iter().map(|p| self.param(p)).collect()),
-                ),
-                (
-                    "returns",
-                    optional(function.returns.as_ref().map(|t| self.ty(t))),
-                ),
-                ("fails", self.types(&function.fails)),
-                ("needs", self.capabilities(&function.needs)),
-                (
-                    "type_params",
-                    optional(function.type_params.as_ref().map(|f| self.for_any(f))),
-                ),
-                ("docs", self.docs(&function.docs)),
-                (
-                    "body",
-                    optional(function.body.as_ref().map(|b| self.block(b))),
-                ),
-            ],
-        )
+        Json::Object(vec![
+            ("is_public", Json::Bool(function.public)),
+            ("name", self.name(&function.name)),
+            ("params", array(&function.params, |param| self.param(param))),
+            (
+                "result",
+                optional(function.returns.as_ref().map(|ty| self.ty(ty))),
+            ),
+            ("failures", self.types(&function.fails)),
+            ("capabilities", self.capabilities(&function.needs)),
+            (
+                "type_params",
+                optional(function.type_params.as_ref().map(|f| self.for_any(f))),
+            ),
+            ("docs", self.docs(&function.docs)),
+            (
+                "body",
+                optional(function.body.as_ref().map(|body| self.block(body))),
+            ),
+            ("span", self.span(function.span)),
+        ])
     }
 
     fn param(&self, param: &Param) -> Json {
-        self.node(
-            "Param",
-            param.span,
-            vec![
-                ("name", self.name(&param.name)),
-                ("type", optional(param.ty.as_ref().map(|t| self.ty(t)))),
-            ],
-        )
+        Json::Object(vec![
+            ("name", self.name(&param.name)),
+            (
+                "annotation",
+                optional(param.ty.as_ref().map(|ty| self.ty(ty))),
+            ),
+            ("span", self.span(param.span)),
+        ])
     }
 
     fn capabilities(&self, capabilities: &[Capability]) -> Json {
-        Json::Array(
-            capabilities
-                .iter()
-                .map(|capability| {
-                    self.node(
-                        "Capability",
-                        capability.span,
-                        vec![
-                            ("path", self.names(&capability.path)),
-                            ("scope", optional(capability.scope.as_deref().map(string))),
-                            (
-                                "budget",
-                                optional(capability.budget.as_ref().map(|budget| {
-                                    Json::Object(vec![
-                                        ("count", string(&budget.count)),
-                                        ("per", string(&budget.per.text)),
-                                    ])
-                                })),
-                            ),
-                            (
-                                "only_to",
-                                Json::Array(
-                                    capability
-                                        .only_to
-                                        .iter()
-                                        .map(|sink| {
-                                            Json::Object(vec![
-                                                ("path", self.names(&sink.path)),
-                                                (
-                                                    "scope",
-                                                    optional(sink.scope.as_deref().map(string)),
-                                                ),
-                                            ])
-                                        })
-                                        .collect(),
-                                ),
-                            ),
-                        ],
-                    )
-                })
-                .collect(),
-        )
+        array(capabilities, |capability| self.capability(capability))
+    }
+
+    fn capability(&self, capability: &Capability) -> Json {
+        Json::Object(vec![
+            ("path", self.names(&capability.path)),
+            ("scope", optional(capability.scope.as_deref().map(string))),
+            (
+                "budget",
+                optional(capability.budget.as_ref().map(|budget| {
+                    Json::Object(vec![
+                        ("limit", string(&budget.count)),
+                        ("unit", self.name(&budget.per)),
+                        ("span", self.span(budget.span)),
+                    ])
+                })),
+            ),
+            (
+                "only_to",
+                array(&capability.only_to, |sink| {
+                    Json::Object(vec![
+                        ("path", self.names(&sink.path)),
+                        ("scope", optional(sink.scope.as_deref().map(string))),
+                        ("span", self.span(sink.span)),
+                    ])
+                }),
+            ),
+            ("span", self.span(capability.span)),
+        ])
     }
 
     fn for_any(&self, for_any: &ForAny) -> Json {
-        self.node(
-            "ForAny",
-            for_any.span,
-            vec![
-                ("params", self.type_names(&for_any.params)),
-                (
-                    "constraints",
-                    Json::Array(
-                        for_any
-                            .constraints
-                            .iter()
-                            .map(|constraint| {
-                                Json::Object(vec![
-                                    ("param", self.type_name(&constraint.param)),
-                                    ("ability", self.ty(&constraint.ability)),
-                                ])
-                            })
-                            .collect(),
-                    ),
-                ),
-            ],
-        )
+        Json::Object(vec![
+            ("params", self.type_names(&for_any.params)),
+            (
+                "constraints",
+                array(&for_any.constraints, |constraint| {
+                    Json::Object(vec![
+                        ("param", self.type_name(&constraint.param)),
+                        ("requirement", self.ty(&constraint.ability)),
+                    ])
+                }),
+            ),
+            ("span", self.span(for_any.span)),
+        ])
     }
 
     fn types(&self, types: &[Type]) -> Json {
-        Json::Array(types.iter().map(|t| self.ty(t)).collect())
+        array(types, |ty| self.ty(ty))
     }
 
     fn ty(&self, ty: &Type) -> Json {
         match ty {
-            Type::Named { name, args, span } => self.node(
+            Type::Named { name, args, span } => variant(
                 "NamedType",
-                *span,
-                vec![("name", self.type_name(name)), ("args", self.types(args))],
+                vec![
+                    ("name", self.type_name(name)),
+                    ("args", self.types(args)),
+                    ("span", self.span(*span)),
+                ],
             ),
-            Type::Maybe(inner, span) => {
-                self.node("MaybeType", *span, vec![("inner", self.ty(inner))])
-            }
+            Type::Maybe(inner, span) => variant(
+                "MaybeType",
+                vec![("inner", self.ty(inner)), ("span", self.span(*span))],
+            ),
             Type::Function {
                 params,
                 returns,
                 fails,
                 needs,
                 span,
-            } => self.node(
+            } => variant(
                 "FunctionType",
-                *span,
                 vec![
                     ("params", self.types(params)),
-                    ("returns", optional(returns.as_ref().map(|t| self.ty(t)))),
-                    ("fails", self.types(fails)),
-                    ("needs", self.capabilities(needs)),
+                    ("result", optional(returns.as_ref().map(|ty| self.ty(ty)))),
+                    ("failures", self.types(fails)),
+                    ("capabilities", self.capabilities(needs)),
+                    ("span", self.span(*span)),
                 ],
             ),
         }
     }
 
     fn type_def(&self, def: &TypeDef) -> Json {
-        let kind = match &def.kind {
-            TypeKind::Record { fields, derives } => Json::Object(vec![
-                ("kind", string("record")),
-                ("fields", self.fields(fields)),
-                ("derives", self.derives(derives)),
-            ]),
-            TypeKind::Sum { variants, derives } => Json::Object(vec![
-                ("kind", string("sum")),
-                (
-                    "variants",
-                    Json::Array(
-                        variants
-                            .iter()
-                            .map(|variant| {
-                                self.node(
-                                    "Variant",
-                                    variant.span,
-                                    vec![
-                                        ("name", self.type_name(&variant.name)),
-                                        ("fields", self.fields(&variant.fields)),
-                                    ],
-                                )
-                            })
-                            .collect(),
+        let definition = match &def.kind {
+            TypeKind::Record { fields, derives } => variant(
+                "RecordDefinition",
+                vec![
+                    ("fields", self.fields(fields)),
+                    ("derives", self.derives(derives)),
+                ],
+            ),
+            TypeKind::Sum { variants, derives } => variant(
+                "SumDefinition",
+                vec![
+                    (
+                        "variants",
+                        array(variants, |variant| {
+                            Json::Object(vec![
+                                ("name", self.type_name(&variant.name)),
+                                ("fields", self.fields(&variant.fields)),
+                                ("span", self.span(variant.span)),
+                            ])
+                        }),
                     ),
-                ),
-                ("derives", self.derives(derives)),
-            ]),
-            TypeKind::Subtype { base, refinement } => Json::Object(vec![
-                ("kind", string("subtype")),
-                ("base", self.ty(base)),
-                (
-                    "refinement",
-                    optional(refinement.as_ref().map(|e| self.expr(e))),
-                ),
-            ]),
+                    ("derives", self.derives(derives)),
+                ],
+            ),
+            TypeKind::Subtype { base, refinement } => variant(
+                "SubtypeDefinition",
+                vec![
+                    ("base", self.ty(base)),
+                    (
+                        "refinement",
+                        optional(refinement.as_ref().map(|expr| self.expr(expr))),
+                    ),
+                ],
+            ),
         };
-        self.node(
-            "Type",
-            def.span,
-            vec![
-                ("public", Json::Bool(def.public)),
-                ("name", self.type_name(&def.name)),
-                ("type_params", self.type_names(&def.type_params)),
-                ("definition", kind),
-                ("docs", self.docs(&def.docs)),
-            ],
-        )
+        Json::Object(vec![
+            ("is_public", Json::Bool(def.public)),
+            ("name", self.type_name(&def.name)),
+            ("type_params", self.type_names(&def.type_params)),
+            ("definition", definition),
+            ("docs", self.docs(&def.docs)),
+            ("span", self.span(def.span)),
+        ])
     }
 
     fn fields(&self, fields: &[Field]) -> Json {
-        Json::Array(
-            fields
-                .iter()
-                .map(|field| {
-                    self.node(
-                        "Field",
-                        field.span,
-                        vec![
-                            ("name", self.name(&field.name)),
-                            ("type", self.ty(&field.ty)),
-                            (
-                                "refinement",
-                                optional(field.refinement.as_ref().map(|e| self.expr(e))),
-                            ),
-                            (
-                                "external_name",
-                                optional(field.external_name.as_deref().map(string)),
-                            ),
-                        ],
-                    )
-                })
-                .collect(),
-        )
+        array(fields, |field| {
+            Json::Object(vec![
+                ("name", self.name(&field.name)),
+                ("annotation", self.ty(&field.ty)),
+                (
+                    "refinement",
+                    optional(field.refinement.as_ref().map(|expr| self.expr(expr))),
+                ),
+                (
+                    "external_name",
+                    optional(field.external_name.as_deref().map(string)),
+                ),
+                ("span", self.span(field.span)),
+            ])
+        })
     }
 
     fn derives(&self, derives: &[Derive]) -> Json {
-        Json::Array(
-            derives
-                .iter()
-                .map(|derive| {
-                    self.node(
-                        "Derive",
-                        derive.span,
-                        vec![
-                            ("ability", self.type_name(&derive.ability)),
-                            ("by", self.names(&derive.by)),
-                        ],
-                    )
-                })
-                .collect(),
-        )
+        array(derives, |derive| {
+            Json::Object(vec![
+                ("ability_name", self.type_name(&derive.ability)),
+                ("fields", self.names(&derive.by)),
+                ("span", self.span(derive.span)),
+            ])
+        })
     }
 
     fn ability(&self, ability: &AbilityDecl) -> Json {
-        self.node(
-            "Ability",
-            ability.span,
-            vec![
-                ("public", Json::Bool(ability.public)),
-                ("name", self.type_name(&ability.name)),
-                ("type_params", self.type_names(&ability.type_params)),
-                ("requirements", self.types(&ability.requirements)),
-                ("docs", self.docs(&ability.docs)),
-                (
-                    "functions",
-                    Json::Array(ability.functions.iter().map(|f| self.function(f)).collect()),
-                ),
-            ],
-        )
+        Json::Object(vec![
+            ("is_public", Json::Bool(ability.public)),
+            ("name", self.type_name(&ability.name)),
+            ("type_params", self.type_names(&ability.type_params)),
+            ("requirements", self.types(&ability.requirements)),
+            ("docs", self.docs(&ability.docs)),
+            ("functions", array(&ability.functions, |f| self.function(f))),
+            ("span", self.span(ability.span)),
+        ])
     }
 
     fn implementation(&self, implementation: &AbilityImpl) -> Json {
-        self.node(
-            "Implementation",
-            implementation.span,
-            vec![
-                ("ability", self.ty(&implementation.ability)),
-                ("target", self.ty(&implementation.target)),
-                (
-                    "type_params",
-                    optional(implementation.type_params.as_ref().map(|f| self.for_any(f))),
-                ),
-                (
-                    "functions",
-                    Json::Array(
-                        implementation
-                            .functions
-                            .iter()
-                            .map(|f| self.function(f))
-                            .collect(),
-                    ),
-                ),
-            ],
-        )
+        Json::Object(vec![
+            ("ability_type", self.ty(&implementation.ability)),
+            ("target", self.ty(&implementation.target)),
+            (
+                "type_params",
+                optional(implementation.type_params.as_ref().map(|f| self.for_any(f))),
+            ),
+            (
+                "functions",
+                array(&implementation.functions, |f| self.function(f)),
+            ),
+            ("span", self.span(implementation.span)),
+        ])
     }
 
     fn constant(&self, constant: &Constant) -> Json {
-        self.node(
-            "Constant",
-            constant.span,
-            vec![
-                ("public", Json::Bool(constant.public)),
-                ("name", self.name(&constant.name)),
-                ("type", self.ty(&constant.ty)),
-                ("value", self.expr(&constant.value)),
-                ("docs", self.docs(&constant.docs)),
-            ],
-        )
+        Json::Object(vec![
+            ("is_public", Json::Bool(constant.public)),
+            ("name", self.name(&constant.name)),
+            ("annotation", self.ty(&constant.ty)),
+            ("value", self.expr(&constant.value)),
+            ("docs", self.docs(&constant.docs)),
+            ("span", self.span(constant.span)),
+        ])
     }
 
     fn test(&self, test: &Test) -> Json {
-        self.node(
-            "Test",
-            test.span,
-            vec![
-                ("name", string(&test.name)),
-                ("needs", self.capabilities(&test.needs)),
-                ("replays", optional(test.replays.as_deref().map(string))),
-                ("body", self.block(&test.body)),
-            ],
-        )
+        Json::Object(vec![
+            ("name", string(&test.name)),
+            ("capabilities", self.capabilities(&test.needs)),
+            ("recording", optional(test.replays.as_deref().map(string))),
+            ("body", self.block(&test.body)),
+            ("span", self.span(test.span)),
+        ])
     }
 
+    // ------------------------------------------------------------ statements
+
     fn block(&self, block: &Block) -> Json {
-        self.node(
-            "Block",
-            block.span,
-            vec![(
+        Json::Object(vec![
+            (
                 "statements",
-                Json::Array(block.statements.iter().map(|s| self.statement(s)).collect()),
-            )],
-        )
+                array(&block.statements, |statement| self.statement(statement)),
+            ),
+            ("span", self.span(block.span)),
+        ])
     }
 
     fn statement(&self, statement: &Stmt) -> Json {
-        let span = statement.span;
+        let span = ("span", self.span(statement.span));
         match &statement.kind {
             StmtKind::Let {
                 mutable,
                 name,
                 ty,
                 value,
-            } => self.node(
+            } => variant(
                 "Let",
-                span,
                 vec![
-                    ("mutable", Json::Bool(*mutable)),
+                    ("is_mutable", Json::Bool(*mutable)),
                     ("name", self.name(name)),
-                    ("type", optional(ty.as_ref().map(|t| self.ty(t)))),
+                    ("annotation", optional(ty.as_ref().map(|ty| self.ty(ty)))),
                     ("value", self.expr(value)),
+                    span,
                 ],
             ),
-            StmtKind::Set { name, value } => self.node(
+            StmtKind::Set { name, value } => variant(
                 "Set",
-                span,
-                vec![("name", self.name(name)), ("value", self.expr(value))],
+                vec![("name", self.name(name)), ("value", self.expr(value)), span],
             ),
             StmtKind::If {
                 branches,
                 otherwise,
-            } => self.node(
+            } => variant(
                 "If",
-                span,
                 vec![
                     (
                         "branches",
-                        Json::Array(
-                            branches
-                                .iter()
-                                .map(|(condition, block)| {
-                                    Json::Object(vec![
-                                        ("condition", self.expr(condition)),
-                                        ("body", self.block(block)),
-                                    ])
-                                })
-                                .collect(),
-                        ),
+                        array(branches, |(condition, body)| {
+                            Json::Object(vec![
+                                ("condition", self.expr(condition)),
+                                ("body", self.block(body)),
+                            ])
+                        }),
                     ),
                     (
-                        "otherwise",
-                        optional(otherwise.as_ref().map(|b| self.block(b))),
+                        "fallback",
+                        optional(otherwise.as_ref().map(|body| self.block(body))),
                     ),
+                    span,
                 ],
             ),
             StmtKind::Match {
                 subject,
                 arms,
                 otherwise,
-            } => self.node(
+            } => variant(
                 "Match",
-                span,
                 vec![
                     ("subject", self.expr(subject)),
                     (
                         "arms",
-                        Json::Array(
-                            arms.iter()
-                                .map(|arm| self.arm(arm, |body| self.block(body)))
-                                .collect(),
-                        ),
+                        array(arms, |arm| self.arm(arm, |body| self.block(body))),
                     ),
                     (
-                        "otherwise",
-                        optional(otherwise.as_ref().map(|b| self.block(b))),
+                        "fallback",
+                        optional(otherwise.as_ref().map(|body| self.block(body))),
                     ),
+                    span,
                 ],
             ),
             StmtKind::ForEach {
@@ -633,389 +568,401 @@ impl Encoder<'_> {
                 filter,
                 order,
                 body,
-            } => self.node(
+            } => variant(
                 "ForEach",
-                span,
                 vec![
                     ("bindings", self.names(bindings)),
                     ("source", self.expr(source)),
-                    ("where", optional(filter.as_ref().map(|e| self.expr(e)))),
                     (
-                        "sorted_by",
-                        optional(order.as_ref().map(|o| self.ordering(o))),
+                        "filter",
+                        optional(filter.as_ref().map(|expr| self.expr(expr))),
+                    ),
+                    (
+                        "order",
+                        optional(order.as_ref().map(|order| self.sort_order(order))),
                     ),
                     ("body", self.block(body)),
+                    span,
                 ],
             ),
-            StmtKind::RepeatUntil { condition, body } => self.node(
+            StmtKind::RepeatUntil { condition, body } => variant(
                 "RepeatUntil",
-                span,
                 vec![
                     ("condition", self.expr(condition)),
                     ("body", self.block(body)),
+                    span,
                 ],
             ),
-            StmtKind::RunConcurrently { within, body } => self.node(
+            StmtKind::RunConcurrently { within, body } => variant(
                 "RunConcurrently",
-                span,
                 vec![
-                    ("within", optional(within.as_ref().map(|e| self.expr(e)))),
+                    (
+                        "deadline",
+                        optional(within.as_ref().map(|expr| self.expr(expr))),
+                    ),
                     ("body", self.block(body)),
+                    span,
                 ],
             ),
-            StmtKind::Return(value) => self.node(
+            StmtKind::Return(value) => variant(
                 "Return",
-                span,
-                vec![("value", optional(value.as_ref().map(|e| self.expr(e))))],
+                vec![
+                    ("value", optional(value.as_ref().map(|e| self.expr(e)))),
+                    span,
+                ],
             ),
-            StmtKind::Fail(value) => self.node(
+            StmtKind::Fail(value) => variant(
                 "Fail",
-                span,
-                vec![("value", optional(value.as_ref().map(|e| self.expr(e))))],
+                vec![
+                    ("value", optional(value.as_ref().map(|e| self.expr(e)))),
+                    span,
+                ],
             ),
             StmtKind::Crash(message) => {
-                self.node("Crash", span, vec![("message", self.expr(message))])
+                variant("Crash", vec![("message", self.expr(message)), span])
             }
-            StmtKind::Break => self.node("Break", span, vec![]),
-            StmtKind::Continue => self.node("Continue", span, vec![]),
-            StmtKind::Ignore(value) => self.node("Ignore", span, vec![("value", self.expr(value))]),
-            StmtKind::Check(value) => self.node("Check", span, vec![("value", self.expr(value))]),
+            StmtKind::Break => variant("Break", vec![span]),
+            StmtKind::Continue => variant("Continue", vec![span]),
+            StmtKind::Ignore(value) => variant("Ignore", vec![("value", self.expr(value)), span]),
+            StmtKind::Check(value) => variant("Check", vec![("value", self.expr(value)), span]),
             StmtKind::Expression(value) => {
-                self.node("Expression", span, vec![("value", self.expr(value))])
+                variant("Expression", vec![("value", self.expr(value)), span])
             }
         }
     }
 
     fn arm<Body>(&self, arm: &MatchArm<Body>, body: impl Fn(&Body) -> Json) -> Json {
-        self.node(
-            "Arm",
-            arm.span,
-            vec![
-                ("pattern", self.pattern(&arm.pattern)),
-                ("where", optional(arm.guard.as_ref().map(|e| self.expr(e)))),
-                ("body", body(&arm.body)),
-            ],
-        )
-    }
-
-    fn ordering(&self, ordering: &Ordering) -> Json {
         Json::Object(vec![
-            ("key", self.expr(&ordering.key)),
-            ("descending", Json::Bool(ordering.descending)),
+            ("pattern", self.pattern(&arm.pattern)),
+            (
+                "guard",
+                optional(arm.guard.as_ref().map(|expr| self.expr(expr))),
+            ),
+            ("body", body(&arm.body)),
+            ("span", self.span(arm.span)),
         ])
     }
 
+    fn sort_order(&self, order: &Ordering) -> Json {
+        Json::Object(vec![
+            ("key", self.expr(&order.key)),
+            ("is_descending", Json::Bool(order.descending)),
+        ])
+    }
+
+    // ------------------------------------------------------------ patterns
+
     fn pattern(&self, pattern: &Pattern) -> Json {
-        let span = pattern.span();
+        let span = ("span", self.span(pattern.span()));
         match pattern {
-            Pattern::Variant { name, fields, .. } => self.node(
+            Pattern::Variant { name, fields, .. } => variant(
                 "VariantPattern",
-                span,
                 vec![
                     ("name", self.type_name(name)),
                     (
                         "fields",
-                        Json::Array(
-                            fields
-                                .iter()
-                                .map(|field| {
-                                    Json::Object(vec![
-                                        ("field", self.name(&field.field)),
-                                        (
-                                            "pattern",
-                                            optional(
-                                                field.pattern.as_ref().map(|p| self.pattern(p)),
-                                            ),
-                                        ),
-                                    ])
-                                })
-                                .collect(),
-                        ),
+                        array(fields, |field| {
+                            Json::Object(vec![
+                                ("field", self.name(&field.field)),
+                                (
+                                    "pattern",
+                                    optional(field.pattern.as_ref().map(|p| self.pattern(p))),
+                                ),
+                            ])
+                        }),
                     ),
+                    span,
                 ],
             ),
             Pattern::Literal(value) => {
-                self.node("LiteralPattern", span, vec![("value", self.expr(value))])
+                variant("LiteralPattern", vec![("value", self.expr(value)), span])
             }
-            Pattern::Nothing(_) => self.node("NothingPattern", span, vec![]),
+            Pattern::Nothing(_) => variant("NothingPattern", vec![span]),
             Pattern::Some(inner, _) => {
-                self.node("SomePattern", span, vec![("inner", self.pattern(inner))])
+                variant("SomePattern", vec![("inner", self.pattern(inner)), span])
             }
             Pattern::Success(inner, _) => {
-                self.node("SuccessPattern", span, vec![("inner", self.pattern(inner))])
+                variant("SuccessPattern", vec![("inner", self.pattern(inner)), span])
             }
             Pattern::Failure(inner, _) => {
-                self.node("FailurePattern", span, vec![("inner", self.pattern(inner))])
+                variant("FailurePattern", vec![("inner", self.pattern(inner)), span])
             }
             Pattern::Binding(name) => {
-                self.node("BindingPattern", span, vec![("name", self.name(name))])
+                variant("BindingPattern", vec![("name", self.name(name)), span])
             }
-            Pattern::Typed { name, ty, .. } => self.node(
+            Pattern::Typed { name, ty, .. } => variant(
                 "TypedPattern",
-                span,
-                vec![("name", self.name(name)), ("type", self.ty(ty))],
+                vec![("name", self.name(name)), ("annotation", self.ty(ty)), span],
             ),
         }
     }
 
+    // ------------------------------------------------------------ expressions
+
     fn outcome(&self, outcome: &Outcome) -> Json {
-        let span = outcome.span();
+        let span = ("span", self.span(outcome.span()));
         match outcome {
-            Outcome::Value(value) => self.node("Value", span, vec![("value", self.expr(value))]),
-            Outcome::Fail(value, _) => self.node(
-                "Fail",
-                span,
-                vec![("value", optional(value.as_ref().map(|e| self.expr(e))))],
+            Outcome::Value(value) => {
+                variant("ValueOutcome", vec![("value", self.expr(value)), span])
+            }
+            Outcome::Fail(value, _) => variant(
+                "FailOutcome",
+                vec![
+                    ("value", optional(value.as_ref().map(|e| self.expr(e)))),
+                    span,
+                ],
             ),
-            Outcome::Return(value, _) => self.node(
-                "Return",
-                span,
-                vec![("value", optional(value.as_ref().map(|e| self.expr(e))))],
+            Outcome::Return(value, _) => variant(
+                "ReturnOutcome",
+                vec![
+                    ("value", optional(value.as_ref().map(|e| self.expr(e)))),
+                    span,
+                ],
             ),
             Outcome::Crash(message, _) => {
-                self.node("Crash", span, vec![("message", self.expr(message))])
+                variant("CrashOutcome", vec![("message", self.expr(message)), span])
             }
-            Outcome::Break(_) => self.node("Break", span, vec![]),
-            Outcome::Continue(_) => self.node("Continue", span, vec![]),
+            Outcome::Break(_) => variant("BreakOutcome", vec![span]),
+            Outcome::Continue(_) => variant("ContinueOutcome", vec![span]),
         }
     }
 
     fn args(&self, args: &[Arg]) -> Json {
-        Json::Array(
-            args.iter()
-                .map(|arg| {
-                    self.node(
-                        "Arg",
-                        arg.span,
-                        vec![
-                            ("name", optional(arg.name.as_ref().map(|n| self.name(n)))),
-                            ("value", self.expr(&arg.value)),
-                        ],
-                    )
-                })
-                .collect(),
-        )
+        array(args, |arg| {
+            Json::Object(vec![
+                (
+                    "name",
+                    optional(arg.name.as_ref().map(|name| self.name(name))),
+                ),
+                ("value", self.expr(&arg.value)),
+                ("span", self.span(arg.span)),
+            ])
+        })
+    }
+
+    fn exprs(&self, exprs: &[Expr]) -> Json {
+        array(exprs, |expr| self.expr(expr))
     }
 
     fn expr(&self, expr: &Expr) -> Json {
-        let span = expr.span;
+        let span = ("span", self.span(expr.span));
         match &expr.kind {
             ExprKind::Integer(digits) => {
-                self.node("Integer", span, vec![("value", string(digits))])
+                variant("IntegerLiteral", vec![("text", string(digits)), span])
             }
             ExprKind::Decimal(digits) => {
-                self.node("Decimal", span, vec![("value", string(digits))])
+                variant("DecimalLiteral", vec![("text", string(digits)), span])
             }
-            ExprKind::Text { pieces, block } => self.node(
-                "Text",
-                span,
+            ExprKind::Text { pieces, block } => variant(
+                "TextLiteral",
                 vec![
-                    ("block", Json::Bool(*block)),
                     (
                         "pieces",
-                        Json::Array(
-                            pieces
-                                .iter()
-                                .map(|piece| match piece {
-                                    TextPiece::Text(value) => Json::Object(vec![
-                                        ("kind", string("text")),
-                                        ("value", string(value)),
-                                    ]),
-                                    TextPiece::Hole(hole) => Json::Object(vec![
-                                        ("kind", string("hole")),
-                                        ("value", self.expr(hole)),
-                                    ]),
-                                })
-                                .collect(),
-                        ),
+                        array(pieces, |piece| match piece {
+                            TextPiece::Text(text) => {
+                                variant("Literal", vec![("text", string(text))])
+                            }
+                            TextPiece::Hole(hole) => {
+                                variant("Hole", vec![("expression", self.expr(hole))])
+                            }
+                        }),
                     ),
+                    ("block", Json::Bool(*block)),
+                    span,
                 ],
             ),
-            ExprKind::RawText(value) => self.node("RawText", span, vec![("value", string(value))]),
+            ExprKind::RawText(text) => {
+                variant("RawTextLiteral", vec![("text", string(text)), span])
+            }
             ExprKind::Boolean(value) => {
-                self.node("Boolean", span, vec![("value", Json::Bool(*value))])
+                variant("BooleanLiteral", vec![("value", Json::Bool(*value)), span])
             }
-            ExprKind::Nothing => self.node("Nothing", span, vec![]),
-            ExprKind::SelfValue => self.node("Self", span, vec![]),
-            ExprKind::Name(name) => self.node("Name", span, vec![("name", self.name(name))]),
+            ExprKind::Nothing => variant("NothingLiteral", vec![span]),
+            ExprKind::SelfValue => variant("SelfValue", vec![span]),
+            ExprKind::Name(name) => variant("NameExpr", vec![("name", self.name(name)), span]),
             ExprKind::TypeName(name) => {
-                self.node("TypeName", span, vec![("name", self.type_name(name))])
+                variant("TypeNameExpr", vec![("name", self.type_name(name)), span])
             }
-            ExprKind::Member { base, name } => self.node(
+            ExprKind::Member { base, name } => variant(
                 "Member",
-                span,
-                vec![("base", self.expr(base)), ("name", self.name(name))],
+                vec![("base", self.expr(base)), ("name", self.name(name)), span],
             ),
-            ExprKind::Call { callee, args } => self.node(
+            ExprKind::Call { callee, args } => variant(
                 "Call",
-                span,
-                vec![("callee", self.expr(callee)), ("args", self.args(args))],
-            ),
-            ExprKind::Construct { name, args } => self.node(
-                "Construct",
-                span,
-                vec![("name", self.type_name(name)), ("args", self.args(args))],
-            ),
-            ExprKind::List(items) => self.node(
-                "List",
-                span,
-                vec![(
-                    "items",
-                    Json::Array(items.iter().map(|item| self.expr(item)).collect()),
-                )],
-            ),
-            ExprKind::Map(entries) => self.node(
-                "Map",
-                span,
-                vec![(
-                    "entries",
-                    Json::Array(
-                        entries
-                            .iter()
-                            .map(|(key, value)| {
-                                Json::Object(vec![
-                                    ("key", self.expr(key)),
-                                    ("value", self.expr(value)),
-                                ])
-                            })
-                            .collect(),
-                    ),
-                )],
-            ),
-            ExprKind::Range { from, to, by } => self.node(
-                "Range",
-                span,
                 vec![
-                    ("from", self.expr(from)),
-                    ("to", self.expr(to)),
-                    ("by", optional(by.as_ref().map(|e| self.expr(e)))),
+                    ("callee", self.expr(callee)),
+                    ("args", self.args(args)),
+                    span,
                 ],
             ),
-            ExprKind::Not(inner) => self.node("Not", span, vec![("value", self.expr(inner))]),
-            ExprKind::Binary { op, left, right } => self.node(
-                "Binary",
-                span,
+            ExprKind::Construct { name, args } => variant(
+                "Construct",
                 vec![
-                    ("op", string(op.spelling())),
+                    ("name", self.type_name(name)),
+                    ("args", self.args(args)),
+                    span,
+                ],
+            ),
+            ExprKind::List(items) => {
+                variant("ListLiteral", vec![("items", self.exprs(items)), span])
+            }
+            ExprKind::Map(entries) => variant(
+                "MapLiteral",
+                vec![
+                    (
+                        "entries",
+                        array(entries, |(key, value)| {
+                            Json::Object(vec![("key", self.expr(key)), ("value", self.expr(value))])
+                        }),
+                    ),
+                    span,
+                ],
+            ),
+            ExprKind::Range { from, to, by } => variant(
+                "RangeLiteral",
+                vec![
+                    ("lower", self.expr(from)),
+                    ("upper", self.expr(to)),
+                    ("step", optional(by.as_ref().map(|e| self.expr(e)))),
+                    span,
+                ],
+            ),
+            ExprKind::Not(inner) => variant("Not", vec![("value", self.expr(inner)), span]),
+            ExprKind::Binary { op, left, right } => variant(
+                "Binary",
+                vec![
+                    ("operator", variant(operator_name(*op), Vec::new())),
                     ("left", self.expr(left)),
                     ("right", self.expr(right)),
+                    span,
                 ],
             ),
-            ExprKind::With { base, updates } => self.node(
+            ExprKind::With { base, updates } => variant(
                 "With",
-                span,
-                vec![("base", self.expr(base)), ("updates", self.args(updates))],
+                vec![
+                    ("base", self.expr(base)),
+                    ("updates", self.args(updates)),
+                    span,
+                ],
             ),
-            ExprKind::Otherwise { value, fallback } => self.node(
+            ExprKind::Otherwise { value, fallback } => variant(
                 "Otherwise",
-                span,
                 vec![
                     ("value", self.expr(value)),
                     ("fallback", self.outcome(fallback)),
+                    span,
                 ],
             ),
             ExprKind::If {
                 branches,
                 otherwise,
-            } => self.node(
+            } => variant(
                 "IfExpr",
-                span,
                 vec![
                     (
                         "branches",
-                        Json::Array(
-                            branches
-                                .iter()
-                                .map(|(condition, outcome)| {
-                                    Json::Object(vec![
-                                        ("condition", self.expr(condition)),
-                                        ("outcome", self.outcome(outcome)),
-                                    ])
-                                })
-                                .collect(),
-                        ),
+                        array(branches, |(condition, outcome)| {
+                            Json::Object(vec![
+                                ("condition", self.expr(condition)),
+                                ("outcome", self.outcome(outcome)),
+                            ])
+                        }),
                     ),
-                    ("otherwise", self.outcome(otherwise)),
+                    ("fallback", self.outcome(otherwise)),
+                    span,
                 ],
             ),
             ExprKind::Match {
                 subject,
                 arms,
                 otherwise,
-            } => self.node(
+            } => variant(
                 "MatchExpr",
-                span,
                 vec![
                     ("subject", self.expr(subject)),
                     (
                         "arms",
-                        Json::Array(
-                            arms.iter()
-                                .map(|arm| self.arm(arm, |outcome| self.outcome(outcome)))
-                                .collect(),
-                        ),
+                        array(arms, |arm| self.arm(arm, |outcome| self.outcome(outcome))),
                     ),
                     (
-                        "otherwise",
-                        optional(otherwise.as_ref().map(|o| self.outcome(o))),
+                        "fallback",
+                        optional(otherwise.as_ref().map(|outcome| self.outcome(outcome))),
                     ),
+                    span,
                 ],
             ),
-            ExprKind::Query(query) => self.query(query),
-            ExprKind::Paren(inner) => self.node("Paren", span, vec![("value", self.expr(inner))]),
+            ExprKind::Query(query) => self.query(query, span),
+            ExprKind::Paren(inner) => variant("Paren", vec![("value", self.expr(inner)), span]),
         }
     }
 
-    fn query(&self, query: &Query) -> Json {
-        let (terminal, argument) = match &query.terminal {
-            QueryTerminal::Collect(value) => ("collect", Some(self.expr(value))),
-            QueryTerminal::Sum(value) => ("sum", Some(self.expr(value))),
-            QueryTerminal::Count => ("count", None),
-            QueryTerminal::First => ("first", None),
-            QueryTerminal::Any(value) => ("any", Some(self.expr(value))),
-            QueryTerminal::All(value) => ("all", Some(self.expr(value))),
-            QueryTerminal::None => ("none", None),
+    fn query(&self, query: &Query, span: (&'static str, Json)) -> Json {
+        let terminal = match &query.terminal {
+            QueryTerminal::Collect(value) => variant("Collect", vec![("value", self.expr(value))]),
+            QueryTerminal::Sum(value) => variant("Sum", vec![("value", self.expr(value))]),
+            QueryTerminal::Count => variant("Count", Vec::new()),
+            QueryTerminal::First => variant("First", Vec::new()),
+            QueryTerminal::Any(condition) => {
+                variant("Any", vec![("condition", self.expr(condition))])
+            }
+            QueryTerminal::All(condition) => {
+                variant("All", vec![("condition", self.expr(condition))])
+            }
+            QueryTerminal::None => variant("GroupOnly", Vec::new()),
         };
-        self.node(
-            "Query",
-            query.span,
+        variant(
+            "QueryExpr",
             vec![
                 (
                     "sources",
-                    Json::Array(
-                        query
-                            .sources
-                            .iter()
-                            .map(|source| {
-                                Json::Object(vec![
-                                    ("bindings", self.names(&source.bindings)),
-                                    ("source", self.expr(&source.source)),
-                                ])
-                            })
-                            .collect(),
-                    ),
+                    array(&query.sources, |source| {
+                        Json::Object(vec![
+                            ("bindings", self.names(&source.bindings)),
+                            ("source", self.expr(&source.source)),
+                        ])
+                    }),
                 ),
-                ("concurrently", Json::Bool(query.concurrently)),
+                ("is_concurrent", Json::Bool(query.concurrently)),
                 (
-                    "within",
+                    "deadline",
                     optional(query.within.as_ref().map(|e| self.expr(e))),
                 ),
                 (
-                    "where",
+                    "filter",
                     optional(query.filter.as_ref().map(|e| self.expr(e))),
                 ),
                 (
-                    "sorted_by",
-                    optional(query.order.as_ref().map(|o| self.ordering(o))),
+                    "order",
+                    optional(query.order.as_ref().map(|o| self.sort_order(o))),
                 ),
                 (
                     "group_by",
                     optional(query.group_by.as_ref().map(|e| self.expr(e))),
                 ),
-                ("terminal", string(terminal)),
-                ("argument", optional(argument)),
+                ("terminal", terminal),
+                span,
             ],
         )
+    }
+}
+
+/// The variant of `compiler/ast.ry`'s `BinaryOp` for an operator.
+fn operator_name(op: BinaryOp) -> &'static str {
+    match op {
+        BinaryOp::Add => "Add",
+        BinaryOp::Subtract => "Subtract",
+        BinaryOp::Multiply => "Multiply",
+        BinaryOp::Divide => "Divide",
+        BinaryOp::Remainder => "Remainder",
+        BinaryOp::Power => "Power",
+        BinaryOp::Is => "Is",
+        BinaryOp::IsNot => "IsNot",
+        BinaryOp::IsLessThan => "IsLessThan",
+        BinaryOp::IsAtMost => "IsAtMost",
+        BinaryOp::IsGreaterThan => "IsGreaterThan",
+        BinaryOp::IsAtLeast => "IsAtLeast",
+        BinaryOp::And => "And",
+        BinaryOp::Or => "Or",
     }
 }
 
@@ -1118,11 +1065,12 @@ mod tests {
         assert!(parsed.diagnostics.is_empty());
         let json = module_to_json(&file, &parsed.module);
         validate(&json);
-        assert!(json.contains("\"node\": \"Module\""));
-        assert!(json.contains("\"node\": \"Function\""));
-        assert!(json.contains("\"node\": \"IfExpr\""));
-        assert!(json.contains("\"op\": \"*\""));
-        assert!(json.contains("\"purpose\": \"Twice the value.\""));
+        assert!(json.starts_with("{\n  \"name\": [\n    {\n      \"text\": \"demo\""));
+        assert!(json.contains("\"kind\": \"FunctionItem\""));
+        assert!(json.contains("\"kind\": \"IfExpr\""));
+        assert!(json.contains("\"kind\": \"Multiply\""));
+        assert!(json.contains("\"summary\": \"Twice the value.\""));
+        assert!(json.contains("\"kind\": \"IsValue\""));
     }
 
     #[test]
@@ -1135,5 +1083,22 @@ mod tests {
         let json = module_to_json(&file, &parsed.module);
         validate(&json);
         assert!(json.contains("say \\\"hi\\\"\\n"));
+    }
+
+    #[test]
+    fn spans_count_characters() {
+        // `é` is two bytes and one character: the names after it shift by one
+        let source = "module demo\n\nfunction greet() returns Text\n  return \"é\"\nend\n\nfunction other()\n  return\nend\n";
+        let file = SourceFile::new("demo.ry", source);
+        let parsed = parse(&file.text);
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let json = module_to_json(&file, &parsed.module);
+        let byte_offset = source.find("other").expect("the second function");
+        let character_offset = source[..byte_offset].chars().count();
+        assert_eq!(byte_offset, character_offset + 1);
+        let expected = format!(
+            "\"text\": \"other\",\n          \"span\": {{\n            \"start\": {character_offset},"
+        );
+        assert!(json.contains(&expected), "{json}");
     }
 }

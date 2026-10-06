@@ -20,7 +20,7 @@ use std::process::ExitCode;
 use renyi_check::effects::Capability;
 use renyi_syntax::diagnostics::{render_json, render_text};
 use renyi_syntax::layout::check_layout;
-use renyi_syntax::{format, lex, module_to_json, parse, SourceFile, TokenKind};
+use renyi_syntax::{format, lex, module_to_json, parse, parse_declarations, SourceFile, TokenKind};
 use renyi_vm::grant::{parse_capability, Unit};
 use renyi_vm::Manifest;
 
@@ -30,7 +30,9 @@ const USAGE: &str = "usage:
                                       to a deprecated definition is an error)
   renyi format [--check] <file.ry>... rewrite files in canonical layout (--check: report only)
   renyi tokens <file.ry>              dump the token stream
-  renyi parse [--json] <file.ry>      dump the syntax tree (--json: for tools)
+  renyi parse [--json] [--declarations] <file.ry>
+                                      dump the syntax tree (--json: for tools; --declarations: a
+                                      library declaration file, whose functions have no bodies)
   renyi index [--json] [path]         the project map of a directory or a file with its imports
   renyi index --budgets [path]        every value of the map over its budget (exit 0 either way)
   renyi index --diff <base> [--json] [path]
@@ -213,6 +215,8 @@ fn tokens(args: &[String]) -> ExitCode {
 
 fn parse_command(args: &[String]) -> ExitCode {
     let json = args.iter().any(|arg| arg == "--json");
+    // a library declaration file: functions have no bodies (`library/std/`)
+    let declarations = args.iter().any(|arg| arg == "--declarations");
     let Some(path) = args.iter().find(|arg| !arg.starts_with("--")) else {
         eprintln!("{USAGE}");
         return ExitCode::FAILURE;
@@ -221,7 +225,11 @@ fn parse_command(args: &[String]) -> ExitCode {
         Ok(file) => file,
         Err(code) => return code,
     };
-    let parsed = parse(&file.text);
+    let parsed = if declarations {
+        parse_declarations(&file.text)
+    } else {
+        parse(&file.text)
+    };
     let stdout = std::io::stdout();
     let mut out = stdout.lock();
     if json {

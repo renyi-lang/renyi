@@ -367,21 +367,28 @@ impl Formatter<'_> {
         concat(parts)
     }
 
+    /// An import on one line; an `exposing` list wider than the line breaks
+    /// after its commas, one name per line indented once, since a line break
+    /// after a comma carries no meaning (decision V12, as `needs_doc`).
     fn import(&self, import: &Import) -> Doc {
         let path: Vec<&str> = import.path.iter().map(|name| name.text.as_str()).collect();
-        let mut line = format!("import {}", path.join("."));
+        let mut head = format!("import {}", path.join("."));
         if let Some(alias) = &import.alias {
-            line.push_str(&format!(" as {}", alias.text));
+            head.push_str(&format!(" as {}", alias.text));
         }
-        if !import.exposing.is_empty() {
-            let names: Vec<&str> = import
-                .exposing
-                .iter()
-                .map(|name| name.text.as_str())
-                .collect();
-            line.push_str(&format!(" exposing {}", names.join(", ")));
+        if import.exposing.is_empty() {
+            return text(head);
         }
-        text(line)
+        let names: Vec<Doc> = import
+            .exposing
+            .iter()
+            .map(|name| text(name.text.clone()))
+            .collect();
+        group(concat(vec![
+            text(head),
+            text(" exposing "),
+            nest(join(names, concat(vec![text(","), Doc::Line]))),
+        ]))
     }
 
     /// Documentation clauses, each on its own line; prose is never wrapped,
@@ -1806,6 +1813,18 @@ mod tests {
         let out = formatted("module demo\n\npublic function main()\n  needs console,\n    time\n  purpose: Two.\n\n  console.print(\"hi\")\nend\n");
         assert!(
             out.contains("public function main() needs console, time\n"),
+            "{out}"
+        );
+    }
+
+    #[test]
+    fn a_wide_exposing_list_breaks_after_its_commas() {
+        // wider than the line: one name per line, indented once
+        stays("module demo\n\nimport ast exposing Span,\n  Name,\n  TypeName,\n  Module,\n  Comment,\n  Import,\n  Item,\n  Docs,\n  Example,\n  ExampleOutcome,\n  Function,\n  Param,\n  Capability\n");
+        // a line break after a comma carries no meaning: the source joins
+        let out = formatted("module demo\n\nimport shapes exposing Shape,\n  Wrapper\n");
+        assert!(
+            out.contains("import shapes exposing Shape, Wrapper\n"),
             "{out}"
         );
     }

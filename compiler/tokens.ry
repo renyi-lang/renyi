@@ -1,0 +1,84 @@
+module tokens
+  purpose: Print the tokens of a file as `renyi tokens` does, so the two lexers can be compared.
+
+import std.console
+import std.environment
+import std.filesystem exposing Path
+import lexer exposing Token, TokenKind, LexError
+
+public function main() needs console, environment, filesystem
+  purpose: Lex the file named by the first argument and print one line per token.
+
+  let arguments be environment.arguments()
+  let path be arguments.first() otherwise crash with "usage: renyi run compiler/tokens.ry <file>"
+  let source be filesystem.read_text(Path(path)) otherwise crash with "cannot read {path}"
+  match lexer.lex(source)
+    when success(tokens) then print_all(tokens: tokens, source: source)
+    when failure(error: LexError) then console.print("error: {error.to_text()}")
+  end
+end
+
+function print_all(tokens: List of Token, source: Text) needs console
+  let starts be line_starts(source)
+  let mutable line be 0
+  for each token in tokens
+    repeat until line + 1 is at least starts.length()
+      or (starts.at(line + 1) otherwise 0) is greater than token.span.start
+      set line to line + 1
+    end
+    let column be token.span.start - (starts.at(line) otherwise 0) + 1
+    let line_text be (line + 1).to_text().pad_left(4)
+    let column_text be column.to_text().pad_right(3)
+    let kind be kind_name(token.kind).pad_right(22)
+    console.print("{line_text}:{column_text} {kind} {shown(token)}")
+  end
+end
+
+function line_starts(source: Text) returns List of Integer
+  let mutable starts be [0]
+  let mutable index be 0
+  for each ch in source.characters()
+    set index to index + 1
+    if ch is "\n" then set starts to starts.append(index) end
+  end
+  return starts
+end
+
+function kind_name(kind: TokenKind) returns Text
+  match kind
+    when Word(spelling) then return "word({spelling})"
+    when Identifier then return "identifier"
+    when TypeIdentifier then return "type-name"
+    when MemberName then return "member"
+    when IntegerToken then return "integer"
+    when DecimalToken then return "decimal"
+    when TextToken(is_block) then return if is_block then "block-text" otherwise "text" end
+    when RawToken then return "raw-text"
+    when ClauseToken then return "clause-text"
+    when CommentToken then return "comment"
+    when LineBreak then return "newline"
+    when Symbol(text) then return text
+    when EndOfFile then return "eof"
+  end
+end
+
+function shown(token: Token) returns Text
+  match token.kind
+    when LineBreak then return ""
+    when TextToken then return quoted(token.text)
+    when RawToken then return quoted(token.text)
+    when ClauseToken then return quoted(token.text)
+    when CommentToken then return quoted(token.text)
+    otherwise return token.text
+  end
+end
+
+function quoted(text: Text) returns Text
+  purpose: The text as Rust's debug formatting prints it.
+
+  let backslashes be text.replace(old: "\\", new: "\\\\")
+  let quotes be backslashes.replace(old: "\"", new: "\\\"")
+  let breaks be quotes.replace(old: "\n", new: "\\n")
+  let escaped be breaks.replace(old: "\t", new: "\\t")
+  return "\"{escaped}\""
+end

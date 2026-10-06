@@ -230,7 +230,7 @@ fn every_corpus_program_encodes_as_json() {
         let parsed = renyi_syntax::parse(&file.text);
         let json = renyi_syntax::module_to_json(&file, &parsed.module);
         assert!(
-            json.starts_with("{\n  \"node\": \"Module\""),
+            json.starts_with("{\n  \"name\": [\n    {\n      \"text\": \""),
             "{}",
             path.display()
         );
@@ -241,7 +241,7 @@ fn every_corpus_program_encodes_as_json() {
             path.display()
         );
         assert!(
-            json.contains("\"node\": \"Function\""),
+            json.contains("\"kind\": \"FunctionItem\""),
             "{}: no function in the JSON",
             path.display()
         );
