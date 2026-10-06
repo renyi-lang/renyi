@@ -271,13 +271,24 @@ public type TimedOut
   purpose: A `within` deadline expired before every task finished.
   has after: Duration
 end
+
+public type Guarded
+  purpose: A value that entered through a guarded capability (`only to`) was sent toward a sink the guard does not list.
+  has origin: Text
+  has sink: Text
+end
 ```
 
 Error types are records; a record is matched like a single variant
 (`when InvalidNumber(input) then`, decision K6). Every error type of the
 library derives `ToText`, so `error.to_text()` always works in a `failure`
 arm; a program's own error types say `can ToText` when they need it
-(decision N3).
+(decision N3). `Guarded` is the failure of any fallible primitive that
+would send a guarded value past its sinks (decision P3,
+`06-runtime-guarantees.md` section 3); `origin` spells the guarded
+capability and `sink` the capability of the refused call. A primitive that
+cannot fail, such as `console.print`, crashes with the same message
+instead.
 
 ---
 

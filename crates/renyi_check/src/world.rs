@@ -172,6 +172,8 @@ pub struct Builtins {
     pub ordering: TypeId,
     pub timed_out: TypeId,
     pub constraint_violation: TypeId,
+    /// The error of a value sent past its guard (decision P3).
+    pub guarded: TypeId,
     pub equal: AbilityId,
     pub compare: AbilityId,
     pub hash: AbilityId,
@@ -348,6 +350,7 @@ impl World {
             ordering: get("Ordering"),
             timed_out: get("TimedOut"),
             constraint_violation: get("ConstraintViolation"),
+            guarded: get("Guarded"),
             equal: get_ability("Equal"),
             compare: get_ability("Compare"),
             hash: get_ability("Hash"),

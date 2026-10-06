@@ -1,20 +1,21 @@
 # Renyi Runtime Guarantees: Recorded Runs, Budgets and Provenance Guards
 
 Status: design accepted (decisions P1 to P4); syntax in the grammar. The
-VM (`crates/renyi_vm`) implements sections 1 and 2: `renyi record` (the
+VM (`crates/renyi_vm`) implements sections 1, 2 and 3: `renyi record` (the
 run manifest of decision Q2 in its header), `renyi run --replay`, `renyi
 reproduce`, `--explain`, `replays` tests with `renyi test --strict` and
-`--refresh`, budgets with `--at-most`, and the scope check of
+`--refresh`, budgets with `--at-most`, the scope check of
 section 11 of the syntax sketch against the grant stack of decision Q1
-(each function's `needs` narrow the grant inside it), all at one primitive
-boundary (`Vm::call_native`, section 4). Each recorded call also carries
-`at_ms`, its time since the run began, which a replay's budget check uses.
-The HTTP client, the server and SQLite exist (decision S1); every corpus
-program that reaches the network or SQLite carries a `replays` test with
-its recording under `examples/fixtures/` (`pagination` and `assistant`
-hand-written, the latter with a redacted header, decision S3). Guards
-(section 3) are M4. Date: 2026-10-06. Companion to `02-syntax-sketch.md`
-sections 11 and 14.
+(each function's `needs` narrow the grant inside it), and the provenance
+guards of `only to` (origins on values, the check at every outgoing call),
+all at one primitive boundary (`Vm::call_native`, section 4). Each
+recorded call also carries `at_ms`, its time since the run began, which a
+replay's budget check uses. The HTTP client, the server and SQLite exist
+(decision S1); every corpus program that reaches the network or SQLite
+carries a `replays` test with its recording under `examples/fixtures/`
+(`pagination` and `assistant` hand-written, the latter with a redacted
+header, decision S3). Guards were brought forward from M4 by decision V6.
+Date: 2026-10-06. Companion to `02-syntax-sketch.md` sections 11 and 14.
 
 The three capabilities in this document are the ones the owner chose as the
 language's signature: each is new as a language feature, each is practical
@@ -246,37 +247,64 @@ primitive, whatever the program's logic was made to do.
 ### 3.2 Implementation
 
 Origins are tracked at run time, not in the type system. A program has few
-guarded capabilities, so an origin set is a small bit set stored with each
-heap value (scalars that are results of guarded primitives are boxed with
-their set; literals and pure computations over unguarded data carry none).
-Propagation rules:
+guarded capabilities, so an origin set is a small bit set: the guards of a
+run are the capabilities of the declared grant (`main`'s `needs`, or the
+test's) that carry `only to`, in declaration order, and the position of a
+guard is its bit (`grant::guards`; a grant with more than 64 guards is
+refused when the run begins, R6-5). A value with origins is wrapped
+(`Value::Guarded(origins, value)`); the wrapper is always outermost, so a
+container holds plain items and carries the union of their origins, and a
+primitive sees plain values. Nothing, a Boolean, a function and a native
+value never carry origins (a Boolean is a decision, see 3.4); a `Failure`
+stays outermost and its error carries them. Propagation rules, all in
+`Vm::call_native` and `Vm::step`:
 
-- a primitive call under a guarded capability tags its result with the
-  capability's origin;
-- every operation tags its result with the union of its operands' origins
-  (this includes `ToText`, interpolation, JSON rendering and decoding, and
-  collections: a list carries the union of its items' origins as items are
-  added);
+- a primitive call under a guarded capability tags its result with the bit
+  of every guard whose capability covers the call's effect, together with
+  the origins of its arguments; a pure primitive's result carries its
+  arguments' origins;
+- every VM operation strips its operands and tags its result with the
+  union of their origins: list, map, pair and range construction, records
+  and variants, field access and `with`, arithmetic, `ToText` and
+  interpolation, collecting, grouping and sorting in queries, the items of
+  a loop and the parts of an unpacking; a derived ability (`to_text`,
+  `compare`, `hash`) likewise;
+- a function a primitive calls back (`server.serve`'s handler) receives
+  the primitive's arguments' origins on its own arguments, and what it
+  returns joins the primitive's result;
 - a `match` or `if` on a guarded value does not tag the branch taken (no
   implicit flows are tracked; see 3.4);
-- an outgoing primitive computes the union of the origins of every
-  argument and checks it against its own capability.
+- an outgoing call is every primitive call under a capability: before the
+  budget and the call itself, the boundary takes the union of the
+  arguments' origins, and every guard set in it must have a sink that
+  covers the call's effect (`Guard::admits`). Otherwise the call does not
+  happen: a primitive that can fail fails with the prelude's
+  `Guarded(origin, sink)`, where `origin` spells the guarded capability and
+  `sink` the refused effect; one that cannot fail (`console.print`) crashes
+  with a message that names the primitive, the origin, the sink and what
+  the guard allows. A `crash with` message, the failure `main` or a test
+  ends with, and an unhandled failure's message leave through the console
+  the same way and are checked against `console`; a server handler's
+  response is checked against `network.socket` and, when refused, answered
+  with status 500 and the guard's message, which names no data.
 
-The cost is one set-union per heap allocation and one check per outgoing
-primitive, both constant time for sets of at most 64 origins (R6-5 raises
-the limit if a program ever needs more guards).
+The cost is one union per operation and one check per outgoing call, both
+constant time for sets of at most 64 origins (R6-5 raises the limit if a
+program ever needs more guards).
 
-Recordings (section 1) store origins with each recorded value, so a replay
-enforces the same guards.
+A recording (section 1) stores plain values, as before, and spells each
+guard with its sinks in its `grant` header. A replay derives the origins
+from the grant again, exactly as the live run did, so it enforces the same
+guards (`crates/renyi_vm/tests/guards.rs`).
 
 ### 3.3 Checker
 
 The checker verifies that every sink after `only to` is a known capability
 and that the clause sits on `main` or a test (`grant-clause`), and warns
-when a guarded capability has no sink that the grant itself allows (the
-data could never leave, which is sometimes intended and often a mistake).
-A future static pass can prove some flows safe and skip the runtime check;
-the runtime check is the guarantee.
+when a guarded capability has no sink that the grant itself allows
+(`guard-no-sink`: the data could never leave, which is sometimes intended
+and often a mistake). A future static pass can prove some flows safe and
+skip the runtime check; the runtime check is the guarantee.
 
 ### 3.4 Limits, stated
 
@@ -287,6 +315,14 @@ that prompt injection aims at, not a determined covert channel; the budget
 of section 2 bounds the covert channel's rate. The document says so, so that
 no one reads more into a guard than it gives.
 
+Two further limits of the implementation: `Guarded` is not in any
+primitive's `or fails with` list, so a `match` over a primitive's failure
+with one arm per declared variant has no arm for it and crashes with "no
+arm of the match fits the value", while `otherwise` handles it like any
+failure (R6-8); and a narrated run (`--explain`) shows guarded values on
+standard error like any value, since narration is a debugging aid the
+operator turns on.
+
 ### 3.5 Open items
 
 - R6-5: more than 64 guarded origins (a wider set, or a dictionary).
@@ -295,6 +331,9 @@ no one reads more into a guard than it gives.
   a default would make the usual program safe without a clause).
 - R6-7: a library function that deliberately declassifies (`guard.release(
   value)`), needing its own capability so that it shows in the grant.
+- R6-8: whether the checker lists `Guarded` among the failures of every
+  fallible primitive call made under a guarded grant, so that a `match`
+  over the failure is exhaustive.
 
 ---
 
@@ -306,5 +345,6 @@ no one reads more into a guard than it gives.
    `replays`, budgets with `--at-most`; the corpus programs that reach the
    network (`weather`, `concurrent_fetch`, `pagination`, `assistant`,
    `currency_tool`) get recordings and `replays` tests.
-3. M4: origin tracking and the `only to` check; `environment` default
-   (R6-6) decided then; the readability round measures the three clauses.
+3. Done ahead of M4 (decision V6): origin tracking and the `only to`
+   check at the boundary. Still open: the `environment` default (R6-6),
+   decided with M4; the readability round measures the three clauses.

@@ -10,9 +10,11 @@
 //! primitive call under a capability passes one boundary
 //! (`Vm::call_native`), where the effective grant of the call chain
 //! (decision Q1) and the budgets are checked and where a run is recorded,
-//! replayed or narrated (decisions P1 and P2).
-//! `run concurrently` and `concurrently` queries run their tasks one after
-//! the other (decision S2).
+//! replayed or narrated (decisions P1 and P2). A capability with `only to`
+//! guards what enters through it: such values carry their origins, and the
+//! boundary refuses a call that would send them past the sinks (decision
+//! P3). `run concurrently` and `concurrently` queries run their tasks one
+//! after the other (decision S2).
 
 pub mod bytecode;
 pub mod compile;

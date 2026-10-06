@@ -128,6 +128,13 @@ public type TimedOut
   can ToText
 end
 
+public type Guarded
+  purpose: A value that entered through a guarded capability (`only to`) was sent toward a sink the guard does not list.
+  has origin: Text
+  has sink: Text
+  can ToText
+end
+
 public function to_decimal(self: Integer) returns Decimal
 public function to_float(self: Integer) returns Float
 public function to_text(self: Integer) returns Text

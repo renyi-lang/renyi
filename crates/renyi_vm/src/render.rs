@@ -13,11 +13,17 @@ use crate::value::{Native, Value};
 use crate::vm::{Interrupt, Vm};
 
 impl Vm<'_> {
-    /// The text a value prints as in interpolation and `console.print`.
+    /// The text a value prints as in interpolation and `console.print`; a
+    /// guard wrapper is transparent, the text's origins are the caller's
+    /// concern.
     pub fn to_text(&mut self, value: &Value) -> Result<String, Interrupt> {
+        let value = value.plain();
         if let Some(ty) = value.type_id() {
             if let Some(function) = self.program.method(ty, "to_text") {
-                return match self.call_function(function, vec![value.clone()])? {
+                return match self
+                    .call_function(function, vec![value.clone()])?
+                    .into_plain()
+                {
                     Value::Text(text) => Ok(text.to_string()),
                     Value::Failure(error) => {
                         let shown = self.render(&error, false)?;
@@ -34,6 +40,7 @@ impl Vm<'_> {
     /// constructor form.
     pub fn render(&mut self, value: &Value, nested: bool) -> Result<String, Interrupt> {
         Ok(match value {
+            Value::Guarded(guarded) => return self.render(&guarded.1, nested),
             Value::Nothing => "nothing".to_string(),
             Value::Boolean(true) => "true".to_string(),
             Value::Boolean(false) => "false".to_string(),
@@ -166,8 +173,10 @@ impl Vm<'_> {
 
     /// The order of two values: numbers, text, booleans, durations and
     /// instants by value, lists and pairs lexicographically, records and
-    /// variants by a declared `compare` or the derived one.
+    /// variants by a declared `compare` or the derived one. A guard wrapper
+    /// is transparent.
     pub fn compare(&mut self, left: &Value, right: &Value) -> Result<Ordering, Interrupt> {
+        let (left, right) = (left.plain(), right.plain());
         Ok(match (left, right) {
             (Value::Integer(a), Value::Integer(b)) => a.compare(b),
             (Value::Decimal(a), Value::Decimal(b)) => a.compare(b),
@@ -264,7 +273,10 @@ impl Vm<'_> {
         left: &Value,
         right: &Value,
     ) -> Result<Ordering, Interrupt> {
-        match self.call_function(function, vec![left.clone(), right.clone()])? {
+        match self
+            .call_function(function, vec![left.clone(), right.clone()])?
+            .into_plain()
+        {
             Value::Variant(variant) if variant.ty == self.program.builtins.ordering => {
                 Ok(match variant.tag {
                     0 => Ordering::Less,

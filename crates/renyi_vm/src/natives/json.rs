@@ -701,6 +701,9 @@ fn json_value(vm: &Vm, json: &Json) -> Result<Value, Interrupt> {
 /// sketch.
 pub fn encode(vm: &mut Vm, value: &Value, naming: Naming) -> Result<Json, Interrupt> {
     Ok(match value {
+        // the origins of a guarded value are checked at the boundary, not
+        // written out
+        Value::Guarded(guarded) => return encode(vm, &guarded.1, naming),
         Value::Nothing => Json::Null,
         Value::Boolean(value) => Json::Boolean(*value),
         Value::Integer(value) => Json::Number(value.to_string()),

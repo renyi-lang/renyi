@@ -122,7 +122,7 @@ fn run_measured(program: &Program, mut options: Options) -> (Run, Option<(String
     }
     let outcome = match vm.run_main() {
         Ok(None) => RunOutcome::Finished,
-        Ok(Some(error)) => match vm.to_text(&error) {
+        Ok(Some(error)) => match vm.text_for_console(&error, "the failure of `main`") {
             Ok(text) => RunOutcome::Failed(text),
             Err(interrupt) => crashed(interrupt),
         },
@@ -432,7 +432,7 @@ fn run_test(vm: &mut Vm, index: usize, strict: bool, refresh: Option<&str>) -> T
         }
     }
     let mut outcome = match vm.call_code(test.code, Vec::new()) {
-        Ok(Value::Failure(error)) => match vm.to_text(&error) {
+        Ok(Value::Failure(error)) => match vm.text_for_console(&error, "the failure of a test") {
             Ok(text) => TestOutcome::Failed(text),
             Err(interrupt) => TestOutcome::Failed(describe_interrupt(interrupt)),
         },

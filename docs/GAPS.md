@@ -146,12 +146,14 @@ Each is a sentence in the design that the checker does not act on.
    K10): no rule in `resolve_derives` (`world.rs:681-725`); the encoder
    writes two `kind` keys.
 5. `see also:` existence (decision C8b): never read by the checker.
-6. The three tiers of `deprecated:` (decision C8c): no call-site warning,
-   no `renyi check --strict` (`main.rs:117-118` drops unknown `--` flags),
-   no `renyi migrate`, and the index lists deprecated definitions although
-   tier 1 removes them.
-7. The `only to` warning when no sink is in the grant
-   (`06-runtime-guarantees.md:274-278`): verified absent.
+6. Done in stage 1 (decision V6): the first two tiers of `deprecated:`
+   (decision C8c). Every call of a deprecated definition gets the
+   `deprecated` warning with the replacement as its fix, `renyi check
+   --strict` makes it an error, and the index drops deprecated
+   definitions (tier 1). `renyi migrate` (tier 3) waits for the package
+   manager.
+7. Done in stage 1: the `guard-no-sink` warning when no sink after `only
+   to` is in the grant.
 8. Ability requirements `ability X where self can Y`: parsed
    (`parser.rs:1054-1064`), never checked; an implementation whose type
    lacks `ToText` passes and runs.
@@ -174,16 +176,20 @@ today and get no behaviour. Each needs a decision: implement before the
 freeze, or take it out of the frozen surface until it exists.
 
 1. **`only to` provenance guards** (decision P3; `06-runtime-guarantees.md`
-   section 3). Parsed, formatted, sinks validated (`parser.rs:697-718`,
-   `world.rs:1042-1057`); the VM never reads it (`only_to` is built empty
-   at `grant.rs:82, 313, 377, 394`), no origin on values, nothing in
-   recordings. Verified: `environment("USERNAME") only to network.http`
-   prints the variable to the console. The cheat sheet (lines 221-222)
-   states the guarantee. The entry itself schedules the runtime in M4.
-2. **`expose as tool`** (decision D6; sketch section 15): parsed and
-   indexed as a boolean; no `renyi tools`, no `serve --mcp`, no JSON
-   Schema from the parameters. The cheat sheet (lines 251-252) says it
-   publishes a function to agents.
+   section 3). Done in stage 1 (decision V6): the VM tracks origins as a
+   bit set on values (`Value::Guarded`), tags what enters through a
+   guarded capability and what is computed from it, and refuses every
+   outgoing call past the sinks with the prelude's `Guarded(origin, sink)`
+   or a crash; a replay and a test's own grant enforce the same guards, a
+   server does not send a guarded response (`crates/renyi_vm/tests/
+   guards.rs`). The recording format is unchanged. What remains is in
+   section 3.4 of the design document (`match` without an arm for
+   `Guarded`, R6-8) and its open items.
+2. **`expose as tool`** (decision D6; sketch section 15). Done in stage 1:
+   `renyi tools [path]` prints the manifest with a JSON Schema per
+   parameter and result, the purpose and the permissions
+   (`crates/renyi_index/src/tools.rs`); `tool-type` rejects a parameter or
+   result that JSON cannot carry. `serve --mcp` stays with M5.
 3. **`deprecated:`** (item 2.6): the cheat sheet (line 253) says it warns
    existing callers.
 4. **`process` and `foreign` capabilities**: in the tree

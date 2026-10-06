@@ -17,14 +17,14 @@ use renyi_syntax::ast::BinaryOp;
 use crate::bytecode::{CodeKind, GroupFold, Op};
 use crate::compile::{CodeId, Program};
 use crate::decimal::{Decimal, DecimalError};
-use crate::grant::{self, Counter, Narrowing};
+use crate::grant::{self, Counter, Guard, Narrowing};
 use crate::integer::Int;
 use crate::natives::json::{self, Json, Naming};
 use crate::natives::time::instant_text;
 use crate::natives::{self, NativeFn};
 use crate::recording::{clip, redact, Call, Manifest, Outcome, Recording, Replay};
 use crate::types::TypeShape;
-use crate::value::{take_list, take_map, Native, RangeValue, Value};
+use crate::value::{plain_all, take_list, take_map, Native, RangeValue, Value};
 
 /// Why execution stopped before the program said so.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -157,6 +157,15 @@ pub struct Vm<'p> {
     /// The context type of the next library call (`Op::ResultType`).
     expected: Option<Ty>,
     pub random_state: u64,
+    /// The guards of the run (decision P3); the position of a guard is the
+    /// origin bit a value carries.
+    guards: Vec<Guard>,
+    /// While a primitive runs: the origins of its arguments, which a
+    /// function it calls back receives on its own arguments, and the
+    /// origins of what the callbacks returned, which join the primitive's
+    /// result.
+    ambient: u64,
+    gathered: u64,
 }
 
 impl<'p> Vm<'p> {
@@ -204,6 +213,9 @@ impl<'p> Vm<'p> {
             replay_output: options.replay_output,
             expected: None,
             random_state: seed,
+            guards: Vec::new(),
+            ambient: 0,
+            gathered: 0,
         }
     }
 
@@ -217,6 +229,13 @@ impl<'p> Vm<'p> {
         self.grant = Rc::new(grant.capabilities);
         self.frame_grants.iter_mut().for_each(|slot| *slot = None);
         self.counters = grant.counters;
+        self.guards = grant::guards(declared);
+        if self.guards.len() > 64 {
+            return Err(format!(
+                "the grant carries {} guarded capabilities (`only to`); the VM tracks at most 64 (open item R6-5)",
+                self.guards.len()
+            ));
+        }
         self.started = natives::now_millis();
         self.replay = None;
         self.recording = self.record.then(|| {
@@ -327,23 +346,31 @@ impl<'p> Vm<'p> {
     }
 
     /// A library primitive. A pure one runs. One under a capability is
-    /// checked against the grant and the budgets, then runs live and is
-    /// recorded, or is answered from the replay: this is the boundary of
-    /// `06-runtime-guarantees.md` section 4.
+    /// checked against the grant, the guards and the budgets, then runs
+    /// live and is recorded, or is answered from the replay: this is the
+    /// boundary of `06-runtime-guarantees.md` section 4. A primitive sees
+    /// plain values; its result carries the origins of its arguments and,
+    /// under a guarded capability, the guard's own origin (section 3).
     fn call_native(&mut self, function: FunctionId, args: Vec<Value>) -> Result<Value, Interrupt> {
         let program = self.program;
         let native = self.natives.get(function).copied().flatten();
         let meta = &program.function_metas[function];
+        let (origins, args) = plain_all(args);
         let Some(effect) = grant::effect_of(meta, &args) else {
-            return match native {
-                Some(native) => native(self, args),
-                None => Err(self.unavailable(function)),
+            let Some(native) = native else {
+                return Err(self.unavailable(function));
             };
+            return self.run_native(native, origins, args);
         };
         if !effects::covered(self.effective_grant(), &effect, true) {
             self.expected = None;
             return self.denied(function, &effect);
         }
+        if let Some(guard) = self.blocking_guard(origins, &effect) {
+            self.expected = None;
+            return self.refused(function, guard, &effect);
+        }
+        let origins = origins | self.origins_through(&effect);
         let arguments = self.encode_arguments(function, &args)?;
         if self.replay.is_some() {
             // the context type decodes the recorded result
@@ -356,7 +383,7 @@ impl<'p> Vm<'p> {
                     native(self, args)?;
                 }
             }
-            return Ok(value);
+            return Ok(value.guarded(origins));
         }
         let at_ms = natives::now_millis() - self.started;
         if let Some(budget) = self.exhausted(&effect, at_ms) {
@@ -368,7 +395,7 @@ impl<'p> Vm<'p> {
         };
         let shown_args = self.explain.then(|| args.clone());
         // a live primitive takes the context type itself (`sqlite.query`)
-        let result = native(self, args);
+        let result = self.run_native(native, origins, args);
         self.expected = None;
         let duration_ms = natives::now_millis() - self.started - at_ms;
         let value = match &result {
@@ -398,6 +425,92 @@ impl<'p> Vm<'p> {
             }
         }
         result
+    }
+
+    /// Run a primitive on plain arguments. A function it calls back
+    /// receives the arguments' origins on its own arguments, and the result
+    /// carries those origins together with the origins of what the
+    /// callbacks returned.
+    fn run_native(
+        &mut self,
+        native: NativeFn,
+        origins: u64,
+        args: Vec<Value>,
+    ) -> Result<Value, Interrupt> {
+        let (ambient, gathered) = (self.ambient, self.gathered);
+        self.ambient = origins;
+        self.gathered = 0;
+        let result = native(self, args);
+        let collected = self.gathered;
+        self.ambient = ambient;
+        self.gathered = gathered;
+        Ok(result?.guarded(origins | collected))
+    }
+
+    /// The guard that stops a value with these origins from reaching the
+    /// effect: the first whose sinks do not cover it.
+    fn blocking_guard(&self, origins: u64, effect: &Capability) -> Option<usize> {
+        if origins == 0 {
+            return None;
+        }
+        (0..self.guards.len())
+            .find(|&index| origins & (1u64 << index) != 0 && !self.guards[index].admits(effect))
+    }
+
+    /// The origin bits of what enters through the effect: every guard whose
+    /// capability covers it.
+    fn origins_through(&self, effect: &Capability) -> u64 {
+        self.guards
+            .iter()
+            .enumerate()
+            .filter(|(_, guard)| guard.capability.covers(effect, true))
+            .fold(0, |bits, (index, _)| bits | (1u64 << index))
+    }
+
+    /// Why a value with these origins may not reach the effect (decision
+    /// P3), when a guard stops it: what would leave, where it came from,
+    /// where it was going and where it may go.
+    pub fn refusal(&self, origins: u64, effect: &Capability, what: &str) -> Option<String> {
+        let guard = &self.guards[self.blocking_guard(origins, effect)?];
+        let sinks: Vec<String> = guard.sinks.iter().map(Capability::spelling).collect();
+        Some(format!(
+            "{what} would send a value from {} to {}; the guard allows only {}",
+            guard.capability.spelling(),
+            effect.spelling(),
+            sinks.join(" or ")
+        ))
+    }
+
+    /// A call that would send a guarded value past its sinks: the `Guarded`
+    /// error of the prelude when the primitive can fail, else a crash.
+    fn refused(
+        &mut self,
+        function: FunctionId,
+        guard: usize,
+        effect: &Capability,
+    ) -> Result<Value, Interrupt> {
+        let what = format!("`{}`", self.qualified(function));
+        let message = self
+            .refusal(1u64 << guard, effect, &what)
+            .unwrap_or_default();
+        if self.program.function_metas[function].fails.is_empty() {
+            return Err(Interrupt::crash(message));
+        }
+        let origin = self.guards[guard].capability.spelling();
+        Ok(Value::failure(Value::record(
+            self.program.builtins.guarded,
+            vec![Value::text(origin), Value::text(effect.spelling())],
+        )))
+    }
+
+    /// Text that leaves the program through the console outside a
+    /// primitive call: a crash message, the failure of `main` or of a test.
+    /// Refused when a guard on its origins does not list `console`.
+    pub fn text_for_console(&mut self, value: &Value, what: &str) -> Result<String, Interrupt> {
+        if let Some(message) = self.refusal(value.origins(), &console_capability(), what) {
+            return Err(Interrupt::crash(message));
+        }
+        self.to_text(value)
     }
 
     /// Whether the budgets covering an effect admit a call at `now`; the
@@ -717,12 +830,22 @@ impl<'p> Vm<'p> {
     }
 
     /// Call a declared function with its arguments; the result may be a
-    /// `Failure`.
+    /// `Failure`. Called back from a primitive, the function receives the
+    /// origins of the primitive's arguments, and what it returns joins the
+    /// primitive's result (decision P3).
     pub fn call_function(&mut self, id: FunctionId, args: Vec<Value>) -> Result<Value, Interrupt> {
-        if let Some(&code) = self.program.functions.get(&id) {
-            return self.call_code(code, args);
-        }
-        self.call_native(id, args)
+        let ambient = self.ambient;
+        let args: Vec<Value> = if ambient == 0 {
+            args
+        } else {
+            args.into_iter().map(|arg| arg.guarded(ambient)).collect()
+        };
+        let result = match self.program.functions.get(&id) {
+            Some(&code) => self.call_code(code, args)?,
+            None => self.call_native(id, args)?,
+        };
+        self.gathered |= result.origins();
+        Ok(result)
     }
 
     /// Run a code object to its end; the result may be a `Failure`.
@@ -796,6 +919,8 @@ impl<'p> Vm<'p> {
         self.stack.split_off(at)
     }
 
+    /// A Boolean never carries origins (`Value::guarded`), so no wrapper
+    /// needs stripping here.
     fn pop_bool(&mut self) -> Result<bool, Interrupt> {
         match self.pop() {
             Value::Boolean(value) => Ok(value),
@@ -835,7 +960,7 @@ impl<'p> Vm<'p> {
                     Value::Failure(error) => (**error).clone(),
                     _ => Value::Nothing,
                 };
-                let shown = self.to_text(&error)?;
+                let shown = self.text_for_console(&error, "an unhandled failure")?;
                 Err(Interrupt::crash(format!("unhandled failure: {shown}")))
             }
         }
@@ -898,22 +1023,27 @@ impl<'p> Vm<'p> {
                 let top = self.stack.last().cloned().unwrap_or(Value::Nothing);
                 self.stack.push(top);
             }
+            // every operation strips its operands' guard wrappers and tags
+            // its result with the union of their origins (decision P3)
             Op::MakeList(count) => {
-                let items = self.pop_n(*count as usize);
-                self.stack.push(Value::list(items));
+                let (origins, items) = plain_all(self.pop_n(*count as usize));
+                self.stack.push(Value::list(items).guarded(origins));
             }
             Op::MakeMap(count) => {
-                let mut items = self.pop_n(2 * *count as usize).into_iter();
+                let (origins, items) = plain_all(self.pop_n(2 * *count as usize));
+                let mut items = items.into_iter();
                 let mut map = IndexMap::with_capacity(*count as usize);
                 while let (Some(key), Some(value)) = (items.next(), items.next()) {
                     map.insert(key, value);
                 }
-                self.stack.push(Value::Map(Rc::new(map)));
+                self.stack.push(Value::Map(Rc::new(map)).guarded(origins));
             }
             Op::MakePair => {
                 let right = self.pop();
                 let left = self.pop();
-                self.stack.push(Value::pair(left, right));
+                let origins = left.origins() | right.origins();
+                self.stack
+                    .push(Value::pair(left.into_plain(), right.into_plain()).guarded(origins));
             }
             Op::MakeRange { stepped } => {
                 let by = if *stepped {
@@ -923,39 +1053,45 @@ impl<'p> Vm<'p> {
                 };
                 let to = self.pop();
                 let from = self.pop();
-                match (from, to, by) {
+                let origins = from.origins() | to.origins() | by.origins();
+                match (from.into_plain(), to.into_plain(), by.into_plain()) {
                     (Value::Integer(from), Value::Integer(to), Value::Integer(by)) => {
-                        self.stack
-                            .push(Value::Range(Rc::new(RangeValue { from, to, by })));
+                        let range = Value::Range(Rc::new(RangeValue { from, to, by }));
+                        self.stack.push(range.guarded(origins));
                     }
                     _ => return Err(Interrupt::crash("a range needs Integer bounds")),
                 }
             }
             Op::Construct { ty, fields } => {
-                let fields = self.pop_n(*fields as usize);
-                let value = self.construct(*ty, fields)?;
+                let (origins, fields) = plain_all(self.pop_n(*fields as usize));
+                let value = self.construct(*ty, fields)?.guarded(origins);
                 return self.settle(value, entry);
             }
             Op::ConstructVariant { ty, tag, fields } => {
-                let fields = self.pop_n(*fields as usize);
-                let value = self.construct_variant(*ty, *tag as usize, fields)?;
+                let (origins, fields) = plain_all(self.pop_n(*fields as usize));
+                let value = self
+                    .construct_variant(*ty, *tag as usize, fields)?
+                    .guarded(origins);
                 return self.settle(value, entry);
             }
             Op::Field(name) => {
                 let base = self.pop();
                 let name = code.constants[*name as usize].as_text().unwrap_or("");
-                let value = self.field(&base, name)?;
+                let value = self.field(base.plain(), name)?.guarded(base.origins());
                 self.stack.push(value);
             }
             Op::With(count) => {
                 let mut updates = Vec::with_capacity(*count as usize);
+                let mut origins = 0;
                 for _ in 0..*count {
                     let value = self.pop();
                     let name = self.pop();
-                    updates.push((name, value));
+                    origins |= value.origins();
+                    updates.push((name, value.into_plain()));
                 }
                 let base = self.pop();
-                let value = self.with(base, updates)?;
+                origins |= base.origins();
+                let value = self.with(base.into_plain(), updates)?.guarded(origins);
                 self.stack.push(value);
             }
             Op::Call { function, args } => {
@@ -993,16 +1129,23 @@ impl<'p> Vm<'p> {
             Op::Binary(op) => {
                 let right = self.pop();
                 let left = self.pop();
-                let value = self.binary(*op, left, right)?;
+                // the plain case first: this is the hottest op of a loop
+                let value = if left.is_guarded() || right.is_guarded() {
+                    let origins = left.origins() | right.origins();
+                    self.binary(*op, left.into_plain(), right.into_plain())?
+                        .guarded(origins)
+                } else {
+                    self.binary(*op, left, right)?
+                };
                 self.stack.push(value);
             }
             Op::ToText => {
                 let value = self.pop();
                 let text = self.to_text(&value)?;
-                self.stack.push(Value::text(text));
+                self.stack.push(Value::text(text).guarded(value.origins()));
             }
             Op::Concat(count) => {
-                let pieces = self.pop_n(*count as usize);
+                let (origins, pieces) = plain_all(self.pop_n(*count as usize));
                 let mut text = String::new();
                 for piece in &pieces {
                     match piece {
@@ -1010,7 +1153,7 @@ impl<'p> Vm<'p> {
                         other => text.push_str(&self.render(other, false)?),
                     }
                 }
-                self.stack.push(Value::text(text));
+                self.stack.push(Value::text(text).guarded(origins));
             }
             Op::Jump(target) => self.jump(*target),
             Op::JumpIfFalse(target) => {
@@ -1065,12 +1208,12 @@ impl<'p> Vm<'p> {
             }
             Op::Crash => {
                 let message = self.pop();
-                let text = self.to_text(&message)?;
+                let text = self.text_for_console(&message, "a crash message")?;
                 return Err(Interrupt::crash(text));
             }
             Op::IsVariant(tag) => {
                 let value = self.pop();
-                let fits = matches!(&value, Value::Variant(v) if v.tag == *tag as usize);
+                let fits = matches!(value.plain(), Value::Variant(v) if v.tag == *tag as usize);
                 self.stack.push(Value::Boolean(fits));
             }
             Op::IsNothing => {
@@ -1083,13 +1226,15 @@ impl<'p> Vm<'p> {
             }
             Op::IsType(ty) => {
                 let value = self.pop();
-                let fits = self.has_type(&value, *ty);
+                let fits = self.has_type(value.plain(), *ty);
                 self.stack.push(Value::Boolean(fits));
             }
             Op::Unpack(count) => {
                 let value = self.pop();
-                let parts = self.unpack(value, *count as usize)?;
-                self.stack.extend(parts);
+                let origins = value.origins();
+                let parts = self.unpack(value.into_plain(), *count as usize)?;
+                self.stack
+                    .extend(parts.into_iter().map(|part| part.guarded(origins)));
             }
             Op::UnwrapFailure => {
                 let value = self.pop();
@@ -1100,7 +1245,14 @@ impl<'p> Vm<'p> {
             }
             Op::IterInit(slot) => {
                 let source = self.pop();
-                let items = self.iterate(source)?;
+                let origins = source.origins();
+                let mut items = self.iterate(source.into_plain())?;
+                if origins != 0 {
+                    items = items
+                        .into_iter()
+                        .map(|item| item.guarded(origins))
+                        .collect();
+                }
                 let index = self.local_index(*slot);
                 self.stack[index] = Value::Native(Rc::new(Native::Iterator(
                     std::cell::RefCell::new((items, 0)),
@@ -1128,10 +1280,12 @@ impl<'p> Vm<'p> {
             }
             Op::ListPush => {
                 let item = self.pop();
-                match self.pop() {
+                let list = self.pop();
+                let origins = item.origins() | list.origins();
+                match list.into_plain() {
                     Value::List(mut list) => {
-                        Rc::make_mut(&mut list).push(item);
-                        self.stack.push(Value::List(list));
+                        Rc::make_mut(&mut list).push(item.into_plain());
+                        self.stack.push(Value::List(list).guarded(origins));
                     }
                     other => {
                         return Err(Interrupt::crash(format!(
@@ -1144,14 +1298,18 @@ impl<'p> Vm<'p> {
             Op::GroupInsert => {
                 let item = self.pop();
                 let key = self.pop();
-                match self.pop() {
+                let map = self.pop();
+                let origins = item.origins() | key.origins() | map.origins();
+                match map.into_plain() {
                     Value::Map(map) => {
                         let mut map = take_map(map);
-                        let group = map.entry(key).or_insert_with(|| Value::list(Vec::new()));
+                        let group = map
+                            .entry(key.into_plain())
+                            .or_insert_with(|| Value::list(Vec::new()));
                         if let Value::List(list) = group {
-                            Rc::make_mut(list).push(item);
+                            Rc::make_mut(list).push(item.into_plain());
                         }
-                        self.stack.push(Value::Map(Rc::new(map)));
+                        self.stack.push(Value::Map(Rc::new(map)).guarded(origins));
                     }
                     other => {
                         return Err(Interrupt::crash(format!(
@@ -1164,7 +1322,10 @@ impl<'p> Vm<'p> {
             Op::GroupFold(fold) => {
                 let value = self.pop();
                 let key = self.pop();
-                match self.pop() {
+                let map = self.pop();
+                let origins = value.origins() | key.origins() | map.origins();
+                let (value, key) = (value.into_plain(), key.into_plain());
+                match map.into_plain() {
                     Value::Map(map) => {
                         let mut map = take_map(map);
                         let folded = match (*fold, map.get(&key)) {
@@ -1183,7 +1344,7 @@ impl<'p> Vm<'p> {
                             ),
                         };
                         map.insert(key, folded);
-                        self.stack.push(Value::Map(Rc::new(map)));
+                        self.stack.push(Value::Map(Rc::new(map)).guarded(origins));
                     }
                     other => {
                         return Err(Interrupt::crash(format!(
@@ -1194,7 +1355,9 @@ impl<'p> Vm<'p> {
                 }
             }
             Op::SortByKey { descending } => {
-                let pairs = match self.pop() {
+                let list = self.pop();
+                let origins = list.origins();
+                let pairs = match list.into_plain() {
                     Value::List(list) => take_list(list),
                     other => {
                         return Err(Interrupt::crash(format!(
@@ -1212,10 +1375,10 @@ impl<'p> Vm<'p> {
                     .collect();
                 self.sort_by_key(&mut keyed, *descending)?;
                 let items: Vec<Value> = keyed.into_iter().map(|(_, item)| item).collect();
-                self.stack.push(Value::list(items));
+                self.stack.push(Value::list(items).guarded(origins));
             }
             Op::Deadline(slot) => {
-                let limit = match self.pop() {
+                let limit = match self.pop().into_plain() {
                     Value::Duration(ms) => ms,
                     other => {
                         return Err(Interrupt::crash(format!(
@@ -1302,7 +1465,8 @@ impl<'p> Vm<'p> {
                 return self.invoke(function, args, entry);
             }
         }
-        // the derived abilities
+        // the derived abilities, whose results carry the operands' origins
+        let origins = args.iter().fold(0, |all, arg| all | arg.origins());
         let b = &program.builtins;
         let value = if ability == b.to_text {
             Value::text(self.to_text(&receiver)?)
@@ -1321,7 +1485,7 @@ impl<'p> Vm<'p> {
                 self.describe(&receiver)
             )));
         };
-        self.settle(value, entry)
+        self.settle(value.guarded(origins), entry)
     }
 
     pub fn ordering_value(&self, ordering: Ordering) -> Value {
@@ -1501,9 +1665,10 @@ impl<'p> Vm<'p> {
         Ok(parts)
     }
 
-    /// The items of a collection, for a loop.
+    /// The items of a collection, for a loop; the caller tags them with the
+    /// collection's origins.
     pub fn iterate(&self, source: Value) -> Result<Vec<Value>, Interrupt> {
-        Ok(match source {
+        Ok(match source.into_plain() {
             Value::List(items) => take_list(items),
             Value::Set(items) => items.iter().cloned().collect(),
             Value::Map(entries) => entries
@@ -1524,6 +1689,7 @@ impl<'p> Vm<'p> {
     /// Whether a value has a declared type: records and variants by their
     /// type, base values by kind, a subtype by its base.
     pub fn has_type(&self, value: &Value, ty: TypeId) -> bool {
+        let value = value.plain();
         if let Some(id) = value.type_id() {
             return id == ty;
         }
@@ -1636,6 +1802,16 @@ impl<'p> Vm<'p> {
             Some(interrupt) => Err(interrupt),
             None => Ok(()),
         }
+    }
+}
+
+/// The capability a crash message or a reported failure leaves through.
+fn console_capability() -> Capability {
+    Capability {
+        path: vec!["console".to_string()],
+        scope: None,
+        budget: None,
+        only_to: Vec::new(),
     }
 }
 

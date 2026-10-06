@@ -2,7 +2,11 @@
 //! O1); a collection is updated in place by `Rc::make_mut` when nothing else
 //! holds it. A `maybe T` is the value itself or `Nothing`; the result of a
 //! fallible call is the value itself or `Failure(error)`, which only exists
-//! between the call and the `otherwise` or `match` that handles it.
+//! between the call and the `otherwise` or `match` that handles it. A value
+//! that entered through a guarded capability (`only to`, decision P3) is
+//! wrapped in `Guarded` with its origins; the wrapper is always outermost,
+//! so that a container holds plain items and carries the union of their
+//! origins, and every operation strips its operands and tags its result.
 
 use std::cell::RefCell;
 use std::hash::{Hash, Hasher};
@@ -38,6 +42,11 @@ pub enum Value {
     Native(Rc<Native>),
     /// The error of a failed fallible call, on its way to a handler.
     Failure(Rc<Value>),
+    /// A value with its origins (decision P3): one bit per guarded
+    /// capability of the run, in the order of the grant. Never wraps
+    /// `Nothing`, a `Boolean`, a function, a native value or a `Failure`,
+    /// whose error carries the origins instead.
+    Guarded(Rc<(u64, Value)>),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -120,7 +129,7 @@ impl Value {
     }
 
     pub fn as_text(&self) -> Option<&str> {
-        match self {
+        match self.plain() {
             Value::Text(text) => Some(text),
             _ => None,
         }
@@ -134,7 +143,7 @@ impl Value {
     }
 
     pub fn as_int(&self) -> Option<&Int> {
-        match self {
+        match self.plain() {
             Value::Integer(value) => Some(value),
             _ => None,
         }
@@ -145,7 +154,7 @@ impl Value {
     }
 
     pub fn as_list(&self) -> Option<&Rc<Vec<Value>>> {
-        match self {
+        match self.plain() {
             Value::List(items) => Some(items),
             _ => None,
         }
@@ -154,16 +163,78 @@ impl Value {
     /// The runtime type of a record, variant or subtype-carrying value, when
     /// it has one of its own.
     pub fn type_id(&self) -> Option<TypeId> {
-        match self {
+        match self.plain() {
             Value::Record(record) => Some(record.ty),
             Value::Variant(variant) => Some(variant.ty),
             _ => None,
         }
     }
 
+    // ------------------------------------------------------------- origins
+
+    /// Whether the value is wrapped with origins: the test the fast paths
+    /// make before they strip anything.
+    #[inline]
+    pub fn is_guarded(&self) -> bool {
+        matches!(self, Value::Guarded(_))
+    }
+
+    /// The guarded capabilities the value came through (decision P3), one
+    /// bit each; `0` for a plain value. A `Failure` answers for its error.
+    pub fn origins(&self) -> u64 {
+        match self {
+            Value::Guarded(guarded) => guarded.0 | guarded.1.origins(),
+            Value::Failure(error) => error.origins(),
+            _ => 0,
+        }
+    }
+
+    /// The value under its guard wrappers.
+    pub fn plain(&self) -> &Value {
+        let mut value = self;
+        while let Value::Guarded(guarded) = value {
+            value = &guarded.1;
+        }
+        value
+    }
+
+    pub fn into_plain(self) -> Value {
+        let mut value = self;
+        while let Value::Guarded(guarded) = value {
+            value = match Rc::try_unwrap(guarded) {
+                Ok((_, inner)) => inner,
+                Err(shared) => shared.1.clone(),
+            };
+        }
+        value
+    }
+
+    /// The value with the origins added. Nothing, a Boolean, a function and
+    /// a native value carry none: a decision taken on guarded data is an
+    /// implicit flow, which guards do not track (`06-runtime-guarantees.md`
+    /// section 3.4). A `Failure` stays outermost and tags its error.
+    pub fn guarded(self, origins: u64) -> Value {
+        if origins == 0 {
+            return self;
+        }
+        match self {
+            Value::Nothing | Value::Boolean(_) | Value::Function(_) | Value::Native(_) => self,
+            Value::Failure(error) => {
+                let error = Rc::try_unwrap(error).unwrap_or_else(|shared| (*shared).clone());
+                Value::failure(error.guarded(origins))
+            }
+            Value::Guarded(guarded) => {
+                let (inner_origins, inner) =
+                    Rc::try_unwrap(guarded).unwrap_or_else(|shared| (*shared).clone());
+                Value::Guarded(Rc::new((inner_origins | origins, inner)))
+            }
+            other => Value::Guarded(Rc::new((origins, other))),
+        }
+    }
+
     /// What the value is, for messages.
     pub fn kind_name(&self) -> &'static str {
-        match self {
+        match self.plain() {
             Value::Nothing => "nothing",
             Value::Boolean(_) => "Boolean",
             Value::Integer(_) => "Integer",
@@ -183,15 +254,35 @@ impl Value {
             Value::Function(_) => "function",
             Value::Native(_) => "native value",
             Value::Failure(_) => "failure",
+            Value::Guarded(_) => "guarded value",
         }
     }
 }
 
+/// The origins of several values and the values themselves made plain: the
+/// operands of an operation whose result carries their union. Plain
+/// operands, the usual case, pass through untouched.
+pub fn plain_all(values: Vec<Value>) -> (u64, Vec<Value>) {
+    if !values.iter().any(Value::is_guarded) {
+        return (0, values);
+    }
+    let mut origins = 0;
+    let values = values
+        .into_iter()
+        .map(|value| {
+            origins |= value.origins();
+            value.into_plain()
+        })
+        .collect();
+    (origins, values)
+}
+
 /// Structural equality: the derived `Equal` of every data type. Numbers
-/// compare by value, a `Float` by its value with `-0.0` equal to `0.0`.
+/// compare by value, a `Float` by its value with `-0.0` equal to `0.0`; a
+/// guard wrapper is transparent.
 impl PartialEq for Value {
     fn eq(&self, other: &Value) -> bool {
-        match (self, other) {
+        match (self.plain(), other.plain()) {
             (Value::Nothing, Value::Nothing) => true,
             (Value::Boolean(a), Value::Boolean(b)) => a == b,
             (Value::Integer(a), Value::Integer(b)) => a == b,
@@ -224,8 +315,9 @@ impl Eq for Value {}
 
 impl Hash for Value {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        std::mem::discriminant(self).hash(state);
-        match self {
+        let value = self.plain();
+        std::mem::discriminant(value).hash(state);
+        match value {
             Value::Nothing => {}
             Value::Boolean(value) => value.hash(state),
             Value::Integer(value) => value.hash(state),
@@ -265,6 +357,7 @@ impl Hash for Value {
             Value::Function(id) => id.hash(state),
             Value::Native(native) => Rc::as_ptr(native).hash(state),
             Value::Failure(error) => error.hash(state),
+            Value::Guarded(guarded) => guarded.1.hash(state),
         }
     }
 }

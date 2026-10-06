@@ -1,9 +1,10 @@
 //! The grant a run executes under: the capabilities `main` or a test
 //! declares, narrowed from the command line (`--deny`, `--allow-host`,
 //! `--allow-read`, `--allow-write`), with the budget counters of decision
-//! P2 (`at most COUNT per UNIT`, `--at-most`); and the effect one primitive
-//! call exercises, which the scope check, the budgets and the recorder
-//! share.
+//! P2 (`at most COUNT per UNIT`, `--at-most`) and the guards of decision
+//! P3 (`only to SINK or SINK`); and the effect one primitive call
+//! exercises, which the scope check, the budgets, the guards and the
+//! recorder share.
 
 use std::collections::VecDeque;
 
@@ -139,6 +140,66 @@ pub struct Narrowing {
 pub struct Grant {
     pub capabilities: Vec<Capability>,
     pub counters: Vec<Counter>,
+}
+
+/// A guarded capability of the grant (decision P3, `06-runtime-guarantees.md`
+/// section 3): what enters the program through it may leave only through
+/// its sinks.
+#[derive(Clone, Debug)]
+pub struct Guard {
+    /// The guarded capability, its path and scope only.
+    pub capability: Capability,
+    /// The sinks after `only to`, each a path with an optional scope.
+    pub sinks: Vec<Capability>,
+}
+
+impl Guard {
+    /// `filesystem.read("secrets") only to network.http("api.example.com")`.
+    pub fn spelling(&self) -> String {
+        let sinks: Vec<String> = self.sinks.iter().map(Capability::spelling).collect();
+        format!(
+            "{} only to {}",
+            self.capability.spelling(),
+            sinks.join(" or ")
+        )
+    }
+
+    /// Whether a value from this guard may reach the effect: one of the
+    /// sinks covers it.
+    pub fn admits(&self, effect: &Capability) -> bool {
+        self.sinks.iter().any(|sink| sink.covers(effect, true))
+    }
+}
+
+/// The guards of a declared grant in declaration order; the position of a
+/// guard is the bit a value carries as its origin. They come from the
+/// declaration, not from the narrowed grant: the command line can only
+/// remove what a primitive may do, and what still enters under the
+/// capability stays guarded.
+pub fn guards(declared: &[Capability]) -> Vec<Guard> {
+    declared
+        .iter()
+        .filter(|capability| !capability.only_to.is_empty())
+        .map(|capability| Guard {
+            capability: Capability {
+                budget: None,
+                only_to: Vec::new(),
+                ..normalised(capability)
+            },
+            sinks: capability
+                .only_to
+                .iter()
+                .map(|(path, scope)| {
+                    normalised(&Capability {
+                        path: path.clone(),
+                        scope: scope.clone(),
+                        budget: None,
+                        only_to: Vec::new(),
+                    })
+                })
+                .collect(),
+        })
+        .collect()
 }
 
 /// The effective grant: the declared capabilities, their scopes normalised,
@@ -316,19 +377,49 @@ fn restrict(granted: Capability, needs: &[Capability]) -> Vec<Capability> {
         .collect()
 }
 
-/// The capability spelled with its budget: `network.http("host") at most
-/// 60 per minute`.
+/// The capability spelled with its budget and its guard: `network.http(
+/// "host") at most 60 per minute`, `filesystem.read("secrets") only to
+/// console`.
 pub fn spell(capability: &Capability) -> String {
-    match &capability.budget {
+    let mut spelled = match &capability.budget {
         Some((count, unit)) => format!("{} at most {count} per {unit}", capability.spelling()),
         None => capability.spelling(),
+    };
+    if !capability.only_to.is_empty() {
+        let sinks: Vec<String> = capability
+            .only_to
+            .iter()
+            .map(|(path, scope)| match scope {
+                Some(scope) => format!("{}(\"{scope}\")", path.join(".")),
+                None => path.join("."),
+            })
+            .collect();
+        spelled.push_str(&format!(" only to {}", sinks.join(" or ")));
     }
+    spelled
 }
 
 /// A capability from its spelling: `filesystem.read("data")`, `console`,
-/// optionally followed by `at most COUNT per UNIT`.
+/// optionally followed by `at most COUNT per UNIT` and by `only to SINK or
+/// SINK`.
 pub fn parse_capability(text: &str) -> Result<Capability, String> {
     let text = text.trim();
+    let (text, only_to) = match text.split_once(" only to ") {
+        Some((head, sinks)) => {
+            let mut only_to = Vec::new();
+            for sink in sinks.split(" or ") {
+                let sink = parse_capability(sink)?;
+                if sink.budget.is_some() || !sink.only_to.is_empty() {
+                    return Err(format!(
+                        "`{text}`: a sink is a capability with a scope only"
+                    ));
+                }
+                only_to.push((sink.path, sink.scope));
+            }
+            (head.trim(), only_to)
+        }
+        None => (text, Vec::new()),
+    };
     let (head, budget) = match text.split_once(" at most ") {
         Some((head, rest)) => {
             let (count, unit) = rest
@@ -374,7 +465,7 @@ pub fn parse_capability(text: &str) -> Result<Capability, String> {
         path: path.split('.').map(str::to_string).collect(),
         scope,
         budget,
-        only_to: Vec::new(),
+        only_to,
     };
     if !capability.is_known() {
         return Err(format!("`{path}` is not a built-in capability"));
@@ -563,5 +654,27 @@ mod tests {
             spell(&cap("network.http(\"h\") at most 60 per minute")),
             "network.http(\"h\") at most 60 per minute"
         );
+    }
+
+    #[test]
+    fn guards_come_from_the_declaration() {
+        let spelled = "filesystem.read(\"./secrets/\") at most 2 per run only to network.http(\"api.example\") or console";
+        let declared = cap(spelled);
+        assert_eq!(declared.only_to.len(), 2);
+        assert_eq!(
+            spell(&declared),
+            "filesystem.read(\"./secrets/\") at most 2 per run only to network.http(\"api.example\") or console"
+        );
+        let guards = guards(&[cap("console"), declared]);
+        assert_eq!(guards.len(), 1);
+        assert_eq!(
+            guards[0].spelling(),
+            "filesystem.read(\"secrets\") only to network.http(\"api.example\") or console"
+        );
+        assert!(guards[0].admits(&cap("console")));
+        assert!(guards[0].admits(&cap("network.http(\"api.example\")")));
+        assert!(!guards[0].admits(&cap("network.http(\"other.example\")")));
+        assert!(!guards[0].admits(&cap("filesystem.write(\"out\")")));
+        assert!(parse_capability("console only to magic").is_err());
     }
 }

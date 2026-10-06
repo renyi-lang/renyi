@@ -8,6 +8,7 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use indexmap::IndexMap;
+use renyi_check::effects::Capability;
 
 use super::{arg, crash, small, text, NativeFn};
 use crate::natives::json::{self, Naming};
@@ -160,7 +161,13 @@ fn serve(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
             Ok(Some(incoming)) => {
                 let request = request_record(vm, incoming)?;
                 let answer = vm.call_function(handler, vec![request])?;
-                response_parts(vm, &answer)
+                // a response built from guarded data leaves through the
+                // socket (decision P3): refused with the guard's message
+                // in the body, which names no data
+                match vm.refusal(answer.origins(), &socket_effect(), "the response") {
+                    Some(message) => (500, Vec::new(), message),
+                    None => response_parts(vm, answer.plain()),
+                }
             }
             Ok(None) => continue,
             Err(detail) => (400, Vec::new(), detail),
@@ -169,6 +176,17 @@ fn serve(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
         served += 1;
     }
     Ok(Value::Nothing)
+}
+
+/// What sending a response exercises: `network.socket`, the server's own
+/// capability.
+fn socket_effect() -> Capability {
+    Capability {
+        path: vec!["network".to_string(), "socket".to_string()],
+        scope: None,
+        budget: None,
+        only_to: Vec::new(),
+    }
 }
 
 /// The `Request` record of what came in: the method, the decoded path, the
