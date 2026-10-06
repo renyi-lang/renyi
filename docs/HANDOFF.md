@@ -15,7 +15,9 @@ Code CLI and the Codex CLI, which found the cheat sheet's rendering of
 U2 and U3 wrong: decision U8, the corrected sheet, round 3 recorded as a
 defect round; round 4 on the corrected sheet through the cleaned
 channel: Sonnet 90, 100, 79, 40, the named-argument errors gone;
-decision U9, a sentence on refined construction and `otherwise`).
+decision U9, a sentence on refined construction and `otherwise`; the
+owner's strategy shift away from the readability scores and the gap
+audit of the design against the implementation, `docs/GAPS.md`).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -36,9 +38,10 @@ commitments in `07-system-design.md`. The corpus has 30 programs, passes
 the lint, is in canonical layout, checks cleanly, has nothing over
 budget, and its 89 `example:` lines and `test` blocks pass on the VM (six
 are `replays` tests answered from recordings under `examples/fixtures/`,
-two of them hand-written). The cheat sheet measures 2994 of 3000 tokens
-(decisions U1 to U3: the one-argument sentence, every library method
-with its parentheses, `rounded(places: 2)`). The Rust workspace has five crates:
+two of them hand-written). The cheat sheet measures 2991 of 3000 tokens
+(decisions U1 to U3, U8 and U9: the one-argument sentence, every library
+method with its parameters, the call-form sentence, the sentence on
+refined construction). The Rust workspace has five crates:
 `renyi_syntax`, `renyi_check`, `renyi_index`, `renyi_vm` and the `renyi`
 binary with `check`, `format`, `tokens`, `parse [--json]`, `index [--json
 | --budgets | --diff <map or revision>]`, `run [--manifest] [options]
@@ -98,6 +101,28 @@ explanation stands for the five-point rule without a decision entry,
 and gpt-5.5 does not run for now (the rounds continue on Sonnet). The
 grammar is not frozen: gpt-5.5 has not run on this sheet, and U9 has
 not been measured.
+
+On 2026-10-06 the owner shifted the goal: the readability scores are no
+longer the gate; the aim is a self-hosted, independent language that
+people use (and that future models then learn from their corpora). The
+owner chose to freeze the grammar now by decision rather than by
+measurement, to self-host the front end first with the Rust VM as the
+runtime, to keep the repository private until told otherwise, to aim the
+first users at people building agent workflows and at learners, and,
+before any of that, to audit the whole design against the implementation
+and fill the gaps. The audit is `docs/GAPS.md`: four subagents checked
+the seven design documents and the decision record promise by promise
+(the syntax audit alone wrote about 140 probe programs), and the session
+re-ran the probes behind every finding marked verified. Headlines: a
+`within` deadline crashes instead of failing; exhaustiveness checking
+has holes; `with` skips refinements at run time; private functions are
+callable across modules and public constants are not; `only to`,
+`expose as tool` and `deprecated:` parse and do nothing while the cheat
+sheet claims them; the nesting and body limits, the regex, `Url`, `Path`
+and `Date` literal checks, the `kind` rule and `see also:` are not
+implemented; no CI, no conformance suite, no formal grammar; M4 to M6
+not started. The freeze entry is not yet written: the owner's answers to
+the audit's questions decide what the frozen surface contains.
 
 ## The VM as it exists (`crates/renyi_vm`)
 
@@ -603,12 +628,16 @@ on a fresh clone).
 
 ## Owner actions pending
 
-- **None open from the readability work**: round 4's three questions
-  were answered in session 6 (decision U9: the sentence on refined
-  construction and `otherwise`; the notes' explanation stands for the
-  five-point rule; gpt-5.5 deferred, the rounds continue on Sonnet).
-  Round 5, which measures U9, needs the owner's go-ahead on its volume
-  (345 Sonnet samples and six grader subagents).
+- **The gap audit's questions** (`docs/GAPS.md`, section 7), asked at
+  the end of session 6: the order of the three stages; what to do with
+  the four parsed-but-empty features (`only to`, `expose as tool`,
+  `deprecated:` tiers, `process`/`foreign`); whether task independence
+  becomes a checker rule; CI and the conformance suite; and the new
+  decision entries for the contradictions (indentation continuation,
+  `Same`, the phrase table, the freeze by decision). If the session ended
+  before the answers, they are open, and the freeze entry waits for them.
+- **Readability**: the scores are no longer the gate (owner, 2026-10-06).
+  Round 5 (U9's sentence) and gpt-5.5 run only if the owner asks.
 - Session 5 printed the values of `ANTHROPIC_API_KEY` and
   `OPENAI_API_KEY` into a tool result once (not committed); the owner said
   in session 6 that they handle the transcript and the keys themselves, so
@@ -639,14 +668,19 @@ on a fresh clone).
 
 ## Next steps
 
-1. **Round 5 on Sonnet measures U9**: `run.py prepare`, then the Sonnet
-   command of item 2 after its probe, the graders, `score`, the U5
-   search, `report`, the notes; compare with round 4 (the two
-   refined-construction items, `config` and `todo_cli`, are the ones
-   to watch) and apply the five-point rule against round 4. Ask the
-   owner before starting the volume.
-2. **gpt-5.5 on the corrected cheat sheet** when the owner lifts the
-   deferral and it has a channel: `run
+1. **Stage 1 of `docs/GAPS.md`, section 7**: fix the defects of its
+   section 1 (start with the deadline crash, exhaustiveness, `with`,
+   privacy and constants: each has a verified probe to turn into a
+   test), write the checks of section 2, act on the owner's answers
+   for section 3, correct the documents of section 5, add CI and the
+   conformance suite. Then the freeze entry, the formal grammar and
+   the language reference, then the self-hosted front end (stage 2).
+2. **Readability, only on request**: round 5 on Sonnet measures U9
+   (`run.py prepare`, the Sonnet command at the end of this item after
+   its probe, the graders, `score`, the U5 search, `report`, the
+   notes; `config` and `todo_cli` are the items to watch); gpt-5.5 on
+   the corrected cheat sheet when the owner lifts the deferral and it
+   has a channel: `run
    --provider codex --model gpt-5.5 --work-dir <empty dir> --parallel 3
    --run 2026-10-06-c696747` (restartable; the Codex quota returns Nov
    4th, 2026), or the API path with the owner's authorization; then

@@ -59,6 +59,7 @@ implementation.
 | `docs/design/06-runtime-guarantees.md` | recorded runs and `replays` tests, narrated runs, budgets in grants (`at most`), provenance guards (`only to`) |
 | `docs/design/07-system-design.md` | the trade-offs the language claims to resolve; capability-safe packages, reproducibility, in-process sandboxing, checked live update |
 | `docs/cheatsheet.md` | the whole language on one page; token-budgeted |
+| `docs/GAPS.md` | the gap audit of 2026-10-06: what the design promises and the implementation does not deliver, with the proposed order of work |
 | `examples/` | the corpus, one program per file, index in `examples/README.md` |
 | `tools/count_tokens.py` | cheat-sheet budget gate |
 | `tools/lint_examples.py` | regex-level checks for the corpus, including calls against the library sketch |
