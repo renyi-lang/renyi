@@ -1201,3 +1201,27 @@ first; gpt-5.5 when the Codex quota or the owner's key authorization
 gives it a channel) is the measurement of U1 to U3. `count` stays
 reserved (R2); the owner waits for gpt-5.5's data before reopening it.
 (user)
+
+**U9. The cheat sheet says when a refined construction takes
+`otherwise`.** Round 4 (`tests/readability/2026-10-06-c696747/notes.md`,
+Sonnet 5.5 on the sheet after U8, through the CLI channel run in an empty
+directory with no MCP server) shows the errors U1 to U3 and U8 addressed
+gone: no named single argument, `rounded()` or field-form error in 345
+samples, against 43 named-argument lines in round 2. Complete is 79
+against round 2's 89 on four items whose slips no changed sentence
+touches, and two of them are one gap: `Port(8080) otherwise crash with
+...` on a literal the checker proves valid (`superfluous-otherwise`,
+`config`) and `Done(position: number)` without `otherwise` after `if
+number is less than 1 then return Help end` (`missing-otherwise`,
+`todo_cli`); the sheet said only that refined construction can fail. It
+now says "A literal the checker can evaluate needs no `otherwise`
+(`Port(8080)`); a variable needs one even after a check", paid for by the
+phrase-token sentence, a query comment and "`renyi run` enforces it";
+2991 tokens. The checker is
+unchanged (a flow-sensitive refinement, which would read the check, was
+the alternative and is declined for now). The owner also ruled that the
+notes' item-by-item explanation satisfies the five-point rule for the
+fall of Complete without a decision entry, since no change caused it,
+and that gpt-5.5 does not run on this sheet for now: the rounds continue
+on Sonnet, and the freeze still needs the second gating model (R8).
+(user)

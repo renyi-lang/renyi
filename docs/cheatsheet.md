@@ -91,8 +91,10 @@ end
 Construct: `User(name: "Ann", age: 30, email: nothing)`, `Circle(radius: 2.5)`
 (fields always named), `Point`, `UserId(7)` (a subtype wraps one value).
 Update: `user with age: 31`. Refined construction can fail:
-`Email(input) otherwise fail with BadInput`. Generic types: `List of T`,
-`Map of K to V`, `Set of T`, `maybe T`.
+`Email(input) otherwise fail with BadInput`. A literal the checker can
+evaluate needs no `otherwise` (`Port(8080)`); a variable needs one even
+after a check. Generic types: `List of T`, `Map of K to V`, `Set of T`,
+`maybe T`.
 
 ## Abilities
 ```
@@ -206,7 +208,7 @@ for each order in orders all order.is_shipped                    # Boolean
 for each order in orders any order.is_refunded                   # Boolean
 for each user in users group by user.country collect user.email # Map
 for each sale in sales group by sale.region sum sale.amount     # Map of Text to Decimal
-for each order in orders, line in order.lines collect line.sku   # flatten
+for each order in orders, line in order.lines collect line.sku
 for each url in urls concurrently collect web.get(url) otherwise fail
 ```
 
@@ -216,8 +218,7 @@ pure. Capabilities: `console`, `filesystem.read`, `filesystem.write`,
 `network.http`, `network.socket`, `environment`, `time`, `random`, `process`,
 `foreign`. A parent covers its children. A literal argument narrows a scope:
 `filesystem.read("data")`, `network.http("api.example.com")`; no argument
-covers every scope. `main` declares the program's whole grant; `renyi run`
-enforces it. Only there: `at most 60 per minute` (budget; also `per run`) and
+covers every scope. `main` declares the program's whole grant. Only there: `at most 60 per minute` (budget; also `per run`) and
 `only to console` (data read through it may leave only there).
 ```
 public function main() or fails with AppError
@@ -290,5 +291,4 @@ nothing of one only or otherwise per power public purpose raw remainder repeat
 replays return returns run see self set some sorted success sum tags test than
 then to tool true type until when where with within
 ```
-Phrases such as `is at least`, `or fails with` and `for each` are single
-tokens. Any word is valid after a dot.
+Any word is valid after a dot.

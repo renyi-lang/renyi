@@ -14,7 +14,8 @@ scale; decisions U5 to U7 from the re-grade; round 3 through the Claude
 Code CLI and the Codex CLI, which found the cheat sheet's rendering of
 U2 and U3 wrong: decision U8, the corrected sheet, round 3 recorded as a
 defect round; round 4 on the corrected sheet through the cleaned
-channel: Sonnet 90, 100, 79, 40, the named-argument errors gone).
+channel: Sonnet 90, 100, 79, 40, the named-argument errors gone;
+decision U9, a sentence on refined construction and `otherwise`).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -91,9 +92,12 @@ first time. Complete is ten points under round 2 on four items whose
 slips no changed sentence touches (`otherwise` on a refined
 construction from a literal, none on one from a variable after a
 check, one `end` too many, `count`); the notes explain the fall and
-put three questions to the owner (the refined-construction sentence,
-the reading of the five-point rule, gpt-5.5's channel). The grammar is
-not frozen: gpt-5.5 has not run on this sheet.
+put three questions to the owner, answered the same session: the
+sentence is on the sheet (decision U9, 2991 tokens), the notes'
+explanation stands for the five-point rule without a decision entry,
+and gpt-5.5 does not run for now (the rounds continue on Sonnet). The
+grammar is not frozen: gpt-5.5 has not run on this sheet, and U9 has
+not been measured.
 
 ## The VM as it exists (`crates/renyi_vm`)
 
@@ -571,6 +575,14 @@ not frozen: gpt-5.5 has not run on this sheet.
     the README and this file corrected for the channel (the project
     `CLAUDE.md` and the claude.ai connectors were in round 3's context).
     A memory note on the channel recipe was saved outside the repository.
+20. **Decision U9** (sixteenth commit): the owner's answers to round 4's
+    questions. The sheet says when a refined construction takes
+    `otherwise` ("A literal the checker can evaluate needs no
+    `otherwise` (`Port(8080)`); a variable needs one even after a
+    check"), paid for by the phrase-token sentence, the `# flatten`
+    comment and "`renyi run` enforces it", 2991 tokens; the five-point reading stays in the notes;
+    gpt-5.5 deferred. `01-decisions.md`, `03-readability-test.md`, round
+    4's notes.
 
 ## Done in session 5 (condensed)
 
@@ -591,15 +603,12 @@ on a fresh clone).
 
 ## Owner actions pending
 
-- **Round 4's three questions** (its `notes.md`, section 6), asked at
-  the end of session 6: whether the cheat sheet gets a sentence on
-  refined construction and `otherwise` (about 30 tokens, needs a trim
-  of the same size; it cost `config` and `todo_cli`), whether the
-  notes' explanation satisfies the five-point rule for Complete 89 to
-  79 or a second run on the same sheet is wanted, and how gpt-5.5 runs
-  on this sheet (the Codex quota returns Nov 4th, 2026; or the owner
-  authorizes `OPENAI_API_KEY` for 345 samples in the same request).
-  If the session ended before the answers, they are still open.
+- **None open from the readability work**: round 4's three questions
+  were answered in session 6 (decision U9: the sentence on refined
+  construction and `otherwise`; the notes' explanation stands for the
+  five-point rule; gpt-5.5 deferred, the rounds continue on Sonnet).
+  Round 5, which measures U9, needs the owner's go-ahead on its volume
+  (345 Sonnet samples and six grader subagents).
 - Session 5 printed the values of `ANTHROPIC_API_KEY` and
   `OPENAI_API_KEY` into a tool result once (not committed); the owner said
   in session 6 that they handle the transcript and the keys themselves, so
@@ -630,7 +639,14 @@ on a fresh clone).
 
 ## Next steps
 
-1. **gpt-5.5 on the corrected cheat sheet** when it has a channel: `run
+1. **Round 5 on Sonnet measures U9**: `run.py prepare`, then the Sonnet
+   command of item 2 after its probe, the graders, `score`, the U5
+   search, `report`, the notes; compare with round 4 (the two
+   refined-construction items, `config` and `todo_cli`, are the ones
+   to watch) and apply the five-point rule against round 4. Ask the
+   owner before starting the volume.
+2. **gpt-5.5 on the corrected cheat sheet** when the owner lifts the
+   deferral and it has a channel: `run
    --provider codex --model gpt-5.5 --work-dir <empty dir> --parallel 3
    --run 2026-10-06-c696747` (restartable; the Codex quota returns Nov
    4th, 2026), or the API path with the owner's authorization; then
@@ -647,12 +663,12 @@ on a fresh clone).
    login-only directory holds a hard link to the CLI's
    `.credentials.json` and a `.claude.json` of
    `{"hasCompletedOnboarding": true}`.
-2. **Readability observations not asked**: `otherwise` binds loosest
+3. **Readability observations not asked**: `otherwise` binds loosest
    (Sonnet wrote `check f(x) otherwise "" is "y"`); Sonnet reasons before
    the Predict answer on `traffic_light` (0 of 5 with right lines); the
    rubric's reading of "only X and Y" when Z is also needed (round 1 and
    2 read it as a need missing).
-3. **M4** (provenance guards `only to`, the package manager, budgets in
+4. **M4** (provenance guards `only to`, the package manager, budgets in
    the manifest) and **M5** (embedding API, `serve --watch`, LSP) as
    before; open items R5-5 (per-definition refresh in `renyi mcp`) and
    R7-4.

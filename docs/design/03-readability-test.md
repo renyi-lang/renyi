@@ -18,7 +18,9 @@ defect round; the library list carries parameter names since (U8). Round
 corrected sheet through the cleaned channel) measures U1 to U3 and U8
 on one gating model: Predict 90, Explain 100, Complete 79, Write 40,
 with no named single argument, `rounded()` or field-form error left;
-gpt-5.5 has not run on this sheet. Date: 2026-10-06.
+gpt-5.5 has not run on this sheet (deferred by the owner). The sheet
+since says when a refined construction takes `otherwise` (U9), not yet
+measured. Date: 2026-10-06.
 
 Decision H2 freezes the grammar by measurement, not by implementation: before
 the parser is written, several models must read the cheat sheet and work with

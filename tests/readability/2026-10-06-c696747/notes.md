@@ -247,3 +247,10 @@ again (three samples, as in round 2); `count` as a name persists at
 three samples (`deadlines`, `invoice_report`); the lint's block
 heuristic caught one `end` too many in three `traffic_light` samples;
 Explain stays at 100 with thinking in only 11 of 150 sessions.
+
+Answered in session 6: the sentence is on the sheet (decision U9, paid
+for by the phrase-token sentence, the `# flatten` comment and "`renyi
+run` enforces it", 2991 tokens; not yet measured), the notes' explanation stands for the
+five-point rule without a decision entry, and gpt-5.5 does not run on
+this sheet for now (the rounds continue on Sonnet; the freeze still
+needs the second gating model).
