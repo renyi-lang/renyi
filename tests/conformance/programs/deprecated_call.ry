@@ -1,0 +1,17 @@
+module deprecated_call
+  purpose: Calling a deprecated function warns, and `renyi check --strict` makes it an error (decision C8c).
+
+function old(value: Integer) returns Integer
+  deprecated: since 0.2, replaced by fresh
+  example: old(1) is 2
+
+  return value + 1
+end
+
+function fresh(value: Integer) returns Integer
+  return value + 1
+end
+
+function go() returns Integer
+  return old(1)
+end

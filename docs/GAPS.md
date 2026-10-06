@@ -226,13 +226,16 @@ freeze, or take it out of the frozen surface until it exists.
   E1's green threads and the performance side of the trade-off are not
   delivered; `within` is checked between statements and items and does
   not interrupt a blocking primitive (`vm.rs:1217-1240`).
-- **Testing and CI** (decisions H6, D1): no CI of any kind, ever; no
-  implementation-independent conformance suite (the closest is
-  `tests/readability/reference/*.out`, ten files, read by a Rust test);
-  no golden files for parse trees, formatter output or diagnostics; no
-  property tests ("type-checked programs never crash the VM" is untested);
-  the readability regression compares nothing to the thresholds and is
-  not wired to anything; `renyi index --budgets` always exits 0.
+- **Testing and CI** (decisions H6, D1). Done in stage 1 (decision V8):
+  `.github/workflows/ci.yml` runs the format, clippy, test, corpus, lint
+  and token gates and the conformance suite on every push;
+  `tests/conformance/` holds the suite (the ten Predict references, one
+  program per diagnostic of stage 1, one guarded run) with a runner that
+  needs no Rust crate (`tools/conformance.py`). Still missing: golden
+  files for parse trees and formatter output; property tests
+  ("type-checked programs never crash the VM" is untested); the
+  readability regression compares nothing to the thresholds and is not
+  wired to anything; `renyi index --budgets` always exits 0.
 - **Specification**: no formal grammar and no language reference; the
   hand-written parser is the only grammar (`CLAUDE.md` still says "until
   the formal grammar exists").

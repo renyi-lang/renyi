@@ -1,0 +1,9 @@
+module tool_type
+  purpose: A tool's parameters and result must be representable as JSON (decision V6).
+
+public function apply(action: function(Integer) returns Integer, value: Integer) returns Integer
+  purpose: Call the action on the value.
+  expose as tool
+
+  return action(value)
+end

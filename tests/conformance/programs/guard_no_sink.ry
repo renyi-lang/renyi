@@ -1,0 +1,10 @@
+module guard_no_sink
+  purpose: A guard whose sink the grant does not allow warns (runtime guarantees, section 3.3).
+
+import std.console
+
+public function main() needs console, filesystem.read("keys") only to network.http("api.example")
+  purpose: Guarded data with no way out.
+
+  console.print("hi")
+end

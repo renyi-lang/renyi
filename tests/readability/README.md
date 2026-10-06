@@ -12,7 +12,7 @@ for the cheat-sheet gate.
 | `grade_batches.py` | writes a run's Explain samples as batches of fifty (`<label>.batch<n>.json`: key, the run's reference, the explanation) for the subagent graders |
 | `merge_agent_grades.py` | merges the subagent graders' answers (a JSON array per batch of fifty samples) into a run's `grades.json` under the `agent:` buckets, checking every item against the run's sample and reference first |
 | `manifest.json` | per program: arguments for Predict, the function removed for Complete |
-| `reference/<program>.out` | the exact output the deterministic programs print (Predict references, and the first conformance expectations for M3) |
+| `../conformance/expected/<program>.out` | the exact output the deterministic programs print: the Predict references, which are the first members of the conformance suite (decision V8) and live there |
 | `reference/<program>.explain.txt` | the author's description of every program (purpose, inputs, outputs, effects, failures), which the Explain grader compares explanations against |
 | `write_tasks.json` | ten task descriptions for Write that are not in the corpus |
 | `<date>-<revision>/` | one run: `system.txt` (the cheat sheet as system prompt), `reference/` (the references as they stood when the run was prepared; `score` reads them from there, so a later correction never re-grades an old run), `prompts/`, `outputs/<model>/`, `scores.json` |

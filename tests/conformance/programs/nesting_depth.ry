@@ -1,0 +1,21 @@
+module nesting_depth
+  purpose: A fifth level of nesting is an error (decision V5).
+
+function go(items: List of Integer) returns Integer
+  let mutable total be 0
+  for each item in items
+    if item is greater than 0 then
+      match item
+        when 1 then
+          repeat until total is greater than 9
+            if total is 3 then
+              set total to total + 2
+            end
+            set total to total + 1
+          end
+        otherwise set total to total + item
+      end
+    end
+  end
+  return total
+end

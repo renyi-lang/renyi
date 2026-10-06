@@ -1,0 +1,10 @@
+module capability_unavailable
+  purpose: The process capability waits for milestone M4 (decision V6).
+
+import std.console
+
+public function main() needs console, process("git")
+  purpose: Not yet.
+
+  console.print("hi")
+end

@@ -1,0 +1,53 @@
+# Continuous integration (decision V8): on every push and pull request, the
+# checks a commit must pass before it touches `crates/` or the corpus, as
+# `CLAUDE.md` lists them, plus the conformance suite run against the built
+# binary by the implementation-independent runner.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  checks:
+    name: Format, lint, test, corpus and conformance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Format
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test
+
+      - name: Canonical corpus
+        run: cargo run -q -- format --check examples/*.ry
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Corpus lint
+        run: python tools/lint_examples.py
+
+      - name: Cheat-sheet token gate
+        run: |
+          pip install tiktoken
+          python tools/count_tokens.py
+
+      - name: Conformance suite
+        run: python tools/conformance.py target/debug/renyi

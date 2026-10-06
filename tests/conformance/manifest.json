@@ -1,0 +1,143 @@
+{
+  "_comment": "The conformance suite (decision V8). Paths are relative to the repository root; the README beside this file explains every field.",
+  "cases": [
+    {
+      "name": "hello prints its greeting",
+      "command": "run",
+      "program": "examples/hello.ry",
+      "stdout": "tests/conformance/expected/hello.out",
+      "exit_code": 0
+    },
+    {
+      "name": "temperature_table prints its table",
+      "command": "run",
+      "program": "examples/temperature_table.ry",
+      "stdout": "tests/conformance/expected/temperature_table.out",
+      "exit_code": 0
+    },
+    {
+      "name": "shapes prints its areas",
+      "command": "run",
+      "program": "examples/shapes.ry",
+      "stdout": "tests/conformance/expected/shapes.out",
+      "exit_code": 0
+    },
+    {
+      "name": "traffic_light prints its sequence",
+      "command": "run",
+      "program": "examples/traffic_light.ry",
+      "stdout": "tests/conformance/expected/traffic_light.out",
+      "exit_code": 0
+    },
+    {
+      "name": "expression_tree prints its evaluation",
+      "command": "run",
+      "program": "examples/expression_tree.ry",
+      "stdout": "tests/conformance/expected/expression_tree.out",
+      "exit_code": 0
+    },
+    {
+      "name": "permissions prints its differences",
+      "command": "run",
+      "program": "examples/permissions.ry",
+      "stdout": "tests/conformance/expected/permissions.out",
+      "exit_code": 0
+    },
+    {
+      "name": "invoice_report prints its report",
+      "command": "run",
+      "program": "examples/invoice_report.ry",
+      "stdout": "tests/conformance/expected/invoice_report.out",
+      "exit_code": 0
+    },
+    {
+      "name": "statistics prints the statistics of its arguments",
+      "command": "run",
+      "program": "examples/statistics.ry",
+      "arguments": ["2", "4", "4", "4", "5", "5", "7", "9"],
+      "stdout": "tests/conformance/expected/statistics.out",
+      "exit_code": 0
+    },
+    {
+      "name": "dependency_order prints its order",
+      "command": "run",
+      "program": "examples/dependency_order.ry",
+      "stdout": "tests/conformance/expected/dependency_order.out",
+      "exit_code": 0
+    },
+    {
+      "name": "markdown_table prints its table",
+      "command": "run",
+      "program": "examples/markdown_table.ry",
+      "stdout": "tests/conformance/expected/markdown_table.out",
+      "exit_code": 0
+    },
+    {
+      "name": "a fifth level of nesting is an error",
+      "command": "check",
+      "program": "tests/conformance/programs/nesting_depth.ry",
+      "diagnostics": ["nesting-depth"],
+      "exit_code": 1
+    },
+    {
+      "name": "a body longer than sixty lines is an error",
+      "command": "check",
+      "program": "tests/conformance/programs/body_length.ry",
+      "diagnostics": ["body-length"],
+      "exit_code": 1
+    },
+    {
+      "name": "a task may not change an outer binding",
+      "command": "check",
+      "program": "tests/conformance/programs/task_independence.ry",
+      "diagnostics": ["task-independence"],
+      "exit_code": 1
+    },
+    {
+      "name": "process is not available before M4",
+      "command": "check",
+      "program": "tests/conformance/programs/capability_unavailable.ry",
+      "diagnostics": ["capability-unavailable"],
+      "exit_code": 1
+    },
+    {
+      "name": "a deprecated call warns",
+      "command": "check",
+      "program": "tests/conformance/programs/deprecated_call.ry",
+      "diagnostics": ["deprecated"],
+      "exit_code": 0
+    },
+    {
+      "name": "a deprecated call is an error under --strict",
+      "command": "check",
+      "options": ["--strict"],
+      "program": "tests/conformance/programs/deprecated_call.ry",
+      "diagnostics": ["deprecated"],
+      "exit_code": 1
+    },
+    {
+      "name": "a tool takes and returns JSON",
+      "command": "check",
+      "program": "tests/conformance/programs/tool_type.ry",
+      "diagnostics": ["tool-type"],
+      "exit_code": 1
+    },
+    {
+      "name": "a guard without a sink in the grant warns",
+      "command": "check",
+      "program": "tests/conformance/programs/guard_no_sink.ry",
+      "diagnostics": ["guard-no-sink"],
+      "exit_code": 0
+    },
+    {
+      "name": "a guarded value does not reach the console",
+      "command": "run",
+      "program": "tests/conformance/programs/guarded_print.ry",
+      "stdout": "tests/conformance/expected/empty.out",
+      "stderr_contains": [
+        "would send a value from filesystem.read(\"tests/conformance\") to console"
+      ],
+      "exit_code": 2
+    }
+  ]
+}

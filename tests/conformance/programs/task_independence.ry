@@ -1,0 +1,11 @@
+module task_independence
+  purpose: A task may not change a binding made outside its block (decision V7).
+
+function go() returns Integer
+  let mutable total be 0
+  run concurrently
+    set total to total + 1
+    set total to total + 2
+  end
+  return total
+end

@@ -1,7 +1,7 @@
 //! The VM against the corpus: every Predict program of the readability
-//! manifest prints its reference output, every `example:` line and `test`
-//! block of every example passes, and a program's failure and crash are
-//! reported as such.
+//! manifest prints its expected output (the conformance suite's), every
+//! `example:` line and `test` block of every example passes, and a
+//! program's failure and crash are reported as such.
 
 use std::cell::RefCell;
 use std::io::Write;
@@ -110,7 +110,7 @@ fn every_predict_program_prints_its_reference_output() {
         let (outcome, stdout, stderr) = run(&program, &arguments);
         assert_eq!(outcome, RunOutcome::Finished, "{name}: {stderr}");
         let expected =
-            std::fs::read_to_string(root().join(format!("tests/readability/reference/{name}.out")))
+            std::fs::read_to_string(root().join(format!("tests/conformance/expected/{name}.out")))
                 .expect("reference output");
         assert_eq!(
             stdout.replace("\r\n", "\n"),

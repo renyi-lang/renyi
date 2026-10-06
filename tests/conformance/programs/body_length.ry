@@ -1,0 +1,67 @@
+module body_length
+  purpose: A body longer than sixty lines is an error (decision V5).
+
+function go() returns Integer
+  let mutable total be 0
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  set total to total + 1
+  return total
+end

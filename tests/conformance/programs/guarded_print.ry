@@ -1,0 +1,13 @@
+module guarded_print
+  purpose: A value read under a guard may not reach the console (decision P3).
+
+import std.console
+import std.filesystem exposing Path, FileError
+
+public function main() or fails with FileError
+  needs console, filesystem.read("tests/conformance") only to network.http("x"), network.http("x")
+  purpose: Read the secret, then try to print it.
+
+  let secret be filesystem.read_text(Path("tests/conformance/programs/secret.txt")) otherwise fail
+  console.print(secret)
+end

@@ -49,6 +49,8 @@ EXAMPLES = ROOT / "examples"
 CHEATSHEET = ROOT / "docs" / "cheatsheet.md"
 MANIFEST = HERE / "manifest.json"
 WRITE_TASKS = HERE / "write_tasks.json"
+# the Predict references are the expected outputs of the conformance suite
+EXPECTED = ROOT / "tests" / "conformance" / "expected"
 sys.path.insert(0, str(ROOT / "tools"))
 import lint_examples  # noqa: E402
 
@@ -457,7 +459,7 @@ def cmd_prepare(args: argparse.Namespace) -> None:
         name, program = path.stem, read(path)
         entry = manifest["programs"].get(name, {})
         if "predict" in entry:
-            assert (HERE / "reference" / f"{name}.out").exists(), f"no reference output for {name}"
+            assert (EXPECTED / f"{name}.out").exists(), f"no reference output for {name}"
             arguments = entry["predict"].get("arguments", [])
             write_prompt(prompts / "predict" / f"{name}.json", "predict", name,
                          PROMPTS["predict"].format(arguments=json.dumps(arguments),
@@ -482,9 +484,10 @@ def cmd_prepare(args: argparse.Namespace) -> None:
     # the references as the round sees them: the corpus moves on and a
     # description or an output can go stale for an old round otherwise
     (target / "reference").mkdir(exist_ok=True)
-    for reference in sorted((HERE / "reference").iterdir()):
-        if reference.suffix in (".out", ".txt"):
-            write(target / "reference" / reference.name, read(reference))
+    references = [path for path in (HERE / "reference").iterdir() if path.suffix == ".txt"]
+    references += [path for path in EXPECTED.iterdir() if path.suffix == ".out"]
+    for reference in sorted(references, key=lambda path: path.name):
+        write(target / "reference" / reference.name, read(reference))
     write(target / "system.txt", SYSTEM.format(cheatsheet=read(CHEATSHEET)))
     write(target / "meta.json", json.dumps({
         "date": dt.date.today().isoformat(), "revision": revision,
@@ -495,9 +498,12 @@ def cmd_prepare(args: argparse.Namespace) -> None:
 def reference_file(target: pathlib.Path, name: str) -> pathlib.Path:
     """The reference as the round saw it: the copy `prepare` put under the
     run directory, or the current file for a round prepared before the
-    copies existed."""
+    copies existed (an output lives in the conformance suite, a description
+    here)."""
     snapshot = target / "reference" / name
-    return snapshot if snapshot.exists() else HERE / "reference" / name
+    if snapshot.exists():
+        return snapshot
+    return (EXPECTED if name.endswith(".out") else HERE / "reference") / name
 
 
 def with_imports(program: str) -> str:
