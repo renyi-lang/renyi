@@ -187,6 +187,20 @@
       "program": "tests/conformance/programs/match_nested.ry",
       "diagnostics": ["not-exhaustive"],
       "exit_code": 1
+    },
+    {
+      "name": "a range loop has one spelling",
+      "command": "check",
+      "program": "tests/conformance/programs/range_loop.ry",
+      "diagnostics": ["range-loop"],
+      "exit_code": 1
+    },
+    {
+      "name": "the module name equals the path",
+      "command": "check",
+      "program": "tests/conformance/programs/wrong_name.ry",
+      "diagnostics": ["module-name"],
+      "exit_code": 1
     }
   ]
 }

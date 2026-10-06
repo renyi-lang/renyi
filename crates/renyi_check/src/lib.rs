@@ -88,9 +88,13 @@ pub fn check_project(files: &[SourceFile]) -> CheckedProject {
     let mut modules = Vec::new();
     for (index, file) in files.iter().enumerate() {
         let parsed = parse(&file.text);
-        let id = if parsed.diagnostics.iter().any(Diagnostic::is_error) {
+        let mut diagnostics = parsed.diagnostics;
+        let id = if diagnostics.iter().any(Diagnostic::is_error) {
             None
         } else {
+            if let Some(diagnostic) = module_name_mismatch(&file.name, &parsed.module) {
+                diagnostics.push(diagnostic);
+            }
             let id = world.add_module(parsed.module, false);
             world.set_source_lines(id, &file.text);
             Some(id)
@@ -98,7 +102,7 @@ pub fn check_project(files: &[SourceFile]) -> CheckedProject {
         modules.push(CheckedModule {
             file: index,
             id,
-            diagnostics: parsed.diagnostics,
+            diagnostics,
         });
     }
     world.resolve_all();
@@ -128,6 +132,51 @@ pub fn check_project(files: &[SourceFile]) -> CheckedProject {
         modules,
         references,
     }
+}
+
+/// Decision G3: the module name equals the path. The last segment is the
+/// file's stem and the segments before it its parent directories, read
+/// from the end; the extension is `.ry` or `.renyi`.
+fn module_name_mismatch(file_name: &str, module: &renyi_syntax::ast::Module) -> Option<Diagnostic> {
+    let segments: Vec<&str> = module.name.iter().map(|n| n.text.as_str()).collect();
+    let mut components: Vec<&str> = file_name
+        .split(['/', '\\'])
+        .filter(|component| !component.is_empty())
+        .collect();
+    let last = components.pop().unwrap_or("");
+    let stem = last
+        .strip_suffix(".ry")
+        .or_else(|| last.strip_suffix(".renyi"))
+        .unwrap_or(last);
+    let (name, parents) = segments.split_last()?;
+    let matches = stem == *name
+        && components.len() >= parents.len()
+        && parents
+            .iter()
+            .rev()
+            .zip(components.iter().rev())
+            .all(|(segment, component)| segment == component);
+    if matches {
+        return None;
+    }
+    let span = match (module.name.first(), module.name.last()) {
+        (Some(first), Some(last)) => first.span.join(last.span),
+        _ => Span::new(0, 0),
+    };
+    let expected = format!("{}.ry", segments.join("/"));
+    Some(
+        Diagnostic::error(
+            "module-name",
+            format!(
+                "the module is named `{}`, but its file is `{last}`; the module name equals the path",
+                segments.join(".")
+            ),
+            span,
+        )
+        .with_fix(format!(
+            "rename the module after the file, or the file to `{expected}` (decision G3)"
+        )),
+    )
 }
 
 /// Check a parsed program whose imports are given as sources, for tests and
@@ -194,8 +243,16 @@ pub fn imported_files(file: &SourceFile) -> Vec<SourceFile> {
         for segment in &path {
             file_path.push(segment);
         }
-        file_path.set_extension("ry");
-        let Ok(text) = std::fs::read_to_string(&file_path) else {
+        // `.renyi` and `.ry` are equivalent (decision G3)
+        let mut text = None;
+        for extension in ["ry", "renyi"] {
+            file_path.set_extension(extension);
+            if let Ok(read) = std::fs::read_to_string(&file_path) {
+                text = Some(read);
+                break;
+            }
+        }
+        let Some(text) = text else {
             continue;
         };
         let imported = parse(&text);

@@ -109,15 +109,19 @@ Ordered by how much they matter to the language's promises.
     `crates/renyi_vm/tests/recording.rs`, `a_replay_checks_the_budgets_too`).
     Still open: the recording's `grant` header is never compared with
     the test's `needs` (coverage is checked per recorded call).
-15. **Two spellings of the range loop** are accepted (`for each x in from
-    1 to 9` and `for each x from 1 to 9`) and the formatter rewrites one
-    into the other (`parser.rs:1625-1637`, `format.rs:862-872`), against
-    the one-spelling rule and the formatter's "never changes tokens".
-16. **The module header need not match the path** (decisions G3, J17; only
-    imports look a module up by its header), and `.renyi` is not accepted
-    by imports, the index or the git-base maps (`crates/renyi_check/src/lib.rs:195`,
-    `crates/renyi_index/src/lib.rs:217`, `crates/renyi/src/maps.rs:224, 245`)
-    although `README.md` calls the two extensions equivalent.
+15. Done in stage 1: **the range loop has one spelling**, `for each x
+    from 1 to 9`; `in` before `from` is `range-loop` (`parser.rs`,
+    `loop_source`), so the formatter never rewrites it. Tested in
+    `rules.rs` and by the conformance case `range_loop.ry`.
+16. Done in stage 1: **the module header must match the path** (decisions
+    G3, J17): the last segment is the file's stem and the segments before
+    it its parent directories, else `module-name`
+    (`crates/renyi_check/src/lib.rs`, `module_name_mismatch`); `.renyi`
+    is read wherever `.ry` is: imports, the index and the git-base maps.
+    The MCP `check` tool names a source given without a path after its
+    header; the readability harness ignores the rule for its scratch
+    file, whose name is the process id. Tested in `rules.rs` and by the
+    conformance case `wrong_name.ry`.
 17. **A user `Hash` implementation is never called**
     (`crates/renyi_vm/src/value.rs`; known), and collections keep the
     derived equality (`04-stdlib-sketch.md`, ability table). Done in

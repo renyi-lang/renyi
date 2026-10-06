@@ -1613,7 +1613,21 @@ impl<'s> Parser<'s> {
             let range = self.range()?;
             return Ok((bindings, range));
         }
-        self.expect_word(Word::In)?;
+        let at_in = self.expect_word(Word::In)?.span;
+        if self.at_word(Word::From) {
+            // the range loop has one spelling: `for each x from 1 to 9`
+            let from = self.peek().span;
+            self.diagnostics.push(
+                Diagnostic::error(
+                    "range-loop",
+                    "a range loop is written `for each x from 1 to 9`, without `in`",
+                    at_in.join(from),
+                )
+                .with_fix("drop `in`"),
+            );
+            let range = self.range()?;
+            return Ok((bindings, range));
+        }
         let source = self.or_expr()?;
         Ok((bindings, source))
     }

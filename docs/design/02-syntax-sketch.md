@@ -490,10 +490,11 @@ end
   `GaveUp(attempts)` (decision K6). Binding a field and not using it is a
   compile error (decision J8).
 - `for each item in collection` iterates lists, sets, ranges and text
-  (by character); `for each key, value in map` destructures pairs. A loop
-  header accepts the query clauses `where` and `sorted by`: `for each size in
-  sizes sorted by size.characters descending`. `break` and `continue` are
-  allowed.
+  (by character); `for each key, value in map` destructures pairs; a loop
+  over a range literal drops `in`: `for each index from 1 to 10`, the one
+  spelling (`range-loop` otherwise). A loop header accepts the query
+  clauses `where` and `sorted by`: `for each size in sizes sorted by
+  size.characters descending`. `break` and `continue` are allowed.
 - `repeat until condition` runs the body until the condition holds; the
   condition is tested before each pass, so the body may run zero times
   (decision M9). `while` is a foreign keyword that the compiler rewrites to

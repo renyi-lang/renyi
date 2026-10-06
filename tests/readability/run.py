@@ -238,7 +238,10 @@ def check_errors(path: pathlib.Path) -> list[str]:
         diagnostics = json.loads(result.stdout)
     except json.JSONDecodeError:
         return [f"[check] renyi check produced no diagnostics: {result.stderr.strip()[:200]}"]
-    return [f"[{d['code']}] {d['message']}" for d in diagnostics if d["severity"] == "error"]
+    # the scratch file carries the process id, not the sample's module name,
+    # so the name rule (decision G3) does not apply to it
+    return [f"[{d['code']}] {d['message']}" for d in diagnostics
+            if d["severity"] == "error" and d["code"] != "module-name"]
 
 
 def renyi_binary() -> pathlib.Path:

@@ -1,0 +1,10 @@
+module range_loop
+  purpose: A range loop has one spelling, `for each x from 1 to 9`, without `in`.
+
+function total() returns Integer
+  let mutable total_so_far be 0
+  for each step in from 1 to 3
+    set total_so_far to total_so_far + step
+  end
+  return total_so_far
+end

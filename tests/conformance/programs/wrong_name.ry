@@ -1,0 +1,2 @@
+module right_name
+  purpose: The module name equals the path (decision G3); this file is misnamed.

@@ -760,13 +760,28 @@ fn check_tool(arguments: &Json) -> Result<String, String> {
     let source = optional_text(arguments, "source")?;
     let path = optional_text(arguments, "path")?;
     let file = match (source, path) {
-        (Some(source), path) => SourceFile::new(path.unwrap_or_else(|| "source.ry".to_string()), source),
+        (Some(source), path) => {
+            let name = path.unwrap_or_else(|| module_file_name(&source));
+            SourceFile::new(name, source)
+        }
         (None, Some(path)) => read_source(&path)?,
         (None, None) => {
             return Err("check needs `source` (the text of a module) or `path` (a file under the served directory)".to_string())
         }
     };
     Ok(render_json(&file, &diagnose(&file)))
+}
+
+/// The file a module's text would live in (decision G3), for a source
+/// checked without a path: `module billing.tax` is `billing/tax.ry`.
+fn module_file_name(source: &str) -> String {
+    let name = source
+        .lines()
+        .find_map(|line| line.strip_prefix("module "))
+        .map(|rest| rest.trim().replace('.', "/"))
+        .filter(|name| !name.is_empty())
+        .unwrap_or_else(|| "source".to_string());
+    format!("{name}.ry")
 }
 
 fn format_tool(arguments: &Json) -> Result<String, String> {

@@ -190,8 +190,9 @@ pub struct Index {
 
 // ---------------------------------------------------------------- loading
 
-/// The files of a project: every `.ry` file under a directory (recursively,
-/// in path order), or one file with the imports read from its directory.
+/// The files of a project: every `.ry` or `.renyi` file under a directory
+/// (recursively, in path order), or one file with the imports read from its
+/// directory.
 pub fn load_project(path: &Path) -> Result<Vec<SourceFile>, String> {
     if path.is_dir() {
         let mut paths = Vec::new();
@@ -215,7 +216,10 @@ fn collect_sources(directory: &Path, out: &mut Vec<PathBuf>) -> Result<(), Strin
             .path();
         if path.is_dir() {
             collect_sources(&path, out)?;
-        } else if path.extension().and_then(|e| e.to_str()) == Some("ry") {
+        } else if matches!(
+            path.extension().and_then(|e| e.to_str()),
+            Some("ry" | "renyi")
+        ) {
             out.push(path);
         }
     }

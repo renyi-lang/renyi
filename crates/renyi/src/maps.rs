@@ -220,7 +220,10 @@ fn index_at_revision(path: &Path, revision: &str, toolchain: &str) -> Result<Ind
             &["ls-tree", "-r", "--name-only", revision, "--", "."],
         )?;
         let mut files = Vec::new();
-        for relative in listed.lines().filter(|line| line.ends_with(".ry")) {
+        for relative in listed
+            .lines()
+            .filter(|line| line.ends_with(".ry") || line.ends_with(".renyi"))
+        {
             let text = git(&directory, &["show", &format!("{revision}:./{relative}")])?;
             files.push(SourceFile::new(display(&directory.join(relative)), text));
         }
@@ -241,8 +244,13 @@ fn index_at_revision(path: &Path, revision: &str, toolchain: &str) -> Result<Ind
             if import.first().map(String::as_str) == Some("std") || !seen.insert(import.join(".")) {
                 continue;
             }
-            let relative = format!("{}.ry", import.join("/"));
-            let Ok(text) = git(&directory, &["show", &format!("{revision}:./{relative}")]) else {
+            let base = import.join("/");
+            let Some((relative, text)) = [".ry", ".renyi"].iter().find_map(|extension| {
+                let relative = format!("{base}{extension}");
+                git(&directory, &["show", &format!("{revision}:./{relative}")])
+                    .ok()
+                    .map(|text| (relative, text))
+            }) else {
                 continue; // the resolver reports the unknown module
             };
             queue.extend(imports_of(&text));

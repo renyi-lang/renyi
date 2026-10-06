@@ -4,7 +4,7 @@
 use renyi_syntax::SourceFile;
 
 fn check(source: &str) -> Vec<renyi_syntax::Diagnostic> {
-    let file = SourceFile::new("t.ry", source);
+    let file = SourceFile::new("demo.ry", source);
     renyi_check::check_sources(&file, &[])
 }
 
@@ -22,7 +22,7 @@ fn clean(source: &str) {
     assert!(
         diagnostics.is_empty(),
         "{}",
-        renyi_syntax::diagnostics::render_text(&SourceFile::new("t.ry", source), &diagnostics)
+        renyi_syntax::diagnostics::render_text(&SourceFile::new("demo.ry", source), &diagnostics)
     );
 }
 
@@ -31,7 +31,7 @@ fn raises(source: &str, code: &str) {
     assert!(
         found.iter().any(|c| c == code),
         "expected `{code}`, found {found:?}:\n{}",
-        renyi_syntax::diagnostics::render_text(&SourceFile::new("t.ry", source), &check(source))
+        renyi_syntax::diagnostics::render_text(&SourceFile::new("demo.ry", source), &check(source))
     );
 }
 
@@ -804,4 +804,40 @@ fn a_failure_arm_covers_one_member_of_the_error_union() {
     clean(&program(&format!(
         "{http}function handle(flag: Boolean) returns Integer\n  match fetch(flag)\n    when success(value) then return value\n    when failure(Status(code)) then return code\n    when failure(Network(detail)) then return detail.length()\n    when failure(error: Oops) then return error.detail.length()\n  end\nend\n"
     )));
+}
+
+#[test]
+fn the_module_name_equals_the_path() {
+    // decision G3
+    let diagnostics = renyi_check::check_sources(&SourceFile::new("other.ry", program("")), &[]);
+    assert!(
+        diagnostics.iter().any(|d| d.code == "module-name"),
+        "{diagnostics:?}"
+    );
+    let nested = renyi_check::check_sources(
+        &SourceFile::new("billing/tax.ry", "module billing.tax\n  purpose: Tax.\n"),
+        &[],
+    );
+    assert!(nested.is_empty(), "{nested:?}");
+    let renyi = renyi_check::check_sources(
+        &SourceFile::new(
+            "billing\\tax.renyi",
+            "module billing.tax\n  purpose: Tax.\n",
+        ),
+        &[],
+    );
+    assert!(renyi.is_empty(), "{renyi:?}");
+}
+
+#[test]
+fn a_range_loop_has_one_spelling() {
+    raises(
+        &program(
+            "function total() returns Integer\n  let mutable total_so_far be 0\n  for each step in from 1 to 3\n    set total_so_far to total_so_far + step\n  end\n  return total_so_far\nend\n",
+        ),
+        "range-loop",
+    );
+    clean(&program(
+        "function total() returns Integer\n  let mutable total_so_far be 0\n  for each step from 1 to 3\n    set total_so_far to total_so_far + step\n  end\n  return total_so_far\nend\n",
+    ));
 }
