@@ -3,8 +3,10 @@
 Status: design accepted (decisions O2 to O5). `renyi index` (sections 1 to
 4) is implemented in `crates/renyi_index` and measured on the corpus
 (section 5); `renyi index --budgets` reports the values over the thresholds
-of decision R7; diffs and the MCP server are not yet implemented. Date:
-2026-10-05. Companion to `01-decisions.md` (D5, D6, M8, O1 to O5, R7).
+of decision R7; `renyi mcp` (section 7) is implemented in
+`crates/renyi/src/mcp.rs` with every tool but `diff`; diffs are not yet
+implemented. Date: 2026-10-06. Companion to `01-decisions.md` (D5, D6, M8,
+O1 to O5, R7, T1 to T4).
 
 Renyi programs are written mostly by LLM agents (decision A3). An agent works
 inside a token budget and cannot hold a project in its context, so it needs
@@ -245,6 +247,31 @@ pre-test found (library names invented, cheat-sheet rules missed) before
 any code is written; `check` and `format` close the loop; the map tools are
 what an agent reads instead of files.
 
+As implemented (`crates/renyi/src/mcp.rs`, decisions T1 to T4): `renyi mcp
+[path]` serves the directory given (the current one by default) and exits
+when its input closes. It speaks both eras of the protocol: a request
+whose `_meta` carries `io.modelcontextprotocol/protocolVersion` is
+answered as revision 2026-07-28 says (`server/discover`, a `resultType`
+and the server's identity in every result, error `-32022` for a version
+the server does not speak, `-32602` for a request without the client's
+capabilities), and an `initialize` request opens the handshake of the
+revisions 2024-11-05 to 2025-11-25; the tools are the same in both. The
+messages are read and written with the VM's own JSON reader and writer.
+`project_map` takes `module` and a `json` switch (the text form of `renyi
+index` by default); `definition` and `effects` take a qualified name, or a
+bare one when it is unique in the project; `check` takes `source` or
+`path`, or both (the text and the file it would be, so that its imports
+resolve); `run` takes the arguments, the narrowing options of the command
+line (`deny`, `allow_host`, `allow_read`, `allow_write`, `at_most`),
+`replay` and `explain`, answers with what the program printed, its
+standard error and how it ended, and marks a run that did not finish as a
+tool error; `run_tests` takes `strict` and `explain`. The map is rebuilt
+whenever a file of the served directory differs from the one the last map
+was built from (a file-level refresh; the per-definition refresh of
+section 3 is open item R5-5). A missing argument or a failing tool is a
+tool execution error (`isError`); an unknown tool or method is a protocol
+error. `diff` waits for `renyi index --diff`.
+
 ## 8. Order of work
 
 1. `renyi index` with the record, the six metrics and the hashes, measured
@@ -253,7 +280,8 @@ what an agent reads instead of files.
    and `renyi_check::check_project` checks a project as a whole).
 2. M3 (the VM) under decision O1.
 3. `renyi mcp` with the first seven tools, then `run`, `run_tests` and
-   `diff` as M3 and `--diff` land.
+   `diff` as M3 and `--diff` land. Done 2026-10-06 but for `diff`
+   (`crates/renyi/src/mcp.rs`, decisions T1 to T4).
 4. Budgets with corpus-derived thresholds (done 2026-10-05, decision R7:
    `renyi index --budgets`); the diff; M4 reads budgets from the manifest.
 
@@ -267,3 +295,5 @@ what an agent reads instead of files.
   readability test's failures.
 - R5-4: atomic reference counts when the scheduler runs tasks on several OS
   threads (decision O1).
+- R5-5: the per-definition refresh of the map in `renyi mcp` (decision T4
+  rebuilds the whole map when any file of the served directory changed).

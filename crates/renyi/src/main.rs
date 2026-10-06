@@ -5,9 +5,12 @@
 //! JSON), `run` (check, then execute `main` on the VM, optionally replaying
 //! a recording or narrating the run), `record` (run and write a recording of
 //! every effect with the run manifest in its header), `reproduce` (replay a
-//! recording under its manifest and compare) and `test` (every `example:`
+//! recording under its manifest and compare), `test` (every `example:`
 //! line and `test` block, with `replays` tests answered from their
-//! recordings).
+//! recordings) and `mcp` (the toolchain served to an agent host over
+//! standard input and output, in `mcp.rs`).
+
+mod mcp;
 
 use std::io::Write;
 use std::path::Path;
@@ -40,6 +43,8 @@ const USAGE: &str = "usage:
                                       output byte for byte (exit 1 when they differ)
   renyi test [--strict] [--refresh <name> [--redact <name>]] [--explain] <file.ry>...
                                       run every `example:` line and `test` block (exit 1 when any fails)
+  renyi mcp [path]                    serve the toolchain to an agent host over standard input and
+                                      output (Model Context Protocol), for the directory given
   renyi version
 options of run and record:
   --explain                           narrate the run on stderr: purposes, arguments, results, effects
@@ -65,6 +70,7 @@ fn main() -> ExitCode {
         Some("record") => run_command(&args[1..], true),
         Some("reproduce") => reproduce_command(&args[1..]),
         Some("test") => test_command(&args[1..]),
+        Some("mcp") => mcp::serve(&args[1..]),
         Some("version") | Some("--version") => {
             println!("renyi {}", env!("CARGO_PKG_VERSION"));
             ExitCode::SUCCESS
@@ -76,14 +82,31 @@ fn main() -> ExitCode {
     }
 }
 
+/// A source file; the error names the path.
+pub(crate) fn read_source(path: &str) -> Result<SourceFile, String> {
+    std::fs::read_to_string(path)
+        .map(|text| SourceFile::new(path, text))
+        .map_err(|error| format!("cannot read {path}: {error}"))
+}
+
 fn load(path: &str) -> Result<SourceFile, ExitCode> {
-    match std::fs::read_to_string(path) {
-        Ok(text) => Ok(SourceFile::new(path, text)),
-        Err(error) => {
-            eprintln!("renyi: cannot read {path}: {error}");
-            Err(ExitCode::FAILURE)
-        }
+    read_source(path).map_err(|message| {
+        eprintln!("renyi: {message}");
+        ExitCode::FAILURE
+    })
+}
+
+/// Every diagnostic of a file: the parser's, the checker's when the file
+/// parses, and the layout's, in source order.
+pub(crate) fn diagnose(file: &SourceFile) -> Vec<renyi_syntax::Diagnostic> {
+    let parsed = parse(&file.text);
+    let mut diagnostics = parsed.diagnostics;
+    if !diagnostics.iter().any(|diagnostic| diagnostic.is_error()) {
+        diagnostics.extend(renyi_check::check_file(file));
     }
+    diagnostics.extend(check_layout(file));
+    diagnostics.sort_by_key(|diagnostic| diagnostic.span.start);
+    diagnostics
 }
 
 fn check(args: &[String]) -> ExitCode {
@@ -99,13 +122,7 @@ fn check(args: &[String]) -> ExitCode {
             Ok(file) => file,
             Err(code) => return code,
         };
-        let parsed = parse(&file.text);
-        let mut diagnostics = parsed.diagnostics;
-        if !diagnostics.iter().any(|diagnostic| diagnostic.is_error()) {
-            diagnostics.extend(renyi_check::check_file(&file));
-        }
-        diagnostics.extend(check_layout(&file));
-        diagnostics.sort_by_key(|diagnostic| diagnostic.span.start);
+        let diagnostics = diagnose(&file);
         failed |= diagnostics.iter().any(|diagnostic| diagnostic.is_error());
         if json {
             print!("{}", render_json(&file, &diagnostics));
@@ -250,25 +267,65 @@ fn compile(path: &str) -> Result<renyi_vm::Program, ExitCode> {
 
 /// `compile`, with the source files kept for the manifest's code hash.
 fn compile_with_sources(path: &str) -> Result<(renyi_vm::Program, Vec<SourceFile>), ExitCode> {
-    let file = load(path)?;
-    let mut files = vec![file.clone()];
-    files.extend(renyi_check::imported_files(&file));
+    match compile_sources(path) {
+        Ok(compiled) => {
+            print!("{}", compiled.diagnostics);
+            Ok((compiled.program, compiled.sources))
+        }
+        Err(CompileError::Read(message)) => {
+            eprintln!("renyi: {message}");
+            Err(ExitCode::FAILURE)
+        }
+        Err(CompileError::Diagnostics(text)) => {
+            print!("{text}");
+            Err(ExitCode::FAILURE)
+        }
+    }
+}
+
+/// A program checked and compiled, with its sources and the warnings the
+/// checker reported, rendered as `check` prints them (empty when none).
+pub(crate) struct Compiled {
+    pub program: renyi_vm::Program,
+    pub sources: Vec<SourceFile>,
+    pub diagnostics: String,
+}
+
+pub(crate) enum CompileError {
+    /// The file could not be read.
+    Read(String),
+    /// The program has errors, rendered as `check` prints them.
+    Diagnostics(String),
+}
+
+/// Check a file with its imports and compile it, printing nothing: the
+/// commands print what comes back, the MCP server answers with it.
+pub(crate) fn compile_sources(path: &str) -> Result<Compiled, CompileError> {
+    let file = read_source(path).map_err(CompileError::Read)?;
+    let imports = renyi_check::imported_files(&file);
+    let mut files = vec![file];
+    files.extend(imports);
     let checked = renyi_check::check_project(&files);
     let mut failed = false;
+    let mut diagnostics = String::new();
     for module in &checked.modules {
         if module.diagnostics.is_empty() {
             continue;
         }
         failed |= module.diagnostics.iter().any(|d| d.is_error());
-        print!("{}", render_text(&files[module.file], &module.diagnostics));
+        diagnostics.push_str(&render_text(&files[module.file], &module.diagnostics));
     }
     if failed {
-        return Err(ExitCode::FAILURE);
+        return Err(CompileError::Diagnostics(diagnostics));
     }
-    Ok((renyi_vm::compile_project(&checked, &files), files))
+    Ok(Compiled {
+        program: renyi_vm::compile_project(&checked, &files),
+        sources: files,
+        diagnostics,
+    })
 }
 
-fn toolchain() -> String {
+pub(crate) fn toolchain() -> String {
     format!("renyi {}", env!("CARGO_PKG_VERSION"))
 }
 
@@ -357,7 +414,7 @@ fn parse_flags(args: &[String]) -> Result<(Flags, &[String]), String> {
     Ok((flags, &args[index..]))
 }
 
-fn scoped(path: &[&str], scope: &str) -> Capability {
+pub(crate) fn scoped(path: &[&str], scope: &str) -> Capability {
     Capability {
         path: path.iter().map(|part| part.to_string()).collect(),
         scope: Some(scope.to_string()),
@@ -367,7 +424,7 @@ fn scoped(path: &[&str], scope: &str) -> Capability {
 }
 
 /// `network.http=60/minute`, or with a scope, `network.http("host")=60/minute`.
-fn parse_budget(text: &str) -> Result<Capability, String> {
+pub(crate) fn parse_budget(text: &str) -> Result<Capability, String> {
     let (capability, budget) = text
         .rsplit_once('=')
         .ok_or_else(|| format!("`{text}`: a budget is <capability>=<count>/<unit>"))?;
@@ -398,7 +455,7 @@ fn parse_budget(text: &str) -> Result<Capability, String> {
     Ok(capability)
 }
 
-fn load_recording(path: &str) -> Result<renyi_vm::Recording, String> {
+pub(crate) fn load_recording(path: &str) -> Result<renyi_vm::Recording, String> {
     let text =
         std::fs::read_to_string(path).map_err(|error| format!("cannot read {path}: {error}"))?;
     renyi_vm::Recording::parse(&text).map_err(|detail| format!("{path}: {detail}"))

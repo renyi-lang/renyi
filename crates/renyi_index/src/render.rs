@@ -104,7 +104,8 @@ fn module_json(module: &Module) -> Json {
     ])
 }
 
-fn definition_json(definition: &Definition) -> Json {
+/// One definition's record (`renyi mcp` answers `definition` with it).
+pub fn definition_json(definition: &Definition) -> Json {
     let metrics = &definition.metrics;
     Json::Object(vec![
         ("id", string(&definition.id)),

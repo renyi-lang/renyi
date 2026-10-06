@@ -1012,3 +1012,44 @@ per query would lengthen the trace. Settles open item R6-2. (user)
 count, not a constant: the budget sits in the signature of `main` or of a
 test so that the reviewer reads the number there. Settles open item R6-4.
 (user)
+
+---
+
+## T. The MCP server (session 6)
+
+`renyi mcp` (decision O5) was built after M3; each question was put to the
+owner with the recommendation first.
+
+**T1. Both eras of the protocol.** The current revision of the Model
+Context Protocol (2026-07-28) has no handshake: every request names its
+version and the client's capabilities in `_meta`, and the server must
+answer `server/discover`; the hosts in use today still open with the
+`initialize` handshake of revision 2025-11-25 and earlier. `renyi mcp`
+speaks both, as the specification's compatibility section allows a
+"dual-era" server to: a request with a version in its `_meta` is answered
+statelessly as the current revision says, and an `initialize` request
+selects the handshake. Supporting only the handshake would leave the
+server behind the specification; supporting only the current revision
+would leave every host on this machine unable to connect. (user)
+
+**T2. The VM's JSON reader serves the protocol.** Decision O5 took
+`serde_json` as a dependency for the server; since then the VM has its own
+JSON reader and writer (`std.json`, the recordings of decision S4), which
+the server uses instead, so the toolchain keeps one JSON implementation
+and no new dependency. Supersedes that sentence of O5; the rest of O5
+stands. (user)
+
+**T3. `run` and `run_tests` take what the command line takes.** Besides
+the path and the arguments of section 7's table, the `run` tool accepts
+the narrowing options of `renyi run` (`deny`, `allow_host`, `allow_read`,
+`allow_write`, `at_most`), a `replay` recording and `explain`, and
+`run_tests` accepts `strict` and `explain`, so that an agent can sandbox
+or replay what it runs exactly as a person can. (user)
+
+**T4. The map is refreshed by file, not by definition.** Section 7 of
+`05-agent-tooling.md` said the server refreshes only the definitions whose
+content hash changed; the server rebuilds the whole map when any file of
+the served directory differs from the one the last map was built from.
+The result is the same, and the corpus (30 modules) rebuilds in about a
+second in a debug build; the per-definition refresh is open item R5-5,
+for projects large enough to need it. (user)

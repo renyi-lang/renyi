@@ -6,7 +6,8 @@ the primitive boundary: `renyi record`, `run --replay`, `--explain`,
 server and SQLite; the grant stack; recordings for every network and
 database program, `--redact`; the run manifest and `renyi reproduce`;
 decision L2 carried out, the VM judging Complete and Write; terminals
-after `group by` per group).
+after `group by` per group; `renyi mcp`, the toolchain for agent hosts;
+readability round 2 being collected).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -33,8 +34,8 @@ and the `renyi` binary with `check`, `format`, `tokens`, `parse [--json]`,
 `index [--json | --budgets]`, `run [--manifest] [options] <file>
 [arguments]`, `record [--to file] [options] <file> [arguments]`,
 `reproduce <recording> [<file>]`, `test [--strict] [--refresh name
-[--redact name]] [--explain] <file>...` and `version`; 131 tests, clippy
-and fmt clean on Windows. The VM depends on `ureq` (HTTP, with rustls) and
+[--redact name]] [--explain] <file>...`, `mcp [path]` and `version`; 134
+tests, clippy and fmt clean on Windows. The VM depends on `ureq` (HTTP, with rustls) and
 `rusqlite` (SQLite compiled in), decision S1, and on `sha2` for the
 manifest.
 
@@ -186,6 +187,53 @@ and R6 are unmeasured (round 2, below).
   green threads would be an improvement within that decision, not a
   reversal.
 
+## The MCP server as it exists (`crates/renyi/src/mcp.rs`)
+
+- `renyi mcp [path]` enters the directory (the current one by default),
+  reads one JSON-RPC message per line from standard input, writes one per
+  line to standard output, logs only to standard error, and exits when the
+  input closes. Messages are read and written with the VM's JSON reader
+  and writer (`renyi_vm::natives::json`, decision T2).
+- Both eras of the protocol (decision T1): a request whose `_meta` names
+  `io.modelcontextprotocol/protocolVersion` is answered as revision
+  2026-07-28 says (`server/discover`; `resultType: "complete"` and the
+  server's identity in every result; `ttlMs` and `cacheScope` on the tool
+  list and the discovery; `-32022` with the supported list for another
+  version; `-32602` for a request without the client's capabilities), and
+  `initialize` opens the handshake of 2024-11-05 to 2025-11-25 (the
+  requested version is echoed when it is one of those, else 2025-11-25).
+  `ping` answers in both. A legacy `tools/call` is served without an
+  `initialize` first.
+- Nine tools, in `tools/list` order: `cheat_sheet` (the cheat sheet is
+  compiled into the binary), `library_lookup` (every top-level declaration
+  of `library/std`, scanned by line into module, name, receiver type, head
+  with its clauses, purpose; every word of the query must occur, entries
+  named by a word rank first, 25 at most), `project_map` (`module`,
+  `json`), `definition` (the record as `renyi index --json` prints it, then
+  the canonical source lines), `effects` (the call tree under a
+  definition: each project definition with declared and transitive effects
+  and failures, library primitives with their declarations, a definition
+  shown before marked and not expanded), `check` (`source`, `path`),
+  `format`, `run` (arguments, `deny`, `allow_host`, `allow_read`,
+  `allow_write`, `at_most`, `replay`, `explain`: the program's output, its
+  standard error under a heading, then `--- finished ---` or the outcome;
+  a run that did not finish or exited non-zero is a tool error),
+  `run_tests` (`strict`, `explain`). A missing or ill-typed argument and a
+  failing tool are tool execution errors (`isError: true`); an unknown tool
+  or method is a protocol error.
+- The map (`Map::refresh`) is rebuilt when any file of the served
+  directory differs from the one the last map was built from (decision
+  T4); the compiled program of `run` and `run_tests` is built per call.
+  `main.rs` gained the non-printing `compile_sources`, `diagnose` and
+  `read_source` that the commands and the server share.
+- `crates/renyi/tests/mcp.rs` drives the binary over pipes: the legacy
+  handshake, the tool list, the cheat sheet, a run of `hello.ry`, a
+  `check` of source text, an unknown tool, `ping`; the modern discovery, a
+  `definition` with its version, an unsupported version, missing
+  capabilities, an unknown method, a malformed line, the tool list's cache
+  hints; and the lookup, map, effects, format, tests, a denied run, the
+  JSON map and an unknown definition.
+
 ## Done in session 6
 
 1. **`crates/renyi_vm`** (about 8300 lines with tests): `bytecode.rs`,
@@ -303,6 +351,19 @@ and R6 are unmeasured (round 2, below).
     re-scored with the cached Explain grades (no API call): the live
     round's rates are unchanged; agent-sonnet in the pre-test loses the
     four `while` samples. Each round's `notes.md` has a section on it.
+12. **Readability round 2 started** (no commit of its own yet). The owner
+    chose all four models (Sonnet 5.5 and gpt-5.5 at their default
+    temperature, the gating models of R1 and R8; Haiku 4.5 and
+    gpt-5.4-mini at 0), the graders of round 1 and in-session
+    adjudication. `run.py prepare` wrote `tests/readability/2026-10-05-ed37120/`
+    (69 prompts; the cheat sheet of `ed37120`, with the R3, R5 and R6
+    clarifications and the derived `ToText` rule) and the four `run`s
+    were started in the background.
+13. **`renyi mcp`** (eighth commit; decisions T1 to T4, asked as a batch
+    of four): `crates/renyi/src/mcp.rs` as described above, its tests,
+    `renyi_index::definition_json` made public, the shared helpers in
+    `main.rs`; `05-agent-tooling.md` (status, section 7 as implemented,
+    section 8, open item R5-5), `README.md`, `CLAUDE.md`.
 
 ## Done in session 5 (condensed)
 
@@ -353,18 +414,23 @@ on a fresh clone).
 
 ## Next steps
 
-1. **After M3**: decision L2 is carried out (item 11 above). The owner's
-   order of 2026-10-06 continues with readability round 2 (next), then
-   `renyi mcp`. Open items R6-2 and R6-4 are closed (decisions S6 and
-   S7).
-2. **Readability round 2** on the revised cheat sheet, with gpt-5.5 at its
-   default temperature as the fourth model (R8) and the R1 gating; the
-   protocol reverts a change that lowers a passing rate by more than five
-   points. The round costs API calls; the VM can replace the subagent
-   judges for Complete and Write: it judges them now (item 11).
-3. **`renyi mcp`** (O5, `05-agent-tooling.md` section 7), then the semantic
-   diff (O4), then M4 (provenance guards, package manager, budgets in the
-   manifest) and M5 (embedding API, `serve --watch`, LSP) as before.
+1. **Finish readability round 2** (`tests/readability/2026-10-05-ed37120/`,
+   item 12). `run.py run` is restartable: rerun it per model (the labels
+   are the model ids; `--temperature none` for Sonnet 5.5 and gpt-5.5)
+   until every `outputs/<label>/<task>/` file has five samples. Then
+   `score --grader anthropic:claude-sonnet-5-5 --second-grader
+   openai:gpt-5.4-mini`, the strict tally (`--no-format --scores
+   scores-strict.json`), `report`, the adjudication of the Explain samples
+   the graders disagree on (`judgement.json` with a reason each), a
+   `notes.md` in the style of round 1 with the table against round 1 and
+   the protocol's five-point rule, the status lines of
+   `03-readability-test.md` and `tests/readability/README.md`, and the
+   decisions the results raise, asked in a batch of four. Decision L2 is
+   carried out (item 11); open items R6-2 and R6-4 are closed (S6, S7).
+2. **The semantic diff** (O4, `05-agent-tooling.md` section 6) and its
+   `diff` tool in `renyi mcp`, then M4 (provenance guards, package
+   manager, budgets in the manifest) and M5 (embedding API, `serve
+   --watch`, LSP) as before.
 
 ## Known gaps and risks
 
@@ -404,6 +470,17 @@ on a fresh clone).
   registry (M4). The toolchain is named by its version only, not by a
   build hash. A `--manifest` run collects its calls in memory as `record`
   does.
+- **MCP.** `diff` waits for `renyi index --diff`. The map is rebuilt
+  whole when any file changed (T4), and every tool call that needs it
+  re-reads the served directory. The server does not implement
+  `subscriptions/listen`, pagination, progress or cancellation (a
+  `notifications/cancelled` is ignored; a running program runs to its
+  end), answers a legacy `tools/call` without an `initialize` first, and
+  validates `_meta` only when it carries a version. `run` executes
+  effects for real unless `replay` is given; a program's relative paths
+  resolve against the served directory, which the server enters at
+  start. The library lookup scans the declaration files by line, so a
+  declaration inside an `ability` block is not listed.
 - **Network, server, SQLite.** The server is single-threaded and answers
   one request at a time, binds `0.0.0.0`, speaks plain HTTP/1.1 without
   TLS, reads a head of at most 64 KiB and a body of at most 16 MiB, and

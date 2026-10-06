@@ -41,8 +41,8 @@ exists:
 - `docs/design/03-readability-test.md`: how the grammar is frozen by measuring
   LLM comprehension; the harness and a first pre-test round are under
   `tests/readability/`.
-- `docs/design/05-agent-tooling.md`: the project map (`renyi index`, which
-  exists) and the `renyi mcp` server for agents; `docs/design/06-runtime-guarantees.md`:
+- `docs/design/05-agent-tooling.md`: the project map (`renyi index`) and the
+  `renyi mcp` server for agents, both of which exist; `docs/design/06-runtime-guarantees.md`:
   recorded and replayable runs, budgets in grants, provenance guards;
   `docs/design/07-system-design.md`: the trade-offs the language claims to
   resolve, capability-safe packages, reproducibility, in-process sandboxing
@@ -90,10 +90,12 @@ cargo build
 ./target/debug/renyi run --replay hello.json examples/hello.ry
 ./target/debug/renyi reproduce hello.json
 ./target/debug/renyi test examples/invoice.ry
+./target/debug/renyi mcp examples        # the toolchain for an agent host, over standard input and output
 cargo test
 ```
 
-Next: the MCP server (`renyi mcp`) and the semantic diff.
+Next: the semantic diff (`renyi index --diff`) and its `diff` tool in
+`renyi mcp`.
 
 ## Working on this repository
 

@@ -27,7 +27,7 @@ use renyi_syntax::{format, SourceFile, Span};
 use drafts::{Draft, Key};
 
 pub use budgets::{over_budget, Budgets};
-pub use render::{to_json, to_text};
+pub use render::{definition_json, to_json, to_text};
 
 /// What a definition is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
