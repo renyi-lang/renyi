@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program models a traffic light as a small state machine. It advances normally from red to green to yellow to red on timer events, switches to flashing red during an emergency, and returns to red when the emergency is cleared. It can also run a sequence of events and, in its demo, prints the resulting lights for a short scenario.",
+    "This program models a traffic light state machine with normal timer-driven cycling from red to green to yellow to red, plus an emergency mode that switches to flashing red. It provides a function to apply a sequence of events and return the lights shown after each event. Its main program prints a sample sequence demonstrating an emergency interrupting the normal cycle.",
+    "This program models a traffic light state machine with normal timer-based changes from red to green to yellow to red, plus emergency handling. When an emergency is declared, the light switches to flashing red and stays there until the emergency is cleared, at which point it returns to red. It can also run a list of events and print the resulting light sequence for a sample scenario.",
+    "This module models a traffic light state machine with normal Red → Green → Yellow → Red cycling and an emergency mode that switches to FlashingRed until cleared. It can apply a list of events in order and return the light shown after each event. Its main program prints a short sample sequence demonstrating the cycle, an emergency override, and recovery to Red.",
+    "This module models a traffic light as a small state machine. It advances Red → Green → Yellow → Red on timer events, switches to FlashingRed during an emergency, and returns to Red when the emergency is cleared. It can also apply a whole sequence of events and, when run, prints the lights for a sample sequence with an emergency in the middle."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program reads `data/sales.csv`, validates that each row has a region, product, and numeric amount, then sums sales amounts by region. It prints the regional totals in descending order by amount and writes the same summary to `data/report.csv` as CSV. Use it when you need a simple regional sales total report from a cleaned CSV export.",
+    "This program reads `data/sales.csv`, validates that each row has a region, product, and numeric amount, then sums sales amounts by region. It prints the regional totals in descending order and writes them to `data/report.csv` as CSV. Use it if you need a simple regional sales summary from a cleaned CSV file under the `data` directory.",
+    "This program reads `data/sales.csv`, validates that each row has `region`, `product`, and a numeric `amount`, then sums sales amounts by region. It prints the regional totals in descending order and writes them to `data/report.csv` as CSV. It reports clear errors for unreadable files, invalid CSV, missing fields, non-numeric amounts, or write failures.",
+    "This program reads `data/sales.csv`, validates that each row has a region, product, and numeric amount, then sums sales amounts by region. It prints the regional totals in descending order and writes the same results to `data/report.csv`. Use it if you need a simple CSV-based regional sales summary and are comfortable with failures for missing fields, invalid numbers, invalid CSV, or file I/O problems.",
+    "This program reads `data/sales.csv`, validates that each row has a region, product, and numeric amount, then sums sales amounts by region. It prints the regional totals in descending order by amount and writes the same results to `data/report.csv`. Use it if your sales CSV has columns named `region`, `product`, and `amount` and you want a simple regional totals report."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

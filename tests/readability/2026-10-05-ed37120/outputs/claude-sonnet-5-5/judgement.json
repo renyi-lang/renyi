@@ -1,0 +1,18 @@
+{
+  "explain/file_tree.0": {
+    "verdict": 4,
+    "reason": "'it only reads the filesystem and writes to the console' names two of the three needs and leaves out the environment (the command-line argument, which the explanation does describe). Opus read 'only' as a wrong statement (2); round 1's graders read the same sentence in Sonnet's round-1 explanations as the environment need missing (4, samples file_tree.0 to .4 there), and this round keeps that reading so the two rounds compare. The tree, the sizes, the ordering and the file error are right."
+  },
+  "explain/file_tree.3": {
+    "verdict": 4,
+    "reason": "As file_tree.0 ('it only needs read access to the filesystem and the console'): the environment need missing, graded 4 as round 1 graded the same phrasing."
+  },
+  "explain/file_tree.4": {
+    "verdict": 4,
+    "reason": "As file_tree.0: the environment need missing, graded 4 as round 1 graded the same phrasing."
+  },
+  "explain/retry.4": {
+    "verdict": 2,
+    "reason": "The backoff, the jitter, the first success and the sleep after the last attempt are right, but GaveUp carries the attempt count and the last error text only; 'the last error message, which includes the attempt number' is wrong (the 'attempt <n>:' prefix is in the per-attempt records)."
+  }
+}

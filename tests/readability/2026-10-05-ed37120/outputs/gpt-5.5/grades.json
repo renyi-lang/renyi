@@ -1,0 +1,1506 @@
+{
+  "agent:claude-opus-5-5#a91b135c": {
+    "explain/active_users.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a2fc061c6d54bd04"
+    },
+    "explain/active_users.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3469df01e237d415"
+    },
+    "explain/active_users.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "fe600dfd585b2180"
+    },
+    "explain/active_users.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "795962f54f5eaf39"
+    },
+    "explain/active_users.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1577f953b55bbd61"
+    },
+    "explain/assistant.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "7b21aa5ef293e64b"
+    },
+    "explain/assistant.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d7f85ebbb6d603ba"
+    },
+    "explain/assistant.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0d99d534ede868fc"
+    },
+    "explain/assistant.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e33209452c563c31"
+    },
+    "explain/assistant.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "088e0f8ce83fd822"
+    },
+    "explain/concurrent_fetch.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "135e10f61f4d1068"
+    },
+    "explain/concurrent_fetch.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3849709a79790148"
+    },
+    "explain/concurrent_fetch.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3407e71ea41fee20"
+    },
+    "explain/concurrent_fetch.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "98ff2e88a02841db"
+    },
+    "explain/concurrent_fetch.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a1d1c46cd32fa688"
+    },
+    "explain/config.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8fd8ef6db61c6521"
+    },
+    "explain/config.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3f3b7bcb071db4f6"
+    },
+    "explain/config.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b138a10fe6c87284"
+    },
+    "explain/config.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8fc9cc2f89e0b5f3"
+    },
+    "explain/config.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3298ef3ea0bf5698"
+    },
+    "explain/currency_tool.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ceca65aebe0248bd"
+    },
+    "explain/currency_tool.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e8d49152a4277ebd"
+    },
+    "explain/currency_tool.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "16af5758bbabda1a"
+    },
+    "explain/currency_tool.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b4b4db368a54c5f0"
+    },
+    "explain/currency_tool.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "77fe73712bd90733"
+    },
+    "explain/deadlines.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "abb1547f563811a2"
+    },
+    "explain/deadlines.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9ed179b1f9ccdb62"
+    },
+    "explain/deadlines.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "bbda051691f0881d"
+    },
+    "explain/deadlines.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "dd49f7663214ea4e"
+    },
+    "explain/deadlines.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6c25cd02fdbc9789"
+    },
+    "explain/dependency_order.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "73e44492f57c8e91"
+    },
+    "explain/dependency_order.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "81ae83e91e956f2f"
+    },
+    "explain/dependency_order.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ee2e586030f03c8d"
+    },
+    "explain/dependency_order.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "edb156a96a3f8e84"
+    },
+    "explain/dependency_order.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f010b5b5bc87c7c7"
+    },
+    "explain/expression_tree.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1f9ee885c6a1eaf9"
+    },
+    "explain/expression_tree.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "06d79430f0cdb427"
+    },
+    "explain/expression_tree.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f0cca41119128770"
+    },
+    "explain/expression_tree.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "788d5e1de61a56a9"
+    },
+    "explain/expression_tree.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e0e94e6b48b35916"
+    },
+    "explain/file_tree.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "37b808ffd614d495"
+    },
+    "explain/file_tree.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c731f39818f0b5b5"
+    },
+    "explain/file_tree.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "bb609fdbdaac1ced"
+    },
+    "explain/file_tree.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ada13120ff5dd419"
+    },
+    "explain/file_tree.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "72afbcf813614aeb"
+    },
+    "explain/hello.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "2772998d1f6bb801"
+    },
+    "explain/hello.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0c5be34dd741ad83"
+    },
+    "explain/hello.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ac84e86123498408"
+    },
+    "explain/hello.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0c5be34dd741ad83"
+    },
+    "explain/hello.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5c244f6d3dccccc7"
+    },
+    "explain/http_service.0": {
+      "answer": "Nothing is wrong, but the console effect (it prints the listening address) is not mentioned.",
+      "grade": 4,
+      "sample": "6117b6960d043a30"
+    },
+    "explain/http_service.1": {
+      "answer": "Nothing is wrong, but the console effect (it prints the listening address) is not mentioned.",
+      "grade": 4,
+      "sample": "94495a3c60a867b3"
+    },
+    "explain/http_service.2": {
+      "answer": "Nothing is wrong, but the console effect (it prints the listening address) is not mentioned.",
+      "grade": 4,
+      "sample": "c8c1fd879ce373d4"
+    },
+    "explain/http_service.3": {
+      "answer": "Nothing is wrong, but the console effect (it prints the listening address) is not mentioned.",
+      "grade": 4,
+      "sample": "360152604097caf2"
+    },
+    "explain/http_service.4": {
+      "answer": "Nothing is wrong, but the console effect (it prints the listening address) is not mentioned.",
+      "grade": 4,
+      "sample": "d438c6c6e5a098ba"
+    },
+    "explain/inventory_db.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b5814fa84095d4ea"
+    },
+    "explain/inventory_db.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "479a1e14309ebd4b"
+    },
+    "explain/inventory_db.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "82210a8200e3678a"
+    },
+    "explain/inventory_db.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "2553ae783660b1c3"
+    },
+    "explain/inventory_db.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "56375be774b52566"
+    },
+    "explain/invoice.0": {
+      "answer": "Nothing is wrong, but it never states the effects, namely that the library is pure and needs none.",
+      "grade": 4,
+      "sample": "edf3c47c461a0908"
+    },
+    "explain/invoice.1": {
+      "answer": "Nothing is wrong, but it never states the effects, namely that the library is pure and needs none.",
+      "grade": 4,
+      "sample": "551b346ea04ab1e9"
+    },
+    "explain/invoice.2": {
+      "answer": "Nothing is wrong, but it never states the effects, namely that the library is pure and needs none.",
+      "grade": 4,
+      "sample": "92324c238248e3e3"
+    },
+    "explain/invoice.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c957dc6a071a39dc"
+    },
+    "explain/invoice.4": {
+      "answer": "Nothing is wrong, but it never states the effects, namely that the library is pure and needs none.",
+      "grade": 4,
+      "sample": "618daa01b798c871"
+    },
+    "explain/invoice_report.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "51be0ac329314e53"
+    },
+    "explain/invoice_report.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a9e9ef94ebad0dbb"
+    },
+    "explain/invoice_report.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d854afeab096625b"
+    },
+    "explain/invoice_report.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8a61258042561e8c"
+    },
+    "explain/invoice_report.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "791ecca7ef3deab5"
+    },
+    "explain/log_parser.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0eabd7800e9e9cdb"
+    },
+    "explain/log_parser.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "bc4099310caa1286"
+    },
+    "explain/log_parser.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a857b865a9cde872"
+    },
+    "explain/log_parser.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0f5aa2a6f6abce70"
+    },
+    "explain/log_parser.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "2fefb05f89c596c6"
+    },
+    "explain/markdown_table.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "737ffeba0bd06237"
+    },
+    "explain/markdown_table.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "32d194f676ad784d"
+    },
+    "explain/markdown_table.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "cbc34726dda977c0"
+    },
+    "explain/markdown_table.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0be4857f869d6c2b"
+    },
+    "explain/markdown_table.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4e25395abb52d14e"
+    },
+    "explain/pagination.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "da65f04ebc3cc442"
+    },
+    "explain/pagination.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f973761efa620351"
+    },
+    "explain/pagination.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "2392236400afc10b"
+    },
+    "explain/pagination.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "424ff7035df59816"
+    },
+    "explain/pagination.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e25dfe32c4d3f100"
+    },
+    "explain/permissions.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8751ce9e7e15c948"
+    },
+    "explain/permissions.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "27d4d4b01a51f6e7"
+    },
+    "explain/permissions.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d6191c2a7527cc05"
+    },
+    "explain/permissions.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d000bb21ca643640"
+    },
+    "explain/permissions.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "548d96a65140b9fe"
+    },
+    "explain/retry.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c165a787a05ed1a4"
+    },
+    "explain/retry.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "96238d0497f1e97d"
+    },
+    "explain/retry.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4be6859f6a211f96"
+    },
+    "explain/retry.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "cde38a32b345e5c7"
+    },
+    "explain/retry.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c48f01f20bf4c37f"
+    },
+    "explain/sales_report.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3b140e7b03e7c788"
+    },
+    "explain/sales_report.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "730563e5b8cd48a7"
+    },
+    "explain/sales_report.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0bcc341999015178"
+    },
+    "explain/sales_report.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a55b18ba79be2459"
+    },
+    "explain/sales_report.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b164b16b65899d08"
+    },
+    "explain/semver.0": {
+      "answer": "Missing the effects: it never says the module is a pure library with no entry point and no effects.",
+      "grade": 4,
+      "sample": "9f394908188ca8ee"
+    },
+    "explain/semver.1": {
+      "answer": "Missing the effects: it never says the module is a pure library with no entry point and no effects.",
+      "grade": 4,
+      "sample": "9aac4006eb2429b7"
+    },
+    "explain/semver.2": {
+      "answer": "Missing the effects: it never says the module is a pure library with no entry point and no effects.",
+      "grade": 4,
+      "sample": "f40db1c6f6e32f58"
+    },
+    "explain/semver.3": {
+      "answer": "Missing the effects: it never says the module is a pure library with no entry point and no effects.",
+      "grade": 4,
+      "sample": "c042738d0bb8bc78"
+    },
+    "explain/semver.4": {
+      "answer": "Missing the effects: it never says the module is a pure library with no entry point and no effects.",
+      "grade": 4,
+      "sample": "9a1bb74ab8262e3a"
+    },
+    "explain/shapes.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a8aa49bb9e520b29"
+    },
+    "explain/shapes.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "2aad51a88be42040"
+    },
+    "explain/shapes.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "012a143934f83fcb"
+    },
+    "explain/shapes.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b351af6ae3d62521"
+    },
+    "explain/shapes.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "cb681e8041d980c8"
+    },
+    "explain/shipping_rules.0": {
+      "answer": "Missing the effects: it never says the module is a pure library with no entry point and no effects.",
+      "grade": 4,
+      "sample": "875d526f3a8e06f7"
+    },
+    "explain/shipping_rules.1": {
+      "answer": "Missing the effects: it never says the module is a pure library with no entry point and no effects.",
+      "grade": 4,
+      "sample": "6edab157e5b6103f"
+    },
+    "explain/shipping_rules.2": {
+      "answer": "Missing the effects: it never says the module is a pure library with no entry point and no effects.",
+      "grade": 4,
+      "sample": "15ca2277449a6c19"
+    },
+    "explain/shipping_rules.3": {
+      "answer": "Missing the effects: it never says the module is a pure library with no entry point and no effects.",
+      "grade": 4,
+      "sample": "7e04b37e5d99f197"
+    },
+    "explain/shipping_rules.4": {
+      "answer": "Missing the effects: it never says the module is a pure library with no entry point and no effects.",
+      "grade": 4,
+      "sample": "d3d7a7b11ed779ad"
+    },
+    "explain/stacks.0": {
+      "answer": "Missing the effects: it never says the module is a pure library with no entry point and no effects.",
+      "grade": 4,
+      "sample": "d42bb4dddff346b8"
+    },
+    "explain/stacks.1": {
+      "answer": "Missing the effects: it never says the module is a pure library with no entry point and no effects.",
+      "grade": 4,
+      "sample": "5780dbd81c1c62d9"
+    },
+    "explain/stacks.2": {
+      "answer": "Missing the effects: it never says the module is a pure library with no entry point and no effects.",
+      "grade": 4,
+      "sample": "3020afd8710958ea"
+    },
+    "explain/stacks.3": {
+      "answer": "Missing the effects: it never says the module is a pure library with no entry point and no effects.",
+      "grade": 4,
+      "sample": "17dd6e1fcd124afd"
+    },
+    "explain/stacks.4": {
+      "answer": "Missing the effects: it never says the module is a pure library with no entry point and no effects.",
+      "grade": 4,
+      "sample": "13a12d696fd5aa57"
+    },
+    "explain/statistics.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "84207bf83c8ae1fd"
+    },
+    "explain/statistics.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "2b5fd285e56a0053"
+    },
+    "explain/statistics.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "eb9ae4828993fa83"
+    },
+    "explain/statistics.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8c35452c84f14ce1"
+    },
+    "explain/statistics.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5c95e82a16967f4c"
+    },
+    "explain/temperature_table.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "415b3bf3c7daba67"
+    },
+    "explain/temperature_table.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "7a009dfd44425688"
+    },
+    "explain/temperature_table.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "69012def2942a947"
+    },
+    "explain/temperature_table.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8f091e7c23acbca4"
+    },
+    "explain/temperature_table.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "7624585afd787b5b"
+    },
+    "explain/todo_cli.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ad88a7f9d579327a"
+    },
+    "explain/todo_cli.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e9f24e2910f5d2b6"
+    },
+    "explain/todo_cli.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "cae8a1e2ffbfdb93"
+    },
+    "explain/todo_cli.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1bd745defd86b2d2"
+    },
+    "explain/todo_cli.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6fc18dfd65b6c2a3"
+    },
+    "explain/traffic_light.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e1e58991cd7bdca7"
+    },
+    "explain/traffic_light.1": {
+      "answer": "Missing a main behaviour: it never says that clearing the emergency returns the light to Red.",
+      "grade": 4,
+      "sample": "950c137a72037731"
+    },
+    "explain/traffic_light.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3c5930e17ca979e9"
+    },
+    "explain/traffic_light.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "459b1bbfdc949074"
+    },
+    "explain/traffic_light.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "79f92a2c871e0044"
+    },
+    "explain/weather.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "92256a5c71e3b176"
+    },
+    "explain/weather.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a0d4b91a55ffc358"
+    },
+    "explain/weather.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c03a3d434519023b"
+    },
+    "explain/weather.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "cb7ba636ef13a442"
+    },
+    "explain/weather.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "73ab991093676ec6"
+    },
+    "explain/word_count.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c44efa8aa6ca5246"
+    },
+    "explain/word_count.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "94865109650e15c9"
+    },
+    "explain/word_count.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a6559133fc13c326"
+    },
+    "explain/word_count.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9326cd6c053c8d80"
+    },
+    "explain/word_count.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "de511fbc3e30681e"
+    }
+  },
+  "agent:claude-sonnet-5-5#a91b135c": {
+    "explain/active_users.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a2fc061c6d54bd04"
+    },
+    "explain/active_users.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3469df01e237d415"
+    },
+    "explain/active_users.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "fe600dfd585b2180"
+    },
+    "explain/active_users.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "795962f54f5eaf39"
+    },
+    "explain/active_users.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1577f953b55bbd61"
+    },
+    "explain/assistant.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "7b21aa5ef293e64b"
+    },
+    "explain/assistant.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d7f85ebbb6d603ba"
+    },
+    "explain/assistant.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0d99d534ede868fc"
+    },
+    "explain/assistant.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e33209452c563c31"
+    },
+    "explain/assistant.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "088e0f8ce83fd822"
+    },
+    "explain/concurrent_fetch.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "135e10f61f4d1068"
+    },
+    "explain/concurrent_fetch.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3849709a79790148"
+    },
+    "explain/concurrent_fetch.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3407e71ea41fee20"
+    },
+    "explain/concurrent_fetch.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "98ff2e88a02841db"
+    },
+    "explain/concurrent_fetch.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a1d1c46cd32fa688"
+    },
+    "explain/config.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8fd8ef6db61c6521"
+    },
+    "explain/config.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3f3b7bcb071db4f6"
+    },
+    "explain/config.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b138a10fe6c87284"
+    },
+    "explain/config.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8fc9cc2f89e0b5f3"
+    },
+    "explain/config.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3298ef3ea0bf5698"
+    },
+    "explain/currency_tool.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ceca65aebe0248bd"
+    },
+    "explain/currency_tool.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e8d49152a4277ebd"
+    },
+    "explain/currency_tool.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "16af5758bbabda1a"
+    },
+    "explain/currency_tool.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b4b4db368a54c5f0"
+    },
+    "explain/currency_tool.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "77fe73712bd90733"
+    },
+    "explain/deadlines.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "abb1547f563811a2"
+    },
+    "explain/deadlines.1": {
+      "answer": "Nothing wrong, but it never says the program takes today's date from the clock (it only says next ten days).",
+      "grade": 4,
+      "sample": "9ed179b1f9ccdb62"
+    },
+    "explain/deadlines.2": {
+      "answer": "Nothing wrong, but it never says the program takes today's date from the clock (it only says next ten days).",
+      "grade": 4,
+      "sample": "bbda051691f0881d"
+    },
+    "explain/deadlines.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "dd49f7663214ea4e"
+    },
+    "explain/deadlines.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6c25cd02fdbc9789"
+    },
+    "explain/dependency_order.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "73e44492f57c8e91"
+    },
+    "explain/dependency_order.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "81ae83e91e956f2f"
+    },
+    "explain/dependency_order.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ee2e586030f03c8d"
+    },
+    "explain/dependency_order.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "edb156a96a3f8e84"
+    },
+    "explain/dependency_order.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f010b5b5bc87c7c7"
+    },
+    "explain/expression_tree.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1f9ee885c6a1eaf9"
+    },
+    "explain/expression_tree.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "06d79430f0cdb427"
+    },
+    "explain/expression_tree.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f0cca41119128770"
+    },
+    "explain/expression_tree.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "788d5e1de61a56a9"
+    },
+    "explain/expression_tree.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e0e94e6b48b35916"
+    },
+    "explain/file_tree.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "37b808ffd614d495"
+    },
+    "explain/file_tree.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c731f39818f0b5b5"
+    },
+    "explain/file_tree.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "bb609fdbdaac1ced"
+    },
+    "explain/file_tree.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ada13120ff5dd419"
+    },
+    "explain/file_tree.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "72afbcf813614aeb"
+    },
+    "explain/hello.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "2772998d1f6bb801"
+    },
+    "explain/hello.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0c5be34dd741ad83"
+    },
+    "explain/hello.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ac84e86123498408"
+    },
+    "explain/hello.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0c5be34dd741ad83"
+    },
+    "explain/hello.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5c244f6d3dccccc7"
+    },
+    "explain/http_service.0": {
+      "answer": "Nothing is wrong, but the console effect (the startup message printed before serving) is not stated.",
+      "grade": 4,
+      "sample": "6117b6960d043a30"
+    },
+    "explain/http_service.1": {
+      "answer": "Nothing is wrong, but the console effect (the startup message printed before serving) is not stated.",
+      "grade": 4,
+      "sample": "94495a3c60a867b3"
+    },
+    "explain/http_service.2": {
+      "answer": "Nothing is wrong, but the console effect (the startup message printed before serving) is not stated.",
+      "grade": 4,
+      "sample": "c8c1fd879ce373d4"
+    },
+    "explain/http_service.3": {
+      "answer": "Nothing is wrong, but the console effect (the startup message printed before serving) is not stated.",
+      "grade": 4,
+      "sample": "360152604097caf2"
+    },
+    "explain/http_service.4": {
+      "answer": "Nothing is wrong, but the console effect (the startup message printed before serving) is not stated.",
+      "grade": 4,
+      "sample": "d438c6c6e5a098ba"
+    },
+    "explain/inventory_db.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b5814fa84095d4ea"
+    },
+    "explain/inventory_db.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "479a1e14309ebd4b"
+    },
+    "explain/inventory_db.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "82210a8200e3678a"
+    },
+    "explain/inventory_db.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "2553ae783660b1c3"
+    },
+    "explain/inventory_db.4": {
+      "answer": "complete; the claim about a test is neither confirmed nor contradicted by the reference, so it is ignored.",
+      "grade": 5,
+      "sample": "56375be774b52566"
+    },
+    "explain/invoice.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "edf3c47c461a0908"
+    },
+    "explain/invoice.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "551b346ea04ab1e9"
+    },
+    "explain/invoice.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "92324c238248e3e3"
+    },
+    "explain/invoice.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c957dc6a071a39dc"
+    },
+    "explain/invoice.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "618daa01b798c871"
+    },
+    "explain/invoice_report.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "51be0ac329314e53"
+    },
+    "explain/invoice_report.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a9e9ef94ebad0dbb"
+    },
+    "explain/invoice_report.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d854afeab096625b"
+    },
+    "explain/invoice_report.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8a61258042561e8c"
+    },
+    "explain/invoice_report.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "791ecca7ef3deab5"
+    },
+    "explain/log_parser.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0eabd7800e9e9cdb"
+    },
+    "explain/log_parser.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "bc4099310caa1286"
+    },
+    "explain/log_parser.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a857b865a9cde872"
+    },
+    "explain/log_parser.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0f5aa2a6f6abce70"
+    },
+    "explain/log_parser.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "2fefb05f89c596c6"
+    },
+    "explain/markdown_table.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "737ffeba0bd06237"
+    },
+    "explain/markdown_table.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "32d194f676ad784d"
+    },
+    "explain/markdown_table.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "cbc34726dda977c0"
+    },
+    "explain/markdown_table.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0be4857f869d6c2b"
+    },
+    "explain/markdown_table.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4e25395abb52d14e"
+    },
+    "explain/pagination.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "da65f04ebc3cc442"
+    },
+    "explain/pagination.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f973761efa620351"
+    },
+    "explain/pagination.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "2392236400afc10b"
+    },
+    "explain/pagination.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "424ff7035df59816"
+    },
+    "explain/pagination.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e25dfe32c4d3f100"
+    },
+    "explain/permissions.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8751ce9e7e15c948"
+    },
+    "explain/permissions.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "27d4d4b01a51f6e7"
+    },
+    "explain/permissions.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d6191c2a7527cc05"
+    },
+    "explain/permissions.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d000bb21ca643640"
+    },
+    "explain/permissions.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "548d96a65140b9fe"
+    },
+    "explain/retry.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c165a787a05ed1a4"
+    },
+    "explain/retry.1": {
+      "answer": "complete; the added doubt about the library listing is a caution and is ignored.",
+      "grade": 5,
+      "sample": "96238d0497f1e97d"
+    },
+    "explain/retry.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4be6859f6a211f96"
+    },
+    "explain/retry.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "cde38a32b345e5c7"
+    },
+    "explain/retry.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c48f01f20bf4c37f"
+    },
+    "explain/sales_report.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3b140e7b03e7c788"
+    },
+    "explain/sales_report.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "730563e5b8cd48a7"
+    },
+    "explain/sales_report.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0bcc341999015178"
+    },
+    "explain/sales_report.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a55b18ba79be2459"
+    },
+    "explain/sales_report.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b164b16b65899d08"
+    },
+    "explain/semver.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9f394908188ca8ee"
+    },
+    "explain/semver.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9aac4006eb2429b7"
+    },
+    "explain/semver.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f40db1c6f6e32f58"
+    },
+    "explain/semver.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c042738d0bb8bc78"
+    },
+    "explain/semver.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9a1bb74ab8262e3a"
+    },
+    "explain/shapes.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a8aa49bb9e520b29"
+    },
+    "explain/shapes.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "2aad51a88be42040"
+    },
+    "explain/shapes.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "012a143934f83fcb"
+    },
+    "explain/shapes.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b351af6ae3d62521"
+    },
+    "explain/shapes.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "cb681e8041d980c8"
+    },
+    "explain/shipping_rules.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "875d526f3a8e06f7"
+    },
+    "explain/shipping_rules.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6edab157e5b6103f"
+    },
+    "explain/shipping_rules.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "15ca2277449a6c19"
+    },
+    "explain/shipping_rules.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "7e04b37e5d99f197"
+    },
+    "explain/shipping_rules.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d3d7a7b11ed779ad"
+    },
+    "explain/stacks.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d42bb4dddff346b8"
+    },
+    "explain/stacks.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5780dbd81c1c62d9"
+    },
+    "explain/stacks.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3020afd8710958ea"
+    },
+    "explain/stacks.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "17dd6e1fcd124afd"
+    },
+    "explain/stacks.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "13a12d696fd5aa57"
+    },
+    "explain/statistics.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "84207bf83c8ae1fd"
+    },
+    "explain/statistics.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "2b5fd285e56a0053"
+    },
+    "explain/statistics.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "eb9ae4828993fa83"
+    },
+    "explain/statistics.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8c35452c84f14ce1"
+    },
+    "explain/statistics.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5c95e82a16967f4c"
+    },
+    "explain/temperature_table.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "415b3bf3c7daba67"
+    },
+    "explain/temperature_table.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "7a009dfd44425688"
+    },
+    "explain/temperature_table.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "69012def2942a947"
+    },
+    "explain/temperature_table.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8f091e7c23acbca4"
+    },
+    "explain/temperature_table.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "7624585afd787b5b"
+    },
+    "explain/todo_cli.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ad88a7f9d579327a"
+    },
+    "explain/todo_cli.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e9f24e2910f5d2b6"
+    },
+    "explain/todo_cli.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "cae8a1e2ffbfdb93"
+    },
+    "explain/todo_cli.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1bd745defd86b2d2"
+    },
+    "explain/todo_cli.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6fc18dfd65b6c2a3"
+    },
+    "explain/traffic_light.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e1e58991cd7bdca7"
+    },
+    "explain/traffic_light.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "950c137a72037731"
+    },
+    "explain/traffic_light.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3c5930e17ca979e9"
+    },
+    "explain/traffic_light.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "459b1bbfdc949074"
+    },
+    "explain/traffic_light.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "79f92a2c871e0044"
+    },
+    "explain/weather.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "92256a5c71e3b176"
+    },
+    "explain/weather.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a0d4b91a55ffc358"
+    },
+    "explain/weather.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c03a3d434519023b"
+    },
+    "explain/weather.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "cb7ba636ef13a442"
+    },
+    "explain/weather.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "73ab991093676ec6"
+    },
+    "explain/word_count.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c44efa8aa6ca5246"
+    },
+    "explain/word_count.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "94865109650e15c9"
+    },
+    "explain/word_count.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a6559133fc13c326"
+    },
+    "explain/word_count.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9326cd6c053c8d80"
+    },
+    "explain/word_count.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "de511fbc3e30681e"
+    }
+  }
+}

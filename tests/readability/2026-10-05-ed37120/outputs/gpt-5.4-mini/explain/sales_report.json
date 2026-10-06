@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program reads a sales CSV from `data/sales.csv`, validates each row into a cleaned `Sale`, and fails with a structured error if the file is missing, malformed, or any row is incomplete or non-numeric. It then totals sales by region, prints the regions in descending order of total amount, and writes a CSV report to `data/report.csv`. It is useful if you want a simple, strict reporting tool with clear error reporting, but it only works on well-formed data and requires filesystem access to the `data` area plus console output.",
+    "This program reads a sales CSV file, validates each row into a cleaned sale record, and groups the sales by region to compute total revenue per region. It prints those regional totals to the console and writes a CSV report file with the same summary. If the input file is missing, malformed, or a row is invalid, it stops with a structured report error instead of producing a partial report.",
+    "This program reads a sales CSV file, validates each row into a cleaned sale record, and groups the amounts by region. It prints the regional totals to the console and writes a CSV report file with those totals sorted from largest to smallest. If the input file is missing, malformed, or a row is invalid, it stops with a structured report error instead of producing a partial report.",
+    "This program reads a sales CSV file, validates each row into a cleaned sale record, and groups the sales by region to compute total revenue per region. It prints those regional totals to the console and writes a CSV report file with the same summary. If the input file is missing, malformed, or the report cannot be written, it stops with a structured error explaining why.",
+    "This program reads a sales CSV file, validates each row into a cleaned sale record, and groups the sales by region to compute total revenue per region. It prints those regional totals to the console and writes a CSV report file with the same summary. If the input file is missing, malformed, or a row is invalid, it stops with a structured report error instead of producing a partial report."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

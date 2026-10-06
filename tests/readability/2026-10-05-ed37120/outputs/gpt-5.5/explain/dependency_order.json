@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This module computes a stable topological ordering of build steps from a map of each step to the steps it depends on, using alphabetical order to break ties. It fails if a step names a dependency that is not defined, or if the dependency graph contains a cycle. Its sample main program prints the ordered steps for a small build pipeline.",
+    "This module computes a stable topological order for build steps from a map of each step to the steps it depends on, breaking ties alphabetically. It fails if a step names a dependency that is not defined, or if the dependency graph contains a cycle. Its sample main program prints the ordered steps for a small build pipeline.",
+    "This program orders build steps so each step appears after all of its dependencies, using alphabetical tie-breaking for stable results. It fails if a step depends on an unknown step or if the dependency graph contains a cycle. Its sample entry point prints the computed order for a small project.",
+    "This module computes a stable topological order for build steps, ensuring each step appears after all the steps it depends on and breaking ties alphabetically. It fails with a clear error if a dependency names a missing step or if the dependency graph contains a cycle. Its sample main function prints the ordered steps for a small project.",
+    "This module computes a stable topological ordering for build steps, ensuring each step appears after all the steps it depends on and breaking ties alphabetically. It fails with a clear error if a dependency is missing or if the dependency graph contains a cycle. Its sample `main` prints the ordered steps for a small project to the console."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program provides basic statistics for floating-point numbers: arithmetic mean, median, and population standard deviation. When run, it reads command-line arguments, uses the ones that parse as numbers, reports skipped non-numeric arguments, and prints each statistic rounded to three decimal places. If no valid numbers are provided, it reports no data for each result.",
+    "This module provides functions to compute the mean, median, and population standard deviation of a list of floating-point numbers, returning no result for empty input. As a command-line program, it reads arguments, skips anything that is not a number with a warning, and prints the three statistics rounded to three decimal places. Use it for quick descriptive statistics on numeric command-line input.",
+    "This program computes mean, median, and population standard deviation for numeric command-line arguments. It skips any argument that cannot be parsed as a float, printing a message for each skipped value. If no valid numbers are provided, it reports “no data” for each statistic.",
+    "This command-line program reads its arguments as floating-point numbers, skips and reports any non-numeric arguments, then prints the mean, median, and population standard deviation. It also provides reusable public functions for those three statistics, each returning no result for an empty list rather than failing.",
+    "This program is a command-line statistics tool that reads arguments as floating-point numbers and prints their mean, median, and population standard deviation. Non-numeric arguments are skipped with a warning, and if no valid numbers are provided it reports “no data” for each statistic. It also exposes reusable functions for computing those three statistics on lists of floats."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program reads `data/server.log`, parses lines in the form `timestamp LEVEL message`, and counts entries whose level is `ERROR` by timestamp hour. It prints each hour and its error count in chronological order, failing if the file cannot be read, a line is malformed, a timestamp is invalid, or a log level is unknown. Use it when your logs match this simple space-separated format and timestamps look like `2024-05-01T13:45:00`.",
+    "This program parses server log lines in the format “timestamp level message,” validates timestamps and log levels, and represents each line as a structured entry. It can count how many error-level entries occurred in each hour. Its main command reads `data/server.log` and prints hourly error counts in chronological order, failing if the file cannot be read or any nonblank line is malformed.",
+    "This program reads `data/server.log`, parses lines formatted as a timestamp, log level, and message, then counts only `ERROR` entries grouped by hour. It validates timestamps and log levels, failing on malformed lines or unknown levels. When run, it prints each hour and its error count in chronological order.",
+    "This program parses server log lines formatted as a timestamp, severity level, and message, then counts how many `ERROR` entries occurred in each hour. Its main command reads `data/server.log`, skips blank lines, fails on malformed lines or unknown log levels, and prints hourly error totals in chronological order. Use it if your logs match the expected format and you want a simple per-hour error summary.",
+    "This program reads `data/server.log`, parses nonblank log lines in the form timestamp, severity level, and message, then counts only `ERROR` entries by hour. It prints each hour’s error count in chronological order. Use it if your logs follow the expected timestamp format and levels; it fails on malformed lines, unknown levels, or file-read errors."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

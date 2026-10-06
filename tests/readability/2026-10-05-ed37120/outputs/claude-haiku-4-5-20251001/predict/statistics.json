@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "mean: 5.125\nmedian: 4.5\nstandard deviation: 2.0",
+    "mean: 5.0\nmedian: 4.5\nstandard deviation: 2.0",
+    "mean: 5.125\nmedian: 4.5\nstandard deviation: 2.0",
+    "mean: 5.0\nmedian: 4.5\nstandard deviation: 2.0",
+    "mean: 5.0\nmedian: 4.5\nstandard deviation: 2.0"
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

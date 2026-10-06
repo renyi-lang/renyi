@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "```renyi\npublic function total(invoice: Invoice) returns Decimal\n  purpose: Subtotal after the percentage discount, rounded to cents.\n  see also: subtotal\n\n  let rate be (100.00 - invoice.discount_percent) / 100.00\n  let discounted be subtotal(invoice) * rate\n  let cents be (discounted * 100.00).rounded()\n  return cents.to_decimal() / 100.00\nend\n```",
+    "```renyi\npublic function total(invoice: Invoice) returns Decimal\n  purpose: Subtotal after the percentage discount, rounded to cents.\n  see also: subtotal\n\n  let amount_before_discount be subtotal(invoice)\n  let discount_multiplier be (100.00 - invoice.discount_percent) / 100.00\n  let discounted_amount be amount_before_discount * discount_multiplier\n  return (discounted_amount * 100.00).rounded() / 100.00\nend\n```",
+    "```renyi\npublic function total(invoice: Invoice) returns Decimal\n  purpose: Subtotal after the percentage discount, rounded to cents.\n  see also: subtotal\n\n  let before_discount be subtotal(invoice)\n  let discount_rate be invoice.discount_percent / 100.00\n  let discount be before_discount * discount_rate\n  let discounted be before_discount - discount\n  let cents be discounted * 100.00\n  let rounded_cents be cents.rounded()\n  return rounded_cents.to_decimal() / 100.00\nend\n```",
+    "```renyi\npublic function total(invoice: Invoice) returns Decimal\n  purpose: Subtotal after the percentage discount, rounded to cents.\n  see also: subtotal\n\n  let before_discount be subtotal(invoice)\n  let discount_multiplier be (100.00 - invoice.discount_percent) / 100.00\n  let unrounded_total be before_discount * discount_multiplier\n  let cents be (unrounded_total * 100.00).rounded()\n  return cents.to_decimal() / 100.00\nend\n```",
+    "```renyi\npublic function total(invoice: Invoice) returns Decimal\n  purpose: Subtotal after the percentage discount, rounded to cents.\n  see also: subtotal\n\n  let before_discount be subtotal(invoice)\n  let discount_multiplier be (100.00 - invoice.discount_percent) / 100.00\n  let discounted be before_discount * discount_multiplier\n  return (discounted * 100.00).rounded() / 100.00\nend\n```"
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

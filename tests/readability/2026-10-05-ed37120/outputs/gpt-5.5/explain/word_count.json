@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This tool reads a text file, counts case-insensitive words separated by spaces, and prints the ten most frequent words with their counts. If no command-line file path is provided, it reads `data/sample.txt`. Use it for simple word-frequency summaries; it does not handle punctuation or more advanced tokenization.",
+    "This program reads a text file, counts case-insensitive words separated by spaces, and prints the ten most frequent words with their occurrence counts. If no command-line path is provided, it reads `data/sample.txt`. It is useful for a simple word-frequency summary, but it does not handle punctuation or more advanced tokenization.",
+    "This program reads a text file, counts case-insensitive words separated by spaces, and prints the ten most frequent words with their counts. If no command-line file path is provided, it uses `data/sample.txt`. It is useful for a simple word-frequency report, but it does not handle punctuation or more advanced tokenization.",
+    "This program reads a text file, counts lower-cased words separated by spaces, and prints the ten most frequent words with their counts. It uses the first command-line argument as the file path, or defaults to `data/sample.txt` if none is provided. It is useful for simple word-frequency summaries, but it does not handle punctuation or non-space separators specially.",
+    "This program reads a text file, counts case-insensitive words separated by spaces, and prints the ten most frequent words with their counts. If no file path is provided on the command line, it uses `data/sample.txt`. It is suitable for a simple word-frequency summary, but it does not handle punctuation or advanced tokenization."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

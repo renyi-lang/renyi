@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program prints a temperature conversion table that displays Celsius values from -10 to 40 degrees (in 10-degree increments) alongside their Fahrenheit equivalents. It provides a reusable conversion function and a main routine that formats and displays the results in aligned columns. Use this if you need a quick reference table or a simple temperature conversion utility.",
+    "This program prints a temperature conversion table that displays Celsius values from -10 to 40 degrees (in 10-degree increments) alongside their Fahrenheit equivalents. It provides a reusable conversion function and a main routine that formats and displays the results in aligned columns. Use this if you need a quick reference table or a simple temperature conversion utility.",
+    "This program prints a temperature conversion table that displays Celsius values from -10 to 40 degrees (in 10-degree increments) alongside their Fahrenheit equivalents. It provides a reusable conversion function and a main routine that formats and displays the results in aligned columns. Use this if you need a quick reference table or a simple temperature conversion utility.",
+    "This program prints a temperature conversion table that displays Celsius values from -10 to 40 degrees (in 10-degree increments) alongside their Fahrenheit equivalents. It provides a reusable conversion function and a main routine that formats and displays the results in aligned columns. Use this if you need a quick reference table or a simple temperature conversion utility.",
+    "This program prints a temperature conversion table that displays Celsius values from -10 to 40 degrees (in 10-degree increments) alongside their Fahrenheit equivalents. It provides a reusable conversion function and a main routine that formats and displays the results in aligned columns. Use this if you need a quick reference table or a simple temperature conversion utility."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

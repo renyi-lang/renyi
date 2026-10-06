@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "ACME          1 lines       9.00\nGlobex        2 lines      20.00\ngrand total: 29.00",
+    "ACME          1 lines       9.00\nGlobex        2 lines      20.00\ngrand total: 29.00",
+    "ACME          1 lines       9.00\nGlobex         2 lines      20.00\ngrand total: 29.00",
+    "ACME          1 lines       9.00\nGlobex        2 lines      20.00\ngrand total: 29.00",
+    "ACME          1 lines       9.00\nGlobex        2 lines      20.00\ngrand total: 29.00"
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

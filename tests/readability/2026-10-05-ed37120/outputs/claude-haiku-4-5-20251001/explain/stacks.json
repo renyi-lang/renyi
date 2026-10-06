@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program implements a generic last-in-first-out stack data structure with operations to push, pop, and peek at items, along with a practical application that checks whether brackets in text are properly balanced and nested. The stack can hold any type of item and includes a bracket-matching algorithm that uses the stack itself to verify that opening and closing brackets are paired correctly in the right order.",
+    "This program implements a generic last-in-first-out stack data structure with operations to push, pop, and peek at items, along with a practical application that checks whether brackets in text are properly balanced and nested. The stack can hold any type of item and includes a bracket-matching algorithm that uses the stack itself to verify that opening and closing brackets are paired correctly in the right order.",
+    "This module provides a generic last-in-first-out stack data structure with push, pop, and peek operations, plus a practical bracket-matching function that validates whether parentheses and square brackets are properly paired and nested in text. The stack implementation is generic enough to hold any type of item, and the bracket checker demonstrates a real-world use case by using the stack to track opening brackets and verify they're closed in the correct order.",
+    "This program implements a generic last-in-first-out stack data structure with operations to push, pop, and peek at items, along with a practical application that checks whether brackets in text are properly balanced and nested. The stack can hold any type of item and includes a bracket-matching algorithm that uses the stack itself to verify that opening and closing brackets are paired correctly in the right order.",
+    "This program implements a generic last-in-first-out stack data structure with operations to push, pop, and peek at items, along with a practical application that checks whether brackets in text are properly balanced and nested. The stack can hold any type of item and includes a bracket-matching algorithm that uses the stack itself to verify that opening and closing brackets are paired correctly in the right order."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This is a small command-line to-do app that stores tasks in a text file named `todo.txt`. It reads the current list, interprets the command-line arguments as add/done/show/help, updates the file when needed, and prints the numbered task list back to the console. It’s simple and practical if you want a lightweight local task list, but it only supports one file, basic commands, and no editing, priorities, or due dates.",
+    "This is a simple command-line to-do list tool that stores tasks in a text file named `todo.txt`. It understands four commands: add a task, mark a numbered task as done by removing it, show the current list, or print usage help if the input is missing or unrecognized. It is lightweight and practical, but it only handles one command per run and has no built-in safeguards for invalid task numbers beyond the language’s normal failure behavior.",
+    "This is a simple command-line to-do list tool that stores tasks in a text file named `todo.txt`. It understands four commands: add a task, mark a numbered task as done, show the current list, or display usage help. It is lightweight and easy to use, but it only supports one flat list in a local file, with no due dates, priorities, or syncing.",
+    "This is a simple command-line to-do list tool that stores tasks in a text file named `todo.txt`. It understands four commands: add a task, mark a numbered task as done, show the list, or display usage help. It is lightweight and easy to use, but it only handles one file, has no categories or due dates, and will fail if it cannot read or write the task file.",
+    "This is a simple command-line to-do list tool that stores tasks in a text file named `todo.txt`. It understands four commands: add a task, mark a numbered task as done by removing it, show the current list, or print usage help for anything unrecognized. It is lightweight and easy to use, but it only supports one flat list with no due dates, priorities, or undo, and it depends on being able to read and write the local file."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

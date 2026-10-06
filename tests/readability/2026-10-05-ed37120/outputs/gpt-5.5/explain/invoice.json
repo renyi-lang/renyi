@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This module defines invoice line and invoice types, then computes each line total, the pre-discount subtotal, and the final total after applying a percentage discount rounded to cents. It enforces positive quantities, nonnegative unit prices, and discounts from 0% to 100%. It includes tests for a 10% discount and for an empty invoice totaling zero.",
+    "This module defines invoice line items and invoices, then calculates each line total, the invoice subtotal, and the final total after applying a percentage discount. It enforces positive quantities, nonnegative prices, and discounts from 0% to 100%, and rounds the final total to cents. It includes tests for a 10% discount and for an invoice with no lines.",
+    "This module defines invoice line items and invoices, then computes each line total, the invoice subtotal, and the final total after applying a percentage discount rounded to cents. It enforces valid quantities, nonnegative prices, and discount percentages from 0 to 100. It includes tests for a 10% discount and for an empty invoice totaling zero.",
+    "This module computes invoice line totals, subtotals, and final totals after applying a percentage discount. It models invoices with customer names, line items, positive quantities, nonnegative prices, and discounts from 0% to 100%. Use it when you need simple cent-rounded invoice totals without taxes, fees, or I/O.",
+    "This module defines invoice line and invoice types, validates quantities, prices, and discount percentages, and computes line totals and invoice subtotals. It provides a final total by applying a percentage discount to the subtotal and rounding the result to cents. It includes tests for a 10% discount and for an empty invoice totaling zero."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

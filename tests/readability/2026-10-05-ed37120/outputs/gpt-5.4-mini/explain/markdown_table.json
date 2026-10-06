@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This module formats a table of text into Markdown, padding each column to the width of the widest header or cell so the output lines up neatly. It exposes a reusable table type plus functions to compute column widths and render the table as text. Its `main` function just prints a sample fruit-price table to the console, so it’s mainly a formatting utility with a demo entry point.",
+    "This module formats a table of text into Markdown with columns padded to the widest header or cell in each column, so the output is neatly aligned. It exposes a reusable table type plus functions to compute column widths and render the table as text. Its `main` function just prints a sample fruit-price table to the console, so it is useful as a small formatting utility or demo rather than a full application.",
+    "This module builds Markdown tables from a header row and body rows, padding each column to the width of its widest cell so the output lines up neatly. It exposes helpers to compute column widths and render a table as text, and its `main` function prints a sample fruit-prices table to the console. It’s useful if you need simple, formatted Markdown table output, but it is narrowly focused on text tables and does not handle richer table features like escaping or numeric formatting.",
+    "This module builds Markdown tables from a header row and body rows, padding each column to the width of its widest cell so the output lines up neatly. It exposes helpers to compute column widths and render a table as text, and its `main` function prints a sample fruit-pricing table to the console. It’s useful if you want simple, formatted Markdown table output without extra dependencies.",
+    "This module formats a table of text into Markdown, padding each column to the width of its widest header or cell so the output lines up neatly. It exposes a reusable table type plus functions to compute column widths and render the table as text. Its `main` function just prints a sample fruit-price table to the console, so it is useful if you want simple Markdown table generation and a demo of the output format."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

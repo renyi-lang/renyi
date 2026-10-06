@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "((1 + 2) * -4) evaluates to -12",
+    "((1 + 2) * -4) evaluates to -12",
+    "((1 + 2) * -4) evaluates to -12",
+    "((1 + 2) * -4) evaluates to -12",
+    "((1 + 2) * -4) evaluates to -12"
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

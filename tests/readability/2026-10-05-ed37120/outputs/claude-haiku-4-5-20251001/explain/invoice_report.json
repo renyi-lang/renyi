@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program generates a plain-text invoice report by printing a formatted statement for each invoice showing the customer name, number of line items, and total amount, then displays the grand total across all invoices. It demonstrates how to reuse an invoice calculation module to format and summarize billing data. The example runs on two sample invoices (ACME and Globex) with different line items and discount rates.",
+    "This program generates a plain-text invoice report by printing a formatted statement for each invoice showing the customer name, number of line items, and total amount, then displays the grand total across all invoices. It demonstrates how to reuse the invoice module's calculation functions to format and summarize billing data. The example runs on two sample invoices (ACME and Globex) sorted alphabetically by customer name.",
+    "This program generates a plain-text invoice report by printing a formatted statement for each invoice showing the customer name, number of line items, and total amount, then displays the grand total across all invoices. It demonstrates how to reuse an invoice calculation module to format and summarize billing data. The example runs on two sample invoices (ACME and Globex) with different line items and discount rates.",
+    "This program generates a plain-text invoice report by printing a formatted statement for each invoice showing the customer name, number of line items, and total amount, then displays the grand total across all invoices. It demonstrates how to reuse an invoice calculation module to format and summarize billing data. The example runs on two sample invoices (one for ACME with a 10% discount and one for Globex with no discount) and outputs them sorted alphabetically by customer name.",
+    "This program generates a plain-text invoice report by printing a formatted statement for each invoice showing the customer name, number of line items, and total amount, then displays the grand total across all invoices. It demonstrates how to reuse an invoice calculation module to format and summarize billing data. The example runs on two sample invoices (one for ACME with a 10% discount and one for Globex with no discount) and outputs them sorted alphabetically by customer name."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

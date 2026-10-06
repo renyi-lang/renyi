@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "```renyi\npublic function totals_by_region(sales: List of Sale) returns Map of Text to Decimal\n  purpose: Sum of amounts per region.\n  example: totals_by_region([]) is {}\n  example: totals_by_region([Sale(region: \"n\", product: \"p\", amount: 2.5)]) is {\"n\": 2.5}\n\n  return for each sale in sales group by sale.region sum sale.amount\nend\n```",
+    "```renyi\npublic function totals_by_region(sales: List of Sale) returns Map of Text to Decimal\n  purpose: Sum of amounts per region.\n  example: totals_by_region([]) is {}\n  example: totals_by_region([Sale(region: \"n\", product: \"p\", amount: 2.5)]) is {\"n\": 2.5}\n\n  return for each sale in sales group by sale.region sum sale.amount\nend\n```",
+    "```renyi\npublic function totals_by_region(sales: List of Sale) returns Map of Text to Decimal\n  purpose: Sum of amounts per region.\n  example: totals_by_region([]) is {}\n  example: totals_by_region([Sale(region: \"n\", product: \"p\", amount: 2.5)]) is {\"n\": 2.5}\n\n  return for each sale in sales group by sale.region sum sale.amount\nend\n```",
+    "```renyi\npublic function totals_by_region(sales: List of Sale) returns Map of Text to Decimal\n  purpose: Sum of amounts per region.\n  example: totals_by_region([]) is {}\n  example: totals_by_region([Sale(region: \"n\", product: \"p\", amount: 2.5)]) is {\"n\": 2.5}\n\n  return for each sale in sales group by sale.region sum sale.amount\nend\n```",
+    "```renyi\npublic function totals_by_region(sales: List of Sale) returns Map of Text to Decimal\n  purpose: Sum of amounts per region.\n  example: totals_by_region([]) is {}\n  example: totals_by_region([Sale(region: \"n\", product: \"p\", amount: 2.5)]) is {\"n\": 2.5}\n\n  return for each sale in sales group by sale.region sum sale.amount\nend\n```"
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

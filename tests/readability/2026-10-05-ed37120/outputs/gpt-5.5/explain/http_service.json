@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program runs a small HTTP JSON service on port 8080 that converts Celsius temperatures to Fahrenheit. It provides a health check endpoint and a conversion endpoint that requires a numeric `celsius` query parameter, returning errors for missing or invalid input. Use it if you need a simple local temperature-conversion API.",
+    "This program starts a small HTTP JSON API on port 8080 for temperature conversion. It provides a health check at `/health` and a `/convert?celsius=...` endpoint that returns the Celsius value and its Fahrenheit equivalent, or a bad-request response if the parameter is missing or not numeric.",
+    "This program starts a small HTTP JSON service on port 8080 for converting Celsius temperatures to Fahrenheit. It provides a health check endpoint and a conversion endpoint that requires a numeric `celsius` query parameter, returning an error if it is missing or invalid. Use it if you need a simple local temperature-conversion API.",
+    "This program runs a small HTTP JSON service on port 8080 for temperature conversion. It provides a health check endpoint and a conversion endpoint that requires a numeric celsius query parameter, returning both Celsius and Fahrenheit values. Use it if you need a simple local API for Celsius-to-Fahrenheit conversion.",
+    "This program starts a small HTTP JSON service on port 8080. It provides a health check endpoint and a temperature conversion endpoint that requires a `celsius` query parameter, returning both Celsius and Fahrenheit as JSON. Use it if you need a minimal local API for Celsius-to-Fahrenheit conversion."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

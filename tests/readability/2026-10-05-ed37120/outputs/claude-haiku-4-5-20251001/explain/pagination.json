@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program fetches all customer records from a paginated API by following cursor links across multiple pages, then groups the customers by country and prints a sorted count of how many customers are in each country. It demonstrates cursor-based pagination handling and data aggregation in Renyi, with a test that verifies the pagination logic works correctly against recorded API responses.",
+    "This program fetches all customer records from a paginated API by following cursor links across multiple pages, then groups the customers by country and prints a sorted count of how many customers are in each country. It demonstrates cursor-based pagination handling and data aggregation in Renyi. The included test verifies that the pagination logic correctly retrieves all records from a multi-page response.",
+    "This program fetches all customer records from a paginated API by following cursor links across multiple pages, then groups the customers by country and prints a sorted count of how many customers are in each country. It demonstrates cursor-based pagination handling and data aggregation in Renyi. The included test verifies that the pagination logic correctly retrieves all records from a multi-page response.",
+    "This program fetches all customer records from a paginated API by following cursor links across multiple pages, then groups the customers by country and prints a sorted count of how many customers are in each country. It demonstrates cursor-based pagination handling and data aggregation in Renyi. The included test verifies that the pagination logic correctly retrieves all records from a multi-page response.",
+    "This program fetches all customer records from a paginated API by following cursor links across multiple pages, then groups the customers by country and prints a sorted count of how many customers are in each country. It demonstrates cursor-based pagination handling and data aggregation in Renyi. The included test verifies that the pagination logic correctly retrieves all records from a multi-page response."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

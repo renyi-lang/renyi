@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This module handles semantic versions with three nonnegative integer parts: major, minor, and patch. It can parse version text, report specific parse errors, print versions back to text, compare them in the usual order, check whether one version satisfies another by matching major and being at least as new, and find the latest version in a list. It is useful if you need strict semver parsing and comparison without pre-release or build metadata.",
+    "This module handles semantic versions with three nonnegative integer parts: major, minor, and patch. It can parse version text, report clear errors when the text is malformed, print versions back as text, compare them in the usual order, check whether one version satisfies another by matching major version and being at least as new, and find the newest version in a list. It also includes tests showing the formatting, comparison, and latest-version behavior.",
+    "This module handles semantic versions with three nonnegative numeric parts: major, minor, and patch. It can parse version text, report specific parse errors, compare versions in the usual order, convert a version back to text, and pick the newest version from a list. It does not support pre-release or build metadata.",
+    "This module handles semantic versions with three nonnegative integer parts: major, minor, and patch. It can parse version text, report specific parse errors, print versions back as text, compare versions in the usual order, check whether one version satisfies another by matching major and being at least as new, and find the latest version in a list. It is useful if you need strict semver parsing and comparison without pre-release or build metadata.",
+    "This module handles semantic versions with three nonnegative integer parts: major, minor, and patch. It can parse version text, format versions back to text, compare them, check whether one version satisfies another by matching major version and being at least as new, and find the latest version in a list. It rejects malformed input with clear errors for the wrong number of parts or non-numeric parts."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

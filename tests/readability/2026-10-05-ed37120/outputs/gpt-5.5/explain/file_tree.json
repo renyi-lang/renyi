@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "It prints an indented directory tree for the command-line path, or the current directory if none is given, showing each file or folder’s size in bytes. Folder sizes are computed recursively as the total size of everything underneath them; non-file, non-directory entries count as 0, and children are printed sorted by name. As written, it relies on filesystem APIs not listed in the provided Renyi cheat sheet, so it may need additional library support to compile.",
+    "This command-line tool prints a directory tree for a specified path, or the current directory if no path is given. For each file and folder, it shows the name and total size in bytes, with folder sizes computed recursively from their contents and children printed alphabetically. It needs console and filesystem read access, and it may fail if entries cannot be inspected or listed.",
+    "This command-line tool prints a directory tree for a given path, showing each file or folder name with its total size in bytes. For folders, it recursively sums all contained files and subfolders, sorts children by name, and indents nested entries. If no path is provided, it prints the tree for the current directory.",
+    "This command-line program prints a directory tree for the path given as the first argument, or the current directory if none is provided. For each file or folder, it shows the name and size in bytes; folder sizes are computed recursively as the sum of everything inside, while non-file/non-directory entries count as 0. It reads the filesystem and writes to the console, and stops with a file error if inspection or listing fails.",
+    "This command-line program prints a directory tree for the path you pass as the first argument, or the current directory if you pass none. For each file or folder, it shows the name indented by depth and the total size in bytes; folder sizes are computed recursively from their contents, and children are printed sorted by name. It needs console, environment, and filesystem-read access, and it stops with a file error if inspection or listing fails."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

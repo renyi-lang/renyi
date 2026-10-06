@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program prints a simple Celsius-to-Fahrenheit conversion table to the console, covering temperatures from -10 to 40 in steps of 10. It also provides a reusable conversion function that turns any Celsius decimal into Fahrenheit using the standard formula. If you need a tiny, dependency-light utility for displaying temperature conversions, this is straightforward and easy to use.",
+    "This program prints a simple Celsius-to-Fahrenheit conversion table to the console, covering temperatures from -10 to 40 in steps of 10. It also provides a reusable conversion function that turns any Celsius decimal into Fahrenheit using the standard formula. Use it if you want a tiny, console-only utility for displaying temperature conversions.",
+    "This program prints a simple Celsius-to-Fahrenheit conversion table to the console, covering temperatures from -10 to 40 in steps of 10. It also provides a reusable conversion function that turns any Celsius decimal into Fahrenheit using the standard formula. Use it if you want a tiny, straightforward utility for displaying temperature conversions; it does not read input or do anything beyond printing the table.",
+    "This program prints a simple Celsius-to-Fahrenheit conversion table to the console, covering temperatures from -10 to 40 in steps of 10. It also provides a reusable conversion function that turns any Celsius decimal into Fahrenheit using the standard formula. Use it if you want a tiny utility for displaying temperature conversions; it does not read input or do anything beyond printing the table.",
+    "This program prints a simple Celsius-to-Fahrenheit conversion table to the console, covering temperatures from -10 to 40 in steps of 10. It also provides a reusable conversion function that turns any Celsius decimal into Fahrenheit using the standard formula. Use it if you want a tiny utility for displaying temperature conversions; it does not read input or do anything beyond printing the table."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

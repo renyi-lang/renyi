@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program reads `data/users.json`, parses it as a list of users, filters for active users aged 18 or older, sorts them by name, and prints their email addresses. It also prints a final count of active adults. It requires console access and permission to read files, and it can fail if the file cannot be read or the JSON is invalid.",
+    "This program reads `data/users.json`, parses it as a list of users, and selects the email addresses of users who are active and at least 18 years old, sorted by user name. It prints one email address per line, then prints a count of active adults. Use it if your JSON export matches the expected user shape and you want a simple filtered email list from a local file.",
+    "This program reads user records from a JSON file, validates them, and selects the e-mail addresses of active users aged 18 or older, sorted by user name. Its main entry point reads from `data/users.json`, prints each selected e-mail address, then prints a count of active adults. It can fail if the file cannot be read or the JSON cannot be parsed into the expected user format.",
+    "This program reads a JSON file of user records, filters for active users aged 18 or older, sorts them by name, and returns their email addresses. Its command-line entry point reads from `data/users.json`, prints one email address per line, then prints the count of active adults. Use it when you have a local JSON user export matching the expected fields and want a simple active-adult email list.",
+    "This program reads a JSON file of users, validates/deserializes them, and selects the email addresses of users who are active and at least 18 years old, sorted by user name. Its main entry point reads from `data/users.json`, prints one email address per line, then prints a count of active adults. It requires console output and filesystem read access, and can fail if the file cannot be read or the JSON cannot be parsed."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

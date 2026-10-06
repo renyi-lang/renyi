@@ -1,0 +1,6 @@
+{
+  "task": "write",
+  "name": "roman_numerals",
+  "prompt": "Write a complete Renyi program for the task below. Follow the cheat sheet exactly: no features it does not list. Give every public definition a `purpose:` clause and give pure functions `example:` lines. Answer with the program only, in one code fence.\n\nTask: A library module that converts an Integer from 1 to 3999 to a Roman numeral and a Roman numeral back to an Integer, failing with a typed error for invalid input. Include example lines for both directions.",
+  "description": "A library module that converts an Integer from 1 to 3999 to a Roman numeral and a Roman numeral back to an Integer, failing with a typed error for invalid input. Include example lines for both directions."
+}

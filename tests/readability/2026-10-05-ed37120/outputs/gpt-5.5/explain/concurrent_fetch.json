@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program fetches a few hard-coded web pages concurrently, measures each response body by character count, and prints the results from largest to smallest. It then fetches the site homepage and docs page in parallel with a 10-second deadline and prints their combined size. Use it as a small example or utility for concurrent HTTP fetching and size reporting; it can fail on HTTP errors or timeout.",
+    "This program fetches a small fixed set of web pages concurrently, measures each response body by character count, and prints the results from largest to smallest. It also fetches an example home page and docs page in parallel with a 10-second timeout, then prints their combined size. Use it as a simple concurrent page-size checker; it requires console and HTTP access and may fail on HTTP errors or timeout.",
+    "This program downloads a few web pages, measures the number of characters in each response body, and prints the results from largest to smallest. It also fetches a home page and docs page in parallel with a 10-second timeout, then prints their combined size. Use it if you need a small concurrent page-size checker that requires network access and may fail on HTTP errors or timeout.",
+    "This program concurrently downloads a small fixed set of example.com/org/net pages, measures each response body by character count, and prints the results from largest to smallest. It then concurrently fetches the example.com home page and docs page with a 10-second timeout and prints their combined size. Use it as a simple parallel page-size checker; it can fail on HTTP errors or timeout.",
+    "This program fetches several specified web pages concurrently, measures the character length of each response body, and prints the results from largest to smallest. It then fetches the example.com home page and docs page in parallel with a 10-second timeout and prints their combined size. It includes a replayed network test confirming the measured size of example.com."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

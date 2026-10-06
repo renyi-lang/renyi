@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program fetches all customer records from a cursor-paginated HTTP API by repeatedly following the returned cursor until there are no more pages, then returns the full list. Its main entry point groups those customers by country and prints each country with its customer count, sorted from largest to smallest. It also includes a replayable test that verifies the pagination logic fetches all pages and returns three customers from the fixture.",
+    "This program fetches all customer records from a cursor-paginated HTTP API by repeatedly following the server’s next-cursor field until there are no more pages, then returns the combined list. Its main entry point groups those customers by country and prints each country with its customer count, sorted from largest to smallest group. It also includes a replayable test that verifies the pagination logic retrieves all three customers from a fixture.",
+    "This program fetches all customer records from a cursor-paginated HTTP API by repeatedly following the returned next-cursor value until there are no more pages. It then groups the customers by country and prints each country with its customer count, sorted from largest to smallest. It also includes a replayable test that verifies the pagination logic returns three customers from the fixture.",
+    "This program fetches all customer records from a cursor-paginated HTTP API by repeatedly following the server’s next-cursor field until there are no more pages, then returns the full list. Its main entry point groups those customers by country and prints each country with its customer count, sorted from largest to smallest group. It also includes a replayable test that verifies the pagination logic retrieves all three customers from a fixture.",
+    "This program fetches all customer records from a cursor-paginated HTTP API by repeatedly following the server’s next-cursor field until there are no more pages, then returns the full list. Its main entry point groups those customers by country and prints each country with its customer count, sorted from largest to smallest. It also includes a replayable test that verifies the pagination logic returns three customers from a fixture."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program implements a traffic light state machine that cycles through Red, Green, and Yellow states when a timer expires, but immediately switches to FlashingRed if an emergency is declared and returns to Red when the emergency clears. The main function demonstrates the system by printing the sequence of light colors as it processes a series of timer and emergency events. It's useful for modeling traffic control logic or any similar state machine that needs to handle both normal transitions and emergency overrides.",
+    "This program implements a traffic light state machine that cycles through Red, Green, and Yellow states when a timer expires, but immediately switches to FlashingRed when an emergency is declared and returns to Red when it clears. The main function demonstrates the state transitions by printing the sequence of lights displayed as a series of timed events and emergency signals are processed.",
+    "This program implements a traffic light state machine that cycles through Red, Green, and Yellow states when a timer expires, but immediately switches to FlashingRed when an emergency is declared and returns to Red when the emergency clears. The main function demonstrates the state transitions by printing the sequence of lights displayed as a series of timed events and emergency signals are processed.",
+    "This program implements a traffic light state machine that cycles through Red, Green, and Yellow states when a timer expires, but immediately switches to FlashingRed when an emergency is declared and returns to Red when the emergency clears. The main function demonstrates the state transitions by printing the sequence of lights displayed as a series of timed events and emergency signals are processed.",
+    "This program implements a traffic light state machine that cycles through Red, Green, and Yellow states when a timer expires, but immediately switches to FlashingRed when an emergency is declared and returns to Red when the emergency clears. The main function demonstrates the state transitions by printing the sequence of lights displayed as a series of timer and emergency events are applied. It's useful for modeling or testing traffic light control logic that must handle both normal operation and emergency overrides."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This module defines a small arithmetic expression tree with numbers, addition, multiplication, and negation. It can evaluate a tree to a decimal result and render it as fully parenthesized infix text. Its main program builds one sample expression and prints both the expression and its computed value, so it is useful as a simple example or demo rather than a general calculator.",
+    "This module defines a small arithmetic expression tree with numbers, addition, multiplication, and negation. It can evaluate a tree to a decimal result and render it as fully parenthesized infix text. Its main program builds one sample expression and prints both the expression and its computed value, so it is useful as a simple example of recursive tree processing.",
+    "This module defines a small arithmetic expression tree with numbers, addition, multiplication, and negation. It can recursively evaluate a tree to a decimal result and render it as fully parenthesized infix text. Its main program builds one sample expression and prints the expression alongside its computed value, so it is useful as a simple example or starting point for tree-based expression handling.",
+    "This module defines a small arithmetic expression tree with four node types: numbers, addition, multiplication, and negation. It can recursively evaluate a tree to a decimal result and render it as fully parenthesized infix text. Its main program builds one sample expression and prints both the expression and its computed value, so it is useful as a simple example of tree processing and recursive evaluation.",
+    "This module defines a small arithmetic expression tree with four node types: numbers, addition, multiplication, and negation. It can recursively evaluate a tree to a decimal result and render it as fully parenthesized infix text. Its main program builds one sample expression and prints both the expression and its computed value, so it is useful as a simple example or starting point for tree-based expression handling."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program fetches and displays the current temperature and wind speed for Berlin by querying the Open-Meteo weather API. The main function retrieves weather data for Berlin's coordinates, handles potential network and JSON parsing errors, and prints the results to the console. It includes a test that verifies the forecast retrieval works correctly using a recorded API response.",
+    "This program fetches and displays the current temperature and wind speed for Berlin by querying the Open-Meteo weather API. The main function retrieves weather data for Berlin's coordinates, handles potential network and JSON parsing errors, and prints the results to the console. It includes a test that verifies the forecast retrieval works correctly using a recorded API response.",
+    "This program fetches and displays the current temperature and wind speed for Berlin by querying the Open-Meteo weather API. The main function retrieves weather data for Berlin's coordinates, handles potential network and JSON parsing errors, and prints the results to the console. It includes a test that verifies the forecast retrieval works correctly using a recorded API response.",
+    "This program fetches and displays the current temperature and wind speed for Berlin by querying the Open-Meteo weather API. The main function retrieves weather data for Berlin's coordinates, handles potential network and JSON parsing errors, and prints the results to the console. It includes a test that verifies the forecast retrieval works correctly using a recorded API response.",
+    "This program fetches and displays the current temperature and wind speed for Berlin by querying the Open-Meteo weather API. The main function retrieves weather data for Berlin's coordinates, handles potential network and JSON parsing errors, and prints the results to the console. It includes a test that verifies the forecast retrieval works correctly using a recorded API response."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

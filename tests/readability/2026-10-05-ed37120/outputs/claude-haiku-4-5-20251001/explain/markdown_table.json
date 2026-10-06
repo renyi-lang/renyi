@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program converts tabular data into formatted Markdown tables with properly aligned columns. It takes a table structure containing a header row and body rows, calculates the width needed for each column based on its widest cell, and renders the entire table as Markdown-formatted text with padding and separator lines. The included example demonstrates rendering a fruit price table to the console.",
+    "This program converts structured data into formatted Markdown tables. It takes a table with a header row and body rows, calculates the width needed for each column based on the widest cell, and renders the entire table as properly aligned Markdown with pipe separators and a divider row. The example main function demonstrates this by printing a fruit price table to the console.",
+    "This program converts structured data into formatted Markdown tables. It takes a table with a header row and body rows, calculates the width needed for each column based on the widest cell, and renders the entire table as properly aligned Markdown with pipe separators and a divider row. The example main function demonstrates this by printing a fruit price table to the console.",
+    "This program converts structured data into formatted Markdown tables. It takes a table with a header row and body rows, calculates the width needed for each column based on the widest cell, and renders the entire table as properly aligned Markdown with pipe separators and a divider row. The example main function demonstrates this by printing a fruit price table to the console.",
+    "This program converts tabular data into formatted Markdown tables with properly aligned columns. It takes a table structure containing a header row and body rows, calculates the width needed for each column based on its widest cell, and renders the entire table as Markdown-formatted text with padding and separator lines. The included example demonstrates rendering a fruit price table to the console."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

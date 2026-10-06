@@ -1,0 +1,2288 @@
+{
+  "predict/dependency_order": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/expression_tree": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/hello": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/invoice_report": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/markdown_table": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/permissions": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/shapes": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/statistics": [
+    {
+      "pass": true
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/temperature_table": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/traffic_light": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "explain/active_users": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/assistant": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/concurrent_fetch": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/config": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/currency_tool": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/deadlines": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/dependency_order": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/expression_tree": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/file_tree": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/hello": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/http_service": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/inventory_db": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/invoice": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/invoice_report": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/log_parser": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/markdown_table": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/pagination": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/permissions": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/retry": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/sales_report": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/semver": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/shapes": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/shipping_rules": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/stacks": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/statistics": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/temperature_table": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/todo_cli": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/traffic_light": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/weather": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/word_count": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "complete/config": [
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true
+    }
+  ],
+  "complete/deadlines": [
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [
+        "line 58: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    }
+  ],
+  "complete/dependency_order": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[unknown-field] `List of Text` has no field named `is_empty`",
+        "[unknown-field] `List of Text` has no field named `is_empty`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:unknown-field"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [
+        "line 41: condition without 'then'"
+      ],
+      "pass": false,
+      "rules": [
+        "missing-then"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true
+    }
+  ],
+  "complete/expression_tree": [
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true
+    }
+  ],
+  "complete/invoice": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[unknown-method] `Decimal` has no method named `to_decimal`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:unknown-method"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[unknown-method] `Decimal` has no method named `to_decimal`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:unknown-method"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[unknown-method] `Decimal` has no method named `to_decimal`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:unknown-method"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count"
+      ]
+    }
+  ],
+  "complete/invoice_report": [
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[type-mismatch] `+` needs numbers, but this is `Text`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:type-mismatch"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true
+    }
+  ],
+  "complete/log_parser": [
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true
+    }
+  ],
+  "complete/markdown_table": [
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true
+    }
+  ],
+  "complete/permissions": [
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true
+    }
+  ],
+  "complete/sales_report": [
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true
+    }
+  ],
+  "complete/semver": [
+    {
+      "lint_problems": [],
+      "vm": "8 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "8 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "8 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "8 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "8 passed, 0 failed",
+      "pass": true
+    }
+  ],
+  "complete/shapes": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[unknown-method] `Decimal` has no method named `to_decimal`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:unknown-method"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[unknown-method] `Decimal` has no method named `quotient`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:unknown-method"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[type-mismatch] the value is `Decimal`, but `Integer` is needed"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:type-mismatch"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[unknown-method] `Decimal` has no method named `to_decimal`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:unknown-method"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[unknown-method] `Decimal` has no method named `to_decimal`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:unknown-method"
+      ]
+    }
+  ],
+  "complete/shipping_rules": [
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true
+    }
+  ],
+  "complete/stacks": [
+    {
+      "lint_problems": [],
+      "vm": "10 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "10 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "10 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "10 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "10 passed, 0 failed",
+      "pass": true
+    }
+  ],
+  "complete/statistics": [
+    {
+      "lint_problems": [
+        "line 25: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 26: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 25: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [
+        "line 25: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    }
+  ],
+  "complete/temperature_table": [
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true
+    }
+  ],
+  "complete/todo_cli": [
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[missing-otherwise] this call can fail with ConstraintViolation"
+      ],
+      "pass": false,
+      "rules": [
+        "check:missing-otherwise"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true
+    }
+  ],
+  "complete/traffic_light": [
+    {
+      "lint_problems": [],
+      "vm": "8 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "8 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "8 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "8 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "8 passed, 0 failed",
+      "pass": true
+    }
+  ],
+  "complete/word_count": [
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[ignore-pure] this call has no effects, so discarding its result does nothing",
+        "[ignore-pure] this call has no effects, so discarding its result does nothing"
+      ],
+      "pass": false,
+      "rules": [
+        "check:ignore-pure"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[unknown-field] `List of Text` has no field named `is_empty`",
+        "[unknown-field] `List of Text` has no field named `is_empty`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:unknown-field"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true
+    }
+  ],
+  "write/compound_interest": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[unknown-method] `Decimal` has no method named `to_decimal`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:unknown-method"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[type-mismatch] the returned value is `Decimal`, but `Integer` is needed"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:type-mismatch"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[unknown-method] `Decimal` has no method named `to_decimal`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:unknown-method"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count"
+      ]
+    }
+  ],
+  "write/fizz_words": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "vm": "4 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name"
+      ]
+    }
+  ],
+  "write/initials": [
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[unknown-field] `Text` has no field named `is_empty`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:unknown-field"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[unknown-field] `Text` has no field named `is_empty`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:unknown-field"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[unknown-field] `Text` has no field named `is_empty`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:unknown-field"
+      ]
+    }
+  ],
+  "write/letter_grades": [
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 38: line is 140 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "vm": "7 passed, 0 failed",
+      "pass": true
+    }
+  ],
+  "write/low_stock_report": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[type-mismatch] the argument is `Text`, but `Path` is needed"
+      ],
+      "pass": false,
+      "rules": [
+        "check:type-mismatch"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[type-mismatch] the argument is `Text`, but `Path` is needed"
+      ],
+      "pass": false,
+      "rules": [
+        "check:type-mismatch"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 26: line is 151 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 27: line is 132 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 35: line is 120 columns (limit 100)",
+        "line 47: line is 104 columns (limit 100)",
+        "line 48: line is 132 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    }
+  ],
+  "write/merge_sorted": [
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [
+        "line 32: line is 143 columns (limit 100)",
+        "line 36: line is 148 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    }
+  ],
+  "write/password_strength": [
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[unknown-field] `Text` has no field named `characters`",
+        "[unknown-field] `Text` has no field named `characters`",
+        "[unknown-field] `Text` has no field named `characters`",
+        "[unknown-field] `Text` has no field named `length`",
+        "[unknown-field] `Text` has no field named `length`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:unknown-field"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[unknown-field] `Text` has no field named `length`",
+        "[argument-name] a call with one argument does not name it",
+        "[unknown-field] `Text` has no field named `length`",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:unknown-field"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true
+    }
+  ],
+  "write/request_window": [
+    {
+      "lint_problems": [],
+      "vm": "0 passed, 1 failed",
+      "failures": [
+        "FAIL  example of count_rejected_requests: example: count_rejected_requests( request_times: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], window_length: 10 ) is 1 (D:\\Projects\\Renyi\\examples\\.scratch-20172.ry:7)",
+        "got 0, expected 1"
+      ],
+      "pass": false
+    },
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true
+    },
+    {
+      "lint_problems": [
+        "block starters 4 vs 'end' 3 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance"
+      ]
+    }
+  ],
+  "write/roman_numerals": [
+    {
+      "lint_problems": [
+        "line 22: reserved word 'one' used as an identifier",
+        "line 24: reserved word 'one' used as an identifier",
+        "line 25: reserved word 'one' used as an identifier",
+        "line 96: reserved word 'one' used as an identifier",
+        "line 99: reserved word 'one' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 21: line is 104 columns (limit 100)",
+        "line 21: 'remainder' is not declared in the standard library sketch or the corpus",
+        "line 21: reserved word 'count' used as an identifier",
+        "line 21: reserved word 'one' used as an identifier",
+        "line 22: 'remainder' is not declared in the standard library sketch or the corpus",
+        "line 22: reserved word 'count' used as an identifier",
+        "line 22: reserved word 'one' used as an identifier",
+        "line 23: 'remainder' is not declared in the standard library sketch or the corpus",
+        "line 23: reserved word 'count' used as an identifier",
+        "line 23: reserved word 'one' used as an identifier",
+        "line 48: reserved word 'count' used as an identifier",
+        "line 48: reserved word 'one' used as an identifier",
+        "line 79: line is 107 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width",
+        "reserved-word-identifier",
+        "unknown-function"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[unknown-field] `Text` has no field named `is_empty`",
+        "[argument-name] a call with one argument does not name it"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:unknown-field"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[unknown-field] `Text` has no field named `is_empty`",
+        "[unknown-field] `Text` has no field named `is_empty`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:unknown-field"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[unknown-field] `Text` has no field named `is_empty`",
+        "[unknown-field] `Text` has no field named `is_empty`",
+        "[unknown-field] `Text` has no field named `length`",
+        "[unknown-field] `List of RomanEntry` has no field named `first`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:unknown-field"
+      ]
+    }
+  ],
+  "write/title_length_tool": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[expected] expected a type, found `web`",
+        "[expected] expected an expression, found `some`",
+        "[expected] expected a type, found `web`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:expected"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 19: line is 102 columns (limit 100)",
+        "line 20: line is 109 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[expected] expected a type, found `web`",
+        "[expected] expected an expression, found `some`",
+        "[expected] expected an expression, found `some`",
+        "[expected] expected an expression, found `some`",
+        "[expected] expected a type, found `web`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:expected"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 27: binding 'after_title_start' is never used (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "unused-binding"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 20: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    }
+  ]
+}

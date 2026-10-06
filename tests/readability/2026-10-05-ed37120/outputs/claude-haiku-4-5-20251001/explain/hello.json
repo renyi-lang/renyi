@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program is a simple greeting utility that prints a personalized hello message to the console. It reads the first command-line argument provided by the user and uses it as a name in the greeting; if no argument is given, it defaults to greeting \"world\". It's a minimal example of how to accept user input and produce output in Renyi.",
+    "This program is a simple greeting utility that prints a personalized hello message to the console. It reads the first command-line argument provided by the user and uses it as a name in the greeting; if no argument is given, it defaults to greeting \"world\". It's a minimal example of how to accept user input and produce output in Renyi.",
+    "This program is a simple greeting utility that prints a personalized hello message to the console. It reads the first command-line argument provided by the user and uses it as a name in the greeting; if no argument is given, it defaults to greeting \"world\". It's a minimal example of how to accept user input and produce output in Renyi.",
+    "This program is a simple greeting utility that prints a personalized hello message to the console. It reads the first command-line argument provided by the user and uses it as a name in the greeting; if no argument is given, it defaults to greeting \"world\". It's a minimal example of how to accept user input and produce output in Renyi.",
+    "This program is a simple greeting utility that prints a personalized hello message to the console. It reads the first command-line argument provided by the user and uses it as a name in the greeting; if no argument is given, it defaults to greeting \"world\". It's a minimal example of how to accept user input and produce output in Renyi."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

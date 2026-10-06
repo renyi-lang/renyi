@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "```renyi\npublic function to_fahrenheit(celsius: Decimal) returns Decimal\n  purpose: Convert a Celsius temperature to Fahrenheit.\n  example: to_fahrenheit(0) is 32\n  example: to_fahrenheit(100) is 212\n  example: to_fahrenheit(-40) is -40\n\n  return celsius * 9.0 / 5.0 + 32.0\nend\n```",
+    "```renyi\npublic function to_fahrenheit(celsius: Decimal) returns Decimal\n  purpose: Convert a Celsius temperature to Fahrenheit.\n  example: to_fahrenheit(0) is 32\n  example: to_fahrenheit(100) is 212\n  example: to_fahrenheit(-40) is -40\n\n  let scaled be celsius * 9.0 / 5.0\n  return scaled + 32.0\nend\n```",
+    "```renyi\npublic function to_fahrenheit(celsius: Decimal) returns Decimal\n  purpose: Convert a Celsius temperature to Fahrenheit.\n  example: to_fahrenheit(0) is 32\n  example: to_fahrenheit(100) is 212\n  example: to_fahrenheit(-40) is -40\n\n  return (celsius * 9.0 / 5.0) + 32.0\nend\n```",
+    "```renyi\npublic function to_fahrenheit(celsius: Decimal) returns Decimal\n  purpose: Convert a Celsius temperature to Fahrenheit.\n  example: to_fahrenheit(0) is 32\n  example: to_fahrenheit(100) is 212\n  example: to_fahrenheit(-40) is -40\n\n  return celsius * 9.00 / 5.00 + 32.00\nend\n```",
+    "```renyi\npublic function to_fahrenheit(celsius: Decimal) returns Decimal\n  purpose: Convert a Celsius temperature to Fahrenheit.\n  example: to_fahrenheit(0) is 32\n  example: to_fahrenheit(100) is 212\n  example: to_fahrenheit(-40) is -40\n\n  return celsius * 9.0 / 5.0 + 32.0\nend\n```"
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

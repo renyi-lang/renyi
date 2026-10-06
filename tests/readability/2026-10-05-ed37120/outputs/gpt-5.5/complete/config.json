@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "```renyi\npublic function default_config() returns Config\n  purpose: The configuration used when no file is present.\n  example: default_config().port is Port(8080)\n\n  return Config(port: Port(8080), workers: 4, log_level: Normal)\nend\n```",
+    "```renyi\npublic function default_config() returns Config\n  purpose: The configuration used when no file is present.\n  example: default_config().port is Port(8080)\n\n  return Config(port: Port(8080), workers: 4, log_level: Normal)\nend\n```",
+    "```renyi\npublic function default_config() returns Config\n  purpose: The configuration used when no file is present.\n  example: default_config().port is Port(8080)\n\n  return Config(port: Port(8080), workers: 4, log_level: Normal)\nend\n```",
+    "```renyi\npublic function default_config() returns Config\n  purpose: The configuration used when no file is present.\n  example: default_config().port is Port(8080)\n\n  return Config(port: Port(8080), workers: 4, log_level: Normal)\nend\n```",
+    "```renyi\npublic function default_config() returns Config\n  purpose: The configuration used when no file is present.\n  example: default_config().port is Port(8080)\n\n  return Config(port: Port(8080), workers: 4, log_level: Normal)\nend\n```"
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

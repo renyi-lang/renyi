@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This module provides simple role-based permission checks: it combines the permissions from multiple roles, reports which required permissions are missing, tests whether an action is allowed, and finds permissions shared by two roles. Permissions must look like `resource:action`, such as `posts:read`. Its sample command-line run checks viewer and editor roles against publishing requirements, prints any missing permission, and shows what the two roles share.",
+    "This module models roles as bundles of permissions and provides helpers to combine roles, check whether they cover all required permissions, list what is missing, and find permissions shared by two roles. Its sample run checks whether a viewer plus editor can publish posts; because they lack `posts:publish`, it prints that missing permission and then prints the permission both roles share.",
+    "This module helps decide whether a list of roles grants all permissions required for an action, using permission strings like `posts:read`. It can compute all granted permissions, report which required permissions are missing, check whether access is allowed, and find permissions shared by two roles. Its sample run checks viewer/editor roles against publishing needs, prints the missing publish permission, and shows the permission both roles share.",
+    "This module models permissions and roles, and provides helpers to combine role permissions, find missing required permissions, check whether an action is allowed, and identify permissions shared by two roles. Its sample program checks whether a viewer and editor together can publish posts, reports the missing publish permission, and prints the permission they share.",
+    "This module models roles as sets of validated permission names and provides helpers to combine roles, check whether they satisfy required permissions, list what is missing, and find permissions shared by two roles. Its sample program checks whether a viewer plus editor can publish posts; they cannot, because they lack `posts:publish`, so it reports that missing permission. It also prints the permission shared by the viewer and editor: `posts:read`."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program fetches the current weather from the Open-Meteo API, specifically temperature and 10-meter wind speed, and prints it for Berlin. It includes a reusable forecast-fetching function for any latitude and longitude, with separate error reporting for connection/API failures and malformed JSON responses. Use it if you want a small command-line weather display that needs console access and HTTP access to Open-Meteo.",
+    "This program fetches current weather from Open-Meteo, specifically temperature and 10 m wind speed, and its main entry point prints those values for Berlin. It exposes a reusable forecast-fetching function for any latitude and longitude, while reporting network problems as unreachable and JSON parsing problems as bad responses. It includes a recorded test fixture for Berlin to verify expected parsed weather values without live network access.",
+    "This program fetches the current temperature and wind speed for Berlin from the Open-Meteo API and prints them to the console. It reports network failures as “unreachable” and bad JSON responses as “bad response.” It includes a replayed test fixture to verify that Berlin weather data is parsed correctly.",
+    "This program fetches the current weather for Berlin from the Open-Meteo API and prints the temperature and wind speed to the console. It reports network failures as an unreachable service and malformed API responses as bad responses. It includes a recorded test that verifies expected temperature and wind values from a fixture.",
+    "This program queries the Open-Meteo API for current weather at given coordinates, and its main command prints Berlin’s temperature and wind speed to the console. It reports network failures as unreachable errors and malformed API responses as bad-response errors. It includes a recorded test fixture verifying the Berlin forecast parsing."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

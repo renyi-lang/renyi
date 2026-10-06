@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program downloads web pages from multiple URLs concurrently and reports their sizes in characters, sorted from largest to smallest. It demonstrates parallel fetching by measuring three sites simultaneously, then measuring two additional pages within a 10-second timeout and printing their combined size. The program includes a test that verifies the measurement functionality using a recorded HTTP response.",
+    "This program downloads web pages from multiple URLs concurrently and reports their sizes in characters, sorted from largest to smallest. It demonstrates parallel fetching by measuring three sites simultaneously, then measuring two additional pages within a 10-second timeout and printing their combined size. The program includes a test that verifies the measurement functionality using a recorded HTTP response.",
+    "This program downloads web pages from multiple URLs concurrently and reports their sizes in characters, sorted from largest to smallest. It demonstrates parallel fetching by measuring three sites simultaneously, then measuring two additional pages within a 10-second timeout and printing their combined size. The program includes a test that verifies the measurement functionality using a recorded HTTP response.",
+    "This program downloads web pages from multiple URLs concurrently and reports their sizes in characters, sorted from largest to smallest. It demonstrates parallel fetching by measuring three sites simultaneously, then measuring two additional pages within a 10-second timeout and printing their combined size. The program includes a test that verifies the measurement functionality using a recorded HTTP response.",
+    "This program downloads web pages from multiple URLs concurrently and reports their sizes in characters, sorted from largest to smallest. It demonstrates parallel fetching by measuring three sites simultaneously, then measuring two additional pages within a 10-second timeout and printing their combined size. The program includes a test that verifies the measurement functionality using a recorded HTTP response."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

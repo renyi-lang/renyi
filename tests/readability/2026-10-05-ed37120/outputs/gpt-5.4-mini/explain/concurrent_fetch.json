@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program downloads web pages and measures their body lengths in characters. Its main function fetches three sites in parallel, prints them from largest to smallest, then separately fetches two more pages concurrently with a 10-second timeout and prints their combined size. It also includes a replayable test that checks the measured size of one example page against a fixed expected value.",
+    "This program downloads web pages and measures their body lengths, packaging each result as a `PageSize` with the page URL and character count. Its main routine fetches three sites in parallel, prints them from largest to smallest, then does two more downloads concurrently with a 10-second timeout and prints their combined size. It also includes a replayable test that verifies the example site’s measured length, so it’s aimed at networked reporting rather than offline use.",
+    "This program downloads web pages and measures their body lengths in characters. Its main function fetches three sites in parallel, prints them from largest to smallest, then separately fetches two more pages concurrently with a 10-second timeout and prints their combined size. It also includes a replayable test that verifies the measured size of one example page.",
+    "This program downloads web pages and measures their body lengths in characters. Its main function fetches three sites in parallel, prints them from largest to smallest, then separately fetches two more pages concurrently with a 10-second timeout and prints their combined size. It also includes a replayable test that verifies the measured size of one example page.",
+    "This program downloads web pages and measures their body lengths in characters. Its main function fetches three sites in parallel, prints them from largest to smallest, then separately fetches two more pages concurrently with a 10-second timeout and prints their combined size. It also includes a replayable test that checks the measured size of one example site against a fixed expected value."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

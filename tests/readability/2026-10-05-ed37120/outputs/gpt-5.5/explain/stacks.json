@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This module provides a generic last-in, first-out stack with operations to create an empty stack, push, pop, peek, check its size, and test whether it is empty. It also includes a bracket checker that returns whether parentheses and square brackets in text are balanced and properly nested. Its tests cover empty popping and last-pushed-is-top behavior.",
+    "This module provides a generic last-in, first-out stack with operations to create an empty stack, push, pop, peek, and check its size or emptiness. It also includes a bracket checker that reports whether round `()` and square `[]` brackets in text are balanced and properly nested, ignoring other characters. Use it if you need a simple immutable stack or validation for basic bracket matching.",
+    "This module provides a generic last-in, first-out stack with operations to create an empty stack, push, pop, peek, and check its size or emptiness. It also includes a bracket-balance checker for text, supporting round parentheses and square brackets while ignoring all other characters. Use it if you need a simple immutable stack or a basic validator for properly nested `()` and `[]` brackets.",
+    "This module provides a generic last-in, first-out stack with operations to create an empty stack, push, pop, peek, and check its size or emptiness. It also includes a bracket checker that returns whether a text has properly balanced round and square brackets, ignoring all other characters. Use it if you need simple immutable stack utilities or validation for `()` and `[]` nesting.",
+    "This module provides a generic last-in-first-out stack with operations to create an empty stack, push, pop, peek, check size, and test emptiness. It also includes a bracket checker that returns whether text has balanced round and square brackets in the correct nesting order. Use it if you need a simple immutable stack or validation for `()` and `[]` bracket pairing."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

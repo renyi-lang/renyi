@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program parses server log lines into structured entries, validates timestamps and severity levels, and groups only the error entries by hour. It then counts how many errors occurred in each hour and prints those totals in hour order from a sample log file. If you need a small log-analysis utility with strict input validation, this is useful; if you need more flexible parsing or richer reporting, it is quite specialized.",
+    "This program parses server log lines into structured entries, validates timestamps and severity levels, and groups only the error entries by hour. It then counts how many errors occurred in each hour and prints those totals in chronological order from a sample log file. If you want a small log-analysis utility with strict input validation and simple hourly error reporting, it looks useful; if you need more flexible parsing or richer reporting, it is fairly narrow in scope.",
+    "This program parses server log lines into structured entries, validates timestamps and severity levels, and groups only the error entries by hour. It then counts how many errors occurred in each hour and prints those totals in hour order from a sample log file. If you need a small log-analysis utility for ISO-8601-style logs, it is useful; if your logs use different formats or you need richer reporting, it is fairly specialized.",
+    "This program parses server log lines into structured entries, validates timestamps and severity levels, and groups only the error entries by hour. It then counts how many errors occurred in each hour and prints those totals in hour order. The main entry point reads a sample log file from disk, so it is useful if you want a small, strict log parser and hourly error summary, but it will stop on malformed lines or unknown levels.",
+    "This program parses server log lines into structured entries, validates timestamps and severity levels, and groups only the error entries by hour. It then counts how many errors occurred in each hour and prints those totals in chronological order from a sample log file. If you want a small log-analysis utility with strict input validation and simple hourly error reporting, this is a good fit."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

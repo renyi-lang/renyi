@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program fetches the current weather for Berlin from the Open-Meteo API, parses the JSON response into typed weather data, and prints the temperature and wind speed to the console. If the HTTP request or JSON parsing fails, it converts those failures into a simpler weather-specific error. It also includes a replayable test that verifies the Berlin forecast data from a fixture file.",
+    "This program fetches the current weather for Berlin from the Open-Meteo API, parses the JSON response into typed weather data, and prints the temperature and wind speed to the console. If the HTTP request or JSON parsing fails, it converts those failures into clearer weather-specific errors. It also includes a replayable test that verifies the Berlin forecast data is read correctly from a fixture.",
+    "This program fetches the current weather for Berlin from the Open-Meteo API, parses the JSON response into typed weather data, and prints the temperature and wind speed to the console. If the HTTP request or JSON parsing fails, it converts those failures into a simpler weather-specific error. It also includes a replayable test that verifies the Berlin forecast data from a saved fixture.",
+    "This program fetches the current weather for Berlin from the Open-Meteo API, parses the JSON into typed weather data, and prints the temperature and wind speed to the console. If the HTTP request or JSON parsing fails, it converts those failures into a simpler weather-specific error. It also includes a replayable test that verifies the Berlin forecast data is read correctly from a fixture.",
+    "This program fetches the current weather for Berlin from the Open-Meteo API, parses the JSON into typed weather data, and prints the temperature and wind speed to the console. If the HTTP request or JSON parsing fails, it converts those failures into a simpler weather-specific error. It also includes a replayable test that verifies the API response is read correctly from a fixture."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

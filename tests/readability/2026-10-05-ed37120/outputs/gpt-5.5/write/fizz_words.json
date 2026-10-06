@@ -1,0 +1,26 @@
+{
+  "samples": [
+    "```renyi\nmodule fizz_buzz\n  purpose: Print the classic FizzBuzz sequence.\n\nimport std.console\n\npublic function word_choice(number: Integer) returns Text\n  purpose: Choose the FizzBuzz word for a number.\n  example: word_choice(number: 3) is \"Fizz\"\n  example: word_choice(number: 5) is \"Buzz\"\n  example: word_choice(number: 15) is \"FizzBuzz\"\n  example: word_choice(number: 7) is \"7\"\n\n  if number remainder 15 is 0 then\n    return \"FizzBuzz\"\n  otherwise if number remainder 3 is 0 then\n    return \"Fizz\"\n  otherwise if number remainder 5 is 0 then\n    return \"Buzz\"\n  otherwise\n    return number.to_text()\n  end\nend\n\npublic function main()\n  needs console\n  purpose: Print the numbers from 1 to 100 with FizzBuzz substitutions.\n\n  for each number in from 1 to 100\n    console.print(word_choice(number: number))\n  end\nend\n```",
+    "```renyi\nmodule fizz_buzz\n  purpose: Print the classic FizzBuzz sequence.\n\nimport std.console\n\npublic function word_for(number: Integer)\n  returns Text\n  purpose: Choose the FizzBuzz word for a number.\n  example: word_for(number: 1) is \"1\"\n  example: word_for(number: 3) is \"Fizz\"\n  example: word_for(number: 5) is \"Buzz\"\n  example: word_for(number: 15) is \"FizzBuzz\"\n\n  let by_three be number remainder 3\n  let by_five be number remainder 5\n\n  if by_three is 0 and by_five is 0 then\n    return \"FizzBuzz\"\n  otherwise if by_three is 0 then\n    return \"Fizz\"\n  otherwise if by_five is 0 then\n    return \"Buzz\"\n  otherwise\n    return number.to_text()\n  end\nend\n\npublic function main()\n  needs console\n  purpose: Print the numbers from 1 to 100 with FizzBuzz replacements.\n\n  for each number in from 1 to 100\n    console.print(word_for(number))\n  end\nend\n```",
+    "```renyi\nmodule fizz_buzz\n  purpose: Print the classic FizzBuzz sequence.\n\nimport std.console\n\npublic function word_for(number: Integer) returns Text\n  purpose: Choose the FizzBuzz word for one number.\n  example: word_for(number: 3) is \"Fizz\"\n  example: word_for(number: 5) is \"Buzz\"\n  example: word_for(number: 15) is \"FizzBuzz\"\n  example: word_for(number: 1) is \"1\"\n\n  if number remainder 15 is 0 then\n    return \"FizzBuzz\"\n  otherwise if number remainder 3 is 0 then\n    return \"Fizz\"\n  otherwise if number remainder 5 is 0 then\n    return \"Buzz\"\n  otherwise\n    return number.to_text()\n  end\nend\n\npublic function main()\n  needs console\n  purpose: Print numbers from 1 to 100 using FizzBuzz words.\n\n  for each number in from 1 to 100\n    console.print(word_for(number: number))\n  end\nend\n```",
+    "```renyi\nmodule fizz_buzz\n  purpose: Print FizzBuzz for the numbers from 1 to 100.\n\nimport std.console\n\npublic function word_for(number: Integer) returns Text\n  purpose: Choose the FizzBuzz word for one number.\n  example: word_for(3) is \"Fizz\"\n  example: word_for(5) is \"Buzz\"\n  example: word_for(15) is \"FizzBuzz\"\n  example: word_for(7) is \"7\"\n\n  if number remainder 15 is 0 then\n    return \"FizzBuzz\"\n  otherwise if number remainder 3 is 0 then\n    return \"Fizz\"\n  otherwise if number remainder 5 is 0 then\n    return \"Buzz\"\n  otherwise\n    return number.to_text()\n  end\nend\n\npublic function main()\n  needs console\n  purpose: Print the FizzBuzz sequence.\n\n  for each number in from 1 to 100\n    console.print(word_for(number))\n  end\nend\n```",
+    "```renyi\nmodule fizz_buzz\n  purpose: Print FizzBuzz values from one to one hundred.\n\nimport std.console\n\npublic function word_for(number: Integer) returns Text\n  purpose: Choose the FizzBuzz word for a number.\n  example: word_for(number: 3) is \"Fizz\"\n  example: word_for(number: 5) is \"Buzz\"\n  example: word_for(number: 15) is \"FizzBuzz\"\n  example: word_for(number: 7) is \"7\"\n\n  if number remainder 15 is 0 then\n    return \"FizzBuzz\"\n  otherwise if number remainder 3 is 0 then\n    return \"Fizz\"\n  otherwise if number remainder 5 is 0 then\n    return \"Buzz\"\n  otherwise\n    return number.to_text()\n  end\nend\n\npublic function main()\n  needs console\n  purpose: Print the FizzBuzz sequence from one to one hundred.\n\n  for each number in from 1 to 100\n    console.print(word_for(number: number))\n  end\nend\n```"
+  ],
+  "model": "gpt-5.5",
+  "temperature": null,
+  "source": {
+    "tool": "codex exec (OpenAI Codex CLI 0.153.3, ChatGPT subscription login)",
+    "model": "gpt-5.5",
+    "reasoning_effort": "medium",
+    "sandbox": "read-only",
+    "working_directory": "empty",
+    "prompt": "the system text and the task prompt in one user message",
+    "sessions": [
+      "01a10f1e-8c6f-7411-a74e-58c45e2bb680",
+      "01a10f1f-1708-75a0-8c3b-e787b532c737",
+      "01a10f1f-6146-7ff0-838b-b1721efa287b",
+      "01a10f1f-93f6-7df0-8e32-4ef95490a056",
+      "01a10f1f-c065-7320-97ba-c611bd72a570"
+    ]
+  }
+}

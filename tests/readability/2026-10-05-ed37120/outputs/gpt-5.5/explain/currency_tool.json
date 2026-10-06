@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This module exposes a tool that converts a decimal amount from one three-letter uppercase currency code to another using today’s exchange rate from api.frankfurter.dev. It returns the converted amount rounded to cents, and can fail if the HTTP request fails, the JSON response is invalid, or the requested rate is unavailable. A recorded test checks converting 100 USD to EUR.",
+    "This module publishes a tool that converts an amount between two three-letter uppercase currency codes using today’s exchange rate from api.frankfurter.dev, rounding the result to cents. It requires network access to that service and can fail if the HTTP request fails, the JSON response is invalid, or the requested exchange rate is unavailable. It includes a recorded test showing USD to EUR conversion.",
+    "This module publishes a tool that converts a decimal amount from one three-letter uppercase currency code to another using today’s exchange rate from api.frankfurter.dev. It returns the converted amount rounded to cents, and can fail if the HTTP request fails, the JSON cannot be parsed, or the requested rate is unavailable. It includes a recorded test showing USD 100 converting to EUR 89.25.",
+    "This tool converts a decimal amount from one three-letter uppercase currency code to another using today’s exchange rate from api.frankfurter.dev, then rounds the result to cents. It is published for agent use and requires network access to that exchange-rate service. It can fail if the HTTP request fails, the JSON response cannot be parsed, or the requested exchange-rate pair is unavailable.",
+    "This module provides an agent-published currency conversion tool that converts a decimal amount from one three-letter uppercase currency code to another using today’s exchange rate from api.frankfurter.dev. It returns the converted amount rounded to cents, and can fail if the HTTP request fails, the JSON response cannot be parsed, or the service has no rate for the requested currency pair. It includes a replayed test showing a USD-to-EUR conversion."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

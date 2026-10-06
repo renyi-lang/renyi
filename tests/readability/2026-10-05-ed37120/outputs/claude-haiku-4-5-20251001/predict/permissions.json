@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "missing: posts:publish\nshared: posts:read",
+    "missing: posts:publish\nshared: posts:read",
+    "missing: posts:publish\nshared: posts:read",
+    "missing: posts:publish\nshared: posts:read",
+    "missing: posts:publish\nshared: posts:read"
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

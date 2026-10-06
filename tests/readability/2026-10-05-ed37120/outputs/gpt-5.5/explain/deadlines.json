@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program finds tasks due within a chosen upcoming date window and reports them in due-date order. It can parse task lines written as a title and date, reject malformed lines, and count the remaining Monday–Friday workdays until each due date. Its sample command prints tasks due in the next ten days from today with their due dates and working days left.",
+    "This module helps manage deadlines by parsing simple task lines, filtering tasks due within a chosen upcoming date range, and sorting them by due date. It counts only Monday–Friday days remaining, excluding the start date and including the due date. Its demo prints sample tasks due in the next ten days with their due dates and working days left.",
+    "This module helps track deadlines by representing tasks with titles and due dates, parsing task lines from text, filtering tasks due within a chosen number of days, and counting weekdays remaining until each deadline. Its main program uses a small built-in sample list and prints the tasks due in the next ten days, ordered by due date, with the number of working days left. Use it if you need simple weekday-based deadline reminders, not a full task manager or holiday-aware calendar.",
+    "This module parses and represents dated tasks, filters a task list to those due from today through a chosen number of days ahead, and sorts them by due date. It can count how many Monday–Friday days remain after today through each task’s due date. Its sample `main` prints tasks due within the next 10 days, with each due date and remaining working-day count.",
+    "This program models dated tasks, can parse task lines written as “title, date,” and reports tasks due within a chosen number of days. It counts only Monday–Friday days remaining, excluding the start date and including the due date. Its sample main command prints the tasks due in the next ten days from today, sorted by due date."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

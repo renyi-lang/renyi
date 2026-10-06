@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program reads a CSV file of sales data, validates each row, and summarizes the total sales amount by region. It prints the regional totals to the console in descending order and writes them to an output CSV report file. The program handles errors gracefully, reporting issues like missing fields, invalid numbers, or file access problems.",
+    "This program reads a CSV file of sales data, validates each row, and summarizes the total sales amount by region. It prints the regional totals to the console in descending order and writes them to an output CSV report file. The program handles errors gracefully, reporting issues like missing fields, invalid numbers, or file access problems.",
+    "This program reads a CSV file of sales data, validates each row, and summarizes the total sales amount by region. It prints the regional totals to the console in descending order and writes them to an output CSV report file. The program handles errors gracefully, reporting issues like missing fields, invalid numbers, or file access problems.",
+    "This program reads a CSV file of sales data, validates each row, and summarizes the total sales amount by region. It prints the regional totals to the console in descending order and writes them to an output CSV report file. The program handles errors gracefully, reporting issues like missing fields, invalid numbers, or file access problems.",
+    "This program reads a CSV file of sales data, validates each row, and summarizes the total sales amount by region. It prints the regional totals to the console in descending order and writes them to an output CSV report file. The program handles errors gracefully, reporting issues like missing fields, invalid numbers, or file access problems."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program manages a task list by parsing task entries (title and due date) and identifying which tasks are due within a specified timeframe. It calculates how many working days (Monday through Friday) remain until each upcoming deadline and displays them in order of urgency. The main function demonstrates this by showing sample tasks due within the next ten days along with their remaining working days.",
+    "This program manages a task list by parsing task entries (title and due date) and identifying which tasks are due within a specified timeframe. It calculates how many working days (Monday through Friday) remain until each upcoming deadline and displays them in order of urgency. The main function demonstrates this by showing sample tasks due within the next ten days along with their remaining working days.",
+    "This program manages a task list by parsing task entries (title and due date) and identifying which tasks are due within a specified timeframe. It calculates how many working days (Monday through Friday) remain until each upcoming deadline and displays them in order of urgency. The main function demonstrates this by showing sample tasks due within the next ten days along with their remaining working days.",
+    "This program manages a task list by parsing task entries (title and due date) and identifying which tasks are due within a specified timeframe. It calculates how many working days (Monday through Friday) remain until each upcoming deadline and displays them in order of urgency. The main function demonstrates this by showing sample tasks due within the next ten days along with their remaining working days.",
+    "This program manages a task list by parsing task entries (title and due date) and identifying which tasks are due within a specified timeframe. It calculates how many working days (Monday through Friday) remain until each upcoming deadline and displays them in order of urgency. The main function demonstrates this by showing sample tasks due within the next ten days along with their remaining working days."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

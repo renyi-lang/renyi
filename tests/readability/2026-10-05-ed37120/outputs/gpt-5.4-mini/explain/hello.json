@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program prints a greeting to the console when run. It uses the first command-line argument as the name, and if no argument is provided it greets “world” instead. It is simple, safe, and only needs console and environment access.",
+    "This program prints a greeting to the console when run. It uses the first command-line argument as the name, and if no argument is provided it defaults to “world.” It is simple and safe, with no file, network, or other side effects beyond reading arguments and printing text.",
+    "This program prints a greeting to the console when run. It uses the first command-line argument as the name, and if no argument is provided it defaults to “world.” It is simple, safe, and useful if you want a minimal command-line greeting program.",
+    "This program prints a greeting to the console when run. It uses the first command-line argument as the name, and if no argument is provided it defaults to “world.” It is simple and safe to use if you want a basic command-line greeting.",
+    "This program prints a greeting to the console when run. It uses the first command-line argument as the name, and if no argument is provided it defaults to “world.” It is simple, safe, and useful if you want a basic command-line greeting."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

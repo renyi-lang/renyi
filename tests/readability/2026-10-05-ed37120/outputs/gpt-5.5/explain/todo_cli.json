@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This is a command-line to-do list tool that stores tasks in a local `todo.txt` file. It supports adding a task, marking a numbered task as done, showing the current list, and printing usage help for missing or unrecognized commands. It reads the existing file if available and saves changes back to it, with file-write errors reported as failures.",
+    "This is a simple command-line to-do list tool that stores tasks in a local `todo.txt` file. It lets users add a task, mark a numbered task as done, show the current list, or display usage help for unrecognized commands. Use it if you want a minimal file-based to-do manager with no database or configuration.",
+    "This is a command-line to-do list tool that stores tasks in a local `todo.txt` file. It can add a task, remove a task by its displayed number, show the current list, or print usage help for unrecognized commands. It is suitable for a simple single-file personal task list, with no validation beyond basic command parsing.",
+    "This is a simple command-line to-do list tool that stores tasks in a local `todo.txt` file. It supports adding a task, marking a numbered task as done, showing the current list, or printing usage help for unrecognized commands. Use it if you want a minimal file-based to-do manager with no database or setup beyond filesystem access.",
+    "This is a simple command-line to-do list manager that stores tasks in a local `todo.txt` file. It lets users add a task, mark a numbered task as done, show the current list, or display usage help for unrecognized commands. It reads and writes the local filesystem and prints results to the console."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

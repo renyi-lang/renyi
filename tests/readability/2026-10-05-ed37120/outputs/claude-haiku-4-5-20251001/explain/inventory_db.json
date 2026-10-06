@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program manages a small product inventory stored in SQLite, tracking stock quantities and reorder levels for each item. It provides functions to open the database, retrieve items that have fallen below their reorder threshold, and record incoming deliveries by updating stock quantities. The main routine demonstrates the workflow: it records a delivery of 500 bolts, then prints all items that currently need reordering.",
+    "This program manages a small product inventory stored in SQLite, tracking stock quantities and reorder levels for each item. It provides functions to open the database, retrieve items that have fallen below their reorder threshold, and record incoming deliveries by updating stock quantities. The main routine demonstrates the workflow: it records a delivery of 500 bolts, then prints all items that currently need reordering.",
+    "This program manages a small product inventory stored in SQLite, tracking stock quantities and reorder levels for each item. It provides functions to open the database, retrieve items that have fallen below their reorder threshold, and record incoming deliveries by updating stock quantities. The main routine demonstrates the workflow: it records a delivery of 500 bolts, then prints all items that currently need reordering.",
+    "This program manages a small product inventory stored in SQLite, tracking stock quantities and reorder levels for each item. It provides functions to open the database, retrieve items that have fallen below their reorder threshold, and record incoming deliveries by updating stock quantities. The main routine demonstrates the workflow: it records a delivery of 500 bolts, then prints all items that currently need reordering.",
+    "This program manages a small product inventory stored in SQLite, tracking stock quantities and reorder levels for each item. It provides functions to open the database, retrieve items that have fallen below their reorder threshold, and record incoming deliveries by updating stock quantities. The main routine demonstrates the workflow: it records a delivery of 500 bolts, then prints all items that currently need reordering."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

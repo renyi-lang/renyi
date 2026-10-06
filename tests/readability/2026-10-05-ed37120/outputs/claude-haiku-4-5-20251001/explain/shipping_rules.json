@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This module calculates shipping costs and delivery times for an e-commerce shop based on parcel weight, destination region, and order total. It offers free domestic shipping on orders above 50.00, charges a base fee plus weight-dependent surcharges for other destinations, and returns both the cost and estimated delivery days. The host application calls the `quote` function at checkout to provide customers with shipping information.",
+    "This module calculates shipping costs and delivery times for an e-commerce shop based on parcel weight, destination region, and order total. It offers free domestic shipping on orders above 50.00, charges a base fee plus weight-dependent surcharges for other destinations, and returns both the cost and estimated delivery days. The host application calls the `quote` function at checkout to provide customers with shipping information.",
+    "This module calculates shipping costs and delivery times for an e-commerce shop based on parcel weight, destination region, and order total. It offers free domestic shipping on orders above 50.00, charges a base fee plus weight-dependent surcharges for other destinations, and returns both the cost and estimated delivery days. The host application calls the `quote` function at checkout to provide customers with shipping information.",
+    "This module calculates shipping costs and delivery times for an e-commerce shop based on parcel weight, destination region, and order total. It offers free domestic shipping on orders above 50.00, charges a base fee plus weight-dependent surcharges for other destinations, and returns both the cost and estimated delivery days. The host application calls the `quote` function at checkout to provide customers with shipping information.",
+    "This module calculates shipping costs and delivery times for an e-commerce shop based on parcel weight, destination region, and order total. It offers free domestic shipping on orders above 50.00, charges a base fee plus weight-dependent surcharges for other destinations, and returns both the cost and estimated delivery days. The host application calls the `quote` function at checkout to provide customers with shipping information."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

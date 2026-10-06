@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program formats a header plus rows of text into a Markdown table, padding each column to the width of its widest header or cell. It exposes helpers to compute column widths and to render the full table as text, treating missing cells as empty. Its main function demonstrates the formatter by printing a small fruit price table to the console.",
+    "This module formats a header and rows of text into a Markdown table, padding each column to match the widest cell in that column. It exposes helpers to compute column widths and to render the full table as text. Its main function demonstrates the output by printing a small fruit price table to the console.",
+    "This module formats a header and rows of text into a Markdown table, padding each column to match the widest cell in that column. It exposes helpers to compute column widths and render a full table, treating missing cells as empty text. Its main function prints a small fruit price table to the console.",
+    "This module formats a header and rows of text into a Markdown table, padding each column to the width of its longest header or cell so the table is neatly aligned. It exposes helpers to compute column widths and render a complete table, treating missing cells as empty. Its main function prints a sample fruit price table to the console.",
+    "This module formats a header and rows of text into a Markdown table, padding each column to match the widest cell in that column. It also exposes a helper to compute column widths and includes a small console demo that prints a fruit price table."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

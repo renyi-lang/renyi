@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This module parses, formats, and compares semantic version numbers in the standard \"major.minor.patch\" format (like 1.4.2). It provides functions to parse version strings with validation, check whether one version can substitute for another (same major version, not older), and find the greatest version in a list. The module is useful for dependency management systems or any application that needs to work with semantic versioning.",
+    "This module parses, formats, and compares semantic version numbers in the standard \"major.minor.patch\" format (like 1.4.2). It provides functions to parse version strings with validation, check whether one version can substitute for another (same major version, not older), and find the greatest version in a list. The module is useful for dependency management systems or any application that needs to work with semantic versioning.",
+    "This module parses, formats, and compares semantic version numbers in the standard \"major.minor.patch\" format (like 1.4.2). It provides functions to parse version strings with validation, check whether one version can substitute for another (same major version, not older), and find the greatest version in a list. The module is useful for dependency management systems or any application that needs to work with semantic versioning.",
+    "This module parses, formats, and compares semantic version numbers in the standard \"major.minor.patch\" format (like 1.4.2). It provides functions to parse version strings with validation, check whether one version can substitute for another (same major version, not older), and find the greatest version in a list. The module is useful for dependency management systems or any application that needs to work with semantic versioning.",
+    "This module parses, formats, and compares semantic version numbers in the standard \"major.minor.patch\" format (like 1.4.2). It provides functions to parse version strings with validation, check whether one version can substitute for another (same major version, not older), and find the greatest version in a list. The module is useful for dependency management systems or any application that needs to work with semantic versioning."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

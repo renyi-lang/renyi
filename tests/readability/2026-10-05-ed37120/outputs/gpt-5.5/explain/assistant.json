@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program sends a single command-line question to a chat-completion HTTP API, using an API key from the CHAT_API_KEY environment variable, and prints the first returned answer. It is hard-coded to use the example-model model at api.example.com. It reports failures for a missing API key, transport/JSON problems, or a response with no answer.",
+    "This program is a small command-line assistant that sends your question to a chat-completion HTTP API and prints the first answer it gets back. It requires an API key from the environment, uses a fixed model and endpoint, and reports missing keys, empty responses, HTTP, or JSON problems as failures. It includes a replayed test confirming that the first returned answer is extracted correctly.",
+    "This program is a small command-line chat client: it reads a question from the command-line arguments, gets an API key from `CHAT_API_KEY`, sends the question to a chat-completions HTTP endpoint, and prints the first answer. It reports clear failures for a missing API key, no answer in the response, HTTP/JSON problems, or other transport errors. It is useful if you want a simple one-question wrapper around a chat model API.",
+    "This program is a small command-line client that sends a single user question to a chat-completion HTTP API and prints the first answer returned by the model. It takes the question from the command-line arguments and requires an API key from the environment, failing clearly if the key is missing, the API returns no answer, or the request/parsing fails. Use it if you want a minimal one-shot chat assistant wrapper around an HTTP model endpoint.",
+    "This program is a small command-line assistant client: it reads a question from the command line, reads an API key from the environment, sends the question to a chat-completion HTTP endpoint, and prints the first answer returned by the model. It reports clear failures for a missing API key, transport or parsing problems, or a response with no answer, and includes a replayed test confirming that the first returned answer is used."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

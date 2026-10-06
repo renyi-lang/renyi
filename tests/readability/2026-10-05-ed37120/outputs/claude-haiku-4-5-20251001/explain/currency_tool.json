@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program provides a currency conversion tool that fetches live exchange rates from an external API and converts amounts between any two ISO 4217 currency codes, rounding the result to cents. It is published as an agent tool, making the conversion function available through a JSON interface for automated use. The program handles errors gracefully, reporting when exchange rates are unavailable or when network or parsing issues occur.",
+    "This program provides a currency conversion tool that fetches live exchange rates from an external API and converts amounts between any two ISO 4217 currency codes, rounding the result to cents. It is published as an agent tool, making the conversion function available through a JSON interface for automated use. The program handles errors gracefully, reporting when exchange rates are unavailable or when network or parsing issues occur.",
+    "This program provides a currency conversion tool that fetches live exchange rates from an external API and converts amounts between any two ISO 4217 currency codes, rounding the result to cents. It is published as an agent tool, making the conversion function available through a JSON interface for automated use. The program handles errors gracefully, reporting when exchange rates are unavailable or when network or parsing issues occur.",
+    "This program provides a currency conversion tool that fetches live exchange rates from an external API and converts amounts between any two ISO 4217 currency codes, rounding the result to cents. It is published as an agent tool, making the conversion function available through a JSON interface for automated use. The program handles errors gracefully, reporting when exchange rates are unavailable or when network or parsing issues occur.",
+    "This program provides a currency conversion tool that fetches live exchange rates from an external API and converts amounts between any two ISO 4217 currency codes, rounding the result to cents. It is published as an agent tool, making the conversion function available through a JSON interface for automated use. The program handles errors gracefully, reporting when exchange rates are unavailable or when network or parsing issues occur."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

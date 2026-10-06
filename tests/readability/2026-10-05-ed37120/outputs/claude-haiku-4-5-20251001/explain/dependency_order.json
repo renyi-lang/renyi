@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program computes a valid build order for interdependent steps using topological sorting. It takes a map where each step lists its dependencies and returns them in an order where every step runs only after its dependencies complete, with ties broken alphabetically for stability. It detects and reports errors when dependencies form cycles or reference unknown steps.",
+    "This program computes a valid build order for interdependent steps using topological sorting. It takes a map where each step lists its dependencies and returns them in an order where every step runs only after its dependencies complete, with ties broken alphabetically for stability. It detects and reports errors when dependencies form cycles or reference unknown steps.",
+    "This program computes a valid build order for interdependent steps using topological sorting. It takes a map where each step lists its dependencies and returns them in an order where every step runs only after its dependencies complete, with ties broken alphabetically for stability. It detects and reports errors when dependencies form cycles or reference unknown steps.",
+    "This program computes a valid build order for interdependent steps using topological sorting. It takes a map where each step lists its dependencies and returns them in an order where every step runs only after its dependencies complete, with ties broken alphabetically for stability. It detects and reports errors when dependencies form cycles or reference unknown steps.",
+    "This program computes a valid build order for interdependent steps using topological sorting. It takes a map where each step lists its dependencies and returns them in an order where every step runs only after its dependencies complete, with ties broken alphabetically for stability. It detects and reports errors when dependencies form cycles or reference unknown steps."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

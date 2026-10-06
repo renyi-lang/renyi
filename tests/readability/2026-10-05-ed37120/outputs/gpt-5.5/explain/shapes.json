@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This module defines circles, rectangles, and points, computes their areas, and produces short human-readable descriptions of them. It can also select the shape with the largest area from a list, returning nothing for an empty list. Its main program prints descriptions for a few sample shapes and then prints which one is largest.",
+    "This module defines circle, rectangle, and point shapes, computes their areas, and formats a short text description for each. It can also pick the shape with the greatest area from a list, returning nothing for an empty list. Its main function prints descriptions of a small sample set and identifies the largest one.",
+    "This module models simple plane shapes—circles, rectangles, and points—with positive dimensions where applicable, and can compute their areas. It provides functions to describe a shape with its rounded area and to select the shape with the largest area from a list, returning nothing for an empty list. Its main program prints descriptions for a small built-in sample and reports the largest one.",
+    "This module defines circles, rectangles, and points, computes their areas, describes them in readable text, and can find the shape with the largest area from a list. Its `main` function prints descriptions of a few sample shapes and then prints which one is largest. Use it if you need simple area measurement and summaries for basic plane shapes.",
+    "This module defines circles, rectangles, and points, can compute their areas, describe them in text, and find the shape with the largest area in a list. Its command-line entry point prints descriptions for a small built-in set of sample shapes, then prints which one is largest. Use it if you need simple positive-dimension shape modeling with area-based reporting."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

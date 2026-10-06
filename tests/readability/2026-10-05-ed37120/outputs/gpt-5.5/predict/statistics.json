@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "mean: 5.0\nmedian: 4.5\nstandard deviation: 2.0",
+    "mean: 5\nmedian: 4.5\nstandard deviation: 2",
+    "mean: 5.0\nmedian: 4.5\nstandard deviation: 2.0",
+    "mean: 5.0\nmedian: 4.5\nstandard deviation: 2.0",
+    "mean: 5.0\nmedian: 4.5\nstandard deviation: 2.0"
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

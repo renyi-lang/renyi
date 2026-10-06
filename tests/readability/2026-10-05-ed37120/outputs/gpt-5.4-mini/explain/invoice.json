@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This module models invoice lines and invoices, enforcing that quantities are at least 1, unit prices are nonnegative, and discounts stay between 0 and 100 percent. It provides helpers to compute a single line total, the subtotal before discount, and the final total after discount rounded to the nearest cent. The included tests show that it applies discounts correctly and returns zero for an empty invoice.",
+    "This module models invoice lines and invoices, enforcing that quantities are at least 1, unit prices are nonnegative, and discounts stay between 0 and 100 percent. It provides helpers to compute a single line total, the subtotal before discount, and the final total after discount rounded to cents. The included tests confirm that discounts are applied correctly and that an empty invoice totals zero.",
+    "This module models invoice lines and invoices, enforcing that quantities are at least 1, unit prices are nonnegative, and discounts stay between 0 and 100 percent. It provides helpers to compute a single line total, the subtotal before discount, and the final total after discount rounded to the nearest cent. The included tests confirm that discounts are applied correctly and that an empty invoice totals zero.",
+    "This module models invoice lines and invoices, enforcing that quantities are at least 1, unit prices are nonnegative, and discounts stay between 0 and 100 percent. It provides helpers to compute a single line total, the subtotal before discount, and the final invoice total after applying the percentage discount and rounding to cents. The included tests show that it handles a normal discount correctly and returns zero for an empty invoice.",
+    "This module models invoice lines and invoices, enforcing that quantities are at least 1, unit prices are nonnegative, and discounts stay between 0 and 100 percent. It provides helpers to compute a single line total, the subtotal before discount, and the final total after discount rounded to the nearest cent. The included tests confirm that discounts are applied correctly and that an empty invoice totals zero."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

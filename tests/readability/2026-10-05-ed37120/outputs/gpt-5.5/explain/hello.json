@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program prints a greeting to the console. It uses the first command-line argument as the name, or “world” if no argument is provided. Use it if you want a simple command-line hello message.",
+    "This program prints a greeting to the console. It uses the first command-line argument as the name, or “world” if no argument is provided. Use it if you want a minimal command-line greeter.",
+    "This program prints a greeting to the console. It uses the first command-line argument as the name, or “world” if no argument is provided. Use it if you want a simple command-line greeter.",
+    "This program prints a greeting to the console. It uses the first command-line argument as the name, or “world” if no argument is provided. Use it if you want a minimal command-line greeter.",
+    "This program prints a greeting to the console. It uses the first command-line argument as the name, or “world” if no argument is provided. Use it when you want a simple command-line greeter."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

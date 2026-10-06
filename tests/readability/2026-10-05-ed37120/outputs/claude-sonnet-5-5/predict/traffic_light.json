@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "Start Red.\n1. TimerExpired: Red → Green.\n2. TimerExpired: Green → Yellow.\n3. EmergencyDeclared: FlashingRed.\n4. TimerExpired: FlashingRed stays FlashingRed.\n5. EmergencyCleared: Red.\n\nGreen\nYellow\nFlashingRed\nFlashingRed\nRed",
+    "Start: Red.\n1. TimerExpired: Red goes to Green.\n2. TimerExpired: Green goes to Yellow.\n3. EmergencyDeclared: FlashingRed.\n4. TimerExpired: FlashingRed stays FlashingRed.\n5. EmergencyCleared: Red.\n\nGreen\nYellow\nFlashingRed\nFlashingRed\nRed",
+    "Start: Red.\n1. TimerExpired: Red → Green\n2. TimerExpired: Green → Yellow\n3. EmergencyDeclared → FlashingRed\n4. TimerExpired: FlashingRed → FlashingRed\n5. EmergencyCleared → Red\n\nGreen\nYellow\nFlashingRed\nFlashingRed\nRed",
+    "Start Red.\n1. TimerExpired: Red goes to Green.\n2. TimerExpired: Green goes to Yellow.\n3. EmergencyDeclared: FlashingRed.\n4. TimerExpired: FlashingRed stays FlashingRed.\n5. EmergencyCleared: Red.\n\nGreen\nYellow\nFlashingRed\nFlashingRed\nRed",
+    "Start: Red.\n1. TimerExpired: Red → Green\n2. TimerExpired: Green → Yellow\n3. EmergencyDeclared: FlashingRed\n4. TimerExpired: FlashingRed stays FlashingRed\n5. EmergencyCleared: Red\n\nGreen\nYellow\nFlashingRed\nFlashingRed\nRed"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null
+}

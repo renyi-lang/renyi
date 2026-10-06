@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program defines a tree structure for arithmetic expressions and provides two operations on it: evaluating a tree to compute its numeric result, and rendering it as a formatted text string. When run, it constructs a sample expression tree, displays it in readable infix notation alongside its computed value.",
+    "This program defines a tree structure for arithmetic expressions and provides two operations on it: evaluating a tree to compute its numeric result, and rendering it as a formatted text string. When run, it constructs a sample expression tree, displays it in readable infix notation alongside its computed value.",
+    "This program defines a tree structure for arithmetic expressions and provides two operations on it: evaluating a tree to compute its numeric result, and rendering it as a formatted text string. When run, it constructs a sample expression tree, displays it in readable infix notation alongside its computed value.",
+    "This program defines a tree structure for arithmetic expressions and provides two operations on it: evaluating a tree to compute its numeric result, and rendering it as a formatted text string. When run, it constructs a sample expression tree, displays it in readable infix notation alongside its computed value.",
+    "This program defines a tree structure for arithmetic expressions and provides two operations on it: evaluating a tree to compute its numeric result, and rendering it as a formatted text string. When run, it constructs a sample expression tree, displays it in readable infix notation alongside its computed value."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

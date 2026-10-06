@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "missing: posts:publish\nshared: posts:read",
+    "missing: posts:publish\nshared: posts:read",
+    "missing: posts:publish\nshared: posts:read",
+    "missing: posts:publish\nshared: posts:read",
+    "missing: posts:publish\nshared: posts:read"
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

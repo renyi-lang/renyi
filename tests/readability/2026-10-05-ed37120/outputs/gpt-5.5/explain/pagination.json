@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This module fetches all customers from a cursor-paginated HTTP API, following each returned next cursor until no more pages remain. It parses the JSON responses into customer records, then its main command prints customer counts by country in descending order. Use it if your API matches this customer/page shape and you’re comfortable with HTTP or JSON failures being propagated.",
+    "This program fetches all customers from a cursor-paginated HTTP API, following each returned cursor until there are no more pages. It parses the JSON responses into customer records, then prints a country-by-country customer count sorted from largest to smallest. Use it if you need a simple paginated customer fetcher and summary report, with HTTP or JSON failures propagated to the caller.",
+    "This module fetches all customers from a cursor-paginated HTTP API, following each returned next cursor until there are no more pages. Its main program calls the customers endpoint, groups the returned customers by country, and prints country counts from largest to smallest. Use it if you need a simple network-based pagination client that parses JSON customer records and reports customer distribution by country.",
+    "This module fetches all customers from a cursor-paginated HTTP API, following each returned next cursor until there are no more pages. It parses the JSON responses into customer records, then the main program counts customers by country and prints the countries from largest group to smallest. Use it if your API matches that response shape and you are comfortable with failures being reported for HTTP or JSON errors.",
+    "This program fetches all customers from a cursor-paginated HTTP API, following each `nextCursor` until there are no more pages. It parses the JSON responses into customer records, then prints a country-by-country customer count sorted from largest to smallest. Use it if you need a simple networked pagination helper and summary report for this specific customers API shape."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

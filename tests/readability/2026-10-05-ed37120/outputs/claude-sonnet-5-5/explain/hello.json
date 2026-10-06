@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program prints a greeting to the console, using the first command-line argument as the name, and falls back to \"world\" if no argument is given. It needs only console and environment access, so it does not touch the network or filesystem. It is a simple, safe hello-world utility that ignores any arguments after the first.",
+    "This program prints a greeting to the console, using the first command-line argument as the name, and falls back to \"world\" if you don't supply one. It only needs permission to write to the console and read the environment (for the arguments), and it has no other side effects such as network or file access. It is a simple hello-world style utility, so it is safe to run but does little beyond greeting.",
+    "This program prints a greeting to the console, using the first command-line argument as the name, and falls back to \"world\" when no argument is given. It only needs permission to use the console and read the environment, so it does nothing else, such as touching files or the network. It is a simple, safe hello-world style utility, useful as a starter or a template, but it has no other features and ignores any arguments after the first.",
+    "This program prints a greeting to the console, using the first command-line argument as the name and falling back to \"world\" when no argument is given. It only needs permission to read the environment (for the arguments) and to print to the console, so it does nothing else, such as touching files or the network. It is a simple, safe hello-world style utility, useful as a starter or a template rather than for any real task.",
+    "This program prints a greeting to the console, using the first command-line argument as the name, so running it with \"Ann\" would print \"Hello, Ann!\". If no argument is given, it falls back to \"world\". It only needs permission to read the command-line environment and write to the console, and it does no file, network, or other I/O, so it is safe to run."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null
+}

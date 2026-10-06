@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program prints a plain-text invoice statement to the console, with one fixed-width row per invoice showing the customer name, number of lines, and discounted total. It computes each invoice total from line quantities and unit prices, applies a percentage discount, rounds to cents, sorts the sample invoices by customer, and prints a grand total. As written, it reports only two built-in sample invoices, but its formatting and total-calculation functions could be reused with other invoices.",
+    "This program prints a plain-text invoice statement to the console, with one fixed-width row per invoice showing the customer name, number of lines, and discounted total. It computes each invoice total by summing quantity × unit price for all lines, applying a percentage discount, and rounding to cents, then prints a grand total across all invoices. As written, it reports two built-in sample invoices rather than reading real invoice data from a file or user input.",
+    "This program prints a plain-text invoice statement to the console for two built-in sample customers, with rows sorted by customer name. Each row shows the customer, number of invoice lines, and discounted invoice total, then it prints the grand total across all invoices. It is useful as a small reporting wrapper around an invoice module that computes line totals, subtotals, percentage discounts, and cent-rounded totals.",
+    "This program prints a plain-text invoice statement to the console for two built-in sample customers, sorted by customer name. Each row shows the customer, number of invoice lines, and discounted invoice total; it then prints the grand total across all invoices. It is useful as a simple console report generator, but it currently uses hard-coded sample invoices rather than reading real invoice data.",
+    "This program prints a plain-text invoice statement to the console, with one fixed-width row per invoice showing the customer name, number of lines, and discounted total. It computes each invoice total from line quantities and unit prices, applies a percentage discount rounded to cents, sorts the sample invoices by customer, and then prints a grand total. Use it as a simple console report generator for invoice summaries."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

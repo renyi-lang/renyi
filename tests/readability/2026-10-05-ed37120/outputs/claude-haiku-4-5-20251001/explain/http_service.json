@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program is a simple JSON API server that converts temperatures between Celsius and Fahrenheit. It listens on port 8080 and provides two endpoints: a health check at `/health` and a conversion endpoint at `/convert` that accepts a Celsius value as a query parameter and returns both Celsius and Fahrenheit values as JSON. You would use this if you need a lightweight temperature conversion web service.",
+    "This program is a simple JSON API server that converts temperatures between Celsius and Fahrenheit. It listens on port 8080 and provides two endpoints: a health check at `/health` and a conversion endpoint at `/convert` that accepts a Celsius value as a query parameter and returns both Celsius and Fahrenheit values as JSON. You would use this if you need a lightweight temperature conversion web service.",
+    "This program is a simple JSON API server that converts temperatures between Celsius and Fahrenheit. It listens on port 8080 and provides two endpoints: a health check at `/health` and a conversion endpoint at `/convert` that accepts a Celsius value as a query parameter and returns both Celsius and Fahrenheit values as JSON. You would use this if you need a lightweight temperature conversion web service.",
+    "This program is a simple JSON API server that converts temperatures between Celsius and Fahrenheit. It listens on port 8080 and provides two endpoints: a health check at `/health` and a conversion endpoint at `/convert` that accepts a Celsius value as a query parameter and returns both Celsius and Fahrenheit values as JSON. You would use this if you need a lightweight temperature conversion web service.",
+    "This program is a simple JSON API server that converts temperatures between Celsius and Fahrenheit. It listens on port 8080 and provides two endpoints: a health check at `/health` and a conversion endpoint at `/convert` that accepts a Celsius value as a query parameter and returns both Celsius and Fahrenheit values as JSON. You would use this if you need a lightweight temperature conversion web service."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

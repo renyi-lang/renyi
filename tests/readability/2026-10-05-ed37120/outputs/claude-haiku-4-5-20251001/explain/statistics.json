@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program reads numbers from the command line and computes three statistical measures: the mean (average), median (middle value), and standard deviation (spread). It skips any non-numeric arguments and displays the results rounded to three decimal places, or reports \"no data\" if the input is empty. Use this if you need a simple command-line tool to quickly analyze a set of numerical values.",
+    "This program reads numbers from the command line and computes three statistical measures: the mean (average), median (middle value), and standard deviation (spread). It skips any non-numeric arguments and displays the results rounded to three decimal places, or reports \"no data\" if the input is empty. Use this if you need a simple command-line tool to quickly analyze a set of numerical values.",
+    "This program reads numbers from the command line and computes three statistical measures: the mean (average), median (middle value), and standard deviation (spread). It skips any non-numeric arguments and displays the results rounded to three decimal places, or reports \"no data\" if the input is empty. Use this if you need a simple command-line tool to quickly analyze a set of numerical values.",
+    "This program reads numbers from the command line and computes three statistical measures: the mean (average), median (middle value), and standard deviation (spread). It skips any non-numeric arguments and displays the results rounded to three decimal places, or reports \"no data\" if the input list is empty.",
+    "This program reads numbers from the command line and computes three statistical measures: the mean (average), median (middle value), and standard deviation (spread). It skips any non-numeric arguments and displays the results rounded to three decimal places, or reports \"no data\" if the input is empty. Use this if you need a simple command-line tool to quickly analyze a set of numerical values."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

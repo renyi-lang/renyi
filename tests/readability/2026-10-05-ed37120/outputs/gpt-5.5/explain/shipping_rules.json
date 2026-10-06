@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This module provides checkout shipping quotes for parcels based on destination, weight, and order total. Domestic orders of 50.00 or more ship free; otherwise the cost is a destination base price plus 2.50 for each started kilogram beyond the first. It returns the shipping cost, estimated business days, and whether free shipping applied, with parcel input and quote output designed for JSON exchange with a host application.",
+    "This module provides checkout shipping quotes for domestic, European, and international parcels, returning cost, delivery time, and whether shipping is free. Domestic orders of 50.00 or more ship free; otherwise pricing is a destination base cost plus 2.50 for each started kilogram beyond the first. It is designed for host integration, accepting parcels from JSON and returning quotes as JSON.",
+    "This module provides checkout shipping quotes for parcels sent domestically, within Europe, or internationally. It returns a cost, estimated business days, and whether shipping is free; domestic orders of at least 50.00 ship free, otherwise pricing is a destination base cost plus 2.50 for each started kilogram beyond the first. Delivery estimates are 2, 5, and 10 business days for domestic, Europe, and international shipments respectively.",
+    "This module provides shipping quotes for checkout based on parcel weight, destination, and order total. Domestic orders of 50.00 or more ship free; otherwise the cost is a destination base price plus 2.50 for each started kilogram beyond the first. It returns the shipping cost, estimated business days, and whether free shipping applied, with delivery times of 2 days domestic, 5 days Europe, and 10 days international.",
+    "This module provides checkout shipping quotes for parcels, returning a JSON-ready cost, estimated business days, and whether shipping is free. Domestic orders of 50.00 or more ship free; otherwise the cost is a destination base rate plus 2.50 for each started kilogram beyond the first. Delivery estimates are 2 business days domestically, 5 for Europe, and 10 internationally."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

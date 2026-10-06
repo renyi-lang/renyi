@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This module provides a generic retry helper for actions that may fail, retrying up to a requested number of attempts until one succeeds. After each failure it waits with exponential backoff starting at 100 ms plus random jitter, then doubles the delay. If all attempts fail, it returns a `GaveUp` error containing the attempt count and the last failure as text.",
+    "This module provides a generic retry helper: it runs a fallible action up to a requested number of attempts and returns the first successful result. After each failure it records the error, waits with exponential backoff plus random jitter, and doubles the delay; if every attempt fails, it reports how many attempts were made and the last error seen. As written, it appears to use time and random functions not listed in the provided Renyi library, so verify those APIs before relying on it unchanged.",
+    "This module provides a generic retry helper that runs a supplied action until it succeeds or a configured number of attempts is exhausted. After each failure it records the error, waits with exponential backoff starting around 100 ms plus random jitter, then tries again. If all attempts fail, it returns a GaveUp failure containing the attempt count and the last error text.",
+    "This module provides a generic retry helper for actions that may fail, intended for transient failures: it keeps trying until the action succeeds or the attempt limit is reached. After each failure it records the error, waits with exponential backoff starting at 100 ms plus random jitter, then doubles the delay. If all attempts fail, it returns a `GaveUp` error containing the number of attempts and the last failure text.",
+    "This module provides a generic retry helper that repeatedly runs a fallible action until it succeeds, waiting longer after each failure with a small random jitter. If all attempts fail, it returns a GaveUp error containing the number of attempts and the last failure message. Use it for transient failures such as network calls, but it requires time and random capabilities."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

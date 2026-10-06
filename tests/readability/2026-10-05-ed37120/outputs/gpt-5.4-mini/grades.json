@@ -1,0 +1,2605 @@
+{
+  "agent:claude-opus-5-5#a91b135c": {
+    "explain/active_users.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "aa5e71b7e16bc059"
+    },
+    "explain/active_users.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f68b4547cc2ec7fd"
+    },
+    "explain/active_users.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5d3d6d1fc6a3a35d"
+    },
+    "explain/active_users.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "511d42442a3c8bff"
+    },
+    "explain/active_users.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "95e78170fa787055"
+    },
+    "explain/assistant.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8e4ad976b5bf8100"
+    },
+    "explain/assistant.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b0b9238d1e13de66"
+    },
+    "explain/assistant.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "894541092bc21913"
+    },
+    "explain/assistant.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "7d60a34a749956ee"
+    },
+    "explain/assistant.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0cd5d5272018c9be"
+    },
+    "explain/concurrent_fetch.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6a1609545370bde3"
+    },
+    "explain/concurrent_fetch.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "27575f97a3433bba"
+    },
+    "explain/concurrent_fetch.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0dc05a0002d0d89f"
+    },
+    "explain/concurrent_fetch.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0dc05a0002d0d89f"
+    },
+    "explain/concurrent_fetch.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4d1b1236175fed74"
+    },
+    "explain/config.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ee47861268ebae8a"
+    },
+    "explain/config.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b3e73ef287e55cbe"
+    },
+    "explain/config.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3b7d6cd12ba45be2"
+    },
+    "explain/config.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "7cf37e40c0a72890"
+    },
+    "explain/config.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "57808ba4dc3a2d1f"
+    },
+    "explain/currency_tool.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e1a98855a24fc265"
+    },
+    "explain/currency_tool.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "683eb0dec7a91bbf"
+    },
+    "explain/currency_tool.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "58a76639de1ebb83"
+    },
+    "explain/currency_tool.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "74d36e59183089f4"
+    },
+    "explain/currency_tool.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b298c19114de3740"
+    },
+    "explain/deadlines.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "758c3ff94c6440fa"
+    },
+    "explain/deadlines.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c709908602921037"
+    },
+    "explain/deadlines.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b154066ed8e0dd38"
+    },
+    "explain/deadlines.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a2b319833c6d0bed"
+    },
+    "explain/deadlines.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "390d99694a790d4a"
+    },
+    "explain/dependency_order.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5500102f1e912989"
+    },
+    "explain/dependency_order.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c8e236eca40324da"
+    },
+    "explain/dependency_order.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8e50c4659118b0c9"
+    },
+    "explain/dependency_order.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "7e1fd5081e1454f9"
+    },
+    "explain/dependency_order.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "979e303822043ffd"
+    },
+    "explain/expression_tree.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "128ce151764f41f8"
+    },
+    "explain/expression_tree.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "feac7fdd1b7cf6da"
+    },
+    "explain/expression_tree.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "fd2636dac50c74e4"
+    },
+    "explain/expression_tree.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "2a4a69806e87a145"
+    },
+    "explain/expression_tree.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "914092a35068fc2a"
+    },
+    "explain/file_tree.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4d915a07c0acf841"
+    },
+    "explain/file_tree.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "975f91e781058d02"
+    },
+    "explain/file_tree.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6212fee0062d4da4"
+    },
+    "explain/file_tree.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "53b562e20a845fb0"
+    },
+    "explain/file_tree.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "638a3660fbaf933d"
+    },
+    "explain/hello.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a0958a237613c62e"
+    },
+    "explain/hello.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b33931f1a6e852be"
+    },
+    "explain/hello.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3d517fcc818f608e"
+    },
+    "explain/hello.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "090da9ff26bdd52c"
+    },
+    "explain/hello.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6991281ab9ae411e"
+    },
+    "explain/http_service.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a658758174f2bd85"
+    },
+    "explain/http_service.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "cdc50c72ecd8943c"
+    },
+    "explain/http_service.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5a0da3df1856e112"
+    },
+    "explain/http_service.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "73c3873041b3aec0"
+    },
+    "explain/http_service.4": {
+      "answer": "The console effect is missing: it never says the program prints a startup message.",
+      "grade": 4,
+      "sample": "0106a307c92f5bb9"
+    },
+    "explain/inventory_db.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f8830ccb7d784fcc"
+    },
+    "explain/inventory_db.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "12e7acfc51b35dab"
+    },
+    "explain/inventory_db.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b4f15eae5fade6d5"
+    },
+    "explain/inventory_db.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "26374b4dd1d93dd6"
+    },
+    "explain/inventory_db.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f97674f2cacbaea8"
+    },
+    "explain/invoice.0": {
+      "answer": "The effects are missing: it never states that this is a pure library that needs no effects.",
+      "grade": 4,
+      "sample": "363fab0d1a1f450b"
+    },
+    "explain/invoice.1": {
+      "answer": "The effects are missing: it never states that this is a pure library that needs no effects.",
+      "grade": 4,
+      "sample": "58d299a0b966d5b8"
+    },
+    "explain/invoice.2": {
+      "answer": "The effects are missing: it never states that this is a pure library that needs no effects.",
+      "grade": 4,
+      "sample": "6bdc02caa420074d"
+    },
+    "explain/invoice.3": {
+      "answer": "The effects are missing: it never states that this is a pure library that needs no effects.",
+      "grade": 4,
+      "sample": "06fff7ff20871ffc"
+    },
+    "explain/invoice.4": {
+      "answer": "The effects are missing: it never states that this is a pure library that needs no effects.",
+      "grade": 4,
+      "sample": "6bdc02caa420074d"
+    },
+    "explain/invoice_report.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1bc1e7fcacb3711d"
+    },
+    "explain/invoice_report.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "272cf1eb450baec5"
+    },
+    "explain/invoice_report.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "7badfc16b3b73ddb"
+    },
+    "explain/invoice_report.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8ae6040fc2c8070e"
+    },
+    "explain/invoice_report.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "24ac7884c8574efc"
+    },
+    "explain/log_parser.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "691807f902bc2364"
+    },
+    "explain/log_parser.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1b9ae988d0681034"
+    },
+    "explain/log_parser.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d1202125fa8322d9"
+    },
+    "explain/log_parser.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e393a88bc819fcb4"
+    },
+    "explain/log_parser.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1c8e167c2bc805ba"
+    },
+    "explain/markdown_table.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ec62588db946288d"
+    },
+    "explain/markdown_table.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "73d7eba52e166c4f"
+    },
+    "explain/markdown_table.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "814ba0bcc0650449"
+    },
+    "explain/markdown_table.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "2bcc1e5e26d36f3c"
+    },
+    "explain/markdown_table.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f76bcc02e65f0a91"
+    },
+    "explain/pagination.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "bba5bc7a6f73303e"
+    },
+    "explain/pagination.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6446cac462b3c9d8"
+    },
+    "explain/pagination.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d80328a86f4d9b36"
+    },
+    "explain/pagination.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f116dd3b312ec40c"
+    },
+    "explain/pagination.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "57b2ca9bac2be566"
+    },
+    "explain/permissions.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e428a2876821b4b7"
+    },
+    "explain/permissions.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9e55f44ff98ab526"
+    },
+    "explain/permissions.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5f00b993935daf23"
+    },
+    "explain/permissions.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "94df859e548aabac"
+    },
+    "explain/permissions.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d0896f8c637ad39d"
+    },
+    "explain/retry.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0fba64d50fa637d1"
+    },
+    "explain/retry.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1d8a1fbf384bd3a5"
+    },
+    "explain/retry.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a7bd910fd0aea1fd"
+    },
+    "explain/retry.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "28f37cfb6f8d1155"
+    },
+    "explain/retry.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a7bd910fd0aea1fd"
+    },
+    "explain/sales_report.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "447af5cc6a28555e"
+    },
+    "explain/sales_report.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "490d5dbe3c84bbe9"
+    },
+    "explain/sales_report.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4119fceb4cebafc6"
+    },
+    "explain/sales_report.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5d37f9b2721ac388"
+    },
+    "explain/sales_report.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "490d5dbe3c84bbe9"
+    },
+    "explain/semver.0": {
+      "answer": "Effects missing: it never says the library is pure and needs no console, files, network, environment or clock.",
+      "grade": 4,
+      "sample": "03394b03c64b47fc"
+    },
+    "explain/semver.1": {
+      "answer": "Effects missing: it never says the library is pure and needs no console, files, network, environment or clock.",
+      "grade": 4,
+      "sample": "74585123d9252a78"
+    },
+    "explain/semver.2": {
+      "answer": "Effects missing: it never says the library is pure and needs no effects; it also leaves out the satisfies check, though the main behaviours are otherwise covered.",
+      "grade": 4,
+      "sample": "399fb81f71e7455f"
+    },
+    "explain/semver.3": {
+      "answer": "Effects missing: it never says the library is pure and needs no console, files, network, environment or clock.",
+      "grade": 4,
+      "sample": "11f2dc26d4ab8ce6"
+    },
+    "explain/semver.4": {
+      "answer": "Effects missing: it never says the library is pure and needs no console, files, network, environment or clock.",
+      "grade": 4,
+      "sample": "2fab6d8cc1d96671"
+    },
+    "explain/shapes.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ca775736f53ecf66"
+    },
+    "explain/shapes.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1c307c4abff93a38"
+    },
+    "explain/shapes.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "37a8bec308199efb"
+    },
+    "explain/shapes.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "93aaaa05a89bd5e3"
+    },
+    "explain/shapes.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d5c9c2e2251bdcf3"
+    },
+    "explain/shipping_rules.0": {
+      "answer": "Effects missing: it never says the library is pure and needs no console, files, network, environment or clock.",
+      "grade": 4,
+      "sample": "7a8bf3b42791aa62"
+    },
+    "explain/shipping_rules.1": {
+      "answer": "Effects missing: calling it deterministic does not say that the library is pure and needs no console, files, network, environment or clock.",
+      "grade": 4,
+      "sample": "ab07a60cc51d8a69"
+    },
+    "explain/shipping_rules.2": {
+      "answer": "Effects missing: it never says the library is pure and needs no console, files, network, environment or clock.",
+      "grade": 4,
+      "sample": "63b79ade587a1eef"
+    },
+    "explain/shipping_rules.3": {
+      "answer": "Effects missing: it never says the library is pure and needs no console, files, network, environment or clock.",
+      "grade": 4,
+      "sample": "5cf5f593efea74f4"
+    },
+    "explain/shipping_rules.4": {
+      "answer": "Effects missing: it never says the library is pure and needs no console, files, network, environment or clock.",
+      "grade": 4,
+      "sample": "79081ef680f5c2af"
+    },
+    "explain/stacks.0": {
+      "answer": "Effects missing: it never says the library is pure and needs no console, files, network, environment or clock.",
+      "grade": 4,
+      "sample": "912ab7ea72fb765b"
+    },
+    "explain/stacks.1": {
+      "answer": "Effects missing: it never says the library is pure and needs no console, files, network, environment or clock.",
+      "grade": 4,
+      "sample": "5027205cfd5501e8"
+    },
+    "explain/stacks.2": {
+      "answer": "Effects missing: it never says the library is pure and needs no console, files, network, environment or clock.",
+      "grade": 4,
+      "sample": "b1426f6191564f60"
+    },
+    "explain/stacks.3": {
+      "answer": "Effects missing: it never says the library is pure and needs no console, files, network, environment or clock.",
+      "grade": 4,
+      "sample": "8239333f961adf11"
+    },
+    "explain/stacks.4": {
+      "answer": "Effects missing: it never says the library is pure and needs no console, files, network, environment or clock.",
+      "grade": 4,
+      "sample": "dde290004eeefdfb"
+    },
+    "explain/statistics.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b70e9cb747656a1c"
+    },
+    "explain/statistics.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b70e9cb747656a1c"
+    },
+    "explain/statistics.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9f984141b7a7aa4e"
+    },
+    "explain/statistics.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9f984141b7a7aa4e"
+    },
+    "explain/statistics.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f0680e66182ea398"
+    },
+    "explain/temperature_table.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "26b01e91969d4ca6"
+    },
+    "explain/temperature_table.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "67e054267d555f9c"
+    },
+    "explain/temperature_table.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1b2c5135027d2114"
+    },
+    "explain/temperature_table.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "45a9e4b66dbcf976"
+    },
+    "explain/temperature_table.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "45a9e4b66dbcf976"
+    },
+    "explain/todo_cli.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9f97089f00bb2286"
+    },
+    "explain/todo_cli.1": {
+      "answer": "Wrong: it says there are no safeguards for invalid task numbers beyond normal failure, but a missing, non-numeric or non-positive number prints the usage line and the only failure is a file error on save.",
+      "grade": 2,
+      "sample": "7331b4aa5cec50f2"
+    },
+    "explain/todo_cli.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a5b960ca67e44951"
+    },
+    "explain/todo_cli.3": {
+      "answer": "Wrong: it says the program fails if it cannot read the task file, but a missing or unreadable file counts as an empty list and only a failed save is an error.",
+      "grade": 2,
+      "sample": "c97c78cc881c2a87"
+    },
+    "explain/todo_cli.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f8b0d9df06e7ed63"
+    },
+    "explain/traffic_light.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0457446b684e449c"
+    },
+    "explain/traffic_light.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "52d12a6efe60de74"
+    },
+    "explain/traffic_light.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "10918e19b66e6b69"
+    },
+    "explain/traffic_light.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "837ace7145143eae"
+    },
+    "explain/traffic_light.4": {
+      "answer": "Main behaviours only partly stated: it never gives the timer cycle Red to Green to Yellow to Red or that clearing the emergency returns to Red.",
+      "grade": 4,
+      "sample": "16c742914de97a7a"
+    },
+    "explain/weather.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "fcda7348960ec8ce"
+    },
+    "explain/weather.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e42e62bf9b3f6a62"
+    },
+    "explain/weather.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9f3c6e654ee818b5"
+    },
+    "explain/weather.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "2015910a327c3c7d"
+    },
+    "explain/weather.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "fde2803453f31109"
+    },
+    "explain/word_count.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9724c82a976dd289"
+    },
+    "explain/word_count.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "713eb226dd10624d"
+    },
+    "explain/word_count.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "141802b74ff22b5d"
+    },
+    "explain/word_count.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "141802b74ff22b5d"
+    },
+    "explain/word_count.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "39d4f43a77f16176"
+    }
+  },
+  "agent:claude-sonnet-5-5#a91b135c": {
+    "explain/active_users.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "aa5e71b7e16bc059"
+    },
+    "explain/active_users.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f68b4547cc2ec7fd"
+    },
+    "explain/active_users.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5d3d6d1fc6a3a35d"
+    },
+    "explain/active_users.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "511d42442a3c8bff"
+    },
+    "explain/active_users.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "95e78170fa787055"
+    },
+    "explain/assistant.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8e4ad976b5bf8100"
+    },
+    "explain/assistant.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b0b9238d1e13de66"
+    },
+    "explain/assistant.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "894541092bc21913"
+    },
+    "explain/assistant.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "7d60a34a749956ee"
+    },
+    "explain/assistant.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0cd5d5272018c9be"
+    },
+    "explain/concurrent_fetch.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6a1609545370bde3"
+    },
+    "explain/concurrent_fetch.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "27575f97a3433bba"
+    },
+    "explain/concurrent_fetch.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0dc05a0002d0d89f"
+    },
+    "explain/concurrent_fetch.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0dc05a0002d0d89f"
+    },
+    "explain/concurrent_fetch.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4d1b1236175fed74"
+    },
+    "explain/config.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ee47861268ebae8a"
+    },
+    "explain/config.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b3e73ef287e55cbe"
+    },
+    "explain/config.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3b7d6cd12ba45be2"
+    },
+    "explain/config.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "7cf37e40c0a72890"
+    },
+    "explain/config.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "57808ba4dc3a2d1f"
+    },
+    "explain/currency_tool.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e1a98855a24fc265"
+    },
+    "explain/currency_tool.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "683eb0dec7a91bbf"
+    },
+    "explain/currency_tool.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "58a76639de1ebb83"
+    },
+    "explain/currency_tool.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "74d36e59183089f4"
+    },
+    "explain/currency_tool.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b298c19114de3740"
+    },
+    "explain/deadlines.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "758c3ff94c6440fa"
+    },
+    "explain/deadlines.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c709908602921037"
+    },
+    "explain/deadlines.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b154066ed8e0dd38"
+    },
+    "explain/deadlines.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a2b319833c6d0bed"
+    },
+    "explain/deadlines.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "390d99694a790d4a"
+    },
+    "explain/dependency_order.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5500102f1e912989"
+    },
+    "explain/dependency_order.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c8e236eca40324da"
+    },
+    "explain/dependency_order.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8e50c4659118b0c9"
+    },
+    "explain/dependency_order.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "7e1fd5081e1454f9"
+    },
+    "explain/dependency_order.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "979e303822043ffd"
+    },
+    "explain/expression_tree.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "128ce151764f41f8"
+    },
+    "explain/expression_tree.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "feac7fdd1b7cf6da"
+    },
+    "explain/expression_tree.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "fd2636dac50c74e4"
+    },
+    "explain/expression_tree.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "2a4a69806e87a145"
+    },
+    "explain/expression_tree.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "914092a35068fc2a"
+    },
+    "explain/file_tree.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4d915a07c0acf841"
+    },
+    "explain/file_tree.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "975f91e781058d02"
+    },
+    "explain/file_tree.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6212fee0062d4da4"
+    },
+    "explain/file_tree.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "53b562e20a845fb0"
+    },
+    "explain/file_tree.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "638a3660fbaf933d"
+    },
+    "explain/hello.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a0958a237613c62e"
+    },
+    "explain/hello.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b33931f1a6e852be"
+    },
+    "explain/hello.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3d517fcc818f608e"
+    },
+    "explain/hello.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "090da9ff26bdd52c"
+    },
+    "explain/hello.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6991281ab9ae411e"
+    },
+    "explain/http_service.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a658758174f2bd85"
+    },
+    "explain/http_service.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "cdc50c72ecd8943c"
+    },
+    "explain/http_service.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5a0da3df1856e112"
+    },
+    "explain/http_service.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "73c3873041b3aec0"
+    },
+    "explain/http_service.4": {
+      "answer": "nothing is wrong, but it never says the program prints a startup message, so the console effect is missing (only network is stated)",
+      "grade": 4,
+      "sample": "0106a307c92f5bb9"
+    },
+    "explain/inventory_db.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f8830ccb7d784fcc"
+    },
+    "explain/inventory_db.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "12e7acfc51b35dab"
+    },
+    "explain/inventory_db.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b4f15eae5fade6d5"
+    },
+    "explain/inventory_db.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "26374b4dd1d93dd6"
+    },
+    "explain/inventory_db.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f97674f2cacbaea8"
+    },
+    "explain/invoice.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "363fab0d1a1f450b"
+    },
+    "explain/invoice.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "58d299a0b966d5b8"
+    },
+    "explain/invoice.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6bdc02caa420074d"
+    },
+    "explain/invoice.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "06fff7ff20871ffc"
+    },
+    "explain/invoice.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6bdc02caa420074d"
+    },
+    "explain/invoice_report.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1bc1e7fcacb3711d"
+    },
+    "explain/invoice_report.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "272cf1eb450baec5"
+    },
+    "explain/invoice_report.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "7badfc16b3b73ddb"
+    },
+    "explain/invoice_report.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8ae6040fc2c8070e"
+    },
+    "explain/invoice_report.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "24ac7884c8574efc"
+    },
+    "explain/log_parser.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "691807f902bc2364"
+    },
+    "explain/log_parser.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1b9ae988d0681034"
+    },
+    "explain/log_parser.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d1202125fa8322d9"
+    },
+    "explain/log_parser.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e393a88bc819fcb4"
+    },
+    "explain/log_parser.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1c8e167c2bc805ba"
+    },
+    "explain/markdown_table.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ec62588db946288d"
+    },
+    "explain/markdown_table.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "73d7eba52e166c4f"
+    },
+    "explain/markdown_table.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "814ba0bcc0650449"
+    },
+    "explain/markdown_table.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "2bcc1e5e26d36f3c"
+    },
+    "explain/markdown_table.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f76bcc02e65f0a91"
+    },
+    "explain/pagination.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "bba5bc7a6f73303e"
+    },
+    "explain/pagination.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6446cac462b3c9d8"
+    },
+    "explain/pagination.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d80328a86f4d9b36"
+    },
+    "explain/pagination.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f116dd3b312ec40c"
+    },
+    "explain/pagination.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "57b2ca9bac2be566"
+    },
+    "explain/permissions.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e428a2876821b4b7"
+    },
+    "explain/permissions.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9e55f44ff98ab526"
+    },
+    "explain/permissions.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5f00b993935daf23"
+    },
+    "explain/permissions.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "94df859e548aabac"
+    },
+    "explain/permissions.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d0896f8c637ad39d"
+    },
+    "explain/retry.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0fba64d50fa637d1"
+    },
+    "explain/retry.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1d8a1fbf384bd3a5"
+    },
+    "explain/retry.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a7bd910fd0aea1fd"
+    },
+    "explain/retry.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "28f37cfb6f8d1155"
+    },
+    "explain/retry.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a7bd910fd0aea1fd"
+    },
+    "explain/sales_report.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "447af5cc6a28555e"
+    },
+    "explain/sales_report.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "490d5dbe3c84bbe9"
+    },
+    "explain/sales_report.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4119fceb4cebafc6"
+    },
+    "explain/sales_report.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5d37f9b2721ac388"
+    },
+    "explain/sales_report.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "490d5dbe3c84bbe9"
+    },
+    "explain/semver.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "03394b03c64b47fc"
+    },
+    "explain/semver.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "74585123d9252a78"
+    },
+    "explain/semver.2": {
+      "answer": "Omits the satisfies check (same major, candidate not older), one of the main behaviours.",
+      "grade": 4,
+      "sample": "399fb81f71e7455f"
+    },
+    "explain/semver.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "11f2dc26d4ab8ce6"
+    },
+    "explain/semver.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "2fab6d8cc1d96671"
+    },
+    "explain/shapes.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ca775736f53ecf66"
+    },
+    "explain/shapes.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1c307c4abff93a38"
+    },
+    "explain/shapes.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "37a8bec308199efb"
+    },
+    "explain/shapes.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "93aaaa05a89bd5e3"
+    },
+    "explain/shapes.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d5c9c2e2251bdcf3"
+    },
+    "explain/shipping_rules.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "7a8bf3b42791aa62"
+    },
+    "explain/shipping_rules.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ab07a60cc51d8a69"
+    },
+    "explain/shipping_rules.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "63b79ade587a1eef"
+    },
+    "explain/shipping_rules.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5cf5f593efea74f4"
+    },
+    "explain/shipping_rules.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "79081ef680f5c2af"
+    },
+    "explain/stacks.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "912ab7ea72fb765b"
+    },
+    "explain/stacks.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5027205cfd5501e8"
+    },
+    "explain/stacks.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b1426f6191564f60"
+    },
+    "explain/stacks.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8239333f961adf11"
+    },
+    "explain/stacks.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "dde290004eeefdfb"
+    },
+    "explain/statistics.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b70e9cb747656a1c"
+    },
+    "explain/statistics.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b70e9cb747656a1c"
+    },
+    "explain/statistics.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9f984141b7a7aa4e"
+    },
+    "explain/statistics.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9f984141b7a7aa4e"
+    },
+    "explain/statistics.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f0680e66182ea398"
+    },
+    "explain/temperature_table.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "26b01e91969d4ca6"
+    },
+    "explain/temperature_table.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "67e054267d555f9c"
+    },
+    "explain/temperature_table.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1b2c5135027d2114"
+    },
+    "explain/temperature_table.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "45a9e4b66dbcf976"
+    },
+    "explain/temperature_table.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "45a9e4b66dbcf976"
+    },
+    "explain/todo_cli.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9f97089f00bb2286"
+    },
+    "explain/todo_cli.1": {
+      "answer": "Wrong: says there are no safeguards for invalid task numbers, but a missing, non-numeric or non-positive number prints the usage line.",
+      "grade": 2,
+      "sample": "7331b4aa5cec50f2"
+    },
+    "explain/todo_cli.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a5b960ca67e44951"
+    },
+    "explain/todo_cli.3": {
+      "answer": "Wrong: says it fails if it cannot read the task file, but a missing or unreadable file counts as an empty list and only a failed save fails.",
+      "grade": 2,
+      "sample": "c97c78cc881c2a87"
+    },
+    "explain/todo_cli.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f8b0d9df06e7ed63"
+    },
+    "explain/traffic_light.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0457446b684e449c"
+    },
+    "explain/traffic_light.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "52d12a6efe60de74"
+    },
+    "explain/traffic_light.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "10918e19b66e6b69"
+    },
+    "explain/traffic_light.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "837ace7145143eae"
+    },
+    "explain/traffic_light.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "16c742914de97a7a"
+    },
+    "explain/weather.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "fcda7348960ec8ce"
+    },
+    "explain/weather.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e42e62bf9b3f6a62"
+    },
+    "explain/weather.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9f3c6e654ee818b5"
+    },
+    "explain/weather.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "2015910a327c3c7d"
+    },
+    "explain/weather.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "fde2803453f31109"
+    },
+    "explain/word_count.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9724c82a976dd289"
+    },
+    "explain/word_count.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "713eb226dd10624d"
+    },
+    "explain/word_count.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "141802b74ff22b5d"
+    },
+    "explain/word_count.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "141802b74ff22b5d"
+    },
+    "explain/word_count.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "39d4f43a77f16176"
+    }
+  },
+  "anthropic:claude-sonnet-5-5#a91b135c": {
+    "explain/active_users.0": {
+      "answer": "The explanation covers the purpose and the main behaviors: reading the file, filtering active adults, sorting by name, returning e-mails, and printing each e-mail plus a count. \"Uses the default file data/users.json\" is slightly off, since the description says it's a fixed path. In the description, the reusable function takes the path, and main uses the fixed path, so \"default file\" is consistent enough.\n\nNothing is wrong. The effects (console and filesystem read access) are not stated explicitly, though reading a file and printing are implied. The failure modes are only partly covered (\"depends on valid JSON with the expected user fields\"). The summary count is mentioned, but the \"active adults\" wording is not.\n\nThe explicit statement of effects is missing, so this is a 4.\n\n4",
+      "grade": 4,
+      "sample": "aa5e71b7e16bc059"
+    },
+    "explain/active_users.1": {
+      "answer": "The explanation says the program reads the JSON file, filters to active users aged 18 or over, sorts by name, and returns the e-mail addresses. It then says main loads data/users.json, prints each e-mail, and prints the count. All of this matches the description.\n\nNothing in it is wrong. The reusable function takes a path, which the explanation does not state, but that is minor.\n\nChecking the three parts:\n- Purpose: stated.\n- Main behaviours: stated, including filtering, sorting, printing and the count. Validation of age and e-mail is only loosely covered by \"expected user shape\".\n- Effects: the explanation never says the program needs the console and read access to the filesystem. Reading a file and printing are implied but not stated as requirements. It also does not name the failure modes (file error, JSON error), although it does mention the dependence on valid JSON.\n\nEffects are only implied, so I count that as missing, which gives a 4.\n\n4",
+      "grade": 4,
+      "sample": "f68b4547cc2ec7fd"
+    },
+    "explain/active_users.2": {
+      "answer": "The explanation's claims check out against the description: it reads the JSON file, filters to active users aged 18 or over, sorts by name, and returns the e-mail addresses. `main` runs on data/users.json, prints each address, then prints the count. Nothing in it contradicts the description.\n\nOverall purpose: stated.\n\nMain behaviours: stated. It does not mention validation details such as age at least 0 or the e-mail pattern, but it says the file must be valid JSON in the expected shape, which covers that loosely. The error behaviour (file error versus JSON error) is only partly covered.\n\nEffects: it never says the program needs the console and read filesystem access. It does imply both, since it reads a file and prints, but it doesn't state them as requirements. This counts as missing or only weakly implied.\n\nThe \"returns\" claim is slightly loose: the reusable function returns the addresses, and the explanation attributes this to the program, but that is not contradicted.\n\nI'd give it a 4, since the effects are missing or only implied.\n\n4",
+      "grade": 4,
+      "sample": "5d3d6d1fc6a3a35d"
+    },
+    "explain/active_users.3": {
+      "answer": "Checking the explanation against the description:\n\n- Reads a JSON file of users, filters to active users aged 18 or more, sorts by name, and returns the e-mails. This matches. The reusable function does return the e-mails.\n- `main` uses the default file `data/users.json`, prints each e-mail, then prints the count. This matches. The description says \"a fixed path\", and \"default\" is close enough.\n- It depends on valid JSON with the expected user shape. This matches the failure on a JSON error.\n\nNothing is wrong. The explanation covers the purpose and the main behaviours. Effects are only partly covered. It never says the program needs the console and read access to the filesystem, though reading a file and printing are implied. The file error on an unreadable file is not mentioned either, and the validation details (age at least 0, e-mail pattern) are only hinted at through \"expected user shape\".\n\nThe effects are not stated explicitly, so one element is missing. That gives a 4.\n\n4",
+      "grade": 4,
+      "sample": "511d42442a3c8bff"
+    },
+    "explain/active_users.4": {
+      "answer": "The explanation gets the purpose right: reading the file, filtering active adults, sorting by name, returning e-mail addresses, printing each one and then the count. Nothing in it contradicts the description.\n\nMissing from it:\n- The effects are not stated: it needs the console and read access to the filesystem. It does say that it reads a file and prints, which implies both, but it never lists them as requirements.\n- The failure behaviours are not stated: a file error when the file cannot be read, and a JSON error when the text does not decode into the user shape. It only says it \"depends on the input file being valid JSON with the expected fields\", which loosely covers the JSON side.\n- The validation constraints (age at least 0, e-mail pattern) are not mentioned.\n\nThe reusable function that takes a path is also not mentioned. The explanation attributes the filtering and returning to the program as a whole, and says `main` runs it on the fixed path. That is consistent with the description.\n\nThe purpose and main behaviours are covered, and the effects are only implied. The explanation is correct and one category, the effects, is mostly missing, so I rate it 4.\n\n4",
+      "grade": 4,
+      "sample": "95e78170fa787055"
+    },
+    "explain/assistant.0": {
+      "answer": "The explanation says: sends the question to a chat-completions endpoint, prints the first reply, reads the key from CHAT_API_KEY, takes the question from the command-line arguments, and depends on network access and a valid key. It adds that the program is \"fairly simple and focused\", has \"limited error handling\", and is \"tied to one fixed model and endpoint\".\n\nChecking for contradictions:\n- \"Limited error handling\" is an opinion or caution. The program does have three error types, but \"limited\" is a judgment, so it is ignored.\n- \"Only returns the first answer\" matches the description.\n- \"Tied to one fixed model and endpoint\" matches the description, which says a fixed endpoint and model \"example-model\".\n\nNothing is wrong. Next, coverage:\n- Purpose: stated.\n- Effects: network and environment are mentioned. Console is implied through the command-line arguments and printing, but not named explicitly. That is mostly covered.\n- Main behaviours: sending, printing, and reading the key are covered. The specific errors (MissingApiKey, NoAnswer, Transport) are not named, and the reusable function is not mentioned. The error handling is only vaguely alluded to.\n\nEverything is correct and the purpose and effects are covered. The missing pieces are the specific failure behaviours and the reusable function. That amounts to one item missing, perhaps a bit more, so I rate it 4.\n\n4",
+      "grade": 4,
+      "sample": "8e4ad976b5bf8100"
+    },
+    "explain/assistant.1": {
+      "answer": "The explanation says the program sends a question to a chat-completions endpoint and prints the first answer. This matches the description. It reads the key from the environment variable and takes the question from the command-line arguments, which is also correct. The failure cases (missing key, no answer, network/JSON errors) match the description. \"Testable wrapper\" is an opinion about usefulness, and the claim that it is hardcoded to one endpoint and model matches the description, which says \"fixed endpoint\" and model \"example-model\".\n\nNothing in the explanation is wrong. Next is what it leaves out. The purpose is stated. The main behaviours are stated. The effects are only partly covered: the environment and network are implied, and the console is implied by printing. It does not explicitly list what the program needs, but it mentions the environment variable, the HTTP endpoint and printing. Details such as the reusable function and the bearer header are missing, though these are minor.\n\nThe effects are largely implicit but present, so I would give this a 4 or 5. The explanation never states the requirements as such, such as network access, though it says \"HTTP endpoint\" and \"network/JSON handling\". It covers the main points, so I lean toward 5.\n\n5",
+      "grade": 5,
+      "sample": "b0b9238d1e13de66"
+    },
+    "explain/assistant.2": {
+      "answer": "The explanation gets the purpose right: it sends a question to a chat endpoint and prints the answer. It also states the key comes from the environment variable and the question from the command-line arguments. The failure modes (missing key, no answer, request/response handling) are all covered.\n\nNothing in it is contradicted by the description. \"Tightly coupled to one endpoint and model name\" matches the fixed endpoint and the fixed model, and the usefulness opinion is ignored anyway.\n\nWhat it leaves out is the effects. It mentions the environment and command-line arguments, and it implies network use through \"HTTP endpoint.\" It never says that the program prints to the console, although \"prints\" implies it. The reusable function is not mentioned either. Joining the arguments with spaces is not stated, but that is a minor detail.\n\nEffects are largely covered: environment is explicit, network is implied through \"HTTP endpoint,\" and console through \"prints.\" The main behaviours are stated, and the missing reusable function is a minor omission. This is probably a 5, or possibly a 4.\n\nI'll go with 5.\n\n5",
+      "grade": 5,
+      "sample": "894541092bc21913"
+    },
+    "explain/assistant.3": {
+      "answer": "The explanation gets the purpose right: it sends a question to a chat-completions endpoint and prints the first answer. It also states the key comes from the environment variable and the question from the command-line arguments, and that the program needs network access and a valid key. It names the three failure categories: missing keys, empty replies and transport failures.\n\nPossible wrong statements:\n- \"has limited error handling\" is an opinion or caution, so it is ignored.\n- \"simple, testable wrapper\" is consistent with a reusable function.\n- \"only returns one response\" fits taking the first choice.\n\nEffects: network and environment are covered. The console is only implied by \"command-line\" and \"prints\". That is mostly covered, though the console is not stated explicitly.\n\nMain behaviours: JSON post, bearer header and model name are not mentioned, but the main behaviour is covered. The failure modes are mentioned, though only loosely.\n\nNothing is wrong, and purpose, effects and main behaviours are all essentially present, so this is a 5 or a 4. The console is implied by printing and command-line arguments, so I'll give 5.\n\n5",
+      "grade": 5,
+      "sample": "7d60a34a749956ee"
+    },
+    "explain/assistant.4": {
+      "answer": "The explanation says the program \"includes a replayable test for the happy path.\" The author's description says nothing about a test, so that statement is neither confirmed nor contradicted and is ignored.\n\nEverything else checks out against the description:\n- It sends a question to a chat-completions API and prints the first answer.\n- The key comes from CHAT_API_KEY and the question from the command-line arguments.\n- It depends on network access and a configured key.\n- It raises explicit errors for a missing key, empty responses, and transport or JSON problems.\n\nThe purpose is stated, and the main behaviors are covered. Effects are only partly covered: network and environment are mentioned, and the console is implied by \"command-line\" and \"prints\". Details such as the model name, the bearer header and the reusable function are left out, but those are minor.\n\nNothing is wrong, and perhaps only a small piece is missing, so this is a 4 or 5. The effects are essentially all there, and the console is implied. The main behaviors are present, so I lean toward 5.\n\n5",
+      "grade": 5,
+      "sample": "0cd5d5272018c9be"
+    },
+    "explain/concurrent_fetch.0": {
+      "answer": "The explanation includes the claim \"It also includes a replayable test that checks the measured size of one example page against a fixed expected value.\" The description doesn't mention any test. The description doesn't confirm or contradict it, so by the rules it would be ignored... but is it contradicted? The description says it prints lines and mentions a reusable function, and it lists no test. Not mentioning something isn't a contradiction, so strictly this is ignored.\n\nHowever, the description is meant to be complete about what the program does, and a test is a substantial claim. The rules say a statement the description neither confirms nor contradicts is ignored. So we go by that and grade the rest.\n\nRemaining content: the purpose is stated (downloads pages and measures lengths), and the main behaviours are stated (three in parallel, sorted largest to smallest, then two with a 10-second timeout and the combined size). Effects: the explanation doesn't mention the console or network needs explicitly, although downloading implies network and printing implies console. It also omits the failure modes (HTTP error, timeout; \"with a 10-second timeout\" does mention the timeout). It doesn't mention the reusable function explicitly.\n\nIs the effects statement missing? \"Downloads web pages\" implies network, but the needs aren't stated as such. The test claim is ignored, so the grade is 4 or 3. Purpose and main behaviours are present, and effects are only implied, so one thing is missing: 4.\n\nIs the test claim possibly regarded as wrong? A \"replayable test\" in a program whose description says it needs HTTP network access and nothing about a test would arguably be invented, but under the rules it is ignored. I'll go with 4.\n\n**4**",
+      "grade": 4,
+      "sample": "6a1609545370bde3"
+    },
+    "explain/concurrent_fetch.1": {
+      "answer": "Check the claims against the description.\n\nThe reader says the program downloads pages and measures body lengths, packaging each result as a `PageSize` with URL and character count. The description says the function returns the URL with its character count, so a `PageSize` type is plausible and not contradicted. Three sites in parallel, sorted largest to smallest, and two downloads with a 10-second timeout and the combined size are all consistent with the description.\n\nThe claim that \"It also includes a replayable test that verifies the example site's measured length, so it's aimed at networked reporting rather than offline use\" is not mentioned in the description. It is neither confirmed nor contradicted, so it is ignored. Still, the description says nothing about tests, and a test could count as an addition the description doesn't mention. The rules say to ignore such statements.\n\nThe explanation does not mention the console or network needs explicitly, though \"downloads\" implies network and \"prints\" implies console. It also omits the failure modes: the HTTP error and the timeout. The effects are only partly stated, and the failure behaviour is missing.\n\nNothing is wrong. The purpose is stated, and the main behaviours are stated. The effects are only implicitly covered, and the errors are missing. That makes it either a 4 or a 3. The missing items are the effects (implied only) and the failure behaviour. Failure behaviour is arguably part of the main behaviours, so I'd say one category is slightly missing, which gives 4.\n\n**4**",
+      "grade": 4,
+      "sample": "27575f97a3433bba"
+    },
+    "explain/concurrent_fetch.2": {
+      "answer": "The explanation claims \"a replayable test that verifies the measured size of one example page.\" The description mentions no test, so this is neither confirmed nor contradicted, and by the rules it would be ignored. Yet the description lists what the program does, and it describes no test. Is the claim contradicted? The description doesn't say there's no test, so strictly it isn't contradicted and is ignored.\n\nThe rest of the explanation: it states the purpose, the main behaviours (parallel fetch, sort descending, a second fetch with timeout and sum). It says nothing about effects: it never mentions the console, HTTP network access, or failure modes. The main behaviours are covered, but the effects are missing. It does say \"downloads web pages\", which implies network use, though not explicitly. The failure modes (HTTP error, timeout) are also missing, and the reusable function is not mentioned.\n\nIs the test claim wrong? The description lists the program's behaviour in full, and a test would be a notable part. Still, the grading rule says to ignore statements the description neither confirms nor contradicts. So nothing is wrong. The missing parts are the effects (partly implied) and the failure behaviour. That gives 4 if only one thing is missing, or 3 if several are.\n\nEffects are arguably implied, since \"downloads\" suggests network, but the console isn't stated. Printing is mentioned, which implies the console. So effects are roughly covered. The missing items are the error behaviour and the reusable function, which is minor. I'll go with 4.\n\n**4**",
+      "grade": 4,
+      "sample": "0dc05a0002d0d89f"
+    },
+    "explain/concurrent_fetch.3": {
+      "answer": "The explanation claims \"a replayable test that verifies the measured size of one example page.\" The description mentions no such test, so the author neither confirms nor contradicts it, and under the rules it is ignored. Is it contradicted, though? The description lists a main flow and one reusable function, and says nothing about a test. Not mentioning something is not a contradiction, so the claim is ignored.\n\nEverything else is correct: three pages in parallel, sorted largest to smallest, then two pages under a 10-second timeout with the sum printed.\n\nMissing items: the effects (console and network) are not stated, and the failure modes (HTTP error, timeout) are not mentioned either, although downloading pages implies network use. The purpose and the main behaviours are covered.\n\nThe effects are not explicitly stated, since the explanation never says it needs console or network access. Network is implied by \"downloads web pages\", and printing implies the console. That leaves the failure behaviour as the thing that is clearly absent, which suggests a 4. If the effects count as missing too, it would be a 3. Since the network is clearly implied, I'd say a 4.\n\n4",
+      "grade": 4,
+      "sample": "0dc05a0002d0d89f"
+    },
+    "explain/concurrent_fetch.4": {
+      "answer": "The explanation says the program \"includes a replayable test that checks the measured size of one example site against a fixed expected value.\" The description never mentions a test, so it neither confirms nor contradicts that claim, and the rule says to ignore it.\n\nThe other statements agree with the description. The program downloads pages and measures body lengths. The main function fetches three sites in parallel and prints them largest to smallest. It then fetches two more pages concurrently with a 10-second timeout and prints the combined size.\n\nSome things are missing:\n- The needs (console and network) are not stated explicitly, although downloading and printing imply them.\n- The failure behaviours (an HTTP error on a failed download, a timeout when the deadline passes) are not mentioned.\n- The reusable function is not described.\n\nCounting what is stated against what is missing:\n- Purpose: stated.\n- Main behaviours: stated.\n- Effects: absent, though implied by \"downloads\" and \"prints\".\n- Failure modes: absent.\n\nThe rubric's three items are purpose, effects and main behaviours. Effects are missing, or at best only implied, which would put the score at 4. The failure modes also go unmentioned, but they count as behaviours and the main behaviours are covered. The added test claim is ignored, so nothing is wrong.\n\nI'll go with 4.\n\n4",
+      "grade": 4,
+      "sample": "4d1b1236175fed74"
+    },
+    "explain/config.0": {
+      "answer": "The explanation says \"two convenience wrappers that fall back to defaults or to a caller-supplied configuration\". The description says one function falls back to the caller-supplied configuration and an older one falls back to the defaults, so that is consistent. \"The older fallback helper is marked deprecated\" is correct. \"Prefer the more flexible replacement\" is an opinion, so it is ignored.\n\nNothing in the explanation is wrong. Purpose is stated. Main behaviours are covered: validation, error reporting, defaults, fallbacks, deprecation. The effect (filesystem read access) is not mentioned, so that is missing. The explanation does say \"file-read problems\", which implies reading a file, but it never states the need for read access. That counts as missing, which gives a 4.\n\nThe explanation also does not give the specific ranges, but those are details rather than one of the three required elements.\n\n4",
+      "grade": 4,
+      "sample": "ee47861268ebae8a"
+    },
+    "explain/config.1": {
+      "answer": "Checking the explanation against the description:\n\n- Purpose: loads and validates a config from JSON. Stated correctly.\n- Validation of port, workers and log level: stated correctly.\n- Errors: file-read problems and shape/validation problems. Correct.\n- Default configuration: correct.\n- Two fallback helpers, one to the default and one to a caller-supplied config. Correct; the description says the older one falls back to defaults.\n- Deprecation: not mentioned. This is a missing behaviour.\n- Effects: filesystem read access is never stated, though \"loads from a JSON file\" implies it. The needs are not explicitly listed.\n\nNothing is wrong. The explanation does not mention the deprecation, and it does not state the filesystem effect explicitly. \"Loads a service configuration from a JSON file\" arguably covers the effect, so the deprecation is the main omission. I would give a 4.\n\nThe closing remark that it \"may be too minimal\" and has limited error detail is an opinion and is ignored. The error detail does exist (a path, a detail text), so the claim is not a contradiction.\n\n4",
+      "grade": 4,
+      "sample": "b3e73ef287e55cbe"
+    },
+    "explain/config.2": {
+      "answer": "The explanation covers the purpose: loading and validating a config from JSON. It covers the main behaviours: the two error types (file-read vs shape/validation), the defaults, and the deprecated fallback to defaults alongside the newer one with a caller-supplied fallback.\n\nIs anything wrong? \"Built-in default configuration\" is consistent with the description. \"Two fallback helpers\" is consistent. The opinion at the end is ignored.\n\nThe effects are missing: it never says the loading functions need read access to the filesystem. It does mention \"file-read problems\", which only implies it. Defaults are mentioned without the specific values, which is a minor omission. Does the explanation state the effects? Not explicitly. So one of the three elements is missing, which gives a 4.\n\n4",
+      "grade": 4,
+      "sample": "3b7d6cd12ba45be2"
+    },
+    "explain/config.3": {
+      "answer": "The explanation says \"two convenience wrappers that fall back to defaults or to a caller-supplied configuration.\" This matches the description: one function falls back to the caller's configuration, and an older deprecated one falls back to defaults. So that is not wrong, although it omits the deprecation.\n\nIt states the validation and the error types in general terms, without naming Unreadable or Invalid specifically, but it does say file-read problems and shape/validation problems. That is fine.\n\nEffects: it never mentions that filesystem read access is needed, though it says it loads from a JSON file. The effects are not stated explicitly. It is also not stated that this is a library, but that is minor. The deprecation is also missing.\n\nNothing is wrong. The purpose is clear and the main behaviours are covered. The effects are implicit at best, so one element is missing, which gives a 4.\n\n\"Two convenience wrappers\" is a slight mischaracterization, since the description says one function loads and falls back, but nothing in it is contradicted.\n\n4",
+      "grade": 4,
+      "sample": "7cf37e40c0a72890"
+    },
+    "explain/config.4": {
+      "answer": "The explanation says \"two convenience wrappers that fall back to defaults or to a caller-supplied configuration.\" The description says one function falls back to a caller-supplied configuration, and an older function falls back to the defaults and is deprecated. So two wrappers matches. Calling them \"convenience wrappers\" is fine.\n\nChecking for wrong statements: validation of port, workers and log level is correct. Reporting file-read and invalid-shape problems is correct. A built-in default is correct.\n\nWhat is missing: the effects (filesystem read access) are not mentioned. The deprecation is not mentioned. The specific ranges are not given, but \"declared constraints\" covers them loosely.\n\n\"If you need richer error details... it may be too narrow\" is a caution and is ignored.\n\nNothing is wrong, and the effects are missing. The deprecation is a main behaviour that is also missing. This is probably a 4, or a 3 if several things are missing. The purpose is clearly stated. The missing items are the filesystem effect and the deprecation detail, which could count as \"several\". The effects item is one of the listed categories, and the deprecation is a minor part of the main behaviours. I'll go with 4.\n\n4",
+      "grade": 4,
+      "sample": "57808ba4dc3a2d1f"
+    },
+    "explain/currency_tool.0": {
+      "answer": "The explanation gets the purpose right: converting an amount between currencies via Frankfurter, rounded to cents. It also covers the failure modes: network, JSON, and a missing rate. It mentions the tool being exposed to agents.\n\nNothing in it contradicts the description. \"Decimal amount\" is an unconfirmed detail, so it is ignored. The currency code format is stated as three-letter, which is fine.\n\nWhat it leaves out is the effect: it says it calls the API but never says it needs network access restricted to that host. It does imply network use (\"if the network request fails\"), so the effect is partly there, though the host restriction is missing. Today's rate and the \"latest\" endpoint are also not mentioned, but those are minor.\n\nThe effects are stated loosely, since the network is implied by \"calling the Frankfurter exchange-rate API\". The main behaviours and purpose are covered, so this is probably a 4 at worst, and arguably a 5. Since the network need is only implied and the restriction is absent, I lean toward 4.\n\n4",
+      "grade": 4,
+      "sample": "6cb3fa603bde30eb"
+    },
+    "explain/currency_tool.1": {
+      "answer": "The explanation covers the purpose (converting currencies at today's rate, rounded to cents) and the failure modes (unreachable service, parse failure, missing rate). It also says the tool is published to agents.\n\nThe explanation mentions an \"included test\" with a recorded fixture, showing 100 USD to 89.25 EUR. The description does not mention a test, so this is neither confirmed nor contradicted and is ignored.\n\nWhat it leaves out is the effect: the description says the program needs HTTP network access restricted to api.frankfurter.app. The explanation implies network use by saying the service can be unreachable, but never states the requirement or the host restriction. It also doesn't say that the program is a library with no entry point, though that is minor.\n\nNothing stated is wrong, and one of the three elements, the effects, is not clearly stated. That makes it a 4.\n\n4",
+      "grade": 4,
+      "sample": "409984262b92bba5"
+    },
+    "explain/currency_tool.2": {
+      "answer": "The explanation covers the purpose: converting between currencies using Frankfurter and rounding to two decimals. It also covers the failure modes: network, JSON, and no rate. It says it is a tool for agents.\n\nPossible errors: \"decimal amount\" is not contradicted. \"Live currency conversion rather than offline or cached rates\" is a claim about usefulness, and today's rate is consistent with it.\n\nWhat is missing is the effect: the network access restricted to that host. The explanation mentions \"calling the Frankfurter exchange-rate API\" and \"network request\", so network use is implied, though the restriction to that host is not stated. The network need is arguably covered. It does not state that it is a library without an entry point, but that is minor. The error details (RateUnavailable carrying source and target) are also not stated, though the mention of failure is there.\n\nNothing is wrong, and the purpose, effects (network implied) and behaviours are all mostly present. I would give a 5, or possibly a 4 if the effects are judged missing. The network is mentioned as a request to the API, so the effect is stated.\n\n5",
+      "grade": 5,
+      "sample": "9cf4e1a7888da27c"
+    },
+    "explain/currency_tool.3": {
+      "answer": "The explanation gets the purpose right: converting an amount between currencies using the Frankfurter API and rounding to cents. It also covers the failure modes: network, JSON, and rate unavailable. It says it is exposed as a tool for agents, which is consistent with the description.\n\nNothing in it is wrong. \"Decimal amount\" is not contradicted. The reader's \"money/exchange-rate workflows\" is an added opinion and is ignored.\n\nWhat is missing is the effect. It mentions calling the API, which implies network use, but never says the program needs HTTP network access restricted to that host. The \"today's rate\" detail is also absent. The explanation does name \"the Frankfurter exchange-rate API\", so network access is implied, but the restriction to that host is not stated. The main behaviours and the purpose are covered, so at most one element is missing, and a 4 fits.\n\n4",
+      "grade": 4,
+      "sample": "7c20a92843a41e5d"
+    },
+    "explain/currency_tool.4": {
+      "answer": "The explanation covers the purpose (convert a currency amount via Frankfurter, rounded to cents), the failure modes (network, JSON, no rate), and that it is a tool for agents. It does not say that network access is needed, restricted to that host, although \"calling the Frankfurter exchange-rate API\" implies network use. The effect is only implicit, not stated as a requirement.\n\nPossible errors: \"decimal amount\" is not contradicted. \"Live currency conversion\" fits \"today's rate\". Nothing is wrong.\n\nWhat is missing: the explicit effect (network access limited to that host). The three-letter upper-case ISO code detail is partially covered. The failure modes are stated in general terms, with no mention of RateUnavailable carrying source and target, but that is a minor detail.\n\nSince the effect is only implicit, I'd say one element is missing, so a 4.\n\n4",
+      "grade": 4,
+      "sample": "5162afa6315d0f0f"
+    },
+    "explain/deadlines.0": {
+      "answer": "The explanation says the module parses task lines into typed tasks. The description confirms that a parser exists, but main never uses it. The explanation says \"main demonstrates the behavior by checking a built-in sample list against the current date\", which is accurate. It describes printing \"the soonest deadlines with their remaining weekday count\", which is roughly right, although it leaves out the ten-day window. It also says main \"filters tasks due within a chosen window\", which is fine.\n\nIs anything wrong? \"only handles basic comma-separated input plus Monday-to-Friday counting\" is a caution and doesn't contradict anything. \"counts the working days remaining between today and each due date\" is correct. \"Its main function demonstrates the behavior\" is loose, but main does not use the parser, so \"demonstrates the behavior\" is a slight stretch, though not contradicted outright.\n\nNothing is clearly wrong. What is missing is the effects: it never says the program needs the console and the clock. It does mention the current date, which implies the clock, and \"printing\" implies the console, so the effects are only weakly covered. It also omits the error cases and the fact that the parser goes unused by main. The purpose is stated and the main behaviours are mostly there.\n\nI would give it a 4, since the effects are only implicit.\n\n4",
+      "grade": 4,
+      "sample": "758c3ff94c6440fa"
+    },
+    "explain/deadlines.1": {
+      "answer": "The explanation says the module parses task lines into typed tasks, filters tasks due between today and a cutoff, and counts weekdays remaining. It also says the console program uses today's date and prints the sample tasks due within ten days with their working days left. It adds that it only demonstrates fixed sample data.\n\nChecking for wrong statements:\n- \"Parses task lines into typed tasks\": correct, since the parser exists, though the entry point doesn't use it. The explanation doesn't claim otherwise.\n- \"Counts how many weekdays remain until each due date\": correct.\n- \"Console program uses today's date and prints the sample tasks due within ten days\": correct.\n- \"Only demonstrates fixed sample data rather than reading real task lists\": correct, since the entry point uses hard-coded tasks.\n\nMissing: the clock and console are only implied (\"uses today's date\", \"console program\"), so the effects are roughly covered. Details such as MissingComma and the invalid-date error are absent, and so are the earliest-first ordering and the exclusion of holidays. The main behaviours are mostly covered, though, so the omissions are minor.\n\nIs \"weekdays remain until each due date\" accurate? Yes, it counts the days after the start up to and including the finish. The description doesn't specify the overall purpose beyond this, and the explanation covers it.\n\nThe explanation is accurate, covers the purpose, the effects (console, today's date from the clock, implicitly) and the main behaviours. It omits explicit mention of the clock, though \"uses today's date\" implies it. That is nearly complete, so I'd give a 4 or 5. The error cases and the sort order are details, not main behaviours. I'll go with 4, since the failure behaviour and the explicit clock need are missing.\n\n4",
+      "grade": 4,
+      "sample": "c709908602921037"
+    },
+    "explain/deadlines.2": {
+      "answer": "Checking the explanation against the description:\n\n- \"Parses task lines of the form 'title, date'\" is fine, but main never uses the parser. The explanation doesn't claim that main uses it, so this is not wrong.\n- \"Filters tasks due between today and a chosen cutoff, sorts by due date\" matches the description.\n- \"Counts how many weekdays remain from today through each task's due date\": the description says working days are the Monday-to-Friday days after the start, up to and including the finish. \"From today through due date\" suggests including today, which differs, since the count starts after the start date. That is a subtle point. Counting from today through the due date would include today, whereas the description excludes the start. So this is arguably wrong.\n- \"Printing the sample tasks due within the next ten days, with remaining working days\" is correct.\n\nThe effects (console and clock) are not stated explicitly. \"Next ten days\" implies today, but the clock is never mentioned.\n\nThe \"from today through\" phrasing is a wrong detail, because the count excludes the start day. A strict grader would flag it as one wrong statement, giving 2.\n\nThe description is precise: \"after the start up to and including the finish.\" The explanation's \"from today through each task's due date\" reads as inclusive of both ends, which contradicts that. I'll go with 2.\n\n2",
+      "grade": 2,
+      "sample": "b154066ed8e0dd38"
+    },
+    "explain/deadlines.3": {
+      "answer": "The explanation says the module \"parses task lines into typed tasks\", which is true of the module, since the parser exists. It does not say the entry point never uses the parser, so that is not a contradiction. The claims about filtering tasks between today and a horizon, counting working days, Monday through Friday, and sorting by due date are all consistent with the description. The main program prints a sample report for tasks due in the next ten days, which also matches.\n\nNothing in it is wrong. Now the three things it should cover:\n\n- **Purpose:** stated.\n- **Effects:** the console and the clock are not mentioned. It says \"prints\", which hints at the console, but the clock is never named. This is a missing item.\n- **Main behaviours:** mostly covered. The parse failures (MissingComma, invalid date) are not mentioned, but that is a detail.\n\nThe main omission is the effects, and the clock in particular, so this is a 4.\n\n4",
+      "grade": 4,
+      "sample": "a2b319833c6d0bed"
+    },
+    "explain/deadlines.4": {
+      "answer": "The explanation says the module parses task lines, identifies tasks due within a window, and counts working days. It says the main program uses today's date and a built-in sample list to print tasks due in the next ten days with Monday-to-Friday days left. It also says the main program only demonstrates fixed sample data rather than reading real input. All of this is consistent with the description.\n\nChecking for wrong statements: \"count the working days remaining until each due date\" is fine. \"Today's date\" implies the clock. The description says the entry point never uses the line parser, and the explanation does not claim otherwise, so there is no contradiction.\n\nCoverage: the overall purpose is stated. The effects are only partly stated. The clock is implied by \"uses today's date\", but the console is only implied by \"print\". The main behaviours are covered, though the parse failure modes are omitted, along with the earliest-first ordering and the inclusive bounds. Those are details, and the main behaviours are broadly present.\n\nIs anything missing from the three categories? The needs are implicit rather than explicitly stated, so an explicit \"needs the console and clock\" is lacking. That would probably count as a minor gap, giving a 4.\n\n4",
+      "grade": 4,
+      "sample": "390d99694a790d4a"
+    },
+    "explain/dependency_order.0": {
+      "answer": "The explanation says it computes a build order with alphabetical tie-breaking, rejects missing dependencies, repeatedly collects ready steps until done or a cycle is found, and that main prints the ordered steps for a sample project.\n\nChecking for wrong statements: \"stable build order\" is fine. \"First rejects any dependency missing from the input\" is consistent with the description. \"Repeatedly collects all currently ready steps\" matches the rounds. The cycle detection is correct. Nothing contradicts the description.\n\nCoverage of the three elements:\n- Purpose: stated.\n- Main behaviours: the topological order, the alphabetical tie-breaking, the unknown-dependency error, and the cycle detection are covered. The error names (UnknownDependency, Cycle) are not given, but \"clear errors for bad input\" and cycle detection are mentioned.\n- Effects: the console is not mentioned, though printing is implied. The \"ordering error ends the program\" is also missing. The explanation never states that the program needs the console.\n\nThat leaves the effects item missing, so one of the three is missing.\n\n4",
+      "grade": 4,
+      "sample": "5500102f1e912989"
+    },
+    "explain/dependency_order.1": {
+      "answer": "The explanation says: computes a stable build order with alphabetical tie-breaking. This matches the description. It \"first rejects any dependency not defined\" \u2014 matches (UnknownDependency). \"Repeatedly picks all steps whose prerequisites are already scheduled, or fails with cycle error if nothing can be chosen\" \u2014 matches. Main demonstrates with a sample project and prints the numbered result to the console \u2014 matches.\n\nIs anything wrong? \"Stable build order\" is a mild wording, not contradicted. \"Rejects first\" \u2014 the description doesn't specify order, so it's ignored.\n\nWhat is missing? The purpose is stated. Effects: console is mentioned. Main behaviours: tie-breaking, errors, and the sample are all mentioned. Missing: the ending of the program on an ordering error, and the error details (step and dependency, remaining steps sorted). These are minor details. Overall this looks like a 5, or perhaps 4 because the program ending on error is not stated.\n\nThe \"effects\" are what the program needs: console. It is stated. The main behaviours are covered. I'd go with 5.\n\n5",
+      "grade": 5,
+      "sample": "c8e236eca40324da"
+    },
+    "explain/dependency_order.2": {
+      "answer": "The explanation says: it computes a build order with alphabetical tie-breaking. This matches. It rejects missing dependencies first, which matches the UnknownDependency description. Then it repeatedly picks all ready steps, or fails with a cycle error, which also matches. main orders a sample project and prints the result to the console, which matches.\n\nIs anything wrong? \"Stable build order\" is fine. \"Rejects any dependency missing from the input\" is fine. The \"first\" ordering is plausible, since the description does not state when validation happens, so it is ignored.\n\nWhat is missing? The purpose is stated. Effects: console is mentioned. Main behaviours: ordering, tie-breaking, both errors (the cycle error is mentioned, though not the remaining sorted steps; the unknown dependency error is mentioned without the step and dependency details). The explanation does not say that an ordering error ends the program, which is a minor omission. The specific sample output is also not mentioned, but that is detail.\n\nOverall it is mostly complete. Possibly a 4 because the program ending on error is missing, but the main behaviours are covered. The effects are stated (console). I'd say 5, though the detail about the error ending the program is arguably a main behaviour. The explanation covers the purpose, the effects, and the main behaviours, so I'll go with 5.\n\n5",
+      "grade": 5,
+      "sample": "8e50c4659118b0c9"
+    },
+    "explain/dependency_order.3": {
+      "answer": "The explanation says the program computes a build order, breaks ties alphabetically, rejects undefined dependencies, raises a cycle error listing the remaining steps, and has a main that demonstrates a sample project and prints to the console.\n\nChecking for wrong statements: \"stable build order\" is a mild characterization and does not contradict the description. Ties are broken alphabetically, which matches. The unknown-dependency and cycle errors both match. The cycle error lists the remaining steps, which matches. The sample is printed to the console, which matches.\n\nChecking what is covered. The purpose is stated. The effect is console output, mentioned only implicitly via \"prints to the console\". The main behaviours are covered. Two small things are missing. One is that an ordering error ends the program. The other is the specific output. The output is not essential, though, and the console need is effectively stated.\n\n\"It first rejects any reference to a dependency\" is a claim about order. The description does not say validation happens first, so this is neither confirmed nor contradicted and is ignored.\n\nThe missing piece is that an ordering error ends the program. That is a minor omission, so the grade is 4 or 5. The effect (console) is stated by \"prints the resulting sequence to the console\". The \"error ends the program\" point is a detail of behaviour, and the main behaviours are all stated. I lean toward 5, though one omission is possible. The round-based placement detail is also absent, but it does not change the outcome.\n\nI'll go with 4 because the program-ending error is missing.\n\n4",
+      "grade": 4,
+      "sample": "7e1fd5081e1454f9"
+    },
+    "explain/dependency_order.4": {
+      "answer": "The explanation's claims against the description:\n\n- \"Stable build order with alphabetical tie-breaking\": consistent.\n- \"First rejects any dependency missing from the input\": consistent, since UnknownDependency is raised when a dependency isn't a step.\n- \"Repeatedly picks all steps whose prerequisites are already scheduled\": consistent, matching \"in every round\".\n- \"Fails with a cycle error if nothing can be picked\": consistent.\n- \"main orders a sample project and prints the sequence to the console\": consistent.\n\nNothing is wrong. Next, what the explanation covers and omits:\n\n- Purpose: stated.\n- Effects: the console is mentioned, though only implicitly as \"needs\" rather than stated outright. It says printing to the console.\n- Main behaviours: the ordering, the unknown-dependency failure, and the cycle failure are all covered. The explanation doesn't say the cycle error lists the remaining steps, or that an ordering error ends the program, but these are minor details.\n\nThe omissions are small. The explanation doesn't mention that an error ends the program, nor does it name UnknownDependency specifically. Either could count as a missing minor behaviour, but the main behaviours are all present, so this fits a 5 or perhaps a 4. The \"rejects ... first\" ordering is also not contradicted by the description.\n\nI lean toward 5.\n\n5",
+      "grade": 5,
+      "sample": "979e303822043ffd"
+    },
+    "explain/expression_tree.0": {
+      "answer": "The explanation says: expression tree with numbers, addition, multiplication, negation \u2014 correct. Evaluates to a decimal result and renders as fully parenthesized infix text \u2014 mostly correct (the negation has a leading minus, though the \"fully parenthesized\" claim is slightly loose, since negation gets no parentheses; the description says parentheses around every addition and multiplication). It says the main program builds a sample expression and prints both the expression and its value \u2014 correct.\n\nIs anything wrong? \"Fully parenthesized\" is slightly imprecise but not contradicted in substance. \"Useful as a simple example or demo\" is an opinion and is ignored.\n\nMissing: the effect (console) is not explicitly stated, although \"prints\" implies console output. It also leaves out the \"cannot fail\" detail. The main behaviours are covered, and the purpose is stated. Whether the console need counts as stated is arguable; \"prints\" implies it but does not name it. The explanation lacks the specific example (1+2)*-4 and the output, but those are details.\n\nSo the score is either 4 or 5. The effects are arguably covered by the mention of printing, but \"needs the console\" is not stated outright, so I'll go with 4.\n\n4",
+      "grade": 4,
+      "sample": "128ce151764f41f8"
+    },
+    "explain/expression_tree.1": {
+      "answer": "The explanation says: an expression tree with numbers, addition, multiplication and negation; evaluation to a decimal; rendering as fully parenthesized infix text; main builds a sample expression and prints both the expression and its value.\n\nChecking for errors: \"fully parenthesized infix\" is roughly right, since the description says parentheses go around every addition and multiplication. Negation gets a leading minus sign, which is not contradicted. Nothing in it is wrong.\n\nPurpose: stated. Main behaviours: evaluate, render, and the main program printing the sample are all stated. Effects: the console is needed, and the explanation only implicitly mentions printing. It never says explicitly that the program needs the console, and it doesn't say it cannot fail. \"Prints\" implies console output, but the effects are weakly covered. The missing item is therefore the effects, or part of them (the \"cannot fail\" point). That makes it a 4.\n\n**4**",
+      "grade": 4,
+      "sample": "feac7fdd1b7cf6da"
+    },
+    "explain/expression_tree.2": {
+      "answer": "The explanation says that the program defines an expression tree, evaluates it, renders it with full parentheses, and prints a sample expression with its value. Nothing in it contradicts the description.\n\nThe description says parentheses go around every addition and multiplication, and negation gets a leading minus sign. The explanation's \"fully parenthesized infix\" is slightly loose, since negation has no parentheses, but this does not contradict the description.\n\nThe explanation does not mention the console requirement, although it does say the program prints. It also does not say the program cannot fail. The effects are only implicitly covered. The purpose and the main behaviours are covered.\n\nThe effects statement, \"needs the console\", is missing in explicit form, so this is likely a 4. \"Prints\" implies console output, but it is not stated as a need. The missing item is the effects, so I'm giving a 4.\n\n4",
+      "grade": 4,
+      "sample": "fd2636dac50c74e4"
+    },
+    "explain/expression_tree.3": {
+      "answer": "The explanation covers the purpose, the four node types, evaluation, and rendering. It says \"fully parenthesized infix text\", but the description says negation has a leading minus sign and no parentheses. \"Fully parenthesized\" is a loose phrase and arguably not contradicted, since the description says parentheses go around every addition and multiplication. The explanation does not name the console requirement, though \"prints\" implies it. It also doesn't say it cannot fail. Nothing in it is wrong.\n\nThe effects are only implied, through printing. The explicit statement that it needs the console and cannot fail is missing, so one of the three elements, the effects, is largely missing. The main behaviours and purpose are present. That makes the score 4.\n\nIs \"prints both the expression and its computed value\" correct? Yes, it prints \"((1 + 2) * -4) evaluates to -12\", which contains both.\n\n4",
+      "grade": 4,
+      "sample": "2a4a69806e87a145"
+    },
+    "explain/expression_tree.4": {
+      "answer": "The explanation is accurate against the description. It covers four node types, recursive evaluation, fully parenthesized infix rendering, and a main program that builds one sample expression and prints it with its value.\n\nChecking for wrong statements: \"fully parenthesized infix text\" holds, though negation has no parentheses, so the phrase is slightly loose. It is not contradicted in any serious way. \"Prints both the expression and its computed value\" matches the output.\n\nMissing items: it never says the program needs the console, and it never says the program cannot fail. The effects item is therefore absent. It also doesn't name the specific expression (1 + 2) * -4, but the main behaviours are covered.\n\nPurpose and main behaviours are stated, and the effects are missing, so this is one missing item. That gives a 4.\n\n4",
+      "grade": 4,
+      "sample": "914092a35068fc2a"
+    },
+    "explain/file_tree.0": {
+      "answer": "The explanation says it prints a directory tree from a command-line path or the current directory, showing the name and total size in bytes for each entry, with directory sizes computed recursively. It adds that the program depends on filesystem access and fails if it cannot read the target path.\n\nChecking for wrong statements: \"computed recursively from all contained files\" is roughly consistent, since the description says the sum of everything under a directory. Other kinds of entry count as 0, which the explanation does not mention but does not contradict. \"Fail if it cannot read the target path\" matches the file error on entries that cannot be inspected or listed.\n\nMissing items: the console and environment effects are not stated explicitly. It does mention filesystem access. The main behaviours are covered, but the indentation, the sorting by name, and the 0 size for other entries are absent. These are minor details.\n\nPurpose is stated, and the effects are partially covered (filesystem only). Main behaviours are mostly covered. That is one item partly missing, so the grade is 4.\n\n4",
+      "grade": 4,
+      "sample": "4d915a07c0acf841"
+    },
+    "explain/file_tree.1": {
+      "answer": "The explanation says the program prints a tree from a command-line path or the current directory, shows names and sizes in bytes, and computes folder sizes recursively from contained files. It also says the program needs read access to the filesystem and console output.\n\nChecking for errors: \"folder sizes are computed recursively from all contained files\" is consistent with the description, since a directory's size is the sum of everything under it. Other entry kinds count as 0, but that omission is not a contradiction.\n\nChecking what is missing:\n- Purpose: stated.\n- Effects: console and filesystem are stated. The environment is not mentioned, though the current-directory default hints at it. This is minor.\n- Main behaviours: missing are the indentation, the sorting by name, and the failure with a file error.\n\nNothing is wrong, but several details are absent: the environment, the sorting, the indentation, the error behaviour and the 0 size for other entries. The main behaviours are only partly covered. The core purpose is clear, so the question is whether this is a 3 or a 4. Since several items are missing (environment, sort, indent, errors), I'll give a 3.\n\n3",
+      "grade": 3,
+      "sample": "975f91e781058d02"
+    },
+    "explain/file_tree.2": {
+      "answer": "The explanation states the purpose: a directory tree with sizes. It gives the effects as filesystem read access, but omits the console and environment, though it does mention the command-line argument. It states the failure condition. Main behaviours covered: recursive sizes, root from the argument or current directory. Missing: indentation, sorting by name, other entry kinds counting as 0, and the \"<name> (<size> bytes)\" format.\n\nIs anything wrong? \"Will fail if it cannot inspect or list the target path\" is consistent with the description, which says it fails when an entry cannot be inspected or listed. \"Target path\" is slightly narrower, but it is not a contradiction.\n\nEffects: the description lists console, environment and filesystem. The explanation mentions only the filesystem, and the environment is only implied by \"command line\" (which is arguably the environment). So the effects are partially missing. The main behaviours are mostly present, with sorting and indentation missing.\n\nThat is probably a 4: nothing wrong, with one category (effects) incomplete. Several details are missing, but the main ones are covered. I'll go with 4.\n\n4",
+      "grade": 4,
+      "sample": "6212fee0062d4da4"
+    },
+    "explain/file_tree.3": {
+      "answer": "The explanation states: it prints a directory tree from a command-line path or the current directory; it shows name and total size; folder sizes are computed recursively from contained files; it depends on filesystem access and fails if it can't read.\n\nIs anything wrong? \"Folder sizes are computed recursively from all contained files\" is roughly consistent with the description (other kinds count as 0). Nothing contradicts it.\n\nIs anything missing? The overall purpose is stated. Effects: filesystem is mentioned, but the console and environment are not explicitly named (reading args and the current directory are mentioned, printing is implied). Main behaviours: indentation, sorting by name, and the other-kinds-count-as-0 rule are missing. The failure is stated.\n\nThe explanation covers the purpose and the main behaviour, and mentions the filesystem effect partially. Missing: indentation, sorting, console/environment. This looks like a 4, or possibly a 3. The main behaviours are mostly stated (printing, sizes, recursion), and the effects are partially stated. I'd say 4.\n\n4",
+      "grade": 4,
+      "sample": "53b562e20a845fb0"
+    },
+    "explain/file_tree.4": {
+      "answer": "The explanation's claims against the description:\n\n- It prints a directory tree from a command-line path or the current directory. This matches.\n- It shows the name and total size in bytes. This matches.\n- Folder sizes are computed recursively from all contained files. This matches, because the description says the sum of everything under a directory.\n- It needs read access to the filesystem. This matches.\n- It fails if it cannot inspect or list a path. This matches.\n\nNothing in the explanation is wrong.\n\nThe purpose is stated. The effects are partly covered: the filesystem is mentioned, but the console and environment are not. Environment is implied by the command-line argument, and console is implied by \"prints\". Main behaviours that are missing: the indentation, the sorting by name, and other entry kinds counting as 0.\n\nThe missing items are minor, so this is probably a 4. Whether the explanation counts as stating the effects is a judgment call. The console and environment are not named, but the filesystem need is. The missing details (sorting, indentation, 0 for other kinds) are main behaviours, but the core is covered.\n\n4",
+      "grade": 4,
+      "sample": "638a3660fbaf933d"
+    },
+    "explain/hello.0": {
+      "answer": "The explanation says it prints a greeting, uses the first argument as the name, and defaults to \"world\". It also says it needs console and environment access. All of this matches the description. \"Simple, safe\" is opinion and consistent with \"cannot fail\".\n\nThe purpose, effects and main behaviours are all covered. The one thing not stated is the exact \"Hello, <name>!\" format, but \"greeting\" covers it well enough.\n\n5",
+      "grade": 5,
+      "sample": "a0958a237613c62e"
+    },
+    "explain/hello.1": {
+      "answer": "The description says: it prints \"Hello, <name>!\" using the first command-line argument, or \"world\" if none is given. It needs the console and the environment, and cannot fail.\n\nThe explanation covers the purpose (printing a greeting), the effects (console, and reading arguments, which is the environment), and the main behaviours (first argument, default \"world\"). It says there are no file, network, or other side effects, which is consistent with the description. \"Simple and safe\" is an opinion or caution and is ignored.\n\nThe one thing it omits is the exact format \"Hello, <name>!\", but it does say it prints a greeting. It also doesn't say \"cannot fail\", though \"safe\" roughly covers that.\n\nNothing is wrong and everything important is stated.\n\n5",
+      "grade": 5,
+      "sample": "b33931f1a6e852be"
+    },
+    "explain/hello.2": {
+      "answer": "The description covers: purpose (greeting with name), effects (console and environment), and behaviours (first arg or \"world\"; cannot fail).\n\nThe explanation states: prints a greeting to the console, uses the first command-line argument, defaults to \"world\". It does not explicitly mention the environment, though command-line arguments are arguably the environment. \"Safe\" is roughly consistent with \"cannot fail\". Nothing is wrong.\n\nPurpose is stated, the main behaviours are stated, and the effects are partly stated (the console is named, and the arguments are mentioned but not framed as environment). Possibly one thing is missing, which would make it a 4. Command-line arguments are effectively the environment access, so it may count as covered, but I'd guess the grader sees the environment as only implicitly mentioned. \"Cannot fail\" is covered by \"safe\", loosely.\n\nI'll go with 4.\n\n4",
+      "grade": 4,
+      "sample": "3d517fcc818f608e"
+    },
+    "explain/hello.3": {
+      "answer": "The description covers: purpose (greeting), effects (console and environment), and behaviours (first arg, default \"world\", cannot fail).\n\nThe explanation states: prints a greeting to the console, uses the first command-line argument, defaults to \"world\". It says \"simple and safe\", which is an opinion or caution and is ignored, and it is also consistent with \"cannot fail\".\n\nIs anything wrong? No. What is missing? The environment is only implicitly covered, since command-line arguments are mentioned, but the explanation never names the environment as a need. The exact format \"Hello, <name>!\" is not given, but \"greeting\" is close enough. The console is mentioned. \"Cannot fail\" is arguably covered by \"safe.\"\n\nBecause the environment dependency is only implicit, perhaps one element is missing, which would give a 4. Command-line arguments are arguably the environment, though, so it could be a 5. The effects list is \"console, files, network, environment, clock\". The explanation mentions the console and uses command-line arguments, which are the environment in this sense. I lean toward 5, since the arguments are described as an input that the program reads.\n\n5",
+      "grade": 5,
+      "sample": "090da9ff26bdd52c"
+    },
+    "explain/hello.4": {
+      "answer": "The explanation gives the purpose (a greeting), the main behaviours (first argument as the name, default \"world\"), and mentions the console. It doesn't explicitly mention the environment, though command-line arguments are implied. \"Simple, safe, and useful\" is an opinion or caution and is ignored. \"Safe\" is arguably consistent with \"cannot fail.\"\n\nThe effects the description lists are console and environment. The explanation mentions printing to the console and uses command-line arguments, which is arguably the environment. So the effects are mostly covered, and possibly only the explicit \"environment\" label is missing. Nothing is wrong. It could be a 5 or a 4.\n\nCommand-line arguments are part of the environment in the description's sense, and the explanation states that the program reads them. I lean toward 5.\n\n5",
+      "grade": 5,
+      "sample": "6991281ab9ae411e"
+    },
+    "explain/http_service.0": {
+      "answer": "The explanation has no wrong statements. It covers the purpose (a temperature conversion API), the health endpoint, the convert endpoint, port 8080 and the startup message.\n\nWhat it leaves out:\n- The effects: console and socket network access are never mentioned. The startup print is implied, but the network need is not stated.\n- Error behaviours: the bad request responses and the not found path are missing. It says \"validates\" but gives no detail.\n- The start error on failure.\n\nIt says \"two endpoints\" and the description doesn't contradict that, since other paths answer not found. The mention of Renyi is not contradicted either.\n\nSeveral of the listed items are missing, namely the effects and some main behaviours, so the score is 3.\n\n3",
+      "grade": 3,
+      "sample": "a658758174f2bd85"
+    },
+    "explain/http_service.1": {
+      "answer": "The explanation is accurate: it has the health check, the convert endpoint, the validation, the not-found response, the startup message, and port 8080. Nothing in it is contradicted.\n\nWhat it leaves out:\n- The explicit effects: console and socket network access. It does say it prints a startup message and serves on a port, which implies both, but it never states the requirements.\n- The failure behavior: a start error when the server cannot start.\n- Details such as the formula, which are minor.\n\nThe purpose and main behaviors are covered. The effects are only implied, and the start-error failure is missing. Under the rubric, one missing element gives a 4, and \"several missing\" gives a 3. The effects are implied through the printing and serving, so only the failure case is clearly missing, which makes this a 4.\n\n4",
+      "grade": 4,
+      "sample": "cdc50c72ecd8943c"
+    },
+    "explain/http_service.2": {
+      "answer": "The explanation gets the purpose right: a small temperature-conversion JSON API. It also covers the main behaviours: /health returns OK, /convert reads celsius, converts it to Fahrenheit and returns JSON, a missing or non-numeric parameter gives a bad request, and an unknown path gives not found. It also mentions starting on port 8080 and printing a startup message.\n\nNothing in it is wrong. Details it leaves out, such as the exact messages and the formula, are fine.\n\nWhat is missing:\n- The effects: the description says it needs the console and socket network access, and the explanation does not state these explicitly. It implies them by saying it prints a startup message and starts a server, but it never names them as requirements.\n- The failure behaviour: the explanation does not mention that the program fails with a start error when the server cannot start.\n- The JSON content: it does not say the response includes both the Celsius and Fahrenheit values. It only says \"returns the result as JSON\", which is close enough.\n- Running until stopped: it does not say the server runs until the process is stopped.\n\nThe effects are only implied and the failure case is absent, so one category, the effects, is partly missing. That points to a 4.\n\n4",
+      "grade": 4,
+      "sample": "5a0da3df1856e112"
+    },
+    "explain/http_service.3": {
+      "answer": "The explanation says nothing wrong. It covers the purpose (temperature conversion JSON API), the routes, the error cases (bad request for missing or non-numeric, not found), and port 8080 with the startup message.\n\nWhat is missing: the explicit effects (console and socket network access), though printing and serving are mentioned implicitly. It also omits the start-error failure and that it serves until stopped. Whether it says \"tiny HTTP service with two routes\" is wrong: the description lists /health and /convert, so two routes is fine.\n\nThe effects are mentioned only implicitly, with no explicit statement of needing the console and network. The failure on start error is missing. That counts as one missing element (the effects, loosely), so a 4 is the most likely grade.\n\n**4**",
+      "grade": 4,
+      "sample": "73c3873041b3aec0"
+    },
+    "explain/http_service.4": {
+      "answer": "The explanation is accurate on the main points: it covers the server on port 8080, the health route, the conversion route, and the missing and non-numeric parameter errors, as well as not found.\n\nWhat is missing:\n- The console output of \"listening on ...\". The explanation never says the program prints to the console, so the console effect is absent.\n- The start error when the server cannot start.\n- The exact text of the responses (\"ok\" and the specific error messages). These are minor details.\n- That the JSON includes both the Celsius and Fahrenheit values. It says \"returns the result as JSON\", which is roughly adequate.\n\nFor effects, the explanation mentions network access but not the console. Purpose and main behaviours are stated. So one of the three categories, the effects, is only partly covered.\n\nNothing in the explanation is wrong. \"Only as robust as its simple input validation\" is a caution the reader added, so it is ignored.\n\nThe main behaviours are mostly covered, apart from the start error. The effects are partly missing, since the console is not mentioned. That could count as one missing item or as several. I lean toward 4, because the console effect and the start failure are small omissions.\n\n4",
+      "grade": 4,
+      "sample": "0106a307c92f5bb9"
+    },
+    "explain/inventory_db.0": {
+      "answer": "The explanation claims the program \"includes a replayable test that seeds sample data and verifies...\". The description mentions no test. It neither confirms nor contradicts it directly... but the description describes the program fully, including the entry point, and says nothing about a test. A statement the description neither confirms nor contradicts is ignored. Is it contradicted? The description describes what the program does; a test is not mentioned. It's ambiguous, but the rule says to ignore unconfirmed statements. Still, the description seems complete, so a test would arguably contradict it. The explanation was written by someone who saw only the program, so maybe the program does include a test, but the author's description would normally have mentioned it. I lean towards treating it as a fabrication, i.e. one wrong statement, giving 2.\n\nOtherwise, the rest is correct: the purpose and the behaviours are covered, but the effects (console, filesystem) are not stated. Without the test claim it would be a 4. With the test claim judged wrong, it is a 2.\n\nThe decision is whether the test claim is \"contradicted\". The description says \"The entry point opens data/inventory.db, ...\" and lists everything; a test seeding sample data isn't there. I'll go with 2.\n\n2",
+      "grade": 2,
+      "sample": "f8830ccb7d784fcc"
+    },
+    "explain/inventory_db.1": {
+      "answer": "The explanation includes a claim about a replayable test that seeds a test database. The description doesn't mention any test, so it neither confirms nor contradicts it, and the claim is ignored. But does the description contradict it? The description says the entry point opens data/inventory.db and does these things; it says nothing about tests. So that claim is ignored.\n\nCheck the rest: it creates the table if needed, records deliveries for existing items, and queries items at or below their reorder level. The main behavior is described accurately. It omits the failure modes (UnknownSku, database error), the ordering (lowest first), and the effects (console and filesystem). The file path is mentioned, which implies the filesystem, but the needs are not stated explicitly.\n\nThe purpose and the main behaviors are covered. The effects are only partly covered, and the failures are missing. Since nothing is wrong, the score is 4 or 3. The missing items are the effects (not stated explicitly), the failures, and the ordering. The rubric lists purpose, effects, and main behaviors. The effects are missing, though implied by the path, while the purpose and behaviors are present. That suggests 4.\n\n**4**",
+      "grade": 4,
+      "sample": "12e7acfc51b35dab"
+    },
+    "explain/inventory_db.2": {
+      "answer": "The explanation says the program \"includes a replayable test that seeds a test database and verifies...\" The description doesn't mention any test. It neither confirms nor contradicts that, so by the rules it is ignored... but does the description contradict it? The description lists the entry point and the functions, and says nothing of a test. A statement the description neither confirms nor contradicts is ignored, so the test claim doesn't count against the explanation.\n\nEverything else is correct: it creates the table, records deliveries, queries low stock, and the entry point adds 500 units to a hardcoded item and prints either the list or \"nothing to reorder\".\n\nWhat is missing: the effects (console and filesystem, the file data/inventory.db) are not stated, and neither is the failure with UnknownSku or a database error. Lowest-first ordering is also missing. The purpose and main behaviours are covered, so the main gap is the effects, plus the failure modes.\n\nMissing the effects makes it a 4. The failure modes are an additional omission, but they are not one of the listed categories (purpose, effects, main behaviours). The effects are what's missing, so 4.\n\n4",
+      "grade": 4,
+      "sample": "b4f15eae5fade6d5"
+    },
+    "explain/inventory_db.3": {
+      "answer": "The explanation claims the program \"includes a replayable test that seeds a test database and verifies that low-stock reporting works.\" The description mentions no test, and the entry point just does the delivery and the printing. That is a claim the description doesn't confirm. Is it contradicted? The description lists the program's parts: the table creation, the query, the delivery, and the entry point. It says nothing of a test. Under the rule, a statement the description neither confirms nor contradicts is ignored, but the description appears to be a complete account of the program, so a test would arguably contradict it. A reader who saw the program would know whether a test exists, and the author's description says the program consists of the entry point, which opens data/inventory.db and so on. The test claim is likely fabricated, so it is probably wrong.\n\nOther points: \"fixed database file\" is correct, \"500 units to one hardcoded item\" is correct, and \"prints any items that still need reordering\" is correct. The explanation omits the file and console needs, the failure modes, and the ordering. If the test claim is counted as wrong, the grade is 2.\n\nWhether the test statement is contradicted is ambiguous. The description says \"The entry point opens data/inventory.db...\" and does not mention a test. Under the \"ignored\" rule it would be neutral, but the invented test is likely a hallucination, so I'll go with 2.\n\n2",
+      "grade": 2,
+      "sample": "26374b4dd1d93dd6"
+    },
+    "explain/inventory_db.4": {
+      "answer": "The explanation claims the program \"includes a test that seeds a temporary database and verifies...\" The description mentions no test. Is that contradicted or just unconfirmed? The description lists the entry point and the functions, and doesn't mention a test. The rule says a statement the description neither confirms nor contradicts is ignored. A test is unmentioned, so arguably it is ignored. But the description is meant to describe the whole program, and it says the program does these things, with no test. A test's existence is not clearly contradicted, though.\n\nOther points: \"Opens a fixed database file\" is fine. \"Adds 500 units to one hardcoded item\" is fine. \"Prints any items that still need reordering\" is fine. The effects (console and filesystem) are not stated explicitly, although a database file is implied. The failure modes are not mentioned. The explanation never mentions the table being created on open, or the UnknownSku failure.\n\nIf the test claim is ignored, the explanation is missing the effects (console/filesystem, only implicitly present) and the failure modes, so it would get a 4 or 3. If the test claim is wrong, it gets a 2.\n\nThe reader \"saw only the program\", so a test may really exist in it. The description says nothing of it, so I treat it as unverifiable and ignore it. Then the missing parts are the explicit effects and the errors, plus the table creation and the ordering. The purpose and the main behaviours are stated. The effects are only partly stated, with \"SQLite-backed\" and \"database file\" implying the filesystem, and the console is not mentioned. I'd give it a 4.\n\n**4**",
+      "grade": 4,
+      "sample": "f97674f2cacbaea8"
+    },
+    "explain/invoice.0": {
+      "answer": "The explanation says the module models lines and invoices and enforces the constraints. The description says a line has quantity at least 1 and unit price at least 0, and the discount runs from 0 to 100. That matches. \"Enforcing\" could be questioned, but the description states these as constraints, so I'll treat it as consistent. It also describes the helpers for the line total, the subtotal and the final total rounded to cents, and the tests.\n\nNext, the three things the grade depends on:\n- Purpose: invoice totals are computed, which is stated.\n- Effects: the explanation never says the library is pure or has no effects. That is missing.\n- Main behaviours: stated.\n\nNothing is wrong, and one item (effects) is missing, so the grade is 4.\n\n4",
+      "grade": 4,
+      "sample": "363fab0d1a1f450b"
+    },
+    "explain/invoice.1": {
+      "answer": "I need to check whether anything in the explanation is wrong.\n\nThe explanation says the module models lines and invoices, with quantity at least 1, unit price nonnegative, and discount from 0 to 100. That matches the description. The helpers compute a line total, the subtotal, and the final total rounded to cents, which also matches. The tests confirm a discount is applied and an empty invoice gives zero, which matches too.\n\nIt does not say the library is pure with no effects, so the effects point is missing. The overall purpose, computing invoice totals, is stated implicitly but reasonably clearly. The main behaviours are covered.\n\n\"Enforcing\" the constraints is a mild claim. The description says a line has a quantity of at least 1, which implies the constraint, and I can't treat it as a contradiction.\n\nNothing is wrong and one element, the effects, is missing, so the grade is 4.\n\n4",
+      "grade": 4,
+      "sample": "58d299a0b966d5b8"
+    },
+    "explain/invoice.2": {
+      "answer": "Checking the explanation against the description:\n\n- \"Models invoice lines and invoices, enforcing that quantities are at least 1, unit prices nonnegative, discounts between 0 and 100\": this matches the description. \"Enforcing\" is a slight inference, but the description gives these as constraints.\n- \"Helpers to compute line total, subtotal, final total after discount rounded to the nearest cent\": this matches.\n- Tests: these match.\n\nNothing is wrong. The remaining question is what is missing. The purpose is stated, since it computes invoice totals. The effects are not stated: the description says it is a pure library with no entry point and no effects, and the explanation does not mention that. The main behaviours are covered. So one item is missing, the effects, which gives a 4.\n\n\"Exact to the cent\" is not mentioned either, but the rounding is covered.\n\n**4**",
+      "grade": 4,
+      "sample": "6bdc02caa420074d"
+    },
+    "explain/invoice.3": {
+      "answer": "The explanation says the module enforces constraints: quantities of at least 1, prices nonnegative, and discounts between 0 and 100. The description states these as constraints on the data, and \"enforcing\" is plausible, so it is not contradicted. The explanation also covers the line total, the subtotal, the final total with discount and rounding, and both tests.\n\nWhat it leaves out is the effects: it never says the library is pure, with no entry point and no I/O. Its overall purpose is also only implied. \"Models invoice lines and invoices\" with total computation is reasonably clear, although \"exact to the cent\" is not mentioned. The effects are the one thing missing, so this is a 4.\n\n**4**",
+      "grade": 4,
+      "sample": "06fff7ff20871ffc"
+    },
+    "explain/invoice.4": {
+      "answer": "Checking the explanation against the description:\n\n- It says the module models lines and invoices and enforces quantity at least 1, price nonnegative and discount 0 to 100. The description matches this.\n- It says there are helpers for the line total, the subtotal and the final total rounded to the cent. This matches.\n- It says the tests confirm discounts are applied and that an empty invoice totals zero. This matches.\n\nNothing in it is wrong.\n\nPurpose: it is stated, though loosely, as modeling invoices and computing totals. The explanation never says \"exact to the cent,\" but it does say the total is rounded to the cent.\n\nEffects: the explanation does not mention that the library is pure, with no entry point and no effects. That is missing.\n\nMain behaviours: they are covered.\n\nOnly the effects are missing, so by the rubric this is a 4.\n\n4",
+      "grade": 4,
+      "sample": "6bdc02caa420074d"
+    },
+    "explain/invoice_report.0": {
+      "answer": "Checking the explanation against the description:\n\n- Prints a plain-text statement for two sample customers, with name, line count, and total in fixed-width columns. This matches.\n- Prints the grand total across both invoices. This matches.\n- \"The imported invoice module computes totals by summing line items, applying a percentage discount, and rounding to cents.\" The description says only that the invoice module is reused for the totals. It does not mention rounding. The discount and the summing are consistent with the examples, but rounding is neither confirmed nor contradicted, so it is ignored.\n\nMissing: the console requirement is not stated, and neither is the \"cannot fail\" point. The sort by customer is also missing, and the specific amounts are not given. The purpose and the main behaviours are covered. The effects (console) are missing, so that is one item missing, which points to a 4.\n\nNothing is wrong, so the grade is 4.\n\n4",
+      "grade": 4,
+      "sample": "1bc1e7fcacb3711d"
+    },
+    "explain/invoice_report.1": {
+      "answer": "The explanation says: it prints a plain-text statement for two sample invoices, with customer, number of lines, and total in fixed-width columns. It sorts by customer and prints a grand total. It depends on the invoice module's discount-aware total calculation.\n\nChecking for errors: \"how many line items they have\" matches the line count. Sorting by customer is correct. The grand total is correct. The invoice module is reused for totals, and \"discount-aware\" fits since ACME has a discount. Nothing is contradicted.\n\nMissing items: the effects (needs the console, cannot fail) are not stated. The purpose and main behaviours are covered. The explanation says \"prints\", which implies console output, but never says that the console is needed. That counts as one thing missing, so a 4.\n\n\"Useful if you want a small reporting script\" is an opinion and is ignored.\n\n4",
+      "grade": 4,
+      "sample": "272cf1eb450baec5"
+    },
+    "explain/invoice_report.2": {
+      "answer": "The explanation says the program prints statements for two sample invoices, with customer, line count, and total in fixed-width columns. It sorts by customer and prints a grand total. It says the data is hardcoded. All of this is consistent with the description.\n\nIs anything wrong? \"Hardcoded to sample data rather than reading real invoices from input\" is consistent with the description. \"Useful if you want...\" is an opinion and is ignored.\n\nWhat is missing is the effect: the console is needed and the program cannot fail. The explanation says it \"prints\", which implies console output but never states it as a need. It also does not mention that the invoice module is reused for totals, or the discount details, but those are minor behaviours. Purpose and main behaviours are covered. The effects are only implicitly covered.\n\nSo one of the three elements is arguably missing, which makes this a 4.\n\n4",
+      "grade": 4,
+      "sample": "7badfc16b3b73ddb"
+    },
+    "explain/invoice_report.3": {
+      "answer": "The explanation says the program prints a plain-text statement for two sample invoices, with customer, line count, and total in fixed-width columns, plus the grand total. That matches the description.\n\nIt also says the invoice module computes totals by summing line amounts, applying a percentage discount, and rounding to cents. The description says only \"reusing the invoice module for the totals\". It does not confirm the rounding detail, so that claim is neither confirmed nor contradicted and is ignored. The discount is consistent with the ACME example.\n\nThe explanation does not say that the program needs the console. It does say \"rather than generating files or doing interactive input\", which is a loose hint at output only, but it never states the console requirement outright. It also omits that the program cannot fail, and that statement lines are sorted by customer. Those are minor omissions.\n\nThe purpose and main behaviours are covered, and the effects are only weakly implied, so one element is missing. That fits a 4.\n\n4",
+      "grade": 4,
+      "sample": "8ae6040fc2c8070e"
+    },
+    "explain/invoice_report.4": {
+      "answer": "The explanation's claims against the description:\n\n- It prints a plain-text statement for two sample invoices, with customer, line count, and total in fixed-width columns. This matches.\n- It prints the grand total. This matches.\n- The invoice module \"computes totals by summing line items, applying a percentage discount, and rounding to cents.\" The description says the invoice module is reused for totals, and the examples show a 10 percent discount. Rounding to cents is neither confirmed nor contradicted, so it is ignored.\n- The usefulness opinion is ignored.\n\nNothing is wrong. The explanation covers the purpose and the main behaviours. It does not mention the console. The description says the program needs the console, so the effects are missing. It also leaves out the sorting by customer, but that is a detail.\n\nOne of the required elements (effects) is missing, so the score is 4.\n\n4",
+      "grade": 4,
+      "sample": "24ac7884c8574efc"
+    },
+    "explain/log_parser.0": {
+      "answer": "The explanation says: parses log lines into entries, validates timestamps and levels, groups error entries by hour, counts, and prints in hour order \"from a sample log file\".\n\nChecking for wrong statements: \"from a sample log file\" is a minor point. The program reads data/server.log, which is not contradicted. Everything else matches the description. Strict validation matches the description. \"Prints those totals in hour order\" is correct.\n\nEffects: the explanation mentions a log file but not the console or filesystem read access explicitly. It says \"from a sample log file\", which hints at file reading, but it does not say that console output is needed. Main behaviours: parsing, counting and printing are covered. Missing: failure behaviour (one bad line ends the program), skipping blank lines, and the specific file path. Effects are only partly stated.\n\nThe purpose is clear. The effects are only implicitly stated (file read, printing). So it is probably a 4 since the effects are mostly missing, or perhaps a 3 because several details are missing.\n\n\"Sample log file\" is slightly off, but not contradicted. The main behaviours are present. The effects are implied: it reads a file and prints. I'll go with 4.\n\n**4**",
+      "grade": 4,
+      "sample": "691807f902bc2364"
+    },
+    "explain/log_parser.1": {
+      "answer": "Checking the explanation against the description:\n\n- It parses lines into entries and validates timestamps and levels. This matches.\n- It groups error entries by hour, counts them, and prints the totals in chronological order. This matches.\n- \"from a sample log file\" is consistent with data/server.log. Calling it a \"sample\" is a minor characterization and not really contradicted.\n- The usefulness remarks are ignored.\n\nNothing in the explanation is wrong. Next, what is missing:\n\n- Purpose: stated.\n- Effects: the console and filesystem read access are not mentioned. The file is only implied by \"from a sample log file\", and the console is only implied by \"prints\". The needs are not stated explicitly, so this is partly missing.\n- Main behaviours: parsing, counting and printing are covered. The failure behaviour, where one bad line ends the program, is not mentioned, though \"strict input validation\" hints at it. Skipping blank lines is also absent.\n\nSo the purpose and the main behaviours are there, and the effects are only weakly implied. That is one item missing, which gives a 4.\n\n4",
+      "grade": 4,
+      "sample": "1b9ae988d0681034"
+    },
+    "explain/log_parser.2": {
+      "answer": "The explanation covers the purpose: parsing log lines, validating, and counting errors per hour. It also mentions printing in hour order.\n\nChecking for wrong statements:\n- \"validates timestamps and severity levels\": consistent with the description.\n- \"groups only the error entries by hour\": consistent.\n- \"from a sample log file\": the file is data/server.log. \"Sample\" is a minor characterization and is not clearly contradicted.\n- \"ISO-8601-style logs\": fine.\n\nEffects: the description says the program needs the console and filesystem read access. The explanation mentions \"a sample log file\" and \"prints\", which hints at them but does not explicitly say what the program needs. The effects are partly there, since the file is read and output is printed, but they are not stated as requirements.\n\nMain behaviours: the failure behaviour, where one bad line ends the program, is missing. Skipping blank lines is also missing. Printing only hours that have errors is covered by \"groups only the error entries\".\n\nNothing is wrong. Purpose is stated. Effects are weakly implied. Some behaviours are missing, such as the one-bad-line-aborts rule and the blank-line skipping. That puts it at 4 or 3. The effects are implicit, and the error-handling behaviour is missing, which could mean several things are missing. Still, the reader mentions reading a log file and printing, so the effects are arguably present. The missing piece is the abort on a bad line, which is one main behaviour, so I'd go with 4.\n\n**4**",
+      "grade": 4,
+      "sample": "d1202125fa8322d9"
+    },
+    "explain/log_parser.3": {
+      "answer": "The explanation says the program parses lines, validates timestamps and levels, groups errors by hour, counts them, prints in hour order, reads a log file from disk, and stops on malformed lines or unknown levels. None of that contradicts the description.\n\n\"Sample log file\" is a minor characterization. The description names the file as data/server.log, so calling it a \"sample\" is neither confirmed nor contradicted and can be ignored.\n\nNext, what is covered. The purpose and the main behaviours are there. Parsing failures, one bad line ending the program, and printing in order are all mentioned. Reading from disk is mentioned, but the console is not stated explicitly, although \"prints\" implies output. Skipping blank lines is missing, and so is the exact output format. The effects are partially stated: file reading is there, and printing implies console output without naming it. Read access to the filesystem is covered.\n\nNothing is wrong, and the effects are mostly stated. The omissions (blank lines, the output format, \"only hours with errors\") are minor. \"Groups only the error entries by hour\" does imply that only hours with errors get printed. So this is a 4 or a 5.\n\nThe console is only implicit, and the explanation does say \"prints\". I lean toward 5, since the main behaviours and purpose are covered and the effects are essentially there.\n\n**5**",
+      "grade": 5,
+      "sample": "e393a88bc819fcb4"
+    },
+    "explain/log_parser.4": {
+      "answer": "The explanation says: parses log lines into entries, validates timestamps and levels, groups error entries by hour, counts, prints in chronological order \"from a sample log file\". Nothing there contradicts the description. \"Sample log file\" is slightly vague, but the program reads data/server.log, so it isn't clearly wrong.\n\nIs anything wrong? \"Strict input validation\" is fine. The explanation's statement \"prints those totals in chronological order\" matches the description.\n\nWhat's missing? The effects: it needs the console and read access to the filesystem. The explanation mentions a log file, which implies file reading, but doesn't state the needs explicitly. Main behaviours missing: failure on a bad line ending the program, skipping blank lines. Those are details, though, and the main behaviours are mostly covered. The effects are only implicitly covered (a \"sample log file\"), with no mention of console output or filesystem access as requirements.\n\nSo the purpose is stated, the main behaviours are stated, and the effects are weakly stated. That makes it a 4 (one missing: effects) or a 3. Printing is mentioned, and reading a file is implied. I'd go with 4.\n\n4",
+      "grade": 4,
+      "sample": "1c8e167c2bc805ba"
+    },
+    "explain/markdown_table.0": {
+      "answer": "The explanation says: it formats a table of text into Markdown, padding each column to the widest header or cell. That is correct. \"Exposes a reusable table type plus functions to compute column widths and render\" is not confirmed or contradicted, so it is ignored. The main prints a sample fruit-price table, which is correct (the table also has stock, but \"fruit-price\" is only a loose description, not wrong).\n\nPurpose is stated. Main behaviours: column widths and padding are stated; the divider row, separators and missing cells are not. The effect is that it prints to the console, which is mentioned, though \"needs the console\" is only implied by the printing. \"Cannot fail\" is not mentioned.\n\nNothing is wrong. The purpose and effects are covered, and the main behaviours are mostly covered (the widths, the padding). The divider row and missing cells are omitted, but those are details. I'd give a 4 or 5. The explanation is fairly complete on the key points, with the console effect implied by \"prints to the console\". The sample table is described as \"fruit-price\" and leaves out stock, which is a minor omission. I'll go with 4.\n\n4",
+      "grade": 4,
+      "sample": "ec62588db946288d"
+    },
+    "explain/markdown_table.1": {
+      "answer": "The explanation says: formats a table of text into Markdown with columns padded to the widest header or cell \u2014 correct. \"Exposes a reusable table type plus functions to compute column widths and render\" \u2014 not confirmed or contradicted by the description, so ignored. Main prints a sample fruit-price table to the console \u2014 correct (though it omits stock, \"fruit-price\" is a minor simplification). Effects: console is mentioned via printing to the console. It does not mention that it cannot fail, but that is minor.\n\nMain behaviours: widths, padding, rendering. It does not mention the divider row, separators, or missing cells being empty. Purpose is stated, effects stated. The main behaviours are partly stated (aligned columns by widest cell). Nothing is wrong, so the grade is 4 or 5. \"Fruit-price table\" omits stock, but that is not wrong. The main behaviours seem largely covered, so I'd lean toward 4 given the missing divider and missing-cell details... The main behaviour is the alignment, which is covered. Purpose, effects, and main behaviours are all stated at a general level, so 5 is plausible.\n\nI'll go with 4, since details like the divider row and the handling of missing cells are absent.\n\n**4**",
+      "grade": 4,
+      "sample": "73d7eba52e166c4f"
+    },
+    "explain/markdown_table.2": {
+      "answer": "The explanation says the module builds Markdown tables with padded columns, which matches the description. It says the module exposes helpers to compute column widths and render a table, and that main prints a sample fruit-prices table. The description doesn't confirm or contradict the helpers, so that is ignored. The fruit table is \"fruit, price and stock\", so calling it \"fruit-prices\" is a minor simplification. The \"does not handle escaping or numeric formatting\" part is a caution the reader added, so it is ignored.\n\nChecking the criteria:\n- Purpose is stated.\n- Main behaviours: padding to the widest cell is stated. The divider row, the separators and the missing-cell handling are not, though the main idea is covered.\n- Effects: the console is mentioned only as the place the sample is printed. \"Needs the console\" is effectively there, but \"cannot fail\" is not stated.\n\nNothing is wrong. The purpose and the console output are covered, and some detail is missing, such as the divider row and the missing cells treated as empty. That is probably a 4.\n\n4",
+      "grade": 4,
+      "sample": "814ba0bcc0650449"
+    },
+    "explain/markdown_table.3": {
+      "answer": "The explanation states the purpose (Markdown tables with aligned columns), the main behaviour (padding to the widest cell), and that main prints a sample table to the console, which covers the console effect.\n\nPossible wrong statements: \"sample fruit-pricing table\". The description says fruit, price and stock, so a pricing table is slightly incomplete but not contradicted. \"Exposes helpers to compute column widths and render a table as text\" is not confirmed or contradicted, so it is ignored. \"Without extra dependencies\" is an opinion about usefulness and is ignored.\n\nMissing details: the divider row, the missing-cell handling, and the \"cannot fail\" property. The main behaviours are mostly covered, since padding to the widest cell is the core, though the header counting toward the width and the divider row are not mentioned. The effect (console) is stated, though not explicitly as a need.\n\nNothing is wrong. Purpose, effects and the core behaviour are present, with only minor details absent. That fits a 4 or a 5. The main behaviours include the header, divider and body rows, and missing cells as empty. The explanation says \"padding each column to the width of its widest cell\", which captures the essence. It omits the divider and the format details, but those are minor. I'll go with 4.\n\n4",
+      "grade": 4,
+      "sample": "2bcc1e5e26d36f3c"
+    },
+    "explain/markdown_table.4": {
+      "answer": "The explanation says: formats a table into Markdown, padding each column to the width of its widest header or cell. That matches the description. It says it exposes a reusable table type plus functions to compute widths and render, which the description neither confirms nor contradicts, so it is ignored. `main` prints a sample fruit-price table to the console, which is correct (the table is fruit, price and stock; \"fruit-price\" is a slight simplification but not contradictory).\n\nPurpose is stated. Effects: the console is mentioned, since it prints to the console, but \"cannot fail\" is not mentioned, which is minor. Main behaviours: widths and padding are covered. Missing are the divider row, the separators and framing, and missing cells counting as empty. The explanation covers the main behaviour in general terms.\n\nNothing is wrong. Purpose and effects are stated, and the main behaviours are partly stated. That fits a 4, or a 5 if the omitted details are considered minor. The divider row and the missing-cell handling are details, and the core behaviour of aligned padding to widest cell is given. I'll go with 4, because some behaviours are missing, though the explanation is not vague.\n\n4",
+      "grade": 4,
+      "sample": "f76bcc02e65f0a91"
+    },
+    "explain/pagination.0": {
+      "answer": "The explanation covers the purpose, the pagination behaviour, and the grouping and printing sorted largest first. It does not mention the effects (console and network), though network is implied by \"HTTP API\"; the console is implied by \"prints\". It does not mention the failure modes (HTTP error, JSON error).\n\nThe statement about a replayable test is not confirmed by the description. The description doesn't mention a test, but it doesn't contradict one either, so it is ignored under the rules. Strictly, the description describes the entry point fetching the real URL, and a test is neither confirmed nor contradicted.\n\nNothing is wrong. Is something missing? The effects are only implicitly stated: it says HTTP API and prints. The errors are missing. Under the rubric, \"overall purpose, effects, main behaviours\". The effects are not stated explicitly (network is arguably implied). The failure behaviour counts as a main behaviour, perhaps. So either a 4 or a 3 is possible.\n\nPurpose is stated and the main behaviours are stated. The effects are implied by \"HTTP API\" and \"prints\". The missing item is mostly the errors, which I'd count as a minor omission. I'll go with 4.\n\n4",
+      "grade": 4,
+      "sample": "bba5bc7a6f73303e"
+    },
+    "explain/pagination.1": {
+      "answer": "The explanation covers the purpose (fetching all pages and counting customers per country) and the main behaviours (following the next cursor, grouping, printing sorted largest first). It does not mention the effects, meaning the console and network access. It also leaves out the failure modes, which are HTTP and JSON errors.\n\nThe test claim is the other problem. It says the program includes a replayable test that checks pagination against a fixture with three customers. The description never mentions a test. It neither confirms nor contradicts that claim, so the rules say to ignore it.\n\nNothing stated is wrong. The effects (network and console) are missing, though the \"HTTP API\" wording hints at network use. The failure behaviour is also missing. Since the effects are missing, the grade is 4 or 3. The overall purpose and main behaviours are present. Effects are missing and errors are arguably a main behaviour, but the rubric lists only purpose, effects and main behaviours. A single category is missing, which gives 4.\n\n**4**",
+      "grade": 4,
+      "sample": "6446cac462b3c9d8"
+    },
+    "explain/pagination.2": {
+      "answer": "The explanation's claim about a replayable test with a fixture is neither confirmed nor contradicted by the description, so it is ignored. The description says nothing about tests. It doesn't contradict them either, though the entry point is described without any mention of one.\n\nThe rest is correct: it fetches pages by following the cursor, groups by country, and prints counts sorted largest first.\n\nMissing: the effects. The explanation never says the program needs the console or network access, although \"HTTP API\" implies the network. Failure behaviour (HTTP error, JSON error) is also missing. The purpose and main behaviours are stated.\n\nSo the explanation has nothing wrong, and the only gaps are the effects (partly implied) and the errors. The rubric lists purpose, effects and main behaviours, and the effects are only implicitly covered. That fits a 4.\n\n4",
+      "grade": 4,
+      "sample": "d80328a86f4d9b36"
+    },
+    "explain/pagination.3": {
+      "answer": "The explanation states the purpose, the pagination behavior, grouping, and sorted printing. It mentions a replayable test with a fixture, which the description neither confirms nor contradicts, so that is ignored.\n\nMissing: the effects (console and network) are not stated explicitly. It says \"HTTP API\", which implies the network, and \"prints\", which implies the console, but it never says what the program needs. The failure behavior (HTTP error, JSON error) is also missing, though the grading criteria list only purpose, effects, and main behaviors.\n\nNothing is wrong. Purpose and main behaviors are covered, and the effects are only implied, so one element is partly missing. That points to a 4.\n\n4",
+      "grade": 4,
+      "sample": "f116dd3b312ec40c"
+    },
+    "explain/pagination.4": {
+      "answer": "The explanation's claims: it fetches all customers via cursor pagination, then groups by country and prints counts, largest first. All of this matches the description.\n\nThe test claim, \"a replayable test that verifies pagination returns three customers from a fixture,\" is neither confirmed nor contradicted by the description, so it is ignored.\n\nNext, what is covered. The purpose is covered. The main behaviours are covered. The effects (console, network) are not stated explicitly, though \"HTTP API\" implies network and \"prints\" implies console. The failure behaviours (HTTP error, JSON error) are not mentioned, and that is a main behaviour of sorts. The base URL is not named, which is a minor omission.\n\nNothing is wrong. The effects are only implicit and the errors are missing, so a 4 seems about right.\n\n4",
+      "grade": 4,
+      "sample": "57b2ca9bac2be566"
+    },
+    "explain/permissions.0": {
+      "answer": "Checking the explanation against the description:\n\n- \"Validated resource:action text values\": the description says a permission is a name of the form \"resource:action\". Validation is not mentioned, so the statement is neither confirmed nor contradicted and is ignored.\n- Roles as named bundles of permissions: matches.\n- Helpers for union, missing, sufficiency and overlap: matches.\n- `main` demonstrates with a viewer and editor, printing whether publishing is allowed, any missing permissions, and the shared permissions: matches.\n\nNothing is wrong. Next, the three things a 5 needs:\n\n- **Purpose:** stated, since it decides whether roles grant the required permissions.\n- **Main behaviours:** covered.\n- **Effects:** the console is never mentioned. The explanation says \"printing\", which implies console output, but it does not state what the program needs, and \"cannot fail\" is also missing.\n\nEffects are therefore only weakly covered. The explanation does say it prints, so a reader could infer the console. The omission is minor, which puts this at 4.\n\n4",
+      "grade": 4,
+      "sample": "e428a2876821b4b7"
+    },
+    "explain/permissions.1": {
+      "answer": "Checking for wrong statements: \"validated resource:action text values\". The description says a permission is a name of the form \"resource:action\"; \"validated\" is not confirmed, so it is neither confirmed nor contradicted and gets ignored. \"Prints whether publishing is allowed, lists any missing permissions, shows the shared permissions\" matches the description.\n\nMissing: the effects. The explanation never mentions the console or that it cannot fail. It does say \"prints\", which implies console output, but never states the need explicitly. The purpose and main behaviours are covered. Because the effects are only implicitly covered, one element is missing, which gives a 4.\n\n\"Roles as named bundles of permissions\" is fine. \"Sample main\" is fine.\n\n**4**",
+      "grade": 4,
+      "sample": "9e55f44ff98ab526"
+    },
+    "explain/permissions.2": {
+      "answer": "Checking the explanation against the description:\n\n- \"Permissions as validated resource:action text values\": the description says a permission is a name of the form \"resource:action\". It does not say anything about validation, so that claim is neither confirmed nor contradicted and is ignored.\n- Roles as named bundles of permissions: matches.\n- Helpers for union, missing, sufficiency, and shared permissions: all match.\n- `main` demonstrates with a viewer and editor, prints whether they can publish and lists missing permissions plus shared ones: matches.\n\nNothing is wrong. Now what is covered:\n\n- Purpose: the explanation covers it, since it says the program tests whether a set of roles is sufficient.\n- Main behaviours: covered.\n- Effects: the explanation never says the program needs the console. It does say it prints, but it does not state the requirement or that it cannot fail.\n\nOne of the three items is missing (the effects), so the score is 4.\n\n4",
+      "grade": 4,
+      "sample": "5f00b993935daf23"
+    },
+    "explain/permissions.3": {
+      "answer": "Checking the explanation against the description for wrong statements:\n\n- \"validated `resource:action` text values\": the description says a permission is a name of the form \"resource:action\". It never mentions validation. That is neither confirmed nor contradicted, so it is ignored.\n- \"roles as named bundles of permissions\": matches.\n- The helpers (union, missing, sufficiency test, overlap) match.\n- \"main demonstrates... printing whether publishing is allowed, listing any missing permissions, and showing the permissions they share\": matches. The description says it prints \"the editor may publish\" when everything is granted, otherwise the missing list, and then the shared line.\n\nNothing is wrong. Next, what the explanation covers:\n\n- Purpose: it is stated, though somewhat general.\n- Main behaviours: stated.\n- Effects: the console is never mentioned. The explanation says \"printing\", which implies console output but does not state it as a need. The description also says \"cannot fail\", which the explanation does not mention.\n\nThe effects are only implicit, so one element is partly missing. That makes the score a 4.\n\n4",
+      "grade": 4,
+      "sample": "94df859e548aabac"
+    },
+    "explain/permissions.4": {
+      "answer": "The explanation says permissions are \"validated\" resource:action text values. The description says a permission is a name of the form \"resource:action\", which doesn't state validation. Since the description neither confirms nor contradicts validation, that claim is ignored.\n\nNothing stated is wrong. Next, check what is covered.\n\nPurpose: covered, since it models permissions and roles and checks sufficiency.\nMain behaviours: union, missing, sufficiency check, and shared permissions are all covered, as is the main demo.\nEffects: the console need is not stated explicitly. \"Printing\" implies console output, but it is never said that the program needs the console, and \"cannot fail\" is also not mentioned.\n\nThe effects are therefore missing or only implied, so one element is missing, which gives a 4.\n\n4",
+      "grade": 4,
+      "sample": "d0896f8c637ad39d"
+    },
+    "explain/retry.0": {
+      "answer": "The explanation is accurate: retry with doubling delay, jitter, and GaveUp carrying the attempt count and last error. Nothing in it contradicts the description.\n\nWhat it leaves out:\n- The effects: it never says the clock and random numbers are needed.\n- The recording of \"attempt n: error\" after each failure.\n- The initial 100 ms delay.\n- The sleep after the last failure.\n- The return of the first success.\n\nThe purpose and the main behaviours (retry, backoff, jitter, GaveUp) are covered. The one missing item is the effects, since the clock and randomness are never named. The log records and the initial delay are minor details.\n\nBy the rubric, nothing is wrong and one category (the effects) is missing, which gives a 4.\n\n4",
+      "grade": 4,
+      "sample": "0fba64d50fa637d1"
+    },
+    "explain/retry.1": {
+      "answer": "The explanation covers the purpose (a retry helper), the effects (time and randomness), and the main behaviours (growing waits, jitter, GaveUp with the attempt count and last error).\n\nChecking for wrong statements:\n- \"repeatedly runs a failing action until it succeeds or the attempt limit is reached\" matches the description.\n- \"waits longer than before\" is consistent with the delay doubling.\n- \"small random jitter added\" matches.\n- \"GaveUp error containing the number of attempts and the last error message\" matches.\n- \"only works for actions whose failure can be converted to text\" is a caution the reader added, and it is consistent with the error text being recorded.\n\nMissing details are the 100 ms starting delay, the doubling, the \"attempt n: error\" record, and the sleep after the last attempt. These are minor, and the main behaviours are still covered. The explanation does not say that it returns the first success, but \"until it succeeds\" implies that. It also never says it is a library with no entry point, though \"module\" implies it.\n\nNothing is wrong and the three required elements are present, so I give it a 5.\n\n5",
+      "grade": 5,
+      "sample": "1d8a1fbf384bd3a5"
+    },
+    "explain/retry.2": {
+      "answer": "The explanation says: retry helper, runs until success or attempt limit; waits longer after each failure, doubling the delay with random jitter; GaveUp error with the number of attempts and last error message.\n\nNothing in it is wrong. Missing: the effects (clock and random numbers are not mentioned), and details such as the 100 ms start, recording \"attempt n: error\", and sleeping after the last failure. The purpose and the main behaviours are covered.\n\n\"Returns a GaveUp error\" is fine, and \"a small random jitter\" is fine.\n\nThe effects (clock, randomness) are missing, so that's one of the three elements gone, which gives a 4. Missing the minor details doesn't seem to count as a main behaviour, though the recording of the attempt messages could be considered one. Even so, it is still a 4 rather than a 3, since the main behaviours are mostly stated.\n\n4",
+      "grade": 4,
+      "sample": "a7bd910fd0aea1fd"
+    },
+    "explain/retry.3": {
+      "answer": "The explanation says: a retry helper that runs the action until success or the attempt limit; waits after each failure, doubling the delay, with a small random jitter; and returns GaveUp with the attempt count and last error message.\n\nNothing in it contradicts the description. The jitter is described as \"small\", which fits \"up to a quarter\".\n\nWhat is missing:\n- The effects: the explanation never says the program needs the clock and random numbers. \"Waits\" implies sleeping but does not name the clock, and randomness is only implied by \"random jitter\".\n- Behaviours it leaves out: the recorded \"attempt n: error\" log entries, the 100 ms starting delay, and the sleep after the last failed attempt. These are minor details.\n\nThe purpose and main behaviours are covered. The effects are not stated outright, and the recording of attempt messages is omitted. Under the rubric, one of the three elements missing gives a 4, and several missing gives a 3. The effects are weakly implied, and the recording is a detail, so I rate this a 4.\n\n4",
+      "grade": 4,
+      "sample": "28f37cfb6f8d1155"
+    },
+    "explain/retry.4": {
+      "answer": "The explanation states: a retry helper that runs an action until success or the attempt limit; the delay doubles with jitter after each failure; GaveUp carries the attempt count and last error message. All of this is consistent with the description.\n\nAnything wrong? \"waits longer than before\" is fine. \"Small random jitter\" is fine. \"Returns a GaveUp error\" is fine.\n\nWhat is missing: the effects (clock and random numbers) are not mentioned. Other details are also missing: the initial delay of 100 ms, the recording of \"attempt n: error\" entries, and the sleep after the last failure. The main behaviours are mostly covered, but the effects are absent, so one of the listed items is missing.\n\nThat gives a 4.\n\n4",
+      "grade": 4,
+      "sample": "a7bd910fd0aea1fd"
+    },
+    "explain/sales_report.0": {
+      "answer": "The explanation covers: reading data/sales.csv, validating rows, structured error on missing/malformed/incomplete/non-numeric rows, totaling by region, printing in descending order, writing a CSV report to data/report.csv, and needing filesystem access to the data area plus console.\n\nChecking for wrong statements: \"fails with a structured error if the file is missing, malformed, or any row is incomplete or non-numeric\" matches the description (Io and BadRow). \"validates each row into a cleaned Sale\" is not contradicted. \"only works on well-formed data\" is a caution, which is ignored.\n\nMissing details: the header \"region,total\" isn't mentioned, and neither are the specific error names or the first-bad-row-fails behavior. These are minor. The purpose, effects and main behaviours are all stated.\n\nThe one possible gap is that a write failure counts as an Io error, which the explanation doesn't mention explicitly. Still, it says \"fails with a structured error if file is missing...\" and doesn't claim write failures are excluded. That's a minor omission.\n\nI'd give it 5 or 4. The main behaviours are covered, and the effects are stated. Since nothing is wrong and nothing major is missing, I'll go with 5.\n\n5",
+      "grade": 5,
+      "sample": "447af5cc6a28555e"
+    },
+    "explain/sales_report.1": {
+      "answer": "The explanation covers: reads the sales CSV, validates rows, groups by region and sums, prints to the console, writes a CSV report, and stops with an error on a missing file, malformed input or an invalid row.\n\nIs anything wrong? \"Validates each row into a cleaned sale record\" is not contradicted. \"Stops with a structured report error instead of producing a partial report\" is consistent with the description, since the first bad row fails. A write failure also fails, so nothing here is contradicted. \"Missing, malformed, or invalid row\" matches Io and BadRow.\n\nWhat is missing:\n- The sort order (largest to smallest) is not mentioned, though it is a minor behaviour.\n- The file paths are not named.\n- The header line \"region,total\" is not mentioned.\n- The effects are only partly stated. Console and files are implied, but the restriction to the data directory is not mentioned.\n- The write failure is not mentioned.\n\nNothing is wrong, and the purpose and main behaviours are stated. The effects are implied (console, file writing) but not precise. This is probably a 4, since the main gaps are the sort order and the directory restriction.\n\n4",
+      "grade": 4,
+      "sample": "490d5dbe3c84bbe9"
+    },
+    "explain/sales_report.2": {
+      "answer": "Checking the reader's statements against the description:\n\n- Reads a sales CSV, validates rows, and groups amounts by region: correct.\n- Prints regional totals to the console and writes a CSV report: correct.\n- \"with those totals sorted from largest to smallest\": the description says printing is sorted largest to smallest and the file holds \"the same totals\". That is ambiguous, and the reader attaches the sorting to the file. \"The same totals\" arguably means the same order too, so this is probably not contradicted.\n- \"If the input file is missing, malformed, or a row is invalid, it stops with a structured report error instead of producing a partial report\": the description says the first bad row fails with BadRow and an unreadable file or invalid CSV fails with Io. That matches. \"Instead of producing a partial report\" is not contradicted.\n\nNothing is wrong. Now for what is missing:\n\n- Purpose: stated.\n- Effects: the console is mentioned implicitly by \"prints\", and the file is mentioned. The restriction to the data directory is not stated, and neither are the paths data/sales.csv and data/report.csv. The effects are only partly covered.\n- Main behaviours: mostly covered. The \"region,total\" header and the error names are missing, but those are details.\n\nNothing is wrong, and perhaps one thing is missing, so this is a 4.\n\n4",
+      "grade": 4,
+      "sample": "4119fceb4cebafc6"
+    },
+    "explain/sales_report.3": {
+      "answer": "The explanation says: reads sales CSV, validates each row, groups by region to compute totals, prints to console, writes CSV report with the same summary, and fails with structured errors if the file is missing, malformed, or the report can't be written.\n\nChecking for errors: \"If the input file is missing, malformed, or the report cannot be written, it stops with a structured error\". The description says an unreadable file or invalid CSV gives Io, a bad row gives BadRow, and a write failure gives Io. This is consistent. \"Malformed\" could cover a bad row or invalid CSV. Nothing is contradicted.\n\nMissing details: the sort order (largest to smallest), the specific file paths, and the requirement for console and filesystem restricted to the data directory. The explanation does mention console output and writing a file, which covers the effects loosely, but it doesn't state the restriction to the data directory. The header line is not mentioned either, though that is a minor detail.\n\nPurpose is stated, effects are partly stated (console and file), and main behaviours are mostly covered. Missing: sort order, and BadRow with line number. This is probably a 4, since the overall purpose and main behaviours are present and only some details are missing.\n\nOne could argue that the effects are only implicit, but they are stated.\n\n**4**",
+      "grade": 4,
+      "sample": "5d37f9b2721ac388"
+    },
+    "explain/sales_report.4": {
+      "answer": "The explanation says the program reads a sales CSV, validates rows, groups by region, and computes totals. It prints the totals and writes a CSV report. On failure it stops with a structured error and no partial report.\n\nChecking for contradictions: the description says an unreadable file or invalid CSV gives Io, and a bad row gives BadRow. The explanation's \"missing, malformed, or invalid row\" matches this. \"Structured report error\" is vague but not contradicted. \"Instead of producing a partial report\": the program prints and writes only after validating all rows, so this is not contradicted.\n\nA write failure also gives an error, which the explanation doesn't mention, though that is minor.\n\nWhat the explanation leaves out:\n- Effects: it never says the program needs the console and a filesystem restricted to the data directory. It mentions printing and writing a file, but not the restriction.\n- Sort order: largest to smallest is missing.\n- Specific paths and the header are missing.\n\nThe purpose and main behaviours are covered. The effects are only implicitly stated, and the sort order is missing. That is probably one thing missing, which gives a 4.\n\n**4**",
+      "grade": 4,
+      "sample": "490d5dbe3c84bbe9"
+    },
+    "explain/semver.0": {
+      "answer": "The explanation says nothing wrong. It covers the purpose (semver parsing and comparison), the parse errors in general terms (though not WrongPartCount and NotANumber by name), printing, comparison, satisfies, and latest.\n\nWhat it leaves out is the effects: the description says the library is pure, with no entry point and no effects, and the explanation never says so. The rest of the main behaviours are covered. The explanation does say \"report specific parse errors,\" which is fine.\n\nChecking the details:\n- \"Check whether one version satisfies another by matching major and being at least as new\" matches the description.\n- \"Find the latest version in a list\" is stated. It omits the empty-list case, which is minor.\n- The tests are not mentioned, but they are not among the listed elements.\n\nWith only the effects missing, this is a 4.\n\n4",
+      "grade": 4,
+      "sample": "03394b03c64b47fc"
+    },
+    "explain/semver.1": {
+      "answer": "The description says two tests cover printing and comparison. The explanation says tests show formatting, comparison, and latest-version behavior. The latest-version claim contradicts the description, since only printing and comparison are covered. That is one wrong statement.\n\nEverything else matches. The explanation doesn't mention that the library is pure with no effects, but with a wrong statement present the score is capped at 2.\n\n2",
+      "grade": 2,
+      "sample": "74585123d9252a78"
+    },
+    "explain/semver.2": {
+      "answer": "The explanation has no wrong statements. It covers parsing, the specific errors, comparison, printing, picking the newest version, and the lack of pre-release or build support.\n\nWhat it leaves out:\n- The effects. It never says the library is pure, has no entry point, and needs no console, files, or network. This is arguably implied for a module, but it is not stated.\n- The compatibility check, where a candidate satisfies a required version when the majors are equal and the candidate is not older. That is a main behaviour.\n- The tests, which are minor.\n\nMissing the effects statement and the satisfies behaviour means two of the listed elements are absent. The rubric gives a 4 when one element is missing and a 3 when several are. The purpose is clear, and the main behaviours are mostly stated apart from the satisfies check. The purity point counts as an effects omission, and the satisfies check is a missing main behaviour. That is two omissions, but the satisfies check is only a part of the \"main behaviours\" category. So the missing items are the effects category and part of the behaviours category. I lean toward 3 because of the two gaps, though 4 is defensible.\n\nOverall, it is accurate but misses both the effects and a main behaviour.\n\n3",
+      "grade": 3,
+      "sample": "399fb81f71e7455f"
+    },
+    "explain/semver.3": {
+      "answer": "The explanation is accurate against the description: three nonnegative integer parts, parse errors reported, printing, comparison, the satisfies rule (same major, candidate not older), latest of a list, and no pre-release or build metadata.\n\nChecking the three things a 5 needs:\n- **Purpose:** stated.\n- **Main behaviours:** all stated. The parse errors are only described as \"specific\", without naming WrongPartCount or NotANumber, but that is a minor detail.\n- **Effects:** the explanation never says the library is pure or has no effects. It does not mention an entry point either. That is the one missing item.\n\nThe latest-of-a-list behaviour is covered but not its empty-list result, which is a minor omission. The tests are not mentioned, which is also minor.\n\nSo one of the three things is missing, which gives a 4.\n\n4",
+      "grade": 4,
+      "sample": "11f2dc26d4ab8ce6"
+    },
+    "explain/semver.4": {
+      "answer": "The explanation is accurate against the description. It covers parsing, formatting, comparison, the satisfies check (same major, candidate not older), latest of a list, and both error cases.\n\nWhat it leaves out is any mention that the library is pure, with no effects and no entry point. It also doesn't mention the tests, but those are minor. The effects point is one of the three things the rubric asks for, so one of them is missing.\n\n\"Clear errors\" is a mild embellishment, not a contradiction.\n\nThe explanation also doesn't say that the latest of an empty list is nothing. That is a detail, and the main behaviours are still covered.\n\nSince the effects statement is missing and nothing is wrong, I give it a 4.\n\n4",
+      "grade": 4,
+      "sample": "2fab6d8cc1d96671"
+    },
+    "explain/shapes.0": {
+      "answer": "I'll check the explanation against the description for errors first, then for coverage.\n\nErrors: The explanation says the module \"enforces that circles and rectangles have positive dimensions.\" The description says \"a circle with a radius greater than 0,\" which is consistent. Everything else it states also fits the description, so nothing is wrong.\n\nCoverage:\n- **Purpose:** The explanation states it clearly, as a shape library that describes and measures shapes.\n- **Main behaviours:** It covers area, description with area rounded to two decimals, and the largest shape or nothing for an empty list. It also covers the main program printing the sample shapes and the largest.\n- **Effects:** It never says the program needs the console. It says \"prints,\" which implies console output but does not state it as a requirement. It also omits that the program cannot fail.\n\nThe explanation does not name the area formulas, but that is a minor detail. The effects are only implicitly covered, so one element is partly missing. That puts it at a 4.\n\n4",
+      "grade": 4,
+      "sample": "ca775736f53ecf66"
+    },
+    "explain/shapes.2": {
+      "answer": "The explanation says nothing is wrong: three shape kinds, validation of positive dimensions, area, description with area rounded to two decimals, largest or nothing for an empty list, and main printing descriptions and the largest.\n\nChecking the three requirements:\n- Purpose: stated.\n- Effects: the author's description says it needs the console. The explanation says main \"prints\", which implies console output but never says the console is needed. The \"cannot fail\" point is also missing, though that is less central.\n- Main behaviours: stated.\n\n\"Validation that radius must be positive\" is consistent with the description, since the radius must be greater than 0. The explanation does not say how validation happens, and the description does not either, so that is fine.\n\nThe effects are only implicitly covered, so one item is arguably missing. That gives a 4.\n\n4",
+      "grade": 4,
+      "sample": "37a8bec308199efb"
+    },
+    "explain/shapes.3": {
+      "answer": "The explanation says nothing wrong. It covers the purpose (shape library), the validation, area, description, largest, and main printing. It says main prints descriptions and then \"which one is largest\", which fits.\n\nEffects: the author states it needs the console and cannot fail. The explanation says main prints, which implies console output, but it never says explicitly that the program needs the console. Printing is mentioned, so the console effect is arguably covered.\n\nChecking for wrong statements: \"validation that circle radius and rectangle dimensions must be positive\" matches the description. \"return nothing if the list is empty\" matches too.\n\nThe explanation omits the area formula and the \"cannot fail\" point, but those are minor details. The main behaviours are stated, and the purpose is stated. The effect (console) is implied through printing. The \"cannot fail\" claim is not clearly covered, but it is not one of the listed categories (purpose, effects, main behaviours).\n\nI'd give 5, though it could be a 4 if the console need counts as missing. Printing is mentioned, so I'm going with 5.\n\n5",
+      "grade": 5,
+      "sample": "93aaaa05a89bd5e3"
+    },
+    "explain/shapes.4": {
+      "answer": "Checking for wrong statements: the explanation says three shape kinds, validation of positive radius and dimensions (consistent), area computation, description with area rounded to two decimals, largest or nothing for empty list, main prints descriptions and the largest. All consistent.\n\nMissing: the effect (needs console) is only implied by \"prints\" and never stated outright. It doesn't mention the \"cannot fail\" property. The purpose and main behaviours are stated. The area formulas are not given, but that is detail.\n\nThe \"prints\" statement covers the console effect loosely. The description says \"It needs the console and cannot fail\"; the explanation implies the console through printing. So possibly everything is stated, or one item (effects) is missing. The \"validation\" part is a bit ambiguous: the description says \"a circle with a radius greater than 0\", and the explanation says validation exists, which may imply a failure mode. \"Cannot fail\" could conflict with \"validation,\" but the validation is not necessarily a failure. The explanation does not say it errors.\n\nI'd give a 4, since the effects are only implicit.\n\n4",
+      "grade": 4,
+      "sample": "d5c9c2e2251bdcf3"
+    }
+  },
+  "openai:gpt-5.4-mini#a91b135c": {
+    "explain/active_users.0": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "aa5e71b7e16bc059"
+    },
+    "explain/active_users.1": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "f68b4547cc2ec7fd"
+    },
+    "explain/active_users.2": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "5d3d6d1fc6a3a35d"
+    },
+    "explain/active_users.3": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "511d42442a3c8bff"
+    },
+    "explain/active_users.4": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "95e78170fa787055"
+    },
+    "explain/assistant.0": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "8e4ad976b5bf8100"
+    },
+    "explain/assistant.1": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "b0b9238d1e13de66"
+    },
+    "explain/assistant.2": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "894541092bc21913"
+    },
+    "explain/assistant.3": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "7d60a34a749956ee"
+    },
+    "explain/assistant.4": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "0cd5d5272018c9be"
+    },
+    "explain/concurrent_fetch.0": {
+      "answer": "2",
+      "grade": 2,
+      "sample": "6a1609545370bde3"
+    },
+    "explain/concurrent_fetch.1": {
+      "answer": "2",
+      "grade": 2,
+      "sample": "27575f97a3433bba"
+    },
+    "explain/concurrent_fetch.2": {
+      "answer": "2",
+      "grade": 2,
+      "sample": "0dc05a0002d0d89f"
+    },
+    "explain/concurrent_fetch.3": {
+      "answer": "2",
+      "grade": 2,
+      "sample": "0dc05a0002d0d89f"
+    },
+    "explain/concurrent_fetch.4": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "4d1b1236175fed74"
+    },
+    "explain/config.0": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "ee47861268ebae8a"
+    },
+    "explain/config.1": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "b3e73ef287e55cbe"
+    },
+    "explain/config.2": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "3b7d6cd12ba45be2"
+    },
+    "explain/config.3": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "7cf37e40c0a72890"
+    },
+    "explain/config.4": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "57808ba4dc3a2d1f"
+    },
+    "explain/currency_tool.0": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "6cb3fa603bde30eb"
+    },
+    "explain/currency_tool.1": {
+      "answer": "2",
+      "grade": 2,
+      "sample": "409984262b92bba5"
+    },
+    "explain/currency_tool.2": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "9cf4e1a7888da27c"
+    },
+    "explain/currency_tool.3": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "7c20a92843a41e5d"
+    },
+    "explain/currency_tool.4": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "5162afa6315d0f0f"
+    },
+    "explain/deadlines.0": {
+      "answer": "2",
+      "grade": 2,
+      "sample": "758c3ff94c6440fa"
+    },
+    "explain/deadlines.1": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "c709908602921037"
+    },
+    "explain/deadlines.2": {
+      "answer": "2",
+      "grade": 2,
+      "sample": "b154066ed8e0dd38"
+    },
+    "explain/deadlines.3": {
+      "answer": "2",
+      "grade": 2,
+      "sample": "a2b319833c6d0bed"
+    },
+    "explain/deadlines.4": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "390d99694a790d4a"
+    },
+    "explain/dependency_order.0": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "5500102f1e912989"
+    },
+    "explain/dependency_order.1": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "c8e236eca40324da"
+    },
+    "explain/dependency_order.2": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "8e50c4659118b0c9"
+    },
+    "explain/dependency_order.3": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "7e1fd5081e1454f9"
+    },
+    "explain/dependency_order.4": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "979e303822043ffd"
+    },
+    "explain/expression_tree.0": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "128ce151764f41f8"
+    },
+    "explain/expression_tree.1": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "feac7fdd1b7cf6da"
+    },
+    "explain/expression_tree.2": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "fd2636dac50c74e4"
+    },
+    "explain/expression_tree.3": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "2a4a69806e87a145"
+    },
+    "explain/expression_tree.4": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "914092a35068fc2a"
+    },
+    "explain/file_tree.0": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "4d915a07c0acf841"
+    },
+    "explain/file_tree.1": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "975f91e781058d02"
+    },
+    "explain/file_tree.2": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "6212fee0062d4da4"
+    },
+    "explain/file_tree.3": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "53b562e20a845fb0"
+    },
+    "explain/file_tree.4": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "638a3660fbaf933d"
+    },
+    "explain/hello.0": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "a0958a237613c62e"
+    },
+    "explain/hello.1": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "b33931f1a6e852be"
+    },
+    "explain/hello.2": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "3d517fcc818f608e"
+    },
+    "explain/hello.3": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "090da9ff26bdd52c"
+    },
+    "explain/hello.4": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "6991281ab9ae411e"
+    },
+    "explain/http_service.0": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "a658758174f2bd85"
+    },
+    "explain/http_service.1": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "cdc50c72ecd8943c"
+    },
+    "explain/http_service.2": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "5a0da3df1856e112"
+    },
+    "explain/http_service.3": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "73c3873041b3aec0"
+    },
+    "explain/http_service.4": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "0106a307c92f5bb9"
+    },
+    "explain/inventory_db.0": {
+      "answer": "2",
+      "grade": 2,
+      "sample": "f8830ccb7d784fcc"
+    },
+    "explain/inventory_db.1": {
+      "answer": "2",
+      "grade": 2,
+      "sample": "12e7acfc51b35dab"
+    },
+    "explain/inventory_db.2": {
+      "answer": "2",
+      "grade": 2,
+      "sample": "b4f15eae5fade6d5"
+    },
+    "explain/inventory_db.3": {
+      "answer": "2",
+      "grade": 2,
+      "sample": "26374b4dd1d93dd6"
+    },
+    "explain/inventory_db.4": {
+      "answer": "2",
+      "grade": 2,
+      "sample": "f97674f2cacbaea8"
+    },
+    "explain/invoice.0": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "363fab0d1a1f450b"
+    },
+    "explain/invoice.1": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "58d299a0b966d5b8"
+    },
+    "explain/invoice.2": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "6bdc02caa420074d"
+    },
+    "explain/invoice.3": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "06fff7ff20871ffc"
+    },
+    "explain/invoice.4": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "6bdc02caa420074d"
+    },
+    "explain/invoice_report.0": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "1bc1e7fcacb3711d"
+    },
+    "explain/invoice_report.1": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "272cf1eb450baec5"
+    },
+    "explain/invoice_report.2": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "7badfc16b3b73ddb"
+    },
+    "explain/invoice_report.3": {
+      "answer": "2",
+      "grade": 2,
+      "sample": "8ae6040fc2c8070e"
+    },
+    "explain/invoice_report.4": {
+      "answer": "3",
+      "grade": 3,
+      "sample": "24ac7884c8574efc"
+    },
+    "explain/log_parser.0": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "691807f902bc2364"
+    },
+    "explain/log_parser.1": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "1b9ae988d0681034"
+    },
+    "explain/log_parser.2": {
+      "answer": "2",
+      "grade": 2,
+      "sample": "d1202125fa8322d9"
+    },
+    "explain/log_parser.3": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "e393a88bc819fcb4"
+    },
+    "explain/log_parser.4": {
+      "answer": "2",
+      "grade": 2,
+      "sample": "1c8e167c2bc805ba"
+    },
+    "explain/markdown_table.0": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "ec62588db946288d"
+    },
+    "explain/markdown_table.1": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "73d7eba52e166c4f"
+    },
+    "explain/markdown_table.2": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "814ba0bcc0650449"
+    },
+    "explain/markdown_table.3": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "2bcc1e5e26d36f3c"
+    },
+    "explain/markdown_table.4": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "f76bcc02e65f0a91"
+    },
+    "explain/pagination.0": {
+      "answer": "2",
+      "grade": 2,
+      "sample": "bba5bc7a6f73303e"
+    },
+    "explain/pagination.1": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "6446cac462b3c9d8"
+    },
+    "explain/pagination.2": {
+      "answer": "2",
+      "grade": 2,
+      "sample": "d80328a86f4d9b36"
+    },
+    "explain/pagination.3": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "f116dd3b312ec40c"
+    },
+    "explain/pagination.4": {
+      "answer": "2",
+      "grade": 2,
+      "sample": "57b2ca9bac2be566"
+    },
+    "explain/permissions.0": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "e428a2876821b4b7"
+    },
+    "explain/permissions.1": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "9e55f44ff98ab526"
+    },
+    "explain/permissions.2": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "5f00b993935daf23"
+    },
+    "explain/permissions.3": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "94df859e548aabac"
+    },
+    "explain/permissions.4": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "d0896f8c637ad39d"
+    },
+    "explain/retry.0": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "0fba64d50fa637d1"
+    },
+    "explain/retry.1": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "1d8a1fbf384bd3a5"
+    },
+    "explain/retry.2": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "a7bd910fd0aea1fd"
+    },
+    "explain/retry.3": {
+      "answer": "3",
+      "grade": 3,
+      "sample": "28f37cfb6f8d1155"
+    },
+    "explain/retry.4": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "a7bd910fd0aea1fd"
+    },
+    "explain/sales_report.0": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "447af5cc6a28555e"
+    },
+    "explain/sales_report.1": {
+      "answer": "2",
+      "grade": 2,
+      "sample": "490d5dbe3c84bbe9"
+    },
+    "explain/sales_report.2": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "4119fceb4cebafc6"
+    },
+    "explain/sales_report.3": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "5d37f9b2721ac388"
+    },
+    "explain/sales_report.4": {
+      "answer": "2",
+      "grade": 2,
+      "sample": "490d5dbe3c84bbe9"
+    },
+    "explain/semver.0": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "03394b03c64b47fc"
+    },
+    "explain/semver.1": {
+      "answer": "2",
+      "grade": 2,
+      "sample": "74585123d9252a78"
+    },
+    "explain/semver.2": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "399fb81f71e7455f"
+    },
+    "explain/semver.3": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "11f2dc26d4ab8ce6"
+    },
+    "explain/semver.4": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "2fab6d8cc1d96671"
+    },
+    "explain/shapes.0": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "ca775736f53ecf66"
+    },
+    "explain/shapes.1": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "1c307c4abff93a38"
+    },
+    "explain/shapes.2": {
+      "answer": "5",
+      "grade": 5,
+      "sample": "37a8bec308199efb"
+    },
+    "explain/shapes.3": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "93aaaa05a89bd5e3"
+    },
+    "explain/shapes.4": {
+      "answer": "4",
+      "grade": 4,
+      "sample": "d5c9c2e2251bdcf3"
+    }
+  }
+}

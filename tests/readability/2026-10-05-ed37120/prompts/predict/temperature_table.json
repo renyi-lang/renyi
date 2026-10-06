@@ -1,0 +1,6 @@
+{
+  "task": "predict",
+  "name": "temperature_table",
+  "prompt": "Here is a Renyi program. It is run with the command-line arguments [] and no other input. Output exactly what the program prints to standard output, and nothing else: no explanation, no code fences.\n\nmodule temperature_table\n  purpose: Print a Celsius to Fahrenheit conversion table.\n\nimport std.console\n\npublic function to_fahrenheit(celsius: Decimal) returns Decimal\n  purpose: Convert a Celsius temperature to Fahrenheit.\n  example: to_fahrenheit(0) is 32\n  example: to_fahrenheit(100) is 212\n  example: to_fahrenheit(-40) is -40\n\n  return celsius * 9 / 5 + 32\nend\n\npublic function main() needs console\n  purpose: Print the table from -10 to 40 degrees in steps of 10.\n\n  console.print(\"Celsius  Fahrenheit\")\n  for each celsius from -10 to 40 by 10\n    let fahrenheit be to_fahrenheit(celsius.to_decimal())\n    console.print(\"{celsius.to_text().pad_left(7)}  {fahrenheit.to_text().pad_left(10)}\")\n  end\nend\n",
+  "arguments": []
+}

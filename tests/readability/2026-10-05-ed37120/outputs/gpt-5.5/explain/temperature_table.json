@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program provides a Celsius-to-Fahrenheit converter and a console entry point that prints a small conversion table. When run, it prints values from -10°C through 40°C in 10-degree steps, formatted in two columns.",
+    "This program prints a Celsius-to-Fahrenheit conversion table to the console. It includes a reusable conversion function and, when run, displays values from -10°C to 40°C in steps of 10.",
+    "This program prints a Celsius-to-Fahrenheit conversion table to the console. It covers Celsius values from -10 to 40 in steps of 10, using its conversion function to compute Fahrenheit values.",
+    "This program prints a Celsius-to-Fahrenheit conversion table to the console. It includes temperatures from -10°C to 40°C in 10-degree steps, using a reusable conversion function.",
+    "This program provides a Celsius-to-Fahrenheit converter and a console command that prints a small conversion table. When run, it outputs values from -10°C to 40°C in 10-degree steps, formatted in two columns."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

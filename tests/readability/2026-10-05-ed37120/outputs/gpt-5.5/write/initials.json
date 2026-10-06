@@ -1,0 +1,26 @@
+{
+  "samples": [
+    "```renyi\nmodule names.initials\n  purpose: Provide helpers for formatting names.\n\npublic function initials(full_name: Text) returns Text\n  purpose: Return the upper-case initials from a full name.\n  example: initials(\"ada marie lovelace\") is \"AML\"\n  example: initials(\"  ada   marie lovelace  \") is \"AML\"\n  example: initials(\"   \") is \"\"\n\n  let parts be full_name.trim().split(\" \")\n  let letters be\n    for each part in parts\n    where part.is_empty() is false\n    collect part.take(1).to_upper()\n\n  return letters.join(\"\")\nend\n```",
+    "```renyi\nmodule library.names\n  purpose: Work with human names.\n\npublic function initials(full_name: Text) returns Text\n  purpose: Return the upper-case initials of a full name.\n  example: initials(\"ada marie lovelace\") is \"AML\"\n  example: initials(\"  ada   marie  lovelace  \") is \"AML\"\n  example: initials(\"   \") is \"\"\n\n  let parts be full_name.trim().split(\" \")\n  let letters be\n    for each part in parts\n    where not part.is_empty()\n    collect part.take(1).to_upper()\n  return letters.join(\"\")\nend\n```",
+    "```renyi\nmodule names.initials\n  purpose: Build initials from full names.\n\npublic function initials(full_name: Text) returns Text\n  purpose: Return the upper-cased initials of a full name.\n  example: initials(full_name: \"ada marie lovelace\") is \"AML\"\n  example: initials(full_name: \"  ada   marie lovelace  \") is \"AML\"\n  example: initials(full_name: \"   \") is \"\"\n\n  let letters be\n    for each word in full_name.trim().split(\" \")\n    where word.is_empty is false\n    collect word.take(1).to_upper()\n\n  return letters.join(\"\")\nend\n```",
+    "```renyi\nmodule names.initials\n  purpose: Build initials from full names.\n\npublic function initials(full_name: Text) returns Text\n  purpose: Return the upper-cased initials of a full name with blanks ignored.\n  example: initials(full_name: \"ada marie lovelace\") is \"AML\"\n  example: initials(full_name: \"  grace   brewster  hopper \") is \"GBH\"\n  example: initials(full_name: \"   \") is \"\"\n\n  let parts be full_name.trim().split(\" \")\n  let letters be\n    for each part in parts\n    where not part.is_empty\n    collect part.take(1).to_upper()\n  return letters.join(\"\")\nend\n```",
+    "```renyi\nmodule library.names\n  purpose: Work with human names.\n\npublic function initials(full_name: Text) returns Text\n  purpose: Return the upper-cased initials of a full name.\n  example: initials(full_name: \"ada marie lovelace\") is \"AML\"\n  example: initials(full_name: \"  ada   marie  lovelace  \") is \"AML\"\n  example: initials(full_name: \"   \") is \"\"\n\n  let letters be\n    for each part in full_name.split(\" \")\n    where not part.is_empty\n    collect part.take(1).to_upper()\n\n  return letters.join(\"\")\nend\n```"
+  ],
+  "model": "gpt-5.5",
+  "temperature": null,
+  "source": {
+    "tool": "codex exec (OpenAI Codex CLI 0.153.3, ChatGPT subscription login)",
+    "model": "gpt-5.5",
+    "reasoning_effort": "medium",
+    "sandbox": "read-only",
+    "working_directory": "empty",
+    "prompt": "the system text and the task prompt in one user message",
+    "sessions": [
+      "01a10f1f-ef0c-7c00-97c3-02cfb4d472a9",
+      "01a10f20-31ef-7212-8667-0832276699b1",
+      "01a10f20-686d-7322-bcef-08812cfcf75c",
+      "01a10f20-95eb-7432-b52a-360b310ff44d",
+      "01a10f20-cb86-7f31-9bfd-bef15ba3a17a"
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program reads a text file, splits it into words, lowercases them, removes empty pieces, and counts how many times each word appears. It then sorts the words from most frequent to least frequent and prints the top ten with their counts. If you run the program without a command-line filename, it uses a default sample file instead.",
+    "This program reads a text file, splits it into words, lowercases them, and counts how many times each word appears. It then sorts the results from most frequent to least frequent and prints the top ten with their counts. If you use it, it’s a simple word-frequency tool with a command-line file path and a default sample file when no path is provided.",
+    "This program reads a text file, splits it into words, lowercases them, ignores empty pieces, and counts how many times each word appears. It then sorts the words from most frequent to least frequent and prints the top ten with their counts. If you use it, it’s a simple command-line word-frequency tool with a default input file when no filename is provided.",
+    "This program reads a text file, splits it into words, lowercases them, ignores empty pieces, and counts how many times each word appears. It then sorts the words from most frequent to least frequent and prints the top ten with their counts. If you use it, it’s a simple command-line word-frequency tool with a default input file when no filename is provided.",
+    "This program reads a text file, counts how often each non-empty word appears after lowercasing it, and returns the results sorted from most frequent to least frequent. Its main entry point takes the first command-line argument as the file path, or uses a default sample file if none is provided, then prints the top ten words with their counts. It is useful if you want a simple word-frequency report from a text file, but it only splits on spaces and does not do more advanced tokenization or punctuation handling."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

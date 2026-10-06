@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program sends a user's question to a remote chat API over HTTP and prints the model's response. It reads the API key from an environment variable and the question from command-line arguments, then parses the JSON response to extract the first answer. The test verifies the basic functionality by replaying a recorded API response.",
+    "This program sends a user's question to a remote chat API and prints the model's response. It reads the API key from an environment variable and the question from command-line arguments, then handles various failure modes like missing credentials or empty responses. The included test verifies the basic functionality by replaying a recorded API response.",
+    "This program sends a user's question to a remote chat API and prints the model's response. It reads the API key from an environment variable and the question from command-line arguments, then handles various failure modes like missing credentials or empty responses. The included test verifies the basic functionality by replaying a recorded API response.",
+    "This program sends a user's question to a remote chat API and prints the model's response. It reads the API key from an environment variable and the question from command-line arguments, then makes an HTTP request to a chat completion endpoint and extracts the first answer from the response. The included test verifies the basic functionality using a recorded HTTP response.",
+    "This program sends a user's question to a remote chat API and prints the model's response. It reads the API key from an environment variable and the question from command-line arguments, then handles various failure modes like missing credentials or empty responses. The included test verifies the basic functionality by replaying a recorded API response."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

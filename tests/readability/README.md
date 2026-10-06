@@ -92,5 +92,11 @@ per item, two Claude models). The first live round, `2026-10-05-1623155/`,
 ran Sonnet 5.5, Haiku 4.5 and gpt-5.4-mini through the vendor APIs with
 five samples per prompt; its `notes.md` has the method, every deviation,
 the results against the thresholds and the analysis of the failures. The
-credentials are the environment variables `ANTHROPIC_API_KEY` and
-`OPENAI_API_KEY` (decision L1).
+second round, `2026-10-05-ed37120/`, added gpt-5.5 (decision R8); its
+Predict, Explain and Complete samples came through the vendor APIs, the
+Write samples of gpt-5.5 through the Codex CLI (`run --provider file`),
+and the Explain grades from Claude Code subagents rather than the API
+graders; its `notes.md` records the sources and what the change in graders
+does to the numbers. The credentials are the environment variables
+`ANTHROPIC_API_KEY` and `OPENAI_API_KEY` (decision L1); they are spent only
+when the owner says so for the round.

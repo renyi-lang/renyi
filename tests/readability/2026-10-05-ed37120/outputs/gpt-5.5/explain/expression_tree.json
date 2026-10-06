@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This module represents simple decimal arithmetic expressions as trees, supporting numbers, addition, multiplication, and negation. It can recursively evaluate an expression to a decimal value and render it as parenthesized infix text. Its main function demonstrates this by printing a sample expression and its result to the console.",
+    "This module represents decimal arithmetic expressions as trees with numbers, addition, multiplication, and negation. It can recursively compute an expression’s numeric value and render it as readable infix text with parentheses around binary operations. Its main function demonstrates this by building a small expression and printing the expression alongside its evaluated result.",
+    "This module represents arithmetic expressions as trees containing decimal numbers, addition, multiplication, and negation. It can evaluate a tree to a decimal result and render it as a parenthesized infix expression. Its main program builds a small sample expression and prints the expression alongside its computed value.",
+    "This module represents simple decimal arithmetic expressions as trees, supporting numbers, addition, multiplication, and negation. It can recursively evaluate an expression to a decimal value and render it as fully parenthesized infix text. Its main program builds a sample expression and prints the rendered expression alongside its computed value.",
+    "This module represents arithmetic expressions as trees containing decimal numbers, addition, multiplication, and negation. It can evaluate such a tree to a decimal result and render it as parenthesized infix text. Its main function prints an example expression, `(1 + 2) * -4`, alongside its computed value, `-12`."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null
+}

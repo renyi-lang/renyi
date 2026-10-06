@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This tool converts a decimal amount from one three-letter currency code to another by calling the Frankfurter exchange-rate API, then rounds the result to cents. It can fail if the network request or JSON parsing fails, or if the requested currency pair has no available rate. Because it is exposed as a tool, it is meant to be callable by agents for currency conversion tasks.",
+    "This program defines a currency-conversion tool that fetches today’s exchange rate from Frankfurter, converts a decimal amount from one three-letter currency code to another, and rounds the result to cents. It can fail if the rate service is unreachable, the response cannot be parsed, or no rate exists for the requested currency pair. Because it is published as a tool, agents can call it directly, and the included test shows that 100 USD should convert to 89.25 EUR using a recorded fixture.",
+    "This tool converts a decimal amount from one three-letter currency code to another by calling the Frankfurter exchange-rate API, then rounds the result to two decimal places. It can fail if the network request or JSON parsing fails, or if the requested currency pair has no available rate. Because it is exposed as a tool, it is intended for agent use and is suitable if you want live currency conversion rather than offline or cached rates.",
+    "This tool converts a decimal amount from one three-letter currency code to another by calling the Frankfurter exchange-rate API, then rounds the result to cents. It can fail if the network request or JSON parsing fails, or if the requested rate is unavailable. Because it is exposed as a tool, it is intended for agent use in money/exchange-rate workflows.",
+    "This tool converts a decimal amount from one three-letter currency code to another by calling the Frankfurter exchange-rate API, then rounds the result to cents. It can fail if the network request or JSON parsing fails, or if the requested currency pair has no available rate. Because it is exposed as a tool, it is intended for agent use in workflows that need live currency conversion."
+  ],
+  "model": "gpt-5.4-mini",
+  "temperature": 0.0
+}

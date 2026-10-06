@@ -1,0 +1,6 @@
+{
+  "task": "write",
+  "name": "low_stock_report",
+  "prompt": "Write a complete Renyi program for the task below. Follow the cheat sheet exactly: no features it does not list. Give every public definition a `purpose:` clause and give pure functions `example:` lines. Answer with the program only, in one code fence.\n\nTask: A command-line program that reads a JSON file of products (name, stock, reorder_level) whose path is the first argument, and prints one line per product whose stock is below its reorder level, lowest stock first.",
+  "description": "A command-line program that reads a JSON file of products (name, stock, reorder_level) whose path is the first argument, and prints one line per product whose stock is below its reorder level, lowest stock first."
+}

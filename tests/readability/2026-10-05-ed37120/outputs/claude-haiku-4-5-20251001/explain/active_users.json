@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program reads a JSON file containing user accounts, filters for active users who are at least 18 years old, and outputs their email addresses sorted by name. The main function prints each qualifying email address on a separate line, followed by a count of how many active adults were found. It validates that email addresses match a basic format and will fail gracefully if the file cannot be read or the JSON is malformed.",
+    "This program reads a JSON file containing user accounts, filters for active users who are at least 18 years old, and outputs their email addresses sorted by name. The main function prints each qualifying email address on a separate line, followed by a count of how many active adults were found. It validates that email addresses match a basic format and will fail gracefully if the file cannot be read or the JSON is malformed.",
+    "This program reads a JSON file containing user accounts, filters for active users who are at least 18 years old, and outputs their email addresses sorted by name. The main function prints each qualifying email address on a separate line, followed by a count of how many active adults were found. It validates that email addresses match a basic format and ensures all input data is properly typed before processing.",
+    "This program reads a JSON file containing user accounts, filters for active users who are at least 18 years old, and outputs their email addresses sorted by name. The main function prints each qualifying email address to the console along with a count of how many active adults were found. It validates that email addresses match a basic format and ensures all input data is properly typed before processing.",
+    "This program reads a JSON file containing user accounts, filters for active users who are at least 18 years old, and outputs their email addresses sorted by name. The main function prints each qualifying email address to the console along with a count of how many active adults were found. It validates that email addresses match a basic format and ensures all input data is properly typed before processing."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}

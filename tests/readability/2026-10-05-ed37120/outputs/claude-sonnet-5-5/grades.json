@@ -1,0 +1,1506 @@
+{
+  "agent:claude-opus-5-5#a91b135c": {
+    "explain/active_users.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "06d8c4d958a78af8"
+    },
+    "explain/active_users.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "90d54f3c18e86cce"
+    },
+    "explain/active_users.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "88fa213c59c27f70"
+    },
+    "explain/active_users.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b9175a99bdcd0dac"
+    },
+    "explain/active_users.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "59ff0160dd6bbc49"
+    },
+    "explain/assistant.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ffa73345995e4a7e"
+    },
+    "explain/assistant.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "50d61c8d025ac37b"
+    },
+    "explain/assistant.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4e806d50d423ce4b"
+    },
+    "explain/assistant.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e77be396868695d1"
+    },
+    "explain/assistant.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "93edbc579020134e"
+    },
+    "explain/concurrent_fetch.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "05c49913bbcdaf48"
+    },
+    "explain/concurrent_fetch.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e2d1de97622dc6ed"
+    },
+    "explain/concurrent_fetch.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "fd5658d817fda31a"
+    },
+    "explain/concurrent_fetch.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f507108fcf30caf4"
+    },
+    "explain/concurrent_fetch.4": {
+      "answer": "Omits how the program fails: an HTTP error when a download fails and a timeout when the ten-second deadline passes.",
+      "grade": 4,
+      "sample": "58fa9a920fc8f72d"
+    },
+    "explain/config.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "bdef301d39902504"
+    },
+    "explain/config.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d7c783d46b0c08de"
+    },
+    "explain/config.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c523dd737a8b758e"
+    },
+    "explain/config.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3db47eef8bb01955"
+    },
+    "explain/config.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "52bec901821c36d5"
+    },
+    "explain/currency_tool.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b55c37dd5fa1f3f8"
+    },
+    "explain/currency_tool.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "151742503c19daaa"
+    },
+    "explain/currency_tool.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "45344746a7c40f83"
+    },
+    "explain/currency_tool.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "bdb64e39482241f7"
+    },
+    "explain/currency_tool.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "573f0fe80d1bf3eb"
+    },
+    "explain/deadlines.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ceb63de13f760f08"
+    },
+    "explain/deadlines.1": {
+      "answer": "Omits the failures, which belong to the line parser: MissingComma when the line does not split into two parts and an invalid-date error for a bad date.",
+      "grade": 4,
+      "sample": "a571f297711d2142"
+    },
+    "explain/deadlines.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f4473f9dfade3d10"
+    },
+    "explain/deadlines.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c3b0f89fb96d61fe"
+    },
+    "explain/deadlines.4": {
+      "answer": "Omits the failures, which belong to the line parser: MissingComma when the line does not split into two parts and an invalid-date error for a bad date.",
+      "grade": 4,
+      "sample": "d5f6eaa3835d9b8c"
+    },
+    "explain/dependency_order.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "47b5e584a2f5c901"
+    },
+    "explain/dependency_order.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e7104063bc6cd353"
+    },
+    "explain/dependency_order.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "cc8a2874ab9d4f5a"
+    },
+    "explain/dependency_order.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "905377cfcd2a7887"
+    },
+    "explain/dependency_order.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f095158811abdb17"
+    },
+    "explain/expression_tree.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1026943536cc42f7"
+    },
+    "explain/expression_tree.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a1d1149242a6e1cc"
+    },
+    "explain/expression_tree.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "eb936cbb540dfb50"
+    },
+    "explain/expression_tree.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4f7882d8b8f86ddf"
+    },
+    "explain/expression_tree.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "15821cd4e532b272"
+    },
+    "explain/file_tree.0": {
+      "answer": "Says it only reads the filesystem and writes to the console, but the program also needs the environment (for the command-line argument).",
+      "grade": 2,
+      "sample": "55698d0de62cb3b8"
+    },
+    "explain/file_tree.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "865a01b07bdf4374"
+    },
+    "explain/file_tree.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b7a51a4406c39dd8"
+    },
+    "explain/file_tree.3": {
+      "answer": "Says it only needs read access to the filesystem and the console, but the program also needs the environment (for the command-line argument).",
+      "grade": 2,
+      "sample": "9b77efc3c73df23a"
+    },
+    "explain/file_tree.4": {
+      "answer": "Says it only reads the filesystem and writes to the console, but the program also needs the environment (for the command-line argument).",
+      "grade": 2,
+      "sample": "c593c7fd7a98421c"
+    },
+    "explain/hello.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "eb30dc3c7abeff5b"
+    },
+    "explain/hello.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "66a6c130fbeb0126"
+    },
+    "explain/hello.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d4a9a7a683284732"
+    },
+    "explain/hello.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e2f1dc8c5248b9f1"
+    },
+    "explain/hello.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9508402bbce95db3"
+    },
+    "explain/http_service.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0eac14e3259c579f"
+    },
+    "explain/http_service.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "61aa9d93123c7da3"
+    },
+    "explain/http_service.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c2a497267db8f95b"
+    },
+    "explain/http_service.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0b7f46f67ecb4368"
+    },
+    "explain/http_service.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1f5bc11d7c957925"
+    },
+    "explain/inventory_db.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c5b77e66f9c465d4"
+    },
+    "explain/inventory_db.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "aedc3160399d98f5"
+    },
+    "explain/inventory_db.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "fa28fe750468f951"
+    },
+    "explain/inventory_db.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f2355490dd8a52a7"
+    },
+    "explain/inventory_db.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "156c83514e22ffb1"
+    },
+    "explain/invoice.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6b43d6ae350a0060"
+    },
+    "explain/invoice.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "70d03fd2d7bdf39d"
+    },
+    "explain/invoice.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "fd844ebc8d42ae63"
+    },
+    "explain/invoice.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "78917ddc115decbb"
+    },
+    "explain/invoice.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "fbf68fca6534f3b2"
+    },
+    "explain/invoice_report.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ba98e2e2885b0168"
+    },
+    "explain/invoice_report.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "afc01bdecb4484db"
+    },
+    "explain/invoice_report.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "704cb204b8fd456a"
+    },
+    "explain/invoice_report.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9b6ca52e52d3d86b"
+    },
+    "explain/invoice_report.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "eab143008e979d48"
+    },
+    "explain/log_parser.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "991541b4a94a4af8"
+    },
+    "explain/log_parser.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1b9b3e403dbd68bf"
+    },
+    "explain/log_parser.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e51599b2e91cd9cb"
+    },
+    "explain/log_parser.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "dfc3719e66b8ffc5"
+    },
+    "explain/log_parser.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8f02804ab403f94c"
+    },
+    "explain/markdown_table.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f6b66b64f5855412"
+    },
+    "explain/markdown_table.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "001b22c0dc4d51a0"
+    },
+    "explain/markdown_table.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e784f34bc1660c74"
+    },
+    "explain/markdown_table.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9de1474c14b376f6"
+    },
+    "explain/markdown_table.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6f6d31496351a46b"
+    },
+    "explain/pagination.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "866aa17c6bf4afe8"
+    },
+    "explain/pagination.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "446cecbc11ade358"
+    },
+    "explain/pagination.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "76190bbccdbfc39e"
+    },
+    "explain/pagination.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "19ddd6de3d6a2ee1"
+    },
+    "explain/pagination.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f13e80e5d44a71a7"
+    },
+    "explain/permissions.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "39321a670fd6c04e"
+    },
+    "explain/permissions.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "89c908d0f2f39dd1"
+    },
+    "explain/permissions.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ba2c8abb77451790"
+    },
+    "explain/permissions.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "da61348ec790ed5e"
+    },
+    "explain/permissions.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a453c6eb4f3b090e"
+    },
+    "explain/retry.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "126cd3a4ec376786"
+    },
+    "explain/retry.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "68542454407a44a8"
+    },
+    "explain/retry.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d390fcf567e4df3b"
+    },
+    "explain/retry.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e90990f2c9a70b2d"
+    },
+    "explain/retry.4": {
+      "answer": "It says the last error message carried when giving up includes the attempt number, but GaveUp carries only the last error text (the 'attempt <n>:' prefix belongs to the per-attempt records).",
+      "grade": 2,
+      "sample": "9ed576ca84626545"
+    },
+    "explain/sales_report.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "2d154e5f5412b85d"
+    },
+    "explain/sales_report.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "361f11ab32e3cd58"
+    },
+    "explain/sales_report.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b121bce7d8651a13"
+    },
+    "explain/sales_report.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "fdd989e6ab93ee17"
+    },
+    "explain/sales_report.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d45198da88b58490"
+    },
+    "explain/semver.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e89b4a626c7eaa67"
+    },
+    "explain/semver.1": {
+      "answer": "Effects missing: it never says the module is pure and needs nothing (no console, files, network, environment or clock).",
+      "grade": 4,
+      "sample": "e254af9fdb96e8fd"
+    },
+    "explain/semver.2": {
+      "answer": "Effects missing: it never says the module is pure and needs nothing (no console, files, network, environment or clock).",
+      "grade": 4,
+      "sample": "21743a17fe850159"
+    },
+    "explain/semver.3": {
+      "answer": "Effects missing: it never says the module is pure and needs nothing (no console, files, network, environment or clock).",
+      "grade": 4,
+      "sample": "564ffb3b06b4bd04"
+    },
+    "explain/semver.4": {
+      "answer": "Effects missing: it never says the module is pure and needs nothing (no console, files, network, environment or clock).",
+      "grade": 4,
+      "sample": "6f338bbe0878051a"
+    },
+    "explain/shapes.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "73dcdb267c9b17f6"
+    },
+    "explain/shapes.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "fe6187362112cbd2"
+    },
+    "explain/shapes.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "11a7d197fa2b9ee9"
+    },
+    "explain/shapes.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "069692805ae37f17"
+    },
+    "explain/shapes.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d44f69292023037e"
+    },
+    "explain/shipping_rules.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "107cec26aa5376ff"
+    },
+    "explain/shipping_rules.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1dfec60cfbf2253e"
+    },
+    "explain/shipping_rules.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "00f478c5ff63c81e"
+    },
+    "explain/shipping_rules.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b445c679d09d93a8"
+    },
+    "explain/shipping_rules.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "21fa2ee5d613f696"
+    },
+    "explain/stacks.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f924cedc49d1c775"
+    },
+    "explain/stacks.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "655a8ae50dfd6050"
+    },
+    "explain/stacks.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "fe7da309d745987b"
+    },
+    "explain/stacks.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "58236cbb4d836343"
+    },
+    "explain/stacks.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "98dc5a1b793ae45d"
+    },
+    "explain/statistics.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1d25ce0e086604f1"
+    },
+    "explain/statistics.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6650e2486cd43506"
+    },
+    "explain/statistics.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d61b8d456a27fa50"
+    },
+    "explain/statistics.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "2b462949da3cc310"
+    },
+    "explain/statistics.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "7384e824eb777d20"
+    },
+    "explain/temperature_table.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "709c4305eaf3646f"
+    },
+    "explain/temperature_table.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f0dfde3a8c10a43a"
+    },
+    "explain/temperature_table.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5acc23c9b2cb134d"
+    },
+    "explain/temperature_table.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "bee9acd124df896f"
+    },
+    "explain/temperature_table.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "85d7b5cad266c614"
+    },
+    "explain/todo_cli.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a398afe53b2a9a49"
+    },
+    "explain/todo_cli.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9a3707d40c3ce6e2"
+    },
+    "explain/todo_cli.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "23356a4d7f358c54"
+    },
+    "explain/todo_cli.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "53d10bd7b5e3c841"
+    },
+    "explain/todo_cli.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e58ce989c7fbeec2"
+    },
+    "explain/traffic_light.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9c3b4d220abaaf92"
+    },
+    "explain/traffic_light.1": {
+      "answer": "Main behaviour missing: the timer cycle (Red to Green to Yellow to Red) is never stated, only the emergency transitions.",
+      "grade": 4,
+      "sample": "946fa07a5c91ab58"
+    },
+    "explain/traffic_light.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d22f8298b5e4df35"
+    },
+    "explain/traffic_light.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ff595cef53605d3a"
+    },
+    "explain/traffic_light.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ae0bfb1eb1064e81"
+    },
+    "explain/weather.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3d571affe50bd448"
+    },
+    "explain/weather.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c061ac7f1ee0e8b7"
+    },
+    "explain/weather.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6156f61a9450cd78"
+    },
+    "explain/weather.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "aec30ebeb48615ff"
+    },
+    "explain/weather.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6456988dca1382ae"
+    },
+    "explain/word_count.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1734b100b7108012"
+    },
+    "explain/word_count.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a9d2184225d08aa8"
+    },
+    "explain/word_count.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9bc7e2948d29ce91"
+    },
+    "explain/word_count.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b51c389ae7aaf9ad"
+    },
+    "explain/word_count.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b6351525cf8e5746"
+    }
+  },
+  "agent:claude-sonnet-5-5#a91b135c": {
+    "explain/active_users.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "06d8c4d958a78af8"
+    },
+    "explain/active_users.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "90d54f3c18e86cce"
+    },
+    "explain/active_users.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "88fa213c59c27f70"
+    },
+    "explain/active_users.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b9175a99bdcd0dac"
+    },
+    "explain/active_users.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "59ff0160dd6bbc49"
+    },
+    "explain/assistant.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ffa73345995e4a7e"
+    },
+    "explain/assistant.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "50d61c8d025ac37b"
+    },
+    "explain/assistant.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4e806d50d423ce4b"
+    },
+    "explain/assistant.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e77be396868695d1"
+    },
+    "explain/assistant.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "93edbc579020134e"
+    },
+    "explain/concurrent_fetch.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "05c49913bbcdaf48"
+    },
+    "explain/concurrent_fetch.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e2d1de97622dc6ed"
+    },
+    "explain/concurrent_fetch.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "fd5658d817fda31a"
+    },
+    "explain/concurrent_fetch.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f507108fcf30caf4"
+    },
+    "explain/concurrent_fetch.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "58fa9a920fc8f72d"
+    },
+    "explain/config.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "bdef301d39902504"
+    },
+    "explain/config.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d7c783d46b0c08de"
+    },
+    "explain/config.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c523dd737a8b758e"
+    },
+    "explain/config.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3db47eef8bb01955"
+    },
+    "explain/config.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "52bec901821c36d5"
+    },
+    "explain/currency_tool.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b55c37dd5fa1f3f8"
+    },
+    "explain/currency_tool.1": {
+      "answer": "complete; the extra claims about validation and caching are neither confirmed nor contradicted and are ignored",
+      "grade": 5,
+      "sample": "151742503c19daaa"
+    },
+    "explain/currency_tool.2": {
+      "answer": "complete; the doubts about a missing end and the literal type are cautions and are ignored",
+      "grade": 5,
+      "sample": "45344746a7c40f83"
+    },
+    "explain/currency_tool.3": {
+      "answer": "complete; the caution that the module may not compile is a doubt and is ignored",
+      "grade": 5,
+      "sample": "bdb64e39482241f7"
+    },
+    "explain/currency_tool.4": {
+      "answer": "complete; the caution that the module probably will not compile is a doubt and is ignored",
+      "grade": 5,
+      "sample": "573f0fe80d1bf3eb"
+    },
+    "explain/deadlines.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ceb63de13f760f08"
+    },
+    "explain/deadlines.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a571f297711d2142"
+    },
+    "explain/deadlines.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f4473f9dfade3d10"
+    },
+    "explain/deadlines.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c3b0f89fb96d61fe"
+    },
+    "explain/deadlines.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d5f6eaa3835d9b8c"
+    },
+    "explain/dependency_order.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "47b5e584a2f5c901"
+    },
+    "explain/dependency_order.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e7104063bc6cd353"
+    },
+    "explain/dependency_order.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "cc8a2874ab9d4f5a"
+    },
+    "explain/dependency_order.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "905377cfcd2a7887"
+    },
+    "explain/dependency_order.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f095158811abdb17"
+    },
+    "explain/expression_tree.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1026943536cc42f7"
+    },
+    "explain/expression_tree.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a1d1149242a6e1cc"
+    },
+    "explain/expression_tree.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "eb936cbb540dfb50"
+    },
+    "explain/expression_tree.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4f7882d8b8f86ddf"
+    },
+    "explain/expression_tree.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "15821cd4e532b272"
+    },
+    "explain/file_tree.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "55698d0de62cb3b8"
+    },
+    "explain/file_tree.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "865a01b07bdf4374"
+    },
+    "explain/file_tree.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b7a51a4406c39dd8"
+    },
+    "explain/file_tree.3": {
+      "answer": "Complete except that the stated needs (filesystem read and console) omit the environment, i.e. the command-line argument.",
+      "grade": 4,
+      "sample": "9b77efc3c73df23a"
+    },
+    "explain/file_tree.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c593c7fd7a98421c"
+    },
+    "explain/hello.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "eb30dc3c7abeff5b"
+    },
+    "explain/hello.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "66a6c130fbeb0126"
+    },
+    "explain/hello.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d4a9a7a683284732"
+    },
+    "explain/hello.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e2f1dc8c5248b9f1"
+    },
+    "explain/hello.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9508402bbce95db3"
+    },
+    "explain/http_service.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0eac14e3259c579f"
+    },
+    "explain/http_service.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "61aa9d93123c7da3"
+    },
+    "explain/http_service.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c2a497267db8f95b"
+    },
+    "explain/http_service.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "0b7f46f67ecb4368"
+    },
+    "explain/http_service.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1f5bc11d7c957925"
+    },
+    "explain/inventory_db.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c5b77e66f9c465d4"
+    },
+    "explain/inventory_db.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "aedc3160399d98f5"
+    },
+    "explain/inventory_db.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "fa28fe750468f951"
+    },
+    "explain/inventory_db.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f2355490dd8a52a7"
+    },
+    "explain/inventory_db.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "156c83514e22ffb1"
+    },
+    "explain/invoice.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6b43d6ae350a0060"
+    },
+    "explain/invoice.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "70d03fd2d7bdf39d"
+    },
+    "explain/invoice.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "fd844ebc8d42ae63"
+    },
+    "explain/invoice.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "78917ddc115decbb"
+    },
+    "explain/invoice.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "fbf68fca6534f3b2"
+    },
+    "explain/invoice_report.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ba98e2e2885b0168"
+    },
+    "explain/invoice_report.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "afc01bdecb4484db"
+    },
+    "explain/invoice_report.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "704cb204b8fd456a"
+    },
+    "explain/invoice_report.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9b6ca52e52d3d86b"
+    },
+    "explain/invoice_report.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "eab143008e979d48"
+    },
+    "explain/log_parser.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "991541b4a94a4af8"
+    },
+    "explain/log_parser.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1b9b3e403dbd68bf"
+    },
+    "explain/log_parser.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e51599b2e91cd9cb"
+    },
+    "explain/log_parser.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "dfc3719e66b8ffc5"
+    },
+    "explain/log_parser.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8f02804ab403f94c"
+    },
+    "explain/markdown_table.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f6b66b64f5855412"
+    },
+    "explain/markdown_table.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "001b22c0dc4d51a0"
+    },
+    "explain/markdown_table.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e784f34bc1660c74"
+    },
+    "explain/markdown_table.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9de1474c14b376f6"
+    },
+    "explain/markdown_table.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6f6d31496351a46b"
+    },
+    "explain/pagination.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "866aa17c6bf4afe8"
+    },
+    "explain/pagination.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "446cecbc11ade358"
+    },
+    "explain/pagination.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "76190bbccdbfc39e"
+    },
+    "explain/pagination.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "19ddd6de3d6a2ee1"
+    },
+    "explain/pagination.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f13e80e5d44a71a7"
+    },
+    "explain/permissions.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "39321a670fd6c04e"
+    },
+    "explain/permissions.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "89c908d0f2f39dd1"
+    },
+    "explain/permissions.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ba2c8abb77451790"
+    },
+    "explain/permissions.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "da61348ec790ed5e"
+    },
+    "explain/permissions.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a453c6eb4f3b090e"
+    },
+    "explain/retry.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "126cd3a4ec376786"
+    },
+    "explain/retry.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "68542454407a44a8"
+    },
+    "explain/retry.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d390fcf567e4df3b"
+    },
+    "explain/retry.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e90990f2c9a70b2d"
+    },
+    "explain/retry.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9ed576ca84626545"
+    },
+    "explain/sales_report.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "2d154e5f5412b85d"
+    },
+    "explain/sales_report.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "361f11ab32e3cd58"
+    },
+    "explain/sales_report.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b121bce7d8651a13"
+    },
+    "explain/sales_report.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "fdd989e6ab93ee17"
+    },
+    "explain/sales_report.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d45198da88b58490"
+    },
+    "explain/semver.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e89b4a626c7eaa67"
+    },
+    "explain/semver.1": {
+      "answer": "Nothing is wrong, but it never says the library is pure and needs no console, files, network or environment.",
+      "grade": 4,
+      "sample": "e254af9fdb96e8fd"
+    },
+    "explain/semver.2": {
+      "answer": "Nothing is wrong, but it never says the library is pure and needs no console, files, network or environment.",
+      "grade": 4,
+      "sample": "21743a17fe850159"
+    },
+    "explain/semver.3": {
+      "answer": "Nothing is wrong, but it never says the library is pure and needs no console, files, network or environment.",
+      "grade": 4,
+      "sample": "564ffb3b06b4bd04"
+    },
+    "explain/semver.4": {
+      "answer": "Nothing is wrong, but it never says the library is pure and needs no console, files, network or environment.",
+      "grade": 4,
+      "sample": "6f338bbe0878051a"
+    },
+    "explain/shapes.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "73dcdb267c9b17f6"
+    },
+    "explain/shapes.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "fe6187362112cbd2"
+    },
+    "explain/shapes.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "11a7d197fa2b9ee9"
+    },
+    "explain/shapes.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "069692805ae37f17"
+    },
+    "explain/shapes.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d44f69292023037e"
+    },
+    "explain/shipping_rules.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "107cec26aa5376ff"
+    },
+    "explain/shipping_rules.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1dfec60cfbf2253e"
+    },
+    "explain/shipping_rules.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "00f478c5ff63c81e"
+    },
+    "explain/shipping_rules.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b445c679d09d93a8"
+    },
+    "explain/shipping_rules.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "21fa2ee5d613f696"
+    },
+    "explain/stacks.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f924cedc49d1c775"
+    },
+    "explain/stacks.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "655a8ae50dfd6050"
+    },
+    "explain/stacks.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "fe7da309d745987b"
+    },
+    "explain/stacks.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "58236cbb4d836343"
+    },
+    "explain/stacks.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "98dc5a1b793ae45d"
+    },
+    "explain/statistics.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1d25ce0e086604f1"
+    },
+    "explain/statistics.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6650e2486cd43506"
+    },
+    "explain/statistics.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d61b8d456a27fa50"
+    },
+    "explain/statistics.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "2b462949da3cc310"
+    },
+    "explain/statistics.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "7384e824eb777d20"
+    },
+    "explain/temperature_table.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "709c4305eaf3646f"
+    },
+    "explain/temperature_table.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f0dfde3a8c10a43a"
+    },
+    "explain/temperature_table.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5acc23c9b2cb134d"
+    },
+    "explain/temperature_table.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "bee9acd124df896f"
+    },
+    "explain/temperature_table.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "85d7b5cad266c614"
+    },
+    "explain/todo_cli.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a398afe53b2a9a49"
+    },
+    "explain/todo_cli.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9a3707d40c3ce6e2"
+    },
+    "explain/todo_cli.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "23356a4d7f358c54"
+    },
+    "explain/todo_cli.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "53d10bd7b5e3c841"
+    },
+    "explain/todo_cli.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "e58ce989c7fbeec2"
+    },
+    "explain/traffic_light.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9c3b4d220abaaf92"
+    },
+    "explain/traffic_light.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "946fa07a5c91ab58"
+    },
+    "explain/traffic_light.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "d22f8298b5e4df35"
+    },
+    "explain/traffic_light.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ff595cef53605d3a"
+    },
+    "explain/traffic_light.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ae0bfb1eb1064e81"
+    },
+    "explain/weather.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3d571affe50bd448"
+    },
+    "explain/weather.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "c061ac7f1ee0e8b7"
+    },
+    "explain/weather.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6156f61a9450cd78"
+    },
+    "explain/weather.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "aec30ebeb48615ff"
+    },
+    "explain/weather.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6456988dca1382ae"
+    },
+    "explain/word_count.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1734b100b7108012"
+    },
+    "explain/word_count.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a9d2184225d08aa8"
+    },
+    "explain/word_count.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9bc7e2948d29ce91"
+    },
+    "explain/word_count.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b51c389ae7aaf9ad"
+    },
+    "explain/word_count.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b6351525cf8e5746"
+    }
+  }
+}

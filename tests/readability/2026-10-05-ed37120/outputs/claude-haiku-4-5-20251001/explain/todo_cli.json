@@ -1,0 +1,11 @@
+{
+  "samples": [
+    "This program is a command-line to-do list manager that stores tasks in a text file. It supports four operations: adding a new task, marking a task as done by removing it, displaying all tasks, or showing usage help. Each command reads the current task list from disk, applies the requested change, saves it back, and displays the updated list.",
+    "This program is a command-line to-do list manager that stores tasks in a text file. It supports four operations: adding a new task, marking a task as done (by removing it), displaying all tasks, or showing usage help. Each command reads the current task list from disk, applies the requested change, saves it back, and displays the updated list.",
+    "This program is a command-line to-do list manager that stores tasks in a text file. It supports four operations: adding a new task, marking a task as done by removing it, displaying all tasks, or showing usage help. Each command reads the current task list from disk, applies the requested change, saves it back, and displays the updated list.",
+    "This program is a command-line to-do list manager that stores tasks in a text file. It supports four operations: adding a new task, marking a task as done (by removing it), displaying all tasks, or showing usage help. Each command reads the current task list from disk, applies the requested change, saves it back, and displays the updated list.",
+    "This program is a command-line to-do list manager that stores tasks in a text file. It supports four operations: adding a new task, marking a task as done (by removing it), displaying all tasks, or showing usage help. Each command reads the current task list from disk, applies the requested change, saves it back, and displays the updated list."
+  ],
+  "model": "claude-haiku-4-5-20251001",
+  "temperature": 0.0
+}
