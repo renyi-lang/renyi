@@ -190,6 +190,9 @@ pub struct Checker<'w> {
     depth: usize,
     /// Inside a task of `run concurrently` (decision V7).
     task: Option<TaskScope>,
+    /// The `for any` parameters of the function being checked, in scope for
+    /// the type annotations of its body.
+    type_params: Vec<(String, ParamId)>,
 }
 
 impl<'w> Checker<'w> {
@@ -219,6 +222,7 @@ impl<'w> Checker<'w> {
             results: Vec::new(),
             depth: 0,
             task: None,
+            type_params: Vec::new(),
         }
     }
 
@@ -573,7 +577,8 @@ impl<'w> Checker<'w> {
                     (Some(x), Some(y)) => self.assign(x, y, span),
                     _ => false,
                 };
-                // the function value may fail only with what the expected type lists
+                // the function value may fail only with what the expected type
+                // lists; its needs are charged where it is passed (decision B1)
                 let fails_ok = a
                     .fails
                     .iter()
@@ -882,6 +887,12 @@ impl<'w> Checker<'w> {
         self.deferred.clear();
         self.depth = 0;
         self.task = None;
+        let world = self.world;
+        self.type_params = info
+            .type_params
+            .iter()
+            .map(|&p| (world.param_name(p), p))
+            .collect();
         self.push_scope();
         for ((_, ty), param) in info.params.iter().zip(&function.params) {
             let ty = match ty {
@@ -1012,6 +1023,7 @@ impl<'w> Checker<'w> {
         self.deferred.clear();
         self.depth = 0;
         self.task = None;
+        self.type_params.clear();
         self.push_scope();
         self.check_block_in_scope(&test.body);
         self.pop_scope();
@@ -1099,6 +1111,7 @@ impl<'w> Checker<'w> {
         };
         self.vars.clear();
         self.deferred.clear();
+        self.type_params.clear();
         self.push_scope();
         for (name, ty) in bindings {
             let name = Name {
@@ -1131,6 +1144,7 @@ impl<'w> Checker<'w> {
         };
         self.vars.clear();
         self.deferred.clear();
+        self.type_params.clear();
         self.push_scope();
         let info = self.infer(&constant.value, Some(ty));
         self.require_handled(&info, constant.value.span);
@@ -1368,6 +1382,11 @@ impl<'w> Checker<'w> {
                             );
                             Ty::Error
                         } else {
+                            // a literal takes the type its context expects
+                            // (sketch section 7); a binding without an
+                            // annotation is that context, so the literal
+                            // takes its own type here, Integer or Decimal
+                            self.default_literal(&info.ty);
                             info.ty.clone()
                         }
                     }
@@ -2270,6 +2289,23 @@ impl<'w> Checker<'w> {
             .map(|m| format!("write `import {}` at the top of the module", m.name))
     }
 
+    /// A definition of another module is reachable only when it is `public`
+    /// (sketch section 3: definitions are private unless marked so).
+    fn require_public(&mut self, function: FunctionId, span: Span) {
+        let info = &self.world.functions[function];
+        if info.public || info.module == self.module {
+            return;
+        }
+        let name = info.name.clone();
+        let owner = self.world.modules[info.module].name.clone();
+        self.error_fix(
+            "private-name",
+            format!("`{name}` is not public in `{owner}`"),
+            span,
+            format!("add `public` to its declaration in `{owner}`"),
+        );
+    }
+
     /// The type of a function used as a value (passed by name).
     fn function_type(&self, id: FunctionId) -> Ty {
         let info = &self.world.functions[id];
@@ -2390,32 +2426,49 @@ impl<'w> Checker<'w> {
     }
 
     fn infer_member(&mut self, base: &Expr, name: &Name, span: Span) -> Info {
-        // a module function used as a value: `module.function`
+        // a module function used as a value (`module.function`), or a
+        // constant of the module (`module.constant`)
         if let ExprKind::Name(namespace) = &base.kind {
             if self.lookup(&namespace.text).is_none() {
                 if let Some(&target) = self.world.modules[self.module].imports.get(&namespace.text)
                 {
-                    return match self.world.lookup_function(target, &name.text) {
-                        Some(function) => {
-                            self.record(Target::Function(function), name.span);
-                            let deprecated = self.world.functions[function].deprecated.as_deref();
-                            self.note_deprecated(&name.text, deprecated, name.span);
-                            Info {
-                                ty: self.function_type(function),
-                                fails: Vec::new(),
-                                function: Some(function),
-                            }
-                        }
-                        None => {
-                            let module_name = self.world.modules[target].name.clone();
-                            self.error(
-                                "unknown-name",
-                                format!("`{module_name}` has no function named `{}`", name.text),
+                    if let Some(function) = self.world.lookup_function(target, &name.text) {
+                        self.record(Target::Function(function), name.span);
+                        self.require_public(function, name.span);
+                        let deprecated = self.world.functions[function].deprecated.as_deref();
+                        self.note_deprecated(&name.text, deprecated, name.span);
+                        return Info {
+                            ty: self.function_type(function),
+                            fails: Vec::new(),
+                            function: Some(function),
+                        };
+                    }
+                    if let Some(constant) = self.world.modules[target].constants.get(&name.text) {
+                        let ty = constant.ty.clone();
+                        let deprecated = constant.deprecated.clone();
+                        if !constant.public {
+                            let owner = self.world.modules[target].name.clone();
+                            self.error_fix(
+                                "private-name",
+                                format!("`{}` is not public in `{owner}`", name.text),
                                 name.span,
+                                format!("add `public` to its declaration in `{owner}`"),
                             );
-                            Info::plain(Ty::Error)
                         }
-                    };
+                        self.record(Target::Constant(target, name.text.clone()), name.span);
+                        self.note_deprecated(&name.text, deprecated.as_deref(), name.span);
+                        return Info::plain(ty);
+                    }
+                    let module_name = self.world.modules[target].name.clone();
+                    self.error(
+                        "unknown-name",
+                        format!(
+                            "`{module_name}` has no function or constant named `{}`",
+                            name.text
+                        ),
+                        name.span,
+                    );
+                    return Info::plain(Ty::Error);
                 }
             }
         }
@@ -2553,6 +2606,7 @@ impl<'w> Checker<'w> {
                         {
                             return match self.world.lookup_function(target, &name.text) {
                                 Some(function) => {
+                                    self.require_public(function, name.span);
                                     self.call_known(function, None, args, span, name.span, expected)
                                 }
                                 None => {
@@ -2860,6 +2914,7 @@ impl<'w> Checker<'w> {
                 if !is_method {
                     self.error("not-a-method", format!("`{name}` is not a method"), span);
                 } else {
+                    self.require_public(id, name_span);
                     let self_ty = params[0].1.clone();
                     if !self.assign(&receiver_ty, &self_ty, receiver_span) {
                         self.mismatch(&receiver_ty, &self_ty, receiver_span, "the receiver");
@@ -2955,11 +3010,11 @@ impl<'w> Checker<'w> {
             }
             self.infer_value(&arg.value, param, "the argument");
         }
+        // the effects of a function-typed parameter are charged where the
+        // function is passed (sketch section 3), so the call needs nothing
+        // of this function; it still counts as a call with effects
         if !function.needs.is_empty() {
             self.effect_calls += 1;
-        }
-        for capability in &function.needs {
-            self.require_capability(capability, false, name, span);
         }
         Info {
             ty: function.returns.clone().unwrap_or(Ty::Unit),
@@ -4097,10 +4152,16 @@ impl<'w> Checker<'w> {
     }
 
     fn resolve_type(&mut self, ty: &Type) -> Ty {
-        // body-level type annotations have no type parameters in scope; a
-        // generic function's parameters are not visible here yet
+        // the function's `for any` parameters are in scope for the
+        // annotations of its body
         let mut world_diagnostics = Vec::new();
-        let resolved = resolve_in_body(self.world, self.module, ty, &mut world_diagnostics);
+        let resolved = resolve_in_body(
+            self.world,
+            self.module,
+            &self.type_params,
+            ty,
+            &mut world_diagnostics,
+        );
         self.diagnostics.extend(world_diagnostics);
         self.record_type_names(ty);
         resolved
@@ -4143,11 +4204,15 @@ fn mentions_param(ty: &Ty, param: ParamId) -> bool {
 fn resolve_in_body(
     world: &World,
     module: ModuleId,
+    type_params: &[(String, ParamId)],
     ty: &Type,
     diagnostics: &mut Vec<Diagnostic>,
 ) -> Ty {
+    let resolve = |inner: &Type, diagnostics: &mut Vec<Diagnostic>| {
+        resolve_in_body(world, module, type_params, inner, diagnostics)
+    };
     match ty {
-        Type::Maybe(inner, _) => Ty::maybe(resolve_in_body(world, module, inner, diagnostics)),
+        Type::Maybe(inner, _) => Ty::maybe(resolve(inner, diagnostics)),
         Type::Function {
             params,
             returns,
@@ -4155,20 +4220,22 @@ fn resolve_in_body(
             needs,
             ..
         } => Ty::Function(Box::new(FunctionTy {
-            params: params
-                .iter()
-                .map(|p| resolve_in_body(world, module, p, diagnostics))
-                .collect(),
-            returns: returns
-                .as_ref()
-                .map(|r| resolve_in_body(world, module, r, diagnostics)),
-            fails: fails
-                .iter()
-                .map(|f| resolve_in_body(world, module, f, diagnostics))
-                .collect(),
+            params: params.iter().map(|p| resolve(p, diagnostics)).collect(),
+            returns: returns.as_ref().map(|r| resolve(r, diagnostics)),
+            fails: fails.iter().map(|f| resolve(f, diagnostics)).collect(),
             needs: needs.iter().map(Capability::from_ast).collect(),
         })),
         Type::Named { name, args, span } => {
+            if let Some((_, id)) = type_params.iter().find(|(n, _)| *n == name.text) {
+                if !args.is_empty() {
+                    diagnostics.push(Diagnostic::error(
+                        "type-arity",
+                        format!("`{}` is a type parameter and takes no arguments", name.text),
+                        *span,
+                    ));
+                }
+                return Ty::Param(*id);
+            }
             let Some(type_id) = world.lookup_type(module, &name.text) else {
                 let message = format!("unknown type `{}`", name.text);
                 let diagnostic = match world.suggest_import(module, &name.text) {
@@ -4196,9 +4263,7 @@ fn resolve_in_body(
             }
             Ty::App(
                 type_id,
-                args.iter()
-                    .map(|a| resolve_in_body(world, module, a, diagnostics))
-                    .collect(),
+                args.iter().map(|a| resolve(a, diagnostics)).collect(),
             )
         }
     }

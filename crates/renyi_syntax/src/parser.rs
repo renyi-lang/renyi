@@ -676,11 +676,36 @@ impl<'s> Parser<'s> {
                 only_to,
                 span: start.join(end),
             });
-            if !self.eat(&TokenKind::Comma) {
+            // in a function type inside a parameter list, a comma before
+            // `name:` starts the next parameter, not another capability
+            if !self.at(&TokenKind::Comma) || self.parameter_follows_comma() {
                 break;
             }
+            self.advance();
         }
         Ok(capabilities)
+    }
+
+    /// Whether the token after the comma at hand starts a parameter or a
+    /// field (`name:`), looking past the newlines a parenthesised list allows.
+    fn parameter_follows_comma(&mut self) -> bool {
+        self.peek();
+        let mut index = self.pos + 1;
+        if self.nesting > 0 {
+            while self.tokens[index].kind == TokenKind::Newline {
+                index += 1;
+            }
+        }
+        if self.tokens[index].kind != TokenKind::Identifier {
+            return false;
+        }
+        index += 1;
+        if self.nesting > 0 {
+            while self.tokens[index].kind == TokenKind::Newline {
+                index += 1;
+            }
+        }
+        self.tokens[index].kind == TokenKind::Colon
     }
 
     /// `filesystem.read("data")`: a capability path with an optional scope.

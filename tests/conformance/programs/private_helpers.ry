@@ -1,0 +1,12 @@
+module private_helpers
+  purpose: Helpers for the privacy case; `whisper` is not public.
+
+public function shout(text: Text) returns Text
+  purpose: Upper-case the text.
+
+  return text.to_upper()
+end
+
+function whisper(text: Text) returns Text
+  return text.to_lower()
+end

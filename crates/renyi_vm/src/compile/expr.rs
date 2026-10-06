@@ -265,12 +265,28 @@ impl Compiler<'_, '_> {
         })
     }
 
+    fn constant_target(&self, span: Span) -> Option<(usize, String)> {
+        self.targets(span).iter().find_map(|t| match t {
+            Target::Constant(module, name) => Some((*module, name.clone())),
+            _ => None,
+        })
+    }
+
     fn member(&mut self, base: &Expr, name: &Name, span: Span) {
-        // `module.function` as a value
-        if let Some(function) = self.function_target(name.span) {
-            if let ExprKind::Name(namespace) = &base.kind {
-                if self.lookup(&namespace.text).is_none() {
+        // `module.function` as a value, or `module.constant`
+        if let ExprKind::Name(namespace) = &base.kind {
+            if self.lookup(&namespace.text).is_none() {
+                if let Some(function) = self.function_target(name.span) {
                     self.constant(Value::Function(function), span);
+                    return;
+                }
+                if let Some((module, text)) = self.constant_target(name.span) {
+                    match self.global(module, &text) {
+                        Some(index) => {
+                            self.emit(Op::Global(index), span);
+                        }
+                        None => self.unsupported(&format!("the constant `{text}`"), span),
+                    }
                     return;
                 }
             }

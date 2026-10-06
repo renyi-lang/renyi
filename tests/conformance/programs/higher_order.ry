@@ -1,0 +1,19 @@
+module higher_order
+  purpose: A higher-order function declares only its own effects; the function passed carries its own.
+
+import std.console
+
+function announce(text: Text) needs console
+  console.print(text)
+end
+
+function twice(action: function(Text) needs console, text: Text)
+  action(text)
+  action(text)
+end
+
+public function main() needs console
+  purpose: Say hello twice.
+
+  twice(action: announce, text: "hello")
+end

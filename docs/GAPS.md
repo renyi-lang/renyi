@@ -44,19 +44,19 @@ Ordered by how much they matter to the language's promises.
    U9; `missing-otherwise`, conformance case `with_refined.ry`). Tested
    in `crates/renyi_vm/tests/semantics.rs` (`an_update_keeps_the_refinements`)
    and `crates/renyi_check/tests/rules.rs`.
-4. **Privacy is enforced for types only.** `FunctionInfo.public` is never
-   read (`world.rs:482-489`; cross-module calls resolve at `check.rs:2137,
-   2288`), and a private ability imports with `exposing`. Verified: a
-   private function called from another module runs.
-5. **Public constants are unreachable from other modules.** `infer_name`
-   looks only in the current module (`check.rs:1967`) and namespace calls
-   look up functions only (2288). Verified: "`const_lib` has no function
-   named `max_retries`".
-6. **Ability conformance checks method names only.** Parameters, return
-   type and failures of an implementation are never compared with the
-   ability's declaration (`world.rs:899-925`); a `describe(self, extra:
-   Integer) returns Integer` implementing `describe(self) returns Text`
-   passes and runs.
+4. Done in stage 1: **privacy holds for functions, methods, constants and
+   abilities** as it did for types: a call, a value or an `exposing` of a
+   definition another module did not mark `public` is `private-name`
+   (`check.rs`, `require_public`; `world.rs`, `resolve_imports`). Tested
+   in `crates/renyi_check/tests/rules.rs`.
+5. Done in stage 1: **a public constant of another module is read as
+   `module.name`** (`check.rs`, `infer_member`; the VM compiles it to the
+   constant's global, `compile/expr.rs`, `member`). Tested in `rules.rs`
+   and `crates/renyi_vm/tests/semantics.rs`.
+6. Done in stage 1: **an implementation's methods carry the ability's
+   signature**: the parameters by name and type, the result and the
+   failures, with `Self` read as the target (`world.rs`,
+   `check_method_signature`; `method-signature`). Tested in `rules.rs`.
 7. **Task independence is not enforced.** A `run concurrently` body is
    checked in the enclosing scope (`check.rs:1289-1298`); two tasks may
    `set` one outer mutable and a task may read a sibling's binding
@@ -81,20 +81,29 @@ Ordered by how much they matter to the language's promises.
    sketch documents the rule (section 1); the decision record does not.
    Verified: `otherwise 0` at the statement's own column is "expected an
    expression, found `otherwise`".
-10. **Methods may be declared outside the defining module** (decision K1
-    says they must not): any `self:` function is indexed under its head
-    type with no module comparison (`world.rs:1017-1021, 1138-1145`).
-    Verified: `function shout(self: Text)` in a user module checks clean.
-11. **A function-typed parameter's `needs` is charged to the higher-order
-    function** (`check.rs:2692-2694`), against sketch section 3, and a
-    function type with `needs` parses only as the last parameter
-    (`parser.rs:1212-1213`).
-12. **Type parameters are not in scope for body annotations**
-    (`check.rs:3825-3832`): `let chosen: Item be ...` inside `for any Item`
-    is `unknown-type`.
-13. **A let-bound numeric literal stays flexible** (`check.rs:1055-1062`):
-    `let whole be 3` then a Decimal comparison passes, against section 7
-    of the sketch ("Integer and Decimal do not compare").
+10. Done in stage 1: **a method is declared in the module of its type**
+    (decision K1): a `self:` function whose head type another module
+    declares is `method-module` (`world.rs`, `declare_function`). Tested
+    in `rules.rs`.
+11. Done in stage 1: **a higher-order function declares only its own
+    effects** (sketch section 3): a call through a function-typed
+    parameter charges nothing to the function (`check.rs`,
+    `call_function_type`), and the call site that passes a function
+    covers its needs as before, whatever the parameter's type lists
+    (decision B1); a function type with `needs` may be followed by
+    another parameter (`parser.rs`, `capabilities`). At run time the
+    passed function runs under the grant in force where it is called
+    (decision Q1). Still open: a function value stored in a collection
+    and called later is charged nowhere statically; the grant stack
+    refuses it at run time. Tested in `rules.rs` and by the conformance
+    case `higher_order.ry`.
+12. Done in stage 1: **type parameters are in scope for body annotations**
+    (`check.rs`, `resolve_in_body` takes the function's `for any`
+    parameters). Tested in `rules.rs`.
+13. Done in stage 1: **a let-bound numeric literal takes its own type**,
+    Integer or Decimal, unless the binding is annotated (`check.rs`,
+    `StmtKind::Let`), so `let whole be 3` then a Decimal comparison is
+    `type-mismatch` (sketch section 7). Tested in `rules.rs`.
 14. **Replay does not compare the grant header.** Done in stage 1: a
     replay counts every call against the budgets and refuses the
     recording that exceeds one (`vm.rs:646`; tested in

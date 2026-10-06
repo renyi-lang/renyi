@@ -1,0 +1,16 @@
+module method_signature
+  purpose: A method of an implementation carries the ability's signature.
+
+type Word
+  has text: Text
+end
+
+ability Describable
+  function describe(self) returns Text
+end
+
+ability Describable for Word
+  function describe(self) returns Integer
+    return self.text.length()
+  end
+end

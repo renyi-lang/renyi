@@ -1,0 +1,8 @@
+module private_call
+  purpose: A function another module did not mark `public` cannot be called.
+
+import private_helpers
+
+function quiet(text: Text) returns Text
+  return private_helpers.whisper(text)
+end

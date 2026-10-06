@@ -332,3 +332,32 @@ end
     assert_eq!(&lines[..5], ["0", "3", "0", "3", "abc"]);
     assert!(lines[5].starts_with("InvalidDate("), "{}", lines[5]);
 }
+
+#[test]
+fn a_public_constant_of_another_module_is_read_through_its_namespace() {
+    let util = "module util\n  purpose: Limits.\n\npublic let limit: Integer be 3\n  purpose: The limit.\n";
+    let main = "module demo\n  purpose: Read a constant of another module.\n\nimport std.console\nimport util\n\npublic function main() needs console\n  purpose: Print the limit.\n\n  console.print(\"{util.limit}\")\nend\n";
+    let files = vec![
+        SourceFile::new("demo.ry", main),
+        SourceFile::new("util.ry", util),
+    ];
+    let checked = renyi_check::check_project(&files);
+    for module in &checked.modules {
+        let errors: Vec<_> = module.diagnostics.iter().filter(|d| d.is_error()).collect();
+        assert!(errors.is_empty(), "{errors:?}");
+    }
+    let program = compile_project(&checked, &files);
+    let stdout = Capture::default();
+    let outcome = run_program(
+        &program,
+        Options {
+            stdout: Box::new(stdout.clone()),
+            stderr: Box::new(Capture::default()),
+            stdin: Box::new(std::io::Cursor::new(Vec::new())),
+            ..Options::default()
+        },
+    )
+    .outcome;
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(stdout.text(), "3\n");
+}

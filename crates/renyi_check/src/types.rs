@@ -173,6 +173,11 @@ impl fmt::Display for TyDisplay<'_> {
                     let fails: Vec<String> = function.fails.iter().map(show).collect();
                     write!(f, " or fails with {}", fails.join(" or "))?;
                 }
+                if !function.needs.is_empty() {
+                    let needs: Vec<String> =
+                        function.needs.iter().map(Capability::spelling).collect();
+                    write!(f, " needs {}", needs.join(", "))?;
+                }
                 Ok(())
             }
             Ty::Param(id) => write!(f, "{}", (self.param_name)(*id)),

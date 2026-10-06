@@ -589,3 +589,159 @@ fn an_update_of_a_refined_field_can_fail_like_a_construction() {
         "{person}function renamed(person: Person, name: Text) returns Person\n  return person with name: name\nend\n"
     )));
 }
+
+fn codes_with(main: &str, util: &str) -> Vec<String> {
+    renyi_check::check_sources(
+        &SourceFile::new("main.ry", main),
+        &[SourceFile::new("util.ry", util)],
+    )
+    .into_iter()
+    .filter(|d| d.is_error())
+    .map(|d| d.code.to_string())
+    .collect()
+}
+
+const UTIL: &str = "module util\n  purpose: Helpers.\n\npublic function shout(text: Text) returns Text\n  purpose: Upper-case.\n\n  return text.to_upper()\nend\n\nfunction whisper(text: Text) returns Text\n  return text.to_lower()\nend\n\npublic let limit: Integer be 3\n  purpose: The limit.\n\nlet secret: Integer be 7\n\npublic type Word\n  purpose: A word.\n  has text: Text\nend\n\npublic function twice(self: Word) returns Text\n  purpose: Twice.\n\n  return \"{self.text}{self.text}\"\nend\n\nfunction once(self: Word) returns Text\n  return self.text\nend\n\nability Secretive\n  function reveal(self) returns Text\nend\n";
+
+const MAIN_HEAD: &str = "module main\n  purpose: Use util.\n\nimport util exposing Word\n\n";
+
+#[test]
+fn public_definitions_of_another_module_are_reachable() {
+    let codes = codes_with(
+        &format!("{MAIN_HEAD}public function go() returns Text\n  purpose: Go.\n\n  let word be Word(text: \"hi\")\n  let limit be util.limit\n  let loud be util.shout(\"x\")\n  return \"{{loud}}{{word.twice()}}{{limit}}\"\nend\n"),
+        UTIL,
+    );
+    assert_eq!(codes, Vec::<String>::new());
+}
+
+#[test]
+fn private_definitions_stay_inside_their_module() {
+    // a function
+    let codes = codes_with(
+        &format!("{MAIN_HEAD}public function go() returns Text\n  purpose: Go.\n\n  return util.whisper(\"x\")\nend\n"),
+        UTIL,
+    );
+    assert_eq!(codes, vec!["private-name".to_string()]);
+    // a function passed by name
+    let codes = codes_with(
+        &format!("{MAIN_HEAD}public function go(apply: function(Text) returns Text) returns Text\n  purpose: Go.\n\n  return apply(\"x\")\nend\n\npublic function main()\n  purpose: Run.\n\n  ignore go(util.whisper)\nend\n"),
+        UTIL,
+    );
+    assert!(codes.contains(&"private-name".to_string()), "{codes:?}");
+    // a constant
+    let codes = codes_with(
+        &format!("{MAIN_HEAD}public function go() returns Integer\n  purpose: Go.\n\n  return util.secret\nend\n"),
+        UTIL,
+    );
+    assert_eq!(codes, vec!["private-name".to_string()]);
+    // a method
+    let codes = codes_with(
+        &format!("{MAIN_HEAD}public function go() returns Text\n  purpose: Go.\n\n  let word be Word(text: \"hi\")\n  return word.once()\nend\n"),
+        UTIL,
+    );
+    assert_eq!(codes, vec!["private-name".to_string()]);
+    // an ability
+    let codes = codes_with(
+        "module main\n  purpose: Use util.\n\nimport util exposing Secretive\n\npublic function go() returns Text\n  purpose: Go.\n\n  return util.shout(\"x\")\nend\n",
+        UTIL,
+    );
+    assert_eq!(codes, vec!["private-name".to_string()]);
+}
+
+#[test]
+fn an_implementation_carries_the_abilitys_signature() {
+    let head = "type Word\n  has text: Text\nend\n\nability Describable\n  function describe(self) returns Text\nend\n\n";
+    clean(&program(&format!(
+        "{head}ability Describable for Word\n  function describe(self) returns Text\n    return self.text\n  end\nend\n"
+    )));
+    // an extra parameter
+    raises(
+        &program(&format!(
+            "{head}ability Describable for Word\n  function describe(self, extra: Integer) returns Text\n    return self.text\n  end\nend\n"
+        )),
+        "method-signature",
+    );
+    // another result
+    raises(
+        &program(&format!(
+            "{head}ability Describable for Word\n  function describe(self) returns Integer\n    return 1\n  end\nend\n"
+        )),
+        "method-signature",
+    );
+    // a failure the ability does not declare
+    raises(
+        &program(&format!(
+            "{head}ability Describable for Word\n  function describe(self) returns Text or fails with TimedOut\n    return self.text\n  end\nend\n"
+        )),
+        "method-signature",
+    );
+    // `Self` in the ability is the target
+    clean(&program(
+        "type Word\n  has text: Text\nend\n\nability Equal for Word\n  function equals(self, other: Word) returns Boolean\n    return self.text is other.text\n  end\nend\n",
+    ));
+    raises(
+        &program(
+            "type Word\n  has text: Text\nend\n\nability Equal for Word\n  function equals(self, other: Text) returns Boolean\n    return self.text is other\n  end\nend\n",
+        ),
+        "method-signature",
+    );
+}
+
+#[test]
+fn a_method_is_declared_in_the_module_of_its_type() {
+    // decision K1
+    raises(
+        &program("function shout(self: Text) returns Text\n  return self.to_upper()\nend\n"),
+        "method-module",
+    );
+    clean(&program(
+        "type Word\n  has text: Text\nend\n\nfunction shout(self: Word) returns Text\n  return self.text.to_upper()\nend\n",
+    ));
+}
+
+#[test]
+fn a_higher_order_function_declares_only_its_own_effects() {
+    let head = "function announce(text: Text) needs console\n  console.print(text)\nend\n\nfunction twice(action: function(Text) needs console, text: Text)\n  action(text)\n  action(text)\nend\n\n";
+    // the needs of the function type are charged where the function is passed
+    clean(&program(&format!(
+        "{head}public function main() needs console\n  purpose: Run.\n\n  twice(action: announce, text: \"hi\")\nend\n"
+    )));
+    raises(
+        &program(&format!(
+            "{head}public function main()\n  purpose: Run.\n\n  twice(action: announce, text: \"hi\")\nend\n"
+        )),
+        "capability-missing",
+    );
+    // the needs of the function passed are charged, whatever the type lists
+    // (decision B1)
+    raises(
+        &program(
+            "function announce(text: Text) needs console\n  console.print(text)\nend\n\nfunction twice(action: function(Text), text: Text)\n  action(text)\n  action(text)\nend\n\npublic function main()\n  purpose: Run.\n\n  twice(action: announce, text: \"hi\")\nend\n",
+        ),
+        "capability-missing",
+    );
+}
+
+#[test]
+fn type_parameters_are_in_scope_inside_the_body() {
+    clean(&program(
+        "function first_or(items: List of Item, fallback: Item) returns Item for any Item\n  let chosen: Item be items.at(0) otherwise fallback\n  return chosen\nend\n",
+    ));
+}
+
+#[test]
+fn a_let_bound_literal_takes_its_own_type() {
+    // sketch section 7: an Integer and a Decimal do not compare
+    raises(
+        &program(
+            "function go() returns Boolean\n  let whole be 3\n  return whole is at least 2.5\nend\n",
+        ),
+        "type-mismatch",
+    );
+    clean(&program(
+        "function go() returns Boolean\n  let whole be 3\n  return whole is at least 2\nend\n",
+    ));
+    clean(&program(
+        "function go() returns Boolean\n  let part be 2.5\n  return part is at least 2\nend\n",
+    ));
+}

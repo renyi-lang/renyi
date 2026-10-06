@@ -1,0 +1,6 @@
+module method_module
+  purpose: A method is declared in the module of its type (decision K1); `Text` is the prelude's.
+
+function shout(self: Text) returns Text
+  return self.to_upper()
+end

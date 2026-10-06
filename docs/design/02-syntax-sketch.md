@@ -196,7 +196,11 @@ abilities are for polymorphism.
 
 **Function types.** `function(Url) returns Page or fails with HttpError needs
 network.http`. Effects of a function-typed parameter flow to the call site
-automatically; a higher-order function declares only its own effects.
+automatically; a higher-order function declares only its own effects. The
+checker charges the needs of the function actually passed where it is
+passed, whatever the parameter's type lists (decision B1). At run time the
+function runs under the grant in force where it is called, so the
+higher-order function's own narrowing applies to it (decision Q1).
 
 ---
 

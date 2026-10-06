@@ -128,6 +128,9 @@ pub enum BodyLocation {
 pub struct AbilityInfo {
     pub name: String,
     pub module: ModuleId,
+    pub public: bool,
+    /// The ability's own type parameters, in scope in its method signatures.
+    pub params: Vec<ParamId>,
     pub methods: Vec<AbilityMethod>,
     pub span: Span,
 }
@@ -257,6 +260,8 @@ impl World {
                     self.abilities.push(AbilityInfo {
                         name: ability.name.text.clone(),
                         module: id,
+                        public: ability.public,
+                        params: Vec::new(),
                         methods: Vec::new(),
                         span: ability.span,
                     });
@@ -437,6 +442,14 @@ impl World {
                     }
                     self.modules[id].exposed_types.insert(text, type_id);
                 } else if let Some(&ability_id) = self.modules[target].abilities.get(&text) {
+                    if !self.abilities[ability_id].public {
+                        self.error(
+                            id,
+                            "private-name",
+                            format!("`{text}` is not public in `{name}`"),
+                            exposed.span,
+                        );
+                    }
                     self.modules[id].exposed_abilities.insert(text, ability_id);
                 } else {
                     self.error(
@@ -880,6 +893,7 @@ impl World {
                         .collect(),
                 });
             }
+            self.abilities[ability_id].params = params.iter().map(|(_, p)| *p).collect();
             self.abilities[ability_id].methods = methods;
             if ability.public && ability.docs.purpose.is_none() && !self.modules[id].is_library {
                 self.error_with_fix(
@@ -957,6 +971,13 @@ impl World {
                                     .or_default()
                                     .push(function_id);
                             }
+                            self.check_method_signature(
+                                id,
+                                ability,
+                                &target,
+                                function_id,
+                                function,
+                            );
                             functions.push(function_id);
                         }
                     }
@@ -1244,6 +1265,25 @@ impl World {
         });
         if is_method {
             if let Some(head) = head_type(&self.functions[id].params[0].1) {
+                // decision K1: a method is declared in the module of its type;
+                // the methods of an implementation answer to the ability instead
+                if matches!(body, BodyLocation::Item(_)) && self.types[head].module != module {
+                    let type_name = self.types[head].name.clone();
+                    let owner = self.modules[self.types[head].module].name.clone();
+                    self.error_with_fix(
+                        module,
+                        "method-module",
+                        format!(
+                            "`{}` is a method of `{type_name}`, which `{owner}` declares; a method is declared in the module of its type",
+                            function.name.text
+                        ),
+                        function.params[0].span,
+                        format!(
+                            "make it a function whose first parameter is `{}: {type_name}`",
+                            type_name.to_lowercase()
+                        ),
+                    );
+                }
                 self.method_index
                     .entry((head, function.name.text.clone()))
                     .or_default()
@@ -1264,6 +1304,165 @@ impl World {
             .or_default()
             .push(id);
         Some(id)
+    }
+
+    /// A method of an implementation carries the ability's signature: the
+    /// same parameters by name and type, the same result and the same
+    /// failures, with `Self` read as the target type.
+    fn check_method_signature(
+        &mut self,
+        module: ModuleId,
+        ability: AbilityId,
+        target: &Ty,
+        function_id: FunctionId,
+        function: &ast::Function,
+    ) {
+        let ability_name = self.abilities[ability].name.clone();
+        let Some(method) = self.abilities[ability]
+            .methods
+            .iter()
+            .find(|m| m.name == function.name.text)
+        else {
+            return;
+        };
+        let expected: Vec<(String, Ty)> = method
+            .params
+            .iter()
+            .map(|(n, t)| (n.clone(), t.with_self(target)))
+            .collect();
+        let expected_returns = method.returns.as_ref().map(|r| r.with_self(target));
+        let expected_fails: Vec<Ty> = method.fails.iter().map(|f| f.with_self(target)).collect();
+        let info = &self.functions[function_id];
+        let skip = usize::from(
+            function
+                .params
+                .first()
+                .is_some_and(|p| p.name.text == "self"),
+        );
+        let actual: Vec<(String, Ty)> = info
+            .params
+            .iter()
+            .skip(skip)
+            .map(|(n, t)| (n.clone(), t.with_self(target)))
+            .collect();
+        let actual_returns = info.returns.as_ref().map(|r| r.with_self(target));
+        let actual_fails: Vec<Ty> = info.fails.iter().map(|f| f.with_self(target)).collect();
+        let mut problems = Vec::new();
+        if actual.len() != expected.len() {
+            problems.push(format!(
+                "it takes {} parameter{} after `self`; the ability declares {}",
+                actual.len(),
+                if actual.len() == 1 { "" } else { "s" },
+                expected.len()
+            ));
+        } else {
+            for ((name, ty), (expected_name, expected_ty)) in actual.iter().zip(&expected) {
+                if name != expected_name || !conforms(expected_ty, ty) {
+                    problems.push(format!(
+                        "its parameter `{name}: {}` should be `{expected_name}: {}`",
+                        self.show(ty),
+                        self.show(expected_ty)
+                    ));
+                }
+            }
+        }
+        let returns_ok = match (&actual_returns, &expected_returns) {
+            (Some(a), Some(e)) => conforms(e, a),
+            (None, None) => true,
+            _ => false,
+        };
+        if !returns_ok {
+            problems.push(format!(
+                "it returns {}; the ability declares {}",
+                self.spell_result(&actual_returns),
+                self.spell_result(&expected_returns)
+            ));
+        }
+        let fails_ok = actual_fails.len() == expected_fails.len()
+            && actual_fails
+                .iter()
+                .all(|a| expected_fails.iter().any(|e| conforms(e, a)));
+        if !fails_ok {
+            problems.push(format!(
+                "it fails with {}; the ability declares {}",
+                self.spell_fails(&actual_fails),
+                self.spell_fails(&expected_fails)
+            ));
+        }
+        if problems.is_empty() {
+            return;
+        }
+        let mut signature = format!("{}(self", function.name.text);
+        for (name, ty) in &expected {
+            signature.push_str(&format!(", {name}: {}", self.show(ty)));
+        }
+        signature.push(')');
+        if let Some(returns) = &expected_returns {
+            signature.push_str(&format!(" returns {}", self.show(returns)));
+        }
+        if !expected_fails.is_empty() {
+            let fails: Vec<String> = expected_fails.iter().map(|f| self.show(f)).collect();
+            signature.push_str(&format!(" or fails with {}", fails.join(" or ")));
+        }
+        self.error_with_fix(
+            module,
+            "method-signature",
+            format!(
+                "`{}` does not match `{ability_name}.{}`: {}",
+                function.name.text,
+                function.name.text,
+                problems.join("; ")
+            ),
+            function.name.span,
+            format!("declare it as `{signature}`"),
+        );
+    }
+
+    fn spell_result(&self, ty: &Option<Ty>) -> String {
+        match ty {
+            Some(ty) => format!("`{}`", self.show(ty)),
+            None => "nothing".to_string(),
+        }
+    }
+
+    fn spell_fails(&self, fails: &[Ty]) -> String {
+        if fails.is_empty() {
+            return "nothing".to_string();
+        }
+        fails
+            .iter()
+            .map(|f| format!("`{}`", self.show(f)))
+            .collect::<Vec<_>>()
+            .join(" or ")
+    }
+}
+
+/// Whether an implementation's type carries the ability's: the same shape,
+/// with a type parameter on either side standing for anything.
+fn conforms(expected: &Ty, actual: &Ty) -> bool {
+    match (expected, actual) {
+        (Ty::Param(_), _) | (_, Ty::Param(_)) | (Ty::Error, _) | (_, Ty::Error) => true,
+        (Ty::App(a, x), Ty::App(b, y)) => {
+            a == b && x.len() == y.len() && x.iter().zip(y).all(|(p, q)| conforms(p, q))
+        }
+        (Ty::Maybe(a), Ty::Maybe(b)) => conforms(a, b),
+        (Ty::Function(a), Ty::Function(b)) => {
+            a.params.len() == b.params.len()
+                && a.params.iter().zip(&b.params).all(|(p, q)| conforms(p, q))
+                && match (&a.returns, &b.returns) {
+                    (Some(p), Some(q)) => conforms(p, q),
+                    (None, None) => true,
+                    _ => false,
+                }
+                && a.fails.len() == b.fails.len()
+                && a.fails
+                    .iter()
+                    .all(|p| b.fails.iter().any(|q| conforms(p, q)))
+        }
+        (Ty::Union(a), Ty::Union(b)) => {
+            a.len() == b.len() && a.iter().all(|p| b.iter().any(|q| conforms(p, q)))
+        }
+        _ => expected == actual,
     }
 }
 

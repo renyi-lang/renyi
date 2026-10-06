@@ -145,6 +145,41 @@
       "program": "tests/conformance/programs/with_refined.ry",
       "diagnostics": ["missing-otherwise"],
       "exit_code": 1
+    },
+    {
+      "name": "a method is declared in the module of its type",
+      "command": "check",
+      "program": "tests/conformance/programs/method_module.ry",
+      "diagnostics": ["method-module"],
+      "exit_code": 1
+    },
+    {
+      "name": "an implementation carries the ability's signature",
+      "command": "check",
+      "program": "tests/conformance/programs/method_signature.ry",
+      "diagnostics": ["method-signature"],
+      "exit_code": 1
+    },
+    {
+      "name": "a private function of another module cannot be called",
+      "command": "check",
+      "program": "tests/conformance/programs/private_call.ry",
+      "diagnostics": ["private-name"],
+      "exit_code": 1
+    },
+    {
+      "name": "a let-bound literal takes its own type",
+      "command": "check",
+      "program": "tests/conformance/programs/let_literal.ry",
+      "diagnostics": ["type-mismatch"],
+      "exit_code": 1
+    },
+    {
+      "name": "a higher-order function passes its argument's effects through",
+      "command": "run",
+      "program": "tests/conformance/programs/higher_order.ry",
+      "stdout": "tests/conformance/expected/higher_order.out",
+      "exit_code": 0
     }
   ]
 }

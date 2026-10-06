@@ -1,0 +1,7 @@
+module let_literal
+  purpose: A let-bound literal takes its own type; an Integer and a Decimal do not compare.
+
+function large(limit: Decimal) returns Boolean
+  let whole be 3
+  return whole is at least limit
+end
