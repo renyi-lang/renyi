@@ -6,7 +6,8 @@ Last updated: 2026-10-06, session 7 (stage 1 of the gap audit of
 runtime; CI and the conformance suite; the runtime, module, literal and
 exhaustiveness rules; one range-loop spelling, the module name equal to
 the path, `.renyi`; every diagnostic carries a fix; the documents
-corrected). Branch: `main` is the only branch (owner's decision,
+corrected; `Iterable`, decision V10; the grammar frozen, decision V11).
+Branch: `main` is the only branch (owner's decision,
 2026-10-05); commit and push there directly.
 
 ## Where the project stands
@@ -34,31 +35,29 @@ learners. Before any of that the design was audited against the
 implementation (`docs/GAPS.md`, session 6) and the gaps filled (stage 1
 of its section 7, session 7). Stage 1 is done; what it left open is named
 in `docs/GAPS.md` (section 7, "Status") and under "Owner actions pending"
-below. The freeze entry is not written: V1 says the grammar freezes by
-decision, and the entry that names the frozen surface waits for the
-owner.
+below. The grammar is frozen by decision V11 at commit `dc58bb3`: a
+change to the surface is a new decision entry first, then the sketch, the
+cheat sheet, the formatter and the conformance suite in one commit.
 
 The corpus has 30 programs, passes the lint, is in canonical layout,
 checks cleanly, has nothing over budget, and its `example:` lines and
 `test` blocks pass on the VM (six are `replays` tests answered from
 recordings under `examples/fixtures/`). The cheat sheet measures
-2994 of 3000 tokens. The Rust workspace has five crates:
+2999 of 3000 tokens. The Rust workspace has five crates:
 `renyi_syntax`, `renyi_check`, `renyi_index`, `renyi_vm` and the `renyi`
 binary with `check`, `format`, `tokens`, `parse [--json]`, `index [--json
 | --budgets | --diff <map or revision>]`, `run [--manifest] [options]
 <file> [arguments]`, `record [--to file] [options] <file> [arguments]`,
 `reproduce <recording> [<file>]`, `test [--strict] [--refresh name
 [--redact name]] [--explain] <file>...`, `tools [path]`, `mcp [path]` and
-`version`; 201 tests, clippy and fmt clean on Windows with rustc 1.94.1.
+`version`; 203 tests, clippy and fmt clean on Windows with rustc 1.94.1.
 CI (`.github/workflows/ci.yml`) runs the same gates and the conformance
-suite (`tests/conformance/`, 35 cases; runners `tools/conformance.py`
-and `crates/renyi/tests/conformance.rs`) on GitHub's newest stable
-toolchain, which carries clippy lints the local one lacks: every CI run
-of session 7 before its last commit failed on four such lints in
-`renyi_index` (fixed in that commit; run `gh run list --limit 3` first
-thing and read the log of a failure with `gh run view <id>
---log-failed`). The VM depends on `ureq` (HTTP, with rustls), `rusqlite`
-(SQLite compiled in), decision S1, and on `sha2`.
+suite (`tests/conformance/`, 36 cases; runners `tools/conformance.py`
+and `crates/renyi/tests/conformance.rs`) on a toolchain pinned to the
+owner's machine (rustc 1.94.1), so that CI and the local gates agree on
+clippy's lints; `gh run list --limit 3` shows the runs and `gh run view
+<id> --log-failed` a failure's log. The VM depends on `ureq` (HTTP, with
+rustls), `rusqlite` (SQLite compiled in), decision S1, and on `sha2`.
 
 Readability: four live rounds exist under `tests/readability/`; the last
 (round 4, `2026-10-06-c696747/`, Sonnet 5.5 through the Claude Code CLI)
@@ -295,7 +294,7 @@ R8 and U1 to U9 came from them; they continue only if the owner asks
 
 ## Done in session 7 (stage 1 of the gap audit)
 
-Twelve commits on `main`, each gated by fmt, clippy, the tests, the
+Fourteen commits on `main`, each gated by fmt, clippy, the tests, the
 canonical corpus, the lint, the token gate and the conformance suite:
 
 1. `8c775cd` decisions V1 to V8 (the road to self-hosting; indentation
@@ -345,9 +344,15 @@ canonical corpus, the lint, the token gate and the conformance suite:
     the closest one in scope or the Renyi name of a foreign one
     (`crates/renyi_check/src/suggest.rs`); both conformance runners
     require a `fix:` line after every diagnostic.
-12. The last commit: the documents of `docs/GAPS.md` section 5
-    corrected, the four clippy lints of GitHub's toolchain fixed, this
-    handoff.
+12. `fb798a6` the documents of `docs/GAPS.md` section 5 corrected, the
+    four clippy lints of GitHub's toolchain fixed.
+13. `dc58bb3` `Iterable` is one method, `to_list` (V10: the prelude
+    ability, the item type from the implementation's type argument, the
+    VM's `IterInit` calling `to_list`, no `needs` on an ability's
+    method); V9 records the runtime grant of a passed function; CI
+    pinned to rustc 1.94.1.
+14. The last commit: the freeze entry V11; the sketch's status line,
+    `CLAUDE.md`, `README.md`, `docs/GAPS.md` and this handoff follow.
 
 ## Done in session 6
 
@@ -627,26 +632,16 @@ on a fresh clone).
 
 ## Owner actions pending
 
-- **The freeze entry.** V1 freezes the grammar by decision; the entry
-  that names the frozen surface (the sketch and the cheat sheet as of
-  `ccab15e`, with the `Iterable` correction) is not written. Ask with
-  AskUserQuestion before writing it.
-- **Three notes from stage 1 that may deserve a decision entry:** (1)
-  under B1 and Q1 a function passed to a higher-order function runs
-  under the grant in force where it is called, so the higher-order
-  function's own `needs` narrows it (sketch section 3 says so; no
-  entry); (2) `Iterable` is struck from the core abilities of sketch
-  section 5 as a document correction, with open item R3-1 for an
-  iteration ability; (3) a function value stored in a collection and
-  called later is charged nowhere statically (GAPS 1.11).
 - **The residue of stage 1**, named in `docs/GAPS.md` (section 7,
   "Status"): the primitives that cannot fail still crash on a scope
   denial, the recording's grant header is not compared with a test's
-  `needs`, `Hash` implementations are never called, entry 1.18.
-- **CI's toolchain**: GitHub runs the newest stable rustc; the machine
-  has 1.94.1 and 1.95.0, whose clippy misses lints the runner raises.
-  Either pin `dtolnay/rust-toolchain` to the local version in `ci.yml`
-  or run `rustup update` before a session; the owner's call.
+  `needs`, `Hash` implementations are never called, entry 1.18, and
+  open item R3-2 (constraints with type arguments). None blocks stage
+  2; the owner decides their order when stage 2 is planned.
+- **Stage 2 starts with the formal grammar** (next steps, item 1); its
+  shape (EBNF file under `docs/`, the reference beside it, a test that
+  the parser agrees with it) is a design question to ask with
+  AskUserQuestion before writing.
 - **Readability**: the scores are no longer the gate (decision V1).
   Round 5 (U9's sentence) and gpt-5.5 run only if the owner asks.
 - Session 5 printed the values of `ANTHROPIC_API_KEY` and
@@ -679,8 +674,8 @@ on a fresh clone).
 
 ## Next steps
 
-1. **Stage 2 of `docs/GAPS.md`, section 7**: the freeze entry (the
-   owner's); the formal grammar (EBNF) and the language reference
+1. **Stage 2 of `docs/GAPS.md`, section 7** (the grammar is frozen,
+   V11): the formal grammar (EBNF) and the language reference
    derived from the sketch and the cheat sheet, checked against the
    parser on the corpus and the conformance programs; a bytecode file
    format or a loader so that a compiler written in Renyi has something

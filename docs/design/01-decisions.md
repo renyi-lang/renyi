@@ -1352,3 +1352,20 @@ argument (`ability Iterable of Card for Deck`), with the implementation's
 constraints with type arguments (`where Bag can Iterable of Item`, open
 item R3-2) are not in v1. Supersedes the `Iterable` of the early
 core-ability list, which was declared nowhere. (user)
+
+**V11. The grammar is frozen.** The surface syntax is what
+`02-syntax-sketch.md` and `docs/cheatsheet.md` describe at commit
+`dc58bb3` (2026-10-06), with the corpus under `examples/` and the
+conformance programs under `tests/conformance/programs/` as its
+witnesses: the reserved words and phrases of sketch section 17, the
+clause grammar of sections 2 to 15, the canonical layout of section 16,
+and the core abilities of section 5 with `Iterable` (V10). From here a
+change to the surface is a new decision entry that names what it
+supersedes; it lands in the sketch, the cheat sheet (within its budget),
+the formatter and the conformance suite in one commit, and the old
+spelling gets the new one as its fix (C4). The open items of sketch
+section 18 (R3-2) and `docs/GAPS.md` section 6 are not surface changes
+until decided; library additions (`04-stdlib-sketch.md`) are not surface
+changes. The formal grammar (EBNF) and the language reference are
+derived from the frozen sketch in stage 2; what they find unclear is
+settled by an entry, not by the implementation. (user)

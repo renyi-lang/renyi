@@ -39,7 +39,7 @@ exists:
   library modules, which also exist as declaration files under
   `library/std/`.
 - `docs/design/03-readability-test.md`: how LLM comprehension of the grammar is
-  measured (the freeze itself is by decision V1); the harness and the rounds are under
+  measured (the grammar is frozen by decision V11); the harness and the rounds are under
   `tests/readability/`.
 - `docs/design/05-agent-tooling.md`: the project map (`renyi index`) and the
   `renyi mcp` server for agents, both of which exist; `docs/design/06-runtime-guarantees.md`:

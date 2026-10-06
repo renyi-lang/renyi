@@ -25,7 +25,7 @@ measured. Date: 2026-10-06.
 Decision H2 froze the grammar by measurement, not by implementation: before
 the parser is written, several models must read the cheat sheet and work with
 the corpus at a correctness rate that justifies the design. Decision V1
-(2026-10-06) freezes the grammar by a decision entry instead, after the gap
+(2026-10-06) freezes the grammar by a decision entry instead (V11), after the gap
 audit's work; the protocol stays as the measurement the owner can ask for.
 This document fixes the protocol so that the result is comparable across
 grammar revisions and across models.

@@ -26,8 +26,12 @@ implementation.
   edit an accepted entry.
 - `docs/design/02-syntax-sketch.md` is the single source of truth for the
   surface syntax until the formal grammar exists, and
-  `docs/design/04-stdlib-sketch.md` for library names. When an example needs
-  something they do not define, extend the sketch in the same commit.
+  `docs/design/04-stdlib-sketch.md` for library names. The surface is
+  frozen by decision V11: a change to it is a new decision entry first,
+  then the sketch, the cheat sheet, the formatter and the conformance
+  suite in one commit. When an example needs something they do not
+  define, extend the sketch in the same commit (library additions are
+  not surface changes).
 - Every grammar change must keep `docs/cheatsheet.md` under 3000 tokens. Run
   `python3 tools/count_tokens.py` (requires `pip install tiktoken`). It exits
   non-zero over budget.
@@ -60,7 +64,7 @@ implementation.
 |------|---------|
 | `docs/design/01-decisions.md` | design decisions with reasons: rounds 1 and 2 (sections 0 to J), library (K), readability (L), pre-test (M), checker (N), runtime and agent tooling (O), signature capabilities (P), system-level commitments (Q), the live round (R), runtime dependencies and concurrency (S) |
 | `docs/design/02-syntax-sketch.md` | concrete syntax; section 18 tracks open items (round 2 is settled, new items start at R3-1) |
-| `docs/design/03-readability-test.md` | protocol that freezes the grammar by measuring LLM comprehension |
+| `docs/design/03-readability-test.md` | the readability protocol: it measured the grammar before the freeze; decision V1 made the freeze a decision (V11), so the rounds run only on request |
 | `docs/design/04-stdlib-sketch.md` | prelude, core modules and extension packages; the lint checks corpus calls against its `function` lines |
 | `docs/design/05-agent-tooling.md` | the project map (`renyi index`), metrics, content hashes, budgets, diffs and the `renyi mcp` server |
 | `docs/design/06-runtime-guarantees.md` | recorded runs and `replays` tests, narrated runs, budgets in grants (`at most`), provenance guards (`only to`) |

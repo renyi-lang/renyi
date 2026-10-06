@@ -1,12 +1,14 @@
 # Renyi Syntax Sketch (M0)
 
-Status: draft for the readability test. Date: 2026-10-05.
+Status: frozen by decision V11 at commit `dc58bb3` (2026-10-06); a change
+to the surface is a new decision entry first. Date: 2026-10-06.
 
-This document turns the round-1 decisions (`01-decisions.md`) into a concrete
+This document turns the decisions of `01-decisions.md` into a concrete
 surface. It is a sketch, not a specification: it fixes the shape of every
-construct so that the example corpus and the cheat sheet can be written, and it
-lists the points that round 2 must settle. The formal grammar is written at M1
-from this document and the corpus.
+construct so that the example corpus and the cheat sheet can be written;
+section 18 lists its open items. The formal grammar (EBNF) and the language
+reference are derived from this document and the corpus (stage 2 of
+`docs/GAPS.md`, section 7).
 
 Three rules generate most of what follows:
 

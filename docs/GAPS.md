@@ -388,4 +388,4 @@ equality; `repeat`, `pad` and the rounding places go through `small()`),
 1.18, 3.4 (`process` and `foreign` wait for M4) and 3.6 (the memory
 budget has no syntax). Section 4 is stages 2 and 3; section 6 is
 unchanged, plus R3-2 (constraints with type arguments) in the sketch.
-The next step is the freeze entry, then the formal grammar.
+The freeze entry is V11; the next step is the formal grammar.
