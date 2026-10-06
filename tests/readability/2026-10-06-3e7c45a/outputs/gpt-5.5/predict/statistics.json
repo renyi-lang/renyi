@@ -1,0 +1,36 @@
+{
+  "samples": [
+    "mean: 5.0\nmedian: 4.5\nstandard deviation: 2.0",
+    "mean: 5.0\nmedian: 4.5\nstandard deviation: 2.0",
+    "mean: 5.0\nmedian: 4.5\nstandard deviation: 2.0",
+    "mean: 5.0\nmedian: 4.5\nstandard deviation: 2.0",
+    "mean: 5.0\nmedian: 4.5\nstandard deviation: 2.0"
+  ],
+  "model": "gpt-5.5",
+  "temperature": null,
+  "source": {
+    "tool": "codex exec (codex-cli 0.153.3, ChatGPT subscription login)",
+    "model": "gpt-5.5",
+    "reasoning_effort": "medium",
+    "sandbox": "read-only",
+    "working_directory": "empty",
+    "prompt": "the system text and the task prompt in one user message",
+    "sessions": [
+      {
+        "session": "01a10f8c-241a-7e52-a189-7af2e78e7a25"
+      },
+      {
+        "session": "01a10f8d-b0d1-72b3-8d80-ebe9b01482a3"
+      },
+      {
+        "session": "01a10f8d-efb8-7c40-a4b2-e4103c62aaf3"
+      },
+      {
+        "session": "01a10f8e-0fa9-7983-bd6f-aea6bfbb8a5d"
+      },
+      {
+        "session": "01a10f8e-36e9-7cf1-93c5-18d495f52792"
+      }
+    ]
+  }
+}

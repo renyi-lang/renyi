@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "```\npublic function next_light(current: Light, event: Event) returns Light\n  purpose: The light shown after the event; an emergency overrides the normal cycle.\n  tags: state-machine, traffic\n  example: next_light(current: Red, event: TimerExpired) is Green\n  example: next_light(current: Green, event: TimerExpired) is Yellow\n  example: next_light(current: Yellow, event: TimerExpired) is Red\n  example: next_light(current: Green, event: EmergencyDeclared) is FlashingRed\n  example: next_light(current: FlashingRed, event: TimerExpired) is FlashingRed\n  example: next_light(current: FlashingRed, event: EmergencyCleared) is Red\n\n  match event\n    when EmergencyDeclared then return FlashingRed\n    when EmergencyCleared then\n      match current\n        when FlashingRed then return Red\n        otherwise return current\n      end\n    when TimerExpired then\n      match current\n        when Red then return Green\n        when Green then return Yellow\n        when Yellow then return Red\n        when FlashingRed then return FlashingRed\n      end\n  end\nend\n```",
+    "```renyi\npublic function next_light(current: Light, event: Event) returns Light\n  purpose: The light shown after the event; an emergency overrides the normal cycle.\n  tags: state-machine, traffic\n  example: next_light(current: Red, event: TimerExpired) is Green\n  example: next_light(current: Green, event: TimerExpired) is Yellow\n  example: next_light(current: Yellow, event: TimerExpired) is Red\n  example: next_light(current: Green, event: EmergencyDeclared) is FlashingRed\n  example: next_light(current: FlashingRed, event: TimerExpired) is FlashingRed\n  example: next_light(current: FlashingRed, event: EmergencyCleared) is Red\n\n  match event\n    when EmergencyDeclared then return FlashingRed\n    when EmergencyCleared then\n      match current\n        when FlashingRed then return Red\n        otherwise return current\n      end\n    when TimerExpired then\n      match current\n        when Red then return Green\n        when Green then return Yellow\n        when Yellow then return Red\n        when FlashingRed then return FlashingRed\n      end\n  end\nend\n```",
+    "```renyi\npublic function next_light(current: Light, event: Event) returns Light\n  purpose: The light shown after the event; an emergency overrides the normal cycle.\n  tags: state-machine, traffic\n  example: next_light(current: Red, event: TimerExpired) is Green\n  example: next_light(current: Green, event: TimerExpired) is Yellow\n  example: next_light(current: Yellow, event: TimerExpired) is Red\n  example: next_light(current: Green, event: EmergencyDeclared) is FlashingRed\n  example: next_light(current: FlashingRed, event: TimerExpired) is FlashingRed\n  example: next_light(current: FlashingRed, event: EmergencyCleared) is Red\n\n  match event\n    when EmergencyDeclared then return FlashingRed\n    when EmergencyCleared then\n      match current\n        when FlashingRed then return Red\n        otherwise return current\n      end\n    when TimerExpired then\n      match current\n        when Red then return Green\n        when Green then return Yellow\n        when Yellow then return Red\n        when FlashingRed then return FlashingRed\n      end\n  end\nend\n```",
+    "```\npublic function next_light(current: Light, event: Event) returns Light\n  purpose: The light shown after the event; an emergency overrides the normal cycle.\n  tags: state-machine, traffic\n  example: next_light(current: Red, event: TimerExpired) is Green\n  example: next_light(current: Green, event: TimerExpired) is Yellow\n  example: next_light(current: Yellow, event: TimerExpired) is Red\n  example: next_light(current: Green, event: EmergencyDeclared) is FlashingRed\n  example: next_light(current: FlashingRed, event: TimerExpired) is FlashingRed\n  example: next_light(current: FlashingRed, event: EmergencyCleared) is Red\n\n  match event\n    when EmergencyDeclared then\n      return FlashingRed\n    when EmergencyCleared then\n      match current\n        when FlashingRed then\n          return Red\n        otherwise\n          return current\n      end\n    when TimerExpired then\n      match current\n        when Red then\n          return Green\n        when Green then\n          return Yellow\n        when Yellow then\n          return Red\n        when FlashingRed then\n          return FlashingRed\n      end\n  end\nend\n```",
+    "```renyi\npublic function next_light(current: Light, event: Event) returns Light\n  purpose: The light shown after the event; an emergency overrides the normal cycle.\n  tags: state-machine, traffic\n  example: next_light(current: Red, event: TimerExpired) is Green\n  example: next_light(current: Green, event: TimerExpired) is Yellow\n  example: next_light(current: Yellow, event: TimerExpired) is Red\n  example: next_light(current: Green, event: EmergencyDeclared) is FlashingRed\n  example: next_light(current: FlashingRed, event: TimerExpired) is FlashingRed\n  example: next_light(current: FlashingRed, event: EmergencyCleared) is Red\n\n  match event\n    when EmergencyDeclared then return FlashingRed\n    when EmergencyCleared then\n      match current\n        when FlashingRed then return Red\n        otherwise return current\n      end\n    when TimerExpired then\n      match current\n        when Red then return Green\n        when Green then return Yellow\n        when Yellow then return Red\n        when FlashingRed then return FlashingRed\n      end\n  end\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "7ce7a9d7-cf1d-4d41-a7ef-da395ca2bb95",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 376
+      },
+      {
+        "session": "241bbe97-357f-42dc-92ed-fc0f5a0611a9",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 379
+      },
+      {
+        "session": "5f10221e-d7ac-410f-9d21-930847854f32",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 438,
+        "output_tokens": 817
+      },
+      {
+        "session": "27ec848f-4455-43d4-982c-335295a699f7",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 503,
+        "output_tokens": 893
+      },
+      {
+        "session": "2e04c499-75ff-4097-ae79-51c9561eb519",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 379
+      }
+    ]
+  }
+}

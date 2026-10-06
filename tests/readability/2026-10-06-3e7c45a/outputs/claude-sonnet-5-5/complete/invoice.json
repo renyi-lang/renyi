@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "```renyi\npublic function total(invoice: Invoice) returns Decimal\n  purpose: Subtotal after the percentage discount, rounded to cents.\n  see also: subtotal\n\n  let gross be subtotal(invoice)\n  let discount be gross * invoice.discount_percent / 100\n  return (gross - discount).rounded(places: 2)\nend\n```",
+    "```\npublic function total(invoice: Invoice) returns Decimal\n  purpose: Subtotal after the percentage discount, rounded to cents.\n  see also: subtotal\n\n  let gross be subtotal(invoice)\n  let discount be gross * invoice.discount_percent / 100\n  return (gross - discount).rounded(places: 2)\nend\n```",
+    "```\npublic function total(invoice: Invoice) returns Decimal\n  purpose: Subtotal after the percentage discount, rounded to cents.\n  see also: subtotal\n\n  let gross be subtotal(invoice)\n  let kept be 100.00 - invoice.discount_percent\n  return (gross * kept / 100.00).rounded(places: 2)\nend\n```",
+    "```\npublic function total(invoice: Invoice) returns Decimal\n  purpose: Subtotal after the percentage discount, rounded to cents.\n  see also: subtotal\n\n  let gross be subtotal(invoice)\n  let remaining be 100.00 - invoice.discount_percent\n  return (gross * remaining / 100.00).rounded(places: 2)\nend\n```",
+    "```renyi\npublic function total(invoice: Invoice) returns Decimal\n  purpose: Subtotal after the percentage discount, rounded to cents.\n  see also: subtotal\n\n  let gross be subtotal(invoice)\n  let kept be 100.00 - invoice.discount_percent\n  return (gross * kept / 100.00).rounded(places: 2)\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "31a5d5df-1db3-405b-9924-b79b8830fb41",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 120
+      },
+      {
+        "session": "64588295-4541-48e1-80ae-c4eea1a3b1b9",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 117
+      },
+      {
+        "session": "5fb428e5-991b-427c-b414-f8766bda41ae",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 160,
+        "output_tokens": 282
+      },
+      {
+        "session": "ffc8871b-73fb-4724-bbc0-fe549b2896e8",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 244,
+        "output_tokens": 368
+      },
+      {
+        "session": "f41b44c7-2676-4c65-9f72-851167d36331",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 211,
+        "output_tokens": 336
+      }
+    ]
+  }
+}

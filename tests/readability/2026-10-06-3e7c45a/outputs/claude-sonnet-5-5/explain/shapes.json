@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "This program models three kinds of plane shapes: circles, rectangles and points. It rejects any circle or rectangle whose dimensions aren't positive. It prints a one-line description of each shape with its area rounded to two decimals, then names the shape with the greatest area, or reports that there are none. It's a small, self-contained demo that needs only console output, so it's safe to run, though it uses an approximate value of pi (3.14159).",
+    "This module defines a shape type (circle, rectangle or point) whose circle and rectangle dimensions must be positive. It can describe a shape in one line with its area rounded to two decimal places, and it can pick the largest shape from a list, or nothing if the list is empty. Its `main` function prints descriptions of three sample shapes and names the largest, and it needs only console access, so it is a small, safe demo of the language's types, abilities and matching.",
+    "This module lets you describe and measure plane shapes (circles, rectangles and points). Each shape must have positive dimensions, and you can get a one-line description with its area, or find the largest shape in a list, which returns nothing for an empty list. Its entry point prints descriptions of a few sample shapes and names the largest, and it needs only console access.",
+    "This module lets you describe and measure plane shapes (circles, rectangles and points), with circle and rectangle dimensions required to be positive. It gives you a one-line description of each shape that includes its area rounded to two places, and a way to find the shape with the largest area in a list, or nothing if the list is empty. It is a small, pure, self-contained example. Its only effect is printing a demo of a few shapes to the console, so it is easy to adopt or adapt as a template.",
+    "This module lets you describe and compare simple plane shapes (circles, rectangles and points). Circles and rectangles must have positive dimensions, and each shape can report its area. It can produce a one-line description with the area rounded to two places, find the largest shape in a list (or nothing if the list is empty), and its `main` prints a small demo of all this using only the console."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "391a8098-bd9d-412c-a075-8ee08c30d3a5",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 138
+      },
+      {
+        "session": "10904e27-69d1-47de-aece-511257ef21d0",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 143
+      },
+      {
+        "session": "7b434a17-1b0f-4db8-a56e-11e9ae38d39d",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 110
+      },
+      {
+        "session": "ed85e3ff-f819-4c92-9ef5-943e6faaf8fc",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 151
+      },
+      {
+        "session": "0203d85d-4c44-491e-b22c-0e4d6f17ccc3",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 115
+      }
+    ]
+  }
+}

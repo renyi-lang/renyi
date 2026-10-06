@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "This program computes the mean, median and population standard deviation of the numbers you pass on the command line, and prints each one rounded to three decimal places. It skips any argument that isn't a number, printing a note about it, and reports \"no data\" for a statistic when no valid numbers remain. It only reads the command-line arguments and prints to the console, so it's safe to use. The three calculations are also public functions that other modules can reuse on a list of floats.",
+    "This program computes the mean, median and population standard deviation of the numbers you pass on the command line. It prints each statistic rounded to three decimals, reports \"no data\" when no valid numbers were given, and skips any argument that isn't a number, printing a note about it. It needs only console and environment access, and its three statistics functions are public, so other modules can reuse them.",
+    "This program computes the mean, median and population standard deviation of the numbers you pass on the command line. It skips any argument that isn't a number, printing a notice for each, and reports \"no data\" for a statistic when no valid numbers remain. It only reads command-line arguments and prints to the console, so it's a safe, simple tool, and its functions for the three statistics can also be reused from other modules.",
+    "This program reads numbers from the command line and prints their mean, median and population standard deviation, rounded to three decimal places. Words that aren't numbers are skipped with a message, and if no valid numbers are given, each statistic prints \"no data\". The three calculations are also public functions, so other programs can reuse them. They return nothing for an empty list instead of failing.",
+    "This program reads numbers from the command line and prints their mean, median and population standard deviation. It skips any argument that isn't a number, with a message, and it prints \"no data\" for a statistic when no numbers are given. You could also use the three calculation functions on their own, since each returns nothing for an empty list instead of failing."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "b79e301a-7934-4974-a5f6-ff20da53657c",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 139
+      },
+      {
+        "session": "c6804a6b-6b9f-4149-a79c-f959d1ee04e0",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 114
+      },
+      {
+        "session": "7615c0a3-0b0f-4b87-8669-fe08ff84b5d6",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 123
+      },
+      {
+        "session": "e1d71e62-9d12-4900-a6d0-e8309c0f210c",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 114
+      },
+      {
+        "session": "a5318da9-6d4f-48d8-a23c-6954702bdeb8",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 100
+      }
+    ]
+  }
+}

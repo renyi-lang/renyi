@@ -1172,3 +1172,32 @@ carry more noise than in rounds 1 and 2; the gating models already ran at
 their default temperature. The owner may still authorize the keys for a
 round, and then the API path of `run` is used as in rounds 1 and 2.
 `03-readability-test.md` amended. (user)
+
+**U8. The library list carries parameter names; a sentence beside it gives
+the call form.** Round 3 (`tests/readability/2026-10-06-3e7c45a/notes.md`,
+Sonnet 5.5 through the Claude Code CLI) measured the cheat sheet after U1
+to U3 and found the rendering of U2 and U3 wrong: the list showed
+`rounded(places: 2)`, a single argument named, which decision M4 forbids
+in a call, and `split()` beside `length()`, which hides the separator.
+Sonnet copied both as shown: `rounded(places: 2)` in every sample of
+`invoice` and `shapes` (Complete) and `compound_interest` (Write), all
+rejected by the checker ("a call with one argument does not name it"),
+and `split()` in three of five `word_count` samples ("`split` takes 1
+argument (separator), found 0"); its Complete fell from 89 to 68, with
+`shapes` and `word_count` lost to the rendering and `deadlines` and
+`invoice_report` to the reserved word `count`. The rendering was
+Claude's reading of U2 and U3, not what they decide (the argument seen
+before it is needed; every method a call): both stand, in this form. The
+list now gives every method with its parameter names (`split(separator)`,
+`rounded(places)`, `replace(old, new)`, `set(key, value)`), checked
+against `library/std/prelude.ry`, and one sentence after it gives the
+call form of M4: `line.split(",")`, `price.rounded(2)`,
+`text.replace(old: "a", new: "b")`. Paid for by shortening the
+phrase-token list to three examples, dropping the nesting and body
+limits, the count of reserved words and "(explicit)" after `Float`; 2998
+tokens. Round 3 is a defect round: its rates measure the defect, and
+round 4 on the corrected sheet through the same channel (Sonnet 5.5
+first; gpt-5.5 when the Codex quota or the owner's key authorization
+gives it a channel) is the measurement of U1 to U3. `count` stays
+reserved (R2); the owner waits for gpt-5.5's data before reopening it.
+(user)

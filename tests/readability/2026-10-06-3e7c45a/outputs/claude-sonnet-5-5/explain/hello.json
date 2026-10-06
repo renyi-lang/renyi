@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "This program prints a greeting to the console, using the first command-line argument as the name and falling back to \"world\" if none is given. It needs only console and environment access, so it does no file, network, or other I/O. It's a small, safe hello-world example, useful as a template for reading arguments but not as a tool in itself.",
+    "This program prints a greeting to the console. It uses the first command-line argument as the name, and if you give none it greets \"world\". It needs only console and environment access, so it can't touch files or the network, which makes it safe to run.",
+    "This program prints a friendly greeting to the console. It takes the first command-line argument as the name to greet and falls back to \"world\" when no argument is given. It needs only console and environment access, so it can't touch files or the network, which makes it a safe and minimal starter or smoke-test program.",
+    "This small program prints a greeting to the console, using the first command-line argument as the name and falling back to \"world\" if none is given. It only needs permission to print and to read the command-line arguments, so it does nothing else, such as touching files or the network. It's a safe, minimal hello-world that works well as a starter or template.",
+    "This program prints a greeting to the console. It greets the first command-line argument by name, or greets \"world\" if you give none. It needs only console output and access to the program's arguments, so it does nothing else, such as touching files or the network."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "afa34b52-a1e4-4f7e-b280-16eaa5e127d7",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 96
+      },
+      {
+        "session": "41d94f39-353e-4f1c-848c-d177ea7e20b2",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 69
+      },
+      {
+        "session": "b2e0d3ab-6aba-4a29-bbc3-1083feca7a10",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 90
+      },
+      {
+        "session": "d5c6efce-096b-4e12-b0a3-41269e02bb4e",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 98
+      },
+      {
+        "session": "d303a558-3fde-4dc5-881f-28bee3705903",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 71
+      }
+    ]
+  }
+}

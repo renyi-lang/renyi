@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "This program builds arithmetic expressions as a tree of numbers, additions, multiplications and negations, and can both compute an expression's decimal value and print it in fully parenthesized infix form. Its `main` builds one small sample tree and prints the rendered text next to the computed result, using only the console and no other effects. It's a compact, pure, recursive demonstration. It has no parser or input handling, so you'd use it as a reference for tree evaluation, not as a calculator.",
+    "This program defines arithmetic expressions as a tree of numbers, additions, multiplications and negations over decimals. It provides one function that computes an expression's value and another that prints it in infix form with parentheses around every operation, and the examples in the code check both. Running it builds one small sample expression and prints it next to its result. It is a self-contained demonstration, not a reusable calculator, because it has no parser for typed input.",
+    "This program defines arithmetic expressions as a tree of numbers, additions, multiplications and negations over decimals. It provides one function that computes an expression's value and another that prints it in infix form with parentheses around every operation, and each function has built-in examples. Running it builds one small sample expression and prints it next to its result. It's a compact demonstration of recursive tree evaluation, not a general-purpose calculator, since it has no parser and no subtraction or division.",
+    "This program defines arithmetic expressions as a tree of numbers, additions, multiplications and negations over decimals. It provides one function that computes an expression's value and another that prints it in infix form with parentheses around every operation. Its main function builds one small sample tree and prints it next to its result, so it works as a self-contained demo of recursive tree evaluation and rendering, not as a parser or a general calculator.",
+    "This program defines arithmetic expressions as a tree of numbers, additions, multiplications and negations over decimals. It offers two functions: one computes an expression's value, and the other prints it in infix form with parentheses around every operation. Its entry point builds a small sample tree and prints it next to its result. It's a compact, console-only demonstration of recursive tree handling, so it suits as a template for tree-shaped data but isn't a full calculator, since it has no parser or input handling."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "c3a9f3c2-3347-49af-937c-eb2c5ee14dd6",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 152
+      },
+      {
+        "session": "93418f1f-6d48-4845-95dc-9875d64e59fc",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 133
+      },
+      {
+        "session": "b62c1cc8-8601-49c7-85e6-da9ceec8a2db",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 147
+      },
+      {
+        "session": "ae4a26ac-be9a-438a-8171-9d21fb52d32a",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 130
+      },
+      {
+        "session": "d51b0bda-e3ae-4c0d-9261-bf929971132e",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 154
+      }
+    ]
+  }
+}

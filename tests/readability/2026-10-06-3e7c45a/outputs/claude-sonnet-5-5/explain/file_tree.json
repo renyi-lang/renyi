@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "This program prints a directory tree, listing each file and folder with its size in bytes. Folder sizes are the sum of everything beneath them, and children appear in name order, indented by depth. It starts at the directory given as the first command-line argument, or the current one if you give none, and it only reads the filesystem. It stops with a file error if anything can't be read.",
+    "This program prints a directory tree, starting from the folder named on the command line (or the current folder if none is given). It lists each file and folder with its size in bytes, with folders summed over everything inside them and children shown in name order and indented by depth. It only reads the file system and writes to the console, so it's safe to run, though it recomputes folder sizes at every level and will be slow on very large trees.",
+    "This program prints a directory tree, listing each file and folder with its total size in bytes, indented by depth and sorted by name. It starts at the directory named on the command line (or the current one) and only needs read access to the filesystem and the console. Use it if you want a quick, read-only size overview of a folder. Be aware that it recomputes sizes at every level, so large trees will be scanned repeatedly, and it stops with a file error if anything can't be read.",
+    "This program prints a directory tree, listing each file and folder with its total size in bytes. Folder sizes are the sum of everything inside them, and children are shown indented and sorted by name. It reads the starting directory from the first command-line argument, or uses the current directory if none is given, and it only needs permission to read the filesystem and print to the console. One cost to know about: it recomputes each folder's size at every level, so deep trees get scanned repeatedly.",
+    "This program prints a directory tree, listing each file and folder indented by depth, with its total size in bytes. A folder's size is the sum of everything beneath it. It starts from the directory given on the command line, or the current directory if none is given. Siblings are sorted by name. It only reads the filesystem and prints to the console, and it fails with a file error if anything can't be read. You may want a different tool if you need to skip unreadable entries or filter by file type."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "97183c02-dfdc-444f-b649-ae5aef7f563c",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 111
+      },
+      {
+        "session": "6206dc46-0f07-43a8-a0b0-07ab834f49b3",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 122
+      },
+      {
+        "session": "ba54366c-dcd3-41ea-9467-8f0651a68f91",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 143
+      },
+      {
+        "session": "1311def5-f44c-46a5-92dd-0e714409625f",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 144
+      },
+      {
+        "session": "3e529e2f-a986-4361-937d-63c9bd10e6cd",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 143
+      }
+    ]
+  }
+}

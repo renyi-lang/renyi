@@ -1,0 +1,36 @@
+{
+  "samples": [
+    "Celsius  Fahrenheit\n    -10          14\n      0          32\n     10          50\n     20          68\n     30          86\n     40         104",
+    "Celsius  Fahrenheit\n    -10          14\n      0          32\n     10          50\n     20          68\n     30          86\n     40         104",
+    "Celsius  Fahrenheit\n    -10          14\n      0          32\n     10          50\n     20          68\n     30          86\n     40         104",
+    "Celsius  Fahrenheit\n    -10          14\n      0          32\n     10          50\n     20          68\n     30          86\n     40         104",
+    "Celsius  Fahrenheit\n    -10          14\n      0          32\n     10          50\n     20          68\n     30          86\n     40         104"
+  ],
+  "model": "gpt-5.5",
+  "temperature": null,
+  "source": {
+    "tool": "codex exec (codex-cli 0.153.3, ChatGPT subscription login)",
+    "model": "gpt-5.5",
+    "reasoning_effort": "medium",
+    "sandbox": "read-only",
+    "working_directory": "empty",
+    "prompt": "the system text and the task prompt in one user message",
+    "sessions": [
+      {
+        "session": "01a10f8c-25e5-7c52-a372-11fe140b3103"
+      },
+      {
+        "session": "01a10f8d-dbe6-7430-9704-5e418144a909"
+      },
+      {
+        "session": "01a10f8d-fcb8-7202-9ccb-1fdee1f2e3f0"
+      },
+      {
+        "session": "01a10f8e-1945-7e23-8a0e-d7b874efe943"
+      },
+      {
+        "session": "01a10f8e-4126-7a52-a78c-8d5733bba477"
+      }
+    ]
+  }
+}

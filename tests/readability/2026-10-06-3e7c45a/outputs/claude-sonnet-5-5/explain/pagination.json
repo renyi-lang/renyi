@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "This program fetches every page of a cursor-paginated customer API by following each page's \"next\" cursor until none remains. It then counts customers per country and prints the countries from largest to smallest. It needs network access and console output, and it fails if an HTTP request or JSON parse fails. It includes an offline test, replayed from a recording, that checks three customers are fetched.",
+    "This program fetches every page of a cursor-paginated customer API at `https://api.example.com/customers`, following each page's next-cursor until the API returns none. It then prints how many customers each country has, largest count first. It needs only console and HTTP access, and it fails with an HTTP or JSON error if a request or response parse goes wrong. It includes a replay-based test that expects three customers.",
+    "This program downloads every page of customers from a cursor-paginated HTTP API (following each response's next-page cursor until none remains) and prints how many customers each country has, largest first. It needs network access to the one API and console output, and it fails with an HTTP or JSON error if a request or response parse goes wrong. It includes a replay-based test that checks three customers are collected, so it's a good fit if your API uses this \"nextCursor\" response shape. The base URL is hard-coded to a placeholder example address, so you'd need to change that before using it for real.",
+    "This program fetches every page of a cursor-paginated customer API at `https://api.example.com/customers`. It follows each response's next-page cursor until none remains, then prints how many customers each country has, largest first. It needs only console and HTTP access, can fail with an HTTP or JSON error, and includes an offline-replay test that expects three customers.",
+    "This program fetches every page of a cursor-paginated customer API at api.example.com, following each page's \"next cursor\" until the API stops returning one. It then groups the customers by country and prints a count per country, largest first. It needs network access and console output, fails if an HTTP or JSON error occurs, and includes an offline test (replayed from a recording) that expects three customers."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "528d08d3-bf7e-43a5-b4e3-a632704345d8",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 115
+      },
+      {
+        "session": "4d2c91b4-d29c-4e26-a2f8-c65c8e7301bc",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 124
+      },
+      {
+        "session": "4f6de81d-b104-4f9c-ab21-0a080261d1dc",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 174
+      },
+      {
+        "session": "2f6f16ce-89d8-4236-8d05-dbe4c509fd78",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 111
+      },
+      {
+        "session": "b401dae4-b292-44c4-b7aa-c827ca81759c",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 117
+      }
+    ]
+  }
+}

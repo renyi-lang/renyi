@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "This program reads a list of tasks with due dates and prints the ones due within the next ten days, earliest first. Next to each one it shows how many Monday-to-Friday working days are left. It also includes a parser for lines like \"title, date\" that reports a missing comma or an invalid date, but the main program doesn't use it. It only works on three hard-coded sample tasks and the current date, so you would need to adapt it before using it on real data.",
+    "This program reads a list of tasks with due dates, picks out those due within the next ten days of today's date, and prints each one with its due date and the number of working days (Monday to Friday) left. It also provides a function for turning \"title, date\" text lines into tasks, which reports an error for a missing comma or an invalid date. Note that the demo in `main` uses three hard-coded sample tasks instead of reading real input, so you would need to adapt it to use it on your own data.",
+    "This program reads a list of tasks, each with a title and a due date, and picks out the ones due within a chosen number of days from today, earliest first. For each of those it counts the Monday-to-Friday days left until the due date. Its demo entry point uses three hard-coded sample tasks and prints the ones due in the next ten days. It also has a helper that parses \"title, date\" text lines and reports malformed lines or invalid dates, but the demo doesn't call it.",
+    "This program reads a list of tasks, each with a title and a due date, and picks out the ones due within a chosen number of days from today, earliest first. For each of those it counts the working days left (Monday to Friday, excluding the start day and including the due date). It also includes a parser for \"title, date\" lines that reports a missing comma or an invalid date. The runnable entry point only shows a hard-coded sample of three tasks against the current date, so it is a small demonstration and a reusable set of date helpers, not a finished task tracker.",
+    "This program lets you read tasks written as \"title, date\" lines, pick out the ones due within a chosen number of days from today (earliest first), and count the Monday-to-Friday days left before each one is due. Its entry point is only a demo: it uses three hard-coded sample tasks and today's date, then prints the ones due in the next ten days with their working days remaining. The line parser and the helper functions are reusable, but the line parser reports a missing comma or a bad date as a failure, and the working-day count ignores public holidays."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "1cab9c56-1f68-46cd-b970-d98aab73e8c5",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 137
+      },
+      {
+        "session": "be24e250-835b-47b9-a1d3-88b4cbac32c6",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 147
+      },
+      {
+        "session": "24dcf7ba-702e-4298-ae8f-96b8278986b0",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 147
+      },
+      {
+        "session": "933a0695-5c21-4322-ae6d-ac648e306471",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 166
+      },
+      {
+        "session": "c6202d64-4220-4924-a7f0-c0a5038dc7d4",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 166
+      }
+    ]
+  }
+}

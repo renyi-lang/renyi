@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "This module loads a service's configuration from a JSON file and checks it as it loads. It requires a port from 1 to 65535, a worker count from 1 to 64, and a log level of quiet, normal or verbose. If the file can't be read or doesn't match, it fails with a specific error. You can instead use the fallback loader, which returns defaults (port 8080, 4 workers, normal logging) or a configuration you supply. The older \"load or default\" function is deprecated in favor of that loader, and the module needs only read access to the filesystem.",
+    "This module loads a service's configuration from a JSON file and checks it as it loads. It requires a valid port (1–65535), 1–64 workers, and a log level of Quiet, Normal or Verbose. If loading fails, it reports either an unreadable file or a mismatched shape. It also offers a default configuration (port 8080, 4 workers, Normal logging) and a loader that falls back to a configuration you supply. Prefer that fallback loader, because the older load-or-default function is deprecated.",
+    "This module loads a service's configuration from a JSON file, checking that the port is a valid TCP port (1 to 65535), the worker count is between 1 and 64, and the log level is one of quiet, normal or verbose. If the file can't be read or doesn't match that shape, loading fails with a specific error. If you want to keep running with defaults instead of failing, it also offers a fallback loader that takes a configuration of your choosing, plus a built-in default (port 8080, four workers, normal logging). An older \"load or default\" function is deprecated in favor of the fallback loader.",
+    "This module loads a service's JSON configuration file and checks it as it loads. A valid file gives a port from 1 to 65535, a worker count from 1 to 64, and a log level of quiet, normal or verbose. A failure reports either an unreadable file or a file that doesn't match that shape. It also supplies default settings, and `load_with_fallback` returns a configuration you choose when loading fails. Use that function rather than `load_or_default`, which is deprecated. It needs read access to the filesystem.",
+    "This module loads a service's configuration from a JSON file and checks it as it loads. It enforces a valid port number (1 to 65535), a worker count (1 to 64) and a log level (Quiet, Normal or Verbose). If the file is unreadable or doesn't match that shape, loading fails with a specific error. It also supplies a default configuration (port 8080, 4 workers, Normal logging) and a loader that falls back to a configuration you choose. The older fallback-to-defaults function is deprecated, so use the newer one."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "35d573a3-de72-4c5a-8027-58c99cf788be",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 172
+      },
+      {
+        "session": "c9fce3e3-a6c6-4a43-bd23-dc7237e73adf",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 162
+      },
+      {
+        "session": "7cc660a5-edea-445e-8a1b-7b631e967919",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 184
+      },
+      {
+        "session": "12458a06-c619-41c9-b8dc-b6d0b8afe129",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 163
+      },
+      {
+        "session": "350ac87a-b902-4c1d-a787-44095c3985a7",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 172
+      }
+    ]
+  }
+}

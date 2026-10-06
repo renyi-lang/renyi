@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "```\npublic function render(table: Table) returns Text\n  purpose: The table as Markdown, every column padded to its widest cell.\n  tags: markdown, formatting\n  example: render(Table(header: [\"name\", \"qty\"], rows: [[\"apple\", \"1\"], [\"kiwi\", \"12\"]])) is \"\"\"\n    | name  | qty |\n    | ----- | --- |\n    | apple | 1   |\n    | kiwi  | 12  |\n    \"\"\"\n\n  let widths be column_widths(table)\n  let dashes be\n    for each width in widths\n    collect \"-\".repeat(width)\n  let top be [\n    render_row(cells: table.header, widths: widths),\n    render_row(cells: dashes, widths: widths)\n  ]\n  let body be\n    for each row in table.rows\n    collect render_row(cells: row, widths: widths)\n  let all_rows be top.append_all(body)\n  let newline be \"\\n\"\n  return all_rows.join(newline)\nend\n```",
+    "```\npublic function render(table: Table) returns Text\n  purpose: The table as Markdown, every column padded to its widest cell.\n  tags: markdown, formatting\n  example: render(Table(header: [\"name\", \"qty\"], rows: [[\"apple\", \"1\"], [\"kiwi\", \"12\"]])) is \"\"\"\n    | name  | qty |\n    | ----- | --- |\n    | apple | 1   |\n    | kiwi  | 12  |\n    \"\"\"\n\n  let widths be column_widths(table)\n  let dashes be\n    for each width in widths\n    collect \"-\".repeat(width)\n  let mutable lines: List of Text be []\n  set lines to lines.append(render_row(cells: table.header, widths: widths))\n  set lines to lines.append(render_row(cells: dashes, widths: widths))\n  for each row in table.rows\n    set lines to lines.append(render_row(cells: row, widths: widths))\n  end\n  let newline be \"\\n\"\n  return lines.join(newline)\nend\n```",
+    "```\npublic function render(table: Table) returns Text\n  purpose: The table as Markdown, every column padded to its widest cell.\n  tags: markdown, formatting\n  example: render(Table(header: [\"name\", \"qty\"], rows: [[\"apple\", \"1\"], [\"kiwi\", \"12\"]])) is \"\"\"\n    | name  | qty |\n    | ----- | --- |\n    | apple | 1   |\n    | kiwi  | 12  |\n    \"\"\"\n\n  let widths be column_widths(table)\n  let dashes be\n    for each width in widths\n    collect \"-\".repeat(width)\n  let mutable lines: List of Text be []\n  set lines to lines.append(render_row(cells: table.header, widths: widths))\n  set lines to lines.append(render_row(cells: dashes, widths: widths))\n  for each row in table.rows\n    set lines to lines.append(render_row(cells: row, widths: widths))\n  end\n  let newline be \"\\n\"\n  return lines.join(newline)\nend\n```",
+    "```renyi\npublic function render(table: Table) returns Text\n  purpose: The table as Markdown, every column padded to its widest cell.\n  tags: markdown, formatting\n  example: render(Table(header: [\"name\", \"qty\"], rows: [[\"apple\", \"1\"], [\"kiwi\", \"12\"]])) is \"\"\"\n    | name  | qty |\n    | ----- | --- |\n    | apple | 1   |\n    | kiwi  | 12  |\n    \"\"\"\n\n  let widths be column_widths(table)\n  let dashes be\n    for each width in widths\n    collect \"-\".repeat(width)\n  let header_line be render_row(cells: table.header, widths: widths)\n  let rule_line be render_row(cells: dashes, widths: widths)\n  let body_lines be\n    for each row in table.rows\n    collect render_row(cells: row, widths: widths)\n  let lines be [header_line, rule_line].append_all(body_lines)\n  let newline be \"\\n\"\n  return lines.join(newline)\nend\n```",
+    "```\npublic function render(table: Table) returns Text\n  purpose: The table as Markdown, every column padded to its widest cell.\n  tags: markdown, formatting\n  example: render(Table(header: [\"name\", \"qty\"], rows: [[\"apple\", \"1\"], [\"kiwi\", \"12\"]])) is \"\"\"\n    | name  | qty |\n    | ----- | --- |\n    | apple | 1   |\n    | kiwi  | 12  |\n    \"\"\"\n\n  let widths be column_widths(table)\n  let dashes be\n    for each width in widths\n    collect \"-\".repeat(width)\n  let top be [render_row(cells: table.header, widths: widths), render_row(cells: dashes, widths: widths)]\n  let body be\n    for each row in table.rows\n    collect render_row(cells: row, widths: widths)\n  let lines be top.append_all(body)\n  let newline be \"\\n\"\n  return lines.join(newline)\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "6fe4d46b-1241-458a-94c2-049dcb7bcb41",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 407,
+        "output_tokens": 719
+      },
+      {
+        "session": "c2490505-4a79-48dd-87e3-d298a853b5b1",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 368,
+        "output_tokens": 690
+      },
+      {
+        "session": "9f079b19-d1d3-4a6d-a1e4-6b6a24bc1d12",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 380,
+        "output_tokens": 702
+      },
+      {
+        "session": "d7df3a7a-8f7f-488c-9cb2-007b2f03b3ce",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 417,
+        "output_tokens": 743
+      },
+      {
+        "session": "80fd2861-0da9-467d-b53d-e449e69665ca",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 314,
+        "output_tokens": 615
+      }
+    ]
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "This module gives your host application a shipping quote for a parcel. You pass in the weight, the destination (domestic, Europe or international) and the order total, and you get back the cost, the delivery time in business days and a free-shipping flag. Domestic orders at or above 50.00 ship free. Every other parcel costs a base rate for its destination plus 2.50 for each started kilogram beyond the first. It is pure, with no side effects, and it reads and writes JSON, so it is easy to embed.",
+    "This module gives a web shop's host application a shipping quote for a parcel: given weight, destination (domestic, Europe or international) and order total, it returns the cost, delivery time in business days, and whether shipping is free. Domestic orders at or above 50.00 ship free. Otherwise the price is a flat rate per destination plus 2.50 for each started kilogram beyond the first. It is pure, with no side effects, and parcels are validated on input, so it is safe to call at every checkout. Note that the delivery time is fixed per destination and doesn't depend on weight.",
+    "This module gives a web shop's host application a `quote` function that takes a parcel (weight, destination market, order total) and returns the shipping cost, the delivery time in business days, and whether shipping is free. Prices start from a base rate for Domestic, Europe or International (with 2, 5 or 10 business days), plus a surcharge for each started kilogram beyond the first. Domestic orders at or above 50.00 ship free. It's pure, with no effects, and it takes JSON input and gives JSON output, so it suits a checkout flow that needs predictable, easy-to-audit pricing rules.",
+    "This module lets a host application get a shipping quote for a parcel, based on its weight, destination (domestic, Europe or international) and order total. It returns a cost, a delivery time in business days and a free-shipping flag. Domestic orders of 50.00 or more ship free. Otherwise the price is a base rate for the destination plus 2.50 for each started kilogram beyond the first. The module is pure, with no I/O, so it is safe to call at every checkout.",
+    "This module is a shipping calculator that the host application calls at checkout. It takes a parcel's weight, destination (domestic, European or international) and order total, and returns a quote with the cost, the delivery time in business days and a free-shipping flag. The price is a base rate for the destination plus a surcharge for each started kilogram beyond the first. Domestic orders of 50.00 or more ship free, and the quote's delivery time depends only on the destination."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "fb07aa62-a22a-4d36-b2b7-548f14628b9d",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 159
+      },
+      {
+        "session": "17494713-f815-42e1-9f2c-4cb556c48ee9",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 184
+      },
+      {
+        "session": "bf33adba-6577-4ea7-9efe-ef82489ad7c9",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 194
+      },
+      {
+        "session": "0c22ec52-42bd-4c7d-a587-bc9a7b4acd09",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 149
+      },
+      {
+        "session": "21fa9729-3c60-4119-b14f-2c17700b68e5",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 144
+      }
+    ]
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "This program models a traffic light as a state machine. It cycles Red, Green, Yellow and back to Red on each timer expiry, and an emergency declaration forces a flashing red that holds until the emergency is cleared, which returns the light to Red. It also provides a helper that applies a list of events in order and returns every light shown, plus a demo `main` that prints the lights for a short sequence with one emergency in the middle. It is pure logic with no effects apart from console output in the demo, so it suits you if you want a small, tested, reusable transition function.",
+    "This program models a traffic light as a state machine with four colours (red, green, yellow, and flashing red). It normally cycles red, green, yellow, red on each timer expiry. An emergency declaration forces flashing red, and clearing it returns to red. It can also replay a list of events and report every light shown. The built-in demo prints the lights for a short sequence with an emergency in the middle. It is pure logic with no side effects beyond console output, and its examples cover the main transitions, so it suits anyone who wants a small, predictable light controller or a state-machine template.",
+    "This program models a traffic light as a state machine: given the current colour (Red, Green, Yellow or FlashingRed) and an event (timer expiry, emergency declared, or emergency cleared), it returns the next colour. The timer moves the light through the normal cycle, an emergency forces it to flashing red regardless of its state, and clearing the emergency returns it to red. It also applies a list of events in order to produce the resulting sequence of lights, and its demo prints one such sequence. It is pure apart from console output, and its examples cover the main transitions, so it's a good fit if you want a small, self-contained example of a state machine.",
+    "This program models a traffic light as a state machine. It cycles Red, Green, Yellow and back to Red on each timer expiry, and an emergency event forces a flashing red that lasts until the emergency is cleared, which returns the light to Red. It can compute the next light for a single event or the whole list of lights shown for a sequence of events, and its demo prints the results for a short sequence with one emergency in the middle. It is pure logic with no side effects beyond printing, so it suits anyone who wants a small, self-checking example of event-driven state transitions.",
+    "This program models a traffic light as a state machine: it cycles Red, Green, Yellow, Red on each timer tick, flashes red during an emergency, and returns to Red when the emergency is cleared. It provides a pure function that gives the next light for a given light and event, and another that applies a list of events and returns every light shown along the way. Its `main` prints a demo sequence with an emergency in the middle, and it needs only console access, so it is safe to reuse as a self-contained, well-tested building block."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "25dc61e3-911f-445c-a772-12a8b6e4a700",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 175
+      },
+      {
+        "session": "ae060f32-34e9-4887-844a-461245075c32",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 180
+      },
+      {
+        "session": "46744bb5-5bdd-4712-97c3-d77d42890545",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 202
+      },
+      {
+        "session": "b75287d5-19f4-4abd-9217-ed47bc6872e9",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 177
+      },
+      {
+        "session": "6b713a39-f790-48f5-935d-5ae5412ff689",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 160
+      }
+    ]
+  }
+}

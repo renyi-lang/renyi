@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "```renyi\nmodule fizzbuzz\n  purpose: Print the numbers from 1 to 100 with Fizz, Buzz and FizzBuzz.\n\nimport std.console\n\npublic function word_for(number: Integer)\n  returns Text\n  purpose: Choose what to print for one number: Fizz, Buzz, FizzBuzz or the number itself.\n  tags: fizzbuzz\n  example: word_for(1) is \"1\"\n  example: word_for(3) is \"Fizz\"\n  example: word_for(5) is \"Buzz\"\n  example: word_for(10) is \"Buzz\"\n  example: word_for(15) is \"FizzBuzz\"\n  example: word_for(30) is \"FizzBuzz\"\n  example: word_for(98) is \"98\"\n\n  let by_three be number remainder 3 is 0\n  let by_five be number remainder 5 is 0\n  if by_three and by_five then\n    return \"FizzBuzz\"\n  otherwise if by_three then\n    return \"Fizz\"\n  otherwise if by_five then\n    return \"Buzz\"\n  otherwise\n    return number.to_text()\n  end\nend\n\npublic function main()\n  needs console\n  purpose: Print the FizzBuzz sequence from 1 to 100, one entry per line.\n\n  for each number in from 1 to 100\n    console.print(word_for(number))\n  end\nend\n```",
+    "```renyi\nmodule fizzbuzz\n  purpose: Print the numbers from 1 to 100 with Fizz, Buzz and FizzBuzz.\n\nimport std.console\n\npublic function word_for(number: Integer)\n  returns Text\n  purpose: Choose what to print for a number, a word for multiples of 3 or 5, else the number.\n  tags: fizzbuzz, text\n  example: word_for(number: 1) is \"1\"\n  example: word_for(number: 3) is \"Fizz\"\n  example: word_for(number: 5) is \"Buzz\"\n  example: word_for(number: 10) is \"Buzz\"\n  example: word_for(number: 15) is \"FizzBuzz\"\n  example: word_for(number: 30) is \"FizzBuzz\"\n  example: word_for(number: 98) is \"98\"\n\n  let by_three be number remainder 3 is 0\n  let by_five be number remainder 5 is 0\n  if by_three and by_five then\n    return \"FizzBuzz\"\n  otherwise if by_three then\n    return \"Fizz\"\n  otherwise if by_five then\n    return \"Buzz\"\n  otherwise\n    return number.to_text()\n  end\nend\n\npublic function main()\n  needs console\n  purpose: Print the numbers from 1 to 100 with the Fizz and Buzz replacements.\n\n  for each number in from 1 to 100\n    console.print(word_for(number: number))\n  end\nend\n```",
+    "```\nmodule fizzbuzz\n  purpose: Print the numbers from 1 to 100 with Fizz, Buzz and FizzBuzz substitutions.\n\nimport std.console\n\npublic function word_for(number: Integer)\n  returns Text\n  purpose: Choose the word printed for a number, either the number itself, Fizz, Buzz or FizzBuzz.\n  tags: fizzbuzz, text\n  example: word_for(1) is \"1\"\n  example: word_for(3) is \"Fizz\"\n  example: word_for(5) is \"Buzz\"\n  example: word_for(10) is \"Buzz\"\n  example: word_for(15) is \"FizzBuzz\"\n  example: word_for(30) is \"FizzBuzz\"\n  example: word_for(98) is \"98\"\n\n  let by_three be number remainder 3 is 0\n  let by_five be number remainder 5 is 0\n  if by_three and by_five then\n    return \"FizzBuzz\"\n  otherwise if by_three then\n    return \"Fizz\"\n  otherwise if by_five then\n    return \"Buzz\"\n  otherwise\n    return number.to_text()\n  end\nend\n\npublic function main()\n  needs console\n  purpose: Print the numbers from 1 to 100, replacing multiples of 3 and 5 with words.\n\n  for each number in from 1 to 100\n    console.print(word_for(number))\n  end\nend\n```",
+    "```renyi\nmodule fizzbuzz\n  purpose: Print the numbers from 1 to 100 with Fizz, Buzz and FizzBuzz substitutions.\n\nimport std.console\n\nfunction word_for(number: Integer)\n  returns Text\n  purpose: Choose the FizzBuzz word for a number, or the number itself as text.\n  tags: fizzbuzz\n  example: word_for(1) is \"1\"\n  example: word_for(3) is \"Fizz\"\n  example: word_for(5) is \"Buzz\"\n  example: word_for(10) is \"Buzz\"\n  example: word_for(15) is \"FizzBuzz\"\n  example: word_for(30) is \"FizzBuzz\"\n  example: word_for(98) is \"98\"\n\n  let by_three be number remainder 3 is 0\n  let by_five be number remainder 5 is 0\n  if by_three and by_five then\n    return \"FizzBuzz\"\n  otherwise if by_three then\n    return \"Fizz\"\n  otherwise if by_five then\n    return \"Buzz\"\n  otherwise\n    return number.to_text()\n  end\nend\n\npublic function main()\n  needs console\n  purpose: Print the FizzBuzz sequence from 1 to 100, one entry per line.\n\n  for each number in from 1 to 100\n    console.print(word_for(number))\n  end\nend\n```",
+    "```renyi\nmodule fizzbuzz\n  purpose: Print the numbers from 1 to 100 with Fizz, Buzz and FizzBuzz substitutions.\n\nimport std.console\n\nfunction word_for(number: Integer)\n  returns Text\n  purpose: Choose the word to print for a number, using Fizz, Buzz, FizzBuzz or the number itself.\n  tags: fizzbuzz\n  example: word_for(1) is \"1\"\n  example: word_for(3) is \"Fizz\"\n  example: word_for(5) is \"Buzz\"\n  example: word_for(10) is \"Buzz\"\n  example: word_for(15) is \"FizzBuzz\"\n  example: word_for(30) is \"FizzBuzz\"\n\n  let by_three be number remainder 3 is 0\n  let by_five be number remainder 5 is 0\n  if by_three and by_five then\n    return \"FizzBuzz\"\n  otherwise if by_three then\n    return \"Fizz\"\n  otherwise if by_five then\n    return \"Buzz\"\n  otherwise\n    return number.to_text()\n  end\nend\n\npublic function main()\n  needs console\n  purpose: Print the numbers from 1 to 100, replacing multiples of 3 and 5 with words.\n\n  for each number in from 1 to 100\n    console.print(word_for(number))\n  end\nend\n\ntest \"multiples of both three and five give FizzBuzz\"\n  check word_for(45) is \"FizzBuzz\"\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "39415704-7c24-4b17-a957-be26e7f34cb5",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 440
+      },
+      {
+        "session": "215f51cd-4d3d-4527-b971-5e7e001b772e",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 462
+      },
+      {
+        "session": "9f474675-1660-4e73-a661-889e1296a856",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 449
+      },
+      {
+        "session": "79034f48-dd7e-4808-a142-f3b8f0b4b3b3",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 434
+      },
+      {
+        "session": "ff113ce3-a076-41a6-9fa9-11da47ab9aa3",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 476
+      }
+    ]
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "samples": [
+    "This program reads a server log file (`data/server.log`), parses each non-blank line into a timestamp, severity level and message, and prints how many error-level entries occurred in each hour, earliest hour first. It stops with a typed failure if the file can't be read, a line is malformed, or a severity word is unrecognized, so one bad line aborts the whole report rather than being skipped. It only needs console and read-only filesystem access, but the input path is hardcoded, so you'd need to edit it to use it on other logs.",
+    "This program reads a server log file (data/server.log), parses each line into a timestamp, a severity level (debug, info, warning or error) and a message, and prints how many error-level entries occurred in each hour, sorted by hour. It fails with a clear error if the file can't be read, a line is malformed, or a level isn't recognized, so a single bad line stops the whole run instead of being skipped. It's a good fit if your logs follow the \"timestamp LEVEL message\" format, but the file path is hard-coded and only errors are counted, so you'd need to change it for other inputs or levels.",
+    "This program reads a server log file (`data/server.log`), parses each non-blank line into a timestamp, severity level and message, and prints how many error-level entries occurred in each hour, earliest hour first. It stops with an error if any line is malformed or has an unrecognized level, so one bad line means no report at all. It only reads one hardcoded file path and prints to the console, so you would need to edit it to point at other logs.",
+    "This program reads a server log file (data/server.log), parses each line as a timestamp, a severity level (DEBUG, INFO, WARN or ERROR) and a message, and prints how many ERROR entries occurred in each hour, earliest hour first. Parsing is strict. A malformed line, a bad timestamp or an unknown level stops the whole run with an error instead of being skipped. The input path is hardcoded and blank lines are ignored, so it is a good fit for a fixed log file, and you would need to change it to take a different path.",
+    "This program reads a server log file (data/server.log), parses each line into a timestamp, severity level (debug, info, warning or error) and message, and prints how many error-level entries occurred in each hour, earliest hour first. It stops with a typed failure if the file can't be read or if any non-blank line is malformed or has an unknown level, so a single bad line aborts the whole report. It's a good fit if your logs follow the \"timestamp LEVEL message\" format, but the input path is hardcoded and the parsing helpers are public, so you'd need to edit it for other files."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "3872c1b2-35de-442b-8a0e-d4596cd944f4",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 164
+      },
+      {
+        "session": "0e2039d9-e2df-4691-b00b-194da47d5211",
+        "models": [
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 187
+      },
+      {
+        "session": "a5565eab-e814-49fd-8329-e5d3b23d8498",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 133
+      },
+      {
+        "session": "255be994-f2b3-4e17-b8a1-ea30526027d4",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 173
+      },
+      {
+        "session": "80dbb46f-0e43-47cc-a96f-820cbd79143e",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 181
+      }
+    ]
+  }
+}

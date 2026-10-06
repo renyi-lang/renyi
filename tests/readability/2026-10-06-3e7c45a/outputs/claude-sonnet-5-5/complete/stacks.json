@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "```\npublic function balanced(text: Text) returns Boolean\n  purpose: Whether every round and square bracket is closed by its partner in the right order.\n  tags: parsing, brackets\n  example: balanced(\"(a[b])\") is true\n  example: balanced(\"(]\") is false\n  example: balanced(\"((\") is false\n  example: balanced(\"a]\") is false\n  example: balanced(\"\") is true\n\n  let mutable pending: Stack of Text be empty()\n  for each character in text.characters()\n    if character is \"(\" or character is \"[\" then\n      set pending to push(stack: pending, item: character)\n    otherwise if character is \")\" or character is \"]\" then\n      let popped be pop(pending) otherwise return false\n      let wanted be if character is \")\" then \"(\" otherwise \"[\" end\n      if popped.top is not wanted then return false end\n      set pending to popped.rest\n    end\n  end\n  return pending.is_empty()\nend\n```",
+    "```\npublic function balanced(text: Text) returns Boolean\n  purpose: Whether every round and square bracket is closed by its partner in the right order.\n  tags: parsing, brackets\n  example: balanced(\"(a[b])\") is true\n  example: balanced(\"(]\") is false\n  example: balanced(\"((\") is false\n  example: balanced(\"a]\") is false\n  example: balanced(\"\") is true\n\n  let mutable open_brackets: Stack of Text be empty()\n  for each character in text.characters()\n    if character is \"(\" or character is \"[\" then\n      set open_brackets to push(stack: open_brackets, item: character)\n    otherwise if character is \")\" or character is \"]\" then\n      let popped be pop(open_brackets) otherwise return false\n      let expected be if character is \")\" then \"(\" otherwise \"[\" end\n      if popped.top is not expected then\n        return false\n      end\n      set open_brackets to popped.rest\n    end\n  end\n  return open_brackets.is_empty()\nend\n```",
+    "```\npublic function balanced(text: Text) returns Boolean\n  purpose: Whether every round and square bracket is closed by its partner in the right order.\n  tags: parsing, brackets\n  example: balanced(\"(a[b])\") is true\n  example: balanced(\"(]\") is false\n  example: balanced(\"((\") is false\n  example: balanced(\"a]\") is false\n  example: balanced(\"\") is true\n\n  let mutable pending: Stack of Text be empty()\n  for each character in text.characters()\n    if character is \"(\" or character is \"[\" then\n      set pending to push(stack: pending, item: character)\n    otherwise if character is \")\" or character is \"]\" then\n      let popped be pop(pending) otherwise return false\n      let wanted be if character is \")\" then \"(\" otherwise \"[\" end\n      if popped.top is not wanted then\n        return false\n      end\n      set pending to popped.rest\n    end\n  end\n  return pending.is_empty()\nend\n```",
+    "```\npublic function balanced(text: Text) returns Boolean\n  purpose: Whether every round and square bracket is closed by its partner in the right order.\n  tags: parsing, brackets\n  example: balanced(\"(a[b])\") is true\n  example: balanced(\"(]\") is false\n  example: balanced(\"((\") is false\n  example: balanced(\"a]\") is false\n  example: balanced(\"\") is true\n\n  let mutable pending: Stack of Text be empty()\n  for each character in text.characters()\n    if character is \"(\" or character is \"[\" then\n      set pending to push(stack: pending, item: character)\n    otherwise if character is \")\" or character is \"]\" then\n      let popped be pop(pending) otherwise return false\n      let wanted be if character is \")\" then \"(\" otherwise \"[\" end\n      if popped.top is not wanted then\n        return false\n      end\n      set pending to popped.rest\n    end\n  end\n  return pending.is_empty()\nend\n```",
+    "```renyi\npublic function balanced(text: Text) returns Boolean\n  purpose: Whether every round and square bracket is closed by its partner in the right order.\n  tags: parsing, brackets\n  example: balanced(\"(a[b])\") is true\n  example: balanced(\"(]\") is false\n  example: balanced(\"((\") is false\n  example: balanced(\"a]\") is false\n  example: balanced(\"\") is true\n\n  let mutable pending: Stack of Text be empty()\n  for each character in text.characters()\n    if character is \"(\" or character is \"[\" then\n      set pending to push(stack: pending, item: character)\n    otherwise if character is \")\" or character is \"]\" then\n      let popped be pop(pending) otherwise return false\n      let expected be if character is \")\" then \"(\" otherwise \"[\" end\n      if popped.top is not expected then\n        return false\n      end\n      set pending to popped.rest\n    end\n  end\n  return pending.is_empty()\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "43d657d4-97ee-4086-85c3-235e980ba08d",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 405,
+        "output_tokens": 704
+      },
+      {
+        "session": "c8834eab-fe0c-4854-851f-dd9bf72e46b4",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 303,
+        "output_tokens": 622
+      },
+      {
+        "session": "8662124d-29bd-4677-a8d0-76df48486f3c",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 356,
+        "output_tokens": 659
+      },
+      {
+        "session": "b9a685ce-d2c2-4478-944e-be59be5a0998",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 372,
+        "output_tokens": 675
+      },
+      {
+        "session": "ecb01f96-95bc-4866-9452-184111057bec",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 404,
+        "output_tokens": 708
+      }
+    ]
+  }
+}

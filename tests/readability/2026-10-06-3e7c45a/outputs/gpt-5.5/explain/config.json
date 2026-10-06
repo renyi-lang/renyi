@@ -1,0 +1,32 @@
+{
+  "samples": [
+    "This module loads a service configuration from a JSON file, validating that the port, worker count, and log level fit the allowed shapes. It reports whether loading failed because the file could not be read or because the JSON was invalid, and it also provides defaults or caller-supplied fallback behavior. Use `load_with_fallback` rather than the deprecated default-only fallback helper.",
+    "This module loads a service configuration from a JSON file and validates that the port, worker count, and log level are usable. It reports whether loading failed because the file could not be read or because the JSON does not match the expected configuration. It also provides defaults and a fallback-based loader, with the older default-only fallback marked deprecated.",
+    "This module loads a service configuration from a JSON file and validates that it has a valid TCP port, 1 to 64 workers, and a supported log level. It reports clear load failures for unreadable files or invalid JSON shape, and also provides a default configuration using port 8080, 4 workers, and normal logging. Prefer `load_with_fallback` when you want a custom fallback; `load_or_default` is deprecated.",
+    "This module loads a service configuration from a JSON file, validating that the port is 1-65535, workers is 1-64, and log level is Quiet, Normal, or Verbose. It reports unreadable files and invalid JSON/config shapes distinctly, and also provides a built-in default config using port 8080, 4 workers, and Normal logging. Use `load_with_fallback` when you want startup to continue with a known fallback if loading fails; `load_or_default` does the same with defaults but is deprecated."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null,
+  "source": {
+    "tool": "codex exec (codex-cli 0.153.3, ChatGPT subscription login)",
+    "model": "gpt-5.5",
+    "reasoning_effort": "medium",
+    "sandbox": "read-only",
+    "working_directory": "empty",
+    "prompt": "the system text and the task prompt in one user message",
+    "sessions": [
+      {
+        "session": "01a10f8f-08b2-7c92-b8d0-8378c000e587"
+      },
+      {
+        "session": "01a10f8f-20d4-7702-a262-3576414fff9a"
+      },
+      {
+        "session": "01a10f8f-359d-7631-ae04-836c32ed35b4"
+      },
+      {
+        "session": "01a10f8f-4bfe-7d70-8fd0-ea23b3b6f12b"
+      }
+    ]
+  }
+}

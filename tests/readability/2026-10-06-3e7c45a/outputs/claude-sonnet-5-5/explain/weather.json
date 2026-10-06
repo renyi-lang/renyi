@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "This program downloads the current weather for Berlin from the Open-Meteo API and prints the temperature and wind speed on one line. It needs console and network access, limited to api.open-meteo.com for the fetch itself. If the request fails or the reply can't be read, it fails with a clear \"unreachable\" or \"bad response\" error. It also includes an offline test that replays a recorded response and checks the temperature and wind speed values.",
+    "This program fetches the current weather for Berlin from the Open-Meteo API (no key needed) and prints the temperature in °C and wind speed in km/h on one line. It needs console and network access limited to the Open-Meteo host, and it reports failures as either an unreachable service or a bad response. It also includes an offline test that replays a recorded response, so you can check it without a live connection. The Berlin coordinates are fixed in `main`, but `fetch_forecast` takes any latitude and longitude.",
+    "This program fetches the current weather for Berlin from the Open-Meteo API and prints the temperature and wind speed on one line. It needs console output and network access limited to that API, and it reports a failed request or an unreadable response as one of two named errors. It includes a test that replays a recorded response offline, so you can check it without network access. It is hardcoded to Berlin's coordinates, but the forecast-fetching function takes any latitude and longitude, so reusing it for another place is easy.",
+    "This program fetches the current weather for Berlin from the Open-Meteo API (over HTTP, restricted to that host) and prints the temperature and wind speed on one line. It turns download or parsing problems into one of two clear errors, \"unreachable\" or \"bad response\". It also includes an offline test that replays a recorded response, so you can verify it without network access, but the coordinates are fixed to Berlin, so you would need to change them to use it for another place.",
+    "This program fetches the current weather for Berlin from the public Open-Meteo API and prints one line with the temperature (in °C) and the wind speed (in km/h). It can only make network requests to that one API host, and it fails with a clear \"unreachable\" or \"bad response\" error if the download or the JSON parsing goes wrong. It includes a test that replays a saved response, so it can be checked offline. It's a small, fixed-location example: the coordinates are hard-coded, though the fetch function itself takes any latitude and longitude."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "56609b32-5e69-40a0-a485-1ad6dc2e2367",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 135
+      },
+      {
+        "session": "5a2fac73-6324-4aac-8735-2ac6cc70fb94",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 162
+      },
+      {
+        "session": "3cff0335-a574-4d2f-84ec-3d918f35e5dd",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 155
+      },
+      {
+        "session": "4e68b755-eccd-49b3-9e9f-bf3083cc509b",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 144
+      },
+      {
+        "session": "af8f7798-6187-43fe-a50e-daf8d8f6c78f",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 170
+      }
+    ]
+  }
+}

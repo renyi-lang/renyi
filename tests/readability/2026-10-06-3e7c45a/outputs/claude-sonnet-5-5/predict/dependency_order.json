@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "1. fetch\n2. build\n3. docs\n4. test\n5. package",
+    "1. fetch\n2. build\n3. docs\n4. test\n5. package",
+    "1. fetch\n2. build\n3. docs\n4. test\n5. package",
+    "1. fetch\n2. build\n3. docs\n4. test\n5. package",
+    "1. fetch\n2. build\n3. docs\n4. test\n5. package"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "04925c62-3d3f-450e-b70d-9ec75ff2268b",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 305,
+        "output_tokens": 329
+      },
+      {
+        "session": "aa67b165-5862-4a4c-a0a1-1dba92fa47ee",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 24
+      },
+      {
+        "session": "06a1f102-67ff-4046-b854-ad2f880f49a1",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 287,
+        "output_tokens": 311
+      },
+      {
+        "session": "d38e8da3-be9b-438c-9ae9-7bf2b6054a66",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 252,
+        "output_tokens": 276
+      },
+      {
+        "session": "9f723313-93d0-4e09-9b5e-a9d2b9c9b500",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 214,
+        "output_tokens": 238
+      }
+    ]
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "```renyi\npublic function parse_command(arguments: List of Text) returns Command\n  purpose: Turn command-line words into a command; anything unrecognized is Help.\n  example: parse_command([\"add\", \"buy\", \"milk\"]) is Add(task: \"buy milk\")\n  example: parse_command([\"done\", \"2\"]) is Done(position: 2)\n  example: parse_command([]) is Help\n\n  let verb be arguments.first() otherwise return Help\n  let words be arguments.rest()\n  if verb is \"add\" then\n    if words.is_empty() then\n      return Help\n    end\n    return Add(task: words.join(\" \"))\n  otherwise if verb is \"done\" then\n    let word be words.first() otherwise return Help\n    let number be word.to_integer() otherwise return Help\n    return Done(position: number) otherwise return Help\n  otherwise if verb is \"show\" then\n    return Show\n  otherwise\n    return Help\n  end\nend\n```",
+    "```\npublic function parse_command(arguments: List of Text) returns Command\n  purpose: Turn command-line words into a command; anything unrecognized is Help.\n  example: parse_command([\"add\", \"buy\", \"milk\"]) is Add(task: \"buy milk\")\n  example: parse_command([\"done\", \"2\"]) is Done(position: 2)\n  example: parse_command([]) is Help\n\n  let word be arguments.first() otherwise return Help\n  let rest be arguments.rest()\n  if word is \"add\" then\n    return Add(task: rest.join(\" \"))\n  otherwise if word is \"done\" then\n    let text be rest.first() otherwise return Help\n    let number be text.to_integer() otherwise return Help\n    let command be Done(position: number) otherwise return Help\n    return command\n  otherwise if word is \"show\" then\n    return Show\n  otherwise\n    return Help\n  end\nend\n```",
+    "```\npublic function parse_command(arguments: List of Text) returns Command\n  purpose: Turn command-line words into a command; anything unrecognized is Help.\n  example: parse_command([\"add\", \"buy\", \"milk\"]) is Add(task: \"buy milk\")\n  example: parse_command([\"done\", \"2\"]) is Done(position: 2)\n  example: parse_command([]) is Help\n\n  let verb be arguments.first() otherwise return Help\n  let words be arguments.rest()\n  if verb is \"add\" then\n    if words.is_empty() then\n      return Help\n    end\n    return Add(task: words.join(\" \"))\n  end\n  if verb is \"done\" then\n    let word be words.first() otherwise return Help\n    let number be word.to_integer() otherwise return Help\n    let command be Done(position: number) otherwise return Help\n    return command\n  end\n  if verb is \"show\" then\n    return Show\n  end\n  return Help\nend\n```",
+    "```renyi\npublic function parse_command(arguments: List of Text) returns Command\n  purpose: Turn command-line words into a command; anything unrecognized is Help.\n  example: parse_command([\"add\", \"buy\", \"milk\"]) is Add(task: \"buy milk\")\n  example: parse_command([\"done\", \"2\"]) is Done(position: 2)\n  example: parse_command([]) is Help\n\n  let word be arguments.first() otherwise return Help\n  let rest be arguments.rest()\n  if word is \"add\" then\n    if rest.is_empty() then\n      return Help\n    end\n    return Add(task: rest.join(\" \"))\n  otherwise if word is \"done\" then\n    let number be rest.first() otherwise return Help\n    let position be number.to_integer() otherwise return Help\n    let command be Done(position: position) otherwise return Help\n    return command\n  otherwise if word is \"show\" then\n    return Show\n  otherwise\n    return Help\n  end\nend\n```",
+    "```\npublic function parse_command(arguments: List of Text) returns Command\n  purpose: Turn command-line words into a command; anything unrecognized is Help.\n  example: parse_command([\"add\", \"buy\", \"milk\"]) is Add(task: \"buy milk\")\n  example: parse_command([\"done\", \"2\"]) is Done(position: 2)\n  example: parse_command([]) is Help\n\n  let verb be arguments.first() otherwise return Help\n  let words be arguments.rest()\n  if verb is \"add\" then\n    if words.is_empty() then\n      return Help\n    end\n    return Add(task: words.join(\" \"))\n  otherwise if verb is \"done\" then\n    let word be words.first() otherwise return Help\n    let number be word.to_integer() otherwise return Help\n    let command be Done(position: number) otherwise return Help\n    return command\n  otherwise if verb is \"show\" then\n    return Show\n  otherwise\n    return Help\n  end\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "82d4ec09-ecbb-41eb-a694-8bc12b148eea",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 495,
+        "output_tokens": 802
+      },
+      {
+        "session": "d615ab3f-d5a6-4e3a-bb1c-80824962faac",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 415,
+        "output_tokens": 705
+      },
+      {
+        "session": "8a2e72ee-3697-445d-a23f-69f6d828a3b1",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 479,
+        "output_tokens": 781
+      },
+      {
+        "session": "e612cf91-8b04-4207-8304-4e6b6d7eed38",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 466,
+        "output_tokens": 779
+      },
+      {
+        "session": "092bdeca-1dcf-418b-93f8-5cac5ce0e322",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 390,
+        "output_tokens": 700
+      }
+    ]
+  }
+}

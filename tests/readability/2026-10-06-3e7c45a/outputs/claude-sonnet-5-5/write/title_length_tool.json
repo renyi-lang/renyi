@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "```\nmodule web.page_title\n  purpose: Download a web page and measure the length of its title.\n\nimport std.http as web\n\npublic type PageError is one of\n  purpose: Why a page title could not be measured.\n  FetchFailed(detail: Text)\n  NoTitle(detail: Text)\nend\n\npublic function title_length(html: Text)\n  returns Integer\n  or fails with PageError\n  purpose: Count the characters between the title tags of an HTML text.\n  tags: html, title\n  example: title_length(\"<html><title>Hello</title></html>\") is 5\n\n  let start be html.index_of(\"<title>\") otherwise fail with NoTitle(detail: \"the page has no title element\")\n  let after_open be html.drop(start + 7)\n  let stop be after_open.index_of(\"</title>\") otherwise fail with NoTitle(detail: \"the title element is never closed\")\n  let title be after_open.take(stop).trim()\n  if title.is_empty() then\n    fail with NoTitle(detail: \"the title element is empty\")\n  end\n  return title.length()\nend\n\npublic function page_title_length(address: Url)\n  returns Integer\n  or fails with PageError\n  needs network.http\n  purpose: Download the page at the given address and return how many characters its title has.\n  tags: web, title\n  expose as tool\n\n  let page be web.get(address) otherwise fail with FetchFailed(detail: \"could not download {address}\")\n  return title_length(page)\nend\n```",
+    "```\nmodule page_title\n  purpose: Measure the title of a web page for agents.\n\nimport std.http as web\nimport std.http exposing Url\n\npublic type TitleError is one of\n  purpose: Why a page title could not be measured.\n  BadUrl(address: Text)\n  FetchFailed(address: Text)\n  NoTitle(address: Text)\nend\n\npublic function extract_title(html: Text)\n  returns maybe Text\n  purpose: Find the trimmed text between the title tags, or nothing when the page has none.\n  tags: html, text\n  example: extract_title(\"<html><head><title> Hello </title></head></html>\") is \"Hello\"\n  example: extract_title(\"<html><body>No head</body></html>\") is nothing\n\n  let lowered be html.to_lower()\n  let open_at be lowered.index_of(\"<title>\") otherwise return nothing\n  let rest be html.drop(open_at + 7)\n  let close_at be rest.to_lower().index_of(\"</title>\") otherwise return nothing\n  return rest.take(close_at).trim()\nend\n\npublic function title_length(address: Text)\n  returns Integer\n  or fails with TitleError\n  needs network.http\n  purpose: Download the page at the address and return the number of characters in its title element, failing with NoTitle when it has none.\n  tags: web, agents\n  see also: extract_title\n  expose as tool\n\n  let url be Url(address) otherwise fail with BadUrl(address: address)\n  let page be web.get(url) otherwise fail with FetchFailed(address: address)\n  let title be extract_title(page.body) otherwise fail with NoTitle(address: address)\n  return title.length()\nend\n```",
+    "```renyi\nmodule tools.page_title\n  purpose: Agent tool that measures the title of a web page.\n\nimport std.http as web\nimport std.http exposing Url\n\npublic type TitleError is one of\n  purpose: Why a page title could not be measured.\n  FetchFailed(detail: Text)\n  NoTitle(detail: Text)\nend\n\npublic function title_length(html: Text)\n  returns Integer\n  or fails with TitleError\n  purpose: Count the characters in the title element of an HTML text.\n  tags: html, text\n  example: title_length(\"<html><title>Hello</title></html>\") is 5\n  example: title_length(\"<TITLE> Hi </TITLE>\") is 2\n\n  let lower be html.to_lower()\n  let opening be lower.index_of(\"<title>\") otherwise fail with NoTitle(detail: \"the page has no title element\")\n  let remainder be html.drop(opening + 7)\n  let closing be remainder.to_lower().index_of(\"</title>\") otherwise fail with NoTitle(detail: \"the title element is never closed\")\n  let title be remainder.take(closing)\n  return title.trim().length()\nend\n\npublic function page_title_length(url: Url)\n  returns Integer\n  or fails with TitleError\n  needs network.http\n  purpose: Download a web page and return the number of characters in its title.\n  tags: web, agent\n  expose as tool\n\n  let page: Text be web.get(url) otherwise fail with FetchFailed(detail: \"could not download the page\")\n  return title_length(page)\nend\n```",
+    "```renyi\nmodule web.title_length\n  purpose: Measure the title of a web page for agents.\n\nimport std.http as web\nimport std.http exposing Url\n\npublic type TitleError is one of\n  purpose: Why a page title could not be measured.\n  BadUrl(address: Text)\n  DownloadFailed(address: Text)\n  NoTitle(address: Text)\nend\n\npublic function title_characters(page: Text, address: Text)\n  returns Integer\n  or fails with TitleError\n  purpose: Count the characters in the title element of an HTML text, failing with NoTitle when there is none.\n  tags: html, text\n  example: title_characters(\"<html><title>Hello</title></html>\", address: \"x\") is 5\n\n  let lowered be page.to_lower()\n  let open be lowered.index_of(\"<title>\") otherwise fail with NoTitle(address: address)\n  let after be page.drop(open + 7)\n  let lowered_after be after.to_lower()\n  let close be lowered_after.index_of(\"</title>\") otherwise fail with NoTitle(address: address)\n  return after.take(close).trim().length()\nend\n\npublic function page_title_length(address: Text)\n  returns Integer\n  or fails with TitleError\n  needs network.http\n  purpose: Download the page at the address and return the number of characters in its title element, failing with a clear error when it has no title.\n  tags: web, html, agent\n  expose as tool\n\n  let url be Url(address) otherwise fail with BadUrl(address: address)\n  let page be web.get(url) otherwise fail with DownloadFailed(address: address)\n  return title_characters(page, address: address)\nend\n```",
+    "```\nmodule page.titles\n  purpose: Measure the title of a web page for agents.\n\nimport std.http\nimport std.http exposing Url\n\npublic type TitleError is one of\n  purpose: Why a page title could not be measured.\n  FetchFailed(detail: Text)\n  MissingTitle(detail: Text)\n  UnclosedTitle(detail: Text)\nend\n\npublic function title_length(html: Text)\n  returns Integer\n  or fails with TitleError\n  purpose: Count the characters in the text of the first title element of an HTML document.\n  tags: html, text\n  example: title_length(\"<html><head><title>Hello</title></head></html>\") is 5\n  example: title_length(\"<TITLE>  Hi there </TITLE>\") is 8\n\n  let lower be html.to_lower()\n  let open_at be lower.index_of(\"<title>\") otherwise fail with MissingTitle(detail: \"the page has no title element\")\n  let after be html.drop(open_at + 7)\n  let lower_after be after.to_lower()\n  let close_at be lower_after.index_of(\"</title>\") otherwise fail with UnclosedTitle(detail: \"the title element is never closed\")\n  let title be after.take(close_at)\n  return title.trim().length()\nend\n\npublic function page_title_length(url: Url)\n  returns Integer\n  or fails with TitleError\n  needs network.http\n  purpose: Download the page at the given address and return the number of characters in its title.\n  tags: web, agent\n  expose as tool\n\n  let page be http.get(url) otherwise fail with FetchFailed(detail: \"the page could not be downloaded\")\n  let count be title_length(page) otherwise fail\n  return count\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "0fe71871-4537-4f42-83a4-de156e0e2463",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 869,
+        "output_tokens": 1333
+      },
+      {
+        "session": "ecdc0678-7c56-41ff-922a-be413d522481",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 1002,
+        "output_tokens": 1538
+      },
+      {
+        "session": "9aa3e9b0-9e78-4334-a920-4ae7fbc0c93f",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 1110,
+        "output_tokens": 1604
+      },
+      {
+        "session": "70ea1454-d0c7-4a7c-b351-61229ea4ba11",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 899,
+        "output_tokens": 1427
+      },
+      {
+        "session": "fd4217b2-64a5-4a7d-af4f-e311a38d9b77",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 1050,
+        "output_tokens": 1594
+      }
+    ]
+  }
+}

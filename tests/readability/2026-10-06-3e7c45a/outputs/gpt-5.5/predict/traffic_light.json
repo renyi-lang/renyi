@@ -1,0 +1,36 @@
+{
+  "samples": [
+    "Green\nYellow\nFlashingRed\nFlashingRed\nRed",
+    "Green\nYellow\nFlashingRed\nFlashingRed\nRed",
+    "Green\nYellow\nFlashingRed\nFlashingRed\nRed",
+    "Green\nYellow\nFlashingRed\nFlashingRed\nRed",
+    "Green\nYellow\nFlashingRed\nFlashingRed\nRed"
+  ],
+  "model": "gpt-5.5",
+  "temperature": null,
+  "source": {
+    "tool": "codex exec (codex-cli 0.153.3, ChatGPT subscription login)",
+    "model": "gpt-5.5",
+    "reasoning_effort": "medium",
+    "sandbox": "read-only",
+    "working_directory": "empty",
+    "prompt": "the system text and the task prompt in one user message",
+    "sessions": [
+      {
+        "session": "01a10f8c-3c85-7850-99e3-6c430c8fe53d"
+      },
+      {
+        "session": "01a10f8e-316f-7ef1-9222-0680d2accf8e"
+      },
+      {
+        "session": "01a10f8e-4553-7332-949c-efe53fea0bf0"
+      },
+      {
+        "session": "01a10f8e-5cc1-7f43-bb28-86380be93cb6"
+      },
+      {
+        "session": "01a10f8e-8f8c-7fe2-b063-fdb475ea6888"
+      }
+    ]
+  }
+}

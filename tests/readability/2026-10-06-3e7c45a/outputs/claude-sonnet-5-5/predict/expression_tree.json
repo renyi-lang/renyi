@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "((1 + 2) * -4) evaluates to -12",
+    "((1 + 2) * -4) evaluates to -12",
+    "((1 + 2) * -4) evaluates to -12",
+    "((1 + 2) * -4) evaluates to -12",
+    "((1 + 2) * -4) evaluates to -12"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "81535e60-69f3-4bc0-86bb-ad011023552c",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 144,
+        "output_tokens": 164
+      },
+      {
+        "session": "eeeb76ee-c991-4c26-9c23-538201cdd086",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 131,
+        "output_tokens": 151
+      },
+      {
+        "session": "04cfd172-897d-45a0-bedd-2f73b1d9f8a1",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 158,
+        "output_tokens": 178
+      },
+      {
+        "session": "f4b9f926-9a4d-4d26-a5f9-f8ab7276c8f6",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 181,
+        "output_tokens": 201
+      },
+      {
+        "session": "8fefa83a-04e2-4ffd-80c1-ffe3cf7fd611",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 159,
+        "output_tokens": 179
+      }
+    ]
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "samples": [
+    "missing: posts:publish\nshared: posts:read",
+    "missing: posts:publish\nshared: posts:read",
+    "missing: posts:publish\nshared: posts:read",
+    "missing: posts:publish\nshared: posts:read",
+    "missing: posts:publish\nshared: posts:read"
+  ],
+  "model": "gpt-5.5",
+  "temperature": null,
+  "source": {
+    "tool": "codex exec (codex-cli 0.153.3, ChatGPT subscription login)",
+    "model": "gpt-5.5",
+    "reasoning_effort": "medium",
+    "sandbox": "read-only",
+    "working_directory": "empty",
+    "prompt": "the system text and the task prompt in one user message",
+    "sessions": [
+      {
+        "session": "01a10f8c-0a8b-7f60-9456-2973a3d3c7e4"
+      },
+      {
+        "session": "01a10f8d-3d0b-76c2-9057-372a31735afd"
+      },
+      {
+        "session": "01a10f8d-57d1-7913-a9f2-3d6576ac5d62"
+      },
+      {
+        "session": "01a10f8d-70dc-7422-b455-9af8b0b8c60d"
+      },
+      {
+        "session": "01a10f8d-a820-7ee0-871f-75d51061c5a8"
+      }
+    ]
+  }
+}

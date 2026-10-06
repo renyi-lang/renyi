@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "```\nmodule ratelimit.window\n  purpose: Count the requests a sliding-window rate limiter would reject.\n\npublic function rejected_count(times: List of Integer, window: Integer)\n  returns Integer\n  purpose: Count the requests rejected when at most 10 accepted requests are allowed in any window. A rejected request does not count toward the limit. Times are in seconds and sorted, and a window covers the given number of seconds ending at each request.\n  tags: rate limit, window\n  example: rejected_count(times: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5], window: 10) is 1\n  example: rejected_count(times: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10], window: 10) is 0\n  example: rejected_count(times: [1, 2, 3], window: 60) is 0\n  example: rejected_count(times: [], window: 60) is 0\n\n  let mutable accepted: List of Integer be []\n  let mutable rejected be 0\n  for each time in times\n    let recent be for each earlier in accepted where earlier is greater than time - window count\n    if recent is at least 10 then\n      set rejected to rejected + 1\n    otherwise\n      set accepted to accepted.append(time)\n    end\n  end\n  return rejected\nend\n```",
+    "```\nmodule rate.limit\n  purpose: Count the requests a sliding-window rate limiter would reject.\n\npublic function rejected_count(times: List of Integer, window: Integer)\n  returns Integer\n  purpose: Count requests rejected when at most 10 accepted requests may fall in any window, given sorted request times in seconds.\n  tags: rate limit, requests\n  example: rejected_count(times: [], window: 10) is 0\n  example: rejected_count(times: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], window: 5) is 1\n  example: rejected_count(times: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5], window: 5) is 0\n  example: rejected_count(times: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9, 10], window: 10) is 3\n\n  let max_allowed be 10\n  let mutable accepted: List of Integer be []\n  let mutable rejected be 0\n  for each time in times\n    let cutoff be time - window\n    let recent be for each earlier in accepted where earlier is greater than cutoff count\n    if recent is at least max_allowed then\n      set rejected to rejected + 1\n    otherwise\n      set accepted to accepted.append(time)\n    end\n  end\n  return rejected\nend\n```",
+    "```\nmodule rate.limits\n  purpose: Count requests that a sliding-window rate limit would turn away.\n\npublic function rejected_count(times: List of Integer, window: Integer)\n  returns Integer\n  purpose: Count the requests rejected when at most 10 are allowed in any window. A request at second T is rejected when 10 accepted requests fall in the window after T minus the window length, up to and including T. Rejected requests do not count toward the limit.\n  tags: rate limit, window\n  example: rejected_count(times: [], window: 5) is 0\n  example: rejected_count(times: [1, 2, 3], window: 5) is 0\n  example: rejected_count(times: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], window: 5) is 1\n  example: rejected_count(times: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 6], window: 5) is 0\n\n  let mutable accepted: List of Integer be []\n  let mutable rejected be 0\n  for each moment in times\n    let recent be for each earlier in accepted where earlier is greater than moment - window count\n    if recent is at least 10 then\n      set rejected to rejected + 1\n    otherwise\n      set accepted to accepted.append(moment)\n    end\n  end\n  return rejected\nend\n```",
+    "```renyi\nmodule rate.limiter\n  purpose: Count the requests a sliding-window rate limit would turn away.\n\npublic function rejected_count(times: List of Integer, window: Integer)\n  returns Integer\n  purpose: Count the requests rejected when at most 10 accepted requests may fall in any window; times are sorted seconds, and a request at time t is judged against accepted requests later than t minus window.\n  tags: rate, limits\n  example: rejected_count(times: [], window: 60) is 0\n  example: rejected_count(times: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], window: 100) is 0\n  example: rejected_count(times: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], window: 100) is 2\n  example: rejected_count(times: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], window: 5) is 1\n\n  let limit be 10\n  let mutable accepted: List of Integer be []\n  let mutable rejected be 0\n  for each time in times\n    let recent be for each past in accepted where past is greater than time - window count\n    if recent is at least limit then\n      set rejected to rejected + 1\n    otherwise\n      set accepted to accepted.append(time)\n    end\n  end\n  return rejected\nend\n```",
+    "```\nmodule rate.limits\n  purpose: Count requests that a sliding-window rate limit would reject.\n\npublic function rejected_count(times: List of Integer, window: Integer) returns Integer\n  purpose: Count the requests rejected when at most 10 accepted requests may fall in any window; a request at moment m sees the window after m - window up to m, and rejected requests do not count against the limit.\n  tags: rate limit, window\n  example: rejected_count(times: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], window: 5) is 1\n  example: rejected_count(times: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5], window: 5) is 1\n  example: rejected_count(times: [1, 2, 3], window: 10) is 0\n\n  let limit be 10\n  let mutable kept: List of Integer be []\n  let mutable rejected be 0\n  for each moment in times\n    let recent be for each seen in kept where seen is greater than moment - window collect seen\n    if recent.length() is less than limit then\n      set kept to recent.append(moment)\n    otherwise\n      set kept to recent\n      set rejected to rejected + 1\n    end\n  end\n  return rejected\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "954f2d82-3a37-479d-8a6e-a50dce56d497",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 689,
+        "output_tokens": 1127
+      },
+      {
+        "session": "507970fb-252f-4335-9a47-94f54ad66002",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 642,
+        "output_tokens": 1099
+      },
+      {
+        "session": "4e12c9d7-dac8-4e3e-9187-1be500a78915",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 578,
+        "output_tokens": 1020
+      },
+      {
+        "session": "c84fa1bc-02e0-4a85-af40-706df138e363",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 624,
+        "output_tokens": 1079
+      },
+      {
+        "session": "e32ba8cf-2544-453d-86a8-0085071c1fd3",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 641,
+        "output_tokens": 1060
+      }
+    ]
+  }
+}

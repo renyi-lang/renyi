@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "```renyi\npublic function count_words(text: Text) returns List of WordCount\n  purpose: Count every lower-cased word, most frequent first.\n  example: count_words(\"a b a\")\n    is [WordCount(word: \"a\", occurrences: 2), WordCount(word: \"b\", occurrences: 1)]\n  example: count_words(\"\") is []\n\n  let spaced be text.to_lower().replace(\"\\n\", \" \").replace(\"\\t\", \" \")\n  let words be\n    for each word in spaced.split(\" \")\n    where word is not \"\"\n    collect word\n  let counts be for each word in words group by word count\n  let entries be\n    for each word in words.distinct()\n    collect WordCount(word: word, occurrences: counts.get(word) otherwise 0)\n  return\n    for each entry in entries\n    sorted by entry.occurrences descending\n    collect entry\nend\n```",
+    "```\npublic function count_words(text: Text) returns List of WordCount\n  purpose: Count every lower-cased word, most frequent first.\n  example: count_words(\"a b a\")\n    is [WordCount(word: \"a\", occurrences: 2), WordCount(word: \"b\", occurrences: 1)]\n  example: count_words(\"\") is []\n\n  let spaced be text.to_lower().replace(\"\\n\", \" \").replace(\"\\t\", \" \").replace(\"\\r\", \" \")\n  let words be for each part in spaced.split(\" \") where not part.is_empty() collect part\n  let mutable entries: List of WordCount be []\n  for each word in words.distinct()\n    let occurrences be for each other in words where other is word count\n    set entries to entries.append(WordCount(word: word, occurrences: occurrences))\n  end\n  return for each entry in entries sorted by entry.occurrences descending collect entry\nend\n```",
+    "```\npublic function count_words(text: Text) returns List of WordCount\n  purpose: Count every lower-cased word, most frequent first.\n  example: count_words(\"a b a\")\n    is [WordCount(word: \"a\", occurrences: 2), WordCount(word: \"b\", occurrences: 1)]\n  example: count_words(\"\") is []\n\n  let words be text.to_lower().split()\n  let counts be\n    for each word in words\n    where not word.is_empty()\n    group by word\n    count\n  let mutable entries: List of WordCount be []\n  for each word, occurrences in counts\n    set entries to entries.append(WordCount(word: word, occurrences: occurrences))\n  end\n  return for each entry in entries sorted by entry.occurrences descending collect entry\nend\n```",
+    "```\npublic function count_words(text: Text) returns List of WordCount\n  purpose: Count every lower-cased word, most frequent first.\n  example: count_words(\"a b a\")\n    is [WordCount(word: \"a\", occurrences: 2), WordCount(word: \"b\", occurrences: 1)]\n  example: count_words(\"\") is []\n\n  let words be\n    for each word in text.to_lower().split()\n    where not word.is_empty()\n    collect word\n  let counts be for each word in words group by word count\n  return\n    for each word, number in counts\n    sorted by number descending\n    collect WordCount(word: word, occurrences: number)\nend\n```",
+    "```renyi\npublic function count_words(text: Text) returns List of WordCount\n  purpose: Count every lower-cased word, most frequent first.\n  example: count_words(\"a b a\")\n    is [WordCount(word: \"a\", occurrences: 2), WordCount(word: \"b\", occurrences: 1)]\n  example: count_words(\"\") is []\n\n  let mutable counts: Map of Text to Integer be {}\n  for each word in text.to_lower().split() where not word.is_empty()\n    let seen be counts.get(word) otherwise 0\n    set counts to counts.set(key: word, value: seen + 1)\n  end\n  let mutable entries: List of WordCount be []\n  for each word, total in counts\n    set entries to entries.append(WordCount(word: word, occurrences: total))\n  end\n  return for each entry in entries sorted by entry.occurrences descending collect entry\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "95dd9c47-8e39-4826-a846-978af1c752db",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 610,
+        "output_tokens": 889
+      },
+      {
+        "session": "3d1be7a2-52ec-4186-a1fb-de372ffec6c3",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 736,
+        "output_tokens": 1027
+      },
+      {
+        "session": "9988a8aa-3378-4730-9985-4041c0ae1d33",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 543,
+        "output_tokens": 792
+      },
+      {
+        "session": "9c943b6d-6b56-49bb-9ff4-c738f4538630",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 546,
+        "output_tokens": 752
+      },
+      {
+        "session": "194a887c-0315-4aea-9baa-fb39e2decc9e",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 759,
+        "output_tokens": 1049
+      }
+    ]
+  }
+}

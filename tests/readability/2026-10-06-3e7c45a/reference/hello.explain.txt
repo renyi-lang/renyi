@@ -1,0 +1,1 @@
+Prints "Hello, <name>!" where the name is the first command-line argument, or "world" when no argument is given. It needs the console and the environment and cannot fail.

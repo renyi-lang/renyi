@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "```renyi\npublic function totals_by_region(sales: List of Sale) returns Map of Text to Decimal\n  purpose: Sum of amounts per region.\n  example: totals_by_region([]) is {}\n  example: totals_by_region([Sale(region: \"n\", product: \"p\", amount: 2.5)]) is {\"n\": 2.5}\n\n  return for each sale in sales group by sale.region sum sale.amount\nend\n```",
+    "```\npublic function totals_by_region(sales: List of Sale) returns Map of Text to Decimal\n  purpose: Sum of amounts per region.\n  example: totals_by_region([]) is {}\n  example: totals_by_region([Sale(region: \"n\", product: \"p\", amount: 2.5)]) is {\"n\": 2.5}\n\n  return for each sale in sales group by sale.region sum sale.amount\nend\n```",
+    "```renyi\npublic function totals_by_region(sales: List of Sale) returns Map of Text to Decimal\n  purpose: Sum of amounts per region.\n  example: totals_by_region([]) is {}\n  example: totals_by_region([Sale(region: \"n\", product: \"p\", amount: 2.5)]) is {\"n\": 2.5}\n\n  return for each sale in sales group by sale.region sum sale.amount\nend\n```",
+    "```renyi\npublic function totals_by_region(sales: List of Sale) returns Map of Text to Decimal\n  purpose: Sum of amounts per region.\n  example: totals_by_region([]) is {}\n  example: totals_by_region([Sale(region: \"n\", product: \"p\", amount: 2.5)]) is {\"n\": 2.5}\n\n  return for each sale in sales group by sale.region sum sale.amount\nend\n```",
+    "```renyi\npublic function totals_by_region(sales: List of Sale) returns Map of Text to Decimal\n  purpose: Sum of amounts per region.\n  example: totals_by_region([]) is {}\n  example: totals_by_region([Sale(region: \"n\", product: \"p\", amount: 2.5)]) is {\"n\": 2.5}\n\n  return for each sale in sales group by sale.region sum sale.amount\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "afa2945c-339f-46fc-9ef0-55684a0431e3",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 141
+      },
+      {
+        "session": "08cf07a3-b4df-4f99-9dea-c66a3ee850fd",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 138
+      },
+      {
+        "session": "1788b86c-01b6-47a3-b41e-aff9a9cfe3b0",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 141
+      },
+      {
+        "session": "75329e96-3cb6-416f-8889-085eb242edb7",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 141
+      },
+      {
+        "session": "fa087613-dabe-4a83-84ae-7c2a6bf7f7a1",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 141
+      }
+    ]
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "samples": [
+    "((1 + 2) * -4) evaluates to -12",
+    "((1 + 2) * -4) evaluates to -12",
+    "((1 + 2) * -4) evaluates to -12",
+    "((1 + 2) * -4) evaluates to -12",
+    "((1 + 2) * -4) evaluates to -12"
+  ],
+  "model": "gpt-5.5",
+  "temperature": null,
+  "source": {
+    "tool": "codex exec (codex-cli 0.153.3, ChatGPT subscription login)",
+    "model": "gpt-5.5",
+    "reasoning_effort": "medium",
+    "sandbox": "read-only",
+    "working_directory": "empty",
+    "prompt": "the system text and the task prompt in one user message",
+    "sessions": [
+      {
+        "session": "01a10f8b-ecef-7e12-b763-5791db23b23b"
+      },
+      {
+        "session": "01a10f8c-ada9-72a1-bf73-078ca02b65e5"
+      },
+      {
+        "session": "01a10f8c-c33c-7d92-a9a9-aa9beceb130f"
+      },
+      {
+        "session": "01a10f8c-d99f-78a3-8d9a-c03c20a7cea7"
+      },
+      {
+        "session": "01a10f8c-edf8-7a13-985e-6485fe75bbb0"
+      }
+    ]
+  }
+}

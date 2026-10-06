@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "```\npublic function statement_line(order: Invoice) returns Text\n  purpose: One row of the statement: customer, number of lines and total, in fixed columns.\n  example: statement_line(Invoice(customer: \"ACME\", lines: [], discount_percent: 0))\n    is \"ACME          0 lines      0.00\"\n\n  let name be order.customer.pad_right(10)\n  let count be order.lines.length().to_text().pad_left(5)\n  let amount be invoice.total(order).to_text().pad_left(9)\n  return \"{name}{count} lines {amount}\"\nend\n```",
+    "```\npublic function statement_line(order: Invoice) returns Text\n  purpose: One row of the statement: customer, number of lines and total, in fixed columns.\n  example: statement_line(Invoice(customer: \"ACME\", lines: [], discount_percent: 0))\n    is \"ACME          0 lines      0.00\"\n\n  let name be order.customer.pad_right(12)\n  let count be order.lines.length().to_text().pad_left(2)\n  let amount be invoice.total(order).to_text().pad_left(9)\n  return \"{name}{count} lines {amount}\"\nend\n```",
+    "```\npublic function statement_line(order: Invoice) returns Text\n  purpose: One row of the statement: customer, number of lines and total, in fixed columns.\n  example: statement_line(Invoice(customer: \"ACME\", lines: [], discount_percent: 0))\n    is \"ACME          0 lines      0.00\"\n\n  let name be order.customer.pad_right(12)\n  let count be order.lines.length().to_text().pad_left(3)\n  let amount be invoice.total(order).rounded(2).to_text().pad_left(10)\n  return \"{name}{count} lines{amount}\"\nend\n```",
+    "```\npublic function statement_line(order: Invoice) returns Text\n  purpose: One row of the statement: customer, number of lines and total, in fixed columns.\n  example: statement_line(Invoice(customer: \"ACME\", lines: [], discount_percent: 0))\n    is \"ACME          0 lines      0.00\"\n\n  let name be order.customer.pad_right(12)\n  let count be order.lines.length().to_text().pad_left(3)\n  let amount be invoice.total(order).to_text().pad_left(9)\n  return \"{name}{count} lines {amount}\"\nend\n```",
+    "```\npublic function statement_line(order: Invoice) returns Text\n  purpose: One row of the statement: customer, number of lines and total, in fixed columns.\n  example: statement_line(Invoice(customer: \"ACME\", lines: [], discount_percent: 0))\n    is \"ACME          0 lines      0.00\"\n\n  let name be order.customer.pad_right(10)\n  let count be order.lines.length().to_text().pad_left(5)\n  let amount be invoice.total(order).to_text().pad_left(10)\n  return \"{name}{count} lines{amount}\"\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "262314b0-1e12-4e3d-bbe0-1698a8a0329c",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 520,
+        "output_tokens": 711
+      },
+      {
+        "session": "616f46dc-fa6f-4336-9328-66fa341f84b6",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 596,
+        "output_tokens": 787
+      },
+      {
+        "session": "799216b3-8f6e-44ef-a4c8-bd8ccabf6da5",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 631,
+        "output_tokens": 828
+      },
+      {
+        "session": "7c1e8742-eac8-479c-8d8c-550aad0c58ab",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 618,
+        "output_tokens": 809
+      },
+      {
+        "session": "a4d7d0b8-97ee-44b0-b50b-55ec9b89f9a0",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 557,
+        "output_tokens": 748
+      }
+    ]
+  }
+}

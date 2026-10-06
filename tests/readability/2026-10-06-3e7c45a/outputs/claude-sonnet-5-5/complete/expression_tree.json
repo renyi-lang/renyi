@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "```renyi\npublic function evaluate(expression: Expression) returns Decimal\n  purpose: The value of the expression.\n  tags: arithmetic, tree, recursion\n  example: evaluate(Number(value: 4)) is 4\n  example: evaluate(Add(left: Number(value: 1), right: Number(value: 2))) is 3\n  example: evaluate(Negate(inner: Multiply(left: Number(value: 2), right: Number(value: 3)))) is -6\n\n  match expression\n    when Number(value) then return value\n    when Add(left, right) then return evaluate(left) + evaluate(right)\n    when Multiply(left, right) then return evaluate(left) * evaluate(right)\n    when Negate(inner) then return 0 - evaluate(inner)\n  end\nend\n```",
+    "```\npublic function evaluate(expression: Expression) returns Decimal\n  purpose: The value of the expression.\n  tags: arithmetic, tree, recursion\n  example: evaluate(Number(value: 4)) is 4\n  example: evaluate(Add(left: Number(value: 1), right: Number(value: 2))) is 3\n  example: evaluate(Negate(inner: Multiply(left: Number(value: 2), right: Number(value: 3)))) is -6\n\n  match expression\n    when Number(value) then return value\n    when Add(left, right) then return evaluate(left) + evaluate(right)\n    when Multiply(left, right) then return evaluate(left) * evaluate(right)\n    when Negate(inner) then return 0 - evaluate(inner)\n  end\nend\n```",
+    "```renyi\npublic function evaluate(expression: Expression) returns Decimal\n  purpose: The value of the expression.\n  tags: arithmetic, tree, recursion\n  example: evaluate(Number(value: 4)) is 4\n  example: evaluate(Add(left: Number(value: 1), right: Number(value: 2))) is 3\n  example: evaluate(Negate(inner: Multiply(left: Number(value: 2), right: Number(value: 3)))) is -6\n\n  match expression\n    when Number(value) then return value\n    when Add(left, right) then return evaluate(left) + evaluate(right)\n    when Multiply(left, right) then return evaluate(left) * evaluate(right)\n    when Negate(inner) then return 0 - evaluate(inner)\n  end\nend\n```",
+    "```renyi\npublic function evaluate(expression: Expression) returns Decimal\n  purpose: The value of the expression.\n  tags: arithmetic, tree, recursion\n  example: evaluate(Number(value: 4)) is 4\n  example: evaluate(Add(left: Number(value: 1), right: Number(value: 2))) is 3\n  example: evaluate(Negate(inner: Multiply(left: Number(value: 2), right: Number(value: 3)))) is -6\n\n  match expression\n    when Number(value) then return value\n    when Add(left, right) then return evaluate(left) + evaluate(right)\n    when Multiply(left, right) then return evaluate(left) * evaluate(right)\n    when Negate(inner) then return 0 - evaluate(inner)\n  end\nend\n```",
+    "```renyi\npublic function evaluate(expression: Expression) returns Decimal\n  purpose: The value of the expression.\n  tags: arithmetic, tree, recursion\n  example: evaluate(Number(value: 4)) is 4\n  example: evaluate(Add(left: Number(value: 1), right: Number(value: 2))) is 3\n  example: evaluate(Negate(inner: Multiply(left: Number(value: 2), right: Number(value: 3)))) is -6\n\n  match expression\n    when Number(value) then return value\n    when Add(left, right) then return evaluate(left) + evaluate(right)\n    when Multiply(left, right) then return evaluate(left) * evaluate(right)\n    when Negate(inner) then return 0 - evaluate(inner)\n  end\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "a5b58f52-1602-4bd8-9b3a-748873fd2144",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 263
+      },
+      {
+        "session": "6777a854-0ffe-4021-a5f0-4b4d92ca3acd",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 260
+      },
+      {
+        "session": "2c204eb5-6fd8-47a5-82e6-4bed058d3c5f",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 263
+      },
+      {
+        "session": "73a94163-a9f4-4a7f-9e0f-ce9fbe732b37",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 263
+      },
+      {
+        "session": "9364126b-25f8-4168-b18c-7d679e599ec6",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 263
+      }
+    ]
+  }
+}

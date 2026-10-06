@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "Green\nYellow\nFlashingRed\nFlashingRed\nRed",
+    "Green\nYellow\nFlashingRed\nFlashingRed\nRed",
+    "Green\nYellow\nFlashingRed\nFlashingRed\nRed",
+    "Green\nYellow\nFlashingRed\nFlashingRed\nRed",
+    "Green\nYellow\nFlashingRed\nFlashingRed\nRed"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "ab70d72f-5f50-4858-8f4d-acb039fb4878",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 26
+      },
+      {
+        "session": "4650e1be-462b-4195-a0ed-37f335408e83",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 26
+      },
+      {
+        "session": "58e8d6e7-8242-41a6-9290-8a478e7bea50",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 26
+      },
+      {
+        "session": "45796a7f-5554-45f4-80c4-68a793f15e1e",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 26
+      },
+      {
+        "session": "d35a19a8-4045-4969-b91a-8c545a2c6c13",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 26
+      }
+    ]
+  }
+}

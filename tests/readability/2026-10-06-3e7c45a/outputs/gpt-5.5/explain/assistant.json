@@ -1,0 +1,36 @@
+{
+  "samples": [
+    "This command-line tool reads an API key from `CHAT_API_KEY`, joins the command-line arguments into one question, sends it to a chat-completions HTTP endpoint, and prints the first answer it gets back. It reports a missing API key, an empty response, or transport/parsing failures instead of silently continuing. It is useful as a minimal “ask one question, print one answer” chat client.",
+    "This program is intended to send a command-line question to a chat-completions HTTP endpoint using `CHAT_API_KEY`, parse the JSON response, and print the first answer. As written, it likely will not compile because it imports only selected types from `std.http` and `std.json` but then calls their functions through `http` and `json` namespaces.",
+    "This program is a tiny command-line chat client: it reads a question from the command-line arguments, reads `CHAT_API_KEY` from the environment, sends the question to an HTTP chat-completions endpoint, and prints the first returned answer. Use it if you want a minimal one-shot assistant wrapper around that API. It fails clearly when the API key is missing, the transport or JSON parsing fails, or the response contains no answer.",
+    "This command-line tool sends the user’s command-line question to a chat-completions HTTP API using an API key from the environment, then prints the first answer it receives. It is useful if you want a tiny chat-model wrapper, but it depends on network access, a configured API key, and a response shaped like the expected chat API. It treats missing keys, empty responses, HTTP failures, and JSON parsing failures as explicit errors.",
+    "This is a small command-line chat client: it reads `CHAT_API_KEY`, joins the command-line arguments into one question, sends that question to `https://api.example.com/v1/chat/completions`, and prints the first answer returned. Use it if you want a minimal single-question HTTP wrapper around a chat model, with missing key, empty response, transport, and JSON failures surfaced explicitly."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null,
+  "source": {
+    "tool": "codex exec (codex-cli 0.153.3, ChatGPT subscription login)",
+    "model": "gpt-5.5",
+    "reasoning_effort": "medium",
+    "sandbox": "read-only",
+    "working_directory": "empty",
+    "prompt": "the system text and the task prompt in one user message",
+    "sessions": [
+      {
+        "session": "01a10f8e-6036-7600-a14c-e737ba8aee33"
+      },
+      {
+        "session": "01a10f8e-9f07-7820-bd82-59fc4c3bf365"
+      },
+      {
+        "session": "01a10f8e-e659-7811-9927-d991fe71b516"
+      },
+      {
+        "session": "01a10f8f-0ba9-7d50-a815-eff7ed338b0d"
+      },
+      {
+        "session": "01a10f8f-2daa-78d1-b481-4b48e8a3f98b"
+      }
+    ]
+  }
+}

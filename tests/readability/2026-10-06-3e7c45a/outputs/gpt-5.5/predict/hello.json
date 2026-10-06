@@ -1,0 +1,36 @@
+{
+  "samples": [
+    "Hello, world!",
+    "Hello, world!",
+    "Hello, world!",
+    "Hello, world!",
+    "Hello, world!"
+  ],
+  "model": "gpt-5.5",
+  "temperature": null,
+  "source": {
+    "tool": "codex exec (codex-cli 0.153.3, ChatGPT subscription login)",
+    "model": "gpt-5.5",
+    "reasoning_effort": "medium",
+    "sandbox": "read-only",
+    "working_directory": "empty",
+    "prompt": "the system text and the task prompt in one user message",
+    "sessions": [
+      {
+        "session": "01a10f8b-ed16-7250-9abe-2fd1d2dcb678"
+      },
+      {
+        "session": "01a10f8c-ad90-7503-b1de-204bc2a12434"
+      },
+      {
+        "session": "01a10f8c-bf3a-7aa0-9ac0-6e0b0d1474cc"
+      },
+      {
+        "session": "01a10f8c-cfad-7d03-bd34-a40d8a4e2526"
+      },
+      {
+        "session": "01a10f8c-e990-76c3-a985-d6d9122e4d2b"
+      }
+    ]
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "This program reads a sales CSV from the `data` folder, checks that every row has a region, product and numeric amount, and stops with a row-numbered error if any row is bad. It then adds up the amounts for each region, prints the totals to the console, and writes them to a `report.csv` file in the same folder. It's a small, self-contained reporting tool, and its file access is limited to the `data` folder. Its input path and output path are fixed in the code, so you would need to edit it to use other files.",
+    "This program reads a sales CSV from the `data` folder, checks that every row has a region, product and numeric amount, and stops with a descriptive error (including the line number) if any row is bad. It then totals the amounts per region, prints the totals from largest to smallest, and writes them to a `region,total` report file in the same folder. It's a good fit if you want a small, validated regional summary of a sales export, but the input and output paths are fixed in the code, so you would need to edit it to use other files.",
+    "This program reads a sales CSV from the `data` folder, checks that every row has a region, product and numeric amount, and stops with an error naming the bad line if any row is invalid. It then totals the amounts by region, prints the totals from largest to smallest, and saves them to `data/report.csv`. It only needs console access and file access under `data`, so it's a good fit if you want a simple regional sales summary. The input path and the output path are hard-coded, and it needs a `region,product,amount` header row.",
+    "This program reads a sales CSV from the `data` folder, checks that every row has a region, product and numeric amount, and stops with a row-numbered error if any row is bad. It then totals the amounts by region, prints the totals from largest to smallest, and writes them to a `region,total` CSV report in the same folder. It's a good fit if you want a simple regional summary of a file shaped like this, but the input and output paths are fixed in the code, so you'd have to edit it to use other files.",
+    "This program reads a sales CSV from the `data` folder, checks that every row has a region, product and numeric amount, and stops with a row-numbered error if any row is bad. It then totals the amounts by region, prints the totals from highest to lowest, and saves them as a two-column report file in the same folder. Use it if you need a quick regional summary of that one fixed file, since the input and output paths are hard-coded and it only needs console and `data` folder access."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "4888766f-a883-48fa-b22f-24b336ff595c",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 154
+      },
+      {
+        "session": "f99bd633-2604-4e77-9d2c-eba935d97d55",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 155
+      },
+      {
+        "session": "1d0eb01b-f4dc-42e9-a493-ebe23ca80af4",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 159
+      },
+      {
+        "session": "146ded39-5e79-4bb0-8f25-161952981ad0",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 154
+      },
+      {
+        "session": "3ef7281e-697b-4f88-991b-d304b2fa8ea0",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 144
+      }
+    ]
+  }
+}

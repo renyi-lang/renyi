@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "This program downloads three example websites in parallel, then prints each one's character count, largest first. It then fetches two pages from example.com under a 10-second deadline and prints their combined size. It needs console and HTTP access, and it can fail with an HTTP error or a timeout.",
+    "This program downloads three example websites (example.com, .org and .net) in parallel, then prints each one's URL and character count, with the largest first. It then fetches two pages from example.com concurrently, under a 10-second deadline, and prints their combined size. It needs console and HTTP access, and it can fail with an HTTP error or a timeout. It includes an offline test that checks that example.com's body is 577 characters.\n\nBefore you rely on it, check the second concurrent block. It binds `home` and `docs` inside the block but uses `home` and `docs` after it ends. That may not pass the checker, depending on whether `run concurrently` bindings are visible outside the block.",
+    "This program downloads three example websites at the same time, then prints each site's address and body length in characters, largest first. It also fetches two pages from example.com in a time-limited block (10 seconds) and prints their combined length. It needs console and HTTP network access, and it fails if a download fails or the deadline passes.\n\nOne thing to check before you use it: the last block binds its two results inside the concurrent block and then reads them outside it. That may not pass the checker, depending on how scoping works there.",
+    "This program downloads three example websites at the same time, then prints each one's URL and character count with the largest first. It also fetches two pages from example.com in a concurrent block with a 10-second deadline and prints their combined size. It needs console and HTTP access, and it fails if a download fails or the deadline expires.\n\nOne caveat: the combined-size line uses `home` and `docs` after the concurrent block that defines them. That may not pass the checker, because the cheat sheet doesn't say whether bindings made inside such a block are visible outside it. Run `renyi check` before you rely on it.",
+    "This program downloads three example websites in parallel, then prints each one's character count, largest first. It then fetches two pages from example.com concurrently under a 10-second deadline and prints their combined size. It needs console and HTTP network access, and it can fail with an HTTP error or a timeout. Two caveats: the final `home` and `docs` values are used outside the `run concurrently` block that defines them, and the block's own fetches don't depend on each other, which may not check or behave as the summary suggests."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "a712776a-1496-43df-b430-7db4f84ae8ec",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 87
+      },
+      {
+        "session": "4d27e27a-8708-4e0c-84e2-989ae7aa70b6",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 213
+      },
+      {
+        "session": "98b7b600-a3cf-4387-870e-ff4de04e701c",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 152
+      },
+      {
+        "session": "509f00e2-d61e-4805-bb2c-35e8c5270d51",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 186
+      },
+      {
+        "session": "da7b1e0c-ac86-47f0-8bce-cb29cc85d497",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 158
+      }
+    ]
+  }
+}

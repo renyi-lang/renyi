@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "This program keeps a small stock inventory in a SQLite database file. It creates the items table if needed, records one delivery of a fixed amount for one product, and fails with an error if that product doesn't exist. It then prints every item whose stock is at or below its reorder level, lowest stock first, or says nothing needs reordering.\n\nThe delivery product and amount are hard-coded in `main`, so you would need to change them or call the functions from your own code. The program needs filesystem access and console output, and it includes a test that replays recorded fixtures.",
+    "This program keeps a small stock inventory in a SQLite file (`data/inventory.db`). It creates the items table if it is missing, records a delivery of 500 units for one product, and prints every item whose quantity is at or below its reorder level, lowest stock first. It fails with a clear error if the product doesn't exist or the database call fails, and it includes an offline test, so it suits a simple reorder report. The SKU and amount are hard-coded in `main`, so you would have to adapt it for general use.",
+    "This program manages a small SQLite stock inventory. It creates the items table if needed and applies a delivery of 500 units to the item with SKU \"BOLT-10\", failing with an error if that SKU doesn't exist. It then prints every item whose quantity is at or below its reorder level, lowest first, or says nothing needs reordering. Its delivery and SKU are hard-coded in `main`, so you would reuse the functions rather than run it as is.",
+    "This program manages a small stock inventory in a SQLite file: it creates the items table if needed, records a delivery of 500 units for one product (failing with an \"unknown SKU\" error if that product doesn't exist), and then prints every item whose quantity is at or below its reorder level, lowest first. The delivery SKU and amount and the database path are hardcoded in `main`, so you would need to edit it or reuse its functions (open, record delivery, low-stock query) to fit your own data. It also includes a replayable test that seeds two items and checks that only the one still below its reorder level is reported.",
+    "This program manages a small SQLite stock inventory. It creates the items table if needed, records a delivery of 500 units of one SKU (failing with an unknown-SKU error if no such item exists), then prints every item whose quantity is at or below its reorder level, lowest first, or \"nothing to reorder\" if none qualify. Before you adopt it, note that the database path (`data/inventory.db`), the SKU (`BOLT-10`) and the amount are hard-coded in `main`, so it is a template or demo rather than a reusable tool. The reusable pieces are the functions for opening the database, listing low stock and recording a delivery."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "7c3a3790-e042-4a4b-9dcd-c43ea8f2d8c5",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 170
+      },
+      {
+        "session": "c0b44c14-9565-475a-8421-790ac9ac41c8",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 161
+      },
+      {
+        "session": "28182364-a3f9-445a-8a17-9bb31eee1e29",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 145
+      },
+      {
+        "session": "12197530-74c4-4614-87ed-e5c74a39418c",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 188
+      },
+      {
+        "session": "7f7e2897-1b27-47d5-a397-f4bbb37874ea",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 205
+      }
+    ]
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "a circle of radius 1.5 with area 7.07\na 2 by 3 rectangle with area 6.00\na point with area 0.00\nlargest: a circle of radius 1.5 with area 7.07",
+    "a circle of radius 1.5 with area 7.07\na 2 by 3 rectangle with area 6.00\na point with area 0.00\nlargest: a circle of radius 1.5 with area 7.07",
+    "a circle of radius 1.5 with area 7.07\na 2 by 3 rectangle with area 6.00\na point with area 0.00\nlargest: a circle of radius 1.5 with area 7.07",
+    "a circle of radius 1.5 with area 7.07\na 2 by 3 rectangle with area 6.00\na point with area 0.00\nlargest: a circle of radius 1.5 with area 7.07",
+    "a circle of radius 1.5 with area 7.07\na 2 by 3 rectangle with area 6.00\na point with area 0.00\nlargest: a circle of radius 1.5 with area 7.07"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "0f96fc77-0240-45ba-9c7c-f101bbe8f900",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 249,
+        "output_tokens": 317
+      },
+      {
+        "session": "83435ce2-108b-4b23-81f5-17ad68e5ea03",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 265,
+        "output_tokens": 333
+      },
+      {
+        "session": "e098968b-f439-4080-ba47-7b34e2b41c29",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 264,
+        "output_tokens": 332
+      },
+      {
+        "session": "fd813962-733a-4175-b1cf-86be12bd245c",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 281,
+        "output_tokens": 349
+      },
+      {
+        "session": "fb25b1b5-f465-436b-8bd9-4e32cadcbb3e",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 292,
+        "output_tokens": 360
+      }
+    ]
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "This program prints a plain-text statement for two built-in sample invoices (ACME and Globex), with one fixed-column row per customer, sorted by name, showing the number of lines and the total after discount. It ends with a grand total across all invoices. It relies on the `invoice` module for exact-to-the-cent decimal math, percentage discounts, and validation of quantities, prices and discounts. But the invoices are hard-coded, so it works as a demo or a template for reporting rather than a tool that reads real data.",
+    "This program prints a plain-text statement for two built-in sample invoices (ACME and Globex), sorted by customer, with each row showing the customer name, the number of lines and the discounted total in fixed columns. It ends with a grand total across all invoices. The totals come from the separate `invoice` module, which applies a percentage discount and rounds to the cent. The sample data is hardcoded, so this is a demo of the reporting layout rather than a tool for your own invoices unless you change the data. It needs only console access.",
+    "This program prints a plain-text statement of invoices, with one fixed-column row per invoice showing the customer, the number of lines and the discounted total, followed by a grand total. It reuses an `invoice` module that computes exact-to-the-cent totals with a percentage discount, and it validates that quantities, prices and discounts are within sensible ranges. As written, it only prints two hard-coded sample invoices (sorted by customer name) and takes no input, so you would need to change the sample data to use it on real invoices.",
+    "This program prints a plain-text statement for two built-in sample invoices (ACME and Globex). It lists each customer, sorted by name, with the number of lines and the discounted total in fixed columns, then prints the grand total. It reuses an `invoice` module for the discount and cent-rounding math, so it's a good fit if you want a demo or template for formatted invoice reports. It isn't a general tool, because the invoices are hard-coded and it reads no input.",
+    "This program prints a plain-text statement for two built-in sample invoices (ACME and Globex), with one fixed-column row each showing customer, line count and total, sorted by customer name. It ends with a grand total, and it reuses the `invoice` module to compute each total with a percentage discount rounded to the cent. It only needs console output and reads no outside data, so it works as a demo or template. To use it for real invoices, you would replace the hard-coded samples with your own data."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "9d3fc8ad-f78e-43b7-8185-07223fffdabb",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 164
+      },
+      {
+        "session": "2ac0ef16-27e7-4532-b699-c2916952e6c1",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 164
+      },
+      {
+        "session": "fb4c565f-5dde-4ac5-8d8d-ca3507f0ff26",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 165
+      },
+      {
+        "session": "a28d8c52-4c8d-404a-aab0-6cc2ace6fb9d",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 148
+      },
+      {
+        "session": "2e6f5897-b1f4-4676-a108-0fb569464888",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 150
+      }
+    ]
+  }
+}

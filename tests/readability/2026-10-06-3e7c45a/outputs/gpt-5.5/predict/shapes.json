@@ -1,0 +1,36 @@
+{
+  "samples": [
+    "a circle of radius 1.5 with area 7.07\na 2 by 3 rectangle with area 6.00\na point with area 0.00\nlargest: a circle of radius 1.5 with area 7.07",
+    "a circle of radius 1.5 with area 7.07\na 2 by 3 rectangle with area 6.00\na point with area 0.00\nlargest: a circle of radius 1.5 with area 7.07",
+    "a circle of radius 1.5 with area 7.07\na 2 by 3 rectangle with area 6.00\na point with area 0.00\nlargest: a circle of radius 1.5 with area 7.07",
+    "a circle of radius 1.5 with area 7.07\na 2 by 3 rectangle with area 6.00\na point with area 0.00\nlargest: a circle of radius 1.5 with area 7.07",
+    "a circle of radius 1.5 with area 7.07\na 2 by 3 rectangle with area 6.00\na point with area 0.00\nlargest: a circle of radius 1.5 with area 7.07"
+  ],
+  "model": "gpt-5.5",
+  "temperature": null,
+  "source": {
+    "tool": "codex exec (codex-cli 0.153.3, ChatGPT subscription login)",
+    "model": "gpt-5.5",
+    "reasoning_effort": "medium",
+    "sandbox": "read-only",
+    "working_directory": "empty",
+    "prompt": "the system text and the task prompt in one user message",
+    "sessions": [
+      {
+        "session": "01a10f8c-21c0-7081-ad8f-8e4e76f4236d"
+      },
+      {
+        "session": "01a10f8d-9988-7420-9e59-7d8b7a2c09e4"
+      },
+      {
+        "session": "01a10f8d-d538-75b3-874a-de59ee1f019a"
+      },
+      {
+        "session": "01a10f8d-f377-78a3-a093-02f0a70ad13d"
+      },
+      {
+        "session": "01a10f8e-1048-7f11-9076-a91614782613"
+      }
+    ]
+  }
+}

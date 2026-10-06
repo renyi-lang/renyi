@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "This module gives you a generic last-in first-out stack, with operations to create an empty one, push an item, pop the top (which returns nothing when the stack is empty), and peek at the top. It also provides a size and emptiness check for stacks. On top of that it offers a pure function that tells you whether the round and square brackets in a piece of text are closed correctly and in the right order. It needs no outside capabilities, so it is safe to drop into any project that needs a stack or a simple bracket check, though it only handles round and square brackets, not curly ones.",
+    "This module gives you a generic last-in first-out stack with operations to add an item, remove the top item (returning it along with the remaining stack), look at the top item, and report its size or emptiness. Every operation returns a new stack rather than changing the old one. It also includes a bracket checker that tells you whether the round and square brackets in a piece of text are closed in the right order, and the checker is covered by examples and tests. It's a small, pure, self-contained utility with no side effects, so it is safe to adopt if you need either a simple stack or a bracket-matching check.",
+    "This module gives you a generic last-in first-out stack with push, pop (which returns nothing when the stack is empty), peek, and a size/emptiness ability. It also provides a `balanced` function that checks whether every round and square bracket in a text is closed by its matching partner in the right order, ignoring all other characters. It's small and pure (no effects), and it includes examples and tests, so it's a safe choice if you need a simple stack or a bracket check, though it only handles `()` and `[]`, and each push copies the list, which is fine for small inputs but not for heavy use.",
+    "This module gives you a generic last-in-first-out stack with push, pop and peek operations, where popping or peeking an empty stack safely returns nothing instead of failing. It also includes a pure `balanced` checker that tells you whether the round and square brackets in a piece of text are closed in the right order, ignoring all other characters. It needs no special permissions, so it's safe to drop in if you want either a simple immutable stack or a quick bracket check. Curly braces aren't checked, though.",
+    "This module gives you a last-in first-out stack of any item type, with operations to create an empty one, push, pop (which returns nothing when empty), peek, and ask its size or emptiness. It also provides a bracket checker that tells you whether every round and square bracket in a piece of text is closed by its matching partner in the right order, ignoring all other characters. Everything is pure (no effects), non-mutating (each operation returns a new stack), and comes with examples and tests, so it is a safe, self-contained choice if you need either a basic stack or simple `()`/`[]` validation, though it does not handle curly braces."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "6ec96802-1f18-4eb0-aae9-e9be0fad9985",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 173
+      },
+      {
+        "session": "09f75f53-8456-4abe-a7f1-0755cfcc68de",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 178
+      },
+      {
+        "session": "36f99aa9-3084-409d-9012-735581915ccf",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 184
+      },
+      {
+        "session": "349efad4-4467-411a-9aca-779c1b1c832f",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 157
+      },
+      {
+        "session": "047bbaf8-ba6c-414a-abee-179e044e6702",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 196
+      }
+    ]
+  }
+}

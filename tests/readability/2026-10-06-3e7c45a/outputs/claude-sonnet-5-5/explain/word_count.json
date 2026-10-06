@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "This program reads a text file, whose path you give on the command line (it falls back to a sample file if you give none). It counts how often each word appears, ignoring case and extra spaces, and prints the ten most common words, each with its count. It splits words only on spaces, so punctuation stays attached to words. It needs permission to read files and write to the console, and it fails with a file error if the file can't be read.",
+    "This program reads a text file (the path comes from the command line, defaulting to a sample file) and counts how many times each word appears, ignoring case and extra spaces. It then prints the ten most frequent words, one per line, with the count right-aligned beside each word. It needs console, environment and file-read access only, and it fails with a file error if the file can't be read. Note that it splits on spaces only, so punctuation stays attached to words.",
+    "This program reads a text file (the path comes from the command line, with a bundled sample file as the fallback). It counts how often each lower-cased word appears, splitting on spaces, and prints the ten most frequent words with their counts. It only needs permission to use the console, read environment arguments, and read files. Note that it splits on spaces only, so punctuation stays attached to words, and the function that does the counting can be reused on its own.",
+    "This program reads a text file, whose path you give on the command line (it falls back to a sample file if you give none). It counts how many times each word appears, ignoring case and extra spaces, and prints the ten most frequent words with their counts. It only reads the file and prints to the console. Words are split on spaces alone, so punctuation stays attached to words (for example, \"end.\" and \"end\" count separately).",
+    "This program reads a text file (the one named on the command line, or a default sample file if none is given), counts how often each word appears, ignoring case and extra spacing, and prints the ten most frequent words with their counts. It only needs permission to use the console, read command-line arguments, and read files, and it reports a failure if the file can't be read. Words are split only on spaces, so punctuation stays attached to words, which makes it a good fit for quick frequency checks on plain text but not for text where punctuation matters."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "6e215b3f-c9d9-4a04-b0a9-278c83851af8",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 123
+      },
+      {
+        "session": "278f0c7f-5968-458c-ac4e-161acdf58153",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 136
+      },
+      {
+        "session": "c8e462b5-3bbf-4bd2-8e03-3efe835bdc06",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 134
+      },
+      {
+        "session": "33c96f63-582f-4ec0-8632-02a15ea3d1b3",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 123
+      },
+      {
+        "session": "2b5ed586-b1a9-4677-a0b9-ece22b84f8ab",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 158
+      }
+    ]
+  }
+}

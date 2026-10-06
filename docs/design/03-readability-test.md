@@ -9,7 +9,12 @@ subagents since the second round, and the first round was re-graded by them
 (decision U4); a hand verdict extends to every sample repeating the
 sentence it called wrong (U5), the five-point rule names the gating
 models (U6), and the samples come through the subscription channels
-unless the owner authorizes the keys (U7). Date: 2026-10-06.
+unless the owner authorizes the keys (U7). A third round
+(`tests/readability/2026-10-06-3e7c45a/notes.md`, Sonnet 5.5 through the
+Claude Code CLI; gpt-5.5 stopped at 72 samples by the Codex quota) found
+the cheat sheet's rendering of U2 and U3 wrong and is recorded as a
+defect round; the library list carries parameter names since (U8), and
+round 4 measures the corrected sheet. Date: 2026-10-06.
 
 Decision H2 freezes the grammar by measurement, not by implementation: before
 the parser is written, several models must read the cheat sheet and work with
@@ -44,9 +49,11 @@ and gpt-5.5 from the second round, decision R8); the floor model is run and
 reported as a trend and does not gate the freeze. Temperature 0 where the API
 allows it, the model's default otherwise. The samples come through the
 vendor APIs when the owner authorizes the keys for the round, otherwise
-through Claude Code subagents (the Claude models) and the Codex CLI (the
-OpenAI models), fed to the harness with `run --provider file` (decision
-U7); the channel is recorded with the samples. Five samples per task per program;
+through the Claude Code CLI (the Claude models) and the Codex CLI (the
+OpenAI models) on their subscription logins, which the harness drives
+itself (`run --provider claude`, `run --provider codex`; decision U7);
+the channel, the session and the thinking tokens are recorded with the
+samples. Five samples per task per program;
 a task passes for a program when at least four of five samples are correct.
 Prompts, raw outputs and scores are committed under
 `tests/readability/<date>-<grammar-revision>/`.

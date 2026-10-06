@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "This program is a command-line to-do list manager that stores tasks, one per line, in a local `todo.txt` file. It supports adding a task, marking one done by its number (which removes it from the list), and showing the list, and it prints usage help for anything it doesn't recognize. After each add or done it prints the updated numbered list, and it needs console, environment and filesystem access to do this.\n\nOne thing to know before you rely on it: a \"done\" number beyond the end of the list isn't checked in the code shown, so how it behaves depends on how removing an out-of-range item works.",
+    "This program is a command-line to-do manager that stores tasks, one per line, in a local text file named todo.txt. You can add a task, mark one done by its number (which removes it), or show the list, and after each add or done it prints the updated numbered list. Any unrecognized or malformed input prints a short usage message instead, and a missing file is treated as an empty list.",
+    "This program is a command-line to-do manager that stores tasks, one per line, in a local text file named todo.txt. You can add a task, mark one done by its number (which removes it from the list), or show the list, and it prints the updated numbered list after each change. Anything it doesn't recognize prints a usage message. Note that a number outside the list or a missing file is handled quietly rather than reported as an error, and it needs permission to read and write files.",
+    "This program is a command-line to-do manager that stores tasks in a plain text file named \"todo.txt\" in the current directory. You run it with \"add\" followed by a task to append it, \"done\" followed by a number to remove that item, or \"show\" to list the tasks. Anything it doesn't recognize prints a usage message, and after an add or done it prints the updated numbered list. A missing file is treated as an empty list, but note that \"done\" does not check whether the number is in range.",
+    "This program is a small command-line to-do manager that stores tasks, one per line, in a local text file named todo.txt. You run it with a word to add a task, mark one done by its number (which removes it from the list), or show the list, and any unrecognized input prints a usage message. After adding or removing a task it saves the file and prints the updated numbered list. It needs console, environment and filesystem access.\n\nOne thing to know before you use it: a \"done\" command with a number that is out of range isn't checked in the code shown, so its behavior is unclear."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "00f38efa-0b2d-4ed9-8afc-8a6396d4a9fb",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 179
+      },
+      {
+        "session": "085056c9-0d59-436b-8064-141dddb6d7ea",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 114
+      },
+      {
+        "session": "6e9f4c8c-1335-4d03-9fc4-3fec075a5dd7",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 138
+      },
+      {
+        "session": "8c779599-0a7f-4d55-8a26-3380c641f7e0",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 146
+      },
+      {
+        "session": "149ab417-d790-4ae8-975e-25a7302e378a",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 168
+      }
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "samples": [
+    "This program filters a small task list to show only tasks due within the next 10 calendar days, sorted by due date. For each matching task, it prints the title, due date, and how many weekdays remain after today through the due date. It can also parse task lines in `title, date` format and reports malformed lines or invalid dates."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null,
+  "source": {
+    "tool": "codex exec (codex-cli 0.153.3, ChatGPT subscription login)",
+    "model": "gpt-5.5",
+    "reasoning_effort": "medium",
+    "sandbox": "read-only",
+    "working_directory": "empty",
+    "prompt": "the system text and the task prompt in one user message",
+    "sessions": [
+      {
+        "session": "01a10f8f-5a77-73f1-8cf7-c7b681bedac6"
+      }
+    ]
+  }
+}

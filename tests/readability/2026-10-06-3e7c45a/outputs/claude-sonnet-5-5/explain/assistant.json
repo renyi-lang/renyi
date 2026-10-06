@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "This program takes a question from the command line, sends it to a chat-completion model over HTTP using an API key from the `CHAT_API_KEY` environment variable, and prints the text of the model's first answer. It also exposes a reusable `ask` function and fails with clear errors if the key is missing, the request or response is bad, or the model returns no answer. Be aware that it's hard-coded to an example endpoint and model name, so you'd need to change those to use a real service.",
+    "This program takes a question from the command line, sends it to a chat-model service over HTTP using an API key read from the `CHAT_API_KEY` environment variable, and prints the text of the model's first answer. It fails with a clear error if the key is missing, the response has no answer, or the network or JSON handling goes wrong. Note that the endpoint and model name are placeholders (`api.example.com`, `example-model`), so you would need to point them at a real provider before using it. It also needs network, environment and console permissions, and it includes an offline test that replays a recorded response.",
+    "This program takes a question from the command line, sends it to a chat-model HTTP API (using an API key from the `CHAT_API_KEY` environment variable), and prints the text of the model's first answer. It needs console, environment and network access. It reports a missing key, an empty response or a transport failure as clear errors, and it includes a replayable test that uses a recorded response. The endpoint and model name are placeholders (`api.example.com`, `example-model`), so you would have to change them to point at a real service before it would be useful.",
+    "This program takes a question from the command line and sends it to a chat model over HTTP. It then prints the model's first answer. It needs an API key in the `CHAT_API_KEY` environment variable and fails with a clear error if the key is missing, the model returns no answer, or the request or reply can't be handled.\n\nBefore you adopt it, note that the endpoint address and model name are placeholders to replace. Its capabilities are limited to the console, environment access and HTTP.",
+    "This program sends a single question, taken from the command line, to a chat model's HTTP API and prints the text of the model's first answer. It needs an API key in the `CHAT_API_KEY` environment variable, and it fails with a clear error if the key is missing, the request or response goes wrong, or the model returns no answer. Its only permissions are console, environment and network access, and it includes an offline test that replays a recorded response. The endpoint and model name are placeholders (`api.example.com`, `example-model`), so you would need to change them before using it with a real service."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "10c0d80c-8ba3-4f11-acef-ea5ba5dd206f",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 148
+      },
+      {
+        "session": "143effcb-e3c6-44a2-b165-0eb45689297b",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 180
+      },
+      {
+        "session": "bb371e31-5c39-4cae-a596-421f9998d2eb",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 165
+      },
+      {
+        "session": "b672aec9-f813-46d0-a6db-009fac8ab97e",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 148
+      },
+      {
+        "session": "85d3bd11-7927-40f4-bc30-436f381739b3",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 176
+      }
+    ]
+  }
+}

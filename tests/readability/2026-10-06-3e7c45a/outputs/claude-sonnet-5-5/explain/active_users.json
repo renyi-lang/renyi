@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "This program reads a list of user accounts from the JSON file `data/users.json`. It keeps only the active users aged 18 or older, sorts them by name, and prints their e-mail addresses one per line, followed by a count of how many it found. It needs permission to read files and write to the console. It stops with an error if the file can't be read or isn't valid JSON, and it also rejects any user whose e-mail doesn't look like an address or whose age is negative.",
+    "This program reads a JSON file of user accounts (hard-coded to `data/users.json`) and prints the e-mail addresses of users who are active and at least 18, sorted by name, one per line. It ends with a count of how many were found. It needs only console and read-only file access, and it fails with a file or JSON error if the file is missing or malformed. Each user's age must be non-negative and each e-mail must look like a plausible address, so bad data stops the run instead of slipping through.",
+    "This program reads a JSON file of user accounts (fixed at `data/users.json`) and prints the e-mail addresses of users who are active and at least 18 years old. The addresses are sorted by user name and printed one per line, followed by a count of how many active adults it found. It only reads the file and writes to the console. It fails with a file or JSON error if the file is missing or malformed, or if any user has a negative age or an e-mail that isn't plausibly formatted. That makes it a good fit for a simple export report, but the path is hard-coded, so you would need to change it to use a different file.",
+    "This program reads a list of user accounts from the JSON file `data/users.json`, keeps only the active users who are at least 18, and prints their e-mail addresses one per line, sorted by user name. It finishes with a count of how many active adults it found. It needs only permission to read files and print to the console, and it stops with an error if the file is missing, isn't valid JSON, or contains a user with a negative age or an e-mail that doesn't look like an address. The input path is fixed in the code, so you would have to edit it to use a different file.",
+    "This program reads a JSON file of user accounts (fixed at `data/users.json`) and prints the e-mail addresses of users who are active and at least 18 years old, one per line and sorted by user name. It ends with a count of how many addresses it printed. It only needs permission to read files and write to the console. It fails with a file or JSON error if the file is missing or malformed, or if any user has a negative age or an invalid-looking e-mail address."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "fffd3b0a-a6ba-47b9-93c9-42e1e41c97cf",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 143
+      },
+      {
+        "session": "7f13b3e8-c7ce-472b-aab0-6bf4c9dba131",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 152
+      },
+      {
+        "session": "f032c127-990c-4eb9-861e-849279ced3ea",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 186
+      },
+      {
+        "session": "a1c4aaad-54c9-4b17-9b1f-945ef0de2284",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 168
+      },
+      {
+        "session": "174e996a-26ab-4bef-8887-dafa3a1d42fa",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 141
+      }
+    ]
+  }
+}

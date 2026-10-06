@@ -1,0 +1,36 @@
+{
+  "samples": [
+    "ACME          1 lines      9.00\nGlobex        2 lines     21.00\ngrand total: 30.00",
+    "ACME          1 lines      9.00\nGlobex        2 lines     21.00\ngrand total: 30.00",
+    "ACME          1 lines      9.00\nGlobex        2 lines     21.00\ngrand total: 30.00",
+    "ACME          1 lines      9.00\nGlobex        2 lines     21.00\ngrand total: 30.00",
+    "ACME          1 lines      9.00\nGlobex        2 lines     21.00\ngrand total: 30.00"
+  ],
+  "model": "gpt-5.5",
+  "temperature": null,
+  "source": {
+    "tool": "codex exec (codex-cli 0.153.3, ChatGPT subscription login)",
+    "model": "gpt-5.5",
+    "reasoning_effort": "medium",
+    "sandbox": "read-only",
+    "working_directory": "empty",
+    "prompt": "the system text and the task prompt in one user message",
+    "sessions": [
+      {
+        "session": "01a10f8b-fe50-7932-a4f4-e86cbce10c58"
+      },
+      {
+        "session": "01a10f8c-f83b-7923-b61c-4f9e2186c94e"
+      },
+      {
+        "session": "01a10f8d-1f2d-7f70-bc69-cd96a52c440e"
+      },
+      {
+        "session": "01a10f8d-3fe1-7772-9e50-0b247068c4ba"
+      },
+      {
+        "session": "01a10f8d-734c-7913-89d7-48322ef2abb5"
+      }
+    ]
+  }
+}

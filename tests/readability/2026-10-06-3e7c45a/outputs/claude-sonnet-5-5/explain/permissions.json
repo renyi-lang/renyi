@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "This module decides whether a set of roles together grant every permission an action requires. It provides functions to combine the permissions of several roles, list which required permissions are missing, check whether all are covered, and find the permissions two roles share. Its `main` function runs a sample check of a viewer and an editor against the permissions needed to publish, and prints either that the editor may publish or the missing permissions, followed by the shared ones.",
+    "This module decides whether a set of roles grants every permission an action requires. It checks permission names against a \"resource:action\" format, then works out what the roles grant together, what is still missing, and which permissions two roles share. Its sample program checks a viewer and an editor against the permissions publishing needs, and prints either that the editor may publish or the missing permissions, followed by the shared ones.",
+    "This module decides whether a set of roles together grants every permission an action requires. It offers functions that return the union of what the roles grant, the required permissions that no role grants, a yes/no check, and the permissions two roles share. Permission names must follow a `resource:action` pattern, and the built-in demo checks a viewer and editor against publishing needs and prints either approval or the missing permissions plus the shared ones.",
+    "This module decides whether a set of roles together grant all the permissions an action requires. It offers helpers to combine the permissions that roles grant, list the required ones that are missing, check that none are, and find the permissions two roles share. Permission names are validated as \"resource:action\" text, and a small demo compares a viewer and an editor against the permissions needed to publish a post.",
+    "This module decides whether a set of roles together grants every permission an action requires. Permissions are validated names like \"orders:read\", and the module can combine the roles' grants, list which required permissions are missing, check that all are covered, and find what two roles share. Its sample program checks a viewer and an editor against what publishing needs, then prints either that the editor may publish or the missing permissions, followed by the permissions the two roles share."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "1168675d-32f1-4f1c-86fd-0de1d25bce40",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 130
+      },
+      {
+        "session": "ad3cfd71-a636-4f93-b1dc-bf248fc4b99b",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 120
+      },
+      {
+        "session": "7720d289-6504-4225-ba61-aa1e69951668",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 130
+      },
+      {
+        "session": "ba744f11-2f46-4997-8f26-4bfb312ee525",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 115
+      },
+      {
+        "session": "f81c1d37-1ab7-4835-83c3-bb81913ec180",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 132
+      }
+    ]
+  }
+}

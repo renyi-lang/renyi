@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "This program builds a Markdown table from a header row and body rows of text, padding every column to the width of its widest cell (header included) so the plain-text output lines up neatly. It is pure formatting code with no I/O apart from a demo entry point that prints a small fruit-price table to the console. Use it if you want simple aligned Markdown tables, but note it only handles text cells and doesn't support alignment options, escaping of pipe characters, or other formatting.",
+    "This program builds a Markdown table from a header row and body rows of text, padding each column to the width of its widest cell (header included) so the plain-text output lines up. It handles short rows by treating missing cells as empty, and it includes a demo that prints a small fruit price table to the console. It's pure formatting with no side effects beyond that demo, so it's a good fit if you need simple, readable tables, but it does no escaping of special characters like pipes and does not support per-column alignment.",
+    "This program builds a Markdown table from a header row and body rows. It pads every column to the width of its widest cell, header included, and adds a dashed divider line under the header. It exposes a `Table` type, a function that returns the column widths, and a function that renders the table as text. Its demo `main` prints a small fruit-price table to the console and needs nothing else. Missing cells are treated as empty, and nothing here can fail, so it's a safe, self-contained choice if you just want aligned plain-text tables.",
+    "This module renders a table (a header row plus body rows of text) as a Markdown table. It pads every column to its widest cell, adds the dashed divider row under the header, and treats missing cells as empty. It exposes functions for column widths and for rendering, and a demo `main` prints a small fruit-price table to the console. It's pure formatting with no I/O beyond that demo, so it's a good fit if you need simple aligned Markdown output from in-memory data.",
+    "This module renders a header and rows of text as a Markdown table, padding every column to its widest cell (header included) so the output lines up in plain text. It exposes a `Table` type, a function that computes the column widths, and a `render` function that returns the table as a string. It's pure apart from a demo `main` that prints a fruit-price table to the console. It fills missing cells with blanks, but it doesn't handle alignment options or escape special characters like pipes inside cells."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "49c2a468-d579-4bfc-b05b-797669b8f269",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 145
+      },
+      {
+        "session": "9837b58a-5ac2-4aa6-b232-0beafcc2259d",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 152
+      },
+      {
+        "session": "a717a921-fd1d-4156-9794-f297a7a3da06",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 161
+      },
+      {
+        "session": "6ecae41f-cb64-4eb7-9f07-c13c0de8ca70",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 147
+      },
+      {
+        "session": "3895b0f2-19ed-492b-a125-74dd28294f15",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 148
+      }
+    ]
+  }
+}

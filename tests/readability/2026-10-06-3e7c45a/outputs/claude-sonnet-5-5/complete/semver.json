@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "```\npublic function parse(input: Text) returns Version or fails with VersionError\n  purpose: Read \"major.minor.patch\" into a version.\n  tags: semver, parsing\n  example: parse(\"1.4.2\") is Version(major: 1, minor: 4, patch: 2)\n  example: parse(\"1.4\") fails with WrongPartCount(input: \"1.4\", found: 2)\n  example: parse(\"1.x.2\") fails with NotANumber(input: \"1.x.2\", part: \"x\")\n\n  let parts be input.split(\".\")\n  if parts.length() is not 3 then\n    fail with WrongPartCount(input: input, found: parts.length())\n  end\n  let major be number_at(parts: parts, index: 0, input: input) otherwise fail\n  let minor be number_at(parts: parts, index: 1, input: input) otherwise fail\n  let patch be number_at(parts: parts, index: 2, input: input) otherwise fail\n  return Version(major: major, minor: minor, patch: patch)\nend\n```",
+    "```\npublic function parse(input: Text) returns Version or fails with VersionError\n  purpose: Read \"major.minor.patch\" into a version.\n  tags: semver, parsing\n  example: parse(\"1.4.2\") is Version(major: 1, minor: 4, patch: 2)\n  example: parse(\"1.4\") fails with WrongPartCount(input: \"1.4\", found: 2)\n  example: parse(\"1.x.2\") fails with NotANumber(input: \"1.x.2\", part: \"x\")\n\n  let parts be input.split(\".\")\n  if parts.length() is not 3 then\n    fail with WrongPartCount(input: input, found: parts.length())\n  end\n  let major be number_at(parts: parts, index: 0, input: input) otherwise fail\n  let minor be number_at(parts: parts, index: 1, input: input) otherwise fail\n  let patch be number_at(parts: parts, index: 2, input: input) otherwise fail\n  return Version(major: major, minor: minor, patch: patch)\nend\n```",
+    "```\npublic function parse(input: Text) returns Version or fails with VersionError\n  purpose: Read \"major.minor.patch\" into a version.\n  tags: semver, parsing\n  example: parse(\"1.4.2\") is Version(major: 1, minor: 4, patch: 2)\n  example: parse(\"1.4\") fails with WrongPartCount(input: \"1.4\", found: 2)\n  example: parse(\"1.x.2\") fails with NotANumber(input: \"1.x.2\", part: \"x\")\n\n  let parts be input.split(\".\")\n  if parts.length() is not 3 then\n    fail with WrongPartCount(input: input, found: parts.length())\n  end\n  let major be number_at(parts: parts, index: 0, input: input) otherwise fail\n  let minor be number_at(parts: parts, index: 1, input: input) otherwise fail\n  let patch be number_at(parts: parts, index: 2, input: input) otherwise fail\n  return Version(major: major, minor: minor, patch: patch)\nend\n```",
+    "```\npublic function parse(input: Text) returns Version or fails with VersionError\n  purpose: Read \"major.minor.patch\" into a version.\n  tags: semver, parsing\n  example: parse(\"1.4.2\") is Version(major: 1, minor: 4, patch: 2)\n  example: parse(\"1.4\") fails with WrongPartCount(input: \"1.4\", found: 2)\n  example: parse(\"1.x.2\") fails with NotANumber(input: \"1.x.2\", part: \"x\")\n\n  let parts be input.split(\".\")\n  if parts.length() is not 3 then\n    fail with WrongPartCount(input: input, found: parts.length())\n  end\n  let major be number_at(parts: parts, index: 0, input: input) otherwise fail\n  let minor be number_at(parts: parts, index: 1, input: input) otherwise fail\n  let patch be number_at(parts: parts, index: 2, input: input) otherwise fail\n  return Version(major: major, minor: minor, patch: patch)\nend\n```",
+    "```\npublic function parse(input: Text) returns Version or fails with VersionError\n  purpose: Read \"major.minor.patch\" into a version.\n  tags: semver, parsing\n  example: parse(\"1.4.2\") is Version(major: 1, minor: 4, patch: 2)\n  example: parse(\"1.4\") fails with WrongPartCount(input: \"1.4\", found: 2)\n  example: parse(\"1.x.2\") fails with NotANumber(input: \"1.x.2\", part: \"x\")\n\n  let parts be input.split(\".\")\n  if parts.length() is not 3 then\n    fail with WrongPartCount(input: input, found: parts.length())\n  end\n  let major be number_at(parts: parts, index: 0, input: input) otherwise fail\n  let minor be number_at(parts: parts, index: 1, input: input) otherwise fail\n  let patch be number_at(parts: parts, index: 2, input: input) otherwise fail\n  return Version(major: major, minor: minor, patch: patch)\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "2a53edaf-95a5-4a5c-a8ee-b3d235ea5713",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 109,
+        "output_tokens": 442
+      },
+      {
+        "session": "c4d3e68c-e047-4a92-8a48-c5a2c4259db1",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 245,
+        "output_tokens": 578
+      },
+      {
+        "session": "39603d5f-6315-47bb-81f0-ec1969aa165e",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 184,
+        "output_tokens": 517
+      },
+      {
+        "session": "71280f16-a52b-44d6-85cb-f2f0ab005545",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 232,
+        "output_tokens": 565
+      },
+      {
+        "session": "066824a1-3dc5-49e3-b33e-688f1f44f42c",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 277,
+        "output_tokens": 610
+      }
+    ]
+  }
+}

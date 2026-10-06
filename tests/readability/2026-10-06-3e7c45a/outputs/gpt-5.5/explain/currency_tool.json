@@ -1,0 +1,24 @@
+{
+  "samples": [
+    "This program publishes a tool that converts a decimal amount from one three-letter uppercase currency code to another using today’s exchange rate from `api.frankfurter.dev`. It returns the converted amount rounded to cents, and can fail if the HTTP request fails, the JSON cannot be parsed, or the service does not provide the requested rate. It includes a replayed test showing USD to EUR conversion.",
+    "This module publishes a `convert` tool that converts a decimal amount from one three-letter uppercase currency code to another using today’s rate from `api.frankfurter.dev`. It returns the converted amount rounded to cents, and fails if the HTTP request, JSON parsing, or requested exchange rate is unavailable."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null,
+  "source": {
+    "tool": "codex exec (codex-cli 0.153.3, ChatGPT subscription login)",
+    "model": "gpt-5.5",
+    "reasoning_effort": "medium",
+    "sandbox": "read-only",
+    "working_directory": "empty",
+    "prompt": "the system text and the task prompt in one user message",
+    "sessions": [
+      {
+        "session": "01a10f8f-4025-7db3-86ed-72f1820c450c"
+      },
+      {
+        "session": "01a10f8f-721a-7150-8128-0880fa2b8939"
+      }
+    ]
+  }
+}

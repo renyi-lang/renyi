@@ -1,0 +1,6 @@
+{
+  "task": "write",
+  "name": "letter_grades",
+  "prompt": "Write a complete Renyi program for the task below. Follow the cheat sheet exactly: no features it does not list. Give every public definition a `purpose:` clause and give pure functions `example:` lines. Answer with the program only, in one code fence.\n\nTask: A library module that turns a list of scores (0 to 100) into letter grades A to F using the usual 90/80/70/60 cut-offs, plus a function that counts how many students got each grade.",
+  "description": "A library module that turns a list of scores (0 to 100) into letter grades A to F using the usual 90/80/70/60 cut-offs, plus a function that counts how many students got each grade."
+}

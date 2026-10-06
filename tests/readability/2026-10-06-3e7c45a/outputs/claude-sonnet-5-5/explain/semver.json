@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "This module reads version numbers written as \"major.minor.patch\" (like 1.4.2) into a checked Version value, and it reports a specific error when the text has the wrong number of parts or a part isn't a non-negative whole number. It also prints versions back to text, compares them by major, then minor, then patch, and can pick the latest version from a list (or nothing if the list is empty). It has a compatibility check that accepts a candidate only if it has the same major version and isn't older than the required one. It does not handle pre-release or build suffixes such as \"-beta\".",
+    "This module reads version numbers written as \"major.minor.patch\" (for example 1.4.2) into a typed version value, and prints them back the same way. It reports a clear error if the text doesn't have exactly three parts or if a part isn't a non-negative whole number. It also compares versions by major, then minor, then patch, checks whether a candidate can stand in for a required version (same major, not older), and picks the latest version from a list. It doesn't handle pre-release or build suffixes.",
+    "This module lets you read version numbers written as \"major.minor.patch\" (for example 1.4.2) into a checked value, print them back, and compare them in order by major, then minor, then patch. Parsing reports a specific error if the text doesn't have exactly three parts or if a part isn't a non-negative whole number. It also offers a compatibility check (same major version and not older than the required one) and a way to pick the greatest version from a list, but it doesn't handle pre-release or build suffixes like \"-beta\" or \"+build\".",
+    "This module reads semantic version numbers written as three dot-separated whole numbers (like 1.4.2) into a structured value, prints them back as text, and orders them by major, then minor, then patch. Parsing reports a specific error when the text doesn't have exactly three parts or when a part isn't a non-negative number. It also offers a compatibility check (same major version and not older than the required one) and a way to pick the greatest version from a list, but it doesn't handle pre-release or build suffixes.",
+    "This module reads version numbers written as \"major.minor.patch\" (such as 1.4.2) into a typed version value. It reports a specific error when the text doesn't have exactly three parts or when a part isn't a non-negative whole number. It can also print versions, compare them by major, then minor, then patch, and check whether a candidate can stand in for a required version (same major, not older). It can pick the greatest version from a list, or nothing if the list is empty. It doesn't handle pre-release or build suffixes, so use it only if plain three-part versions are enough."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "52647918-fff6-46e3-85ff-5e0b070c86bf",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 176
+      },
+      {
+        "session": "5faddbc0-bd6b-4f10-a677-f59da015e4ac",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 153
+      },
+      {
+        "session": "64c93b04-ab55-42e5-bb37-9cdc27b461ef",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 166
+      },
+      {
+        "session": "b2bf6943-fe4a-425d-9603-537215ce4861",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 157
+      },
+      {
+        "session": "312f5e92-205e-451e-9437-9026dc808dda",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 177
+      }
+    ]
+  }
+}

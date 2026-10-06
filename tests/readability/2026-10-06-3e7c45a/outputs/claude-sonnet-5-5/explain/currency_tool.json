@@ -1,0 +1,66 @@
+{
+  "samples": [
+    "This tool converts an amount from one three-letter currency code to another using today's rate from the Frankfurter exchange-rate service, and it rounds the result to cents. It can be used as an agent tool. It is limited to network access to that one service, and it fails with a clear error if the rate is missing, the HTTP request fails, or the response can't be read. One thing to know before you rely on it: the checked-in test replays a recorded response, so it shows the logic works but not that the live service still behaves the same way.",
+    "This tool converts a money amount from one three-letter currency code to another at today's rate, rounded to cents. It gets the rate from the Frankfurter web service, which is the only network access it asks for. It can fail if the service has no rate for the pair, the request fails, or the reply can't be read. It's published as a tool that agents can call, and its test replays a recorded response, so it runs offline.",
+    "This tool exposes a single function that converts a money amount between two three-letter currency codes at today's rate, rounded to cents. It fetches the rate live from the Frankfurter exchange-rate service, which is the only network access it needs. It can fail if the service has no rate for the pair, if the HTTP request fails, or if the response can't be parsed. It is published to agents as a tool, and its test replays a recorded response, so the test runs offline.",
+    "This program offers one tool, `convert`, which turns an amount in one currency into another at today's exchange rate, rounded to cents. It checks that each currency is a three-letter uppercase code. It fetches the rate over the network from the Frankfurter service (api.frankfurter.dev), which is the only network access it asks for. It fails with a clear \"rate unavailable\" error if the service has no rate for the pair, and it also passes on HTTP and JSON errors. It includes a test that replays recorded responses, so the test runs offline.",
+    "This tool converts a money amount from one currency to another at today's rate. It looks the rate up from the Frankfurter exchange-rate service and rounds the result to cents. It can fail if the service has no rate for that pair, the request fails, or the response can't be read. It is published to agents as a tool, and its only permission is network access to that one service."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "aef11c82-cd43-49f3-b66d-ecb8a364fdf1",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 158
+      },
+      {
+        "session": "021a2fe6-4bd9-4bf7-8673-db362bc2297d",
+        "models": [
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 124
+      },
+      {
+        "session": "e9350505-e190-4be5-ae43-08cfbce99317",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 142
+      },
+      {
+        "session": "09d796cf-f8b5-473b-bc70-c311a5091f7b",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 171
+      },
+      {
+        "session": "408930d5-0775-4ed4-bf08-687a92bc85f3",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 108
+      }
+    ]
+  }
+}

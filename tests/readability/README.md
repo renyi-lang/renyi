@@ -9,6 +9,7 @@ for the cheat-sheet gate.
 | Path | Content |
 |------|---------|
 | `run.py` | the harness: `prepare`, `run`, `score`, `report`, `compare` |
+| `grade_batches.py` | writes a run's Explain samples as batches of fifty (`<label>.batch<n>.json`: key, the run's reference, the explanation) for the subagent graders |
 | `merge_agent_grades.py` | merges the subagent graders' answers (a JSON array per batch of fifty samples) into a run's `grades.json` under the `agent:` buckets, checking every item against the run's sample and reference first |
 | `manifest.json` | per program: arguments for Predict, the function removed for Complete |
 | `reference/<program>.out` | the exact output the deterministic programs print (Predict references, and the first conformance expectations for M3) |
@@ -23,6 +24,10 @@ python3 tests/readability/run.py prepare
 ANTHROPIC_API_KEY=... python3 tests/readability/run.py run --provider anthropic --model claude-sonnet-5-5
 OPENAI_API_KEY=...    python3 tests/readability/run.py run --provider openai --model <id>
 OPENAI_API_KEY=...    python3 tests/readability/run.py run --provider openai --base-url https://<vendor>/v1 --model <id>
+python3 tests/readability/run.py run --provider claude --model claude-sonnet-5-5 --config-dir <login-only dir> --parallel 4
+python3 tests/readability/run.py run --provider codex --model gpt-5.5 --work-dir <empty dir> --parallel 3
+python3 tests/readability/grade_batches.py --run <run> --lane <dir> --labels <a,b>        # batches for the subagent graders
+python3 tests/readability/merge_agent_grades.py --run <run> --lane <dir> --labels <a,b>  # their answers into grades.json
 python3 tests/readability/run.py score --grader agent:claude-sonnet-5-5 --second-grader agent:claude-opus-5-5
 python3 tests/readability/run.py report
 python3 tests/readability/run.py score --no-format --scores scores-strict.json   # layout counts too
@@ -38,8 +43,21 @@ only fetches the samples that are missing. `--temperature none` omits the
 field for a model that rejects it (Claude Sonnet 5.5 does); the temperature
 used is recorded with the samples. `--provider file --answers <dir>` reads
 answers from `<dir>/<task>/<name>.<index>.txt`, for a model that has to be
-driven by hand. Every command works on the run `prepare` wrote most recently
-unless `--run <directory name>` names another one.
+driven by hand. `--provider claude` drives the Claude Code CLI on its
+subscription login and `--provider codex` the Codex CLI on the ChatGPT login
+(decision U7), one fresh session per sample whose context is the system
+text and the task: `--config-dir` names a `CLAUDE_CONFIG_DIR` that holds
+only the login (a hard link or copy of `.credentials.json` and a
+`.claude.json` of `{"hasCompletedOnboarding": true}`, so that the owner's
+hooks, memory files, output style and MCP servers stay out of the sample;
+the CLI still adds a one-line note of the account's email address),
+`--work-dir` an empty directory for Codex's read-only sandbox, and
+`--parallel` the number of prompts sampled at once. The channel, the
+session ids and, for the Claude CLI, the thinking tokens of every session
+are recorded with the samples; neither CLI takes a temperature, and the
+Claude CLI's thinking cannot be switched off. Every command works on the
+run `prepare` wrote most recently unless `--run <directory name>` names
+another one.
 
 ## Scoring
 
@@ -108,6 +126,12 @@ graders; its `notes.md` records the sources and what the change in graders
 does to the numbers. The first round's Explain samples were re-graded by
 the same subagents afterwards (decision U4), so both rounds are on one
 scale; its API-graded tally is kept in `scores-api.json` and
-`scores-strict-api.json`. The credentials are the environment variables
+`scores-strict-api.json`. The third round, `2026-10-06-3e7c45a/`, sampled
+Sonnet 5.5 through the Claude Code CLI (`run --provider claude`, decision
+U7) and gpt-5.5 through the Codex CLI until its quota ran out (72 of 345
+samples); it found the cheat sheet listing `rounded(places: 2)` and
+`split()`, which the model copied and the checker rejected, and is
+recorded as a defect round (decision U8: the list carries parameter names
+since). The credentials are the environment variables
 `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` (decision L1); they are spent only
 when the owner says so for the round.

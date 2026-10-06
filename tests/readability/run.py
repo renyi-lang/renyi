@@ -21,7 +21,9 @@ Subcommands, run from the repository root:
 Only the standard library is used; vendors are reached over HTTPS with the
 credentials in ANTHROPIC_API_KEY and OPENAI_API_KEY (or any OpenAI-compatible
 endpoint through --base-url). The `file` provider reads completions from a
-directory so that a run can also be done by hand.
+directory so that a run can also be done by hand; the `claude` and `codex`
+providers drive the Claude Code CLI and the Codex CLI on their subscription
+logins (decision U7), one fresh session per sample.
 """
 from __future__ import annotations
 
@@ -32,11 +34,14 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 HERE = pathlib.Path(__file__).resolve().parent
@@ -324,6 +329,107 @@ def complete(provider: str, model: str, system: str, user: str, temperature: flo
     sys.exit(f"unknown provider {provider}")
 
 
+# The subscription channels of decision U7: every sample is a fresh session of
+# a CLI logged in on a subscription, and its context is the system text and
+# the task and nothing else that the channel lets us remove.
+
+def tool_version(name: str) -> str:
+    try:
+        output = subprocess.run([shutil.which(name) or name, "--version"], capture_output=True,
+                                text=True, encoding="utf-8", timeout=60).stdout
+        return output.strip().splitlines()[0]
+    except (OSError, IndexError, subprocess.TimeoutExpired):
+        return "unknown version"
+
+
+def env_without_keys(**extra: str) -> dict[str, str]:
+    """The environment without the pay-per-token keys (the CLIs would prefer a
+    key to the login) and without the marks of the Claude Code session this
+    may run inside."""
+    env = {k: v for k, v in os.environ.items()
+           if k not in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT")}
+    env.update(extra)
+    return env
+
+
+def call_claude_cli(model: str, system_file: pathlib.Path, user: str,
+                    config_dir: pathlib.Path) -> tuple[str, dict]:
+    """One sample through `claude -p` on the subscription login.
+
+    `config_dir` is a configuration directory that holds the login and nothing
+    else (the owner's hooks, memory files, output style and MCP servers live
+    in the default one), the cheat sheet is the whole system prompt, the
+    dynamic sections are excluded and the model has no tools; the context
+    then holds the system text, the task and the CLI's one-line note of the
+    account's email address, which no switch removes. Thinking cannot be
+    switched off either (every switch was tried in session 6), so the
+    thinking tokens of every session are recorded with the sample.
+    """
+    command = [shutil.which("claude") or "claude", "-p", "--model", model,
+               "--system-prompt-file", str(system_file), "--exclude-dynamic-system-prompt-sections",
+               "--settings", json.dumps({"alwaysThinkingEnabled": False}),
+               "--output-format", "json", "--no-session-persistence", "--tools", ""]
+    env = env_without_keys(CLAUDE_CONFIG_DIR=str(config_dir))
+    for attempt in range(1, 4):
+        result = subprocess.run(command, input=user, capture_output=True, text=True,
+                                encoding="utf-8", env=env, timeout=900)
+        try:
+            data = json.loads(result.stdout)
+        except json.JSONDecodeError:
+            data = {}
+        if result.returncode == 0 and isinstance(data.get("result"), str) and not data.get("is_error"):
+            usage = data.get("usage", {})
+            return data["result"], {
+                "session": data.get("session_id"),
+                "models": sorted(data.get("modelUsage", {})),
+                "thinking_tokens": usage.get("output_tokens_details", {}).get("thinking_tokens"),
+                "output_tokens": usage.get("output_tokens"),
+            }
+        detail = (result.stderr or result.stdout or "")[:300]
+        print(f"claude -p attempt {attempt} failed (exit {result.returncode}): {detail!r}", file=sys.stderr)
+        time.sleep(15 * attempt)  # because the CLI's failures seen so far were transient (rate limits, network)
+    sys.exit("claude -p failed three times")
+
+
+def call_codex(model: str, system: str, user: str, work_dir: pathlib.Path) -> tuple[str, dict]:
+    """One sample through `codex exec` on the ChatGPT subscription login, as in
+    round 2: the system text and the task in one user message, a read-only
+    sandbox in an empty directory, reasoning effort medium, the last message
+    written to a file."""
+    work_dir.mkdir(parents=True, exist_ok=True)
+    out = work_dir.parent / f"codex-{os.getpid()}-{threading.get_ident()}.txt"
+    command = [shutil.which("codex") or "codex", "exec", "-m", model, "-c", "model_reasoning_effort=medium",
+               "-s", "read-only", "-C", str(work_dir), "--skip-git-repo-check", "-o", str(out), "-"]
+    for attempt in range(1, 4):
+        if out.exists():
+            out.unlink()
+        result = subprocess.run(command, input=system + "\n\n" + user, capture_output=True, text=True,
+                                encoding="utf-8", cwd=work_dir, env=env_without_keys(), timeout=1800)
+        text = out.read_text(encoding="utf-8") if out.exists() else ""
+        session = re.search(r"session id: (\S+)", (result.stdout or "") + (result.stderr or ""))
+        if result.returncode == 0 and text.strip():
+            out.unlink()
+            return text, {"session": session.group(1) if session else None}
+        detail = (result.stderr or result.stdout or "")[-300:]
+        print(f"codex exec attempt {attempt} failed (exit {result.returncode}): {detail!r}", file=sys.stderr)
+        time.sleep(15 * attempt)  # because the CLI's failures seen so far were transient (rate limits, network)
+    sys.exit("codex exec failed three times")
+
+
+def channel_source(provider: str, model: str) -> dict:
+    if provider == "claude":
+        return {"tool": f"claude -p (Claude Code CLI {tool_version('claude')}, subscription login)",
+                "model": model, "temperature": "the model's default",
+                "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections,"
+                                 " a configuration directory holding only the login)",
+                "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+                "tools": "none", "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+                "sessions": []}
+    return {"tool": f"codex exec ({tool_version('codex')}, ChatGPT subscription login)",
+            "model": model, "reasoning_effort": "medium", "sandbox": "read-only", "working_directory": "empty",
+            "prompt": "the system text and the task prompt in one user message", "sessions": []}
+
+
 # ----------------------------------------------------------------- commands
 
 def cmd_prepare(args: argparse.Namespace) -> None:
@@ -408,27 +514,51 @@ def cmd_run(args: argparse.Namespace) -> None:
     system = read(target / "system.txt")
     outputs = target / "outputs" / args.label
     tasks = args.tasks.split(",") if args.tasks else TASKS
-    done = 0
-    for task in tasks:
-        (outputs / task).mkdir(parents=True, exist_ok=True)
-        for prompt_file in sorted((target / "prompts" / task).glob("*.json")):
-            out_file = outputs / task / prompt_file.name
-            record = json.loads(read(out_file)) if out_file.exists() else {"samples": []}
-            prompt = json.loads(read(prompt_file))
-            while len(record["samples"]) < args.samples:
-                index = len(record["samples"])
-                key = f"{task}/{prompt_file.stem}.{index}"
+    if args.provider == "claude" and not args.config_dir:
+        sys.exit("--provider claude needs --config-dir, a directory holding only the login")
+    if args.provider == "codex" and not args.work_dir:
+        sys.exit("--provider codex needs --work-dir, an empty directory for the sandbox")
+    lock = threading.Lock()
+
+    def fill(task: str, prompt_file: pathlib.Path) -> int:
+        """Every missing sample of one prompt; the record is this worker's alone."""
+        out_file = outputs / task / prompt_file.name
+        record = json.loads(read(out_file)) if out_file.exists() else {"samples": []}
+        prompt = json.loads(read(prompt_file))
+        done = 0
+        while len(record["samples"]) < args.samples:
+            index = len(record["samples"])
+            key = f"{task}/{prompt_file.stem}.{index}"
+            started = time.monotonic()
+            if args.provider == "claude":
+                answer, info = call_claude_cli(args.model, target / "system.txt", prompt["prompt"], args.config_dir)
+            elif args.provider == "codex":
+                answer, info = call_codex(args.model, system, prompt["prompt"], args.work_dir)
+            else:
+                info = None
                 try:
                     answer = complete(args.provider, args.model, system, prompt["prompt"],
                                       args.temperature, args.base_url, args.answers, key)
                 except FileNotFoundError as missing:
                     print(f"skipping {key}: {missing}", file=sys.stderr)
                     break
-                record["samples"].append(answer)
-                record["model"] = args.model
-                record["temperature"] = args.temperature
-                write(out_file, json.dumps(record, indent=2, ensure_ascii=False))
-                done += 1
+            record["samples"].append(answer)
+            record["model"] = args.model
+            record["temperature"] = None if info is not None else args.temperature
+            if info is not None:
+                record.setdefault("source", channel_source(args.provider, args.model))["sessions"].append(info)
+            write(out_file, json.dumps(record, indent=2, ensure_ascii=False))
+            done += 1
+            with lock:
+                print(f"{key}: {len(answer)} chars in {time.monotonic() - started:.0f}s", file=sys.stderr)
+        return done
+
+    work = [(task, prompt_file) for task in tasks
+            for prompt_file in sorted((target / "prompts" / task).glob("*.json"))]
+    for task in tasks:
+        (outputs / task).mkdir(parents=True, exist_ok=True)
+    with ThreadPoolExecutor(max_workers=max(1, args.parallel)) as pool:
+        done = sum(pool.map(lambda item: fill(*item), work))
     print(f"{done} samples stored under {outputs.relative_to(ROOT)}")
 
 
@@ -693,7 +823,9 @@ def main() -> None:
     p = sub.add_parser("prepare"); p.add_argument("--revision")
     p.set_defaults(func=cmd_prepare)
     r = sub.add_parser("run")
-    r.add_argument("--provider", choices=["anthropic", "openai", "file"], required=True)
+    r.add_argument("--provider", choices=["anthropic", "openai", "file", "claude", "codex"], required=True,
+                   help="anthropic and openai call the vendor APIs with the keys; claude and codex drive the "
+                        "CLIs on the subscription logins (decision U7); file reads prepared answers")
     r.add_argument("--model", required=True)
     r.add_argument("--label", help="directory name for the outputs; defaults to the model id")
     r.add_argument("--samples", type=int, default=5)
@@ -702,6 +834,11 @@ def main() -> None:
     r.add_argument("--base-url", default="https://api.openai.com/v1",
                    help="OpenAI-compatible endpoint for --provider openai")
     r.add_argument("--answers", type=pathlib.Path, help="directory of <task>/<name>.<index>.txt for --provider file")
+    r.add_argument("--config-dir", type=pathlib.Path,
+                   help="for --provider claude: a CLAUDE_CONFIG_DIR that holds only the login (no hooks, memory, style or MCP servers)")
+    r.add_argument("--work-dir", type=pathlib.Path,
+                   help="for --provider codex: an empty directory outside the repository for the read-only sandbox")
+    r.add_argument("--parallel", type=int, default=1, help="prompts sampled at the same time (one worker per prompt)")
     r.add_argument("--tasks", help="comma-separated subset of predict,explain,complete,write")
     r.add_argument("--run", help="run directory name; defaults to the latest")
     r.set_defaults(func=cmd_run)

@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "```\nmodule text.initials\n  purpose: Work out the initials of a person's full name.\n\npublic function initials(name: Text)\n  returns Text\n  purpose: Return the first letter of each word in a full name, upper-cased and joined with nothing between them. Blank or extra spaces are ignored.\n  tags: text, names\n  example: initials(\"ada marie lovelace\") is \"AML\"\n  example: initials(\"  grace   hopper \") is \"GH\"\n  example: initials(\"alan\") is \"A\"\n  example: initials(\"   \") is \"\"\n\n  let words be name.split(\" \")\n  let letters be\n    for each word in words\n    where not word.is_empty()\n    collect word.take(1).to_upper()\n  return letters.join(\"\")\nend\n```",
+    "```\nmodule text.initials\n  purpose: Work out the initials of a person's full name.\n\npublic function initials(name: Text)\n  returns Text\n  purpose: Return the upper-cased first letter of each word in a full name, joined with nothing; blank or extra spaces are ignored.\n  tags: text, names\n  example: initials(\"ada marie lovelace\") is \"AML\"\n  example: initials(\"  ada    lovelace  \") is \"AL\"\n  example: initials(\"grace\") is \"G\"\n  example: initials(\"   \") is \"\"\n  example: initials(\"\") is \"\"\n\n  let letters be\n    for each word in name.split(\" \")\n    where not word.is_empty()\n    collect word.take(1).to_upper()\n  return letters.join(\"\")\nend\n```",
+    "```\nmodule text.initials\n  purpose: Work out the initials of a person's full name.\n\npublic function initials(name: Text)\n  returns Text\n  purpose: Return the first letter of each word in a full name, upper-cased and joined with nothing between them.\n  tags: text, names\n  example: initials(\"ada marie lovelace\") is \"AML\"\n  example: initials(\"  grace   brewster  hopper \") is \"GBH\"\n  example: initials(\"alan\") is \"A\"\n  example: initials(\"   \") is \"\"\n\n  let letters be\n    for each word in name.split(\" \")\n    where not word.is_empty()\n    collect word.take(1).to_upper()\n  return letters.join(\"\")\nend\n```",
+    "```\nmodule text.initials\n  purpose: Derive short initials from a person's full name.\n\npublic function initials_of(name: Text)\n  returns Text\n  purpose: Return the first letter of each word in a full name, upper-cased and joined with nothing between them, ignoring blank or extra spaces.\n  tags: text, names\n  example: initials_of(\"ada marie lovelace\") is \"AML\"\n  example: initials_of(\"  grace    hopper \") is \"GH\"\n  example: initials_of(\"alan\") is \"A\"\n  example: initials_of(\"   \") is \"\"\n\n  let letters be\n    for each part in name.split(\" \")\n    where not part.is_empty()\n    collect part.take(1).to_upper()\n  return letters.join(\"\")\nend\n```",
+    "```\nmodule names.initials\n  purpose: Work out the initials of a person's full name.\n\npublic function initials(full_name: Text)\n  returns Text\n  purpose: Return the upper-cased first letters of each word in a full name, joined with nothing, ignoring blank or extra spaces.\n  tags: text, names\n  example: initials(\"ada marie lovelace\") is \"AML\"\n  example: initials(\"  grace   hopper \") is \"GH\"\n  example: initials(\"\") is \"\"\n  example: initials(\"   \") is \"\"\n  example: initials(\"alan\") is \"A\"\n\n  let parts be full_name.trim().split(\" \")\n  let letters be\n    for each part in parts\n    where not part.is_empty()\n    collect part.take(1).to_upper()\n  return letters.join(\"\")\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "197c1ded-d7e0-4cd3-88ec-46d0535826d1",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 344,
+        "output_tokens": 579
+      },
+      {
+        "session": "be8603ae-2e47-490a-82db-35d09ee24188",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 354,
+        "output_tokens": 592
+      },
+      {
+        "session": "d57c3fb6-9c4b-4ec1-8ee9-f08e5bf57566",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 338,
+        "output_tokens": 559
+      },
+      {
+        "session": "8266f44f-3dc6-4f1a-a509-0aa271b72b7a",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 313,
+        "output_tokens": 551
+      },
+      {
+        "session": "e0e1405c-025e-48e2-a017-4668cab2cbe3",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 312,
+        "output_tokens": 563
+      }
+    ]
+  }
+}

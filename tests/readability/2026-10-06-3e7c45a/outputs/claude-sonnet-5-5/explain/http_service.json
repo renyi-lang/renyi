@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "This program runs a small web service on port 8080 that exposes a health check and a temperature converter: you give it a Celsius value as a query parameter, and it replies with JSON containing both the Celsius and Fahrenheit values. It returns clear error responses when the value is missing or not a number, and a not-found response for any other path. It needs console and network socket access, prints a startup message, and keeps running until you stop it, so it suits a simple demo or a starting point for a larger API rather than anything that needs more than this one conversion.",
+    "This program runs a small web service on port 8080 that answers a health check and converts a Celsius temperature, passed as a query parameter, into Fahrenheit, returning both values as JSON. It replies with an error message if the temperature is missing or not a number, and with \"not found\" for any other path. It prints a startup message, uses the console and a network socket, and keeps serving until you stop the process.",
+    "This program runs a small web service on port 8080 that offers a health check and a temperature converter. Given a Celsius value in the query string, the converter returns JSON with both the Celsius and Fahrenheit values. If the value is missing or isn't a number, it returns a \"bad request\" error, and any other path returns \"not found\". It needs console output and network socket access, and it runs until you stop the process, so it suits a simple demo or a base for a small API.",
+    "This program runs a small web service on port 8080 that offers a health check and a temperature converter. Sending a Celsius value in the query string of the convert path returns JSON with both the Celsius and Fahrenheit values. A missing or non-numeric value gets a \"bad request\" reply, and any other path gets \"not found\". It needs console and network socket permissions and runs until you stop it, so it suits a quick demo or a template for a Renyi server rather than a full application.",
+    "This program runs a small web service on port 8080 that offers two endpoints: a health check that replies \"ok\", and a temperature converter. The converter takes a Celsius value from the query string and returns JSON with both the Celsius and Fahrenheit values. It answers with an error message if the value is missing or isn't a number, and it returns a not-found response for any other path. It needs console and network socket access, and it runs until the process is stopped."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "3e8469de-0535-4564-beee-ec5744e24f38",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 166
+      },
+      {
+        "session": "92e36e5a-d0bb-4199-bad8-e51f71555288",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 123
+      },
+      {
+        "session": "942638f9-5546-4100-8e30-6366e7644704",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 141
+      },
+      {
+        "session": "0067df2d-464c-4ed3-ad95-d5df2cc6a2af",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 147
+      },
+      {
+        "session": "0a433910-f874-4aea-a9d1-6dbcc3a42382",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 137
+      }
+    ]
+  }
+}

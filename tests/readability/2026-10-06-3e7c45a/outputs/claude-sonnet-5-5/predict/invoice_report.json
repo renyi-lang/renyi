@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "ACME          1 lines      9.00\nGlobex        2 lines     21.00\ngrand total: 30.00",
+    "ACME          1 lines      9.00\nGlobex        2 lines     21.00\ngrand total: 30.00",
+    "ACME          1 lines      9.00\nGlobex        2 lines     21.00\ngrand total: 30.00",
+    "ACME          1 lines      9.00\nGlobex        2 lines     21.00\ngrand total: 30.00",
+    "ACME          1 lines      9.00\nGlobex        2 lines     21.00\ngrand total: 30.00"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "e522497c-2f4f-4baf-8c83-38329dc387ca",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 437,
+        "output_tokens": 473
+      },
+      {
+        "session": "2b910846-6b09-4756-b124-d33d14318c0f",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 505,
+        "output_tokens": 541
+      },
+      {
+        "session": "64248db0-bcc3-4663-aeb9-0ef706b6e5e2",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 507,
+        "output_tokens": 543
+      },
+      {
+        "session": "12b19546-02ed-4bbf-8d98-b1ce2dabfc80",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 456,
+        "output_tokens": 492
+      },
+      {
+        "session": "0d9ae46b-4cfc-454a-984e-c2fd527330dc",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 511,
+        "output_tokens": 547
+      }
+    ]
+  }
+}

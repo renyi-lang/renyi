@@ -1,0 +1,36 @@
+{
+  "samples": [
+    "| fruit      | price | stock |\n| ---------- | ----- | ----- |\n| apple      | 0.50  | 120   |\n| kiwi       | 0.80  | 7     |\n| watermelon | 3.20  | 2     |",
+    "| fruit      | price | stock |\n| ---------- | ----- | ----- |\n| apple      | 0.50  | 120   |\n| kiwi       | 0.80  | 7     |\n| watermelon | 3.20  | 2     |",
+    "| fruit      | price | stock |\n| ---------- | ----- | ----- |\n| apple      | 0.50  | 120   |\n| kiwi       | 0.80  | 7     |\n| watermelon | 3.20  | 2     |",
+    "| fruit      | price | stock |\n| ---------- | ----- | ----- |\n| apple      | 0.50  | 120   |\n| kiwi       | 0.80  | 7     |\n| watermelon | 3.20  | 2     |",
+    "| fruit      | price | stock |\n| ---------- | ----- | ----- |\n| apple      | 0.50  | 120   |\n| kiwi       | 0.80  | 7     |\n| watermelon | 3.20  | 2     |"
+  ],
+  "model": "gpt-5.5",
+  "temperature": null,
+  "source": {
+    "tool": "codex exec (codex-cli 0.153.3, ChatGPT subscription login)",
+    "model": "gpt-5.5",
+    "reasoning_effort": "medium",
+    "sandbox": "read-only",
+    "working_directory": "empty",
+    "prompt": "the system text and the task prompt in one user message",
+    "sessions": [
+      {
+        "session": "01a10f8c-0349-75f2-8e5d-6302bd56afdb"
+      },
+      {
+        "session": "01a10f8d-055a-7c53-bff8-c87078d67a51"
+      },
+      {
+        "session": "01a10f8d-268c-7401-aa02-7c77e2d61c70"
+      },
+      {
+        "session": "01a10f8d-419f-7f33-91b0-b6ebca764afd"
+      },
+      {
+        "session": "01a10f8d-5a88-71b2-9eb5-9601dab9c734"
+      }
+    ]
+  }
+}

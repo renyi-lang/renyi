@@ -1,0 +1,36 @@
+{
+  "samples": [
+    "This program reads `data/users.json`, parses it as a list of users, filters to active users age 18 or older, sorts them by name, and prints their email addresses. It also exposes a reusable function for getting those emails from any file path. Use it if your user export JSON matches the expected fields and you want a simple active-adult email list.",
+    "This program reads `data/users.json` as a list of users, validates their fields including plausible email addresses, and selects users who are active and at least 18 years old. It returns their email addresses sorted by user name. When run, it prints each selected email address, then prints the total number of active adults.",
+    "This program reads `data/users.json`, parses it as a list of users, and selects the email addresses of active users aged 18 or older. It returns those emails sorted by user name, and its `main` function prints one email per line followed by a count of active adults. It can fail if the file cannot be read or the JSON cannot be parsed.",
+    "This program reads `data/users.json`, parses it as a list of users, and selects the email addresses of active users who are at least 18. It returns those addresses sorted by user name, and the command-line entry point prints one email per line followed by the total count. It can fail if the file cannot be read or the JSON does not match the expected user shape.",
+    "This program reads `data/users.json`, parses it as a list of users, and selects email addresses for users who are active and at least 18 years old. It sorts those users by name, prints one email per line, then prints the total count of active adults. It can fail if the file cannot be read or the JSON cannot be parsed."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null,
+  "source": {
+    "tool": "codex exec (codex-cli 0.153.3, ChatGPT subscription login)",
+    "model": "gpt-5.5",
+    "reasoning_effort": "medium",
+    "sandbox": "read-only",
+    "working_directory": "empty",
+    "prompt": "the system text and the task prompt in one user message",
+    "sessions": [
+      {
+        "session": "01a10f8e-4f97-7a60-b07d-d259a349771f"
+      },
+      {
+        "session": "01a10f8e-646a-74f2-a85e-6b54de4cdf75"
+      },
+      {
+        "session": "01a10f8e-9f57-74e1-a4bc-46d1be0f283b"
+      },
+      {
+        "session": "01a10f8e-d529-7ee3-9402-420ad9c57a47"
+      },
+      {
+        "session": "01a10f8e-e963-7ca0-995d-5943c1dd41ac"
+      }
+    ]
+  }
+}

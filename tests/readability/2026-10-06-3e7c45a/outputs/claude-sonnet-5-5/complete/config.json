@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "```renyi\npublic function default_config() returns Config\n  purpose: The configuration used when no file is present.\n  example: default_config().port is Port(8080)\n\n  return Config(port: Port(8080), workers: 4, log_level: Normal)\nend\n```",
+    "```renyi\npublic function default_config() returns Config\n  purpose: The configuration used when no file is present.\n  example: default_config().port is Port(8080)\n\n  return Config(port: Port(8080), workers: 4, log_level: Normal)\nend\n```",
+    "```\npublic function default_config() returns Config\n  purpose: The configuration used when no file is present.\n  example: default_config().port is Port(8080)\n\n  return Config(port: Port(8080), workers: 4, log_level: Normal)\nend\n```",
+    "```\npublic function default_config() returns Config\n  purpose: The configuration used when no file is present.\n  example: default_config().port is Port(8080)\n\n  return Config(port: Port(8080), workers: 4, log_level: Normal)\nend\n```",
+    "```renyi\npublic function default_config() returns Config\n  purpose: The configuration used when no file is present.\n  example: default_config().port is Port(8080)\n\n  return Config(port: Port(8080), workers: 4, log_level: Normal)\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "5e62b876-3186-4264-accc-8a545434e808",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 82
+      },
+      {
+        "session": "8ee8518d-92d8-4a7e-ac03-0b5f452f96b3",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 82
+      },
+      {
+        "session": "f211b784-1b77-4884-a9cc-5c98a6181ccb",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 79
+      },
+      {
+        "session": "37232d41-7ead-4443-a629-0c45dfb84a9b",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 79
+      },
+      {
+        "session": "9b076a70-4d69-4f43-b81b-8908f2b31462",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 82
+      }
+    ]
+  }
+}

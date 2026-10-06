@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "Hello, world!",
+    "Hello, world!",
+    "Hello, world!",
+    "Hello, world!",
+    "Hello, world!"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "46cca077-e091-4655-91b2-6bcea56e33f5",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 8
+      },
+      {
+        "session": "ff527cb8-4ed3-4786-a858-fb5afa04cdb4",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 8
+      },
+      {
+        "session": "50c40182-65f2-4a9b-8d10-e5c5bda73333",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 8
+      },
+      {
+        "session": "ffc6a8bc-9101-4b47-b051-64c49ff2aed3",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 8
+      },
+      {
+        "session": "3c85d1dc-af56-4cb8-8afa-af0b76322161",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 8
+      }
+    ]
+  }
+}

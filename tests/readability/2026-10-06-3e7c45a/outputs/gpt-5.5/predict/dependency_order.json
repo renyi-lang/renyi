@@ -1,0 +1,36 @@
+{
+  "samples": [
+    "1. fetch\n2. build\n3. docs\n4. test\n5. package",
+    "1. fetch\n2. build\n3. docs\n4. test\n5. package",
+    "1. fetch\n2. build\n3. docs\n4. test\n5. package",
+    "1. fetch\n2. build\n3. docs\n4. test\n5. package",
+    "1. fetch\n2. build\n3. docs\n4. test\n5. package"
+  ],
+  "model": "gpt-5.5",
+  "temperature": null,
+  "source": {
+    "tool": "codex exec (codex-cli 0.153.3, ChatGPT subscription login)",
+    "model": "gpt-5.5",
+    "reasoning_effort": "medium",
+    "sandbox": "read-only",
+    "working_directory": "empty",
+    "prompt": "the system text and the task prompt in one user message",
+    "sessions": [
+      {
+        "session": "01a10f8b-ecb0-7c60-9f60-6bc39eeebf60"
+      },
+      {
+        "session": "01a10f8c-ada3-7ea1-8886-328f4cfb2488"
+      },
+      {
+        "session": "01a10f8c-cba1-7bc0-b4fb-a431713c097b"
+      },
+      {
+        "session": "01a10f8c-fec1-7812-8f42-f16369b2e1b3"
+      },
+      {
+        "session": "01a10f8d-1c11-7291-8e27-1e2c8450d997"
+      }
+    ]
+  }
+}

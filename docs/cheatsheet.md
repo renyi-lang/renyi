@@ -89,9 +89,10 @@ public type Pair of Left, Right
 end
 ```
 Construct: `User(name: "Ann", age: 30, email: nothing)`, `Circle(radius: 2.5)`
-(fields always named), `Point`, `UserId(7)` (a subtype wraps one value). Update: `user with age: 31`. Refined construction can
-fail: `Email(input) otherwise fail with BadInput`. Generic types:
-`List of T`, `Map of K to V`, `Set of T`, `maybe T`.
+(fields always named), `Point`, `UserId(7)` (a subtype wraps one value).
+Update: `user with age: 31`. Refined construction can fail:
+`Email(input) otherwise fail with BadInput`. Generic types: `List of T`,
+`Map of K to V`, `Set of T`, `maybe T`.
 
 ## Abilities
 ```
@@ -126,7 +127,7 @@ from 1 to 10   from 0 to 100 by 5         # inclusive ranges
 [1, 2, 3]   {"key": value}   nothing   true   false
 ```
 Numbers: `Integer` (unbounded), `Decimal` (decimal128, literals like `19.99`),
-`Float` (explicit). No implicit conversion: `count.to_decimal()`. `is` compares
+`Float`. No implicit conversion: `count.to_decimal()`. `is` compares
 values of one type: `32.0 is 32.00`. `/` needs `Decimal` or `Float` operands;
 `a.quotient(b)` divides two Integers down.
 `a.at_least(b)` is the larger of two values, `a.at_most(b)` the smaller.
@@ -188,8 +189,7 @@ Matching is exhaustive. A variant with fields matches by its bare name when
 no field is needed: `when Circle then`. `if` and `match` are also expressions
 when every branch is one expression: `let label be if done then "yes"
 otherwise "no" end`.
-Loop headers accept `where` and `sorted by`. Max nesting depth is 4; max body
-about 60 lines.
+Loop headers accept `where` and `sorted by`.
 
 ## Queries (instead of lambdas)
 ```
@@ -251,29 +251,36 @@ A recording (`renyi record`) answers every effect of a `replays` test offline.
 description from `purpose:`, permissions from `needs`).
 `deprecated: since 2.0, replaced by new_name` warns existing callers.
 
-## Library (names only; nothing else exists)
+## Library (names and parameters; nothing else exists)
 ```
-Text: length() is_empty() trim() trim_start() trim_end() to_lower() to_upper() split() lines()
-  characters() contains() starts_with() ends_with() index_of() replace() pad_left() pad_right()
-  repeat() take() drop() reversed() matches() to_integer() to_decimal() to_float() to_bytes()
-List: length() is_empty() at() first() last() rest() without_last() without_index() take() drop()
-  append() append_all() reversed() sorted() distinct() contains() index_of() largest() smallest()
-  with_index() to_set() flattened() join() sum()
-Map: length() is_empty() get() set() without() contains_key() keys() values() entries() merged()
-Set: length() is_empty() contains() add() without() union() intersection() difference()
-  is_subset_of() sorted() to_list()
-Numbers: to_decimal() to_float() to_text() quotient() absolute() at_least() at_most()
-  rounded(places: 2) truncated() square_root()
+Text: length() is_empty() trim() trim_start() trim_end() to_lower() to_upper()
+  split(separator) lines() characters() contains(part) starts_with(prefix)
+  ends_with(suffix) index_of(part) replace(old, new) pad_left(width)
+  pad_right(width) repeat(times) take(length) drop(length) reversed()
+  matches(pattern) to_integer() to_decimal() to_float() to_bytes()
+List: length() is_empty() at(index) first() last() rest() without_last()
+  without_index(index) take(length) drop(length) append(item)
+  append_all(others) reversed() sorted() distinct() contains(item)
+  index_of(item) largest() smallest() with_index() to_set() flattened()
+  join(separator) sum()
+Map: length() is_empty() get(key) set(key, value) without(key)
+  contains_key(key) keys() values() entries() merged(other)
+Set: length() is_empty() contains(item) add(item) without(item) union(other)
+  intersection(other) difference(other) is_subset_of(other) sorted() to_list()
+Numbers: to_decimal() to_float() to_text() quotient(divisor) absolute()
+  at_least(other) at_most(other) rounded(places) truncated() square_root()
 Modules: std.console (print, print_error, read_line); std.environment
   (arguments, get, exit); std.time (now, today, seconds, parse_date, Date,
   Instant, Duration); std.random; std.filesystem (Path, read_text, write_text,
   exists, list); std.json (parse, render); std.http (Url, get, post_json);
   std.server; std.csv; std.sqlite; std.regex
 ```
+One parameter is positional, more are named: `line.split(",")`,
+`price.rounded(2)`, `text.replace(old: "a", new: "b")`.
 
 ## Names and reserved words
 snake_case for values and functions, PascalCase for types, abilities and
-variants. ASCII only. No single-letter names. Reserved (88):
+variants. ASCII only. No single-letter names. Reserved:
 ```
 ability all also and any as at be break by can check collect concurrently
 continue count crash deprecated descending each end example expose exposing
@@ -283,7 +290,5 @@ nothing of one only or otherwise per power public purpose raw remainder repeat
 replays return returns run see self set some sorted success sum tags test than
 then to tool true type until when where with within
 ```
-Phrases are single tokens: `is not`, `is less than`, `is at most`,
-`is greater than`, `is at least`, `or fails with`, `is one of`, `for each`,
-`for any`, `run concurrently`, `repeat until`, `sorted by`, `group by`,
-`see also`, `expose as tool`, `at most`, `only to`. Any word is valid after a dot.
+Phrases such as `is at least`, `or fails with` and `for each` are single
+tokens. Any word is valid after a dot.

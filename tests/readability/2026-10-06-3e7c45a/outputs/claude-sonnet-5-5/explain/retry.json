@@ -1,0 +1,67 @@
+{
+  "samples": [
+    "This module gives you a helper that runs an action you supply and, if it fails, tries again up to a set number of attempts. It waits between tries, starting at a tenth of a second and doubling each time, with a small random extra delay so many callers don't retry in lockstep. It returns the first success, or, once every attempt has failed, it fails with a record of the attempt count and the last error message. It requires the time and random capabilities, and the action's failure type must be convertible to text.",
+    "This module gives you a helper that runs an action that might fail and retries it up to a number of attempts you choose, pausing between tries. The pause starts short and roughly doubles after each failure, with a little random jitter added so that many callers don't retry at the same moment. It returns the first success, or, if every attempt fails, it fails with a record of the attempt count and the last error. Calling it needs the time and random capabilities, and the action's failure type must be convertible to text.",
+    "This module provides a retry helper that runs a given action up to a set number of times, pausing between failures with a delay that starts short, roughly doubles after each failure, and has a bit of random jitter added so that many callers don't retry in lockstep. If the action succeeds at any point, its result is returned right away. If every attempt fails, it gives up with an error recording how many attempts were made and a text description of the last failure, so it suits flaky operations like network calls, but it needs time and randomness permissions and caps nothing on the delay, so long attempt counts can mean very long waits.",
+    "This module provides a helper that runs an action you supply and, if it fails, retries it up to a number of attempts you choose. Between failures it sleeps for a delay that starts short and doubles each time, with a small random jitter added so many callers don't retry in lockstep. It returns the first success, or fails with a record of the attempt count and the last error message if every attempt fails. It needs time and random capabilities, and the action's failure type must be convertible to text.",
+    "This module provides a reusable helper that runs an action you supply and, if it fails, tries again up to a number of attempts you choose. After each failure it sleeps for a delay that starts short and doubles each time, plus a small random jitter so that many callers don't retry in lockstep. It returns the first success, or fails with a record of the attempt count and the last error text. It needs the time and random capabilities, and it requires the action's error type to be convertible to text."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "8e7e4300-8228-49f0-b2e9-382b0a3eb3a8",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 147
+      },
+      {
+        "session": "74300ec6-4567-4e61-9799-b34dc4998984",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 147
+      },
+      {
+        "session": "6ac54ea1-aa5a-40a5-aafa-bab1ac89e88a",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 182
+      },
+      {
+        "session": "c1f730a9-0290-4a45-833e-17a14f7b513d",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 143
+      },
+      {
+        "session": "8a55f081-9384-495d-ab80-9dce4d553ac6",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 143
+      }
+    ]
+  }
+}

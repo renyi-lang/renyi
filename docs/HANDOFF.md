@@ -10,7 +10,10 @@ after `group by` per group; `renyi mcp`, the toolchain for agent hosts;
 the semantic diff, `renyi index --diff` and the `diff` tool; readability
 round 2 collected, graded and written up, its four questions answered as
 decisions U1 to U4 and applied; round 1 re-graded on the subagent
-scale; decisions U5 to U7 from the re-grade).
+scale; decisions U5 to U7 from the re-grade; round 3 through the Claude
+Code CLI and the Codex CLI, which found the cheat sheet's rendering of
+U2 and U3 wrong: decision U8, the corrected sheet, round 3 recorded as a
+defect round).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -66,7 +69,17 @@ decisions U5 (a hand verdict extends to every sample repeating the
 sentence it called wrong; fourteen verdicts added across the rounds), U6
 (the five-point rule names the gating models; Haiku's Explain moved 90
 to 87 on wrong statements about the programs) and U7 (round 3's samples
-through the subscription channels).
+through the subscription channels). Round 3
+(`tests/readability/2026-10-06-3e7c45a/`, session 6, Sonnet 5.5 through
+the Claude Code CLI, gpt-5.5 stopped at 72 samples by the Codex quota)
+gives Sonnet 90, 100, 68, 40 and is a defect round: the cheat sheet
+listed `rounded(places: 2)` and `split()`, Claude's rendering of U2 and
+U3, the model copied both and the checker rejected every such sample
+(`invoice`, `shapes`, `word_count`, `compound_interest` at 0 of 5). The
+owner's answers are decision U8 (the list carries parameter names and a
+sentence gives the call form), the corrected sheet at 2998 tokens, and
+round 4 on it through the same channel as the measurement of U1 to U3;
+`count` stays reserved until gpt-5.5's data exists.
 
 ## The VM as it exists (`crates/renyi_vm`)
 
@@ -480,6 +493,46 @@ through the subscription channels).
     else moved). `03-readability-test.md` amended (the Explain row, the
     sampling channel, the five-point rule), `README.md`, the notes of
     both rounds, section U of `01-decisions.md`.
+17. **Round 3 through the CLIs** (fourteenth commit). `run.py` gained
+    `--provider claude` (the Claude Code CLI on its subscription login:
+    `claude -p` with the cheat sheet as `--system-prompt-file`, the
+    dynamic system-prompt sections excluded, no tools, JSON output, no
+    session persistence, `CLAUDE_CONFIG_DIR` pointed at a directory
+    holding only the login, the keys removed from the environment),
+    `--provider codex` (round 2's `codex exec` recipe moved into the
+    harness), `--parallel`, and a `source` record per output file with
+    the channel, the session ids and, for the Claude CLI, the thinking
+    and output tokens of every session (thinking cannot be switched off;
+    every switch was tried). `tests/readability/grade_batches.py` writes
+    the subagent graders' batch files. The owner chose the two gating
+    models on all four tasks; `prepare` wrote
+    `tests/readability/2026-10-06-3e7c45a/`. Sonnet's 345 samples came
+    with no failure (335 in the main run, 2333 seconds of session time
+    four prompts at a time); gpt-5.5 stopped at 72 (Predict complete, 22
+    Explain) when the Codex CLI reported the ChatGPT login's usage limit
+    ("try again at Nov 4th, 2026"), and the owner chose to score Sonnet
+    now. Explain graded by six subagents (three batches, two graders),
+    merged, five adjudications (`file_tree.1` to `.4` graded 4 as in
+    rounds 1 and 2, `config.0` graded 5), the U5 search found no
+    recurrence. Results: Sonnet Predict 90, Explain 100, Complete 68,
+    Write 40; gpt-5.5 Predict 100. The notes name the defect (item 18).
+18. **Decision U8 and the corrected cheat sheet** (same commit). The
+    round's Complete fell 89 to 68 because the sheet listed
+    `rounded(places: 2)` (a named single argument, against M4) and
+    `split()` (the separator hidden), both Claude's rendering of U2 and
+    U3 and neither run through the checker before the round; Sonnet
+    copied them in every sample of `invoice`, `shapes` and
+    `compound_interest` and three of `word_count`. Asked as a batch of
+    three; the owner chose the list with parameter names
+    (`split(separator)`, `rounded(places)`, `replace(old, new)`; every
+    entry checked against `library/std/prelude.ry`) plus the sentence
+    "One parameter is positional, more are named" with three calls,
+    round 3 as a defect round with round 4 on the corrected sheet
+    through the same channel, and `count` kept reserved. Paid for by
+    shortening the phrase-token list, dropping the nesting and body
+    limits, the reserved-word count and "(explicit)" after `Float`:
+    2998 tokens. `01-decisions.md` (U8), `03-readability-test.md`,
+    `README.md`.
 
 ## Done in session 5 (condensed)
 
@@ -500,11 +553,12 @@ on a fresh clone).
 
 ## Owner actions pending
 
-- **None open from the readability work**: the re-grade's three
-  questions were answered in session 6 as decisions U5 to U7 and applied.
-  Round 3 needs the owner's go-ahead on its volume before it starts
-  (about 1,380 samples for four models, one subagent or Codex session
-  each; see Next steps).
+- **None open from the readability work**: round 3's three questions
+  were answered in session 6 as decision U8 and applied. gpt-5.5 has no
+  channel until the Codex quota of the ChatGPT login returns (the CLI
+  named Nov 4th, 2026) or the owner authorizes `OPENAI_API_KEY` for a
+  round in the same request; its round 3 samples stop at 72 and round 4
+  has none.
 - Session 5 printed the values of `ANTHROPIC_API_KEY` and
   `OPENAI_API_KEY` into a tool result once (not committed); the owner said
   in session 6 that they handle the transcript and the keys themselves, so
@@ -535,18 +589,20 @@ on a fresh clone).
 
 ## Next steps
 
-1. **Round 3 on the cheat sheet after U1 to U3**: `run.py prepare`, then
-   `run` through the subscription channels (decision U7): Claude Code
-   subagents for the Claude models and `codex exec` for the OpenAI
-   models, fed to the harness with `run --provider file` (round 2's
-   gpt-5.5 Write samples came that way; Predict, Explain and Complete at
-   five samples per prompt would be new ground for it: 69 prompts, 345
-   samples per model, 1,380 for four models, one subagent or Codex
-   session each; round 2's 45 Codex samples took about an hour). Ask the
-   owner before starting that volume. Explain graded by subagents and
-   merged with `tests/readability/merge_agent_grades.py`, Complete and
-   Write by the VM. It measures U1 to U3 and the five-point rule on the
-   gating models (U6).
+1. **Round 4 on the corrected cheat sheet (U8)**: `run.py prepare`, then
+   `run --provider claude --model claude-sonnet-5-5 --config-dir <login
+   only dir> --parallel 4` (the directory holds a hard link to the
+   CLI's `.credentials.json` and a `.claude.json` of
+   `{"hasCompletedOnboarding": true}`; round 3 took 2333 seconds of
+   session time), then `grade_batches.py`, six grader subagents (Sonnet
+   first, Opus second, the rubric of `EXPLAIN_GRADER` verbatim),
+   `merge_agent_grades.py`, `score` with `--grader
+   agent:claude-sonnet-5-5 --second-grader agent:claude-opus-5-5
+   --temperature none` (and `--no-format --scores scores-strict.json`),
+   the U5 search, adjudication, `report`, notes. It is the measurement
+   of U1 to U3 for Sonnet; gpt-5.5 follows when it has a channel (`run
+   --provider codex --model gpt-5.5 --work-dir <empty dir> --parallel
+   3`, or the API with the owner's authorization).
 2. **Readability observations not asked**: `otherwise` binds loosest
    (Sonnet wrote `check f(x) otherwise "" is "y"`); Sonnet reasons before
    the Predict answer on `traffic_light` (0 of 5 with right lines); the
@@ -647,7 +703,13 @@ on a fresh clone).
   both grader kinds mark 2. Sonnet 5.5 and gpt-5.5 cannot be sampled at temperature 0, so
   their rates carry sampling noise of about one item. gpt-5.5's Write
   samples came through the Codex CLI (its own system prompt around ours,
-  reasoning effort `medium`), the rest through the API. The grant clauses
+  reasoning effort `medium`), the rest through the API; round 3's Sonnet
+  samples came through the Claude Code CLI with adaptive thinking on
+  (tokens recorded per session; Predict `permissions` failed only in the
+  sessions without thinking) and a one-line note of the account's email
+  address in the context. A call form written into the cheat sheet must
+  be run through `renyi check` before a round: round 3 was lost to
+  `rounded(places: 2)` and `split()`. The grant clauses
   (`at most`, `only to`, `replays` in a prompt) have not been through a
   round. `reference/*.explain.txt` must be re-read against the corpus
   before a round (one went stale this session; `prepare` now snapshots
@@ -676,5 +738,6 @@ on a fresh clone).
 - The pay-per-token API keys are not spent by default (ruled 2026-10-06):
   subscription quota first (Claude Code subagents, the Codex CLI), the
   keys only when the owner says so in the same request, with the volume
-  named. The readability harness takes samples and grades from files
-  (`run --provider file`, `grades.json` buckets) for that reason.
+  named. The readability harness drives the two CLIs itself (`run
+  --provider claude`, `--provider codex`) and takes grades from the
+  subagents' files (`grades.json` buckets) for that reason.

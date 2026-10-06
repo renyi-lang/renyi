@@ -1,0 +1,36 @@
+{
+  "samples": [
+    "This program downloads a few web pages, measures the character length of each response body, and prints the results from largest to smallest. It also fetches a home page and docs page in parallel with a 10-second timeout, then prints their combined size. It includes a replayed network test that checks the measured size of `https://example.com`.",
+    "This program downloads several web pages concurrently, measures each page body by character count, and prints the three configured sites from largest to smallest. It then fetches the example.com home page and docs page in parallel with a 10-second timeout and prints their combined size. It is useful if you want a small network tool for comparing page sizes, with failures surfaced for HTTP errors or timeout.",
+    "This program downloads a fixed set of web pages, measures each page by the number of characters in its response body, and prints the results from largest to smallest. It also fetches the home page and docs page from example.com in parallel with a 10-second deadline, then prints their combined size. Use it if you need a small concurrent page-size checker with HTTP failure and timeout handling.",
+    "This program downloads several web pages in parallel, measures the character length of each response body, and prints the three example-site sizes from largest to smallest. It then downloads an example home page and docs page concurrently with a 10-second deadline and prints their combined size. Use it if you need a small network tool for concurrent page-size checks, with HTTP failures and deadline timeouts surfaced to the caller.",
+    "This program fetches three example URLs concurrently, measures each response body in characters, and prints the results from largest to smallest. It then concurrently measures the example homepage and docs page with a 10-second deadline and prints their combined size. Use it if you want a small networked command-line utility for parallel page-size checks; it can fail on HTTP errors or timeout."
+  ],
+  "model": "gpt-5.5",
+  "temperature": null,
+  "source": {
+    "tool": "codex exec (codex-cli 0.153.3, ChatGPT subscription login)",
+    "model": "gpt-5.5",
+    "reasoning_effort": "medium",
+    "sandbox": "read-only",
+    "working_directory": "empty",
+    "prompt": "the system text and the task prompt in one user message",
+    "sessions": [
+      {
+        "session": "01a10f8e-bf51-73d2-b0b9-0cd1768e9d7d"
+      },
+      {
+        "session": "01a10f8e-d520-7660-90da-961f957a30dc"
+      },
+      {
+        "session": "01a10f8e-ebcb-75e1-8bb5-8674bdd9e196"
+      },
+      {
+        "session": "01a10f8f-001a-7cc2-a937-a704fc2bc14f"
+      },
+      {
+        "session": "01a10f8f-1da5-78f1-b42e-95d91f272858"
+      }
+    ]
+  }
+}
