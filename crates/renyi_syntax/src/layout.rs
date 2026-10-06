@@ -19,7 +19,7 @@ pub fn check_layout(file: &SourceFile) -> Vec<Diagnostic> {
                     Span::new(start, start + line.len()),
                 )
                 .with_fix(
-                    "run `renyi format`, or break before `otherwise`, `where`, `and` or `or`",
+                    "run `renyi format`, or break inside parentheses or before `where`, `and` or `or`",
                 ),
             );
         }

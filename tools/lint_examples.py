@@ -141,7 +141,7 @@ def lint_file(path: pathlib.Path, known: set[str]) -> list[str]:
         bindings.extend((name, where) for name in bound_names(code))
         if re.match(r"^(if |otherwise if |when )", stripped) and " then" not in stripped:
             problems.append(f"{where}: condition without 'then'")
-        expression_context = previous.endswith(" be") or previous == "return"
+        expression_context = previous.endswith(" be")
         if re.match(r"^(public )?ability \w+( of [A-Z]\w*(, [A-Z]\w*)*)?$", stripped):
             in_ability_declaration = True
         if stripped.startswith("for each"):

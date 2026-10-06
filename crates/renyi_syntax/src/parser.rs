@@ -1,13 +1,14 @@
 //! The parser: tokens to the AST of `ast.rs`, following the clause grammar of
 //! the syntax sketch.
 //!
-//! Line structure matters. A statement ends at a line break unless a bracket
-//! is open, or the next line is indented deeper than the line that started the
-//! statement and begins with a continuation word (`otherwise`, `where`,
-//! `sorted by`, `group by`, `collect`, `sum`, `count`, `first`, `any`, `all`,
-//! `returns`, `or fails with`, `needs`, `for any`, `with`, `and`, `or`). The
-//! expression after `be` or `return` may start on the next, deeper line, and
-//! an `example:` clause continues on any deeper line.
+//! Line structure matters, indentation does not (decisions C2 and V2). A
+//! statement or clause ends at a line break unless a bracket is open or the
+//! next line begins with a continuation word (`where`, `sorted by`,
+//! `group by`, `collect`, `sum`, `count`, `first`, `any`, `all`, `returns`,
+//! `or fails with`, `needs`, `for any`, `with`, `and`, `or`, and in an
+//! `example:` `is` and `fails`). `otherwise` is not one: at the start of a
+//! line it opens the branch of an `if` or `match`. The value after `be` or
+//! `to` may start on the next line; `return` keeps its value on its line.
 
 use crate::ast::*;
 use crate::diagnostics::Diagnostic;
@@ -54,7 +55,6 @@ fn parse_with(source: &str, declarations: bool) -> Parsed {
         pos: 0,
         diagnostics: lexed.diagnostics,
         nesting: 0,
-        continuation: Vec::new(),
     };
     let mut module = parser.module();
     module.comments = comments;
@@ -79,7 +79,6 @@ fn parse_hole(src: &str, tokens: Vec<Token>, diagnostics: &mut Vec<Diagnostic>) 
         pos: 0,
         diagnostics: Vec::new(),
         nesting: 1,
-        continuation: Vec::new(),
     };
     let expr = parser.expr().unwrap_or(Expr {
         kind: ExprKind::Nothing,
@@ -93,11 +92,6 @@ fn parse_hole(src: &str, tokens: Vec<Token>, diagnostics: &mut Vec<Diagnostic>) 
     expr
 }
 
-struct Continuation {
-    column: usize,
-    any_word: bool,
-}
-
 struct Parser<'s> {
     src: &'s str,
     /// Functions have no bodies (a library declaration file).
@@ -105,12 +99,14 @@ struct Parser<'s> {
     tokens: Vec<Token>,
     pos: usize,
     diagnostics: Vec<Diagnostic>,
+    /// Open brackets: line breaks inside them carry no meaning.
     nesting: usize,
-    continuation: Vec<Continuation>,
 }
 
+/// Words that continue a statement or clause from the start of the next line.
+/// `otherwise` is not one: at the start of a line it is the branch of an `if`
+/// or `match` (decision V2).
 const CONTINUATION_WORDS: &[Word] = &[
-    Word::Otherwise,
     Word::Where,
     Word::SortedBy,
     Word::GroupBy,
@@ -127,6 +123,8 @@ const CONTINUATION_WORDS: &[Word] = &[
     Word::With,
     Word::And,
     Word::Or,
+    Word::Is,
+    Word::Fails,
 ];
 
 type ParseResult<T> = Result<T, ()>;
@@ -134,6 +132,8 @@ type ParseResult<T> = Result<T, ()>;
 impl<'s> Parser<'s> {
     // ------------------------------------------------------------ cursor
 
+    /// The column of an offset. Used only to resynchronise after a parse
+    /// error (`skip_to_next_item`); the grammar gives indentation no meaning.
     fn column(&self, offset: usize) -> usize {
         let line_start = self.src[..offset].rfind('\n').map_or(0, |index| index + 1);
         self.src[line_start..offset].chars().count()
@@ -163,17 +163,10 @@ impl<'s> Parser<'s> {
         }
     }
 
+    /// A line break before a continuation word carries no meaning, whatever
+    /// the indentation of the line.
     fn continues(&self, token: &Token) -> bool {
-        let Some(context) = self.continuation.last() else {
-            return false;
-        };
-        if token.kind == TokenKind::Eof {
-            return false;
-        }
-        let deeper = self.column(token.span.start) > context.column;
-        let continuation_word =
-            matches!(&token.kind, TokenKind::Word(word) if CONTINUATION_WORDS.contains(word));
-        deeper && (context.any_word || continuation_word)
+        matches!(&token.kind, TokenKind::Word(word) if CONTINUATION_WORDS.contains(word))
     }
 
     /// Look past the next significant token without moving.
@@ -287,40 +280,14 @@ impl<'s> Parser<'s> {
         }
     }
 
-    fn with_continuation<T>(
-        &mut self,
-        column: usize,
-        any_word: bool,
-        body: impl FnOnce(&mut Self) -> T,
-    ) -> T {
-        self.continuation.push(Continuation { column, any_word });
-        let result = body(self);
-        self.continuation.pop();
-        result
-    }
-
-    /// After `be` or `return`: the expression may start on the next, deeper line.
-    fn allow_next_line(&mut self, column: usize) {
-        if self.raw().kind == TokenKind::Newline {
-            let mut next = self.pos;
-            while self.tokens[next].kind == TokenKind::Newline {
-                next += 1;
-            }
-            if self.tokens[next].kind != TokenKind::Eof
-                && self.column(self.tokens[next].span.start) > column
-            {
-                self.pos = next;
-            }
-        }
+    /// After `be` or `to` the value must follow, so a line break there carries
+    /// no meaning and the value may start on the next line.
+    fn skip_newlines_before_value(&mut self) {
+        self.skip_newlines();
     }
 
     fn text_of(&self, token: &Token) -> String {
         token.text(self.src).to_string()
-    }
-
-    fn start_column(&mut self) -> usize {
-        let start = self.peek().span.start;
-        self.column(start)
     }
 
     // ------------------------------------------------------------ module
@@ -342,7 +309,7 @@ impl<'s> Parser<'s> {
                 module.name = path;
             }
             let _ = self.end_of_statement();
-            module.docs = self.doc_clauses(0);
+            module.docs = self.doc_clauses();
         } else {
             let span = self.peek().span;
             self.error("module-header", "a file starts with `module name`", span);
@@ -374,6 +341,8 @@ impl<'s> Parser<'s> {
     }
 
     /// After a failed item, skip lines until one starts a new top-level item.
+    /// The column test only steers this recovery (a `function` at the margin
+    /// rather than one inside an ability); it gives indentation no meaning.
     fn skip_to_next_item(&mut self) {
         loop {
             match &self.raw().kind {
@@ -442,23 +411,17 @@ impl<'s> Parser<'s> {
         })
     }
 
-    /// Documentation clauses on the lines after a head, indented deeper than `column`.
-    fn doc_clauses(&mut self, column: usize) -> Docs {
+    /// Documentation clauses on the lines after a head, each known by its
+    /// clause word.
+    fn doc_clauses(&mut self) -> Docs {
         let mut docs = Docs::default();
         loop {
             self.skip_newlines();
             let token = self.raw().clone();
-            if self.column(token.span.start) <= column && column > 0 {
-                break;
-            }
             match token.kind {
                 TokenKind::Word(
                     word @ (Word::Purpose | Word::Tags | Word::SeeAlso | Word::Deprecated),
                 ) => {
-                    if self.column(token.span.start) <= column && column == 0 && !docs_empty(&docs)
-                    {
-                        break;
-                    }
                     self.advance();
                     let _ = self.expect(&TokenKind::Colon, "`:`");
                     let text = match self.raw().kind.clone() {
@@ -482,12 +445,9 @@ impl<'s> Parser<'s> {
                     let _ = self.end_of_statement();
                 }
                 TokenKind::Word(Word::Example) => {
-                    let example_column = self.column(token.span.start);
                     self.advance();
                     let _ = self.expect(&TokenKind::Colon, "`:`");
-                    match self.with_continuation(example_column, true, |parser| {
-                        parser.example(token.span.start)
-                    }) {
+                    match self.example(token.span.start) {
                         Ok(example) => docs.examples.push(example),
                         Err(()) => self.recover(),
                     }
@@ -559,14 +519,12 @@ impl<'s> Parser<'s> {
     }
 
     fn function(&mut self, public: bool, start: usize, with_body: bool) -> ParseResult<Function> {
-        let head_column = self.column(start);
         self.expect_word(Word::Function)?;
         let name = self.method_or_function_name()?;
         let params = self.params()?;
-        let (returns, fails, needs, type_params) =
-            self.with_continuation(head_column, false, |parser| parser.signature_clauses())?;
+        let (returns, fails, needs, type_params) = self.signature_clauses()?;
         self.end_of_statement()?;
-        let docs = self.doc_clauses(head_column);
+        let docs = self.doc_clauses();
         let body = if with_body {
             let block = self.block(&[Word::End])?;
             self.expect_word(Word::End)?;
@@ -811,7 +769,6 @@ impl<'s> Parser<'s> {
     }
 
     fn type_def(&mut self, public: bool, start: usize) -> ParseResult<TypeDef> {
-        let head_column = self.column(start);
         self.expect_word(Word::Type)?;
         let name = self.type_name("a type name")?;
         let mut type_params = Vec::new();
@@ -823,7 +780,7 @@ impl<'s> Parser<'s> {
         }
         if self.eat_word(Word::IsOneOf) {
             self.end_of_statement()?;
-            let docs = self.doc_clauses(head_column);
+            let docs = self.doc_clauses();
             let mut variants = Vec::new();
             let mut derives = Vec::new();
             loop {
@@ -862,19 +819,15 @@ impl<'s> Parser<'s> {
             });
         }
         if self.eat_word(Word::Is) {
-            let (base, refinement) =
-                self.with_continuation(head_column, false, |parser| -> ParseResult<_> {
-                    let base = parser.type_()?;
-                    let refinement = if parser.eat_word(Word::Where) {
-                        Some(parser.expr()?)
-                    } else {
-                        None
-                    };
-                    Ok((base, refinement))
-                })?;
+            let base = self.type_()?;
+            let refinement = if self.eat_word(Word::Where) {
+                Some(self.expr()?)
+            } else {
+                None
+            };
             let end = self.tokens[self.pos - 1].span.end;
             self.end_of_statement()?;
-            let docs = self.doc_clauses(head_column);
+            let docs = self.doc_clauses();
             return Ok(TypeDef {
                 public,
                 name,
@@ -885,7 +838,7 @@ impl<'s> Parser<'s> {
             });
         }
         self.end_of_statement()?;
-        let docs = self.doc_clauses(head_column);
+        let docs = self.doc_clauses();
         let mut fields = Vec::new();
         let mut derives = Vec::new();
         loop {
@@ -896,10 +849,8 @@ impl<'s> Parser<'s> {
             if self.at_word(Word::Can) {
                 derives.push(self.derive()?);
             } else if self.at_word(Word::Has) {
-                let has_column = self.start_column();
                 self.advance();
-                let field =
-                    self.with_continuation(has_column, false, |parser| parser.field(true))?;
+                let field = self.field(true)?;
                 fields.push(field);
                 self.end_of_statement()?;
             } else {
@@ -996,7 +947,6 @@ impl<'s> Parser<'s> {
     }
 
     fn ability(&mut self, public: bool, start: usize) -> ParseResult<Item> {
-        let head_column = self.column(start);
         self.expect_word(Word::Ability)?;
         let name = self.type_name("an ability name")?;
         let mut type_params = Vec::new();
@@ -1023,15 +973,14 @@ impl<'s> Parser<'s> {
                 span: ability_span,
             };
             let end_of_head = self.tokens[self.pos - 1].span;
-            self.end_of_statement()?;
-            self.skip_newlines();
+            // `for any` is a continuation word, so it may follow the head on
+            // its own line, as the formatter writes it
             let for_any = if self.at_word(Word::ForAny) {
-                let clause = self.for_any()?;
-                self.end_of_statement()?;
-                Some(clause)
+                Some(self.for_any()?)
             } else {
                 None
             };
+            self.end_of_statement()?;
             let functions = self.ability_functions(true)?;
             self.expect_word(Word::End)?;
             let end = self.tokens[self.pos - 1].span.end;
@@ -1063,7 +1012,7 @@ impl<'s> Parser<'s> {
             }
         }
         self.end_of_statement()?;
-        let docs = self.doc_clauses(head_column);
+        let docs = self.doc_clauses();
         let functions = self.ability_functions(false)?;
         self.expect_word(Word::End)?;
         let end = self.tokens[self.pos - 1].span.end;
@@ -1104,16 +1053,16 @@ impl<'s> Parser<'s> {
     }
 
     fn constant(&mut self, public: bool, start: usize) -> ParseResult<Constant> {
-        let head_column = self.column(start);
         self.expect_word(Word::Let)?;
         let name = self.identifier("a constant name")?;
         self.expect(&TokenKind::Colon, "`:` and the type of the constant")?;
         let ty = self.type_()?;
         self.expect_word(Word::Be)?;
-        let value = self.with_continuation(head_column, false, |parser| parser.expr())?;
+        self.skip_newlines_before_value();
+        let value = self.expr()?;
         let end = self.tokens[self.pos - 1].span.end;
         self.end_of_statement()?;
-        let docs = self.doc_clauses(head_column);
+        let docs = self.doc_clauses();
         Ok(Constant {
             public,
             name,
@@ -1358,10 +1307,7 @@ impl<'s> Parser<'s> {
     fn statement(&mut self) -> ParseResult<Stmt> {
         let token = self.peek().clone();
         let start = token.span.start;
-        let column = self.column(start);
-        let kind = self.with_continuation(column, false, |parser| {
-            parser.statement_kind(&token, column)
-        })?;
+        let kind = self.statement_kind(&token)?;
         let end = self.tokens[self.pos - 1].span.end;
         self.end_of_statement()?;
         Ok(Stmt {
@@ -1370,7 +1316,7 @@ impl<'s> Parser<'s> {
         })
     }
 
-    fn statement_kind(&mut self, token: &Token, column: usize) -> ParseResult<StmtKind> {
+    fn statement_kind(&mut self, token: &Token) -> ParseResult<StmtKind> {
         match &token.kind {
             TokenKind::Word(Word::Let) => {
                 self.advance();
@@ -1382,7 +1328,7 @@ impl<'s> Parser<'s> {
                     None
                 };
                 self.expect_word(Word::Be)?;
-                self.allow_next_line(column);
+                self.skip_newlines_before_value();
                 let value = self.expr()?;
                 Ok(StmtKind::Let {
                     mutable,
@@ -1395,7 +1341,7 @@ impl<'s> Parser<'s> {
                 self.advance();
                 let name = self.identifier("the name of a mutable binding")?;
                 self.expect_word(Word::To)?;
-                self.allow_next_line(column);
+                self.skip_newlines_before_value();
                 let value = self.expr()?;
                 Ok(StmtKind::Set { name, value })
             }
@@ -1424,8 +1370,7 @@ impl<'s> Parser<'s> {
             }
             TokenKind::Word(Word::Return) => {
                 self.advance();
-                // `return` alone ends the line; a deeper next line holds the value
-                self.allow_next_line(column);
+                // `return` alone ends the line; a value shares the line with it
                 if self.statement_ends_here() {
                     return Ok(StmtKind::Return(None));
                 }
@@ -1468,6 +1413,18 @@ impl<'s> Parser<'s> {
                         token.span,
                     )
                     .with_fix("write `repeat until condition` on one line"),
+                );
+                Err(())
+            }
+            TokenKind::Word(Word::Otherwise) => {
+                // a block whose branch this could be never reaches here
+                self.diagnostics.push(
+                    Diagnostic::error(
+                        "otherwise-line",
+                        "`otherwise` starts a line only as the branch of an `if` or `match`; the `otherwise` that guards a value stays on the line of the value",
+                        token.span,
+                    )
+                    .with_fix("join this line to the one before it; a long line breaks inside parentheses"),
                 );
                 Err(())
             }
@@ -2253,6 +2210,7 @@ impl<'s> Parser<'s> {
                 break;
             }
             if self.eat_word(Word::Otherwise) {
+                self.skip_newlines_in_expr();
                 otherwise = Some(Box::new(self.outcome()?));
                 continue;
             }
@@ -2264,8 +2222,9 @@ impl<'s> Parser<'s> {
                 None
             };
             self.expect_word(Word::Then)?;
-            let body =
-                self.with_continuation(self.column(arm_start), false, |parser| parser.outcome())?;
+            // an arm is one outcome, so a line break after `then` carries no meaning
+            self.skip_newlines_in_expr();
+            let body = self.outcome()?;
             let span = Span::new(arm_start, body.span().end);
             arms.push(MatchArm {
                 pattern,
@@ -2379,15 +2338,6 @@ fn binary(op: BinaryOp, left: Expr, right: Expr) -> Expr {
     }
 }
 
-fn docs_empty(docs: &Docs) -> bool {
-    docs.purpose.is_none()
-        && docs.tags.is_empty()
-        && docs.see_also.is_empty()
-        && docs.deprecated.is_none()
-        && !docs.expose_as_tool
-        && docs.examples.is_empty()
-}
-
 fn split_list(text: &str) -> Vec<String> {
     text.split(',')
         .map(|part| part.trim().to_string())
@@ -2470,7 +2420,7 @@ mod tests {
     #[test]
     fn statements_and_continuation_lines() {
         let statements = function_body(
-            "  let text be files.read_text(path)\n    otherwise fail\n  let users: List of User be json.parse(text) otherwise fail with Bad(detail: \"x\")\n  let mutable total be 0\n  set total to total + 1\n  if total is at least 18 then\n    set total to 1\n  otherwise if total is 2 then\n    set total to 2\n  otherwise\n    set total to 3\n  end\n  for each user in users where user.is_active sorted by user.name descending\n    console.print(user.name)\n  end\n  repeat until total is at least 3\n    set total to total + 1\n    if done then break end\n  end\n  return total",
+            "  let text be files.read_text(path) otherwise fail\n  let users: List of User be json.parse(text) otherwise fail with Bad(detail: \"x\")\n  let mutable total be 0\n  set total to total + 1\n  if total is at least 18 then\n    set total to 1\n  otherwise if total is 2 then\n    set total to 2\n  otherwise\n    set total to 3\n  end\n  for each user in users where user.is_active sorted by user.name descending\n    console.print(user.name)\n  end\n  repeat until total is at least 3\n    set total to total + 1\n    if done then break end\n  end\n  return total",
         );
         assert_eq!(statements.len(), 8);
         assert!(matches!(
@@ -2564,8 +2514,8 @@ mod tests {
     }
 
     #[test]
-    fn otherwise_at_the_if_column_is_not_a_continuation() {
-        let statements = function_body("  if allowed then\n    console.print(\"yes\")\n  otherwise\n    console.print(\"no\")\n  end");
+    fn otherwise_at_the_start_of_a_line_is_a_branch_whatever_its_indentation() {
+        let statements = function_body("  if allowed then\n    console.print(\"yes\")\n      otherwise\n    console.print(\"no\")\n  end");
         assert_eq!(statements.len(), 1);
         let StmtKind::If {
             branches,
@@ -2576,6 +2526,66 @@ mod tests {
         };
         assert_eq!(branches[0].1.statements.len(), 1);
         assert!(otherwise.is_some());
+        // where no branch can start, an `otherwise` line is an error with a fix
+        let parsed = parse("module tests\n\nfunction body()\n  let text be files.read_text(path)\n    otherwise fail\nend\n");
+        assert_eq!(parsed.diagnostics[0].code, "otherwise-line");
+        assert!(parsed.diagnostics[0].fix.is_some());
+    }
+
+    #[test]
+    fn continuation_words_continue_the_line_at_any_indentation() {
+        let module = parse_ok(
+            "module tests\n\npublic function emails(users: List of User)\nreturns List of Text\nneeds console\npurpose: Collect.\n  let found be\nfor each user in users\nwhere user.is_active\nand user.age is at least 18\ncollect user.email\n  let renamed be found\n      with name: \"x\"\n  return found\nend\n",
+        );
+        let Item::Function(function) = &module.items[0] else {
+            panic!()
+        };
+        assert!(function.returns.is_some() && function.needs.len() == 1);
+        assert_eq!(function.docs.purpose.as_deref(), Some("Collect."));
+        let statements = &function.body.as_ref().unwrap().statements;
+        assert_eq!(statements.len(), 3);
+        assert!(matches!(
+            &statements[0].kind,
+            StmtKind::Let {
+                value: Expr {
+                    kind: ExprKind::Query(_),
+                    ..
+                },
+                ..
+            }
+        ));
+        assert!(matches!(
+            &statements[1].kind,
+            StmtKind::Let {
+                value: Expr {
+                    kind: ExprKind::With { .. },
+                    ..
+                },
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn return_keeps_its_value_on_its_line() {
+        let statements = function_body("  return\n  helper(1)");
+        assert_eq!(statements.len(), 2);
+        assert!(matches!(statements[0].kind, StmtKind::Return(None)));
+        let statements = function_body("  return for each item in items\n    collect item");
+        assert_eq!(statements.len(), 1);
+        assert!(matches!(statements[0].kind, StmtKind::Return(Some(_))));
+    }
+
+    #[test]
+    fn a_match_expression_arm_may_put_its_outcome_on_the_next_line() {
+        let statements = function_body(
+            "  let kind be\n    match shape\n      when Circle then\n        \"circle\"\n      otherwise\n        \"other\"\n    end",
+        );
+        assert_eq!(statements.len(), 1);
+        let StmtKind::Let { value, .. } = &statements[0].kind else {
+            panic!()
+        };
+        assert!(matches!(value.kind, ExprKind::Match { .. }));
     }
 
     #[test]

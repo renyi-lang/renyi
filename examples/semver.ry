@@ -43,8 +43,10 @@ function number_at(parts: List of Text, index: Integer, input: Text)
   returns Part
   or fails with VersionError
 
-  let part be parts.at(index)
-    otherwise fail with WrongPartCount(input: input, found: parts.length())
+  let part be parts.at(index) otherwise fail with WrongPartCount(
+    input: input,
+    found: parts.length()
+  )
   let number be part.to_integer() otherwise fail with NotANumber(input: input, part: part)
   return Part(number) otherwise fail with NotANumber(input: input, part: part)
 end

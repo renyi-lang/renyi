@@ -23,8 +23,7 @@ public function count_words(text: Text) returns List of WordCount
     where raw_word.trim() is not ""
     collect raw_word.trim().to_lower()
   let grouped be for each word in words group by word
-  return
-    for each word, repeats in grouped
+  return for each word, repeats in grouped
     sorted by repeats.length() descending
     collect WordCount(word: word, occurrences: repeats.length())
 end

@@ -96,10 +96,12 @@ function handle(request: Request) returns Response
 end
 
 function convert(request: Request) returns Response
-  let celsius_text be request.query.get("celsius")
-    otherwise return server.bad_request("celsius is required")
-  let celsius be celsius_text.to_decimal()
-    otherwise return server.bad_request("celsius must be a number")
+  let celsius_text be request.query.get("celsius") otherwise return server.bad_request(
+    "celsius is required"
+  )
+  let celsius be celsius_text.to_decimal() otherwise return server.bad_request(
+    "celsius must be a number"
+  )
   let conversion be Conversion(celsius: celsius, fahrenheit: celsius * 9 / 5 + 32)
   return server.ok_json(conversion)
 end
@@ -248,11 +250,15 @@ public function main() or fails with DbError needs console, filesystem
   let changed be connection.execute(sql: "UPDATE items SET quantity = quantity + ? WHERE sku = ?", parameters: [sqlite.integer(5), sqlite.text("BOLT-10")]) otherwise fail
   console.print("changed {{changed}}")
   report(connection)
-  let wrong: List of Wrong be connection.query(sql: "SELECT sku, quantity FROM items", parameters: [])
-    otherwise fail
+  let wrong: List of Wrong be connection.query(
+    sql: "SELECT sku, quantity FROM items",
+    parameters: []
+  ) otherwise fail
   console.print("wrong rows: {{wrong.length()}}")
-  let positive: List of Positive be connection.query(sql: "SELECT sku, quantity FROM items", parameters: [])
-    otherwise fail
+  let positive: List of Positive be connection.query(
+    sql: "SELECT sku, quantity FROM items",
+    parameters: []
+  ) otherwise fail
   console.print("positive rows: {{positive.length()}}")
   connection.close()
 end
@@ -355,8 +361,7 @@ public function main() or fails with DbError needs console, filesystem
   let connection be sqlite.open(Path("{dir}/counts.db")) otherwise fail
   ignore connection.execute(sql: "CREATE TABLE t (name TEXT, amount INTEGER)", parameters: []) otherwise fail
   ignore connection.execute(sql: "INSERT INTO t VALUES ('a', 0)", parameters: []) otherwise fail
-  let rows: List of Positive be connection.query(sql: "SELECT * FROM t", parameters: [])
-    otherwise fail
+  let rows: List of Positive be connection.query(sql: "SELECT * FROM t", parameters: []) otherwise fail
   console.print("{{rows.length()}} rows")
   connection.close()
 end

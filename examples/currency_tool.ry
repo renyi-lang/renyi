@@ -29,8 +29,10 @@ public function convert(amount: Decimal, source: Currency, target: Currency)
   let url be Url("https://api.frankfurter.dev/v1/latest?from={source}&to={target}")
   let response be http.get(url) otherwise fail
   let table: RateTable be json.parse(response.body) otherwise fail
-  let rate be table.rates.get(target)
-    otherwise fail with RateUnavailable(source: source, target: target)
+  let rate be table.rates.get(target) otherwise fail with RateUnavailable(
+    source: source,
+    target: target
+  )
   return (amount * rate).rounded(2)
 end
 

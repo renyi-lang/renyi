@@ -13,8 +13,7 @@ public function column_widths(table: Table) returns List of Integer
   purpose: The width of the widest cell in every column, the header included.
   example: column_widths(Table(header: ["name", "qty"], rows: [["apple", "1"]])) is [5, 3]
 
-  return
-    for each title, index in table.header.with_index()
+  return for each title, index in table.header.with_index()
     collect widest(table: table, index: index, minimum: title.length())
 end
 

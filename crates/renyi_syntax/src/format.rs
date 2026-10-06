@@ -5,8 +5,10 @@
 //! become spaces when a group fits on one line, nesting, groups, and ordered
 //! alternatives. A group is printed flat when it fits in the remaining width
 //! and broken otherwise, so the outermost breakable construct breaks first:
-//! `otherwise` before the arguments of the call it follows, the `is` of an
-//! example before the arguments of its call.
+//! the `is` of an example before the arguments of its call. `otherwise`
+//! never starts a line (there it would be a branch, decision V2): a statement
+//! that does not fit breaks inside the parentheses of the call before
+//! `otherwise`, then inside the fallback's.
 
 use crate::ast::*;
 use crate::diagnostics::Diagnostic;
@@ -54,8 +56,6 @@ enum Doc {
     Alternatives(Vec<Doc>),
     /// Printed flat whatever the width; an alternative that must stay on one line.
     Flat(Box<Doc>),
-    /// Words wrapped at the width, continuation lines at the current indent.
-    Words(Vec<String>),
 }
 
 fn text(value: impl Into<String>) -> Doc {
@@ -116,10 +116,6 @@ fn flat_width(doc: &Doc) -> Option<usize> {
         Doc::Nest(inner) | Doc::Group(inner) | Doc::Flat(inner) => flat_width(inner),
         Doc::Concat(docs) => docs.iter().map(flat_width).sum(),
         Doc::Alternatives(alternatives) => flat_width(&alternatives[0]),
-        Doc::Words(words) => Some(
-            words.iter().map(|word| char_width(word)).sum::<usize>()
-                + words.len().saturating_sub(1),
-        ),
     }
 }
 
@@ -197,18 +193,6 @@ impl Printer {
                     }
                 }
                 self.print(last, indent, Mode::Break);
-            }
-            Doc::Words(words) => {
-                for (index, word) in words.iter().enumerate() {
-                    if index > 0 {
-                        if self.column + 1 + char_width(word) <= self.width {
-                            self.push(" ");
-                        } else {
-                            self.newline(indent);
-                        }
-                    }
-                    self.push(word);
-                }
             }
         }
     }
@@ -400,8 +384,8 @@ impl Formatter<'_> {
         text(line)
     }
 
-    /// Documentation clauses, each on its own line; long prose wraps onto
-    /// lines indented one level deeper than the clause word.
+    /// Documentation clauses, each on its own line; prose is never wrapped,
+    /// since a clause's text runs to the end of its line (decision V2).
     fn docs(&mut self, docs: &Docs) -> Doc {
         let mut parts = Vec::new();
         if let Some(purpose) = &docs.purpose {
@@ -909,7 +893,9 @@ impl Formatter<'_> {
                 ])
             }
             StmtKind::Return(None) => text("return"),
-            StmtKind::Return(Some(value)) => concat(vec![text("return"), self.value_after(value)]),
+            StmtKind::Return(Some(value)) => {
+                concat(vec![text("return"), self.value_on_line(value)])
+            }
             StmtKind::Fail(None) => text("fail"),
             StmtKind::Fail(Some(value)) => concat(vec![text("fail with "), self.expr(value)]),
             StmtKind::Crash(value) => concat(vec![text("crash with "), self.expr(value)]),
@@ -935,8 +921,23 @@ impl Formatter<'_> {
         concat(vec![head, nest(self.block(block))])
     }
 
-    /// The value after `be`, `to` or `return`: queries and conditionals may
-    /// move to the next line; a `match` always does.
+    /// The value after `return`, which stays on its line (decision V2: a
+    /// `return` alone is a statement, so a value cannot start the next line).
+    /// A query's clauses nest under it when they do not fit; an `if` or
+    /// `match` expression spans lines as it does elsewhere.
+    fn value_on_line(&mut self, value: &Expr) -> Doc {
+        let inner = match &value.kind {
+            ExprKind::Otherwise { value: inner, .. } => &inner.kind,
+            other => other,
+        };
+        match inner {
+            ExprKind::Query(_) => group(concat(vec![text(" "), nest(self.expr(value))])),
+            _ => concat(vec![text(" "), self.expr(value)]),
+        }
+    }
+
+    /// The value after `be` or `to`: queries and conditionals may move to the
+    /// next line; a `match` always does.
     fn value_after(&mut self, value: &Expr) -> Doc {
         // an `otherwise` wrapped around a query or conditional lays out like the
         // value itself, so that the clauses stay nested under `be`
@@ -1044,25 +1045,79 @@ impl Formatter<'_> {
                 self.expr(right),
             ]),
             ExprKind::With { base, updates } => {
+                // an update starts with a field name, which could not continue
+                // a line, so a record update breaks before `with` only
                 let updates: Vec<Doc> = updates.iter().map(|arg| self.argument(arg)).collect();
                 group(concat(vec![
                     self.expr(base),
-                    text(" with "),
-                    nest(join(updates, concat(vec![text(","), Doc::Line]))),
+                    nest(concat(vec![
+                        Doc::Line,
+                        text("with "),
+                        join(updates, text(", ")),
+                    ])),
                 ]))
             }
             ExprKind::Otherwise { value, fallback } => {
-                let value_doc = self.expr(value);
-                let trailing = self.trailing_comment_before(value.span.end, fallback.span().start);
-                let separator = self.clause_break(fallback.span().start, trailing.is_some());
-                let mut parts = vec![value_doc];
-                parts.extend(trailing);
-                parts.push(nest(concat(vec![
-                    separator,
-                    text("otherwise "),
-                    self.outcome(fallback),
+                // `otherwise` never starts a line (decision V2). When the
+                // statement does not fit, the longer of the two argument lists
+                // (the call's before `otherwise`, the fallback's) breaks
+                // first, then the other, then the value's own groups, then
+                // both lists; the ordinary document is the last resort.
+                let mark = self.next_comment;
+                let value_flat = self.expr(value);
+                let fallback_flat = self.outcome(fallback);
+                let value_width = flat_width(&value_flat).unwrap_or(usize::MAX);
+                let fallback_width = flat_width(&fallback_flat).unwrap_or(usize::MAX);
+                let otherwise = || text(" otherwise ");
+                let flat = Doc::Flat(Box::new(concat(vec![
+                    value_flat.clone(),
+                    otherwise(),
+                    fallback_flat.clone(),
                 ])));
-                group(concat(parts))
+                self.next_comment = mark;
+                let value_broken = self.expr_with_broken_arguments(value).map(|broken| {
+                    concat(vec![
+                        broken,
+                        otherwise(),
+                        Doc::Flat(Box::new(fallback_flat.clone())),
+                    ])
+                });
+                self.next_comment = mark;
+                let fallback_broken = self.outcome_with_broken_arguments(fallback).map(|broken| {
+                    concat(vec![
+                        Doc::Flat(Box::new(value_flat.clone())),
+                        otherwise(),
+                        broken,
+                    ])
+                });
+                self.next_comment = mark;
+                let ordinary = concat(vec![value_flat, otherwise(), fallback_flat]);
+                let both_broken = match self.expr_with_broken_arguments(value) {
+                    Some(broken_value) => {
+                        self.outcome_with_broken_arguments(fallback)
+                            .map(|broken_fallback| {
+                                concat(vec![broken_value, otherwise(), broken_fallback])
+                            })
+                    }
+                    None => None,
+                };
+                // built last so that the comment bookkeeping ends after the
+                // whole expression, whichever alternative is printed
+                self.next_comment = mark;
+                let last_resort =
+                    concat(vec![self.expr(value), otherwise(), self.outcome(fallback)]);
+                let mut alternatives = vec![flat];
+                let (longer, shorter) = if fallback_width > value_width {
+                    (fallback_broken, value_broken)
+                } else {
+                    (value_broken, fallback_broken)
+                };
+                alternatives.extend(longer);
+                alternatives.extend(shorter);
+                alternatives.push(ordinary);
+                alternatives.extend(both_broken);
+                alternatives.push(last_resort);
+                Doc::Alternatives(alternatives)
             }
             ExprKind::If {
                 branches,
@@ -1163,6 +1218,20 @@ impl Formatter<'_> {
             Doc::HardLine,
             text(")"),
         ]))
+    }
+
+    /// An outcome with the arguments of its outermost call broken one per
+    /// line, for a fallback that does not fit after `otherwise`.
+    fn outcome_with_broken_arguments(&mut self, outcome: &Outcome) -> Option<Doc> {
+        let (head, expr) = match outcome {
+            Outcome::Value(expr) => ("", expr),
+            Outcome::Fail(Some(expr), _) => ("fail with ", expr),
+            Outcome::Return(Some(expr), _) => ("return ", expr),
+            Outcome::Crash(expr, _) => ("crash with ", expr),
+            _ => return None,
+        };
+        let broken = self.expr_with_broken_arguments(expr)?;
+        Some(concat(vec![text(head), broken]))
     }
 
     /// `(a, b)`; `limit` is where the closing parenthesis is, so that a comment
@@ -1430,11 +1499,10 @@ fn docs_empty(docs: &Docs) -> bool {
         && docs.examples.is_empty()
 }
 
-/// `purpose: words ...` wrapped at the width.
+/// `purpose: words ...` on one line, with single spaces between the words.
 fn clause_text(head: &str, body: &str) -> Doc {
-    let mut words = vec![head.to_string()];
-    words.extend(body.split_whitespace().map(str::to_string));
-    nest(Doc::Words(words))
+    let words: Vec<&str> = body.split_whitespace().collect();
+    text(format!("{head} {}", words.join(" ")))
 }
 
 /// Operands and operators of a chain of `and` / `or`, left to right.
@@ -1600,10 +1668,33 @@ mod tests {
     }
 
     #[test]
-    fn breaks_before_otherwise_when_the_line_is_too_long() {
-        let source = "module demo\n\nfunction load()\n  let configuration_text be filesystem.read_text(configuration_path) otherwise fail with Unreadable(path: configuration_path)\nend\n";
+    fn breaks_inside_the_call_before_otherwise_when_the_line_is_too_long() {
+        // the longer argument list breaks first: here the call's
+        let source = "module demo\n\nfunction load()\n  let configuration_text be filesystem.read_text(path: configuration_path, encoding: \"utf-8\") otherwise fail with Unreadable(path: configuration_path)\nend\n";
         let out = formatted(source);
-        assert!(out.contains("  let configuration_text be filesystem.read_text(configuration_path)\n    otherwise fail with Unreadable(path: configuration_path)\n"), "{out}");
+        assert!(out.contains("  let configuration_text be filesystem.read_text(\n    path: configuration_path,\n    encoding: \"utf-8\"\n  ) otherwise fail with Unreadable(path: configuration_path)\n"), "{out}");
+        assert_eq!(formatted(&out), out);
+        // here the fallback's
+        let source = "module demo\n\nfunction load()\n  let text be files.read(path) otherwise fail with Unreadable(path: configuration_path, detail: \"the configuration file cannot be read\")\nend\n";
+        let out = formatted(source);
+        assert!(out.contains("  let text be files.read(path) otherwise fail with Unreadable(\n    path: configuration_path,\n    detail: \"the configuration file cannot be read\"\n  )\n"), "{out}");
+        assert_eq!(formatted(&out), out);
+    }
+
+    #[test]
+    fn a_long_query_after_return_nests_its_clauses() {
+        let source = "module demo\n\nfunction overdue(tasks: List of Task, today: Date) returns List of Task\n  return for each task in tasks where task.due is less than today and not task.done sorted by task.due collect task\nend\n";
+        let out = formatted(source);
+        assert!(out.contains("  return for each task in tasks\n    where task.due is less than today and not task.done\n    sorted by task.due\n    collect task\n"), "{out}");
+        assert_eq!(formatted(&out), out);
+    }
+
+    #[test]
+    fn a_record_update_breaks_before_with() {
+        let source = "module demo\n\nfunction renamed(user: User) returns User\n  return user with name: \"a considerably longer name than before\", age: user.age + 1, email: user.email\nend\n";
+        let out = formatted(source);
+        assert!(out.contains("  return user\n    with name: \"a considerably longer name than before\", age: user.age + 1, email: user.email\n"), "{out}");
+        assert_eq!(formatted(&out), out);
     }
 
     #[test]
@@ -1652,10 +1743,10 @@ mod tests {
     }
 
     #[test]
-    fn long_purposes_wrap_one_level_deeper() {
-        let source = "module demo\n\npublic function load()\n  purpose: This purpose clause is deliberately long so that the formatter has to wrap it onto a second line of text.\n  return 1\nend\n";
+    fn long_purposes_stay_on_their_line() {
+        let source = "module demo\n\npublic function load()\n  purpose:   This purpose clause is deliberately long so that a wrapping formatter   would have to break it onto a second line.\n  return 1\nend\n";
         let out = formatted(source);
-        assert!(out.contains("  purpose: This purpose clause is deliberately long so that the formatter has to wrap it onto a\n    second line of text.\n"), "{out}");
+        assert!(out.contains("  purpose: This purpose clause is deliberately long so that a wrapping formatter would have to break it onto a second line.\n"), "{out}");
     }
 
     /// Formatting a canonical source with interior comments leaves it alone
@@ -1674,10 +1765,10 @@ mod tests {
         assert_eq!(out, "module demo\n\nfunction find(words: List of Text, wanted: Text) returns Text\n  let found be\n    for each word in words where word is wanted first otherwise fail with Missing(word: wanted)\n  return found\nend\n");
         assert!(parse(&out).diagnostics.is_empty());
         assert_eq!(formatted(&out), out);
-        // too long for one line: one clause per line, `otherwise` nested deeper
+        // too long for one line: one clause per line, `otherwise` on the last
         let long = "module demo\n\nfunction find(candidate_words: List of Text, wanted_word: Text) returns Text\n  let found be for each candidate_word in candidate_words where candidate_word is wanted_word first otherwise fail with MissingWord(wanted: wanted_word)\n  return found\nend\n";
         let out = formatted(long);
-        assert_eq!(out, "module demo\n\nfunction find(candidate_words: List of Text, wanted_word: Text) returns Text\n  let found be\n    for each candidate_word in candidate_words\n    where candidate_word is wanted_word\n    first\n      otherwise fail with MissingWord(wanted: wanted_word)\n  return found\nend\n");
+        assert_eq!(out, "module demo\n\nfunction find(candidate_words: List of Text, wanted_word: Text) returns Text\n  let found be\n    for each candidate_word in candidate_words\n    where candidate_word is wanted_word\n    first otherwise fail with MissingWord(wanted: wanted_word)\n  return found\nend\n");
         let reparsed = parse(&out);
         assert!(
             reparsed.diagnostics.is_empty(),
@@ -1704,12 +1795,7 @@ mod tests {
     #[test]
     fn comments_stay_inside_queries() {
         stays("module demo\n\nfunction emails(users: List of User) returns List of Text\n  let result be\n    for each user in users\n    # only grown-ups\n    where user.age is at least 18  # inclusive\n    sorted by user.name\n    collect user.email\n  return result\nend\n");
-        stays("module demo\n\nfunction total(orders: List of Order) returns Integer\n  return\n    for each order in orders  # every order\n    where order.is_paid\n    count\nend\n");
-    }
-
-    #[test]
-    fn comments_stay_before_otherwise_lines() {
-        stays("module demo\n\nfunction load(path: Path) returns Text\n  let text be filesystem.read_text(path)\n    # the file is optional\n    otherwise \"\"\n  return text\nend\n");
+        stays("module demo\n\nfunction total(orders: List of Order) returns Integer\n  return for each order in orders  # every order\n    where order.is_paid\n    count\nend\n");
     }
 
     #[test]

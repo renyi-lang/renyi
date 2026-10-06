@@ -65,8 +65,7 @@ public function due_soon(tasks: List of Task, today: Date, within_days: Integer)
   purpose: Tasks due between today and the given number of days ahead, earliest first.
 
   let limit be today.plus_days(within_days)
-  return
-    for each task in tasks
+  return for each task in tasks
     where task.due is at least today and task.due is at most limit
     sorted by task.due
     collect task

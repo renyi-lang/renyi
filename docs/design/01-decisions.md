@@ -1225,3 +1225,108 @@ fall of Complete without a decision entry, since no change caused it,
 and that gpt-5.5 does not run on this sheet for now: the rounds continue
 on Sonnet, and the freeze still needs the second gating model (R8).
 (user)
+
+## V. The gap audit and the road to self-hosting (session 6)
+
+On 2026-10-06 the owner set the goal beyond the readability scores and
+answered the questions of the gap audit (`docs/GAPS.md`) in two batches of
+four, the recommendation first in each.
+
+**V1. The goal is a self-hosted language with users; the grammar freezes
+by decision.** The readability rounds did their work (the sheet and the
+corpus are what the gating model reads at 90, 100, 79, 40); the aim from
+here is a language that stands on its own: a front end written in Renyi
+with the Rust VM as the runtime, a formal grammar and a reference, first
+users among people who build agent workflows and among learners, and a
+corpus that future models meet in their training data. The grammar is
+frozen by a decision entry rather than by the thresholds of
+`03-readability-test.md`, and that entry is written only after the
+implementation does what the design documents say: stage 1 of
+`docs/GAPS.md` section 7 (the defects, the promised checks, the four
+parsed-but-empty features, the document corrections, CI and the
+conformance suite) comes before the freeze, then the formal grammar and
+the reference, then the self-hosted front end, then the milestones M4 to
+M6. The repository stays private until the owner says otherwise.
+Supersedes the freeze-by-measurement sentences of H2, R1, R8 and U9; the
+readability harness remains a measurement the owner can ask for. (user)
+
+**V2. Indentation carries no meaning, continuation lines included.** The
+parser contradicted C2: a statement continued on the next line only when
+that line was indented deeper than the line that started it, and a
+documentation clause continued on deeper lines (sketch section 1 described
+both). The owner chose to make the language indentation-insensitive
+outright rather than record the exception. A statement or clause now ends
+at the newline unless a bracket is open or the next non-blank line starts
+with a continuation word (`where`, `sorted by`, `group by`, `collect`,
+`sum`, `count`, `first`, `any`, `all`, `returns`, `or fails with`,
+`needs`, `for any`, `with`, `and`, `or`, and inside an `example:` `is`
+and `fails with`); the value after `be` or `to` may start on the next
+line. `otherwise` is not a continuation word: at the start of a line it
+opens the branch of an `if` or `match`, so the `otherwise` that guards a
+value stays on the line of that value and the formatter breaks inside the
+parentheses of the longer argument list, the call's or the fallback's,
+instead (`otherwise-line` is the error for an `otherwise` that starts a
+line where no branch can). `return` keeps its value on its line, since `return`
+alone is a statement and the next line could start one. The free text of
+`purpose:`, `tags:`, `see also:` and `deprecated:` runs to the end of its
+line. The corpus was rewritten by the formatter (eleven `otherwise` lines
+and three `return` lines joined); no documentation clause of the corpus
+wrapped. Sketch sections 1, 13 and 16 amended. (user)
+
+**V3. `Ordering` is `Less`, `Same`, `Greater`.** The library has said
+`Same` since the declaration files were written, because `Equal` is the
+name of the equality ability and a variant of that name would read as a
+type test in `when Equal then`. C3b's table names the result of
+`compare`; it is read with `Same` in place of `Equal`. Supersedes the
+variant names of C3b. (user)
+
+**V4. The phrase table lives in the syntax sketch.** C4a said the fixed
+phrase table is printed in full in the cheat sheet; U8 and U9 shortened it
+to three examples to pay for the library parameters and the
+refined-construction sentence. The table's normative place is section 17
+of `02-syntax-sketch.md`, and the language reference once it exists; the
+cheat sheet shows examples. Amends C4a. (user)
+
+**V5. The nesting and body limits are compile errors: depth 4, 60 lines.**
+D4 and O3 promised them and the checker never enforced them. A statement
+nested deeper than four blocks (an `if`, `match`, loop or `run
+concurrently` body adds one; the function body is depth 0) is
+`nesting-depth`, and a function body whose statements span more than 60
+source lines is `body-length`, each with the fix "move the inner part
+into a function". The corpus's deepest body is 3 and its longest 30
+lines, so nothing in it changes. (user)
+
+**V6. The four parsed-but-empty features.** `only to` gets its runtime
+now, as section 3 of `06-runtime-guarantees.md` designs it (P3 had
+scheduled it in M4). `deprecated:` gets tiers 1 and 2 of C8c now: a call
+to a deprecated definition is a warning that `renyi check --strict` turns
+into an error, and `renyi index` drops the definition; `renyi migrate`
+(tier 3) waits for the package manager. `expose as tool` gets `renyi
+tools`, which prints the manifest of D6 (JSON Schema from the
+parameters, the description from `purpose:`, the permissions from
+`needs`) and the checker rejects a parameter or return type that JSON
+cannot represent; `renyi serve --mcp` waits for M5. `process` and
+`foreign` leave the cheat sheet, and the checker rejects them in a
+`needs` clause (`capability-unavailable`) until the package manager
+brings `std.process` and the FFI (M4). Nothing in the frozen surface
+parses and does nothing. (user)
+
+**V7. Task independence is a checker rule.** E1 promised that a race
+cannot be written, and S2 delivers it only because tasks run one after
+the other. The checker now enforces independence: a task of `run
+concurrently` may not `set` a mutable binding declared outside the block
+and may not read a binding declared by another task of the same block;
+the violation is `task-independence` with the fix "bind the result with
+`let` inside the task, or run the statements in sequence". The body of a
+`concurrently` query is one expression per item and is independent by
+construction. Real concurrency (green threads) remains a runtime
+improvement that the rule makes safe. (user)
+
+**V8. CI and the conformance suite.** D1 and H6 named them; neither
+existed. A GitHub Actions workflow runs `cargo fmt --check`, `cargo
+clippy --all-targets`, `cargo test`, the cheat-sheet token gate and the
+corpus lint on every push; the private repository's minutes are the
+owner's. The conformance suite is `tests/conformance/`: Renyi programs
+with their expected standard output, exit code and diagnostics, in files
+a compiler written in Renyi can be tested against without the Rust
+crates; the corpus's reference outputs are its first members. (user)

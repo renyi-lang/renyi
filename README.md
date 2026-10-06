@@ -38,8 +38,8 @@ exists:
   produce; `docs/design/04-stdlib-sketch.md`: the prelude and the standard
   library modules, which also exist as declaration files under
   `library/std/`.
-- `docs/design/03-readability-test.md`: how the grammar is frozen by measuring
-  LLM comprehension; the harness and a first pre-test round are under
+- `docs/design/03-readability-test.md`: how LLM comprehension of the grammar is
+  measured (the freeze itself is by decision V1); the harness and the rounds are under
   `tests/readability/`.
 - `docs/design/05-agent-tooling.md`: the project map (`renyi index`) and the
   `renyi mcp` server for agents, both of which exist; `docs/design/06-runtime-guarantees.md`:

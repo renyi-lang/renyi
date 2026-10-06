@@ -70,16 +70,18 @@ literal brace is written `\{`. A hole may not contain a string literal; bind the
 text first (`let separator be ", "` then `"{items.join(separator)}"`).
 `raw "^[0-9]{4}$"` has no holes and no escapes (decision J5).
 
-**Statement continuation.** A statement ends at the newline unless a bracket is
-open or the next non-blank line is indented deeper than the line that started
-the statement and starts with a continuation word: `otherwise`, `where`,
-`sorted by`, `group by`, `collect`, `sum`, `count`, `first`, `any`, `all`,
-`returns`, `or fails with`, `needs`, `for any`, `with`, `and`, `or`. The
-indentation condition is what tells the `otherwise` of an `if` statement, at
-the `if`'s column, from the `otherwise` of a fallible call, one level deeper.
-The value after `be` or `return` may start on the next, deeper line; a
-documentation clause continues on any deeper line. The formatter breaks long
-lines only before continuation words.
+**Statement continuation.** A statement or clause ends at the newline unless
+a bracket is open or the next non-blank line starts with a continuation word:
+`where`, `sorted by`, `group by`, `collect`, `sum`, `count`, `first`, `any`,
+`all`, `returns`, `or fails with`, `needs`, `for any`, `with`, `and`, `or`,
+and inside an `example:` `is` and `fails with`. Indentation plays no part
+(decisions C2 and V2). `otherwise` is not a continuation word: at the start of
+a line it opens the branch of an `if` or `match`, so the `otherwise` that
+guards a value stays on the line of that value, and a long statement breaks
+inside parentheses instead. The value after `be` or `to` may start on the
+next line; `return` keeps its value on its line, since `return` alone is a
+statement. The formatter breaks long lines inside brackets and before
+continuation words.
 
 ---
 
@@ -705,8 +707,8 @@ runtime may overlap their waits.
 | `expose as tool` | publish as an agent tool | `renyi tools`, `renyi serve --mcp` |
 
 Free text inside `purpose:`, `tags:` and the reason of `deprecated:` is not
-subject to reserved words. A clause longer than one line continues on lines
-indented deeper than the clause word.
+subject to reserved words. A clause's text runs to the end of its line
+(decision V2); `purpose:` is one sentence.
 
 ---
 
@@ -771,10 +773,13 @@ base types).
   one between the clause group and the body.
 - Signature clauses share the head line when they fit, otherwise one per line
   indented once, in canonical order.
-- A long query starts on the line after `be`, one clause per line.
+- A long query after `be` or `to` starts on the next line, one clause per
+  line; after `return` it stays on the line and its clauses nest under it.
 - Long conditions break before `and` / `or`.
-- A statement whose `otherwise` does not fit breaks before `otherwise`, with
-  the continuation indented one level.
+- `otherwise` never starts a line: a statement that does not fit breaks
+  inside the parentheses of the longer argument list, the call's before
+  `otherwise` or the fallback's, then the other's, then both. A record update
+  that does not fit breaks before `with`.
 - Parameters, arguments or fields that do not fit go one per line indented one
   level, with the closing parenthesis on its own line at the head's indentation;
   signature clauses then follow on their own lines.
@@ -788,8 +793,8 @@ base types).
 - An `example:` that does not fit breaks before `is` or `fails with`, indented
   one level; when the call itself does not fit, its arguments go one per line
   and `) is value` follows the closing parenthesis.
-- Documentation prose (`purpose:`, `tags:`, `deprecated:`) wraps at the width
-  onto lines indented one level deeper than the clause word.
+- Documentation prose (`purpose:`, `tags:`, `deprecated:`) stays on its line
+  whatever its width.
 - A single blank line between statements is kept; several collapse to one.
 - A single token that cannot be broken (a long string literal) may exceed the
   width; the formatter leaves it alone.

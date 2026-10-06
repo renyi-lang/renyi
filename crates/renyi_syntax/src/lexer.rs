@@ -7,7 +7,8 @@
 //! end before the line of the closing quotes and lose their common
 //! indentation; `raw "..."` has no holes and no escapes; the text after
 //! `purpose:`, `tags:`, `see also:` and `deprecated:` is one free-text token
-//! that continues on lines indented deeper than the clause word.
+//! that runs to the end of the line (indentation carries no meaning,
+//! decision V2).
 
 use crate::diagnostics::Diagnostic;
 use crate::span::Span;
@@ -193,11 +194,6 @@ impl<'s> Lexer<'s> {
             .all(|&byte| byte == b' ')
     }
 
-    fn column_of(&self, offset: usize) -> usize {
-        let line_start = self.src[..offset].rfind('\n').map_or(0, |index| index + 1);
-        self.src[line_start..offset].chars().count()
-    }
-
     fn line_end(&self, mut pos: usize) -> usize {
         while pos < self.limit && self.bytes[pos] != b'\n' {
             pos += 1;
@@ -234,7 +230,7 @@ impl<'s> Lexer<'s> {
                 && self.bytes[self.pos] == b':'
             {
                 self.single(TokenKind::Colon);
-                self.clause_text(self.column_of(start));
+                self.clause_text();
             }
             return;
         }
@@ -303,30 +299,11 @@ impl<'s> Lexer<'s> {
         self.pos = end;
     }
 
-    /// The free text of a documentation clause, with continuation lines.
-    fn clause_text(&mut self, clause_column: usize) {
-        let mut pos = self.scan_while(self.pos, |byte| byte == b' ');
-        let text_start = pos;
-        let mut end = self.line_end(pos);
-        let mut text = self.src[pos..end].trim_end().to_string();
-        loop {
-            if end >= self.limit || self.bytes[end] != b'\n' {
-                break;
-            }
-            let next_start = end + 1;
-            let indent_end = self.scan_while(next_start, |byte| byte == b' ');
-            let next_end = self.line_end(indent_end);
-            let indentation = indent_end - next_start;
-            let blank = indent_end == next_end;
-            if blank || indentation <= clause_column {
-                break;
-            }
-            text.push(' ');
-            text.push_str(self.src[indent_end..next_end].trim_end());
-            pos = indent_end;
-            end = next_end;
-        }
-        let _ = pos;
+    /// The free text of a documentation clause: the rest of the line.
+    fn clause_text(&mut self) {
+        let text_start = self.scan_while(self.pos, |byte| byte == b' ');
+        let end = self.line_end(text_start);
+        let text = self.src[text_start..end].trim_end().to_string();
         self.push(TokenKind::ClauseText(text), text_start, end);
         self.pos = end;
     }
@@ -743,18 +720,21 @@ mod tests {
     }
 
     #[test]
-    fn clause_text_runs_to_the_end_of_the_line_and_continues_deeper() {
-        let source =
-            "  purpose: Read users; keep the adults.\n    Second line.\n  tags: a, b\n  let";
+    fn clause_text_runs_to_the_end_of_its_line_whatever_the_indentation() {
+        let source = "  purpose: Read users; keep the adults.  \ntags: a, b\n  let";
         let lexed = lex(source);
         assert!(lexed.diagnostics.is_empty(), "{:?}", lexed.diagnostics);
         assert_eq!(
             lexed.tokens[2].kind,
-            TokenKind::ClauseText("Read users; keep the adults. Second line.".into())
+            TokenKind::ClauseText("Read users; keep the adults.".into())
         );
         assert_eq!(lexed.tokens[3].kind, TokenKind::Newline);
         assert!(lexed.tokens[4].is_word(Word::Tags));
         assert_eq!(lexed.tokens[6].kind, TokenKind::ClauseText("a, b".into()));
+        // a deeper second line is code, not more prose
+        let lexed = lex("  purpose: Read users.\n    Second line.\n");
+        assert_eq!(lexed.tokens[3].kind, TokenKind::Newline);
+        assert_eq!(lexed.tokens[4].kind, TokenKind::TypeName);
     }
 
     #[test]

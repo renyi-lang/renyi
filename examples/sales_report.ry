@@ -19,14 +19,22 @@ public type ReportError is one of
 end
 
 function parse_sale(row: Row) returns Sale or fails with ReportError
-  let region be row.get("region")
-    otherwise fail with BadRow(line: row.line, detail: "missing region")
-  let product be row.get("product")
-    otherwise fail with BadRow(line: row.line, detail: "missing product")
-  let amount_text be row.get("amount")
-    otherwise fail with BadRow(line: row.line, detail: "missing amount")
-  let amount be amount_text.trim().to_decimal()
-    otherwise fail with BadRow(line: row.line, detail: "amount is not a number: {amount_text}")
+  let region be row.get("region") otherwise fail with BadRow(
+    line: row.line,
+    detail: "missing region"
+  )
+  let product be row.get("product") otherwise fail with BadRow(
+    line: row.line,
+    detail: "missing product"
+  )
+  let amount_text be row.get("amount") otherwise fail with BadRow(
+    line: row.line,
+    detail: "missing amount"
+  )
+  let amount be amount_text.trim().to_decimal() otherwise fail with BadRow(
+    line: row.line,
+    detail: "amount is not a number: {amount_text}"
+  )
   return Sale(region: region.trim(), product: product.trim(), amount: amount)
 end
 
@@ -59,6 +67,8 @@ public function main() or fails with ReportError needs console, filesystem("data
     console.print("{region}: {amount}")
     set report to "{report}{region},{amount}\n"
   end
-  filesystem.write_text(path: Path("data/report.csv"), content: report)
-    otherwise fail with Io(detail: "cannot write the report")
+  filesystem.write_text(
+    path: Path("data/report.csv"),
+    content: report
+  ) otherwise fail with Io(detail: "cannot write the report")
 end

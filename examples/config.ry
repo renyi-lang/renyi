@@ -33,8 +33,9 @@ public function load(path: Path) returns Config or fails with ConfigError needs 
   see also: default_config, load_with_fallback
 
   let text be filesystem.read_text(path) otherwise fail with Unreadable(path: path)
-  let config: Config be json.parse(text)
-    otherwise fail with Invalid(detail: "the file does not match the Config shape")
+  let config: Config be json.parse(text) otherwise fail with Invalid(
+    detail: "the file does not match the Config shape"
+  )
   return config
 end
 

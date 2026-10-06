@@ -21,10 +21,12 @@ function handle(request: Request) returns Response
 end
 
 function convert(request: Request) returns Response
-  let celsius_text be request.query.get("celsius")
-    otherwise return server.bad_request("celsius is required")
-  let celsius be celsius_text.to_decimal()
-    otherwise return server.bad_request("celsius must be a number")
+  let celsius_text be request.query.get("celsius") otherwise return server.bad_request(
+    "celsius is required"
+  )
+  let celsius be celsius_text.to_decimal() otherwise return server.bad_request(
+    "celsius must be a number"
+  )
   let conversion be Conversion(celsius: celsius, fahrenheit: celsius * 9 / 5 + 32)
   return server.ok_json(conversion)
 end

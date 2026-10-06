@@ -117,8 +117,8 @@ pub enum TokenKind {
     },
     /// `raw "..."`: no holes, no escapes.
     RawText(String),
-    /// Free text after `purpose:`, `tags:`, `see also:` or `deprecated:`,
-    /// continuation lines joined with single spaces.
+    /// Free text after `purpose:`, `tags:`, `see also:` or `deprecated:`:
+    /// the rest of the line.
     ClauseText(String),
     Comment,
     Newline,
