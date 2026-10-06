@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "```\npublic function quote(parcel: Parcel) returns Quote\n  purpose: Price and delivery time for one parcel; the host calls this at every checkout.\n  example: quote(Parcel(weight_grams: 500, destination: Domestic, order_total: 60.00))\n    is Quote(cost: 0, business_days: 2, free_shipping: true)\n  example: quote(Parcel(weight_grams: 2500, destination: Europe, order_total: 20.00))\n    is Quote(cost: 14.50, business_days: 5, free_shipping: false)\n\n  let days be delivery_days(parcel.destination)\n  let is_free be match parcel.destination\n    when Domestic then parcel.order_total is at least free_shipping_threshold\n    otherwise false\n  end\n  if is_free then\n    return Quote(cost: 0.00, business_days: days, free_shipping: true)\n  end\n  let steps be weight_steps(parcel.weight_grams)\n  let cost be base_cost(parcel.destination) + steps.to_decimal() * 2.50\n  return Quote(cost: cost, business_days: days, free_shipping: false)\nend\n```",
+    "```\npublic function quote(parcel: Parcel) returns Quote\n  purpose: Price and delivery time for one parcel; the host calls this at every checkout.\n  example: quote(Parcel(weight_grams: 500, destination: Domestic, order_total: 60.00))\n    is Quote(cost: 0, business_days: 2, free_shipping: true)\n  example: quote(Parcel(weight_grams: 2500, destination: Europe, order_total: 20.00))\n    is Quote(cost: 14.50, business_days: 5, free_shipping: false)\n\n  let days be delivery_days(parcel.destination)\n  let is_domestic be match parcel.destination\n    when Domestic then true\n    otherwise false\n  end\n  if is_domestic and parcel.order_total is at least free_shipping_threshold then\n    return Quote(cost: 0.00, business_days: days, free_shipping: true)\n  end\n  let steps be weight_steps(parcel.weight_grams)\n  let cost be base_cost(parcel.destination) + 2.50 * steps.to_decimal()\n  return Quote(cost: cost, business_days: days, free_shipping: false)\nend\n```",
+    "```\npublic function quote(parcel: Parcel) returns Quote\n  purpose: Price and delivery time for one parcel; the host calls this at every checkout.\n  example: quote(Parcel(weight_grams: 500, destination: Domestic, order_total: 60.00))\n    is Quote(cost: 0, business_days: 2, free_shipping: true)\n  example: quote(Parcel(weight_grams: 2500, destination: Europe, order_total: 20.00))\n    is Quote(cost: 14.50, business_days: 5, free_shipping: false)\n\n  let days be delivery_days(parcel.destination)\n  let is_domestic be match parcel.destination\n    when Domestic then true\n    when Europe then false\n    when International then false\n  end\n  if is_domestic and parcel.order_total is at least free_shipping_threshold then\n    return Quote(cost: 0.00, business_days: days, free_shipping: true)\n  end\n  let steps be weight_steps(parcel.weight_grams)\n  let cost be base_cost(parcel.destination) + steps.to_decimal() * 2.50\n  return Quote(cost: cost, business_days: days, free_shipping: false)\nend\n```",
+    "```\npublic function quote(parcel: Parcel) returns Quote\n  purpose: Price and delivery time for one parcel; the host calls this at every checkout.\n  example: quote(Parcel(weight_grams: 500, destination: Domestic, order_total: 60.00))\n    is Quote(cost: 0, business_days: 2, free_shipping: true)\n  example: quote(Parcel(weight_grams: 2500, destination: Europe, order_total: 20.00))\n    is Quote(cost: 14.50, business_days: 5, free_shipping: false)\n\n  let days be delivery_days(parcel.destination)\n  let is_free be parcel.destination is Domestic and parcel.order_total is at least free_shipping_threshold\n  if is_free then\n    return Quote(cost: 0.00, business_days: days, free_shipping: true)\n  end\n  let steps be weight_steps(parcel.weight_grams)\n  let cost be base_cost(parcel.destination) + steps.to_decimal() * 2.50\n  return Quote(cost: cost, business_days: days, free_shipping: false)\nend\n```",
+    "```\npublic function quote(parcel: Parcel) returns Quote\n  purpose: Price and delivery time for one parcel; the host calls this at every checkout.\n  example: quote(Parcel(weight_grams: 500, destination: Domestic, order_total: 60.00))\n    is Quote(cost: 0, business_days: 2, free_shipping: true)\n  example: quote(Parcel(weight_grams: 2500, destination: Europe, order_total: 20.00))\n    is Quote(cost: 14.50, business_days: 5, free_shipping: false)\n\n  let days be delivery_days(parcel.destination)\n  let is_free be parcel.destination is Domestic and parcel.order_total is at least free_shipping_threshold\n  if is_free then\n    return Quote(cost: 0.00, business_days: days, free_shipping: true)\n  end\n  let steps be weight_steps(parcel.weight_grams)\n  let cost be base_cost(parcel.destination) + 2.50 * steps.to_decimal()\n  return Quote(cost: cost, business_days: days, free_shipping: false)\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "bfd7d342-6694-47a9-af58-33293a3dc7b9",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 296,
+        "output_tokens": 677
+      },
+      {
+        "session": "96e157f6-e362-44dc-970e-9d3534460061",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 256,
+        "output_tokens": 644
+      },
+      {
+        "session": "fd74f0e7-3bd9-4aab-8c85-3a050ad8fae4",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 502,
+        "output_tokens": 896
+      },
+      {
+        "session": "4f73e86e-3e7d-44db-b7c9-bb215e7c60a6",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 259,
+        "output_tokens": 627
+      },
+      {
+        "session": "cb42f5de-09d8-4eb3-b582-7e717f896d69",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 533,
+        "output_tokens": 902
+      }
+    ]
+  }
+}

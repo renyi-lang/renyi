@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "```\npublic function default_config() returns Config\n  purpose: The configuration used when no file is present.\n  example: default_config().port is Port(8080)\n\n  return Config(port: Port(8080), workers: 4, log_level: Normal)\nend\n```",
+    "```\npublic function default_config() returns Config\n  purpose: The configuration used when no file is present.\n  example: default_config().port is Port(8080)\n\n  return Config(port: Port(8080), workers: 4, log_level: Normal)\nend\n```",
+    "```\npublic function default_config() returns Config\n  purpose: The configuration used when no file is present.\n  example: default_config().port is Port(8080)\n\n  return Config(port: Port(8080) otherwise crash with \"unreachable: default port is valid\", workers: 4, log_level: Normal)\nend\n```",
+    "```\npublic function default_config() returns Config\n  purpose: The configuration used when no file is present.\n  example: default_config().port is Port(8080)\n\n  return Config(port: Port(8080) otherwise crash with \"unreachable: default port is valid\", workers: 4, log_level: Normal)\nend\n```",
+    "```\npublic function default_config() returns Config\n  purpose: The configuration used when no file is present.\n  example: default_config().port is Port(8080)\n\n  return Config(port: Port(8080), workers: 4, log_level: Normal)\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "4da4693f-45d5-4234-a03f-dcbea3aa9fe8",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 151,
+        "output_tokens": 230
+      },
+      {
+        "session": "e4e4e256-a603-49ad-8e5a-a485e1184055",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 177,
+        "output_tokens": 256
+      },
+      {
+        "session": "82c8ae5a-7a1e-4b8c-89fd-3e473afe5713",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 98
+      },
+      {
+        "session": "d5a0bac6-7628-484e-bc9e-e64945c4b147",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 98
+      },
+      {
+        "session": "a0666202-8b13-4d97-9683-798ada599376",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 131,
+        "output_tokens": 210
+      }
+    ]
+  }
+}

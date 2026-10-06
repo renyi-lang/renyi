@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "This program provides a single tool that converts a money amount from one three-letter currency code to another, using today's rate from the Frankfurter exchange-rate service and rounding the result to cents. It is limited to network access to that one host, and it reports a failure if the service has no rate for the pair, the request fails, or the response can't be parsed. It is published for agents to call, and it includes an offline test that uses a recorded response to check a dollars-to-euros conversion.",
+    "This module offers a single tool, published to agents, that converts a money amount from one three-letter currency code to another at today's exchange rate, rounded to cents. It works by calling the Frankfurter rate service over the network (permission is limited to that one host) and fails with a clear error if the service has no rate for the pair, the request fails, or the response can't be read. Its one test replays a recorded response offline, so you can check it without network access, but the program only does single-pair conversions and relies entirely on that third-party service.",
+    "This program exposes a single tool that converts a money amount from one currency to another using today's rate from the Frankfurter exchange-rate service, rounding the result to cents. It only needs network access to that one service, and it checks that currency codes are three uppercase letters. It fails with a specific error if the service has no rate for the pair or if the request or the response parsing goes wrong, and it comes with an offline test that converts 100 dollars to euros.",
+    "This program offers a single tool that converts a money amount from one currency to another using today's rate from the Frankfurter exchange-rate web service, rounding the result to cents. Its network access is limited to that one service, and it reports a clear failure if the service has no rate for the requested pair or if the web request or response parsing goes wrong. Currency codes are validated as three uppercase letters, and a bundled test replays a recorded response so it can run offline.",
+    "This program provides a single tool that converts a money amount from one currency to another using today's rate from the Frankfurter exchange-rate service, rounding the result to cents. It only accepts three-letter uppercase currency codes, can only reach that one web host, and fails with a clear error if the rate is missing for the requested pair or if the network call or response parsing goes wrong. It is published for agents to call, and it includes an offline test using a recorded response, so it looks safe and small to adopt if you need simple, current-rate conversions."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "c12b2abf-aa75-4d26-aa95-da7e60662ede",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 145
+      },
+      {
+        "session": "956fd795-655a-4c82-b28e-cb7d873d725e",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 160
+      },
+      {
+        "session": "5e334bc0-f4bd-4581-9adf-1d7aa7a4dab1",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 140
+      },
+      {
+        "session": "31d1eb20-4230-4f78-9a6c-8e5be75877da",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 141
+      },
+      {
+        "session": "7976c61c-d8e6-43a6-ae76-f6cc366f2c5e",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 167
+      }
+    ]
+  }
+}

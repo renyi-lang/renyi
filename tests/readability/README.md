@@ -49,10 +49,17 @@ subscription login and `--provider codex` the Codex CLI on the ChatGPT login
 text and the task: `--config-dir` names a `CLAUDE_CONFIG_DIR` that holds
 only the login (a hard link or copy of `.credentials.json` and a
 `.claude.json` of `{"hasCompletedOnboarding": true}`, so that the owner's
-hooks, memory files, output style and MCP servers stay out of the sample;
-the CLI still adds a one-line note of the account's email address),
-`--work-dir` an empty directory for Codex's read-only sandbox, and
-`--parallel` the number of prompts sampled at once. The channel, the
+hooks, memory files, output style and MCP servers stay out of the
+sample), `--work-dir` an empty directory outside the repository that both
+CLIs run in (no `CLAUDE.md` above it is loaded; Codex's read-only
+sandbox), and `--parallel` the number of prompts sampled at once. The
+Claude CLI is also started with `--strict-mcp-config` and no servers,
+which keeps the account's claude.ai connectors and their tools out; what
+remains around the system text is the CLI's fixed frame (its identity
+line, the environment block, the date and a one-line note of the
+account's email address), verified by a probe through the harness's own
+command before round 4 (round 3 ran from the repository and without the
+MCP restriction; its notes say what that added). The channel, the
 session ids and, for the Claude CLI, the thinking tokens of every session
 are recorded with the samples; neither CLI takes a temperature, and the
 Claude CLI's thinking cannot be switched off. Every command works on the
@@ -132,6 +139,10 @@ U7) and gpt-5.5 through the Codex CLI until its quota ran out (72 of 345
 samples); it found the cheat sheet listing `rounded(places: 2)` and
 `split()`, which the model copied and the checker rejected, and is
 recorded as a defect round (decision U8: the list carries parameter names
-since). The credentials are the environment variables
+since). The fourth round, `2026-10-06-c696747/`, ran Sonnet 5.5 on the
+corrected sheet through the cleaned channel (an empty `--work-dir`,
+`--strict-mcp-config`): Predict 90, Explain 100, Complete 79, Write 40,
+with no named single argument, `rounded()` or field-form error left;
+gpt-5.5 waits for a channel. The credentials are the environment variables
 `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` (decision L1); they are spent only
 when the owner says so for the round.

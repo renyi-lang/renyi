@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "This is a small, pure library (no I/O or permissions needed) for handling semantic version numbers of the form major.minor.patch, without pre-release or build suffixes. It parses text into a version, reporting whether the failure was a wrong number of parts or a non-numeric or negative part, prints versions back as dotted text, and compares them by major, then minor, then patch. It also offers a compatibility check (same major version and not older than the required one) and a function that picks the greatest version from a list, returning nothing if the list is empty.",
+    "This module handles semantic version numbers of the form major.minor.patch (such as 1.4.2): it parses text into a version, prints it back the same way, and compares versions by major, then minor, then patch. Parsing is strict, accepting only exactly three non-negative whole-number parts and returning a specific error for the wrong number of parts or a non-numeric part. It also offers a compatibility check (same major version and not older than required) and a way to find the newest version in a list, though it does not support pre-release or build suffixes.",
+    "This module handles semantic version numbers of the form major.minor.patch (such as 1.4.2): it turns text into a version, prints it back as text, and orders versions by major, then minor, then patch. Parsing reports a clear error if the text doesn't have exactly three parts or if a part isn't a non-negative whole number. It also offers a compatibility check (same major version and not older than the required one) and a way to pick the greatest version from a list, but it doesn't support pre-release or build suffixes like \"-beta\" or \"+build\".",
+    "This module handles semantic version numbers of the form major.minor.patch: it parses text into a version (reporting a clear error if the text doesn't have exactly three parts or a part isn't a non-negative whole number), prints versions back as dotted text, and compares them by major, then minor, then patch. It also offers a compatibility check (a candidate satisfies a requirement if it has the same major version and is not older) and a way to pick the greatest version from a list, returning nothing if the list is empty. It is pure, needs no permissions, and does not support pre-release or build suffixes, so it suits plain numeric versions only.",
+    "This module handles simple semantic version numbers (major.minor.patch, such as 1.4.2): it parses text into a version, prints it back as dotted text, and orders versions by major, then minor, then patch. Parsing fails with a clear error if the text doesn't have exactly three parts or if a part isn't a non-negative whole number, and it trims surrounding whitespace first. It also offers a compatibility check (same major version and not older than the required one) and a function that picks the greatest version from a list, returning nothing for an empty list; it does not support pre-release or build suffixes like \"-beta\" or \"+build\"."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "9aa3074f-f099-4eea-9da5-ede5c4eec4b7",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 167
+      },
+      {
+        "session": "d721b4bc-0806-4f61-9c72-6d34d2719243",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 165
+      },
+      {
+        "session": "383e1321-b5a0-44d9-969d-2bb9091611d0",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 169
+      },
+      {
+        "session": "276be71c-a3e8-4c84-9fab-ac2f347e3058",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 196
+      },
+      {
+        "session": "c0c150ce-11ce-40cb-897e-7b463e97369e",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 195
+      }
+    ]
+  }
+}

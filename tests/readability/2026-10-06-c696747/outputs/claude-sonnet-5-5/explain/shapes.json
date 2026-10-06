@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "This program defines circles, rectangles and points (with circles and rectangles required to have positive dimensions), and can compute each shape's area, using 3.14159 for pi, and produce a one-line description that includes the area rounded to two decimals. It also provides a function that picks the shape with the largest area from a list, returning nothing if the list is empty. Its `main` function demonstrates this by printing descriptions of three sample shapes and then naming the largest, and it needs only console access, so it has no file, network or other side effects.",
+    "This program models plane shapes (circles, rectangles, and points, with circles and rectangles required to have positive dimensions) and computes each one's area, using π approximated as 3.14159. It offers a function that produces a one-line description of a shape with its area rounded to two decimals, and another that returns the largest shape in a list, or nothing if the list is empty. Running it prints descriptions of three sample shapes and then names the largest, so it works as a small self-contained demo and a reusable base for shape measurement, though it only covers those three shape kinds and needs console access only for the demo.",
+    "This program models plane shapes (circles, rectangles, and points, with circles and rectangles requiring positive dimensions) and calculates each one's area. It can produce a one-line description of any shape with its area rounded to two decimals, and find the largest shape in a list (or nothing if the list is empty). Its entry point only prints descriptions of three built-in sample shapes and names the largest, so it works as a small demonstration or a base to build on rather than a tool that takes your own input.",
+    "This module models plane shapes (circles, rectangles, and a dimensionless point) and rejects circles or rectangles whose dimensions aren't positive. It computes each shape's area, produces a one-line description with the area rounded to two decimals, and can pick out the largest shape from a list, or report nothing for an empty list. Its main routine is a small demo that prints descriptions of three sample shapes and then names the largest, and it only needs console access, so it has no other side effects.",
+    "This program defines circles, rectangles, and points (with circles and rectangles required to have positive dimensions), and computes each shape's area using pi approximated as 3.14159. It can produce a one-line description of a shape with its area rounded to two decimals, and find the largest shape in a list by area (or nothing if the list is empty). Running it prints descriptions of three sample shapes and then names the largest, needing only console access and no network, file, or other effects."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "0b4f4639-9bb3-4447-9dc7-28bc6683da07",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 165
+      },
+      {
+        "session": "4fd26b65-9ef3-4470-a39e-48ed78f5d733",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 185
+      },
+      {
+        "session": "8d32bbc7-88a9-452c-b3e6-3f977fd06eda",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 153
+      },
+      {
+        "session": "aef3bb71-0315-4a2c-aeeb-98f882de365f",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 152
+      },
+      {
+        "session": "ef1ef03a-67d9-4c79-aa6c-54b70eddb18c",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 144
+      }
+    ]
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "| fruit      | price | stock |\n| ---------- | ----- | ----- |\n| apple      | 0.50  | 120   |\n| kiwi       | 0.80  | 7     |\n| watermelon | 3.20  | 2     |",
+    "| fruit      | price | stock |\n| ---------- | ----- | ----- |\n| apple      | 0.50  | 120   |\n| kiwi       | 0.80  | 7     |\n| watermelon | 3.20  | 2     |",
+    "| fruit      | price | stock |\n| ---------- | ----- | ----- |\n| apple      | 0.50  | 120   |\n| kiwi       | 0.80  | 7     |\n| watermelon | 3.20  | 2     |",
+    "| fruit      | price | stock |\n| ---------- | ----- | ----- |\n| apple      | 0.50  | 120   |\n| kiwi       | 0.80  | 7     |\n| watermelon | 3.20  | 2     |",
+    "| fruit      | price | stock |\n| ---------- | ----- | ----- |\n| apple      | 0.50  | 120   |\n| kiwi       | 0.80  | 7     |\n| watermelon | 3.20  | 2     |"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "78367a75-fd28-40d8-9305-9229173fe464",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 513,
+        "output_tokens": 592
+      },
+      {
+        "session": "de35d1a3-449c-4e34-8fdf-39c38f512fce",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 471,
+        "output_tokens": 550
+      },
+      {
+        "session": "d17bb1a9-cad8-4b19-ab4f-3fa4340e076c",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 370,
+        "output_tokens": 449
+      },
+      {
+        "session": "0e99ace0-493d-41d4-b6c1-842532079c58",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 392,
+        "output_tokens": 471
+      },
+      {
+        "session": "b67ec9c8-42d3-4adb-bb17-fc059b4e60ce",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 480,
+        "output_tokens": 559
+      }
+    ]
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "This program reads numbers from the command line (skipping, with a message, any word that isn't a valid number) and prints their mean, median and population standard deviation, rounded to three decimal places. If no valid numbers are given, each statistic is reported as \"no data\" instead of failing. It also exposes the three calculations as reusable public functions, each returning nothing for an empty list, and it only needs console and environment access.",
+    "This is a command-line tool that reads the numbers you pass as arguments, prints a note for any argument it can't parse as a number and skips it, then prints the mean, median and population standard deviation of the rest, rounded to three decimal places. If no valid numbers are given, each statistic reads \"no data\" instead of failing. It needs only console and environment access, so it has no file, network or other side effects, and the three statistics functions are also public and reusable.",
+    "This program reads numbers from the command line, skipping (and reporting) any argument that isn't a valid number, and prints their mean, median and population standard deviation, each rounded to three decimal places. If no valid numbers are given, each line says \"no data\" rather than failing. It needs only console and environment access, so it is a safe, self-contained tool for quick statistics on a small set of values.",
+    "This program reads numbers from the command line, skips any words that aren't valid numbers (printing a note for each), and then prints their mean, median and population standard deviation rounded to three decimal places, or \"no data\" if no numbers were given. The three calculations are also public functions that return nothing for an empty list, so other modules can reuse them. It needs only console and environment access, so it does no file or network activity.",
+    "This program reads numbers from the command line, skips any word that isn't a valid number (printing a note about each one), and then prints their mean, median and population standard deviation rounded to three decimal places, or \"no data\" if no numbers were given. It only needs console and environment access, so it can't touch files or the network. The statistics functions are also public, so other modules can reuse them, and each returns nothing for an empty list instead of failing."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "c213f9d3-0463-4521-bd8d-c70615b50afb",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 128
+      },
+      {
+        "session": "a52eeb39-574e-4424-a8d7-df83a3867ce7",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 141
+      },
+      {
+        "session": "bac26814-0a2b-466b-930a-b86b9043636a",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 121
+      },
+      {
+        "session": "e5fb2f36-6122-4a6a-9482-f97bc822cb34",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 125
+      },
+      {
+        "session": "da2a9f91-b8b0-48e1-876f-bc25b86e1248",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 133
+      }
+    ]
+  }
+}

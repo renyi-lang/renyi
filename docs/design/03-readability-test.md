@@ -13,8 +13,12 @@ unless the owner authorizes the keys (U7). A third round
 (`tests/readability/2026-10-06-3e7c45a/notes.md`, Sonnet 5.5 through the
 Claude Code CLI; gpt-5.5 stopped at 72 samples by the Codex quota) found
 the cheat sheet's rendering of U2 and U3 wrong and is recorded as a
-defect round; the library list carries parameter names since (U8), and
-round 4 measures the corrected sheet. Date: 2026-10-06.
+defect round; the library list carries parameter names since (U8). Round
+4 (`tests/readability/2026-10-06-c696747/notes.md`, Sonnet 5.5 on the
+corrected sheet through the cleaned channel) measures U1 to U3 and U8
+on one gating model: Predict 90, Explain 100, Complete 79, Write 40,
+with no named single argument, `rounded()` or field-form error left;
+gpt-5.5 has not run on this sheet. Date: 2026-10-06.
 
 Decision H2 freezes the grammar by measurement, not by implementation: before
 the parser is written, several models must read the cheat sheet and work with

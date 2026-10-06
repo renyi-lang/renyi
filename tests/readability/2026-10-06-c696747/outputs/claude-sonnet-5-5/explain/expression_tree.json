@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "This program defines a small tree type for arithmetic on decimals (numbers, addition, multiplication, and negation), plus a function that computes an expression's value and another that prints it in infix form with parentheses around every operation. Its `main` builds one fixed example, (1 + 2) times negative 4, and prints that expression next to its result (which would be -12), so running it only demonstrates the idea and takes no input. It needs only console access and is pure otherwise, so it is safe to run, but it is best used as a reference or starting point for tree-based evaluation rather than as a ready-made calculator, since there is no parser, no subtraction or division, and no way to enter your own expressions.",
+    "This module defines a tree type for decimal arithmetic expressions (numbers, addition, multiplication and negation), plus one function that computes an expression's value and another that prints it in fully parenthesized infix form. Its `main` builds one small example tree and prints that text alongside the computed result, which is the only thing it does with the console. It is a compact, pure, self-contained demo of recursive evaluation and rendering, useful as a starting point or reference, but it has no parsing, subtraction or division, so it is not a ready-made calculator.",
+    "This program models arithmetic expressions as a tree of decimal numbers, additions, multiplications, and negations, and provides one function to compute the tree's value and another to print it in fully parenthesized infix form. Its entry point builds a small sample tree and prints the rendered text alongside the computed result, using only the console and no other effects. It's a compact, pure demonstration of recursive evaluation and rendering, so use it as a starting point or reference rather than a full expression parser, since it has no text input and no subtraction or division.",
+    "This module models arithmetic expressions as a tree of numbers, additions, multiplications and negations over decimals, with one function that computes the tree's value and another that prints it in fully parenthesized infix form. Its `main` function builds a single hard-coded example, (1 + 2) times the negation of 4, and prints the rendered text next to its result, so it works as a demo of recursive tree handling rather than a reusable calculator, since it has no parser or input. It needs only console access and is pure otherwise, but if you want to use it as a library you would reuse the two public functions and the expression type, and ignore `main`.",
+    "This module models arithmetic expressions as a tree of numbers, additions, multiplications and negations, with one function to compute the decimal value and another to print it as infix text with parentheses around every operation. Its `main` builds a fixed sample expression and prints it alongside its result (it takes no input, so it is a demonstration rather than a parser or calculator). It is pure apart from console output, so it is a reasonable small example or starting point for expression evaluation, but you would need to extend it for subtraction, division, or reading expressions from text."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "30c9a31f-606d-4fe8-95fa-6c3bee94ba46",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 216
+      },
+      {
+        "session": "d4cc650e-a49c-47fb-86e1-b2484372cc71",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 172
+      },
+      {
+        "session": "f9c117b6-e1ee-4ce3-8ddd-ef2f73d04d90",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 167
+      },
+      {
+        "session": "fbb2afc4-71b4-444d-8adb-5b9fb20e6704",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 195
+      },
+      {
+        "session": "ec8cdda6-101d-4495-a069-a349f31ee5cd",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 170
+      }
+    ]
+  }
+}

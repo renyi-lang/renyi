@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "```\npublic function missing(required: Set of Permission, roles: List of Role) returns Set of Permission\n  purpose: The required permissions that none of the roles grants.\n  tags: authorization, sets\n  example: missing(\n    required: [Permission(\"orders:read\"), Permission(\"orders:write\")].to_set(),\n    roles: [Role(name: \"viewer\", granted: [Permission(\"orders:read\")].to_set())]\n  ) is [Permission(\"orders:write\")].to_set()\n\n  return required.difference(granted_by(roles))\nend\n```",
+    "```\npublic function missing(required: Set of Permission, roles: List of Role) returns Set of Permission\n  purpose: The required permissions that none of the roles grants.\n  tags: authorization, sets\n  example: missing(\n    required: [Permission(\"orders:read\"), Permission(\"orders:write\")].to_set(),\n    roles: [Role(name: \"viewer\", granted: [Permission(\"orders:read\")].to_set())]\n  ) is [Permission(\"orders:write\")].to_set()\n\n  return required.difference(granted_by(roles))\nend\n```",
+    "```\npublic function missing(required: Set of Permission, roles: List of Role) returns Set of Permission\n  purpose: The required permissions that none of the roles grants.\n  tags: authorization, sets\n  example: missing(\n    required: [Permission(\"orders:read\"), Permission(\"orders:write\")].to_set(),\n    roles: [Role(name: \"viewer\", granted: [Permission(\"orders:read\")].to_set())]\n  ) is [Permission(\"orders:write\")].to_set()\n\n  return required.difference(granted_by(roles))\nend\n```",
+    "```\npublic function missing(required: Set of Permission, roles: List of Role) returns Set of Permission\n  purpose: The required permissions that none of the roles grants.\n  tags: authorization, sets\n  example: missing(\n    required: [Permission(\"orders:read\"), Permission(\"orders:write\")].to_set(),\n    roles: [Role(name: \"viewer\", granted: [Permission(\"orders:read\")].to_set())]\n  ) is [Permission(\"orders:write\")].to_set()\n\n  return required.difference(granted_by(roles))\nend\n```",
+    "```\npublic function missing(required: Set of Permission, roles: List of Role) returns Set of Permission\n  purpose: The required permissions that none of the roles grants.\n  tags: authorization, sets\n  example: missing(\n    required: [Permission(\"orders:read\"), Permission(\"orders:write\")].to_set(),\n    roles: [Role(name: \"viewer\", granted: [Permission(\"orders:read\")].to_set())]\n  ) is [Permission(\"orders:write\")].to_set()\n\n  return required.difference(granted_by(roles))\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "dfaffa82-ebaa-437f-843d-2348c2ddd154",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 177
+      },
+      {
+        "session": "d0424b5d-78e3-4638-92ec-a63a0943bec7",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 177
+      },
+      {
+        "session": "46efa59e-282f-44d0-b938-220b6c1452f6",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 177
+      },
+      {
+        "session": "5b2288ee-448b-48c2-87bc-983d1dcc3b39",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 177
+      },
+      {
+        "session": "8ae6850e-7f29-4493-b099-de9448d59a0f",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 177
+      }
+    ]
+  }
+}

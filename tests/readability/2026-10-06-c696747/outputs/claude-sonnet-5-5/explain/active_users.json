@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "This program reads a fixed file, `data/users.json`, parses it into user records (rejecting negative ages and malformed e-mail addresses), and keeps only users who are active and at least 18. It prints their e-mail addresses one per line, ordered by user name, followed by a count line such as \"N active adults\". It needs read-only filesystem access and console output, and it fails with a file or JSON error if the file is missing or doesn't match the expected shape, so it's useful only if your data lives at that path and has name, age, active-flag and e-mail fields.",
+    "This program reads a JSON file of user accounts (a fixed location, `data/users.json`), keeps only the users who are active and at least 18 years old, and prints their e-mail addresses one per line, ordered by the user's name. It finishes by printing a count of how many active adults were found. It only needs permission to read files and print to the console, and it fails with a file or JSON error if the file is missing or malformed, so it's a good fit if your data matches that user format, but the input path is hardcoded and the e-mail check is only a loose \"something@something\" pattern.",
+    "This program reads a fixed file, `data/users.json`, parses it as a list of users (each with a name, a non-negative age, an active flag, and a validated e-mail address), and keeps only those who are active and at least 18. It prints their e-mail addresses one per line, ordered by user name, followed by a count of how many were found. It only needs permission to read files and write to the console, but the path is hardcoded, and it stops with a file or JSON error if the file is missing, malformed, or contains an invalid age or e-mail.",
+    "This program reads a JSON file of user accounts (fixed at `data/users.json`), keeps only those who are active and at least 18, and prints their e-mail addresses one per line, ordered by user name. It finishes by printing a count of how many active adults were found. It only needs permission to read files and write to the console, and it fails with a file or JSON error if the file is missing, unreadable, or contains users with an invalid age or e-mail format.",
+    "This program reads a JSON file of user accounts (fixed at `data/users.json`), keeps only those who are active and at least 18, and prints their e-mail addresses one per line, sorted by user name, followed by a count of how many were found. It only needs permission to read files and print to the console, and it fails with a file or JSON error if the file is missing or malformed, or if a user has a negative age or an e-mail that doesn't look like an address. It's a good fit if you want that specific report from that specific path, but the path is hardcoded in `main`, so you'd need to change it or reuse the `active_adult_emails` function to point at other files."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "4f8d64a2-7ea5-4a09-be01-fab2ce37d470",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 175
+      },
+      {
+        "session": "c2dd5aa6-c890-4e97-bc56-33b4480142f3",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 176
+      },
+      {
+        "session": "536b4f69-3b40-4856-9d7e-c54b35518561",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 166
+      },
+      {
+        "session": "44e7e57a-2182-4bd3-850e-0a6c75606824",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 139
+      },
+      {
+        "session": "a69a6db8-1648-44b4-b305-9bf9bb565b8f",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 201
+      }
+    ]
+  }
+}

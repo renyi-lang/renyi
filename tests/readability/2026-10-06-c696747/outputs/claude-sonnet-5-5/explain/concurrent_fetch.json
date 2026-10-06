@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "This program downloads example.com, example.org and example.net in parallel, then prints each page's character count with the largest first. It then fetches two pages from example.com (the home page again, plus its docs page) under a 10-second deadline and prints their combined size. It needs console and HTTP access, can fail with a network error or a timeout, and includes an offline-replayed test for the home page size. Note that the final print uses values created inside the concurrent block, and the cheat sheet doesn't confirm those are visible afterward, so run the checker before relying on it.",
+    "This program fetches three example websites in parallel, then prints each one's page length in characters, largest first. It then fetches two pages from example.com in parallel under a 10-second deadline and prints their combined length. It needs console and network access, and it includes an offline test that expects example.com's page to be 577 characters. One caution: the cheat sheet doesn't say whether names bound inside the concurrent block can be used after it ends, and the final line relies on that, so run the checker before depending on it.",
+    "This program downloads three example websites in parallel, measures how many characters each page body has, and prints the sites from largest to smallest. It then fetches two pages from the first site (the home page and its docs page) under a 10-second deadline, prints their combined size, and includes an offline test that expects the home page to be 577 characters. It needs console and HTTP network access, and it fails if a download fails or the deadline expires. Before relying on it, check whether the home and docs results are still in scope when they are used after the concurrent block ends, since the checker may reject that.",
+    "This program fetches three example websites at the same time, counts the characters in each page body, and prints the sites from largest to smallest. It then fetches the example.com home page and its docs page together under a 10-second deadline and prints their combined size. It only reads from the network and writes to the console, but the `home` and `docs` values are bound inside the concurrent block and used after it. The cheat sheet doesn't say such bindings stay visible outside the block, so check that the program passes the checker before relying on it.",
+    "This program fetches three example web pages in parallel, then prints each page's address and character count, largest first. It then fetches the example.com home page and its docs page together under a 10-second deadline and prints their combined size. It needs console and network access, can fail with an HTTP error or a timeout, and includes one test that replays a recorded response, so it runs offline. One thing to check before relying on it: the combined-size line uses values created inside the concurrent block, and the cheat sheet doesn't say whether they remain visible after it ends."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "f75a4395-f651-45fc-a5b0-56197b138d77",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 306,
+        "output_tokens": 479
+      },
+      {
+        "session": "bd639233-a934-4597-993f-e47ee84ac2f4",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 254,
+        "output_tokens": 408
+      },
+      {
+        "session": "44358331-cbc3-4bbc-9f21-85344c68a607",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 244,
+        "output_tokens": 418
+      },
+      {
+        "session": "a6298f73-a267-4442-9d2d-b2a9c18b002e",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 303,
+        "output_tokens": 459
+      },
+      {
+        "session": "827ad42a-ea1d-42aa-9b4e-03e2ddd7ca96",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 226,
+        "output_tokens": 392
+      }
+    ]
+  }
+}

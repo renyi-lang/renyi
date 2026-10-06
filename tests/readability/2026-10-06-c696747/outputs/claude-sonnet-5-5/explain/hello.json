@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "This program prints a one-line greeting to the console, using the first command-line argument as the name and falling back to \"world\" if none is given. It only needs permission to write to the console and read the environment (for the arguments), so it touches no files or network. It's a simple, safe hello-world that is useful as a starter or a check that your setup works, but it does nothing beyond greeting.",
+    "This program prints a one-line greeting to the console, using the first command-line argument as the name and falling back to \"world\" if none is given. It only needs permission to use the console and read the environment (for arguments), so it touches no files or network. It's a simple, safe hello-world-style utility, useful as a starter or template rather than for real work.",
+    "This program prints a greeting to the console, using the first command-line argument as the name and falling back to \"world\" when no argument is given. It only needs permission to use the console and read the environment, so it touches no files or network. It's a simple, safe hello-world that is useful as a starter or a template for programs that take arguments.",
+    "This program prints a one-line greeting to the console, addressing the person by the first command-line argument you give it, or \"world\" if you give none. It only needs permission to use the console and read the environment (arguments), so it touches no files or network. It's a simple, safe starter program, useful as a hello-world template but not much beyond that.",
+    "This program prints a one-line greeting to the console, using the first command-line argument as the name and falling back to \"world\" if none is given. It only needs permission to use the console and read the environment (for arguments), so it touches no files or network. It's a simple, safe hello-world that is useful if you want a minimal greeter or a template for reading arguments."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "181a0416-4104-4c45-b401-31cb9b81dfc4",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 115
+      },
+      {
+        "session": "380aaf2e-dd62-4308-bd62-79521afa80ba",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 103
+      },
+      {
+        "session": "f12b6682-8dd1-4d7d-97e1-675fe3941d6b",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 97
+      },
+      {
+        "session": "73861bc1-3a2c-45ba-b752-2c6037fa8d72",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 101
+      },
+      {
+        "session": "5f2396bd-be3f-4fdb-9a04-fe909206bae4",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 107
+      }
+    ]
+  }
+}

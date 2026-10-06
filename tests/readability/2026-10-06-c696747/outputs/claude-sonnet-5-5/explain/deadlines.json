@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "This program filters a small hardcoded list of three tasks to those due within the next ten days of today's date, sorts them earliest first, and prints each with its due date and the number of Monday-to-Friday days remaining (holidays are not considered). It also includes a reusable parser for lines like \"title, date\" and a working-day counter, but the parser is never used by the main program, so the tasks are fixed samples rather than user input. Because of that, it's a demo or building block rather than a ready-to-use deadline tracker, and you'd need to wire in your own task source to make it useful.",
+    "This program, when run, takes a small hardcoded list of three sample tasks, finds those due within the next ten days of today's date, and prints each one earliest first along with how many Monday-to-Friday days remain until its deadline. It also provides reusable pieces: a parser that turns \"title, date\" text lines into tasks (reporting a missing comma or an invalid date as errors), a working-day counter that ignores weekends but not holidays, and a filter for upcoming tasks. Since the task list is fixed in the code and the parser isn't wired into the main program, it works as a demo or a library of date helpers rather than a ready-to-use tool for your own task data.",
+    "This program, when run, takes a small hardcoded list of three sample tasks and prints those due within the next ten days of today's date, earliest first, along with how many Monday-to-Friday days remain until each is due (it ignores weekends but not holidays). It also includes a helper that parses \"title, date\" text lines into tasks and reports an error for a missing comma or an invalid date, but `main` never uses it, so you can't feed it your own tasks without changing the code. It's best viewed as a reusable set of date and deadline functions plus a demo, not a ready-to-use tool.",
+    "This program picks out tasks due within a chosen number of days from today, sorted earliest first, and counts the Monday-to-Friday days left until each one (not counting today, counting the due date, and ignoring public holidays). It also has a parser that turns a \"title, date\" text line into a task and reports a missing comma or an invalid date. However, the runnable entry point only uses three hard-coded sample tasks and a ten-day window, and it never calls the parser, so it's a demonstration or a source of reusable pieces rather than a finished tool for your own task lists.",
+    "This program, when run, takes a small hardcoded list of three sample tasks (not user input), picks those due within the next ten days of today's date, and prints each one in earliest-first order with the number of Monday-to-Friday days left until its deadline (counting weekdays only, with no holiday handling). It also includes a reusable parser that turns lines like \"title, date\" into tasks, plus helper functions for the working-day count and the due-soon filter, but the parser is not used by the main program. Since the sample data is fixed, it is useful as a library of date helpers or a starting template, not as a ready-made deadline tracker for your own tasks."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "2d9cc8b3-94d3-4992-bc68-ea14032a18e6",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 181
+      },
+      {
+        "session": "5735e5af-f409-4731-a639-4a3829d0f5e2",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 210
+      },
+      {
+        "session": "1875d297-e5db-4047-900e-0b1abb9125b1",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 184
+      },
+      {
+        "session": "aaca02f7-0c65-41a1-ad1a-7d3c00563a63",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 198,
+        "output_tokens": 376
+      },
+      {
+        "session": "b3bc368d-d54b-498e-9238-6dd81fe22d56",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 202
+      }
+    ]
+  }
+}

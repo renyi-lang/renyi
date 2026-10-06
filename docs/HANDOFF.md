@@ -13,7 +13,8 @@ decisions U1 to U4 and applied; round 1 re-graded on the subagent
 scale; decisions U5 to U7 from the re-grade; round 3 through the Claude
 Code CLI and the Codex CLI, which found the cheat sheet's rendering of
 U2 and U3 wrong: decision U8, the corrected sheet, round 3 recorded as a
-defect round).
+defect round; round 4 on the corrected sheet through the cleaned
+channel: Sonnet 90, 100, 79, 40, the named-argument errors gone).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -79,7 +80,20 @@ U3, the model copied both and the checker rejected every such sample
 owner's answers are decision U8 (the list carries parameter names and a
 sentence gives the call form), the corrected sheet at 2998 tokens, and
 round 4 on it through the same channel as the measurement of U1 to U3;
-`count` stays reserved until gpt-5.5's data exists.
+`count` stays reserved until gpt-5.5's data exists. Round 4
+(`tests/readability/2026-10-06-c696747/`, session 6, Sonnet 5.5 through
+the Claude Code CLI in an empty directory with no MCP server) gives
+Sonnet 90, 100, 79, 40 (strict 90, 100, 68, 10): no sample names a
+single argument, writes `rounded()` or a method as a field any more
+(43 named-argument lines in round 2, 0 now), the four items round 3
+lost to the defect are back, and the Write quarter rule holds for the
+first time. Complete is ten points under round 2 on four items whose
+slips no changed sentence touches (`otherwise` on a refined
+construction from a literal, none on one from a variable after a
+check, one `end` too many, `count`); the notes explain the fall and
+put three questions to the owner (the refined-construction sentence,
+the reading of the five-point rule, gpt-5.5's channel). The grammar is
+not frozen: gpt-5.5 has not run on this sheet.
 
 ## The VM as it exists (`crates/renyi_vm`)
 
@@ -516,6 +530,15 @@ round 4 on it through the same channel as the measurement of U1 to U3;
     rounds 1 and 2, `config.0` graded 5), the U5 search found no
     recurrence. Results: Sonnet Predict 90, Explain 100, Complete 68,
     Write 40; gpt-5.5 Predict 100. The notes name the defect (item 18).
+    A probe after the round found a second defect, in the channel: run
+    from the repository, the CLI loads the project's `CLAUDE.md`, and
+    the account's claude.ai connectors (Gmail, Claude Docs) bring 38
+    tool definitions that `--tools ""` does not remove; round 3's samples
+    had both in context. Fixed before round 4: the CLI runs in an empty
+    `--work-dir` with `--strict-mcp-config` and no servers, and a probe
+    through the harness's own command shows only the CLI's fixed frame
+    (identity line, environment block, date, the email line) around the
+    system text.
 18. **Decision U8 and the corrected cheat sheet** (same commit). The
     round's Complete fell 89 to 68 because the sheet listed
     `rounded(places: 2)` (a named single argument, against M4) and
@@ -533,6 +556,21 @@ round 4 on it through the same channel as the measurement of U1 to U3;
     limits, the reserved-word count and "(explicit)" after `Float`:
     2998 tokens. `01-decisions.md` (U8), `03-readability-test.md`,
     `README.md`.
+19. **Round 4** (fifteenth commit). The channel fix of item 17 in
+    `run.py` (`call_claude_cli` takes `--work-dir`, runs there, passes
+    `--strict-mcp-config --mcp-config '{"mcpServers":{}}'`; the
+    `source` record names both), probed through the harness's own
+    function before the run (0 tools, no instruction file, no MCP
+    instructions). `prepare` wrote `tests/readability/2026-10-06-c696747/`;
+    345 Sonnet samples in 2350 seconds of session time, no failure;
+    Explain graded by six subagents, merged, two adjudications
+    (`expression_tree.0` and `.4`, the program's own purpose line, graded
+    5 as round 3's graders did), the U5 search found no recurrence.
+    Results in the table above and in the round's `notes.md` (sections 1
+    and 6 carry the analysis and the three questions). Round 3's notes,
+    the README and this file corrected for the channel (the project
+    `CLAUDE.md` and the claude.ai connectors were in round 3's context).
+    A memory note on the channel recipe was saved outside the repository.
 
 ## Done in session 5 (condensed)
 
@@ -553,12 +591,15 @@ on a fresh clone).
 
 ## Owner actions pending
 
-- **None open from the readability work**: round 3's three questions
-  were answered in session 6 as decision U8 and applied. gpt-5.5 has no
-  channel until the Codex quota of the ChatGPT login returns (the CLI
-  named Nov 4th, 2026) or the owner authorizes `OPENAI_API_KEY` for a
-  round in the same request; its round 3 samples stop at 72 and round 4
-  has none.
+- **Round 4's three questions** (its `notes.md`, section 6), asked at
+  the end of session 6: whether the cheat sheet gets a sentence on
+  refined construction and `otherwise` (about 30 tokens, needs a trim
+  of the same size; it cost `config` and `todo_cli`), whether the
+  notes' explanation satisfies the five-point rule for Complete 89 to
+  79 or a second run on the same sheet is wanted, and how gpt-5.5 runs
+  on this sheet (the Codex quota returns Nov 4th, 2026; or the owner
+  authorizes `OPENAI_API_KEY` for 345 samples in the same request).
+  If the session ended before the answers, they are still open.
 - Session 5 printed the values of `ANTHROPIC_API_KEY` and
   `OPENAI_API_KEY` into a tool result once (not committed); the owner said
   in session 6 that they handle the transcript and the keys themselves, so
@@ -589,20 +630,23 @@ on a fresh clone).
 
 ## Next steps
 
-1. **Round 4 on the corrected cheat sheet (U8)**: `run.py prepare`, then
-   `run --provider claude --model claude-sonnet-5-5 --config-dir <login
-   only dir> --parallel 4` (the directory holds a hard link to the
-   CLI's `.credentials.json` and a `.claude.json` of
-   `{"hasCompletedOnboarding": true}`; round 3 took 2333 seconds of
-   session time), then `grade_batches.py`, six grader subagents (Sonnet
-   first, Opus second, the rubric of `EXPLAIN_GRADER` verbatim),
-   `merge_agent_grades.py`, `score` with `--grader
-   agent:claude-sonnet-5-5 --second-grader agent:claude-opus-5-5
-   --temperature none` (and `--no-format --scores scores-strict.json`),
-   the U5 search, adjudication, `report`, notes. It is the measurement
-   of U1 to U3 for Sonnet; gpt-5.5 follows when it has a channel (`run
-   --provider codex --model gpt-5.5 --work-dir <empty dir> --parallel
-   3`, or the API with the owner's authorization).
+1. **gpt-5.5 on the corrected cheat sheet** when it has a channel: `run
+   --provider codex --model gpt-5.5 --work-dir <empty dir> --parallel 3
+   --run 2026-10-06-c696747` (restartable; the Codex quota returns Nov
+   4th, 2026), or the API path with the owner's authorization; then
+   `grade_batches.py`, six grader subagents, `merge_agent_grades.py`,
+   `score` with `--grader agent:claude-sonnet-5-5 --second-grader
+   agent:claude-opus-5-5 --temperature none` (and `--no-format --scores
+   scores-strict.json`), the U5 search, adjudication, `report`, the
+   notes. Round 3's 72 gpt-5.5 samples can be finished the same way in
+   `2026-10-06-3e7c45a` for the record. A Sonnet round through the
+   Claude CLI is `run --provider claude --model claude-sonnet-5-5
+   --config-dir <login only dir> --work-dir <empty dir outside the
+   repository> --parallel 4` after a probe through `call_claude_cli`
+   (expect 0 tools, no instruction file, no MCP instructions); the
+   login-only directory holds a hard link to the CLI's
+   `.credentials.json` and a `.claude.json` of
+   `{"hasCompletedOnboarding": true}`.
 2. **Readability observations not asked**: `otherwise` binds loosest
    (Sonnet wrote `check f(x) otherwise "" is "y"`); Sonnet reasons before
    the Predict answer on `traffic_light` (0 of 5 with right lines); the
@@ -706,8 +750,15 @@ on a fresh clone).
   reasoning effort `medium`), the rest through the API; round 3's Sonnet
   samples came through the Claude Code CLI with adaptive thinking on
   (tokens recorded per session; Predict `permissions` failed only in the
-  sessions without thinking) and a one-line note of the account's email
-  address in the context. A call form written into the cheat sheet must
+  sessions without thinking), the CLI's fixed frame (identity line,
+  environment block, date, a one-line note of the account's email
+  address) and, found by a probe afterwards, the project's `CLAUDE.md`
+  and the claude.ai connectors' tool definitions (kept out since round
+  4 by an empty `--work-dir` and `--strict-mcp-config`). Round 4's
+  Complete (79) is ten points under round 2's with the targeted errors
+  gone: four items fell on slips the notes attribute to the default
+  temperature and to a sheet gap on refined construction and
+  `otherwise`; the five-point rule's reading of that is with the owner. A call form written into the cheat sheet must
   be run through `renyi check` before a round: round 3 was lost to
   `rounded(places: 2)` and `split()`. The grant clauses
   (`at most`, `only to`, `replays` in a prompt) have not been through a

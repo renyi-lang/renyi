@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "Trace: start Red.\n1. TimerExpired: Red → Green\n2. TimerExpired: Green → Yellow\n3. EmergencyDeclared → FlashingRed\n4. TimerExpired: FlashingRed → FlashingRed\n5. EmergencyCleared → Red\n\nGreen\nYellow\nFlashingRed\nFlashingRed\nRed",
+    "Trace: start Red.\n1. TimerExpired: Red → Green\n2. TimerExpired: Green → Yellow\n3. EmergencyDeclared → FlashingRed\n4. TimerExpired: FlashingRed → FlashingRed\n5. EmergencyCleared → Red\n\nGreen\nYellow\nFlashingRed\nFlashingRed\nRed",
+    "Trace: start Red.\n1. TimerExpired: Red → Green\n2. TimerExpired: Green → Yellow\n3. EmergencyDeclared → FlashingRed\n4. TimerExpired: FlashingRed → FlashingRed\n5. EmergencyCleared → Red\n\nGreen\nYellow\nFlashingRed\nFlashingRed\nRed",
+    "Green\nYellow\nFlashingRed\nFlashingRed\nRed",
+    "Start Red.\n1. TimerExpired: Red → Green\n2. TimerExpired: Green → Yellow\n3. EmergencyDeclared: FlashingRed\n4. TimerExpired: FlashingRed\n5. EmergencyCleared: Red\n\nGreen\nYellow\nFlashingRed\nFlashingRed\nRed"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "bb5b1941-4acb-47c9-82de-6149fa27411c",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 123
+      },
+      {
+        "session": "2ae30c3b-d52c-478e-8af0-53bb3746c6a6",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 123
+      },
+      {
+        "session": "7113ef6e-9618-4f97-a001-1b8e138f4249",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 123
+      },
+      {
+        "session": "7afdf3bd-6c06-4fb2-a269-fc42296aba39",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 26
+      },
+      {
+        "session": "525edcc0-33d6-4833-96a6-e0dc9a7460e4",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 113
+      }
+    ]
+  }
+}

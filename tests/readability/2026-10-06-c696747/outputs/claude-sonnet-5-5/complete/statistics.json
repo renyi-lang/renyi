@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "```\npublic function median(values: List of Float) returns maybe Float\n  purpose: The middle value of the sorted list, or the mean of the two middle values.\n  example: median([3.0, 1.0, 2.0]) is 2.0\n  example: median([4.0, 1.0, 3.0, 2.0]) is 2.5\n  example: median([]) is nothing\n\n  if values.is_empty() then return nothing end\n  let ordered be values.sorted()\n  let middle be ordered.length().quotient(2)\n  let upper be ordered.at(middle) otherwise return nothing\n  if ordered.length() remainder 2 is 1 then return upper end\n  let lower be ordered.at(middle - 1) otherwise return nothing\n  return (lower + upper) / 2.0\nend\n```",
+    "```\npublic function median(values: List of Float) returns maybe Float\n  purpose: The middle value of the sorted list, or the mean of the two middle values.\n  example: median([3.0, 1.0, 2.0]) is 2.0\n  example: median([4.0, 1.0, 3.0, 2.0]) is 2.5\n  example: median([]) is nothing\n\n  if values.is_empty() then return nothing end\n  let size be values.length()\n  let ordered be values.sorted()\n  let middle be size.quotient(2)\n  if size remainder 2 is 1 then\n    let center be ordered.at(middle) otherwise return nothing\n    return center\n  end\n  let lower be ordered.at(middle - 1) otherwise return nothing\n  let upper be ordered.at(middle) otherwise return nothing\n  return (lower + upper) / 2.to_float()\nend\n```",
+    "```\npublic function median(values: List of Float) returns maybe Float\n  purpose: The middle value of the sorted list, or the mean of the two middle values.\n  example: median([3.0, 1.0, 2.0]) is 2.0\n  example: median([4.0, 1.0, 3.0, 2.0]) is 2.5\n  example: median([]) is nothing\n\n  if values.is_empty() then return nothing end\n  let ordered be values.sorted()\n  let size be ordered.length()\n  let middle be size.quotient(2)\n  if (size remainder 2) is 1 then\n    return ordered.at(middle) otherwise return nothing\n  end\n  let lower be ordered.at(middle - 1) otherwise return nothing\n  let upper be ordered.at(middle) otherwise return nothing\n  let two: Float be 2.0\n  return (lower + upper) / two\nend\n```",
+    "```\npublic function median(values: List of Float) returns maybe Float\n  purpose: The middle value of the sorted list, or the mean of the two middle values.\n  example: median([3.0, 1.0, 2.0]) is 2.0\n  example: median([4.0, 1.0, 3.0, 2.0]) is 2.5\n  example: median([]) is nothing\n\n  if values.is_empty() then return nothing end\n  let ordered be values.sorted()\n  let middle be ordered.length().quotient(2)\n  let upper be ordered.at(middle) otherwise return nothing\n  if (ordered.length() remainder 2) is 1 then return upper end\n  let lower be ordered.at(middle - 1) otherwise return nothing\n  return (lower + upper) / 2.0\nend\n```",
+    "```\npublic function median(values: List of Float) returns maybe Float\n  purpose: The middle value of the sorted list, or the mean of the two middle values.\n  example: median([3.0, 1.0, 2.0]) is 2.0\n  example: median([4.0, 1.0, 3.0, 2.0]) is 2.5\n  example: median([]) is nothing\n\n  if values.is_empty() then return nothing end\n  let sorted_values be values.sorted()\n  let size be sorted_values.length()\n  let lower be (size - 1).quotient(2)\n  let upper be size.quotient(2)\n  let middle be sorted_values.drop(lower).take(upper - lower + 1)\n  return mean(middle)\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "a5248421-d0a2-447c-9b87-af7c1421b4ae",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 368,
+        "output_tokens": 626
+      },
+      {
+        "session": "ed7b3db2-965b-434b-9b44-a33d8cd6ebf2",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 507,
+        "output_tokens": 793
+      },
+      {
+        "session": "33df9cb9-e618-46a5-90be-d7b155036824",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 391,
+        "output_tokens": 680
+      },
+      {
+        "session": "1a0b3ede-d6eb-4e56-bf71-805504fdbb87",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 347,
+        "output_tokens": 606
+      },
+      {
+        "session": "028ab1e6-0023-48b3-bb0a-5a7c8bf58249",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 489,
+        "output_tokens": 726
+      }
+    ]
+  }
+}

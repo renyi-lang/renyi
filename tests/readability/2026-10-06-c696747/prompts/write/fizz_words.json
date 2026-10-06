@@ -1,0 +1,6 @@
+{
+  "task": "write",
+  "name": "fizz_words",
+  "prompt": "Write a complete Renyi program for the task below. Follow the cheat sheet exactly: no features it does not list. Give every public definition a `purpose:` clause and give pure functions `example:` lines. Answer with the program only, in one code fence.\n\nTask: A command-line program that prints the numbers from 1 to 100, replacing multiples of 3 with Fizz, multiples of 5 with Buzz, and multiples of both with FizzBuzz, using a pure function with example lines for the word choice.",
+  "description": "A command-line program that prints the numbers from 1 to 100, replacing multiples of 3 with Fizz, multiples of 5 with Buzz, and multiples of both with FizzBuzz, using a pure function with example lines for the word choice."
+}

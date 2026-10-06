@@ -353,26 +353,35 @@ def env_without_keys(**extra: str) -> dict[str, str]:
 
 
 def call_claude_cli(model: str, system_file: pathlib.Path, user: str,
-                    config_dir: pathlib.Path) -> tuple[str, dict]:
+                    config_dir: pathlib.Path, work_dir: pathlib.Path) -> tuple[str, dict]:
     """One sample through `claude -p` on the subscription login.
 
     `config_dir` is a configuration directory that holds the login and nothing
     else (the owner's hooks, memory files, output style and MCP servers live
-    in the default one), the cheat sheet is the whole system prompt, the
-    dynamic sections are excluded and the model has no tools; the context
-    then holds the system text, the task and the CLI's one-line note of the
-    account's email address, which no switch removes. Thinking cannot be
-    switched off either (every switch was tried in session 6), so the
-    thinking tokens of every session are recorded with the sample.
+    in the default one); `work_dir` is an empty directory the CLI runs in, so
+    that no CLAUDE.md is loaded from the working directory or its parents;
+    the MCP configuration is restricted to no server at all, which keeps the
+    account's claude.ai connectors (Gmail, Claude Docs) and their tools out;
+    the cheat sheet is the whole system prompt, the dynamic sections are
+    excluded and the model has no tools. The context then holds the system
+    text, the task and the CLI's fixed frame, which no switch removes: its
+    identity line, the environment block, the date and a one-line note of
+    the account's email address (verified by a probe before round 4; round
+    3 ran from the repository without the MCP restriction, see its notes).
+    Thinking cannot be switched off either (every switch was tried in
+    session 6), so the thinking tokens of every session are recorded with
+    the sample.
     """
+    work_dir.mkdir(parents=True, exist_ok=True)
     command = [shutil.which("claude") or "claude", "-p", "--model", model,
                "--system-prompt-file", str(system_file), "--exclude-dynamic-system-prompt-sections",
                "--settings", json.dumps({"alwaysThinkingEnabled": False}),
-               "--output-format", "json", "--no-session-persistence", "--tools", ""]
+               "--output-format", "json", "--no-session-persistence", "--tools", "",
+               "--strict-mcp-config", "--mcp-config", json.dumps({"mcpServers": {}})]
     env = env_without_keys(CLAUDE_CONFIG_DIR=str(config_dir))
     for attempt in range(1, 4):
         result = subprocess.run(command, input=user, capture_output=True, text=True,
-                                encoding="utf-8", env=env, timeout=900)
+                                encoding="utf-8", env=env, cwd=work_dir, timeout=900)
         try:
             data = json.loads(result.stdout)
         except json.JSONDecodeError:
@@ -422,7 +431,9 @@ def channel_source(provider: str, model: str) -> dict:
                 "model": model, "temperature": "the model's default",
                 "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections,"
                                  " a configuration directory holding only the login)",
-                "context": "the system prompt, the task, and the CLI's one-line note of the account's email address",
+                "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment"
+                           " block, the date, a one-line note of the account's email address)",
+                "working_directory": "empty (no CLAUDE.md)", "mcp_servers": "none (--strict-mcp-config)",
                 "tools": "none", "thinking": "adaptive, cannot be switched off; tokens recorded per session",
                 "sessions": []}
     return {"tool": f"codex exec ({tool_version('codex')}, ChatGPT subscription login)",
@@ -514,8 +525,9 @@ def cmd_run(args: argparse.Namespace) -> None:
     system = read(target / "system.txt")
     outputs = target / "outputs" / args.label
     tasks = args.tasks.split(",") if args.tasks else TASKS
-    if args.provider == "claude" and not args.config_dir:
-        sys.exit("--provider claude needs --config-dir, a directory holding only the login")
+    if args.provider == "claude" and not (args.config_dir and args.work_dir):
+        sys.exit("--provider claude needs --config-dir, a directory holding only the login, "
+                 "and --work-dir, an empty directory to run the CLI in")
     if args.provider == "codex" and not args.work_dir:
         sys.exit("--provider codex needs --work-dir, an empty directory for the sandbox")
     lock = threading.Lock()
@@ -531,7 +543,8 @@ def cmd_run(args: argparse.Namespace) -> None:
             key = f"{task}/{prompt_file.stem}.{index}"
             started = time.monotonic()
             if args.provider == "claude":
-                answer, info = call_claude_cli(args.model, target / "system.txt", prompt["prompt"], args.config_dir)
+                answer, info = call_claude_cli(args.model, target / "system.txt", prompt["prompt"],
+                                               args.config_dir, args.work_dir)
             elif args.provider == "codex":
                 answer, info = call_codex(args.model, system, prompt["prompt"], args.work_dir)
             else:
@@ -837,7 +850,8 @@ def main() -> None:
     r.add_argument("--config-dir", type=pathlib.Path,
                    help="for --provider claude: a CLAUDE_CONFIG_DIR that holds only the login (no hooks, memory, style or MCP servers)")
     r.add_argument("--work-dir", type=pathlib.Path,
-                   help="for --provider codex: an empty directory outside the repository for the read-only sandbox")
+                   help="for --provider claude and codex: an empty directory outside the repository to run the CLI in "
+                        "(no CLAUDE.md above it; Codex's read-only sandbox)")
     r.add_argument("--parallel", type=int, default=1, help="prompts sampled at the same time (one worker per prompt)")
     r.add_argument("--tasks", help="comma-separated subset of predict,explain,complete,write")
     r.add_argument("--run", help="run directory name; defaults to the latest")

@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "This program runs a small web server on port 8080 that offers a temperature converter: a health-check endpoint that replies \"ok\", and a convert endpoint that takes a Celsius value in the query string and returns JSON containing both the Celsius and Fahrenheit values. It returns a clear error message if the value is missing or isn't a number, and a not-found response for any other path. It needs console and network socket access, prints a startup message, and keeps running until you stop the process, so it's a good fit as a simple example or a quick internal utility, though it has no authentication or other features beyond conversion.",
+    "This program runs a small web server on port 8080 that offers two endpoints: a health check that replies \"ok\", and a converter that takes a Celsius value from the query string and returns a JSON object with both the Celsius and Fahrenheit temperatures. It replies with a \"bad request\" message if the value is missing or not a number, and with \"not found\" for any other path. It needs console and network socket access, prints a startup message, and runs until stopped; note that some pieces (such as the missing `purpose:` lines on the module-level type and private functions) are fine, but a `Conversion` type and `convert` function lack purpose text, which only matters for public items, so it looks usable as a simple demo or starting point.",
+    "This program runs a small web server on port 8080 that offers two endpoints: a health check that replies \"ok\", and a converter that takes a Celsius value from the query string and returns JSON containing both the Celsius and Fahrenheit temperatures. It answers with a \"bad request\" message when the value is missing or not a number, and with \"not found\" for any other path. It needs console and network socket permissions, prints a startup message, and keeps running until stopped, though it is a minimal example with no authentication or other features.",
+    "This program runs a small web server on port 8080 that answers a health check at one path and, at another path, converts a Celsius temperature given in the query string into Fahrenheit and returns both values as JSON. It replies with a clear error message if the Celsius value is missing or isn't a number, and a not-found response for any other path. It needs console and network socket access, prints a startup message, and keeps running until the process is stopped, so it suits a simple demo or a starting point rather than something with many features.",
+    "This program runs a small web server on port 8080 that answers two routes: `/health` returns a plain \"ok\", and `/convert` takes a `celsius` query parameter and replies with JSON containing both the Celsius value and its Fahrenheit equivalent. It returns clear error responses when the parameter is missing or isn't a number, and a not-found response for any other path. It needs console and network socket access only, prints a startup message, and keeps running until you stop the process, so it's a good fit if you want a minimal temperature-conversion endpoint with a health check."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "7bf6160a-9f93-4c62-a3fa-ad9568ebb60f",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 185
+      },
+      {
+        "session": "a6a48061-78dd-4a55-b168-1c3e807c551f",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 220
+      },
+      {
+        "session": "2359309f-1396-4748-b1f5-b2bad3ab311f",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 158
+      },
+      {
+        "session": "520a6080-17eb-46e0-8a47-e053e1f1cb53",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 153
+      },
+      {
+        "session": "1440fcc8-d26e-4ce5-bb98-da482c7531c4",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 178
+      }
+    ]
+  }
+}

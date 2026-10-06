@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "```\npublic function parse(input: Text) returns Version or fails with VersionError\n  purpose: Read \"major.minor.patch\" into a version.\n  tags: semver, parsing\n  example: parse(\"1.4.2\") is Version(major: 1, minor: 4, patch: 2)\n  example: parse(\"1.4\") fails with WrongPartCount(input: \"1.4\", found: 2)\n  example: parse(\"1.x.2\") fails with NotANumber(input: \"1.x.2\", part: \"x\")\n\n  let parts be input.split(\".\")\n  if parts.length() is not 3 then\n    fail with WrongPartCount(input: input, found: parts.length())\n  end\n  let major be number_at(parts: parts, index: 0, input: input) otherwise fail\n  let minor be number_at(parts: parts, index: 1, input: input) otherwise fail\n  let patch be number_at(parts: parts, index: 2, input: input) otherwise fail\n  return Version(major: major, minor: minor, patch: patch)\nend\n```",
+    "```\npublic function parse(input: Text) returns Version or fails with VersionError\n  purpose: Read \"major.minor.patch\" into a version.\n  tags: semver, parsing\n  example: parse(\"1.4.2\") is Version(major: 1, minor: 4, patch: 2)\n  example: parse(\"1.4\") fails with WrongPartCount(input: \"1.4\", found: 2)\n  example: parse(\"1.x.2\") fails with NotANumber(input: \"1.x.2\", part: \"x\")\n\n  let parts be input.split(\".\")\n  if parts.length() is not 3 then\n    fail with WrongPartCount(input: input, found: parts.length())\n  end\n  let major be number_at(parts: parts, index: 0, input: input) otherwise fail\n  let minor be number_at(parts: parts, index: 1, input: input) otherwise fail\n  let patch be number_at(parts: parts, index: 2, input: input) otherwise fail\n  return Version(major: major, minor: minor, patch: patch)\nend\n```",
+    "```renyi\npublic function parse(input: Text) returns Version or fails with VersionError\n  purpose: Read \"major.minor.patch\" into a version.\n  tags: semver, parsing\n  example: parse(\"1.4.2\") is Version(major: 1, minor: 4, patch: 2)\n  example: parse(\"1.4\") fails with WrongPartCount(input: \"1.4\", found: 2)\n  example: parse(\"1.x.2\") fails with NotANumber(input: \"1.x.2\", part: \"x\")\n\n  let parts be input.split(\".\")\n  if parts.length() is not 3 then\n    fail with WrongPartCount(input: input, found: parts.length())\n  end\n  let major be number_at(parts: parts, index: 0, input: input) otherwise fail\n  let minor be number_at(parts: parts, index: 1, input: input) otherwise fail\n  let patch be number_at(parts: parts, index: 2, input: input) otherwise fail\n  return Version(major: major, minor: minor, patch: patch)\nend\n```",
+    "```\npublic function parse(input: Text) returns Version or fails with VersionError\n  purpose: Read \"major.minor.patch\" into a version.\n  tags: semver, parsing\n  example: parse(\"1.4.2\") is Version(major: 1, minor: 4, patch: 2)\n  example: parse(\"1.4\") fails with WrongPartCount(input: \"1.4\", found: 2)\n  example: parse(\"1.x.2\") fails with NotANumber(input: \"1.x.2\", part: \"x\")\n\n  let parts be input.split(\".\")\n  if parts.length() is not 3 then\n    fail with WrongPartCount(input: input, found: parts.length())\n  end\n  let major be number_at(parts: parts, index: 0, input: input) otherwise fail\n  let minor be number_at(parts: parts, index: 1, input: input) otherwise fail\n  let patch be number_at(parts: parts, index: 2, input: input) otherwise fail\n  return Version(major: major, minor: minor, patch: patch)\nend\n```",
+    "```\npublic function parse(input: Text) returns Version or fails with VersionError\n  purpose: Read \"major.minor.patch\" into a version.\n  tags: semver, parsing\n  example: parse(\"1.4.2\") is Version(major: 1, minor: 4, patch: 2)\n  example: parse(\"1.4\") fails with WrongPartCount(input: \"1.4\", found: 2)\n  example: parse(\"1.x.2\") fails with NotANumber(input: \"1.x.2\", part: \"x\")\n\n  let parts be input.split(\".\")\n  if parts.length() is not 3 then\n    fail with WrongPartCount(input: input, found: parts.length())\n  end\n  let major be number_at(parts: parts, index: 0, input: input) otherwise fail\n  let minor be number_at(parts: parts, index: 1, input: input) otherwise fail\n  let patch be number_at(parts: parts, index: 2, input: input) otherwise fail\n  return Version(major: major, minor: minor, patch: patch)\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "b862f3f3-565e-408e-aef9-c14fe1172bb3",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 426,
+        "output_tokens": 759
+      },
+      {
+        "session": "232d7fa7-ae9a-47c3-a83d-a15981a942bd",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 670,
+        "output_tokens": 1003
+      },
+      {
+        "session": "12e115c4-839c-4c84-a6a6-a460c575a10c",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 298,
+        "output_tokens": 634
+      },
+      {
+        "session": "5f1c352b-8f45-4821-81d8-c148d7828099",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 388,
+        "output_tokens": 721
+      },
+      {
+        "session": "d0d4751b-61ce-4f94-a052-f8e9c4fc0bd2",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 513,
+        "output_tokens": 846
+      }
+    ]
+  }
+}

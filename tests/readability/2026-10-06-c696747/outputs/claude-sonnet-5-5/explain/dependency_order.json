@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "This program takes a map of build steps to the steps each depends on and returns a valid run order (a topological sort) in which every step comes after its dependencies, working in rounds and breaking ties alphabetically so the output is stable. It fails with a clear error if a dependency names a step that isn't defined, or if the steps form a cycle (reporting the steps left over). It also includes a `main` that prints a numbered build order for a small sample project (fetch, build, test and docs, then package), so it is a self-contained, pure ordering routine you can reuse for build or task scheduling.",
+    "This program takes a map of build steps to the steps they depend on and returns a valid run order in which every step comes after its dependencies, working in rounds and sorting alphabetically within each round so the result is stable. It fails with a clear error if a dependency names a step that isn't defined or if the steps form a cycle (listing the steps left over). It is pure logic with no side effects, apart from a sample `main` that prints a numbered build order for a small project, so you can reuse the ordering function directly.",
+    "This program takes a map of build steps to the steps each depends on and returns a safe running order, where every step comes after its dependencies and ties are broken alphabetically so the result is always the same. It fails with a clear error if a dependency names a step that isn't defined, or if the steps form a cycle (reporting which ones are left over). The included `main` just prints a numbered build order for a sample project (fetch, build, docs, test, package) and needs only console access, so it is safe to run and the `order` function is easy to reuse on its own.",
+    "This program takes a map of build steps to the steps they depend on and returns a valid run order in which every step comes after its dependencies, with ties broken alphabetically so the result is stable. It fails with a clear error if a step names a dependency that isn't defined, or if the dependencies form a cycle (in which case it reports the steps that couldn't be ordered). It also includes a runnable demo that prints a numbered build order for a sample project (fetch, build, docs, test, package), and it only needs console access, so it's pure logic with no file or network use.",
+    "This program takes a map of build steps to the steps they depend on and returns an order in which every step comes after its dependencies, working in rounds and sorting alphabetically within each round so the result is always the same. It fails with a clear error if a step names a dependency that isn't defined, or if the steps form a cycle, in which case it reports which steps are stuck. It also includes a small demo that prints a numbered build order for a sample project (fetch, build, docs, test, package), so it's a good fit if you need a stable, validated ordering of tasks."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "b012b004-fcdc-48f0-be52-7c18438b9dfa",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 182
+      },
+      {
+        "session": "fbb9c8df-c13e-4461-8d5f-a7fe88d1f393",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 155
+      },
+      {
+        "session": "a8117a1c-ac45-4caa-b128-581fb207ce38",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 167
+      },
+      {
+        "session": "983f0f90-80ae-4096-87c7-9e52e22cb126",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 173
+      },
+      {
+        "session": "de7cbb3e-903f-4f81-8c36-033e8a2c8647",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 171
+      }
+    ]
+  }
+}

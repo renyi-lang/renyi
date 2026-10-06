@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "This program prints a two-column table converting Celsius to Fahrenheit for -10 to 40 degrees in steps of 10, which is six rows under a header, with right-aligned columns. It also exposes a reusable public function that converts one Decimal Celsius value to Fahrenheit, with examples covering the freezing point, the boiling point and -40. It needs only console output, so it is pure apart from printing and touches no files or network, but the loop header leaves out the `in` that the documented `for each` form uses, so I would run the checker before relying on it.",
+    "This program prints a two-column table converting Celsius to Fahrenheit for -10 through 40 in steps of 10, with a header line and right-aligned columns. It also exposes a public, pure function that converts one Decimal Celsius value to Fahrenheit, which you could reuse elsewhere. The only permission it needs is console output, so it does no file, network, or other I/O, and the range and step are fixed in the code rather than taken as input.",
+    "This program prints a small Celsius-to-Fahrenheit conversion table, with a header line followed by one row for each of -10, 0, 10, 20, 30, and 40 degrees Celsius, with both columns right-aligned. It also offers a public, pure conversion function (using the standard multiply-by-9/5-and-add-32 formula) that other modules could reuse, and the only capability it needs is writing to the console. It's a simple, safe utility, but the range and step are fixed in the code, so you would need to edit it to produce a different table.",
+    "This program prints a Celsius-to-Fahrenheit conversion table covering -10 to 40 degrees in steps of 10, with a header line and right-aligned columns for each row. It includes a reusable, pure public function that converts one Celsius value to Fahrenheit, with examples for freezing, boiling and the point where the scales meet. It only needs console output, so it reads no files, makes no network calls and has no other side effects, which makes it safe to run as a simple demo or to borrow the conversion function.",
+    "This program prints a small table of Celsius temperatures from -10 to 40 in steps of 10, each beside its Fahrenheit equivalent, with right-aligned columns under a header line. It also exposes a reusable, pure public function that converts one Celsius value to Fahrenheit and carries examples for freezing, boiling and -40. It needs only console output, with no files, network or other effects, but the loop header appears to omit the `in` keyword that the cheat sheet shows for loops, so it may fail to compile until that is checked."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "b984b886-e6ed-404b-9f02-66e89ec83314",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 288,
+        "output_tokens": 465
+      },
+      {
+        "session": "d88ec243-5e23-4cfd-961b-49b9f18d09a2",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 163,
+        "output_tokens": 306
+      },
+      {
+        "session": "6d70b3b9-20dd-4aa5-ae57-783dc03e46b0",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 176
+      },
+      {
+        "session": "5cf1a334-902d-44c1-a470-32660d6e0ce8",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 164
+      },
+      {
+        "session": "60e08d8f-d6f9-423a-b593-b7f8cbf43b5c",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 433,
+        "output_tokens": 605
+      }
+    ]
+  }
+}

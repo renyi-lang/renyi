@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "This program turns a header row and body rows of text into a Markdown table, padding every column to the width of its longest cell (header included) and adding a dashed divider line under the header. Missing cells are treated as empty, so ragged rows still render, but extra cells beyond the header's column count are silently dropped. It exposes a `Table` type and `render` and `column_widths` functions that are pure (no effects), while its `main` only prints a sample fruit-price table to the console as a demo.",
+    "This program turns a header row plus body rows of text into a Markdown table, padding each column to the width of its widest cell (header included) and adding a dashed divider line under the header. Missing cells in short rows are treated as empty, so ragged input still lines up, and the library part is pure text formatting with no side effects. Its `main` just prints a sample fruit-price table to the console as a demo, so you would reuse the table type and the render function in your own code rather than run it as-is.",
+    "This module turns a header row plus body rows of text into a Markdown table string, padding every column to the width of its widest cell (header included) and adding a dashed divider line under the header. Rows with missing cells are filled with blanks, and the rendering is pure text-building, with only the demo `main` touching the console to print a small fruit-price table. It's a handy, dependency-free formatter if you need aligned plain-text Markdown tables, though it does no escaping of special characters like pipes and measures width by character count.",
+    "This library takes a header row and body rows of text and renders them as a Markdown table, with a divider line under the header and every column padded to the width of its widest cell. Missing cells in short rows are treated as empty, and it has no side effects beyond the included `main`, which prints a sample fruit-price table to the console. It's a good fit if you need plain, readable, aligned Markdown output, but it does no escaping of special characters like pipes and doesn't support per-column alignment options.",
+    "This module turns a header row plus body rows of text into a Markdown table string, padding every column to the width of its widest cell (header included) and inserting a dashed divider line under the header. Rows with missing cells are treated as having empty ones, but rows with extra cells beyond the header's column count are silently truncated. It is pure formatting with no input handling: its only effect is a demo `main` that prints a small fruit-price table to the console, so you would call `render` from your own code to get the text."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "f602ef28-ce5a-4a7f-81ba-837bc34afb73",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 152
+      },
+      {
+        "session": "0a67ec8e-4466-4c99-b29d-7ec7c08ae436",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 149
+      },
+      {
+        "session": "9440d89c-8228-44df-bc3c-5a765c96d6a7",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 161
+      },
+      {
+        "session": "6015aff7-16fb-4981-9bef-105de9ac77c9",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 151
+      },
+      {
+        "session": "54a1072f-57a6-4254-9e7a-ab738748e964",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 153
+      }
+    ]
+  }
+}

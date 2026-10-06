@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "This is a small authorization library that models roles as named sets of permissions (in a `resource:action` format) and offers functions to combine them: finding everything a group of roles grants, which required permissions are missing, whether all requirements are met, and which permissions two roles share. Its `main` function is only a demo that checks a sample viewer and editor against the permissions needed to publish a post, then prints either approval or the missing permissions, followed by the permissions the two roles share. It is pure apart from console output, so it's safe to reuse as a building block, though it only reasons about in-memory roles and doesn't load or enforce anything itself.",
+    "This module models permissions as validated `resource:action` names grouped into roles, and offers functions to combine what several roles grant, list which required permissions are missing, check whether everything required is covered, and find the permissions two roles share. Its demo `main` checks a sample viewer and editor together against what publishing needs, printing either that the editor may publish or the missing permissions, followed by the permissions the two roles share. Since the sample roles lack the publish permission, running it would print the missing publish permission and the shared read permission; the functions are pure set operations, so they're safe to reuse, and only the demo touches the console.",
+    "This module models authorization with roles that each grant a set of validated permission names (like \"resource:action\"), and it offers helpers to combine roles' grants, list which required permissions are missing, check whether all requirements are met, and find the permissions two roles share. Its demo program builds a sample viewer and editor, checks whether together they cover reading, writing, and publishing posts, and prints either a success message or the missing permissions (here, publishing would be reported missing). It then prints the permissions the two roles have in common, so it's a small, pure, easily reusable set-based permission check that only uses the console for the demo.",
+    "This module models permissions as `resource:action` names grouped into roles, and offers helpers to combine what several roles grant, list which required permissions are missing, check whether all requirements are met, and find what two roles share. Its demo program pools a sample viewer and editor, then checks them against the permissions needed to publish a post. It prints either that the editor may publish or the sorted list of missing permissions, followed by the permissions the two roles share. Because the sample roles lack the publish permission, the demo will list that one as missing.",
+    "This module models roles that each grant a set of permissions (validated as lowercase \"resource:action\" names), and offers helpers to combine what several roles grant, list which required permissions are missing, check whether all requirements are met, and find the permissions two roles share. Its demo `main` checks a sample viewer and editor against what publishing needs, then prints either an \"allowed\" message or the sorted missing permissions, followed by the permissions the two roles have in common. It is pure set logic that only prints to the console, so it's a safe, small building block for authorization checks, though the demo output will report \"publish\" as missing because neither sample role grants it."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "76a376d6-c0aa-4d07-a70e-9e36441768dd",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 198
+      },
+      {
+        "session": "b6c96909-fe5a-445e-85b9-d6c6ad2e1f22",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 193
+      },
+      {
+        "session": "430cbcee-e399-4a05-b8c7-604c61bc8a4c",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 191
+      },
+      {
+        "session": "6a1e14ed-2060-4672-bbf3-ff6fc25b348d",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 164
+      },
+      {
+        "session": "7daf85a6-a005-45a6-bd8c-55143f063a3f",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 199
+      }
+    ]
+  }
+}

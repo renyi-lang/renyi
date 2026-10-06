@@ -1,0 +1,68 @@
+{
+  "samples": [
+    "```\nmodule library.names\n  purpose: Helpers for working with people's names.\n\npublic function initials(name: Text)\n  returns Text\n  purpose: Return the upper-cased first letters of each word in a full name, with nothing between them. Blank or extra spaces are ignored.\n  tags: text, names\n  example: initials(\"ada marie lovelace\") is \"AML\"\n  example: initials(\"  grace   hopper \") is \"GH\"\n  example: initials(\"plato\") is \"P\"\n  example: initials(\"\") is \"\"\n  example: initials(\"   \") is \"\"\n\n  let letters be\n    for each word in name.split(\" \")\n    where not word.is_empty()\n    collect word.take(1).to_upper()\n  return letters.join(\"\")\nend\n\ntest \"every word contributes its initial\"\n  check initials(\"ada marie lovelace\") is \"AML\"\nend\n\ntest \"extra spaces are ignored\"\n  check initials(\"  grace   hopper \") is \"GH\"\nend\n\ntest \"a blank name has no initials\"\n  check initials(\"   \") is \"\"\nend\n```",
+    "```\nmodule text.initials\n  purpose: Work out the initials of a person's full name.\n\npublic function initials(name: Text)\n  returns Text\n  purpose: Return the upper-cased first letters of each word in a name, joined with nothing, ignoring blank or extra spaces.\n  tags: text, names\n  example: initials(\"ada marie lovelace\") is \"AML\"\n  example: initials(\"  ada   marie  lovelace  \") is \"AML\"\n  example: initials(\"grace hopper\") is \"GH\"\n  example: initials(\"   \") is \"\"\n\n  let letters be\n    for each word in name.split(\" \")\n    where not word.is_empty()\n    collect word.take(1).to_upper()\n  return letters.join(\"\")\nend\n```",
+    "```\nmodule text.initials\n  purpose: Derive initials from personal names.\n\npublic function initials(name: Text)\n  returns Text\n  purpose: Return the upper-cased first letters of each word in a full name, joined with nothing, ignoring blank or extra spaces.\n  tags: text, names\n  example: initials(\"ada marie lovelace\") is \"AML\"\n  example: initials(\"  grace   hopper \") is \"GH\"\n  example: initials(\"\") is \"\"\n  example: initials(\"alan\") is \"A\"\n\n  let letters be\n    for each word in name.split(\" \")\n    where not word.is_empty()\n    collect word.take(1).to_upper()\n  return letters.join(\"\")\nend\n```",
+    "```\nmodule library.names\n  purpose: Helpers for working with people's names.\n\npublic function initials(self: Text)\n  returns Text\n  purpose: Return the upper-cased first letters of each word in a full name, with nothing between them. Blank or extra spaces are ignored.\n  tags: text, names\n  example: initials(\"ada marie lovelace\") is \"AML\"\n  example: initials(\"  grace   hopper  \") is \"GH\"\n  example: initials(\"alan\") is \"A\"\n  example: initials(\"   \") is \"\"\n\n  let letters be\n    for each word in self.split(\" \")\n    where not word.is_empty()\n    collect word.take(1).to_upper()\n  return letters.join(\"\")\nend\n\ntest \"initials of a three part name\"\n  check initials(\"ada marie lovelace\") is \"AML\"\nend\n\ntest \"extra spaces are ignored\"\n  check initials(\"  grace   hopper  \") is \"GH\"\nend\n\ntest \"a blank name has no initials\"\n  check initials(\"   \") is \"\"\nend\n```",
+    "```\nmodule library.names\n  purpose: Helpers for working with people's names.\n\npublic function initials(self: Text)\n  returns Text\n  purpose: Return the upper-cased first letters of each word in a full name, with nothing between them. Blank or extra spaces are ignored.\n  tags: text, names\n  example: \"ada marie lovelace\".initials() is \"AML\"\n  example: \"  ada   lovelace \".initials() is \"AL\"\n  example: \"grace\".initials() is \"G\"\n  example: \"   \".initials() is \"\"\n\n  let letters be\n    for each part in self.split(\" \")\n    where not part.is_empty()\n    collect part.take(1).to_upper()\n  return letters.join(\"\")\nend\n\ntest \"initials of a three part name\"\n  check \"ada marie lovelace\".initials() is \"AML\"\nend\n\ntest \"extra spaces are ignored\"\n  check \"  alan    mathison   turing  \".initials() is \"AMT\"\nend\n\ntest \"a blank name has no initials\"\n  check \"\".initials() is \"\"\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "b7ff23db-fca6-4b68-a8b0-2bb0f7109e84",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 267,
+        "output_tokens": 596
+      },
+      {
+        "session": "96ee6b5a-c600-4e9b-9ada-a0da4a5d8c03",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 342,
+        "output_tokens": 575
+      },
+      {
+        "session": "ed0a8c08-2af4-4521-82da-e9f7e300f6ae",
+        "models": [
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 321,
+        "output_tokens": 541
+      },
+      {
+        "session": "8215d349-3209-466c-ba2c-8631a2bd912c",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 326,
+        "output_tokens": 645
+      },
+      {
+        "session": "cb0e5237-70ea-4f79-b2ed-7a32155dbc2b",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 347,
+        "output_tokens": 675
+      }
+    ]
+  }
+}

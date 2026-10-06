@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "This module provides a reusable `with_backoff` helper that runs an action you supply up to a set number of times, returning the first successful result. After each failure it sleeps for a delay that starts at 100 milliseconds and doubles each time, plus a random extra of up to a quarter of the current delay so that many callers don't retry in lockstep. If every attempt fails it gives up with a `GaveUp` error reporting the attempt count and the last error message, though note that it also sleeps after the final failed attempt before giving up, and that it needs the time and random capabilities.",
+    "This module provides a single reusable function that runs a caller-supplied action that can fail, returning its result on the first success and otherwise retrying up to a chosen number of attempts. After each failure it waits, starting at 100 milliseconds and doubling every time, plus a random extra of up to a quarter of the current delay, so many callers don't retry in lockstep. If every attempt fails, it reports a \"gave up\" failure containing the attempt count and a description of the last error, and it needs clock and randomness permissions to do so.\n\nOne thing to be aware of: it also sleeps after the final failed attempt before giving up, so the failure arrives a little later than necessary.",
+    "This module provides a reusable helper that runs any action you give it, returning its result on the first success, and otherwise retrying up to the number of attempts you choose. After each failure it waits about 100 milliseconds at first, doubling the pause every time and adding a small random jitter so that many callers don't retry in lockstep. If every attempt fails, it gives up with an error reporting the attempt count and a description of the last failure, and it requires the time and random capabilities, so callers must declare them.\n\nOne caveat before you adopt it: it also sleeps after the final failed attempt, which adds a pointless delay before reporting failure. Also, the cheat sheet doesn't list `time.sleep`, `time.milliseconds` or `random.integer`, so I can't confirm those calls exist as written.",
+    "This module provides a reusable helper that runs any action that can fail, and if it fails, waits and tries again up to a set number of attempts. The wait starts short, roughly doubles after each failure, and has a small random extra amount added so that many callers don't retry at the same moment. If the action never succeeds, it reports a failure containing the attempt count and a description of the last error; note that it also waits after the final failed attempt before giving up, and it needs the time and random capabilities to run.",
+    "This module provides a reusable helper that runs an action you pass in, returning its result on the first success, or retrying up to a set number of attempts if it fails. After each failure it pauses, starting at about a tenth of a second and doubling every time, with a small random extra delay so many callers don't retry in lockstep. If every attempt fails, it reports how many attempts were made and a text description of the last error, though it needs time and randomness permissions and the action's error type must be convertible to text.\n\nOne thing to weigh before using it: the cheat sheet doesn't list `time.sleep`, `time.milliseconds` or `random.integer`, so I can't confirm from it that those calls exist as written. Also, it sleeps after the final failed attempt too, adding a needless delay before giving up."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "5e4f9987-65ab-439a-ac38-c9280c7d8d28",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 179
+      },
+      {
+        "session": "b7b7afdd-72c1-4f7a-9d44-8aeae28f8c60",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 210
+      },
+      {
+        "session": "d12c9518-a85d-4c15-8edb-b18e44d365b6",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 252
+      },
+      {
+        "session": "cf7735d1-f778-4ac4-88eb-fdfeccc3d267",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 151
+      },
+      {
+        "session": "bd1b58b2-d963-495d-99d7-3b00759fbd64",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 248
+      }
+    ]
+  }
+}

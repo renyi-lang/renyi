@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "This is a command-line to-do manager that stores tasks one per line in a local text file, and each run takes one command: add a task from the remaining words, mark a numbered task done (which removes it), show the list, or print usage help for anything unrecognized. After adding or completing a task it prints the updated numbered list, and a missing file is treated as an empty list. Be aware that it needs console, environment, and file read/write access, and that a \"done\" number beyond the end of the list or a failed write is not guarded against beyond the file error it reports.",
+    "This is a small command-line to-do manager that keeps its tasks, one per line, in a file called todo.txt in the current directory. You run it with \"add\" followed by a task to append it, \"done\" followed by a number to remove that numbered task, or \"show\" to just list them; anything else prints a short usage message. After an add or done it saves the file and prints the updated numbered list, and a missing file is simply treated as an empty list.\n\nOne caveat for deciding: a \"done\" number beyond the end of the list may not behave gracefully, since the program doesn't visibly check that the position exists.",
+    "This is a small command-line to-do manager that stores tasks one per line in a file named todo.txt in the current folder. You run it with \"add\" followed by the task words to append a task, \"done\" followed by a number to remove that numbered task, or \"show\" to list them; each add or done saves the file and then prints the updated numbered list, and anything unrecognized prints a usage message. Be aware that a missing file is treated as an empty list, and a \"done\" number beyond the end of the list is not checked in the code, so its behavior there is not clear from the program itself.",
+    "This is a small command-line to-do manager that stores tasks one per line in a file named todo.txt in the current folder. You run it with \"add\" followed by the task text, \"done\" followed by a task number to remove that item, or \"show\" to list the tasks, and anything else prints a usage message. After adding or completing a task it saves the file and prints the updated numbered list, and a missing file is simply treated as an empty list.\n\nOne caveat if you're deciding whether to rely on it: the program does not check that a \"done\" number is within the list, so an out-of-range number may misbehave, and the program requires permission to read and write files and use the console.",
+    "This is a command-line to-do manager that keeps one task per line in a text file called todo.txt in the current directory. You run it with \"add\" followed by the task words to append a task, \"done\" followed by a number to remove that numbered task, or \"show\" to list tasks; anything else prints a usage message. After adding or completing a task it saves the file and prints the updated numbered list, and a missing file is treated as an empty list.\n\nOne caveat worth knowing: it doesn't check that the number given to \"done\" is within the list, so an out-of-range number may not behave as you'd expect."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "060b0f6f-467b-437d-be97-62d7c2e13899",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 167
+      },
+      {
+        "session": "ab65d52c-772f-404c-b236-6382d01ea737",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 181
+      },
+      {
+        "session": "a807d611-9acf-4cc1-9bc8-333f04fdd419",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 172
+      },
+      {
+        "session": "eb7ccaf0-33aa-4ff7-8b84-cf73415f3c94",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 195
+      },
+      {
+        "session": "a75d9dff-be41-47aa-91b1-58a05a743789",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 179
+      }
+    ]
+  }
+}

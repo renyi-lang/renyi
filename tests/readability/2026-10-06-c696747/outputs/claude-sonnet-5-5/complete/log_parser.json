@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "```\npublic function parse_line(line: Text) returns Entry or fails with ParseError\n  purpose: Split a line of the form \"timestamp LEVEL message\" into an entry.\n  tags: logs, parsing\n  example: parse_line(\"2024-05-01T13:45:00 INFO server started\")\n    is Entry(timestamp: Timestamp(\"2024-05-01T13:45:00\"), level: Info, message: \"server started\")\n  example: parse_line(\"garbage\") fails with Malformed(line: \"garbage\")\n\n  let parts be line.split(\" \")\n  let timestamp_text be parts.at(0) otherwise fail with Malformed(line: line)\n  let level_word be parts.at(1) otherwise fail with Malformed(line: line)\n  let message_parts be parts.drop(2)\n  if message_parts.is_empty() then\n    fail with Malformed(line: line)\n  end\n  let timestamp be Timestamp(timestamp_text) otherwise fail with Malformed(line: line)\n  let level be parse_level(level_word) otherwise fail\n  return Entry(timestamp: timestamp, level: level, message: message_parts.join(\" \"))\nend\n```",
+    "```\npublic function parse_line(line: Text) returns Entry or fails with ParseError\n  purpose: Split a line of the form \"timestamp LEVEL message\" into an entry.\n  tags: logs, parsing\n  example: parse_line(\"2024-05-01T13:45:00 INFO server started\")\n    is Entry(timestamp: Timestamp(\"2024-05-01T13:45:00\"), level: Info, message: \"server started\")\n  example: parse_line(\"garbage\") fails with Malformed(line: \"garbage\")\n\n  let parts be line.split(\" \")\n  if parts.length() is less than 3 then\n    fail with Malformed(line: line)\n  end\n  let stamp be parts.at(0) otherwise fail with Malformed(line: line)\n  let word be parts.at(1) otherwise fail with Malformed(line: line)\n  let timestamp be Timestamp(stamp) otherwise fail with Malformed(line: line)\n  let level be parse_level(word) otherwise fail\n  let message be parts.drop(2).join(\" \")\n  return Entry(timestamp: timestamp, level: level, message: message)\nend\n```",
+    "```\npublic function parse_line(line: Text) returns Entry or fails with ParseError\n  purpose: Split a line of the form \"timestamp LEVEL message\" into an entry.\n  tags: logs, parsing\n  example: parse_line(\"2024-05-01T13:45:00 INFO server started\")\n    is Entry(timestamp: Timestamp(\"2024-05-01T13:45:00\"), level: Info, message: \"server started\")\n  example: parse_line(\"garbage\") fails with Malformed(line: \"garbage\")\n\n  let parts be line.split(\" \")\n  if parts.length() is less than 3 then\n    fail with Malformed(line: line)\n  end\n  let timestamp_text be parts.at(0) otherwise fail with Malformed(line: line)\n  let level_word be parts.at(1) otherwise fail with Malformed(line: line)\n  let timestamp be Timestamp(timestamp_text) otherwise fail with Malformed(line: line)\n  let level be parse_level(level_word) otherwise fail\n  let message be parts.drop(2).join(\" \")\n  return Entry(timestamp: timestamp, level: level, message: message)\nend\n```",
+    "```\npublic function parse_line(line: Text) returns Entry or fails with ParseError\n  purpose: Split a line of the form \"timestamp LEVEL message\" into an entry.\n  tags: logs, parsing\n  example: parse_line(\"2024-05-01T13:45:00 INFO server started\")\n    is Entry(timestamp: Timestamp(\"2024-05-01T13:45:00\"), level: Info, message: \"server started\")\n  example: parse_line(\"garbage\") fails with Malformed(line: \"garbage\")\n\n  let parts be line.split(\" \")\n  if parts.length() is less than 3 then\n    fail with Malformed(line: line)\n  end\n  let timestamp_text be parts.at(0) otherwise fail with Malformed(line: line)\n  let level_word be parts.at(1) otherwise fail with Malformed(line: line)\n  let timestamp be Timestamp(timestamp_text) otherwise fail with Malformed(line: line)\n  let level be parse_level(level_word) otherwise fail\n  let message be parts.drop(2).join(\" \")\n  return Entry(timestamp: timestamp, level: level, message: message)\nend\n```",
+    "```renyi\npublic function parse_line(line: Text) returns Entry or fails with ParseError\n  purpose: Split a line of the form \"timestamp LEVEL message\" into an entry.\n  tags: logs, parsing\n  example: parse_line(\"2024-05-01T13:45:00 INFO server started\")\n    is Entry(timestamp: Timestamp(\"2024-05-01T13:45:00\"), level: Info, message: \"server started\")\n  example: parse_line(\"garbage\") fails with Malformed(line: \"garbage\")\n\n  let parts be line.split(\" \")\n  if parts.length() is less than 3 then\n    fail with Malformed(line: line)\n  end\n  let stamp be parts.at(0) otherwise fail with Malformed(line: line)\n  let word be parts.at(1) otherwise fail with Malformed(line: line)\n  let timestamp be Timestamp(stamp) otherwise fail with Malformed(line: line)\n  let level be parse_level(word) otherwise fail\n  let message be parts.drop(2).join(\" \")\n  return Entry(timestamp: timestamp, level: level, message: message)\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "8d284f8f-7181-450f-8bab-ca794f8c8899",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 471,
+        "output_tokens": 857
+      },
+      {
+        "session": "1be1e5cb-4d29-4897-9d51-5df98cdb8970",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 536,
+        "output_tokens": 907
+      },
+      {
+        "session": "65ae1a90-8286-4e8f-aa9e-0099747ae6fe",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 368,
+        "output_tokens": 749
+      },
+      {
+        "session": "32f3f316-1292-4bf9-9bbe-1871798cf013",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 452,
+        "output_tokens": 833
+      },
+      {
+        "session": "96175fa4-e9f9-4e68-9476-8f7812f7570c",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 411,
+        "output_tokens": 785
+      }
+    ]
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "```\npublic function to_fahrenheit(celsius: Decimal) returns Decimal\n  purpose: Convert a Celsius temperature to Fahrenheit.\n  example: to_fahrenheit(0) is 32\n  example: to_fahrenheit(100) is 212\n  example: to_fahrenheit(-40) is -40\n\n  return celsius * 1.8 + 32.0\nend\n```",
+    "```\npublic function to_fahrenheit(celsius: Decimal) returns Decimal\n  purpose: Convert a Celsius temperature to Fahrenheit.\n  example: to_fahrenheit(0) is 32\n  example: to_fahrenheit(100) is 212\n  example: to_fahrenheit(-40) is -40\n\n  return celsius * 1.8 + 32.0\nend\n```",
+    "```\npublic function to_fahrenheit(celsius: Decimal) returns Decimal\n  purpose: Convert a Celsius temperature to Fahrenheit.\n  example: to_fahrenheit(0) is 32\n  example: to_fahrenheit(100) is 212\n  example: to_fahrenheit(-40) is -40\n\n  return celsius * 1.8 + 32.0\nend\n```",
+    "```\npublic function to_fahrenheit(celsius: Decimal) returns Decimal\n  purpose: Convert a Celsius temperature to Fahrenheit.\n  example: to_fahrenheit(0) is 32\n  example: to_fahrenheit(100) is 212\n  example: to_fahrenheit(-40) is -40\n\n  return celsius * 9 / 5 + 32\nend\n```",
+    "```\npublic function to_fahrenheit(celsius: Decimal) returns Decimal\n  purpose: Convert a Celsius temperature to Fahrenheit.\n  example: to_fahrenheit(0) is 32\n  example: to_fahrenheit(100) is 212\n  example: to_fahrenheit(-40) is -40\n\n  return celsius * 1.8 + 32.0\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "8dfae651-f879-42e1-ae93-9a0004073be6",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 194,
+        "output_tokens": 326
+      },
+      {
+        "session": "0e155a66-69a2-4333-9130-4f6386cbf258",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 184,
+        "output_tokens": 316
+      },
+      {
+        "session": "e775f2aa-a765-48fb-a275-81065deb4993",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 169,
+        "output_tokens": 301
+      },
+      {
+        "session": "5de2fe39-9736-43d9-bd87-05c4b4ac9e9f",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 132
+      },
+      {
+        "session": "9f82edcf-b3ae-4e21-b414-1ba584eab43f",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 199,
+        "output_tokens": 331
+      }
+    ]
+  }
+}

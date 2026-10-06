@@ -1,0 +1,6 @@
+{
+  "task": "write",
+  "name": "initials",
+  "prompt": "Write a complete Renyi program for the task below. Follow the cheat sheet exactly: no features it does not list. Give every public definition a `purpose:` clause and give pure functions `example:` lines. Answer with the program only, in one code fence.\n\nTask: A library module with a public function that returns the initials of a full name, upper-cased and separated by nothing: \"ada marie lovelace\" gives \"AML\". Blank or extra spaces are ignored. Include example lines.",
+  "description": "A library module with a public function that returns the initials of a full name, upper-cased and separated by nothing: \"ada marie lovelace\" gives \"AML\". Blank or extra spaces are ignored. Include example lines."
+}

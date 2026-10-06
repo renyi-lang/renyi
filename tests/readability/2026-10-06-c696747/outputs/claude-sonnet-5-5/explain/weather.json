@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "This program fetches the current temperature and wind speed for Berlin from the public Open-Meteo weather API over HTTP and prints them as a single line of text. Its main function reports network failures and unparseable responses as two distinct error kinds. The coordinates are fixed to Berlin, though the reusable download function accepts any latitude and longitude, and a bundled test checks the parsing offline against a recorded response. Its only permissions are console output and network access to the Open-Meteo host (although `main` declares broader network access than the fetch function needs).",
+    "This program fetches the current weather for Berlin (fixed coordinates) from the public Open-Meteo API over HTTP, then prints one line with the temperature in °C and wind speed in km/h. It needs only console output and network access, and it reports network or response-parsing problems as a distinct \"unreachable\" or \"bad response\" error rather than crashing. It also includes an offline test using a recorded response, but it is hardcoded to Berlin, so you would need to change the coordinates in the code to use it for any other city.",
+    "This program fetches the current temperature and wind speed for Berlin (fixed coordinates) from the public Open-Meteo weather API and prints them as a single line in °C and km/h. It needs network access and console output, and it reports a network failure or an unparseable response as one of two distinct error kinds rather than crashing. It includes an offline test using a recorded response, but the location is hard-coded, so you would have to change the coordinates in the code to use it for another city.",
+    "This program fetches the current weather for Berlin from the free Open-Meteo API over HTTP and prints one line with the temperature (in °C) and wind speed (in km/h). It only needs network access to the Open-Meteo site and the console, and it turns network or response-parsing problems into two clearly named errors, \"Unreachable\" and \"BadResponse\". It also includes an offline test that replays a recorded response, so you can check it without a live connection, but it is hard-wired to Berlin's coordinates, so you would need to change those to use it for another city.",
+    "This program fetches the current temperature and wind speed for Berlin from the Open-Meteo weather service over the network and prints them as one line, such as \"Berlin: 14.0 C, wind 5.5 km/h\". It needs only console output and internet access, and it reports network failures or unreadable responses as two distinct error kinds instead of crashing. The location is fixed to Berlin in the main function, though the fetch function accepts any coordinates, and it includes an offline test that replays a recorded response."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "9f09ca40-fe5a-4417-9679-b1a93e07f8f9",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 174
+      },
+      {
+        "session": "e899cc88-706b-48b6-bd29-681a87e9924d",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 164
+      },
+      {
+        "session": "9dd36105-e719-44e9-bea3-fd4bca2e70ea",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 147
+      },
+      {
+        "session": "bfb2e646-f34c-498f-9dd2-872abfd93ac6",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 176
+      },
+      {
+        "session": "d2fefac8-b1eb-4bc3-8e4d-b6b2e18e9855",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 160
+      }
+    ]
+  }
+}

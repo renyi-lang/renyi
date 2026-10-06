@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "```renyi\nmodule inventory.reorder\n  purpose: Report the products whose stock has fallen below their reorder level.\n\nimport std.console\nimport std.environment\nimport std.filesystem\nimport std.filesystem exposing Path\nimport std.json\n\npublic type AppError is one of\n  purpose: The ways the reorder report can fail.\n  MissingPath\n  Unreadable(detail: Text)\n  BadJson\nend\n\npublic type Product\n  purpose: A stocked product with its current stock and reorder threshold.\n  has name: Text\n  has stock: Integer where stock is at least 0\n  has reorder_level: Integer where reorder_level is at least 0\n  can FromJson\nend\n\npublic function low_stock(products: List of Product)\n  returns List of Product\n  purpose: Keep the products below their reorder level, lowest stock first.\n  tags: inventory\n  example: low_stock([]) is []\n\n  return for each product in products\n    where product.stock is less than product.reorder_level\n    sorted by product.stock\n    collect product\nend\n\npublic function describe_product(product: Product)\n  returns Text\n  purpose: Format one product as a report line.\n  tags: inventory\n  example: describe_product(Product(name: \"Bolt\", stock: 2, reorder_level: 10)) is \"Bolt: stock 2, reorder level 10\"\n\n  return \"{product.name}: stock {product.stock}, reorder level {product.reorder_level}\"\nend\n\npublic function main() or fails with AppError\n  needs console, environment, filesystem.read\n  purpose: Read the product file named by the first argument and print the products to reorder.\n\n  let arguments be environment.arguments()\n  let path_text be arguments.first() otherwise fail with MissingPath\n  let path be Path(path_text)\n  let text be filesystem.read_text(path) otherwise fail with Unreadable(detail: \"cannot read {path_text}\")\n  let products: List of Product be json.parse(text) otherwise fail with BadJson\n  for each product in low_stock(products)\n    console.print(describe_product(product))\n  end\nend\n```",
+    "```\nmodule inventory.reorder\n  purpose: Report the products whose stock has fallen below their reorder level.\n\nimport std.console\nimport std.environment\nimport std.filesystem exposing Path\nimport std.json\n\npublic type Product\n  purpose: A stocked product with its current stock and the level at which to reorder.\n  has name: Text\n  has stock: Integer\n  has reorder_level: Integer\n  can Equal\n  can ToText\n  can FromJson\nend\n\npublic type AppError is one of\n  purpose: The ways the report can fail.\n  MissingPath\n  Unreadable\n  BadJson\nend\n\npublic function low_stock(products: List of Product)\n  returns List of Product\n  purpose: Keep the products below their reorder level, lowest stock first.\n  tags: inventory\n  example: low_stock([Product(name: \"Bolt\", stock: 5, reorder_level: 10), Product(name: \"Nut\", stock: 20, reorder_level: 10)]) is [Product(name: \"Bolt\", stock: 5, reorder_level: 10)]\n  example: low_stock([Product(name: \"Gear\", stock: 3, reorder_level: 4), Product(name: \"Cog\", stock: 1, reorder_level: 4)]) is [Product(name: \"Cog\", stock: 1, reorder_level: 4), Product(name: \"Gear\", stock: 3, reorder_level: 4)]\n\n  let low be\n    for each product in products\n    where product.stock is less than product.reorder_level\n    sorted by product.stock\n    collect product\n  return low\nend\n\npublic function describe_line(product: Product)\n  returns Text\n  purpose: Format one product as a line of the report.\n  tags: inventory\n  example: describe_line(Product(name: \"Bolt\", stock: 5, reorder_level: 10)) is \"Bolt: stock 5, reorder level 10\"\n\n  return \"{product.name}: stock {product.stock}, reorder level {product.reorder_level}\"\nend\n\npublic function main() or fails with AppError\n  needs console, filesystem.read, environment\n  purpose: Read the products file named by the first argument and print those needing a reorder.\n\n  let arguments be environment.arguments()\n  let path_text be arguments.first() otherwise fail with MissingPath\n  let text be filesystem.read_text(Path(path_text)) otherwise fail with Unreadable\n  let products: List of Product be json.parse(text) otherwise fail with BadJson\n  for each product in low_stock(products)\n    console.print(describe_line(product))\n  end\nend\n```",
+    "```\nmodule inventory.reorder\n  purpose: Report the products whose stock has fallen below their reorder level.\n\nimport std.console\nimport std.environment\nimport std.filesystem exposing Path\nimport std.json\n\npublic type AppError is one of\n  purpose: The ways the report can fail.\n  MissingPath\n  Unreadable(detail: Text)\n  BadJson(detail: Text)\nend\n\npublic type Product\n  purpose: A stocked product with the level at which it must be reordered.\n  has name: Text\n  has stock: Integer\n  has reorder_level: Integer\n  can FromJson\nend\n\npublic function low_stock(products: List of Product)\n  returns List of Product\n  purpose: Keep the products whose stock is below their reorder level, lowest stock first.\n  tags: inventory\n  example: low_stock([Product(name: \"Bolt\", stock: 2, reorder_level: 5), Product(name: \"Nut\", stock: 9, reorder_level: 5)]) is [Product(name: \"Bolt\", stock: 2, reorder_level: 5)]\n  example: low_stock([]) is []\n\n  return for each product in products\n    where product.stock is less than product.reorder_level\n    sorted by product.stock\n    collect product\nend\n\npublic function describe(product: Product)\n  returns Text\n  purpose: Format one product as a report line.\n  tags: inventory\n  example: describe(Product(name: \"Bolt\", stock: 2, reorder_level: 5)) is \"Bolt: stock 2, reorder level 5\"\n\n  return \"{product.name}: stock {product.stock}, reorder level {product.reorder_level}\"\nend\n\npublic function main() or fails with AppError\n  needs console, environment, filesystem.read\n  purpose: Read the products file named by the first argument and print those to reorder.\n\n  let arguments be environment.arguments()\n  let path_text be arguments.first() otherwise fail with MissingPath\n  let text be filesystem.read_text(Path(path_text)) otherwise fail with Unreadable(detail: \"cannot read {path_text}\")\n  let products: List of Product be json.parse(text) otherwise fail with BadJson(detail: \"invalid product list in {path_text}\")\n  for each product in low_stock(products)\n    console.print(describe(product))\n  end\nend\n```",
+    "module inventory.reorder\n  purpose: Report products whose stock has fallen below their reorder level.\n\nimport std.console\nimport std.environment\nimport std.filesystem\nimport std.json\n\npublic type Product\n  purpose: A stocked product with its reorder threshold.\n  has name: Text\n  has stock: Integer\n  has reorder_level: Integer\n  can FromJson\nend\n\npublic type AppError is one of\n  purpose: The ways the program can fail.\n  MissingPath\n  BadFile(detail: Text)\n  can ToText\nend\n\npublic function low_stock(products: List of Product)\n  returns List of Product\n  purpose: Keep products below their reorder level, lowest stock first.\n  tags: inventory\n  example: low_stock(products: []) is []\n\n  return\n    for each product in products\n    where product.stock is less than product.reorder_level\n    sorted by product.stock\n    collect product\nend\n\npublic function describe_product(product: Product)\n  returns Text\n  purpose: Format one product as a report line.\n  tags: inventory\n  example: describe_product(Product(name: \"Bolt\", stock: 2, reorder_level: 10)) is \"Bolt: stock 2, reorder level 10\"\n\n  return \"{product.name}: stock {product.stock}, reorder level {product.reorder_level}\"\nend\n\npublic function main() or fails with AppError\n  needs console, filesystem.read, environment\n  purpose: Read the products file named by the first argument and print low-stock products.\n\n  let arguments be environment.arguments()\n  let path_text be arguments.first() otherwise fail with MissingPath\n  let text be filesystem.read_text(filesystem.Path(path_text) otherwise fail with BadFile(detail: \"bad path\")) otherwise fail with BadFile(detail: \"cannot read file\")\n  let products: List of Product be json.parse(text) otherwise fail with BadFile(detail: \"not valid product JSON\")\n  for each product in low_stock(products: products)\n    console.print(describe_product(product))\n  end\nend\n```",
+    "```\nmodule inventory.reorder\n  purpose: Report the products whose stock has fallen below their reorder level.\n\nimport std.console\nimport std.environment\nimport std.filesystem exposing Path\nimport std.json\n\npublic type Product\n  purpose: A stocked product with its reorder threshold.\n  has name: Text\n  has stock: Integer\n  has reorder_level: Integer\n  can FromJson\nend\n\npublic type AppError is one of\n  purpose: The ways the report can fail.\n  MissingPath\n  Unreadable(path: Text)\n  BadJson(path: Text)\nend\n\npublic function low_stock(products: List of Product)\n  returns List of Product\n  purpose: Keep products below their reorder level, lowest stock first.\n  tags: inventory\n  example: low_stock([Product(name: \"Bolt\", stock: 3, reorder_level: 10), Product(name: \"Nut\", stock: 50, reorder_level: 10)]) is [Product(name: \"Bolt\", stock: 3, reorder_level: 10)]\n\n  return for each product in products\n    where product.stock is less than product.reorder_level\n    sorted by product.stock\n    collect product\nend\n\npublic function describe_line(product: Product)\n  returns Text\n  purpose: Format one product as a report line.\n  tags: inventory\n  example: describe_line(Product(name: \"Bolt\", stock: 3, reorder_level: 10)) is \"Bolt: 3 in stock, reorder at 10\"\n\n  return \"{product.name}: {product.stock} in stock, reorder at {product.reorder_level}\"\nend\n\npublic function main() or fails with AppError\n  needs console, filesystem.read, environment\n  purpose: Read the products file named by the first argument and print those to reorder.\n\n  let inputs be environment.arguments()\n  let path_text be inputs.first() otherwise fail with MissingPath\n  let text be filesystem.read_text(Path(path_text)) otherwise fail with Unreadable(path: path_text)\n  let products: List of Product be json.parse(text) otherwise fail with BadJson(path: path_text)\n  for each product in low_stock(products)\n    console.print(describe_line(product))\n  end\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "ef324cc0-3c99-46a3-945a-e241c421a891",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 1139,
+        "output_tokens": 1808
+      },
+      {
+        "session": "7da48c83-85d1-4143-86ff-f1d4ee04232e",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 995,
+        "output_tokens": 1820
+      },
+      {
+        "session": "0ca8a367-9ac9-4c09-a4e8-d468c1462d6f",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 939,
+        "output_tokens": 1681
+      },
+      {
+        "session": "104e7116-db2a-4622-bf44-b449ce82845c",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 656
+      },
+      {
+        "session": "bb75f1c5-d161-41eb-9eb3-78a089172e9d",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 928,
+        "output_tokens": 1637
+      }
+    ]
+  }
+}

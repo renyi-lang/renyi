@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "```\npublic function order(dependencies: Map of Text to List of Text)\n  returns List of Text\n  or fails with OrderError\n  purpose: A topological order of the steps; ties are broken alphabetically so the result is stable.\n  tags: graph, topological-sort, build\n  example: order({\"test\": [\"build\"], \"build\": [\"fetch\"], \"fetch\": []}) is [\"fetch\", \"build\", \"test\"]\n  example: order({\"a\": [\"b\"], \"b\": [\"a\"]}) fails with Cycle(remaining: [\"a\", \"b\"])\n  example: order({\"test\": [\"lint\"]}) fails with UnknownDependency(step: \"test\", depends_on: \"lint\")\n\n  for each step in dependencies.keys().sorted()\n    let wanted be dependencies.get(step) otherwise crash with \"unreachable: missing step {step}\"\n    for each dep in wanted\n      if not dependencies.contains_key(dep) then\n        fail with UnknownDependency(step: step, depends_on: dep)\n      end\n    end\n  end\n\n  let mutable placed: List of Text be []\n  repeat until placed.length() is dependencies.length()\n    let mutable ready: List of Text be []\n    for each step in dependencies.keys().sorted()\n      let wanted be dependencies.get(step) otherwise crash with \"unreachable: missing step {step}\"\n      let blocked be for each dep in wanted any not placed.contains(dep)\n      if not placed.contains(step) and not blocked then\n        set ready to ready.append(step)\n      end\n    end\n    if ready.is_empty() then\n      let left be\n        for each step in dependencies.keys().sorted()\n        where not placed.contains(step)\n        collect step\n      fail with Cycle(remaining: left)\n    end\n    let chosen be ready.first() otherwise crash with \"unreachable: no ready step\"\n    set placed to placed.append(chosen)\n  end\n  return placed\nend\n```",
+    "```renyi\nfunction order(dependencies: Map of Text to List of Text)\n  returns List of Text\n  or fails with OrderError\n  purpose: A topological order of the steps; ties are broken alphabetically so the result is stable.\n  tags: graph, topological-sort, build\n  example: order({\"test\": [\"build\"], \"build\": [\"fetch\"], \"fetch\": []}) is [\"fetch\", \"build\", \"test\"]\n  example: order({\"a\": [\"b\"], \"b\": [\"a\"]}) fails with Cycle(remaining: [\"a\", \"b\"])\n  example: order({\"test\": [\"lint\"]}) fails with UnknownDependency(step: \"test\", depends_on: \"lint\")\n\n  let names be dependencies.keys().sorted()\n  for each step in names\n    let wanted be dependencies.get(step) otherwise crash with \"unreachable: {step}\"\n    for each dep in wanted\n      if not dependencies.contains_key(dep) then\n        fail with UnknownDependency(step: step, depends_on: dep)\n      end\n    end\n  end\n\n  let mutable placed: List of Text be []\n  let mutable remaining: List of Text be names\n  repeat until remaining.is_empty()\n    let mutable ready: List of Text be []\n    for each step in remaining\n      let wanted be dependencies.get(step) otherwise crash with \"unreachable: {step}\"\n      let satisfied be for each dep in wanted all placed.contains(dep)\n      if satisfied then\n        set ready to ready.append(step)\n      end\n    end\n    let chosen be ready.first() otherwise fail with Cycle(remaining: remaining)\n    set placed to placed.append(chosen)\n    set remaining to for each step in remaining where step is not chosen collect step\n  end\n  return placed\nend\n```",
+    "```\npublic function order(dependencies: Map of Text to List of Text)\n  returns List of Text\n  or fails with OrderError\n  purpose: A topological order of the steps; ties are broken alphabetically so the result is stable.\n  tags: graph, topological-sort, build\n  example: order({\"test\": [\"build\"], \"build\": [\"fetch\"], \"fetch\": []}) is [\"fetch\", \"build\", \"test\"]\n  example: order({\"a\": [\"b\"], \"b\": [\"a\"]}) fails with Cycle(remaining: [\"a\", \"b\"])\n  example: order({\"test\": [\"lint\"]}) fails with UnknownDependency(step: \"test\", depends_on: \"lint\")\n\n  for each step in dependencies.keys() sorted by step\n    let wanted be dependencies.get(step) otherwise crash with \"unreachable: missing step {step}\"\n    for each dependency in wanted\n      if not dependencies.contains_key(dependency) then\n        fail with UnknownDependency(step: step, depends_on: dependency)\n      end\n    end\n  end\n\n  let mutable placed: List of Text be []\n  repeat until placed.length() is dependencies.length()\n    let mutable chosen: maybe Text be nothing\n    for each candidate in dependencies.keys() sorted by candidate\n      if chosen is nothing and not placed.contains(candidate) then\n        let needed be dependencies.get(candidate) otherwise crash with \"unreachable: missing step {candidate}\"\n        if for each need in needed all placed.contains(need) then\n          set chosen to candidate\n        end\n      end\n    end\n    match chosen\n      when some(next_step) then\n        set placed to placed.append(next_step)\n      when nothing then\n        let remaining be\n          for each leftover in dependencies.keys()\n          where not placed.contains(leftover)\n          sorted by leftover\n          collect leftover\n        fail with Cycle(remaining: remaining)\n    end\n  end\n  return placed\nend\n```",
+    "```\npublic function order(dependencies: Map of Text to List of Text)\n  returns List of Text\n  or fails with OrderError\n  purpose: A topological order of the steps; ties are broken alphabetically so the result is stable.\n  tags: graph, topological-sort, build\n  example: order({\"test\": [\"build\"], \"build\": [\"fetch\"], \"fetch\": []}) is [\"fetch\", \"build\", \"test\"]\n  example: order({\"a\": [\"b\"], \"b\": [\"a\"]}) fails with Cycle(remaining: [\"a\", \"b\"])\n  example: order({\"test\": [\"lint\"]}) fails with UnknownDependency(step: \"test\", depends_on: \"lint\")\n\n  let names be dependencies.keys().sorted()\n  for each name in names\n    let wanted be dependencies.get(name) otherwise []\n    for each wanted_step in wanted\n      if not dependencies.contains_key(wanted_step) then\n        fail with UnknownDependency(step: name, depends_on: wanted_step)\n      end\n    end\n  end\n\n  let mutable done: List of Text be []\n  let mutable remaining: List of Text be names\n  repeat until remaining.is_empty()\n    let mutable next: maybe Text be nothing\n    for each step in remaining\n      let deps be dependencies.get(step) otherwise []\n      let blocked be for each dep in deps any not done.contains(dep)\n      if not blocked then\n        set next to step\n        break\n      end\n    end\n    match next\n      when some(chosen) then\n        set done to done.append(chosen)\n        set remaining to for each other in remaining where other is not chosen collect other\n      when nothing then\n        fail with Cycle(remaining: remaining)\n    end\n  end\n  return done\nend\n```",
+    "```\npublic function order(dependencies: Map of Text to List of Text)\n  returns List of Text\n  or fails with OrderError\n  purpose: A topological order of the steps; ties are broken alphabetically so the result is stable.\n  tags: graph, topological-sort, build\n  example: order({\"test\": [\"build\"], \"build\": [\"fetch\"], \"fetch\": []}) is [\"fetch\", \"build\", \"test\"]\n  example: order({\"a\": [\"b\"], \"b\": [\"a\"]}) fails with Cycle(remaining: [\"a\", \"b\"])\n  example: order({\"test\": [\"lint\"]}) fails with UnknownDependency(step: \"test\", depends_on: \"lint\")\n\n  let names be for each name in dependencies.keys() sorted by name collect name\n  for each step in names\n    let needed be dependencies.get(step) otherwise []\n    for each need in needed\n      if not dependencies.contains_key(need) then\n        fail with UnknownDependency(step: step, depends_on: need)\n      end\n    end\n  end\n\n  let mutable placed: List of Text be []\n  let mutable waiting be names\n  repeat until waiting.is_empty()\n    let mutable chosen: maybe Text be nothing\n    for each candidate in waiting\n      let needed be dependencies.get(candidate) otherwise []\n      let blocked be for each need in needed any not placed.contains(need)\n      if not blocked then\n        set chosen to candidate\n        break\n      end\n    end\n    match chosen\n      when some(picked) then\n        set placed to placed.append(picked)\n        set waiting to for each other in waiting where other is not picked collect other\n      when nothing then\n        fail with Cycle(remaining: waiting)\n    end\n  end\n  return placed\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "851b18ac-190f-4139-b7ac-6407ce920a53",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 1245,
+        "output_tokens": 1876
+      },
+      {
+        "session": "09981f42-488a-438e-ae3c-dffb40d2b740",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 875,
+        "output_tokens": 1456
+      },
+      {
+        "session": "c00d925b-dda8-456c-b691-1ad5f2a6d499",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 1067,
+        "output_tokens": 1708
+      },
+      {
+        "session": "10799ba4-55d9-48cb-887a-df1b97c1d1b0",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 797,
+        "output_tokens": 1362
+      },
+      {
+        "session": "8cac1a15-d340-475a-9c4b-64be97d3d5e0",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 1106,
+        "output_tokens": 1672
+      }
+    ]
+  }
+}

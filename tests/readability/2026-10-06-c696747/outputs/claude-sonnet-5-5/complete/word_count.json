@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "```\npublic function count_words(text: Text) returns List of WordCount\n  purpose: Count every lower-cased word, most frequent first.\n  example: count_words(\"a b a\")\n    is [WordCount(word: \"a\", occurrences: 2), WordCount(word: \"b\", occurrences: 1)]\n  example: count_words(\"\") is []\n\n  let words: List of Text be\n    for each line in text.to_lower().lines(), word in line.split(\" \")\n    where not word.is_empty()\n    collect word\n  let mutable counts: Map of Text to Integer be {}\n  for each word in words\n    let current be counts.get(word) otherwise 0\n    set counts to counts.set(key: word, value: current + 1)\n  end\n  let mutable result: List of WordCount be []\n  for each word, occurrences in counts\n    set result to result.append(WordCount(word: word, occurrences: occurrences))\n  end\n  return for each entry in result sorted by entry.occurrences descending collect entry\nend\n```",
+    "```\npublic function count_words(text: Text) returns List of WordCount\n  purpose: Count every lower-cased word, most frequent first.\n  example: count_words(\"a b a\")\n    is [WordCount(word: \"a\", occurrences: 2), WordCount(word: \"b\", occurrences: 1)]\n  example: count_words(\"\") is []\n\n  let words be\n    for each line in text.to_lower().lines(), word in line.split(\" \")\n    where not word.is_empty()\n    collect word\n  let mutable counts: Map of Text to Integer be {}\n  for each word in words\n    let seen be counts.get(word) otherwise 0\n    set counts to counts.set(key: word, value: seen + 1)\n  end\n  let result be\n    for each word, number in counts\n    sorted by number descending\n    collect WordCount(word: word, occurrences: number)\n  return result\nend\n```",
+    "```\npublic function count_words(text: Text) returns List of WordCount\n  purpose: Count every lower-cased word, most frequent first.\n  example: count_words(\"a b a\")\n    is [WordCount(word: \"a\", occurrences: 2), WordCount(word: \"b\", occurrences: 1)]\n  example: count_words(\"\") is []\n\n  let words be\n    for each line in text.lines(), word in line.to_lower().split(\" \")\n    where not word.is_empty()\n    collect word\n  let mutable counts: Map of Text to Integer be {}\n  for each word in words\n    let current be counts.get(word) otherwise 0\n    set counts to counts.set(key: word, value: current + 1)\n  end\n  let entries be\n    for each key, value in counts\n    collect WordCount(word: key, occurrences: value)\n  return\n    for each entry in entries\n    sorted by entry.occurrences descending\n    collect entry\nend\n```",
+    "```\npublic function count_words(text: Text) returns List of WordCount\n  purpose: Count every lower-cased word, most frequent first.\n  example: count_words(\"a b a\")\n    is [WordCount(word: \"a\", occurrences: 2), WordCount(word: \"b\", occurrences: 1)]\n  example: count_words(\"\") is []\n\n  let words be\n    for each line in text.to_lower().lines(), piece in line.split(\" \")\n    where not piece.trim().is_empty()\n    collect piece.trim()\n  let groups be for each word in words group by word collect word\n  let counts be\n    for each word, members in groups\n    sorted by word\n    collect WordCount(word: word, occurrences: members.length())\n  return for each entry in counts sorted by entry.occurrences descending collect entry\nend\n```",
+    "```\npublic function count_words(text: Text) returns List of WordCount\n  purpose: Count every lower-cased word, most frequent first.\n  example: count_words(\"a b a\")\n    is [WordCount(word: \"a\", occurrences: 2), WordCount(word: \"b\", occurrences: 1)]\n  example: count_words(\"\") is []\n\n  let words be\n    for each line in text.to_lower().lines(), word in line.split(\" \")\n    where not word.is_empty()\n    collect word\n  let mutable counts: Map of Text to Integer be {}\n  for each word in words\n    let current be counts.get(word) otherwise 0\n    set counts to counts.set(key: word, value: current + 1)\n  end\n  let entries be\n    for each word in counts.keys().sorted()\n    collect WordCount(word: word, occurrences: counts.get(word) otherwise 0)\n  return\n    for each entry in entries\n    sorted by entry.occurrences descending\n    collect entry\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "afd906fa-dcbf-439b-96e2-6e817084162b",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 616,
+        "output_tokens": 938
+      },
+      {
+        "session": "2cc76fdf-29b1-4400-a9d3-d84db5c9d9a0",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 737,
+        "output_tokens": 1018
+      },
+      {
+        "session": "a7485102-6810-4563-83e0-cf0dd5e46b6f",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 718,
+        "output_tokens": 1018
+      },
+      {
+        "session": "2e71a7ae-67ab-4cbf-a9ea-a4e4399f8791",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 848,
+        "output_tokens": 1107
+      },
+      {
+        "session": "2d58b876-3ed3-4e15-9948-2d34e3265755",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 885,
+        "output_tokens": 1203
+      }
+    ]
+  }
+}

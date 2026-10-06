@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "This program prints a directory tree, taking the folder from the first command-line argument or defaulting to the current one. Each line shows an entry's name, indented by depth, with its total size in bytes (folders sum everything beneath them), and children are listed in name order. It only reads the filesystem and prints to the console, but it recomputes sizes at every level, so it will be slow on very large trees, and any filesystem error stops the whole run.",
+    "This program prints a directory tree, starting at the folder given on the command line (or the current folder if none is given), with each entry indented by depth and labeled with its total size in bytes, where folders show the sum of everything beneath them and children are listed in name order. It only reads the filesystem and prints to the console, never modifying anything, and it stops with a file error if any entry can't be read. One thing to know before using it: each folder's size is recomputed by walking its whole subtree at every level, so very large trees will be scanned repeatedly and run slower than necessary.",
+    "This program prints a directory tree, one line per file or folder with indentation showing nesting and each entry's total size in bytes (folders show the sum of everything beneath them). It starts from the directory given as the first command-line argument, or the current directory if none is given, and lists children in name order. It only reads the filesystem and writes to the console, and it stops with a file error if any entry can't be inspected or listed. Note that it recomputes sizes at every level, so deep or large trees will be scanned repeatedly and may be slow.",
+    "This program prints an indented tree of a directory (the one given on the command line, or the current one), showing each file and folder with its total size in bytes, where folder sizes include everything beneath them. It only reads the filesystem and writes to the console, so it changes nothing on disk, and it stops with a file error if any entry can't be inspected or listed. Be aware that it recomputes sizes for every level, so large trees will be scanned repeatedly, which could be slow.",
+    "This program prints a directory tree, starting at the folder given on the command line (or the current folder if none is given), showing each file and folder indented by depth with its total size in bytes, and listing children sorted by name. It only reads the filesystem and writes to the console, and it stops with a file error if anything can't be read. One thing to know before using it: each folder's size is recomputed by walking everything beneath it at every level, so very large trees will be scanned repeatedly and run slower than necessary."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "f11699df-9536-4590-90a7-6d4aa0fcd017",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 136
+      },
+      {
+        "session": "d169c52d-2f72-4003-9fb7-9d29ad732b78",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 175
+      },
+      {
+        "session": "003da667-2bd0-4937-b003-4071220dcae6",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 165
+      },
+      {
+        "session": "c350c189-7cfb-4c22-885d-83c6982769aa",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 146
+      },
+      {
+        "session": "07455045-1166-454f-b9e5-58387e124db8",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 153
+      }
+    ]
+  }
+}

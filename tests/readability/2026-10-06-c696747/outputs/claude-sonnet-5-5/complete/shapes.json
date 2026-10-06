@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "```\npublic function describe(shape: Shape) returns Text\n  purpose: One line naming the shape and giving its area.\n  example: describe(Point) is \"a point with area 0.00\"\n  example: describe(Rectangle(width: 2, height: 3)) is \"a 2 by 3 rectangle with area 6.00\"\n\n  let size be shape.area().rounded(2)\n  match shape\n    when Circle(radius) then return \"a circle of radius {radius} with area {size}\"\n    when Rectangle(width, height) then return \"a {width} by {height} rectangle with area {size}\"\n    when Point then return \"a point with area {size}\"\n  end\nend\n```",
+    "```\npublic function describe(shape: Shape) returns Text\n  purpose: One line naming the shape and giving its area.\n  example: describe(Point) is \"a point with area 0.00\"\n  example: describe(Rectangle(width: 2, height: 3)) is \"a 2 by 3 rectangle with area 6.00\"\n\n  let size be shape.area().rounded(2)\n  match shape\n    when Circle(radius) then return \"a circle of radius {radius} with area {size}\"\n    when Rectangle(width, height) then return \"a {width} by {height} rectangle with area {size}\"\n    when Point then return \"a point with area {size}\"\n  end\nend\n```",
+    "```\npublic function describe(shape: Shape) returns Text\n  purpose: One line naming the shape and giving its area.\n  example: describe(Point) is \"a point with area 0.00\"\n  example: describe(Rectangle(width: 2, height: 3)) is \"a 2 by 3 rectangle with area 6.00\"\n\n  let area be shape.area().rounded(2)\n  match shape\n    when Circle(radius) then return \"a circle of radius {radius} with area {area}\"\n    when Rectangle(width, height) then return \"a {width} by {height} rectangle with area {area}\"\n    when Point then return \"a point with area {area}\"\n  end\nend\n```",
+    "```\npublic function describe(shape: Shape) returns Text\n  purpose: One line naming the shape and giving its area.\n  example: describe(Point) is \"a point with area 0.00\"\n  example: describe(Rectangle(width: 2, height: 3)) is \"a 2 by 3 rectangle with area 6.00\"\n\n  let area be shape.area().rounded(2)\n  match shape\n    when Circle(radius) then return \"a circle of radius {radius} with area {area}\"\n    when Rectangle(width, height) then return \"a {width} by {height} rectangle with area {area}\"\n    when Point then return \"a point with area {area}\"\n  end\nend\n```",
+    "```\npublic function describe(shape: Shape) returns Text\n  purpose: One line naming the shape and giving its area.\n  example: describe(Point) is \"a point with area 0.00\"\n  example: describe(Rectangle(width: 2, height: 3)) is \"a 2 by 3 rectangle with area 6.00\"\n\n  let area be shape.area().rounded(2)\n  match shape\n    when Circle(radius) then return \"a circle of radius {radius} with area {area}\"\n    when Rectangle(width, height) then return \"a {width} by {height} rectangle with area {area}\"\n    when Point then return \"a point with area {area}\"\n  end\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "28f8ef69-b01c-4bf7-96e4-6e698fbd4015",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 271,
+        "output_tokens": 483
+      },
+      {
+        "session": "dfbc2e42-1ebe-469d-a24e-f1952d46cf59",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 301,
+        "output_tokens": 513
+      },
+      {
+        "session": "f22bd409-9bb6-4b37-9053-0508abd13a9a",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 217,
+        "output_tokens": 429
+      },
+      {
+        "session": "5b4491bb-f6bf-4359-b796-fec842718e7a",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 282,
+        "output_tokens": 494
+      },
+      {
+        "session": "964ea0e1-f1fb-493b-8da8-1570fa1d5101",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 273,
+        "output_tokens": 485
+      }
+    ]
+  }
+}

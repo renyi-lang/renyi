@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "```\npublic function working_days_between(start: Date, finish: Date) returns Integer\n  purpose: Count the Monday to Friday days after the start, up to and including the finish.\n  tags: dates, calendar\n  example: working_days_between(\n    start: Date(year: 2024, month: 5, day: 3),\n    finish: Date(year: 2024, month: 5, day: 6)\n  ) is 1\n  example: working_days_between(\n    start: Date(year: 2024, month: 5, day: 6),\n    finish: Date(year: 2024, month: 5, day: 6)\n  ) is 0\n\n  let mutable current be start\n  let mutable count be 0\n  repeat until current is at least finish\n    set current to current.plus_days(1)\n    if is_working_day(current) then\n      set count to count + 1\n    end\n  end\n  return count\nend\n```",
+    "```renyi\npublic function working_days_between(start: Date, finish: Date) returns Integer\n  purpose: Count the Monday to Friday days after the start, up to and including the finish.\n  tags: dates, calendar\n  example: working_days_between(\n    start: Date(year: 2024, month: 5, day: 3),\n    finish: Date(year: 2024, month: 5, day: 6)\n  ) is 1\n  example: working_days_between(\n    start: Date(year: 2024, month: 5, day: 6),\n    finish: Date(year: 2024, month: 5, day: 6)\n  ) is 0\n\n  let mutable count be 0\n  let mutable current be start.plus_days(1)\n  repeat until current is greater than finish\n    if is_working_day(current) then\n      set count to count + 1\n    end\n    set current to current.plus_days(1)\n  end\n  return count\nend\n```",
+    "```\npublic function working_days_between(start: Date, finish: Date) returns Integer\n  purpose: Count the Monday to Friday days after the start, up to and including the finish.\n  tags: dates, calendar\n  example: working_days_between(\n    start: Date(year: 2024, month: 5, day: 3),\n    finish: Date(year: 2024, month: 5, day: 6)\n  ) is 1\n  example: working_days_between(\n    start: Date(year: 2024, month: 5, day: 6),\n    finish: Date(year: 2024, month: 5, day: 6)\n  ) is 0\n\n  let mutable cursor be start\n  let mutable total be 0\n  repeat until cursor is at least finish\n    set cursor to cursor.plus_days(1)\n    if is_working_day(cursor) then\n      set total to total + 1\n    end\n  end\n  return total\nend\n```",
+    "```renyi\npublic function working_days_between(start: Date, finish: Date) returns Integer\n  purpose: Count the Monday to Friday days after the start, up to and including the finish.\n  tags: dates, calendar\n  example: working_days_between(\n    start: Date(year: 2024, month: 5, day: 3),\n    finish: Date(year: 2024, month: 5, day: 6)\n  ) is 1\n  example: working_days_between(\n    start: Date(year: 2024, month: 5, day: 6),\n    finish: Date(year: 2024, month: 5, day: 6)\n  ) is 0\n\n  let mutable current be start\n  let mutable total be 0\n  repeat until current is at least finish\n    set current to current.plus_days(1)\n    if is_working_day(current) then\n      set total to total + 1\n    end\n  end\n  return total\nend\n```",
+    "```renyi\npublic function working_days_between(start: Date, finish: Date) returns Integer\n  purpose: Count the Monday to Friday days after the start, up to and including the finish.\n  tags: dates, calendar\n  example: working_days_between(\n    start: Date(year: 2024, month: 5, day: 3),\n    finish: Date(year: 2024, month: 5, day: 6)\n  ) is 1\n  example: working_days_between(\n    start: Date(year: 2024, month: 5, day: 6),\n    finish: Date(year: 2024, month: 5, day: 6)\n  ) is 0\n\n  let mutable current be start\n  let mutable total be 0\n  repeat until current is at least finish\n    set current to current.plus_days(1)\n    if is_working_day(current) then\n      set total to total + 1\n    end\n  end\n  return total\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "429aba93-0d5f-48e2-97d9-2097cab2be49",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 225,
+        "output_tokens": 501
+      },
+      {
+        "session": "af57cd7c-0b93-4500-8199-cf8cc4fdb8e3",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 309,
+        "output_tokens": 597
+      },
+      {
+        "session": "560161c1-58f3-4478-832a-35c2177072da",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 270,
+        "output_tokens": 556
+      },
+      {
+        "session": "53eda3c5-71e1-4d68-a494-04d2a9fc30e7",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 259,
+        "output_tokens": 538
+      },
+      {
+        "session": "645293b7-d5a8-4012-959e-4940f69e7163",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 337,
+        "output_tokens": 616
+      }
+    ]
+  }
+}

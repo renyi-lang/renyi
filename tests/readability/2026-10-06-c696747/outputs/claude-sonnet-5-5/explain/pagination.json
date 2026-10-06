@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "This program downloads every customer from a cursor-paginated web API by following each page's \"next\" cursor until none is returned, then prints how many customers each country has, largest first. It needs network access and console output, and it fails with an HTTP or JSON error if a request or the response parsing goes wrong. The endpoint is hardcoded to an example URL, so you would need to change it for real use. A bundled test replays recorded responses and checks that three customers are collected.",
+    "This program downloads every customer from a cursor-paginated web API by repeatedly requesting pages, following each page's \"next\" marker until none is returned, and then prints how many customers live in each country, largest group first. It needs network access to fetch the data and console access to print, and it fails with an HTTP or JSON error if a request or response parse goes wrong. The target address is hardcoded to an example API, so you would need to change it for real use, and a bundled test checks offline that three customers are collected from recorded responses.",
+    "This program downloads every customer from a cursor-paginated web API by following each page's \"next\" cursor until none remains, then prints how many customers each country has, largest first. It needs network access and console output, and it stops with an HTTP or JSON error if a request fails or a response can't be parsed. The hard-coded example URL would need changing to your real endpoint, and the included test replays a recorded fixture and expects three customers in total.",
+    "This program downloads every customer from a cursor-paginated web API by following each page's \"next\" cursor until none is returned, then prints how many customers there are in each country, largest group first. It needs network access and console output, and it stops with an HTTP or JSON error if a request or parse fails. The endpoint is hardcoded to an example address, so you would need to change it to point at your own API, and the included test replays a recorded fixture that expects three customers.",
+    "This program downloads every customer from a cursor-paginated web API (following each page's \"next\" cursor until none remains) and prints how many customers live in each country, largest group first. It needs network access and console output, and it stops with an HTTP or JSON error if a request or response parsing fails. The URL is hardcoded to a placeholder example address, so you'd need to change it to point at your real API, and the included test replays a recorded fixture and expects three customers."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "48facfa3-22a1-4179-b6fe-4c75dad186d9",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 143
+      },
+      {
+        "session": "25812f15-0e8c-4d6d-9bd0-d068b1ec57a6",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 160
+      },
+      {
+        "session": "e126e72b-452d-450d-ad56-1b572b7bcbee",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 134
+      },
+      {
+        "session": "f6025ae3-018b-4ea7-a892-31fff08a97a5",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 139
+      },
+      {
+        "session": "e6ae6703-27a2-421e-add9-262531af6cdc",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 142
+      }
+    ]
+  }
+}

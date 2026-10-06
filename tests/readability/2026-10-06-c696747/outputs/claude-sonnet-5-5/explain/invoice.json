@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "This module computes invoice amounts using exact decimal arithmetic: each line is its quantity times its unit price, the subtotal adds up all lines, and the total subtracts a percentage discount and rounds to the nearest cent. Inputs are validated by the types, so quantities must be at least 1, unit prices cannot be negative, and the discount must be between 0 and 100 percent. It is pure (no I/O or side effects), handles empty invoices (total zero), and has tests covering a ten percent discount and the empty case, so it looks safe to use for straightforward invoicing, though it has no tax, currency, or per-line discount support.",
+    "This module computes invoice amounts for a customer: it prices each line as quantity times unit price, sums the lines into a subtotal, and then applies a percentage discount (0 to 100) to produce a final total rounded to the cent. It uses exact decimal arithmetic and validates inputs up front, so quantities must be at least 1, prices cannot be negative, and the discount must stay within 0 to 100. It is pure, with no file, network, or console access, and it includes tests for a 10% discount and for an empty invoice, which makes it a safe building block if you only need totals and not taxes, currency handling, or output formatting.",
+    "This module models invoices as a customer plus a list of lines (each with a description, a quantity of at least 1, and a non-negative unit price) and a discount percentage validated to be between 0 and 100. It computes each line's total, the subtotal across all lines, and a final total with the percentage discount subtracted and the result rounded to two decimal places (cents). It uses exact Decimal arithmetic, is pure with no I/O or other side effects, and its tests cover a 10% discount and an empty invoice totaling zero, so it is a safe fit if you only need straightforward percentage-discount totals (no taxes, per-line discounts, or currency handling).",
+    "This module computes invoice amounts: it prices each line as quantity times unit price, sums the lines into a subtotal, and then applies a percentage discount (0 to 100) and rounds the result to cents using exact decimal arithmetic. Line quantities must be at least 1 and unit prices cannot be negative, and an invoice with no lines totals zero. It is pure calculation with no I/O or side effects, and its tests cover a 10% discount and the empty-invoice case, so it suits you if you need simple, safe billing totals but not if you need taxes, currencies, or other pricing rules.",
+    "This module computes invoice amounts: each line's cost is its quantity times its unit price, the subtotal adds up all lines, and the total takes a percentage discount (0 to 100) off the subtotal and rounds the result to the cent. It uses exact decimal arithmetic, rejects invalid data such as zero quantities, negative prices, or discounts outside 0 to 100, and is pure, with no file, network, or console access. Its tests cover a 10% discount and an empty invoice, which totals zero, so it looks safe to use for straightforward invoicing, though it handles no taxes, currencies, or per-line discounts."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "a2f8f806-2107-4607-97d7-2e83a0b8d18d",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 205
+      },
+      {
+        "session": "cea30dd6-148c-42ab-af42-986b1b9964f3",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 200
+      },
+      {
+        "session": "dd4ba7d0-bb69-46d3-8b94-7c7cb3459cdb",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 210
+      },
+      {
+        "session": "b76442af-ba61-457d-bbc8-dfb8460d3706",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 192
+      },
+      {
+        "session": "ef13ef6e-276f-4e0f-a865-9db76e8f0190",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 203
+      }
+    ]
+  }
+}

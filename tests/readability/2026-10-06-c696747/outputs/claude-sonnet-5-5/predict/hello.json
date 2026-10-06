@@ -1,0 +1,68 @@
+{
+  "samples": [
+    "Hello, world!",
+    "Hello, world!",
+    "Hello, world!",
+    "Hello, world!",
+    "Hello, world!"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "24de2af9-edaa-4edf-b732-54b9038ac0e2",
+        "models": [
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 8
+      },
+      {
+        "session": "c8ac86f3-ca74-4042-af80-077dd0043a5b",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 8
+      },
+      {
+        "session": "afba7a88-115f-4992-9003-5d9945a6e73b",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 8
+      },
+      {
+        "session": "9f09b618-294c-48fd-8f03-84ba297404db",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 8
+      },
+      {
+        "session": "dae1fb32-63d0-4bcb-b64a-b2beeae70298",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 8
+      }
+    ]
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "This program manages a small stock inventory in a SQLite file (creating the items table if it's missing), and its entry point is a fixed one-off run: it records a delivery of 500 units for one hardcoded product, then prints every item whose quantity is at or below its reorder level, lowest first, or says nothing needs reordering. The delivery function is reusable for any product and fails with a clear error if the product doesn't exist, but the database path and the product being restocked are built into the main routine, so you would need to edit it or call the functions from your own code. It also includes a test that seeds two items, applies a delivery, and checks that only the one still low on stock is reported.",
+    "This program manages a small stock inventory in a SQLite file: it creates the items table if needed, adds a delivered quantity to an existing product (failing with an unknown-SKU error if the product isn't there), and lists the products at or below their reorder level, lowest stock first. Its `main` is a fixed demo that opens `data/inventory.db`, records a delivery of 500 units for one hard-coded SKU, prints \"nothing to reorder\" if the list is empty, and otherwise prints each low-stock item. It has a test that seeds two items and checks that only the one still under its reorder level is reported, so you'd reuse the functions as a library and replace `main` rather than use it as-is.",
+    "This program manages a small product inventory in a SQLite file: it creates the items table if needed, lets you add a delivered quantity to an existing product (failing with an unknown-SKU error if it doesn't exist), and queries the products whose stock is at or below their reorder level, lowest first. Its `main` is a fixed demo that records one hardcoded delivery of 500 units to a single product, then prints the items still needing reordering (or a \"nothing to reorder\" message), so you would reuse the functions rather than run it as-is. It reads and writes the local database file, and it includes a test that seeds two items, applies a delivery, and checks that only the one still below its threshold is reported.",
+    "This program manages a small stock inventory in a SQLite file, creating the items table if needed, adding delivered quantities to a product's stock (failing with an unknown-product error if the product doesn't exist), and listing items at or below their reorder level, lowest stock first. Its `main` is a fixed demo: it opens a database at a hardcoded path, records a delivery of 500 units to one specific product, then prints what still needs reordering (or \"nothing to reorder\"). It's best treated as a reusable set of inventory functions or a template, since the entry point isn't configurable, and it includes a test that checks the low-stock listing against a recorded fixture.",
+    "This program manages a small stock inventory in a SQLite file, creating the items table if it doesn't exist, and when run it records a hard-coded delivery of 500 units for one specific product (failing with an error if that product isn't in the database). It then prints every item whose quantity is at or below its reorder level, lowest stock first, or a \"nothing to reorder\" message if there are none. It is a ready-made demo or starting point rather than a general tool, since the database path, product code and amount are fixed in the main routine, though the helper functions for opening the database, listing low stock and recording deliveries can be reused."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "48a31980-65e9-4f57-a564-378b88549cba",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 206
+      },
+      {
+        "session": "dc03d663-b656-4408-b29e-31964e4c8cd3",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 221
+      },
+      {
+        "session": "4526cb61-c974-4169-bfbf-a896980c9b6b",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 216
+      },
+      {
+        "session": "1e98a9ca-af97-4533-a938-6932913c1152",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 208
+      },
+      {
+        "session": "a4517e37-e347-4af7-8b21-12066e5b0396",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 190
+      }
+    ]
+  }
+}

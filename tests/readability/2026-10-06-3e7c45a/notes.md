@@ -186,13 +186,29 @@ at most 609; Complete 68 of 95, median 334, at most 1102; Write 45 of
    `{"hasCompletedOnboarding": true}`), gives the cheat sheet with
    `--system-prompt-file`, excludes the dynamic system-prompt sections and
    removes every tool, and removes the pay-per-token key from the
-   environment so that the CLI uses the login. A probe (the model asked to
-   list everything in its context) showed the default configuration adding
-   the owner's hooks, instruction files, output style and MCP servers to
-   the context; the login-only configuration adds one line, the account's
-   email address, which no switch removes. `--bare` would remove it but
-   reads no login (it takes an API key only). The Codex side is round 2's
-   `sample.sh` moved into the harness.
+   environment so that the CLI uses the login. A probe before the round
+   (the model asked to list everything in its context) showed the default
+   configuration adding the owner's hooks, instruction files, output
+   style and MCP servers, and the login-only configuration adding one
+   line, the account's email address. A second probe after the round, run
+   as the harness ran (from the repository), showed two more things in
+   the context: the project's `CLAUDE.md`, which the CLI loads from the
+   working directory, and the account's claude.ai connectors (Gmail,
+   Claude Docs: 38 tool definitions and their instructions, which
+   `--tools ""` does not remove); the configuration directory's state
+   file lists both connectors as connected through it, and the first
+   probe, which asked about the context rather than the tools, did not
+   report them. This round's samples therefore had the project notes and
+   those tool definitions in their context, in a measure not recorded per
+   sample; neither teaches the language, but the context was not what
+   this item first claimed, and it is the second reason the round is a
+   defect round. Round 4's channel runs the CLI in an empty directory
+   (`--work-dir`) with `--strict-mcp-config` and no servers, which a
+   probe through the harness's own command shows to leave the system
+   text, the task and the CLI's fixed frame: its identity line, the
+   environment block, the date and the email line. `--bare` would drop
+   the frame but reads no login (it takes an API key only). The Codex
+   side is round 2's `sample.sh` moved into the harness.
 2. **Thinking.** The API calls of rounds 1 and 2 had no thinking. The
    Claude CLI's adaptive thinking cannot be switched off (`MAX_THINKING_TOKENS`,
    `CLAUDE_CODE_DISABLE_THINKING`, `--settings {"alwaysThinkingEnabled":

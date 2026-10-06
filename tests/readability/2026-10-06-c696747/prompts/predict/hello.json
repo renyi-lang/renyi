@@ -1,0 +1,6 @@
+{
+  "task": "predict",
+  "name": "hello",
+  "prompt": "Here is a Renyi program. It is run with the command-line arguments [] and no other input. Output exactly what the program prints to standard output, and nothing else: no explanation, no code fences.\n\nmodule hello\n  purpose: Greet whoever runs the program.\n\nimport std.console\nimport std.environment\n\npublic function main() needs console, environment\n  purpose: Print a greeting that uses the first command-line argument as the name.\n\n  let arguments be environment.arguments()\n  let name be arguments.first() otherwise \"world\"\n  console.print(\"Hello, {name}!\")\nend\n",
+  "arguments": []
+}

@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "This program is a small command-line tool that takes a question from the command-line arguments, reads an API key from the `CHAT_API_KEY` environment variable, sends the question to a chat-completions endpoint over HTTP, and prints the text of the model's first answer. It fails with a clear error if the key is missing, the response has no answer, or the network or JSON handling goes wrong. Note that the endpoint and model name are placeholders (an example.com address and \"example-model\"), so you would need to change them to point at a real service, and it only handles a single question with no conversation history.",
+    "This is a small command-line tool that takes your question from the program's arguments, reads an API key from the `CHAT_API_KEY` environment variable, sends the question to a chat-completions web service (a placeholder example.com address with a fixed example model name), and prints the first answer returned. It needs network access and environment access, and it fails with a clear error if the key is missing, the response contains no answer, or the request or reply can't be handled. Before using it, you would need to swap in the real endpoint and model name, since both are hard-coded placeholders.",
+    "This is a command-line tool that takes your question from the program arguments, reads an API key from the `CHAT_API_KEY` environment variable, sends the question to a chat-completions HTTP endpoint (a placeholder example.com address with a placeholder model name you would need to change), and prints the first answer the model returns. It needs console, environment and network access, and it fails with a clear error if the key is missing, the response has no answers, or the network or JSON handling goes wrong. It handles only a single question and answer with no conversation history, and it includes an offline test that replays a recorded response.",
+    "This is a small command-line tool that takes your question from the program's arguments, reads an API key from the `CHAT_API_KEY` environment variable, sends the question to a chat-completions endpoint over HTTP (a placeholder example.com address with a placeholder model name you would need to change), and prints the text of the model's first answer. It stops with a clear error if the key is missing, if the response has no answer, or if the network or JSON step fails, and it needs console, environment and network access. It makes a single request with no conversation history, retries or streaming, and includes one offline test that replays a recorded response.",
+    "This program is a command-line tool that takes your question from the command-line arguments, reads an API key from the `CHAT_API_KEY` environment variable, sends the question over HTTP to a chat-completions service, and prints the text of the first answer it gets back. It needs console, environment and network access, and it stops with a specific error if the key is missing, the reply contains no answer, or the request or response parsing fails. Note that the endpoint and model name are hard-coded to placeholder values (an `api.example.com` address and \"example-model\"), so you would need to change them to point at a real provider before it is useful."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "87b763ec-7077-40b7-b164-8d14b959eea8",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 179
+      },
+      {
+        "session": "b9610e85-1243-4474-848f-9c434640c80a",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 171
+      },
+      {
+        "session": "76fbdaef-a11e-4997-9a98-9f395fb5eb7b",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 184
+      },
+      {
+        "session": "63649636-6a95-4ef6-8e5b-fd6a71628df2",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 188
+      },
+      {
+        "session": "e8c32768-ddcd-49f7-83c2-028f5083bc79",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 189
+      }
+    ]
+  }
+}

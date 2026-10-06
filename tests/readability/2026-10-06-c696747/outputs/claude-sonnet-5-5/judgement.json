@@ -1,0 +1,10 @@
+{
+  "explain/expression_tree.0": {
+    "verdict": 5,
+    "reason": "'prints it in infix form with parentheses around every operation': Opus read 'every operation' as wrong because the description gives a negation a leading minus sign and parentheses only to additions and multiplications (2); Sonnet 5. Graded 5: the sentence is the program's own purpose line for render ('The expression in infix notation with parentheses around every operation'), which the description refines rather than contradicts, and round 3's expression_tree.1 to .4 carry the same phrase with both graders at 5, as do the 'fully parenthesized' samples of every round. The tree, the two functions, the printed line and the console need are stated."
+  },
+  "explain/expression_tree.4": {
+    "verdict": 5,
+    "reason": "'print it as infix text with parentheses around every operation': Opus read 'every operation' as wrong because the description gives a negation a leading minus sign and parentheses only to additions and multiplications (2); Sonnet 5. Graded 5: the sentence is the program's own purpose line for render ('The expression in infix notation with parentheses around every operation'), which the description refines rather than contradicts, and round 3's expression_tree.1 to .4 carry the same phrase with both graders at 5, as do the 'fully parenthesized' samples of every round. The tree, the two functions, the printed line and the console need are stated."
+  }
+}

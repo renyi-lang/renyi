@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "```\nmodule library.merging\n  purpose: Combine sorted lists of Integers.\n\npublic function merge_sorted(left: List of Integer, right: List of Integer)\n  returns List of Integer\n  purpose: Merge two sorted lists of Integers into one sorted list without duplicates.\n  tags: lists, sorting\n  example: merge_sorted(left: [1, 3, 5], right: [2, 3, 6]) is [1, 2, 3, 5, 6]\n  example: merge_sorted(left: [], right: [4, 4, 7]) is [4, 7]\n  example: merge_sorted(left: [], right: []) is []\n\n  let combined be left.append_all(right)\n  return combined.distinct().sorted()\nend\n\ntest \"merging two empty lists gives an empty list\"\n  check merge_sorted(left: [], right: []) is []\nend\n```",
+    "```\nmodule library.merging\n  purpose: Combine sorted lists of Integers.\n\npublic function merge_sorted(left: List of Integer, right: List of Integer)\n  returns List of Integer\n  purpose: Merge two sorted lists of Integers into one sorted list without duplicates.\n  tags: lists, sorting\n  example: merge_sorted(left: [1, 3, 5], right: [2, 3, 6]) is [1, 2, 3, 5, 6]\n  example: merge_sorted(left: [1, 1, 2], right: [2, 2, 3]) is [1, 2, 3]\n  example: merge_sorted(left: [], right: [4, 7]) is [4, 7]\n  example: merge_sorted(left: [], right: []) is []\n\n  return left.append_all(right).distinct().sorted()\nend\n\ntest \"merging two empty lists gives an empty list\"\n  let empty: List of Integer be []\n  check merge_sorted(left: empty, right: empty) is empty\nend\n\ntest \"duplicates across both lists are removed\"\n  check merge_sorted(left: [1, 3, 5], right: [3, 4, 5]) is [1, 3, 4, 5]\nend\n```",
+    "```\nmodule collections.merging\n  purpose: Combine sorted lists of Integers.\n\npublic function merge_sorted(left: List of Integer, right: List of Integer)\n  returns List of Integer\n  purpose: Merge two sorted lists into one sorted list without duplicates.\n  tags: lists, sorting\n  example: merge_sorted(left: [1, 3, 5], right: [2, 3, 6]) is [1, 2, 3, 5, 6]\n  example: merge_sorted(left: [1, 1, 2], right: [2, 2, 3]) is [1, 2, 3]\n  example: merge_sorted(left: [], right: [4, 7]) is [4, 7]\n\n  return left.append_all(right).distinct().sorted()\nend\n\ntest \"merging two empty lists gives an empty list\"\n  let empty: List of Integer be []\n  check merge_sorted(left: empty, right: empty) is empty\nend\n```",
+    "```\nmodule library.sorted_merge\n  purpose: Combine sorted lists of Integers.\n\npublic function merge_unique(left: List of Integer, right: List of Integer)\n  returns List of Integer\n  purpose: Merge two sorted lists of Integers into one sorted list without duplicates.\n  tags: lists, sorting\n  example: merge_unique(left: [1, 3, 5], right: [2, 3, 6]) is [1, 2, 3, 5, 6]\n  example: merge_unique(left: [1, 1, 2], right: [2, 2, 3]) is [1, 2, 3]\n  example: merge_unique(left: [], right: [4, 7]) is [4, 7]\n  example: merge_unique(left: [], right: []) is []\n\n  let combined be left.append_all(right)\n  return combined.distinct().sorted()\nend\n\ntest \"merging two empty lists gives an empty list\"\n  check merge_unique(left: [], right: []) is []\nend\n```",
+    "```\nmodule library.sorted_lists\n  purpose: Combine sorted lists of Integers.\n\npublic function merge_sorted(left: List of Integer, right: List of Integer)\n  returns List of Integer\n  purpose: Merge two sorted lists of Integers into one sorted list without duplicates.\n  tags: lists, sorting\n  example: merge_sorted(left: [1, 3, 5], right: [2, 3, 6]) is [1, 2, 3, 5, 6]\n  example: merge_sorted(left: [1, 1, 2], right: [2, 2, 3]) is [1, 2, 3]\n  example: merge_sorted(left: [4, 5], right: [1, 2]) is [1, 2, 4, 5]\n\n  return left.append_all(right).distinct().sorted()\nend\n\ntest \"merging two empty lists gives an empty list\"\n  let empty: List of Integer be []\n  check merge_sorted(left: empty, right: empty) is empty\nend\n```"
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "98bcc644-90e5-49e4-8fad-0cbbe144f205",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 383,
+        "output_tokens": 664
+      },
+      {
+        "session": "3a96eb81-0a99-450c-a57e-3f1c3f1821da",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 350,
+        "output_tokens": 742
+      },
+      {
+        "session": "4729a7cc-e8af-413b-8481-07526fab3ed2",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 393,
+        "output_tokens": 698
+      },
+      {
+        "session": "60dad311-a595-41a4-ae11-b1ab915fc28a",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 456,
+        "output_tokens": 776
+      },
+      {
+        "session": "7abd85f4-f476-4e7d-a1cf-c2d848235ce7",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 433,
+        "output_tokens": 755
+      }
+    ]
+  }
+}

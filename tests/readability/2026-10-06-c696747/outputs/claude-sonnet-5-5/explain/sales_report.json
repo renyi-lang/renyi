@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "This program reads a fixed sales CSV (data/sales.csv), checks that every row has a region, product and numeric amount, and stops with an error naming the offending line if any row is bad. It then adds up the amounts per region, prints the regions to the console from highest total to lowest, and writes the same totals to a new report file (data/report.csv). It only touches the data folder and the console, but it has hardcoded file paths and will fail outright on any malformed row rather than skipping it.\n\nOne thing to check before relying on it: the declared permissions look slightly inconsistent, since the loader asks only for read access to the data folder while the main function grants a general filesystem scope for that folder, so the permission declarations may need a look before running it.",
+    "This program reads a sales CSV at a fixed location in a `data` folder, checks that each row has a region, product, and numeric amount, and stops with an error naming the line of the first bad row. It then adds up the amounts per region, prints the totals from highest to lowest, and saves the same totals as a two-column CSV report in the same folder. Access is limited to that `data` folder and the console, but the file paths are hardcoded, so you can't point it at a different file without editing it.",
+    "This program reads a sales CSV from the `data` folder, checks that every row has a region, product and numeric amount, and adds up the amounts for each region. It prints the regional totals to the console, largest first, and saves the same figures as a two-column CSV report in the same folder. It stops with a descriptive error (the offending line number, or a read/write problem) on the first bad row or I/O failure, so no report is written from partly valid data, and it only needs console access and file access limited to the `data` folder.",
+    "This program reads a fixed sales CSV from the `data` folder, checks that every row has a region, product and numeric amount, and stops with an error naming the bad line if any row is invalid. It then totals the amounts per region, prints the regions to the console from largest total to smallest, and writes the same figures to a report CSV in the same folder. It is a narrow, single-purpose tool: the input and output paths are hardcoded, so it suits you only if your data lives at that location.\n\nOne thing to check before relying on it: it declares write access to `data` using a broader permission than the file-reading function does, and it has no network use.",
+    "This program reads a sales CSV at a fixed location in the data folder, checks that every row has a region, product and numeric amount, and stops with a descriptive error naming the line if any row is bad. It then adds up the amounts per region, prints the totals from highest to lowest, and saves the same figures as a CSV report in that folder. It only needs console access and file access under the data folder, so it is a good fit if your input always lives at that path with those column names, but the file locations are hard-coded.\n\nOne thing to check before relying on it: the declared permission for the final write looks like it may not match the narrower read permission used when loading, so verify that the checker accepts it."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "ce52ac75-1e16-431f-8732-b9fa004e83b1",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 229
+      },
+      {
+        "session": "38953253-e801-418b-8224-25b87a0d2358",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 283,
+        "output_tokens": 434
+      },
+      {
+        "session": "d14801c3-32bc-4b51-82a2-37600cb805dd",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 357,
+        "output_tokens": 514
+      },
+      {
+        "session": "6d1f89e8-61f6-4548-8186-84ea47420af0",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 193
+      },
+      {
+        "session": "2e4b03aa-fe3d-4ad7-90fe-f72ee5c99d07",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 205
+      }
+    ]
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "samples": [
+    "This is a pure shipping-rules module that a host application calls at checkout: given a parcel (weight in grams, destination of Domestic, Europe or International, and order total), it returns a quote with the shipping cost, delivery time in business days, and whether shipping is free. Cost is a flat rate per destination plus 2.50 for each started kilogram beyond the first, and delivery takes 2, 5 or 10 business days depending on the destination. Domestic orders totaling 50.00 or more ship free, while parcels with a non-positive weight or a negative order total are rejected when the parcel is built. It needs no permissions, and it reads parcels from JSON and writes quotes as JSON, so it embeds easily.",
+    "This module gives your web shop a single checkout call that takes a parcel (weight, destination market of Domestic, Europe or International, and order total) and returns a quote with the shipping cost, delivery time in business days, and whether shipping is free. Domestic orders of 50.00 or more ship free, while everything else pays a flat rate for its destination plus 2.50 for each started kilogram beyond the first. Delivery takes 2, 5 or 10 business days depending on the market, and it is a pure calculation with no network or file access, so it is safe to embed, with JSON conversion for input and output so the host application can pass data in and out easily.",
+    "This module is a pure shipping calculator that your host application calls at checkout: given a parcel's weight, destination (domestic, Europe, or international) and order total, it returns a quote with the cost, delivery time in business days (2, 5, or 10), and whether shipping is free. Cost is a flat base rate per destination plus 2.50 for each started kilogram beyond the first, and domestic orders at or above 50.00 ship free. It has no side effects or permissions, takes JSON-readable parcels and returns JSON-writable quotes, so it is easy to embed, but its rates and thresholds are hard-coded and cannot be configured without editing the module.",
+    "This is a pure shipping-rules module for a web shop: given a parcel's weight, destination (domestic, Europe, or international) and order total, it returns a quote with the shipping cost, delivery time in business days, and whether shipping is free. Cost is a flat base rate per destination plus 2.50 for each started kilogram beyond the first, with delivery taking 2, 5 or 10 business days, and domestic orders of 50.00 or more ship free. It needs no permissions and is built for a host application to call at checkout, taking the parcel from JSON and returning the quote as JSON.",
+    "This module gives your web shop a pure, effect-free checkout quote: you hand it a parcel (weight in grams, a destination of domestic, Europe or international, and the order total) and it returns the shipping cost, the delivery time in business days (2, 5 or 10), and whether shipping is free. Cost is a flat rate per destination plus a surcharge for each started kilogram beyond the first, and domestic orders at or above the free-shipping threshold ship free. Parcels are read from JSON and quotes written back to JSON, so it's easy to embed in a host application, though the rates and the threshold are fixed in the code rather than configurable."
+  ],
+  "model": "claude-sonnet-5-5",
+  "temperature": null,
+  "source": {
+    "tool": "claude -p (Claude Code CLI 2.1.289 (Claude Code), subscription login)",
+    "model": "claude-sonnet-5-5",
+    "temperature": "the model's default",
+    "system_prompt": "the cheat sheet only (--system-prompt-file, --exclude-dynamic-system-prompt-sections, a configuration directory holding only the login)",
+    "context": "the system prompt, the task, and the CLI's fixed frame (its identity line, the environment block, the date, a one-line note of the account's email address)",
+    "working_directory": "empty (no CLAUDE.md)",
+    "mcp_servers": "none (--strict-mcp-config)",
+    "tools": "none",
+    "thinking": "adaptive, cannot be switched off; tokens recorded per session",
+    "sessions": [
+      {
+        "session": "ed3f1b04-13ed-4a5b-a80d-0c44933925cd",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 231
+      },
+      {
+        "session": "f4dca2c3-6199-42be-8844-0a081862aec4",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 204
+      },
+      {
+        "session": "bc2036e8-538f-480e-bc4b-aacf8ccfd414",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 212
+      },
+      {
+        "session": "2ffcb312-65b2-4571-84bf-6ffef3779355",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 190
+      },
+      {
+        "session": "e2526086-367b-4c42-b511-75cd0b202dff",
+        "models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "thinking_tokens": 0,
+        "output_tokens": 207
+      }
+    ]
+  }
+}
