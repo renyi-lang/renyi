@@ -1053,3 +1053,25 @@ the served directory differs from the one the last map was built from.
 The result is the same, and the corpus (30 modules) rebuilds in about a
 second in a debug build; the per-definition refresh is open item R5-5,
 for projects large enough to need it. (user)
+
+**T5. The diff reads a definition's own text hash beside its content
+hash.** Section 6 of `05-agent-tooling.md` reported a body change from the
+content hash; the content hash of decision D5 also changes when anything
+the definition depends on changes, so a one-line change in a helper would
+read as a body change in every caller, and the origin of a change would be
+lost. Each record now also carries `text_hash`, the hash of the
+definition's own canonical text with its own name and every reference to a
+project definition blanked (the first two edits of D5, the references
+blanked rather than replaced by hashes, and without the dependency and
+library material). The diff reports a body change where `text_hash` or the
+edges changed and lists the callers under what the change reaches; a
+definition is matched across the maps by its qualified name, and a name
+gone whose content hash is back under another name is one rename entry,
+its callers untouched, as D5 intended. A map written before this field
+falls back to the content hash. The base of a diff is a map file or a git
+revision; a revision's files are read with `git show` and indexed afresh
+with the same toolchain, so that the diff never needs a map to have been
+saved. The version bump of G1 is derived from the entries: a public
+definition removed, its signature changed (the `needs` and `or fails with`
+clauses included), made private or renamed is a major bump; one added or
+made public a minor bump. (derived)

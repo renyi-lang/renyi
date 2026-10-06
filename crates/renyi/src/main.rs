@@ -10,6 +10,7 @@
 //! recordings) and `mcp` (the toolchain served to an agent host over
 //! standard input and output, in `mcp.rs`).
 
+mod maps;
 mod mcp;
 
 use std::io::Write;
@@ -30,6 +31,9 @@ const USAGE: &str = "usage:
   renyi parse [--json] <file.ry>      dump the syntax tree (--json: for tools)
   renyi index [--json] [path]         the project map of a directory or a file with its imports
   renyi index --budgets [path]        every value of the map over its budget (exit 0 either way)
+  renyi index --diff <base> [--json] [path]
+                                      what changed since a saved map (a file `renyi index --json` wrote)
+                                      or a git revision: per definition, what it reaches, the version bump
   renyi run [option...] <file.ry> [argument...]
                                       check the program, then run its `main` (exit 1 when it fails, 2 on a crash)
   renyi run --manifest [option...] <file.ry> [argument...]
@@ -702,13 +706,35 @@ fn reproduce_command(args: &[String]) -> ExitCode {
 }
 
 fn index_command(args: &[String]) -> ExitCode {
-    let json = args.iter().any(|arg| arg == "--json");
-    let path = args
-        .iter()
-        .find(|arg| !arg.starts_with("--"))
-        .map(String::as_str)
-        .unwrap_or(".");
-    let path = Path::new(path);
+    let mut json = false;
+    let mut budgets = false;
+    let mut base: Option<String> = None;
+    let mut path: Option<&str> = None;
+    let mut rest = args.iter();
+    while let Some(arg) = rest.next() {
+        match arg.as_str() {
+            "--json" => json = true,
+            "--budgets" => budgets = true,
+            "--diff" => match rest.next() {
+                Some(value) => base = Some(value.clone()),
+                None => {
+                    eprintln!("renyi: --diff needs a saved map or a git revision");
+                    return ExitCode::FAILURE;
+                }
+            },
+            other if other.starts_with("--") => {
+                eprintln!("renyi: unknown option {other}");
+                eprintln!("{USAGE}");
+                return ExitCode::FAILURE;
+            }
+            other => path = Some(other),
+        }
+    }
+    if budgets && base.is_some() {
+        eprintln!("renyi: --budgets and --diff do not combine");
+        return ExitCode::FAILURE;
+    }
+    let path = Path::new(path.unwrap_or("."));
     let files = match renyi_index::load_project(path) {
         Ok(files) => files,
         Err(error) => {
@@ -719,10 +745,24 @@ fn index_command(args: &[String]) -> ExitCode {
     let header = renyi_index::Header {
         project: renyi_index::project_name(path),
         revision: renyi_index::git_revision(path),
-        toolchain: format!("renyi {}", env!("CARGO_PKG_VERSION")),
+        toolchain: toolchain(),
     };
     let index = renyi_index::index_files(&files, header);
-    let rendered = if args.iter().any(|arg| arg == "--budgets") {
+    let rendered = if let Some(base) = base {
+        let old = match maps::load_base(&base, path, &toolchain()) {
+            Ok(old) => old,
+            Err(error) => {
+                eprintln!("renyi: {error}");
+                return ExitCode::FAILURE;
+            }
+        };
+        let diff = renyi_index::diff(&old, &index);
+        if json {
+            renyi_index::diff_json(&diff)
+        } else {
+            renyi_index::render_diff(&diff)
+        }
+    } else if budgets {
         // a report, not a gate: CI treats it as a warning (decision O3)
         let over = renyi_index::over_budget(&index, &renyi_index::Budgets::default());
         if over.is_empty() {

@@ -57,7 +57,10 @@ exists:
   `renyi parse [--json]` dump the token stream and the syntax tree;
   `renyi index [--json]` prints the project map: one record per definition
   with its signature, purpose, declared and transitive effects and
-  failures, edges, metrics and content hash; `renyi run` checks a program
+  failures, edges, metrics and content hash, `renyi index --diff <map or
+  revision>` what changed since a saved map or a git revision, per
+  definition, with what each change reaches and the version bump it
+  forces; `renyi run` checks a program
   and runs its `main` on the bytecode VM under the grant `main` declares,
   narrowed by `--deny`, `--allow-host`, `--allow-read`, `--allow-write`
   and `--at-most`, and inside each function by that function's own
@@ -84,6 +87,7 @@ cargo build
 ./target/debug/renyi check --json examples/hello.ry
 ./target/debug/renyi format --check examples/*.ry
 ./target/debug/renyi index examples
+./target/debug/renyi index --diff HEAD examples   # what changed since the last commit, and the version bump
 ./target/debug/renyi run examples/hello.ry Renyi
 ./target/debug/renyi run --explain examples/statistics.ry 2 4 4 4 5 5 7 9
 ./target/debug/renyi record --to hello.json examples/hello.ry Renyi
@@ -94,8 +98,8 @@ cargo build
 cargo test
 ```
 
-Next: the semantic diff (`renyi index --diff`) and its `diff` tool in
-`renyi mcp`.
+Next: M4 (provenance guards, the package manager, budgets in the
+manifest).
 
 ## Working on this repository
 

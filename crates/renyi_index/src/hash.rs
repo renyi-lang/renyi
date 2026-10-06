@@ -39,6 +39,28 @@ pub struct Input {
     pub library: Vec<String>,
 }
 
+/// The hash of one definition's own text alone: its canonical text with its
+/// own name and every reference to a project definition blanked, and no
+/// dependency or library material. It changes only when the definition's
+/// own text changes, so the semantic diff (`diff.rs`) uses it to tell a
+/// changed body from a changed dependency, which both change the content
+/// hash.
+pub fn own_text_hash(input: &Input) -> String {
+    let mut edits: Vec<(usize, usize)> = input
+        .references
+        .iter()
+        .map(|&(start, end, _)| (start, end))
+        .chain(input.own_name)
+        .collect();
+    edits.sort_by(|a, b| b.cmp(a));
+    edits.dedup();
+    let mut text = input.text.clone();
+    for (start, end) in edits {
+        text.replace_range(start..end, "_");
+    }
+    format!("sha256:{:x}", Sha256::digest(text.as_bytes()))
+}
+
 /// The hash of every input, as `sha256:` followed by 64 hex digits.
 pub fn hashes(inputs: &[Input], library_version: &str) -> Vec<String> {
     let edges: Vec<Vec<usize>> = inputs
@@ -240,6 +262,25 @@ mod tests {
         assert_ne!(first[0], first[1]);
         assert_eq!(first, hashes(&[even, odd], "0"));
         assert!(first.iter().all(|h| h.len() == "sha256:".len() + 64));
+    }
+
+    #[test]
+    fn the_own_text_hash_ignores_names_and_dependencies() {
+        let mut a = input("function a() return b() end");
+        a.own_name = Some((9, 10));
+        a.references = vec![(20, 21, 1)];
+        let mut renamed = input("function alpha() return helper() end");
+        renamed.own_name = Some((9, 14));
+        renamed.references = vec![(24, 30, 1)];
+        assert_eq!(own_text_hash(&a), own_text_hash(&renamed));
+        let mut changed = a.clone();
+        changed.text = "function a() return b() + 1 end".to_string();
+        assert_ne!(own_text_hash(&a), own_text_hash(&changed));
+        // a dependency's change is not the definition's own
+        let mut with_dependency = a.clone();
+        with_dependency.dependencies = vec![1];
+        with_dependency.library = vec!["std.console.print".to_string()];
+        assert_eq!(own_text_hash(&a), own_text_hash(&with_dependency));
     }
 
     #[test]

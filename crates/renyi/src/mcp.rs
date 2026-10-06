@@ -49,7 +49,8 @@ const CHEAT_SHEET: &str = include_str!("../../../docs/cheatsheet.md");
 const INSTRUCTIONS: &str = "The Renyi toolchain. Read cheat_sheet before writing Renyi. Look library \
 names up with library_lookup instead of guessing them. project_map, definition and effects describe \
 the served project; check and format close the loop on source text; run and run_tests execute \
-programs on the VM under the grants they declare.";
+programs on the VM under the grants they declare; diff tells what changed since a saved map or a git \
+revision and what each change reaches.";
 
 const PARSE_ERROR: i64 = -32700;
 const INVALID_REQUEST: i64 = -32600;
@@ -67,6 +68,7 @@ const TOOL_NAMES: &[&str] = &[
     "format",
     "run",
     "run_tests",
+    "diff",
 ];
 
 /// `renyi mcp [path]`: serve the directory (the current one by default)
@@ -365,6 +367,18 @@ impl Server {
             "format" => format_tool(arguments),
             "run" => run_tool(arguments),
             "run_tests" => run_tests_tool(arguments),
+            "diff" => {
+                let base = required_text(arguments, "base")?;
+                let json = flag(arguments, "json")?;
+                let map = Map::refresh(&mut self.map)?;
+                let old = crate::maps::load_base(&base, Path::new("."), &toolchain())?;
+                let diff = renyi_index::diff(&old, &map.index);
+                Ok(if json {
+                    renyi_index::diff_json(&diff)
+                } else {
+                    renyi_index::render_diff(&diff)
+                })
+            }
             other => Err(format!("unknown tool {other}")),
         }
     }
@@ -683,6 +697,20 @@ fn tool_json(name: &str) -> Json {
                     ("explain", boolean_property("narrate each test")),
                 ],
                 &["path"],
+            ),
+        ),
+        "diff" => (
+            "What changed in the served project since a base: a saved map (a file `renyi index --json` \
+             or project_map with `json` wrote) or a git revision such as `HEAD` or `v1.2.0`. One entry \
+             per changed definition with the changes (added, removed, renamed, signature, visibility, \
+             effects, failures, body), the definitions each change reaches, and the version bump the \
+             changes force (the same as `renyi index --diff`).",
+            schema(
+                vec![
+                    ("base", string_property("a saved map file under the served directory, or a git revision")),
+                    ("json", boolean_property("true for the JSON shape; the text form by default")),
+                ],
+                &["base"],
             ),
         ),
         _ => ("", schema(Vec::new(), &[])),

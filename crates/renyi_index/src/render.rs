@@ -109,6 +109,7 @@ pub fn definition_json(definition: &Definition) -> Json {
     let metrics = &definition.metrics;
     Json::Object(vec![
         ("id", string(&definition.id)),
+        ("text_hash", string(&definition.text_hash)),
         ("module", string(&definition.module)),
         ("name", string(&definition.name)),
         ("kind", string(definition.kind.name())),

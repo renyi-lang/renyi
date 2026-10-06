@@ -145,7 +145,8 @@ fn a_legacy_client_initializes_lists_and_calls() {
             "check",
             "format",
             "run",
-            "run_tests"
+            "run_tests",
+            "diff"
         ]
     );
     assert!(content(&messages[2]).starts_with("# Renyi Cheat Sheet"));
@@ -268,8 +269,9 @@ fn the_tools_answer_from_the_served_project() {
         call(6, "run", r#"{"path":"hello.ry","deny":["console"]}"#),
         call(7, "project_map", r#"{"json":true}"#),
         call(8, "definition", r#"{"name":"no_such_thing"}"#),
+        call(9, "diff", r#"{"base":"HEAD"}"#),
     ]);
-    assert_eq!(messages.len(), 8);
+    assert_eq!(messages.len(), 9);
     let lookup = content(&messages[0]);
     assert!(
         lookup.contains("std.http: public function get_with(url: Url, headers: Map of Text to Text) returns Response or fails with HttpError needs network.http"),

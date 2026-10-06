@@ -10,6 +10,7 @@
 //! error count.
 
 pub mod budgets;
+pub mod diff;
 mod drafts;
 mod edges;
 pub mod hash;
@@ -27,6 +28,7 @@ use renyi_syntax::{format, SourceFile, Span};
 use drafts::{Draft, Key};
 
 pub use budgets::{over_budget, Budgets};
+pub use diff::{diff, diff_json, render_diff, Bump, Change, Diff, Entry};
 pub use render::{definition_json, to_json, to_text};
 
 /// What a definition is.
@@ -52,6 +54,21 @@ impl Kind {
             Kind::Constant => "constant",
             Kind::Test => "test",
         }
+    }
+
+    /// The kind spelled by `name`, as the map's JSON spells it.
+    pub fn parse(name: &str) -> Option<Kind> {
+        [
+            Kind::Function,
+            Kind::Method,
+            Kind::Type,
+            Kind::Ability,
+            Kind::Implementation,
+            Kind::Constant,
+            Kind::Test,
+        ]
+        .into_iter()
+        .find(|kind| kind.name() == name)
     }
 }
 
@@ -80,6 +97,10 @@ pub struct Implements {
 pub struct Definition {
     /// `sha256:` and the content hash (section 3).
     pub id: String,
+    /// `sha256:` and the hash of the definition's own canonical text with
+    /// its name and its references blanked: unlike `id`, it does not change
+    /// when a dependency changes (section 6).
+    pub text_hash: String,
     pub module: String,
     /// The name inside the module: a function's name, `Type.method` for a
     /// method, `Ability for Target` for an implementation, `test:` and the
@@ -405,6 +426,7 @@ pub fn index_files(files: &[SourceFile], header: Header) -> Index {
         .map(|(draft, edges)| edges::hash_input(&canonical[draft.file], draft, edges))
         .collect();
     let ids = hash::hashes(&inputs, &header.toolchain);
+    let text_hashes: Vec<String> = inputs.iter().map(hash::own_text_hash).collect();
 
     let mut definitions = Vec::new();
     for (index, (draft, edges)) in drafts.iter().zip(&edges).enumerate() {
@@ -420,6 +442,7 @@ pub fn index_files(files: &[SourceFile], header: Header) -> Index {
             .collect();
         definitions.push(Definition {
             id: ids[index].clone(),
+            text_hash: text_hashes[index].clone(),
             module: world.modules[draft.module].name.clone(),
             name: draft.name.clone(),
             kind: draft.kind,

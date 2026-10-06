@@ -4,9 +4,10 @@ Status: design accepted (decisions O2 to O5). `renyi index` (sections 1 to
 4) is implemented in `crates/renyi_index` and measured on the corpus
 (section 5); `renyi index --budgets` reports the values over the thresholds
 of decision R7; `renyi mcp` (section 7) is implemented in
-`crates/renyi/src/mcp.rs` with every tool but `diff`; diffs are not yet
-implemented. Date: 2026-10-06. Companion to `01-decisions.md` (D5, D6, M8,
-O1 to O5, R7, T1 to T4).
+`crates/renyi/src/mcp.rs` with all ten tools; the diff (section 6) in
+`crates/renyi_index/src/diff.rs` behind `renyi index --diff`. Date:
+2026-10-06. Companion to `01-decisions.md` (D5, D6, M8, O1 to O5, R7, T1
+to T5).
 
 Renyi programs are written mostly by LLM agents (decision A3). An agent works
 inside a token budget and cannot hold a project in its context, so it needs
@@ -39,6 +40,7 @@ A definition record:
 | Field | Content |
 |-------|---------|
 | `id` | content hash of the definition (section 3) |
+| `text_hash` | hash of the definition's own canonical text with its name and its references blanked; unlike `id`, unchanged when a dependency changes (section 6) |
 | `module`, `name`, `kind` | dotted module name; the definition's name; `function`, `method`, `type`, `ability`, `implementation`, `constant`, `test` |
 | `public` | whether the definition is part of the module's API |
 | `signature` | the head and signature clauses in canonical form, one line |
@@ -136,6 +138,7 @@ components.
   "definitions": [
     {
       "id": "sha256:7b31...",
+      "text_hash": "sha256:a4e2...",
       "module": "invoice",
       "name": "total",
       "kind": "function",
@@ -214,14 +217,34 @@ nothing over budget, which a test of `renyi_index` keeps true.
 
 ## 6. Diffs
 
-`renyi index --diff <map or revision>` compares two maps (decision O4) and
-reports, per definition: added, removed, signature changed, effects changed
-(widened or narrowed, with the capabilities named), failure types changed,
-body changed (hash) with the public API unchanged, and for each change the
-callers it reaches, found by following `fan_in` edges. The version-bump rule
-of G1 reads this diff: a removed or changed public signature is a major
-bump, an added one a minor bump. An agent that changed a program checks the
-diff for "no effect widened" before it runs anything.
+`renyi index --diff <base> [--json] [path]` compares the project with a
+base (decision O4): a map file that `renyi index --json` wrote, or a git
+revision, whose files are read with `git show` and indexed afresh. It
+reports, per definition: added, removed, renamed (the same content hash
+under another name, decision D5), signature changed (the head and its
+clauses, so a changed `needs` or `or fails with` is a signature change),
+visibility changed, effects changed (widened or narrowed, with the
+capabilities named, on every definition whose transitive effects differ),
+failure types changed, and body changed with the signature unchanged; and
+for each entry the definitions the change reaches, found by following the
+`calls` and `uses` edges backwards to every transitive caller. The content
+hash alone cannot tell a changed body from a changed dependency, since both
+change it, so a record also carries `text_hash` (section 1): a body change
+is reported once, where the text changed, and the callers appear under what
+it reaches; a map without `text_hash` (an older toolchain's) falls back to
+the content hash (decision T5). The version-bump rule of G1 reads this
+diff: a public definition removed, its signature changed, made private or
+renamed is a major bump; a public definition added or made public a minor
+bump. An agent that changed a program checks the diff for "no effect
+widened" before it runs anything.
+
+The text form prints one line per changed definition (`name (public kind):
+changes; reaches ...`) and the bump; `--json` prints `{"old", "new"}` (the
+two headers), `"changes"` (one object per entry: `name`, `kind`, `public`,
+`changes` as `{"change": "added" | "removed" | "renamed" | "signature" |
+"visibility" | "effects" | "failures" | "body", ...}`, `reaches`) and
+`"bump"`. Implemented in `crates/renyi_index/src/diff.rs`; the base is
+loaded by `crates/renyi/src/maps.rs`.
 
 ## 7. The MCP server
 
@@ -240,7 +263,7 @@ and refreshes definitions whose content hash changed.
 | `check` | source text or a path | diagnostics as `renyi check --json` prints them |
 | `format` | source text | the canonical text, or the parse diagnostics |
 | `run`, `run_tests` | a path and arguments | the program's output or the test results (after M3) |
-| `diff` | a base map or revision | the semantic diff of section 6 (after M3) |
+| `diff` | a base map or revision, optional `json` | the semantic diff of section 6 |
 
 The first two tools answer the two causes of failure the readability
 pre-test found (library names invented, cheat-sheet rules missed) before
@@ -270,7 +293,9 @@ whenever a file of the served directory differs from the one the last map
 was built from (a file-level refresh; the per-definition refresh of
 section 3 is open item R5-5). A missing argument or a failing tool is a
 tool execution error (`isError`); an unknown tool or method is a protocol
-error. `diff` waits for `renyi index --diff`.
+error. `diff` takes `base` (a saved map file under the served directory,
+or a git revision) and a `json` switch and answers as `renyi index --diff`
+prints.
 
 ## 8. Order of work
 
@@ -280,10 +305,11 @@ error. `diff` waits for `renyi index --diff`.
    and `renyi_check::check_project` checks a project as a whole).
 2. M3 (the VM) under decision O1.
 3. `renyi mcp` with the first seven tools, then `run`, `run_tests` and
-   `diff` as M3 and `--diff` land. Done 2026-10-06 but for `diff`
-   (`crates/renyi/src/mcp.rs`, decisions T1 to T4).
+   `diff` as M3 and `--diff` land. Done 2026-10-06
+   (`crates/renyi/src/mcp.rs`, decisions T1 to T5).
 4. Budgets with corpus-derived thresholds (done 2026-10-05, decision R7:
-   `renyi index --budgets`); the diff; M4 reads budgets from the manifest.
+   `renyi index --budgets`); the diff (done 2026-10-06, decision T5); M4
+   reads budgets from the manifest.
 
 ## 9. Open items
 
