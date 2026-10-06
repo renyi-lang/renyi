@@ -566,3 +566,77 @@ end
         }
     );
 }
+
+#[test]
+fn a_recording_is_redacted() {
+    let dir = scratch("redact");
+    let source = format!(
+        r#"module demo
+  purpose: Keep a secret out of the recording.
+
+import std.console
+import std.environment
+import std.filesystem exposing Path, FileError
+
+public function main() or fails with FileError
+  needs console, environment("RENYI_DEMO_SECRET"), filesystem.write("{dir}")
+  purpose: Write the secret to a file and say so.
+
+  let secret be environment.get("RENYI_DEMO_SECRET") otherwise "none"
+  filesystem.write_text(path: Path("{dir}/token.txt"), content: "token {{secret}}") otherwise fail
+  console.print("written")
+end
+"#
+    );
+    let program = compile("demo.ry", &source);
+    // test data: a placeholder standing in for a real secret
+    std::env::set_var("RENYI_DEMO_SECRET", "dummy-value");
+    let streams = Streams {
+        stdout: Capture::default(),
+        stderr: Capture::default(),
+    };
+    let recorded = run(
+        &program,
+        Options {
+            record: true,
+            redact: vec!["RENYI_DEMO_SECRET".to_string(), "content".to_string()],
+            ..options(&streams)
+        },
+    );
+    assert_eq!(recorded.outcome, RunOutcome::Finished);
+    let recording = recorded.recording.expect("a recording");
+    let text = recording.render();
+    assert!(!text.contains("dummy-value"), "{text}");
+    assert_eq!(
+        recording.calls[0].outcome,
+        Outcome::Success(Json::Text("<redacted>".to_string()))
+    );
+    assert_eq!(
+        recording.calls[1].arguments[1],
+        ("content".to_string(), Json::Text("<redacted>".to_string()))
+    );
+    assert_eq!(
+        recording.calls[2].arguments[0],
+        ("text".to_string(), Json::Text("written".to_string()))
+    );
+    assert_eq!(
+        std::fs::read_to_string(format!("{dir}/token.txt")).unwrap(),
+        "token dummy-value"
+    );
+
+    // the placeholder answers the replayed variable and matches the write
+    std::env::remove_var("RENYI_DEMO_SECRET");
+    let streams = Streams {
+        stdout: Capture::default(),
+        stderr: Capture::default(),
+    };
+    let replayed = run(
+        &program,
+        Options {
+            replay: Some(recording),
+            ..options(&streams)
+        },
+    );
+    assert_eq!(replayed.outcome, RunOutcome::Finished);
+    assert!(replayed.unused.is_empty());
+}

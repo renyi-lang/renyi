@@ -8,11 +8,12 @@ section 11 of the syntax sketch against the grant stack of decision Q1
 (each function's `needs` narrow the grant inside it), all at one primitive
 boundary (`Vm::call_native`, section 4). Each recorded call also carries
 `at_ms`, its time since the run began, which a replay's budget check uses.
-The
-HTTP client, the server and SQLite exist (decision S1); `weather`,
-`currency_tool` and `concurrent_fetch` carry `replays` tests with their
-recordings under `examples/fixtures/`. Guards (section 3) are M4. Date:
-2026-10-06. Companion to `02-syntax-sketch.md` sections 11 and 14.
+The HTTP client, the server and SQLite exist (decision S1); every corpus
+program that reaches the network or SQLite carries a `replays` test with
+its recording under `examples/fixtures/` (`pagination` and `assistant`
+hand-written, the latter with a redacted header, decision S3). Guards
+(section 3) are M4. Date: 2026-10-06. Companion to `02-syntax-sketch.md`
+sections 11 and 14.
 
 The three capabilities in this document are the ones the owner chose as the
 language's signature: each is new as a language feature, each is practical
@@ -81,6 +82,12 @@ in the order the calls completed. It goes to `--to FILE`, by default
 - The recording names the grant, and a replay checks that the recording
   does not exceed the grant of the test or program it is replayed under.
 
+`renyi record --redact NAME` keeps a secret out of a recording: the
+argument, the map entry (a header) or the environment variable of that
+name is written as `<redacted>`, and a replay matches the placeholder
+against any value (decision S3). The `assistant` fixture of the corpus
+carries a redacted `Authorization` header.
+
 ### 1.2 Replaying in tests
 
 ```
@@ -144,12 +151,12 @@ replay and counting sit.
 
 ### 1.6 Open items
 
-- R6-1: the fixture format for binary bodies (base64 as in `Bytes`, or a
-  side file past a size).
+- R6-1: settled by decision S4: bodies stay inline as base64, no side
+  file.
 - R6-2: whether `--explain` narrates query clauses (`for each ... where ...`)
   as English sentences; cheap to do, possibly noisy.
-- R6-3: redaction: `renyi record --redact "Authorization"` replaces a header
-  or argument in the recording with a placeholder that the replay accepts.
+- R6-3: settled by decision S3: `renyi record --redact NAME` (section
+  1.1).
 
 ---
 

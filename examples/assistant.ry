@@ -68,3 +68,8 @@ public function main() or fails with AssistantError needs console, environment, 
     end
   console.print(answer)
 end
+
+test "the first answer is returned" needs network.http replays "fixtures/assistant.json"
+  let answer be ask(question: "What is Renyi?", api_key: "example-key") otherwise fail
+  check answer is "A programming language that reads as English."
+end

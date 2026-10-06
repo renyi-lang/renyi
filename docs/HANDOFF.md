@@ -3,8 +3,9 @@
 Last updated: 2026-10-06, session 6 (the VM: `renyi run` and `renyi test`;
 the primitive boundary: `renyi record`, `run --replay`, `--explain`,
 `replays` tests, budgets and scope checks; the HTTP client, the HTTP
-server and SQLite; the grant stack). Branch: `main` is the only branch
-(owner's decision, 2026-10-05); commit and push there directly.
+server and SQLite; the grant stack; recordings for every network and
+database program, `--redact`). Branch: `main` is the only branch (owner's
+decision, 2026-10-05); commit and push there directly.
 
 ## Where the project stands
 
@@ -19,15 +20,16 @@ of `01-decisions.md`;
 the agent tooling in `05-agent-tooling.md`, the signature capabilities in
 `06-runtime-guarantees.md`, the system-level commitments in
 `07-system-design.md`. The corpus has 30 programs, passes the lint, is in
-canonical layout, checks cleanly, has nothing over budget, and its 85
-`example:` lines and `test` blocks pass on the VM (three are `replays`
-tests answered from recordings under `examples/fixtures/`). The cheat sheet
+canonical layout, checks cleanly, has nothing over budget, and its 88
+`example:` lines and `test` blocks pass on the VM (six are `replays`
+tests answered from recordings under `examples/fixtures/`, two of them
+hand-written). The cheat sheet
 measures 2977 of 3000 tokens (unchanged this session). The Rust workspace
 has five crates: `renyi_syntax`, `renyi_check`, `renyi_index`, `renyi_vm`
 and the `renyi` binary with `check`, `format`, `tokens`, `parse [--json]`,
 `index [--json | --budgets]`, `run [options] <file> [arguments]`, `record
 [--to file] [options] <file> [arguments]`, `test [--strict] [--refresh
-name] [--explain] <file>...` and `version`; 126 tests, clippy and fmt clean
+name] [--explain] <file>...` and `version`; 128 tests, clippy and fmt clean
 on Windows. The VM depends on `ureq` (HTTP, with rustls) and `rusqlite`
 (SQLite compiled in), decision S1.
 
@@ -232,6 +234,18 @@ and R6 are unmeasured (round 2, below).
    helper declared `filesystem.read(".../data")` denied a file that
    `main` reads directly before and after the call, and the crash of a
    primitive that cannot fail naming the helper.
+9. **Recordings for the rest of the corpus and `--redact`** (fifth
+   commit): `pagination` and `assistant` carry hand-written fixtures (two
+   pages; one chat answer with the `Authorization` header redacted),
+   `inventory_db` a `replays` test that seeds its own table and was
+   recorded live with `--refresh` from a scratch directory (the database
+   file is not committed); every program that reaches the network or
+   SQLite now runs offline. `renyi record --redact NAME` (decision S3,
+   open item R6-3) replaces the argument, map entry or environment
+   variable of that name with `<redacted>` in the recording, and a replay
+   matches the placeholder against anything (`recording::redact`,
+   `arguments_match`); open item R6-1 is settled by decision S4 (bodies
+   stay inline as base64).
 
 ## Done in session 5 (condensed)
 
@@ -282,30 +296,23 @@ on a fresh clone).
 
 ## Next steps
 
-1. **The rest of M3**, in this order: (a) recordings for the programs that
-   still have none: `pagination` and `assistant` call the fictional host
-   `api.example.com` (and `assistant` sends `Authorization: Bearer` with
-   the key from `CHAT_API_KEY`), so either hand-write their fixtures in
-   the format of `06-runtime-guarantees.md` section 1.1 (redaction, R6-3,
-   becomes concrete there) or point them at real services first;
-   `inventory_db` opens `data/inventory.db`, which must be seeded before
-   `renyi test --refresh` can record it; (b) the run manifest and `renyi
+1. **The rest of M3**, in this order: (a) the run manifest and `renyi
    reproduce` of decision Q2 (`07-system-design.md` section 3: toolchain
    version, content hash of `main`'s closure, grant, arguments, the
    environment variables read with hashes of their values, the recording,
    the outcome; `reproduce` replays and compares the output byte for
-   byte), which the design places in M3; (c) decision L2: re-run the 182
-   judged Complete and Write samples of the live round and the 40 of the
-   pre-test on the VM and compare with the subagents' verdicts (the
-   `judgement.json` files hold the verdicts; the VM now decides `is` on
-   Decimals by value, R5); (d) open items R6-1 to R6-4 of
-   `06-runtime-guarantees.md` (binary bodies, query narration, redaction,
-   budgets as data), now that the network primitives make them concrete.
+   byte), which the design places in M3 and the owner chose as the next
+   step on 2026-10-06; (b) decision L2: re-run the 182 judged Complete and
+   Write samples of the live round and the 40 of the pre-test on the VM
+   and compare with the subagents' verdicts (the `judgement.json` files
+   hold the verdicts; the VM now decides `is` on Decimals by value, R5);
+   (c) open items R6-2 and R6-4 of `06-runtime-guarantees.md` (query
+   narration, budgets as data).
 2. **Readability round 2** on the revised cheat sheet, with gpt-5.5 at its
    default temperature as the fourth model (R8) and the R1 gating; the
    protocol reverts a change that lowers a passing rate by more than five
    points. The round costs API calls; the VM can replace the subagent
-   judges for Complete and Write once (c) above has shown it agrees with
+   judges for Complete and Write once (b) above has shown it agrees with
    them.
 3. **`renyi mcp`** (O5, `05-agent-tooling.md` section 7), then the semantic
    diff (O4), then M4 (provenance guards, package manager, budgets in the
@@ -341,7 +348,8 @@ on a fresh clone).
   the program's directory. The grant stack narrows scopes and nothing
   else: a capability kind a function does not declare passes through its
   frame, where only a function value it calls can use it; the static rule
-  keeps everything else out.
+  keeps everything else out. `--redact` works by name: a secret that
+  reaches another argument (a printed line, a URL) is recorded as it is.
 - **Network, server, SQLite.** The server is single-threaded and answers
   one request at a time, binds `0.0.0.0`, speaks plain HTTP/1.1 without
   TLS, reads a head of at most 64 KiB and a body of at most 16 MiB, and
@@ -351,8 +359,8 @@ on a fresh clone).
   sends ureq's own `User-Agent` (`ureq/<version>`). SQLite binds a
   `Decimal` parameter as text, so SQL that compares it with a REAL column
   compares text; the type mapping is exercised by `tests/network.rs`
-  against a real database but by no corpus program (`inventory_db` has no
-  recording). `renyi test --refresh` prints the fixture path with mixed
+  against a real database and by the `inventory_db` recording (its test
+  seeds its own table). `renyi test --refresh` prints the fixture path with mixed
   separators on Windows (`examples\fixtures/weather.json`): the relative
   name is joined onto the source directory as given.
 - **Checker.** First-generation (local inference, covariant type arguments,

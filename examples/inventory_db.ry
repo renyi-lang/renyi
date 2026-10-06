@@ -71,3 +71,18 @@ public function main() or fails with DbError or InventoryError needs console, fi
   end
   connection.close()
 end
+
+test "low stock is listed" needs filesystem replays "fixtures/inventory.json"
+  let connection be open_inventory(Path("data/inventory_test.db")) otherwise fail
+  let seed be """
+    INSERT OR REPLACE INTO items VALUES
+      ('NUT-10', 'Nut', 0, 5),
+      ('BOLT-10', 'Bolt', 2, 8)
+    """
+  ignore connection.execute(sql: seed, parameters: []) otherwise fail
+  record_delivery(connection: connection, sku: "BOLT-10", amount: 500) otherwise fail
+  let items be low_stock(connection) otherwise fail
+  connection.close()
+  let skus be for each item in items collect item.sku
+  check skus is ["NUT-10"]
+end

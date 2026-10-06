@@ -22,7 +22,7 @@ use crate::integer::Int;
 use crate::natives::json::{self, Json, Naming};
 use crate::natives::time::instant_text;
 use crate::natives::{self, NativeFn};
-use crate::recording::{clip, Call, Outcome, Recording, Replay};
+use crate::recording::{clip, redact, Call, Outcome, Recording, Replay};
 use crate::types::TypeShape;
 use crate::value::{take_list, take_map, Native, RangeValue, Value};
 
@@ -75,6 +75,9 @@ pub struct Options {
     /// `server.serve` returns after this many requests; for tests of a
     /// server, which otherwise runs until the process stops.
     pub serve_limit: Option<usize>,
+    /// Names whose values a recording replaces with a placeholder
+    /// (`renyi record --redact NAME`).
+    pub redact: Vec<String>,
 }
 
 impl Default for Options {
@@ -92,6 +95,7 @@ impl Default for Options {
             strict: false,
             refresh: None,
             serve_limit: None,
+            redact: Vec::new(),
         }
     }
 }
@@ -139,6 +143,7 @@ pub struct Vm<'p> {
     pub explain: bool,
     /// See `Options::serve_limit`.
     pub serve_limit: Option<usize>,
+    redact: Vec<String>,
     /// The context type of the next library call (`Op::ResultType`).
     expected: Option<Ty>,
     pub random_state: u64,
@@ -184,6 +189,7 @@ impl<'p> Vm<'p> {
             started: natives::now_millis(),
             explain: options.explain,
             serve_limit: options.serve_limit,
+            redact: options.redact,
             expected: None,
             random_state: seed,
         }
@@ -352,16 +358,18 @@ impl<'p> Vm<'p> {
         if self.recording.is_some() {
             let outcome = self.encode_outcome(&value)?;
             let primitive = self.qualified(function);
+            let mut call = Call {
+                sequence: 0,
+                capability: effect.spelling(),
+                primitive,
+                arguments,
+                outcome,
+                duration_ms: Some(duration_ms),
+                at_ms,
+            };
+            redact(&self.redact, &mut call);
             if let Some(recording) = &mut self.recording {
-                recording.push(Call {
-                    sequence: 0,
-                    capability: effect.spelling(),
-                    primitive,
-                    arguments,
-                    outcome,
-                    duration_ms: Some(duration_ms),
-                    at_ms,
-                });
+                recording.push(call);
             }
         }
         result

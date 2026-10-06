@@ -28,7 +28,7 @@ const USAGE: &str = "usage:
                                       check the program, then run its `main` (exit 1 when it fails, 2 on a crash)
   renyi record [--to <file.json>] [option...] <file.ry> [argument...]
                                       run `main` and write a recording of its effects (default: <name>.recording.json)
-  renyi test [--strict] [--refresh <name>] [--explain] <file.ry>...
+  renyi test [--strict] [--refresh <name> [--redact <name>]] [--explain] <file.ry>...
                                       run every `example:` line and `test` block (exit 1 when any fails)
   renyi version
 options of run and record:
@@ -39,7 +39,9 @@ options of run and record:
   --allow-read <path>                 narrow filesystem.read to a path prefix
   --allow-write <path>                narrow filesystem.write to a path prefix
   --at-most <capability>=<count>/<unit>
-                                      add a budget; the unit is second, minute, hour, day or run";
+                                      add a budget; the unit is second, minute, hour, day or run
+  --redact <name>                     record and test --refresh: replace the argument, header or
+                                      environment variable of that name with a placeholder";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -260,6 +262,7 @@ struct Flags {
     to: Option<String>,
     strict: bool,
     refresh: Option<String>,
+    redact: Vec<String>,
 }
 
 fn parse_flags(args: &[String]) -> Result<(Flags, &[String]), String> {
@@ -288,6 +291,7 @@ fn parse_flags(args: &[String]) -> Result<(Flags, &[String]), String> {
             "--replay" => flags.replay = Some(value()?.to_string()),
             "--to" => flags.to = Some(value()?.to_string()),
             "--refresh" => flags.refresh = Some(value()?.to_string()),
+            "--redact" => flags.redact.push(value()?.to_string()),
             "--deny" => flags.narrowing.deny.push(parse_capability(value()?)?),
             "--allow-host" => flags
                 .narrowing
@@ -377,6 +381,10 @@ fn run_command(args: &[String], record: bool) -> ExitCode {
         eprintln!("renyi: `record` cannot `--replay`; a recording comes from a live run");
         return ExitCode::FAILURE;
     }
+    if !record && !flags.redact.is_empty() {
+        eprintln!("renyi: `--redact` is an option of `renyi record` and `renyi test --refresh`");
+        return ExitCode::FAILURE;
+    }
     let program = match compile(path) {
         Ok(program) => program,
         Err(code) => return code,
@@ -410,6 +418,7 @@ fn run_command(args: &[String], record: bool) -> ExitCode {
         replay,
         revision: revision.filter(|text| text != "unknown"),
         explain: flags.explain,
+        redact: flags.redact,
         ..renyi_vm::Options::default()
     };
     let run = renyi_vm::run_program(&program, options);
@@ -481,7 +490,9 @@ fn test_command(args: &[String]) -> ExitCode {
         || !narrowing.allow.is_empty()
         || !narrowing.budgets.is_empty()
     {
-        eprintln!("renyi: `renyi test` takes only `--strict`, `--refresh <name>` and `--explain`");
+        eprintln!(
+            "renyi: `renyi test` takes only `--strict`, `--refresh <name>`, `--redact <name>` and `--explain`"
+        );
         return ExitCode::FAILURE;
     }
     let mut failed = false;
@@ -494,6 +505,7 @@ fn test_command(args: &[String]) -> ExitCode {
             explain: flags.explain,
             strict: flags.strict,
             refresh: flags.refresh.clone(),
+            redact: flags.redact.clone(),
             ..renyi_vm::Options::default()
         };
         let report = renyi_vm::run_tests(&program, options);

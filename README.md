@@ -62,14 +62,15 @@ checker (M2), the project map (`renyi index`) and the first slice of the VM
   narrowed by `--deny`, `--allow-host`, `--allow-read`, `--allow-write`
   and `--at-most`, and inside each function by that function's own
   `needs` (the grant stack of decision Q1); `renyi record` writes a
-  recording of every effect of a
-  run, `renyi run --replay` re-executes one offline, and `--explain`
+  recording of every effect of a run (`--redact` keeps a secret out of
+  it), `renyi run --replay` re-executes one offline, and `--explain`
   narrates a run through the `purpose:` clauses it passes; `renyi test`
   runs every `example:` line and `test` block, a `replays` test from its
   recording (`--strict`, `--refresh`). Every example checks cleanly, is in
-  canonical form, and its examples and tests pass, the three that reach
-  the network from recordings under `examples/fixtures/`; the ten programs
-  with a reference output print it. The VM covers the whole library: the
+  canonical form, and its examples and tests pass, the five that reach
+  the network and the one on SQLite from recordings under
+  `examples/fixtures/`; the ten programs with a reference output print
+  it. The VM covers the whole library: the
   prelude, console, environment, time, random, filesystem, JSON, CSV,
   regular expressions, the HTTP client (`ureq`), the HTTP server (over
   `std::net`) and SQLite (`rusqlite`, compiled in); `run concurrently`

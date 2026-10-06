@@ -258,6 +258,67 @@ pub fn clip(text: &str, width: usize) -> String {
     out
 }
 
+/// What a redacted value becomes in a recording (`renyi record --redact
+/// NAME`, decision S3); a replay matches it against anything.
+pub const REDACTED: &str = "<redacted>";
+
+/// Redact a call before it is recorded: an argument with one of the
+/// names, an entry with one of the names (ignoring case) inside a map
+/// argument such as a header list, and the value of an environment
+/// variable with one of the names.
+pub fn redact(names: &[String], call: &mut Call) {
+    if names.is_empty() {
+        return;
+    }
+    let placeholder = || Json::Text(REDACTED.to_string());
+    for (name, value) in &mut call.arguments {
+        if names.contains(name) {
+            *value = placeholder();
+        } else if let Json::Object(entries) = value {
+            for (key, entry) in entries {
+                if names.iter().any(|name| name.eq_ignore_ascii_case(key)) {
+                    *entry = placeholder();
+                }
+            }
+        }
+    }
+    if call.primitive == "std.environment.get" {
+        let variable = match call.arguments.first() {
+            Some((_, Json::Text(text))) => text.as_str(),
+            _ => "",
+        };
+        if names.iter().any(|name| name == variable) {
+            if let Outcome::Success(json) = &mut call.outcome {
+                if *json != Json::Null {
+                    *json = placeholder();
+                }
+            }
+        }
+    }
+}
+
+/// Whether recorded arguments answer actual ones: the same names in the
+/// same order, each value equal or redacted in the recording, wherever
+/// the placeholder sits.
+fn arguments_match(recorded: &[(String, Json)], actual: &[(String, Json)]) -> bool {
+    recorded.len() == actual.len()
+        && recorded
+            .iter()
+            .zip(actual)
+            .all(|((a, va), (b, vb))| a == b && json_matches(va, vb))
+}
+
+fn json_matches(recorded: &Json, actual: &Json) -> bool {
+    match (recorded, actual) {
+        (Json::Text(text), _) if text == REDACTED => true,
+        (Json::Object(a), Json::Object(b)) => arguments_match(a, b),
+        (Json::Array(a), Json::Array(b)) => {
+            a.len() == b.len() && a.iter().zip(b).all(|(va, vb)| json_matches(va, vb))
+        }
+        _ => recorded == actual,
+    }
+}
+
 /// A replay: the recorded calls, each used at most once, matched by
 /// primitive and arguments first and by sequence only among identical
 /// entries (section 1.1 of the design).
@@ -281,7 +342,9 @@ impl Replay {
             .iter()
             .enumerate()
             .find(|(index, call)| {
-                !self.used[*index] && call.primitive == primitive && call.arguments == arguments
+                !self.used[*index]
+                    && call.primitive == primitive
+                    && arguments_match(&call.arguments, arguments)
             })
             .map(|(index, _)| index);
         match found {
@@ -339,6 +402,67 @@ mod tests {
             duration_ms: Some(1),
             at_ms: 5,
         }
+    }
+
+    #[test]
+    fn redacted_values_are_placeholders_that_match_anything() {
+        let names = vec!["Authorization".to_string(), "KEY".to_string()];
+        let mut post = Call {
+            sequence: 0,
+            capability: "network.http(\"h\")".to_string(),
+            primitive: "std.http.post".to_string(),
+            arguments: vec![
+                ("url".to_string(), Json::Text("https://h/".to_string())),
+                ("body".to_string(), Json::Text("{}".to_string())),
+                (
+                    "headers".to_string(),
+                    Json::Object(vec![(
+                        "authorization".to_string(),
+                        Json::Text("Bearer dummy".to_string()),
+                    )]),
+                ),
+            ],
+            outcome: Outcome::Success(Json::Null),
+            duration_ms: None,
+            at_ms: 0,
+        };
+        redact(&names, &mut post);
+        assert_eq!(
+            post.arguments[2].1,
+            Json::Object(vec![(
+                "authorization".to_string(),
+                Json::Text(REDACTED.to_string())
+            )])
+        );
+        assert_eq!(post.arguments[1].1, Json::Text("{}".to_string()));
+        let mut get = Call {
+            primitive: "std.environment.get".to_string(),
+            arguments: vec![("name".to_string(), Json::Text("KEY".to_string()))],
+            outcome: Outcome::Success(Json::Text("dummy".to_string())),
+            ..post.clone()
+        };
+        redact(&names, &mut get);
+        assert_eq!(
+            get.outcome,
+            Outcome::Success(Json::Text(REDACTED.to_string()))
+        );
+        assert_eq!(get.arguments[0].1, Json::Text("KEY".to_string()));
+
+        let mut recording = Recording::new("demo", None, String::new(), Vec::new());
+        recording.push(post);
+        let mut replay = Replay::new(recording);
+        let actual = vec![
+            ("url".to_string(), Json::Text("https://h/".to_string())),
+            ("body".to_string(), Json::Text("{}".to_string())),
+            (
+                "headers".to_string(),
+                Json::Object(vec![(
+                    "authorization".to_string(),
+                    Json::Text("Bearer other".to_string()),
+                )]),
+            ),
+        ];
+        assert_eq!(replay.take("std.http.post", &actual), Ok(0));
     }
 
     #[test]

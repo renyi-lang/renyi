@@ -968,3 +968,19 @@ unobservable except through time, and values stay single-threaded
 reference counts (O1). Overlapping I/O waits (green threads on one OS
 thread) is a later runtime improvement, not a language change; a thread
 per task was declined because values would have to cross threads. (user)
+
+**S3. Redaction by name.** `renyi record --redact NAME` (also `renyi test
+--refresh`) replaces, in the recording, the value of an argument named
+NAME, of an entry named NAME (ignoring case) inside a map argument such as
+a header list, and of the environment variable NAME as `environment.get`
+returns it, with the placeholder `<redacted>`; a replay matches the
+placeholder against any value, so a recording made with a real key replays
+with any key. Redaction is by name, not by data flow: a secret that
+reaches another argument is recorded as it is (provenance guards, P3, are
+the data-flow mechanism). Settles open item R6-3. (user)
+
+**S4. Response bodies stay inline.** A recorded HTTP response keeps both
+its text (`body`) and its bytes (`bytes`, base64) in the recording, with
+no size limit and no side file; the corpus fixtures are small, and a
+side-file format can be added when a recording needs one. Settles open
+item R6-1. (user)
