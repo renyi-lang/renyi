@@ -8,8 +8,9 @@
 //! environment, time, random, filesystem, JSON, CSV, regular expressions,
 //! the HTTP client, the HTTP server and SQLite (decision S1). Every
 //! primitive call under a capability passes one boundary
-//! (`Vm::call_native`), where the grant and its budgets are checked and
-//! where a run is recorded, replayed or narrated (decisions P1 and P2).
+//! (`Vm::call_native`), where the effective grant of the call chain
+//! (decision Q1) and the budgets are checked and where a run is recorded,
+//! replayed or narrated (decisions P1 and P2).
 //! `run concurrently` and `concurrently` queries run their tasks one after
 //! the other (decision S2).
 

@@ -4,9 +4,11 @@ Status: design accepted (decisions P1 to P4); syntax in the grammar. The
 VM (`crates/renyi_vm`) implements sections 1 and 2: `renyi record`,
 `renyi run --replay`, `--explain`, `replays` tests with `renyi test
 --strict` and `--refresh`, budgets with `--at-most`, and the scope check of
-section 11 of the syntax sketch, all at one primitive boundary
-(`Vm::call_native`, section 4). Each recorded call also carries `at_ms`,
-its time since the run began, which a replay's budget check uses. The
+section 11 of the syntax sketch against the grant stack of decision Q1
+(each function's `needs` narrow the grant inside it), all at one primitive
+boundary (`Vm::call_native`, section 4). Each recorded call also carries
+`at_ms`, its time since the run began, which a replay's budget check uses.
+The
 HTTP client, the server and SQLite exist (decision S1); `weather`,
 `currency_tool` and `concurrent_fetch` carry `replays` tests with their
 recordings under `examples/fixtures/`. Guards (section 3) are M4. Date:

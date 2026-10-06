@@ -96,6 +96,9 @@ impl Default for Options {
     }
 }
 
+/// A grant shared by the frames it is in force for.
+pub type SharedGrant = Rc<Vec<Capability>>;
+
 struct Frame {
     code: CodeId,
     pc: usize,
@@ -103,6 +106,8 @@ struct Frame {
     base: usize,
     /// Open handled regions: the target and the stack height to unwind to.
     handlers: Vec<(usize, usize)>,
+    /// The effective grant of the function running here (decision Q1).
+    grant: SharedGrant,
 }
 
 pub struct Vm<'p> {
@@ -116,7 +121,11 @@ pub struct Vm<'p> {
     pub stdin: Box<dyn BufRead>,
     pub arguments: Vec<String>,
     /// The effective grant of the run, set by `begin_run`.
-    pub grant: Vec<Capability>,
+    pub grant: SharedGrant,
+    /// Per function, the enclosing grant its `needs` last narrowed and the
+    /// result, so that a function called again from the same context does
+    /// not intersect again.
+    frame_grants: Vec<Option<(SharedGrant, SharedGrant)>>,
     narrowing: Narrowing,
     counters: Vec<Counter>,
     /// Whether `begin_run` starts a recording.
@@ -163,7 +172,8 @@ impl<'p> Vm<'p> {
             stderr: options.stderr,
             stdin: options.stdin,
             arguments: options.arguments,
-            grant: Vec::new(),
+            grant: Rc::new(Vec::new()),
+            frame_grants: vec![None; program.function_metas.len()],
             narrowing: options.narrowing,
             counters: Vec::new(),
             record: options.record,
@@ -186,7 +196,8 @@ impl<'p> Vm<'p> {
     /// the replay the options carried, checked against the grant.
     pub fn begin_run(&mut self, declared: &[Capability], program_name: &str) -> Result<(), String> {
         let grant = grant::effective(declared, &self.narrowing);
-        self.grant = grant.capabilities;
+        self.grant = Rc::new(grant.capabilities);
+        self.frame_grants.iter_mut().for_each(|slot| *slot = None);
         self.counters = grant.counters;
         self.started = natives::now_millis();
         self.replay = None;
@@ -215,7 +226,7 @@ impl<'p> Vm<'p> {
                     "the recording's call #{} uses {}, which the grant {} does not cover",
                     call.sequence,
                     call.capability,
-                    self.grant_text()
+                    grant_text(&self.grant)
                 ));
             }
         }
@@ -240,15 +251,49 @@ impl<'p> Vm<'p> {
         self.recording.take()
     }
 
-    fn grant_text(&self) -> String {
-        if self.grant.is_empty() {
-            return "(nothing)".to_string();
+    /// The grant in force where the next primitive call happens: the
+    /// innermost frame's, or the run's before any frame.
+    pub fn effective_grant(&self) -> &[Capability] {
+        match self.frames.last() {
+            Some(frame) => frame.grant.as_slice(),
+            None => self.grant.as_slice(),
         }
-        self.grant
-            .iter()
-            .map(grant::spell)
-            .collect::<Vec<_>>()
-            .join(", ")
+    }
+
+    /// The grant of a new frame: the enclosing one, narrowed by the `needs`
+    /// of the function the code belongs to (decision Q1), remembered per
+    /// function while the enclosing grant stays the same.
+    fn frame_grant(&mut self, code: CodeId) -> SharedGrant {
+        let enclosing = match self.frames.last() {
+            Some(frame) => frame.grant.clone(),
+            None => self.grant.clone(),
+        };
+        let program = self.program;
+        let Some(function) = program.codes[code].function else {
+            return enclosing;
+        };
+        let needs = &program.function_metas[function].needs;
+        if needs.is_empty() {
+            return enclosing;
+        }
+        if let Some((parent, narrowed)) = &self.frame_grants[function] {
+            if Rc::ptr_eq(parent, &enclosing) {
+                return narrowed.clone();
+            }
+        }
+        let narrowed = Rc::new(grant::within(&enclosing, needs));
+        self.frame_grants[function] = Some((enclosing, narrowed.clone()));
+        narrowed
+    }
+
+    /// The innermost running function whose `needs` narrowed the grant,
+    /// named in a denial.
+    fn grant_owner(&self) -> Option<String> {
+        let program = self.program;
+        self.frames.iter().rev().find_map(|frame| {
+            let function = program.codes[frame.code].function?;
+            (!program.function_metas[function].needs.is_empty()).then(|| self.label(function))
+        })
     }
 
     fn unavailable(&self, function: FunctionId) -> Interrupt {
@@ -272,7 +317,7 @@ impl<'p> Vm<'p> {
                 None => Err(self.unavailable(function)),
             };
         };
-        if !effects::covered(&self.grant, &effect, true) {
+        if !effects::covered(self.effective_grant(), &effect, true) {
             self.expected = None;
             return self.denied(function, &effect);
         }
@@ -358,10 +403,13 @@ impl<'p> Vm<'p> {
                 self.fail_variant("std.http", "HttpError", "HostNotAllowed", vec![scope])
             }
             _ => Err(Interrupt::crash(format!(
-                "`{}` needs {}, which the grant {} does not allow",
+                "`{}` needs {}, which the grant {}{} does not allow",
                 self.qualified(function),
                 effect.spelling(),
-                self.grant_text()
+                grant_text(self.effective_grant()),
+                self.grant_owner()
+                    .map(|owner| format!(" of `{owner}`"))
+                    .unwrap_or_default()
             ))),
         }
     }
@@ -657,6 +705,7 @@ impl<'p> Vm<'p> {
     }
 
     fn push_frame(&mut self, code: CodeId, args: Vec<Value>) {
+        let grant = self.frame_grant(code);
         let base = self.stack.len();
         let locals = self.program.codes[code].locals as usize;
         self.stack.extend(args);
@@ -668,6 +717,7 @@ impl<'p> Vm<'p> {
             pc: 0,
             base,
             handlers: Vec::new(),
+            grant,
         });
         if self.explain {
             self.narrate_entry(code, base);
@@ -1522,6 +1572,18 @@ impl<'p> Vm<'p> {
             None => Ok(()),
         }
     }
+}
+
+/// A grant spelled for a message.
+fn grant_text(grant: &[Capability]) -> String {
+    if grant.is_empty() {
+        return "(nothing)".to_string();
+    }
+    grant
+        .iter()
+        .map(grant::spell)
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 /// A native value in a recording: a connection by its path, the rest by

@@ -262,6 +262,60 @@ fn intersect(path: &[String], a: Option<&str>, b: Option<&str>) -> Option<Option
     }
 }
 
+/// The grant inside a function that declares `needs` (decision Q1, the
+/// grant stack): a granted capability on a line the needs mention takes the
+/// scope that both allow; one on a line the needs do not mention passes
+/// through unchanged, since the function reaches it only through a function
+/// value whose effects its caller covered; an ancestor of a need is split
+/// into its children first.
+pub fn within(enclosing: &[Capability], needs: &[Capability]) -> Vec<Capability> {
+    let needs: Vec<Capability> = needs.iter().map(normalised).collect();
+    let mut result: Vec<Capability> = Vec::new();
+    for granted in enclosing {
+        for capability in restrict(granted.clone(), &needs) {
+            if !result.contains(&capability) {
+                result.push(capability);
+            }
+        }
+    }
+    result
+}
+
+fn restrict(granted: Capability, needs: &[Capability]) -> Vec<Capability> {
+    let related: Vec<&Capability> = needs
+        .iter()
+        .filter(|need| on_one_line(&granted.path, &need.path))
+        .collect();
+    if related.is_empty() {
+        return vec![granted];
+    }
+    if related
+        .iter()
+        .any(|need| need.path.len() > granted.path.len())
+    {
+        return children(&granted)
+            .into_iter()
+            .flat_map(|child| restrict(child, needs))
+            .collect();
+    }
+    related
+        .iter()
+        .filter_map(|need| {
+            intersect(
+                &granted.path,
+                granted.scope.as_deref(),
+                need.scope.as_deref(),
+            )
+            .map(|scope| Capability {
+                path: granted.path.clone(),
+                scope,
+                budget: None,
+                only_to: Vec::new(),
+            })
+        })
+        .collect()
+}
+
 /// The capability spelled with its budget: `network.http("host") at most
 /// 60 per minute`.
 pub fn spell(capability: &Capability) -> String {
@@ -458,6 +512,39 @@ mod tests {
         window.note(0);
         assert!(!window.fits(500));
         assert!(window.fits(1_000));
+    }
+
+    #[test]
+    fn a_function_narrows_the_lines_it_declares() {
+        let grant = effective(
+            &[
+                cap("console"),
+                cap("filesystem"),
+                cap("network.http(\"a.example\")"),
+            ],
+            &Narrowing::default(),
+        );
+        let inner = within(
+            &grant.capabilities,
+            &[cap("filesystem.read(\"data\")"), cap("network.http")],
+        );
+        let spelled: Vec<String> = inner.iter().map(spell).collect();
+        assert_eq!(
+            spelled,
+            [
+                "console",
+                "filesystem.read(\"data\")",
+                "filesystem.write",
+                "network.http(\"a.example\")"
+            ]
+        );
+        // a scope the enclosing grant excludes leaves nothing on its line
+        let inner = within(&inner, &[cap("filesystem.read(\"elsewhere\")")]);
+        let spelled: Vec<String> = inner.iter().map(spell).collect();
+        assert_eq!(
+            spelled,
+            ["console", "filesystem.write", "network.http(\"a.example\")"]
+        );
     }
 
     #[test]

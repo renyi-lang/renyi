@@ -2,9 +2,9 @@
 
 Last updated: 2026-10-06, session 6 (the VM: `renyi run` and `renyi test`;
 the primitive boundary: `renyi record`, `run --replay`, `--explain`,
-`replays` tests, budgets and scope checks; then the HTTP client, the HTTP
-server and SQLite). Branch: `main` is the only branch (owner's decision,
-2026-10-05); commit and push there directly.
+`replays` tests, budgets and scope checks; the HTTP client, the HTTP
+server and SQLite; the grant stack). Branch: `main` is the only branch
+(owner's decision, 2026-10-05); commit and push there directly.
 
 ## Where the project stands
 
@@ -12,9 +12,10 @@ Milestones M0 (design), M1 (front end) and M2 (type and effect checker) are
 done; the project map (`renyi index`, decision O2) exists with its budget
 report (`--budgets`, decisions O3 and R7); M3 (the VM) runs programs with
 every module of the standard library and implements decisions P1 and P2
-(recorded runs, budgets) at its primitive boundary; what M3 still lacks is
-the grant stack of decision Q1 (tasks run one after the other by decision
-S2). Design decisions are in sections 0 to S of `01-decisions.md`;
+(recorded runs, budgets, the grant stack of Q1) at its primitive boundary;
+what M3 still lacks is the run manifest of decision Q2 (tasks run one
+after the other by decision S2). Design decisions are in sections 0 to S
+of `01-decisions.md`;
 the agent tooling in `05-agent-tooling.md`, the signature capabilities in
 `06-runtime-guarantees.md`, the system-level commitments in
 `07-system-design.md`. The corpus has 30 programs, passes the lint, is in
@@ -26,7 +27,7 @@ has five crates: `renyi_syntax`, `renyi_check`, `renyi_index`, `renyi_vm`
 and the `renyi` binary with `check`, `format`, `tokens`, `parse [--json]`,
 `index [--json | --budgets]`, `run [options] <file> [arguments]`, `record
 [--to file] [options] <file> [arguments]`, `test [--strict] [--refresh
-name] [--explain] <file>...` and `version`; 124 tests, clippy and fmt clean
+name] [--explain] <file>...` and `version`; 126 tests, clippy and fmt clean
 on Windows. The VM depends on `ureq` (HTTP, with rustls) and `rusqlite`
 (SQLite compiled in), decision S1.
 
@@ -134,13 +135,27 @@ and R6 are unmeasured (round 2, below).
   `--explain` narrates on stderr: `Purpose. (module.name, param: value)`
   on entry, `-> value` on exit, and each effect as `console "text"` or
   `capability name(args) -> result[, N ms]`, indented by call depth.
-- **Not yet.** The grant is the program's or the test's: the grant stack of
-  decision Q1 (intersection along the call chain) is not built, so a
-  function's own narrower `needs` scope is checked by the checker only.
-  `run concurrently` and `concurrently` queries run their tasks one after
-  the other by decision S2 (`within` sets a deadline that is checked
-  between statements or items and fails with `TimedOut`); green threads
-  would be an improvement within that decision, not a reversal.
+- **The grant stack** (decision Q1; `grant::within`, `Vm::frame_grant`).
+  Every frame carries its effective grant: the enclosing frame's (the
+  run's for `main` and for a test body), narrowed by the `needs` of the
+  function the frame runs. On a line the needs mention, a granted
+  capability takes the scope both allow (`filesystem.read("work")` inside
+  a function declared `filesystem.read("work/data")` becomes the latter;
+  a parent such as `filesystem` is split into its children first); a line
+  the needs do not mention passes through, since the function can reach
+  it only through a function value whose effects its caller covered (the
+  sketch: effects of a function-typed parameter flow to the call site).
+  `call_native` and the redirect check of `std.http` test the innermost
+  frame's grant; a denial that crashes names the function whose `needs`
+  narrowed the grant. The narrowed grant is remembered per function while
+  the enclosing grant is the same `Rc`, so a function called in a loop
+  intersects once (open item R7-4). Budgets stay the run's.
+- **Not yet.** `run concurrently` and `concurrently` queries run their
+  tasks one after the other by decision S2 (`within` sets a deadline that
+  is checked between statements or items and fails with `TimedOut`);
+  green threads would be an improvement within that decision, not a
+  reversal. The run manifest and `renyi reproduce` of decision Q2 are not
+  built.
 
 ## Done in session 6
 
@@ -212,6 +227,11 @@ and R6 are unmeasured (round 2, below).
    capability that takes none. `examples/README.md`, `README.md`,
    `CLAUDE.md`, the status line of `06-runtime-guarantees.md` and the
    crate doc of `renyi_vm` say so.
+8. **The grant stack** (fourth commit): `grant::within` and
+   `Vm::frame_grant` as described above; `tests/recording.rs` shows a
+   helper declared `filesystem.read(".../data")` denied a file that
+   `main` reads directly before and after the call, and the crash of a
+   primitive that cannot fail naming the helper.
 
 ## Done in session 5 (condensed)
 
@@ -262,17 +282,19 @@ on a fresh clone).
 
 ## Next steps
 
-1. **The rest of M3**, in this order: (a) the grant stack of decision Q1:
-   intersect the run's grant with the `needs` scopes along the call chain,
-   so that a function declared `needs filesystem.read("data")` cannot read
-   elsewhere even when `main` may; (b) recordings for the programs that
+1. **The rest of M3**, in this order: (a) recordings for the programs that
    still have none: `pagination` and `assistant` call the fictional host
    `api.example.com` (and `assistant` sends `Authorization: Bearer` with
    the key from `CHAT_API_KEY`), so either hand-write their fixtures in
    the format of `06-runtime-guarantees.md` section 1.1 (redaction, R6-3,
    becomes concrete there) or point them at real services first;
    `inventory_db` opens `data/inventory.db`, which must be seeded before
-   `renyi test --refresh` can record it; (c) decision L2: re-run the 182
+   `renyi test --refresh` can record it; (b) the run manifest and `renyi
+   reproduce` of decision Q2 (`07-system-design.md` section 3: toolchain
+   version, content hash of `main`'s closure, grant, arguments, the
+   environment variables read with hashes of their values, the recording,
+   the outcome; `reproduce` replays and compares the output byte for
+   byte), which the design places in M3; (c) decision L2: re-run the 182
    judged Complete and Write samples of the live round and the 40 of the
    pre-test on the VM and compare with the subagents' verdicts (the
    `judgement.json` files hold the verdicts; the VM now decides `is` on
@@ -316,7 +338,10 @@ on a fresh clone).
   replayed `--explain` shows no durations. `renyi record` of a program
   that reads stdin records the lines read (`console.read_line`), as
   designed. The recording's `revision` is `git rev-parse --short HEAD` of
-  the program's directory.
+  the program's directory. The grant stack narrows scopes and nothing
+  else: a capability kind a function does not declare passes through its
+  frame, where only a function value it calls can use it; the static rule
+  keeps everything else out.
 - **Network, server, SQLite.** The server is single-threaded and answers
   one request at a time, binds `0.0.0.0`, speaks plain HTTP/1.1 without
   TLS, reads a head of at most 64 KiB and a body of at most 16 MiB, and

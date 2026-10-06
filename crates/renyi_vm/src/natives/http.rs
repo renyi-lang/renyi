@@ -120,7 +120,7 @@ fn perform(
                 budget: None,
                 only_to: Vec::new(),
             };
-            if !effects::covered(&vm.grant, &needed, true) {
+            if !effects::covered(vm.effective_grant(), &needed, true) {
                 return error(vm, "HostNotAllowed", vec![Value::text(host)]);
             }
         }

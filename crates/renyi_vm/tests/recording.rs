@@ -504,3 +504,65 @@ end
         .collect();
     assert_eq!(narrated, expected);
 }
+
+#[test]
+fn the_grant_narrows_along_the_call_chain() {
+    let dir = scratch("stack");
+    let source = format!(
+        r#"module demo
+  purpose: A helper declared for one directory cannot read outside it.
+
+import std.console
+import std.filesystem exposing Path, FileError
+
+function show(path: Path) needs console, filesystem.read("{dir}/data")
+  purpose: Print the file or the error.
+
+  match filesystem.read_text(path)
+    when success(text) then console.print(text)
+    when failure(error) then console.print(error.to_text())
+  end
+end
+
+function present(path: Path) returns Boolean needs filesystem.read("{dir}/data")
+  purpose: Whether the file exists.
+
+  return filesystem.exists(path)
+end
+
+public function main() needs console, filesystem.read("{dir}")
+  purpose: Read through the helper, then directly, then crash in the helper.
+
+  show(Path("{dir}/data/greeting.txt"))
+  show(Path("{dir}/data/../other.txt"))
+  match filesystem.read_text(Path("{dir}/other.txt"))
+    when success(text) then console.print(text)
+    when failure(error) then console.print(error.to_text())
+  end
+  let there be present(Path("{dir}/other.txt"))
+  console.print("{{there}}")
+end
+"#
+    );
+    let program = compile("demo.ry", &source);
+    let streams = Streams {
+        stdout: Capture::default(),
+        stderr: Capture::default(),
+    };
+    let outcome = run(&program, options(&streams)).outcome;
+    // `main` may read `other.txt`; `show`, declared for `data`, may not
+    assert_eq!(
+        streams.stdout.text(),
+        format!("hello\nPermissionDenied(path: \"{dir}/other.txt\")\nsecret\n")
+    );
+    // a primitive that cannot fail crashes, naming the narrowing function
+    assert_eq!(
+        outcome,
+        RunOutcome::Crashed {
+            message: format!(
+                "`std.filesystem.exists` needs filesystem.read(\"{dir}/other.txt\"), which the grant console, filesystem.read(\"{dir}/data\") of `demo.present` does not allow"
+            ),
+            location: Some("demo.ry:19".to_string()),
+        }
+    );
+}

@@ -9,9 +9,10 @@ under `docs/design/` in order.
 Renyi is a programming language. Its design (M0) is complete; the Rust front
 end (M1: lexer, parser, formatter), the type and effect checker (M2) and
 the VM (M3: `renyi run`, `record`, `run --replay`, `--explain`, `test` with
-`replays`, budgets and scope checks, every library module including HTTP,
-the server and SQLite; tasks run one after the other by decision S2)
-exist. The owner (GitHub `skymanbp`) makes design decisions and reviews;
+`replays`, budgets, scope checks and the grant stack of decision Q1, every
+library module including HTTP, the server and SQLite; tasks run one after
+the other by decision S2) exist. The owner (GitHub `skymanbp`) makes
+design decisions and reviews;
 Claude writes the documents, the example corpus and the Rust
 implementation.
 

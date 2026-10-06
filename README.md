@@ -60,7 +60,9 @@ checker (M2), the project map (`renyi index`) and the first slice of the VM
   failures, edges, metrics and content hash; `renyi run` checks a program
   and runs its `main` on the bytecode VM under the grant `main` declares,
   narrowed by `--deny`, `--allow-host`, `--allow-read`, `--allow-write`
-  and `--at-most`; `renyi record` writes a recording of every effect of a
+  and `--at-most`, and inside each function by that function's own
+  `needs` (the grant stack of decision Q1); `renyi record` writes a
+  recording of every effect of a
   run, `renyi run --replay` re-executes one offline, and `--explain`
   narrates a run through the `purpose:` clauses it passes; `renyi test`
   runs every `example:` line and `test` block, a `replays` test from its
@@ -87,8 +89,8 @@ cargo build
 cargo test
 ```
 
-Next: the grant stack along the call chain, then the MCP server and the
-semantic diff.
+Next: the run manifest and `renyi reproduce` (decision Q2), then the MCP
+server and the semantic diff.
 
 ## Working on this repository
 
