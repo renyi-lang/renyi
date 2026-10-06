@@ -327,17 +327,18 @@ on a fresh clone).
 
 ## Next steps
 
-1. **After M3**, in this order: (a) decision L2: re-run the 182 judged
-   Complete and Write samples of the live round and the 40 of the pre-test
-   on the VM and compare with the subagents' verdicts (the `judgement.json`
-   files hold the verdicts; the VM now decides `is` on Decimals by value,
-   R5); (b) open items R6-2 and R6-4 of `06-runtime-guarantees.md` (query
-   narration, budgets as data).
+1. **After M3**: decision L2: re-run the 182 judged Complete and Write
+   samples of the live round and the 40 of the pre-test on the VM and
+   compare with the subagents' verdicts (the `judgement.json` files hold
+   the verdicts; the VM now decides `is` on Decimals by value, R5). The
+   owner chose this order on 2026-10-06: L2, then readability round 2,
+   then `renyi mcp`. Open items R6-2 and R6-4 are closed (decisions S6
+   and S7).
 2. **Readability round 2** on the revised cheat sheet, with gpt-5.5 at its
    default temperature as the fourth model (R8) and the R1 gating; the
    protocol reverts a change that lowers a passing rate by more than five
    points. The round costs API calls; the VM can replace the subagent
-   judges for Complete and Write once (a) above has shown it agrees with
+   judges for Complete and Write once step 1 has shown it agrees with
    them.
 3. **`renyi mcp`** (O5, `05-agent-tooling.md` section 7), then the semantic
    diff (O4), then M4 (provenance guards, package manager, budgets in the

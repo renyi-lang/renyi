@@ -171,8 +171,8 @@ replay and counting sit.
 
 - R6-1: settled by decision S4: bodies stay inline as base64, no side
   file.
-- R6-2: whether `--explain` narrates query clauses (`for each ... where ...`)
-  as English sentences; cheap to do, possibly noisy.
+- R6-2: settled by decision S6: `--explain` does not narrate query
+  clauses; a function's narrated result shows what its queries produced.
 - R6-3: settled by decision S3: `renyi record --redact NAME` (section
   1.1).
 
@@ -208,8 +208,8 @@ way to get a key banned or a bill run up; a budget in the signature of
 `main` is reviewable before the run and enforced during it, and the
 reviewer reads it in the same clause as the host.
 
-Open item R6-4: budgets as data (`at most limit per minute` where `limit`
-is a constant) once top-level constants can be read in grants.
+Open item R6-4 is settled by decision S7: a budget is a number literal,
+so that the reviewer reads it in the signature.
 
 ---
 

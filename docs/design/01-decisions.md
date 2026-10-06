@@ -1001,3 +1001,14 @@ every `record` would rewrite the source, and the grammar under measurement
 would grow. A separate manifest file was declined to keep one file per
 run. Until the registry (M4) the code is read from the path the manifest
 names and checked by hash. (user)
+
+**S6. No narration of query clauses.** `--explain` narrates a function's
+entry with its arguments, its result, and each effect; a query inside it
+(`for each ... where ... collect`) is not narrated as a sentence of its
+own, since the function's result shows what the query produced and a line
+per query would lengthen the trace. Settles open item R6-2. (user)
+
+**S7. A budget is a number.** `at most COUNT per UNIT` takes a literal
+count, not a constant: the budget sits in the signature of `main` or of a
+test so that the reviewer reads the number there. Settles open item R6-4.
+(user)
