@@ -361,3 +361,32 @@ fn a_public_constant_of_another_module_is_read_through_its_namespace() {
     assert_eq!(outcome, RunOutcome::Finished);
     assert_eq!(stdout.text(), "3\n");
 }
+
+#[test]
+fn a_date_built_at_run_time_needs_a_day_its_month_has() {
+    let source = r#"module demo
+  purpose: A Date from run-time values fails for a day the month lacks.
+
+import std.console
+import std.time exposing Date
+
+public function main() or fails with ConstraintViolation needs console
+  purpose: Build February 30th from a variable.
+
+  let day be 30
+  let leap be Date(year: 2024, month: 2, day: day - 1) otherwise fail
+  console.print("{leap.day}")
+  let invalid be Date(year: 2024, month: 2, day: day) otherwise fail
+  console.print("{invalid.day}")
+end
+"#;
+    let (outcome, printed) = run(source, Options::default());
+    assert_eq!(printed, "29\n");
+    match outcome {
+        RunOutcome::Failed(error) => assert!(
+            error.starts_with("ConstraintViolation(type_name: \"Date\""),
+            "{error}"
+        ),
+        other => panic!("{other:?}"),
+    }
+}

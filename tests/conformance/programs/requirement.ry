@@ -1,0 +1,16 @@
+module requirement
+  purpose: `ability X where self can Y` holds for every implementation.
+
+ability Printable where self can ToText
+  function show(self) returns Text
+end
+
+type Plain
+  has value: Integer
+end
+
+ability Printable for Plain
+  function show(self) returns Text
+    return "{self.value}"
+  end
+end

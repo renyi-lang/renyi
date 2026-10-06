@@ -201,6 +201,48 @@
       "program": "tests/conformance/programs/wrong_name.ry",
       "diagnostics": ["module-name"],
       "exit_code": 1
+    },
+    {
+      "name": "a literal pattern is checked at compile time",
+      "command": "check",
+      "program": "tests/conformance/programs/regex_literal.ry",
+      "diagnostics": ["regex-invalid"],
+      "exit_code": 1
+    },
+    {
+      "name": "a Url literal needs a scheme and a host",
+      "command": "check",
+      "program": "tests/conformance/programs/url_literal.ry",
+      "diagnostics": ["invalid-literal"],
+      "exit_code": 1
+    },
+    {
+      "name": "a Date built from literals needs a day its month has",
+      "command": "check",
+      "program": "tests/conformance/programs/date_literal.ry",
+      "diagnostics": ["constraint-violation"],
+      "exit_code": 1
+    },
+    {
+      "name": "a variant field named kind clashes with the JSON key",
+      "command": "check",
+      "program": "tests/conformance/programs/kind_field.ry",
+      "diagnostics": ["kind-field"],
+      "exit_code": 1
+    },
+    {
+      "name": "see also names a definition",
+      "command": "check",
+      "program": "tests/conformance/programs/see_also.ry",
+      "diagnostics": ["unknown-reference"],
+      "exit_code": 1
+    },
+    {
+      "name": "an ability's requirement holds for its implementations",
+      "command": "check",
+      "program": "tests/conformance/programs/requirement.ry",
+      "diagnostics": ["missing-ability"],
+      "exit_code": 1
     }
   ]
 }

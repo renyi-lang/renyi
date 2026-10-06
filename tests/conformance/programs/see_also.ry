@@ -1,0 +1,9 @@
+module see_also
+  purpose: `see also:` names a definition (decision C8b).
+
+public function go() returns Integer
+  purpose: Go.
+  see also: nowhere
+
+  return 1
+end

@@ -173,9 +173,47 @@ fn method_call(receiver: &Literal, method: &str, args: &[Literal]) -> Option<Lit
 
 /// Whether a regular expression literal is valid.
 pub fn regex_error(pattern: &str) -> Option<String> {
-    regex::Regex::new(pattern)
-        .err()
-        .map(|error| error.to_string())
+    regex::Regex::new(pattern).err().map(|error| {
+        // the engine's report ends with the one line that names the problem
+        let text = error.to_string();
+        text.lines()
+            .last()
+            .unwrap_or(&text)
+            .trim_start_matches("error: ")
+            .to_string()
+    })
+}
+
+/// Whether a literal is an absolute URL (decision N2): a scheme, `://` and
+/// a host.
+pub fn is_url(text: &str) -> bool {
+    let Some((scheme, rest)) = text.split_once("://") else {
+        return false;
+    };
+    let scheme_ok = scheme
+        .chars()
+        .next()
+        .is_some_and(|c| c.is_ascii_alphabetic())
+        && scheme
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "+-.".contains(c));
+    let host = rest.split(['/', '?', '#']).next().unwrap_or("");
+    scheme_ok && !host.is_empty() && !host.chars().any(char::is_whitespace)
+}
+
+/// The days of a month in the proleptic Gregorian calendar.
+pub fn days_in_month(year: i128, month: i128) -> i128 {
+    match month {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        _ => {
+            if (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 {
+                29
+            } else {
+                28
+            }
+        }
+    }
 }
 
 #[cfg(test)]

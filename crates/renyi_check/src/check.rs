@@ -28,6 +28,9 @@ enum BindingKind {
     Loop,
     Pattern,
     Query,
+    /// The loop variable of a bare `count` query, which `count` never reads
+    /// (decision M2): the fix counts the source, whose span this is.
+    Count(Span),
 }
 
 struct Binding {
@@ -288,6 +291,15 @@ impl<'w> Checker<'w> {
 
     fn show(&self, ty: &Ty) -> String {
         self.world.show(&self.zonk(ty))
+    }
+
+    /// The source text under a span, for a fix that quotes it.
+    fn source_text(&self, span: Span) -> String {
+        self.world.modules[self.module]
+            .source
+            .get(span.start..span.end)
+            .unwrap_or("")
+            .to_string()
     }
 
     /// The one-based line of a byte offset of the module's file.
@@ -705,7 +717,16 @@ impl<'w> Checker<'w> {
         match &ty {
             Ty::Var(_) => None,
             Ty::Error | Ty::Never => Some(true),
-            Ty::Param(id) => Some(self.world.constraints(*id).contains(&ability)),
+            Ty::Param(id) => {
+                // a constraint brings what its ability requires (`where self can`)
+                let constraints = self.world.constraints(*id);
+                Some(
+                    constraints.contains(&ability)
+                        || constraints
+                            .iter()
+                            .any(|c| self.world.abilities[*c].requirements.contains(&ability)),
+                )
+            }
             Ty::Maybe(inner) => {
                 if ability == b.hash || self.is_json_ability(ability) {
                     self.has_ability(inner, ability)
@@ -831,12 +852,17 @@ impl<'w> Checker<'w> {
             if !binding.used && binding.name != "self" {
                 let what = match binding.kind {
                     BindingKind::Param => "the parameter",
-                    BindingKind::Loop | BindingKind::Query => "the loop variable",
+                    BindingKind::Loop | BindingKind::Query | BindingKind::Count(_) => {
+                        "the loop variable"
+                    }
                     BindingKind::Pattern => "the pattern binding",
                     BindingKind::Let => "the binding",
                 };
                 let fix = match binding.kind {
                     BindingKind::Query => "remove it, or read it in a clause".to_string(),
+                    BindingKind::Count(source) => {
+                        format!("write `{}.length()`", self.source_text(source))
+                    }
                     BindingKind::Pattern => "remove it from the pattern".to_string(),
                     _ => "remove it, or use it".to_string(),
                 };
@@ -2022,12 +2048,7 @@ impl<'w> Checker<'w> {
                 }
                 Info::plain(text)
             }
-            ExprKind::RawText(value) => {
-                if let Some(error) = refine::regex_error(value) {
-                    let _ = error;
-                }
-                Info::plain(self.builtin(b.text))
-            }
+            ExprKind::RawText(_) => Info::plain(self.builtin(b.text)),
             ExprKind::Boolean(_) => Info::plain(self.builtin(b.boolean)),
             ExprKind::Nothing => match expected.map(|e| self.resolve(e)) {
                 Some(Ty::Maybe(inner)) => Info::plain(Ty::maybe(*inner)),
@@ -2978,6 +2999,12 @@ impl<'w> Checker<'w> {
             }
         }
         let function_args = self.check_args(&explicit_params, args, span, &name);
+        // decision K3: a literal pattern is checked here
+        if is_library && is_method && name == "matches" {
+            if let Some(arg) = args.first() {
+                self.check_regex_literal(&arg.value);
+            }
+        }
         // effects: the callee's needs plus those of function-valued arguments
         let mut needed: Vec<(Capability, bool, String)> = needs
             .into_iter()
@@ -3139,6 +3166,86 @@ impl<'w> Checker<'w> {
             self.expect(&info.ty, param_ty, arg.value.span, "the argument");
         }
         passed
+    }
+
+    /// A literal regular expression (decision K3): what the engine would
+    /// refuse at run time is refused here.
+    fn check_regex_literal(&mut self, value: &Expr) {
+        if let Some(Literal::Text(pattern)) = refine::literal_of(value) {
+            if let Some(detail) = refine::regex_error(&pattern) {
+                self.error_fix(
+                    "regex-invalid",
+                    format!("this is not a valid regular expression: {detail}"),
+                    value.span,
+                    "the syntax is that of the Rust regex crate: no backreferences, no look-around",
+                );
+            }
+        }
+    }
+
+    /// `Pattern`, `Url` and `Path` literals (decisions N2 and K3): what the
+    /// run time would refuse is refused here.
+    fn check_text_literal(&mut self, type_id: TypeId, value: &Expr) {
+        let Some(Literal::Text(text)) = refine::literal_of(value) else {
+            return;
+        };
+        let info = &self.world.types[type_id];
+        let module = self.world.modules[info.module].name.as_str();
+        let problem: Option<(String, &str)> = match (module, info.name.as_str()) {
+            ("std.regex", "Pattern") => {
+                self.check_regex_literal(value);
+                None
+            }
+            ("std.http", "Url") => (!refine::is_url(&text)).then(|| {
+                (
+                    "this is not an absolute URL".to_string(),
+                    "write a scheme and a host: `https://example.com/path`",
+                )
+            }),
+            ("std.filesystem", "Path") => {
+                (text.is_empty() || text.contains(['\0', '\n'])).then(|| {
+                    (
+                        "this is not a path".to_string(),
+                        "write a non-empty path without control characters",
+                    )
+                })
+            }
+            _ => None,
+        };
+        if let Some((message, fix)) = problem {
+            self.error_fix("invalid-literal", message, value.span, fix);
+        }
+    }
+
+    /// `Date(year: 2024, month: 2, day: 30)`: a date built from literals is
+    /// checked here, including the length of the month (library sketch,
+    /// section 4); the refinements report a month or a day out of range.
+    fn check_date_literal(&mut self, type_id: TypeId, args: &[Arg], span: Span) {
+        let info = &self.world.types[type_id];
+        if info.name != "Date" || self.world.modules[info.module].name != "std.time" {
+            return;
+        }
+        let mut parts = [None; 3];
+        for (index, arg) in args.iter().enumerate().take(3) {
+            if let Some(Literal::Integer(value)) = refine::literal_of(&arg.value) {
+                parts[index] = Some(value);
+            }
+        }
+        let [Some(year), Some(month), Some(day)] = parts else {
+            return;
+        };
+        if !(1..=12).contains(&month) || day < 1 {
+            return;
+        }
+        let length = refine::days_in_month(year, month);
+        if day > length {
+            self.error_fix(
+                "constraint-violation",
+                format!("{year:04}-{month:02}-{day:02} is not a date: the month has {length} days"),
+                span,
+                "write a day the month has",
+            );
+        }
     }
 
     fn require_capability(
@@ -3322,6 +3429,7 @@ impl<'w> Checker<'w> {
                 let fields = fields.clone();
                 let fails =
                     self.construct_fields(&name.text, type_id, &args_tys, &fields, args, span);
+                self.check_date_literal(type_id, args, span);
                 Info {
                     ty: Ty::App(type_id, args_tys),
                     fails,
@@ -3374,6 +3482,7 @@ impl<'w> Checker<'w> {
                         None => fails.push(self.builtin(b.constraint_violation)),
                     }
                 }
+                self.check_text_literal(type_id, &arg.value);
                 Info {
                     ty: Ty::App(type_id, Vec::new()),
                     fails,
@@ -4272,7 +4381,19 @@ impl<'w> Checker<'w> {
                 result
             }
             QueryTerminal::Count => {
-                // the loop variable is not read by `count` (decision M2)
+                // the loop variable is not read by `count` (decision M2); for
+                // one source without a filter the fix is the source's length
+                let source = match (query.sources.as_slice(), &query.filter) {
+                    ([source], None) => Some(source.source.span),
+                    _ => None,
+                };
+                if let (Some(scope), Some(span)) = (self.scopes.last_mut(), source) {
+                    for binding in &mut scope.bindings {
+                        if binding.kind == BindingKind::Query {
+                            binding.kind = BindingKind::Count(span);
+                        }
+                    }
+                }
                 self.builtin(b.integer)
             }
             QueryTerminal::First => {

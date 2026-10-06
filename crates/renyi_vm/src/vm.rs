@@ -1575,6 +1575,28 @@ impl<'p> Vm<'p> {
                 }
             }
         }
+        // a `Date` also needs a day its month has (library sketch, section 4)
+        if meta.module == "std.time" && meta.name == "Date" {
+            if let [year, month, day] = fields.as_slice() {
+                let parts = (
+                    crate::natives::small(year),
+                    crate::natives::small(month),
+                    crate::natives::small(day),
+                );
+                if let (Ok(year), Ok(month), Ok(day)) = parts {
+                    let length = crate::natives::time::days_in_month(year, month);
+                    if (1..=12).contains(&month) && day > length {
+                        return Ok(Value::failure(Value::record(
+                            self.program.builtins.constraint_violation,
+                            vec![
+                                Value::text("Date"),
+                                Value::text(format!("the month has {length} days")),
+                            ],
+                        )));
+                    }
+                }
+            }
+        }
         Ok(Value::record(ty, fields))
     }
 

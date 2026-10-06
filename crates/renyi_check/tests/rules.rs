@@ -841,3 +841,116 @@ fn a_range_loop_has_one_spelling() {
         "function total() returns Integer\n  let mutable total_so_far be 0\n  for each step from 1 to 3\n    set total_so_far to total_so_far + step\n  end\n  return total_so_far\nend\n",
     ));
 }
+
+#[test]
+fn literal_patterns_are_checked() {
+    raises(
+        &program("function go() returns Boolean\n  return \"abc\".matches(\"(\")\nend\n"),
+        "regex-invalid",
+    );
+    clean(&program(
+        "function go() returns Boolean\n  return \"abc\".matches(\"[a-c]+\")\nend\n",
+    ));
+    raises(
+        &program("public type Email is Text where value.matches(\"[\")\n  purpose: An address.\n"),
+        "regex-invalid",
+    );
+    raises(
+        &program("import std.regex exposing Pattern\n\nfunction go() returns Pattern\n  return Pattern(\"(\")\nend\n"),
+        "regex-invalid",
+    );
+}
+
+#[test]
+fn url_path_and_date_literals_are_checked() {
+    let http = "import std.http exposing Url\n\n";
+    raises(
+        &program(&format!(
+            "{http}function go() returns Url\n  return Url(\"not a url\")\nend\n"
+        )),
+        "invalid-literal",
+    );
+    clean(&program(&format!(
+        "{http}function go() returns Url\n  return Url(\"https://example.com/path?q=1\")\nend\n"
+    )));
+    raises(
+        &program("import std.filesystem exposing Path\n\nfunction go() returns Path\n  return Path(\"\")\nend\n"),
+        "invalid-literal",
+    );
+    let time = "import std.time exposing Date\n\n";
+    raises(
+        &program(&format!(
+            "{time}function go() returns Date\n  return Date(year: 2024, month: 2, day: 30)\nend\n"
+        )),
+        "constraint-violation",
+    );
+    raises(
+        &program(&format!(
+            "{time}function go() returns Date\n  return Date(year: 2023, month: 2, day: 29)\nend\n"
+        )),
+        "constraint-violation",
+    );
+    clean(&program(&format!(
+        "{time}function go() returns Date\n  return Date(year: 2024, month: 2, day: 29)\nend\n"
+    )));
+}
+
+#[test]
+fn a_variant_field_named_kind_clashes_with_the_json_key() {
+    raises(
+        &program("public type Shape is one of\n  purpose: A figure.\n  Circle(kind: Text)\n  Point\n  can ToJson\nend\n"),
+        "kind-field",
+    );
+    raises(
+        &program("public type Shape is one of\n  purpose: A figure.\n  Circle(kind: Text)\n  Point\n  can FromJson\nend\n"),
+        "kind-field",
+    );
+    clean(&program(
+        "public type Label\n  purpose: A record keeps its own `kind`.\n  has kind: Text\n  can ToJson\nend\n",
+    ));
+    clean(&program(
+        "public type Shape is one of\n  purpose: A figure.\n  Circle(kind: Text)\n  Point\nend\n",
+    ));
+}
+
+#[test]
+fn see_also_names_a_definition() {
+    raises(
+        &program("public function go() returns Integer\n  purpose: Go.\n  see also: nowhere\n\n  return 1\nend\n"),
+        "unknown-reference",
+    );
+    clean(&program(
+        "public function go() returns Integer\n  purpose: Go.\n  see also: helper, console.print, Text.trim\n\n  return helper()\nend\n\nfunction helper() returns Integer\n  return 1\nend\n",
+    ));
+}
+
+#[test]
+fn an_ability_requirement_holds_for_its_implementations() {
+    let printable =
+        "ability Printable where self can ToText\n  function show(self) returns Text\nend\n\n";
+    raises(
+        &program(&format!(
+            "{printable}type Plain\n  has value: Integer\nend\n\nability Printable for Plain\n  function show(self) returns Text\n    return \"{{self.value}}\"\n  end\nend\n"
+        )),
+        "missing-ability",
+    );
+    clean(&program(&format!(
+        "{printable}type Plain\n  has value: Integer\n  can ToText\nend\n\nability Printable for Plain\n  function show(self) returns Text\n    return \"{{self.value}}\"\n  end\nend\n"
+    )));
+    // a type parameter constrained to the ability has what it requires
+    clean(&program(&format!(
+        "{printable}function render(item: Item) returns Text for any Item where Item can Printable\n  return item.to_text()\nend\n"
+    )));
+}
+
+#[test]
+fn the_count_fix_names_the_length_of_the_source() {
+    let diagnostics = check(&program(
+        "function total(lines: List of Text) returns Integer\n  return for each line in lines count\nend\n",
+    ));
+    let unused = diagnostics
+        .iter()
+        .find(|d| d.code == "unused-binding")
+        .expect("the loop variable is unused");
+    assert_eq!(unused.fix.as_deref(), Some("write `lines.length()`"));
+}

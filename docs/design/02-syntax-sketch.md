@@ -333,7 +333,14 @@ end
 Default method bodies are not in v1 (open item R2-5).
 
 Core abilities in the prelude: `Equal`, `Compare`, `Hash`, `ToText`, `ToJson`,
-`FromJson`, `Iterable`.
+`FromJson`. (`Iterable`, listed in earlier drafts, is not declared: `for
+each` iterates the collection types of section 8, and an ability for
+iterating a program's own types is open item R3-1.)
+
+An ability may require another of its implementing types: `ability
+Printable where self can ToText`; an implementation for a type without the
+required ability is a compile error (`missing-ability`), and a type
+parameter constrained to `Printable` has `ToText` too.
 
 ---
 
@@ -854,3 +861,7 @@ Words that appear only inside a phrase (`at`, `least`, `most`, `than`, `less`,
 The open items R2-1 to R2-17 were decided in round 2 and are recorded as
 entries J1 to J17 of `01-decisions.md`; the sketch above reflects them. New
 open items start at R3-1 and are listed here when they arise.
+
+- R3-1: an `Iterable` ability, so that `for each` can walk a program's own
+  types. Section 5 listed it among the core abilities without a declaration;
+  it needs a protocol (`next`, or `items`) and VM support before it exists.

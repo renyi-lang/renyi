@@ -1,0 +1,9 @@
+module kind_field
+  purpose: A variant field named `kind` clashes with the JSON key of decision K10.
+
+public type Shape is one of
+  purpose: A figure.
+  Circle(kind: Text)
+  Point
+  can ToJson
+end

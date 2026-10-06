@@ -145,22 +145,24 @@ Ordered by how much they matter to the language's promises.
 
 Each is a sentence in the design that the checker does not act on.
 
-1. Nesting deeper than 4 and bodies over about 60 lines as compile errors
-   (decisions D4, O3; `05-agent-tooling.md:75, 178-180` say the language
-   rejects them). Verified: six nested `if` blocks and an 85-line body
-   check clean. The corpus's deepest definition is 3 and its longest body
-   30 lines, so enforcing costs nothing today.
-2. Regex literal patterns (decisions K3, N2): the error is computed and
-   discarded, `let _ = error;` (`check.rs:1726-1728`), for `raw` literals
-   only; a bad pattern crashes at run time (`natives/regex.rs:19-21`).
-3. `Url` and `Path` literals (N2): plain `type X is Text`, nothing
-   validates them; `Date(year: 2024, month: 2, day: 30)` checks clean
-   while `library/std/time.ry:31` says `InvalidDate` names a day that does
-   not exist.
-4. A variant field named `kind` under `ToJson` or `FromJson` (decision
-   K10): no rule in `resolve_derives` (`world.rs:681-725`); the encoder
-   writes two `kind` keys.
-5. `see also:` existence (decision C8b): never read by the checker.
+1. Done in stage 1 (decision V5): nesting deeper than 4 is
+   `nesting-depth` and a body over 60 lines is `body-length` (`check.rs`;
+   decisions D4, O3).
+2. Done in stage 1: a literal pattern, as the argument of `matches` or a
+   `Pattern(...)` construction, is checked by the engine at compile time
+   (`regex-invalid`; `check.rs`, `check_regex_literal`). A pattern built
+   at run time still crashes when it is bad (`natives/regex.rs`).
+3. Done in stage 1: a `Url` literal needs a scheme and a host, a `Path`
+   literal is non-empty without control characters (`invalid-literal`;
+   `check.rs`, `check_text_literal`); a `Date` built from literals needs
+   a day its month has (`constraint-violation`; `check_date_literal`),
+   and one built from run-time values fails with `ConstraintViolation`
+   for such a day (`vm.rs`, `refined_record`).
+4. Done in stage 1: a variant field whose JSON key is `kind` under
+   `ToJson` or `FromJson` is `kind-field` (`world.rs`, `resolve_derives`).
+5. Done in stage 1: every `see also:` name must be a definition of the
+   module, `module.name` of an import or `Type.method`
+   (`unknown-reference`; `world.rs`, `check_see_also`).
 6. Done in stage 1 (decision V6): the first two tiers of `deprecated:`
    (decision C8c). Every call of a deprecated definition gets the
    `deprecated` warning with the replacement as its fix, `renyi check
@@ -169,20 +171,26 @@ Each is a sentence in the design that the checker does not act on.
    manager.
 7. Done in stage 1: the `guard-no-sink` warning when no sink after `only
    to` is in the grant.
-8. Ability requirements `ability X where self can Y`: parsed
-   (`parser.rs:1054-1064`), never checked; an implementation whose type
-   lacks `ToText` passes and runs.
-9. The `Iterable` core ability of sketch section 5 is declared nowhere.
-10. `expose as tool` parameter and return types are not checked as
-    JSON-representable (decision D6).
+8. Done in stage 1: `ability X where self can Y` is checked once every
+   implementation is known: an implementation for a type without `Y` is
+   `missing-ability` (`world.rs`, `check_requirements`), and a type
+   parameter constrained to `X` has `Y` (`check.rs`, `has_ability`).
+9. Done in stage 1 as a document correction: `Iterable` is struck from
+   the core abilities of sketch section 5 and recorded as open item R3-1
+   (an ability for iterating a program's own types needs a protocol and
+   VM support).
+10. Done in stage 1 (decision V6): a tool's parameters must have
+    `FromJson` and its result `ToJson` (`tool-type`; `check.rs`,
+    `check_tool_signature`).
 11. Diagnostics without a `fix`: the parser has about 31 diagnostic sites
     and 3 fixes, `world.rs` 23 and 14; the generic "expected" parse errors
     carry none (decision D3). One-spelling fixes exist for statement-start
     foreign words and lexer symbols only: top-level `def` or `fn`, `else`,
     `null`, `is larger than`, `userName` and `user_record` get a bare
     "expected" (decisions C4, C5).
-12. The fix text for an unread `count` loop variable differs from decision
-    M2 (`check.rs:704-707`).
+12. Done in stage 1: the unread loop variable of a bare `count` query
+    over one source gets the fix decision M2 names, `source.length()`
+    (`check.rs`, `BindingKind::Count`).
 
 ## 3. Surface syntax that parses but does nothing
 

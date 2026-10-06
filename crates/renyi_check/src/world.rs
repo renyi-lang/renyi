@@ -29,6 +29,9 @@ pub struct ModuleInfo {
     /// The byte offset of every line start of the module's file, for the
     /// body-length rule (decision V5); empty for a library module.
     pub line_starts: Vec<usize>,
+    /// The module's source text, for fixes that quote it; empty for a
+    /// library module.
+    pub source: String,
 }
 
 pub struct ConstantInfo {
@@ -131,6 +134,8 @@ pub struct AbilityInfo {
     pub public: bool,
     /// The ability's own type parameters, in scope in its method signatures.
     pub params: Vec<ParamId>,
+    /// `ability X where self can Y`: what every implementing type must have.
+    pub requirements: Vec<AbilityId>,
     pub methods: Vec<AbilityMethod>,
     pub span: Span,
 }
@@ -225,6 +230,7 @@ impl World {
             exposed_types: HashMap::new(),
             exposed_abilities: HashMap::new(),
             line_starts: Vec::new(),
+            source: String::new(),
         };
         if name == "std.prelude" {
             self.prelude = Some(id);
@@ -262,6 +268,7 @@ impl World {
                         module: id,
                         public: ability.public,
                         params: Vec::new(),
+                        requirements: Vec::new(),
                         methods: Vec::new(),
                         span: ability.span,
                     });
@@ -302,6 +309,7 @@ impl World {
                 .map(|(offset, _)| offset + 1),
         );
         self.modules[id].line_starts = starts;
+        self.modules[id].source = text.to_string();
     }
 
     /// Resolve imports, type details, abilities, implementations, functions
@@ -323,6 +331,133 @@ impl World {
         for &id in &modules {
             self.resolve_functions(id);
         }
+        self.check_requirements();
+        for &id in &modules {
+            self.check_see_also(id);
+        }
+    }
+
+    /// `ability X where self can Y`: every implementation's type has `Y`
+    /// (sketch section 5), checked once every implementation is known.
+    fn check_requirements(&mut self) {
+        let mut problems = Vec::new();
+        for implementation in &self.impls {
+            for &required in &self.abilities[implementation.ability].requirements {
+                if !self.type_has(&implementation.target, required) {
+                    problems.push((
+                        implementation.module,
+                        implementation.span,
+                        self.show(&implementation.target),
+                        self.abilities[implementation.ability].name.clone(),
+                        self.abilities[required].name.clone(),
+                    ));
+                }
+            }
+        }
+        for (module, span, target, ability, required) in problems {
+            self.error_with_fix(
+                module,
+                "missing-ability",
+                format!(
+                    "`{target}` lacks `{required}`, which `{ability}` requires of its implementations"
+                ),
+                span,
+                format!("add `can {required}` to `{target}`, or implement `{required}` for it"),
+            );
+        }
+    }
+
+    /// Whether a declared type has an ability: derived, implemented, or
+    /// inherited from the base of a subtype; a type parameter has what its
+    /// constraints give it. `Equal` belongs to every type but functions.
+    pub fn type_has(&self, ty: &Ty, ability: AbilityId) -> bool {
+        if ability == self.builtins.equal {
+            return !matches!(ty, Ty::Function(_));
+        }
+        match ty {
+            Ty::App(id, _) => {
+                let info = &self.types[*id];
+                info.derives.contains(&ability)
+                    || self
+                        .impls
+                        .iter()
+                        .any(|i| i.ability == ability && head_type(&i.target) == Some(*id))
+                    || matches!(&info.kind, TypeKindInfo::Subtype { base, .. } if self.type_has(base, ability))
+            }
+            Ty::Param(id) => self.params[*id].constraints.contains(&ability),
+            _ => false,
+        }
+    }
+
+    /// `see also:` names definitions (decision C8b): one of this module's,
+    /// `module.name` of an import, or `Type.method`.
+    fn check_see_also(&mut self, id: ModuleId) {
+        if self.modules[id].is_library {
+            return;
+        }
+        let mut problems: Vec<(String, Span)> = Vec::new();
+        {
+            let module = &self.modules[id];
+            let mut note = |docs: &ast::Docs, span: Span| {
+                for name in &docs.see_also {
+                    if !self.reference_exists(id, name) {
+                        problems.push((name.clone(), span));
+                    }
+                }
+            };
+            for item in &module.ast.items {
+                match item {
+                    Item::Function(function) => note(&function.docs, function.name.span),
+                    Item::Implementation(implementation) => {
+                        for function in &implementation.functions {
+                            note(&function.docs, function.name.span);
+                        }
+                    }
+                    Item::Type(def) => note(&def.docs, def.name.span),
+                    Item::Ability(ability) => note(&ability.docs, ability.name.span),
+                    Item::Constant(constant) => note(&constant.docs, constant.name.span),
+                    Item::Test(_) => {}
+                }
+            }
+        }
+        for (name, span) in problems {
+            self.error_with_fix(
+                id,
+                "unknown-reference",
+                format!("`see also: {name}` names nothing in scope"),
+                span,
+                "name a function, type, constant or ability of this module, `module.name` of an import, or `Type.method`".into(),
+            );
+        }
+    }
+
+    fn reference_exists(&self, module: ModuleId, name: &str) -> bool {
+        let info = &self.modules[module];
+        if let Some((head, rest)) = name.split_once('.') {
+            if head.starts_with(|c: char| c.is_ascii_uppercase()) {
+                return self
+                    .lookup_type(module, head)
+                    .is_some_and(|type_id| !self.methods_of(type_id, rest).is_empty());
+            }
+            let Some(&target) = info.imports.get(head) else {
+                return false;
+            };
+            let other = &self.modules[target];
+            return other.functions.contains_key(rest)
+                || other.types.contains_key(rest)
+                || other.constants.contains_key(rest)
+                || other.abilities.contains_key(rest);
+        }
+        info.functions.contains_key(name)
+            || info.types.contains_key(name)
+            || info.constants.contains_key(name)
+            || info.abilities.contains_key(name)
+            || info.exposed_types.contains_key(name)
+            || info.exposed_abilities.contains_key(name)
+            || self.prelude.is_some_and(|prelude| {
+                let prelude = &self.modules[prelude];
+                prelude.functions.contains_key(name) || prelude.types.contains_key(name)
+            })
     }
 
     fn find_builtins(&mut self) {
@@ -766,6 +901,30 @@ impl World {
             match self.lookup_ability(module, &derive.ability.text) {
                 Some(ability) => {
                     out.push(ability);
+                    // decision K10: JSON spells the variant's name under `kind`
+                    if matches!(self.abilities[ability].name.as_str(), "ToJson" | "FromJson") {
+                        let mut clashes: Vec<(String, Span)> = Vec::new();
+                        if let TypeKindInfo::Sum(variants) = &self.types[type_id].kind {
+                            for variant in variants {
+                                for field in &variant.fields {
+                                    if field.name == "kind" {
+                                        clashes.push((variant.name.clone(), field.span));
+                                    }
+                                }
+                            }
+                        }
+                        for (variant, span) in clashes {
+                            self.error_with_fix(
+                                module,
+                                "kind-field",
+                                format!(
+                                    "the variant `{variant}` has a field named `kind`, the key JSON uses for the variant's name (decision K10)"
+                                ),
+                                span,
+                                "rename the field".into(),
+                            );
+                        }
+                    }
                     if !derive.by.is_empty() {
                         // `can Compare by field, field`: every field must exist
                         if let TypeKindInfo::Record(fields) = &self.types[type_id].kind {
@@ -866,6 +1025,20 @@ impl World {
                 continue;
             }
             let params = self.new_params(&ability.type_params);
+            let mut requirements = Vec::new();
+            for requirement in &ability.requirements {
+                let Some(name) = named(requirement) else {
+                    continue;
+                };
+                match self.lookup_ability(id, &name.text) {
+                    Some(required) => requirements.push(required),
+                    None => {
+                        let message = format!("unknown ability `{}`", name.text);
+                        self.error(id, "unknown-ability", message, name.span);
+                    }
+                }
+            }
+            self.abilities[ability_id].requirements = requirements;
             let mut methods = Vec::new();
             for function in &ability.functions {
                 let mut method_params = Vec::new();

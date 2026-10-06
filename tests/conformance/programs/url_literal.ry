@@ -1,0 +1,8 @@
+module url_literal
+  purpose: A `Url` literal needs a scheme and a host (decision N2).
+
+import std.http exposing Url
+
+function home() returns Url
+  return Url("example.com/home")
+end

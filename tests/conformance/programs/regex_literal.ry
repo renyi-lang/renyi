@@ -1,0 +1,6 @@
+module regex_literal
+  purpose: A literal pattern is checked at compile time (decision K3).
+
+function starts_with_digit(text: Text) returns Boolean
+  return text.matches("[0-9")
+end

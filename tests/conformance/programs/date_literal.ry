@@ -1,0 +1,8 @@
+module date_literal
+  purpose: A `Date` built from literals needs a day its month has.
+
+import std.time exposing Date
+
+function leap_day() returns Date
+  return Date(year: 2023, month: 2, day: 29)
+end
