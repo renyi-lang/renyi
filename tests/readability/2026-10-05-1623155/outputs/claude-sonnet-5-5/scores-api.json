@@ -1,0 +1,2329 @@
+{
+  "predict/dependency_order": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/expression_tree": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/hello": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/invoice_report": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": false
+    }
+  ],
+  "predict/markdown_table": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/permissions": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/shapes": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/statistics": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/temperature_table": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/traffic_light": [
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    }
+  ],
+  "explain/active_users": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/assistant": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/concurrent_fetch": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/config": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/currency_tool": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/deadlines": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/dependency_order": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/expression_tree": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/file_tree": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/hello": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/http_service": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/inventory_db": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/invoice": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/invoice_report": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 3
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/log_parser": [
+    {
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/markdown_table": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "judgement"
+    }
+  ],
+  "explain/pagination": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/permissions": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/retry": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 2,
+      "pass": false,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 2
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/sales_report": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/semver": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/shapes": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/shipping_rules": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 2,
+      "pass": false,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 2
+    },
+    {
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
+    },
+    {
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/stacks": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/statistics": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/temperature_table": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "judgement"
+    }
+  ],
+  "explain/todo_cli": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/traffic_light": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/weather": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "judgement"
+    }
+  ],
+  "explain/word_count": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "complete/config": [
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[superfluous-otherwise] `otherwise` after a value that cannot fail and is not optional (it is `Port`)"
+      ],
+      "pass": false,
+      "rules": [
+        "check:superfluous-otherwise"
+      ]
+    }
+  ],
+  "complete/deadlines": [
+    {
+      "lint_problems": [
+        "line 54: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 54: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "complete/dependency_order": [
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [
+        "line 36: condition without 'then'"
+      ],
+      "pass": false,
+      "rules": [
+        "missing-then"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "complete/expression_tree": [
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "complete/invoice": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[unknown-method] `Decimal` has no method named `to_decimal`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:unknown-method"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[unknown-method] `Decimal` has no method named `to_decimal`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:unknown-method"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[unknown-method] `Decimal` has no method named `to_decimal`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:unknown-method"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[unknown-method] `Decimal` has no method named `to_decimal`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:unknown-method"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[unknown-method] `Decimal` has no method named `to_decimal`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:unknown-method"
+      ]
+    }
+  ],
+  "complete/invoice_report": [
+    {
+      "lint_problems": [
+        "line 13: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 13: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 13: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "complete/log_parser": [
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "complete/markdown_table": [
+    {
+      "lint_problems": [
+        "line 51: '=' is not Renyi; use 'let x be', 'set x to', or 'is'",
+        "line 56: '=' is not Renyi; use 'let x be', 'set x to', or 'is'",
+        "block starters 11 vs 'end' 9 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance",
+        "equals-sign"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "complete/permissions": [
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "complete/sales_report": [
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "complete/semver": [
+    {
+      "lint_problems": [],
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "complete/shapes": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[unknown-method] `Decimal` has no method named `quotient`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:unknown-method"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[unknown-method] `Decimal` has no method named `to_decimal`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:unknown-method"
+      ]
+    }
+  ],
+  "complete/shipping_rules": [
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "complete/stacks": [
+    {
+      "lint_problems": [],
+      "vm": "10 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "10 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "10 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "10 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "10 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "complete/statistics": [
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [
+        "line 25: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "complete/temperature_table": [
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "complete/todo_cli": [
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "complete/traffic_light": [
+    {
+      "lint_problems": [],
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [
+        "block starters 10 vs 'end' 11 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "complete/word_count": [
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "write/compound_interest": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the public type `AppError` has no purpose",
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[unknown-method] `Decimal` has no method named `to_decimal`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:purpose-missing",
+        "check:unknown-method"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the public type `AppError` has no purpose",
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[type-mismatch] the returned value is `Decimal`, but `Integer` is needed",
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[type-mismatch] the returned value is `Decimal`, but `Integer` is needed"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:purpose-missing",
+        "check:type-mismatch"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[unknown-method] `Decimal` has no method named `to_decimal`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:unknown-method"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the public type `AppError` has no purpose",
+        "[argument-count] `rounded` takes 1 argument (places), found 0",
+        "[unknown-method] `Decimal` has no method named `to_decimal`",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:argument-name",
+        "check:purpose-missing",
+        "check:unknown-method"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 42: line is 152 columns (limit 100)",
+        "line 49: line is 112 columns (limit 100)",
+        "line 64: line is 124 columns (limit 100)",
+        "line 65: line is 118 columns (limit 100)",
+        "line 66: line is 130 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    }
+  ],
+  "write/fizz_words": [
+    {
+      "lint_problems": [],
+      "vm": "9 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "9 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "9 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "write/initials": [
+    {
+      "lint_problems": [],
+      "vm": "7 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "7 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "7 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "4 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "write/letter_grades": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the public type `Grade` has no purpose",
+        "[missing-otherwise] this call can fail with ConstraintViolation",
+        "[missing-otherwise] this call can fail with ConstraintViolation",
+        "[missing-otherwise] this call can fail with ConstraintViolation",
+        "[missing-otherwise] this call can fail with ConstraintViolation",
+        "[missing-otherwise] this call can fail with ConstraintViolation"
+      ],
+      "pass": false,
+      "rules": [
+        "check:missing-otherwise",
+        "check:purpose-missing"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 2: line is 110 columns (limit 100)",
+        "line 53: line is 136 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the public type `Grade` has no purpose",
+        "[purpose-missing] the public type `GradeError` has no purpose",
+        "[missing-otherwise] this call can fail with ConstraintViolation",
+        "[missing-otherwise] this call can fail with GradeError",
+        "[missing-otherwise] this call can fail with GradeError",
+        "[missing-otherwise] this call can fail with GradeError",
+        "[missing-otherwise] this call can fail with GradeError",
+        "[missing-otherwise] this call can fail with GradeError",
+        "[missing-otherwise] this call can fail with GradeError",
+        "[missing-otherwise] this call can fail with GradeError"
+      ],
+      "pass": false,
+      "rules": [
+        "check:missing-otherwise",
+        "check:purpose-missing"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the public type `Score` has no purpose"
+      ],
+      "pass": false,
+      "rules": [
+        "check:purpose-missing"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the public type `LetterGrade` has no purpose",
+        "[purpose-missing] the public type `GradeError` has no purpose",
+        "[missing-otherwise] this call can fail with GradeError",
+        "[missing-otherwise] this call can fail with GradeError",
+        "[missing-otherwise] this call can fail with GradeError",
+        "[missing-otherwise] this call can fail with GradeError"
+      ],
+      "pass": false,
+      "rules": [
+        "check:missing-otherwise",
+        "check:purpose-missing"
+      ]
+    }
+  ],
+  "write/low_stock_report": [
+    {
+      "lint_problems": [
+        "line 27: line is 178 columns (limit 100)",
+        "line 28: line is 228 columns (limit 100)",
+        "line 42: line is 111 columns (limit 100)",
+        "line 49: line is 101 columns (limit 100)",
+        "line 54: line is 106 columns (limit 100)",
+        "line 55: line is 115 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[duplicate-name] the namespace `filesystem` is imported twice"
+      ],
+      "pass": false,
+      "rules": [
+        "check:duplicate-name"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[duplicate-name] the namespace `filesystem` is imported twice",
+        "[purpose-missing] the public type `AppError` has no purpose",
+        "[unknown-type] unknown type `Nothing`",
+        "[superfluous-otherwise] `otherwise` after a value that cannot fail and is not optional (it is `Path`)",
+        "[missing-return] `main` returns `?` but can reach its end without a `return`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:duplicate-name",
+        "check:missing-return",
+        "check:purpose-missing",
+        "check:superfluous-otherwise",
+        "check:unknown-type"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[duplicate-name] the namespace `filesystem` is imported twice"
+      ],
+      "pass": false,
+      "rules": [
+        "check:duplicate-name"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 28: line is 135 columns (limit 100)",
+        "line 68: line is 103 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    }
+  ],
+  "write/merge_sorted": [
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "write/password_strength": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the public type `Strength` has no purpose"
+      ],
+      "pass": false,
+      "rules": [
+        "check:purpose-missing"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 40: keyword from another language"
+      ],
+      "pass": false,
+      "rules": [
+        "foreign-keyword"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 13: line is 126 columns (limit 100)",
+        "line 24: line is 110 columns (limit 100)",
+        "line 26: line is 140 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 13: line is 126 columns (limit 100)",
+        "line 22: line is 101 columns (limit 100)",
+        "line 24: line is 104 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "vm": "10 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "write/request_window": [
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [
+        "block starters 5 vs 'end' 4 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "4 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "write/roman_numerals": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the public type `RomanError` has no purpose",
+        "[missing-otherwise] this call can fail with RomanError",
+        "[missing-otherwise] this call can fail with RomanError"
+      ],
+      "pass": false,
+      "rules": [
+        "check:missing-otherwise",
+        "check:purpose-missing"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the public type `RomanError` has no purpose",
+        "[type-mismatch] the condition is `Text`, but `Boolean` is needed",
+        "[type-mismatch] the default is `Boolean`, but `Text` is needed",
+        "[type-mismatch] the condition is `Integer`, but `Boolean` is needed",
+        "[type-mismatch] the default is `Boolean`, but `Integer` is needed"
+      ],
+      "pass": false,
+      "rules": [
+        "check:purpose-missing",
+        "check:type-mismatch"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[missing-otherwise] this call can fail with RomanError",
+        "[missing-otherwise] this call can fail with RomanError",
+        "[missing-otherwise] this call can fail with RomanError"
+      ],
+      "pass": false,
+      "rules": [
+        "check:missing-otherwise"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the public type `RomanError` has no purpose",
+        "[missing-otherwise] this call can fail with RomanError",
+        "[missing-otherwise] this call can fail with RomanError"
+      ],
+      "pass": false,
+      "rules": [
+        "check:missing-otherwise",
+        "check:purpose-missing"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 61: keyword from another language"
+      ],
+      "pass": false,
+      "rules": [
+        "foreign-keyword"
+      ]
+    }
+  ],
+  "write/title_length_tool": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the public type `PageError` has no purpose",
+        "[superfluous-otherwise] `otherwise` after a value that cannot fail and is not optional (it is `Url`)",
+        "[type-mismatch] the value is `Response`, but `Text` is needed",
+        "[missing-otherwise] this call can fail with PageError"
+      ],
+      "pass": false,
+      "rules": [
+        "check:missing-otherwise",
+        "check:purpose-missing",
+        "check:superfluous-otherwise",
+        "check:type-mismatch"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 15: line is 114 columns (limit 100)",
+        "line 33: line is 205 columns (limit 100)",
+        "line 38: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width",
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the public type `TitleError` has no purpose",
+        "[missing-otherwise] this call can fail with TitleError",
+        "[type-mismatch] the argument is `Response`, but `Text` is needed"
+      ],
+      "pass": false,
+      "rules": [
+        "check:missing-otherwise",
+        "check:purpose-missing",
+        "check:type-mismatch"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the public type `TitleError` has no purpose",
+        "[superfluous-otherwise] `otherwise` after a value that cannot fail and is not optional (it is `Url`)",
+        "[type-mismatch] the argument is `Response`, but `Text` is needed"
+      ],
+      "pass": false,
+      "rules": [
+        "check:purpose-missing",
+        "check:superfluous-otherwise",
+        "check:type-mismatch"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the public type `PageError` has no purpose",
+        "[superfluous-otherwise] `otherwise` after a value that cannot fail and is not optional (it is `Url`)",
+        "[type-mismatch] the value is `Response`, but `Text` is needed"
+      ],
+      "pass": false,
+      "rules": [
+        "check:purpose-missing",
+        "check:superfluous-otherwise",
+        "check:type-mismatch"
+      ]
+    }
+  ]
+}

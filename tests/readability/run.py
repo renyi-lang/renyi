@@ -362,11 +362,25 @@ def cmd_prepare(args: argparse.Namespace) -> None:
         write_prompt(prompts / "write" / f"{task_id}.json", "write", task_id,
                      PROMPTS["write"].format(task=description), {"description": description})
         count += 1
+    # the references as the round sees them: the corpus moves on and a
+    # description or an output can go stale for an old round otherwise
+    (target / "reference").mkdir(exist_ok=True)
+    for reference in sorted((HERE / "reference").iterdir()):
+        if reference.suffix in (".out", ".txt"):
+            write(target / "reference" / reference.name, read(reference))
     write(target / "system.txt", SYSTEM.format(cheatsheet=read(CHEATSHEET)))
     write(target / "meta.json", json.dumps({
         "date": dt.date.today().isoformat(), "revision": revision,
         "cheatsheet_bytes": CHEATSHEET.stat().st_size, "programs": len(programs)}, indent=2))
     print(f"{count} prompts written to {target.relative_to(ROOT)}")
+
+
+def reference_file(target: pathlib.Path, name: str) -> pathlib.Path:
+    """The reference as the round saw it: the copy `prepare` put under the
+    run directory, or the current file for a round prepared before the
+    copies existed."""
+    snapshot = target / "reference" / name
+    return snapshot if snapshot.exists() else HERE / "reference" / name
 
 
 def with_imports(program: str) -> str:
@@ -460,7 +474,7 @@ def score_sample(task: str, prompt: dict, sample: str, judged, args, target,
     if isinstance(judged, dict):
         judged = judged.get("verdict")  # {"verdict": ..., "reason": "..."} form
     if task == "predict":
-        expected = read(HERE / "reference" / f"{prompt['name']}.out").rstrip()
+        expected = read(reference_file(target, f"{prompt['name']}.out")).rstrip()
         actual = sample.strip().strip("`").rstrip()
         return {"pass": actual == expected}
     if task in ("complete", "write"):
@@ -502,9 +516,10 @@ def score_sample(task: str, prompt: dict, sample: str, judged, args, target,
         # second is within one of it, a wider disagreement awaits adjudication
         # in judgement.json, and a grader that answers without a digit (a
         # refusal) decides nothing
-        # the author's description of the program (reference/<name>.explain.txt);
-        # the purpose and example lines stand in when there is none
-        description = HERE / "reference" / f"{prompt['name']}.explain.txt"
+        # the author's description of the program (reference/<name>.explain.txt,
+        # as the round saw it); the purpose and example lines stand in when
+        # there is none
+        description = reference_file(target, f"{prompt['name']}.explain.txt")
         reference = read(description) if description.exists() else prompt["purposes"]
         first = grade_of(args.grader, key, sample, reference, args, grades)
         second = (grade_of(args.second_grader, key, sample, reference, args, grades)

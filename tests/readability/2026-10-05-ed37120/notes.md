@@ -31,13 +31,15 @@ Pass rates per task by the four-of-five rule, against the thresholds of
 Complete at least 80, Write at least 70, on every gating model; Write also
 needs no single lint rule over a quarter of the violations). The protocol
 tally runs `renyi format` before the lint (decision M5); the strict tally
-does not. Round 1 is in parentheses where the model ran in it:
+does not. Round 1 is in parentheses where the model ran in it, its
+Explain on the subagent graders' scale after the re-grade of session 6
+(round 1's `notes.md`, section 8):
 
 | Label | Predict | Explain | Complete (protocol / strict) | Write (protocol / strict) |
 |-------|---------|---------|----------|------|
 | claude-sonnet-5-5 | 9/10 (90%; r1 90) | 30/30 (100%; r1 97) | 17/19 (89%; r1 79) / 16/19 (84%; r1 63) | 3/10 (30%; r1 40) / 1/10 (10%; r1 10) |
 | gpt-5.5 | 10/10 (100%) | 30/30 (100%) | 14/19 (74%) / 13/19 (68%) | 1/10 (10%) / 1/10 (10%) |
-| claude-haiku-4-5-20251001 | 5/10 (50%; r1 30) | 27/30 (90%; r1 90) | 8/19 (42%; r1 37) / 6/19 (32%; r1 32) | 0/10 (0%; r1 0) / 0/10 |
+| claude-haiku-4-5-20251001 | 5/10 (50%; r1 30) | 27/30 (90%; r1 97) | 8/19 (42%; r1 37) / 6/19 (32%; r1 32) | 0/10 (0%; r1 0) / 0/10 |
 | gpt-5.4-mini | 8/10 (80%; r1 80) | 29/30 (97%; r1 97) | 7/19 (37%; r1 32) / 6/19 (32%; r1 32) | 0/10 (0%; r1 0) / 0/10 |
 
 Sonnet now passes Predict, Explain and Complete and misses Write by four
@@ -50,13 +52,20 @@ the grades and the graders' reasons in `grades.json`, the adjudications in
 Against the five-point rule of the protocol (a grammar change that lowers
 a passing rate by more than five points is reverted or explained): no rate
 of the three models of round 1 fell by more than five points except
-Sonnet's Write, 40 to 30. That is one item, `fizz_words` (5 of 5 samples
+Sonnet's Write, 40 to 30, and Haiku's Explain, 97 to 90 on the subagent
+scale (below). Sonnet's is one item, `fizz_words` (5 of 5 samples
 in round 1, 3 of 5 now): two samples call `console.print` without
 `import std.console`, a slip the checker catches (`unknown-name`), not a
 reading of any changed rule. Sonnet cannot be sampled at temperature 0,
 and with five samples and a four-of-five rule an item whose samples pass
 six times in ten passes about a third of the time, so single-item moves
-between rounds are noise for this model. The other moves are up:
+between rounds are noise for this model. Haiku's Explain loses `invoice`
+(two samples call the quantity rule "non-negative"; it is at least 1) and
+`todo_cli` (every sample says every command saves the list; only `add`
+and `done` do): wrong statements about the programs, not readings of a
+changed rule, from the floor model, which does not gate (R1); whether the
+five-point rule wants a decision entry for it is put to the owner in the
+handoff. The other moves are up:
 Sonnet's Complete from 15 to 17 items (`deadlines`, `invoice_report` and
 `shapes` now pass, `statistics` now fails on the reserved word `count` in
 two samples), Haiku's Predict from 3 to 5 items.
@@ -302,8 +311,11 @@ round; the README describes the harness as it now is.
    more Explain items. Round 2's Explain rates are therefore not on the
    same scale as round 1's for the floor models; for the gating models
    no API grades exist to compare, and their failing samples are wrong
-   statements, which both kinds of grader mark 2. The owner decides which
-   grader the protocol keeps (section 6).
+   statements, which both kinds of grader mark 2. The owner kept the
+   subagents and had round 1 re-graded with them (decision U4; round 1's
+   `notes.md`, section 8): on the one scale round 1's Explain is 97, 97
+   and 97 (Sonnet, Haiku, gpt-5.4-mini; Haiku up from 90), and the
+   parentheses of section 1 use it.
 4. **A stale reference** (fix 1 of this round). `reference/currency_tool.explain.txt`
    named `api.frankfurter.app`, the host of round 1's corpus; session 6
    moved the program to `api.frankfurter.dev` and gpt-5.5, the one model
@@ -323,7 +335,10 @@ round; the README describes the harness as it now is.
 ## 6. Open questions for the owner
 
 Raised as decision questions after this round, in a batch of four, with
-the numbers above:
+the numbers above, and answered in session 6 as decisions U1 to U4 (M4
+stands and the cheat sheet says it in a sentence; `rounded(places: 2)`
+in the cheat sheet; every method listed with its parentheses; the
+subagent graders from here on, round 1 re-graded):
 
 - A named single argument (decision M4) is again the largest checker rule
   for every model, both gating models included; it is a rule of 11 of

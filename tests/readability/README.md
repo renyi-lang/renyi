@@ -9,11 +9,12 @@ for the cheat-sheet gate.
 | Path | Content |
 |------|---------|
 | `run.py` | the harness: `prepare`, `run`, `score`, `report`, `compare` |
+| `merge_agent_grades.py` | merges the subagent graders' answers (a JSON array per batch of fifty samples) into a run's `grades.json` under the `agent:` buckets, checking every item against the run's sample and reference first |
 | `manifest.json` | per program: arguments for Predict, the function removed for Complete |
 | `reference/<program>.out` | the exact output the deterministic programs print (Predict references, and the first conformance expectations for M3) |
 | `reference/<program>.explain.txt` | the author's description of every program (purpose, inputs, outputs, effects, failures), which the Explain grader compares explanations against |
 | `write_tasks.json` | ten task descriptions for Write that are not in the corpus |
-| `<date>-<revision>/` | one run: `system.txt` (the cheat sheet as system prompt), `prompts/`, `outputs/<model>/`, `scores.json` |
+| `<date>-<revision>/` | one run: `system.txt` (the cheat sheet as system prompt), `reference/` (the references as they stood when the run was prepared; `score` reads them from there, so a later correction never re-grades an old run), `prompts/`, `outputs/<model>/`, `scores.json` |
 
 ## Running a round
 
@@ -22,7 +23,7 @@ python3 tests/readability/run.py prepare
 ANTHROPIC_API_KEY=... python3 tests/readability/run.py run --provider anthropic --model claude-sonnet-5-5
 OPENAI_API_KEY=...    python3 tests/readability/run.py run --provider openai --model <id>
 OPENAI_API_KEY=...    python3 tests/readability/run.py run --provider openai --base-url https://<vendor>/v1 --model <id>
-python3 tests/readability/run.py score --grader anthropic:claude-sonnet-5-5
+python3 tests/readability/run.py score --grader agent:claude-sonnet-5-5 --second-grader agent:claude-opus-5-5
 python3 tests/readability/run.py report
 python3 tests/readability/run.py score --no-format --scores scores-strict.json   # layout counts too
 python3 tests/readability/run.py report --scores scores-strict.json
@@ -76,7 +77,11 @@ unless `--run <directory name>` names another one.
   grades, for adjudication in `judgement.json` (an integer, or
   `{"verdict": 4, "reason": "..."}`). A grader that answers without a digit
   (Claude Sonnet 5.5 refuses a few explanations of programs that fetch web
-  pages) decides nothing, and the other grader's grade stands.
+  pages) decides nothing, and the other grader's grade stands. A grader
+  named `agent:<model>` is a Claude Code subagent (decision U4): the harness
+  never calls it, it reads the grades the subagents wrote into `grades.json`
+  (one subagent per batch of fifty samples, the rubric verbatim, merged by
+  `merge_agent_grades.py`) and stops at the first sample without one.
 - `report` applies the four-of-five rule per item and prints pass rates and,
   for Write, which lint rules the models violated.
 - `score` runs `renyi format` on every Complete and Write program before the
@@ -97,6 +102,9 @@ Predict, Explain and Complete samples came through the vendor APIs, the
 Write samples of gpt-5.5 through the Codex CLI (`run --provider file`),
 and the Explain grades from Claude Code subagents rather than the API
 graders; its `notes.md` records the sources and what the change in graders
-does to the numbers. The credentials are the environment variables
+does to the numbers. The first round's Explain samples were re-graded by
+the same subagents afterwards (decision U4), so both rounds are on one
+scale; its API-graded tally is kept in `scores-api.json` and
+`scores-strict-api.json`. The credentials are the environment variables
 `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` (decision L1); they are spent only
 when the owner says so for the round.

@@ -35,17 +35,17 @@ end
 A function whose first parameter is `self: Text` is a method: `text.trim()`.
 Clause order: `returns`, `or fails with`, `needs`, `for any`, `purpose:`,
 `tags:`, `see also:`, `deprecated:`, `expose as tool`, `example:` lines, blank
-line, body. Omit `returns` when nothing is returned. Short signatures stay on
-the head line. The `module` line and every `public` function, type and
-constant must carry a `purpose:` line; the checker rejects one without it.
+line, body. Omit `returns` when nothing is returned. The `module` line and
+every `public` function, type and constant must carry a `purpose:` line; the
+checker rejects one without it.
 
 ## Calls
 ```
-let page be web.get(url) otherwise fail            # one argument: positional
+let page be web.get(url) otherwise fail
 let total be money.add(left: 1, right: 2)          # two or more: all named, in order
-let trimmed be text.trim()                         # ability method on a value
 retry.run(action: fetch_page, attempts: 3)         # pass a function by name
 ```
+One argument is never named: `web.get(url)`, not `web.get(url: url)`.
 
 ## Bindings
 ```
@@ -57,7 +57,7 @@ ignore connection.execute(sql)       # discard the result of a call with effects
 ```
 A name is bound once per scope; shadowing is an error. Every binding must be
 used, and an unused result is an error (`set items to items.append(item)`);
-`ignore` of a pure call's result is an error too (the call would do nothing).
+`ignore` of a pure call's result is an error too.
 
 ## Types
 ```
@@ -109,10 +109,10 @@ ability Describable for Shape
   end
 end
 ```
-Call: `shape.describe()`. Derivable: `Equal` (automatic), `Compare by`,
-`Hash`, `ToText` (a variant prints as its bare name, `Green`; a record in
-constructor form), `ToJson`, `FromJson`. A generic implementation adds a clause:
-`ability Sized for Stack of Item` then `for any Item` on the next line.
+Derivable: `Equal`, `Compare by`, `Hash`, `ToText` (a variant prints as its
+bare name, `Green`; a record in constructor form), `ToJson`, `FromJson`. A
+generic implementation adds a clause: `ability Sized for Stack of Item` then
+`for any Item`.
 
 ## Expressions
 ```
@@ -235,7 +235,7 @@ run concurrently within time.seconds(5)
 end
 ```
 All tasks finish or the first failure cancels the rest; an expired `within`
-deadline cancels them and fails with `TimedOut`. No `async`/`await`.
+deadline cancels them and fails with `TimedOut`.
 
 ## Tests and tools
 ```
@@ -247,24 +247,23 @@ test "the forecast is read" needs network.http replays "fixtures/forecast.json"
 end
 ```
 A recording (`renyi record`) answers every effect of a `replays` test offline.
-`expose as tool` on a function publishes it to agents: JSON Schema from the
-parameters, description from `purpose:`, permissions from `needs`.
-`deprecated: since 2.0, replaced by new_name` hides a definition from
-discovery, warns existing callers, and lets `renyi migrate` rewrite them.
+`expose as tool` publishes a function to agents (schema from the parameters,
+description from `purpose:`, permissions from `needs`).
+`deprecated: since 2.0, replaced by new_name` warns existing callers.
 
 ## Library (names only; nothing else exists)
 ```
-Text: length is_empty trim trim_start trim_end to_lower to_upper split lines
-  characters contains starts_with ends_with index_of replace pad_left pad_right
-  repeat take drop reversed matches to_integer to_decimal to_float to_bytes
-List: length is_empty at first last rest without_last without_index take drop
-  append append_all reversed sorted distinct contains index_of largest smallest
-  with_index to_set flattened join sum
-Map: length is_empty get set without contains_key keys values entries merged
-Set: length is_empty contains add without union intersection difference
-  is_subset_of sorted to_list
-Numbers: to_decimal to_float to_text quotient absolute at_least at_most
-  rounded truncated square_root
+Text: length() is_empty() trim() trim_start() trim_end() to_lower() to_upper() split() lines()
+  characters() contains() starts_with() ends_with() index_of() replace() pad_left() pad_right()
+  repeat() take() drop() reversed() matches() to_integer() to_decimal() to_float() to_bytes()
+List: length() is_empty() at() first() last() rest() without_last() without_index() take() drop()
+  append() append_all() reversed() sorted() distinct() contains() index_of() largest() smallest()
+  with_index() to_set() flattened() join() sum()
+Map: length() is_empty() get() set() without() contains_key() keys() values() entries() merged()
+Set: length() is_empty() contains() add() without() union() intersection() difference()
+  is_subset_of() sorted() to_list()
+Numbers: to_decimal() to_float() to_text() quotient() absolute() at_least() at_most()
+  rounded(places: 2) truncated() square_root()
 Modules: std.console (print, print_error, read_line); std.environment
   (arguments, get, exit); std.time (now, today, seconds, parse_date, Date,
   Instant, Duration); std.random; std.filesystem (Path, read_text, write_text,
@@ -287,4 +286,4 @@ then to tool true type until when where with within
 Phrases are single tokens: `is not`, `is less than`, `is at most`,
 `is greater than`, `is at least`, `or fails with`, `is one of`, `for each`,
 `for any`, `run concurrently`, `repeat until`, `sorted by`, `group by`,
-`see also`, `expose as tool`, `at most`, `only to`. After a dot any word is a valid member name.
+`see also`, `expose as tool`, `at most`, `only to`. Any word is valid after a dot.

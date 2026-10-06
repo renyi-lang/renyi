@@ -173,31 +173,31 @@
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
-    },
-    {
-      "grade": 5,
-      "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
-    },
-    {
-      "grade": 5,
-      "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
-    },
-    {
-      "grade": 5,
-      "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     }
   ],
@@ -205,19 +205,19 @@
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
@@ -228,7 +228,7 @@
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     }
   ],
@@ -236,31 +236,31 @@
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
-    },
-    {
-      "grade": 4,
-      "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 5
-    },
-    {
-      "grade": 4,
-      "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 5
-    },
-    {
-      "grade": 4,
-      "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     }
   ],
@@ -268,31 +268,31 @@
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     }
   ],
@@ -300,320 +300,320 @@
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     }
   ],
   "explain/deadlines": [
     {
-      "grade": 4,
-      "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
-    },
-    {
-      "grade": 4,
-      "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
-    },
-    {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
-    },
-    {
-      "grade": 5,
-      "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     }
   ],
   "explain/dependency_order": [
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     }
   ],
   "explain/expression_tree": [
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
-    },
-    {
-      "grade": 4,
-      "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
-    },
-    {
-      "grade": 4,
-      "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     }
   ],
   "explain/file_tree": [
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 5
-    },
-    {
-      "grade": 4,
-      "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 5
-    },
-    {
-      "grade": 4,
-      "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 4
     },
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 5
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
     },
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 5
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
     }
   ],
   "explain/hello": [
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     }
   ],
   "explain/http_service": [
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 5
-    },
-    {
-      "grade": 4,
-      "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     }
   ],
   "explain/inventory_db": [
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     }
   ],
   "explain/invoice": [
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     }
   ],
   "explain/invoice_report": [
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
-    },
-    {
-      "grade": 4,
-      "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 3
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     }
   ],
   "explain/log_parser": [
@@ -623,27 +623,27 @@
       "grader": "judgement"
     },
     {
-      "grade": 4,
-      "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
-    },
-    {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
-    },
-    {
-      "grade": 5,
-      "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     }
   ],
@@ -651,8 +651,8 @@
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
       "grade": 5,
@@ -662,14 +662,14 @@
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
       "grade": 5,
@@ -681,32 +681,32 @@
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     }
   ],
   "explain/permissions": [
@@ -718,7 +718,7 @@
     {
       "grade": 4,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 4
     },
     {
@@ -729,91 +729,91 @@
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     }
   ],
   "explain/retry": [
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
-    },
-    {
-      "grade": 4,
-      "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
-    },
-    {
-      "grade": 2,
-      "pass": false,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 2
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     }
   ],
   "explain/sales_report": [
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
-    },
-    {
-      "grade": 5,
-      "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
-    },
-    {
-      "grade": 5,
-      "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     }
   ],
   "explain/semver": [
     {
       "grade": 4,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 5
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
@@ -824,45 +824,45 @@
     {
       "grade": 4,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 5
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
     },
     {
       "grade": 4,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 5
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 4
     }
   ],
   "explain/shapes": [
     {
-      "grade": 4,
-      "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
-    },
-    {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     }
   ],
@@ -870,13 +870,13 @@
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 2,
       "pass": false,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 2
     },
     {
@@ -892,28 +892,28 @@
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     }
   ],
   "explain/stacks": [
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
       "grade": 5,
@@ -923,7 +923,7 @@
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     }
   ],
@@ -931,31 +931,31 @@
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
-    },
-    {
-      "grade": 5,
-      "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     }
   ],
@@ -963,14 +963,14 @@
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
       "grade": 5,
@@ -980,8 +980,8 @@
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
       "grade": 5,
@@ -993,71 +993,71 @@
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     }
   ],
   "explain/traffic_light": [
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
-      "grade": 4,
+      "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     }
   ],
   "explain/weather": [
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
@@ -1068,14 +1068,14 @@
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
       "grade": 5,
@@ -1087,8 +1087,8 @@
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     },
     {
       "grade": 5,
@@ -1098,20 +1098,20 @@
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
-    },
-    {
-      "grade": 5,
-      "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
+      "grader": "agent:claude-sonnet-5-5",
       "second_grade": 5
     },
     {
       "grade": 5,
       "pass": true,
-      "grader": "anthropic:claude-sonnet-5-5",
-      "second_grade": 4
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "agent:claude-sonnet-5-5",
+      "second_grade": 5
     }
   ],
   "complete/config": [

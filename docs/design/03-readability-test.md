@@ -4,7 +4,9 @@ Status: protocol defined, harness written, one subagent pre-test run
 (`tests/readability/2026-10-05-e41258c/notes.md`) and two live rounds
 (`tests/readability/2026-10-05-1623155/notes.md`, decisions R1 to R8 came
 from it; `tests/readability/2026-10-05-ed37120/notes.md`, the four models
-of R8 on the cheat sheet after R1 to R8). Date: 2026-10-06.
+of R8 on the cheat sheet after R1 to R8). Explain is graded by Claude Code
+subagents since the second round, and the first round was re-graded by them
+(decision U4). Date: 2026-10-06.
 
 Decision H2 freezes the grammar by measurement, not by implementation: before
 the parser is written, several models must read the cheat sheet and work with

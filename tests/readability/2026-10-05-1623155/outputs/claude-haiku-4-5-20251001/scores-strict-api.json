@@ -1,0 +1,2693 @@
+{
+  "predict/dependency_order": [
+    {
+      "pass": false
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    }
+  ],
+  "predict/expression_tree": [
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    }
+  ],
+  "predict/hello": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/invoice_report": [
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    }
+  ],
+  "predict/markdown_table": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/permissions": [
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    },
+    {
+      "pass": true
+    }
+  ],
+  "predict/shapes": [
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    }
+  ],
+  "predict/statistics": [
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    }
+  ],
+  "predict/temperature_table": [
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    }
+  ],
+  "predict/traffic_light": [
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    },
+    {
+      "pass": false
+    }
+  ],
+  "explain/active_users": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/assistant": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/concurrent_fetch": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "judgement"
+    }
+  ],
+  "explain/config": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/currency_tool": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/deadlines": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 3
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 3
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 3
+    }
+  ],
+  "explain/dependency_order": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/expression_tree": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/file_tree": [
+    {
+      "grade": 3,
+      "pass": false,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 3,
+      "pass": false,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 3
+    },
+    {
+      "grade": 3,
+      "pass": false,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/hello": [
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/http_service": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/inventory_db": [
+    {
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
+    },
+    {
+      "grade": 3,
+      "pass": false,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 3,
+      "pass": false,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/invoice": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "judgement"
+    }
+  ],
+  "explain/invoice_report": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/log_parser": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/markdown_table": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/pagination": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/permissions": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/retry": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "judgement"
+    }
+  ],
+  "explain/sales_report": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/semver": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/shapes": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/shipping_rules": [
+    {
+      "grade": 2,
+      "pass": false,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 2
+    },
+    {
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
+    },
+    {
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
+    },
+    {
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
+    },
+    {
+      "grade": 2,
+      "pass": false,
+      "grader": "judgement"
+    }
+  ],
+  "explain/stacks": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/statistics": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 5,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/temperature_table": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "judgement"
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "judgement"
+    }
+  ],
+  "explain/todo_cli": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 3,
+      "pass": false,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/traffic_light": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 3,
+      "pass": false,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    }
+  ],
+  "explain/weather": [
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 5
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "explain/word_count": [
+    {
+      "grade": 3,
+      "pass": false,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    },
+    {
+      "grade": 4,
+      "pass": true,
+      "grader": "anthropic:claude-sonnet-5-5",
+      "second_grade": 4
+    }
+  ],
+  "complete/config": [
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "complete/deadlines": [
+    {
+      "lint_problems": [
+        "line 54: reserved word 'count' used as an identifier",
+        "line 56: 'is_after' is not declared in the standard library sketch or the corpus"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier",
+        "unknown-function"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 54: reserved word 'count' used as an identifier",
+        "line 56: 'is_after' is not declared in the standard library sketch or the corpus"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier",
+        "unknown-function"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 54: reserved word 'count' used as an identifier",
+        "line 56: 'is_after' is not declared in the standard library sketch or the corpus"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier",
+        "unknown-function"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 54: reserved word 'count' used as an identifier",
+        "line 56: 'is_after' is not declared in the standard library sketch or the corpus"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier",
+        "unknown-function"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 54: reserved word 'count' used as an identifier",
+        "line 56: 'is_after' is not declared in the standard library sketch or the corpus"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier",
+        "unknown-function"
+      ]
+    }
+  ],
+  "complete/dependency_order": [
+    {
+      "lint_problems": [
+        "line 22: trailing whitespace",
+        "line 30: trailing whitespace",
+        "line 34: trailing whitespace",
+        "line 42: trailing whitespace",
+        "line 47: trailing whitespace",
+        "line 53: trailing whitespace",
+        "line 33: binding 'previous_count' is never used (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "unused-binding",
+        "whitespace"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 22: trailing whitespace",
+        "line 30: trailing whitespace",
+        "line 34: trailing whitespace",
+        "line 42: trailing whitespace",
+        "line 47: trailing whitespace",
+        "line 53: trailing whitespace",
+        "line 33: binding 'previous_count' is never used (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "unused-binding",
+        "whitespace"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 22: trailing whitespace",
+        "line 30: trailing whitespace",
+        "line 34: trailing whitespace",
+        "line 42: trailing whitespace",
+        "line 47: trailing whitespace",
+        "line 53: trailing whitespace",
+        "line 33: binding 'previous_count' is never used (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "unused-binding",
+        "whitespace"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 22: trailing whitespace",
+        "line 30: trailing whitespace",
+        "line 34: trailing whitespace",
+        "line 42: trailing whitespace",
+        "line 47: trailing whitespace",
+        "line 53: trailing whitespace",
+        "line 33: binding 'previous_count' is never used (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "unused-binding",
+        "whitespace"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 22: trailing whitespace",
+        "line 30: trailing whitespace",
+        "line 34: trailing whitespace",
+        "line 42: trailing whitespace",
+        "line 47: trailing whitespace",
+        "line 53: trailing whitespace",
+        "line 33: binding 'previous_count' is never used (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "unused-binding",
+        "whitespace"
+      ]
+    }
+  ],
+  "complete/expression_tree": [
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "complete/invoice": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-count] `rounded` takes 1 argument (places), found 0"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count"
+      ]
+    }
+  ],
+  "complete/invoice_report": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[unknown-field] `List of Line` has no field named `length`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:unknown-field"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[unknown-field] `List of Line` has no field named `length`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:unknown-field"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[unknown-field] `List of Line` has no field named `length`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:unknown-field"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[unknown-field] `List of Line` has no field named `length`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:unknown-field"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[unknown-field] `List of Line` has no field named `length`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:unknown-field"
+      ]
+    }
+  ],
+  "complete/log_parser": [
+    {
+      "lint_problems": [
+        "line 57: trailing whitespace",
+        "line 62: trailing whitespace",
+        "line 65: trailing whitespace"
+      ],
+      "pass": false,
+      "rules": [
+        "whitespace"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 57: trailing whitespace",
+        "line 62: trailing whitespace",
+        "line 65: trailing whitespace"
+      ],
+      "pass": false,
+      "rules": [
+        "whitespace"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 57: trailing whitespace",
+        "line 62: trailing whitespace",
+        "line 65: trailing whitespace"
+      ],
+      "pass": false,
+      "rules": [
+        "whitespace"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 57: trailing whitespace",
+        "line 62: trailing whitespace",
+        "line 65: trailing whitespace"
+      ],
+      "pass": false,
+      "rules": [
+        "whitespace"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 57: trailing whitespace",
+        "line 62: trailing whitespace",
+        "line 65: trailing whitespace"
+      ],
+      "pass": false,
+      "rules": [
+        "whitespace"
+      ]
+    }
+  ],
+  "complete/markdown_table": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-name] a call with two or more arguments names every argument",
+        "[argument-name] a call with two or more arguments names every argument",
+        "[argument-name] a call with two or more arguments names every argument",
+        "[argument-name] a call with two or more arguments names every argument",
+        "[argument-name] a call with two or more arguments names every argument",
+        "[argument-name] a call with two or more arguments names every argument",
+        "[type-mismatch] `+` needs numbers, but this is `List of Text`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:type-mismatch"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-name] a call with two or more arguments names every argument",
+        "[argument-name] a call with two or more arguments names every argument",
+        "[argument-name] a call with two or more arguments names every argument",
+        "[argument-name] a call with two or more arguments names every argument",
+        "[argument-name] a call with two or more arguments names every argument",
+        "[argument-name] a call with two or more arguments names every argument",
+        "[type-mismatch] `+` needs numbers, but this is `List of Text`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:type-mismatch"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-name] a call with two or more arguments names every argument",
+        "[argument-name] a call with two or more arguments names every argument",
+        "[argument-name] a call with two or more arguments names every argument",
+        "[argument-name] a call with two or more arguments names every argument",
+        "[argument-name] a call with two or more arguments names every argument",
+        "[argument-name] a call with two or more arguments names every argument",
+        "[type-mismatch] `+` needs numbers, but this is `List of Text`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:type-mismatch"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-name] a call with two or more arguments names every argument",
+        "[argument-name] a call with two or more arguments names every argument",
+        "[argument-name] a call with two or more arguments names every argument",
+        "[argument-name] a call with two or more arguments names every argument",
+        "[argument-name] a call with two or more arguments names every argument",
+        "[argument-name] a call with two or more arguments names every argument",
+        "[type-mismatch] `+` needs numbers, but this is `List of Text`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:type-mismatch"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-name] a call with two or more arguments names every argument",
+        "[argument-name] a call with two or more arguments names every argument",
+        "[argument-name] a call with two or more arguments names every argument",
+        "[argument-name] a call with two or more arguments names every argument",
+        "[argument-name] a call with two or more arguments names every argument",
+        "[argument-name] a call with two or more arguments names every argument",
+        "[type-mismatch] `+` needs numbers, but this is `List of Text`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:type-mismatch"
+      ]
+    }
+  ],
+  "complete/permissions": [
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "complete/sales_report": [
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "complete/semver": [
+    {
+      "lint_problems": [
+        "line 38: trailing whitespace",
+        "line 42: trailing whitespace"
+      ],
+      "pass": false,
+      "rules": [
+        "whitespace"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 38: trailing whitespace",
+        "line 42: trailing whitespace"
+      ],
+      "pass": false,
+      "rules": [
+        "whitespace"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 38: trailing whitespace",
+        "line 42: trailing whitespace"
+      ],
+      "pass": false,
+      "rules": [
+        "whitespace"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 38: trailing whitespace",
+        "line 42: trailing whitespace"
+      ],
+      "pass": false,
+      "rules": [
+        "whitespace"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 38: trailing whitespace",
+        "line 42: trailing whitespace"
+      ],
+      "pass": false,
+      "rules": [
+        "whitespace"
+      ]
+    }
+  ],
+  "complete/shapes": [
+    {
+      "lint_problems": [
+        "line 40: line is 101 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 41: line is 101 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 41: line is 101 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 41: line is 101 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 41: line is 101 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    }
+  ],
+  "complete/shipping_rules": [
+    {
+      "lint_problems": [
+        "line 38: line is 106 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 38: line is 106 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 38: line is 106 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 38: line is 106 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 38: line is 106 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    }
+  ],
+  "complete/stacks": [
+    {
+      "lint_problems": [],
+      "vm": "10 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "10 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "10 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "10 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "10 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "complete/statistics": [
+    {
+      "lint_problems": [
+        "line 24: reserved word 'sorted' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 24: reserved word 'sorted' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 24: reserved word 'sorted' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 24: reserved word 'sorted' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 24: reserved word 'sorted' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    }
+  ],
+  "complete/temperature_table": [
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    },
+    {
+      "lint_problems": [],
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
+    }
+  ],
+  "complete/todo_cli": [
+    {
+      "lint_problems": [
+        "line 28: reserved word 'first' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 28: reserved word 'first' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 28: reserved word 'first' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 28: reserved word 'first' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 28: reserved word 'first' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    }
+  ],
+  "complete/traffic_light": [
+    {
+      "lint_problems": [
+        "block starters 9 vs 'end' 10 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance"
+      ]
+    },
+    {
+      "lint_problems": [
+        "block starters 9 vs 'end' 10 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance"
+      ]
+    },
+    {
+      "lint_problems": [
+        "block starters 9 vs 'end' 10 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance"
+      ]
+    },
+    {
+      "lint_problems": [
+        "block starters 9 vs 'end' 10 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance"
+      ]
+    },
+    {
+      "lint_problems": [
+        "block starters 9 vs 'end' 10 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance"
+      ]
+    }
+  ],
+  "complete/word_count": [
+    {
+      "lint_problems": [
+        "line 28: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 28: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 28: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[unknown-method] `Map of Text to List of WordCount` has no method named `sorted`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:unknown-method"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 28: reserved word 'count' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    }
+  ],
+  "write/compound_interest": [
+    {
+      "lint_problems": [
+        "line 21: line is 108 columns (limit 100)",
+        "line 22: line is 104 columns (limit 100)",
+        "line 60: trailing whitespace"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width",
+        "whitespace"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 21: line is 108 columns (limit 100)",
+        "line 22: line is 104 columns (limit 100)",
+        "block starters 11 vs 'end' 12 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance",
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 21: line is 108 columns (limit 100)",
+        "line 22: line is 104 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 21: line is 108 columns (limit 100)",
+        "line 22: line is 104 columns (limit 100)",
+        "line 64: reserved word 'with' used as an identifier",
+        "block starters 9 vs 'end' 10 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance",
+        "line-width",
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 21: line is 108 columns (limit 100)",
+        "line 22: line is 104 columns (limit 100)",
+        "line 63: reserved word 'with' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width",
+        "reserved-word-identifier"
+      ]
+    }
+  ],
+  "write/fizz_words": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name"
+      ]
+    }
+  ],
+  "write/initials": [
+    {
+      "lint_problems": [
+        "line 16: trailing whitespace",
+        "line 20: trailing whitespace"
+      ],
+      "pass": false,
+      "rules": [
+        "whitespace"
+      ]
+    },
+    {
+      "lint_problems": [
+        "block starters 1 vs 'end' 3 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance"
+      ]
+    },
+    {
+      "lint_problems": [
+        "block starters 1 vs 'end' 3 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance"
+      ]
+    },
+    {
+      "lint_problems": [
+        "block starters 1 vs 'end' 3 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance"
+      ]
+    },
+    {
+      "lint_problems": [
+        "block starters 1 vs 'end' 3 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance"
+      ]
+    }
+  ],
+  "write/letter_grades": [
+    {
+      "lint_problems": [
+        "line 36: line is 103 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 43: line is 134 columns (limit 100)",
+        "line 61: line is 116 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 36: line is 103 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 48: line is 134 columns (limit 100)",
+        "line 67: line is 116 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 36: line is 103 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    }
+  ],
+  "write/low_stock_report": [
+    {
+      "lint_problems": [
+        "line 21: trailing whitespace",
+        "line 22: line is 102 columns (limit 100)",
+        "line 24: trailing whitespace",
+        "line 25: line is 108 columns (limit 100)",
+        "line 26: trailing whitespace",
+        "line 32: trailing whitespace",
+        "line 40: trailing whitespace",
+        "line 57: line is 133 columns (limit 100)",
+        "line 58: trailing whitespace",
+        "line 61: line is 110 columns (limit 100)",
+        "line 62: trailing whitespace",
+        "line 64: line is 111 columns (limit 100)",
+        "line 65: trailing whitespace"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width",
+        "whitespace"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 30: line is 103 columns (limit 100)",
+        "line 31: line is 104 columns (limit 100)",
+        "block starters 5 vs 'end' 7 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance",
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 30: line is 107 columns (limit 100)",
+        "line 68: line is 116 columns (limit 100)",
+        "line 79: line is 117 columns (limit 100)",
+        "line 86: line is 125 columns (limit 100)",
+        "block starters 14 vs 'end' 21 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance",
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 30: line is 107 columns (limit 100)",
+        "line 68: line is 116 columns (limit 100)",
+        "line 79: line is 117 columns (limit 100)",
+        "line 86: line is 125 columns (limit 100)",
+        "block starters 14 vs 'end' 21 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance",
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 29: line is 107 columns (limit 100)",
+        "line 67: line is 116 columns (limit 100)",
+        "line 78: line is 117 columns (limit 100)",
+        "line 85: line is 125 columns (limit 100)",
+        "block starters 14 vs 'end' 21 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance",
+        "line-width"
+      ]
+    }
+  ],
+  "write/merge_sorted": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose",
+        "[unknown-field] `List of Integer` has no field named `length`",
+        "[unknown-field] `List of Integer` has no field named `length`",
+        "[unknown-field] `List of Integer` has no field named `length`",
+        "[unknown-field] `List of Integer` has no field named `length`",
+        "[unknown-field] `List of _` has no field named `is_empty`",
+        "[unknown-field] `List of _` has no field named `last`",
+        "[unknown-field] `List of maybe Integer` has no field named `is_empty`",
+        "[unknown-field] `List of maybe Integer` has no field named `last`",
+        "[missing-ability] `is less than` needs `Compare`, which `maybe Integer` does not have",
+        "[unknown-field] `List of maybe Integer` has no field named `is_empty`",
+        "[unknown-field] `List of maybe Integer` has no field named `last`",
+        "[missing-ability] `is less than` needs `Compare`, which `maybe Integer` does not have",
+        "[unknown-field] `List of maybe Integer` has no field named `is_empty`",
+        "[unknown-field] `List of maybe Integer` has no field named `last`",
+        "[unknown-field] `List of maybe Integer` has no field named `is_empty`",
+        "[unknown-field] `List of maybe Integer` has no field named `last`",
+        "[type-mismatch] the returned value is `List of maybe Integer`, but `List of Integer` is needed"
+      ],
+      "pass": false,
+      "rules": [
+        "check:missing-ability",
+        "check:purpose-missing",
+        "check:type-mismatch",
+        "check:unknown-field"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 4: reserved word 'first' used as an identifier",
+        "line 7: reserved word 'first' used as an identifier",
+        "line 8: reserved word 'first' used as an identifier",
+        "line 9: reserved word 'first' used as an identifier",
+        "line 70: reserved word 'first' used as an identifier",
+        "block starters 14 vs 'end' 15 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance",
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 4: reserved word 'first' used as an identifier",
+        "line 7: reserved word 'first' used as an identifier",
+        "line 8: reserved word 'first' used as an identifier",
+        "line 9: reserved word 'first' used as an identifier",
+        "line 49: reserved word 'first' used as an identifier"
+      ],
+      "pass": false,
+      "rules": [
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 4: reserved word 'first' used as an identifier",
+        "line 7: reserved word 'first' used as an identifier",
+        "line 8: reserved word 'first' used as an identifier",
+        "line 9: reserved word 'first' used as an identifier",
+        "line 70: reserved word 'first' used as an identifier",
+        "block starters 14 vs 'end' 15 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance",
+        "reserved-word-identifier"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the module has no purpose",
+        "[unknown-field] `List of Integer` has no field named `length`",
+        "[unknown-field] `List of Integer` has no field named `length`",
+        "[unknown-field] `List of Integer` has no field named `length`",
+        "[unknown-field] `List of Integer` has no field named `length`",
+        "[unknown-field] `List of _` has no field named `is_empty`",
+        "[unknown-field] `List of _` has no field named `last`",
+        "[unknown-field] `List of maybe Integer` has no field named `is_empty`",
+        "[unknown-field] `List of maybe Integer` has no field named `last`",
+        "[missing-ability] `is less than` needs `Compare`, which `maybe Integer` does not have",
+        "[unknown-field] `List of maybe Integer` has no field named `is_empty`",
+        "[unknown-field] `List of maybe Integer` has no field named `last`",
+        "[missing-ability] `is less than` needs `Compare`, which `maybe Integer` does not have",
+        "[unknown-field] `List of maybe Integer` has no field named `is_empty`",
+        "[unknown-field] `List of maybe Integer` has no field named `last`",
+        "[unknown-field] `List of maybe Integer` has no field named `is_empty`",
+        "[unknown-field] `List of maybe Integer` has no field named `last`",
+        "[type-mismatch] the returned value is `List of maybe Integer`, but `List of Integer` is needed"
+      ],
+      "pass": false,
+      "rules": [
+        "check:missing-ability",
+        "check:purpose-missing",
+        "check:type-mismatch",
+        "check:unknown-field"
+      ]
+    }
+  ],
+  "write/password_strength": [
+    {
+      "lint_problems": [
+        "block starters 6 vs 'end' 4 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[expected] expected `end`, found `)`",
+        "[expected] expected `end`, found `)`",
+        "[expected] expected `end`, found `)`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:expected"
+      ]
+    },
+    {
+      "lint_problems": [
+        "block starters 6 vs 'end' 4 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance"
+      ]
+    },
+    {
+      "lint_problems": [
+        "block starters 6 vs 'end' 4 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance"
+      ]
+    },
+    {
+      "lint_problems": [
+        "block starters 6 vs 'end' 4 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance"
+      ]
+    }
+  ],
+  "write/request_window": [
+    {
+      "lint_problems": [
+        "line 7: line is 117 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 7: line is 110 columns (limit 100)",
+        "line 14: trailing whitespace",
+        "line 15: keyword from another language",
+        "line 18: trailing whitespace",
+        "line 20: trailing whitespace",
+        "block starters 3 vs 'end' 4 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance",
+        "foreign-keyword",
+        "line-width",
+        "whitespace"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 7: line is 110 columns (limit 100)",
+        "line 12: binding 'index' is never used (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width",
+        "unused-binding"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 7: line is 117 columns (limit 100)",
+        "line 14: trailing whitespace",
+        "line 15: keyword from another language",
+        "line 18: trailing whitespace",
+        "line 20: trailing whitespace",
+        "block starters 3 vs 'end' 4 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance",
+        "foreign-keyword",
+        "line-width",
+        "whitespace"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 7: line is 110 columns (limit 100)",
+        "line 14: trailing whitespace",
+        "line 15: keyword from another language",
+        "line 18: trailing whitespace",
+        "line 20: trailing whitespace",
+        "block starters 3 vs 'end' 4 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance",
+        "foreign-keyword",
+        "line-width",
+        "whitespace"
+      ]
+    }
+  ],
+  "write/roman_numerals": [
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the public type `RomanError` has no purpose",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[type-mismatch] `+` needs numbers, but this is `Text`",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:purpose-missing",
+        "check:type-mismatch"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the public type `RomanError` has no purpose",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[type-mismatch] `+` needs numbers, but this is `Text`",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[unknown-field] `Text` has no field named `is_empty`",
+        "[unknown-field] `Text` has no field named `characters`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:purpose-missing",
+        "check:type-mismatch",
+        "check:unknown-field"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[purpose-missing] the public type `RomanError` has no purpose",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[type-mismatch] `+` needs numbers, but this is `Text`",
+        "[argument-name] a call with one argument does not name it",
+        "[argument-name] a call with one argument does not name it",
+        "[unknown-field] `Text` has no field named `is_empty`",
+        "[unknown-field] `Text` has no field named `characters`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-name",
+        "check:purpose-missing",
+        "check:type-mismatch",
+        "check:unknown-field"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 70: line is 101 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 70: line is 101 columns (limit 100)"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width"
+      ]
+    }
+  ],
+  "write/title_length_tool": [
+    {
+      "lint_problems": [
+        "line 17: trailing whitespace",
+        "line 23: trailing whitespace"
+      ],
+      "pass": false,
+      "rules": [
+        "whitespace"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 17: trailing whitespace",
+        "line 23: trailing whitespace"
+      ],
+      "pass": false,
+      "rules": [
+        "whitespace"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 17: trailing whitespace",
+        "line 23: trailing whitespace"
+      ],
+      "pass": false,
+      "rules": [
+        "whitespace"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 16: 'find' is not declared in the standard library sketch or the corpus",
+        "line 19: 'group' is not declared in the standard library sketch or the corpus"
+      ],
+      "pass": false,
+      "rules": [
+        "unknown-function"
+      ]
+    },
+    {
+      "lint_problems": [
+        "line 16: line is 124 columns (limit 100)",
+        "line 16: 'find' is not declared in the standard library sketch or the corpus"
+      ],
+      "pass": false,
+      "rules": [
+        "line-width",
+        "unknown-function"
+      ]
+    }
+  ]
+}

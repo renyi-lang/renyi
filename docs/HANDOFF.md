@@ -8,7 +8,9 @@ database program, `--redact`; the run manifest and `renyi reproduce`;
 decision L2 carried out, the VM judging Complete and Write; terminals
 after `group by` per group; `renyi mcp`, the toolchain for agent hosts;
 the semantic diff, `renyi index --diff` and the `diff` tool; readability
-round 2 collected, graded and written up, four questions open).
+round 2 collected, graded and written up, its four questions answered as
+decisions U1 to U4 and applied; round 1 re-graded on the subagent
+scale).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -22,15 +24,16 @@ standard library and implements decisions P1 and P2 (recorded runs,
 budgets, the grant stack of Q1, the run manifest and `renyi reproduce` of
 Q2) at its primitive boundary, which completes M3 (tasks run one after the
 other by decision S2); `renyi mcp` (decision O5, T1 to T5) serves all of
-it to an agent host. Design decisions are in sections 0 to T of
+it to an agent host. Design decisions are in sections 0 to U of
 `01-decisions.md`; the agent tooling in `05-agent-tooling.md`, the
 signature capabilities in `06-runtime-guarantees.md`, the system-level
 commitments in `07-system-design.md`. The corpus has 30 programs, passes
 the lint, is in canonical layout, checks cleanly, has nothing over
 budget, and its 89 `example:` lines and `test` blocks pass on the VM (six
 are `replays` tests answered from recordings under `examples/fixtures/`,
-two of them hand-written). The cheat sheet measures 2977 of 3000 tokens
-(unchanged this session). The Rust workspace has five crates:
+two of them hand-written). The cheat sheet measures 2994 of 3000 tokens
+(decisions U1 to U3: the one-argument sentence, every library method
+with its parentheses, `rounded(places: 2)`). The Rust workspace has five crates:
 `renyi_syntax`, `renyi_check`, `renyi_index`, `renyi_vm` and the `renyi`
 binary with `check`, `format`, `tokens`, `parse [--json]`, `index [--json
 | --budgets | --diff <map or revision>]`, `run [--manifest] [options]
@@ -41,21 +44,28 @@ tests, clippy and fmt clean on Windows. The VM depends on `ureq` (HTTP,
 with rustls) and `rusqlite` (SQLite compiled in), decision S1, and on
 `sha2` for the manifest and the hashes.
 
-Two live readability rounds exist. Round 1
-(`tests/readability/2026-10-05-1623155/`, session 5, three models through
-the vendor APIs) gave decisions R1 to R8. Round 2
-(`tests/readability/2026-10-05-ed37120/`, this session, the four models
-of R8 on the cheat sheet after R1 to R8) gives, by the four-of-five rule
-with the VM judging Complete and Write: Sonnet 5.5 Predict 90, Explain
-100, Complete 89, Write 30; gpt-5.5 100, 100, 74, 10; Haiku 4.5 50, 90,
-42, 0; gpt-5.4-mini 80, 97, 37, 0 (thresholds 90, 90, 80, 70 on the two
-gating models). Sonnet now passes Complete; neither gating model passes
-Write, and gpt-5.5 misses Complete by one item. The grammar is not frozen.
-Its `notes.md` has the analysis; the four questions it raises (decision
-M4 again, `rounded()` without `places`, zero-argument methods written as
-fields, the Explain grader kind) were put to the owner at the end of the
-session and are unanswered as this handoff is written (see Owner actions
-pending).
+Two live readability rounds exist, both with Explain graded by Claude
+Code subagents (decision U4; round 1's API-graded tally is kept beside in
+`scores-api.json`). Round 1 (`tests/readability/2026-10-05-1623155/`,
+session 5, three models through the vendor APIs, Explain re-graded in
+session 6) gave decisions R1 to R8 and stands at Sonnet 5.5 Predict 90,
+Explain 97, Complete 79, Write 40; Haiku 4.5 30, 97, 37, 0; gpt-5.4-mini
+80, 97, 32, 0. Round 2 (`tests/readability/2026-10-05-ed37120/`, session
+6, the four models of R8 on the cheat sheet after R1 to R8) gives, by the
+four-of-five rule with the VM judging Complete and Write: Sonnet 5.5 90,
+100, 89, 30; gpt-5.5 100, 100, 74, 10; Haiku 4.5 50, 90, 42, 0;
+gpt-5.4-mini 80, 97, 37, 0 (thresholds 90, 90, 80, 70 on the two gating
+models). Sonnet passes Complete; neither gating model passes Write, and
+gpt-5.5 misses Complete by one item. The grammar is not frozen. The four
+questions round 2 raised (decision M4 again, `rounded()` without
+`places`, zero-argument methods written as fields, the Explain grader
+kind) were answered by the owner in session 6 as decisions U1 to U4 and
+applied: the cheat sheet changed, the grammar and the library did not.
+On the one scale Haiku's Explain fell from 97 to 90 between the rounds
+(`invoice`, `todo_cli`: wrong statements about the programs, not
+readings of a changed rule; the floor model does not gate, R1), which is
+put to the owner under the five-point rule, with one question from the
+re-grade (see Owner actions pending).
 
 ## The VM as it exists (`crates/renyi_vm`)
 
@@ -436,6 +446,28 @@ pending).
     import, noise at the model's default temperature; everything else
     held or rose). Status lines of `03-readability-test.md` and
     `tests/readability/README.md`.
+15. **Decisions U1 to U4 applied; round 1 re-graded** (twelfth commit,
+    after the handoff commit). The owner answered the four questions: M4
+    stands and the cheat sheet says it in a sentence (U1);
+    `rounded(places: 2)` in the cheat sheet, the library unchanged (U2);
+    every library method listed with its parentheses, the `length of`
+    form declined as a second spelling (U3); the subagent graders from
+    here on and round 1 re-graded with them (U4). `docs/cheatsheet.md`
+    at 2994 tokens after trimming elsewhere (the `deprecated` and
+    `expose as tool` sentences, "No `async`/`await`", the `trimmed` call
+    example, "Short signatures stay on the head line"). `run.py prepare`
+    snapshots `reference/` into the run and `score` reads it from there
+    (`reference_file`); both runs got their snapshot (round 1's
+    `currency_tool.explain.txt` with the old host). Round 1's 450 Explain
+    samples were graded by 18 subagents (nine Sonnet 5.5, nine Opus 5.5,
+    batches of fifty, 2.07 million tokens of quota) and merged into its
+    `grades.json` by `tests/readability/merge_agent_grades.py` (now in
+    the repository); its API-graded tally moved to `scores-api.json` and
+    `scores-strict-api.json`; `score` and `report` re-ran offline. The
+    two subagents never disagreed by more than one point, so the hand
+    verdicts of session 5 stand and nothing was adjudicated anew.
+    Results and the caveats in round 1's `notes.md`, section 8; round
+    2's notes, `README.md` and `03-readability-test.md` updated.
 
 ## Done in session 5 (condensed)
 
@@ -456,31 +488,30 @@ on a fresh clone).
 
 ## Owner actions pending
 
-- **Four questions from round 2**, asked at the end of session 6 as a
-  batch (AskUserQuestion) and unanswered when this handoff was written;
-  the next session reads the answers from the chat or asks again, then
-  records each as a decision entry (section U of `01-decisions.md`) and
-  applies it:
-  1. Decision M4 (a call with one argument does not name it) is again the
-     largest checker rule for all four models (43 / 50 / 90 / 68 error
-     lines for Sonnet / gpt-5.5 / Haiku / gpt-5.4-mini) and costs gpt-5.5
-     the Write item `fizz_words` outright. Relax it (a single argument may
-     be named), keep it and say it louder, or keep it unchanged.
-  2. `rounded()` without `places` and `to_decimal()` on a Decimal cost
-     both gating models `invoice` and `shapes` (Complete) and
-     `compound_interest` (Write); gpt-5.5 would pass Complete without
-     them. Give `places` a default of 0 and `to_decimal` an identity on
-     Decimal (library change), or show `rounded(places: 2)` in the cheat
-     sheet, or keep.
-  3. Zero-argument methods written as fields (`text.length`,
-     `items.is_empty`, `items.last`): the cheat sheet lists methods as
-     bare names. Show them as `length()` in the list (token budget: 23
-     left), accept the field form for a method without parameters
-     (grammar change), or keep.
-  4. The Explain grader kind: subagents (subscription, a point more
-     lenient; re-grade round 1 the same way for a consistent series) or
-     the API graders (the owner's keys, needing explicit say-so per
-     round), or both kept with one reported.
+- **Three questions from round 1's re-grade**, asked at the end of
+  session 6 (AskUserQuestion) and possibly unanswered when this handoff
+  was written; the next session reads the answers from the chat or asks
+  again, then records them (section U of `01-decisions.md`):
+  1. The subagent graders let three wrong statements pass in round 1 that
+     the hand verdicts call wrong (Sonnet's `retry.3`, Haiku's
+     `inventory_db.2` and `shipping_rules.0`; round 1's `notes.md`,
+     section 8), and the adjudication rule reaches only samples the two
+     graders disagree on by more than one point. Extend the hand verdicts
+     to agreed grades of samples that repeat a sentence a hand verdict
+     called wrong (moves Haiku's `inventory_db` to failing, nothing on a
+     gating model), add a hand pass over every agreed grade, or keep the
+     rule as it is.
+  2. On the one scale Haiku's Explain fell from 97 (round 1) to 90 (round
+     2), two items: `invoice` (two samples call the quantity rule
+     "non-negative"; it is at least 1) and `todo_cli` (every sample says
+     every command saves the list; only `add` and `done` do). Wrong
+     statements about the programs, not readings of a changed rule; the
+     floor model does not gate (R1), but the five-point rule of
+     `03-readability-test.md` names every passing rate. A decision entry,
+     or the rule narrowed to the gating models.
+  3. How round 3's samples are collected: the API keys with the owner's
+     say-so for the round, or subagents for the Claude models and `codex
+     exec` for the OpenAI models through `run --provider file`.
 - Session 5 printed the values of `ANTHROPIC_API_KEY` and
   `OPENAI_API_KEY` into a tool result once (not committed); the owner said
   in session 6 that they handle the transcript and the keys themselves, so
@@ -511,16 +542,16 @@ on a fresh clone).
 
 ## Next steps
 
-1. **Apply the owner's answers to the four questions** (Owner actions
-   pending): decision entries in a new section U of `01-decisions.md`;
-   then the cheat sheet, the sketches, `library/std` and the checker as
-   the answers require (M4 lives in `renyi_check`'s call checking and in
-   the lint; `rounded` and `to_decimal` in `04-stdlib-sketch.md`,
-   `library/std/prelude.ry` and `natives/prelude.rs`; the method list in
-   `docs/cheatsheet.md` under the token gate). A grammar or library change
-   is measured by a round 3 on the gating models (`run.py prepare`, then
-   `run` through whichever channel the owner's answer to question 4
-   allows; `--provider file` with Codex or subagents otherwise).
+1. **Round 3 on the cheat sheet after U1 to U3**: `run.py prepare`, then
+   `run` through the channel the owner names (Owner actions pending,
+   question 3): the API keys only with explicit say-so for the round;
+   otherwise Claude Code subagents for the Claude models and `codex exec`
+   for the OpenAI models, fed to the harness with `run --provider file`
+   (round 2's gpt-5.5 Write samples came that way; Predict, Explain and
+   Complete at five samples per prompt would be new ground for it, 345
+   samples per model). Explain graded by subagents and merged with
+   `tests/readability/merge_agent_grades.py`, Complete and Write by the
+   VM. It measures U1 to U3 and the five-point rule on every model.
 2. **Readability observations not asked**: `otherwise` binds loosest
    (Sonnet wrote `check f(x) otherwise "" is "y"`); Sonnet reasons before
    the Predict answer on `traffic_light` (0 of 5 with right lines); the
@@ -609,17 +640,22 @@ on a fresh clone).
   bodies bind every field of the record or variant, which the sketch
   (section 4: "over the field name") does not promise; a condition that
   reads another field type-checks and runs.
-- **Readability.** Round 2's Explain grades come from subagent graders
-  that are about a point more lenient than round 1's API graders (the
-  floor models' Explain rates are not on round 1's scale; the gating
-  models' failing samples are wrong statements, which both grader kinds
-  mark 2). Sonnet 5.5 and gpt-5.5 cannot be sampled at temperature 0, so
+- **Readability.** Explain is graded by subagents in both rounds (round
+  1 re-graded, U4). They are about a point more lenient than the API
+  graders, let three wrong statements pass in round 1 that the hand
+  verdicts call wrong (round 1's `notes.md`, section 8), and read a
+  boundary word strictly in one batch and loosely in another; the hand
+  verdicts reach only disagreements. The floor model's Explain number
+  carries that; the gating models' failing samples are wrong statements
+  both grader kinds mark 2. Sonnet 5.5 and gpt-5.5 cannot be sampled at temperature 0, so
   their rates carry sampling noise of about one item. gpt-5.5's Write
   samples came through the Codex CLI (its own system prompt around ours,
   reasoning effort `medium`), the rest through the API. The grant clauses
   (`at most`, `only to`, `replays` in a prompt) have not been through a
   round. `reference/*.explain.txt` must be re-read against the corpus
-  before a round (one went stale this session).
+  before a round (one went stale this session; `prepare` now snapshots
+  them into the run, so an old run keeps the text its samples were
+  graded against).
 - **Library.** The standard library sketch is a first draft from the
   corpus; the JSON derivation rules are exercised by the VM's decoder on
   the three recorded responses; the SQLite type mapping is exercised by one

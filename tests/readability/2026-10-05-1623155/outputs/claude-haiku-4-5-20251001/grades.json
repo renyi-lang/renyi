@@ -1,4 +1,1508 @@
 {
+  "agent:claude-opus-5-5#a91b135c": {
+    "explain/active_users.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9c27b6ab4b4b7c76"
+    },
+    "explain/active_users.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9c27b6ab4b4b7c76"
+    },
+    "explain/active_users.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9c27b6ab4b4b7c76"
+    },
+    "explain/active_users.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9c27b6ab4b4b7c76"
+    },
+    "explain/active_users.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9c27b6ab4b4b7c76"
+    },
+    "explain/assistant.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "60f602237250683b"
+    },
+    "explain/assistant.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6fb7dbc9d643980e"
+    },
+    "explain/assistant.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "60f602237250683b"
+    },
+    "explain/assistant.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "60f602237250683b"
+    },
+    "explain/assistant.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "60f602237250683b"
+    },
+    "explain/concurrent_fetch.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4bdcb87de2889317"
+    },
+    "explain/concurrent_fetch.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4bdcb87de2889317"
+    },
+    "explain/concurrent_fetch.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4bdcb87de2889317"
+    },
+    "explain/concurrent_fetch.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4bdcb87de2889317"
+    },
+    "explain/concurrent_fetch.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4bdcb87de2889317"
+    },
+    "explain/config.0": {
+      "answer": "Does not mention the log-level setting or that the defaults fallback is deprecated since 0.2 in favour of the caller-supplied fallback.",
+      "grade": 4,
+      "sample": "3fe4c1c2b7a419e5"
+    },
+    "explain/config.1": {
+      "answer": "Does not mention the log-level setting or that the defaults fallback is deprecated since 0.2 in favour of the caller-supplied fallback.",
+      "grade": 4,
+      "sample": "a77dace508458263"
+    },
+    "explain/config.2": {
+      "answer": "Does not mention that the defaults fallback is deprecated since 0.2 in favour of the caller-supplied fallback.",
+      "grade": 4,
+      "sample": "a4b93d7835fc8edc"
+    },
+    "explain/config.3": {
+      "answer": "Does not mention that the defaults fallback is deprecated since 0.2 in favour of the caller-supplied fallback.",
+      "grade": 4,
+      "sample": "45db30907855abd8"
+    },
+    "explain/config.4": {
+      "answer": "Does not mention the log-level setting or that the defaults fallback is deprecated since 0.2 in favour of the caller-supplied fallback.",
+      "grade": 4,
+      "sample": "968c397195d6f9ff"
+    },
+    "explain/currency_tool.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "92a6b9c98742cbea"
+    },
+    "explain/currency_tool.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "03e8ce2c24263f0f"
+    },
+    "explain/currency_tool.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "92a6b9c98742cbea"
+    },
+    "explain/currency_tool.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "92a6b9c98742cbea"
+    },
+    "explain/currency_tool.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "92a6b9c98742cbea"
+    },
+    "explain/deadlines.0": {
+      "answer": "Does not state the clock effect (the entry point takes today's date from the clock).",
+      "grade": 4,
+      "sample": "871d9c81bbb25c01"
+    },
+    "explain/deadlines.1": {
+      "answer": "Does not state the clock effect (the entry point takes today's date from the clock), and omits the earliest-first order.",
+      "grade": 4,
+      "sample": "a09d300329957d1d"
+    },
+    "explain/deadlines.2": {
+      "answer": "Does not state the clock effect (the entry point takes today's date from the clock).",
+      "grade": 4,
+      "sample": "871d9c81bbb25c01"
+    },
+    "explain/deadlines.3": {
+      "answer": "Does not state the clock effect (the entry point takes today's date from the clock), and omits the earliest-first order.",
+      "grade": 4,
+      "sample": "a09d300329957d1d"
+    },
+    "explain/deadlines.4": {
+      "answer": "Does not state the clock effect (the entry point takes today's date from the clock), and omits the earliest-first order.",
+      "grade": 4,
+      "sample": "a09d300329957d1d"
+    },
+    "explain/dependency_order.0": {
+      "answer": "Does not mention the entry point that prints the numbered order of a sample project, so the console effect is missing.",
+      "grade": 4,
+      "sample": "b0dbd5f206a47e32"
+    },
+    "explain/dependency_order.1": {
+      "answer": "Does not mention the entry point that prints the numbered order of a sample project, so the console effect is missing.",
+      "grade": 4,
+      "sample": "b0dbd5f206a47e32"
+    },
+    "explain/dependency_order.2": {
+      "answer": "Does not mention the entry point that prints the numbered order of a sample project, so the console effect is missing.",
+      "grade": 4,
+      "sample": "b0dbd5f206a47e32"
+    },
+    "explain/dependency_order.3": {
+      "answer": "Does not mention the entry point that prints the numbered order of a sample project, so the console effect is missing.",
+      "grade": 4,
+      "sample": "b0dbd5f206a47e32"
+    },
+    "explain/dependency_order.4": {
+      "answer": "Does not mention the entry point that prints the numbered order of a sample project, so the console effect is missing.",
+      "grade": 4,
+      "sample": "b0dbd5f206a47e32"
+    },
+    "explain/expression_tree.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "58d55d078be36357"
+    },
+    "explain/expression_tree.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "58d55d078be36357"
+    },
+    "explain/expression_tree.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "58d55d078be36357"
+    },
+    "explain/expression_tree.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "58d55d078be36357"
+    },
+    "explain/expression_tree.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "58d55d078be36357"
+    },
+    "explain/file_tree.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "47050eb80aaebece"
+    },
+    "explain/file_tree.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "47050eb80aaebece"
+    },
+    "explain/file_tree.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "47050eb80aaebece"
+    },
+    "explain/file_tree.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "47050eb80aaebece"
+    },
+    "explain/file_tree.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "47050eb80aaebece"
+    },
+    "explain/hello.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9f5e579a933ba36f"
+    },
+    "explain/hello.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "dac78d2ddc00c7c5"
+    },
+    "explain/hello.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9f5e579a933ba36f"
+    },
+    "explain/hello.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "dac78d2ddc00c7c5"
+    },
+    "explain/hello.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "84a751a14e8596c9"
+    },
+    "explain/http_service.0": {
+      "answer": "Does not mention that it prints the listening message, so the console effect is missing.",
+      "grade": 4,
+      "sample": "6a9b57d4a127333f"
+    },
+    "explain/http_service.1": {
+      "answer": "Does not mention that it prints the listening message, so the console effect is missing.",
+      "grade": 4,
+      "sample": "6a9b57d4a127333f"
+    },
+    "explain/http_service.2": {
+      "answer": "Does not mention that it prints the listening message, so the console effect is missing.",
+      "grade": 4,
+      "sample": "6a9b57d4a127333f"
+    },
+    "explain/http_service.3": {
+      "answer": "Does not mention that it prints the listening message, so the console effect is missing.",
+      "grade": 4,
+      "sample": "7eaaf9405fc4b984"
+    },
+    "explain/http_service.4": {
+      "answer": "Does not mention that it prints the listening message, so the console effect is missing.",
+      "grade": 4,
+      "sample": "7eaaf9405fc4b984"
+    },
+    "explain/inventory_db.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f9ba73aaae956c97"
+    },
+    "explain/inventory_db.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8b95544156840974"
+    },
+    "explain/inventory_db.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8024431ab2a9c7ae"
+    },
+    "explain/inventory_db.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8b95544156840974"
+    },
+    "explain/inventory_db.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a87a68b6ee1b9198"
+    },
+    "explain/invoice.0": {
+      "answer": "Does not state that the module is pure and needs no effects.",
+      "grade": 4,
+      "sample": "492bfee1d1c61023"
+    },
+    "explain/invoice.1": {
+      "answer": "Does not state that the module is pure and needs no effects.",
+      "grade": 4,
+      "sample": "492bfee1d1c61023"
+    },
+    "explain/invoice.2": {
+      "answer": "Does not state that the module is pure and needs no effects.",
+      "grade": 4,
+      "sample": "98533010da6b0095"
+    },
+    "explain/invoice.3": {
+      "answer": "Does not state that the module is pure and needs no effects, and omits the two tests.",
+      "grade": 4,
+      "sample": "66c85b8936cb807c"
+    },
+    "explain/invoice.4": {
+      "answer": "Does not state that the module is pure and needs no effects.",
+      "grade": 4,
+      "sample": "98533010da6b0095"
+    },
+    "explain/invoice_report.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ed7ceefac1be132d"
+    },
+    "explain/invoice_report.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ed7ceefac1be132d"
+    },
+    "explain/invoice_report.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "309bc2ed042938f3"
+    },
+    "explain/invoice_report.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ed7ceefac1be132d"
+    },
+    "explain/invoice_report.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "309bc2ed042938f3"
+    },
+    "explain/log_parser.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "add4528abb589c24"
+    },
+    "explain/log_parser.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "973f2098b83b0fdb"
+    },
+    "explain/log_parser.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "12127ca561ff464a"
+    },
+    "explain/log_parser.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "28d729f00bb32ada"
+    },
+    "explain/log_parser.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "add4528abb589c24"
+    },
+    "explain/markdown_table.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "07560ac167559a05"
+    },
+    "explain/markdown_table.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "07560ac167559a05"
+    },
+    "explain/markdown_table.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "07560ac167559a05"
+    },
+    "explain/markdown_table.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "07560ac167559a05"
+    },
+    "explain/markdown_table.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "07560ac167559a05"
+    },
+    "explain/pagination.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6319eb7947f347e3"
+    },
+    "explain/pagination.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "7dbdafd6bd07261f"
+    },
+    "explain/pagination.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "343828d652ae4d32"
+    },
+    "explain/pagination.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6319eb7947f347e3"
+    },
+    "explain/pagination.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "343828d652ae4d32"
+    },
+    "explain/permissions.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "97aec504959c251d"
+    },
+    "explain/permissions.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "97aec504959c251d"
+    },
+    "explain/permissions.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "97aec504959c251d"
+    },
+    "explain/permissions.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "97aec504959c251d"
+    },
+    "explain/permissions.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "97aec504959c251d"
+    },
+    "explain/retry.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "18d7a79e4533e5f9"
+    },
+    "explain/retry.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "18d7a79e4533e5f9"
+    },
+    "explain/retry.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "18d7a79e4533e5f9"
+    },
+    "explain/retry.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "88923de44a91e655"
+    },
+    "explain/retry.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "18d7a79e4533e5f9"
+    },
+    "explain/sales_report.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a9714f2a8c84f9d0"
+    },
+    "explain/sales_report.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a9714f2a8c84f9d0"
+    },
+    "explain/sales_report.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a9714f2a8c84f9d0"
+    },
+    "explain/sales_report.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a9714f2a8c84f9d0"
+    },
+    "explain/sales_report.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a9714f2a8c84f9d0"
+    },
+    "explain/semver.0": {
+      "answer": "Nothing is wrong, but it does not state that the module is a pure library with no effects.",
+      "grade": 4,
+      "sample": "37016dd4be316ba6"
+    },
+    "explain/semver.1": {
+      "answer": "Nothing is wrong, but it does not state that the module is a pure library with no effects.",
+      "grade": 4,
+      "sample": "beaedfdec4d6f949"
+    },
+    "explain/semver.2": {
+      "answer": "Nothing is wrong, but it does not state that the module is a pure library with no effects.",
+      "grade": 4,
+      "sample": "beaedfdec4d6f949"
+    },
+    "explain/semver.3": {
+      "answer": "Nothing is wrong, but it does not state that the module is a pure library with no effects.",
+      "grade": 4,
+      "sample": "beaedfdec4d6f949"
+    },
+    "explain/semver.4": {
+      "answer": "Nothing is wrong, but it does not state that the module is a pure library with no effects (printing a version is also not mentioned).",
+      "grade": 4,
+      "sample": "18a1160642ffab1b"
+    },
+    "explain/shapes.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4b9b63d3e0edd8a0"
+    },
+    "explain/shapes.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "84638bdc471878de"
+    },
+    "explain/shapes.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4b9b63d3e0edd8a0"
+    },
+    "explain/shapes.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4b9b63d3e0edd8a0"
+    },
+    "explain/shapes.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "84638bdc471878de"
+    },
+    "explain/shipping_rules.0": {
+      "answer": "Nothing is wrong, but it does not state that the module is a pure library with no effects (the JSON decoding and encoding are also not mentioned).",
+      "grade": 4,
+      "sample": "be29b191c83ecdfe"
+    },
+    "explain/shipping_rules.1": {
+      "answer": "Nothing is wrong, but it does not state that the module is a pure library with no effects (the JSON decoding and encoding are also not mentioned).",
+      "grade": 4,
+      "sample": "be29b191c83ecdfe"
+    },
+    "explain/shipping_rules.2": {
+      "answer": "Nothing is wrong, but it does not state that the module is a pure library with no effects (the JSON decoding and encoding are also not mentioned).",
+      "grade": 4,
+      "sample": "be29b191c83ecdfe"
+    },
+    "explain/shipping_rules.3": {
+      "answer": "Nothing is wrong, but it does not state that the module is a pure library with no effects (the JSON decoding and encoding are also not mentioned).",
+      "grade": 4,
+      "sample": "be29b191c83ecdfe"
+    },
+    "explain/shipping_rules.4": {
+      "answer": "Nothing is wrong, but it does not state that the module is a pure library with no effects (the JSON decoding and encoding are also not mentioned).",
+      "grade": 4,
+      "sample": "be29b191c83ecdfe"
+    },
+    "explain/stacks.0": {
+      "answer": "Nothing is wrong, but it does not state that the module is a pure library with no effects.",
+      "grade": 4,
+      "sample": "49a770ed7df93a40"
+    },
+    "explain/stacks.1": {
+      "answer": "Nothing is wrong, but it does not state that the module is a pure library with no effects.",
+      "grade": 4,
+      "sample": "49a770ed7df93a40"
+    },
+    "explain/stacks.2": {
+      "answer": "Nothing is wrong, but it does not state that the module is a pure library with no effects.",
+      "grade": 4,
+      "sample": "49a770ed7df93a40"
+    },
+    "explain/stacks.3": {
+      "answer": "Nothing is wrong, but it does not state that the module is a pure library with no effects.",
+      "grade": 4,
+      "sample": "49a770ed7df93a40"
+    },
+    "explain/stacks.4": {
+      "answer": "Nothing is wrong, but it does not state that the module is a pure library with no effects.",
+      "grade": 4,
+      "sample": "49a770ed7df93a40"
+    },
+    "explain/statistics.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5cae0d0ed7e333f3"
+    },
+    "explain/statistics.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5cae0d0ed7e333f3"
+    },
+    "explain/statistics.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5cae0d0ed7e333f3"
+    },
+    "explain/statistics.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5cae0d0ed7e333f3"
+    },
+    "explain/statistics.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5cae0d0ed7e333f3"
+    },
+    "explain/temperature_table.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3608496d054802ca"
+    },
+    "explain/temperature_table.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3608496d054802ca"
+    },
+    "explain/temperature_table.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3608496d054802ca"
+    },
+    "explain/temperature_table.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3608496d054802ca"
+    },
+    "explain/temperature_table.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3608496d054802ca"
+    },
+    "explain/todo_cli.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a4c9cb8e8d0fdd35"
+    },
+    "explain/todo_cli.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f7da465702d8ea55"
+    },
+    "explain/todo_cli.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5f117e9cfea1c919"
+    },
+    "explain/todo_cli.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a4c9cb8e8d0fdd35"
+    },
+    "explain/todo_cli.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f7da465702d8ea55"
+    },
+    "explain/traffic_light.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b2d2e5e3fbf9760f"
+    },
+    "explain/traffic_light.1": {
+      "answer": "Nothing is wrong, but it does not say that clearing the emergency returns the light to Red.",
+      "grade": 4,
+      "sample": "09aeff02adfe79a9"
+    },
+    "explain/traffic_light.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b2d2e5e3fbf9760f"
+    },
+    "explain/traffic_light.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6dcae9b3d55e3a79"
+    },
+    "explain/traffic_light.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "351feea65bd97b14"
+    },
+    "explain/weather.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "34b71cbc672f27aa"
+    },
+    "explain/weather.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "34b71cbc672f27aa"
+    },
+    "explain/weather.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "34b71cbc672f27aa"
+    },
+    "explain/weather.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "34b71cbc672f27aa"
+    },
+    "explain/weather.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "34b71cbc672f27aa"
+    },
+    "explain/word_count.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1b15cb768fe96afe"
+    },
+    "explain/word_count.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "bea5303378e9adc6"
+    },
+    "explain/word_count.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1b15cb768fe96afe"
+    },
+    "explain/word_count.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1b15cb768fe96afe"
+    },
+    "explain/word_count.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1b15cb768fe96afe"
+    }
+  },
+  "agent:claude-sonnet-5-5#a91b135c": {
+    "explain/active_users.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9c27b6ab4b4b7c76"
+    },
+    "explain/active_users.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9c27b6ab4b4b7c76"
+    },
+    "explain/active_users.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9c27b6ab4b4b7c76"
+    },
+    "explain/active_users.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9c27b6ab4b4b7c76"
+    },
+    "explain/active_users.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9c27b6ab4b4b7c76"
+    },
+    "explain/assistant.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "60f602237250683b"
+    },
+    "explain/assistant.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6fb7dbc9d643980e"
+    },
+    "explain/assistant.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "60f602237250683b"
+    },
+    "explain/assistant.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "60f602237250683b"
+    },
+    "explain/assistant.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "60f602237250683b"
+    },
+    "explain/concurrent_fetch.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4bdcb87de2889317"
+    },
+    "explain/concurrent_fetch.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4bdcb87de2889317"
+    },
+    "explain/concurrent_fetch.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4bdcb87de2889317"
+    },
+    "explain/concurrent_fetch.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4bdcb87de2889317"
+    },
+    "explain/concurrent_fetch.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4bdcb87de2889317"
+    },
+    "explain/config.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3fe4c1c2b7a419e5"
+    },
+    "explain/config.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a77dace508458263"
+    },
+    "explain/config.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a4b93d7835fc8edc"
+    },
+    "explain/config.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "45db30907855abd8"
+    },
+    "explain/config.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "968c397195d6f9ff"
+    },
+    "explain/currency_tool.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "92a6b9c98742cbea"
+    },
+    "explain/currency_tool.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "03e8ce2c24263f0f"
+    },
+    "explain/currency_tool.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "92a6b9c98742cbea"
+    },
+    "explain/currency_tool.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "92a6b9c98742cbea"
+    },
+    "explain/currency_tool.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "92a6b9c98742cbea"
+    },
+    "explain/deadlines.0": {
+      "answer": "nothing is wrong, but it never states that the program takes today's date from the clock, so the clock effect is missing.",
+      "grade": 4,
+      "sample": "871d9c81bbb25c01"
+    },
+    "explain/deadlines.1": {
+      "answer": "nothing is wrong, but it never states that the program takes today's date from the clock, so the clock effect is missing.",
+      "grade": 4,
+      "sample": "a09d300329957d1d"
+    },
+    "explain/deadlines.2": {
+      "answer": "nothing is wrong, but it never states that the program takes today's date from the clock, so the clock effect is missing.",
+      "grade": 4,
+      "sample": "871d9c81bbb25c01"
+    },
+    "explain/deadlines.3": {
+      "answer": "nothing is wrong, but it never states that the program takes today's date from the clock, so the clock effect is missing.",
+      "grade": 4,
+      "sample": "a09d300329957d1d"
+    },
+    "explain/deadlines.4": {
+      "answer": "nothing is wrong, but it never states that the program takes today's date from the clock, so the clock effect is missing.",
+      "grade": 4,
+      "sample": "a09d300329957d1d"
+    },
+    "explain/dependency_order.0": {
+      "answer": "nothing is wrong, but it omits the entry point that prints the sample project's order, so the console effect is not stated.",
+      "grade": 4,
+      "sample": "b0dbd5f206a47e32"
+    },
+    "explain/dependency_order.1": {
+      "answer": "nothing is wrong, but it omits the entry point that prints the sample project's order, so the console effect is not stated.",
+      "grade": 4,
+      "sample": "b0dbd5f206a47e32"
+    },
+    "explain/dependency_order.2": {
+      "answer": "nothing is wrong, but it omits the entry point that prints the sample project's order, so the console effect is not stated.",
+      "grade": 4,
+      "sample": "b0dbd5f206a47e32"
+    },
+    "explain/dependency_order.3": {
+      "answer": "nothing is wrong, but it omits the entry point that prints the sample project's order, so the console effect is not stated.",
+      "grade": 4,
+      "sample": "b0dbd5f206a47e32"
+    },
+    "explain/dependency_order.4": {
+      "answer": "nothing is wrong, but it omits the entry point that prints the sample project's order, so the console effect is not stated.",
+      "grade": 4,
+      "sample": "b0dbd5f206a47e32"
+    },
+    "explain/expression_tree.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "58d55d078be36357"
+    },
+    "explain/expression_tree.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "58d55d078be36357"
+    },
+    "explain/expression_tree.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "58d55d078be36357"
+    },
+    "explain/expression_tree.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "58d55d078be36357"
+    },
+    "explain/expression_tree.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "58d55d078be36357"
+    },
+    "explain/file_tree.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "47050eb80aaebece"
+    },
+    "explain/file_tree.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "47050eb80aaebece"
+    },
+    "explain/file_tree.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "47050eb80aaebece"
+    },
+    "explain/file_tree.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "47050eb80aaebece"
+    },
+    "explain/file_tree.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "47050eb80aaebece"
+    },
+    "explain/hello.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9f5e579a933ba36f"
+    },
+    "explain/hello.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "dac78d2ddc00c7c5"
+    },
+    "explain/hello.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "9f5e579a933ba36f"
+    },
+    "explain/hello.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "dac78d2ddc00c7c5"
+    },
+    "explain/hello.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "84a751a14e8596c9"
+    },
+    "explain/http_service.0": {
+      "answer": "Nothing is wrong, but the console effect (the listening line) is not stated, nor the not-found answer for other paths or the start error.",
+      "grade": 4,
+      "sample": "6a9b57d4a127333f"
+    },
+    "explain/http_service.1": {
+      "answer": "Nothing is wrong, but the console effect (the listening line) is not stated, nor the not-found answer for other paths or the start error.",
+      "grade": 4,
+      "sample": "6a9b57d4a127333f"
+    },
+    "explain/http_service.2": {
+      "answer": "Nothing is wrong, but the console effect (the listening line) is not stated, nor the not-found answer for other paths or the start error.",
+      "grade": 4,
+      "sample": "6a9b57d4a127333f"
+    },
+    "explain/http_service.3": {
+      "answer": "Nothing is wrong, but the console effect (the listening line) is not stated, nor the not-found answer for other paths or the start error.",
+      "grade": 4,
+      "sample": "7eaaf9405fc4b984"
+    },
+    "explain/http_service.4": {
+      "answer": "Nothing is wrong, but the console effect (the listening line) is not stated, nor the not-found answer for other paths or the start error.",
+      "grade": 4,
+      "sample": "7eaaf9405fc4b984"
+    },
+    "explain/inventory_db.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "f9ba73aaae956c97"
+    },
+    "explain/inventory_db.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8b95544156840974"
+    },
+    "explain/inventory_db.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8024431ab2a9c7ae"
+    },
+    "explain/inventory_db.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "8b95544156840974"
+    },
+    "explain/inventory_db.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a87a68b6ee1b9198"
+    },
+    "explain/invoice.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "492bfee1d1c61023"
+    },
+    "explain/invoice.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "492bfee1d1c61023"
+    },
+    "explain/invoice.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "98533010da6b0095"
+    },
+    "explain/invoice.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "66c85b8936cb807c"
+    },
+    "explain/invoice.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "98533010da6b0095"
+    },
+    "explain/invoice_report.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ed7ceefac1be132d"
+    },
+    "explain/invoice_report.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ed7ceefac1be132d"
+    },
+    "explain/invoice_report.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "309bc2ed042938f3"
+    },
+    "explain/invoice_report.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "ed7ceefac1be132d"
+    },
+    "explain/invoice_report.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "309bc2ed042938f3"
+    },
+    "explain/log_parser.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "add4528abb589c24"
+    },
+    "explain/log_parser.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "973f2098b83b0fdb"
+    },
+    "explain/log_parser.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "12127ca561ff464a"
+    },
+    "explain/log_parser.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "28d729f00bb32ada"
+    },
+    "explain/log_parser.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "add4528abb589c24"
+    },
+    "explain/markdown_table.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "07560ac167559a05"
+    },
+    "explain/markdown_table.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "07560ac167559a05"
+    },
+    "explain/markdown_table.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "07560ac167559a05"
+    },
+    "explain/markdown_table.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "07560ac167559a05"
+    },
+    "explain/markdown_table.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "07560ac167559a05"
+    },
+    "explain/pagination.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6319eb7947f347e3"
+    },
+    "explain/pagination.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "7dbdafd6bd07261f"
+    },
+    "explain/pagination.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "343828d652ae4d32"
+    },
+    "explain/pagination.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6319eb7947f347e3"
+    },
+    "explain/pagination.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "343828d652ae4d32"
+    },
+    "explain/permissions.0": {
+      "answer": "Nothing is wrong, but the console effect is only implied by 'reports' and the entry point's 'shared:' output and success message are not described.",
+      "grade": 4,
+      "sample": "97aec504959c251d"
+    },
+    "explain/permissions.1": {
+      "answer": "Nothing is wrong, but the console effect is only implied by 'reports' and the entry point's 'shared:' output and success message are not described.",
+      "grade": 4,
+      "sample": "97aec504959c251d"
+    },
+    "explain/permissions.2": {
+      "answer": "Nothing is wrong, but the console effect is only implied by 'reports' and the entry point's 'shared:' output and success message are not described.",
+      "grade": 4,
+      "sample": "97aec504959c251d"
+    },
+    "explain/permissions.3": {
+      "answer": "Nothing is wrong, but the console effect is only implied by 'reports' and the entry point's 'shared:' output and success message are not described.",
+      "grade": 4,
+      "sample": "97aec504959c251d"
+    },
+    "explain/permissions.4": {
+      "answer": "Nothing is wrong, but the console effect is only implied by 'reports' and the entry point's 'shared:' output and success message are not described.",
+      "grade": 4,
+      "sample": "97aec504959c251d"
+    },
+    "explain/retry.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "18d7a79e4533e5f9"
+    },
+    "explain/retry.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "18d7a79e4533e5f9"
+    },
+    "explain/retry.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "18d7a79e4533e5f9"
+    },
+    "explain/retry.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "88923de44a91e655"
+    },
+    "explain/retry.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "18d7a79e4533e5f9"
+    },
+    "explain/sales_report.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a9714f2a8c84f9d0"
+    },
+    "explain/sales_report.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a9714f2a8c84f9d0"
+    },
+    "explain/sales_report.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a9714f2a8c84f9d0"
+    },
+    "explain/sales_report.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a9714f2a8c84f9d0"
+    },
+    "explain/sales_report.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "a9714f2a8c84f9d0"
+    },
+    "explain/semver.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "37016dd4be316ba6"
+    },
+    "explain/semver.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "beaedfdec4d6f949"
+    },
+    "explain/semver.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "beaedfdec4d6f949"
+    },
+    "explain/semver.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "beaedfdec4d6f949"
+    },
+    "explain/semver.4": {
+      "answer": "Nothing wrong, but printing a version as text and the major-minor-patch ordering are not mentioned.",
+      "grade": 4,
+      "sample": "18a1160642ffab1b"
+    },
+    "explain/shapes.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4b9b63d3e0edd8a0"
+    },
+    "explain/shapes.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "84638bdc471878de"
+    },
+    "explain/shapes.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4b9b63d3e0edd8a0"
+    },
+    "explain/shapes.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "4b9b63d3e0edd8a0"
+    },
+    "explain/shapes.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "84638bdc471878de"
+    },
+    "explain/shipping_rules.0": {
+      "answer": "Nothing contradicted, but the cost rule (destination base price plus 2.50 per started kilogram beyond the first) and the JSON decoding and encoding are not stated, and the free threshold is given loosely as 'above' rather than 'at least' 50.00.",
+      "grade": 4,
+      "sample": "be29b191c83ecdfe"
+    },
+    "explain/shipping_rules.1": {
+      "answer": "Nothing contradicted, but the cost rule (destination base price plus 2.50 per started kilogram beyond the first) and the JSON decoding and encoding are not stated, and the free threshold is given loosely as 'above' rather than 'at least' 50.00.",
+      "grade": 4,
+      "sample": "be29b191c83ecdfe"
+    },
+    "explain/shipping_rules.2": {
+      "answer": "Nothing contradicted, but the cost rule (destination base price plus 2.50 per started kilogram beyond the first) and the JSON decoding and encoding are not stated, and the free threshold is given loosely as 'above' rather than 'at least' 50.00.",
+      "grade": 4,
+      "sample": "be29b191c83ecdfe"
+    },
+    "explain/shipping_rules.3": {
+      "answer": "Nothing contradicted, but the cost rule (destination base price plus 2.50 per started kilogram beyond the first) and the JSON decoding and encoding are not stated, and the free threshold is given loosely as 'above' rather than 'at least' 50.00.",
+      "grade": 4,
+      "sample": "be29b191c83ecdfe"
+    },
+    "explain/shipping_rules.4": {
+      "answer": "Nothing contradicted, but the cost rule (destination base price plus 2.50 per started kilogram beyond the first) and the JSON decoding and encoding are not stated, and the free threshold is given loosely as 'above' rather than 'at least' 50.00.",
+      "grade": 4,
+      "sample": "be29b191c83ecdfe"
+    },
+    "explain/stacks.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "49a770ed7df93a40"
+    },
+    "explain/stacks.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "49a770ed7df93a40"
+    },
+    "explain/stacks.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "49a770ed7df93a40"
+    },
+    "explain/stacks.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "49a770ed7df93a40"
+    },
+    "explain/stacks.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "49a770ed7df93a40"
+    },
+    "explain/statistics.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5cae0d0ed7e333f3"
+    },
+    "explain/statistics.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5cae0d0ed7e333f3"
+    },
+    "explain/statistics.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5cae0d0ed7e333f3"
+    },
+    "explain/statistics.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5cae0d0ed7e333f3"
+    },
+    "explain/statistics.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "5cae0d0ed7e333f3"
+    },
+    "explain/temperature_table.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3608496d054802ca"
+    },
+    "explain/temperature_table.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3608496d054802ca"
+    },
+    "explain/temperature_table.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3608496d054802ca"
+    },
+    "explain/temperature_table.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3608496d054802ca"
+    },
+    "explain/temperature_table.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "3608496d054802ca"
+    },
+    "explain/todo_cli.0": {
+      "answer": "Nothing wrong, but the usage message for unrecognised commands and the numbered list printed after add and done are not mentioned.",
+      "grade": 4,
+      "sample": "a4c9cb8e8d0fdd35"
+    },
+    "explain/todo_cli.1": {
+      "answer": "Nothing wrong, but the usage message for unrecognised commands and the numbered list printed after add and done are not mentioned.",
+      "grade": 4,
+      "sample": "f7da465702d8ea55"
+    },
+    "explain/todo_cli.2": {
+      "answer": "Nothing wrong, but it does not say that add and done save the file and print the numbered list, nor that done removes the task.",
+      "grade": 4,
+      "sample": "5f117e9cfea1c919"
+    },
+    "explain/todo_cli.3": {
+      "answer": "Nothing wrong, but the usage message for unrecognised commands and the numbered list printed after add and done are not mentioned.",
+      "grade": 4,
+      "sample": "a4c9cb8e8d0fdd35"
+    },
+    "explain/todo_cli.4": {
+      "answer": "Nothing wrong, but the usage message for unrecognised commands and the numbered list printed after add and done are not mentioned.",
+      "grade": 4,
+      "sample": "f7da465702d8ea55"
+    },
+    "explain/traffic_light.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b2d2e5e3fbf9760f"
+    },
+    "explain/traffic_light.1": {
+      "answer": "Nothing wrong, but the transition from FlashingRed back to Red when the emergency is cleared is not mentioned.",
+      "grade": 4,
+      "sample": "09aeff02adfe79a9"
+    },
+    "explain/traffic_light.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "b2d2e5e3fbf9760f"
+    },
+    "explain/traffic_light.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "6dcae9b3d55e3a79"
+    },
+    "explain/traffic_light.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "351feea65bd97b14"
+    },
+    "explain/weather.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "34b71cbc672f27aa"
+    },
+    "explain/weather.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "34b71cbc672f27aa"
+    },
+    "explain/weather.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "34b71cbc672f27aa"
+    },
+    "explain/weather.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "34b71cbc672f27aa"
+    },
+    "explain/weather.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "34b71cbc672f27aa"
+    },
+    "explain/word_count.0": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1b15cb768fe96afe"
+    },
+    "explain/word_count.1": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "bea5303378e9adc6"
+    },
+    "explain/word_count.2": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1b15cb768fe96afe"
+    },
+    "explain/word_count.3": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1b15cb768fe96afe"
+    },
+    "explain/word_count.4": {
+      "answer": "complete",
+      "grade": 5,
+      "sample": "1b15cb768fe96afe"
+    }
+  },
   "anthropic:claude-sonnet-5-5#a91b135c": {
     "explain/active_users.0": {
       "answer": "Checking the explanation against the description:\n\n- Reads a JSON file of users: correct.\n- Filters for active users aged at least 18: correct.\n- Outputs email addresses sorted by name: correct.\n- Validates email format: correct.\n- Prints a count at the end: correct.\n- \"Designed to be run from the command line\": not stated in the description. The description mentions the console, so this is roughly consistent and can be ignored.\n- \"Will report errors if the file cannot be read or the JSON is malformed\": the description says a JSON error occurs when the text does not decode into the user shape, which includes malformed JSON. This is fine, though it leaves out the negative age and implausible email cases.\n\nNothing in the explanation is wrong. Next, which of the three elements are covered:\n\n- Purpose: stated.\n- Effects (console and filesystem read access): only implied. \"Run from command line\" gestures at the console, and reading a file implies the filesystem, but neither is stated as a need.\n- Main behaviours: stated.\n\nMissing details include the fixed path, the reusable function, and the validation of age. These are minor, and the effects are only weakly covered. I would rate it a 4.\n\n4",

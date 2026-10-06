@@ -1075,3 +1075,53 @@ saved. The version bump of G1 is derived from the entries: a public
 definition removed, its signature changed (the `needs` and `or fails with`
 clauses included), made private or renamed is a major bump; one added or
 made public a minor bump. (derived)
+
+## U. Readability round 2 (session 6)
+
+Round 2 (`tests/readability/2026-10-05-ed37120/notes.md`) raised four
+questions; each was put to the owner with the recommendation first.
+
+**U1. M4 stands; the cheat sheet says it in a sentence.** "A call with one
+argument does not name it" (decision M4) was again the largest checker rule
+for all four models of the round (43, 50, 90 and 68 error lines for Sonnet
+5.5, gpt-5.5, Haiku 4.5 and gpt-5.4-mini) and cost gpt-5.5 the Write item
+`fizz_words` outright. The recommendation was to let a single argument be
+named or not; the owner keeps the rule, as after round 1, and the cheat
+sheet states it in a sentence beside the call examples ("One argument is
+never named: `web.get(url)`, not `web.get(url: url)`") instead of a comment.
+Measured again in the next round. (user)
+
+**U2. `rounded` keeps its `places`; the cheat sheet shows the call.** Both
+gating models wrote `value.rounded()` and `decimal.to_decimal()` and lost
+`invoice` and `shapes` (Complete) and `compound_interest` (Write) to it;
+gpt-5.5 would pass Complete without those two items. The recommendation
+was a library change (`places` defaulting to 0, `to_decimal` an identity on
+`Decimal`); the owner keeps the library as it is and has the cheat sheet
+list the method as `rounded(places: 2)`, so that the argument is seen
+before it is needed. (user)
+
+**U3. Every method call takes parentheses; the cheat sheet lists methods
+so.** The models wrote `text.length`, `items.is_empty` and `items.last` as
+fields (21, 100 and 20 error lines for gpt-5.5, Haiku and gpt-5.4-mini)
+because the library section of the cheat sheet listed the method names
+bare. The owner asked whether a form without parentheses should be spelled
+`length of items`; that would be a second spelling of one call, against
+the one-spelling rule of the cheat sheet's first line, and no model had
+written it, so the grammar is unchanged and the cheat sheet lists every
+library method with its parentheses (`length()`, `is_empty()`, ...). (user)
+
+**U4. Explain is graded by Claude Code subagents; round 1 is re-graded the
+same way.** Round 2 graded Explain with subagents (Sonnet 5.5 first, Opus
+5.5 second, fifty samples a batch, a reason kept with every grade) because
+the owner ruled during the round that the pay-per-token API keys of
+decision L1 are not spent by default and subscription quota is used
+instead. Measured against the API grades collected before the ruling, the
+subagents are about one point more lenient and flip 30 of 204 floor-model
+samples from fail to pass, none the other way. The protocol needs one
+grader kind across rounds, so the subagents grade Explain from here on,
+round 1 is re-graded with them so that the series is on one scale (its
+API-graded tally is kept beside the new one), and the API graders are used
+only when the owner authorizes the keys for a round. The harness now
+snapshots the references into each run directory at `prepare`, after a
+description went stale between the rounds. L1's credentials sentence
+stands for the API path; this entry adds the default. (user)
