@@ -3202,12 +3202,14 @@ impl<'w> Checker<'w> {
                     name: "left".into(),
                     ty: Ty::Param(params[0]),
                     refinement: None,
+                    external_name: None,
                     span,
                 },
                 crate::world::FieldInfo {
                     name: "right".into(),
                     ty: Ty::Param(params[1]),
                     refinement: None,
+                    external_name: None,
                     span,
                 },
             ];

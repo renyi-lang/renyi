@@ -36,6 +36,9 @@ const USAGE: &str = "usage:
   renyi index --diff <base> [--json] [path]
                                       what changed since a saved map (a file `renyi index --json` wrote)
                                       or a git revision: per definition, what it reaches, the version bump
+  renyi tools [path]                  the manifest of every function with `expose as tool`: JSON Schema
+                                      from the parameters, the description from `purpose:`, the
+                                      permissions from `needs`
   renyi run [option...] <file.ry> [argument...]
                                       check the program, then run its `main` (exit 1 when it fails, 2 on a crash)
   renyi run --manifest [option...] <file.ry> [argument...]
@@ -72,6 +75,7 @@ fn main() -> ExitCode {
         Some("tokens") => tokens(&args[1..]),
         Some("parse") => parse_command(&args[1..]),
         Some("index") => index_command(&args[1..]),
+        Some("tools") => tools_command(&args[1..]),
         Some("run") => run_command(&args[1..], false),
         Some("record") => run_command(&args[1..], true),
         Some("reproduce") => reproduce_command(&args[1..]),
@@ -722,6 +726,39 @@ fn reproduce_command(args: &[String]) -> ExitCode {
         eprintln!("renyi: {difference}");
     }
     ExitCode::FAILURE
+}
+
+/// `renyi tools [path]`: the tool manifest of decision D6 for a directory
+/// or a file with its imports; a project with errors gets its diagnostics
+/// instead, as `check` prints them.
+fn tools_command(args: &[String]) -> ExitCode {
+    if let Some(unknown) = args.iter().find(|arg| arg.starts_with("--")) {
+        eprintln!("renyi: unknown option `{unknown}`");
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    }
+    let path = Path::new(args.first().map_or(".", String::as_str));
+    let files = match renyi_index::load_project(path) {
+        Ok(files) => files,
+        Err(error) => {
+            eprintln!("renyi: {error}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let checked = renyi_check::check_project(&files);
+    let mut failed = false;
+    for module in &checked.modules {
+        if module.diagnostics.iter().any(|d| d.is_error()) {
+            failed = true;
+            print!("{}", render_text(&files[module.file], &module.diagnostics));
+        }
+    }
+    if failed {
+        return ExitCode::FAILURE;
+    }
+    let tools = renyi_index::tools_of(&files);
+    print!("{}", renyi_index::manifest_json(&tools).render());
+    ExitCode::SUCCESS
 }
 
 fn index_command(args: &[String]) -> ExitCode {

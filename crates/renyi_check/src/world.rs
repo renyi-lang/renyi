@@ -68,6 +68,8 @@ pub struct FieldInfo {
     pub name: String,
     pub ty: Ty,
     pub refinement: Option<ast::Expr>,
+    /// `as "type"`: the key JSON and database decoders use (decision J14).
+    pub external_name: Option<String>,
     pub span: Span,
 }
 
@@ -526,6 +528,26 @@ impl World {
             .find(|&id| !self.functions[id].is_method)
     }
 
+    /// The `purpose:` clause of a declared function, read from its item.
+    pub fn function_purpose(&self, id: FunctionId) -> Option<String> {
+        let info = &self.functions[id];
+        let items = &self.modules[info.module].ast.items;
+        match info.body {
+            BodyLocation::Item(item) => match items.get(item) {
+                Some(Item::Function(function)) => function.docs.purpose.clone(),
+                _ => None,
+            },
+            BodyLocation::Implementation(item, index) => match items.get(item) {
+                Some(Item::Implementation(implementation)) => implementation
+                    .functions
+                    .get(index)
+                    .and_then(|function| function.docs.purpose.clone()),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
     pub fn methods_of(&self, type_id: TypeId, name: &str) -> Vec<FunctionId> {
         self.method_index
             .get(&(type_id, name.to_string()))
@@ -711,6 +733,7 @@ impl World {
                 name: field.name.text.clone(),
                 ty: self.resolve_type(module, params, &field.ty),
                 refinement: field.refinement.clone(),
+                external_name: field.external_name.clone(),
                 span: field.span,
             })
             .collect()

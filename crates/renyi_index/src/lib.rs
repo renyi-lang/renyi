@@ -16,6 +16,7 @@ mod edges;
 pub mod hash;
 pub mod metrics;
 pub mod render;
+pub mod tools;
 
 use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
@@ -30,6 +31,7 @@ use drafts::{Draft, Key};
 pub use budgets::{over_budget, Budgets};
 pub use diff::{diff, diff_json, render_diff, Bump, Change, Diff, Entry};
 pub use render::{definition_json, to_json, to_text};
+pub use tools::{manifest_json, tools_of, Tool};
 
 /// What a definition is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]

@@ -297,6 +297,26 @@ error. `diff` takes `base` (a saved map file under the served directory,
 or a git revision) and a `json` switch and answers as `renyi index --diff`
 prints.
 
+### The tool manifest (`renyi tools`)
+
+Decision D6 publishes a function with `expose as tool` to agents; `renyi
+tools [path]` prints the manifest (`crates/renyi_index/src/tools.rs`,
+decision V6): one JSON object per tool with `name` (`module.function`),
+`description` (the `purpose:`), `input_schema` (a JSON Schema object with
+one property per parameter, `required` listing the ones that are not
+`maybe`), `output_schema` (the result's schema, `null` without `returns`),
+`fails` (the declared failure types), `permissions` (the `needs` clause),
+`module`, `function`, `file` and `line`. The schemas follow the `ToJson`
+and `FromJson` rules of the library sketch: a record is an object keyed by
+its field names or their `as` names, a sum type is a `oneOf` with the
+variant's name under `kind`, `maybe T` admits `null`, a list or a set is
+an array, a map keyed by `Text` is an object, `Decimal` is a number with
+`"format": "decimal"`, `Bytes` is a base64 string, an `Instant` or a
+`Date` is a string; a type that refers to itself is written once under
+`$defs`. The checker rejects a tool whose parameter or result is not JSON
+(`tool-type`) or that has no purpose. `renyi serve --mcp` (M5) will serve
+the same entries.
+
 ## 8. Order of work
 
 1. `renyi index` with the record, the six metrics and the hashes, measured

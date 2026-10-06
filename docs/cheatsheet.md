@@ -249,7 +249,7 @@ end
 ```
 A recording (`renyi record`) answers every effect of a `replays` test offline.
 `expose as tool` publishes a function to agents (schema from the parameters,
-description from `purpose:`, permissions from `needs`).
+description from `purpose:`, permissions from `needs`; `renyi tools` prints it).
 `deprecated: since 2.0, replaced by new_name` warns existing callers.
 
 ## Library (names and parameters; nothing else exists)
