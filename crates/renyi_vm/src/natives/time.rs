@@ -132,11 +132,19 @@ pub fn parse_instant_text(text: &str) -> Option<i64> {
         }
         None => (clock, 0),
     };
-    let mut parts = clock.split(':');
-    let hour: i64 = parts.next()?.parse().ok()?;
-    let minute: i64 = parts.next()?.parse().ok()?;
-    let second: i64 = parts.next()?.parse().ok()?;
-    if parts.next().is_some() || hour > 23 || minute > 59 || second > 59 {
+    // two digits each, no sign: `13:45:00`
+    let fields: Vec<&str> = clock.split(':').collect();
+    if fields.len() != 3
+        || fields
+            .iter()
+            .any(|field| field.len() != 2 || !field.chars().all(|c| c.is_ascii_digit()))
+    {
+        return None;
+    }
+    let hour: i64 = fields[0].parse().ok()?;
+    let minute: i64 = fields[1].parse().ok()?;
+    let second: i64 = fields[2].parse().ok()?;
+    if hour > 23 || minute > 59 || second > 59 {
         return None;
     }
     Some(

@@ -12,7 +12,7 @@ use super::{arg, bytes, crash, decimal, float, int, list, map, range, set, small
 use crate::decimal::Decimal;
 use crate::integer::Int;
 use crate::value::{take_list, take_map, take_set, Value};
-use crate::vm::{range_items, Interrupt, Vm};
+use crate::vm::{finite_float, range_items, Interrupt, Vm};
 
 pub fn lookup(name: &str, head: Option<&str>, receiver: Option<&str>) -> Option<NativeFn> {
     Some(match (head?, name) {
@@ -136,7 +136,7 @@ fn integer_to_decimal(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> 
 }
 
 fn integer_to_float(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::Float(int(arg(&args, 0))?.to_f64()))
+    finite_float(int(arg(&args, 0))?.to_f64())
 }
 
 fn integer_to_text(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
@@ -193,7 +193,7 @@ fn decimal_truncated(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
 }
 
 fn decimal_to_float(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::Float(decimal(arg(&args, 0))?.to_f64()))
+    finite_float(decimal(arg(&args, 0))?.to_f64())
 }
 
 fn decimal_absolute(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
@@ -266,7 +266,10 @@ fn text_split(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     let value = text(arg(&args, 0))?;
     let separator = text(arg(&args, 1))?;
     if separator.is_empty() {
-        return Err(crash("`split` needs a separator that is not empty"));
+        // nothing lies between empty separators but the characters
+        return Ok(Value::list(
+            value.chars().map(|c| Value::text(c.to_string())).collect(),
+        ));
     }
     Ok(Value::list(
         value.split(separator).map(Value::text).collect(),
@@ -318,7 +321,8 @@ fn text_replace(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     let value = text(arg(&args, 0))?;
     let old = text(arg(&args, 1))?;
     if old.is_empty() {
-        return Err(crash("`replace` needs a part that is not empty"));
+        // an empty part occurs nowhere: nothing changes
+        return Ok(Value::text(value));
     }
     Ok(Value::text(value.replace(old, text(arg(&args, 2))?)))
 }
@@ -349,15 +353,25 @@ fn text_repeat(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     Ok(Value::text(value.repeat(times)))
 }
 
+/// A count of items to take or drop: at most everything, at least nothing,
+/// whatever the Integer's size.
+fn count(value: &Value) -> Result<usize, Interrupt> {
+    Ok(match int(value)? {
+        Int::Small(count) => (*count).max(0) as usize,
+        big if big.is_negative() => 0,
+        _ => usize::MAX,
+    })
+}
+
 fn text_take(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     let value = text(arg(&args, 0))?;
-    let length = small(arg(&args, 1))?.max(0) as usize;
+    let length = count(arg(&args, 1))?;
     Ok(Value::text(value.chars().take(length).collect::<String>()))
 }
 
 fn text_drop(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     let value = text(arg(&args, 0))?;
-    let length = small(arg(&args, 1))?.max(0) as usize;
+    let length = count(arg(&args, 1))?;
     Ok(Value::text(value.chars().skip(length).collect::<String>()))
 }
 
@@ -445,7 +459,10 @@ fn list_is_empty(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
 
 fn list_at(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     let items = list(arg(&args, 0))?;
-    let index = small(arg(&args, 1))?;
+    // an index beyond a machine word is out of range like any other
+    let Some(index) = int(arg(&args, 1))?.to_i64() else {
+        return Ok(Value::Nothing);
+    };
     Ok(index_in(items.len(), index)
         .map(|i| items[i].clone())
         .unwrap_or(Value::Nothing))
@@ -488,13 +505,13 @@ fn list_without_index(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> 
 
 fn list_take(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     let items = list(arg(&args, 0))?;
-    let length = small(arg(&args, 1))?.max(0) as usize;
+    let length = count(arg(&args, 1))?;
     Ok(Value::list(items.iter().take(length).cloned().collect()))
 }
 
 fn list_drop(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     let items = list(arg(&args, 0))?;
-    let length = small(arg(&args, 1))?.max(0) as usize;
+    let length = count(arg(&args, 1))?;
     Ok(Value::list(items.iter().skip(length).cloned().collect()))
 }
 

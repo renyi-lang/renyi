@@ -366,6 +366,13 @@ impl<'p> Vm<'p> {
             self.expected = None;
             return self.denied(function, &effect);
         }
+        // `filesystem.copy` and `move` write their target too
+        if let Some(target) = grant::target_effect_of(meta, &args) {
+            if !effects::covered(self.effective_grant(), &target, true) {
+                self.expected = None;
+                return self.denied(function, &target);
+            }
+        }
         if let Some(guard) = self.blocking_guard(origins, &effect) {
             self.expected = None;
             return self.refused(function, guard, &effect);
@@ -548,6 +555,9 @@ impl<'p> Vm<'p> {
             ("std.http", false) => {
                 self.fail_variant("std.http", "HttpError", "HostNotAllowed", vec![scope])
             }
+            ("std.sqlite", false) => {
+                self.fail_variant("std.sqlite", "DbError", "PermissionDenied", vec![scope])
+            }
             _ => Err(Interrupt::crash(format!(
                 "`{}` needs {}, which the grant {}{} does not allow",
                 self.qualified(function),
@@ -577,6 +587,9 @@ impl<'p> Vm<'p> {
             }
             ("std.http", false) => {
                 self.fail_variant("std.http", "HttpError", "OverBudget", vec![scope])
+            }
+            ("std.sqlite", false) => {
+                self.fail_variant("std.sqlite", "DbError", "OverBudget", vec![scope])
             }
             _ => Err(Interrupt::crash(format!(
                 "`{}` exceeds the budget `{budget}`",
@@ -951,11 +964,22 @@ impl<'p> Vm<'p> {
             frame.pc = target;
             return Ok(None);
         }
-        match self.program.codes[frame.code].kind {
+        let code = &self.program.codes[frame.code];
+        match code.kind {
             CodeKind::Example | CodeKind::Test | CodeKind::Refinement | CodeKind::Constant => {
                 self.leave_frame(value, entry)
             }
             CodeKind::Function => {
+                // nothing in the body handles it: the function's own failure
+                // when it declares failures (an expired `within` deadline,
+                // decision J12, whose `TimedOut` the checker made it
+                // declare), else a crash
+                let declares = code
+                    .function
+                    .is_some_and(|id| !self.program.function_metas[id].fails.is_empty());
+                if declares {
+                    return self.leave_frame(value, entry);
+                }
                 let error = match &value {
                     Value::Failure(error) => (**error).clone(),
                     _ => Value::Nothing,
@@ -1091,8 +1115,10 @@ impl<'p> Vm<'p> {
                 }
                 let base = self.pop();
                 origins |= base.origins();
+                // a refined field is checked again: the copy may be a
+                // `Failure(ConstraintViolation)`, like a construction
                 let value = self.with(base.into_plain(), updates)?.guarded(origins);
-                self.stack.push(value);
+                return self.settle(value, entry);
             }
             Op::Call { function, args } => {
                 let args = self.pop_n(*args as usize);
@@ -1530,19 +1556,26 @@ impl<'p> Vm<'p> {
                 }
                 Ok(value)
             }
-            TypeShape::Record(field_metas) => {
-                for field_meta in field_metas {
-                    if let Some(index) = field_meta.refinement {
-                        let code = meta.refinements[index];
-                        if !self.holds(code, fields.clone())? {
-                            return Ok(self.violation(ty, code));
-                        }
-                    }
-                }
-                Ok(Value::record(ty, fields))
-            }
+            TypeShape::Record(_) => self.refined_record(ty, fields),
             _ => Ok(Value::record(ty, fields)),
         }
+    }
+
+    /// A record whose fields satisfy every refinement of the type, or the
+    /// `Failure(ConstraintViolation)` of the first that does not.
+    fn refined_record(&mut self, ty: TypeId, fields: Vec<Value>) -> Result<Value, Interrupt> {
+        let meta = self.program.types.meta(ty);
+        if let TypeShape::Record(field_metas) = &meta.shape {
+            for field_meta in field_metas {
+                if let Some(index) = field_meta.refinement {
+                    let code = meta.refinements[index];
+                    if !self.holds(code, fields.clone())? {
+                        return Ok(self.violation(ty, code));
+                    }
+                }
+            }
+        }
+        Ok(Value::record(ty, fields))
     }
 
     pub fn construct_variant(
@@ -1640,7 +1673,8 @@ impl<'p> Vm<'p> {
                 }
             }
         }
-        Ok(Value::Record(Rc::new(record)))
+        // the refinements hold for every value of the type, the copy included
+        self.refined_record(record.ty, record.fields)
     }
 
     fn unpack(&self, value: Value, count: usize) -> Result<Vec<Value>, Interrupt> {
@@ -1727,10 +1761,31 @@ impl<'p> Vm<'p> {
 
     // ------------------------------------------------------------ operators
 
+    /// `is` and `is not`: a declared `equals` of the left value's type
+    /// (decision K1, the `Equal` ability), else the derived structural
+    /// equality, which sets, maps and the library's searches always use.
+    pub fn equal(&mut self, left: &Value, right: &Value) -> Result<bool, Interrupt> {
+        if let Some(ty) = left.type_id() {
+            if let Some(function) = self.program.method(ty, "equals") {
+                return match self
+                    .call_function(function, vec![left.clone(), right.clone()])?
+                    .into_plain()
+                {
+                    Value::Boolean(value) => Ok(value),
+                    other => Err(Interrupt::crash(format!(
+                        "`equals` produced {}, not a Boolean",
+                        other.kind_name()
+                    ))),
+                };
+            }
+        }
+        Ok(left == right)
+    }
+
     fn binary(&mut self, op: BinaryOp, left: Value, right: Value) -> Result<Value, Interrupt> {
         Ok(match op {
-            BinaryOp::Is => Value::Boolean(left == right),
-            BinaryOp::IsNot => Value::Boolean(left != right),
+            BinaryOp::Is => Value::Boolean(self.equal(&left, &right)?),
+            BinaryOp::IsNot => Value::Boolean(!self.equal(&left, &right)?),
             BinaryOp::IsLessThan => Value::Boolean(self.compare(&left, &right)? == Ordering::Less),
             BinaryOp::IsAtMost => Value::Boolean(self.compare(&left, &right)? != Ordering::Greater),
             BinaryOp::IsGreaterThan => {
@@ -1962,8 +2017,10 @@ fn decimal_arithmetic(op: BinaryOp, a: &Decimal, b: &Decimal) -> Result<Value, I
     result.map(Value::Decimal).map_err(decimal_error)
 }
 
+/// A `Float` never holds infinity or NaN (library sketch section 1): a result
+/// that is not finite is a crash.
 fn float_arithmetic(op: BinaryOp, a: f64, b: f64) -> Result<Value, Interrupt> {
-    Ok(Value::Float(match op {
+    let result = match op {
         BinaryOp::Add => a + b,
         BinaryOp::Subtract => a - b,
         BinaryOp::Multiply => a * b,
@@ -1981,5 +2038,17 @@ fn float_arithmetic(op: BinaryOp, a: f64, b: f64) -> Result<Value, Interrupt> {
         }
         BinaryOp::Power => a.powf(b),
         _ => unreachable!(),
-    }))
+    };
+    finite_float(result)
+}
+
+/// The Float as a value, or the crash for infinity and NaN.
+pub fn finite_float(value: f64) -> Result<Value, Interrupt> {
+    if value.is_nan() {
+        return Err(Interrupt::crash("the Float result is not a number"));
+    }
+    if value.is_infinite() {
+        return Err(Interrupt::crash("the Float result is out of range"));
+    }
+    Ok(Value::Float(value))
 }

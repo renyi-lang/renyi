@@ -178,7 +178,7 @@ public function trim_end(self: Text) returns Text
 public function to_lower(self: Text) returns Text
 public function to_upper(self: Text) returns Text
 public function split(self: Text, separator: Text) returns List of Text
-  purpose: Pieces between separators; adjacent separators give empty pieces.
+  purpose: Pieces between separators; adjacent separators give empty pieces, an empty separator gives the characters.
 public function lines(self: Text) returns List of Text
   purpose: Split at line breaks, without the breaks.
 public function characters(self: Text) returns List of Text
@@ -187,7 +187,7 @@ public function starts_with(self: Text, prefix: Text) returns Boolean
 public function ends_with(self: Text, suffix: Text) returns Boolean
 public function index_of(self: Text, part: Text) returns maybe Integer
 public function replace(self: Text, old: Text, new: Text) returns Text
-  purpose: Every occurrence of old replaced by new.
+  purpose: Every occurrence of old replaced by new; an empty old changes nothing.
 public function pad_left(self: Text, width: Integer) returns Text
   purpose: Spaces added on the left until the text is at least width characters.
 public function pad_right(self: Text, width: Integer) returns Text

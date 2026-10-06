@@ -475,7 +475,9 @@ pub fn parse_capability(text: &str) -> Result<Capability, String> {
 
 /// The capability a primitive call exercises: the primitive's declared need
 /// with the scope its argument names (a path, the host of a URL, a
-/// variable); `None` for a pure primitive.
+/// variable); `None` for a pure primitive. `filesystem.copy` reads its
+/// source and `move` writes it; their target is a second effect
+/// (`target_effect_of`).
 pub fn effect_of(meta: &FunctionMeta, args: &[Value]) -> Option<Capability> {
     let need = meta.needs.first()?;
     let mut effect = Capability {
@@ -484,6 +486,10 @@ pub fn effect_of(meta: &FunctionMeta, args: &[Value]) -> Option<Capability> {
         budget: None,
         only_to: Vec::new(),
     };
+    if meta.module == "std.filesystem" && (meta.name == "copy" || meta.name == "move") {
+        let child = if meta.name == "copy" { "read" } else { "write" };
+        effect.path = vec!["filesystem".to_string(), child.to_string()];
+    }
     if effects::takes_scope(&effect.path) {
         // the argument of the named type, by position
         let typed = |wanted: &str| {
@@ -511,6 +517,22 @@ pub fn effect_of(meta: &FunctionMeta, args: &[Value]) -> Option<Capability> {
         };
     }
     Some(effect)
+}
+
+/// The second capability a primitive exercises: `filesystem.copy` and
+/// `move` write their target, which a scoped grant must cover as well as
+/// the source.
+pub fn target_effect_of(meta: &FunctionMeta, args: &[Value]) -> Option<Capability> {
+    if meta.module != "std.filesystem" || !(meta.name == "copy" || meta.name == "move") {
+        return None;
+    }
+    let target = args.get(1)?.as_text()?;
+    Some(Capability {
+        path: vec!["filesystem".to_string(), "write".to_string()],
+        scope: Some(normalize_path(target)),
+        budget: None,
+        only_to: Vec::new(),
+    })
 }
 
 /// The host of a URL, lower-cased, without user information or port.

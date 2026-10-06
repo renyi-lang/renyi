@@ -559,3 +559,33 @@ fn refinement_conditions_are_checked_as_bodies() {
         "type-mismatch",
     );
 }
+
+#[test]
+fn an_update_of_a_refined_field_can_fail_like_a_construction() {
+    let person =
+        "type Person\n  has name: Text\n  has age: Integer where age is at least 0\nend\n\n";
+    // a literal is decided here
+    clean(&program(&format!(
+        "{person}function older(person: Person) returns Person\n  return person with age: 31\nend\n"
+    )));
+    raises(
+        &program(&format!(
+            "{person}function older(person: Person) returns Person\n  return person with age: -1\nend\n"
+        )),
+        "constraint-violation",
+    );
+    // a variable needs `otherwise`, as decision U9 says of a construction
+    raises(
+        &program(&format!(
+            "{person}function older(person: Person, years: Integer) returns Person\n  return person with age: years\nend\n"
+        )),
+        "missing-otherwise",
+    );
+    clean(&program(&format!(
+        "{person}function older(person: Person, years: Integer) returns Person\n  return person with age: years otherwise person\nend\n"
+    )));
+    // a field without a refinement never fails
+    clean(&program(&format!(
+        "{person}function renamed(person: Person, name: Text) returns Person\n  return person with name: name\nend\n"
+    )));
+}

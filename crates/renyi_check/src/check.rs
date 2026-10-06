@@ -2052,6 +2052,10 @@ impl<'w> Checker<'w> {
                 let base_info = self.infer(base, expected);
                 self.require_handled(&base_info, base.span);
                 let ty = self.resolve(&base_info.ty);
+                // a changed field with a refinement can fail like a
+                // construction: a literal is decided here, a variable needs
+                // `otherwise` (decision U9)
+                let mut fails = Vec::new();
                 match self.record_fields(&ty) {
                     Some(fields) => {
                         for update in updates {
@@ -2074,12 +2078,12 @@ impl<'w> Checker<'w> {
                                         update.value.span,
                                         "the new value",
                                     );
-                                    if refinement.is_some() {
+                                    if let Some(condition) = refinement {
                                         self.check_field_refinement(
                                             field_name,
-                                            refinement.as_ref().unwrap(),
+                                            condition,
                                             &update.value,
-                                            &mut Vec::new(),
+                                            &mut fails,
                                         );
                                     }
                                 }
@@ -2112,7 +2116,11 @@ impl<'w> Checker<'w> {
                         }
                     }
                 }
-                Info::plain(ty)
+                Info {
+                    ty,
+                    fails,
+                    function: None,
+                }
             }
             ExprKind::Otherwise { value, fallback } => {
                 self.infer_otherwise(value, fallback, expr.span, expected)

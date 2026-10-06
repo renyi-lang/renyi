@@ -1,0 +1,11 @@
+module with_refined
+  purpose: Updating a refined field with a variable needs `otherwise`, like a construction (decision U9).
+
+type Person
+  has name: Text
+  has age: Integer where age is at least 0
+end
+
+function older(person: Person, years: Integer) returns Person
+  return person with age: years
+end

@@ -90,7 +90,7 @@ end
 ```
 Construct: `User(name: "Ann", age: 30, email: nothing)`, `Circle(radius: 2.5)`
 (fields always named), `Point`, `UserId(7)` (a subtype wraps one value).
-Update: `user with age: 31`. Refined construction can fail:
+Update: `user with age: 31`. Refined construction or update can fail:
 `Email(input) otherwise fail with BadInput`. A literal the checker can
 evaluate needs no `otherwise` (`Port(8080)`); a variable needs one even
 after a check. Generic types: `List of T`, `Map of K to V`, `Set of T`,

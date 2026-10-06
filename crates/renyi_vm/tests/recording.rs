@@ -761,3 +761,68 @@ end
         reproduction.differences[2]
     );
 }
+
+#[test]
+fn a_replay_checks_the_budgets_too() {
+    let dir = scratch("replay-budget");
+    let source = format!(
+        r#"module demo
+  purpose: Read the same file three times.
+
+import std.console
+import std.filesystem exposing Path, FileError
+
+public function main() or fails with FileError needs console, filesystem.read("{dir}/data")
+  purpose: Print the greeting three times.
+
+  let mutable reads be 0
+  repeat until reads is 3
+    let text be filesystem.read_text(Path("{dir}/data/greeting.txt")) otherwise fail
+    console.print(text)
+    set reads to reads + 1
+  end
+end
+"#
+    );
+    let program = compile("demo.ry", &source);
+    let streams = Streams {
+        stdout: Capture::default(),
+        stderr: Capture::default(),
+    };
+    let recorded = run(
+        &program,
+        Options {
+            record: true,
+            ..options(&streams)
+        },
+    );
+    assert_eq!(recorded.outcome, RunOutcome::Finished);
+    let recording = recorded.recording.expect("a recording");
+    // a budget the recording stayed within replays; a tighter one is
+    // exceeded by the recorded calls themselves (section 2 of the runtime
+    // guarantees)
+    for (limit, expected) in [(3, None), (2, Some("call #5"))] {
+        let outcome = run(
+            &program,
+            Options {
+                replay: Some(recording.clone()),
+                narrowing: Narrowing {
+                    budgets: vec![
+                        parse_capability(&format!("filesystem at most {limit} per run")).unwrap(),
+                    ],
+                    ..Narrowing::default()
+                },
+                ..options(&streams)
+            },
+        )
+        .outcome;
+        match (expected, &outcome) {
+            (None, RunOutcome::Finished) => {}
+            (Some(call), RunOutcome::Crashed { message, .. }) => assert_eq!(
+                message,
+                &format!("the recording exceeds the budget `filesystem at most {limit} per run` at {call}")
+            ),
+            other => panic!("{other:?}"),
+        }
+    }
+}

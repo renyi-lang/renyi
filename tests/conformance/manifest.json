@@ -138,6 +138,13 @@
         "would send a value from filesystem.read(\"tests/conformance\") to console"
       ],
       "exit_code": 2
+    },
+    {
+      "name": "an update of a refined field with a variable needs otherwise",
+      "command": "check",
+      "program": "tests/conformance/programs/with_refined.ry",
+      "diagnostics": ["missing-otherwise"],
+      "exit_code": 1
     }
   ]
 }

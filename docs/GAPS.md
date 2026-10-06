@@ -23,15 +23,12 @@ that parses but does nothing, and three milestones not started.
 
 Ordered by how much they matter to the language's promises.
 
-1. **A `within` deadline crashes instead of failing.** Expiry hands
-   `TimedOut` to `settle`, which crashes with "unhandled failure" when the
-   frame has no handler (`crates/renyi_vm/src/vm.rs:1233-1246, 829-840`;
-   emitted at `compile/stmt.rs:93` and `compile/query.rs:67`). The checker
-   models it as a declared failure (`check.rs:1434-1452`), so `otherwise`
-   after the block never runs. Verified: a 50 ms deadline around an 80 ms
-   task in a function declaring `or fails with TimedOut` exits 2 with
-   "crash: unhandled failure: TimedOut(after: 50ms)". No test covers
-   expiry; `HANDOFF.md` says it "fails with `TimedOut`".
+1. Done in stage 1: **a `within` deadline fails instead of crashing.**
+   `settle` hands an unhandled failure out of a function that declares
+   it (`crates/renyi_vm/src/vm.rs:955`), so `otherwise` after the call
+   runs and `main`'s own expiry ends the run with `TimedOut(after: 20ms)`
+   (`crates/renyi_vm/tests/semantics.rs`,
+   `an_expired_deadline_is_the_functions_failure`).
 2. **Exhaustiveness has holes.** `check_exhaustive` returns true as soon as
    any arm records `Cover::Other` (`crates/renyi_check/src/check.rs:3633-3635`);
    literal patterns other than Boolean record `Other` (3452-3459), the
@@ -41,11 +38,12 @@ Ordered by how much they matter to the language's promises.
    integer-literal arms without `otherwise` check clean and crash at run
    time with "no arm of the match fits the value". Boolean and plain
    sum-type matches are checked.
-3. **`with` skips refinements at run time.** A literal violation is caught
-   by the checker (`check.rs:1806-1871`); a run-time value is written with
-   no check (`vm.rs:1459-1480`). Verified: `user with age: years` where
-   `years` is -5 prints "Ann is -5" while `User(age: 0 - 1)` is a
-   `ConstraintViolation`.
+3. Done in stage 1: **`with` runs the refinements again** (`vm.rs:1566`,
+   `refined_record`, shared with construction), and an update whose new
+   value is not a literal needs `otherwise` like a construction (decision
+   U9; `missing-otherwise`, conformance case `with_refined.ry`). Tested
+   in `crates/renyi_vm/tests/semantics.rs` (`an_update_keeps_the_refinements`)
+   and `crates/renyi_check/tests/rules.rs`.
 4. **Privacy is enforced for types only.** `FunctionInfo.public` is never
    read (`world.rs:482-489`; cross-module calls resolve at `check.rs:2137,
    2288`), and a private ability imports with `exposing`. Verified: a
@@ -65,15 +63,16 @@ Ordered by how much they matter to the language's promises.
    (verified: both check clean). The claim that a race cannot be written
    (decision E1, `07-system-design.md` row Concurrency) holds today only
    because tasks run one after the other (decision S2).
-8. **The boundary crashes where the design says a failure.** Scope denial
-   and budget overrun are mapped to module errors for `std.filesystem` and
-   `std.http` only (`vm.rs:424-447, 452-472`); SQLite, the server and the
+8. **The boundary crashes where the design says a failure.** Done in
+   stage 1: `std.sqlite` fails with the new `DbError.PermissionDenied` and
+   `DbError.OverBudget` (`library/std/sqlite.ry`; `vm.rs`, `denied` and
+   `over_budget`), and `filesystem.copy` and `move` compare the target
+   with the write scope too (`grant.rs:525`, `target_effect_of`; tested in
+   `crates/renyi_vm/tests/semantics.rs`). Still open: the server and the
    primitives that cannot fail (`filesystem.exists`, `environment.get`)
-   crash, and `DbError` and `StartError` have no `PermissionDenied` or
-   `OverBudget` variant for them. `filesystem.copy` and `move` take their
-   scope from the first `Path` argument, so the target path is never
-   compared with a scoped grant (`grant.rs:398-414`). Containment is
-   lexical: no canonical path, no symlink handling (`grant.rs:436-459`).
+   crash, and `StartError` has no `PermissionDenied` or `OverBudget`
+   variant. Containment is lexical: no canonical path, no symlink
+   handling (`grant.rs`, the path containment).
 9. **Indentation is semantic for continuation lines**, against decision
    C2 and the cheat sheet's first paragraph: a statement continues only
    when the next line is indented deeper and starts with a continuation
@@ -96,12 +95,12 @@ Ordered by how much they matter to the language's promises.
 13. **A let-bound numeric literal stays flexible** (`check.rs:1055-1062`):
     `let whole be 3` then a Decimal comparison passes, against section 7
     of the sketch ("Integer and Decimal do not compare").
-14. **Replay does not check budgets or the grant header.** A `replays`
-    test is said to check that the recording stayed within its budgets
-    (`06-runtime-guarantees.md:203-204`); replay returns before the counter
-    (`vm.rs:348-362`), and the recording's `grant` header is never compared
-    with the test's `needs` (coverage is checked per recorded call,
-    `vm.rs:243-254`).
+14. **Replay does not compare the grant header.** Done in stage 1: a
+    replay counts every call against the budgets and refuses the
+    recording that exceeds one (`vm.rs:646`; tested in
+    `crates/renyi_vm/tests/recording.rs`, `a_replay_checks_the_budgets_too`).
+    Still open: the recording's `grant` header is never compared with
+    the test's `needs` (coverage is checked per recorded call).
 15. **Two spellings of the range loop** are accepted (`for each x in from
     1 to 9` and `for each x from 1 to 9`) and the formatter rewrites one
     into the other (`parser.rs:1625-1637`, `format.rs:862-872`), against
@@ -111,15 +110,19 @@ Ordered by how much they matter to the language's promises.
     by imports, the index or the git-base maps (`crates/renyi_check/src/lib.rs:195`,
     `crates/renyi_index/src/lib.rs:217`, `crates/renyi/src/maps.rs:224, 245`)
     although `README.md` calls the two extensions equivalent.
-17. **User `Equal` and `Hash` implementations are never called**
-    (`crates/renyi_vm/src/value.rs:192-240`; known); `Float` overflow gives
-    infinity instead of the crash the library sketch promises
-    (`integer.rs:61-66`, `decimal.rs:151-153`, `natives/json.rs:480-487`);
-    an `Integer` argument beyond i64 crashes in `small()` instead of the
-    documented result (`natives/mod.rs:85-89`: `List.at`, `take`, `drop`,
-    `repeat`, `pad`); `Text.split("")` and `replace(old: "")` crash;
-    `parse_instant` accepts signed and single-digit fields; `Ordering` is
-    `Less, Same, Greater` where decision C3b says `Equal`.
+17. **A user `Hash` implementation is never called**
+    (`crates/renyi_vm/src/value.rs`; known), and collections keep the
+    derived equality (`04-stdlib-sketch.md`, ability table). Done in
+    stage 1: a declared `equals` decides `is` and `is not` (`vm.rs:1767`,
+    `equal`); a `Float` result past its range or not a number is a crash
+    (`vm.rs:2046`, `finite_float`, used by the arithmetic, `to_float` and
+    JSON decoding); an `Integer` beyond i64 is answered by `List.at`
+    (nothing), `take` and `drop` and their `Text` forms
+    (`natives/prelude.rs:358`, `count`); `Text.split("")` gives the
+    characters and `replace(old: "")` returns the text; `parse_instant`
+    requires two-digit clock fields; `Ordering` stays `Less, Same,
+    Greater` by decision V3. Still through `small()`: `repeat`, `pad` and
+    the rounding places. Tested in `crates/renyi_vm/tests/semantics.rs`.
 18. **Known and still open from `HANDOFF.md`:** `break` or `continue` as
     the outcome of an `if` or `match` expression nested in another
     expression leaves operands on the stack (probes gave correct totals;

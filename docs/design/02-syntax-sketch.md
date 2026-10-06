@@ -234,7 +234,9 @@ public type UserId is Integer
 **Records** (`has`). Fields are public. Construction names every field,
 `User(id: UserId(7), name: "Ann", age: 30, email: nothing)`, `Circle(radius:
 2.5)`; a subtype wraps one positional value, `UserId(7)`. Update copies with changes: `let older be user with
-age: user.age + 1`. `has kind: Text as "type"` gives a field the external name
+age: user.age + 1`; a changed field with a refinement is checked again, so
+the update can fail like a construction and takes `otherwise` by the same
+rule (decision U9). `has kind: Text as "type"` gives a field the external name
 that `ToJson`, `FromJson` and `FromRow` use, for keys that are reserved words
 or contain punctuation; `json.parse(text: text, naming: CamelCase)` maps a
 whole record by convention (decision J14).

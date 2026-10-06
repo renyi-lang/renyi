@@ -480,8 +480,10 @@ pub fn decode(
     if id == b.float {
         return Ok(match json {
             Json::Number(text) => match text.parse::<f64>() {
-                Ok(value) => Ok(Value::Float(value)),
-                Err(_) => return mismatch(vm, path, "Float", json),
+                // a Float never holds infinity: a number past its range
+                // does not fit
+                Ok(value) if value.is_finite() => Ok(Value::Float(value)),
+                _ => return mismatch(vm, path, "Float", json),
             },
             _ => return mismatch(vm, path, "Float", json),
         });

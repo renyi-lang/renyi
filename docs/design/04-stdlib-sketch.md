@@ -104,7 +104,7 @@ function trim_end(self: Text) returns Text
 function to_lower(self: Text) returns Text
 function to_upper(self: Text) returns Text
 function split(self: Text, separator: Text) returns List of Text
-  purpose: Pieces between separators; adjacent separators give empty pieces.
+  purpose: Pieces between separators; adjacent separators give empty pieces, an empty separator gives the characters.
 function lines(self: Text) returns List of Text
   purpose: Split at line breaks, without the breaks.
 function characters(self: Text) returns List of Text
@@ -113,13 +113,13 @@ function starts_with(self: Text, prefix: Text) returns Boolean
 function ends_with(self: Text, suffix: Text) returns Boolean
 function index_of(self: Text, part: Text) returns maybe Integer
 function replace(self: Text, old: Text, new: Text) returns Text
-  purpose: Every occurrence of old replaced by new.
+  purpose: Every occurrence of old replaced by new; an empty old changes nothing.
 function pad_left(self: Text, width: Integer) returns Text
   purpose: Spaces added on the left until the text is at least width characters.
 function pad_right(self: Text, width: Integer) returns Text
 function repeat(self: Text, times: Integer) returns Text
 function take(self: Text, length: Integer) returns Text
-  purpose: The first length characters, or the whole text when it is shorter.
+  purpose: The first length characters, or the whole text when it is shorter; a length past a machine word takes everything.
 function drop(self: Text, length: Integer) returns Text
 function reversed(self: Text) returns Text
 function matches(self: Text, pattern: Text) returns Boolean
@@ -223,9 +223,9 @@ data type without being named.
 
 | Ability | Method | Used by |
 |---------|--------|---------|
-| `Equal` | `equals(self, other: Self) returns Boolean` | `is`, `is not`, `contains`, `index_of` |
+| `Equal` | `equals(self, other: Self) returns Boolean` | `is`, `is not`; `contains`, `index_of`, sets and maps use the derived form, which a declared `equals` does not replace |
 | `Compare` | `compare(self, other: Self) returns Ordering` | the four ordering phrases, `sorted`, `sorted by`, `largest`, `smallest` |
-| `Hash` | `hash(self) returns Integer` | `Set` items, `Map` keys, `distinct`, `to_set` |
+| `Hash` | `hash(self) returns Integer` | `Set` items, `Map` keys, `distinct`, `to_set`; derived only, a declared `hash` is not consulted |
 | `ToText` | `to_text(self) returns Text` | interpolation, `console.print` of non-text values |
 | `ToJson`, `FromJson` | `to_json(self) returns JsonValue`, `from_json(value: JsonValue) returns Self or fails with JsonError` | `std.json`, `std.http`, `std.server` |
 | `FromRow` | `from_row(row: Row) returns Self or fails with DbError` | `std.sqlite` |
@@ -614,6 +614,8 @@ public type DbError is one of
   CannotOpen(path: Path, detail: Text)
   Failed(sql: Text, detail: Text)
   Mismatch(column: Text, expected: Text, found: Text)
+  PermissionDenied(path: Path)
+  OverBudget(path: Path)
 end
 
 public function open(path: Path) returns Connection or fails with DbError needs filesystem
