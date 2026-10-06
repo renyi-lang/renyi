@@ -686,6 +686,11 @@ expires the remaining tasks are cancelled and the block fails with the
 built-in `TimedOut`, which the enclosing function lists in `or fails with`
 (decision J12).
 
+The first runtime executes the tasks of a block or a query one after the
+other, in source order, and checks the deadline between them (decision
+S2); the meaning is the same, since tasks are independent, and a later
+runtime may overlap their waits.
+
 ---
 
 ## 13. Documentation clauses

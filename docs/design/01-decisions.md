@@ -941,3 +941,30 @@ thresholds move to the project manifest with the package manager (M4).
 and was not run; it joins the next round at its default temperature, as
 Sonnet 5.5 ran in this one, so that each vendor has a large model gating
 the freeze (R1). (user)
+
+## S. Runtime dependencies and concurrency (session 6, M3)
+
+Each question was put to the owner with the recommendation first, after a
+probe crate had built the candidates on the owner's machine (GNU toolchain,
+31 seconds, all three working).
+
+**S1. Three dependencies for the runtime.** The HTTP client of `std.http`
+is the `ureq` crate (version 3, rustls with the `ring` provider: no system
+TLS, no C code for the client); `std.sqlite` is `rusqlite` with its
+`bundled` feature (the SQLite sources compiled into the binary, which needs
+a C compiler on the build machine); `std.server` is written over
+`std::net::TcpListener` (HTTP/1.1, one request at a time, no TLS, which a
+local service or one behind a proxy does not need). Redirects are followed
+by the runtime one hop at a time so that every host a request reaches is
+checked against the grant. Alternatives declined: a hand-written client
+(no TLS, so the corpus could only run from recordings), `reqwest` (tokio),
+`tiny_http`, and leaving any of the three unbuilt. (user)
+
+**S2. Tasks run one after the other.** `run concurrently` and
+`concurrently` queries execute their tasks in source order on one thread,
+with the `within` deadline checked between statements and items. The
+meaning of a program is unchanged: tasks are independent, so their order is
+unobservable except through time, and values stay single-threaded
+reference counts (O1). Overlapping I/O waits (green threads on one OS
+thread) is a later runtime improvement, not a language change; a thread
+per task was declined because values would have to cross threads. (user)

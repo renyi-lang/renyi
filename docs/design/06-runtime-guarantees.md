@@ -7,9 +7,10 @@ VM (`crates/renyi_vm`) implements sections 1 and 2: `renyi record`,
 section 11 of the syntax sketch, all at one primitive boundary
 (`Vm::call_native`, section 4). Each recorded call also carries `at_ms`,
 its time since the run began, which a replay's budget check uses. The
-network, server and SQLite primitives do not exist yet, so the corpus has
-no recordings of them; guards (section 3) are M4. Date: 2026-10-06.
-Companion to `02-syntax-sketch.md` sections 11 and 14.
+HTTP client, the server and SQLite exist (decision S1); `weather`,
+`currency_tool` and `concurrent_fetch` carry `replays` tests with their
+recordings under `examples/fixtures/`. Guards (section 3) are M4. Date:
+2026-10-06. Companion to `02-syntax-sketch.md` sections 11 and 14.
 
 The three capabilities in this document are the ones the owner chose as the
 language's signature: each is new as a language feature, each is practical

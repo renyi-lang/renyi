@@ -74,8 +74,12 @@ pub enum Native {
     Iterator(RefCell<(Vec<Value>, usize)>),
     /// A `within` deadline as an instant in milliseconds, with the duration.
     Deadline(i64, i64),
-    /// An open SQLite connection (a placeholder until the driver exists).
-    Connection(RefCell<Option<String>>),
+    /// An SQLite connection and the path it was opened on; `None` once
+    /// closed, or on a replay, where no query reaches the file.
+    Connection {
+        connection: RefCell<Option<rusqlite::Connection>>,
+        path: String,
+    },
 }
 
 impl Value {

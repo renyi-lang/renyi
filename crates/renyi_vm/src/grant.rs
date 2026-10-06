@@ -10,7 +10,7 @@ use std::collections::VecDeque;
 use renyi_check::effects::{self, Capability, TREE};
 
 use crate::compile::FunctionMeta;
-use crate::value::Value;
+use crate::value::{Native, Value};
 
 /// `second`, `minute`, `hour` and `day` are sliding windows; `run` counts
 /// the whole program.
@@ -340,12 +340,28 @@ pub fn effect_of(meta: &FunctionMeta, args: &[Value]) -> Option<Capability> {
         only_to: Vec::new(),
     };
     if effects::takes_scope(&effect.path) {
-        let first_text = args.iter().find_map(Value::as_text);
+        // the argument of the named type, by position
+        let typed = |wanted: &str| {
+            meta.param_types
+                .iter()
+                .zip(args)
+                .find(|(ty, _)| ty.as_str() == wanted)
+                .and_then(|(_, value)| value.as_text())
+        };
         effect.scope = match effect.path.first().map(String::as_str) {
-            Some("network") => first_text.and_then(host_of),
-            Some("filesystem") => first_text.map(normalize_path),
-            Some("environment") if meta.name == "get" => first_text.map(str::to_string),
-            Some("process") => first_text.map(str::to_string),
+            Some("network") => typed("Url").and_then(host_of),
+            Some("filesystem") => match args.first() {
+                // a database call acts on the file its connection opened
+                Some(Value::Native(native)) => match &**native {
+                    Native::Connection { path, .. } => Some(normalize_path(path)),
+                    _ => None,
+                },
+                _ => typed("Path").map(normalize_path),
+            },
+            Some("environment") if meta.name == "get" => {
+                args.first().and_then(Value::as_text).map(str::to_string)
+            }
+            Some("process") => typed("Text").map(str::to_string),
             _ => None,
         };
     }

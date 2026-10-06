@@ -74,8 +74,12 @@ pub enum Op {
     JumpIfFalse(u32),
     /// Pop a Boolean; jump when true.
     JumpIfTrue(u32),
-    /// Peek; jump when the top is `Nothing` or a `Failure`.
+    /// Peek; jump when the top is `Nothing` or a `Failure` (an `otherwise`
+    /// on a `maybe` value).
     JumpIfAbsent(u32),
+    /// Peek; jump when the top is a `Failure` (an `otherwise` on a fallible
+    /// call, whose success may be `Nothing` when it returns no value).
+    JumpIfFailure(u32),
     /// Open a handled region: a failure inside it unwinds the operand stack
     /// to its height here, pushes the `Failure` and jumps to the target.
     PushHandler(u32),
@@ -199,6 +203,7 @@ impl Code {
             | Op::JumpIfFalse(t)
             | Op::JumpIfTrue(t)
             | Op::JumpIfAbsent(t)
+            | Op::JumpIfFailure(t)
             | Op::PushHandler(t) => *t = target,
             Op::IterNext { exit, .. } => *exit = target,
             other => panic!("not a jump: {other:?}"),

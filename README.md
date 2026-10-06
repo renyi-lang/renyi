@@ -65,11 +65,13 @@ checker (M2), the project map (`renyi index`) and the first slice of the VM
   narrates a run through the `purpose:` clauses it passes; `renyi test`
   runs every `example:` line and `test` block, a `replays` test from its
   recording (`--strict`, `--refresh`). Every example checks cleanly, is in
-  canonical form, and its examples and tests pass; the ten programs with a
-  reference output print it. The VM covers the prelude, console,
-  environment, time, random, filesystem, JSON, CSV and regular
-  expressions; `run concurrently` runs its tasks one after the other, and
-  the network, the server and SQLite are not built yet.
+  canonical form, and its examples and tests pass, the three that reach
+  the network from recordings under `examples/fixtures/`; the ten programs
+  with a reference output print it. The VM covers the whole library: the
+  prelude, console, environment, time, random, filesystem, JSON, CSV,
+  regular expressions, the HTTP client (`ureq`), the HTTP server (over
+  `std::net`) and SQLite (`rusqlite`, compiled in); `run concurrently`
+  runs its tasks one after the other (decision S2).
 
 ```
 cargo build
@@ -85,8 +87,7 @@ cargo build
 cargo test
 ```
 
-Next: the rest of M3 (the network, server and SQLite primitives with
-recordings for the corpus, concurrent tasks), then the MCP server and the
+Next: the grant stack along the call chain, then the MCP server and the
 semantic diff.
 
 ## Working on this repository

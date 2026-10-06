@@ -1,0 +1,44 @@
+{
+  "program": "currency_tool",
+  "recorded_at": "2026-10-06T00:37:49.331Z",
+  "grant": [
+    "network.http(\"api.frankfurter.dev\")"
+  ],
+  "calls": [
+    {
+      "sequence": 1,
+      "capability": "network.http(\"api.frankfurter.dev\")",
+      "primitive": "std.http.get",
+      "arguments": {
+        "url": "https://api.frankfurter.dev/v1/latest?from=USD&to=EUR"
+      },
+      "outcome": {
+        "success": {
+          "status": 200,
+          "headers": {
+            "date": "Tue, 06 Oct 2026 00:37:49 GMT",
+            "content-type": "application/json; charset=utf-8",
+            "transfer-encoding": "chunked",
+            "connection": "keep-alive",
+            "cache-control": "public, max-age=86400",
+            "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=TzB6w%2Bmrh856C%2FPtKK54v4g2ax8iYMle2TZBJc5yJJtleBXKfF4i0MvkCPrBthh%2BBQz%2FUDf77j7s0%2B5H6VYJtJZOmM048aWVFb981%2Fis0qKNLmo%2BndiIJY%2BnZo8pgZLJK8MaYduvhmcvyYRX%2F4sHByI%3D\"}]}",
+            "vary": "Origin",
+            "x-robots-tag": "noindex",
+            "deprecation": "@1779103800",
+            "link": "<https://api.frankfurter.dev/v2/rates>; rel=\"successor-version\"",
+            "age": "1910",
+            "etag": "W/\"a0feca5de78ead9d1af7600781cf7364\"",
+            "cf-cache-status": "HIT",
+            "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+            "cf-ray": "a4609987df8e672f-ATL",
+            "server": "cloudflare"
+          },
+          "body": "{\"amount\":1.0,\"base\":\"USD\",\"date\":\"2026-10-05\",\"rates\":{\"EUR\":0.89254}}",
+          "bytes": "eyJhbW91bnQiOjEuMCwiYmFzZSI6IlVTRCIsImRhdGUiOiIyMDI2LTEwLTA1IiwicmF0ZXMiOnsiRVVSIjowLjg5MjU0fX0="
+        }
+      },
+      "duration_ms": 161,
+      "at_ms": 0
+    }
+  ]
+}

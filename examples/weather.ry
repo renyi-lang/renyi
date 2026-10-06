@@ -49,3 +49,9 @@ public function main() or fails with WeatherError needs console, network.http
   let current be forecast.current
   console.print("Berlin: {current.temperature_2m} C, wind {current.wind_speed_10m} km/h")
 end
+
+test "Berlin is read" needs network.http("api.open-meteo.com") replays "fixtures/weather.json"
+  let forecast be fetch_forecast(latitude: 52.52, longitude: 13.41) otherwise fail
+  check forecast.current.temperature_2m is 14.0
+  check forecast.current.wind_speed_10m is 5.5
+end

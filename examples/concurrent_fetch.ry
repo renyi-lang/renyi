@@ -33,3 +33,8 @@ public function main() or fails with HttpError or TimedOut needs console, networ
   end
   console.print("home and docs together: {home.characters + docs.characters} characters")
 end
+
+test "the example site is measured" needs network.http replays "fixtures/concurrent_fetch.json"
+  let size be measure(Url("https://example.com")) otherwise fail
+  check size.characters is 577
+end

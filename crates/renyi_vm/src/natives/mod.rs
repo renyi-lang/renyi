@@ -1,14 +1,16 @@
 //! The library's primitives in Rust, behind one boundary: a declared library
 //! function is looked up by module, name and receiver type, and runs as a
-//! `NativeFn`. Modules the build does not implement (`std.http`,
-//! `std.server`, `std.sqlite`) have no entry, and a call to them crashes
-//! with a message that says so.
+//! `NativeFn`. A function the build does not implement has no entry, and a
+//! call to it crashes with a message that says so.
 
 pub mod csv;
 pub mod filesystem;
+pub mod http;
 pub mod json;
 pub mod prelude;
 pub mod regex;
+pub mod server;
+pub mod sqlite;
 pub mod system;
 pub mod time;
 
@@ -36,6 +38,9 @@ pub fn lookup(module: &str, name: &str, receiver: Option<&str>) -> Option<Native
         "std.json" => json::lookup(name),
         "std.csv" => csv::lookup(name, head),
         "std.regex" => regex::lookup(name, head),
+        "std.http" => http::lookup(name),
+        "std.server" => server::lookup(name, head),
+        "std.sqlite" => sqlite::lookup(name, head),
         _ => None,
     }
 }

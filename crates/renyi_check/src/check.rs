@@ -123,6 +123,10 @@ pub enum Target {
     /// alone (`json.parse`), at the call's span, with that type resolved; the
     /// VM decodes by it, the map ignores it.
     Result(Ty),
+    /// An `otherwise`, at its expression's span: whether it handles the
+    /// failure of a fallible call (`true`) or the absence of a `maybe` value
+    /// (`false`); the VM branches by it, the map ignores it.
+    Otherwise { fallible: bool },
 }
 
 /// The runtime type of a numeric literal.
@@ -3172,6 +3176,12 @@ impl<'w> Checker<'w> {
     ) -> Info {
         let info = self.infer(value, expected);
         let ty = self.resolve(&info.ty);
+        self.record(
+            Target::Otherwise {
+                fallible: !info.fails.is_empty(),
+            },
+            span,
+        );
         let inner = match (&ty, info.fails.is_empty()) {
             (Ty::Maybe(inner), true) => (**inner).clone(),
             (Ty::Maybe(inner), false) => {

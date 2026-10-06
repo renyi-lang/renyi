@@ -1,0 +1,32 @@
+{
+  "program": "weather",
+  "recorded_at": "2026-10-06T00:37:48.622Z",
+  "grant": [
+    "network.http(\"api.open-meteo.com\")"
+  ],
+  "calls": [
+    {
+      "sequence": 1,
+      "capability": "network.http(\"api.open-meteo.com\")",
+      "primitive": "std.http.get",
+      "arguments": {
+        "url": "https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.41&current=temperature_2m,wind_speed_10m"
+      },
+      "outcome": {
+        "success": {
+          "status": 200,
+          "headers": {
+            "date": "Tue, 06 Oct 2026 00:37:49 GMT",
+            "content-type": "application/json; charset=utf-8",
+            "transfer-encoding": "chunked",
+            "connection": "keep-alive"
+          },
+          "body": "{\"latitude\":52.52,\"longitude\":13.419998,\"generationtime_ms\":0.09894371032714844,\"utc_offset_seconds\":0,\"timezone\":\"GMT\",\"timezone_abbreviation\":\"GMT\",\"elevation\":38.0,\"current_units\":{\"time\":\"iso8601\",\"interval\":\"seconds\",\"temperature_2m\":\"°C\",\"wind_speed_10m\":\"km/h\"},\"current\":{\"time\":\"2026-10-06T00:30\",\"interval\":900,\"temperature_2m\":14.0,\"wind_speed_10m\":5.5}}",
+          "bytes": "eyJsYXRpdHVkZSI6NTIuNTIsImxvbmdpdHVkZSI6MTMuNDE5OTk4LCJnZW5lcmF0aW9udGltZV9tcyI6MC4wOTg5NDM3MTAzMjcxNDg0NCwidXRjX29mZnNldF9zZWNvbmRzIjowLCJ0aW1lem9uZSI6IkdNVCIsInRpbWV6b25lX2FiYnJldmlhdGlvbiI6IkdNVCIsImVsZXZhdGlvbiI6MzguMCwiY3VycmVudF91bml0cyI6eyJ0aW1lIjoiaXNvODYwMSIsImludGVydmFsIjoic2Vjb25kcyIsInRlbXBlcmF0dXJlXzJtIjoiwrBDIiwid2luZF9zcGVlZF8xMG0iOiJrbS9oIn0sImN1cnJlbnQiOnsidGltZSI6IjIwMjYtMTAtMDZUMDA6MzAiLCJpbnRlcnZhbCI6OTAwLCJ0ZW1wZXJhdHVyZV8ybSI6MTQuMCwid2luZF9zcGVlZF8xMG0iOjUuNX19"
+        }
+      },
+      "duration_ms": 533,
+      "at_ms": 0
+    }
+  ]
+}

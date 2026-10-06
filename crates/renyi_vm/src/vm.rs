@@ -72,6 +72,9 @@ pub struct Options {
     /// `renyi test --refresh NAME`: run this test live and re-record its
     /// fixture.
     pub refresh: Option<String>,
+    /// `server.serve` returns after this many requests; for tests of a
+    /// server, which otherwise runs until the process stops.
+    pub serve_limit: Option<usize>,
 }
 
 impl Default for Options {
@@ -88,6 +91,7 @@ impl Default for Options {
             explain: false,
             strict: false,
             refresh: None,
+            serve_limit: None,
         }
     }
 }
@@ -124,6 +128,8 @@ pub struct Vm<'p> {
     /// When the run began, in milliseconds since the epoch.
     started: i64,
     pub explain: bool,
+    /// See `Options::serve_limit`.
+    pub serve_limit: Option<usize>,
     /// The context type of the next library call (`Op::ResultType`).
     expected: Option<Ty>,
     pub random_state: u64,
@@ -167,6 +173,7 @@ impl<'p> Vm<'p> {
             replay: None,
             started: natives::now_millis(),
             explain: options.explain,
+            serve_limit: options.serve_limit,
             expected: None,
             random_state: seed,
         }
@@ -265,23 +272,28 @@ impl<'p> Vm<'p> {
                 None => Err(self.unavailable(function)),
             };
         };
-        let expected = self.expected.take();
         if !effects::covered(&self.grant, &effect, true) {
+            self.expected = None;
             return self.denied(function, &effect);
         }
         let arguments = self.encode_arguments(function, &args)?;
         if self.replay.is_some() {
+            // the context type decodes the recorded result
+            let expected = self.expected.take();
             return self.replay_call(function, &effect, arguments, &args, expected);
         }
         let at_ms = natives::now_millis() - self.started;
         if let Some(budget) = self.exhausted(&effect, at_ms) {
+            self.expected = None;
             return self.over_budget(function, &effect, &budget);
         }
         let Some(native) = native else {
             return Err(self.unavailable(function));
         };
         let shown_args = self.explain.then(|| args.clone());
+        // a live primitive takes the context type itself (`sqlite.query`)
         let result = native(self, args);
+        self.expected = None;
         let duration_ms = natives::now_millis() - self.started - at_ms;
         let value = match &result {
             Ok(value) => value.clone(),
@@ -390,7 +402,7 @@ impl<'p> Vm<'p> {
         for (name, value) in meta.params.iter().zip(args) {
             let json = match value {
                 Value::Function(id) => Json::Text(format!("function {}", self.qualified(*id))),
-                Value::Native(_) => Json::Text(format!("<{}>", value.kind_name())),
+                Value::Native(native) => native_json(native),
                 other => json::encode(self, other, Naming::Exact)?,
             };
             out.push((name.clone(), json));
@@ -401,7 +413,7 @@ impl<'p> Vm<'p> {
     fn encode_outcome(&mut self, value: &Value) -> Result<Outcome, Interrupt> {
         Ok(match value {
             Value::Failure(error) => Outcome::Failure(json::encode(self, error, Naming::Exact)?),
-            Value::Native(_) => Outcome::Success(Json::Text(format!("<{}>", value.kind_name()))),
+            Value::Native(native) => Outcome::Success(native_json(native)),
             other => Outcome::Success(json::encode(self, other, Naming::Exact)?),
         })
     }
@@ -449,6 +461,14 @@ impl<'p> Vm<'p> {
         expected: Option<Ty>,
     ) -> Result<Value, Interrupt> {
         let program = self.program;
+        // a connection has no file on a replay: a placeholder that keeps
+        // the path, so that later calls match the recording
+        if let Some(path) = connection_path(json) {
+            return Ok(Value::Native(Rc::new(Native::Connection {
+                connection: std::cell::RefCell::new(None),
+                path,
+            })));
+        }
         let ty = expected
             .or_else(|| program.function_metas[function].returns.clone())
             .unwrap_or(Ty::Unit);
@@ -925,6 +945,11 @@ impl<'p> Vm<'p> {
                     self.stack.last(),
                     Some(Value::Nothing) | Some(Value::Failure(_))
                 ) {
+                    self.jump(*target);
+                }
+            }
+            Op::JumpIfFailure(target) => {
+                if matches!(self.stack.last(), Some(Value::Failure(_))) {
                     self.jump(*target);
                 }
             }
@@ -1496,6 +1521,27 @@ impl<'p> Vm<'p> {
             Some(interrupt) => Err(interrupt),
             None => Ok(()),
         }
+    }
+}
+
+/// A native value in a recording: a connection by its path, the rest by
+/// kind.
+fn native_json(native: &Native) -> Json {
+    match native {
+        Native::Connection { path, .. } => Json::Text(format!("<connection {path}>")),
+        Native::CsvRow { .. } => Json::Text("<row>".to_string()),
+        Native::Iterator(_) => Json::Text("<iterator>".to_string()),
+        Native::Deadline(..) => Json::Text("<deadline>".to_string()),
+    }
+}
+
+fn connection_path(json: &Json) -> Option<String> {
+    match json {
+        Json::Text(text) => text
+            .strip_prefix("<connection ")
+            .and_then(|rest| rest.strip_suffix('>'))
+            .map(str::to_string),
+        _ => None,
     }
 }
 

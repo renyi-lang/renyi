@@ -1,30 +1,34 @@
 # Handoff
 
-Last updated: 2026-10-06, session 6 (the VM: `renyi run` and `renyi test`,
-then the primitive boundary: `renyi record`, `run --replay`, `--explain`,
-`replays` tests, budgets and scope checks). Branch: `main` is the only
-branch (owner's decision, 2026-10-05); commit and push there directly.
+Last updated: 2026-10-06, session 6 (the VM: `renyi run` and `renyi test`;
+the primitive boundary: `renyi record`, `run --replay`, `--explain`,
+`replays` tests, budgets and scope checks; then the HTTP client, the HTTP
+server and SQLite). Branch: `main` is the only branch (owner's decision,
+2026-10-05); commit and push there directly.
 
 ## Where the project stands
 
 Milestones M0 (design), M1 (front end) and M2 (type and effect checker) are
 done; the project map (`renyi index`, decision O2) exists with its budget
-report (`--budgets`, decisions O3 and R7); M3 (the VM) runs programs and
-implements decisions P1 and P2 (recorded runs, budgets) at its primitive
-boundary; what M3 still lacks is the network, server and SQLite primitives
-and real concurrency. Design decisions are in sections 0 to R of `01-decisions.md`;
+report (`--budgets`, decisions O3 and R7); M3 (the VM) runs programs with
+every module of the standard library and implements decisions P1 and P2
+(recorded runs, budgets) at its primitive boundary; what M3 still lacks is
+the grant stack of decision Q1 (tasks run one after the other by decision
+S2). Design decisions are in sections 0 to S of `01-decisions.md`;
 the agent tooling in `05-agent-tooling.md`, the signature capabilities in
 `06-runtime-guarantees.md`, the system-level commitments in
 `07-system-design.md`. The corpus has 30 programs, passes the lint, is in
-canonical layout, checks cleanly, has nothing over budget, and its 82
-`example:` lines and `test` blocks pass on the VM. The cheat sheet measures
-2977 of 3000 tokens (unchanged this session). The Rust workspace has five
-crates: `renyi_syntax`, `renyi_check`, `renyi_index`, `renyi_vm` and the
-`renyi` binary with `check`, `format`, `tokens`, `parse [--json]`, `index
-[--json | --budgets]`, `run [options] <file> [arguments]`, `record [--to
-file] [options] <file> [arguments]`, `test [--strict] [--refresh name]
-[--explain] <file>...` and `version`; 119 tests, clippy and fmt clean on
-Windows.
+canonical layout, checks cleanly, has nothing over budget, and its 85
+`example:` lines and `test` blocks pass on the VM (three are `replays`
+tests answered from recordings under `examples/fixtures/`). The cheat sheet
+measures 2977 of 3000 tokens (unchanged this session). The Rust workspace
+has five crates: `renyi_syntax`, `renyi_check`, `renyi_index`, `renyi_vm`
+and the `renyi` binary with `check`, `format`, `tokens`, `parse [--json]`,
+`index [--json | --budgets]`, `run [options] <file> [arguments]`, `record
+[--to file] [options] <file> [arguments]`, `test [--strict] [--refresh
+name] [--explain] <file>...` and `version`; 124 tests, clippy and fmt clean
+on Windows. The VM depends on `ureq` (HTTP, with rustls) and `rusqlite`
+(SQLite compiled in), decision S1.
 
 The first live readability round (`tests/readability/2026-10-05-1623155/`)
 stands as session 5 left it: Sonnet 5.5 passes Predict (90) and Explain
@@ -88,9 +92,24 @@ and R6 are unmeasured (round 2, below).
   derivation rules of `04-stdlib-sketch.md` section 7, `as` names and
   `Naming`; `Constraint` errors from refinements), `std.csv` (RFC 4180
   cells, rows with line numbers), `std.regex` and `Text.matches` on the
-  `regex` crate. `std.http`, `std.server` and `std.sqlite` have no
-  primitives: a live call crashes with `... is not available in this build
-  of the VM` (a replayed one is answered from the recording).
+  `regex` crate; `std.http` (`natives/http.rs`) on `ureq` 3 with rustls:
+  a 30-second limit per request, redirects followed one hop at a time with
+  every host checked against the grant (`HostNotAllowed` for a hop outside
+  it, at most ten hops), 303 and a redirected POST become GET, a non-2xx
+  answer is `Status(url, status, body)`, duplicate headers joined with a
+  comma; `std.sqlite` (`natives/sqlite.rs`) on `rusqlite` with SQLite
+  compiled in: a `Connection` is a native value (`<connection PATH>` in
+  text and in recordings; its path is the scope of every call on it),
+  parameters bind by type (`Decimal` and an `Integer` past `i64` as text,
+  `Boolean` as 0 or 1), `query` decodes each row into the record of the
+  context type by column name (`as` names honoured) and fails with
+  `Mismatch(column, expected, found)` when a cell does not fit the field
+  or a row does not satisfy the record's refinement; `std.server`
+  (`natives/server.rs`) hand-written over `std::net::TcpListener`:
+  HTTP/1.1, one request at a time, `PortInUse` and `PermissionDenied`
+  from `bind`, the handler called through `Vm::call_function` with a
+  `Request` record (lower-cased header names, percent-decoded query), the
+  answer sent with `content-length` and `connection: close`.
 - **The primitive boundary** (`Vm::call_native`, `grant.rs`,
   `recording.rs`; `06-runtime-guarantees.md` sections 1, 2 and 4). A
   primitive with `needs` passes one function. Its *effect* is its declared
@@ -115,12 +134,13 @@ and R6 are unmeasured (round 2, below).
   `--explain` narrates on stderr: `Purpose. (module.name, param: value)`
   on entry, `-> value` on exit, and each effect as `console "text"` or
   `capability name(args) -> result[, N ms]`, indented by call depth.
-- **Not yet.** `run concurrently` and `concurrently` queries run their
-  tasks one after the other (`within` sets a deadline that is checked
-  between statements or items and fails with `TimedOut`); no green
-  threads. The grant is the program's or the test's: the grant stack of
+- **Not yet.** The grant is the program's or the test's: the grant stack of
   decision Q1 (intersection along the call chain) is not built, so a
   function's own narrower `needs` scope is checked by the checker only.
+  `run concurrently` and `concurrently` queries run their tasks one after
+  the other by decision S2 (`within` sets a deadline that is checked
+  between statements or items and fails with `TimedOut`); green threads
+  would be an improvement within that decision, not a reversal.
 
 ## Done in session 6
 
@@ -169,6 +189,29 @@ and R6 are unmeasured (round 2, below).
    mentions a type parameter (`random.choice`), so a replay can decode it;
    `effects::scope_contains` is public. Library: `OverBudget` added to
    `FileError` and `HttpError` (sketch and `library/std`).
+7. **The HTTP client, the HTTP server and SQLite** (third commit). The
+   owner chose the dependencies (decision S1: `ureq` 3, `rusqlite` with
+   SQLite compiled in, a hand-written server over `std::net`) and kept
+   the tasks sequential (decision S2; sketch section 12 says so).
+   `natives/{http, sqlite, server}.rs` as described above;
+   `tests/network.rs` runs a server on a loopback port and a client
+   against it in one process (`Options::serve_limit` stops the server
+   after N requests), records and replays a SQLite program with the
+   database deleted between the two runs, and checks a row outside a
+   refinement. The checker records `Target::Otherwise { fallible }` at
+   every `otherwise` and the compiler emits the new `Op::JumpIfFailure`
+   for a fallible subject, so `otherwise` after a void fallible call
+   (`server.serve(...) otherwise fail`) no longer mistakes the `Nothing`
+   of success for an absent value (a bug the server test found).
+   `renyi test --refresh` recorded live fixtures for `weather` (Berlin,
+   14.0 C, wind 5.5 km/h), `currency_tool` (USD to EUR at 0.89254; the
+   service moved from `frankfurter.app` to `api.frankfurter.dev` and the
+   example follows) and `concurrent_fetch` (example.com, 577
+   characters); the three `replays` tests pin those values and pass
+   offline with `--strict`. `--at-most` now rejects a budget on a
+   capability that takes none. `examples/README.md`, `README.md`,
+   `CLAUDE.md`, the status line of `06-runtime-guarantees.md` and the
+   crate doc of `renyi_vm` say so.
 
 ## Done in session 5 (condensed)
 
@@ -189,10 +232,10 @@ on a fresh clone).
 
 ## Owner actions pending
 
-- **Rotate `ANTHROPIC_API_KEY` and `OPENAI_API_KEY`.** Session 5 printed
-  both values into a tool result once while checking that the variables
-  were set (not committed, but in the session transcript). Rotate both and
-  set the new values in the environment.
+- None. Session 5 printed the values of `ANTHROPIC_API_KEY` and
+  `OPENAI_API_KEY` into a tool result once (not committed); the owner said
+  in session 6 that they handle the transcript and the keys themselves, so
+  no session needs to raise it again.
 
 ## Done in sessions 1 to 4 (condensed)
 
@@ -219,31 +262,28 @@ on a fresh clone).
 
 ## Next steps
 
-1. **The rest of M3**, in this order: (a) `std.http` (a small client over
-   `std::net` or a crate the owner accepts; `HostNotAllowed` and
-   `OverBudget` already come from the boundary), `std.server` and
-   `std.sqlite` primitives, with recordings and `replays` tests for the
-   five network programs (`weather`, `concurrent_fetch`, `pagination`,
-   `assistant`, `currency_tool`) and the two database ones; the owner
-   decides the dependencies (ask in one batch: an HTTP client crate or a
-   hand-written one, `rusqlite` with the bundled SQLite or none yet, TLS);
-   (b) the grant stack of decision Q1: intersect the run's grant with the
-   `needs` scopes along the call chain, so that a function declared
-   `needs filesystem.read("data")` cannot read elsewhere even when `main`
-   may; (c) real concurrency for `run concurrently` and `concurrently`
-   queries (green threads on one OS thread, or an explicit decision to keep
-   them sequential with deadlines); (d) decision L2: re-run the 182 judged
-   Complete and Write samples of the live round and the 40 of the pre-test
-   on the VM and compare with the subagents' verdicts (the
+1. **The rest of M3**, in this order: (a) the grant stack of decision Q1:
+   intersect the run's grant with the `needs` scopes along the call chain,
+   so that a function declared `needs filesystem.read("data")` cannot read
+   elsewhere even when `main` may; (b) recordings for the programs that
+   still have none: `pagination` and `assistant` call the fictional host
+   `api.example.com` (and `assistant` sends `Authorization: Bearer` with
+   the key from `CHAT_API_KEY`), so either hand-write their fixtures in
+   the format of `06-runtime-guarantees.md` section 1.1 (redaction, R6-3,
+   becomes concrete there) or point them at real services first;
+   `inventory_db` opens `data/inventory.db`, which must be seeded before
+   `renyi test --refresh` can record it; (c) decision L2: re-run the 182
+   judged Complete and Write samples of the live round and the 40 of the
+   pre-test on the VM and compare with the subagents' verdicts (the
    `judgement.json` files hold the verdicts; the VM now decides `is` on
-   Decimals by value, R5); (e) open items R6-1 to R6-4 of
+   Decimals by value, R5); (d) open items R6-1 to R6-4 of
    `06-runtime-guarantees.md` (binary bodies, query narration, redaction,
-   budgets as data) when the network primitives make them concrete.
+   budgets as data), now that the network primitives make them concrete.
 2. **Readability round 2** on the revised cheat sheet, with gpt-5.5 at its
    default temperature as the fourth model (R8) and the R1 gating; the
    protocol reverts a change that lowers a passing rate by more than five
    points. The round costs API calls; the VM can replace the subagent
-   judges for Complete and Write once (e) above has shown it agrees with
+   judges for Complete and Write once (c) above has shown it agrees with
    them.
 3. **`renyi mcp`** (O5, `05-agent-tooling.md` section 7), then the semantic
    diff (O4), then M4 (provenance guards, package manager, budgets in the
@@ -277,6 +317,19 @@ on a fresh clone).
   that reads stdin records the lines read (`console.read_line`), as
   designed. The recording's `revision` is `git rev-parse --short HEAD` of
   the program's directory.
+- **Network, server, SQLite.** The server is single-threaded and answers
+  one request at a time, binds `0.0.0.0`, speaks plain HTTP/1.1 without
+  TLS, reads a head of at most 64 KiB and a body of at most 16 MiB, and
+  has `Options::serve_limit` only so that a test can stop it. The client
+  reads at most 10 MB of body (ureq's default; past it the call fails as
+  `Unreachable` with ureq's message), follows at most ten redirects and
+  sends ureq's own `User-Agent` (`ureq/<version>`). SQLite binds a
+  `Decimal` parameter as text, so SQL that compares it with a REAL column
+  compares text; the type mapping is exercised by `tests/network.rs`
+  against a real database but by no corpus program (`inventory_db` has no
+  recording). `renyi test --refresh` prints the fixture path with mixed
+  separators on Windows (`examples\fixtures/weather.json`): the relative
+  name is joined onto the source directory as given.
 - **Checker.** First-generation (local inference, covariant type arguments,
   structural ability checks, capabilities checked at call sites only; no
   `example:` literal check, no `see also` check, no `deprecated` warnings,
@@ -292,9 +345,10 @@ on a fresh clone).
   carry more sampling noise. The grant clauses (`at most`, `only to`,
   `replays`) have not been through a round; no corpus program uses them.
 - **Library.** The standard library sketch is a first draft from the
-  corpus; the JSON derivation rules are now exercised by the VM's decoder
-  but not against real data; the SQLite type mapping and HTTP defaults are
-  unvalidated.
+  corpus; the JSON derivation rules are exercised by the VM's decoder on
+  the three recorded responses; the SQLite type mapping is exercised by one
+  test and the HTTP defaults (the 30-second limit, redirect handling) by
+  the three recordings and the loopback test only.
 - 88 reserved words include common identifiers; the round measured their
   cost and the owner kept them (R2). `tools/lint_examples.py` is
   regex-based. Decision O1 rests on the value graph being acyclic.

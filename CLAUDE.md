@@ -8,11 +8,12 @@ under `docs/design/` in order.
 
 Renyi is a programming language. Its design (M0) is complete; the Rust front
 end (M1: lexer, parser, formatter), the type and effect checker (M2) and
-most of the VM (M3: `renyi run`, `record`, `run --replay`, `--explain`,
-`test` with `replays`, budgets and scope checks; no network, server or
-SQLite primitives, tasks run one after the other) exist. The owner (GitHub
-`skymanbp`) makes design decisions and reviews; Claude writes the
-documents, the example corpus and the Rust implementation.
+the VM (M3: `renyi run`, `record`, `run --replay`, `--explain`, `test` with
+`replays`, budgets and scope checks, every library module including HTTP,
+the server and SQLite; tasks run one after the other by decision S2)
+exist. The owner (GitHub `skymanbp`) makes design decisions and reviews;
+Claude writes the documents, the example corpus and the Rust
+implementation.
 
 ## Conventions
 
@@ -48,7 +49,7 @@ documents, the example corpus and the Rust implementation.
 
 | Path | Content |
 |------|---------|
-| `docs/design/01-decisions.md` | design decisions with reasons: rounds 1 and 2 (sections 0 to J), library (K), readability (L), pre-test (M), checker (N), runtime and agent tooling (O), signature capabilities (P), system-level commitments (Q) |
+| `docs/design/01-decisions.md` | design decisions with reasons: rounds 1 and 2 (sections 0 to J), library (K), readability (L), pre-test (M), checker (N), runtime and agent tooling (O), signature capabilities (P), system-level commitments (Q), the live round (R), runtime dependencies and concurrency (S) |
 | `docs/design/02-syntax-sketch.md` | concrete syntax; section 18 tracks open items (round 2 is settled, new items start at R3-1) |
 | `docs/design/03-readability-test.md` | protocol that freezes the grammar by measuring LLM comprehension |
 | `docs/design/04-stdlib-sketch.md` | prelude, core modules and extension packages; the lint checks corpus calls against its `function` lines |

@@ -13,11 +13,11 @@ parts a regular expression can see.
 | `shapes.ry` | library | sum type, refinement on variant fields, ability declaration and implementation, `match` as expression, `maybe` |
 | `active_users.ry` | data | refined alias, record with derived `FromJson`, multi-line query, error union |
 | `word_count.ry` | data | nested query sources, `group by`, `sorted by ... descending`, `take` |
-| `weather.ry` | agent / API glue | HTTP and JSON, generic decoding through a `let` annotation, `success` / `failure` matching with typed error patterns, capability scoped to one host |
+| `weather.ry` | agent / API glue | HTTP and JSON, generic decoding through a `let` annotation, `success` / `failure` matching with typed error patterns, capability scoped to one host, a `replays` test with its recording under `fixtures/` |
 | `invoice.ry` | library | exact money with Decimal, refinements with `and`, `see also`, `test` blocks with `check` |
 | `retry.ry` | library | function-typed parameter, `for any` with a constraint, mutable locals, `time` and `random` capabilities, wrapped parameter list |
-| `concurrent_fetch.ry` | agent / API glue | `concurrently` query, `run concurrently` block with a `within` deadline, loop header with `sorted by` |
-| `currency_tool.ry` | agent tool | `expose as tool`, refined `Text` subtype used as a map key, three-way error union |
+| `concurrent_fetch.ry` | agent / API glue | `concurrently` query, `run concurrently` block with a `within` deadline, loop header with `sorted by`, a `replays` test |
+| `currency_tool.ry` | agent tool | `expose as tool`, refined `Text` subtype used as a map key, three-way error union, a `replays` test |
 | `sales_report.ry` | data | CSV rows with `maybe` results, error translation with `otherwise fail with`, mutable `Map`, writing a file, capabilities scoped to one directory |
 | `config.ry` | service | refined subtypes, decoder-enforced constraints, `deprecated: ... replaced by`, fallback with `otherwise` |
 | `http_service.ry` | backend service | pure request handler passed by name, `match` on text, `otherwise return` early exit |

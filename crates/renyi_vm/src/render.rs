@@ -109,7 +109,7 @@ impl Vm<'_> {
                 Native::CsvRow { line, .. } => format!("Row(line: {line})"),
                 Native::Iterator(_) => "<iterator>".to_string(),
                 Native::Deadline(_, limit) => format!("<deadline after {}>", duration_text(*limit)),
-                Native::Connection(_) => "<connection>".to_string(),
+                Native::Connection { path, .. } => format!("<connection {path}>"),
             },
             Value::Failure(error) => format!("failure({})", self.nested_text(error)?),
         })

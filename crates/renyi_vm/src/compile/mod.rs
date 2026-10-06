@@ -74,6 +74,9 @@ pub struct FunctionMeta {
     /// The type of the first parameter as the checker spells it: `Text`,
     /// `List of Item`, `Map of Key to Value`.
     pub receiver: Option<String>,
+    /// Every parameter's type, spelled the same way; the effect of a call
+    /// finds its `Path` or `Url` argument by it.
+    pub param_types: Vec<String>,
     /// The declared result type; a recorded result is decoded by it.
     pub returns: Option<Ty>,
     /// The declared error types; a recorded failure is decoded by them.
@@ -231,6 +234,7 @@ pub fn compile_project(checked: &CheckedProject, files: &[SourceFile]) -> Progra
             is_method: info.is_method,
             params: info.params.iter().map(|(n, _)| n.clone()).collect(),
             receiver: info.params.first().map(|(_, ty)| world.show(ty)),
+            param_types: info.params.iter().map(|(_, ty)| world.show(ty)).collect(),
             returns: info.returns.clone(),
             fails: info.fails.clone(),
             needs: info.needs.clone(),

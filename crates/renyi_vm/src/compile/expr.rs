@@ -435,11 +435,21 @@ impl Compiler<'_, '_> {
     /// region; a failure or a `nothing` lands in the fallback with the
     /// absent value on top of the stack.
     fn otherwise(&mut self, value: &Expr, fallback: &Outcome, span: Span) {
+        // the checker says whether this `otherwise` handles a failure or an
+        // absence: a fallible call that returns nothing succeeds with `Nothing`
+        let fallible = self
+            .targets(span)
+            .iter()
+            .any(|target| matches!(target, Target::Otherwise { fallible: true }));
         let handler = self.push_handler(span);
         self.expr(value);
         self.pop_handler(span);
         self.patch(handler);
-        let to_fallback = self.emit(Op::JumpIfAbsent(0), span);
+        let to_fallback = if fallible {
+            self.emit(Op::JumpIfFailure(0), span)
+        } else {
+            self.emit(Op::JumpIfAbsent(0), span)
+        };
         let to_end = self.emit(Op::Jump(0), span);
         self.patch(to_fallback);
         match fallback {

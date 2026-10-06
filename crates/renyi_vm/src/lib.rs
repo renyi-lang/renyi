@@ -4,13 +4,14 @@
 //! (decision O1); effects happen only through declared capabilities.
 //!
 //! The VM runs `main`, `example:` lines and `test` blocks of programs that
-//! use the prelude, console, environment, time, random, filesystem, JSON,
-//! CSV and regular expressions. Every primitive call under a capability
-//! passes one boundary (`Vm::call_native`), where the grant and its budgets
-//! are checked and where a run is recorded, replayed or narrated (decisions
-//! P1 and P2). `run concurrently` and `concurrently` queries run their tasks
-//! one after the other; `std.http`, `std.server` and `std.sqlite` crash
-//! with a message when called live.
+//! use any module of the standard library: the prelude, console,
+//! environment, time, random, filesystem, JSON, CSV, regular expressions,
+//! the HTTP client, the HTTP server and SQLite (decision S1). Every
+//! primitive call under a capability passes one boundary
+//! (`Vm::call_native`), where the grant and its budgets are checked and
+//! where a run is recorded, replayed or narrated (decisions P1 and P2).
+//! `run concurrently` and `concurrently` queries run their tasks one after
+//! the other (decision S2).
 
 pub mod bytecode;
 pub mod compile;
