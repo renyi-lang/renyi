@@ -1,0 +1,25 @@
+module iterable
+  purpose: A loop and a query walk a type through its `to_list` (decision V10).
+
+import std.console
+
+type Deck
+  has cards: List of Text
+end
+
+ability Iterable of Text for Deck
+  function to_list(self) returns List of Text
+    return self.cards
+  end
+end
+
+public function main() needs console
+  purpose: Print the cards in order and their count.
+
+  let deck be Deck(cards: ["queen", "ace", "king"])
+  for each card in deck sorted by card
+    console.print(card)
+  end
+  let total be for each card in deck where card is not "joker" count
+  console.print("{total}")
+end

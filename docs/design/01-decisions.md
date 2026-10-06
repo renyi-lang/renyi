@@ -1330,3 +1330,25 @@ owner's. The conformance suite is `tests/conformance/`: Renyi programs
 with their expected standard output, exit code and diagnostics, in files
 a compiler written in Renyi can be tested against without the Rust
 crates; the corpus's reference outputs are its first members. (user)
+
+**V9. A passed function runs under the grant in force where it is
+called.** B1 charges the needs of the function actually passed to the
+call site that passes it, whatever the parameter's type lists, and a
+higher-order function declares only its own effects. At run time the
+grant stack of Q1 applies as everywhere else: the passed function runs
+inside the frame of the function that calls it and is narrowed by that
+function's `needs` (sketch section 3). A function value stored in a
+collection and called later is charged nowhere statically and is refused
+by the grant stack at run time (`docs/GAPS.md`, 1.11). (user)
+
+**V10. `Iterable` is one method, `to_list`.** `public ability Iterable of
+Item` declares `function to_list(self) returns List of Item`, without
+`needs`: an implementation's method never declares effects
+(`method-signature` otherwise). `for each` and the queries walk any type
+that implements it, through the list `to_list` returns, after the
+built-in collections; the item type is the implementation's type
+argument (`ability Iterable of Card for Deck`), with the implementation's
+`for any` parameters substituted. A cursor protocol (`next`) and
+constraints with type arguments (`where Bag can Iterable of Item`, open
+item R3-2) are not in v1. Supersedes the `Iterable` of the early
+core-ability list, which was declared nowhere. (user)

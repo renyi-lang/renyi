@@ -95,6 +95,11 @@ public ability ToText
   function to_text(self) returns Text
 end
 
+public ability Iterable of Item
+  purpose: Values a loop or a query can walk; to_list gives the items in order.
+  function to_list(self) returns List of Item
+end
+
 public ability ToJson
   purpose: Values that std.json can render; derivable, with the rules in the library sketch.
 end

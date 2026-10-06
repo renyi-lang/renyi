@@ -1923,13 +1923,58 @@ impl<'w> Checker<'w> {
 
     // ------------------------------------------------------------ loops, maps
 
+    /// The item type of a loop over a type with an `Iterable` implementation
+    /// (decision V10): the implementation's type argument, with the type's
+    /// own arguments substituted for the implementation's parameters.
+    fn iterable_item(&self, head: TypeId, args: &[Ty]) -> Option<Ty> {
+        let ability = self.world.builtins.iterable;
+        let implementation = self
+            .world
+            .impls
+            .iter()
+            .find(|i| i.ability == ability && head_type(&i.target) == Some(head))?;
+        let item = implementation.ability_args.first()?.clone();
+        let bound: Vec<(ParamId, Ty)> = match &implementation.target {
+            Ty::App(_, target_args) => target_args
+                .iter()
+                .zip(args)
+                .filter_map(|(declared, actual)| match declared {
+                    Ty::Param(param) => Some((*param, actual.clone())),
+                    _ => None,
+                })
+                .collect(),
+            _ => Vec::new(),
+        };
+        Some(item.substitute(&|p: ParamId| {
+            bound
+                .iter()
+                .find(|(q, _)| *q == p)
+                .map(|(_, ty)| ty.clone())
+        }))
+    }
+
     /// The item types a loop or query header binds for a source.
     fn loop_items(&mut self, bindings: &[Name], source: &Expr) -> Vec<Ty> {
         let info = self.infer(source, None);
         self.require_handled(&info, source.span);
         let b = self.world.builtins.clone();
         let ty = self.resolve(&info.ty);
+        let iterable = match &ty {
+            Ty::App(id, args) => self.iterable_item(*id, args),
+            _ => None,
+        };
         let (item, pair): (Ty, Option<(Ty, Ty)>) = match &ty {
+            Ty::App(..) if iterable.is_some() => {
+                // a type with an `Iterable` implementation (decision V10)
+                let item = iterable.clone().expect("checked above");
+                let pair = match self.resolve(&item) {
+                    Ty::App(pid, pargs) if pid == b.pair => {
+                        Some((pargs[0].clone(), pargs[1].clone()))
+                    }
+                    _ => None,
+                };
+                (item, pair)
+            }
             Ty::App(id, args) if *id == b.list || *id == b.set => {
                 let item = args[0].clone();
                 let pair = match self.resolve(&item) {
@@ -1960,9 +2005,13 @@ impl<'w> Checker<'w> {
                 let shown = self.show(&ty);
                 self.error_fix(
                     "type-mismatch",
-                    format!("`{shown}` cannot be iterated; a list, set, map, range or text can"),
+                    format!(
+                        "`{shown}` cannot be iterated; a list, set, map, range, text or a type with `Iterable` can"
+                    ),
                     source.span,
-                    "iterate a collection: a list, a set, a map, `from 1 to 9` or a text",
+                    format!(
+                        "iterate a collection, or implement `Iterable` for `{shown}`: `ability Iterable of Item for {shown}`"
+                    ),
                 );
                 (Ty::Error, Some((Ty::Error, Ty::Error)))
             }

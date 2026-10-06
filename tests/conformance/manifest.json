@@ -250,6 +250,13 @@
       "program": "tests/conformance/programs/foreign_spelling.ry",
       "diagnostics": ["foreign-keyword"],
       "exit_code": 1
+    },
+    {
+      "name": "a loop and a query walk a type through its to_list",
+      "command": "run",
+      "program": "tests/conformance/programs/iterable.ry",
+      "stdout": "tests/conformance/expected/iterable.out",
+      "exit_code": 0
     }
   ]
 }

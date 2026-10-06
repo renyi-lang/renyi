@@ -1044,3 +1044,41 @@ fn an_unknown_name_suggests_the_closest_one() {
         "write `.to_text()` after the value"
     );
 }
+
+#[test]
+fn a_type_with_iterable_is_walked_by_loops_and_queries() {
+    let deck = "type Deck\n  has cards: List of Text\nend\n\nability Iterable of Text for Deck\n  function to_list(self) returns List of Text\n    return self.cards\n  end\nend\n\n";
+    clean(&program(&format!(
+        "{deck}function names(deck: Deck) returns Text\n  let mutable joined be \"\"\n  for each card in deck\n    set joined to \"{{joined}}{{card}}\"\n  end\n  return joined\nend\n\nfunction count_cards(deck: Deck) returns Integer\n  return for each card in deck where card is not \"\" count\nend\n"
+    )));
+    // without the implementation a record is not iterable
+    raises(
+        &program("type Deck\n  has cards: List of Text\nend\n\nfunction first_card(deck: Deck) returns Text\n  for each card in deck\n    return card\n  end\n  return \"\"\nend\n"),
+        "type-mismatch",
+    );
+    // the ability's method has no effects
+    raises(
+        &program("type Deck\n  has cards: List of Text\nend\n\nability Iterable of Text for Deck\n  function to_list(self) returns List of Text needs console\n    return self.cards\n  end\nend\n"),
+        "method-signature",
+    );
+    // the implementation names the item type
+    raises(
+        &program("type Deck\n  has cards: List of Text\nend\n\nability Iterable for Deck\n  function to_list(self) returns List of Text\n    return self.cards\n  end\nend\n"),
+        "type-arity",
+    );
+    raises(
+        &program("type Deck\n  has cards: List of Text\nend\n\nability Iterable of Integer for Deck\n  function to_list(self) returns List of Text\n    return self.cards\n  end\nend\n"),
+        "method-signature",
+    );
+    // a generic implementation substitutes the type's arguments
+    let stack = "type Stack of Item\n  has items: List of Item\nend\n\nability Iterable of Item for Stack of Item\n  for any Item\n  function to_list(self) returns List of Item\n    return self.items\n  end\nend\n\n";
+    clean(&program(&format!(
+        "{stack}function widths(stack: Stack of Text) returns Integer\n  return for each item in stack sum item.length()\nend\n"
+    )));
+    raises(
+        &program(&format!(
+            "{stack}function widths(stack: Stack of Integer) returns Integer\n  return for each item in stack sum item.length()\nend\n"
+        )),
+        "unknown-method",
+    );
+}

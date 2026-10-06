@@ -390,3 +390,36 @@ end
         other => panic!("{other:?}"),
     }
 }
+
+#[test]
+fn a_loop_and_a_query_walk_a_type_through_its_to_list() {
+    let source = r#"module demo
+  purpose: A loop and a query walk a type through its to_list.
+
+import std.console
+
+type Deck
+  has cards: List of Text
+end
+
+ability Iterable of Text for Deck
+  function to_list(self) returns List of Text
+    return self.cards
+  end
+end
+
+public function main() needs console
+  purpose: Print the cards in order and their count.
+
+  let deck be Deck(cards: ["queen", "ace", "king"])
+  for each card in deck sorted by card
+    console.print(card)
+  end
+  let total be for each card in deck where card is not "joker" count
+  console.print("{total}")
+end
+"#;
+    let (outcome, printed) = run(source, Options::default());
+    assert!(matches!(outcome, RunOutcome::Finished), "{outcome:?}");
+    assert_eq!(printed, "ace\nking\nqueen\n3\n");
+}

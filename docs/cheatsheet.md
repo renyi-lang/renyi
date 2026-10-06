@@ -106,15 +106,15 @@ ability Describable for Shape
   function describe(self) returns Text
     match self
       when Circle(radius) then return "circle of radius {radius}"
-      when Rectangle(width, height) then return "{width} by {height}"
       when Point then return "point"
     end
   end
 end
 ```
 Derivable: `Equal`, `Compare by`, `Hash`, `ToText` (a variant prints as its
-bare name, `Green`; a record in constructor form), `ToJson`, `FromJson`. A
-generic implementation adds a clause: `ability Sized for Stack of Item` then
+bare name, `Green`; a record in constructor form), `ToJson`, `FromJson`.
+`Iterable of Item` is implemented (`to_list(self) returns List of Item`) and
+`for each` walks the type. Generic: `ability Sized for Stack of Item` then
 `for any Item`.
 
 ## Expressions

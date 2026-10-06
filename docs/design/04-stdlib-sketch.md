@@ -227,6 +227,7 @@ data type without being named.
 | `Compare` | `compare(self, other: Self) returns Ordering` | the four ordering phrases, `sorted`, `sorted by`, `largest`, `smallest` |
 | `Hash` | `hash(self) returns Integer` | `Set` items, `Map` keys, `distinct`, `to_set`; derived only, a declared `hash` is not consulted |
 | `ToText` | `to_text(self) returns Text` | interpolation (`console.print` takes `Text` only, decision K11) |
+| `Iterable of Item` | `to_list(self) returns List of Item` | `for each` and the queries over a program's own types (decision V10); declared without `needs` |
 | `ToJson`, `FromJson` | `to_json(self) returns JsonValue`, `from_json(value: JsonValue) returns Self or fails with JsonError` | `std.json`, `std.http`, `std.server` |
 | `FromRow` | `from_row(row: Row) returns Self or fails with DbError` | `std.sqlite` |
 

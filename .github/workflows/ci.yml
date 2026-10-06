@@ -19,7 +19,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
+      # the toolchain of the owner's machine, so that CI and the local
+      # gates agree on clippy's lints
+      - uses: dtolnay/rust-toolchain@1.94.1
         with:
           components: rustfmt, clippy
 

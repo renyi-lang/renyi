@@ -152,6 +152,9 @@ pub struct AbilityMethod {
 pub struct ImplInfo {
     pub ability: AbilityId,
     pub target: Ty,
+    /// The ability's type arguments: `ability Iterable of Card for Deck`
+    /// gives `[Card]`.
+    pub ability_args: Vec<Ty>,
     pub type_params: Vec<ParamId>,
     pub module: ModuleId,
     pub functions: Vec<FunctionId>,
@@ -187,6 +190,9 @@ pub struct Builtins {
     pub compare: AbilityId,
     pub hash: AbilityId,
     pub to_text: AbilityId,
+    /// `Iterable of Item`: what `for each` walks besides the collections
+    /// (decision V10).
+    pub iterable: AbilityId,
 }
 
 #[derive(Default)]
@@ -496,6 +502,7 @@ impl World {
             compare: get_ability("Compare"),
             hash: get_ability("Hash"),
             to_text: get_ability("ToText"),
+            iterable: get_ability("Iterable"),
         };
     }
 
@@ -1200,6 +1207,42 @@ impl World {
                         None => Vec::new(),
                     };
                     let target = self.resolve_type(id, &params, &implementation.target);
+                    let ability_args: Vec<Ty> = match &implementation.ability {
+                        ast::Type::Named { args, .. } => args
+                            .iter()
+                            .map(|arg| self.resolve_type(id, &params, arg))
+                            .collect(),
+                        _ => Vec::new(),
+                    };
+                    let expected_args = self.abilities[ability].params.len();
+                    if ability_args.len() != expected_args {
+                        let names: Vec<String> = self.abilities[ability]
+                            .params
+                            .iter()
+                            .map(|&p| self.param_name(p))
+                            .collect();
+                        let fix = if expected_args == 0 {
+                            format!("write `ability {} for ...`", ability_name.text)
+                        } else {
+                            format!(
+                                "write `ability {} of {} for ...`",
+                                ability_name.text,
+                                names.join(", ")
+                            )
+                        };
+                        self.error_with_fix(
+                            id,
+                            "type-arity",
+                            format!(
+                                "`{}` takes {expected_args} type argument{}, found {}",
+                                ability_name.text,
+                                if expected_args == 1 { "" } else { "s" },
+                                ability_args.len()
+                            ),
+                            ability_name.span,
+                            fix,
+                        );
+                    }
                     let mut functions = Vec::new();
                     for (function_index, function) in implementation.functions.iter().enumerate() {
                         let function_id = self.declare_function(
@@ -1227,6 +1270,7 @@ impl World {
                                 id,
                                 ability,
                                 &target,
+                                &ability_args,
                                 function_id,
                                 function,
                             );
@@ -1278,6 +1322,7 @@ impl World {
                     self.impls.push(ImplInfo {
                         ability,
                         target,
+                        ability_args,
                         type_params: params.iter().map(|(_, p)| *p).collect(),
                         module: id,
                         functions,
@@ -1594,6 +1639,7 @@ impl World {
         module: ModuleId,
         ability: AbilityId,
         target: &Ty,
+        ability_args: &[Ty],
         function_id: FunctionId,
         function: &ast::Function,
     ) {
@@ -1605,13 +1651,28 @@ impl World {
         else {
             return;
         };
+        // the ability's own type parameters are the implementation's arguments
+        let ability_params = self.abilities[ability].params.clone();
+        let subst = |p: ParamId| {
+            ability_params
+                .iter()
+                .position(|q| *q == p)
+                .and_then(|index| ability_args.get(index).cloned())
+        };
         let expected: Vec<(String, Ty)> = method
             .params
             .iter()
-            .map(|(n, t)| (n.clone(), t.with_self(target)))
+            .map(|(n, t)| (n.clone(), t.with_self(target).substitute(&subst)))
             .collect();
-        let expected_returns = method.returns.as_ref().map(|r| r.with_self(target));
-        let expected_fails: Vec<Ty> = method.fails.iter().map(|f| f.with_self(target)).collect();
+        let expected_returns = method
+            .returns
+            .as_ref()
+            .map(|r| r.with_self(target).substitute(&subst));
+        let expected_fails: Vec<Ty> = method
+            .fails
+            .iter()
+            .map(|f| f.with_self(target).substitute(&subst))
+            .collect();
         let info = &self.functions[function_id];
         let skip = usize::from(
             function
@@ -1668,6 +1729,10 @@ impl World {
                 self.spell_fails(&actual_fails),
                 self.spell_fails(&expected_fails)
             ));
+        }
+        // an ability's method has no effects (decision V10)
+        if !self.functions[function_id].needs.is_empty() {
+            problems.push("it declares `needs`; an ability's method has no effects".to_string());
         }
         if problems.is_empty() {
             return;

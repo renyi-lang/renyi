@@ -169,10 +169,11 @@ Each is a sentence in the design that the checker does not act on.
    implementation is known: an implementation for a type without `Y` is
    `missing-ability` (`world.rs`, `check_requirements`), and a type
    parameter constrained to `X` has `Y` (`check.rs`, `has_ability`).
-9. Done in stage 1 as a document correction: `Iterable` is struck from
-   the core abilities of sketch section 5 and recorded as open item R3-1
-   (an ability for iterating a program's own types needs a protocol and
-   VM support).
+9. Done in stage 1 (decision V10): `Iterable of Item` is declared in the
+   prelude with `to_list(self) returns List of Item`; `for each` and the
+   queries walk any type that implements it (`check.rs`, `loop_items`;
+   `vm.rs`, `IterInit`), and an implementation's method may not declare
+   `needs` (`method-signature`).
 10. Done in stage 1 (decision V6): a tool's parameters must have
     `FromJson` and its result `ToJson` (`tool-type`; `check.rs`,
     `check_tool_signature`).
@@ -386,5 +387,5 @@ recording's grant header is not compared with a test's `needs`), 1.17
 equality; `repeat`, `pad` and the rounding places go through `small()`),
 1.18, 3.4 (`process` and `foreign` wait for M4) and 3.6 (the memory
 budget has no syntax). Section 4 is stages 2 and 3; section 6 is
-unchanged, plus R3-1 (`Iterable`) in the sketch. The next step is the
-freeze entry, then the formal grammar.
+unchanged, plus R3-2 (constraints with type arguments) in the sketch.
+The next step is the freeze entry, then the formal grammar.

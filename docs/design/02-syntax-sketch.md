@@ -333,9 +333,25 @@ end
 Default method bodies are not in v1 (decision J10).
 
 Core abilities in the prelude: `Equal`, `Compare`, `Hash`, `ToText`, `ToJson`,
-`FromJson`. (`Iterable`, listed in earlier drafts, is not declared: `for
-each` iterates the collection types of section 8, and an ability for
-iterating a program's own types is open item R3-1.)
+`FromJson`, `Iterable`. An ability may take type parameters after `of`:
+`public ability Iterable of Item` declares one method, `to_list(self)
+returns List of Item`, and an implementation names the argument in its
+head. `for each` and the queries of section 10 walk any type that
+implements `Iterable`, through the list `to_list` returns, after the
+built-in collections of section 8 (decision V10):
+
+```
+ability Iterable of Card for Deck
+  function to_list(self) returns List of Card
+    return self.cards
+  end
+end
+```
+
+An implementation's method never declares `needs`: an ability's methods
+have no effects (`method-signature` otherwise). A constraint with a type
+argument (`for any Bag where Bag can Iterable of Item`) is not in v1
+(open item R3-2).
 
 An ability may require another of its implementing types: `ability
 Printable where self can ToText`; an implementation for a type without the
@@ -496,8 +512,9 @@ end
   `otherwise` for the rest. A record type is matched like a single variant,
   `GaveUp(attempts)` (decision K6). Binding a field and not using it is a
   compile error (decision J8).
-- `for each item in collection` iterates lists, sets, ranges and text
-  (by character); `for each key, value in map` destructures pairs; a loop
+- `for each item in collection` iterates lists, sets, ranges, text (by
+  character) and any type with an `Iterable` implementation (section 5);
+  `for each key, value in map` destructures pairs; a loop
   over a range literal drops `in`: `for each index from 1 to 10`, the one
   spelling (`range-loop` otherwise). A loop header accepts the query
   clauses `where` and `sorted by`: `for each size in sizes sorted by
@@ -863,5 +880,7 @@ entries J1 to J17 of `01-decisions.md`; the sketch above reflects them. New
 open items start at R3-1 and are listed here when they arise.
 
 - R3-1: an `Iterable` ability, so that `for each` can walk a program's own
-  types. Section 5 listed it among the core abilities without a declaration;
-  it needs a protocol (`next`, or `items`) and VM support before it exists.
+  types. Decided as V10: one method, `to_list`, in section 5.
+- R3-2: constraints with type arguments (`for any Bag where Bag can
+  Iterable of Item`), so that generic code can walk a parameter; v1 walks
+  concrete types only.

@@ -1272,7 +1272,17 @@ impl<'p> Vm<'p> {
             Op::IterInit(slot) => {
                 let source = self.pop();
                 let origins = source.origins();
-                let mut items = self.iterate(source.into_plain())?;
+                let plain = source.into_plain();
+                // a type with an `Iterable` implementation walks the list its
+                // `to_list` returns (decision V10)
+                let plain = match plain
+                    .type_id()
+                    .and_then(|ty| self.program.method(ty, "to_list"))
+                {
+                    Some(function) => self.call_function(function, vec![plain])?.into_plain(),
+                    None => plain,
+                };
+                let mut items = self.iterate(plain)?;
                 if origins != 0 {
                     items = items
                         .into_iter()
