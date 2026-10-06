@@ -389,4 +389,7 @@ equality; `repeat`, `pad` and the rounding places go through `small()`),
 budget has no syntax). Section 4 is stages 2 and 3; section 6 is
 unchanged, plus R3-2 (constraints with type arguments) in the sketch.
 The freeze entry is V11; the formal grammar is `docs/grammar.ebnf`
-(decision V12, session 8); the next step is the language reference.
+(decision V12, session 8) and the language reference `docs/reference.md`
+(session 8); the sketch is the design record. The next steps are the
+bytecode file format, the performance items and the self-hosted front
+end, in the order the owner sets.

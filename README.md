@@ -52,6 +52,10 @@ exists:
 - `docs/grammar.ebnf`: the formal grammar of the syntax level, W3C EBNF over
   the lexer's tokens; a test in the syntax crate interprets it and checks that
   it accepts exactly what the parser accepts.
+- `docs/reference.md`: the language reference, normative: one section per
+  construct with the grammar excerpt, the meaning, the static rules with their
+  diagnostic codes and the run-time behaviour; a test holds its excerpts to
+  the grammar file and its list of diagnostic codes to the crates.
 - `examples/`: thirty example programs, checked by
   `python3 tools/lint_examples.py`.
 - `crates/`: the Rust toolchain. `renyi check` reports lexer, parser, type,

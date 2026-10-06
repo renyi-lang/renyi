@@ -1,13 +1,11 @@
 # Handoff
 
-Last updated: 2026-10-06, session 7 (stage 1 of the gap audit of
-`docs/GAPS.md`: decisions V1 to V8; the checker enforces the size limits,
-`deprecated:` and task independence; `renyi tools`; the `only to`
-runtime; CI and the conformance suite; the runtime, module, literal and
-exhaustiveness rules; one range-loop spelling, the module name equal to
-the path, `.renyi`; every diagnostic carries a fix; the documents
-corrected; `Iterable`, decision V10; the grammar frozen, decision V11).
-Branch: `main` is the only branch (owner's decision,
+Last updated: 2026-10-06, session 8 (stage 2 of the gap audit of
+`docs/GAPS.md`: the formal grammar `docs/grammar.ebnf` with decision V12
+and the parser corrected to one spelling per construct; the language
+reference `docs/reference.md`, normative, with the test that holds it to
+the grammar file and the crates; the sketch retired to the design
+record). Branch: `main` is the only branch (owner's decision,
 2026-10-05); commit and push there directly.
 
 ## Where the project stands
@@ -36,8 +34,12 @@ implementation (`docs/GAPS.md`, session 6) and the gaps filled (stage 1
 of its section 7, session 7). Stage 1 is done; what it left open is named
 in `docs/GAPS.md` (section 7, "Status") and under "Owner actions pending"
 below. The grammar is frozen by decision V11 at commit `dc58bb3`: a
-change to the surface is a new decision entry first, then the sketch, the
-cheat sheet, the formatter and the conformance suite in one commit.
+change to the surface is a new decision entry first, then the reference,
+the grammar, the cheat sheet, the formatter and the conformance suite in
+one commit. Since session 8 the normative text is `docs/reference.md`
+with `docs/grammar.ebnf` (`crates/renyi_syntax/tests/grammar.rs` and
+`tests/reference.rs` hold them to the parser and to each other); the
+sketch is the design record.
 
 The corpus has 30 programs, passes the lint, is in canonical layout,
 checks cleanly, has nothing over budget, and its `example:` lines and
@@ -50,9 +52,9 @@ binary with `check`, `format`, `tokens`, `parse [--json]`, `index [--json
 <file> [arguments]`, `record [--to file] [options] <file> [arguments]`,
 `reproduce <recording> [<file>]`, `test [--strict] [--refresh name
 [--redact name]] [--explain] <file>...`, `tools [path]`, `mcp [path]` and
-`version`; 203 tests, clippy and fmt clean on Windows with rustc 1.94.1.
+`version`; 211 tests, clippy and fmt clean on Windows with rustc 1.94.1.
 CI (`.github/workflows/ci.yml`) runs the same gates and the conformance
-suite (`tests/conformance/`, 36 cases; runners `tools/conformance.py`
+suite (`tests/conformance/`, 37 cases; runners `tools/conformance.py`
 and `crates/renyi/tests/conformance.rs`) on a toolchain pinned to the
 owner's machine (rustc 1.94.1), so that CI and the local gates agree on
 clippy's lints; `gh run list --limit 3` shows the runs and `gh run view
@@ -291,6 +293,35 @@ R8 and U1 to U9 came from them; they continue only if the owner asks
   map as the base, with `--json` and against itself; `HEAD` as the base
   for the corpus and for one file; a bad base), the `diff` call in
   `tests/mcp.rs`, and a unit test of `own_text_hash`.
+
+## Done in session 8 (stage 2: the grammar and the reference)
+
+Two commits on `main`, each gated as in session 7:
+
+1. `fa40315` the formal grammar `docs/grammar.ebnf` (W3C EBNF over the
+   lexer's tokens, two start symbols, 76 rules) and
+   `crates/renyi_syntax/tests/grammar.rs`, an interpreter of the file
+   that runs it over the corpus, the library declarations, the
+   conformance programs, every text hole and two lists of corner
+   programs, and fails when it and the parser disagree. Decision V12: a
+   line break after a comma carries no meaning (the formatter folds a
+   wide `needs` clause), `is` and `fails` continue a line everywhere,
+   one spelling per construct (a trailing comma, a variant's empty
+   parentheses, a space after a dot, an `otherwise` arm before the last
+   of a `match` expression, a head and `end` on one line, a hole in a
+   plain text and `public` on a method are errors with fixes;
+   `public-method` is the new code), a line break inside brackets
+   before `.` or `(` is accepted. Conformance case 37, `one_spelling.ry`.
+2. The reference commit: `docs/reference.md` (sections 0 to 17 after the
+   sketch's, appendix A the diagnostic codes with their severities and
+   sections, appendix B the commands and exit statuses) and
+   `crates/renyi_syntax/tests/reference.rs` (every quoted rule equals
+   the grammar file's and every rule is quoted once; appendix A equals
+   the codes the crates emit, found at every call named `error` or
+   `warning`, with their severities); `CLAUDE.md`, `README.md`,
+   `docs/GAPS.md`, the sketch's status line and its section 17 follow.
+   Every claim of the reference was read back from the lexer, the
+   parser, the checker, the VM and the library before it was written.
 
 ## Done in session 7 (stage 1 of the gap audit)
 
@@ -638,12 +669,13 @@ on a fresh clone).
   `needs`, `Hash` implementations are never called, entry 1.18, and
   open item R3-2 (constraints with type arguments). None blocks stage
   2; the owner decides their order when stage 2 is planned.
-- **Stage 2 is under way** (next steps, item 1): the formal grammar is
-  `docs/grammar.ebnf`, held equal to the parser by
-  `crates/renyi_syntax/tests/grammar.rs` (decision V12 records the line
-  rules it required). The language reference `docs/reference.md` comes
-  next, one section per sketch section, with a test that its quoted
-  rules match the grammar file; then the self-hosted lexer and parser.
+- **Stage 2 is under way** (next steps, item 1): the formal grammar
+  (`docs/grammar.ebnf`, decision V12, `tests/grammar.rs`) and the
+  language reference (`docs/reference.md`, `tests/reference.rs`) are
+  done. What comes next is the owner's call, asked as a batch before
+  anything is written: the self-hosted lexer and parser (where the Renyi
+  sources live, how they are tested against `renyi parse --json`), the
+  bytecode file format or loader, and the performance items.
 - **Readability**: the scores are no longer the gate (decision V1).
   Round 5 (U9's sentence) and gpt-5.5 run only if the owner asks.
 - Session 5 printed the values of `ANTHROPIC_API_KEY` and
@@ -677,17 +709,15 @@ on a fresh clone).
 ## Next steps
 
 1. **Stage 2 of `docs/GAPS.md`, section 7** (the grammar is frozen,
-   V11; the formal grammar is `docs/grammar.ebnf`, V12): the language
-   reference `docs/reference.md` derived from the sketch, the grammar
-   and the checker (grammar excerpt, meaning, static rules with their
-   diagnostic codes, run-time behaviour per section), with a test that
-   its excerpts match the grammar file; a bytecode file
-   format or a loader so that a compiler written in Renyi has something
-   to emit; the performance items a compiler needs (in-place
-   collections, string building, a pattern cache for `Text.matches`);
-   then the self-hosted lexer and parser, tested against `renyi parse
-   --json` on the corpus, then the checker and the emitter, with the
-   Rust toolchain as stage 0 and the Rust VM as the runtime.
+   V11; the formal grammar is `docs/grammar.ebnf`, V12; the language
+   reference is `docs/reference.md`): a bytecode file format or a loader
+   so that a compiler written in Renyi has something to emit; the
+   performance items a compiler needs (in-place collections, string
+   building, a pattern cache for `Text.matches`); the self-hosted lexer
+   and parser, tested against `renyi parse --json` on the corpus, then
+   the checker and the emitter, with the Rust toolchain as stage 0 and
+   the Rust VM as the runtime. The order, and where the Renyi sources
+   live (`compiler/`?), are a design batch for the owner.
 2. **Readability, only on request**: round 5 on Sonnet measures U9
    (`run.py prepare`, the Sonnet command at the end of this item after
    its probe, the graders, `score`, the U5 search, `report`, the

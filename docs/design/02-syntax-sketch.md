@@ -1,14 +1,16 @@
 # Renyi Syntax Sketch (M0)
 
-Status: frozen by decision V11 at commit `dc58bb3` (2026-10-06); a change
-to the surface is a new decision entry first. Date: 2026-10-06.
+Status: the design record. Frozen by decision V11 at commit `dc58bb3`
+(2026-10-06); since session 8 the normative text is the language reference
+`docs/reference.md` with the formal grammar `docs/grammar.ebnf`, both
+derived from this document and the corpus, and where they differ from this
+document they hold. A change to the surface is a new decision entry first.
+Date: 2026-10-06.
 
 This document turns the decisions of `01-decisions.md` into a concrete
 surface. It is a sketch, not a specification: it fixes the shape of every
 construct so that the example corpus and the cheat sheet can be written;
-section 18 lists its open items. The formal grammar (EBNF) and the language
-reference are derived from this document and the corpus (stage 2 of
-`docs/GAPS.md`, section 7).
+section 18 lists its open items.
 
 Three rules generate most of what follows:
 
@@ -880,7 +882,9 @@ at most | only to
 
 Words that appear only inside a phrase (`at`, `least`, `most`, `than`, `less`,
 `greater`, `also`, `see`, `tool`, `expose`, `sorted`, `group`, `one`, `each`,
-`fails`, `run`, `repeat`, `until`, `only`) are still reserved so that a word has one role everywhere.
+`repeat`, `until`, `only`) are still reserved so that a word has one role
+everywhere; `fails` also stands alone in `fails with`, and `run` as the unit
+of a budget.
 
 ---
 
