@@ -1118,23 +1118,33 @@
   "complete/config": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/deadlines": [
@@ -1246,15 +1256,21 @@
   "complete/expression_tree": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
@@ -1268,7 +1284,9 @@
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/invoice": [
@@ -1326,7 +1344,13 @@
   "complete/invoice_report": [
     {
       "lint_problems": [],
-      "pass": false
+      "vm": "4 passed, 1 failed",
+      "failures": [
+        "FAIL  example of statement_line: example: statement_line(Invoice(customer: \"ACME\", lines: [], discount_percent: 0)) is \"ACME 0 lines 0.00\" (D:\\Projects\\Renyi\\examples\\.scratch-26896.ry:9)",
+        "got \"ACME          0 lines     0.00\", expected \"ACME          0 lines      0.00\""
+      ],
+      "pass": false,
+      "judged": false
     },
     {
       "lint_problems": [
@@ -1348,11 +1372,23 @@
     },
     {
       "lint_problems": [],
-      "pass": false
+      "vm": "4 passed, 1 failed",
+      "failures": [
+        "FAIL  example of statement_line: example: statement_line(Invoice(customer: \"ACME\", lines: [], discount_percent: 0)) is \"ACME 0 lines 0.00\" (D:\\Projects\\Renyi\\examples\\.scratch-26896.ry:9)",
+        "got \"ACME          0 lines       0.00\", expected \"ACME          0 lines      0.00\""
+      ],
+      "pass": false,
+      "judged": false
     },
     {
       "lint_problems": [],
-      "pass": false
+      "vm": "4 passed, 1 failed",
+      "failures": [
+        "FAIL  example of statement_line: example: statement_line(Invoice(customer: \"ACME\", lines: [], discount_percent: 0)) is \"ACME 0 lines 0.00\" (D:\\Projects\\Renyi\\examples\\.scratch-26896.ry:9)",
+        "got \"ACME          0 lines       0.00\", expected \"ACME          0 lines      0.00\""
+      ],
+      "pass": false,
+      "judged": false
     }
   ],
   "complete/log_parser": [
@@ -1420,7 +1456,9 @@
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [
@@ -1453,45 +1491,65 @@
   "complete/permissions": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/sales_report": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/semver": [
@@ -1664,30 +1722,56 @@
   "complete/stacks": [
     {
       "lint_problems": [],
-      "pass": false
-    },
-    {
-      "lint_problems": [],
-      "pass": false
+      "check_errors": [
+        "[ignore-pure] this call has no effects, so discarding its result does nothing",
+        "[ignore-pure] this call has no effects, so discarding its result does nothing"
+      ],
+      "pass": false,
+      "rules": [
+        "check:ignore-pure"
+      ]
     },
     {
       "lint_problems": [],
       "check_errors": [
+        "[ignore-pure] this call has no effects, so discarding its result does nothing",
+        "[ignore-pure] this call has no effects, so discarding its result does nothing"
+      ],
+      "pass": false,
+      "rules": [
+        "check:ignore-pure"
+      ]
+    },
+    {
+      "lint_problems": [],
+      "check_errors": [
+        "[ignore-pure] this call has no effects, so discarding its result does nothing",
         "[maybe-value] this value may be nothing (it is `maybe Popped of Text`) where `?` is needed",
+        "[ignore-pure] this call has no effects, so discarding its result does nothing",
         "[maybe-value] this value may be nothing (it is `maybe Popped of Text`) where `?` is needed"
       ],
       "pass": false,
       "rules": [
+        "check:ignore-pure",
         "check:maybe-value"
       ]
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "10 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": false
+      "check_errors": [
+        "[ignore-pure] this call has no effects, so discarding its result does nothing",
+        "[ignore-pure] this call has no effects, so discarding its result does nothing"
+      ],
+      "pass": false,
+      "rules": [
+        "check:ignore-pure"
+      ]
     }
   ],
   "complete/statistics": [
@@ -1746,23 +1830,33 @@
   "complete/temperature_table": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/todo_cli": [
@@ -1848,23 +1942,33 @@
   "complete/traffic_light": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/word_count": [

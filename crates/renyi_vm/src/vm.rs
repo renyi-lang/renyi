@@ -14,7 +14,7 @@ use renyi_check::types::Ty;
 use renyi_check::{AbilityId, FunctionId, TypeId};
 use renyi_syntax::ast::BinaryOp;
 
-use crate::bytecode::{CodeKind, Op};
+use crate::bytecode::{CodeKind, GroupFold, Op};
 use crate::compile::{CodeId, Program};
 use crate::decimal::{Decimal, DecimalError};
 use crate::grant::{self, Counter, Narrowing};
@@ -1151,6 +1151,38 @@ impl<'p> Vm<'p> {
                         if let Value::List(list) = group {
                             Rc::make_mut(list).push(item);
                         }
+                        self.stack.push(Value::Map(Rc::new(map)));
+                    }
+                    other => {
+                        return Err(Interrupt::crash(format!(
+                            "cannot group into {}",
+                            other.kind_name()
+                        )))
+                    }
+                }
+            }
+            Op::GroupFold(fold) => {
+                let value = self.pop();
+                let key = self.pop();
+                match self.pop() {
+                    Value::Map(map) => {
+                        let mut map = take_map(map);
+                        let folded = match (*fold, map.get(&key)) {
+                            (_, None) => value,
+                            (GroupFold::Sum, Some(current)) => {
+                                self.binary(BinaryOp::Add, current.clone(), value)?
+                            }
+                            (GroupFold::First, Some(current)) => current.clone(),
+                            (GroupFold::Any, Some(current)) => Value::Boolean(
+                                matches!(current, Value::Boolean(true))
+                                    || matches!(value, Value::Boolean(true)),
+                            ),
+                            (GroupFold::All, Some(current)) => Value::Boolean(
+                                matches!(current, Value::Boolean(true))
+                                    && matches!(value, Value::Boolean(true)),
+                            ),
+                        };
+                        map.insert(key, folded);
                         self.stack.push(Value::Map(Rc::new(map)));
                     }
                     other => {

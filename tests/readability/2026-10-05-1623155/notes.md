@@ -233,3 +233,39 @@ Corpus findings that are not grammar questions: the cheat sheet now states
 the derived `ToText` rule for variants, and the purpose line of
 `weight_steps` in `shipping_rules.ry` now says "started kilograms" (the
 imprecise "whole kilograms" misled every model's explanation).
+
+## 7. The VM re-judges Complete and Write (decision L2, session 6)
+
+With the VM built (M3), `run.py compare` set its verdict on every judged
+Complete and Write sample against the subagents' (`judgement.json`): the
+sample is spliced or taken whole as `score` does, formatted, linted,
+checked, and then `renyi test` runs the program's own `example:` lines and
+`test` blocks.
+
+| Label | Judged | Agree | Disagree | Rejected today before any judge |
+|-------|--------|-------|----------|-------------------------------|
+| claude-sonnet-5-5 | 98 | 98 | 0 | 0 |
+| claude-haiku-4-5-20251001 | 39 | 39 | 0 | 0 |
+| gpt-5.4-mini | 45 | 42 | 0 | 3 (`stacks`: `ignore` of a pure call, decision R6, which came after the judging; the subagent had rejected them too) |
+
+Before that table could be written the comparison found one disagreement,
+on every `sales_report` sample that wrote
+
+```
+return for each sale in sales group by sale.region sum sale.amount
+```
+
+(five of Sonnet's, five of Haiku's; gpt wrote a loop): the judges accepted
+it, citing decision M1 (a terminal after `group by` applies per group), and
+the VM printed `0` for the empty list where the example wants `{}`. The VM
+was wrong: its compiler summed over the whole list whatever the `group by`.
+It now folds `sum`, `count`, `first`, `any` and `all` per group
+(`Op::GroupFold`, `crates/renyi_vm/tests/queries.rs`), and
+`totals_by_region` in the corpus is written in the M1 form with a second
+example. The ten samples agree after the fix.
+
+Both tallies were then re-scored with the VM deciding (`score` with the
+cached Explain grades, no API call): every verdict is the one the subagents
+gave, so the table of section 1 stands. From here the VM judges Complete
+and Write, and `judgement.json` is consulted only for a program with
+nothing to run.

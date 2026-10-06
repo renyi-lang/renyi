@@ -8,7 +8,7 @@ for the cheat-sheet gate.
 
 | Path | Content |
 |------|---------|
-| `run.py` | the harness: `prepare`, `run`, `score`, `report` |
+| `run.py` | the harness: `prepare`, `run`, `score`, `report`, `compare` |
 | `manifest.json` | per program: arguments for Predict, the function removed for Complete |
 | `reference/<program>.out` | the exact output the deterministic programs print (Predict references, and the first conformance expectations for M3) |
 | `reference/<program>.explain.txt` | the author's description of every program (purpose, inputs, outputs, effects, failures), which the Explain grader compares explanations against |
@@ -26,6 +26,7 @@ python3 tests/readability/run.py score --grader anthropic:claude-sonnet-5-5
 python3 tests/readability/run.py report
 python3 tests/readability/run.py score --no-format --scores scores-strict.json   # layout counts too
 python3 tests/readability/run.py report --scores scores-strict.json
+python3 tests/readability/run.py compare                                      # VM verdicts against judgement.json
 ```
 
 `prepare` shows a program together with every corpus module it imports
@@ -46,12 +47,16 @@ unless `--run <directory name>` names another one.
 - **Complete** and **Write**: the code is spliced into the program (Complete)
   or taken whole (Write), formatted with `renyi format` when it parses, must
   pass `tools/lint_examples.py`, and must then pass `renyi check` (the type
-  and effect checker; its errors are reported as rules `check:<code>`). A
-  clean answer is then `pending` until a human records a verdict in
+  and effect checker; its errors are reported as rules `check:<code>`). The
+  VM then runs the program's own `example:` lines and `test` blocks (`renyi
+  test`): the sample passes when every item passes, and the summary and the
+  failing items are kept in the score (decision L2, since M3). A program
+  with nothing to run is `pending` until a human records a verdict in
   `outputs/<model>/judgement.json` as `{"complete/shapes.0": true, ...}`; an
   entry may also be an object, `{"verdict": true, "reason": "..."}`, so that the
-  reason travels with the verdict (decision L2). The VM takes over this step
-  at M3.
+  reason travels with the verdict. `compare` sets the VM's verdict against
+  every judged sample and lists the disagreements, the samples the VM cannot
+  decide, and those the lint or the checker now reject.
 - **Explain**: graded 1 to 5 by the model named in `--grader` against the
   author's description in `reference/<program>.explain.txt` (the `purpose:`
   and `example:` lines stand in when there is none), with the rubric in

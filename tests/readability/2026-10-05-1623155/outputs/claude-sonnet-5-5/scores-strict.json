@@ -1117,19 +1117,27 @@
   "complete/config": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
@@ -1163,25 +1171,35 @@
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/dependency_order": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [
@@ -1203,29 +1221,41 @@
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/expression_tree": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/invoice": [
@@ -1320,33 +1350,47 @@
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/log_parser": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/markdown_table": [
@@ -1364,11 +1408,15 @@
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [
@@ -1381,73 +1429,105 @@
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/permissions": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/sales_report": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/semver": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/shapes": [
@@ -1483,7 +1563,9 @@
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [
@@ -1498,7 +1580,9 @@
   "complete/shipping_rules": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [
@@ -1542,37 +1626,53 @@
   "complete/stacks": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "10 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "10 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "10 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "10 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "10 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/statistics": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [
@@ -1585,65 +1685,93 @@
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/temperature_table": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/todo_cli": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/traffic_light": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [
@@ -1656,29 +1784,41 @@
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/word_count": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "write/compound_interest": [
@@ -1755,15 +1895,21 @@
   "write/fizz_words": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "9 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "9 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "9 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [
@@ -1787,7 +1933,9 @@
   "write/initials": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "7 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [
@@ -1956,19 +2104,27 @@
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "write/password_strength": [

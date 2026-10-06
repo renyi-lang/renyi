@@ -8,7 +8,7 @@ use renyi_syntax::ast::{Query, QuerySource, QueryTerminal};
 use renyi_syntax::Span;
 
 use super::Compiler;
-use crate::bytecode::Op;
+use crate::bytecode::{GroupFold, Op};
 use crate::decimal::Decimal;
 use crate::value::Value;
 
@@ -22,7 +22,8 @@ impl Compiler<'_, '_> {
             (QueryTerminal::Collect(_), false) => {
                 self.emit(Op::MakeList(0), span);
             }
-            (QueryTerminal::Collect(_), true) | (QueryTerminal::None, _) => {
+            // a terminal after `group by` applies per group (decision M1)
+            (_, true) | (QueryTerminal::None, false) => {
                 self.emit(Op::MakeMap(0), span);
             }
             (QueryTerminal::Sum(_), _) => {
@@ -191,31 +192,53 @@ impl Compiler<'_, '_> {
         dones: &mut Vec<usize>,
     ) {
         let span = query.span;
-        match &query.terminal {
-            QueryTerminal::Collect(value) => match &query.group_by {
-                Some(key) => {
-                    self.emit(Op::LoadMove(accumulator), span);
-                    self.expr(key);
+        if let Some(key) = &query.group_by {
+            // every terminal applies per group (decision M1): the map's entry
+            // for the key takes the item, or folds with it
+            self.emit(Op::LoadMove(accumulator), span);
+            self.expr(key);
+            let op = match &query.terminal {
+                QueryTerminal::Collect(value) => {
                     self.expr(value);
-                    self.emit(Op::GroupInsert, span);
-                    self.emit(Op::Store(accumulator), span);
+                    Op::GroupInsert
                 }
-                None => {
-                    self.emit(Op::LoadMove(accumulator), span);
-                    self.expr(value);
-                    self.emit(Op::ListPush, span);
-                    self.emit(Op::Store(accumulator), span);
-                }
-            },
-            QueryTerminal::None => {
-                if let Some(key) = &query.group_by {
-                    self.emit(Op::LoadMove(accumulator), span);
-                    self.expr(key);
+                QueryTerminal::None => {
                     self.emit(Op::Load(item), span);
-                    self.emit(Op::GroupInsert, span);
-                    self.emit(Op::Store(accumulator), span);
+                    Op::GroupInsert
                 }
+                QueryTerminal::Sum(value) => {
+                    self.expr(value);
+                    Op::GroupFold(GroupFold::Sum)
+                }
+                QueryTerminal::Count => {
+                    self.constant(Value::integer(1), span);
+                    Op::GroupFold(GroupFold::Sum)
+                }
+                QueryTerminal::First => {
+                    self.emit(Op::Load(item), span);
+                    Op::GroupFold(GroupFold::First)
+                }
+                QueryTerminal::Any(condition) => {
+                    self.expr(condition);
+                    Op::GroupFold(GroupFold::Any)
+                }
+                QueryTerminal::All(condition) => {
+                    self.expr(condition);
+                    Op::GroupFold(GroupFold::All)
+                }
+            };
+            self.emit(op, span);
+            self.emit(Op::Store(accumulator), span);
+            return;
+        }
+        match &query.terminal {
+            QueryTerminal::Collect(value) => {
+                self.emit(Op::LoadMove(accumulator), span);
+                self.expr(value);
+                self.emit(Op::ListPush, span);
+                self.emit(Op::Store(accumulator), span);
             }
+            QueryTerminal::None => {}
             QueryTerminal::Sum(value) => {
                 self.emit(Op::Load(accumulator), span);
                 self.expr(value);

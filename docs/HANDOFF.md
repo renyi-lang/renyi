@@ -4,7 +4,9 @@ Last updated: 2026-10-06, session 6 (the VM: `renyi run` and `renyi test`;
 the primitive boundary: `renyi record`, `run --replay`, `--explain`,
 `replays` tests, budgets and scope checks; the HTTP client, the HTTP
 server and SQLite; the grant stack; recordings for every network and
-database program, `--redact`; the run manifest and `renyi reproduce`).
+database program, `--redact`; the run manifest and `renyi reproduce`;
+decision L2 carried out, the VM judging Complete and Write; terminals
+after `group by` per group).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -21,7 +23,7 @@ sections 0 to S of `01-decisions.md`;
 the agent tooling in `05-agent-tooling.md`, the signature capabilities in
 `06-runtime-guarantees.md`, the system-level commitments in
 `07-system-design.md`. The corpus has 30 programs, passes the lint, is in
-canonical layout, checks cleanly, has nothing over budget, and its 88
+canonical layout, checks cleanly, has nothing over budget, and its 89
 `example:` lines and `test` blocks pass on the VM (six are `replays`
 tests answered from recordings under `examples/fixtures/`, two of them
 hand-written). The cheat sheet
@@ -31,15 +33,19 @@ and the `renyi` binary with `check`, `format`, `tokens`, `parse [--json]`,
 `index [--json | --budgets]`, `run [--manifest] [options] <file>
 [arguments]`, `record [--to file] [options] <file> [arguments]`,
 `reproduce <recording> [<file>]`, `test [--strict] [--refresh name
-[--redact name]] [--explain] <file>...` and `version`; 130 tests, clippy
+[--redact name]] [--explain] <file>...` and `version`; 131 tests, clippy
 and fmt clean on Windows. The VM depends on `ureq` (HTTP, with rustls) and
 `rusqlite` (SQLite compiled in), decision S1, and on `sha2` for the
 manifest.
 
 The first live readability round (`tests/readability/2026-10-05-1623155/`)
-stands as session 5 left it: Sonnet 5.5 passes Predict (90) and Explain
-(97), misses Complete by one item (79) and Write by three (40); Haiku 4.5
-and gpt-5.4-mini are below on all but Explain. Since decision R1 only the
+stands as session 5 left it, now with the VM judging Complete and Write
+(decision L2: `run.py compare`, then a re-score): the VM agreed with the
+subagents on every judged sample once a VM bug the comparison exposed was
+fixed (`group by` with `sum`, item 11 below), so the rates are unchanged:
+Sonnet 5.5 passes Predict (90) and Explain (97), misses Complete by one
+item (79) and Write by three (40); Haiku 4.5 and gpt-5.4-mini are below on
+all but Explain. Since decision R1 only the
 large model of each vendor gates the freeze. The grammar is not frozen; the
 owner's decisions R1 to R8 are applied; the cheat sheet changes of R3, R5
 and R6 are unmeasured (round 2, below).
@@ -277,6 +283,26 @@ and R6 are unmeasured (round 2, below).
     the unused call. `renyi reproduce` was also run by hand on `hello`:
     reproduced; refused after the program was edited; refused on a
     fixture without a manifest.
+11. **Decision L2 carried out, and a VM bug it found** (seventh commit).
+    `tests/readability/run.py` lets the VM judge Complete and Write
+    (`renyi test` on the spliced or whole program after the lint and the
+    checker; `score` keeps the summary and the failing items; a program
+    with nothing to run still waits for `judgement.json`), and `compare`
+    sets the VM's verdict against every judged sample. Live round: 179 of
+    182 agree, the other 3 (gpt, `stacks`) are rejected today by
+    `ignore-pure` (R6) before any judge, as the subagents had rejected
+    them. Pre-test: 27 of 40 agree, the other 13 rejected today by the
+    checker, the parser or the lint's foreign-keyword rule, four of them
+    `while` loops judged correct under the old grammar. Before the fix
+    the VM disagreed on every `sales_report` sample that wrote `for each
+    sale in sales group by sale.region sum sale.amount` (ten): the
+    compiler summed the whole list where decision M1 says per group.
+    `Op::GroupFold` now folds `sum`, `count`, `first`, `any` and `all`
+    per group (`tests/queries.rs`), and `totals_by_region` in the corpus
+    is written in that form with a second example. Both rounds were
+    re-scored with the cached Explain grades (no API call): the live
+    round's rates are unchanged; agent-sonnet in the pre-test loses the
+    four `while` samples. Each round's `notes.md` has a section on it.
 
 ## Done in session 5 (condensed)
 
@@ -327,19 +353,15 @@ on a fresh clone).
 
 ## Next steps
 
-1. **After M3**: decision L2: re-run the 182 judged Complete and Write
-   samples of the live round and the 40 of the pre-test on the VM and
-   compare with the subagents' verdicts (the `judgement.json` files hold
-   the verdicts; the VM now decides `is` on Decimals by value, R5). The
-   owner chose this order on 2026-10-06: L2, then readability round 2,
-   then `renyi mcp`. Open items R6-2 and R6-4 are closed (decisions S6
-   and S7).
+1. **After M3**: decision L2 is carried out (item 11 above). The owner's
+   order of 2026-10-06 continues with readability round 2 (next), then
+   `renyi mcp`. Open items R6-2 and R6-4 are closed (decisions S6 and
+   S7).
 2. **Readability round 2** on the revised cheat sheet, with gpt-5.5 at its
    default temperature as the fourth model (R8) and the R1 gating; the
    protocol reverts a change that lowers a passing rate by more than five
    points. The round costs API calls; the VM can replace the subagent
-   judges for Complete and Write once step 1 has shown it agrees with
-   them.
+   judges for Complete and Write: it judges them now (item 11).
 3. **`renyi mcp`** (O5, `05-agent-tooling.md` section 7), then the semantic
    diff (O4), then M4 (provenance guards, package manager, budgets in the
    manifest) and M5 (embedding API, `serve --watch`, LSP) as before.
@@ -405,10 +427,11 @@ on a fresh clone).
   reads another field type-checks and runs.
 - **Readability.** The live round's Explain grades rest on two grader
   models and 49 adjudications by Claude; Haiku's Explain sits at exactly 90.
-  The Complete and Write verdicts come from subagents (L2) until step 1(e)
-  re-runs them. Sonnet 5.5 cannot be sampled at temperature 0, so its rates
-  carry more sampling noise. The grant clauses (`at most`, `only to`,
-  `replays`) have not been through a round; no corpus program uses them.
+  The Complete and Write verdicts are the VM's since L2 (the subagents
+  agreed on every sample). Sonnet 5.5 cannot be sampled at temperature 0,
+  so its rates carry more sampling noise. The grant clauses (`at most`,
+  `only to`, `replays`) have not been through a round; no corpus program
+  uses them.
 - **Library.** The standard library sketch is a first draft from the
   corpus; the JSON derivation rules are exercised by the VM's decoder on
   the three recorded responses; the SQLite type mapping is exercised by one

@@ -8,11 +8,15 @@ Subcommands, run from the repository root:
             never holds the answer key (reference output, original body)
   run       send every prompt to one model and store the raw samples
   score     score the stored samples (Predict exactly, Complete and Write with
-            the lint, then `renyi check`, then a judgement file, Explain with a
-            grading model whose grades are cached in grades.json);
-            `renyi format` runs before the lint unless --no-format is given,
-            and --scores names the output file so that both tallies can be kept
+            the lint, then `renyi check`, then the VM running the program's own
+            examples and tests, then a judgement file for a program with
+            nothing to run, Explain with a grading model whose grades are
+            cached in grades.json); `renyi format` runs before the lint unless
+            --no-format is given, and --scores names the output file so that
+            both tallies can be kept
   report    print pass rates per model and task
+  compare   decision L2: the VM's verdict on every judged Complete and Write
+            sample against the judgement file's
 
 Only the standard library is used; vendors are reached over HTTPS with the
 credentials in ANTHROPIC_API_KEY and OPENAI_API_KEY (or any OpenAI-compatible
@@ -155,8 +159,11 @@ def extract_code(answer: str) -> str:
     return (fenced[0] if fenced else answer).strip("\n") + "\n"
 
 
-def lint_text(code: str, format_first: bool = False) -> tuple[list[str], list[str]]:
-    """The lint's problems and, when the lint is clean, the checker's errors.
+def lint_text(code: str, format_first: bool = False) -> tuple[list[str], list[str], dict | None]:
+    """The lint's problems; when the lint is clean, the checker's errors; and
+    when the checker is clean too, the VM's verdict on the program's own
+    `example:` lines and `test` blocks (decision L2), or None when it has
+    none to run.
 
     The scratch file lives in the examples directory so that a program's
     imports of other corpus modules resolve (the checker reads imports from
@@ -178,10 +185,35 @@ def lint_text(code: str, format_first: bool = False) -> tuple[list[str], list[st
         known = lint_examples.declared_functions([lint_examples.STDLIB_SKETCH, *corpus, scratch])
         problems = [unnamed(p, scratch.name) for p in lint_examples.lint_file(scratch, known)]
         if problems:
-            return problems, []
-        return [], check_errors(scratch)
+            return problems, [], None
+        errors = check_errors(scratch)
+        if errors:
+            return [], errors, None
+        return [], [], vm_verdict(scratch)
     finally:
         scratch.unlink(missing_ok=True)
+
+
+def vm_verdict(path: pathlib.Path) -> dict | None:
+    """What `renyi test` says of the program's own `example:` lines and `test`
+    blocks: the summary line, whether every item passed, and the failing
+    items; None when the program has nothing to run, which leaves the
+    verdict to the judgement file."""
+    result = subprocess.run([str(renyi_binary()), "test", str(path)],
+                            capture_output=True, text=True, encoding="utf-8")
+    lines = result.stdout.strip().splitlines()
+    summary = lines[-1] if lines else ""
+    found = re.match(r"(\d+) passed, (\d+) failed", summary)
+    if not found:
+        return {"summary": (result.stderr.strip() or summary)[:200], "pass": False}
+    passed, failed = int(found.group(1)), int(found.group(2))
+    if passed + failed == 0:
+        return None
+    verdict = {"summary": summary, "pass": failed == 0}
+    failures = [line.strip() for line in lines if line.startswith(("FAIL", "      "))]
+    if failures:
+        verdict["failures"] = failures[:8]
+    return verdict
 
 
 def unnamed(problem: str, name: str) -> str:
@@ -436,7 +468,7 @@ def score_sample(task: str, prompt: dict, sample: str, judged, args, target,
         if task == "complete":
             original = read(EXAMPLES / f"{prompt['name']}.ry")
             code = splice(original, prompt["target"], code)
-        problems, errors = lint_text(code, format_first=args.format)
+        problems, errors, vm = lint_text(code, format_first=args.format)
         result = {"lint_problems": problems}
         if problems:
             result["pass"] = False
@@ -446,6 +478,15 @@ def score_sample(task: str, prompt: dict, sample: str, judged, args, target,
             result["check_errors"] = errors
             result["pass"] = False
             result["rules"] = sorted({"check:" + e[1:e.index("]")] for e in errors})
+        elif vm is not None:
+            # the VM decides from the program's own examples and tests
+            # (decision L2); a judge's verdict is kept beside it for `compare`
+            result["vm"] = vm["summary"]
+            if "failures" in vm:
+                result["failures"] = vm["failures"]
+            result["pass"] = vm["pass"]
+            if judged is not None:
+                result["judged"] = bool(judged)
         elif judged is None:
             result["pending"] = True
         else:
@@ -553,6 +594,53 @@ def rule_of(problem: str) -> str:
     return "other"
 
 
+def cmd_compare(args: argparse.Namespace) -> None:
+    """Decision L2: the VM's verdict on every judged Complete and Write sample
+    against the judgement file's, per model; the samples the lint or the
+    checker now reject are listed apart, since neither judge saw them."""
+    target = run_dir(args.run)
+    for label_dir in output_dirs(target):
+        if args.label and label_dir.name != args.label:
+            continue
+        judgement_file = label_dir / "judgement.json"
+        if not judgement_file.exists():
+            continue
+        judgement = json.loads(read(judgement_file))
+        agree = disagree = undecided = rejected = 0
+        lines = []
+        for key, entry in sorted(judgement.items()):
+            task, rest = key.split("/", 1)
+            if task not in ("complete", "write"):
+                continue
+            name, index = rest.rsplit(".", 1)
+            prompt = json.loads(read(target / "prompts" / task / f"{name}.json"))
+            record = json.loads(read(label_dir / task / f"{name}.json"))
+            sample = record["samples"][int(index)]
+            verdict = entry.get("verdict") if isinstance(entry, dict) else entry
+            reason = entry.get("reason", "") if isinstance(entry, dict) else ""
+            code = extract_code(sample)
+            if task == "complete":
+                code = splice(read(EXAMPLES / f"{prompt['name']}.ry"), prompt["target"], code)
+            problems, errors, vm = lint_text(code, format_first=args.format)
+            if problems or errors:
+                rejected += 1
+                lines.append(f"  -  {key}: now rejected before any judge ({(problems or errors)[0][:90]}); judged {verdict}")
+            elif vm is None:
+                undecided += 1
+                lines.append(f"  ?  {key}: nothing for the VM to run; judged {verdict}")
+            elif vm["pass"] == bool(verdict):
+                agree += 1
+            else:
+                disagree += 1
+                lines.append(f"  !  {key}: VM {vm['summary']}, judged {verdict}: {reason[:200]}")
+                for failure in vm.get("failures", []):
+                    lines.append(f"       {failure}")
+        print(f"{label_dir.name}: {agree} agree, {disagree} disagree, {undecided} undecided by the VM, "
+              f"{rejected} now rejected before any judge")
+        for line in lines:
+            print(line)
+
+
 def cmd_report(args: argparse.Namespace) -> None:
     target = run_dir(args.run)
     print(f"run {target.name}")
@@ -617,6 +705,11 @@ def main() -> None:
     t = sub.add_parser("report"); t.add_argument("--run")
     t.add_argument("--scores", default="scores.json", help="file name of the scores under outputs/<label>/")
     t.set_defaults(func=cmd_report)
+    c = sub.add_parser("compare", help="decision L2: the VM's verdicts against judgement.json")
+    c.add_argument("--run"); c.add_argument("--label")
+    c.add_argument("--no-format", dest="format", action="store_false",
+                   help="skip `renyi format` before the lint, as `score --no-format` does")
+    c.set_defaults(func=cmd_compare)
     args = parser.parse_args()
     if args.command == "run" and not args.label:
         args.label = re.sub(r"[^A-Za-z0-9_.-]", "_", args.model)

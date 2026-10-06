@@ -129,3 +129,21 @@ named single argument are errors, scoring formats first, the cheat sheet
 gains a library section, Haiku stays the floor model, an MCP server for the
 toolchain follows M2, and `repeat until` replaces `while` (the loops of the
 pre-test samples were written under the old grammar and are judged as such).
+
+## The VM re-judges Complete and Write (decision L2, session 6)
+
+`run.py compare` on this round, with the VM of M3 (see the live round's
+notes, section 7): agent-sonnet agrees on 18 of its 25 judged Complete and
+Write samples and agent-haiku on 9 of 15; the other 13 are rejected today
+before any judge sees them, by the checker, which did not exist at the
+pre-test (`superfluous-otherwise`, `argument-name`, `argument-count`,
+`missing-otherwise`, `unknown-method`, `unknown-module`,
+`purpose-missing`), by the parser (an invented operator, `length quotient
+2`), and by the lint's foreign-keyword rule, which rejects the `while`
+loops that decision M10 replaced. Four of those thirteen had been judged
+correct (agent-sonnet's `deadlines`, `dependency_order`, `markdown_table`
+and `roman_numerals`, all `while` loops under the old grammar), so after
+the re-score agent-sonnet stands at 12 of 19 Complete and 6 of 10 Write in
+`scores.json` instead of 15 and 7; nothing else moved. The `sales_report`
+sample of each agent was the VM bug the live round's notes describe, fixed
+before the re-score.

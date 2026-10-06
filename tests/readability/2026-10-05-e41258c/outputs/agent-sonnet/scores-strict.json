@@ -52,220 +52,280 @@
   "explain/active_users": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/assistant": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/concurrent_fetch": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/config": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/currency_tool": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/deadlines": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/dependency_order": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/expression_tree": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/file_tree": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/hello": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/http_service": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/inventory_db": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/invoice": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/invoice_report": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/log_parser": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/markdown_table": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/pagination": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/permissions": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/retry": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/sales_report": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/semver": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/shapes": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/shipping_rules": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/stacks": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/statistics": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/temperature_table": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/todo_cli": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/traffic_light": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/weather": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "explain/word_count": [
     {
       "grade": 5,
-      "pass": true
+      "pass": true,
+      "grader": "judgement"
     }
   ],
   "complete/config": [
     {
       "lint_problems": [],
-      "pass": false
+      "check_errors": [
+        "[superfluous-otherwise] `otherwise` after a value that cannot fail and is not optional (it is `Port`)"
+      ],
+      "pass": false,
+      "rules": [
+        "check:superfluous-otherwise"
+      ]
     }
   ],
   "complete/deadlines": [
     {
-      "lint_problems": [],
-      "pass": true
+      "lint_problems": [
+        "line 56: keyword from another language",
+        "block starters 11 vs 'end' 12 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance",
+        "foreign-keyword"
+      ]
     }
   ],
   "complete/dependency_order": [
     {
-      "lint_problems": [],
-      "pass": true
+      "lint_problems": [
+        "line 34: keyword from another language",
+        "block starters 10 vs 'end' 11 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance",
+        "foreign-keyword"
+      ]
     }
   ],
   "complete/expression_tree": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/invoice": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/invoice_report": [
     {
       "lint_problems": [
-        ".scratch.ry:12: binding 'line' is never used (heuristic)"
+        "line 17: keyword from another language",
+        "line 21: keyword from another language",
+        "line 25: keyword from another language",
+        "block starters 4 vs 'end' 7 (heuristic)",
+        "line 12: binding 'line' is never used (heuristic)"
       ],
       "pass": false,
       "rules": [
+        "block-balance",
+        "foreign-keyword",
         "unused-binding"
       ]
     }
@@ -273,81 +333,118 @@
   "complete/log_parser": [
     {
       "lint_problems": [],
-      "pass": false
+      "check_errors": [
+        "[argument-count] `split` takes 1 argument (separator), found 2",
+        "[unknown-method] `List of Text` has no method named `get`",
+        "[unknown-method] `List of Text` has no method named `get`",
+        "[unknown-method] `List of Text` has no method named `get`"
+      ],
+      "pass": false,
+      "rules": [
+        "check:argument-count",
+        "check:unknown-method"
+      ]
     }
   ],
   "complete/markdown_table": [
     {
-      "lint_problems": [],
-      "pass": true
+      "lint_problems": [
+        "line 54: keyword from another language",
+        "block starters 11 vs 'end' 12 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance",
+        "foreign-keyword"
+      ]
     }
   ],
   "complete/permissions": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/sales_report": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/semver": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/shapes": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/shipping_rules": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/stacks": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "10 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/statistics": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/temperature_table": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/todo_cli": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/traffic_light": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/word_count": [
     {
       "lint_problems": [
-        ".scratch.ry:21: 'lowercase' is not declared in the standard library sketch or the corpus",
-        ".scratch.ry:21: 'words' is not declared in the standard library sketch or the corpus",
-        ".scratch.ry:25: binding 'copy' is never used (heuristic)"
+        "line 21: 'lowercase' is not declared in the standard library sketch or the corpus",
+        "line 21: 'words' is not declared in the standard library sketch or the corpus",
+        "line 25: binding 'copy' is never used (heuristic)"
       ],
       "pass": false,
       "rules": [
@@ -359,8 +456,8 @@
   "write/compound_interest": [
     {
       "lint_problems": [
-        ".scratch.ry:57: line is 104 columns (limit 100)",
-        ".scratch.ry:71: line is 110 columns (limit 100)"
+        "line 57: line is 104 columns (limit 100)",
+        "line 71: line is 110 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -371,14 +468,16 @@
   "write/fizz_words": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "write/initials": [
     {
       "lint_problems": [
-        ".scratch.ry:15: 'first_character' is not declared in the standard library sketch or the corpus",
-        ".scratch.ry:15: 'uppercase' is not declared in the standard library sketch or the corpus"
+        "line 15: 'first_character' is not declared in the standard library sketch or the corpus",
+        "line 15: 'uppercase' is not declared in the standard library sketch or the corpus"
       ],
       "pass": false,
       "rules": [
@@ -389,16 +488,18 @@
   "write/letter_grades": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "13 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "write/low_stock_report": [
     {
       "lint_problems": [
-        ".scratch.ry:35: line is 283 columns (limit 100)",
-        ".scratch.ry:47: line is 114 columns (limit 100)",
-        ".scratch.ry:57: line is 102 columns (limit 100)",
-        ".scratch.ry:59: line is 114 columns (limit 100)"
+        "line 35: line is 283 columns (limit 100)",
+        "line 47: line is 114 columns (limit 100)",
+        "line 57: line is 102 columns (limit 100)",
+        "line 59: line is 114 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -409,19 +510,23 @@
   "write/merge_sorted": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "write/password_strength": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "8 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "write/request_window": [
     {
       "lint_problems": [
-        ".scratch.ry:9: line is 102 columns (limit 100)"
+        "line 9: line is 102 columns (limit 100)"
       ],
       "pass": false,
       "rules": [
@@ -431,14 +536,21 @@
   ],
   "write/roman_numerals": [
     {
-      "lint_problems": [],
-      "pass": true
+      "lint_problems": [
+        "line 39: keyword from another language",
+        "block starters 7 vs 'end' 8 (heuristic)"
+      ],
+      "pass": false,
+      "rules": [
+        "block-balance",
+        "foreign-keyword"
+      ]
     }
   ],
   "write/title_length_tool": [
     {
       "lint_problems": [
-        ".scratch.ry:17: 'between' is not declared in the standard library sketch or the corpus"
+        "line 17: 'between' is not declared in the standard library sketch or the corpus"
       ],
       "pass": false,
       "rules": [

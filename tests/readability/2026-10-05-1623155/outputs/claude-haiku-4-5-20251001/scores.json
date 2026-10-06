@@ -1112,23 +1112,33 @@
   "complete/config": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/deadlines": [
@@ -1273,23 +1283,33 @@
   "complete/expression_tree": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "6 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/invoice": [
@@ -1399,23 +1419,33 @@
   "complete/log_parser": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "5 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/markdown_table": [
@@ -1508,45 +1538,65 @@
   "complete/permissions": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "2 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/sales_report": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "1 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/semver": [
@@ -1666,11 +1716,23 @@
   "complete/shipping_rules": [
     {
       "lint_problems": [],
-      "pass": false
+      "vm": "5 passed, 1 failed",
+      "failures": [
+        "FAIL  example of quote: example: quote(Parcel(weight_grams: 2500, destination: Europe, order_total: 20.00)) is Quote(cost: 14.50, business_days: 5, free_shipping: false) (D:\\Projects\\Renyi\\examples\\.scratch-50024.ry:35)",
+        "got Quote(cost: 13.50, business_days: 5, free_shipping: false), expected Quote(cost: 14.50, business_days: 5, free_shipping: false)"
+      ],
+      "pass": false,
+      "judged": false
     },
     {
       "lint_problems": [],
-      "pass": false
+      "vm": "5 passed, 1 failed",
+      "failures": [
+        "FAIL  example of quote: example: quote(Parcel(weight_grams: 2500, destination: Europe, order_total: 20.00)) is Quote(cost: 14.50, business_days: 5, free_shipping: false) (D:\\Projects\\Renyi\\examples\\.scratch-50024.ry:35)",
+        "got Quote(cost: 13.50, business_days: 5, free_shipping: false), expected Quote(cost: 14.50, business_days: 5, free_shipping: false)"
+      ],
+      "pass": false,
+      "judged": false
     },
     {
       "lint_problems": [
@@ -1692,29 +1754,45 @@
     },
     {
       "lint_problems": [],
-      "pass": false
+      "vm": "5 passed, 1 failed",
+      "failures": [
+        "FAIL  example of quote: example: quote(Parcel(weight_grams: 2500, destination: Europe, order_total: 20.00)) is Quote(cost: 14.50, business_days: 5, free_shipping: false) (D:\\Projects\\Renyi\\examples\\.scratch-50024.ry:35)",
+        "got Quote(cost: 13.50, business_days: 5, free_shipping: false), expected Quote(cost: 14.50, business_days: 5, free_shipping: false)"
+      ],
+      "pass": false,
+      "judged": false
     }
   ],
   "complete/stacks": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "10 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "10 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "10 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "10 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "10 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/statistics": [
@@ -1767,23 +1845,33 @@
   "complete/temperature_table": [
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     },
     {
       "lint_problems": [],
-      "pass": true
+      "vm": "3 passed, 0 failed",
+      "pass": true,
+      "judged": true
     }
   ],
   "complete/todo_cli": [
@@ -2501,7 +2589,13 @@
   "write/request_window": [
     {
       "lint_problems": [],
-      "pass": false
+      "vm": "0 passed, 1 failed",
+      "failures": [
+        "FAIL  example of count_rejected: example: count_rejected( times: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0], window_length: 10.0 ) is 1 (D:\\Projects\\Renyi\\examples\\.scratch-50024.ry:6)",
+        "got 0, expected 1"
+      ],
+      "pass": false,
+      "judged": false
     },
     {
       "lint_problems": [

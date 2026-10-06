@@ -9,6 +9,19 @@ use renyi_syntax::Span;
 
 use crate::value::Value;
 
+/// How a terminal after `group by` folds one group's values (decision M1).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GroupFold {
+    /// `sum` and `count` (which sums ones).
+    Sum,
+    /// `first`: the first value stays.
+    First,
+    /// `any`: the `or` of the conditions.
+    Any,
+    /// `all`: the `and` of the conditions.
+    All,
+}
+
 #[derive(Clone, Debug)]
 pub enum Op {
     /// Push `constants[index]`.
@@ -114,6 +127,10 @@ pub enum Op {
     /// Pop an item, a key and a map; push the map with the item appended to
     /// the key's list.
     GroupInsert,
+    /// Pop a value, a key and a map; push the map with the key's entry
+    /// folded with the value: the value itself for a new key, else as the
+    /// fold says (a terminal after `group by`, decision M1).
+    GroupFold(GroupFold),
     /// Pop a list of pairs (key, item); push the items stably sorted by key.
     SortByKey {
         descending: bool,
