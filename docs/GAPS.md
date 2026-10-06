@@ -29,15 +29,14 @@ Ordered by how much they matter to the language's promises.
    runs and `main`'s own expiry ends the run with `TimedOut(after: 20ms)`
    (`crates/renyi_vm/tests/semantics.rs`,
    `an_expired_deadline_is_the_functions_failure`).
-2. **Exhaustiveness has holes.** `check_exhaustive` returns true as soon as
-   any arm records `Cover::Other` (`crates/renyi_check/src/check.rs:3633-3635`);
-   literal patterns other than Boolean record `Other` (3452-3459), the
-   inner patterns of `some`, `success`, `failure` and variant fields are
-   discarded (3411-3451, 3592), and the error list is unused (3636), so
-   `failure(error: Oops)` alone covers an `Oops or Ouch` union. Verified:
-   integer-literal arms without `otherwise` check clean and crash at run
-   time with "no arm of the match fits the value". Boolean and plain
-   sum-type matches are checked.
+2. Done in stage 1: **exhaustiveness is the usefulness check** over the
+   shapes of the arms (`crates/renyi_check/src/check.rs`, `missing`): a
+   literal arm other than a Boolean never covers its type, the patterns
+   inside `some`, `success`, `failure` and variant fields count, and a
+   `failure(error: Oops)` arm covers that member of the error union
+   alone. The message spells the missing cases as arms (`some(...)`,
+   `failure(error: Ouch)`, `Circle(...)`). Tested in `rules.rs` and by
+   the conformance case `match_nested.ry`.
 3. Done in stage 1: **`with` runs the refinements again** (`vm.rs:1566`,
    `refined_record`, shared with construction), and an update whose new
    value is not a literal needs `otherwise` like a construction (decision

@@ -1,8 +1,6 @@
 //! Checking function bodies, tests, examples and constants: names, types,
 //! effects, errors and the rules of decisions J8, J9, J15 and M2 to M4.
 
-use std::collections::HashSet;
-
 use renyi_syntax::ast::*;
 use renyi_syntax::{Diagnostic, Span};
 
@@ -99,17 +97,56 @@ impl Info {
     }
 }
 
-/// How a `match` arm covers its subject, for exhaustiveness.
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
-enum Cover {
-    Variant(String),
-    Some,
+/// A pattern as the exhaustiveness check sees it: a constructor applied to
+/// the shapes of its fields, or a wildcard (a binding, or a typed pattern on
+/// a subject of that type).
+#[derive(Clone, Debug)]
+enum Shape {
+    Wild,
+    Ctor(Ctor, Vec<Shape>),
+}
+
+/// A constructor of a matched type.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum Ctor {
     Nothing,
+    Some,
     Success,
     Failure,
     True,
     False,
-    Other,
+    /// A variant of a sum type, or a record matched by its own name (K6).
+    Variant(TypeId, String),
+    /// A member of an error union, by its type.
+    Member(Ty),
+    /// A literal other than a Boolean: one value of an unbounded set.
+    Literal,
+}
+
+/// A column of the pattern matrix: a value of a type, or the outcome of a
+/// fallible call (its success type and its errors).
+#[derive(Clone)]
+enum Column {
+    Value(Ty),
+    Outcome(Ty, Vec<Ty>),
+}
+
+/// The constructors of a matched type with the names and types of their
+/// fields, or none when only a wildcard covers the type.
+enum Signature {
+    Finite(Vec<(Ctor, Vec<(String, Ty)>)>),
+    Infinite,
+}
+
+/// How a case the arms miss spells a sub-pattern that could be anything.
+const WILD: &str = "...";
+
+/// The rows whose first pattern is a wildcard, without it.
+fn default_rows(rows: &[Vec<Shape>]) -> Vec<Vec<Shape>> {
+    rows.iter()
+        .filter(|row| matches!(row[0], Shape::Wild))
+        .map(|row| row[1..].to_vec())
+        .collect()
 }
 
 /// What a body refers to, as the checker resolved it: for tools that need
@@ -1204,8 +1241,7 @@ impl<'w> Checker<'w> {
                     } else {
                         let union = Ty::Union(result.fails.clone());
                         self.push_scope();
-                        let mut covers = Vec::new();
-                        self.check_pattern(pattern, &union, &mut covers);
+                        self.check_pattern(pattern, &union);
                         // bindings in an example pattern are not read: allow them
                         if let Some(scope) = self.scopes.last_mut() {
                             for binding in &mut scope.bindings {
@@ -1457,15 +1493,14 @@ impl<'w> Checker<'w> {
                 let saved_errors = self.current_errors.take();
                 self.current_errors = covers_needed.as_ref().map(|e| Ty::Union(e.clone()));
                 let mut all_diverge = true;
-                let mut covers = Vec::new();
+                let mut rows = Vec::new();
                 for arm in arms {
                     self.push_scope();
-                    let mut arm_covers = Vec::new();
-                    self.check_pattern(&arm.pattern, &subject_ty, &mut arm_covers);
+                    let shape = self.check_pattern(&arm.pattern, &subject_ty);
                     if let Some(guard) = &arm.guard {
                         self.check_condition(guard);
                     } else {
-                        covers.extend(arm_covers);
+                        rows.push(vec![shape]);
                     }
                     if !self.check_block_in_scope(&arm.body) {
                         all_diverge = false;
@@ -1481,7 +1516,7 @@ impl<'w> Checker<'w> {
                         true
                     }
                     None => {
-                        self.check_exhaustive(&subject_ty, &covers, covers_needed, statement.span)
+                        self.check_exhaustive(&subject_ty, &rows, covers_needed, statement.span)
                     }
                 };
                 exhaustive && all_diverge
@@ -2165,15 +2200,14 @@ impl<'w> Checker<'w> {
                 let saved_errors = self.current_errors.take();
                 self.current_errors = covers_needed.as_ref().map(|e| Ty::Union(e.clone()));
                 let mut result: Option<Ty> = expected.cloned();
-                let mut covers = Vec::new();
+                let mut rows = Vec::new();
                 for arm in arms {
                     self.push_scope();
-                    let mut arm_covers = Vec::new();
-                    self.check_pattern(&arm.pattern, &subject_ty, &mut arm_covers);
+                    let shape = self.check_pattern(&arm.pattern, &subject_ty);
                     if let Some(guard) = &arm.guard {
                         self.check_condition(guard);
                     } else {
-                        covers.extend(arm_covers);
+                        rows.push(vec![shape]);
                     }
                     self.check_outcome(&arm.body, &mut result);
                     self.pop_scope();
@@ -2182,7 +2216,7 @@ impl<'w> Checker<'w> {
                 match otherwise {
                     Some(outcome) => self.check_outcome(outcome, &mut result),
                     None => {
-                        self.check_exhaustive(&subject_ty, &covers, covers_needed, expr.span);
+                        self.check_exhaustive(&subject_ty, &rows, covers_needed, expr.span);
                     }
                 }
                 Info::plain(result.unwrap_or(Ty::Never))
@@ -3711,12 +3745,14 @@ impl<'w> Checker<'w> {
         }
     }
 
-    fn check_pattern(&mut self, pattern: &Pattern, subject: &Ty, covers: &mut Vec<Cover>) {
+    /// Check a pattern against the subject's type, binding its names; the
+    /// shape it returns feeds the exhaustiveness check.
+    fn check_pattern(&mut self, pattern: &Pattern, subject: &Ty) -> Shape {
         let subject_ty = self.resolve(subject);
         match pattern {
             Pattern::Binding(name) => {
                 self.bind(name, subject_ty, false, BindingKind::Pattern);
-                covers.push(Cover::Other);
+                Shape::Wild
             }
             Pattern::Nothing(span) => {
                 match &subject_ty {
@@ -3732,17 +3768,15 @@ impl<'w> Checker<'w> {
                         );
                     }
                 }
-                covers.push(Cover::Nothing);
+                Shape::Ctor(Ctor::Nothing, Vec::new())
             }
             Pattern::Some(inner, span) => {
-                match &subject_ty {
+                let inner_shape = match &subject_ty {
                     Ty::Maybe(item) => {
                         let item = (**item).clone();
-                        self.check_pattern(inner, &item, &mut Vec::new());
+                        self.check_pattern(inner, &item)
                     }
-                    Ty::Error => {
-                        self.check_pattern(inner, &Ty::Error, &mut Vec::new());
-                    }
+                    Ty::Error => self.check_pattern(inner, &Ty::Error),
                     _ => {
                         let shown = self.show(&subject_ty);
                         self.error(
@@ -3752,20 +3786,20 @@ impl<'w> Checker<'w> {
                             ),
                             *span,
                         );
-                        self.check_pattern(inner, &Ty::Error, &mut Vec::new());
+                        self.check_pattern(inner, &Ty::Error)
                     }
-                }
-                covers.push(Cover::Some);
+                };
+                Shape::Ctor(Ctor::Some, vec![inner_shape])
             }
             Pattern::Success(inner, _) => {
-                self.check_pattern(inner, &subject_ty, &mut Vec::new());
-                covers.push(Cover::Success);
+                let inner_shape = self.check_pattern(inner, &subject_ty);
+                Shape::Ctor(Ctor::Success, vec![inner_shape])
             }
             Pattern::Failure(inner, _) => {
                 // the error union is attached to the match by `match_subject`; a
                 // `failure(error: T)` arm removes T from the union the later arms see
                 let errors = self.current_errors.clone().unwrap_or(Ty::Error);
-                self.check_pattern(inner, &errors, &mut Vec::new());
+                let inner_shape = self.check_pattern(inner, &errors);
                 if let Pattern::Typed { ty, .. } = &**inner {
                     let handled = self.resolve_type(ty);
                     if let Some(Ty::Union(members)) = &self.current_errors {
@@ -3777,20 +3811,20 @@ impl<'w> Checker<'w> {
                         self.current_errors = Some(Ty::Union(remaining));
                     }
                 }
-                covers.push(Cover::Failure);
+                Shape::Ctor(Ctor::Failure, vec![inner_shape])
             }
             Pattern::Literal(literal) => {
                 let info = self.infer(literal, Some(&subject_ty));
                 self.expect(&info.ty, &subject_ty, literal.span, "the pattern");
-                if let ExprKind::Boolean(value) = &literal.kind {
-                    covers.push(if *value { Cover::True } else { Cover::False });
-                } else {
-                    covers.push(Cover::Other);
+                match &literal.kind {
+                    ExprKind::Boolean(true) => Shape::Ctor(Ctor::True, Vec::new()),
+                    ExprKind::Boolean(false) => Shape::Ctor(Ctor::False, Vec::new()),
+                    _ => Shape::Ctor(Ctor::Literal, Vec::new()),
                 }
             }
             Pattern::Typed { name, ty, span } => {
                 let wanted = self.resolve_type(ty);
-                match &subject_ty {
+                let shape = match &subject_ty {
                     Ty::Union(members) => {
                         if !members.iter().any(|m| self.same_type(m, &wanted)) {
                             let shown = self.show(&wanted);
@@ -3800,8 +3834,9 @@ impl<'w> Checker<'w> {
                                 *span,
                             );
                         }
+                        Shape::Ctor(Ctor::Member(self.zonk(&wanted)), vec![Shape::Wild])
                     }
-                    Ty::Error => {}
+                    Ty::Error => Shape::Wild,
                     other => {
                         if !self.same_type(other, &wanted) {
                             let shown = self.show(&wanted);
@@ -3812,26 +3847,26 @@ impl<'w> Checker<'w> {
                                 *span,
                             );
                         }
+                        Shape::Wild
                     }
-                }
+                };
                 self.bind(name, wanted, false, BindingKind::Pattern);
-                covers.push(Cover::Other);
+                shape
             }
             Pattern::Variant { name, fields, span } => {
                 // the type the variant belongs to: the subject's sum type, a member of
                 // an error union, or a record matched like a single variant (K6)
-                let target: Option<(Ty, Vec<crate::world::FieldInfo>, Vec<ParamId>)> =
+                let target: Option<(TypeId, Vec<crate::world::FieldInfo>, Vec<ParamId>)> =
                     match &subject_ty {
                         Ty::App(id, _) => self.variant_fields(*id, &name.text),
                         Ty::Union(members) => members.iter().find_map(|m| match self.resolve(m) {
                             Ty::App(id, _) => self.variant_fields(id, &name.text),
                             _ => None,
                         }),
-                        Ty::Error => None,
                         _ => None,
                     };
                 // the VM matches by the type and the variant's position
-                if let Some((Ty::App(type_id, _), _, _)) = &target {
+                if let Some((type_id, _, _)) = &target {
                     match &self.world.types[*type_id].kind {
                         TypeKindInfo::Sum(variants) => {
                             if let Some(index) = variants.iter().position(|v| v.name == name.text) {
@@ -3841,12 +3876,16 @@ impl<'w> Checker<'w> {
                         _ => self.record(Target::Type(*type_id), name.span),
                     }
                 }
+                // the member of an error union the variant belongs to, and the
+                // subject's type arguments
+                let mut member: Option<Ty> = None;
                 let subject_args: Vec<Ty> = match &subject_ty {
                     Ty::App(_, args) => args.clone(),
                     Ty::Union(members) => members
                         .iter()
                         .find_map(|m| match self.resolve(m) {
                             Ty::App(id, args) if self.variant_fields(id, &name.text).is_some() => {
+                                member = Some(self.zonk(m));
                                 Some(args)
                             }
                             _ => None,
@@ -3854,7 +3893,7 @@ impl<'w> Checker<'w> {
                         .unwrap_or_default(),
                     _ => Vec::new(),
                 };
-                match target {
+                let shape = match target {
                     None => {
                         if !subject_ty.is_error() {
                             let shown = self.show(&subject_ty);
@@ -3866,26 +3905,31 @@ impl<'w> Checker<'w> {
                         }
                         for field in fields {
                             if let Some(inner) = &field.pattern {
-                                self.check_pattern(inner, &Ty::Error, &mut Vec::new());
+                                self.check_pattern(inner, &Ty::Error);
                             } else {
                                 self.bind(&field.field, Ty::Error, false, BindingKind::Pattern);
                             }
                         }
+                        Shape::Wild
                     }
-                    Some((_, variant_fields, params)) => {
+                    Some((type_id, variant_fields, params)) => {
                         let subst = |p: ParamId| {
                             params
                                 .iter()
                                 .position(|q| *q == p)
                                 .and_then(|i| subject_args.get(i).cloned())
                         };
+                        let mut subs = vec![Shape::Wild; variant_fields.len()];
                         for field in fields {
-                            match variant_fields.iter().find(|f| f.name == field.field.text) {
-                                Some(info) => {
-                                    let field_ty = info.ty.substitute(&subst);
+                            match variant_fields
+                                .iter()
+                                .position(|f| f.name == field.field.text)
+                            {
+                                Some(index) => {
+                                    let field_ty = variant_fields[index].ty.substitute(&subst);
                                     match &field.pattern {
                                         Some(inner) => {
-                                            self.check_pattern(inner, &field_ty, &mut Vec::new())
+                                            subs[index] = self.check_pattern(inner, &field_ty);
                                         }
                                         None => self.bind(
                                             &field.field,
@@ -3905,7 +3949,7 @@ impl<'w> Checker<'w> {
                                         field.field.span,
                                     );
                                     if let Some(inner) = &field.pattern {
-                                        self.check_pattern(inner, &Ty::Error, &mut Vec::new());
+                                        self.check_pattern(inner, &Ty::Error);
                                     } else {
                                         self.bind(
                                             &field.field,
@@ -3917,9 +3961,13 @@ impl<'w> Checker<'w> {
                                 }
                             }
                         }
+                        Shape::Ctor(Ctor::Variant(type_id, name.text.clone()), subs)
                     }
+                };
+                match member {
+                    Some(member) => Shape::Ctor(Ctor::Member(member), vec![shape]),
+                    None => shape,
                 }
-                covers.push(Cover::Variant(name.text.clone()));
             }
         }
     }
@@ -3930,130 +3978,232 @@ impl<'w> Checker<'w> {
         &self,
         type_id: TypeId,
         name: &str,
-    ) -> Option<(Ty, Vec<crate::world::FieldInfo>, Vec<ParamId>)> {
+    ) -> Option<(TypeId, Vec<crate::world::FieldInfo>, Vec<ParamId>)> {
         let info = &self.world.types[type_id];
         match &info.kind {
-            TypeKindInfo::Sum(variants) => variants.iter().find(|v| v.name == name).map(|v| {
-                (
-                    Ty::App(type_id, Vec::new()),
-                    v.fields.clone(),
-                    info.params.clone(),
-                )
-            }),
-            TypeKindInfo::Record(fields) if info.name == name => Some((
-                Ty::App(type_id, Vec::new()),
-                fields.clone(),
-                info.params.clone(),
-            )),
+            TypeKindInfo::Sum(variants) => variants
+                .iter()
+                .find(|v| v.name == name)
+                .map(|v| (type_id, v.fields.clone(), info.params.clone())),
+            TypeKindInfo::Record(fields) if info.name == name => {
+                Some((type_id, fields.clone(), info.params.clone()))
+            }
             _ => None,
         }
     }
 
-    /// Whether the arms cover the subject; reports what is missing.
+    /// Whether the arms cover the subject (sketch section 8); reports the
+    /// cases they miss.
     fn check_exhaustive(
         &mut self,
         subject: &Ty,
-        covers: &[Cover],
+        rows: &[Vec<Shape>],
         errors: Option<Vec<Ty>>,
         span: Span,
     ) -> bool {
-        let b = self.world.builtins.clone();
-        let _ = &b;
-        let covered: HashSet<&Cover> = covers.iter().collect();
-        if covered.contains(&Cover::Other) {
+        let column = match errors {
+            Some(errors) => Column::Outcome(self.resolve(subject), errors),
+            None => Column::Value(self.resolve(subject)),
+        };
+        let witnesses = self.missing(std::slice::from_ref(&column), rows);
+        if witnesses.is_empty() {
             return true;
         }
-        if let Some(_errors) = errors {
-            let mut missing = Vec::new();
-            if !covered.contains(&Cover::Success) {
-                missing.push("success(...)".to_string());
-            }
-            if !covered.contains(&Cover::Failure) {
-                missing.push("failure(...)".to_string());
-            }
-            if !missing.is_empty() {
-                self.error_fix(
-                    "not-exhaustive",
-                    format!("the match does not cover {}", missing.join(" and ")),
-                    span,
-                    "add the missing arm",
-                );
-                return false;
-            }
-            return true;
+        let cases: Vec<&String> = witnesses.iter().map(|witness| &witness[0]).collect();
+        if cases.iter().all(|case| *case == WILD) {
+            self.error_fix(
+                "not-exhaustive",
+                "a match on this value needs an `otherwise` arm",
+                span,
+                "add `otherwise ...`",
+            );
+        } else {
+            let shown: Vec<String> = cases.iter().take(6).map(|c| format!("`{c}`")).collect();
+            let more = if cases.len() > 6 {
+                format!(" and {} more", cases.len() - 6)
+            } else {
+                String::new()
+            };
+            self.error_fix(
+                "not-exhaustive",
+                format!("the match does not cover {}{more}", shown.join(", ")),
+                span,
+                "add an arm for each, or an `otherwise`",
+            );
         }
-        let ty = self.resolve(subject);
-        match &ty {
-            Ty::Maybe(_) => {
-                let mut missing = Vec::new();
-                if !covered.contains(&Cover::Some) {
-                    missing.push("some(...)");
-                }
-                if !covered.contains(&Cover::Nothing) {
-                    missing.push("nothing");
-                }
-                if !missing.is_empty() {
-                    self.error_fix(
-                        "not-exhaustive",
-                        format!("the match does not cover {}", missing.join(" and ")),
-                        span,
-                        "add the missing arm or an `otherwise`",
-                    );
-                    return false;
-                }
-                true
-            }
-            Ty::App(id, _) if *id == b.boolean => {
-                let both = covered.contains(&Cover::True) && covered.contains(&Cover::False);
-                if !both {
-                    self.error_fix(
-                        "not-exhaustive",
-                        "the match does not cover both `true` and `false`",
-                        span,
-                        "add the missing arm or an `otherwise`",
-                    );
-                }
-                both
-            }
-            Ty::App(id, _) => match &self.world.types[*id].kind {
-                TypeKindInfo::Sum(variants) => {
-                    let missing: Vec<String> = variants
+        false
+    }
+
+    /// The constructors of a column's type.
+    fn signature(&self, column: &Column) -> Signature {
+        let b = &self.world.builtins;
+        match column {
+            Column::Outcome(ok, errors) => Signature::Finite(vec![
+                (Ctor::Success, vec![(String::new(), ok.clone())]),
+                (
+                    Ctor::Failure,
+                    vec![(String::new(), Ty::Union(errors.clone()))],
+                ),
+            ]),
+            Column::Value(ty) => match self.resolve(ty) {
+                // after an error anything counts as covered
+                Ty::Error => Signature::Finite(Vec::new()),
+                Ty::Maybe(inner) => Signature::Finite(vec![
+                    (Ctor::Nothing, Vec::new()),
+                    (Ctor::Some, vec![(String::new(), (*inner).clone())]),
+                ]),
+                Ty::Union(members) => Signature::Finite(
+                    members
                         .iter()
-                        .filter(|v| !covered.contains(&Cover::Variant(v.name.clone())))
-                        .map(|v| format!("`{}`", v.name))
-                        .collect();
-                    if !missing.is_empty() {
-                        self.error_fix(
-                            "not-exhaustive",
-                            format!("the match does not cover {}", missing.join(", ")),
-                            span,
-                            "add an arm for each, or an `otherwise`",
-                        );
-                        return false;
+                        .map(|m| (Ctor::Member(self.zonk(m)), vec![(String::new(), m.clone())]))
+                        .collect(),
+                ),
+                Ty::App(id, _) if id == b.boolean => {
+                    Signature::Finite(vec![(Ctor::True, Vec::new()), (Ctor::False, Vec::new())])
+                }
+                Ty::App(id, args) => {
+                    let info = &self.world.types[id];
+                    let subst = |p: ParamId| {
+                        info.params
+                            .iter()
+                            .position(|q| *q == p)
+                            .and_then(|i| args.get(i).cloned())
+                    };
+                    let fields_of = |fields: &[crate::world::FieldInfo]| -> Vec<(String, Ty)> {
+                        fields
+                            .iter()
+                            .map(|f| (f.name.clone(), f.ty.substitute(&subst)))
+                            .collect()
+                    };
+                    match &info.kind {
+                        TypeKindInfo::Sum(variants) => Signature::Finite(
+                            variants
+                                .iter()
+                                .map(|v| (Ctor::Variant(id, v.name.clone()), fields_of(&v.fields)))
+                                .collect(),
+                        ),
+                        TypeKindInfo::Record(fields) => Signature::Finite(vec![(
+                            Ctor::Variant(id, info.name.clone()),
+                            fields_of(fields),
+                        )]),
+                        _ => Signature::Infinite,
                     }
-                    true
                 }
-                TypeKindInfo::Record(_) => covered.iter().any(|c| matches!(c, Cover::Variant(_))),
-                _ => {
-                    self.error_fix(
-                        "not-exhaustive",
-                        "a match on this value needs an `otherwise` arm",
-                        span,
-                        "add `otherwise ...`",
-                    );
-                    false
-                }
+                _ => Signature::Infinite,
             },
-            Ty::Error => true,
-            _ => {
-                self.error_fix(
-                    "not-exhaustive",
-                    "a match on this value needs an `otherwise` arm",
-                    span,
-                    "add `otherwise ...`",
-                );
-                false
+        }
+    }
+
+    /// The cases the rows leave uncovered, one spelling per column; empty
+    /// when the rows are exhaustive. The usefulness check of a wildcard row:
+    /// specialise on every constructor of the first column when the rows
+    /// name them all, else fall back to the rows whose first pattern is a
+    /// wildcard.
+    fn missing(&self, columns: &[Column], rows: &[Vec<Shape>]) -> Vec<Vec<String>> {
+        let Some((first, rest)) = columns.split_first() else {
+            return if rows.is_empty() {
+                vec![Vec::new()]
+            } else {
+                Vec::new()
+            };
+        };
+        let mut witnesses: Vec<Vec<String>> = Vec::new();
+        match self.signature(first) {
+            Signature::Finite(ctors) => {
+                let heads: Vec<&Ctor> = rows
+                    .iter()
+                    .filter_map(|row| match &row[0] {
+                        Shape::Ctor(ctor, _) => Some(ctor),
+                        Shape::Wild => None,
+                    })
+                    .collect();
+                let complete = ctors.iter().all(|(ctor, _)| heads.contains(&ctor));
+                if complete {
+                    for (ctor, fields) in &ctors {
+                        let mut columns: Vec<Column> = fields
+                            .iter()
+                            .map(|(_, ty)| Column::Value(ty.clone()))
+                            .collect();
+                        columns.extend(rest.iter().cloned());
+                        let rows: Vec<Vec<Shape>> = rows
+                            .iter()
+                            .filter_map(|row| {
+                                let mut specialised = match &row[0] {
+                                    Shape::Ctor(head, subs) if head == ctor => subs.clone(),
+                                    Shape::Wild => vec![Shape::Wild; fields.len()],
+                                    Shape::Ctor(..) => return None,
+                                };
+                                specialised.extend(row[1..].iter().cloned());
+                                Some(specialised)
+                            })
+                            .collect();
+                        for witness in self.missing(&columns, &rows) {
+                            let (own, tail) = witness.split_at(fields.len());
+                            let mut spelled = vec![self.spell(ctor, fields, own)];
+                            spelled.extend(tail.iter().cloned());
+                            if !witnesses.contains(&spelled) {
+                                witnesses.push(spelled);
+                            }
+                        }
+                    }
+                } else {
+                    for witness in self.missing(rest, &default_rows(rows)) {
+                        for (ctor, fields) in &ctors {
+                            if heads.contains(&ctor) {
+                                continue;
+                            }
+                            let wild = vec![WILD.to_string(); fields.len()];
+                            let mut spelled = vec![self.spell(ctor, fields, &wild)];
+                            spelled.extend(witness.iter().cloned());
+                            if !witnesses.contains(&spelled) {
+                                witnesses.push(spelled);
+                            }
+                        }
+                    }
+                }
             }
+            Signature::Infinite => {
+                for witness in self.missing(rest, &default_rows(rows)) {
+                    let mut spelled = vec![WILD.to_string()];
+                    spelled.extend(witness);
+                    witnesses.push(spelled);
+                }
+            }
+        }
+        witnesses
+    }
+
+    /// A missing case as the reader would write its arm.
+    fn spell(&self, ctor: &Ctor, fields: &[(String, Ty)], subs: &[String]) -> String {
+        match ctor {
+            Ctor::Nothing => "nothing".to_string(),
+            Ctor::True => "true".to_string(),
+            Ctor::False => "false".to_string(),
+            Ctor::Some => format!("some({})", subs[0]),
+            Ctor::Success => format!("success({})", subs[0]),
+            Ctor::Failure => format!("failure({})", subs[0]),
+            Ctor::Member(ty) => {
+                if subs[0] == WILD {
+                    format!("error: {}", self.show(ty))
+                } else {
+                    subs[0].clone()
+                }
+            }
+            Ctor::Variant(_, name) => {
+                if fields.is_empty() {
+                    name.clone()
+                } else if subs.iter().all(|sub| sub == WILD) {
+                    format!("{name}({WILD})")
+                } else {
+                    let parts: Vec<String> = fields
+                        .iter()
+                        .zip(subs)
+                        .map(|((field, _), sub)| format!("{field}: {sub}"))
+                        .collect();
+                    format!("{name}({})", parts.join(", "))
+                }
+            }
+            Ctor::Literal => WILD.to_string(),
         }
     }
 

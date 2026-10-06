@@ -180,6 +180,13 @@
       "program": "tests/conformance/programs/higher_order.ry",
       "stdout": "tests/conformance/expected/higher_order.out",
       "exit_code": 0
+    },
+    {
+      "name": "exhaustiveness looks inside the patterns",
+      "command": "check",
+      "program": "tests/conformance/programs/match_nested.ry",
+      "diagnostics": ["not-exhaustive"],
+      "exit_code": 1
     }
   ]
 }

@@ -745,3 +745,63 @@ fn a_let_bound_literal_takes_its_own_type() {
         "function go() returns Boolean\n  let part be 2.5\n  return part is at least 2\nend\n",
     ));
 }
+
+#[test]
+fn exhaustiveness_looks_inside_the_patterns() {
+    // a literal arm covers one value, never the type
+    raises(
+        &program(
+            "function sign(value: Integer) returns Text\n  match value\n    when 0 then return \"zero\"\n    when 1 then return \"one\"\n  end\nend\n",
+        ),
+        "not-exhaustive",
+    );
+    clean(&program(
+        "function sign(value: Integer) returns Text\n  match value\n    when 0 then return \"zero\"\n    otherwise return \"many\"\n  end\nend\n",
+    ));
+    // the pattern inside `some` counts
+    raises(
+        &program(
+            "function first_or_zero(items: List of Integer) returns Integer\n  match items.first()\n    when some(0) then return 0\n    when nothing then return 0\n  end\nend\n",
+        ),
+        "not-exhaustive",
+    );
+    clean(&program(
+        "function first_or_zero(items: List of Integer) returns Integer\n  match items.first()\n    when some(0) then return 0\n    when some(value) then return value\n    when nothing then return 0\n  end\nend\n",
+    ));
+    // a field pattern that is a literal leaves the variant uncovered
+    let shape = "public type Shape is one of\n  purpose: A figure.\n  Circle(radius: Decimal)\n  Square(side: Decimal)\n  Point\nend\n\n";
+    raises(
+        &program(&format!(
+            "{shape}function describe(shape: Shape) returns Text\n  match shape\n    when Circle(radius: 0) then return \"dot\"\n    when Square(side) then return \"square {{side}}\"\n    when Point then return \"point\"\n  end\nend\n"
+        )),
+        "not-exhaustive",
+    );
+    clean(&program(&format!(
+        "{shape}function describe(shape: Shape) returns Text\n  match shape\n    when Circle(radius: 0) then return \"dot\"\n    when Circle(radius) then return \"circle {{radius}}\"\n    when Square(side) then return \"square {{side}}\"\n    when Point then return \"point\"\n  end\nend\n"
+    )));
+}
+
+#[test]
+fn a_failure_arm_covers_one_member_of_the_error_union() {
+    let errors = "type Oops\n  has detail: Text\nend\n\ntype Ouch\n  has detail: Text\nend\n\nfunction risky(flag: Boolean) returns Integer or fails with Oops or Ouch\n  if flag then\n    fail with Oops(detail: \"x\")\n  end\n  fail with Ouch(detail: \"y\")\nend\n\n";
+    raises(
+        &program(&format!(
+            "{errors}function handle(flag: Boolean) returns Integer\n  match risky(flag)\n    when success(value) then return value\n    when failure(error: Oops) then return error.detail.length()\n  end\nend\n"
+        )),
+        "not-exhaustive",
+    );
+    clean(&program(&format!(
+        "{errors}function handle(flag: Boolean) returns Integer\n  match risky(flag)\n    when success(value) then return value\n    when failure(error: Oops) then return error.detail.length()\n    when failure(error: Ouch) then return error.detail.length()\n  end\nend\n"
+    )));
+    // a variant pattern covers one variant of one member
+    let http = "public type HttpError is one of\n  purpose: What a request can fail with.\n  Status(code: Integer)\n  Network(detail: Text)\nend\n\ntype Oops\n  has detail: Text\nend\n\nfunction fetch(flag: Boolean) returns Integer or fails with HttpError or Oops\n  if flag then\n    fail with Status(code: 500)\n  end\n  fail with Oops(detail: \"x\")\nend\n\n";
+    raises(
+        &program(&format!(
+            "{http}function handle(flag: Boolean) returns Integer\n  match fetch(flag)\n    when success(value) then return value\n    when failure(Status(code)) then return code\n    when failure(error: Oops) then return error.detail.length()\n  end\nend\n"
+        )),
+        "not-exhaustive",
+    );
+    clean(&program(&format!(
+        "{http}function handle(flag: Boolean) returns Integer\n  match fetch(flag)\n    when success(value) then return value\n    when failure(Status(code)) then return code\n    when failure(Network(detail)) then return detail.length()\n    when failure(error: Oops) then return error.detail.length()\n  end\nend\n"
+    )));
+}

@@ -1,0 +1,9 @@
+module match_nested
+  purpose: Exhaustiveness looks inside `some`, `success` and `failure` (sketch section 8).
+
+function first_or_zero(items: List of Integer) returns Integer
+  match items.first()
+    when some(0) then return 0
+    when nothing then return 0
+  end
+end
