@@ -98,7 +98,7 @@ after a check. Generic types: `List of T`, `Map of K to V`, `Set of T`,
 
 ## Abilities
 ```
-public ability Describable
+ability Describable
   function describe(self) returns Text
 end
 

@@ -1,128 +1,71 @@
 # Handoff
 
-Last updated: 2026-10-06, session 6 (the VM: `renyi run` and `renyi test`;
-the primitive boundary: `renyi record`, `run --replay`, `--explain`,
-`replays` tests, budgets and scope checks; the HTTP client, the HTTP
-server and SQLite; the grant stack; recordings for every network and
-database program, `--redact`; the run manifest and `renyi reproduce`;
-decision L2 carried out, the VM judging Complete and Write; terminals
-after `group by` per group; `renyi mcp`, the toolchain for agent hosts;
-the semantic diff, `renyi index --diff` and the `diff` tool; readability
-round 2 collected, graded and written up, its four questions answered as
-decisions U1 to U4 and applied; round 1 re-graded on the subagent
-scale; decisions U5 to U7 from the re-grade; round 3 through the Claude
-Code CLI and the Codex CLI, which found the cheat sheet's rendering of
-U2 and U3 wrong: decision U8, the corrected sheet, round 3 recorded as a
-defect round; round 4 on the corrected sheet through the cleaned
-channel: Sonnet 90, 100, 79, 40, the named-argument errors gone;
-decision U9, a sentence on refined construction and `otherwise`; the
-owner's strategy shift away from the readability scores and the gap
-audit of the design against the implementation, `docs/GAPS.md`).
-Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
-and push there directly.
+Last updated: 2026-10-06, session 7 (stage 1 of the gap audit of
+`docs/GAPS.md`: decisions V1 to V8; the checker enforces the size limits,
+`deprecated:` and task independence; `renyi tools`; the `only to`
+runtime; CI and the conformance suite; the runtime, module, literal and
+exhaustiveness rules; one range-loop spelling, the module name equal to
+the path, `.renyi`; every diagnostic carries a fix; the documents
+corrected). Branch: `main` is the only branch (owner's decision,
+2026-10-05); commit and push there directly.
 
 ## Where the project stands
 
-Milestones M0 (design), M1 (front end) and M2 (type and effect checker) are
-done; the project map (`renyi index`, decision O2) exists with its budget
-report (`--budgets`, decisions O3 and R7) and its semantic diff (`--diff`,
-decision O4, T5); M3 (the VM) runs programs with every module of the
-standard library and implements decisions P1 and P2 (recorded runs,
-budgets, the grant stack of Q1, the run manifest and `renyi reproduce` of
-Q2) at its primitive boundary, which completes M3 (tasks run one after the
-other by decision S2); `renyi mcp` (decision O5, T1 to T5) serves all of
-it to an agent host. Design decisions are in sections 0 to U of
-`01-decisions.md`; the agent tooling in `05-agent-tooling.md`, the
-signature capabilities in `06-runtime-guarantees.md`, the system-level
-commitments in `07-system-design.md`. The corpus has 30 programs, passes
-the lint, is in canonical layout, checks cleanly, has nothing over
-budget, and its 89 `example:` lines and `test` blocks pass on the VM (six
-are `replays` tests answered from recordings under `examples/fixtures/`,
-two of them hand-written). The cheat sheet measures 2991 of 3000 tokens
-(decisions U1 to U3, U8 and U9: the one-argument sentence, every library
-method with its parameters, the call-form sentence, the sentence on
-refined construction). The Rust workspace has five crates:
+Milestones M0 (design), M1 (front end), M2 (type and effect checker) and
+M3 (the VM: `renyi run`, `record`, `run --replay`, `reproduce`,
+`--explain`, `test` with `replays`, budgets, the grant stack of Q1, the
+run manifest of Q2, every library module, the `only to` guards of P3,
+tasks one after the other by S2) are done, with the project map (`renyi
+index`, `--budgets`, `--diff`), `renyi tools` and `renyi mcp` on top. M4
+to M6 are not started (`docs/GAPS.md`, section 4). Design decisions are
+in sections 0 to V of `01-decisions.md`; the agent tooling in
+`05-agent-tooling.md`, the signature capabilities in
+`06-runtime-guarantees.md`, the system-level commitments in
+`07-system-design.md`; the open items in section 18 of the sketch (R3-1,
+`Iterable`) and section 6 of `docs/GAPS.md`.
+
+The owner's direction since 2026-10-06 (decision V1): the readability
+scores are no longer the gate; the aim is a self-hosted, independent
+language that people use; the grammar freezes by decision, not by
+measurement; the front end is written in Renyi first with the Rust VM as
+the runtime; the repository stays private until the owner says
+otherwise; the first users are people building agent workflows and
+learners. Before any of that the design was audited against the
+implementation (`docs/GAPS.md`, session 6) and the gaps filled (stage 1
+of its section 7, session 7). Stage 1 is done; what it left open is named
+in `docs/GAPS.md` (section 7, "Status") and under "Owner actions pending"
+below. The freeze entry is not written: V1 says the grammar freezes by
+decision, and the entry that names the frozen surface waits for the
+owner.
+
+The corpus has 30 programs, passes the lint, is in canonical layout,
+checks cleanly, has nothing over budget, and its `example:` lines and
+`test` blocks pass on the VM (six are `replays` tests answered from
+recordings under `examples/fixtures/`). The cheat sheet measures
+2994 of 3000 tokens. The Rust workspace has five crates:
 `renyi_syntax`, `renyi_check`, `renyi_index`, `renyi_vm` and the `renyi`
 binary with `check`, `format`, `tokens`, `parse [--json]`, `index [--json
 | --budgets | --diff <map or revision>]`, `run [--manifest] [options]
 <file> [arguments]`, `record [--to file] [options] <file> [arguments]`,
 `reproduce <recording> [<file>]`, `test [--strict] [--refresh name
-[--redact name]] [--explain] <file>...`, `mcp [path]` and `version`; 142
-tests, clippy and fmt clean on Windows. The VM depends on `ureq` (HTTP,
-with rustls) and `rusqlite` (SQLite compiled in), decision S1, and on
-`sha2` for the manifest and the hashes.
+[--redact name]] [--explain] <file>...`, `tools [path]`, `mcp [path]` and
+`version`; 201 tests, clippy and fmt clean on Windows with rustc 1.94.1.
+CI (`.github/workflows/ci.yml`) runs the same gates and the conformance
+suite (`tests/conformance/`, 35 cases; runners `tools/conformance.py`
+and `crates/renyi/tests/conformance.rs`) on GitHub's newest stable
+toolchain, which carries clippy lints the local one lacks: every CI run
+of session 7 before its last commit failed on four such lints in
+`renyi_index` (fixed in that commit; run `gh run list --limit 3` first
+thing and read the log of a failure with `gh run view <id>
+--log-failed`). The VM depends on `ureq` (HTTP, with rustls), `rusqlite`
+(SQLite compiled in), decision S1, and on `sha2`.
 
-Two live readability rounds exist, both with Explain graded by Claude
-Code subagents (decision U4; round 1's API-graded tally is kept beside in
-`scores-api.json`). Round 1 (`tests/readability/2026-10-05-1623155/`,
-session 5, three models through the vendor APIs, Explain re-graded in
-session 6) gave decisions R1 to R8 and stands at Sonnet 5.5 Predict 90,
-Explain 97, Complete 79, Write 40; Haiku 4.5 30, 90, 37, 0; gpt-5.4-mini
-80, 97, 32, 0. Round 2 (`tests/readability/2026-10-05-ed37120/`, session
-6, the four models of R8 on the cheat sheet after R1 to R8) gives, by the
-four-of-five rule with the VM judging Complete and Write: Sonnet 5.5 90,
-100, 89, 30; gpt-5.5 100, 100, 74, 10; Haiku 4.5 50, 87, 42, 0;
-gpt-5.4-mini 80, 97, 37, 0 (thresholds 90, 90, 80, 70 on the two gating
-models). Sonnet passes Complete; neither gating model passes Write, and
-gpt-5.5 misses Complete by one item. The grammar is not frozen. The four
-questions round 2 raised (decision M4 again, `rounded()` without
-`places`, zero-argument methods written as fields, the Explain grader
-kind) were answered by the owner in session 6 as decisions U1 to U4 and
-applied: the cheat sheet changed, the grammar and the library did not.
-The re-grade raised three questions, answered the same session as
-decisions U5 (a hand verdict extends to every sample repeating the
-sentence it called wrong; fourteen verdicts added across the rounds), U6
-(the five-point rule names the gating models; Haiku's Explain moved 90
-to 87 on wrong statements about the programs) and U7 (round 3's samples
-through the subscription channels). Round 3
-(`tests/readability/2026-10-06-3e7c45a/`, session 6, Sonnet 5.5 through
-the Claude Code CLI, gpt-5.5 stopped at 72 samples by the Codex quota)
-gives Sonnet 90, 100, 68, 40 and is a defect round: the cheat sheet
-listed `rounded(places: 2)` and `split()`, Claude's rendering of U2 and
-U3, the model copied both and the checker rejected every such sample
-(`invoice`, `shapes`, `word_count`, `compound_interest` at 0 of 5). The
-owner's answers are decision U8 (the list carries parameter names and a
-sentence gives the call form), the corrected sheet at 2998 tokens, and
-round 4 on it through the same channel as the measurement of U1 to U3;
-`count` stays reserved until gpt-5.5's data exists. Round 4
-(`tests/readability/2026-10-06-c696747/`, session 6, Sonnet 5.5 through
-the Claude Code CLI in an empty directory with no MCP server) gives
-Sonnet 90, 100, 79, 40 (strict 90, 100, 68, 10): no sample names a
-single argument, writes `rounded()` or a method as a field any more
-(43 named-argument lines in round 2, 0 now), the four items round 3
-lost to the defect are back, and the Write quarter rule holds for the
-first time. Complete is ten points under round 2 on four items whose
-slips no changed sentence touches (`otherwise` on a refined
-construction from a literal, none on one from a variable after a
-check, one `end` too many, `count`); the notes explain the fall and
-put three questions to the owner, answered the same session: the
-sentence is on the sheet (decision U9, 2991 tokens), the notes'
-explanation stands for the five-point rule without a decision entry,
-and gpt-5.5 does not run for now (the rounds continue on Sonnet). The
-grammar is not frozen: gpt-5.5 has not run on this sheet, and U9 has
-not been measured.
-
-On 2026-10-06 the owner shifted the goal: the readability scores are no
-longer the gate; the aim is a self-hosted, independent language that
-people use (and that future models then learn from their corpora). The
-owner chose to freeze the grammar now by decision rather than by
-measurement, to self-host the front end first with the Rust VM as the
-runtime, to keep the repository private until told otherwise, to aim the
-first users at people building agent workflows and at learners, and,
-before any of that, to audit the whole design against the implementation
-and fill the gaps. The audit is `docs/GAPS.md`: four subagents checked
-the seven design documents and the decision record promise by promise
-(the syntax audit alone wrote about 140 probe programs), and the session
-re-ran the probes behind every finding marked verified. Headlines: a
-`within` deadline crashes instead of failing; exhaustiveness checking
-has holes; `with` skips refinements at run time; private functions are
-callable across modules and public constants are not; `only to`,
-`expose as tool` and `deprecated:` parse and do nothing while the cheat
-sheet claims them; the nesting and body limits, the regex, `Url`, `Path`
-and `Date` literal checks, the `kind` rule and `see also:` are not
-implemented; no CI, no conformance suite, no formal grammar; M4 to M6
-not started. The freeze entry is not yet written: the owner's answers to
-the audit's questions decide what the frozen surface contains.
+Readability: four live rounds exist under `tests/readability/`; the last
+(round 4, `2026-10-06-c696747/`, Sonnet 5.5 through the Claude Code CLI)
+stands at Predict 90, Explain 100, Complete 79, Write 40. The rounds'
+`notes.md` and "Done in session 6" below hold the detail; decisions R1 to
+R8 and U1 to U9 came from them; they continue only if the owner asks
+(decision V1).
 
 ## The VM as it exists (`crates/renyi_vm`)
 
@@ -349,6 +292,62 @@ the audit's questions decide what the frozen surface contains.
   map as the base, with `--json` and against itself; `HEAD` as the base
   for the corpus and for one file; a bad base), the `diff` call in
   `tests/mcp.rs`, and a unit test of `own_text_hash`.
+
+## Done in session 7 (stage 1 of the gap audit)
+
+Twelve commits on `main`, each gated by fmt, clippy, the tests, the
+canonical corpus, the lint, the token gate and the conformance suite:
+
+1. `8c775cd` decisions V1 to V8 (the road to self-hosting; indentation
+   carries no meaning, continuation lines included, so the parser and
+   the lexer lost their indentation rules).
+2. `8bc1534` the checker enforces V5 (`nesting-depth`, `body-length`),
+   V6 (`deprecated:` tiers 1 and 2: the `deprecated` warning with the
+   replacement as its fix, an error under `renyi check --strict`, the
+   index drops the definition) and V7 (`task-independence`).
+3. `7ade49a` `renyi tools [path]` prints the tool manifest of decision
+   D6 (`crates/renyi_index/src/tools.rs`); `tool-type` rejects a
+   parameter or result JSON cannot carry.
+4. `71ad9d3` the `only to` guards of P3 run: origins as a bit set on
+   values (`Value::Guarded`), refusals at the boundary with the
+   prelude's `Guarded(origin, sink)`, the `guard-no-sink` warning
+   (`crates/renyi_vm/tests/guards.rs`).
+5. `d141e57` CI on every push and the conformance suite of V8.
+6. `c952ed9` the runtime keeps its promises: an expired `within`
+   deadline is the function's failure, `with` runs the refinements
+   again, `filesystem.copy` and `move` check the target against the
+   write scope, SQLite fails with `PermissionDenied` and `OverBudget`, a
+   declared `equals` decides `is`, a `Float` past its range is a crash,
+   `Text` and `List` edge cases, `module.constant`
+   (`crates/renyi_vm/tests/semantics.rs`).
+7. `e0023c4` the checker keeps the module rules: privacy for functions,
+   methods, constants and abilities (`private-name`), constants across
+   modules, an implementation carries the ability's signature
+   (`method-signature`), methods at home (`method-module`, K1), a
+   higher-order function declares only its own effects (B1, Q1), type
+   parameters in scope for body annotations, a let-bound literal takes
+   its own type.
+8. `56f13da` exhaustiveness is the usefulness check over the shapes of
+   the arms (`check.rs`, `missing`).
+9. `b997b93` one spelling of the range loop (`range-loop`), the module
+   name equals the path (`module-name`, G3), `.renyi` read everywhere.
+10. `7127dd8` the literal rules: a literal pattern checked by the engine
+    (`regex-invalid`, K3), `Url` and `Path` literals (`invalid-literal`,
+    N2), a `Date` from literals and from run-time values, a variant
+    field named `kind` under the JSON abilities (`kind-field`, K10),
+    `see also:` existence (`unknown-reference`, C8b), `ability X where
+    self can Y` (`missing-ability`), the `count` fix of M2; `Iterable`
+    struck from the core abilities (open item R3-1).
+11. `ccab15e` every diagnostic carries a fix (D3): the fix-less helpers
+    are gone from the lexer, the parser and the checker; the parser's
+    `expected` names the Renyi spelling of a foreign token (C4); the
+    lexer keeps `userName` as one name (C5); an unknown name suggests
+    the closest one in scope or the Renyi name of a foreign one
+    (`crates/renyi_check/src/suggest.rs`); both conformance runners
+    require a `fix:` line after every diagnostic.
+12. The last commit: the documents of `docs/GAPS.md` section 5
+    corrected, the four clippy lints of GitHub's toolchain fixed, this
+    handoff.
 
 ## Done in session 6
 
@@ -628,20 +627,32 @@ on a fresh clone).
 
 ## Owner actions pending
 
-- **The gap audit's questions** (`docs/GAPS.md`, section 7), asked at
-  the end of session 6: the order of the three stages; what to do with
-  the four parsed-but-empty features (`only to`, `expose as tool`,
-  `deprecated:` tiers, `process`/`foreign`); whether task independence
-  becomes a checker rule; CI and the conformance suite; and the new
-  decision entries for the contradictions (indentation continuation,
-  `Same`, the phrase table, the freeze by decision). If the session ended
-  before the answers, they are open, and the freeze entry waits for them.
-- **Readability**: the scores are no longer the gate (owner, 2026-10-06).
+- **The freeze entry.** V1 freezes the grammar by decision; the entry
+  that names the frozen surface (the sketch and the cheat sheet as of
+  `ccab15e`, with the `Iterable` correction) is not written. Ask with
+  AskUserQuestion before writing it.
+- **Three notes from stage 1 that may deserve a decision entry:** (1)
+  under B1 and Q1 a function passed to a higher-order function runs
+  under the grant in force where it is called, so the higher-order
+  function's own `needs` narrows it (sketch section 3 says so; no
+  entry); (2) `Iterable` is struck from the core abilities of sketch
+  section 5 as a document correction, with open item R3-1 for an
+  iteration ability; (3) a function value stored in a collection and
+  called later is charged nowhere statically (GAPS 1.11).
+- **The residue of stage 1**, named in `docs/GAPS.md` (section 7,
+  "Status"): the primitives that cannot fail still crash on a scope
+  denial, the recording's grant header is not compared with a test's
+  `needs`, `Hash` implementations are never called, entry 1.18.
+- **CI's toolchain**: GitHub runs the newest stable rustc; the machine
+  has 1.94.1 and 1.95.0, whose clippy misses lints the runner raises.
+  Either pin `dtolnay/rust-toolchain` to the local version in `ci.yml`
+  or run `rustup update` before a session; the owner's call.
+- **Readability**: the scores are no longer the gate (decision V1).
   Round 5 (U9's sentence) and gpt-5.5 run only if the owner asks.
 - Session 5 printed the values of `ANTHROPIC_API_KEY` and
-  `OPENAI_API_KEY` into a tool result once (not committed); the owner said
-  in session 6 that they handle the transcript and the keys themselves, so
-  no session needs to raise it again.
+  `OPENAI_API_KEY` into a tool result once (not committed); the owner
+  said in session 6 that they handle the transcript and the keys
+  themselves, so no session needs to raise it again.
 
 ## Done in sessions 1 to 4 (condensed)
 
@@ -668,13 +679,16 @@ on a fresh clone).
 
 ## Next steps
 
-1. **Stage 1 of `docs/GAPS.md`, section 7**: fix the defects of its
-   section 1 (start with the deadline crash, exhaustiveness, `with`,
-   privacy and constants: each has a verified probe to turn into a
-   test), write the checks of section 2, act on the owner's answers
-   for section 3, correct the documents of section 5, add CI and the
-   conformance suite. Then the freeze entry, the formal grammar and
-   the language reference, then the self-hosted front end (stage 2).
+1. **Stage 2 of `docs/GAPS.md`, section 7**: the freeze entry (the
+   owner's); the formal grammar (EBNF) and the language reference
+   derived from the sketch and the cheat sheet, checked against the
+   parser on the corpus and the conformance programs; a bytecode file
+   format or a loader so that a compiler written in Renyi has something
+   to emit; the performance items a compiler needs (in-place
+   collections, string building, a pattern cache for `Text.matches`);
+   then the self-hosted lexer and parser, tested against `renyi parse
+   --json` on the corpus, then the checker and the emitter, with the
+   Rust toolchain as stage 0 and the Rust VM as the runtime.
 2. **Readability, only on request**: round 5 on Sonnet measures U9
    (`run.py prepare`, the Sonnet command at the end of this item after
    its probe, the graders, `score`, the U5 search, `report`, the
@@ -702,19 +716,19 @@ on a fresh clone).
    the Predict answer on `traffic_light` (0 of 5 with right lines); the
    rubric's reading of "only X and Y" when Z is also needed (round 1 and
    2 read it as a need missing).
-4. **M4** (provenance guards `only to`, the package manager, budgets in
-   the manifest) and **M5** (embedding API, `serve --watch`, LSP) as
-   before; open items R5-5 (per-definition refresh in `renyi mcp`) and
-   R7-4.
+4. **M4** (the package manager, budgets in the manifest, `std.process`,
+   FFI) and **M5** (embedding API, `serve --watch`, LSP, a resident
+   `World`, open item R5-5) as before: stage 3 of `docs/GAPS.md`.
 
 ## Known gaps and risks
 
 - **VM.** `break` or `continue` as the outcome of an `if` or `match`
   *expression* nested inside another expression leaves that expression's
   partial operands on the stack (statements and loop bodies are clean); no
-  corpus program does this. `Equal` and `Hash` are always structural: a
-  user implementation of either is not called (the sketch derives `Equal`
-  for every data type; `Hash` implementations are not in the corpus). A
+  corpus program does this. A declared `equals` decides `is` and `is
+  not` (session 7); `contains`, `index_of`, sets and maps keep the
+  derived form, and a user `Hash` implementation is never called (the
+  sketch's ability table says so). A
   value's `IsType` test for a builtin (`when failure(error: Text)`) is by
   kind. `random` is seeded from the clock; a run is reproducible through
   its recording only. `Float.to_text` is Rust's shortest round-trip form.
@@ -779,8 +793,10 @@ on a fresh clone).
   name is joined onto the source directory as given.
 - **Checker.** First-generation (local inference, covariant type arguments,
   structural ability checks, capabilities checked at call sites only; no
-  `example:` literal check, no `see also` check, no `deprecated` warnings,
-  no unreachable-pattern detection). The `ignore-pure` rule counts a call
+  `example:` literal check, no unreachable-pattern detection). Since
+  session 7 exhaustiveness is the usefulness check, `see also:` names are
+  checked, `deprecated:` warns, literal patterns, URLs, paths and dates
+  are checked, and every diagnostic carries a fix. The `ignore-pure` rule counts a call
   with effects anywhere inside the ignored expression. The condition
   bodies bind every field of the record or variant, which the sketch
   (section 4: "over the field name") does not promise; a condition that

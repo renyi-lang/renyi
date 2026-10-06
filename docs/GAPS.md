@@ -56,12 +56,11 @@ Ordered by how much they matter to the language's promises.
    signature**: the parameters by name and type, the result and the
    failures, with `Self` read as the target (`world.rs`,
    `check_method_signature`; `method-signature`). Tested in `rules.rs`.
-7. **Task independence is not enforced.** A `run concurrently` body is
-   checked in the enclosing scope (`check.rs:1289-1298`); two tasks may
-   `set` one outer mutable and a task may read a sibling's binding
-   (verified: both check clean). The claim that a race cannot be written
-   (decision E1, `07-system-design.md` row Concurrency) holds today only
-   because tasks run one after the other (decision S2).
+7. Done in stage 1 (decision V7): **task independence is a checker
+   rule**: a task of `run concurrently` may not `set` a mutable binding
+   declared outside the block and may not read a binding declared by
+   another task of the same block (`task-independence`; conformance
+   case `task_independence.ry`).
 8. **The boundary crashes where the design says a failure.** Done in
    stage 1: `std.sqlite` fails with the new `DbError.PermissionDenied` and
    `DbError.OverBudget` (`library/std/sqlite.ry`; `vm.rs`, `denied` and
@@ -72,14 +71,9 @@ Ordered by how much they matter to the language's promises.
    crash, and `StartError` has no `PermissionDenied` or `OverBudget`
    variant. Containment is lexical: no canonical path, no symlink
    handling (`grant.rs`, the path containment).
-9. **Indentation is semantic for continuation lines**, against decision
-   C2 and the cheat sheet's first paragraph: a statement continues only
-   when the next line is indented deeper and starts with a continuation
-   word (`crates/renyi_syntax/src/parser.rs:166-177, 303-315`); the lexer
-   ends documentation clauses by indentation (`lexer.rs:307-326`). The
-   sketch documents the rule (section 1); the decision record does not.
-   Verified: `otherwise 0` at the statement's own column is "expected an
-   expression, found `otherwise`".
+9. Done in stage 1 (decision V2): **indentation carries no meaning,
+   continuation lines included**; the sketch's section 1 states the
+   rule and the lexer and the parser follow it (commit `8c775cd`).
 10. Done in stage 1: **a method is declared in the module of its type**
     (decision K1): a `self:` function whose head type another module
     declares is `method-module` (`world.rs`, `declare_function`). Tested
@@ -306,31 +300,34 @@ freeze, or take it out of the frozen surface until it exists.
 
 ## 5. Documents that claim what does not exist, or contradict each other
 
-- `docs/cheatsheet.md`: `only to` enforced (221-222); `expose as tool`
-  publishes to agents (251-252); `deprecated:` warns callers (253);
-  "Indentation is never meaning" (4); the `public ability Describable`
-  block (101-103) has no `purpose:` and the checker rejects it (verified:
-  `purpose-missing`).
-- `docs/design/05-agent-tooling.md:75, 178-180`: the limits are enforced;
-  253-254: a resident `World`; the section 4 example's `text_hash` prefix
-  is stale.
-- `docs/design/04-stdlib-sketch.md:226`: `is`, `contains` and `index_of`
-  use `equals`; 229: `console.print` of non-text values (decision K11 says
-  `Text` only).
-- `docs/design/02-syntax-sketch.md:65, 325`: R2-1 and R2-5 called open
-  (settled as J2 and J10); 237: `json.parse(text: text, naming: CamelCase)`
-  (decision K5 replaced it with `parse_with`).
-- `docs/design/01-decisions.md`: C2 against the parser (item 1.9); C3b
-  against the library (`Same`); C4a says the phrase table is printed in
-  full in the cheat sheet (dropped by U8 and U9 to pay for other
-  sentences; it survives in the sketch, section 17); C8c tier 1 against
-  the index; H2, R1, R8 and U9 still freeze the grammar by measurement
-  with two gating models, against the owner's decision of 2026-10-06 to
-  freeze by decision (not yet recorded as an entry).
-- `docs/design/07-system-design.md:26`: `example:` mandatory at the
-  boundary (decisions C8a and C8b make it optional).
-- `README.md:27`: `.renyi` equals `.ry`; `crates/renyi/Cargo.toml:3`:
-  "building".
+Corrected at the end of stage 1 (session 7); kept as the record of what
+was wrong.
+
+- `docs/cheatsheet.md`: `only to` enforced (221-222), `expose as tool`
+  publishes to agents (251-252), `deprecated:` warns callers (253) and
+  "Indentation is never meaning" (4) are true since decisions V2 and V6;
+  the `ability Describable` block (101-103) is no longer `public`, so it
+  needs no `purpose:` and the checker accepts it.
+- `docs/design/05-agent-tooling.md:75, 178-180`: the limits are enforced
+  since V5; 253-254 now say that `renyi mcp` re-reads the served
+  directory on every call and that a resident `World` is open item R5-5;
+  the section 4 example's `text_hash` carries the `sha256:` prefix
+  `own_text_hash` writes.
+- `docs/design/04-stdlib-sketch.md:226`: `is` and `is not` use a declared
+  `equals` since session 7 and the table says which operations keep the
+  derived form; 229 no longer names `console.print` of non-text values
+  (decision K11).
+- `docs/design/02-syntax-sketch.md:65, 333`: R2-1 and R2-5 now cite J2
+  and J10; 245 names `json.parse_with` (decision K5).
+- `docs/design/01-decisions.md`: C2 is restored by V2, C3b is read with
+  `Same` by V3, C4a's phrase table is placed by V4, C8c tier 1 is
+  delivered by V6, and the freeze by decision is recorded as V1; H2, R1,
+  R8 and U9 stand as the record of the measurement that preceded it.
+- `docs/design/07-system-design.md:26`: `example:` is no longer called
+  mandatory at the boundary (C8a makes `purpose:` mandatory, C8b makes
+  `example:` a tested clause).
+- `README.md:27`: `.renyi` equals `.ry` since `b997b93`;
+  `crates/renyi/Cargo.toml:3` no longer says "building".
 
 ## 6. Open items in the design documents
 
@@ -377,3 +374,17 @@ documents say.
 3. **The milestones**: M4 (packages, FFI, the `only to` runtime if not
    done in stage 1), M5 (embedding API, sandbox budgets, live update, LSP,
    resident `World`), M6 (`renyi build`, AOT and WASM), real concurrency.
+
+### Status at the end of session 7 (2026-10-06)
+
+Stage 1 is done. Sections 1, 2, 3 and 5 are resolved except the residue
+their entries name: 1.8 (the server and the primitives that cannot fail
+crash on a scope denial; containment is lexical), 1.11 (a function value
+stored in a collection is charged nowhere statically), 1.14 (the
+recording's grant header is not compared with a test's `needs`), 1.17
+(`Hash` implementations are never called; collections keep the derived
+equality; `repeat`, `pad` and the rounding places go through `small()`),
+1.18, 3.4 (`process` and `foreign` wait for M4) and 3.6 (the memory
+budget has no syntax). Section 4 is stages 2 and 3; section 6 is
+unchanged, plus R3-1 (`Iterable`) in the sketch. The next step is the
+freeze entry, then the formal grammar.

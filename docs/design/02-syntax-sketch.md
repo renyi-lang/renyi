@@ -62,7 +62,7 @@ separates the words of a phrase; a phrase cannot span lines.
 | `true`, `false` | `Boolean` | |
 | `nothing` | `maybe T` | the absent value |
 | `[1, 2, 3]`, `[]` | `List of T` | |
-| `{"a": 1, "b": 2}`, `{}` | `Map of K to V` | JSON notation, kept as universal (open item R2-1) |
+| `{"a": 1, "b": 2}`, `{}` | `Map of K to V` | JSON notation (decision J2) |
 | `from 1 to 10`, `from 0 to 100 by 5` | `Range` | inclusive on both ends; optional step |
 
 **Interpolation.** Every `"..."` literal interpolates `{expression}`, so a
@@ -242,8 +242,8 @@ age: user.age + 1`; a changed field with a refinement is checked again, so
 the update can fail like a construction and takes `otherwise` by the same
 rule (decision U9). `has kind: Text as "type"` gives a field the external name
 that `ToJson`, `FromJson` and `FromRow` use, for keys that are reserved words
-or contain punctuation; `json.parse(text: text, naming: CamelCase)` maps a
-whole record by convention (decision J14).
+or contain punctuation; `json.parse_with(text: text, naming: CamelCase)` maps
+a whole record by convention (decisions J14, K5).
 
 **Variants** (`is one of`). Each variant is a record with zero or more fields;
 `Point` has none. Construction: `Circle(radius: 2.5)`, `Point`. Matching is
@@ -330,7 +330,7 @@ ability Sized for Stack of Item
 end
 ```
 
-Default method bodies are not in v1 (open item R2-5).
+Default method bodies are not in v1 (decision J10).
 
 Core abilities in the prelude: `Equal`, `Compare`, `Hash`, `ToText`, `ToJson`,
 `FromJson`. (`Iterable`, listed in earlier drafts, is not declared: `for

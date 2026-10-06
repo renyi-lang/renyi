@@ -46,6 +46,9 @@ implementation.
 - A new diagnostic or a new reference output gets a case in
   `tests/conformance/manifest.json`, which `cargo test` and
   `tools/conformance.py` both run.
+- Every diagnostic carries a fix (decision D3): the lexer's, the parser's
+  and the checker's helpers take the fix as an argument, and both
+  conformance runners require a `fix:` line after every diagnostic.
 - `main` is the only branch (owner's decision, 2026-10-05). Commit and push
   there directly; do not create other branches, local or remote.
 - Before ending a session, rewrite `docs/HANDOFF.md` so the next session can
@@ -71,8 +74,8 @@ implementation.
 | `tests/conformance/` | the conformance suite (decision V8): `manifest.json` (cases: program, command, expected output, exit code, diagnostic codes), `expected/` (the outputs, the ten Predict references among them), `programs/` (programs written for one diagnostic or guarantee), `README.md` |
 | `tests/readability/` | harness for the readability protocol: `run.py`, manifest, the Explain references, Write tasks |
 | `.github/workflows/ci.yml` | continuous integration: format, clippy, tests, canonical corpus, lint, token gate, conformance suite |
-| `crates/renyi_syntax/` | spans, diagnostics, lexer, AST, parser, JSON encoder, formatter; `tests/corpus.rs` runs the corpus through all of them, `tests/library.rs` parses the library declarations |
-| `crates/renyi_check/` | the type and effect checker (M2): `world.rs` declares modules, `check.rs` checks bodies, `effects.rs` covers capabilities, `refine.rs` evaluates refinements on literals; `tests/corpus.rs` and `tests/rules.rs` |
+| `crates/renyi_syntax/` | spans, diagnostics, lexer, AST, parser, JSON encoder, formatter; `tests/corpus.rs` runs the corpus through all of them, `tests/library.rs` parses the library declarations, `tests/diagnostics.rs` checks that every diagnostic carries a fix and that a foreign spelling gets the Renyi one |
+| `crates/renyi_check/` | the type and effect checker (M2): `world.rs` declares modules, `check.rs` checks bodies, `effects.rs` covers capabilities, `refine.rs` evaluates refinements on literals, `suggest.rs` proposes the fixes (the closest name in scope, the Renyi spelling of a foreign name, the prelude's conversions); `tests/corpus.rs` and `tests/rules.rs` |
 | `library/std/` | the standard library as Renyi declaration files (one per module), compiled into the checker; kept in step with `04-stdlib-sketch.md` by a test |
 | `crates/renyi_index/` | the project map (`renyi index`): `lib.rs` builds the records from the checked program, `metrics.rs`, `hash.rs` (content hashes and the own-text hash), `budgets.rs`, `render.rs` (text and JSON), `diff.rs` (the semantic diff: changes, reach, version bump); `tests/corpus.rs`, `tests/diff.rs` |
 | `crates/renyi_vm/` | the VM (M3): `compile/` lowers the checked tree to bytecode (`bytecode.rs`) through the checker's recorded references, `vm.rs` runs it and holds the primitive boundary (`call_native`: grant and budget checks, recording, replay, narration), `grant.rs` the effective grant and budget counters, `recording.rs` the recording format, the run manifest, redaction and the replay, `natives/` the library primitives, `runner.rs` runs `main`, examples and tests and reproduces a recording; `tests/corpus.rs` checks the ten expected outputs and every `example:` and `test` block, `tests/recording.rs` the boundary, `tests/guards.rs` the `only to` guards, `tests/semantics.rs` the promises of the gap audit (deadlines, refined updates, the boundary's failures, `equals`, the Float range, edge cases), `tests/network.rs` the server, the client and SQLite, `tests/queries.rs` the terminals after `group by` |

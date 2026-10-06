@@ -23,7 +23,7 @@ corpus and M3 the rest.
 |-----------|---------------|----------------|
 | Memory | Rust's predictability without pauses; a collector's ease | reference counting with in-place reuse of uniquely held values: no lifetimes in the language, no pauses (O1) |
 | Expressiveness | Haskell's type power; Go's readability | algebraic types, generics, abilities, refinements and effects, with one spelling per concept, no overloading, no macros and size limits (C1, C4, D4) |
-| Speed of writing | Python's brevity; Java's maintainability | full inference inside bodies; signatures, `purpose:` and `example:` mandatory at the boundary (B5b, C8a) |
+| Speed of writing | Python's brevity; Java's maintainability | full inference inside bodies; signatures and `purpose:` mandatory at the boundary, `example:` lines run as tests (B5b, C8a, C8b) |
 | Concurrency | performance; freedom from data races | structured concurrency over values with no shared mutable state, so a race cannot be written (E1) |
 | Debugging | a live system (Smalltalk, Erlang); static safety | recorded, replayable, narrated runs (P1) and checked live update (section 5) |
 | Reuse | depending on others' code; knowing what it does | a dependency's effects are computed and must be granted (section 2) |

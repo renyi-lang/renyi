@@ -250,8 +250,9 @@ loaded by `crates/renyi/src/maps.rs`.
 
 `renyi mcp` (decision O5) serves the toolchain to any agent host over
 JSON-RPC on standard input and output, following the Model Context
-Protocol. It keeps the checker's `World` for the project directory resident
-and refreshes definitions whose content hash changed.
+Protocol. It re-reads and re-checks the served directory on every call that
+needs the map; a resident `World` that refreshes only the definitions whose
+content hash changed is open item R5-5.
 
 | Tool | Input | Output |
 |------|-------|--------|

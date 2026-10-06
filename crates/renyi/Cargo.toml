@@ -1,6 +1,6 @@
 [package]
 name = "renyi"
-description = "The Renyi toolchain: one binary for checking, formatting, running and building Renyi programs"
+description = "The Renyi toolchain: one binary for checking, formatting, running, testing and indexing Renyi programs"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

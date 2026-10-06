@@ -283,7 +283,7 @@ fn body_key(body: BodyLocation) -> BodyKey {
             item,
             method,
             example,
-        } => (3, item, method.map_or(usize::MAX, |m| m), example),
+        } => (3, item, method.unwrap_or(usize::MAX), example),
         // a refinement's calls belong to the type: tracked with the type's
         // other references once conditions count as a body (not yet)
         BodyLocation::Condition {
@@ -293,8 +293,8 @@ fn body_key(body: BodyLocation) -> BodyKey {
         } => (
             4,
             item,
-            variant.map_or(usize::MAX, |v| v),
-            field.map_or(usize::MAX, |f| f),
+            variant.unwrap_or(usize::MAX),
+            field.unwrap_or(usize::MAX),
         ),
     }
 }

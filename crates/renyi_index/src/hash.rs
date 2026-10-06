@@ -100,7 +100,7 @@ pub fn hashes(inputs: &[Input], library_version: &str) -> Vec<String> {
                 };
                 edits.push((start, end, replacement));
             }
-            edits.sort_by(|a, b| (b.0, b.1).cmp(&(a.0, a.1)));
+            edits.sort_by_key(|edit| std::cmp::Reverse((edit.0, edit.1)));
             edits.dedup_by(|a, b| a.0 == b.0 && a.1 == b.1);
             let mut text = input.text.clone();
             for (start, end, replacement) in edits {
