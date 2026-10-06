@@ -7,7 +7,8 @@ server and SQLite; the grant stack; recordings for every network and
 database program, `--redact`; the run manifest and `renyi reproduce`;
 decision L2 carried out, the VM judging Complete and Write; terminals
 after `group by` per group; `renyi mcp`, the toolchain for agent hosts;
-readability round 2 being collected).
+the semantic diff, `renyi index --diff` and the `diff` tool; readability
+round 2 collected, graded and written up, four questions open).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -15,41 +16,46 @@ and push there directly.
 
 Milestones M0 (design), M1 (front end) and M2 (type and effect checker) are
 done; the project map (`renyi index`, decision O2) exists with its budget
-report (`--budgets`, decisions O3 and R7); M3 (the VM) runs programs with
-every module of the standard library and implements decisions P1 and P2
-(recorded runs, budgets, the grant stack of Q1, the run manifest and
-`renyi reproduce` of Q2) at its primitive boundary, which completes M3
-(tasks run one after the other by decision S2). Design decisions are in
-sections 0 to S of `01-decisions.md`;
-the agent tooling in `05-agent-tooling.md`, the signature capabilities in
-`06-runtime-guarantees.md`, the system-level commitments in
-`07-system-design.md`. The corpus has 30 programs, passes the lint, is in
-canonical layout, checks cleanly, has nothing over budget, and its 89
-`example:` lines and `test` blocks pass on the VM (six are `replays`
-tests answered from recordings under `examples/fixtures/`, two of them
-hand-written). The cheat sheet
-measures 2977 of 3000 tokens (unchanged this session). The Rust workspace
-has five crates: `renyi_syntax`, `renyi_check`, `renyi_index`, `renyi_vm`
-and the `renyi` binary with `check`, `format`, `tokens`, `parse [--json]`,
-`index [--json | --budgets]`, `run [--manifest] [options] <file>
-[arguments]`, `record [--to file] [options] <file> [arguments]`,
+report (`--budgets`, decisions O3 and R7) and its semantic diff (`--diff`,
+decision O4, T5); M3 (the VM) runs programs with every module of the
+standard library and implements decisions P1 and P2 (recorded runs,
+budgets, the grant stack of Q1, the run manifest and `renyi reproduce` of
+Q2) at its primitive boundary, which completes M3 (tasks run one after the
+other by decision S2); `renyi mcp` (decision O5, T1 to T5) serves all of
+it to an agent host. Design decisions are in sections 0 to T of
+`01-decisions.md`; the agent tooling in `05-agent-tooling.md`, the
+signature capabilities in `06-runtime-guarantees.md`, the system-level
+commitments in `07-system-design.md`. The corpus has 30 programs, passes
+the lint, is in canonical layout, checks cleanly, has nothing over
+budget, and its 89 `example:` lines and `test` blocks pass on the VM (six
+are `replays` tests answered from recordings under `examples/fixtures/`,
+two of them hand-written). The cheat sheet measures 2977 of 3000 tokens
+(unchanged this session). The Rust workspace has five crates:
+`renyi_syntax`, `renyi_check`, `renyi_index`, `renyi_vm` and the `renyi`
+binary with `check`, `format`, `tokens`, `parse [--json]`, `index [--json
+| --budgets | --diff <map or revision>]`, `run [--manifest] [options]
+<file> [arguments]`, `record [--to file] [options] <file> [arguments]`,
 `reproduce <recording> [<file>]`, `test [--strict] [--refresh name
-[--redact name]] [--explain] <file>...`, `mcp [path]` and `version`; 134
-tests, clippy and fmt clean on Windows. The VM depends on `ureq` (HTTP, with rustls) and
-`rusqlite` (SQLite compiled in), decision S1, and on `sha2` for the
-manifest.
+[--redact name]] [--explain] <file>...`, `mcp [path]` and `version`; 142
+tests, clippy and fmt clean on Windows. The VM depends on `ureq` (HTTP,
+with rustls) and `rusqlite` (SQLite compiled in), decision S1, and on
+`sha2` for the manifest and the hashes.
 
-The first live readability round (`tests/readability/2026-10-05-1623155/`)
-stands as session 5 left it, now with the VM judging Complete and Write
-(decision L2: `run.py compare`, then a re-score): the VM agreed with the
-subagents on every judged sample once a VM bug the comparison exposed was
-fixed (`group by` with `sum`, item 11 below), so the rates are unchanged:
-Sonnet 5.5 passes Predict (90) and Explain (97), misses Complete by one
-item (79) and Write by three (40); Haiku 4.5 and gpt-5.4-mini are below on
-all but Explain. Since decision R1 only the
-large model of each vendor gates the freeze. The grammar is not frozen; the
-owner's decisions R1 to R8 are applied; the cheat sheet changes of R3, R5
-and R6 are unmeasured (round 2, below).
+Two live readability rounds exist. Round 1
+(`tests/readability/2026-10-05-1623155/`, session 5, three models through
+the vendor APIs) gave decisions R1 to R8. Round 2
+(`tests/readability/2026-10-05-ed37120/`, this session, the four models
+of R8 on the cheat sheet after R1 to R8) gives, by the four-of-five rule
+with the VM judging Complete and Write: Sonnet 5.5 Predict 90, Explain
+100, Complete 89, Write 30; gpt-5.5 100, 100, 74, 10; Haiku 4.5 50, 90,
+42, 0; gpt-5.4-mini 80, 97, 37, 0 (thresholds 90, 90, 80, 70 on the two
+gating models). Sonnet now passes Complete; neither gating model passes
+Write, and gpt-5.5 misses Complete by one item. The grammar is not frozen.
+Its `notes.md` has the analysis; the four questions it raises (decision
+M4 again, `rounded()` without `places`, zero-argument methods written as
+fields, the Explain grader kind) were put to the owner at the end of the
+session and are unanswered as this handoff is written (see Owner actions
+pending).
 
 ## The VM as it exists (`crates/renyi_vm`)
 
@@ -72,6 +78,8 @@ and R6 are unmeasured (round 2, below).
   `json.parse`). Locals are slots on the value stack; `set x to
   x.method(...)` loads the receiver with `LoadMove` when the arguments do
   not read `x`, so lists, maps and sets grow in place (decision O1).
+  `Op::GroupFold` folds `sum`, `count`, `first`, `any` and `all` per group
+  after `group by` (decision M1).
 - **Failures.** A fallible call that fails leaves a `Failure` value. The
   value of an `otherwise` and the subject of a `match` with
   `success`/`failure` arms are *handled regions* (`PushHandler` /
@@ -134,19 +142,19 @@ and R6 are unmeasured (round 2, below).
   split into its children first), with one counter per `at most` budget,
   declared or added by `--at-most`. An effect outside the grant fails with
   `FileError.PermissionDenied` or `HttpError.HostNotAllowed`, past a budget
-  with `OverBudget` (added to both error types this session), and crashes
-  when the primitive cannot fail. Live, the call runs and is appended to
-  the recording (`Call { capability, primitive, arguments by name,
-  outcome success/failure, duration_ms, at_ms }`, JSON by the `ToJson`
-  rules); replaying, the entry with the same primitive and arguments
-  answers it (identical entries in sequence order), its outcome decoded by
-  the declared result and error types (`FunctionMeta.returns`/`fails`; a
-  type-parameter result uses the context type the checker now records for
-  effectful primitives), nothing is written or sent, and a call the
-  recording lacks crashes naming the call and the nearest recorded one.
-  `--explain` narrates on stderr: `Purpose. (module.name, param: value)`
-  on entry, `-> value` on exit, and each effect as `console "text"` or
-  `capability name(args) -> result[, N ms]`, indented by call depth.
+  with `OverBudget`, and crashes when the primitive cannot fail. Live, the
+  call runs and is appended to the recording (`Call { capability,
+  primitive, arguments by name, outcome success/failure, duration_ms,
+  at_ms }`, JSON by the `ToJson` rules); replaying, the entry with the
+  same primitive and arguments answers it (identical entries in sequence
+  order), its outcome decoded by the declared result and error types
+  (`FunctionMeta.returns`/`fails`; a type-parameter result uses the
+  context type the checker records for effectful primitives), nothing is
+  written or sent, and a call the recording lacks crashes naming the call
+  and the nearest recorded one. `--explain` narrates on stderr: `Purpose.
+  (module.name, param: value)` on entry, `-> value` on exit, and each
+  effect as `console "text"` or `capability name(args) -> result[, N
+  ms]`, indented by call depth.
 - **The grant stack** (decision Q1; `grant::within`, `Vm::frame_grant`).
   Every frame carries its effective grant: the enclosing frame's (the
   run's for `main` and for a test body), narrowed by the `needs` of the
@@ -204,7 +212,7 @@ and R6 are unmeasured (round 2, below).
   requested version is echoed when it is one of those, else 2025-11-25).
   `ping` answers in both. A legacy `tools/call` is served without an
   `initialize` first.
-- Nine tools, in `tools/list` order: `cheat_sheet` (the cheat sheet is
+- Ten tools, in `tools/list` order: `cheat_sheet` (the cheat sheet is
   compiled into the binary), `library_lookup` (every top-level declaration
   of `library/std`, scanned by line into module, name, receiver type, head
   with its clauses, purpose; every word of the query must occur, entries
@@ -218,21 +226,62 @@ and R6 are unmeasured (round 2, below).
   `allow_write`, `at_most`, `replay`, `explain`: the program's output, its
   standard error under a heading, then `--- finished ---` or the outcome;
   a run that did not finish or exited non-zero is a tool error),
-  `run_tests` (`strict`, `explain`). A missing or ill-typed argument and a
-  failing tool are tool execution errors (`isError: true`); an unknown tool
-  or method is a protocol error.
+  `run_tests` (`strict`, `explain`), `diff` (`base`: a saved map file
+  under the served directory or a git revision; `json`; the same text or
+  JSON as `renyi index --diff`). A missing or ill-typed argument and a
+  failing tool are tool execution errors (`isError: true`); an unknown
+  tool or method is a protocol error.
 - The map (`Map::refresh`) is rebuilt when any file of the served
   directory differs from the one the last map was built from (decision
   T4); the compiled program of `run` and `run_tests` is built per call.
-  `main.rs` gained the non-printing `compile_sources`, `diagnose` and
-  `read_source` that the commands and the server share.
+  `main.rs` holds the non-printing `compile_sources`, `diagnose`,
+  `read_source` and `toolchain` that the commands and the server share;
+  `maps.rs` loads the base of a diff.
 - `crates/renyi/tests/mcp.rs` drives the binary over pipes: the legacy
   handshake, the tool list, the cheat sheet, a run of `hello.ry`, a
   `check` of source text, an unknown tool, `ping`; the modern discovery, a
   `definition` with its version, an unsupported version, missing
   capabilities, an unknown method, a malformed line, the tool list's cache
   hints; and the lookup, map, effects, format, tests, a denied run, the
-  JSON map and an unknown definition.
+  JSON map, an unknown definition and a `diff` against `HEAD`.
+
+## The semantic diff as it exists (`crates/renyi_index/src/diff.rs`)
+
+- `renyi index --diff <base> [--json] [path]` (and the `diff` tool)
+  compares the project with a base: a map file `renyi index --json`
+  wrote, read with the VM's JSON reader (`text_hash` optional, so maps
+  from before this session load), or a git revision, whose `.ry` files
+  (`git ls-tree`, `git show`; for a single file, its import closure at
+  the revision) are indexed afresh with the same toolchain
+  (`crates/renyi/src/maps.rs`). An argument that is neither is an error.
+- Definitions are matched by qualified name; a name gone whose content
+  hash (`id`, decision D5) is back under another name is one `renamed`
+  entry and its callers are untouched. Per matched definition the changes
+  are `signature` (the head and its clauses, so `needs` and `or fails
+  with` count), `visibility`, `effects` widened or narrowed (on every
+  definition whose transitive effects differ, callers included),
+  `failures` added or removed, and `body` when the definition's own text
+  hash or its `calls`/`uses` edges (old names translated through the
+  renames) changed with the signature unchanged; `added` and `removed`
+  otherwise. Each entry lists what it reaches: every transitive caller
+  through `calls` and `uses` (in the old map for a removed definition).
+  The bump of decision G1: a public definition removed, its signature
+  changed, made private or renamed is `major`; one added or made public
+  is `minor`; else `none`.
+- `text_hash` (decision T5, `hash::own_text_hash`) is the SHA-256 of the
+  definition's canonical text with its own name and every reference to a
+  project definition blanked, and nothing appended, so it changes only
+  when the definition's own text does; `id` also changes when a
+  dependency does. Both are in every record (`renyi index --json`,
+  `definition`, section 4 of `05-agent-tooling.md`). A map without
+  `text_hash` falls back to `id` for the body test.
+- Tests: `crates/renyi_index/tests/diff.rs` (a body change reported once
+  and reaching its callers, a public signature change forcing a major
+  bump, a rename by hash, added and removed definitions, an effect gained
+  below widening the callers), `crates/renyi/tests/index.rs` (a saved
+  map as the base, with `--json` and against itself; `HEAD` as the base
+  for the corpus and for one file; a bad base), the `diff` call in
+  `tests/mcp.rs`, and a unit test of `own_text_hash`.
 
 ## Done in session 6
 
@@ -243,7 +292,7 @@ and R6 are unmeasured (round 2, below).
    `tests/corpus.rs` runs the ten Predict programs of the readability
    manifest against `tests/readability/reference/*.out` (all ten match: the
    hand-derived references are confirmed), every `example:` and `test` of
-   the corpus (82 items, all pass), and a failing and a crashing `main`.
+   the corpus, and a failing and a crashing `main`.
 2. **Checker changes the VM needed**, each recorded as a reference so the
    map is unaffected: `Target::Number(NumberKind)` on every numeric literal
    and on a `sum` query (the literal takes the type its context expects, so
@@ -351,19 +400,42 @@ and R6 are unmeasured (round 2, below).
     re-scored with the cached Explain grades (no API call): the live
     round's rates are unchanged; agent-sonnet in the pre-test loses the
     four `while` samples. Each round's `notes.md` has a section on it.
-12. **Readability round 2 started** (no commit of its own yet). The owner
-    chose all four models (Sonnet 5.5 and gpt-5.5 at their default
-    temperature, the gating models of R1 and R8; Haiku 4.5 and
-    gpt-5.4-mini at 0), the graders of round 1 and in-session
-    adjudication. `run.py prepare` wrote `tests/readability/2026-10-05-ed37120/`
-    (69 prompts; the cheat sheet of `ed37120`, with the R3, R5 and R6
-    clarifications and the derived `ToText` rule) and the four `run`s
-    were started in the background.
-13. **`renyi mcp`** (eighth commit; decisions T1 to T4, asked as a batch
+12. **`renyi mcp`** (eighth commit; decisions T1 to T4, asked as a batch
     of four): `crates/renyi/src/mcp.rs` as described above, its tests,
     `renyi_index::definition_json` made public, the shared helpers in
     `main.rs`; `05-agent-tooling.md` (status, section 7 as implemented,
     section 8, open item R5-5), `README.md`, `CLAUDE.md`.
+13. **The semantic diff** (ninth commit, `c1fb558`; decision T5,
+    derived): `crates/renyi_index/src/diff.rs`, `hash::own_text_hash` and
+    the `text_hash` field, `crates/renyi/src/maps.rs`, `renyi index
+    --diff`, the `diff` tool, the tests listed above;
+    `05-agent-tooling.md` (status, sections 1, 4, 6, 7, 8), `README.md`,
+    `CLAUDE.md` (a `crates/renyi_index/` row).
+14. **Readability round 2** (tenth commit). The owner chose all four
+    models (Sonnet 5.5 and gpt-5.5 at their default temperature, the
+    gating models of R1 and R8; Haiku 4.5 and gpt-5.4-mini at 0), the
+    graders of round 1 and in-session adjudication; `run.py prepare`
+    wrote `tests/readability/2026-10-05-ed37120/` (69 prompts; the cheat
+    sheet of `ed37120`). Collection ran through the vendor APIs for
+    everything but 45 Write samples of gpt-5.5, at which point the owner
+    ruled that the pay-per-token keys are not spent by default
+    (subscription quota instead: Claude Code subagents and the Codex
+    CLI); the 45 came through `codex exec` on the ChatGPT subscription and
+    `run --provider file` (provenance and session ids in the output
+    records), and Explain was graded by subagents (Sonnet 5.5 first, Opus
+    5.5 second, batches of fifty, reasons kept in `grades.json`), merged
+    into the grade cache under `agent:` buckets so `score` ran offline.
+    Eleven adjudications (`judgement.json`). A stale reference was found
+    and fixed (`currency_tool` named the old host; twenty samples
+    re-graded). The subagent graders are about one point more lenient
+    than the API graders on the 204 samples both graded, flipping 30
+    floor-model samples from fail to pass and none the other way; the
+    notes say so and ask the owner which grader kind the protocol keeps.
+    Results in the table above and in `notes.md` (the five-point rule:
+    Sonnet's Write fell 40 to 30 on one item, two samples missing an
+    import, noise at the model's default temperature; everything else
+    held or rose). Status lines of `03-readability-test.md` and
+    `tests/readability/README.md`.
 
 ## Done in session 5 (condensed)
 
@@ -384,7 +456,32 @@ on a fresh clone).
 
 ## Owner actions pending
 
-- None. Session 5 printed the values of `ANTHROPIC_API_KEY` and
+- **Four questions from round 2**, asked at the end of session 6 as a
+  batch (AskUserQuestion) and unanswered when this handoff was written;
+  the next session reads the answers from the chat or asks again, then
+  records each as a decision entry (section U of `01-decisions.md`) and
+  applies it:
+  1. Decision M4 (a call with one argument does not name it) is again the
+     largest checker rule for all four models (43 / 50 / 90 / 68 error
+     lines for Sonnet / gpt-5.5 / Haiku / gpt-5.4-mini) and costs gpt-5.5
+     the Write item `fizz_words` outright. Relax it (a single argument may
+     be named), keep it and say it louder, or keep it unchanged.
+  2. `rounded()` without `places` and `to_decimal()` on a Decimal cost
+     both gating models `invoice` and `shapes` (Complete) and
+     `compound_interest` (Write); gpt-5.5 would pass Complete without
+     them. Give `places` a default of 0 and `to_decimal` an identity on
+     Decimal (library change), or show `rounded(places: 2)` in the cheat
+     sheet, or keep.
+  3. Zero-argument methods written as fields (`text.length`,
+     `items.is_empty`, `items.last`): the cheat sheet lists methods as
+     bare names. Show them as `length()` in the list (token budget: 23
+     left), accept the field form for a method without parameters
+     (grammar change), or keep.
+  4. The Explain grader kind: subagents (subscription, a point more
+     lenient; re-grade round 1 the same way for a consistent series) or
+     the API graders (the owner's keys, needing explicit say-so per
+     round), or both kept with one reported.
+- Session 5 printed the values of `ANTHROPIC_API_KEY` and
   `OPENAI_API_KEY` into a tool result once (not committed); the owner said
   in session 6 that they handle the transcript and the keys themselves, so
   no session needs to raise it again.
@@ -414,23 +511,25 @@ on a fresh clone).
 
 ## Next steps
 
-1. **Finish readability round 2** (`tests/readability/2026-10-05-ed37120/`,
-   item 12). `run.py run` is restartable: rerun it per model (the labels
-   are the model ids; `--temperature none` for Sonnet 5.5 and gpt-5.5)
-   until every `outputs/<label>/<task>/` file has five samples. Then
-   `score --grader anthropic:claude-sonnet-5-5 --second-grader
-   openai:gpt-5.4-mini`, the strict tally (`--no-format --scores
-   scores-strict.json`), `report`, the adjudication of the Explain samples
-   the graders disagree on (`judgement.json` with a reason each), a
-   `notes.md` in the style of round 1 with the table against round 1 and
-   the protocol's five-point rule, the status lines of
-   `03-readability-test.md` and `tests/readability/README.md`, and the
-   decisions the results raise, asked in a batch of four. Decision L2 is
-   carried out (item 11); open items R6-2 and R6-4 are closed (S6, S7).
-2. **The semantic diff** (O4, `05-agent-tooling.md` section 6) and its
-   `diff` tool in `renyi mcp`, then M4 (provenance guards, package
-   manager, budgets in the manifest) and M5 (embedding API, `serve
-   --watch`, LSP) as before.
+1. **Apply the owner's answers to the four questions** (Owner actions
+   pending): decision entries in a new section U of `01-decisions.md`;
+   then the cheat sheet, the sketches, `library/std` and the checker as
+   the answers require (M4 lives in `renyi_check`'s call checking and in
+   the lint; `rounded` and `to_decimal` in `04-stdlib-sketch.md`,
+   `library/std/prelude.ry` and `natives/prelude.rs`; the method list in
+   `docs/cheatsheet.md` under the token gate). A grammar or library change
+   is measured by a round 3 on the gating models (`run.py prepare`, then
+   `run` through whichever channel the owner's answer to question 4
+   allows; `--provider file` with Codex or subagents otherwise).
+2. **Readability observations not asked**: `otherwise` binds loosest
+   (Sonnet wrote `check f(x) otherwise "" is "y"`); Sonnet reasons before
+   the Predict answer on `traffic_light` (0 of 5 with right lines); the
+   rubric's reading of "only X and Y" when Z is also needed (round 1 and
+   2 read it as a need missing).
+3. **M4** (provenance guards `only to`, the package manager, budgets in
+   the manifest) and **M5** (embedding API, `serve --watch`, LSP) as
+   before; open items R5-5 (per-definition refresh in `renyi mcp`) and
+   R7-4.
 
 ## Known gaps and risks
 
@@ -470,17 +569,25 @@ on a fresh clone).
   registry (M4). The toolchain is named by its version only, not by a
   build hash. A `--manifest` run collects its calls in memory as `record`
   does.
-- **MCP.** `diff` waits for `renyi index --diff`. The map is rebuilt
-  whole when any file changed (T4), and every tool call that needs it
-  re-reads the served directory. The server does not implement
-  `subscriptions/listen`, pagination, progress or cancellation (a
-  `notifications/cancelled` is ignored; a running program runs to its
-  end), answers a legacy `tools/call` without an `initialize` first, and
-  validates `_meta` only when it carries a version. `run` executes
-  effects for real unless `replay` is given; a program's relative paths
-  resolve against the served directory, which the server enters at
-  start. The library lookup scans the declaration files by line, so a
-  declaration inside an `ability` block is not listed.
+- **MCP and the diff.** The map is rebuilt whole when any file changed
+  (T4), and every tool call that needs it re-reads the served directory.
+  The server does not implement `subscriptions/listen`, pagination,
+  progress or cancellation (a `notifications/cancelled` is ignored; a
+  running program runs to its end), answers a legacy `tools/call` without
+  an `initialize` first, and validates `_meta` only when it carries a
+  version. `run` executes effects for real unless `replay` is given; a
+  program's relative paths resolve against the served directory, which
+  the server enters at start. The library lookup scans the declaration
+  files by line, so a declaration inside an `ability` block is not
+  listed. The diff matches a rename by content hash only, so a definition
+  renamed and edited in one step reads as removed and added; a
+  definition moved between modules likewise (its qualified name changes);
+  an `effects` change is listed on every definition it reaches, which is
+  by design but makes a widened leaf verbose in a deep call graph; a git
+  base indexes the revision's files afresh on every call (no cache); the
+  revision's import closure for a single-file base follows `import`
+  lines only (no `std` resolution needed). Open item R5-2 (local names in
+  the content hash) stands.
 - **Network, server, SQLite.** The server is single-threaded and answers
   one request at a time, binds `0.0.0.0`, speaks plain HTTP/1.1 without
   TLS, reads a head of at most 64 KiB and a body of at most 16 MiB, and
@@ -498,23 +605,27 @@ on a fresh clone).
   structural ability checks, capabilities checked at call sites only; no
   `example:` literal check, no `see also` check, no `deprecated` warnings,
   no unreachable-pattern detection). The `ignore-pure` rule counts a call
-  with effects anywhere inside the ignored expression. The new condition
+  with effects anywhere inside the ignored expression. The condition
   bodies bind every field of the record or variant, which the sketch
   (section 4: "over the field name") does not promise; a condition that
   reads another field type-checks and runs.
-- **Readability.** The live round's Explain grades rest on two grader
-  models and 49 adjudications by Claude; Haiku's Explain sits at exactly 90.
-  The Complete and Write verdicts are the VM's since L2 (the subagents
-  agreed on every sample). Sonnet 5.5 cannot be sampled at temperature 0,
-  so its rates carry more sampling noise. The grant clauses (`at most`,
-  `only to`, `replays`) have not been through a round; no corpus program
-  uses them.
+- **Readability.** Round 2's Explain grades come from subagent graders
+  that are about a point more lenient than round 1's API graders (the
+  floor models' Explain rates are not on round 1's scale; the gating
+  models' failing samples are wrong statements, which both grader kinds
+  mark 2). Sonnet 5.5 and gpt-5.5 cannot be sampled at temperature 0, so
+  their rates carry sampling noise of about one item. gpt-5.5's Write
+  samples came through the Codex CLI (its own system prompt around ours,
+  reasoning effort `medium`), the rest through the API. The grant clauses
+  (`at most`, `only to`, `replays` in a prompt) have not been through a
+  round. `reference/*.explain.txt` must be re-read against the corpus
+  before a round (one went stale this session).
 - **Library.** The standard library sketch is a first draft from the
   corpus; the JSON derivation rules are exercised by the VM's decoder on
   the three recorded responses; the SQLite type mapping is exercised by one
   test and the HTTP defaults (the 30-second limit, redirect handling) by
   the three recordings and the loopback test only.
-- 88 reserved words include common identifiers; the round measured their
+- 88 reserved words include common identifiers; the rounds measured their
   cost and the owner kept them (R2). `tools/lint_examples.py` is
   regex-based. Decision O1 rests on the value graph being acyclic.
 
@@ -529,3 +640,8 @@ on a fresh clone).
   option first, over prose; answers within minutes.
 - Implementation is to be written mainly by Claude in sessions; the owner
   reviews. `main` is the only branch.
+- The pay-per-token API keys are not spent by default (ruled 2026-10-06):
+  subscription quota first (Claude Code subagents, the Codex CLI), the
+  keys only when the owner says so in the same request, with the volume
+  named. The readability harness takes samples and grades from files
+  (`run --provider file`, `grades.json` buckets) for that reason.
