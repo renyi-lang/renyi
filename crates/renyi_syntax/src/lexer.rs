@@ -45,6 +45,43 @@ fn is_word_byte(byte: u8) -> bool {
     byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_'
 }
 
+/// `userName` as `user_name`, `HTTPClient` as `http_client`: the spelling
+/// of a value name (decision C5), for a fix.
+pub(crate) fn snake_case(text: &str) -> String {
+    let chars: Vec<char> = text.chars().collect();
+    let mut out = String::new();
+    for (index, &c) in chars.iter().enumerate() {
+        if c.is_ascii_uppercase() {
+            let after_lower = index > 0
+                && (chars[index - 1].is_ascii_lowercase() || chars[index - 1].is_ascii_digit());
+            let after_upper = index > 0 && chars[index - 1].is_ascii_uppercase();
+            let before_lower = chars.get(index + 1).is_some_and(|n| n.is_ascii_lowercase());
+            if (after_lower || (after_upper && before_lower)) && !out.ends_with('_') {
+                out.push('_');
+            }
+            out.push(c.to_ascii_lowercase());
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
+/// `user_record` as `UserRecord`: the spelling of a type name (decision
+/// C5), for a fix.
+pub(crate) fn pascal_case(text: &str) -> String {
+    text.split('_')
+        .filter(|part| !part.is_empty())
+        .map(|part| {
+            let mut chars = part.chars();
+            match chars.next() {
+                Some(first) => first.to_ascii_uppercase().to_string() + chars.as_str(),
+                None => String::new(),
+            }
+        })
+        .collect()
+}
+
 impl<'s> Lexer<'s> {
     fn new(src: &'s str, start: usize, limit: usize) -> Lexer<'s> {
         Lexer {
@@ -128,7 +165,8 @@ impl<'s> Lexer<'s> {
                         format!("unexpected character `{character}`"),
                         start,
                         end,
-                    );
+                    )
+                    .with_fix_in_place("remove it, or put it inside a text literal");
                     self.push(TokenKind::Error, start, end);
                     self.pos = end;
                 }
@@ -211,6 +249,24 @@ impl<'s> Lexer<'s> {
         let start = self.pos;
         let end = self.scan_while(start, is_word_byte);
         let text = &self.src[start..end];
+        if end < self.limit && self.bytes[end].is_ascii_uppercase() {
+            // `userName`: one name in another language's casing (decision C5)
+            let full_end =
+                self.scan_while(end, |byte| byte.is_ascii_alphanumeric() || byte == b'_');
+            let full = &self.src[start..full_end];
+            let message = format!("name `{full}` is not snake_case");
+            let fix = format!("write `{}`", snake_case(full));
+            self.error("identifier-shape", message, start, full_end)
+                .with_fix_in_place(&fix);
+            let kind = if self.previous_is_adjacent_dot(start) {
+                TokenKind::Member
+            } else {
+                TokenKind::Identifier
+            };
+            self.push(kind, start, full_end);
+            self.pos = full_end;
+            return;
+        }
         if self.previous_is_adjacent_dot(start) {
             self.push(TokenKind::Member, start, end);
             self.pos = end;

@@ -1,0 +1,6 @@
+module foreign_spelling
+  purpose: A keyword of another language gets the Renyi one as its fix (decision C4).
+
+def go() returns Integer
+  return 1
+end

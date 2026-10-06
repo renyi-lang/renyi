@@ -9,6 +9,7 @@ use renyi_syntax::ast::{self, Item, TypeKind};
 use renyi_syntax::{Diagnostic, Span};
 
 use crate::effects::Capability;
+use crate::suggest::{closest, foreign_type, quoted};
 use crate::types::*;
 
 pub struct ModuleInfo {
@@ -498,11 +499,6 @@ impl World {
         };
     }
 
-    fn error(&mut self, module: ModuleId, code: &'static str, message: String, span: Span) {
-        self.diagnostics
-            .push((module, Diagnostic::error(code, message, span)));
-    }
-
     fn error_with_fix(
         &mut self,
         module: ModuleId,
@@ -538,11 +534,19 @@ impl World {
             let path: Vec<&str> = import.path.iter().map(|n| n.text.as_str()).collect();
             let name = path.join(".");
             let Some(target) = self.module_id(&name) else {
-                self.error(
+                let fix = match closest(&name, self.modules.iter().map(|m| m.name.as_str())) {
+                    Some(close) => format!("did you mean `{close}`?"),
+                    None => format!(
+                        "create `{}.ry` with `module {name}` as its first line",
+                        name.replace('.', "/")
+                    ),
+                };
+                self.error_with_fix(
                     id,
                     "unknown-module",
                     format!("no module named `{name}`"),
                     import.span,
+                    fix,
                 );
                 continue;
             };
@@ -568,30 +572,43 @@ impl World {
                 let text = exposed.text.clone();
                 if let Some(&type_id) = self.modules[target].types.get(&text) {
                     if !self.types[type_id].public {
-                        self.error(
+                        self.error_with_fix(
                             id,
                             "private-name",
                             format!("`{text}` is not public in `{name}`"),
                             exposed.span,
+                            format!("add `public` to its declaration in `{name}`"),
                         );
                     }
                     self.modules[id].exposed_types.insert(text, type_id);
                 } else if let Some(&ability_id) = self.modules[target].abilities.get(&text) {
                     if !self.abilities[ability_id].public {
-                        self.error(
+                        self.error_with_fix(
                             id,
                             "private-name",
                             format!("`{text}` is not public in `{name}`"),
                             exposed.span,
+                            format!("add `public` to its declaration in `{name}`"),
                         );
                     }
                     self.modules[id].exposed_abilities.insert(text, ability_id);
                 } else {
-                    self.error(
+                    let candidates: Vec<&str> = self.modules[target]
+                        .types
+                        .keys()
+                        .chain(self.modules[target].abilities.keys())
+                        .map(String::as_str)
+                        .collect();
+                    let fix = match closest(&text, candidates.into_iter()) {
+                        Some(close) => format!("did you mean `{close}`?"),
+                        None => format!("expose a type or ability that `{name}` declares"),
+                    };
+                    self.error_with_fix(
                         id,
                         "unknown-name",
                         format!("`{name}` has no type or ability named `{text}`"),
                         exposed.span,
+                        fix,
                     );
                 }
             }
@@ -646,6 +663,57 @@ impl World {
             }
         }
         None
+    }
+
+    /// The fix for an unknown type: the Renyi name of a foreign one, an
+    /// import, the closest name in scope, or a declaration.
+    pub fn suggest_type(&self, module: ModuleId, name: &str) -> String {
+        if let Some(fix) = foreign_type(name) {
+            return fix.to_string();
+        }
+        if let Some(fix) = self.suggest_import(module, name) {
+            return fix;
+        }
+        let info = &self.modules[module];
+        let names: Vec<&str> = info
+            .types
+            .keys()
+            .chain(info.exposed_types.keys())
+            .chain(
+                self.prelude
+                    .iter()
+                    .flat_map(|&prelude| self.modules[prelude].types.keys()),
+            )
+            .map(String::as_str)
+            .collect();
+        match closest(name, names.into_iter()) {
+            Some(close) => format!("did you mean `{close}`?"),
+            None => format!("declare `type {name}`, or import the module that declares it"),
+        }
+    }
+
+    /// The fix for an unknown ability: an import, the closest name in
+    /// scope, or a declaration.
+    pub fn suggest_ability(&self, module: ModuleId, name: &str) -> String {
+        if let Some(fix) = self.suggest_import(module, name) {
+            return fix;
+        }
+        let info = &self.modules[module];
+        let names: Vec<&str> = info
+            .abilities
+            .keys()
+            .chain(info.exposed_abilities.keys())
+            .chain(
+                self.prelude
+                    .iter()
+                    .flat_map(|&prelude| self.modules[prelude].abilities.keys()),
+            )
+            .map(String::as_str)
+            .collect();
+        match closest(name, names.into_iter()) {
+            Some(close) => format!("did you mean `{close}`?"),
+            None => format!("declare `ability {name}`, or import the module that declares it"),
+        }
     }
 
     /// The sum types in scope that have a variant of this name.
@@ -771,24 +839,20 @@ impl World {
                 }
                 if let Some((_, id)) = params.iter().find(|(n, _)| *n == name.text) {
                     if !args.is_empty() {
-                        self.error(
+                        self.error_with_fix(
                             module,
                             "type-arity",
                             format!("`{}` is a type parameter and takes no arguments", name.text),
                             *span,
+                            "drop the arguments".into(),
                         );
                     }
                     return Ty::Param(*id);
                 }
                 let Some(type_id) = self.lookup_type(module, &name.text) else {
-                    let fix = self.suggest_import(module, &name.text);
+                    let fix = self.suggest_type(module, &name.text);
                     let message = format!("unknown type `{}`", name.text);
-                    match fix {
-                        Some(fix) => {
-                            self.error_with_fix(module, "unknown-type", message, name.span, fix)
-                        }
-                        None => self.error(module, "unknown-type", message, name.span),
-                    }
+                    self.error_with_fix(module, "unknown-type", message, name.span, fix);
                     return Ty::Error;
                 };
                 let expected = self.types[type_id].params.len();
@@ -803,7 +867,22 @@ impl World {
                             args.len()
                         )
                     };
-                    self.error(module, "type-arity", message, *span);
+                    let fix = if expected == 0 {
+                        "drop the type arguments".to_string()
+                    } else {
+                        let params: Vec<String> = self.types[type_id]
+                            .params
+                            .iter()
+                            .map(|&p| self.param_name(p))
+                            .collect();
+                        let joined = if params.len() == 2 {
+                            params.join(" to ")
+                        } else {
+                            params.join(", ")
+                        };
+                        format!("write `{} of {joined}`", name.text)
+                    };
+                    self.error_with_fix(module, "type-arity", message, *span, fix);
                     return Ty::Error;
                 }
                 let args = args
@@ -838,7 +917,8 @@ impl World {
         let params = self.new_params(&for_any.params);
         for constraint in &for_any.constraints {
             let Some((_, param)) = params.iter().find(|(n, _)| *n == constraint.param.text) else {
-                self.error(
+                let declared: Vec<String> = params.iter().map(|(n, _)| n.clone()).collect();
+                self.error_with_fix(
                     module,
                     "unknown-type",
                     format!(
@@ -846,6 +926,7 @@ impl World {
                         constraint.param.text
                     ),
                     constraint.param.span,
+                    format!("name one of {}", quoted(&declared)),
                 );
                 continue;
             };
@@ -855,16 +936,8 @@ impl World {
                     Some(ability) => self.params[param].constraints.push(ability),
                     None => {
                         let message = format!("unknown ability `{}`", name.text);
-                        match self.suggest_import(module, &name.text) {
-                            Some(fix) => self.error_with_fix(
-                                module,
-                                "unknown-ability",
-                                message,
-                                name.span,
-                                fix,
-                            ),
-                            None => self.error(module, "unknown-ability", message, name.span),
-                        }
+                        let fix = self.suggest_ability(module, &name.text);
+                        self.error_with_fix(module, "unknown-ability", message, name.span, fix);
                     }
                 }
             }
@@ -933,28 +1006,41 @@ impl World {
                                 .iter()
                                 .filter(|name| !fields.iter().any(|f| f.name == name.text))
                                 .collect();
+                            let field_names: Vec<String> =
+                                fields.iter().map(|f| f.name.clone()).collect();
                             for name in missing {
                                 let message = format!(
                                     "`{}` has no field named `{}`",
                                     self.types[type_id].name, name.text
                                 );
-                                self.error(module, "unknown-field", message, name.span);
+                                let fix = match closest(
+                                    &name.text,
+                                    field_names.iter().map(String::as_str),
+                                ) {
+                                    Some(close) => format!("did you mean `{close}`?"),
+                                    None => format!("name one of {}", quoted(&field_names)),
+                                };
+                                self.error_with_fix(
+                                    module,
+                                    "unknown-field",
+                                    message,
+                                    name.span,
+                                    fix,
+                                );
                             }
                         }
                     }
                 }
                 None => {
                     let message = format!("unknown ability `{}`", derive.ability.text);
-                    match self.suggest_import(module, &derive.ability.text) {
-                        Some(fix) => self.error_with_fix(
-                            module,
-                            "unknown-ability",
-                            message,
-                            derive.ability.span,
-                            fix,
-                        ),
-                        None => self.error(module, "unknown-ability", message, derive.ability.span),
-                    }
+                    let fix = self.suggest_ability(module, &derive.ability.text);
+                    self.error_with_fix(
+                        module,
+                        "unknown-ability",
+                        message,
+                        derive.ability.span,
+                        fix,
+                    );
                 }
             }
         }
@@ -1034,7 +1120,8 @@ impl World {
                     Some(required) => requirements.push(required),
                     None => {
                         let message = format!("unknown ability `{}`", name.text);
-                        self.error(id, "unknown-ability", message, name.span);
+                        let fix = self.suggest_ability(id, &name.text);
+                        self.error_with_fix(id, "unknown-ability", message, name.span, fix);
                     }
                 }
             }
@@ -1097,16 +1184,8 @@ impl World {
                     };
                     let Some(ability) = self.lookup_ability(id, &ability_name.text) else {
                         let message = format!("unknown ability `{}`", ability_name.text);
-                        match self.suggest_import(id, &ability_name.text) {
-                            Some(fix) => self.error_with_fix(
-                                id,
-                                "unknown-ability",
-                                message,
-                                ability_name.span,
-                                fix,
-                            ),
-                            None => self.error(id, "unknown-ability", message, ability_name.span),
-                        }
+                        let fix = self.suggest_ability(id, &ability_name.text);
+                        self.error_with_fix(id, "unknown-ability", message, ability_name.span, fix);
                         continue;
                     };
                     if self
@@ -1170,7 +1249,15 @@ impl World {
                                 "the implementation of `{}` lacks `{name}`",
                                 ability_name.text
                             );
-                            self.error(id, "missing-method", message, implementation.span);
+                            let fix =
+                                format!("add `function {name}(self, ...)` to the implementation");
+                            self.error_with_fix(
+                                id,
+                                "missing-method",
+                                message,
+                                implementation.span,
+                                fix,
+                            );
                         }
                     }
                     for function in &implementation.functions {
@@ -1179,7 +1266,13 @@ impl World {
                                 "`{}` is not a method of `{}`",
                                 function.name.text, ability_name.text
                             );
-                            self.error(id, "unknown-method", message, function.name.span);
+                            self.error_with_fix(
+                                id,
+                                "unknown-method",
+                                message,
+                                function.name.span,
+                                "remove it, or declare it in the ability".into(),
+                            );
                         }
                     }
                     self.impls.push(ImplInfo {
@@ -1250,11 +1343,12 @@ impl World {
         let mut names: Vec<&str> = Vec::new();
         for (index, param) in function.params.iter().enumerate() {
             if names.contains(&param.name.text.as_str()) {
-                self.error(
+                self.error_with_fix(
                     module,
                     "duplicate-name",
                     format!("the parameter `{}` is declared twice", param.name.text),
                     param.name.span,
+                    "rename one of them".into(),
                 );
             }
             names.push(&param.name.text);
@@ -1264,11 +1358,12 @@ impl World {
                 None => Ty::Error,
             };
             if index > 0 && param.name.text == "self" {
-                self.error(
+                self.error_with_fix(
                     module,
                     "self-position",
                     "`self` must be the first parameter".into(),
                     param.name.span,
+                    "move `self` before the other parameters".into(),
                 );
             }
             param_types.push((param.name.text.clone(), ty));
@@ -1320,7 +1415,7 @@ impl World {
                     only_to: Vec::new(),
                 };
                 if !sink.is_known() {
-                    self.error(
+                    self.error_with_fix(
                         module,
                         "unknown-capability",
                         format!(
@@ -1328,6 +1423,7 @@ impl World {
                             sink_path.join(".")
                         ),
                         syntax.span,
+                        format!("one of {}", crate::effects::TREE.join(", ")),
                     );
                 }
             }
@@ -1337,7 +1433,16 @@ impl World {
                     Some("network") | Some("process") | Some("filesystem")
                 );
                 if !budgeted {
-                    self.error(module, "grant-clause", format!("`{}` takes no budget; budgets apply to network, process and filesystem", capability.path.join(".")), syntax.span);
+                    self.error_with_fix(
+                        module,
+                        "grant-clause",
+                        format!(
+                            "`{}` takes no budget; budgets apply to network, process and filesystem",
+                            capability.path.join(".")
+                        ),
+                        syntax.span,
+                        "drop the `at most` clause".into(),
+                    );
                 }
             }
             // a guard whose sinks the grant itself never allows keeps the
@@ -1377,11 +1482,12 @@ impl World {
                     format!("one of {}", crate::effects::TREE.join(", ")),
                 );
             } else if capability.scope.is_some() && !crate::effects::takes_scope(&capability.path) {
-                self.error(
+                self.error_with_fix(
                     module,
                     "capability-scope",
                     format!("`{}` takes no scope argument", capability.path.join(".")),
                     syntax.span,
+                    "drop the scope argument".into(),
                 );
             }
         }
@@ -1464,11 +1570,12 @@ impl World {
             }
         } else if let Some(existing) = self.lookup_function(module, &function.name.text) {
             let _ = existing;
-            self.error(
+            self.error_with_fix(
                 module,
                 "duplicate-name",
                 format!("the function `{}` is declared twice", function.name.text),
                 function.name.span,
+                "rename one of them".into(),
             );
         }
         self.modules[module]

@@ -5,6 +5,7 @@
 pub mod check;
 pub mod effects;
 pub mod refine;
+mod suggest;
 pub mod types;
 pub mod world;
 
@@ -198,15 +199,21 @@ pub fn check_sources(main: &SourceFile, imports: &[SourceFile]) -> Vec<Diagnosti
         }
         let count = module.diagnostics.iter().filter(|d| d.is_error()).count();
         if count > 0 {
-            diagnostics.push(Diagnostic::error(
-                "import-errors",
-                format!(
-                    "the imported module `{}` has {count} error{}",
-                    import.name,
-                    if count == 1 { "" } else { "s" }
-                ),
-                Span::new(0, 0),
-            ));
+            diagnostics.push(
+                Diagnostic::error(
+                    "import-errors",
+                    format!(
+                        "the imported module `{}` has {count} error{}",
+                        import.name,
+                        if count == 1 { "" } else { "s" }
+                    ),
+                    Span::new(0, 0),
+                )
+                .with_fix(format!(
+                    "run `renyi check` on `{}` and fix them first",
+                    import.name
+                )),
+            );
         }
     }
     diagnostics.sort_by_key(|d| d.span.start);

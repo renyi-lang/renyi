@@ -6,6 +6,7 @@ use renyi_syntax::{Diagnostic, Span};
 
 use crate::effects::{covered, Capability};
 use crate::refine::{self, Literal, Verdict};
+use crate::suggest::{closest, conversion_fix, foreign_function, foreign_value, quoted};
 use crate::types::*;
 use crate::world::{head_type, BodyLocation, FunctionInfo, TypeKindInfo, World};
 
@@ -268,11 +269,7 @@ impl<'w> Checker<'w> {
 
     // ------------------------------------------------------------ diagnostics
 
-    fn error(&mut self, code: &'static str, message: impl Into<String>, span: Span) {
-        self.diagnostics
-            .push(Diagnostic::error(code, message, span));
-    }
-
+    /// Every diagnostic carries a fix (decision D3).
     fn error_fix(
         &mut self,
         code: &'static str,
@@ -284,9 +281,15 @@ impl<'w> Checker<'w> {
             .push(Diagnostic::error(code, message, span).with_fix(fix));
     }
 
-    fn warning(&mut self, code: &'static str, message: impl Into<String>, span: Span) {
+    fn warning(
+        &mut self,
+        code: &'static str,
+        message: impl Into<String>,
+        span: Span,
+        fix: impl Into<String>,
+    ) {
         self.diagnostics
-            .push(Diagnostic::warning(code, message, span));
+            .push(Diagnostic::warning(code, message, span).with_fix(fix));
     }
 
     fn show(&self, ty: &Ty) -> String {
@@ -564,10 +567,11 @@ impl<'w> Checker<'w> {
                     Verdict::Holds | Verdict::Unknown => {}
                     Verdict::Fails => {
                         let name = self.world.types[*id].name.clone();
-                        self.error(
+                        self.error_fix(
                             "constraint-violation",
                             format!("this value does not satisfy the condition of `{name}`"),
                             span,
+                            format!("write a value the condition of `{name}` accepts"),
                         );
                         return false;
                     }
@@ -684,17 +688,20 @@ impl<'w> Checker<'w> {
             }
         }
         if matches!(actual_resolved, Ty::Unit) {
-            self.error(
+            self.error_fix(
                 "type-mismatch",
                 format!("{what} returns nothing, but `{shown_expected}` is needed"),
                 span,
+                "call a function that returns a value, or drop the binding",
             );
             return;
         }
-        self.error(
+        let fix = conversion_fix(&shown_actual, &shown_expected);
+        self.error_fix(
             "type-mismatch",
             format!("{what} is `{shown_actual}`, but `{shown_expected}` is needed"),
             span,
+            fix,
         );
     }
 
@@ -823,10 +830,12 @@ impl<'w> Checker<'w> {
             Some(false) => {
                 let name = self.world.abilities[ability].name.clone();
                 let shown = self.show(ty);
-                self.error(
+                let fix = self.ability_fix(ty, &name);
+                self.error_fix(
                     "missing-ability",
                     format!("{what} needs `{name}`, which `{shown}` does not have"),
                     span,
+                    fix,
                 );
             }
             None => self.deferred.push(Deferred::Constraint {
@@ -1259,10 +1268,11 @@ impl<'w> Checker<'w> {
                 }
                 ExampleOutcome::FailsWith(pattern) => {
                     if result.fails.is_empty() {
-                        self.error(
+                        self.error_fix(
                             "example-fails",
                             "`fails with` on a call that cannot fail",
                             pattern.span(),
+                            "write `is value` instead",
                         );
                     } else {
                         let union = Ty::Union(result.fails.clone());
@@ -1348,10 +1358,12 @@ impl<'w> Checker<'w> {
                     if let Some(false) = self.has_ability(&ty, ability) {
                         let name = self.world.abilities[ability].name.clone();
                         let shown = self.show(&ty);
-                        self.error(
+                        let fix = self.ability_fix(&ty, &name);
+                        self.error_fix(
                             "missing-ability",
                             format!("{what} needs `{name}`, which `{shown}` does not have"),
                             span,
+                            fix,
                         );
                     }
                 }
@@ -1370,6 +1382,7 @@ impl<'w> Checker<'w> {
                     "unreachable",
                     "this statement can never run",
                     statement.span,
+                    "remove it, or move it before the `return`, `fail` or `crash`",
                 );
                 reported_unreachable = true;
             }
@@ -1437,10 +1450,11 @@ impl<'w> Checker<'w> {
                     }
                     None => {
                         if matches!(self.resolve(&info.ty), Ty::Unit) {
-                            self.error(
+                            self.error_fix(
                                 "type-mismatch",
                                 "this call returns nothing, so there is no value to bind",
                                 value.span,
+                                "call it as a statement, without `let`",
                             );
                             Ty::Error
                         } else {
@@ -1466,10 +1480,14 @@ impl<'w> Checker<'w> {
                 };
                 match target {
                     None => {
-                        self.error(
+                        let fix = self.suggest_binding(&name.text).unwrap_or_else(|| {
+                            format!("declare it first: `let mutable {} be ...`", name.text)
+                        });
+                        self.error_fix(
                             "unknown-name",
                             format!("there is no binding named `{}`", name.text),
                             name.span,
+                            fix,
                         );
                         self.infer(value, None);
                     }
@@ -1602,6 +1620,7 @@ impl<'w> Checker<'w> {
                             "unreachable",
                             "this statement can never run",
                             statement.span,
+                            "remove it, or move it before the `return`, `fail` or `crash`",
                         );
                         reported_unreachable = true;
                     }
@@ -1643,16 +1662,18 @@ impl<'w> Checker<'w> {
                     "continue"
                 };
                 if self.loop_depth == 0 {
-                    self.error(
+                    self.error_fix(
                         "outside-loop",
                         format!("`{word}` outside a loop"),
                         statement.span,
+                        "remove it, or put it inside `for each` or `repeat until`",
                     );
                 } else if self.concurrent_depth > 0 {
-                    self.error(
+                    self.error_fix(
                         "outside-loop",
                         format!("`{word}` cannot leave a `run concurrently` block"),
                         statement.span,
+                        "end the task with `return` instead, or move the loop inside the block",
                     );
                 }
                 true
@@ -1683,10 +1704,11 @@ impl<'w> Checker<'w> {
             }
             StmtKind::Check(value) => {
                 if !self.context.is_test {
-                    self.error(
+                    self.error_fix(
                         "check-outside-test",
                         "`check` belongs in a `test` block",
                         statement.span,
+                        "write `if not condition then fail with ... end`, or move it into a `test`",
                     );
                 }
                 self.check_condition(value);
@@ -1794,16 +1816,22 @@ impl<'w> Checker<'w> {
             (None, None) => {}
             (None, Some(returns)) => {
                 let shown = self.show(&returns);
-                self.error(
+                self.error_fix(
                     "missing-value",
                     format!("`return` needs a value of type `{shown}`"),
                     span,
+                    "write `return value`",
                 );
             }
             (Some(value), None) => {
                 self.infer(value, None);
                 if self.context.is_test {
-                    self.error("return-value", "a test returns nothing", value.span);
+                    self.error_fix(
+                        "return-value",
+                        "a test returns nothing",
+                        value.span,
+                        "drop the value; a test ends with `check`, or with `return` alone",
+                    );
                 } else {
                     self.error_fix(
                         "return-value",
@@ -1930,10 +1958,11 @@ impl<'w> Checker<'w> {
             }
             _ => {
                 let shown = self.show(&ty);
-                self.error(
+                self.error_fix(
                     "type-mismatch",
                     format!("`{shown}` cannot be iterated; a list, set, map, range or text can"),
                     source.span,
+                    "iterate a collection: a list, a set, a map, `from 1 to 9` or a text",
                 );
                 (Ty::Error, Some((Ty::Error, Ty::Error)))
             }
@@ -1945,16 +1974,22 @@ impl<'w> Checker<'w> {
                     Some((left, right)) => vec![left, right],
                     None => {
                         let shown = self.show(&item);
-                        self.error("type-mismatch", format!("two loop variables need pairs or a map, but the items are `{shown}`"), source.span);
+                        self.error_fix(
+                            "type-mismatch",
+                            format!("two loop variables need pairs or a map, but the items are `{shown}`"),
+                            source.span,
+                            "bind one variable, or iterate a map or a list of pairs",
+                        );
                         vec![Ty::Error, Ty::Error]
                     }
                 }
             }
             n => {
-                self.error(
+                self.error_fix(
                     "loop-variables",
                     "a loop binds one variable, or two for pairs",
                     source.span,
+                    "write `for each item in items`, or `for each key, value in map`",
                 );
                 vec![Ty::Error; n]
             }
@@ -1978,12 +2013,18 @@ impl<'w> Checker<'w> {
                         let kind = VarKind::IntegerLiteral(literal);
                         if !self.literal_fits(&kind, None, &resolved, expr.span) {
                             let shown = self.show(&resolved);
-                            self.error(
+                            let fix = match shown.as_str() {
+                                "Decimal" => format!("write `{digits}.0`"),
+                                "Float" => format!("write `{digits}.0.to_float()`"),
+                                _ => format!("write a `{shown}`"),
+                            };
+                            self.error_fix(
                                 "type-mismatch",
                                 format!(
                                     "the literal `{digits}` is an Integer, but `{shown}` is needed"
                                 ),
                                 expr.span,
+                                fix,
                             );
                         }
                         self.literals.push((expr.span, resolved.clone()));
@@ -2063,10 +2104,11 @@ impl<'w> Checker<'w> {
                     Info::plain(binding.ty.clone())
                 }
                 None => {
-                    self.error(
+                    self.error_fix(
                         "unknown-name",
                         "`self` is only bound in a method",
                         expr.span,
+                        "declare the function with `self` as its first parameter, in the module of its type",
                     );
                     Info::plain(Ty::Error)
                 }
@@ -2135,10 +2177,11 @@ impl<'w> Checker<'w> {
                     Some(fields) => {
                         for update in updates {
                             let Some(field_name) = &update.name else {
-                                self.error(
+                                self.error_fix(
                                     "argument-name",
                                     "`with` names every field it changes",
                                     update.span,
+                                    "write `with field: value`",
                                 );
                                 self.infer(&update.value, None);
                                 continue;
@@ -2164,13 +2207,15 @@ impl<'w> Checker<'w> {
                                 }
                                 None => {
                                     let shown = self.show(&ty);
-                                    self.error(
+                                    let fix = self.suggest_field(&ty, &field_name.text);
+                                    self.error_fix(
                                         "unknown-field",
                                         format!(
                                             "`{shown}` has no field named `{}`",
                                             field_name.text
                                         ),
                                         field_name.span,
+                                        fix,
                                     );
                                     self.infer(&update.value, None);
                                 }
@@ -2180,10 +2225,11 @@ impl<'w> Checker<'w> {
                     None => {
                         let shown = self.show(&ty);
                         if !ty.is_error() {
-                            self.error(
+                            self.error_fix(
                                 "type-mismatch",
                                 format!("`with` updates a record, but this is `{shown}`"),
                                 base.span,
+                                "apply `with` to a record value",
                             );
                         }
                         for update in updates {
@@ -2276,10 +2322,11 @@ impl<'w> Checker<'w> {
             }
             Outcome::Break(span) | Outcome::Continue(span) => {
                 if self.loop_depth == 0 {
-                    self.error(
+                    self.error_fix(
                         "outside-loop",
                         "`break` or `continue` outside a loop",
                         *span,
+                        "remove it, or put it inside `for each` or `repeat until`",
                     );
                 }
             }
@@ -2328,10 +2375,13 @@ impl<'w> Checker<'w> {
             "there is no binding, constant or function named `{}`",
             name.text
         );
-        match self.suggest_module_import(&name.text) {
-            Some(fix) => self.error_fix("unknown-name", message, name.span, fix),
-            None => self.error("unknown-name", message, name.span),
-        }
+        let fix = self
+            .suggest_module_import(&name.text)
+            .or_else(|| foreign_value(&name.text).map(str::to_string))
+            .or_else(|| self.suggest_binding(&name.text))
+            .or_else(|| self.suggest_function(&name.text))
+            .unwrap_or_else(|| format!("declare it first: `let {} be ...`", name.text));
+        self.error_fix("unknown-name", message, name.span, fix);
         Info::plain(Ty::Error)
     }
 
@@ -2390,7 +2440,12 @@ impl<'w> Checker<'w> {
                             .iter()
                             .map(|(t, _)| self.world.types[*t].name.clone())
                             .collect();
-                        self.error(
+                        let fix = format!(
+                            "annotate the binding: `let value: {} be {}`",
+                            names.first().map(String::as_str).unwrap_or("Type"),
+                            name.text
+                        );
+                        self.error_fix(
                             "ambiguous-variant",
                             format!(
                                 "`{}` is a variant of {}; the context does not say which",
@@ -2398,6 +2453,7 @@ impl<'w> Checker<'w> {
                                 names.join(" and ")
                             ),
                             name.span,
+                            fix,
                         );
                         return Info::plain(Ty::Error);
                     }
@@ -2440,10 +2496,10 @@ impl<'w> Checker<'w> {
                     );
                 } else {
                     let message = format!("unknown name `{}`", name.text);
-                    match self.world.suggest_import(self.module, &name.text) {
-                        Some(fix) => self.error_fix("unknown-name", message, name.span, fix),
-                        None => self.error("unknown-name", message, name.span),
-                    }
+                    let fix = foreign_value(&name.text)
+                        .map(str::to_string)
+                        .unwrap_or_else(|| self.world.suggest_type(self.module, &name.text));
+                    self.error_fix("unknown-name", message, name.span, fix);
                 }
                 Info::plain(Ty::Error)
             }
@@ -2515,13 +2571,19 @@ impl<'w> Checker<'w> {
                         return Info::plain(ty);
                     }
                     let module_name = self.world.modules[target].name.clone();
-                    self.error(
+                    let fix = self
+                        .suggest_module_function(target, &name.text)
+                        .unwrap_or_else(|| {
+                            format!("see `renyi index` for what `{module_name}` declares")
+                        });
+                    self.error_fix(
                         "unknown-name",
                         format!(
                             "`{module_name}` has no function or constant named `{}`",
                             name.text
                         ),
                         name.span,
+                        fix,
                     );
                     return Info::plain(Ty::Error);
                 }
@@ -2550,19 +2612,13 @@ impl<'w> Checker<'w> {
                     } else {
                         None
                     };
-                    match fix {
-                        Some(fix) => self.error_fix(
-                            "unknown-field",
-                            format!("`{shown}` has no field named `{}`", name.text),
-                            name.span,
-                            fix,
-                        ),
-                        None => self.error(
-                            "unknown-field",
-                            format!("`{shown}` has no field named `{}`", name.text),
-                            name.span,
-                        ),
-                    }
+                    let fix = fix.unwrap_or_else(|| self.suggest_field(&ty, &name.text));
+                    self.error_fix(
+                        "unknown-field",
+                        format!("`{shown}` has no field named `{}`", name.text),
+                        name.span,
+                        fix,
+                    );
                     Info::plain(Ty::Error)
                 }
             },
@@ -2620,10 +2676,14 @@ impl<'w> Checker<'w> {
                         }
                         other => {
                             let shown = self.show(&other);
-                            self.error(
+                            self.error_fix(
                                 "not-callable",
                                 format!("`{}` is `{shown}`, not a function", name.text),
                                 name.span,
+                                format!(
+                                    "read `{}` without parentheses, or call a function with it",
+                                    name.text
+                                ),
                             );
                             for arg in args {
                                 self.infer(&arg.value, None);
@@ -2639,13 +2699,11 @@ impl<'w> Checker<'w> {
                     None => {
                         let message =
                             format!("there is no function named `{}` in this module", name.text);
-                        let fix = self.suggest_function(&name.text);
-                        match fix {
-                            Some(fix) => {
-                                self.error_fix("unknown-function", message, name.span, fix)
-                            }
-                            None => self.error("unknown-function", message, name.span),
-                        }
+                        let fix = self
+                            .suggest_function(&name.text)
+                            .or_else(|| foreign_function(&name.text).map(str::to_string))
+                            .unwrap_or_else(|| format!("declare `function {}(...)`", name.text));
+                        self.error_fix("unknown-function", message, name.span, fix);
                         for arg in args {
                             self.infer(&arg.value, None);
                         }
@@ -2666,26 +2724,22 @@ impl<'w> Checker<'w> {
                                 }
                                 None => {
                                     let module_name = self.world.modules[target].name.clone();
-                                    let fix = self.suggest_module_function(target, &name.text);
-                                    match fix {
-                                        Some(fix) => self.error_fix(
-                                            "unknown-function",
+                                    let fix = self
+                                        .suggest_module_function(target, &name.text)
+                                        .unwrap_or_else(|| {
                                             format!(
-                                                "`{module_name}` has no function named `{}`",
-                                                name.text
-                                            ),
-                                            name.span,
-                                            fix,
+                                                "see `renyi index` for what `{module_name}` declares"
+                                            )
+                                        });
+                                    self.error_fix(
+                                        "unknown-function",
+                                        format!(
+                                            "`{module_name}` has no function named `{}`",
+                                            name.text
                                         ),
-                                        None => self.error(
-                                            "unknown-function",
-                                            format!(
-                                                "`{module_name}` has no function named `{}`",
-                                                name.text
-                                            ),
-                                            name.span,
-                                        ),
-                                    }
+                                        name.span,
+                                        fix,
+                                    );
                                     for arg in args {
                                         self.infer(&arg.value, None);
                                     }
@@ -2724,10 +2778,11 @@ impl<'w> Checker<'w> {
                 self.infer_method_call(&receiver.ty, base.span, name, args, span, expected)
             }
             _ => {
-                self.error(
+                self.error_fix(
                     "not-callable",
                     "only a named function or a method can be called",
                     callee.span,
+                    "bind the function to a name with `let`, then call the name",
                 );
                 for arg in args {
                     self.infer(&arg.value, None);
@@ -2796,10 +2851,13 @@ impl<'w> Checker<'w> {
                 let shown = self.show(&ty);
                 let fix = self.suggest_method(&ty, &name.text);
                 let message = format!("`{shown}` has no method named `{}`", name.text);
-                match fix {
-                    Some(fix) => self.error_fix("unknown-method", message, name.span, fix),
-                    None => self.error("unknown-method", message, name.span),
-                }
+                let fix = fix.unwrap_or_else(|| {
+                    format!(
+                        "call a function with the value as its argument: `{}(value)`",
+                        name.text
+                    )
+                });
+                self.error_fix("unknown-method", message, name.span, fix);
                 for arg in args {
                     self.infer(&arg.value, None);
                 }
@@ -2967,7 +3025,12 @@ impl<'w> Checker<'w> {
         match receiver {
             Some((receiver_ty, receiver_span)) => {
                 if !is_method {
-                    self.error("not-a-method", format!("`{name}` is not a method"), span);
+                    self.error_fix(
+                        "not-a-method",
+                        format!("`{name}` is not a method"),
+                        span,
+                        format!("write `{name}(value, ...)`"),
+                    );
                 } else {
                     self.require_public(id, name_span);
                     let self_ty = params[0].1.clone();
@@ -3049,7 +3112,7 @@ impl<'w> Checker<'w> {
         name: &str,
     ) -> Info {
         if args.len() != function.params.len() {
-            self.error(
+            self.error_fix(
                 "argument-count",
                 format!(
                     "`{name}` takes {} argument{}, found {}",
@@ -3058,6 +3121,7 @@ impl<'w> Checker<'w> {
                     args.len()
                 ),
                 span,
+                "pass one argument for each parameter of the function type",
             );
         }
         for (arg, param) in args.iter().zip(&function.params) {
@@ -3108,7 +3172,15 @@ impl<'w> Checker<'w> {
                     args.len()
                 )
             };
-            self.error("argument-count", message, span);
+            let fix = match wanted.len() {
+                0 => format!("write `{name}()`"),
+                1 => format!("write `{name}(value)`"),
+                _ => {
+                    let named: Vec<String> = wanted.iter().map(|w| format!("{w}: ...")).collect();
+                    format!("write `{name}({})`", named.join(", "))
+                }
+            };
+            self.error_fix("argument-count", message, span, fix);
             for arg in args {
                 self.infer(&arg.value, None);
             }
@@ -3311,6 +3383,70 @@ impl<'w> Checker<'w> {
         closest(name, names.into_iter()).map(|c| format!("did you mean `{c}`?"))
     }
 
+    /// The closest binding in scope, for an unknown name.
+    fn suggest_binding(&self, name: &str) -> Option<String> {
+        let names: Vec<&str> = self
+            .scopes
+            .iter()
+            .flat_map(|scope| scope.bindings.iter().map(|b| b.name.as_str()))
+            .collect();
+        closest(name, names.into_iter()).map(|c| format!("did you mean `{c}`?"))
+    }
+
+    /// The fix for an unknown field: the closest field of the record, or
+    /// its fields.
+    fn suggest_field(&self, ty: &Ty, name: &str) -> String {
+        let fields = self.field_names(ty);
+        match closest(name, fields.iter().map(String::as_str)) {
+            Some(close) => format!("did you mean `{close}`?"),
+            None if fields.is_empty() => "read a field of a record".to_string(),
+            None => format!("name one of {}", quoted(&fields)),
+        }
+    }
+
+    /// The fix for an unknown variant in a pattern: the closest variant of
+    /// the subject's type, or its variants.
+    fn suggest_variant(&self, ty: &Ty, name: &str) -> String {
+        let variants = self.variant_names(ty);
+        match closest(name, variants.iter().map(String::as_str)) {
+            Some(close) => format!("did you mean `{close}`?"),
+            None if variants.is_empty() => "match a value of a sum type".to_string(),
+            None => format!("write one of {}", quoted(&variants)),
+        }
+    }
+
+    fn field_names(&self, ty: &Ty) -> Vec<String> {
+        let Some(head) = head_type(&self.base_of(ty)) else {
+            return Vec::new();
+        };
+        match &self.world.types[head].kind {
+            TypeKindInfo::Record(fields) => fields.iter().map(|f| f.name.clone()).collect(),
+            _ => Vec::new(),
+        }
+    }
+
+    fn variant_names(&self, ty: &Ty) -> Vec<String> {
+        let Some(head) = head_type(&self.base_of(ty)) else {
+            return Vec::new();
+        };
+        match &self.world.types[head].kind {
+            TypeKindInfo::Sum(variants) => variants.iter().map(|v| v.name.clone()).collect(),
+            _ => Vec::new(),
+        }
+    }
+
+    /// The fix for a type without an ability: `can` for the program's own
+    /// types, another type for the library's.
+    fn ability_fix(&self, ty: &Ty, ability: &str) -> String {
+        let own = head_type(&self.base_of(ty))
+            .is_some_and(|id| !self.world.modules[self.world.types[id].module].is_library);
+        if own {
+            format!("add `can {ability}` to `{}`", self.show(ty))
+        } else {
+            format!("use a type that has `{ability}`")
+        }
+    }
+
     // ---------------------------------------------------------- constructions
 
     fn infer_construct(
@@ -3350,13 +3486,17 @@ impl<'w> Checker<'w> {
                 }
             };
             let Some((type_id, index)) = chosen else {
-                self.error(
+                self.error_fix(
                     "ambiguous-variant",
                     format!(
                         "`{}` is a variant of several types; the context does not say which",
                         name.text
                     ),
                     name.span,
+                    format!(
+                        "annotate the binding: `let value: Type be {}(...)`",
+                        name.text
+                    ),
                 );
                 for arg in args {
                     self.infer(&arg.value, None);
@@ -3386,10 +3526,8 @@ impl<'w> Checker<'w> {
         };
         let Some(type_id) = type_id else {
             let message = format!("unknown type `{}`", name.text);
-            match self.world.suggest_import(self.module, &name.text) {
-                Some(fix) => self.error_fix("unknown-type", message, name.span, fix),
-                None => self.error("unknown-type", message, name.span),
-            }
+            let fix = self.world.suggest_type(self.module, &name.text);
+            self.error_fix("unknown-type", message, name.span, fix);
             for arg in args {
                 self.infer(&arg.value, None);
             }
@@ -3440,10 +3578,11 @@ impl<'w> Checker<'w> {
                 let base = base.clone();
                 let refinement = refinement.clone();
                 if args.len() != 1 {
-                    self.error(
+                    self.error_fix(
                         "argument-count",
                         format!("`{}` is built from one value", name.text),
                         span,
+                        format!("write `{}(value)`", name.text),
                     );
                     for arg in args {
                         self.infer(&arg.value, None);
@@ -3468,13 +3607,17 @@ impl<'w> Checker<'w> {
                         Some(literal) => match refine::evaluate(condition, "value", &literal) {
                             Verdict::Holds => {}
                             Verdict::Fails => {
-                                self.error(
+                                self.error_fix(
                                     "constraint-violation",
                                     format!(
                                         "this value does not satisfy the condition of `{}`",
                                         name.text
                                     ),
                                     arg.value.span,
+                                    format!(
+                                        "write a value the condition of `{}` accepts",
+                                        name.text
+                                    ),
                                 );
                             }
                             Verdict::Unknown => fails.push(self.builtin(b.constraint_violation)),
@@ -3489,14 +3632,16 @@ impl<'w> Checker<'w> {
                     function: None,
                 }
             }
-            TypeKindInfo::Sum(_) => {
-                self.error(
+            TypeKindInfo::Sum(variants) => {
+                let names: Vec<String> = variants.iter().map(|v| v.name.clone()).collect();
+                self.error_fix(
                     "construct-sum",
                     format!(
                         "`{}` is a sum type; construct one of its variants",
                         name.text
                     ),
                     name.span,
+                    format!("write one of {}", quoted(&names)),
                 );
                 for arg in args {
                     self.infer(&arg.value, None);
@@ -3504,10 +3649,14 @@ impl<'w> Checker<'w> {
                 Info::plain(Ty::Error)
             }
             TypeKindInfo::Opaque | TypeKindInfo::Unresolved => {
-                self.error(
+                self.error_fix(
                     "construct-opaque",
                     format!("`{}` cannot be constructed from fields", name.text),
                     name.span,
+                    format!(
+                        "call a function of its module that returns a `{}`",
+                        name.text
+                    ),
                 );
                 for arg in args {
                     self.infer(&arg.value, None);
@@ -3615,13 +3764,14 @@ impl<'w> Checker<'w> {
             Some(literal) => match refine::evaluate(condition, &field.text, &literal) {
                 Verdict::Holds => {}
                 Verdict::Fails => {
-                    self.error(
+                    self.error_fix(
                         "constraint-violation",
                         format!(
                             "this value does not satisfy the condition on `{}`",
                             field.text
                         ),
                         value.span,
+                        format!("write a value the condition on `{}` accepts", field.text),
                     );
                 }
                 Verdict::Unknown => {
@@ -3702,10 +3852,11 @@ impl<'w> Checker<'w> {
             }
             Outcome::Break(break_span) | Outcome::Continue(break_span) => {
                 if self.loop_depth == 0 {
-                    self.error(
+                    self.error_fix(
                         "outside-loop",
                         "`break` or `continue` outside a loop",
                         *break_span,
+                        "remove it, or put it inside `for each` or `repeat until`",
                     );
                 }
             }
@@ -3868,12 +4019,13 @@ impl<'w> Checker<'w> {
                     Ty::Maybe(_) | Ty::Error => {}
                     _ => {
                         let shown = self.show(&subject_ty);
-                        self.error(
+                        self.error_fix(
                             "pattern-mismatch",
                             format!(
                                 "`nothing` matches a `maybe` value, but the subject is `{shown}`"
                             ),
                             *span,
+                            "drop this arm, or match a `maybe` value",
                         );
                     }
                 }
@@ -3888,12 +4040,13 @@ impl<'w> Checker<'w> {
                     Ty::Error => self.check_pattern(inner, &Ty::Error),
                     _ => {
                         let shown = self.show(&subject_ty);
-                        self.error(
+                        self.error_fix(
                             "pattern-mismatch",
                             format!(
                                 "`some(...)` matches a `maybe` value, but the subject is `{shown}`"
                             ),
                             *span,
+                            "drop this arm, or match a `maybe` value",
                         );
                         self.check_pattern(inner, &Ty::Error)
                     }
@@ -3937,10 +4090,13 @@ impl<'w> Checker<'w> {
                     Ty::Union(members) => {
                         if !members.iter().any(|m| self.same_type(m, &wanted)) {
                             let shown = self.show(&wanted);
-                            self.error(
+                            let errors: Vec<String> =
+                                members.iter().map(|m| self.show(m)).collect();
+                            self.error_fix(
                                 "pattern-mismatch",
                                 format!("the errors here are not `{shown}`"),
                                 *span,
+                                format!("write one of {}", quoted(&errors)),
                             );
                         }
                         Shape::Ctor(Ctor::Member(self.zonk(&wanted)), vec![Shape::Wild])
@@ -3950,10 +4106,11 @@ impl<'w> Checker<'w> {
                         if !self.same_type(other, &wanted) {
                             let shown = self.show(&wanted);
                             let subject_shown = self.show(other);
-                            self.error(
+                            self.error_fix(
                                 "pattern-mismatch",
                                 format!("`{shown}` does not match a `{subject_shown}`"),
                                 *span,
+                                format!("write a pattern of `{subject_shown}`"),
                             );
                         }
                         Shape::Wild
@@ -4006,10 +4163,12 @@ impl<'w> Checker<'w> {
                     None => {
                         if !subject_ty.is_error() {
                             let shown = self.show(&subject_ty);
-                            self.error(
+                            let fix = self.suggest_variant(&subject_ty, &name.text);
+                            self.error_fix(
                                 "pattern-mismatch",
                                 format!("`{shown}` has no variant named `{}`", name.text),
                                 *span,
+                                fix,
                             );
                         }
                         for field in fields {
@@ -4049,13 +4208,26 @@ impl<'w> Checker<'w> {
                                     }
                                 }
                                 None => {
-                                    self.error(
+                                    let names: Vec<String> =
+                                        variant_fields.iter().map(|f| f.name.clone()).collect();
+                                    let fix = match closest(
+                                        &field.field.text,
+                                        names.iter().map(String::as_str),
+                                    ) {
+                                        Some(close) => format!("did you mean `{close}`?"),
+                                        None if names.is_empty() => {
+                                            "drop the parentheses".to_string()
+                                        }
+                                        None => format!("name one of {}", quoted(&names)),
+                                    };
+                                    self.error_fix(
                                         "unknown-field",
                                         format!(
                                             "`{}` has no field named `{}`",
                                             name.text, field.field.text
                                         ),
                                         field.field.span,
+                                        fix,
                                     );
                                     if let Some(inner) = &field.pattern {
                                         self.check_pattern(inner, &Ty::Error);
@@ -4369,10 +4541,11 @@ impl<'w> Checker<'w> {
                 let resolved = self.resolve(&info.ty);
                 if !matches!(resolved, Ty::Var(_) | Ty::Error) && !self.is_numeric(&resolved) {
                     let shown = self.show(&resolved);
-                    self.error(
+                    self.error_fix(
                         "type-mismatch",
                         format!("`sum` adds numbers, but these are `{shown}`"),
                         value.span,
+                        "sum a number of each item: `for each item in items sum item.amount`",
                     );
                 }
                 let result = self.base_of(&info.ty);
@@ -4538,37 +4711,6 @@ fn resolve_in_body(
             )
         }
     }
-}
-
-/// The closest name by edit distance, when it is close enough to be a slip.
-fn closest<'a>(name: &str, candidates: impl Iterator<Item = &'a str>) -> Option<String> {
-    let mut best: Option<(usize, &str)> = None;
-    for candidate in candidates {
-        let distance = edit_distance(name, candidate);
-        if distance <= 2 && best.is_none_or(|(d, _)| distance < d) {
-            best = Some((distance, candidate));
-        }
-    }
-    best.map(|(_, c)| c.to_string())
-}
-
-fn edit_distance(a: &str, b: &str) -> usize {
-    let a: Vec<char> = a.chars().collect();
-    let b: Vec<char> = b.chars().collect();
-    let mut previous: Vec<usize> = (0..=b.len()).collect();
-    for (i, ca) in a.iter().enumerate() {
-        let mut current = vec![i + 1];
-        for (j, cb) in b.iter().enumerate() {
-            let cost = if ca == cb { 0 } else { 1 };
-            current.push(
-                (previous[j] + cost)
-                    .min(previous[j + 1] + 1)
-                    .min(current[j] + 1),
-            );
-        }
-        previous = current;
-    }
-    previous[b.len()]
 }
 
 /// The per-module driver: check every body of a user module.

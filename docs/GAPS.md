@@ -182,12 +182,17 @@ Each is a sentence in the design that the checker does not act on.
 10. Done in stage 1 (decision V6): a tool's parameters must have
     `FromJson` and its result `ToJson` (`tool-type`; `check.rs`,
     `check_tool_signature`).
-11. Diagnostics without a `fix`: the parser has about 31 diagnostic sites
-    and 3 fixes, `world.rs` 23 and 14; the generic "expected" parse errors
-    carry none (decision D3). One-spelling fixes exist for statement-start
-    foreign words and lexer symbols only: top-level `def` or `fn`, `else`,
-    `null`, `is larger than`, `userName` and `user_record` get a bare
-    "expected" (decisions C4, C5).
+11. Done in stage 1: every diagnostic carries a fix (decision D3). The
+    fix-less helpers are gone from the lexer, the parser and the checker,
+    so a new site cannot omit one, and both conformance runners require a
+    `fix:` line after every diagnostic. The parser's `expected` fix is the
+    Renyi spelling when the token is another language's (`def`, `null`,
+    `than`, braces; decision C4); the lexer keeps `userName` as one name
+    with `write `user_name`` as its fix, and `user_record` where a type is
+    expected gets `write `UserRecord`` (decision C5); an unknown name,
+    type, field, variant, module or ability suggests the closest one in
+    scope, or the Renyi name of a foreign one (`null`, `True`, `print`,
+    `Int`; `suggest.rs`).
 12. Done in stage 1: the unread loop variable of a bare `count` query
     over one source gets the fix decision M2 names, `source.length()`
     (`check.rs`, `BindingKind::Count`).

@@ -45,7 +45,8 @@ suite is the contract; `crates/` is one implementation of it.
 
 - `check` exits with `0` when the program has no errors, warnings included,
   and with `1` when it has any; every diagnostic names its code in square
-  brackets.
+  brackets, and the line after it starts with `fix:` and suggests a fix
+  (decision D3).
 - `run` exits with `0` when `main` returns, `1` when it fails, `2` when the
   program crashes, and with the code `environment.exit` was given. A
   failure or a crash is reported on the standard error; the standard

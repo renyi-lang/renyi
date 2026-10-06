@@ -243,6 +243,13 @@
       "program": "tests/conformance/programs/requirement.ry",
       "diagnostics": ["missing-ability"],
       "exit_code": 1
+    },
+    {
+      "name": "a spelling of another language names the Renyi one",
+      "command": "check",
+      "program": "tests/conformance/programs/foreign_spelling.ry",
+      "diagnostics": ["foreign-keyword"],
+      "exit_code": 1
     }
   ]
 }

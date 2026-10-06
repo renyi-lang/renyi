@@ -12,7 +12,7 @@
 
 use crate::ast::*;
 use crate::diagnostics::Diagnostic;
-use crate::lexer::lex;
+use crate::lexer::{lex, pascal_case, snake_case};
 use crate::span::Span;
 use crate::token::{TextPart, Token, TokenKind, Word};
 
@@ -86,7 +86,12 @@ fn parse_hole(src: &str, tokens: Vec<Token>, diagnostics: &mut Vec<Diagnostic>) 
     });
     if !parser.at(&TokenKind::Eof) {
         let span = parser.peek().span;
-        parser.error("hole-syntax", "a hole holds exactly one expression", span);
+        parser.error(
+            "hole-syntax",
+            "a hole holds exactly one expression",
+            span,
+            "bind the rest to a name first, and write `{name}`",
+        );
     }
     diagnostics.extend(parser.diagnostics);
     expr
@@ -216,8 +221,7 @@ impl<'s> Parser<'s> {
             Ok(self.advance())
         } else {
             let span = self.peek().span;
-            let found = self.describe(span);
-            self.error("expected", format!("expected {what}, found {found}"), span);
+            self.expected(what, span, &format!("write {what}"));
             Err(())
         }
     }
@@ -227,7 +231,7 @@ impl<'s> Parser<'s> {
     }
 
     fn describe(&self, span: Span) -> String {
-        let token = &self.tokens[self.pos];
+        let token = self.token_at(span);
         match &token.kind {
             TokenKind::Newline => "the end of the line".to_string(),
             TokenKind::Eof => "the end of the file".to_string(),
@@ -235,9 +239,87 @@ impl<'s> Parser<'s> {
         }
     }
 
-    fn error(&mut self, code: &'static str, message: impl Into<String>, span: Span) {
+    /// The token a diagnostic is about: the one with this span near the
+    /// cursor, else the one under the cursor.
+    fn token_at(&self, span: Span) -> Token {
+        let low = self.pos.saturating_sub(2);
+        let high = (self.pos + 2).min(self.tokens.len());
+        self.tokens[low..high]
+            .iter()
+            .find(|token| token.span == span)
+            .unwrap_or(&self.tokens[self.pos.min(self.tokens.len() - 1)])
+            .clone()
+    }
+
+    /// Every diagnostic carries a fix (decision D3).
+    fn error(
+        &mut self,
+        code: &'static str,
+        message: impl Into<String>,
+        span: Span,
+        fix: impl Into<String>,
+    ) {
         self.diagnostics
-            .push(Diagnostic::error(code, message, span));
+            .push(Diagnostic::error(code, message, span).with_fix(fix));
+    }
+
+    /// `expected X, found Y`, with `fix`, or with the Renyi spelling when
+    /// the token is another language's (decision C4). Silent when the lexer
+    /// already reported the token with its own fix.
+    fn expected(&mut self, what: &str, span: Span, fix: &str) {
+        let token = self.token_at(span);
+        if token.kind == TokenKind::Error {
+            return;
+        }
+        let found = self.describe(span);
+        let fix = self.foreign_spelling(&token).unwrap_or(fix).to_string();
+        self.error(
+            "expected",
+            format!("expected {what}, found {found}"),
+            span,
+            fix,
+        );
+    }
+
+    /// The Renyi spelling of a keyword or symbol of another language
+    /// (decision C4), for the fix of the diagnostic that meets it.
+    fn foreign_spelling(&self, token: &Token) -> Option<&'static str> {
+        let text = &self.src[token.span.start..token.span.end];
+        let fix = match (&token.kind, text) {
+            (TokenKind::Identifier, "while") => {
+                "write `repeat until` with the opposite condition"
+            }
+            (TokenKind::Identifier, "loop" | "do") => "write `repeat until condition`",
+            (TokenKind::Identifier, "else" | "elif" | "elsif" | "elseif") => {
+                "write `otherwise`, or `otherwise if condition then`"
+            }
+            (TokenKind::Identifier, "def" | "fn" | "func" | "fun" | "lambda") => {
+                "write `function`"
+            }
+            (TokenKind::Identifier, "var" | "const" | "val") => {
+                "write `let`, or `let mutable` for a value that changes"
+            }
+            (TokenKind::Identifier, "switch") => "write `match`",
+            (TokenKind::Identifier, "case") => "write `when pattern then`",
+            (TokenKind::Identifier, "foreach") => "write `for each`",
+            (TokenKind::Identifier, "throw" | "raise") => "write `fail with`",
+            (TokenKind::Identifier, "null" | "nil" | "undefined") => "write `nothing`",
+            (TokenKind::Identifier, "this") => "write `self`",
+            (
+                TokenKind::Identifier,
+                "class" | "struct" | "record" | "enum" | "interface" | "trait",
+            ) => "write `type Name`, or `ability Name` for a set of methods",
+            (TokenKind::TypeName, "True" | "False") => "write `true` or `false`",
+            (TokenKind::TypeName, "None" | "Null" | "Nil") => "write `nothing`",
+            (TokenKind::Word(Word::Than), _) => {
+                "the comparisons are `is greater than`, `is less than`, `is at least` and `is at most`"
+            }
+            (TokenKind::Word(Word::For), _) => "write `for each item in items`",
+            (TokenKind::LeftBrace, _) => "a block is `then ... end`, without braces",
+            (TokenKind::RightBrace, _) => "write `end`",
+            _ => return None,
+        };
+        Some(fix)
     }
 
     /// Skip to the start of the next line, after an error.
@@ -269,12 +351,15 @@ impl<'s> Parser<'s> {
             | TokenKind::Word(Word::When) => Ok(()),
             _ => {
                 let span = self.raw().span;
-                let found = self.describe(span);
-                self.error(
-                    "expected",
-                    format!("expected the end of the line, found {found}"),
-                    span,
-                );
+                // `end if`, `end function`: `end` closes every block by itself
+                let after_end =
+                    self.pos > 0 && self.tokens[self.pos - 1].kind == TokenKind::Word(Word::End);
+                let fix = if after_end {
+                    "`end` closes a block by itself; drop the word after it"
+                } else {
+                    "one statement per line; a long line breaks inside parentheses"
+                };
+                self.expected("the end of the line", span, fix);
                 Err(())
             }
         }
@@ -312,7 +397,12 @@ impl<'s> Parser<'s> {
             module.docs = self.doc_clauses();
         } else {
             let span = self.peek().span;
-            self.error("module-header", "a file starts with `module name`", span);
+            self.error(
+                "module-header",
+                "a file starts with `module name`",
+                span,
+                "write `module name` on the first line, named after the file",
+            );
         }
         loop {
             self.skip_newlines();
@@ -379,7 +469,11 @@ impl<'s> Parser<'s> {
                     span: token.span,
                 }),
                 _ => {
-                    self.error("expected", "expected a name after the dot", token.span);
+                    self.expected(
+                        "a name after the dot",
+                        token.span,
+                        "write the next part of the name: `std.console`",
+                    );
                     return Err(());
                 }
             }
@@ -478,6 +572,7 @@ impl<'s> Parser<'s> {
                         "example-shape",
                         "an example is `expression is value` or `expression fails with Pattern`",
                         span,
+                        "write `go(1) is 2`, or `go(0) fails with Oops`",
                     );
                     return Err(());
                 }
@@ -507,12 +602,21 @@ impl<'s> Parser<'s> {
             TokenKind::Word(Word::Let) => self.constant(public, start).map(Item::Constant),
             TokenKind::Word(Word::Test) if !public => self.test(start).map(Item::Test),
             _ => {
-                let found = self.describe(token.span);
-                self.error(
-                    "expected",
-                    format!("expected `function`, `type`, `ability`, `let` or `test` at the top level, found {found}"),
-                    token.span,
-                );
+                if let Some(fix) = self.foreign_spelling(&token) {
+                    let word = self.describe(token.span);
+                    self.error(
+                        "foreign-keyword",
+                        format!("{word} is not Renyi"),
+                        token.span,
+                        fix,
+                    );
+                } else {
+                    self.expected(
+                        "`function`, `type`, `ability`, `let` or `test` at the top level",
+                        token.span,
+                        "write `function name(...)`, `type Name`, `ability Name`, `let name be value` or `test \"name\"`",
+                    );
+                }
                 Err(())
             }
         }
@@ -722,6 +826,7 @@ impl<'s> Parser<'s> {
                         "capability-scope",
                         "a capability scope is a text literal",
                         token.span,
+                        "write the scope in quotes: `filesystem.read(\"data/\")`",
                     );
                     return Err(());
                 }
@@ -736,10 +841,10 @@ impl<'s> Parser<'s> {
         let start = self.expect_word(Word::AtMost)?.span;
         let count_token = self.advance();
         if count_token.kind != TokenKind::Integer {
-            self.error(
-                "expected",
-                "expected a whole number after `at most`",
+            self.expected(
+                "a whole number after `at most`",
                 count_token.span,
+                "write `at most 10 per minute`",
             );
             return Err(());
         }
@@ -754,6 +859,7 @@ impl<'s> Parser<'s> {
                     "a budget is per `second`, `minute`, `hour`, `day` or `run`, found `{unit}`"
                 ),
                 unit_token.span,
+                "write `per second`, `per minute`, `per hour`, `per day` or `per run`",
             );
             return Err(());
         }
@@ -880,11 +986,10 @@ impl<'s> Parser<'s> {
                 self.end_of_statement()?;
             } else {
                 let span = self.peek().span;
-                let found = self.describe(span);
-                self.error(
-                    "expected",
-                    format!("expected `has`, `can` or `end` in a type, found {found}"),
+                self.expected(
+                    "`has`, `can` or `end` in a type",
                     span,
+                    "write `has name: Type`, `can Ability`, or `end`",
                 );
                 return Err(());
             }
@@ -922,6 +1027,7 @@ impl<'s> Parser<'s> {
                         "external-name",
                         "the external name after `as` is a text literal",
                         token.span,
+                        "write it in quotes: `as \"userName\"`",
                     );
                     return Err(());
                 }
@@ -1015,6 +1121,7 @@ impl<'s> Parser<'s> {
                     "public-implementation",
                     "an implementation is never `public`; the ability and the type are",
                     Span::new(start, end_of_head.end),
+                    "drop `public`",
                 );
             }
             return Ok(Item::Implementation(AbilityImpl {
@@ -1064,11 +1171,10 @@ impl<'s> Parser<'s> {
             let public = self.eat_word(Word::Public);
             if !self.at_word(Word::Function) {
                 let span = self.peek().span;
-                let found = self.describe(span);
-                self.error(
-                    "expected",
-                    format!("expected `function` or `end` in an ability, found {found}"),
+                self.expected(
+                    "`function` or `end` in an ability",
                     span,
+                    "write `function name(self, ...) returns Type`, or `end`",
                 );
                 return Err(());
             }
@@ -1104,10 +1210,10 @@ impl<'s> Parser<'s> {
         let name = match token.kind {
             TokenKind::Text { parts, .. } => literal_text(&parts),
             _ => {
-                self.error(
-                    "expected",
-                    "expected the test name as a text literal",
+                self.expected(
+                    "the test name as a text literal",
                     token.span,
+                    "write `test \"what it checks\"`",
                 );
                 return Err(());
             }
@@ -1122,10 +1228,10 @@ impl<'s> Parser<'s> {
             match token.kind {
                 TokenKind::Text { parts, .. } => Some(literal_text(&parts)),
                 _ => {
-                    self.error(
-                        "expected",
-                        "expected the recording's path as a text literal after `replays`",
+                    self.expected(
+                        "the recording's path as a text literal after `replays`",
                         token.span,
+                        "write `replays \"recordings/name.json\"`",
                     );
                     return Err(());
                 }
@@ -1218,12 +1324,21 @@ impl<'s> Parser<'s> {
                     args,
                 })
             }
-            _ => {
-                let found = self.describe(token.span);
+            TokenKind::Identifier => {
+                let text = self.text_of(&token);
                 self.error(
-                    "expected",
-                    format!("expected a type, found {found}"),
+                    "type-name-shape",
+                    format!("`{text}` is snake_case, but a type is PascalCase"),
                     token.span,
+                    format!("write `{}`", pascal_case(&text)),
+                );
+                Err(())
+            }
+            _ => {
+                self.expected(
+                    "a type",
+                    token.span,
+                    "write a type name: `Integer`, `Text`, `List of Text` or `maybe Integer`",
                 );
                 Err(())
             }
@@ -1265,13 +1380,18 @@ impl<'s> Parser<'s> {
                     span: token.span,
                 })
             }
-            _ => {
-                let found = self.describe(token.span);
+            TokenKind::TypeName => {
+                let text = self.text_of(&token);
                 self.error(
-                    "expected",
-                    format!("expected {what}, found {found}"),
+                    "identifier-shape",
+                    format!("`{text}` is PascalCase, but {what} is snake_case"),
                     token.span,
+                    format!("write `{}`", snake_case(&text)),
                 );
+                Err(())
+            }
+            _ => {
+                self.expected(what, token.span, &format!("write {what}: `total_count`"));
                 Err(())
             }
         }
@@ -1287,13 +1407,18 @@ impl<'s> Parser<'s> {
                     span: token.span,
                 })
             }
-            _ => {
-                let found = self.describe(token.span);
+            TokenKind::Identifier => {
+                let text = self.text_of(&token);
                 self.error(
-                    "expected",
-                    format!("expected {what}, found {found}"),
+                    "type-name-shape",
+                    format!("`{text}` is snake_case, but {what} is PascalCase"),
                     token.span,
+                    format!("write `{}`", pascal_case(&text)),
                 );
+                Err(())
+            }
+            _ => {
+                self.expected(what, token.span, &format!("write {what}: `OrderLine`"));
                 Err(())
             }
         }
@@ -1313,6 +1438,7 @@ impl<'s> Parser<'s> {
                         "missing-end",
                         "the file ended inside a block; `end` is missing",
                         token.span,
+                        "write `end`",
                     );
                     return Err(());
                 }
@@ -1475,6 +1601,7 @@ impl<'s> Parser<'s> {
                         "statement-shape",
                         "a statement is a call, or starts with `let`, `set`, `if`, `match`, `for each`, `repeat until`, `return`, `fail`, `crash`, `ignore` or `check`",
                         expr.span,
+                        "bind the value with `let name be ...`, or pass it to a function",
                     );
                     return Err(());
                 }
@@ -1487,24 +1614,12 @@ impl<'s> Parser<'s> {
     /// Renyi form to write instead (decision C4). An identifier followed by `(`
     /// or `.` is a call and never foreign.
     fn foreign_statement_word(&self, token: &Token) -> Option<(String, &'static str)> {
-        let word = &self.src[token.span.start..token.span.end];
         let next = self.tokens.get(self.pos + 1).map(|t| &t.kind);
         if matches!(next, Some(TokenKind::LeftParen) | Some(TokenKind::Dot)) {
             return None;
         }
-        let fix = match word {
-            "while" => "write `repeat until` with the opposite condition",
-            "loop" | "do" => "write `repeat until condition`",
-            "else" | "elif" | "elsif" => "write `otherwise`, or `otherwise if condition then`",
-            "def" | "fn" | "func" => "write `function`",
-            "var" | "const" => "write `let`, or `let mutable` for a value that changes",
-            "switch" => "write `match`",
-            "case" => "write `when pattern then`",
-            "foreach" => "write `for each`",
-            "throw" | "raise" => "write `fail with`",
-            _ => return None,
-        };
-        Some((word.to_string(), fix))
+        let fix = self.foreign_spelling(token)?;
+        Some((self.src[token.span.start..token.span.end].to_string(), fix))
     }
 
     fn statement_ends_here(&self) -> bool {
@@ -1720,11 +1835,10 @@ impl<'s> Parser<'s> {
                 Ok(Pattern::Literal(literal))
             }
             _ => {
-                let found = self.describe(token.span);
-                self.error(
-                    "expected",
-                    format!("expected a pattern, found {found}"),
+                self.expected(
+                    "a pattern",
                     token.span,
+                    "write a name, a literal, `nothing`, `some(x)`, `success(x)`, `failure(error)` or `Variant(...)`",
                 );
                 Err(())
             }
@@ -1927,10 +2041,10 @@ impl<'s> Parser<'s> {
                         span: token.span,
                     },
                     _ => {
-                        self.error(
-                            "expected",
-                            "expected a member name after the dot",
+                        self.expected(
+                            "a member name after the dot",
                             token.span,
+                            "write the field or method name: `value.length()`",
                         );
                         return Err(());
                     }
@@ -2022,7 +2136,12 @@ impl<'s> Parser<'s> {
                         span: span.join(number.span),
                     }),
                     _ => {
-                        self.error("unary-minus", "`-` negates only a number literal; write `0 - value` for a computed value", span.join(number.span));
+                        self.error(
+                            "unary-minus",
+                            "`-` negates only a number literal",
+                            span.join(number.span),
+                            "write `0 - value` for a computed value",
+                        );
                         Err(())
                     }
                 }
@@ -2060,10 +2179,10 @@ impl<'s> Parser<'s> {
                         span: span.join(token.span),
                     }),
                     _ => {
-                        self.error(
-                            "expected",
-                            "expected a text literal after `raw`",
+                        self.expected(
+                            "a text literal after `raw`",
                             token.span,
+                            "write `raw \"...\"`",
                         );
                         Err(())
                     }
@@ -2172,11 +2291,10 @@ impl<'s> Parser<'s> {
             TokenKind::Word(Word::Match) => self.match_expr(),
             TokenKind::Word(Word::ForEach) => self.query(),
             _ => {
-                let found = self.describe(span);
-                self.error(
-                    "expected",
-                    format!("expected an expression, found {found}"),
+                self.expected(
+                    "an expression",
                     span,
+                    "write a value: a literal, a name, a call or `(...)`",
                 );
                 Err(())
             }
@@ -2343,6 +2461,7 @@ impl<'s> Parser<'s> {
                     "query-shape",
                     format!("a query ends with `collect`, `sum`, `count`, `first`, `any`, `all` or `group by`, found {found}"),
                     span,
+                    "end the query with one of them",
                 );
                 return Err(());
             }

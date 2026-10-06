@@ -11,11 +11,14 @@ repository root, and compares. Exit status is 1 when any case fails.
 """
 import json
 import pathlib
+import re
 import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 MANIFEST = ROOT / "tests" / "conformance" / "manifest.json"
+# `file:line:column: severity [code]: message`
+DIAGNOSTIC = re.compile(r":\d+:\d+: (error|warning) \[[a-z-]+\]: ")
 
 
 def normalised(text: str) -> str:
@@ -50,6 +53,13 @@ def problems_of(binary: str, case: dict) -> list[str]:
     for code in case.get("diagnostics", []):
         if f"[{code}]" not in stdout + stderr:
             problems.append(f"no diagnostic [{code}] reported")
+    # every diagnostic suggests a fix on the line after it (decision D3)
+    lines = (stdout + stderr).splitlines()
+    for index, line in enumerate(lines):
+        if DIAGNOSTIC.search(line):
+            follows = index + 1 < len(lines) and lines[index + 1].lstrip().startswith("fix: ")
+            if not follows:
+                problems.append(f"no fix after {line.strip()!r}")
     for text in case.get("stderr_contains", []):
         if text not in stderr:
             problems.append(f"standard error lacks {text!r}")

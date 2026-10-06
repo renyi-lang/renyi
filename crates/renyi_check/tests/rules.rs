@@ -5,7 +5,27 @@ use renyi_syntax::SourceFile;
 
 fn check(source: &str) -> Vec<renyi_syntax::Diagnostic> {
     let file = SourceFile::new("demo.ry", source);
-    renyi_check::check_sources(&file, &[])
+    let diagnostics = renyi_check::check_sources(&file, &[]);
+    // decision D3: every diagnostic suggests a fix
+    for diagnostic in &diagnostics {
+        assert!(
+            diagnostic.fix.is_some(),
+            "`{}` has no fix: {}",
+            diagnostic.code,
+            diagnostic.message
+        );
+    }
+    diagnostics
+}
+
+/// The fix of the first diagnostic with this code.
+fn fix_of(source: &str, code: &str) -> String {
+    check(source)
+        .into_iter()
+        .find(|d| d.code == code)
+        .unwrap_or_else(|| panic!("no `{code}` in:\n{source}"))
+        .fix
+        .expect("a fix")
 }
 
 /// The codes of the errors a program raises.
@@ -953,4 +973,74 @@ fn the_count_fix_names_the_length_of_the_source() {
         .find(|d| d.code == "unused-binding")
         .expect("the loop variable is unused");
     assert_eq!(unused.fix.as_deref(), Some("write `lines.length()`"));
+}
+
+#[test]
+fn a_foreign_name_gets_the_renyi_spelling() {
+    assert_eq!(
+        fix_of(
+            &program("function go() returns maybe Integer\n  return null\nend\n"),
+            "unknown-name"
+        ),
+        "write `nothing`"
+    );
+    assert_eq!(
+        fix_of(
+            &program("function go() returns Boolean\n  return True\nend\n"),
+            "unknown-name"
+        ),
+        "write `true`"
+    );
+    assert_eq!(
+        fix_of(
+            &program("function go() returns Integer\n  print(\"hi\")\n  return 1\nend\n"),
+            "unknown-function"
+        ),
+        "write `console.print(...)`"
+    );
+    assert_eq!(
+        fix_of(
+            &program(
+                "function go(items: List of Text) returns Integer\n  return len(items)\nend\n"
+            ),
+            "unknown-function"
+        ),
+        "write `value.length()`"
+    );
+    assert_eq!(
+        fix_of(
+            &program("function go() returns Int\n  return 1\nend\n"),
+            "unknown-type"
+        ),
+        "write `Integer`"
+    );
+}
+
+#[test]
+fn an_unknown_name_suggests_the_closest_one() {
+    assert_eq!(
+        fix_of(
+            &program("function go() returns Integer\n  let total be 1\n  return totl\nend\n"),
+            "unknown-name"
+        ),
+        "did you mean `total`?"
+    );
+    assert_eq!(
+        fix_of(&program("type Point\n  has horizontal: Integer\n  has vertical: Integer\nend\n\nfunction go(point: Point) returns Integer\n  return point.vertcal\nend\n"), "unknown-field"),
+        "did you mean `vertical`?"
+    );
+    assert_eq!(
+        fix_of(
+            &program("function go() returns Integr\n  return 1\nend\n"),
+            "unknown-type"
+        ),
+        "did you mean `Integer`?"
+    );
+    assert_eq!(
+        fix_of(
+            &program("function go(value: Integer) returns Text\n  return value\nend\n"),
+            "type-mismatch"
+        ),
+        "write `.to_text()` after the value"
+    );
 }

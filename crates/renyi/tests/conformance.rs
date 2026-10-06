@@ -98,7 +98,23 @@ fn problems_of(case: &[(String, Json)]) -> Vec<String> {
             problems.push(format!("standard error lacks {wanted:?}:\n{stderr}"));
         }
     }
+    // every diagnostic suggests a fix on the line after it (decision D3)
+    let all = format!("{stdout}{stderr}");
+    let lines: Vec<&str> = all.lines().collect();
+    for (index, line) in lines.iter().enumerate() {
+        let fixed = lines
+            .get(index + 1)
+            .is_some_and(|next| next.trim_start().starts_with("fix: "));
+        if is_diagnostic(line) && !fixed {
+            problems.push(format!("no fix after {line:?}"));
+        }
+    }
     problems
+}
+
+/// `file:line:column: severity [code]: message`
+fn is_diagnostic(line: &str) -> bool {
+    line.contains(": error [") || line.contains(": warning [")
 }
 
 #[test]
