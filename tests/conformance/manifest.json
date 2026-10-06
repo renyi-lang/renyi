@@ -257,6 +257,13 @@
       "program": "tests/conformance/programs/iterable.ry",
       "stdout": "tests/conformance/expected/iterable.out",
       "exit_code": 0
+    },
+    {
+      "name": "the parser accepts one spelling of each construct",
+      "command": "check",
+      "program": "tests/conformance/programs/one_spelling.ry",
+      "diagnostics": ["public-method", "expected"],
+      "exit_code": 1
     }
   ]
 }

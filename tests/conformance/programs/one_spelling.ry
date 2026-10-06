@@ -1,0 +1,14 @@
+module one_spelling
+  purpose: One spelling per construct, so the formatter never changes a token.
+
+public ability Sized
+  purpose: Has a size.
+  public function size(self) returns Integer
+end
+
+function go() returns Integer end
+
+function other(items: List of Integer) returns Integer
+  let doubled be [1, 2,]
+  return items. length() + doubled.length()
+end

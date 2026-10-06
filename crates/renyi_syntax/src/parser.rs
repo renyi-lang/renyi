@@ -1,14 +1,18 @@
 //! The parser: tokens to the AST of `ast.rs`, following the clause grammar of
-//! the syntax sketch.
+//! the syntax sketch; `docs/grammar.ebnf` states the same grammar, and the
+//! test `tests/grammar.rs` keeps the two equal.
 //!
 //! Line structure matters, indentation does not (decisions C2 and V2). A
-//! statement or clause ends at a line break unless a bracket is open or the
-//! next line begins with a continuation word (`where`, `sorted by`,
+//! statement or clause ends at a line break unless a bracket is open, the
+//! line ends with a comma, or the next line begins with a continuation word
+//! (`where`, `sorted by`,
 //! `group by`, `collect`, `sum`, `count`, `first`, `any`, `all`, `returns`,
-//! `or fails with`, `needs`, `for any`, `with`, `and`, `or`, and in an
-//! `example:` `is` and `fails`). `otherwise` is not one: at the start of a
-//! line it opens the branch of an `if` or `match`. The value after `be` or
-//! `to` may start on the next line; `return` keeps its value on its line.
+//! `or fails with`, `needs`, `for any`, `with`, `and`, `or`, `is` and
+//! `fails`, decision V12). `otherwise` is not one: at the start of a line it
+//! opens the branch of an `if` or `match`. The value after `be` or `to` may
+//! start on the next line; `return` keeps its value on its line. The parser
+//! accepts one spelling of each construct, so that the formatter never
+//! changes a token (decision V12).
 
 use crate::ast::*;
 use crate::diagnostics::Diagnostic;
@@ -108,10 +112,10 @@ struct Parser<'s> {
     nesting: usize,
 }
 
-/// Words that continue a statement or clause from the start of the next line.
-/// `otherwise` is not one: at the start of a line it is the branch of an `if`
-/// or `match` (decision V2).
-const CONTINUATION_WORDS: &[Word] = &[
+/// Words that continue a statement or clause from the start of the next line,
+/// wherever they stand (decisions V2 and V12). `otherwise` is not one: at the
+/// start of a line it is the branch of an `if` or `match`.
+pub const CONTINUATION_WORDS: &[Word] = &[
     Word::Where,
     Word::SortedBy,
     Word::GroupBy,
@@ -149,7 +153,8 @@ impl<'s> Parser<'s> {
     }
 
     /// The next significant token, skipping line breaks that the layout rules
-    /// make insignificant (open brackets, continuation lines).
+    /// make insignificant: inside brackets, after a comma, before a
+    /// continuation word (decisions V2 and V12).
     fn peek(&mut self) -> &Token {
         loop {
             if self.tokens[self.pos].kind != TokenKind::Newline {
@@ -160,7 +165,8 @@ impl<'s> Parser<'s> {
                 next += 1;
             }
             let token = &self.tokens[next];
-            if self.nesting > 0 || self.continues(token) {
+            let after_comma = self.pos > 0 && self.tokens[self.pos - 1].kind == TokenKind::Comma;
+            if self.nesting > 0 || after_comma || self.continues(token) {
                 self.pos = next;
             } else {
                 return &self.tokens[self.pos];
@@ -178,7 +184,7 @@ impl<'s> Parser<'s> {
     fn peek_second(&mut self) -> &Token {
         self.peek();
         let mut index = self.pos + 1;
-        if self.nesting > 0 {
+        if self.nesting > 0 || self.tokens[self.pos].kind == TokenKind::Comma {
             while self.tokens[index].kind == TokenKind::Newline {
                 index += 1;
             }
@@ -337,32 +343,86 @@ impl<'s> Parser<'s> {
         }
     }
 
-    /// A statement or clause ends here: a line break, the end of the file, or a
-    /// block delimiter on the same line (`if done then break end`).
+    /// A statement ends here: a line break, the end of the file, or the word
+    /// that closes its block on the same line (`if done then break end`).
     fn end_of_statement(&mut self) -> ParseResult<()> {
+        self.line_end(true)
+    }
+
+    /// A head, a clause, a field, a variant or an item ends here: a line
+    /// break or the end of the file. What follows starts on its own line
+    /// (decision V12).
+    fn end_of_line(&mut self) -> ParseResult<()> {
+        self.line_end(false)
+    }
+
+    fn line_end(&mut self, delimiter_ends_it: bool) -> ParseResult<()> {
         match &self.raw().kind {
             TokenKind::Newline => {
                 self.skip_newlines();
                 Ok(())
             }
             TokenKind::Eof => Ok(()),
-            TokenKind::Word(Word::End)
-            | TokenKind::Word(Word::Otherwise)
-            | TokenKind::Word(Word::When) => Ok(()),
+            TokenKind::Word(Word::End | Word::Otherwise | Word::When) if delimiter_ends_it => {
+                Ok(())
+            }
             _ => {
                 let span = self.raw().span;
                 // `end if`, `end function`: `end` closes every block by itself
                 let after_end =
                     self.pos > 0 && self.tokens[self.pos - 1].kind == TokenKind::Word(Word::End);
-                let fix = if after_end {
-                    "`end` closes a block by itself; drop the word after it"
-                } else {
-                    "one statement per line; a long line breaks inside parentheses"
+                let fix = match &self.raw().kind {
+                    _ if after_end => {
+                        "`end` closes a block by itself; drop the word after it".to_string()
+                    }
+                    TokenKind::Word(word @ (Word::End | Word::Otherwise | Word::When)) => {
+                        format!("write `{}` on its own line", word.spelling())
+                    }
+                    _ => {
+                        "one statement per line; a long line breaks inside parentheses".to_string()
+                    }
                 };
-                self.expected("the end of the line", span, fix);
+                self.expected("the end of the line", span, &fix);
                 Err(())
             }
         }
+    }
+
+    /// After a comma in a bracketed list the next element follows; a comma
+    /// before the closing bracket is an error (decision V12).
+    fn element_after_comma(
+        &mut self,
+        comma: Span,
+        close: &TokenKind,
+        what: &str,
+    ) -> ParseResult<()> {
+        if self.at(close) {
+            let span = self.peek().span;
+            let found = self.describe(span);
+            self.error(
+                "expected",
+                format!("expected {what} after the comma, found {found}"),
+                comma,
+                "drop the comma",
+            );
+            return Err(());
+        }
+        Ok(())
+    }
+
+    /// The characters of a text literal without holes: a test name, a
+    /// capability scope, a recording's path or an external name.
+    fn plain_text(&mut self, parts: &[TextPart], span: Span, what: &str) -> ParseResult<String> {
+        if parts.iter().any(|part| matches!(part, TextPart::Hole(_))) {
+            self.error(
+                "expected",
+                format!("expected {what} as plain text, found a text with a hole"),
+                span,
+                "write the text without a hole",
+            );
+            return Err(());
+        }
+        Ok(literal_text(parts))
     }
 
     /// After `be` or `to` the value must follow, so a line break there carries
@@ -393,7 +453,7 @@ impl<'s> Parser<'s> {
             if let Ok(path) = self.dotted_name() {
                 module.name = path;
             }
-            let _ = self.end_of_statement();
+            let _ = self.end_of_line();
             module.docs = self.doc_clauses();
         } else {
             let span = self.peek().span;
@@ -464,10 +524,18 @@ impl<'s> Parser<'s> {
         while self.eat(&TokenKind::Dot) {
             let token = self.advance();
             match token.kind {
-                TokenKind::Member | TokenKind::Identifier => path.push(Name {
+                TokenKind::Member => path.push(Name {
                     text: self.text_of(&token),
                     span: token.span,
                 }),
+                TokenKind::Identifier => {
+                    self.expected(
+                        "a name directly after the dot",
+                        token.span,
+                        "write the next part of the name directly after the dot: `std.console`",
+                    );
+                    return Err(());
+                }
                 _ => {
                     self.expected(
                         "a name after the dot",
@@ -496,7 +564,7 @@ impl<'s> Parser<'s> {
             }
         }
         let end = self.tokens[self.pos - 1].span;
-        self.end_of_statement()?;
+        self.end_of_line()?;
         Ok(Import {
             path,
             alias,
@@ -517,13 +585,28 @@ impl<'s> Parser<'s> {
                     word @ (Word::Purpose | Word::Tags | Word::SeeAlso | Word::Deprecated),
                 ) => {
                     self.advance();
-                    let _ = self.expect(&TokenKind::Colon, "`:`");
+                    if self.expect(&TokenKind::Colon, "`:`").is_err() {
+                        self.recover();
+                        continue;
+                    }
                     let text = match self.raw().kind.clone() {
                         TokenKind::ClauseText(text) => {
                             self.advance();
                             text
                         }
-                        _ => String::new(),
+                        _ => {
+                            let span = self.raw().span;
+                            self.expected(
+                                "the text of the clause",
+                                span,
+                                &format!(
+                                    "write the colon directly after the word: `{}: ...`",
+                                    word.spelling()
+                                ),
+                            );
+                            self.recover();
+                            continue;
+                        }
                     };
                     match word {
                         Word::Purpose => docs.purpose = Some(text),
@@ -531,12 +614,12 @@ impl<'s> Parser<'s> {
                         Word::SeeAlso => docs.see_also = split_list(&text),
                         _ => docs.deprecated = Some(text),
                     }
-                    let _ = self.end_of_statement();
+                    let _ = self.end_of_line();
                 }
                 TokenKind::Word(Word::ExposeAsTool) => {
                     self.advance();
                     docs.expose_as_tool = true;
-                    let _ = self.end_of_statement();
+                    let _ = self.end_of_line();
                 }
                 TokenKind::Word(Word::Example) => {
                     self.advance();
@@ -545,7 +628,7 @@ impl<'s> Parser<'s> {
                         Ok(example) => docs.examples.push(example),
                         Err(()) => self.recover(),
                     }
-                    let _ = self.end_of_statement();
+                    let _ = self.end_of_line();
                 }
                 _ => break,
             }
@@ -555,18 +638,18 @@ impl<'s> Parser<'s> {
 
     fn example(&mut self, start: usize) -> ParseResult<Example> {
         let expression = self.expr()?;
-        let (expression, outcome) = match expression.kind {
-            ExprKind::Binary {
-                op: BinaryOp::Is,
-                left,
-                right,
-            } => (*left, ExampleOutcome::Is(*right)),
-            _ => {
-                if self.eat_word(Word::Fails) {
-                    self.expect_word(Word::With)?;
-                    let pattern = self.pattern()?;
-                    (expression, ExampleOutcome::FailsWith(pattern))
-                } else {
+        let (expression, outcome) = if self.eat_word(Word::Fails) {
+            self.expect_word(Word::With)?;
+            let pattern = self.pattern()?;
+            (expression, ExampleOutcome::FailsWith(pattern))
+        } else {
+            match expression.kind {
+                ExprKind::Binary {
+                    op: BinaryOp::Is,
+                    left,
+                    right,
+                } => (*left, ExampleOutcome::Is(*right)),
+                _ => {
                     let span = expression.span;
                     self.error(
                         "example-shape",
@@ -627,7 +710,7 @@ impl<'s> Parser<'s> {
         let name = self.method_or_function_name()?;
         let params = self.params()?;
         let (returns, fails, needs, type_params) = self.signature_clauses()?;
-        self.end_of_statement()?;
+        self.end_of_line()?;
         let docs = self.doc_clauses();
         let body = if with_body {
             let block = self.block(&[Word::End])?;
@@ -638,7 +721,7 @@ impl<'s> Parser<'s> {
         };
         let end = self.tokens[self.pos - 1].span.end;
         if with_body {
-            self.end_of_statement()?;
+            self.end_of_line()?;
         }
         Ok(Function {
             public,
@@ -659,7 +742,7 @@ impl<'s> Parser<'s> {
     /// reserved words included (`first`, `at`, `set`, `sum`, `repeat`).
     fn method_or_function_name(&mut self) -> ParseResult<Name> {
         let token = self.peek().clone();
-        let is_method = matches!(token.kind, TokenKind::Word(_))
+        let is_method = matches!(token.kind, TokenKind::Word(word) if !word.is_phrase())
             && self.tokens.get(self.pos + 1).map(|t| &t.kind) == Some(&TokenKind::LeftParen)
             && self.tokens.get(self.pos + 2).map(|t| &t.kind)
                 == Some(&TokenKind::Word(Word::SelfValue));
@@ -711,9 +794,11 @@ impl<'s> Parser<'s> {
                 }
             };
             params.push(param);
-            if !self.eat(&TokenKind::Comma) {
+            if !self.at(&TokenKind::Comma) {
                 break;
             }
+            let comma = self.advance().span;
+            self.element_after_comma(comma, &TokenKind::RightParen, "a parameter")?;
         }
         self.nesting -= 1;
         self.expect(&TokenKind::RightParen, "`)`")?;
@@ -791,14 +876,12 @@ impl<'s> Parser<'s> {
     }
 
     /// Whether the token after the comma at hand starts a parameter or a
-    /// field (`name:`), looking past the newlines a parenthesised list allows.
+    /// field (`name:`), looking past the newlines a comma allows.
     fn parameter_follows_comma(&mut self) -> bool {
         self.peek();
         let mut index = self.pos + 1;
-        if self.nesting > 0 {
-            while self.tokens[index].kind == TokenKind::Newline {
-                index += 1;
-            }
+        while self.tokens[index].kind == TokenKind::Newline {
+            index += 1;
         }
         if self.tokens[index].kind != TokenKind::Identifier {
             return false;
@@ -817,10 +900,12 @@ impl<'s> Parser<'s> {
         let path = self.dotted_name()?;
         let mut scope = None;
         if self.eat(&TokenKind::LeftParen) {
+            self.nesting += 1;
             let token = self.advance();
             match token.kind {
-                TokenKind::Text { parts, .. } => scope = Some(literal_text(&parts)),
-                TokenKind::RawText(text) => scope = Some(text),
+                TokenKind::Text { parts, .. } => {
+                    scope = Some(self.plain_text(&parts, token.span, "a capability scope")?);
+                }
                 _ => {
                     self.error(
                         "capability-scope",
@@ -831,6 +916,7 @@ impl<'s> Parser<'s> {
                     return Err(());
                 }
             }
+            self.nesting -= 1;
             self.expect(&TokenKind::RightParen, "`)`")?;
         }
         Ok((path, scope))
@@ -910,7 +996,7 @@ impl<'s> Parser<'s> {
             }
         }
         if self.eat_word(Word::IsOneOf) {
-            self.end_of_statement()?;
+            self.end_of_line()?;
             let docs = self.doc_clauses();
             let mut variants = Vec::new();
             let mut derives = Vec::new();
@@ -925,7 +1011,7 @@ impl<'s> Parser<'s> {
                 }
                 let variant_name = self.type_name("a variant name")?;
                 let fields = if self.at(&TokenKind::LeftParen) {
-                    self.variant_fields()?
+                    self.variant_fields(&variant_name.text)?
                 } else {
                     Vec::new()
                 };
@@ -935,11 +1021,11 @@ impl<'s> Parser<'s> {
                     fields,
                     span: variant_name.span.join(end),
                 });
-                self.end_of_statement()?;
+                self.end_of_line()?;
             }
             self.expect_word(Word::End)?;
             let end = self.tokens[self.pos - 1].span.end;
-            self.end_of_statement()?;
+            self.end_of_line()?;
             return Ok(TypeDef {
                 public,
                 name,
@@ -957,7 +1043,7 @@ impl<'s> Parser<'s> {
                 None
             };
             let end = self.tokens[self.pos - 1].span.end;
-            self.end_of_statement()?;
+            self.end_of_line()?;
             let docs = self.doc_clauses();
             return Ok(TypeDef {
                 public,
@@ -968,7 +1054,7 @@ impl<'s> Parser<'s> {
                 span: Span::new(start, end),
             });
         }
-        self.end_of_statement()?;
+        self.end_of_line()?;
         let docs = self.doc_clauses();
         let mut fields = Vec::new();
         let mut derives = Vec::new();
@@ -983,7 +1069,7 @@ impl<'s> Parser<'s> {
                 self.advance();
                 let field = self.field(true)?;
                 fields.push(field);
-                self.end_of_statement()?;
+                self.end_of_line()?;
             } else {
                 let span = self.peek().span;
                 self.expected(
@@ -996,7 +1082,7 @@ impl<'s> Parser<'s> {
         }
         self.expect_word(Word::End)?;
         let end = self.tokens[self.pos - 1].span.end;
-        self.end_of_statement()?;
+        self.end_of_line()?;
         Ok(TypeDef {
             public,
             name,
@@ -1021,7 +1107,10 @@ impl<'s> Parser<'s> {
             self.advance();
             let token = self.advance();
             match token.kind {
-                TokenKind::Text { parts, .. } => external_name = Some(literal_text(&parts)),
+                TokenKind::Text { parts, .. } => {
+                    external_name =
+                        Some(self.plain_text(&parts, token.span, "an external name")?);
+                }
                 _ => {
                     self.error(
                         "external-name",
@@ -1043,15 +1132,26 @@ impl<'s> Parser<'s> {
         })
     }
 
-    fn variant_fields(&mut self) -> ParseResult<Vec<Field>> {
+    fn variant_fields(&mut self, variant: &str) -> ParseResult<Vec<Field>> {
         self.expect(&TokenKind::LeftParen, "`(`")?;
         self.nesting += 1;
+        if self.at(&TokenKind::RightParen) {
+            let span = self.peek().span;
+            self.expected(
+                "a field inside the parentheses",
+                span,
+                &format!("write `{variant}` without parentheses"),
+            );
+            return Err(());
+        }
         let mut fields = Vec::new();
         while !self.at(&TokenKind::RightParen) {
             fields.push(self.field(false)?);
-            if !self.eat(&TokenKind::Comma) {
+            if !self.at(&TokenKind::Comma) {
                 break;
             }
+            let comma = self.advance().span;
+            self.element_after_comma(comma, &TokenKind::RightParen, "a field")?;
         }
         self.nesting -= 1;
         self.expect(&TokenKind::RightParen, "`)`")?;
@@ -1069,7 +1169,7 @@ impl<'s> Parser<'s> {
             }
         }
         let end = self.tokens[self.pos - 1].span;
-        self.end_of_statement()?;
+        self.end_of_line()?;
         Ok(Derive {
             ability,
             by,
@@ -1111,11 +1211,11 @@ impl<'s> Parser<'s> {
             } else {
                 None
             };
-            self.end_of_statement()?;
+            self.end_of_line()?;
             let functions = self.ability_functions(true)?;
             self.expect_word(Word::End)?;
             let end = self.tokens[self.pos - 1].span.end;
-            self.end_of_statement()?;
+            self.end_of_line()?;
             if public {
                 self.error(
                     "public-implementation",
@@ -1143,12 +1243,12 @@ impl<'s> Parser<'s> {
                 }
             }
         }
-        self.end_of_statement()?;
+        self.end_of_line()?;
         let docs = self.doc_clauses();
         let functions = self.ability_functions(false)?;
         self.expect_word(Word::End)?;
         let end = self.tokens[self.pos - 1].span.end;
-        self.end_of_statement()?;
+        self.end_of_line()?;
         Ok(Item::Ability(AbilityDecl {
             public,
             name,
@@ -1168,7 +1268,16 @@ impl<'s> Parser<'s> {
                 break;
             }
             let start = self.peek().span.start;
-            let public = self.eat_word(Word::Public);
+            if self.at_word(Word::Public) {
+                let span = self.peek().span;
+                self.error(
+                    "public-method",
+                    "a method is not `public` by itself; the ability's visibility covers its methods",
+                    span,
+                    "drop `public`",
+                );
+                return Err(());
+            }
             if !self.at_word(Word::Function) {
                 let span = self.peek().span;
                 self.expected(
@@ -1178,7 +1287,7 @@ impl<'s> Parser<'s> {
                 );
                 return Err(());
             }
-            functions.push(self.function(public, start, with_bodies)?);
+            functions.push(self.function(false, start, with_bodies)?);
         }
         Ok(functions)
     }
@@ -1192,7 +1301,7 @@ impl<'s> Parser<'s> {
         self.skip_newlines_before_value();
         let value = self.expr()?;
         let end = self.tokens[self.pos - 1].span.end;
-        self.end_of_statement()?;
+        self.end_of_line()?;
         let docs = self.doc_clauses();
         Ok(Constant {
             public,
@@ -1208,7 +1317,7 @@ impl<'s> Parser<'s> {
         self.expect_word(Word::Test)?;
         let token = self.advance();
         let name = match token.kind {
-            TokenKind::Text { parts, .. } => literal_text(&parts),
+            TokenKind::Text { parts, .. } => self.plain_text(&parts, token.span, "a test name")?,
             _ => {
                 self.expected(
                     "the test name as a text literal",
@@ -1226,7 +1335,9 @@ impl<'s> Parser<'s> {
         let replays = if self.eat_word(Word::Replays) {
             let token = self.advance();
             match token.kind {
-                TokenKind::Text { parts, .. } => Some(literal_text(&parts)),
+                TokenKind::Text { parts, .. } => {
+                    Some(self.plain_text(&parts, token.span, "a recording's path")?)
+                }
                 _ => {
                     self.expected(
                         "the recording's path as a text literal after `replays`",
@@ -1239,11 +1350,11 @@ impl<'s> Parser<'s> {
         } else {
             None
         };
-        self.end_of_statement()?;
+        self.end_of_line()?;
         let body = self.block(&[Word::End])?;
         self.expect_word(Word::End)?;
         let end = self.tokens[self.pos - 1].span.end;
-        self.end_of_statement()?;
+        self.end_of_line()?;
         Ok(Test {
             name,
             needs,
@@ -1271,9 +1382,11 @@ impl<'s> Parser<'s> {
                 let mut params = Vec::new();
                 while !self.at(&TokenKind::RightParen) {
                     params.push(self.type_()?);
-                    if !self.eat(&TokenKind::Comma) {
+                    if !self.at(&TokenKind::Comma) {
                         break;
                     }
+                    let comma = self.advance().span;
+                    self.element_after_comma(comma, &TokenKind::RightParen, "a type")?;
                 }
                 self.nesting -= 1;
                 self.expect(&TokenKind::RightParen, "`)`")?;
@@ -1502,7 +1615,7 @@ impl<'s> Parser<'s> {
             TokenKind::Word(Word::RepeatUntil) => {
                 self.advance();
                 let condition = self.expr()?;
-                self.end_of_statement()?;
+                self.end_of_line()?;
                 let body = self.block(&[Word::End])?;
                 self.expect_word(Word::End)?;
                 Ok(StmtKind::RepeatUntil { condition, body })
@@ -1514,7 +1627,7 @@ impl<'s> Parser<'s> {
                 } else {
                     None
                 };
-                self.end_of_statement()?;
+                self.end_of_line()?;
                 let body = self.block(&[Word::End])?;
                 self.expect_word(Word::End)?;
                 Ok(StmtKind::RunConcurrently { within, body })
@@ -1660,7 +1773,7 @@ impl<'s> Parser<'s> {
     fn match_statement(&mut self) -> ParseResult<StmtKind> {
         self.expect_word(Word::Match)?;
         let subject = self.expr()?;
-        self.end_of_statement()?;
+        self.end_of_line()?;
         let mut arms = Vec::new();
         let mut otherwise = None;
         loop {
@@ -1706,7 +1819,7 @@ impl<'s> Parser<'s> {
             None
         };
         let order = self.ordering()?;
-        self.end_of_statement()?;
+        self.end_of_line()?;
         let body = self.block(&[Word::End])?;
         self.expect_word(Word::End)?;
         Ok(StmtKind::ForEach {
@@ -1729,21 +1842,17 @@ impl<'s> Parser<'s> {
             return Ok((bindings, range));
         }
         let at_in = self.expect_word(Word::In)?.span;
-        if self.at_word(Word::From) {
-            // the range loop has one spelling: `for each x from 1 to 9`
-            let from = self.peek().span;
-            self.diagnostics.push(
-                Diagnostic::error(
-                    "range-loop",
-                    "a range loop is written `for each x from 1 to 9`, without `in`",
-                    at_in.join(from),
-                )
-                .with_fix("drop `in`"),
-            );
-            let range = self.range()?;
-            return Ok((bindings, range));
-        }
+        let from = self.peek().span;
         let source = self.or_expr()?;
+        if matches!(source.kind, ExprKind::Range { .. }) {
+            // the range loop has one spelling: `for each x from 1 to 9`
+            self.error(
+                "range-loop",
+                "a range loop is written `for each x from 1 to 9`, without `in`",
+                at_in.join(from),
+                "drop `in`",
+            );
+        }
         Ok((bindings, source))
     }
 
@@ -1768,6 +1877,15 @@ impl<'s> Parser<'s> {
                 let mut end = name.span;
                 if self.eat(&TokenKind::LeftParen) {
                     self.nesting += 1;
+                    if self.at(&TokenKind::RightParen) {
+                        let span = self.peek().span;
+                        self.expected(
+                            "a field name inside the parentheses",
+                            span,
+                            &format!("match the bare name: `when {} then`", name.text),
+                        );
+                        return Err(());
+                    }
                     while !self.at(&TokenKind::RightParen) {
                         let field = self.identifier("a field name")?;
                         let pattern = if self.eat(&TokenKind::Colon) {
@@ -1776,9 +1894,11 @@ impl<'s> Parser<'s> {
                             None
                         };
                         fields.push(FieldPattern { field, pattern });
-                        if !self.eat(&TokenKind::Comma) {
+                        if !self.at(&TokenKind::Comma) {
                             break;
                         }
+                        let comma = self.advance().span;
+                        self.element_after_comma(comma, &TokenKind::RightParen, "a field")?;
                     }
                     self.nesting -= 1;
                     end = self.expect(&TokenKind::RightParen, "`)`")?.span;
@@ -1812,7 +1932,9 @@ impl<'s> Parser<'s> {
                 if self.at(&TokenKind::Colon)
                     && matches!(
                         self.peek_second().kind,
-                        TokenKind::TypeName | TokenKind::Word(Word::Maybe)
+                        TokenKind::TypeName
+                            | TokenKind::Word(Word::Maybe)
+                            | TokenKind::Word(Word::Function)
                     )
                 {
                     self.advance();
@@ -1829,6 +1951,7 @@ impl<'s> Parser<'s> {
             | TokenKind::Minus
             | TokenKind::LeftBracket
             | TokenKind::LeftBrace
+            | TokenKind::Word(Word::Raw)
             | TokenKind::Word(Word::True)
             | TokenKind::Word(Word::False) => {
                 let literal = self.primary()?;
@@ -2032,14 +2155,22 @@ impl<'s> Parser<'s> {
     fn postfix(&mut self) -> ParseResult<Expr> {
         let mut expr = self.primary()?;
         loop {
-            if self.raw().kind == TokenKind::Dot {
+            if self.at(&TokenKind::Dot) {
                 self.advance();
                 let token = self.advance();
                 let name = match token.kind {
-                    TokenKind::Member | TokenKind::Identifier => Name {
+                    TokenKind::Member => Name {
                         text: self.text_of(&token),
                         span: token.span,
                     },
+                    TokenKind::Identifier => {
+                        self.expected(
+                            "a member name directly after the dot",
+                            token.span,
+                            "write the name directly after the dot: `value.length()`",
+                        );
+                        return Err(());
+                    }
                     _ => {
                         self.expected(
                             "a member name after the dot",
@@ -2059,7 +2190,7 @@ impl<'s> Parser<'s> {
                 };
                 continue;
             }
-            if self.raw().kind == TokenKind::LeftParen
+            if self.at(&TokenKind::LeftParen)
                 && matches!(expr.kind, ExprKind::Member { .. } | ExprKind::Name(_))
             {
                 let args = self.arguments()?;
@@ -2096,9 +2227,11 @@ impl<'s> Parser<'s> {
                 .as_ref()
                 .map_or(value.span, |name| name.span.join(value.span));
             args.push(Arg { name, value, span });
-            if !self.eat(&TokenKind::Comma) {
+            if !self.at(&TokenKind::Comma) {
                 break;
             }
+            let comma = self.advance().span;
+            self.element_after_comma(comma, &TokenKind::RightParen, "an argument")?;
         }
         self.nesting -= 1;
         self.expect(&TokenKind::RightParen, "`)`")?;
@@ -2225,7 +2358,7 @@ impl<'s> Parser<'s> {
             }
             TokenKind::TypeName => {
                 let name = self.type_name("a type")?;
-                if self.raw().kind == TokenKind::LeftParen {
+                if self.at(&TokenKind::LeftParen) {
                     let args = self.arguments()?;
                     let span = span.join(self.tokens[self.pos - 1].span);
                     return Ok(Expr {
@@ -2255,9 +2388,11 @@ impl<'s> Parser<'s> {
                 let mut items = Vec::new();
                 while !self.at(&TokenKind::RightBracket) {
                     items.push(self.expr()?);
-                    if !self.eat(&TokenKind::Comma) {
+                    if !self.at(&TokenKind::Comma) {
                         break;
                     }
+                    let comma = self.advance().span;
+                    self.element_after_comma(comma, &TokenKind::RightBracket, "an item")?;
                 }
                 self.nesting -= 1;
                 let end = self.expect(&TokenKind::RightBracket, "`]`")?.span;
@@ -2275,9 +2410,11 @@ impl<'s> Parser<'s> {
                     self.expect(&TokenKind::Colon, "`:` between a map key and its value")?;
                     let value = self.expr()?;
                     entries.push((key, value));
-                    if !self.eat(&TokenKind::Comma) {
+                    if !self.at(&TokenKind::Comma) {
                         break;
                     }
+                    let comma = self.advance().span;
+                    self.element_after_comma(comma, &TokenKind::RightBrace, "an entry")?;
                 }
                 self.nesting -= 1;
                 let end = self.expect(&TokenKind::RightBrace, "`}`")?.span;
@@ -2369,7 +2506,17 @@ impl<'s> Parser<'s> {
             if self.eat_word(Word::Otherwise) {
                 self.skip_newlines_in_expr();
                 otherwise = Some(Box::new(self.outcome()?));
-                continue;
+                self.skip_newlines_in_expr();
+                if !self.at_word(Word::End) {
+                    let span = self.peek().span;
+                    self.expected(
+                        "`end` after the `otherwise` arm",
+                        span,
+                        "write the `otherwise` arm last",
+                    );
+                    return Err(());
+                }
+                break;
             }
             let arm_start = self.expect_word(Word::When)?.span.start;
             let pattern = self.pattern()?;

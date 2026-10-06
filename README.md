@@ -49,6 +49,9 @@ exists:
   and checked live update.
 - `docs/cheatsheet.md`: the whole language on one page, kept under 3000 tokens
   (`python3 tools/count_tokens.py`).
+- `docs/grammar.ebnf`: the formal grammar of the syntax level, W3C EBNF over
+  the lexer's tokens; a test in the syntax crate interprets it and checks that
+  it accepts exactly what the parser accepts.
 - `examples/`: thirty example programs, checked by
   `python3 tools/lint_examples.py`.
 - `crates/`: the Rust toolchain. `renyi check` reports lexer, parser, type,

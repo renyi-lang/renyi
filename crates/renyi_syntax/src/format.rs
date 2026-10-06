@@ -472,15 +472,16 @@ impl Formatter<'_> {
                 ])
             }
             Item::Test(test) => {
-                let mut head = format!("test {}", quote_text(&test.name));
+                let mut head = vec![text(format!("test {}", quote_text(&test.name)))];
                 if !test.needs.is_empty() {
-                    head.push_str(&format!(" needs {}", capabilities_text(&test.needs)));
+                    head.push(text(" "));
+                    head.push(needs_doc(&test.needs));
                 }
                 if let Some(recording) = &test.replays {
-                    head.push_str(&format!(" replays {}", quote_text(recording)));
+                    head.push(text(format!(" replays {}", quote_text(recording))));
                 }
                 concat(vec![
-                    text(head),
+                    concat(head),
                     nest(self.block(&test.body)),
                     Doc::HardLine,
                     text("end"),
@@ -519,10 +520,7 @@ impl Formatter<'_> {
             clauses.push(text(format!("or fails with {}", names.join(" or "))));
         }
         if !function.needs.is_empty() {
-            clauses.push(text(format!(
-                "needs {}",
-                capabilities_text(&function.needs)
-            )));
+            clauses.push(needs_doc(&function.needs));
         }
         if let Some(for_any) = &function.type_params {
             clauses.push(text(for_any_text(for_any)));
@@ -1569,41 +1567,57 @@ pub fn for_any_text(for_any: &ForAny) -> String {
 pub fn capabilities_text(capabilities: &[Capability]) -> String {
     capabilities
         .iter()
-        .map(|capability| {
-            let path: Vec<&str> = capability
-                .path
-                .iter()
-                .map(|name| name.text.as_str())
-                .collect();
-            let mut out = match &capability.scope {
-                Some(scope) => format!("{}({})", path.join("."), quote_text(scope)),
-                None => path.join("."),
-            };
-            if let Some(budget) = &capability.budget {
-                out.push_str(&format!(
-                    " at most {} per {}",
-                    budget.count, budget.per.text
-                ));
-            }
-            if !capability.only_to.is_empty() {
-                let sinks: Vec<String> = capability
-                    .only_to
-                    .iter()
-                    .map(|sink| {
-                        let path: Vec<&str> =
-                            sink.path.iter().map(|name| name.text.as_str()).collect();
-                        match &sink.scope {
-                            Some(scope) => format!("{}({})", path.join("."), quote_text(scope)),
-                            None => path.join("."),
-                        }
-                    })
-                    .collect();
-                out.push_str(&format!(" only to {}", sinks.join(" or ")));
-            }
-            out
-        })
+        .map(capability_text)
         .collect::<Vec<_>>()
         .join(", ")
+}
+
+/// A `needs` clause: one line when it fits, else one capability per line
+/// indented once more, since a line break after a comma carries no meaning
+/// (decision V12).
+fn needs_doc(capabilities: &[Capability]) -> Doc {
+    let items: Vec<Doc> = capabilities
+        .iter()
+        .map(|capability| text(capability_text(capability)))
+        .collect();
+    group(concat(vec![
+        text("needs "),
+        nest(join(items, concat(vec![text(","), Doc::Line]))),
+    ]))
+}
+
+/// One capability with its scope, budget and guard, as the formatter spells it.
+fn capability_text(capability: &Capability) -> String {
+    let path: Vec<&str> = capability
+        .path
+        .iter()
+        .map(|name| name.text.as_str())
+        .collect();
+    let mut out = match &capability.scope {
+        Some(scope) => format!("{}({})", path.join("."), quote_text(scope)),
+        None => path.join("."),
+    };
+    if let Some(budget) = &capability.budget {
+        out.push_str(&format!(
+            " at most {} per {}",
+            budget.count, budget.per.text
+        ));
+    }
+    if !capability.only_to.is_empty() {
+        let sinks: Vec<String> = capability
+            .only_to
+            .iter()
+            .map(|sink| {
+                let path: Vec<&str> = sink.path.iter().map(|name| name.text.as_str()).collect();
+                match &sink.scope {
+                    Some(scope) => format!("{}({})", path.join("."), quote_text(scope)),
+                    None => path.join("."),
+                }
+            })
+            .collect();
+        out.push_str(&format!(" only to {}", sinks.join(" or ")));
+    }
+    out
 }
 
 /// A type as one line, as the formatter spells it.
@@ -1782,6 +1796,18 @@ mod tests {
     fn grant_clauses_and_replays_round_trip() {
         stays("module demo\n\npublic function main()\n  or fails with AppError\n  needs console, network.http(\"api.example.com\") at most 60 per minute\n  purpose: Try the grant clauses.\n\n  console.print(\"hi\")\nend\n\ntest \"the forecast is read\" needs network.http replays \"fixtures/forecast.json\"\n  check true\nend\n");
         stays("module demo\n\npublic function main()\n  needs filesystem.read(\"secrets\") only to console or network.http(\"api.example.com\")\n  purpose: Guard the secrets.\n\n  console.print(\"hi\")\nend\n");
+    }
+
+    #[test]
+    fn a_wide_needs_clause_breaks_after_its_commas() {
+        // wider than the line: one capability per line, indented once more
+        stays("module demo\n\npublic function main()\n  needs console,\n    network.http(\"api.example.com\") at most 60 per minute,\n    filesystem.read(\"secrets\") only to network.http(\"api.example.com\")\n  purpose: Guard the secrets.\n\n  console.print(\"hi\")\nend\n\ntest \"the secrets stay home\" needs console,\n  network.http(\"api.example.com\") at most 60 per minute,\n  filesystem.read(\"secrets\") only to network.http(\"api.example.com\") replays \"fixtures/a.json\"\n  check true\nend\n");
+        // a line break after a comma carries no meaning: the source joins
+        let out = formatted("module demo\n\npublic function main()\n  needs console,\n    time\n  purpose: Two.\n\n  console.print(\"hi\")\nend\n");
+        assert!(
+            out.contains("public function main() needs console, time\n"),
+            "{out}"
+        );
     }
 
     #[test]

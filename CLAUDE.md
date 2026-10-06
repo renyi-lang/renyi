@@ -24,12 +24,14 @@ implementation.
 - Design decisions live in `docs/design/01-decisions.md` as append-only
   entries. A reversal is a new entry that names the entry it supersedes. Never
   edit an accepted entry.
-- `docs/design/02-syntax-sketch.md` is the single source of truth for the
-  surface syntax until the formal grammar exists, and
-  `docs/design/04-stdlib-sketch.md` for library names. The surface is
-  frozen by decision V11: a change to it is a new decision entry first,
-  then the sketch, the cheat sheet, the formatter and the conformance
-  suite in one commit. When an example needs something they do not
+- `docs/grammar.ebnf` is the formal grammar of the syntax level, derived
+  from `docs/design/02-syntax-sketch.md`, which stays the source of truth
+  for meaning until `docs/reference.md` exists; `docs/design/04-stdlib-sketch.md`
+  is the source for library names. The surface is frozen by decision V11:
+  a change to it is a new decision entry first, then the sketch, the
+  grammar, the cheat sheet, the formatter and the conformance suite in one
+  commit; `cargo test -p renyi_syntax --test grammar` keeps the grammar
+  equal to the parser. When an example needs something they do not
   define, extend the sketch in the same commit (library additions are
   not surface changes).
 - Every grammar change must keep `docs/cheatsheet.md` under 3000 tokens. Run
@@ -70,6 +72,7 @@ implementation.
 | `docs/design/06-runtime-guarantees.md` | recorded runs and `replays` tests, narrated runs, budgets in grants (`at most`), provenance guards (`only to`) |
 | `docs/design/07-system-design.md` | the trade-offs the language claims to resolve; capability-safe packages, reproducibility, in-process sandboxing, checked live update |
 | `docs/cheatsheet.md` | the whole language on one page; token-budgeted |
+| `docs/grammar.ebnf` | the formal grammar of the syntax level: W3C EBNF over the lexer's tokens, the token classes and the line rules in its preamble; `crates/renyi_syntax/tests/grammar.rs` interprets it and checks that it accepts exactly what the parser accepts |
 | `docs/GAPS.md` | the gap audit of 2026-10-06: what the design promises and the implementation does not deliver, with the proposed order of work |
 | `examples/` | the corpus, one program per file, index in `examples/README.md` |
 | `tools/count_tokens.py` | cheat-sheet budget gate |
@@ -78,7 +81,7 @@ implementation.
 | `tests/conformance/` | the conformance suite (decision V8): `manifest.json` (cases: program, command, expected output, exit code, diagnostic codes), `expected/` (the outputs, the ten Predict references among them), `programs/` (programs written for one diagnostic or guarantee), `README.md` |
 | `tests/readability/` | harness for the readability protocol: `run.py`, manifest, the Explain references, Write tasks |
 | `.github/workflows/ci.yml` | continuous integration: format, clippy, tests, canonical corpus, lint, token gate, conformance suite |
-| `crates/renyi_syntax/` | spans, diagnostics, lexer, AST, parser, JSON encoder, formatter; `tests/corpus.rs` runs the corpus through all of them, `tests/library.rs` parses the library declarations, `tests/diagnostics.rs` checks that every diagnostic carries a fix and that a foreign spelling gets the Renyi one |
+| `crates/renyi_syntax/` | spans, diagnostics, lexer, AST, parser, JSON encoder, formatter; `tests/corpus.rs` runs the corpus through all of them, `tests/library.rs` parses the library declarations, `tests/diagnostics.rs` checks that every diagnostic carries a fix and that a foreign spelling gets the Renyi one, `tests/grammar.rs` interprets `docs/grammar.ebnf` over the corpus, the conformance programs, the library and two lists of corner programs |
 | `crates/renyi_check/` | the type and effect checker (M2): `world.rs` declares modules, `check.rs` checks bodies, `effects.rs` covers capabilities, `refine.rs` evaluates refinements on literals, `suggest.rs` proposes the fixes (the closest name in scope, the Renyi spelling of a foreign name, the prelude's conversions); `tests/corpus.rs` and `tests/rules.rs` |
 | `library/std/` | the standard library as Renyi declaration files (one per module), compiled into the checker; kept in step with `04-stdlib-sketch.md` by a test |
 | `crates/renyi_index/` | the project map (`renyi index`): `lib.rs` builds the records from the checked program, `metrics.rs`, `hash.rs` (content hashes and the own-text hash), `budgets.rs`, `render.rs` (text and JSON), `diff.rs` (the semantic diff: changes, reach, version bump); `tests/corpus.rs`, `tests/diff.rs` |

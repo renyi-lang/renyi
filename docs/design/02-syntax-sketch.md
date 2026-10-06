@@ -73,17 +73,21 @@ text first (`let separator be ", "` then `"{items.join(separator)}"`).
 `raw "^[0-9]{4}$"` has no holes and no escapes (decision J5).
 
 **Statement continuation.** A statement or clause ends at the newline unless
-a bracket is open or the next non-blank line starts with a continuation word:
-`where`, `sorted by`, `group by`, `collect`, `sum`, `count`, `first`, `any`,
-`all`, `returns`, `or fails with`, `needs`, `for any`, `with`, `and`, `or`,
-and inside an `example:` `is` and `fails with`. Indentation plays no part
-(decisions C2 and V2). `otherwise` is not a continuation word: at the start of
-a line it opens the branch of an `if` or `match`, so the `otherwise` that
-guards a value stays on the line of that value, and a long statement breaks
-inside parentheses instead. The value after `be` or `to` may start on the
-next line; `return` keeps its value on its line, since `return` alone is a
-statement. The formatter breaks long lines inside brackets and before
-continuation words.
+a bracket is open, the line ends with a comma, or the next non-blank line
+starts with a continuation word: `where`, `sorted by`, `group by`, `collect`,
+`sum`, `count`, `first`, `any`, `all`, `returns`, `or fails with`, `needs`,
+`for any`, `with`, `and`, `or`, `is` and `fails` (the last two so that an
+`example:` breaks before its outcome; the list is one list, read without
+context, decision V12). Indentation plays no part (decisions C2 and V2).
+`otherwise` is not a continuation word: at the start of a line it opens the
+branch of an `if` or `match`, so the `otherwise` that guards a value stays on
+the line of that value, and a long statement breaks inside parentheses
+instead. The value after `be` or `to` may start on the next line; `return`
+keeps its value on its line, since `return` alone is a statement. The
+formatter breaks long lines inside brackets, after the commas of a `needs`
+list and before continuation words. The formal grammar is
+`docs/grammar.ebnf`; `crates/renyi_syntax/tests/grammar.rs` keeps it equal to
+the parser.
 
 ---
 
@@ -809,7 +813,8 @@ base types).
 - One blank line between top-level definitions; none inside a clause group;
   one between the clause group and the body.
 - Signature clauses share the head line when they fit, otherwise one per line
-  indented once, in canonical order.
+  indented once, in canonical order; a `needs` clause wider than the line
+  breaks after its commas, one capability per line indented once more.
 - A long query after `be` or `to` starts on the next line, one clause per
   line; after `return` it stays on the line and its clauses nest under it.
 - Long conditions break before `and` / `or`.
@@ -841,7 +846,11 @@ base types).
   that line; a comment inside a bracketed list or a clause group makes the
   group break one element per line.
 - The formatter never changes tokens: it cannot rename, add `end`, or convert
-  `=` to `be`. Those are compiler errors with suggested fixes.
+  `=` to `be`. Those are compiler errors with suggested fixes, and so are the
+  spellings the formatter would otherwise have to normalise: a trailing
+  comma, a variant's empty parentheses, a space after a dot, an `otherwise`
+  arm before the last, a head and `end` on one line, a hole in a plain text,
+  `public` on a method (decision V12).
 
 ---
 

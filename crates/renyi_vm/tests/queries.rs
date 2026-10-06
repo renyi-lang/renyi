@@ -66,7 +66,7 @@ public function main() needs console
   let sales be [
     Sale(region: "n", amount: 1.5, paid: true),
     Sale(region: "s", amount: 2.0, paid: false),
-    Sale(region: "n", amount: 3.0, paid: false),
+    Sale(region: "n", amount: 3.0, paid: false)
   ]
   let sums be for each sale in sales group by sale.region sum sale.amount
   for each region, total in sums sorted by region

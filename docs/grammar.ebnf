@@ -1,0 +1,224 @@
+/*
+ * Renyi: the grammar of the syntax level.
+ *
+ * Status: derived from the frozen syntax sketch (decision V11) and the
+ * corpus under decision V12. `crates/renyi_syntax/tests/grammar.rs` reads
+ * this file, runs it over every program of the corpus, the conformance
+ * suite and the library, and fails when it accepts a program the parser
+ * rejects or rejects one the parser accepts. The language reference
+ * (`docs/reference.md`) quotes its rules.
+ *
+ * Notation: W3C EBNF, as in the XML specification.
+ *
+ *   A ::= B        A is defined as B
+ *   A B            A followed by B
+ *   A | B          A or B
+ *   A?  A*  A+     optional; zero or more; one or more
+ *   ( A )          grouping
+ *   A - B          what A matches, unless B matches the same tokens
+ *   'text'         a token with that spelling
+ *
+ * Terminals are the tokens of the lexical level (reference, section 1).
+ * A quoted literal is a reserved word, a phrase or a punctuation mark by
+ * its spelling; a phrase such as 'for each' is one token. The other
+ * terminals are the token classes, the names without a rule here:
+ *
+ *   Identifier    a value name: [a-z][a-z0-9_]*, two characters or more,
+ *                 not a reserved word
+ *   TypeName      a type, ability or variant name: [A-Z][A-Za-z0-9]*
+ *   Member        any word directly after a dot
+ *   ReservedWord  a reserved word that is not a phrase, as a method's name
+ *   Integer       42, 1_000_000
+ *   Decimal       19.99
+ *   Text          a "..." or """...""" literal; each {hole} holds one
+ *                 Expression, lexed as part of the literal
+ *   PlainText     a Text without holes
+ *   RawText       the "..." after `raw`: no holes, no escapes
+ *   ClauseText    the rest of the line after `purpose:`, `tags:`,
+ *                 `see also:` or `deprecated:`
+ *   Newline       a line break that ends a statement, a clause or a head
+ *
+ * The lexical level decides which line breaks are tokens: a line break
+ * inside parentheses, brackets or braces is none, nor is one after a
+ * comma or before a continuation word (reference, section 1); a run of
+ * line breaks is one Newline; the file ends with a Newline; comments are
+ * not tokens. Two line rules are not visible here: `return` keeps its
+ * value on its line, and a documentation clause's text runs to the end
+ * of its line.
+ */
+
+/* Sections 2 and 3: modules, imports, items */
+
+Module              ::= Newline? ModuleHeader (Import | Item)*
+Declarations        ::= Newline? ModuleHeader (Import | DeclaredItem)*
+ModuleHeader        ::= 'module' DottedName Newline DocClause*
+DottedName          ::= Identifier ('.' Member)*
+Import              ::= 'import' DottedName ('as' Identifier)?
+                        ('exposing' TypeName (',' TypeName)*)? Newline
+Item                ::= 'public'? (Function | TypeDefinition | Ability | Constant)
+                      | Implementation
+                      | Test
+DeclaredItem        ::= 'public'? (FunctionDeclaration | TypeDefinition | Ability | Constant)
+                      | Implementation
+                      | Test
+
+/* Section 3: functions */
+
+Function            ::= FunctionHead Newline DocClause* Block 'end' Newline
+FunctionDeclaration ::= FunctionHead Newline DocClause*
+FunctionHead        ::= 'function' (Identifier Parameters | ReservedWord MethodParameters) Signature
+Parameters          ::= '(' (Parameter (',' Parameter)*)? ')'
+MethodParameters    ::= '(' SelfParameter (',' Parameter)* ')'
+Parameter           ::= SelfParameter | Identifier ':' Type
+SelfParameter       ::= 'self' (':' Type)?
+Signature           ::= ('returns' Type)? ('or fails with' Type ('or' Type)*)?
+                        ('needs' Capabilities)? ForAny?
+ForAny              ::= 'for any' TypeName (',' TypeName)*
+                        ('where' Constraint ('and' Constraint)*)?
+Constraint          ::= TypeName 'can' Type
+
+/* Section 11: capabilities, budgets and guards */
+
+Capabilities        ::= Capability (',' Capability)*
+Capability          ::= CapabilityPath Budget? ('only to' CapabilityPath ('or' CapabilityPath)*)?
+CapabilityPath      ::= DottedName ('(' PlainText ')')?
+Budget              ::= 'at most' Integer 'per' ('second' | 'minute' | 'hour' | 'day' | 'run')
+
+/* Section 4: types */
+
+Type                ::= 'maybe' Type
+                      | FunctionType
+                      | TypeName ('of' TypeArguments)?
+TypeArguments       ::= Type 'to' Type | Type (',' Type)*
+FunctionType        ::= 'function' '(' (Type (',' Type)*)? ')' ('returns' Type)?
+                        ('or fails with' Type ('or' Type)*)? ('needs' Capabilities)?
+TypeDefinition      ::= 'type' TypeName TypeParameters?
+                        (RecordDefinition | SumDefinition | SubtypeDefinition)
+TypeParameters      ::= 'of' TypeName (',' TypeName)*
+RecordDefinition    ::= Newline DocClause* (FieldLine | Derive)* 'end' Newline
+FieldLine           ::= 'has' Identifier ':' Type ('where' Expression)? ('as' PlainText)? Newline
+Derive              ::= 'can' TypeName ('by' Identifier (',' Identifier)*)? Newline
+SumDefinition       ::= 'is one of' Newline DocClause* (Variant | Derive)* 'end' Newline
+Variant             ::= TypeName ('(' VariantField (',' VariantField)* ')')? Newline
+VariantField        ::= Identifier ':' Type ('where' Expression)?
+SubtypeDefinition   ::= 'is' Type ('where' Expression)? Newline DocClause*
+
+/* Section 5: abilities and implementations */
+
+Ability             ::= 'ability' TypeName TypeParameters?
+                        ('where' Requirement ('and' Requirement)*)? Newline
+                        DocClause* MethodDeclaration* 'end' Newline
+Requirement         ::= 'self' 'can' Type
+MethodDeclaration   ::= FunctionHead Newline DocClause*
+Implementation      ::= 'ability' TypeName TypeParameters? 'for' Type ForAny? Newline
+                        Function* 'end' Newline
+
+/* Sections 6 and 14: constants and tests */
+
+Constant            ::= 'let' Identifier ':' Type 'be' Newline? Expression Newline DocClause*
+Test                ::= 'test' PlainText ('needs' Capabilities)? ('replays' PlainText)? Newline
+                        Block 'end' Newline
+
+/* Section 13: documentation clauses */
+
+DocClause           ::= ('purpose' | 'tags' | 'see also' | 'deprecated') ':' ClauseText Newline
+                      | 'expose as tool' Newline
+                      | 'example' ':' Example Newline
+Example             ::= Expression 'fails' 'with' Pattern
+                      | WithExpression 'is' WithExpression
+
+/* Sections 6, 8, 9 and 12: statements */
+
+Block               ::= Newline? (Statement Newline)* Statement?
+Statement           ::= 'let' 'mutable'? Identifier (':' Type)? 'be' Newline? Expression
+                      | 'set' Identifier 'to' Newline? Expression
+                      | 'if' Expression 'then' Block
+                        ('otherwise' 'if' Expression 'then' Block)* ('otherwise' Block)? 'end'
+                      | 'match' Expression Newline MatchArm* ('otherwise' Block)? 'end'
+                      | 'for each' LoopSource ('where' Expression)? Ordering? Newline Block 'end'
+                      | 'repeat until' Expression Newline Block 'end'
+                      | 'run concurrently' ('within' Expression)? Newline Block 'end'
+                      | 'return' Expression?
+                      | 'fail' ('with' Expression)?
+                      | 'crash' 'with' Expression
+                      | 'break'
+                      | 'continue'
+                      | 'ignore' Expression
+                      | 'check' Expression
+                      | Call
+                      | OrExpression ('otherwise' Outcome)+
+MatchArm            ::= 'when' Pattern ('where' Expression)? 'then' Block
+LoopSource          ::= Identifier (',' Identifier)* ('in' (OrExpression - Range) | Range)
+Ordering            ::= 'sorted by' OrExpression 'descending'?
+
+/* Section 8: patterns */
+
+Pattern             ::= TypeName ('(' FieldPattern (',' FieldPattern)* ')')?
+                      | 'nothing'
+                      | ('some' | 'success' | 'failure') '(' Pattern ')'
+                      | Identifier (':' Type)?
+                      | Literal
+FieldPattern        ::= Identifier (':' Pattern)?
+
+/* Section 7: expressions */
+
+Expression          ::= OrExpression ('otherwise' Outcome)*
+Outcome             ::= OrExpression
+                      | 'fail' ('with' OrExpression)?
+                      | 'return' OrExpression?
+                      | 'crash' 'with' OrExpression
+                      | 'break'
+                      | 'continue'
+OrExpression        ::= AndExpression ('or' AndExpression)*
+AndExpression       ::= NotExpression ('and' NotExpression)*
+NotExpression       ::= 'not' NotExpression | Comparison
+Comparison          ::= WithExpression (ComparisonWord WithExpression)?
+ComparisonWord      ::= 'is' | 'is not' | 'is less than' | 'is at most'
+                      | 'is greater than' | 'is at least'
+WithExpression      ::= Additive ('with' FieldUpdate (',' FieldUpdate)*)?
+FieldUpdate         ::= Identifier ':' Additive
+Additive            ::= Multiplicative (('+' | '-') Multiplicative)*
+Multiplicative      ::= Power (('*' | '/' | 'remainder') Power)*
+Power               ::= Postfix ('power' Power)?
+Postfix             ::= Receiver ('.' Member Arguments?)*
+Receiver            ::= Identifier Arguments?
+                      | TypeName Arguments?
+                      | Literal
+                      | 'nothing'
+                      | 'self'
+                      | '(' Expression ')'
+                      | Range
+                      | IfExpression
+                      | MatchExpression
+                      | Query
+Call                ::= Identifier Arguments
+                      | Receiver ('.' Member Arguments?)* '.' Member Arguments
+Arguments           ::= '(' (Argument (',' Argument)*)? ')'
+Argument            ::= (Identifier ':')? Expression
+Literal             ::= Integer | Decimal | '-' (Integer | Decimal)
+                      | Text | 'raw' RawText
+                      | 'true' | 'false'
+                      | ListLiteral | MapLiteral
+ListLiteral         ::= '[' (Expression (',' Expression)*)? ']'
+MapLiteral          ::= '{' (MapEntry (',' MapEntry)*)? '}'
+MapEntry            ::= OrExpression ':' Expression
+Range               ::= 'from' Additive 'to' Additive ('by' Additive)?
+IfExpression        ::= 'if' Expression 'then' Newline? Outcome Newline?
+                        ('otherwise' 'if' Expression 'then' Newline? Outcome Newline?)*
+                        'otherwise' Newline? Outcome Newline? 'end'
+MatchExpression     ::= 'match' Expression Newline? (MatchExpressionArm Newline?)*
+                        ('otherwise' Newline? Outcome Newline?)? 'end'
+MatchExpressionArm  ::= 'when' Pattern ('where' Expression)? 'then' Newline? Outcome
+
+/* Section 10: queries */
+
+Query               ::= 'for each' LoopSource (',' LoopSource)*
+                        ('concurrently' ('within' OrExpression)?)?
+                        ('where' OrExpression)? Ordering?
+                        ('group by' OrExpression QueryTerminal? | QueryTerminal)
+QueryTerminal       ::= 'collect' Expression
+                      | 'sum' Expression
+                      | 'count'
+                      | 'first'
+                      | 'any' Expression
+                      | 'all' Expression

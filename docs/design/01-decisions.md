@@ -1369,3 +1369,27 @@ until decided; library additions (`04-stdlib-sketch.md`) are not surface
 changes. The formal grammar (EBNF) and the language reference are
 derived from the frozen sketch in stage 2; what they find unclear is
 settled by an entry, not by the implementation. (user)
+
+**V12. Line breaks after commas and before `is` and `fails`; one spelling
+per construct.** Three rulings the formal grammar required, all on the
+line rule of sketch section 1. (1) A line break after a comma carries no
+meaning wherever the comma stands: a `needs` list, a `for any` list, an
+`exposing` list, a `can Compare by` list, a `with` update or the sources
+of a query may continue on the next line, as the example of section 11
+always showed; the formatter breaks a `needs` clause wider than the line
+one capability per line, indented once more than the clause. (2) `is`
+and `fails` are continuation words everywhere, not only inside an
+`example:`: the continuation words are one list read without context,
+which the grammar's token filter and a self-hosted lexer can state; the
+formatter breaks before them only in an example. (3) The parser accepts
+one spelling of each construct, since the formatter never changes a
+token (section 16): it rejects, with a fix, a trailing comma in a
+bracketed list, a variant with empty parentheses in a declaration or a
+pattern, a space between a dot and the member after it, an `otherwise`
+arm that is not the last of a `match` expression, a head and `end` on
+one line, a hole in a test name, a capability scope, a recording's path
+or an external name, and `public` on an ability's method
+(`public-method`); and it accepts, as section 1 says, a line break
+inside brackets before a dot or a call's parenthesis. The grammar
+`docs/grammar.ebnf` and its test `crates/renyi_syntax/tests/grammar.rs`
+state the surface under this entry. (user)

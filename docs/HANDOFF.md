@@ -638,10 +638,12 @@ on a fresh clone).
   `needs`, `Hash` implementations are never called, entry 1.18, and
   open item R3-2 (constraints with type arguments). None blocks stage
   2; the owner decides their order when stage 2 is planned.
-- **Stage 2 starts with the formal grammar** (next steps, item 1); its
-  shape (EBNF file under `docs/`, the reference beside it, a test that
-  the parser agrees with it) is a design question to ask with
-  AskUserQuestion before writing.
+- **Stage 2 is under way** (next steps, item 1): the formal grammar is
+  `docs/grammar.ebnf`, held equal to the parser by
+  `crates/renyi_syntax/tests/grammar.rs` (decision V12 records the line
+  rules it required). The language reference `docs/reference.md` comes
+  next, one section per sketch section, with a test that its quoted
+  rules match the grammar file; then the self-hosted lexer and parser.
 - **Readability**: the scores are no longer the gate (decision V1).
   Round 5 (U9's sentence) and gpt-5.5 run only if the owner asks.
 - Session 5 printed the values of `ANTHROPIC_API_KEY` and
@@ -675,9 +677,11 @@ on a fresh clone).
 ## Next steps
 
 1. **Stage 2 of `docs/GAPS.md`, section 7** (the grammar is frozen,
-   V11): the formal grammar (EBNF) and the language reference
-   derived from the sketch and the cheat sheet, checked against the
-   parser on the corpus and the conformance programs; a bytecode file
+   V11; the formal grammar is `docs/grammar.ebnf`, V12): the language
+   reference `docs/reference.md` derived from the sketch, the grammar
+   and the checker (grammar excerpt, meaning, static rules with their
+   diagnostic codes, run-time behaviour per section), with a test that
+   its excerpts match the grammar file; a bytecode file
    format or a loader so that a compiler written in Renyi has something
    to emit; the performance items a compiler needs (in-place
    collections, string building, a pattern cache for `Text.matches`);
