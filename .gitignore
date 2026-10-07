@@ -3,6 +3,7 @@ target/
 __pycache__/
 examples/.scratch*.ry
 starter/workflows/out/
+_site/
 .ce/
 .ccm/
 .claude/

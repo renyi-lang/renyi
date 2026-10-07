@@ -26,7 +26,14 @@ foreign function interface, decision AF1, the third; then machine code
 for the bytecode, decisions AG1 to AG5, and the bounded VM round, AG6;
 then the niche, decisions AH1
 to AH4 with `docs/design/08-positioning.md` and the README's opening;
-then release 0.1 decided, AI1 to AI4, its engineering not yet done).
+then release 0.1 decided, AI1 to AI4, and its engineering: the
+release workflow, the installers, the VS Code extension and the
+procedure `docs/RELEASE.md` (621fecc); the starter pack for agents
+under `starter/`, AI3 (ee8b74b); the documentation site, `tools/site.py`
+with `.github/workflows/pages.yml` and `docs/index.md`, and the
+crates.io metadata, with two crates still embedding files from outside
+their directories, the question left to the owner under "Owner
+actions pending").
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -41,7 +48,10 @@ index`, `--budgets`, `--diff`), `renyi tools` and `renyi mcp` on top. M4
 is done but for its residue (packages AC1, `std.process` AE1, the FFI
 AF1; `docs/GAPS.md`, section 4); M5 is not started; of M6 the
 machine code exists (decisions AG1 to AG5) and the interpreter had its
-bounded round (AG6), `renyi build` does not.
+bounded round (AG6), `renyi build` does not. Release 0.1 (decisions AI1
+to AI4) has its engineering in the repository (the section "Release 0.1
+engineering" below) and waits for the owner's by-hand steps of
+`docs/RELEASE.md` section 2 and for one answer ("Owner actions pending").
 Design decisions are
 in sections 0 to AI of `01-decisions.md`; the positioning in
 `08-positioning.md`; the agent tooling in
@@ -100,7 +110,8 @@ revision>]`, `run [--manifest] [options] <file> [arguments]`, `record
 [--to <directory>]`, `tools [path]`, `mcp [path]` and `version`; 262 tests,
 clippy and fmt clean on Windows
 with rustc 1.94.1. CI (`.github/workflows/ci.yml`) runs the same gates,
-`renyi check compiler/*.ry` and the conformance suite
+`renyi check compiler/*.ry`, the starter pack's workflows (check,
+format, test, the cheat sheet's copy) and the conformance suite
 (`tests/conformance/`, 51 cases, every `run` case a second time from
 its bytecode file;
 runners `tools/conformance.py` and `crates/renyi/tests/conformance.rs`)
@@ -1289,21 +1300,93 @@ next sections of the plan, below).
    that of a general language. Still to do from it: the documentation
    site's front page (AI2) and the measurements of its section 5 on the
    starter pack (AI3).
-3. **Release 0.1** (decisions AI1 to AI4, recorded; nothing of the
-   engineering exists yet) after the
-   machine code, the positioning document and the release engineering
-   land: CI on a tag builds Linux, macOS and Windows binaries and a
-   GitHub Release; an install script and `cargo install renyi` (the
-   name is free on crates.io, checked 2026-10-07); a documentation site
-   on GitHub Pages (the reference, the cheat sheet, the examples, the
-   positioning); a VS Code extension for syntax highlighting; the first
-   acquisition is a starter pack for agents (a skill file, the MCP
-   server, five runnable workflow examples); the name stays, the
-   repository moves to a GitHub organisation `renyi-lang` as
-   `renyi-lang/renyi`, and the owner buys renyi-lang.org.
+3. **Release 0.1** (decisions AI1 to AI4; the engineering is in the
+   repository, the section "Release 0.1 engineering" below): CI on a
+   tag builds Linux, macOS and Windows binaries and a GitHub Release
+   (`.github/workflows/release.yml`); `install.sh` and `install.ps1`;
+   `cargo install renyi` once the crates are publishable (the name is
+   free on crates.io, checked 2026-10-07; the blocker is the owner's
+   question); the documentation site on GitHub Pages (`tools/site.py`,
+   `.github/workflows/pages.yml`, `docs/index.md`); the VS Code
+   extension (`editors/vscode/`); the starter pack for agents
+   (`starter/`); the name stays, the repository moves to a GitHub
+   organisation `renyi-lang` as `renyi-lang/renyi`, and the owner buys
+   renyi-lang.org. What remains is in `docs/RELEASE.md` section 2: the
+   owner's steps (the organisation, the repository public, Pages on,
+   `cargo login`, the tag, the Marketplace) and the version bump.
 4. **Deferred** (decision AG5): `renyi build` (the image of bytecode
    and machine code) and the baseline JIT that inlines the boxed
    operations, both after 0.1.
+
+## Release 0.1 engineering (decisions AI1 to AI4; session 8, 2026-10-07)
+
+Three commits after the positioning: 621fecc (the workflow, the
+installers, the extension, the procedure), ee8b74b (the starter pack)
+and the commit of the site and the crates.io metadata.
+
+- **The release workflow** `.github/workflows/release.yml` runs on a
+  tag `v<version>`: three native builds (`cargo build --release
+  --locked` on ubuntu, macos and windows runners), each refusing a tag
+  whose version is not the workspace version, the conformance suite
+  run against each release binary, archives with `README.md` and
+  `LICENSE` and a `.sha256` each, the VS Code extension packaged with
+  `vsce` (node 22), then a GitHub Release with generated notes
+  (`softprops/action-gh-release@v2`). `install.sh` and `install.ps1`
+  download the archive for the machine, verify the checksum and put
+  the binary in place (`RENYI_VERSION`, `RENYI_INSTALL_DIR`,
+  `RENYI_REPO`). `editors/vscode/` is the extension: a TextMate
+  grammar with dot-guarded keyword patterns, the language
+  configuration, packaged locally once to check it. `docs/RELEASE.md`
+  is the procedure: what a release is, release 0.1 step by step with
+  the owner's steps marked, every release after it, where the pieces
+  are.
+- **The starter pack** `starter/` (decision AI3): `README.md` (install,
+  the skill, the MCP server with its ten tools, the five workflows
+  with the `needs` line of each `main`, how to review a program in one
+  pass, record and reproduce); `skill/renyi/SKILL.md` (the loop, the
+  rules the checker enforces with their codes, a module that checks
+  clean, the commands, the library modules) with `cheatsheet.md` a
+  copy of `docs/cheatsheet.md` that CI holds equal with `cmp`;
+  `mcp.json`; `workflows/`: `repo_digest.ry` (git log by author,
+  `std.process`), `api_digest.ry` (the GitHub API), `expense_report.ry`
+  (CSV files to `out/report.md`), `log_triage.ry` (error codes
+  ranked), `link_check.ry` (every link of a file fetched); their data
+  under `data/`, the three recordings under `fixtures/` made with
+  `renyi test --refresh` from live runs on 2026-10-07 (the recordings
+  hold public data only: this repository's log, the GitHub record of
+  rust-lang/rust, two pages of example.com and one of iana.org). CI
+  checks, format-checks and tests them. Pitfalls met while writing
+  them, for the next workflow: `count` is reserved (a parameter named
+  `limit`), an `otherwise fail with` on its own line is `otherwise-line`
+  (break inside the call's parentheses), `otherwise fail` on a `maybe`
+  is `otherwise-fail-maybe` (`otherwise crash with` in a test), a test's
+  head is one line that the formatter never breaks (shorten the test
+  name), `purpose:` lines over 100 columns are shortened by hand.
+- **The site** (decision AI2): `tools/site.py` renders every document
+  under `docs/` but `HANDOFF.md`, the grammar, `examples/README.md`
+  with each example's source and `starter/README.md` as pages with one
+  header and relative links (46 pages; the `markdown` package;
+  `python tools/site.py [_site]`); `docs/index.md` is the front page
+  (the positioning's paragraph, install, the links);
+  `.github/workflows/pages.yml` builds the site on every push to
+  `main` and deploys it from a public repository or by hand
+  (`workflow_dispatch`); on the private repository the deploy job is
+  skipped, the build job still checks the script.
+- **crates.io** (decision AI2): every path dependency carries its
+  version through `[workspace.dependencies]` of `Cargo.toml` (cargo
+  refuses to package without one); `cargo package --workspace
+  --allow-dirty` packages all seven crates and verifies the two leaves,
+  then fails to compile `renyi_check` from its tarball: `lib.rs` embeds
+  `library/std/*.ry` with `include_str!("../../../library/std/...")`,
+  and `crates/renyi/src/mcp.rs` embeds `docs/cheatsheet.md` the same
+  way; a tarball holds only files under the crate's directory, so
+  `cargo install renyi` from crates.io cannot build until those files
+  live under the crates (a copy held equal by a test, or the canonical
+  files moved). That is the owner's question below; `cargo install
+  --git` and the installers are unaffected. `cargo package` prints
+  `--no-verify` in its usage, which the cc-enforcer hook refuses on
+  the command line (it reads it as git's flag); use `--list` or the
+  full verification instead.
 
 ## The VM as it exists (`crates/renyi_vm`)
 
@@ -2084,6 +2167,25 @@ on a fresh clone).
 
 ## Owner actions pending
 
+- **Release 0.1, the owner's steps** (`docs/RELEASE.md` section 2):
+  the organisation `renyi-lang` and the transfer (AI4), the repository
+  public, Pages set to "GitHub Actions" in the settings, `cargo login`
+  for the publish (or the say-so for a session to run it), the tag
+  `v0.1.0` after the version bump, the Marketplace publisher for the
+  extension.
+- **One question before `cargo install renyi` can work**: `renyi_check`
+  embeds `library/std/*.ry` and `renyi` embeds `docs/cheatsheet.md`
+  from outside their directories, which a crates.io tarball does not
+  carry. The choices: copies under the crates held equal to the
+  canonical files by a test (recommended: the canonical paths stay, CI
+  catches drift); or the canonical `library/std/` moved under
+  `crates/renyi_check/` (every path in the docs, the tests, the
+  selfhost judges and the lane scripts changes; the cheat sheet still
+  needs a copy); or no crates.io for 0.1 (`cargo install --git`, the
+  installers and the release archives only; `README.md`,
+  `docs/index.md`, `starter/README.md` and `docs/RELEASE.md` then drop
+  `cargo install renyi`, and decision AI2 gets an entry). Asked at the
+  end of session 8; unanswered when this was written.
 - **The residue of stage 1** is done (decisions Y1 to Y4), and open item
   R3-2 (constraints with type arguments) is decision AB1; `docs/GAPS.md`
   section 7 keeps 1.11, 3.4 and 3.6 open.
@@ -2129,7 +2231,20 @@ on a fresh clone).
 
 ## Next steps
 
-1. **Stage 2 of `docs/GAPS.md`, section 7, continued** (the grammar is
+1. **Release 0.1**: act on the owner's answer about the embedded files
+   (above), then `cargo package --workspace --allow-dirty` must verify
+   all seven crates; then the owner's steps of `docs/RELEASE.md`
+   section 2 in order, the version bump (`[workspace.package]` and
+   `[workspace.dependencies]`), the tag, the release page checked, one
+   installer tried on a clean machine, the extension published, the
+   announcement with the texts of `08-positioning.md` section 6. After
+   the release: the measurements of the positioning's section 5 on
+   the starter pack (the time to a first working workflow, the review
+   time), and `renyi tools <directory>` on a directory that holds
+   library declaration files (it parses them as programs and fails;
+   `renyi index` on the same directory does not), a small fix in
+   `crates/renyi/src/main.rs`.
+2. **Stage 2 of `docs/GAPS.md`, section 7, continued** (the grammar is
    frozen, V11; the formal grammar is `docs/grammar.ebnf`, V12; the
    language reference is `docs/reference.md`; the lexer and the parser
    in Renyi are `compiler/`, W1 to W4; the checker in Renyi is
@@ -2149,7 +2264,7 @@ on a fresh clone).
    diagnostics (codes, fixes, recovery; decision AD1) and the judges
    are byte-equal on rejected programs too, the step the owner chose
    beside stage 3 ("1+2", 2026-10-07).
-2. **Readability, only on request**: round 5 on Sonnet measures U9
+3. **Readability, only on request**: round 5 on Sonnet measures U9
    (`run.py prepare`, the Sonnet command at the end of this item after
    its probe, the graders, `score`, the U5 search, `report`, the
    notes; `config` and `todo_cli` are the items to watch); gpt-5.5 on
@@ -2171,12 +2286,12 @@ on a fresh clone).
    login-only directory holds a hard link to the CLI's
    `.credentials.json` and a `.claude.json` of
    `{"hasCompletedOnboarding": true}`.
-3. **Readability observations not asked**: `otherwise` binds loosest
+4. **Readability observations not asked**: `otherwise` binds loosest
    (Sonnet wrote `check f(x) otherwise "" is "y"`); Sonnet reasons before
    the Predict answer on `traffic_light` (0 of 5 with right lines); the
    rubric's reading of "only X and Y" when Z is also needed (round 1 and
    2 read it as a need missing).
-4. **M4**: its three slices (packages, decision AC1; `std.process`,
+5. **M4**: its three slices (packages, decision AC1; `std.process`,
    decision AE1; the FFI, decision AF1; the sections above) are done;
    **M5**
    (embedding API, `serve --watch`, LSP, a resident `World`, open item
@@ -2184,6 +2299,18 @@ on a fresh clone).
 
 ## Known gaps and risks
 
+- **crates.io.** Two crates embed files from outside their directories
+  (`library/std/*.ry` in `renyi_check`, `docs/cheatsheet.md` in
+  `renyi`), so their tarballs do not build; `cargo install renyi` is
+  promised by the README, the front page, the starter pack and the
+  release procedure and does not work until the owner's question is
+  answered and acted on. The release archives, the installers and
+  `cargo install --git` work.
+- **The site is unverified in a browser**: `tools/site.py` was run
+  locally and its pages, titles and links inspected as text; the Site
+  workflow's build job runs on every push, the deploy job only from a
+  public repository. The `markdown` package renders the documents'
+  tables and fenced blocks; nothing highlights Renyi.
 - **The FFI.** `natives/foreign.rs` and `foreign_abi.rs` are the VM's
   only unsafe code: a declaration that does not match the C side (a
   width, a missing length, a pointer the function keeps) is undefined

@@ -40,8 +40,10 @@ The owner's steps are marked (owner); the others a session does.
    Actions". The site workflow publishes `docs/` as the documentation
    site on every push to `main` of a public repository.
 4. Bump the version: `version = "0.1.0"` in `[workspace.package]` of
-   `Cargo.toml`, then `cargo update --workspace` so that `Cargo.lock`
-   agrees; commit as "Release 0.1.0".
+   `Cargo.toml` and in every entry of its `[workspace.dependencies]`
+   (the crates name each other through that table, with the version
+   crates.io requires), then `cargo update --workspace` so that
+   `Cargo.lock` agrees; commit as "Release 0.1.0".
 5. (owner, or a session with the owner's say-so in that turn) Publish
    the crates to crates.io, in dependency order, each with
    `cargo publish -p <crate>`: `renyi_json`, `renyi_syntax`,

@@ -11,10 +11,10 @@ name = "renyi"
 path = "src/main.rs"
 
 [dependencies]
-renyi_syntax = { path = "../renyi_syntax" }
-renyi_check = { path = "../renyi_check" }
-renyi_index = { path = "../renyi_index" }
-renyi_vm = { path = "../renyi_vm" }
-renyi_package = { path = "../renyi_package" }
+renyi_syntax.workspace = true
+renyi_check.workspace = true
+renyi_index.workspace = true
+renyi_vm.workspace = true
+renyi_package.workspace = true
 ureq = "3"
 mimalloc = "0.1.52"
