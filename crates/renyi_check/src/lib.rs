@@ -1,5 +1,7 @@
 //! Name resolution, type checking and effect checking (milestone M2). The
-//! standard library's declarations are compiled in from `library/std/*.ry`;
+//! standard library's declarations are compiled in from the crate's copy of
+//! `library/std/*.ry`, held equal to the canonical files by a test (decision
+//! AI5: a crates.io tarball carries only the files under the crate);
 //! a program's own imports are read from its project root and its
 //! dependencies' files from the registry or the store (decision AC1, the
 //! resolver of `renyi_package`).
@@ -19,40 +21,29 @@ pub use renyi_package::{resolve, tagged, Problem, Project, Resolved};
 pub use types::{AbilityId, FunctionId, ModuleId, TypeId};
 pub use world::{BodyLocation, World};
 
-/// The standard library, one declaration file per module.
+/// The standard library, one declaration file per module, from the copy
+/// under `crates/renyi_check/library/std/` (decision AI5).
 pub const LIBRARY: &[(&str, &str)] = &[
-    (
-        "std.prelude",
-        include_str!("../../../library/std/prelude.ry"),
-    ),
-    (
-        "std.console",
-        include_str!("../../../library/std/console.ry"),
-    ),
+    ("std.prelude", include_str!("../library/std/prelude.ry")),
+    ("std.console", include_str!("../library/std/console.ry")),
     (
         "std.environment",
-        include_str!("../../../library/std/environment.ry"),
+        include_str!("../library/std/environment.ry"),
     ),
-    ("std.time", include_str!("../../../library/std/time.ry")),
-    ("std.random", include_str!("../../../library/std/random.ry")),
+    ("std.time", include_str!("../library/std/time.ry")),
+    ("std.random", include_str!("../library/std/random.ry")),
     (
         "std.filesystem",
-        include_str!("../../../library/std/filesystem.ry"),
+        include_str!("../library/std/filesystem.ry"),
     ),
-    ("std.json", include_str!("../../../library/std/json.ry")),
-    ("std.http", include_str!("../../../library/std/http.ry")),
-    ("std.server", include_str!("../../../library/std/server.ry")),
-    ("std.csv", include_str!("../../../library/std/csv.ry")),
-    ("std.sqlite", include_str!("../../../library/std/sqlite.ry")),
-    ("std.regex", include_str!("../../../library/std/regex.ry")),
-    (
-        "std.process",
-        include_str!("../../../library/std/process.ry"),
-    ),
-    (
-        "std.foreign",
-        include_str!("../../../library/std/foreign.ry"),
-    ),
+    ("std.json", include_str!("../library/std/json.ry")),
+    ("std.http", include_str!("../library/std/http.ry")),
+    ("std.server", include_str!("../library/std/server.ry")),
+    ("std.csv", include_str!("../library/std/csv.ry")),
+    ("std.sqlite", include_str!("../library/std/sqlite.ry")),
+    ("std.regex", include_str!("../library/std/regex.ry")),
+    ("std.process", include_str!("../library/std/process.ry")),
+    ("std.foreign", include_str!("../library/std/foreign.ry")),
 ];
 
 /// A world with the standard library declared.

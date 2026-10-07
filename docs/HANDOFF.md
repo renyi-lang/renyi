@@ -31,9 +31,9 @@ release workflow, the installers, the VS Code extension and the
 procedure `docs/RELEASE.md` (621fecc); the starter pack for agents
 under `starter/`, AI3 (ee8b74b); the documentation site, `tools/site.py`
 with `.github/workflows/pages.yml` and `docs/index.md`, and the
-crates.io metadata, with two crates still embedding files from outside
-their directories, the question left to the owner under "Owner
-actions pending").
+crates.io metadata; then decision AI5, the copies that make the two
+crates self-contained, so that `cargo package --workspace` verifies
+all seven).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -51,7 +51,7 @@ machine code exists (decisions AG1 to AG5) and the interpreter had its
 bounded round (AG6), `renyi build` does not. Release 0.1 (decisions AI1
 to AI4) has its engineering in the repository (the section "Release 0.1
 engineering" below) and waits for the owner's by-hand steps of
-`docs/RELEASE.md` section 2 and for one answer ("Owner actions pending").
+`docs/RELEASE.md` section 2.
 Design decisions are
 in sections 0 to AI of `01-decisions.md`; the positioning in
 `08-positioning.md`; the agent tooling in
@@ -107,7 +107,7 @@ revision>]`, `run [--manifest] [options] <file> [arguments]`, `record
 <file>...`, `compile [--to file] <file.ry>`, `add <name> [<version>]`,
 `update [--accept-effects]`, `audit`, `fetch`, `publish [--to
 <directory>]`, `bind <header.h> --module <name> --library <names>
-[--to <directory>]`, `tools [path]`, `mcp [path]` and `version`; 262 tests,
+[--to <directory>]`, `tools [path]`, `mcp [path]` and `version`; 270 tests,
 clippy and fmt clean on Windows
 with rustc 1.94.1. CI (`.github/workflows/ci.yml`) runs the same gates,
 `renyi check compiler/*.ry`, the starter pack's workflows (check,
@@ -1304,9 +1304,9 @@ next sections of the plan, below).
    repository, the section "Release 0.1 engineering" below): CI on a
    tag builds Linux, macOS and Windows binaries and a GitHub Release
    (`.github/workflows/release.yml`); `install.sh` and `install.ps1`;
-   `cargo install renyi` once the crates are publishable (the name is
-   free on crates.io, checked 2026-10-07; the blocker is the owner's
-   question); the documentation site on GitHub Pages (`tools/site.py`,
+   `cargo install renyi` (the name is free on crates.io, checked
+   2026-10-07; the crates package and verify, decision AI5); the
+   documentation site on GitHub Pages (`tools/site.py`,
    `.github/workflows/pages.yml`, `docs/index.md`); the VS Code
    extension (`editors/vscode/`); the starter pack for agents
    (`starter/`); the name stays, the repository moves to a GitHub
@@ -1372,21 +1372,29 @@ and the commit of the site and the crates.io metadata.
   `main` and deploys it from a public repository or by hand
   (`workflow_dispatch`); on the private repository the deploy job is
   skipped, the build job still checks the script.
-- **crates.io** (decision AI2): every path dependency carries its
-  version through `[workspace.dependencies]` of `Cargo.toml` (cargo
-  refuses to package without one); `cargo package --workspace
-  --allow-dirty` packages all seven crates and verifies the two leaves,
-  then fails to compile `renyi_check` from its tarball: `lib.rs` embeds
-  `library/std/*.ry` with `include_str!("../../../library/std/...")`,
-  and `crates/renyi/src/mcp.rs` embeds `docs/cheatsheet.md` the same
-  way; a tarball holds only files under the crate's directory, so
-  `cargo install renyi` from crates.io cannot build until those files
-  live under the crates (a copy held equal by a test, or the canonical
-  files moved). That is the owner's question below; `cargo install
-  --git` and the installers are unaffected. `cargo package` prints
-  `--no-verify` in its usage, which the cc-enforcer hook refuses on
-  the command line (it reads it as git's flag); use `--list` or the
-  full verification instead.
+- **crates.io** (decisions AI2 and AI5): every path dependency carries
+  its version through `[workspace.dependencies]` of `Cargo.toml` (cargo
+  refuses to package without one). `renyi_check` embeds the standard
+  library and `renyi` the cheat sheet; a crates.io tarball carries only
+  the files under the crate, so each embeds a copy under its own
+  directory (`crates/renyi_check/library/std/`,
+  `crates/renyi/cheatsheet.md`), and a test in each crate holds the copy
+  equal to the canonical file (`tests/library_copy.rs`,
+  `tests/cheat_sheet.rs`); after editing a library declaration or the
+  cheat sheet, copy the file again (the starter pack's cheat sheet
+  too). `cargo package --workspace --allow-dirty` packages all seven
+  crates and verifies the six libraries from their tarballs; on the
+  binary it stops with a cargo internal error ("no hash listed for
+  renyi_index v0.0.1", cargo 1.94.1), which comes from the temporary
+  registry cargo builds for a workspace package and not from the
+  crate: the extracted tarball `target/package/renyi-0.0.1/`, copied to
+  the lane with its five dependencies pointed at the workspace crates,
+  builds and runs (`renyi 0.0.1`). `cargo publish -p renyi` verifies
+  against crates.io, where the libraries are by then. `cargo package` prints
+  `--no-verify` in its usage, which the cc-enforcer hook refuses on the
+  command line (it reads it as git's flag); use `--list` or the full
+  verification instead, and never while another cargo command runs on
+  the same target directory (a `cargo test` beside it failed to build).
 
 ## The VM as it exists (`crates/renyi_vm`)
 
@@ -2173,19 +2181,10 @@ on a fresh clone).
   for the publish (or the say-so for a session to run it), the tag
   `v0.1.0` after the version bump, the Marketplace publisher for the
   extension.
-- **One question before `cargo install renyi` can work**: `renyi_check`
-  embeds `library/std/*.ry` and `renyi` embeds `docs/cheatsheet.md`
-  from outside their directories, which a crates.io tarball does not
-  carry. The choices: copies under the crates held equal to the
-  canonical files by a test (recommended: the canonical paths stay, CI
-  catches drift); or the canonical `library/std/` moved under
-  `crates/renyi_check/` (every path in the docs, the tests, the
-  selfhost judges and the lane scripts changes; the cheat sheet still
-  needs a copy); or no crates.io for 0.1 (`cargo install --git`, the
-  installers and the release archives only; `README.md`,
-  `docs/index.md`, `starter/README.md` and `docs/RELEASE.md` then drop
-  `cargo install renyi`, and decision AI2 gets an entry). Asked at the
-  end of session 8; unanswered when this was written.
+- **Decision AI5** (the owner's answer at the end of session 8): the
+  two crates that embedded files from outside their directories now
+  embed copies held equal by tests; nothing remains for the owner on
+  it.
 - **The residue of stage 1** is done (decisions Y1 to Y4), and open item
   R3-2 (constraints with type arguments) is decision AB1; `docs/GAPS.md`
   section 7 keeps 1.11, 3.4 and 3.6 open.
@@ -2231,9 +2230,7 @@ on a fresh clone).
 
 ## Next steps
 
-1. **Release 0.1**: act on the owner's answer about the embedded files
-   (above), then `cargo package --workspace --allow-dirty` must verify
-   all seven crates; then the owner's steps of `docs/RELEASE.md`
+1. **Release 0.1**: the owner's steps of `docs/RELEASE.md`
    section 2 in order, the version bump (`[workspace.package]` and
    `[workspace.dependencies]`), the tag, the release page checked, one
    installer tried on a clean machine, the extension published, the
@@ -2299,13 +2296,12 @@ on a fresh clone).
 
 ## Known gaps and risks
 
-- **crates.io.** Two crates embed files from outside their directories
-  (`library/std/*.ry` in `renyi_check`, `docs/cheatsheet.md` in
-  `renyi`), so their tarballs do not build; `cargo install renyi` is
-  promised by the README, the front page, the starter pack and the
-  release procedure and does not work until the owner's question is
-  answered and acted on. The release archives, the installers and
-  `cargo install --git` work.
+- **Two copies to keep.** `crates/renyi_check/library/std/` and
+  `crates/renyi/cheatsheet.md` are copies (decision AI5) that a test
+  in each crate holds equal to `library/std/` and `docs/cheatsheet.md`;
+  an edit to the canonical file without the copy fails `cargo test`,
+  which is the point, but the failure names the file to copy rather
+  than copying it.
 - **The site is unverified in a browser**: `tools/site.py` was run
   locally and its pages, titles and links inspected as text; the Site
   workflow's build job runs on every push, the deploy job only from a

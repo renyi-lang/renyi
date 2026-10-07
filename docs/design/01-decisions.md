@@ -2239,3 +2239,17 @@ is won or lost. (user)
 
 **AI4. The name stays; a GitHub organisation `renyi-lang` takes the
 repository as `renyi-lang/renyi`; the owner buys renyi-lang.org.** (user)
+
+**AI5. The crates are self-contained: `renyi_check` embeds a copy of
+`library/std/` under `crates/renyi_check/library/std/`, and `renyi` a
+copy of `docs/cheatsheet.md` as `crates/renyi/cheatsheet.md`; a test in
+each crate holds the copy equal to the canonical file, byte for
+byte.** A crates.io tarball carries only the files under the crate's
+directory, so an `include_str!` of a file outside it compiles in the
+workspace and fails from the tarball, which `cargo package
+--workspace` showed on 2026-10-07. The alternatives: the canonical
+`library/std/` moved under the crate (every path in the documents,
+the tests, the judges and the lane scripts changes, and the cheat
+sheet still needs a copy); or no crates.io for 0.1. The copies cost
+copying the file again after an edit, which the tests demand; the
+canonical paths stay. (user)

@@ -1,0 +1,51 @@
+module std.sqlite
+  purpose: SQLite database files.
+
+import std.filesystem exposing Path
+
+public type Connection
+  purpose: An open database file.
+end
+
+public type Parameter is one of
+  purpose: A value bound to a `?` placeholder.
+  IntegerValue(value: Integer)
+  DecimalValue(value: Decimal)
+  TextValue(value: Text)
+  BooleanValue(value: Boolean)
+  NullValue
+end
+
+public type DbError is one of
+  purpose: Why a database operation failed.
+  CannotOpen(path: Path, detail: Text)
+  Failed(sql: Text, detail: Text)
+  Mismatch(column: Text, expected: Text, found: Text)
+  PermissionDenied(path: Path)
+  OverBudget(path: Path)
+  can ToText
+end
+
+public ability FromRow
+  purpose: Record types that a query can decode a row into; derivable, columns matched to fields by name.
+end
+
+public function open(path: Path) returns Connection or fails with DbError needs filesystem
+  purpose: Open the file, creating it when it does not exist.
+public function integer(value: Integer) returns Parameter
+public function decimal(value: Decimal) returns Parameter
+public function text(value: Text) returns Parameter
+public function boolean(value: Boolean) returns Parameter
+public function absent() returns Parameter
+public function query(self: Connection, sql: Text, parameters: List of Parameter)
+  returns List of Row
+  or fails with DbError
+  needs filesystem.read
+  for any Row where Row can FromRow
+  purpose: Run a statement that returns rows and decode each into the type the context expects.
+public function execute(self: Connection, sql: Text, parameters: List of Parameter)
+  returns Integer
+  or fails with DbError
+  needs filesystem.write
+  purpose: Run a statement that returns no rows; the result is the number of changed rows.
+public function close(self: Connection) needs filesystem

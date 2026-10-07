@@ -50,8 +50,19 @@ The owner's steps are marked (owner); the others a session does.
    `renyi_package`, `renyi_check`, `renyi_index`, `renyi_vm`, `renyi`.
    `cargo login` takes the token from the owner; the token never enters
    the repository or a log. Each crate's manifest carries its
-   description, license and repository; `cargo package -p <crate>
-   --no-verify` shows what would be uploaded.
+   description, license and repository, and the crates name each
+   other with versions through `[workspace.dependencies]`;
+   `renyi_check` and `renyi` build from their tarballs because they
+   embed copies of `library/std/` and `docs/cheatsheet.md` held equal
+   by tests (decision AI5). `cargo package --workspace --allow-dirty`
+   packages all seven and verifies the six libraries from their
+   tarballs; on the binary it stops with a cargo internal error ("no
+   hash listed for renyi_index", cargo 1.94.1: the temporary registry
+   of a workspace package lacks checksums for a binary's lockfile),
+   which `cargo publish -p renyi` does not hit, as it verifies against
+   crates.io once the libraries are there. The binary's tarball was
+   built by hand on 2026-10-07 (`target/package/renyi-0.0.1/` with its
+   dependencies pointed at the workspace) and runs.
 6. Tag and push: `git tag v0.1.0 && git push origin v0.1.0`. Watch the
    Release workflow; when it finishes, the release page lists the three
    archives, their checksums and the `.vsix`.

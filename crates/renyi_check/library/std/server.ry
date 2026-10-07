@@ -1,0 +1,42 @@
+module std.server
+  purpose: An HTTP server driven by one handler function.
+
+public type Port is Integer where value is at least 1 and value is at most 65535
+  purpose: A TCP port number.
+
+public type Request
+  purpose: One incoming request.
+  has method: Text
+  has path: Text
+  has query: Map of Text to Text
+  has headers: Map of Text to Text
+  has body: Text
+end
+
+public type Response
+  purpose: The answer to a request.
+  has status: Integer
+  has headers: Map of Text to Text
+  has body: Text
+end
+
+public type StartError is one of
+  purpose: Why the server could not start.
+  PortInUse(port: Port)
+  PermissionDenied(port: Port)
+  OverBudget(port: Port)
+  can ToText
+end
+
+public function serve(port: Port, handler: function(Request) returns Response)
+  or fails with StartError
+  needs network.socket
+  purpose: Answer every request with the handler until the process stops.
+public function ok(body: Text) returns Response
+  purpose: Status 200 with a text/plain body.
+public function ok_json(value: Value) returns Response for any Value where Value can ToJson
+  purpose: Status 200 with the value rendered as application/json.
+public function not_found() returns Response
+public function bad_request(detail: Text) returns Response
+public function respond(status: Integer, body: Text) returns Response
+public function with_header(self: Response, name: Text, value: Text) returns Response

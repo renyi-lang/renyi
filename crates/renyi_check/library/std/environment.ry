@@ -1,0 +1,12 @@
+module std.environment
+  purpose: Command-line arguments, environment variables and the exit code of the process.
+
+import std.filesystem exposing Path
+
+public function arguments() returns List of Text needs environment
+  purpose: The command-line arguments after the program name.
+public function get(name: Text) returns maybe Text needs environment
+  purpose: The value of an environment variable.
+public function current_directory() returns Path needs environment
+public function exit(code: Integer) needs environment
+  purpose: Stop the program with the exit code; 0 means success.

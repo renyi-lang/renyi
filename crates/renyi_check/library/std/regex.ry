@@ -1,0 +1,14 @@
+module std.regex
+  purpose: Regular expressions with the syntax of the Rust regex crate: no backreferences, no look-around, linear time.
+
+public type Pattern is Text
+  purpose: A regular expression; literals are checked at compile time.
+
+public function find_all(self: Pattern, text: Text) returns List of Text
+  purpose: Every non-overlapping match, in order.
+public function captures(self: Pattern, text: Text) returns maybe List of Text
+  purpose: The capture groups of the first match, or nothing when there is none.
+public function replace_all(self: Pattern, text: Text, replacement: Text) returns Text
+public function split(self: Pattern, text: Text) returns List of Text
+public function problem(pattern: Text) returns maybe Text
+  purpose: What the engine refuses in a pattern, or nothing when it compiles; the checker reports it for a literal.

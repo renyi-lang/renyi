@@ -1,0 +1,21 @@
+module std.foreign
+  purpose: The integer types of a fixed width that cross the boundary to a C library (decision AF1).
+
+public type Int8 is Integer where value is at least -128 and value is at most 127
+  purpose: A C `int8_t` or `signed char`.
+public type UInt8 is Integer where value is at least 0 and value is at most 255
+  purpose: A C `uint8_t` or `unsigned char`.
+public type Int16 is Integer where value is at least -32768 and value is at most 32767
+  purpose: A C `int16_t` or `short`.
+public type UInt16 is Integer where value is at least 0 and value is at most 65535
+  purpose: A C `uint16_t` or `unsigned short`.
+public type Int32 is Integer where value is at least -2147483648 and value is at most 2147483647
+  purpose: A C `int32_t` or `int`.
+public type UInt32 is Integer where value is at least 0 and value is at most 4294967295
+  purpose: A C `uint32_t` or `unsigned int`.
+public type Int64 is Integer where value is at least -9223372036854775808 and value is at most 9223372036854775807
+  purpose: A C `int64_t` or `long long`.
+public type UInt64 is Integer where value is at least 0 and value is at most 18446744073709551615
+  purpose: A C `uint64_t` or `unsigned long long`.
+public type Size is Integer where value is at least 0 and value is at most 18446744073709551615
+  purpose: A C `size_t`, 64 bits wide.

@@ -45,7 +45,8 @@ const SERVER_INFO_KEY: &str = "io.modelcontextprotocol/serverInfo";
 /// How long a client may keep the tool list and the discovery result: a
 /// day, since neither changes while the server runs.
 const CACHE_TTL_MS: &str = "86400000";
-const CHEAT_SHEET: &str = include_str!("../../../docs/cheatsheet.md");
+// the crate's copy of `docs/cheatsheet.md`, held equal by a test (decision AI5)
+const CHEAT_SHEET: &str = include_str!("../cheatsheet.md");
 const INSTRUCTIONS: &str = "The Renyi toolchain. Read cheat_sheet before writing Renyi. Look library \
 names up with library_lookup instead of guessing them. project_map, definition and effects describe \
 the served project; check and format close the loop on source text; run and run_tests execute \

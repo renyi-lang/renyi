@@ -1,0 +1,9 @@
+module std.random
+  purpose: Random numbers and choices.
+
+public function integer(lowest: Integer, highest: Integer) returns Integer needs random
+  purpose: A uniformly distributed integer, both bounds included.
+public function decimal() returns Decimal needs random
+  purpose: A uniformly distributed value from 0 up to but excluding 1.
+public function choice(items: List of Item) returns maybe Item needs random for any Item
+public function shuffled(items: List of Item) returns List of Item needs random for any Item

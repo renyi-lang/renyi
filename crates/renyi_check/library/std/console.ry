@@ -1,0 +1,9 @@
+module std.console
+  purpose: Standard input and output of the terminal.
+
+public function print(text: Text) needs console
+  purpose: Write the text and a line break to standard output.
+public function print_error(text: Text) needs console
+  purpose: Write the text and a line break to standard error.
+public function read_line() returns maybe Text needs console
+  purpose: The next line of standard input without its break, or nothing at end of input.

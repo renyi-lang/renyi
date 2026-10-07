@@ -1,0 +1,40 @@
+module std.json
+  purpose: JSON encoding and decoding through the ToJson and FromJson abilities.
+
+public type JsonValue is one of
+  purpose: Any JSON document, for data whose shape is not known in advance.
+  JsonObject(fields: Map of Text to JsonValue)
+  JsonArray(items: List of JsonValue)
+  JsonText(value: Text)
+  JsonNumber(value: Decimal)
+  JsonBoolean(value: Boolean)
+  JsonNull
+  can ToJson
+  can FromJson
+end
+
+public type Naming is one of
+  purpose: How field names map to keys.
+  ExactNames
+  CamelCase
+  KebabCase
+end
+
+public type JsonError is one of
+  purpose: Why a text is not the JSON the program expects.
+  Malformed(detail: Text, line: Integer)
+  Mismatch(path: Text, expected: Text, found: Text)
+  Constraint(path: Text, detail: Text)
+  can ToText
+end
+
+public function parse(text: Text) returns Value or fails with JsonError
+  for any Value where Value can FromJson
+  purpose: Decode the text into the type the context expects.
+public function parse_with(text: Text, naming: Naming) returns Value or fails with JsonError
+  for any Value where Value can FromJson
+public function render(value: Value) returns Text for any Value where Value can ToJson
+  purpose: Compact JSON on one line.
+public function render_indented(value: Value) returns Text for any Value where Value can ToJson
+public function render_with(value: Value, naming: Naming) returns Text
+  for any Value where Value can ToJson
