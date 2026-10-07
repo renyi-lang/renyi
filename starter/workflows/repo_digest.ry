@@ -1,0 +1,73 @@
+module repo_digest
+  purpose: Summarize the recent commits of a git repository by author, for a weekly digest.
+
+import std.console
+import std.environment
+import std.filesystem exposing Path
+import std.process
+
+public type Commit
+  purpose: One commit of the log: who made it and its subject line.
+  has author: Text
+  has subject: Text
+end
+
+public type DigestError is one of
+  purpose: Why no digest could be printed.
+  GitFailed(detail: Text)
+  BadLine(line: Text)
+end
+
+public function parse_log(output: Text) returns List of Commit or fails with DigestError
+  purpose: Split git's output, one commit per line as "author<tab>subject", into commits.
+  example: parse_log("Ann\tFix the build\n") is [Commit(author: "Ann", subject: "Fix the build")]
+  example: parse_log("") is []
+  example: parse_log("no tab here") fails with BadLine(line: "no tab here")
+
+  let mutable commits: List of Commit be []
+  for each line in output.lines() where line.trim() is not ""
+    let parts be line.split("\t")
+    if parts.length() is not 2 then fail with BadLine(line: line) end
+    let author be parts.at(0) otherwise fail with BadLine(line: line)
+    let subject be parts.at(1) otherwise fail with BadLine(line: line)
+    change commits to commits.append(Commit(author: author, subject: subject))
+  end
+  return commits
+end
+
+public function recent_commits(directory: Path, limit: Integer)
+  returns List of Commit
+  or fails with DigestError
+  needs process("git")
+  purpose: The last commits of the repository at the directory, newest first, read from git.
+
+  let options be process.defaults() with directory: directory
+  let arguments be ["log", "--max-count={limit}", "--format=%an%x09%s"]
+  let finished be
+    match process.execute_with(program: "git", arguments: arguments, options: options)
+      when success(completion) then completion
+      when failure(error) then fail with GitFailed(detail: error.to_text())
+    end
+  return parse_log(finished.output) otherwise fail
+end
+
+public function main()
+  or fails with DigestError
+  needs console, environment, process("git") at most 1 per run
+  purpose: Print who made the last fifty commits, most first, with each author's latest subject.
+
+  let arguments be environment.arguments()
+  let where_to_look be arguments.at(0) otherwise "."
+  let commits be recent_commits(directory: Path(where_to_look), limit: 50) otherwise fail
+  let by_author be for each commit in commits group by commit.author
+  console.print("{commits.length()} commits")
+  for each author, theirs in by_author sorted by theirs.length() descending
+    let latest be theirs.at(0) otherwise continue
+    console.print("{author}: {theirs.length()} ({latest.subject})")
+  end
+end
+
+test "the log of this repository is read" needs process("git") replays "fixtures/repo_digest.json"
+  let commits be recent_commits(directory: Path("."), limit: 50) otherwise fail
+  check commits.length() is 50
+end

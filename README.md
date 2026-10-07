@@ -73,7 +73,9 @@ version and `RENYI_INSTALL_DIR` a directory. With a Rust toolchain,
 install --git https://github.com/renyi-lang/renyi renyi` from the
 repository. The VS Code extension (syntax highlighting; `editors/vscode/`)
 is attached to every release as a `.vsix`. `docs/RELEASE.md` is the
-release procedure.
+release procedure. An agent starts from `starter/` (decision AI3): a
+skill file, the MCP configuration and five workflows that do real work,
+with their tests and recordings.
 
 ## Status
 

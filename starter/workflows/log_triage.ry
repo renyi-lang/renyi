@@ -1,0 +1,88 @@
+module log_triage
+  purpose: Rank the error codes of a log file by how often they fired, with first and last times.
+
+import std.console
+import std.environment
+import std.filesystem exposing Path, FileError
+
+public type Entry
+  purpose: One ERROR line: its timestamp, its code and its message.
+  has timestamp: Text
+  has code: Text
+  has message: Text
+end
+
+public type Summary
+  purpose: One error code over the whole log.
+  has code: Text
+  has occurrences: Integer
+  has first_seen: Text
+  has last_seen: Text
+  has sample: Text
+end
+
+public function parse_error(line: Text) returns maybe Entry
+  purpose: The entry of a line "timestamp ERROR code message"; nothing for any other line.
+  example: parse_error("2026-10-07T10:00:00 ERROR E42 disk full")
+    is Entry(timestamp: "2026-10-07T10:00:00", code: "E42", message: "disk full")
+  example: parse_error("2026-10-07T10:00:00 INFO started") is nothing
+
+  let words be line.split(" ")
+  if words.length() is less than 4 then return nothing end
+  let level be words.at(1) otherwise return nothing
+  if level is not "ERROR" then return nothing end
+  let timestamp be words.at(0) otherwise return nothing
+  let code be words.at(2) otherwise return nothing
+  return Entry(timestamp: timestamp, code: code, message: words.drop(3).join(" "))
+end
+
+public function summarize(entries: List of Entry) returns List of Summary
+  purpose: One summary per code, most occurrences first; the entries must be in time order.
+
+  let grouped be for each entry in entries group by entry.code
+  let mutable summaries: List of Summary be []
+  for each code, members in grouped
+    let earliest be members.at(0) otherwise continue
+    let latest be members.last() otherwise continue
+    let summary be Summary(
+      code: code,
+      occurrences: members.length(),
+      first_seen: earliest.timestamp,
+      last_seen: latest.timestamp,
+      sample: earliest.message
+    )
+    change summaries to summaries.append(summary)
+  end
+  return for each summary in summaries sorted by summary.occurrences descending collect summary
+end
+
+public function main() or fails with FileError needs console, environment, filesystem.read("data")
+  purpose: Print the five most frequent error codes of the log named by the argument (data/app.log).
+
+  let arguments be environment.arguments()
+  let name be arguments.at(0) otherwise "data/app.log"
+  let text be filesystem.read_text(Path(name)) otherwise fail
+  let mutable entries: List of Entry be []
+  for each line in text.lines()
+    let entry be parse_error(line) otherwise continue
+    change entries to entries.append(entry)
+  end
+  console.print("{entries.length()} errors in {name}")
+  for each summary in summarize(entries).take(5)
+    let span be "{summary.first_seen} to {summary.last_seen}"
+    console.print("{summary.code}: {summary.occurrences} times, {span}: {summary.sample}")
+  end
+end
+
+test "codes are ranked by occurrences"
+  let entries be [
+    Entry(timestamp: "t1", code: "E1", message: "one"),
+    Entry(timestamp: "t2", code: "E2", message: "two"),
+    Entry(timestamp: "t3", code: "E2", message: "two again")
+  ]
+  let summaries be summarize(entries)
+  let top be summaries.at(0) otherwise crash with "no summary"
+  check top.code is "E2"
+  check top.occurrences is 2
+  check top.last_seen is "t3"
+end

@@ -50,6 +50,16 @@ jobs:
       - name: Benchmark programs
         run: cargo run -q -- check bench/*.ry && cargo run -q -- format --check bench/*.ry
 
+      # the starter pack for agents (decision AI3): the five workflows
+      # check clean, are in canonical layout and pass their tests from
+      # their recordings; the skill's cheat sheet is the repository's
+      - name: Starter pack
+        run: |
+          cargo run -q -- check starter/workflows/*.ry
+          cargo run -q -- format --check starter/workflows/*.ry
+          cargo run -q -- test starter/workflows/*.ry
+          cmp docs/cheatsheet.md starter/skill/renyi/cheatsheet.md
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

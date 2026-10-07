@@ -2,6 +2,7 @@ target/
 .renyi/
 __pycache__/
 examples/.scratch*.ry
+starter/workflows/out/
 .ce/
 .ccm/
 .claude/

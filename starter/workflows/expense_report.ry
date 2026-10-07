@@ -1,0 +1,126 @@
+module expense_report
+  purpose: Total the expense CSV files of a directory by category and by month into a report.
+
+import std.console
+import std.csv exposing Row
+import std.filesystem exposing Path
+
+public type Expense
+  purpose: One cleaned row: the month it belongs to, its category and its amount.
+  has month: Text
+  has category: Text
+  has amount: Decimal
+end
+
+public type ReportError is one of
+  purpose: Why the report could not be written.
+  BadRow(file: Text, line: Integer, detail: Text)
+  Io(detail: Text)
+end
+
+function parse_expense(file: Text, row: Row) returns Expense or fails with ReportError
+  purpose: One row's date, category and amount; the month is the date's first seven characters.
+
+  let date be row.get("date") otherwise fail with BadRow(
+    file: file,
+    line: row.line,
+    detail: "missing date"
+  )
+  let category be row.get("category") otherwise fail with BadRow(
+    file: file,
+    line: row.line,
+    detail: "missing category"
+  )
+  let amount_text be row.get("amount") otherwise fail with BadRow(
+    file: file,
+    line: row.line,
+    detail: "missing amount"
+  )
+  let amount be amount_text.trim().to_decimal() otherwise fail with BadRow(
+    file: file,
+    line: row.line,
+    detail: "amount is not a number: {amount_text}"
+  )
+  return Expense(month: date.trim().take(7), category: category.trim(), amount: amount)
+end
+
+public function load_expenses(directory: Path)
+  returns List of Expense
+  or fails with ReportError
+  needs filesystem.read("data")
+  purpose: Read every CSV file of the directory, in name order.
+
+  let paths be filesystem.list(directory) otherwise fail with Io(detail: "cannot list {directory}")
+  let mutable expenses: List of Expense be []
+  for each path in paths sorted by path
+    let extension be path.extension() otherwise continue
+    if extension is not "csv" then continue end
+    let text be filesystem.read_text(path) otherwise fail with Io(detail: "cannot read {path}")
+    let rows be csv.parse(text) otherwise fail with Io(detail: "{path} is not valid CSV")
+    for each row in rows
+      let expense be parse_expense(file: path.name(), row: row) otherwise fail
+      change expenses to expenses.append(expense)
+    end
+  end
+  return expenses
+end
+
+public function by_category(expenses: List of Expense) returns Map of Text to Decimal
+  purpose: The total amount of each category.
+  example: by_category([]) is {}
+  example: by_category([Expense(month: "2026-09", category: "travel", amount: 2.50)])
+    is {"travel": 2.50}
+
+  return for each expense in expenses group by expense.category sum expense.amount
+end
+
+public function by_month(expenses: List of Expense) returns Map of Text to Decimal
+  purpose: The total amount of each month.
+
+  return for each expense in expenses group by expense.month sum expense.amount
+end
+
+public function report(expenses: List of Expense) returns Text
+  purpose: The Markdown report: a table by category, largest first, and a table by month, in order.
+
+  let mutable text be "# Expenses\n\n## By category\n\n| category | total |\n|---|---|\n"
+  for each category, total in by_category(expenses) sorted by total descending
+    change text to "{text}| {category} | {total} |\n"
+  end
+  change text to "{text}\n## By month\n\n| month | total |\n|---|---|\n"
+  for each month, total in by_month(expenses) sorted by month
+    change text to "{text}| {month} | {total} |\n"
+  end
+  return text
+end
+
+public function main()
+  or fails with ReportError
+  needs console, filesystem.read("data"), filesystem.read("out"), filesystem.write("out")
+  purpose: Read data/expenses, print the totals by category and write out/report.md.
+
+  let expenses be load_expenses(Path("data/expenses")) otherwise fail
+  for each category, total in by_category(expenses) sorted by total descending
+    console.print("{category}: {total}")
+  end
+  if not filesystem.exists(Path("out")) then
+    filesystem.create_directory(Path("out")) otherwise fail with Io(detail: "cannot create out/")
+  end
+  filesystem.write_text(
+    path: Path("out/report.md"),
+    content: report(expenses)
+  ) otherwise fail with Io(detail: "cannot write out/report.md")
+  console.print("wrote out/report.md ({expenses.length()} expenses)")
+end
+
+test "the totals add up"
+  let expenses be [
+    Expense(month: "2026-09", category: "travel", amount: 120.00),
+    Expense(month: "2026-09", category: "meals", amount: 30.50),
+    Expense(month: "2026-10", category: "travel", amount: 80.00)
+  ]
+  let travel be by_category(expenses).get("travel") otherwise 0.00
+  let september be by_month(expenses).get("2026-09") otherwise 0.00
+  check travel is 200.00
+  check september is 150.50
+end

@@ -1,0 +1,67 @@
+module link_check
+  purpose: Check that every link of a Markdown file still answers, and say which do not.
+
+import std.console
+import std.environment
+import std.filesystem exposing Path, FileError
+import std.http exposing Url
+import std.regex exposing Pattern
+
+public type LinkResult is one of
+  purpose: What one link did when fetched.
+  Answered(url: Url, status: Integer)
+  Broken(url: Url, detail: Text)
+end
+
+public function links_in(text: Text) returns List of Url
+  purpose: Every http or https address in the text, in order, each once.
+  example: links_in("see https://example.com/ and (https://example.com/)")
+    is [Url("https://example.com/")]
+  example: links_in("no links") is []
+
+  let pattern be Pattern(raw "https?://[^\s)>]+")
+  return for each found in pattern.find_all(text).distinct() collect Url(found)
+end
+
+public function check_link(url: Url) returns LinkResult needs network.http
+  purpose: Fetch the address and report its status, or why it could not be fetched.
+
+  match http.get(url)
+    when success(response) then return Answered(url: url, status: response.status)
+    when failure(error) then return Broken(url: url, detail: error.to_text())
+  end
+end
+
+public function main()
+  or fails with FileError
+  needs console, environment, filesystem.read("data"), network.http at most 20 per run
+  purpose: Check every link of the file named by the argument (data/links.md), one line per link.
+
+  let arguments be environment.arguments()
+  let name be arguments.at(0) otherwise "data/links.md"
+  let text be filesystem.read_text(Path(name)) otherwise fail
+  let mutable broken be 0
+  for each url in links_in(text)
+    match check_link(url)
+      when Answered(status) where status is less than 400 then
+        console.print("ok      {status} {url}")
+      when Answered(status) then
+        console.print("broken  {status} {url}")
+        change broken to broken + 1
+      when Broken(detail) then
+        console.print("broken  {url}: {detail}")
+        change broken to broken + 1
+    end
+  end
+  console.print("{broken} broken")
+end
+
+test "three links are checked" needs network.http replays "fixtures/link_check.json"
+  let sample be [
+    "https://example.com/",
+    "https://example.com/missing",
+    "https://www.iana.org/domains/reserved"
+  ].join(" ")
+  let results be for each url in links_in(sample) collect check_link(url)
+  check results.length() is 3
+end

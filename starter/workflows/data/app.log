@@ -1,0 +1,16 @@
+2026-10-07T09:58:12 INFO server started on port 8080
+2026-10-07T09:58:40 WARN cache miss rate above 50%
+2026-10-07T10:00:03 ERROR E1001 database connection refused
+2026-10-07T10:00:05 ERROR E1001 database connection refused
+2026-10-07T10:00:09 INFO retrying database in 5 s
+2026-10-07T10:00:14 ERROR E1001 database connection refused
+2026-10-07T10:01:30 INFO database reachable again
+2026-10-07T10:04:51 ERROR E2210 request timed out after 30 s: GET /reports/weekly
+2026-10-07T10:05:02 WARN slow query: 2.4 s
+2026-10-07T10:07:19 ERROR E3300 disk usage at 96% on /var/data
+2026-10-07T10:12:44 ERROR E2210 request timed out after 30 s: GET /reports/monthly
+2026-10-07T10:15:00 INFO nightly export finished
+2026-10-07T10:20:17 ERROR E3300 disk usage at 97% on /var/data
+2026-10-07T10:31:08 ERROR E4040 unknown route: /api/v1/legacy
+2026-10-07T10:45:55 ERROR E2210 request timed out after 30 s: GET /reports/weekly
+2026-10-07T11:02:23 ERROR E3300 disk usage at 98% on /var/data

@@ -1,0 +1,82 @@
+module api_digest
+  purpose: Fetch a repository's public numbers from the GitHub API and print a one-line digest.
+
+import std.console
+import std.environment
+import std.http exposing Url, HttpError
+import std.json exposing JsonError
+
+public type Repository
+  purpose: The fields of a GitHub repository the digest uses; the API sends more, which are ignored.
+  has full_name: Text
+  has description: maybe Text
+  has stargazers_count: Integer
+  has forks_count: Integer
+  has open_issues_count: Integer
+  has pushed_at: Text
+  can FromJson
+end
+
+public type DigestError is one of
+  purpose: Why the digest could not be printed.
+  Unreachable(detail: Text)
+  BadResponse(detail: Text)
+end
+
+public function fetch_repository(name: Text)
+  returns Repository
+  or fails with HttpError or JsonError
+  needs network.http("api.github.com")
+  purpose: Download the record of the repository "owner/name".
+
+  let response be http.get(Url("https://api.github.com/repos/{name}")) otherwise fail
+  let repository: Repository be json.parse(response.body) otherwise fail
+  return repository
+end
+
+public function digest(repository: Repository) returns Text
+  purpose: One line with the name, the stars, the forks, the open issues and the last push.
+  example: digest(
+    Repository(
+      full_name: "a/b",
+      description: nothing,
+      stargazers_count: 1,
+      forks_count: 2,
+      open_issues_count: 3,
+      pushed_at: "2026-10-07T00:00:00Z"
+    )
+  ) is "a/b: 1 stars, 2 forks, 3 open issues, pushed 2026-10-07T00:00:00Z"
+
+  let stars be repository.stargazers_count
+  let forks be repository.forks_count
+  let issues be repository.open_issues_count
+  let name be repository.full_name
+  let pushed be repository.pushed_at
+  return "{name}: {stars} stars, {forks} forks, {issues} open issues, pushed {pushed}"
+end
+
+public function main()
+  or fails with DigestError
+  needs console, environment, network.http("api.github.com") at most 5 per run
+  purpose: Print the digest of the repository named by the argument, rust-lang/rust by default.
+
+  let arguments be environment.arguments()
+  let name be arguments.at(0) otherwise "rust-lang/rust"
+  let repository be
+    match fetch_repository(name)
+      when success(found) then found
+      when failure(error: HttpError) then fail with Unreachable(detail: error.to_text())
+      when failure(error: JsonError) then fail with BadResponse(detail: error.to_text())
+    end
+  console.print(digest(repository))
+  match repository.description
+    when some(text) then console.print("  {text}")
+    when nothing then console.print("  (no description)")
+  end
+end
+
+test "a record is decoded" needs network.http("api.github.com") replays "fixtures/api_digest.json"
+  let repository be fetch_repository("rust-lang/rust") otherwise fail
+  check repository.full_name is "rust-lang/rust"
+  check repository.stargazers_count is greater than 100000
+end

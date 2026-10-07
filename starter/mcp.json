@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "renyi": {
+      "command": "renyi",
+      "args": ["mcp", "."]
+    }
+  }
+}
