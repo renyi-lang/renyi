@@ -23,9 +23,9 @@ in Renyi, decision AD1: the Rust lexer's and parser's codes, fixes and
 recovery, the three judges byte-equal on rejected programs too; then
 `std.process`, decision AE1, the second slice of stage 3; then the
 foreign function interface, decision AF1, the third; then machine code
-for the bytecode, decisions AG1 to AG5, with the owner's positioning
-and release decisions of 2026-10-07 recorded for the sessions that
-deliver them).
+for the bytecode, decisions AG1 to AG5; then the niche, decisions AH1
+to AH4 with `docs/design/08-positioning.md` and the README's opening;
+then release 0.1 decided, AI1 to AI4, its engineering not yet done).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -41,7 +41,8 @@ is done but for its residue (packages AC1, `std.process` AE1, the FFI
 AF1; `docs/GAPS.md`, section 4); M5 is not started; of M6 the
 machine code exists (decisions AG1 to AG5), `renyi build` does not.
 Design decisions are
-in sections 0 to AG of `01-decisions.md`; the agent tooling in
+in sections 0 to AI of `01-decisions.md`; the positioning in
+`08-positioning.md`; the agent tooling in
 `05-agent-tooling.md`, the signature capabilities in
 `06-runtime-guarantees.md`, the system-level commitments in
 `07-system-design.md`; the open items in section 18 of the sketch (R3-1,
@@ -1226,7 +1227,9 @@ next sections of the plan, below).
    in place of two), the call frame, the boundary of the pure
    primitives; each measured with `tools/bench.py` and `perf`; then on
    to the next item whatever the number.
-2. **Positioning** (decisions AH1 to AH4, to be written): the niche is
+2. **Positioning** (decisions AH1 to AH4, recorded;
+   `docs/design/08-positioning.md` written, the README's opening and
+   its "what Renyi leads with" list derive from it): the niche is
    "the scripting language of AI agents": the language an agent writes
    and a person reviews at a glance, where the program declares what it
    may do, the runtime admits only that, and every run can be recorded,
@@ -1239,9 +1242,11 @@ next sections of the plan, below).
    effect manifests computed by the tool, never widened silently. The
    English-like syntax is second: lead with the guarantees, the syntax
    is the means of review. No non-goals are written; the posture stays
-   that of a general language. Deliverable: `docs/design/08-positioning.md`
-   and the README's opening.
-3. **Release 0.1** (decisions AI1 to AI4, to be written) after the
+   that of a general language. Still to do from it: the documentation
+   site's front page (AI2) and the measurements of its section 5 on the
+   starter pack (AI3).
+3. **Release 0.1** (decisions AI1 to AI4, recorded; nothing of the
+   engineering exists yet) after the
    machine code, the positioning document and the release engineering
    land: CI on a tag builds Linux, macOS and Windows binaries and a
    GitHub Release; an install script and `cargo install renyi` (the

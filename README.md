@@ -1,10 +1,35 @@
 # Renyi
 
-Renyi is a statically typed programming language whose syntax is regular
-English. It is designed to be read and written by LLM agents and reviewed by
-people: one spelling per concept, effects in the type system, no exceptions,
-no null, no anonymous functions, and documentation that is part of the grammar
-so that code can be retrieved by meaning.
+Renyi is the scripting language of AI agents: the language an agent
+writes and a person reviews at a glance. A Renyi program declares what it
+may do (`needs filesystem.read("data"), network.http("api.example")`),
+the compiler refuses what is not declared, and the runtime admits only
+that, for the program's dependencies too. Every run can be recorded,
+replayed and narrated; the project map and the semantic diff are
+commands; every error carries a fix. The syntax is regular English with
+one spelling per concept, so that a reviewer reads a program in one
+pass: effects in the type system, no exceptions, no null, no anonymous
+functions, and documentation that is part of the grammar so that code
+can be retrieved by meaning. It is a general-purpose language whose
+first users are people who run automation with Claude Code or Codex and
+will not run an agent's Python blind (`docs/design/08-positioning.md`,
+decisions AH1 to AH4).
+
+What Renyi leads with:
+
+- **Effects are capabilities.** Every function declares what it needs,
+  scoped to a path or a host, budgeted (`at most 60 per minute`) and guarded
+  (`only to`); `main`'s declaration is the program's grant, and the VM's
+  one boundary enforces it, dependencies included.
+- **Runs are recorded, replayed and narrated.** `renyi record`, `run
+  --replay`, `reproduce` under the run manifest, `--explain` through
+  the program's own `purpose:` clauses.
+- **The tooling an agent needs.** `renyi index` (the project map and the
+  semantic diff with the version bump it forces), `renyi mcp` (the
+  toolchain as MCP tools), `purpose:` as syntax, a fix on every error.
+- **Package effects are computed, never widened silently.** `renyi add`,
+  `update`, `audit`: a dependency's effects come from its sources, and a
+  version that would let the program do more is refused.
 
 ```
 public function active_adult_emails(path: Path)

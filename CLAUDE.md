@@ -2,7 +2,7 @@
 
 Read `docs/HANDOFF.md` first. It is the current state of the project and is
 rewritten at the end of every session. Then read `docs/reference.md`, the
-language reference, and the seven design documents under `docs/design/` in
+language reference, and the eight design documents under `docs/design/` in
 order.
 
 ## What this repository is
@@ -97,13 +97,14 @@ compiler.
 
 | Path | Content |
 |------|---------|
-| `docs/design/01-decisions.md` | design decisions with reasons: rounds 1 and 2 (sections 0 to J), library (K), readability (L), pre-test (M), checker (N), runtime and agent tooling (O), signature capabilities (P), system-level commitments (Q), the live round (R), runtime dependencies and concurrency (S), the MCP server (T), readability round 2 (U), the gap audit and the road to self-hosting (V), the self-hosted front end (W), the speed of the VM (X), the residue of stage 1 (Y), the bytecode file and the emitter (Z), the rename of `set` (AA), constraints with type arguments (AB), packages (AC), the diagnostics of the front end in Renyi (AD), the process module (AE), the foreign function interface (AF) |
+| `docs/design/01-decisions.md` | design decisions with reasons: rounds 1 and 2 (sections 0 to J), library (K), readability (L), pre-test (M), checker (N), runtime and agent tooling (O), signature capabilities (P), system-level commitments (Q), the live round (R), runtime dependencies and concurrency (S), the MCP server (T), readability round 2 (U), the gap audit and the road to self-hosting (V), the self-hosted front end (W), the speed of the VM (X), the residue of stage 1 (Y), the bytecode file and the emitter (Z), the rename of `set` (AA), constraints with type arguments (AB), packages (AC), the diagnostics of the front end in Renyi (AD), the process module (AE), the foreign function interface (AF), machine code for the bytecode (AG), the niche (AH), release 0.1 (AI) |
 | `docs/design/02-syntax-sketch.md` | concrete syntax; section 18 tracks open items (round 2 is settled, new items start at R3-1) |
 | `docs/design/03-readability-test.md` | the readability protocol: it measured the grammar before the freeze; decision V1 made the freeze a decision (V11), so the rounds run only on request |
 | `docs/design/04-stdlib-sketch.md` | prelude, core modules and extension packages; the lint checks corpus calls against its `function` lines |
 | `docs/design/05-agent-tooling.md` | the project map (`renyi index`), metrics, content hashes, budgets, diffs and the `renyi mcp` server |
 | `docs/design/06-runtime-guarantees.md` | recorded runs and `replays` tests, narrated runs, budgets in grants (`at most`), provenance guards (`only to`) |
 | `docs/design/07-system-design.md` | the trade-offs the language claims to resolve; capability-safe packages, reproducibility, in-process sandboxing, checked live update |
+| `docs/design/08-positioning.md` | the niche (decisions AH1 to AH4): the scripting language of AI agents, the four points it leads with and the mechanism behind each, the syntax second, the comparison with the alternatives, the success metrics and the wording the README and the site derive from |
 | `docs/cheatsheet.md` | the whole language on one page; token-budgeted |
 | `docs/grammar.ebnf` | the formal grammar of the syntax level: W3C EBNF over the lexer's tokens, the token classes and the line rules in its preamble; `crates/renyi_syntax/tests/grammar.rs` interprets it and checks that it accepts exactly what the parser accepts |
 | `docs/reference.md` | the language reference, normative: one section per construct with the grammar excerpt, the meaning, the static rules with their diagnostic codes and the run-time behaviour; appendix A every diagnostic code with its severity, appendix B the commands and exit statuses; `crates/renyi_syntax/tests/reference.rs` holds it to the grammar file and the crates |

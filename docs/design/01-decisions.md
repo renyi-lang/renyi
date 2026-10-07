@@ -2114,3 +2114,69 @@ at its first call and enters every loop at its first turn);
 `RENYI_NATIVE_OPT` sets Cranelift's optimisation level (`none` by
 default: the optimiser found nothing in helper-call code for twice the
 time); `RENYI_NATIVE_VERIFY` turns Cranelift's IR verifier on. (user)
+
+## AH. The niche (session 8)
+
+**AH1. Renyi is the scripting language of AI agents: the language an
+agent writes and a person reviews at a glance; the program declares what
+it may do, the runtime admits only that, and every run can be recorded,
+replayed and narrated. Its first users are people who run automation
+with Claude Code, Codex and their like and will not run an agent's
+Python blind.** The owner's second direction of 2026-10-07: the design
+had its innovations but no fixed niche (decision V1 named "people
+building agent workflows and learners" as the first users without saying
+what the language is to them). The four candidates and the choice: (i)
+the scripting language of agents (chosen): every guarantee the design
+made (the effect system of sections C and P, the recorded runs of O and
+P, the agent tooling of D and the project map, the packages of AC) is
+what a person needs before letting an agent's program run; (ii) a
+teaching language: the readability is real but the guarantees would be
+a side show; (iii) a safe automation language for operations teams: the
+same guarantees, but the author would be a person, for whom the English
+syntax is slower to write than it is to read; (iv) a general-purpose
+language with a safety story: nothing to lead with. The posture stays
+general (AH4); the niche says who comes first. `docs/design/08-positioning.md`
+holds the text. (user)
+
+**AH2. Four selling points, in this order: effects as capabilities,
+declared on every function, scoped, budgeted and enforced at the
+boundary, dependencies included; recorded, replayed and narrated runs;
+the tooling an agent needs (the project map, the MCP server, `purpose:`
+as syntax, a fix on every error); package effect manifests computed by
+the tool and never widened silently.** All four candidates offered were
+taken; each is a promise the implementation keeps today (the conformance
+suite, the judges, `renyi audit`), which is the condition for leading
+with it. (user)
+
+**AH3. The English-like syntax ranks second: the positioning leads with
+the guarantees and shows the syntax as the means by which a person
+reviews a program at a glance.** Leading with the syntax was the
+project's original pitch (decision A2) and reads as a curiosity; the
+guarantees are what the first users lack elsewhere. (user)
+
+**AH4. No non-goals are written; the posture stays that of a general
+language.** A list of non-goals would read as limits before the language
+has users; the niche says who comes first, not who is excluded. (user)
+
+## AI. Release 0.1 (session 8)
+
+**AI1. Release 0.1 after the machine code, the positioning document and
+the release engineering land.** The alternatives: release at once from
+the private repository, with nothing to install and nothing to read; or
+after the embedding API and the LSP of M5, months away. (user)
+
+**AI2. The release engineering, all of it: CI builds Linux, macOS and
+Windows binaries on a tag and publishes a GitHub Release; an install
+script and `cargo install renyi` (the crate name is free on crates.io,
+checked 2026-10-07); a documentation site on GitHub Pages with the
+reference, the cheat sheet, the examples and the positioning; a VS Code
+extension for syntax highlighting.** (user)
+
+**AI3. The first acquisition is a starter pack for agents: a skill file,
+the MCP server and five runnable workflow examples.** The alternatives,
+a launch post or a benchmark table, say what the language is; the pack
+lets an agent use it in its first hour, which is where the niche of AH1
+is won or lost. (user)
+
+**AI4. The name stays; a GitHub organisation `renyi-lang` takes the
+repository as `renyi-lang/renyi`; the owner buys renyi-lang.org.** (user)
