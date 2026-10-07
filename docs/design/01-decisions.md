@@ -2115,6 +2115,65 @@ at its first call and enters every loop at its first turn);
 default: the optimiser found nothing in helper-call code for twice the
 time); `RENYI_NATIVE_VERIFY` turns Cranelift's IR verifier on. (user)
 
+**AG6. The bounded VM round of AG5, done and measured. Kept: a load of
+a record or a variant that a read of one of its fields follows reads
+the field in the slot; a frame names its grant by an index into a
+table, a per-code flag says whether the function narrows the grant at
+all, and the locals are filled in one resize; a variant without fields
+is built once per type and tag. Tried and dropped: a store of a binding
+fused with the load that follows it; the fields of a record or a
+variant inline in its allocation. The interpreter's other operations
+stay as they are, and the next performance work is the one AG5 defers
+until after release 0.1.** The owner's answer of 2026-10-07, on
+learning that the machine code brings nothing to the compiler written
+in Renyi: one bounded round of work on the VM's own operations, then
+on to the next item whatever the number. The measure is the count of
+user-space instructions and cycles (`perf stat`, the release build
+under WSL, two binaries interleaved, the minimum of three rounds): the
+loaded machine of that day moved wall and CPU time by a third between
+two runs, the instruction count by nothing and the cycles by a few
+percent. The program is the compiler written in Renyi compiling
+`compiler/bodies.ry` on the interpreter. The whole round: instructions
+from 15.49 billion to 14.66 billion (-5.4%), cycles from
+10.71 billion to 10.27 billion (-4.1%); with the machine
+code on, -2.5% and -4.5%. Step by step: (i) the fused field
+read in its first form, with the store fusion, 2.0% of the
+instructions; (ii) the grant by index, the flag and the resize, another
+1.0%; (iii) the fused field read restricted to a slot that holds a
+record or a variant, and the store fusion dropped, another 2.0%: the
+look at the next op had cost every load and store something, and the
+store fusion, which saved a pop and a push, took the record off the
+slot, so the field read after it was the slow one again; (iv) the
+inline fields (`SmallVec<[Value; 3]>` in `Record` and `Variant`, one
+allocation in place of two), tried with the unit variants: 3.4% more
+instructions and 0.8% fewer cycles on this program, 8.2% fewer
+instructions and 0.6% fewer cycles on `bench/records.ry`, 0.4% more
+and 3.0% more on `bench/json_round_trip.ry`, 2.2% more and 8.9% more
+on a loop that builds a three-field record and reads it; the branch on
+every field access and the element-wise build and drop cost what the
+second allocation had cost, so the fields went back to a `Vec` and the
+unit variants stayed. On the micro-benchmarks of the interpreter loop
+(instructions per turn of the loop, before and after the round): a
+counting loop, 713 to 731; a call and return, 1097 to
+1100; a primitive call, 1857 to 1906; a field read,
+1266 to 1133; a record built and read, 2099 to
+1970 (the first three, which the round does not touch, move
+with the code layout of the interpreter loop, which a build changes by
+up to 3%, so a micro-benchmark alone attributes nothing). Not done,
+with the reason: the boundary of a pure
+primitive is a move of the arguments into the scratch buffer, a check
+that no argument is guarded, a look at the function's `needs` (none)
+and the call, and nothing in it is worth a second path; `change x to x
+with ...` could move the receiver as `change x to x.method(...)` does
+(decision X3) and update the record in place, but that rule is a change
+to both emitters and the judges for 34 sites in `compiler/`, and waits;
+a fused `LoadField` op would take the look at the next op out of the
+loop, but an op the bytecode file never carries is a format question
+first (decision Z1), and waits too. The time of such a program stays
+where AG5 found it: in the clone and drop of values on every load and
+return, in the stack traffic and in the allocator, which only the
+baseline JIT or `renyi build` of AG5 can take out. (user)
+
 ## AH. The niche (session 8)
 
 **AH1. Renyi is the scripting language of AI agents: the language an

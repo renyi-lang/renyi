@@ -139,8 +139,9 @@ pub(crate) struct Frame {
     /// The height of `Vm::handlers` when the frame was entered: its own
     /// handled regions lie above.
     pub(crate) handler_base: usize,
-    /// The effective grant of the function running here (decision Q1).
-    pub(crate) grant: SharedGrant,
+    /// The effective grant of the function running here (decision Q1), by
+    /// its index in `Vm::grants`.
+    pub(crate) grant: u32,
 }
 
 /// What an `Op::Field` site saw last: a record's type (the tag is
@@ -197,10 +198,23 @@ pub struct Vm<'p> {
     pub arguments: Vec<String>,
     /// The effective grant of the run, set by `begin_run`.
     pub grant: SharedGrant,
+    /// Every grant a frame has run under, the run's own first: a frame
+    /// names its grant by index, so that a call and a return move no
+    /// reference count.
+    grants: Vec<SharedGrant>,
     /// Per function, the enclosing grant its `needs` last narrowed and the
-    /// result, so that a function called again from the same context does
-    /// not intersect again.
-    frame_grants: Vec<Option<(SharedGrant, SharedGrant)>>,
+    /// result, both as indices into `grants`, so that a function called
+    /// again from the same context does not intersect again.
+    frame_grants: Vec<Option<(u32, u32)>>,
+    /// Per code object, whether it belongs to a function whose `needs`
+    /// narrow the grant; the other code objects run under their caller's.
+    narrows: Vec<bool>,
+    /// Per type, the first slot of its variants in `unit_variants` and
+    /// how many it has.
+    unit_base: Vec<(usize, usize)>,
+    /// A variant without fields, once built: the same value every time
+    /// (decision AG6).
+    unit_variants: Vec<Option<Value>>,
     narrowing: Narrowing,
     counters: Vec<Counter>,
     /// Whether `begin_run` starts a recording.
@@ -266,6 +280,16 @@ impl<'p> Vm<'p> {
         } else {
             Jit::new(program).map(Box::new)
         };
+        let mut unit_base = Vec::with_capacity(program.types.metas.len());
+        let mut units = 0;
+        for meta in &program.types.metas {
+            let count = match &meta.shape {
+                TypeShape::Sum(variants) => variants.len(),
+                _ => 0,
+            };
+            unit_base.push((units, count));
+            units += count;
+        }
         Vm {
             program,
             stack: Vec::new(),
@@ -283,7 +307,18 @@ impl<'p> Vm<'p> {
             stdin: options.stdin,
             arguments: options.arguments,
             grant: Rc::new(Vec::new()),
+            grants: vec![Rc::new(Vec::new())],
             frame_grants: vec![None; program.function_metas.len()],
+            narrows: program
+                .codes
+                .iter()
+                .map(|code| {
+                    code.function
+                        .is_some_and(|function| !program.function_metas[function].needs.is_empty())
+                })
+                .collect(),
+            unit_base,
+            unit_variants: vec![None; units],
             narrowing: options.narrowing,
             counters: Vec::new(),
             record: options.record,
@@ -317,6 +352,8 @@ impl<'p> Vm<'p> {
     pub fn begin_run(&mut self, declared: &[Capability], program_name: &str) -> Result<(), String> {
         let grant = grant::effective(declared, &self.narrowing);
         self.grant = Rc::new(grant.capabilities);
+        self.grants.clear();
+        self.grants.push(self.grant.clone());
         self.frame_grants.iter_mut().for_each(|slot| *slot = None);
         self.counters = grant.counters;
         self.guards = grant::guards(declared);
@@ -399,36 +436,45 @@ impl<'p> Vm<'p> {
     /// innermost frame's, or the run's before any frame.
     pub fn effective_grant(&self) -> &[Capability] {
         match self.frames.last() {
-            Some(frame) => frame.grant.as_slice(),
+            Some(frame) => self.grants[frame.grant as usize].as_slice(),
             None => self.grant.as_slice(),
         }
     }
 
-    /// The grant of a new frame: the enclosing one, narrowed by the `needs`
-    /// of the function the code belongs to (decision Q1), remembered per
-    /// function while the enclosing grant stays the same.
+    /// The grant of a new frame, as its index in `grants`: the enclosing
+    /// one, narrowed by the `needs` of the function the code belongs to
+    /// (decision Q1), remembered per function while the enclosing grant
+    /// stays the same; a code object that narrows nothing takes its
+    /// caller's index.
     #[inline]
-    fn frame_grant(&mut self, code: CodeId) -> SharedGrant {
+    fn frame_grant(&mut self, code: CodeId) -> u32 {
         let enclosing = match self.frames.last() {
-            Some(frame) => frame.grant.clone(),
-            None => self.grant.clone(),
+            Some(frame) => frame.grant,
+            None => 0,
         };
-        let program = self.program;
-        let Some(function) = program.codes[code].function else {
-            return enclosing;
-        };
-        let needs = &program.function_metas[function].needs;
-        if needs.is_empty() {
+        if !self.narrows[code] {
             return enclosing;
         }
-        if let Some((parent, narrowed)) = &self.frame_grants[function] {
-            if Rc::ptr_eq(parent, &enclosing) {
-                return narrowed.clone();
+        let program = self.program;
+        let function = program.codes[code]
+            .function
+            .expect("a code object that narrows the grant belongs to a function");
+        if let Some((parent, narrowed)) = self.frame_grants[function] {
+            if parent == enclosing {
+                return narrowed;
             }
         }
-        let narrowed = Rc::new(grant::within(&enclosing, needs));
-        self.frame_grants[function] = Some((enclosing, narrowed.clone()));
-        narrowed
+        let needs = &program.function_metas[function].needs;
+        let narrowed = grant::within(&self.grants[enclosing as usize], needs);
+        let index = match self.grants.iter().position(|known| **known == narrowed) {
+            Some(index) => index,
+            None => {
+                self.grants.push(Rc::new(narrowed));
+                self.grants.len() - 1
+            }
+        } as u32;
+        self.frame_grants[function] = Some((enclosing, index));
+        index
     }
 
     /// The innermost running function whose `needs` narrowed the grant,
@@ -1060,8 +1106,8 @@ impl<'p> Vm<'p> {
             .checked_sub(count)
             .expect("the arguments are on the stack");
         let locals = self.program.codes[code].locals as usize;
-        while self.stack.len() < base + locals {
-            self.stack.push(Value::Nothing);
+        if self.stack.len() < base + locals {
+            self.stack.resize(base + locals, Value::Nothing);
         }
         self.frames.push(Frame {
             code,
@@ -1424,7 +1470,49 @@ impl<'p> Vm<'p> {
                     self.stack.push(value);
                 }
                 Op::Load(slot) => {
-                    let value = self.stack[base + *slot as usize].clone();
+                    let at = base + *slot as usize;
+                    let value = match &self.stack[at] {
+                        // `x.field` on a record or a variant in the slot: the
+                        // field is read there, so that the holder is neither
+                        // cloned nor dropped (decision AG6); a site that has
+                        // not seen this type goes the long way, through
+                        // `Op::Field`
+                        holder @ (Value::Record(_) | Value::Variant(_)) => {
+                            let found = match code.ops.get(pc) {
+                                Some(Op::Field { site, .. }) => {
+                                    let cached = self.field_cache[*site as usize];
+                                    match holder {
+                                        Value::Record(record)
+                                            if cached.ty == record.ty
+                                                && cached.tag == usize::MAX =>
+                                        {
+                                            record.fields.get(cached.index)
+                                        }
+                                        Value::Variant(variant)
+                                            if cached.ty == variant.ty
+                                                && cached.tag == variant.tag =>
+                                        {
+                                            variant.fields.get(cached.index)
+                                        }
+                                        _ => None,
+                                    }
+                                }
+                                _ => None,
+                            };
+                            match found {
+                                Some(field) => {
+                                    pc += 1;
+                                    ran += 1;
+                                    if let Some(profile) = &mut self.profile {
+                                        profile.op(code_id, &code.ops[pc - 1]);
+                                    }
+                                    field.clone()
+                                }
+                                None => holder.clone(),
+                            }
+                        }
+                        other => other.clone(),
+                    };
                     self.stack.push(value);
                 }
                 Op::LoadMove(slot) => {
@@ -1912,6 +2000,19 @@ impl<'p> Vm<'p> {
         tag: usize,
         fields: Vec<Value>,
     ) -> Result<Value, Interrupt> {
+        // a variant without fields is the same value every time: built
+        // once per type and tag (decision AG6)
+        if fields.is_empty() {
+            let (base, count) = self.unit_base[ty];
+            if tag < count {
+                if let Some(value) = &self.unit_variants[base + tag] {
+                    return Ok(value.clone());
+                }
+                let value = Value::variant(ty, tag, fields);
+                self.unit_variants[base + tag] = Some(value.clone());
+                return Ok(value);
+            }
+        }
         let meta = self.program.types.meta(ty);
         if let (false, TypeShape::Sum(variants)) = (meta.refinements.is_empty(), &meta.shape) {
             if let Some(variant) = variants.get(tag) {

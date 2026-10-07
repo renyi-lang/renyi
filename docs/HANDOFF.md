@@ -23,7 +23,8 @@ in Renyi, decision AD1: the Rust lexer's and parser's codes, fixes and
 recovery, the three judges byte-equal on rejected programs too; then
 `std.process`, decision AE1, the second slice of stage 3; then the
 foreign function interface, decision AF1, the third; then machine code
-for the bytecode, decisions AG1 to AG5; then the niche, decisions AH1
+for the bytecode, decisions AG1 to AG5, and the bounded VM round, AG6;
+then the niche, decisions AH1
 to AH4 with `docs/design/08-positioning.md` and the README's opening;
 then release 0.1 decided, AI1 to AI4, its engineering not yet done).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
@@ -39,7 +40,8 @@ tasks one after the other by S2) are done, with the project map (`renyi
 index`, `--budgets`, `--diff`), `renyi tools` and `renyi mcp` on top. M4
 is done but for its residue (packages AC1, `std.process` AE1, the FFI
 AF1; `docs/GAPS.md`, section 4); M5 is not started; of M6 the
-machine code exists (decisions AG1 to AG5), `renyi build` does not.
+machine code exists (decisions AG1 to AG5) and the interpreter had its
+bounded round (AG6), `renyi build` does not.
 Design decisions are
 in sections 0 to AI of `01-decisions.md`; the positioning in
 `08-positioning.md`; the agent tooling in
@@ -1220,13 +1222,55 @@ next sections of the plan, below).
   test programs; `/` on two Integers is `integer-division`
   (`quotient`).
 
+## The VM round (decision AG6)
+
+- **What changed**, all in `crates/renyi_vm/src/vm.rs`, none of it
+  visible to a program, the bytecode file or the compiler written in
+  Renyi (the judges and the conformance suite pass unchanged): the
+  `Op::Load` arm reads the field in the slot when the slot holds a
+  record or a variant, the next op is `Op::Field` and the site's cache
+  names the type (otherwise the load clones as before and `Op::Field`
+  does the rest, including the guard wrapper and the cache miss);
+  `Frame::grant` is an index into `Vm::grants` (the run's grant first),
+  `frame_grant` returns an index, `Vm::narrows` says per code object
+  whether its function narrows the grant at all, and
+  `push_frame_in_place` fills the locals with one `resize`;
+  `construct_variant` keeps a variant without fields in
+  `Vm::unit_variants` (`unit_base` gives each type its slots).
+- **Tried and dropped** (decision AG6 has the numbers): a store of a
+  binding fused with the load that follows it; the fields of a record
+  or a variant inline in its allocation (`smallvec`), which cost more
+  instructions than the second allocation had.
+- **How it was measured** (the owner's game loaded the CPU; wall and
+  CPU time swung by a third between two runs, the instruction count did
+  not): `perf stat -e instructions:u,cycles:u` on the release build
+  under WSL, through the lane scripts of `D:\Projects\.worktrees\Renyi\perf\`:
+  `build_linux.sh` (the release build with symbols into the lane),
+  `perf_stat.sh <binary> <args>` (one command's counts), `measure_all.sh
+  <binary>` (the self-check both ways and the five micro-benchmarks of
+  `..\profile\`), `ab_stat.sh <a> <b> <rounds> <args>` (two binaries
+  interleaved, the minimum of each count), `ab_linux.sh` (the same with
+  user time), `chain_build5.sh`/`chain_build6.sh` (a build queued after
+  the running one); the binaries of each step are kept there as
+  `renyi_base`, `renyi_f1f4`, `renyi_f2`, `renyi_f5`, `renyi_f6` and
+  `renyi_f7` (the final one); the last pushed commit is checked out in `..\base\` for a
+  development-build twin. `..\profile\micro.py` reports user time
+  (`GetProcessTimes`) and forces the interpreter unless
+  `MICRO_MODE=native`; `loop_field.ry` and `loop_construct.ry` joined
+  the micro-benchmarks there.
+- **The numbers** are in decision AG6: 5.4% fewer instructions and
+  4.1% fewer cycles on the compiler's self-check on the interpreter,
+  from the fused field read (about 4%), the frame (1%) and the unit
+  variants.
+
 ## The plan after the machine code (the owner's answers of 2026-10-07)
 
-1. **A bounded round of VM work** (decision AG5): the stack push, the
-   clone and drop of values, the allocation of records (one allocation
-   in place of two), the call frame, the boundary of the pure
-   primitives; each measured with `tools/bench.py` and `perf`; then on
-   to the next item whatever the number.
+1. **A bounded round of VM work** (decision AG5; done, decision AG6,
+   the section above): the fused field read, the grant by index, the
+   unit variants; 5.4% fewer instructions and 4.1% fewer cycles on
+   the compiler's self-check. The clone and drop of values,
+   the stack traffic and the allocator remain, for the baseline JIT or
+   `renyi build` after 0.1.
 2. **Positioning** (decisions AH1 to AH4, recorded;
    `docs/design/08-positioning.md` written, the README's opening and
    its "what Renyi leads with" list derive from it): the niche is

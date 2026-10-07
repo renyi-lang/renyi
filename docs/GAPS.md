@@ -310,7 +310,11 @@ freeze, or take it out of the frozen surface until it exists.
   records, lists and calls run at the interpreter's speed on machine
   code too, since their time is in the value operations (the profile in
   AG5: the stack push, the clone and drop of values, the allocator, the
-  call frame); the bounded VM round of AG5 is next. `Text.matches`
+  call frame); the bounded VM round of AG5 ran (decision AG6: 5.4%
+  fewer instructions and 4.1% fewer cycles on the compiler's
+  self-check; the clone and drop of values, the stack traffic and the
+  allocator remain, for the baseline JIT or `renyi build` after 0.1).
+  `Text.matches`
   compiles its pattern at every call; last-use moves exist only for the
   receiver of `change x to x.method(...)` (decision O1 promises them for
   arguments).
