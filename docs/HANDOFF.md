@@ -33,7 +33,9 @@ under `starter/`, AI3 (ee8b74b); the documentation site, `tools/site.py`
 with `.github/workflows/pages.yml` and `docs/index.md`, and the
 crates.io metadata; then decision AI5, the copies that make the two
 crates self-contained, so that `cargo package --workspace` verifies
-all seven).
+all seven; then foreign packages decided, AJ1 to AJ4: Rust natives
+through a registration API, Python through a typed bridge, after
+0.1).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -53,7 +55,7 @@ to AI4) has its engineering in the repository (the section "Release 0.1
 engineering" below) and waits for the owner's by-hand steps of
 `docs/RELEASE.md` section 2.
 Design decisions are
-in sections 0 to AI of `01-decisions.md`; the positioning in
+in sections 0 to AJ of `01-decisions.md`; the positioning in
 `08-positioning.md`; the agent tooling in
 `05-agent-tooling.md`, the signature capabilities in
 `06-runtime-guarantees.md`, the system-level commitments in
@@ -1317,6 +1319,15 @@ next sections of the plan, below).
 4. **Deferred** (decision AG5): `renyi build` (the image of bytecode
    and machine code) and the baseline JIT that inlines the boxed
    operations, both after 0.1.
+5. **Foreign packages** (decisions AJ1 to AJ4, the owner's answers of
+   2026-10-07, evening): after 0.1 and before the rest of M5, the
+   registration API for Rust natives (the standard library's
+   mechanism opened to extensions: a declaration file with the
+   signature, the capability and the failures, the native built into
+   the binary; half of M5's embedding API), then the typed Python
+   bridge as the first extension package (one worker process per
+   run, JSON messages, each call one recorded primitive) under the
+   capability `python("<package>")`. Nothing of it exists yet.
 
 ## Release 0.1 engineering (decisions AI1 to AI4; session 8, 2026-10-07)
 
@@ -2234,8 +2245,13 @@ on a fresh clone).
    section 2 in order, the version bump (`[workspace.package]` and
    `[workspace.dependencies]`), the tag, the release page checked, one
    installer tried on a clean machine, the extension published, the
-   announcement with the texts of `08-positioning.md` section 6. After
-   the release: the measurements of the positioning's section 5 on
+   announcement with the texts of `08-positioning.md` section 6. Then,
+   before the rest of M5: the registration API for Rust natives
+   (AJ1) and the Python bridge (AJ2, AJ3), in that order (AJ4); the
+   first design questions are the shape of the registration API
+   (how a declaration file and a Rust function meet; how an
+   extension is built into the binary) and the bridge's protocol.
+   Also after the release: the measurements of the positioning's section 5 on
    the starter pack (the time to a first working workflow, the review
    time), and `renyi tools <directory>` on a directory that holds
    library declaration files (it parses them as programs and fails;

@@ -2253,3 +2253,52 @@ the tests, the judges and the lane scripts changes, and the cheat
 sheet still needs a copy); or no crates.io for 0.1. The copies cost
 copying the file again after an edit, which the tests demand; the
 canonical paths stay. (user)
+
+## AJ. Foreign packages: Rust and Python (session 8)
+
+The owner's question of 2026-10-07, evening: can a Renyi program use
+Python or Rust packages directly, so that the language extends without
+a library of its own for everything? Four answers.
+
+**AJ1. Rust packages extend Renyi through the mechanism the standard
+library uses: a native function registered with the VM under a
+declaration file that states its signature, its capability and its
+failure types, built into the `renyi` binary; the registration API is
+the half of the embedding API of M5 (decision Q3) that faces the
+host.** A registered native is checked, recorded, replayed and narrated
+like a library primitive, so an extension costs no guarantee; the
+standard library's own natives move to the same mechanism, which makes
+the API tested by its first user. The alternatives: the C FFI alone
+(AF1: a Rust crate as a C-ABI library through `renyi bind`, with
+scalars, text and bytes only, and `foreign` outside every guarantee),
+or nothing until a user asks. (user)
+
+**AJ2. Python packages are reached through a typed bridge to a worker
+process: a declaration file states each function's signature over the
+types JSON carries (numbers, text, booleans, lists, maps, records with
+`FromJson` and `ToJson`), the VM starts one `python` process per run
+and sends each call as a JSON message, and each call is one primitive
+at the boundary, recorded with its arguments and its result.** Not
+CPython in the process: it opens a hole that can do anything, needs
+`libpython` found at run time and the GIL handled, for a speed a script
+does not need. Not `std.process` alone: one process per call, text
+only, the types decoded by hand. The bridge keeps recording, replay,
+`reproduce` and `--explain`; what the Python side does is outside
+Renyi's guarantees, and the reference says so where it says it of
+`foreign` (`07-system-design.md`, section 4.3). The bridge is an
+extension package written against the API of AJ1, the first after the
+standard library. (user)
+
+**AJ3. A call through the bridge charges one capability, `python`,
+scoped by the package the declaration file binds: `needs
+python("pandas")`.** A reviewer reads in the signature that the program
+runs Python and which package. The alternatives hide that: effects
+declared per function by the binding's author are a promise the checker
+cannot verify, and `foreign` does not tell a C library from Python. A
+new capability kind is a change to the reference's section 11 and the
+checker's table, not to the surface frozen by V11. (user)
+
+**AJ4. The order: after release 0.1, the registration API of AJ1
+first, then the bridge of AJ2 and AJ3, before the other items of M5.**
+The alternatives, before 0.1 or after M5, either delay the release or
+leave the ecosystem question open while the first users arrive. (user)
