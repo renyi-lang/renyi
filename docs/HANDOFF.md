@@ -22,7 +22,10 @@ slice of stage 3 in two commits; then the diagnostics of the front end
 in Renyi, decision AD1: the Rust lexer's and parser's codes, fixes and
 recovery, the three judges byte-equal on rejected programs too; then
 `std.process`, decision AE1, the second slice of stage 3; then the
-foreign function interface, decision AF1, the third).
+foreign function interface, decision AF1, the third; then machine code
+for the bytecode, decisions AG1 to AG5, with the owner's positioning
+and release decisions of 2026-10-07 recorded for the sessions that
+deliver them).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -35,9 +38,10 @@ run manifest of Q2, every library module, the `only to` guards of P3,
 tasks one after the other by S2) are done, with the project map (`renyi
 index`, `--budgets`, `--diff`), `renyi tools` and `renyi mcp` on top. M4
 is done but for its residue (packages AC1, `std.process` AE1, the FFI
-AF1; `docs/GAPS.md`, section 4); M5 and
-M6 are not started. Design decisions are
-in sections 0 to AF of `01-decisions.md`; the agent tooling in
+AF1; `docs/GAPS.md`, section 4); M5 is not started; of M6 the
+machine code exists (decisions AG1 to AG5), `renyi build` does not.
+Design decisions are
+in sections 0 to AG of `01-decisions.md`; the agent tooling in
 `05-agent-tooling.md`, the signature capabilities in
 `06-runtime-guarantees.md`, the system-level commitments in
 `07-system-design.md`; the open items in section 18 of the sketch (R3-1,
@@ -1127,6 +1131,130 @@ answers are the entry AF1.
   that name); a name is bound once per function (two `match` arms may
   not bind the same name); a single-letter parameter name is an error
   (`single-letter-identifier`), so the generator avoids it.
+
+## Machine code for the bytecode (decisions AG1 to AG5)
+
+The owner's direction of 2026-10-07: performance first, at the root,
+ahead-of-time compilation included; then the language's niche; then the
+release. The performance half is done to the point the decisions
+record; the niche and the release are decided and not yet written (the
+next sections of the plan, below).
+
+- **What exists.** `crates/renyi_vm/src/native/`: `infer.rs` (an
+  abstract interpretation over a code object's stack bytecode: the
+  entry state of every pc, the kind of every slot, the handler regions
+  and the marks; `Abs` is `Unset`, `Int`, `Bool`, `Float`, `Range` or
+  `Boxed`, `SlotKind` the same plus `Mark`, `RangeIter`, `Iter` and
+  `Deadline`; a code object the analysis cannot settle stays with the
+  interpreter), `codegen.rs` (every op to Cranelift IR: typed operands
+  and slots are Cranelift variables, boxed operands stay on the VM's
+  stack in order; an op that may fail branches to one shared block per
+  handler region and operand stack below it, which settles the failure
+  on the region's floor and jumps to the handler; a status other than
+  `CONTINUE` and `FAILURE` leaves the function; `deopt_here` writes the
+  registers into a stack slot and calls `rt_deopt`), `runtime.rs` (the
+  helpers, `extern "C"`, each the interpreter's arm on the VM's stack
+  through the shared `Vm::op_*` methods; `rt_call` goes through
+  `call_from_stack` and `run_top_frame`, so a callee runs natively when
+  it has code; `rt_deopt` rebuilds the interpreter's frame), `mod.rs`
+  (`Jit`: the Cranelift module, the helpers declared as imports, the
+  state of every code object, the hotness rule and the report).
+  `vm.rs`: `run_top_frame` tries the generated code first; the `call!`
+  macro of the loop does the same for a callee; `hotness` counts the
+  ops the interpreter runs per code object (`ran` in the loop, flushed
+  at `reload!` and `leave!`); `Options.interpret`. The binary runs its
+  command on a thread with a 64 MB stack (`main` spawns `dispatch`),
+  and `DEPTH_LIMIT` (200) bounds the generated frames nested on it.
+- **The tiering.** A code object is compiled once `hotness >=
+  HOT_FACTOR * ops` (2000): compiling an op costs about 10 µs, running
+  it on the interpreter about 25 ns. The machine code takes over at the
+  next call, or at the next turn of a loop the interpreter is in: the
+  `Op::Jump` arm of the loop, on a jump backwards of a hot code object,
+  asks `native_resume_of_top` for the entry at the target and runs it
+  (`RETURNED` leaves the frame as `leave!` would, `DEOPT` reloads,
+  `STAY` marks the code's resumes refused). The generated function's
+  prologue dispatches on its `pc` parameter: a loop header's entry takes
+  every typed slot from the frame through `rt_resume_*` (a `Nothing`
+  slot, not yet assigned, gives a zero; a slot that does not fit returns
+  `STAY`), then jumps to the header's block. Only headers whose entry
+  state has nothing on the operand stack in registers get an entry.
+  `RENYI_NATIVE_HOT=0` compiles everything at its first call and enters
+  every loop at its first turn (the conformance suite's third pass and
+  `tests/native.rs` use it). The interpreter iterates a range of small
+  Integers through `Native::RangeIterator` (the next value, the last and
+  the step), the shape the generated code keeps, so `rt_deopt` and
+  `rt_resume_range` convert without listing the items.
+- **The numbers** (development build unless said): `bench/primes.ry`
+  84 ms against CPython's 529 ms; `hello` 46 ms either way; the front
+  end forced native on `compiler/lexer.ry`: 676 code objects, 39,502
+  ops, 240,713 Cranelift instructions in 22,202 blocks, 0.42 s, of
+  which Cranelift 0.31 s (register allocation 0.23 s; `single_pass`
+  was slower, `opt_level=speed` 25% slower for no run-time gain, the
+  verifier another 25%); the compiler on `compiler/bodies.ry` (release,
+  Linux): interpreter 1.6 s CPU, native 1.5 s plus 0.36 s compiling, so
+  the machine code brings nothing to such programs (decision AG5 has
+  the profile).
+- **The tests.** `crates/renyi_vm/tests/native.rs` (six: overflow to a
+  big Integer, a guarded Integer in a typed parameter, recursion past
+  `DEPTH_LIMIT`, failures handled and unhandled, a crash's line, Floats
+  and Booleans in registers and a stepped range; each run both ways
+  and compared); `crates/renyi/tests/conformance.rs` runs every `run`
+  case from its bytecode file on the interpreter and every case that
+  runs a program a third time with `RENYI_NATIVE_HOT=1`; the three
+  selfhost judges run the front end from its bytecode with the default
+  tiering.
+- **The development aids.** `RENYI_NATIVE_REPORT`, `RENYI_NATIVE_HOT`,
+  `RENYI_NATIVE_OPT`, `RENYI_NATIVE_VERIFY` (decision AG5 describes
+  them). Under `D:\Projects\.worktrees\Renyi\`: `selfhost/bench_hot.py`
+  (the front end per hotness factor), `selfhost/bench_primes/`,
+  `profile/micro.py` (the loop micro-benchmarks), `perf/` (the Linux
+  build under WSL with `perf`: `build_linux.sh`, `profile_linux.sh`,
+  `callers_linux.sh`, `native_vs_interp.sh` and their reports).
+- **What bit.** Cranelift's verifier rejected a block never switched
+  to (a fallthrough block made by `edge_to`); `stack_load` and
+  `stack_store` take the pointer type first; `icmp_imm` and `bxor_imm`
+  are deprecated for the `_s` forms; a heredoc un-escapes backslashes
+  (again); the reserved words `sum`, `count`, `by`, `within` and `tags`
+  and the named arguments of calls with two or more arguments in the
+  test programs; `/` on two Integers is `integer-division`
+  (`quotient`).
+
+## The plan after the machine code (the owner's answers of 2026-10-07)
+
+1. **A bounded round of VM work** (decision AG5): the stack push, the
+   clone and drop of values, the allocation of records (one allocation
+   in place of two), the call frame, the boundary of the pure
+   primitives; each measured with `tools/bench.py` and `perf`; then on
+   to the next item whatever the number.
+2. **Positioning** (decisions AH1 to AH4, to be written): the niche is
+   "the scripting language of AI agents": the language an agent writes
+   and a person reviews at a glance, where the program declares what it
+   may do, the runtime admits only that, and every run can be recorded,
+   replayed and narrated; the target users run automation with Claude
+   Code or Codex and will not run an agent's Python blind. Four selling
+   points: effects as capabilities (declared, scoped, budgeted,
+   enforced at the boundary, dependencies included); recorded,
+   replayed and narrated runs; the tooling for agents (the project map,
+   the MCP server, purpose as syntax, a fix on every error); package
+   effect manifests computed by the tool, never widened silently. The
+   English-like syntax is second: lead with the guarantees, the syntax
+   is the means of review. No non-goals are written; the posture stays
+   that of a general language. Deliverable: `docs/design/08-positioning.md`
+   and the README's opening.
+3. **Release 0.1** (decisions AI1 to AI4, to be written) after the
+   machine code, the positioning document and the release engineering
+   land: CI on a tag builds Linux, macOS and Windows binaries and a
+   GitHub Release; an install script and `cargo install renyi` (the
+   name is free on crates.io, checked 2026-10-07); a documentation site
+   on GitHub Pages (the reference, the cheat sheet, the examples, the
+   positioning); a VS Code extension for syntax highlighting; the first
+   acquisition is a starter pack for agents (a skill file, the MCP
+   server, five runnable workflow examples); the name stays, the
+   repository moves to a GitHub organisation `renyi-lang` as
+   `renyi-lang/renyi`, and the owner buys renyi-lang.org.
+4. **Deferred** (decision AG5): `renyi build` (the image of bytecode
+   and machine code) and the baseline JIT that inlines the boxed
+   operations, both after 0.1.
 
 ## The VM as it exists (`crates/renyi_vm`)
 

@@ -268,9 +268,12 @@ freeze, or take it out of the frozen surface until it exists.
   serve --watch` with checked swaps (decision Q4), the per-definition map
   refresh and a resident `World` (open item R5-5: every MCP tool call
   re-reads and recompiles the served directory).
-- **M6** (AOT and WASM): not started; no `renyi build` (decision A1;
-  `crates/renyi/Cargo.toml:3` says "building"); no WASI, browser or C API
-  target (decision A5); only Windows has run the toolchain.
+- **M6** (AOT and WASM): the VM generates machine code for the hot
+  code objects in the process (decision AG1, session 8); no `renyi
+  build` yet (an image of the bytecode with the machine code, loaded in
+  place of generating it, is planned after release 0.1, decision AG5);
+  no WASI, browser or C API target (decision A5); the toolchain has run
+  on Windows and, under WSL, on Linux.
 - **Concurrency**: tasks run one after the other (decision S2); decision
   E1's green threads and the performance side of the trade-off are not
   delivered; `within` is checked between statements and items and does
@@ -299,13 +302,18 @@ freeze, or take it out of the frozen surface until it exists.
   used only in refinement conditions (`lib.rs:275-293`), so `renyi
   reproduce` can accept such an edit; only standard output is compared;
   the toolchain is named by its version string.
-- **Performance** (decision A4 names an anchor; no benchmark exists).
-  Measured in session 6 on the release binary (medians of a Python-timed
-  subprocess loop): `renyi version` 132 ms, `renyi run examples/hello.ry`
-  100 ms; a trial-division prime count to 200,000 takes 2.50 s where
-  CPython 3.13 takes 0.78 s, 3.2 times slower on integer loops. `Text.matches` compiles its pattern at every
-  call; last-use moves exist only for the receiver of `change x to
-  x.method(...)` (decision O1 promises them for arguments).
+- **Performance** (decisions AG1 to AG5, session 8; `bench/` and
+  `tools/bench.py` are the benchmark). Integer loops run as machine
+  code: `bench/primes.ry` counts the primes to 200,000 in 84 ms on the
+  development build where CPython 3.13 takes 529 ms (session 6 had the
+  interpreter 3.2 times slower than CPython on it). Programs over
+  records, lists and calls run at the interpreter's speed on machine
+  code too, since their time is in the value operations (the profile in
+  AG5: the stack push, the clone and drop of values, the allocator, the
+  call frame); the bounded VM round of AG5 is next. `Text.matches`
+  compiles its pattern at every call; last-use moves exist only for the
+  receiver of `change x to x.method(...)` (decision O1 promises them for
+  arguments).
 - **Index and MCP details**: no per-module metric maxima; `branches`
   counts every `and`/`or` (open item R5-3); the `paths` metric strips
   scopes while the module budget counts spellings; library references are

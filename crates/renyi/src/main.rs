@@ -64,7 +64,7 @@ const USAGE: &str = "usage:
   renyi reproduce <file.json> [<file.ry>]
                                       replay a recording under its manifest and compare the outcome and the
                                       output byte for byte (exit 1 when they differ)
-  renyi test [--strict] [--refresh <name> [--redact <name>]] [--explain] <file.ry>...
+  renyi test [--strict] [--refresh <name> [--redact <name>]] [--explain] [--interpret] <file.ry>...
                                       run every `example:` line and `test` block (exit 1 when any fails)
   renyi compile [--to <file.ryc>] <file.ry>
                                       check the program and write its bytecode (default: <name>.ryc);
@@ -88,6 +88,8 @@ options of run and record:
   --explain                           narrate the run on stderr: purposes, arguments, results, effects
   --profile                           count every operation, call and primitive call and sample where the
                                       time goes; the report on stderr when the run ends
+  --interpret                         run on the interpreter alone, never on the machine code the VM
+                                      generates (also `test`); a narrated or profiled run does so by itself
   --replay <file.json>                run only: answer every effect from the recording; nothing is written or sent
   --deny <capability>                 refuse to start when any function needs the capability
   --allow-host <host>                 narrow network.http to one host
@@ -99,6 +101,17 @@ options of run and record:
                                       environment variable of that name with a placeholder";
 
 fn main() -> ExitCode {
+    // the machine code of decision AG1 nests calls on the machine stack: a
+    // thread with room for them, since the main thread's stack is small on
+    // Windows (the size is reserved, not committed)
+    let worker = std::thread::Builder::new()
+        .stack_size(64 << 20)
+        .spawn(dispatch)
+        .expect("a thread for the command");
+    worker.join().unwrap_or(ExitCode::FAILURE)
+}
+
+fn dispatch() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.first().map(String::as_str) {
         Some("check") => check(&args[1..]),
@@ -591,6 +604,7 @@ struct Flags {
     narrowing: renyi_vm::Narrowing,
     explain: bool,
     profile: bool,
+    interpret: bool,
     replay: Option<String>,
     to: Option<String>,
     strict: bool,
@@ -619,6 +633,11 @@ fn parse_flags(args: &[String]) -> Result<(Flags, &[String]), String> {
             }
             "--profile" => {
                 flags.profile = true;
+                index += 1;
+                continue;
+            }
+            "--interpret" => {
+                flags.interpret = true;
                 index += 1;
                 continue;
             }
@@ -783,6 +802,7 @@ fn run_command(args: &[String], record: bool) -> ExitCode {
         revision: revision.filter(|text| text != "unknown"),
         explain: flags.explain,
         profile: flags.profile,
+        interpret: flags.interpret,
         redact: flags.redact,
         manifest,
         ..renyi_vm::Options::default()
@@ -862,7 +882,7 @@ fn test_command(args: &[String]) -> ExitCode {
         || !narrowing.budgets.is_empty()
     {
         eprintln!(
-            "renyi: `renyi test` takes only `--strict`, `--refresh <name>`, `--redact <name>` and `--explain`"
+            "renyi: `renyi test` takes only `--strict`, `--refresh <name>`, `--redact <name>`, `--explain` and `--interpret`"
         );
         return ExitCode::FAILURE;
     }
@@ -874,6 +894,7 @@ fn test_command(args: &[String]) -> ExitCode {
         };
         let options = renyi_vm::Options {
             explain: flags.explain,
+            interpret: flags.interpret,
             strict: flags.strict,
             refresh: flags.refresh.clone(),
             redact: flags.redact.clone(),

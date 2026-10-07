@@ -1,0 +1,26 @@
+module primes
+  purpose: Count the primes below a bound by trial division, for a timing against CPython.
+
+import std.console
+
+function is_prime(candidate: Integer) returns Boolean
+  purpose: Whether the candidate has no divisor between 2 and its square root.
+
+  if candidate is less than 2 then return false end
+  let mutable divisor be 2
+  repeat until divisor * divisor is greater than candidate
+    if (candidate remainder divisor) is 0 then return false end
+    change divisor to divisor + 1
+  end
+  return true
+end
+
+public function main() needs console
+  purpose: Print how many primes lie between 2 and 200000.
+
+  let mutable found be 0
+  for each candidate from 2 to 200000
+    if is_prime(candidate) then change found to found + 1 end
+  end
+  console.print("{found}")
+end

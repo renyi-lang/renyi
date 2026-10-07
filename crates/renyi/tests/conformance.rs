@@ -2,7 +2,10 @@
 //! run against this binary, so that `cargo test` covers what the suite
 //! promises; `tools/conformance.py` runs the same manifest against any
 //! implementation. Every `run` case is run a second time from the bytecode
-//! file `renyi compile` writes for its program (decision Z3).
+//! file `renyi compile` writes for its program (decision Z3), on the
+//! interpreter; every case that runs a program is run a third time with
+//! machine code for every code object from its first call (decision AG1),
+//! which the default run makes only for the hot ones.
 
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
@@ -56,15 +59,25 @@ fn normalised(bytes: &[u8]) -> String {
     String::from_utf8_lossy(bytes).replace("\r\n", "\n")
 }
 
-/// The binary's output on a case, with the program path given.
-fn output_of(case: &[(String, Json)], program: &OsStr) -> Output {
+/// The binary's output on a case, with the program path given, extra
+/// options before it and environment variables set.
+fn output_of(
+    case: &[(String, Json)],
+    program: &OsStr,
+    extra: &[&str],
+    env: &[(&str, &str)],
+) -> Output {
     let mut command = Command::new(env!("CARGO_BIN_EXE_renyi"));
     command
         .current_dir(root())
         .arg(text(field(case, "command")).expect("a command"))
         .args(texts(field(case, "options")))
+        .args(extra)
         .arg(program)
         .args(texts(field(case, "arguments")));
+    for (name, value) in env {
+        command.env(name, value);
+    }
     command.output().expect("the renyi binary runs")
 }
 
@@ -72,18 +85,38 @@ fn output_of(case: &[(String, Json)], program: &OsStr) -> Output {
 fn problems_of(case: &[(String, Json)], index: usize) -> Vec<String> {
     let root = root();
     let program = text(field(case, "program")).expect("a program");
-    let output = output_of(case, program.as_ref());
+    let output = output_of(case, program.as_ref(), &[], &[]);
     let mut problems = problems_in(case, &output, &root);
     for problem in problems_from_bytecode(case, index) {
         problems.push(format!("from the bytecode file: {problem}"));
     }
+    for problem in problems_with_machine_code(case) {
+        problems.push(format!("with machine code for everything: {problem}"));
+    }
     problems
 }
 
+/// A case that runs a program again with every code object compiled to
+/// machine code before its first call and every loop entered at its
+/// first turn (`RENYI_NATIVE_HOT=0`, decision AG1): the generated code
+/// must print what the interpreter prints and exit as it exits.
+fn problems_with_machine_code(case: &[(String, Json)]) -> Vec<String> {
+    let runs = matches!(
+        text(field(case, "command")),
+        Some("run" | "test" | "record" | "reproduce")
+    );
+    if !runs {
+        return Vec::new();
+    }
+    let program = text(field(case, "program")).expect("a program");
+    let output = output_of(case, program.as_ref(), &[], &[("RENYI_NATIVE_HOT", "0")]);
+    problems_in(case, &output, &root())
+}
+
 /// A `run` case again from the bytecode file `renyi compile` writes for
-/// its program (decision Z3): the file must print the same output and exit
-/// the same way. A case about diagnostics is left out: they are reported
-/// when the file is written, not when it runs.
+/// its program (decision Z3), on the interpreter: the file must print the
+/// same output and exit the same way. A case about diagnostics is left
+/// out: they are reported when the file is written, not when it runs.
 fn problems_from_bytecode(case: &[(String, Json)], index: usize) -> Vec<String> {
     if text(field(case, "command")) != Some("run") || field(case, "diagnostics").is_some() {
         return Vec::new();
@@ -107,7 +140,7 @@ fn problems_from_bytecode(case: &[(String, Json)], index: usize) -> Vec<String> 
             normalised(&compiled.stderr)
         )];
     }
-    let output = output_of(case, file.as_os_str());
+    let output = output_of(case, file.as_os_str(), &["--interpret"], &[]);
     problems_in(case, &output, &root)
 }
 

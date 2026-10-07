@@ -1,0 +1,38 @@
+module json_round_trip
+  purpose: Render a list of records as JSON and read it back, fifty times, for a timing.
+
+import std.console
+import std.json exposing JsonError
+
+public type Entry
+  purpose: One record of the document.
+  has name: Text
+  has score: Integer
+  has labels: List of Text
+  can ToJson
+  can FromJson
+end
+
+function round_trip(entries: List of Entry) returns Integer or fails with JsonError
+  purpose: The score total of the entries after a trip through JSON text.
+
+  let text be json.render(entries)
+  let back: List of Entry be json.parse(text) otherwise fail
+  return for each entry in back sum entry.score
+end
+
+public function main() or fails with JsonError needs console
+  purpose: Print the score total over fifty round trips.
+
+  let mutable entries: List of Entry be []
+  for each index from 1 to 2000
+    change entries to entries.append(Entry(name: "entry {index}", score: index, labels: ["a", "b"]))
+  end
+  let mutable total be 0
+  let mutable rounds be 0
+  repeat until rounds is 50
+    change total to total + (round_trip(entries) otherwise fail)
+    change rounds to rounds + 1
+  end
+  console.print("{total}")
+end

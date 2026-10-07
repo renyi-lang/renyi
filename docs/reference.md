@@ -1545,7 +1545,7 @@ Python scripts under `tools/` are development aids.
 | `renyi run --manifest ...` | also print the run manifest (toolchain, code hash, the dependencies with the lockfile's version and hash of each, grant, arguments, environment, outcome, output hash) | as `run` |
 | `renyi record [--to <file>] [options] <file> [arguments]` | run `main` and write a recording of its effects, the manifest in its header | as `run` |
 | `renyi reproduce <recording> [<file>]` | replay a recording under its manifest and compare the outcome and the output; the code hash and the dependencies must be the manifest's | 1 when they differ |
-| `renyi test [--strict] [--refresh <name> [--redact <name>]] [--explain] <file>...` | run every `example:` and `test` | 1 when any fails |
+| `renyi test [--strict] [--refresh <name> [--redact <name>]] [--explain] [--interpret] <file>...` | run every `example:` and `test` | 1 when any fails |
 | `renyi compile [--to <file.ryc>] <file>` | check, then write the program as a bytecode file (default `<name>.ryc`); `run`, `record`, `test` and `reproduce` take a `.ryc` file in place of a source | 1 when any error |
 | `renyi add <name> [<version>]` | a dependency (decision AC1): the versions chosen for every requirement (the same major, at least the version required, the highest the registry has, the chosen packages' own requirements included), every package fetched and verified, the effects of the package added printed, `renyi.json` and `renyi.lock.json` written | 1 when refused |
 | `renyi update [--accept-effects]` | every dependency to the highest version its requirement allows; a version whose effects widen is refused without the flag, and with it when a `main` that reaches the package does not declare the new capability | 1 when refused |
@@ -1562,7 +1562,11 @@ the recording; `--deny`, `--allow-host`, `--allow-read`, `--allow-write`
 and `--at-most` narrow the grant (section 11); `--redact <name>` keeps a
 secret out of a recording; `--profile` counts every operation, call and
 primitive call, samples where the time goes, and prints the report on the
-standard error when the run ends (decision X4).
+standard error when the run ends (decision X4). By default the VM runs
+the hot code objects of a program as machine code it generates in the
+process (decision AG1), with the same results; `--interpret` (also an
+option of `test`) keeps everything on the interpreter, as `--explain`
+and `--profile` do by themselves.
 
 A bytecode file is the derived JSON of the types of `compiler/bytecode.ry`
 (decision Z1): `format` first, then the modules with their source paths

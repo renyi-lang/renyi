@@ -1,0 +1,26 @@
+module records
+  purpose: Build two hundred thousand points in a list and sum their products, for a timing.
+
+import std.console
+
+public type Point
+  purpose: A point of the plane with integer coordinates.
+  has east: Integer
+  has north: Integer
+end
+
+function products(points: List of Point) returns Integer
+  purpose: The sum of east times north over the points.
+
+  return for each point in points sum point.east * point.north
+end
+
+public function main() needs console
+  purpose: Print the sum of the products of the points.
+
+  let mutable points: List of Point be []
+  for each index from 1 to 200000
+    change points to points.append(Point(east: index, north: index remainder 7))
+  end
+  console.print("{products(points)}")
+end

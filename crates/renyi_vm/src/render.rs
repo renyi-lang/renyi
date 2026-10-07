@@ -114,7 +114,7 @@ impl Vm<'_> {
             Value::Function(id) => format!("<function {}>", self.qualified(*id)),
             Value::Native(native) => match &**native {
                 Native::CsvRow { line, .. } => format!("Row(line: {line})"),
-                Native::Iterator(_) => "<iterator>".to_string(),
+                Native::Iterator(_) | Native::RangeIterator { .. } => "<iterator>".to_string(),
                 Native::Deadline(_, limit) => format!("<deadline after {}>", duration_text(*limit)),
                 Native::Connection { path, .. } => format!("<connection {path}>"),
             },

@@ -15,24 +15,24 @@ use std::cmp::Ordering;
 use std::io::{BufRead, Write};
 use std::rc::Rc;
 
-use indexmap::IndexMap;
 use renyi_check::effects::{self, Capability};
 use renyi_check::types::Ty;
 use renyi_check::{AbilityId, FunctionId, TypeId};
 use renyi_syntax::ast::BinaryOp;
 
-use crate::bytecode::{Code, CodeKind, GroupFold, Op};
+use crate::bytecode::{Code, CodeKind, Op};
 use crate::compile::{CodeId, Program};
 use crate::decimal::{Decimal, DecimalError};
 use crate::grant::{self, Counter, Guard, Narrowing};
 use crate::integer::Int;
+use crate::native::{self, Jit};
 use crate::natives::json::{self, Json, Naming};
 use crate::natives::time::instant_text;
 use crate::natives::{self, NativeFn};
 use crate::profile::Profile;
 use crate::recording::{clip, redact, Call, Manifest, Outcome, Recording, Replay};
 use crate::types::TypeShape;
-use crate::value::{plain_all, plain_in_place, take_list, take_map, Native, RangeValue, Value};
+use crate::value::{plain_all, plain_in_place, take_list, Native, RangeValue, Value};
 
 /// Why execution stopped before the program said so.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -96,6 +96,10 @@ pub struct Options {
     /// time goes; the report goes to stderr when the run ends (`--profile`,
     /// decision X4).
     pub profile: bool,
+    /// Run every function on the interpreter, never on generated machine
+    /// code (`--interpret`, decision AG3); a narrated or profiled run does
+    /// so by itself.
+    pub interpret: bool,
 }
 
 impl Default for Options {
@@ -117,6 +121,7 @@ impl Default for Options {
             manifest: Manifest::default(),
             replay_output: false,
             profile: false,
+            interpret: false,
         }
     }
 }
@@ -124,18 +129,18 @@ impl Default for Options {
 /// A grant shared by the frames it is in force for.
 pub type SharedGrant = Rc<Vec<Capability>>;
 
-struct Frame {
-    code: CodeId,
+pub(crate) struct Frame {
+    pub(crate) code: CodeId,
     /// The next op to run; while the frame runs, the loop keeps it in a
     /// local and writes it back when the frame is left for a callee.
-    pc: usize,
+    pub(crate) pc: usize,
     /// The index of local 0 on the stack.
-    base: usize,
+    pub(crate) base: usize,
     /// The height of `Vm::handlers` when the frame was entered: its own
     /// handled regions lie above.
-    handler_base: usize,
+    pub(crate) handler_base: usize,
     /// The effective grant of the function running here (decision Q1).
-    grant: SharedGrant,
+    pub(crate) grant: SharedGrant,
 }
 
 /// What an `Op::Field` site saw last: a record's type (the tag is
@@ -166,19 +171,19 @@ enum Flow {
 
 pub struct Vm<'p> {
     pub program: &'p Program,
-    stack: Vec<Value>,
-    frames: Vec<Frame>,
+    pub(crate) stack: Vec<Value>,
+    pub(crate) frames: Vec<Frame>,
     /// The open handled regions of every frame, innermost last: the target
     /// and the stack height to unwind to; `Frame::handler_base` separates
     /// the frames.
-    handlers: Vec<(usize, usize)>,
+    pub(crate) handlers: Vec<(usize, usize)>,
     /// Per `Op::Field` site, what it saw last (decision X3).
     field_cache: Vec<FieldSite>,
     /// The profiler of `--profile` (decision X4).
     profile: Option<Profile>,
     /// The arguments of the primitive being called, moved off the stack
     /// into a buffer that every call reuses (decision X3).
-    scratch: Vec<Value>,
+    pub(crate) scratch: Vec<Value>,
     globals: Vec<Option<Value>>,
     natives: Vec<Option<NativeFn>>,
     /// Per function, its foreign binding once made (decision AF1).
@@ -213,7 +218,7 @@ pub struct Vm<'p> {
     manifest: Manifest,
     replay_output: bool,
     /// The context type of the next library call (`Op::ResultType`).
-    expected: Option<Ty>,
+    pub(crate) expected: Option<Ty>,
     pub random_state: u64,
     /// The guards of the run (decision P3); the position of a guard is the
     /// origin bit a value carries.
@@ -224,6 +229,17 @@ pub struct Vm<'p> {
     /// result.
     ambient: u64,
     gathered: u64,
+    /// The machine code of the program's code objects (decision AG1);
+    /// `None` on an interpreted run.
+    pub(crate) native: Option<Box<Jit>>,
+    /// Per code object, how many of its ops the interpreter has run: what
+    /// makes it hot enough to compile (`native::HOT_FACTOR`).
+    pub(crate) hotness: Vec<u32>,
+    /// How many generated frames are nested on the machine stack.
+    native_depth: usize,
+    /// The interrupt a runtime helper of the generated code raised, on its
+    /// way out through the generated frames.
+    pub(crate) pending: Option<Interrupt>,
 }
 
 impl<'p> Vm<'p> {
@@ -244,6 +260,12 @@ impl<'p> Vm<'p> {
             .map(|d| d.as_nanos() as u64)
             .unwrap_or(0x9E37_79B9_7F4A_7C15)
             | 1;
+        // a narrated or profiled run is the interpreter's (decision AG3)
+        let native = if options.interpret || options.explain || options.profile {
+            None
+        } else {
+            Jit::new(program).map(Box::new)
+        };
         Vm {
             program,
             stack: Vec::new(),
@@ -280,6 +302,10 @@ impl<'p> Vm<'p> {
             guards: Vec::new(),
             ambient: 0,
             gathered: 0,
+            native,
+            hotness: vec![0; program.codes.len()],
+            native_depth: 0,
+            pending: None,
         }
     }
 
@@ -423,7 +449,7 @@ impl<'p> Vm<'p> {
     }
 
     /// A library primitive, counted and sampled when profiling.
-    fn call_native(
+    pub(crate) fn call_native(
         &mut self,
         function: FunctionId,
         args: &mut [Value],
@@ -1009,7 +1035,7 @@ impl<'p> Vm<'p> {
     pub fn call_code(&mut self, code: CodeId, args: Vec<Value>) -> Result<Value, Interrupt> {
         self.push_frame(code, args);
         let depth = self.frames.len();
-        self.execute(depth)
+        self.run_top_frame(depth)
     }
 
     pub fn qualified(&self, id: FunctionId) -> String {
@@ -1026,7 +1052,7 @@ impl<'p> Vm<'p> {
     /// Enter a code object whose `count` arguments are the top of the
     /// stack: they stay there as its first locals (decision X3).
     #[inline]
-    fn push_frame_in_place(&mut self, code: CodeId, count: usize) {
+    pub(crate) fn push_frame_in_place(&mut self, code: CodeId, count: usize) {
         let grant = self.frame_grant(code);
         let base = self
             .stack
@@ -1056,48 +1082,122 @@ impl<'p> Vm<'p> {
     /// returned. An interrupt abandons the entry frame and everything
     /// above it; a crash gets its location from the frame that was
     /// running.
-    fn execute(&mut self, entry: usize) -> Result<Value, Interrupt> {
+    pub(crate) fn execute(&mut self, entry: usize) -> Result<Value, Interrupt> {
         match self.run_frames(entry) {
             Ok(value) => Ok(value),
-            Err(interrupt) => {
-                let interrupt = match interrupt {
-                    Interrupt::Crash {
-                        message,
-                        location: None,
-                    } => {
-                        let location = self.frames.last().and_then(|frame| {
-                            let code = &self.program.codes[frame.code];
-                            let span = code.spans.get(frame.pc.saturating_sub(1))?;
-                            Some(self.program.location(code.module, *span))
-                        });
-                        Interrupt::Crash { message, location }
-                    }
-                    other => other,
-                };
-                if let Some(frame) = self.frames.get(entry.saturating_sub(1)) {
-                    self.stack.truncate(frame.base);
-                    self.handlers.truncate(frame.handler_base);
-                }
-                self.frames.truncate(entry.saturating_sub(1));
-                Err(interrupt)
+            Err(interrupt) => Err(self.abandon(entry, interrupt)),
+        }
+    }
+
+    /// Abandon the entry frame and everything above it after an
+    /// interrupt, which gets its location from the frame that was running.
+    pub(crate) fn abandon(&mut self, entry: usize, interrupt: Interrupt) -> Interrupt {
+        let interrupt = match interrupt {
+            Interrupt::Crash {
+                message,
+                location: None,
+            } => {
+                let location = self.frames.last().and_then(|frame| {
+                    let code = &self.program.codes[frame.code];
+                    let span = code.spans.get(frame.pc.saturating_sub(1))?;
+                    Some(self.program.location(code.module, *span))
+                });
+                Interrupt::Crash { message, location }
+            }
+            other => other,
+        };
+        if let Some(frame) = self.frames.get(entry.saturating_sub(1)) {
+            self.stack.truncate(frame.base);
+            self.handlers.truncate(frame.handler_base);
+        }
+        self.frames.truncate(entry.saturating_sub(1));
+        interrupt
+    }
+
+    /// Run the frame on top to its end: on its machine code when it has
+    /// some (decision AG1), else on the interpreter, which also takes over
+    /// a frame the machine code hands back.
+    pub(crate) fn run_top_frame(&mut self, entry: usize) -> Result<Value, Interrupt> {
+        let function = self.native_entry_of_top();
+        if function.is_none() {
+            if let Some(jit) = self.native.as_mut() {
+                jit.calls_cold += 1;
             }
         }
+        if let Some(function) = function {
+            let base = self.frames[entry - 1].base;
+            match self.run_generated(function, base, 0) {
+                native::runtime::RETURNED => return Ok(self.pop()),
+                native::runtime::DEOPT | native::runtime::STAY => {}
+                _ => {
+                    let interrupt = self.take_pending();
+                    return Err(self.abandon(entry, interrupt));
+                }
+            }
+        }
+        self.execute(entry)
+    }
+
+    /// The generated function of the frame on top, when the run uses
+    /// machine code, the code has some and the machine stack has room.
+    #[inline]
+    pub(crate) fn native_entry_of_top(&mut self) -> Option<native::Entry> {
+        if self.native_depth >= native::DEPTH_LIMIT {
+            return None;
+        }
+        let code = self.frames.last()?.code;
+        let program = self.program;
+        let hotness = self.hotness[code];
+        self.native.as_mut()?.entry(program, code, hotness)
+    }
+
+    /// The generated function of the frame on top to enter at the loop
+    /// header `pc` (decision AG3), when the code is hot and has the entry.
+    #[inline]
+    pub(crate) fn native_resume_of_top(&mut self, pc: u32) -> Option<native::Entry> {
+        if self.native_depth >= native::DEPTH_LIMIT {
+            return None;
+        }
+        let code = self.frames.last()?.code;
+        let program = self.program;
+        let hotness = self.hotness[code];
+        self.native.as_mut()?.resume(program, code, pc, hotness)
+    }
+
+    /// Call a generated function on the frame on top, at its start or at
+    /// the loop header `pc`.
+    #[inline]
+    pub(crate) fn run_generated(&mut self, function: native::Entry, base: usize, pc: u32) -> i32 {
+        self.native_depth += 1;
+        // SAFETY: the generated function takes the VM it was made for, the
+        // base of the frame on top, which `push_frame_in_place` made, and
+        // one of the entry pcs it was made with.
+        let vm: *mut Vm<'_> = self;
+        let status = unsafe { function(vm.cast::<Vm<'static>>(), base, pc) };
+        self.native_depth -= 1;
+        status
+    }
+
+    pub(crate) fn take_pending(&mut self) -> Interrupt {
+        self.pending
+            .take()
+            .unwrap_or_else(|| Interrupt::crash("the generated code left without a reason"))
     }
 
     // ------------------------------------------------------------ the stack
 
-    fn pop(&mut self) -> Value {
+    pub(crate) fn pop(&mut self) -> Value {
         self.stack.pop().unwrap_or(Value::Nothing)
     }
 
-    fn pop_n(&mut self, count: usize) -> Vec<Value> {
+    pub(crate) fn pop_n(&mut self, count: usize) -> Vec<Value> {
         let at = self.stack.len().saturating_sub(count);
         self.stack.split_off(at)
     }
 
     /// A Boolean never carries origins (`Value::guarded`), so no wrapper
     /// needs stripping here.
-    fn pop_bool(&mut self) -> Result<bool, Interrupt> {
+    pub(crate) fn pop_bool(&mut self) -> Result<bool, Interrupt> {
         match self.stack.pop() {
             Some(Value::Boolean(value)) => Ok(value),
             other => Err(Interrupt::crash(not_boolean(other))),
@@ -1179,9 +1279,14 @@ impl<'p> Vm<'p> {
         let mut code: &Code = &program.codes[code_id];
         let mut pc = self.frames[frame].pc;
         let mut base = self.frames[frame].base;
+        // the ops run in the running frame since it became the running one,
+        // added to the code's hotness when another frame takes over
+        let mut ran: u32 = 0;
         // the frame on top becomes the running one
         macro_rules! reload {
             () => {{
+                self.hotness[code_id] = self.hotness[code_id].saturating_add(ran);
+                ran = 0;
                 frame = self.frames.len() - 1;
                 let running = &self.frames[frame];
                 code_id = running.code;
@@ -1243,6 +1348,8 @@ impl<'p> Vm<'p> {
         macro_rules! leave {
             ($value:expr) => {{
                 let value = $value;
+                self.hotness[code_id] = self.hotness[code_id].saturating_add(ran);
+                ran = 0;
                 let left = self.frames.pop().expect("a frame");
                 self.stack.truncate(left.base);
                 self.handlers.truncate(left.handler_base);
@@ -1270,7 +1377,22 @@ impl<'p> Vm<'p> {
                 if let Some(callee) = program.function_codes.get($function).copied().flatten() {
                     self.frames[frame].pc = pc;
                     self.push_frame_in_place(callee, $count);
-                    reload!();
+                    // the callee's machine code runs it to its end, like a
+                    // primitive would, unless it hands the frame back
+                    match self.native_entry_of_top() {
+                        Some(function) => {
+                            let callee_base = self.frames[self.frames.len() - 1].base;
+                            match self.run_generated(function, callee_base, 0) {
+                                native::runtime::RETURNED => {
+                                    let value = self.pop();
+                                    settle!(value);
+                                }
+                                native::runtime::DEOPT | native::runtime::STAY => reload!(),
+                                _ => return Err(self.take_pending()),
+                            }
+                        }
+                        None => reload!(),
+                    }
                 } else {
                     // the arguments move into the scratch buffer, which a
                     // primitive calling back leaves to the nested call
@@ -1290,6 +1412,7 @@ impl<'p> Vm<'p> {
                 continue;
             };
             pc += 1;
+            ran += 1;
             if let Some(profile) = &mut self.profile {
                 profile.op(code_id, op);
             }
@@ -1326,15 +1449,7 @@ impl<'p> Vm<'p> {
                     let (origins, items) = plain_all(self.pop_n(*count as usize));
                     self.stack.push(Value::list(items).guarded(origins));
                 }
-                Op::MakeMap(count) => {
-                    let (origins, items) = plain_all(self.pop_n(2 * *count as usize));
-                    let mut items = items.into_iter();
-                    let mut map = IndexMap::with_capacity(*count as usize);
-                    while let (Some(key), Some(value)) = (items.next(), items.next()) {
-                        map.insert(key, value);
-                    }
-                    self.stack.push(Value::Map(Rc::new(map)).guarded(origins));
-                }
+                Op::MakeMap(count) => self.op_make_map(*count as usize),
                 Op::MakePair => {
                     let right = self.pop();
                     let left = self.pop();
@@ -1343,21 +1458,8 @@ impl<'p> Vm<'p> {
                         .push(Value::pair(left.into_plain(), right.into_plain()).guarded(origins));
                 }
                 Op::MakeRange { stepped } => {
-                    let by = if *stepped {
-                        self.pop()
-                    } else {
-                        Value::integer(1)
-                    };
-                    let to = self.pop();
-                    let from = self.pop();
-                    let origins = from.origins() | to.origins() | by.origins();
-                    match (from.into_plain(), to.into_plain(), by.into_plain()) {
-                        (Value::Integer(from), Value::Integer(to), Value::Integer(by)) => {
-                            let range = Value::Range(Rc::new(RangeValue { from, to, by }));
-                            self.stack.push(range.guarded(origins));
-                        }
-                        _ => crash!("a range needs Integer bounds"),
-                    }
+                    let value = try_op!(self.op_make_range(*stepped));
+                    self.stack.push(value);
                 }
                 Op::Construct { ty, fields } => {
                     let (origins, fields) = plain_all(self.pop_n(*fields as usize));
@@ -1370,26 +1472,13 @@ impl<'p> Vm<'p> {
                 }
                 Op::Field { name, site } => {
                     let holder = self.pop();
-                    let name = code.constants[*name as usize].as_text().unwrap_or("");
-                    let value = try_op!(self.field_at(*site as usize, holder.plain(), name))
-                        .guarded(holder.origins());
+                    let value =
+                        try_op!(self.op_field(code_id, *name as usize, *site as usize, &holder));
                     self.stack.push(value);
                 }
-                Op::With(count) => {
-                    let mut updates = Vec::with_capacity(*count as usize);
-                    let mut origins = 0;
-                    for _ in 0..*count {
-                        let value = self.pop();
-                        let name = self.pop();
-                        origins |= value.origins();
-                        updates.push((name, value.into_plain()));
-                    }
-                    let holder = self.pop();
-                    origins |= holder.origins();
-                    // a refined field is checked again: the copy may be a
-                    // `Failure(ConstraintViolation)`, like a construction
-                    settle!(try_op!(self.with(holder.into_plain(), updates)).guarded(origins));
-                }
+                // a refined field is checked again: the copy may be a
+                // `Failure(ConstraintViolation)`, like a construction
+                Op::With(count) => settle!(try_op!(self.op_with(*count as usize))),
                 Op::Call { function, args } => call!(*function, *args as usize),
                 Op::CallAbility {
                     ability,
@@ -1429,25 +1518,7 @@ impl<'p> Vm<'p> {
                 Op::Binary(op) => {
                     let right = self.pop();
                     let left = self.pop();
-                    // the plain cases first (decision X3): two small Integers,
-                    // two texts, two Booleans; then the general operator
-                    let fast = match (&left, &right) {
-                        (Value::Integer(Int::Small(a)), Value::Integer(Int::Small(b))) => {
-                            small_binary(*op, *a, *b)
-                        }
-                        (Value::Text(a), Value::Text(b)) => text_binary(*op, a, b),
-                        (Value::Boolean(a), Value::Boolean(b)) => boolean_binary(*op, *a, *b),
-                        _ => None,
-                    };
-                    let value = match fast {
-                        Some(value) => value,
-                        None if left.is_guarded() || right.is_guarded() => {
-                            let origins = left.origins() | right.origins();
-                            try_op!(self.binary(*op, left.into_plain(), right.into_plain()))
-                                .guarded(origins)
-                        }
-                        None => try_op!(self.binary(*op, left, right)),
-                    };
+                    let value = try_op!(self.binary_values(*op, left, right));
                     self.stack.push(value);
                 }
                 Op::ToText => {
@@ -1456,17 +1527,56 @@ impl<'p> Vm<'p> {
                     self.stack.push(Value::text(text).guarded(value.origins()));
                 }
                 Op::Concat(count) => {
-                    let (origins, pieces) = plain_all(self.pop_n(*count as usize));
-                    let mut text = String::new();
-                    for piece in &pieces {
-                        match piece {
-                            Value::Text(part) => text.push_str(part),
-                            other => text.push_str(&try_op!(self.render(other, false))),
+                    let value = try_op!(self.op_concat(*count as usize));
+                    self.stack.push(value);
+                }
+                Op::Jump(target) => {
+                    let target = *target as usize;
+                    if target < pc {
+                        // a jump backwards: once the code is hot, the loop
+                        // carries on as machine code (decision AG3)
+                        self.hotness[code_id] = self.hotness[code_id].saturating_add(ran);
+                        ran = 0;
+                        let hot = self
+                            .native
+                            .as_ref()
+                            .is_some_and(|jit| jit.is_hot(code.ops.len(), self.hotness[code_id]));
+                        if hot {
+                            self.frames[frame].pc = target;
+                            if let Some(function) = self.native_resume_of_top(target as u32) {
+                                match self.run_generated(function, base, target as u32) {
+                                    native::runtime::RETURNED => {
+                                        let value = self.pop();
+                                        if self.frames.len() < entry {
+                                            return Ok(value);
+                                        }
+                                        if value.is_failure() {
+                                            match try_op!(self.settle(value, entry)) {
+                                                Flow::Done(value) => return Ok(value),
+                                                _ => reload!(),
+                                            }
+                                        } else {
+                                            self.stack.push(value);
+                                            reload!();
+                                        }
+                                        continue;
+                                    }
+                                    native::runtime::DEOPT => {
+                                        reload!();
+                                        continue;
+                                    }
+                                    native::runtime::STAY => {
+                                        if let Some(jit) = self.native.as_mut() {
+                                            jit.refuse_resume(code_id);
+                                        }
+                                    }
+                                    _ => return Err(self.take_pending()),
+                                }
+                            }
                         }
                     }
-                    self.stack.push(Value::text(text).guarded(origins));
+                    pc = target;
                 }
-                Op::Jump(target) => pc = *target as usize,
                 Op::JumpIfFalse(target) => match self.stack.pop() {
                     Some(Value::Boolean(condition)) => {
                         if !condition {
@@ -1558,126 +1668,28 @@ impl<'p> Vm<'p> {
                 }
                 Op::IterInit(slot) => {
                     let source = self.pop();
-                    let origins = source.origins();
-                    let plain = source.into_plain();
-                    // a type with an `Iterable` implementation walks the list its
-                    // `to_list` returns (decision V10)
-                    let plain = match plain.type_id().and_then(|ty| program.specials[ty].to_list) {
-                        Some(function) => {
-                            try_op!(self.call_function(function, vec![plain])).into_plain()
-                        }
-                        None => plain,
-                    };
-                    let mut items = try_op!(self.iterate(plain));
-                    if origins != 0 {
-                        items = Rc::new(
-                            items
-                                .iter()
-                                .map(|item| item.clone().guarded(origins))
-                                .collect(),
-                        );
-                    }
-                    self.stack[base + *slot as usize] = Value::Native(Rc::new(Native::Iterator(
-                        std::cell::RefCell::new((items, 0)),
-                    )));
+                    let iterator = try_op!(self.iterator_of(source));
+                    self.stack[base + *slot as usize] = iterator;
                 }
-                Op::IterNext { slot, exit } => {
-                    let next = match &self.stack[base + *slot as usize] {
-                        Value::Native(native) => match &**native {
-                            Native::Iterator(state) => {
-                                let mut state = state.borrow_mut();
-                                let (items, position) = &mut *state;
-                                let item = items.get(*position).cloned();
-                                *position += 1;
-                                item
-                            }
-                            _ => None,
-                        },
-                        _ => None,
-                    };
-                    match next {
-                        Some(item) => self.stack.push(item),
-                        None => pc = *exit as usize,
-                    }
-                }
+                Op::IterNext { slot, exit } => match self.iterator_next(base + *slot as usize) {
+                    Some(item) => self.stack.push(item),
+                    None => pc = *exit as usize,
+                },
                 Op::ListPush => {
-                    let item = self.pop();
-                    let list = self.pop();
-                    let origins = item.origins() | list.origins();
-                    match list.into_plain() {
-                        Value::List(mut list) => {
-                            Rc::make_mut(&mut list).push(item.into_plain());
-                            self.stack.push(Value::List(list).guarded(origins));
-                        }
-                        other => crash!(format!("cannot collect into {}", other.kind_name())),
-                    }
+                    let value = try_op!(self.op_list_push());
+                    self.stack.push(value);
                 }
                 Op::GroupInsert => {
-                    let item = self.pop();
-                    let key = self.pop();
-                    let map = self.pop();
-                    let origins = item.origins() | key.origins() | map.origins();
-                    match map.into_plain() {
-                        Value::Map(map) => {
-                            let mut map = take_map(map);
-                            let group = map
-                                .entry(key.into_plain())
-                                .or_insert_with(|| Value::list(Vec::new()));
-                            if let Value::List(list) = group {
-                                Rc::make_mut(list).push(item.into_plain());
-                            }
-                            self.stack.push(Value::Map(Rc::new(map)).guarded(origins));
-                        }
-                        other => crash!(format!("cannot group into {}", other.kind_name())),
-                    }
+                    let value = try_op!(self.op_group_insert());
+                    self.stack.push(value);
                 }
                 Op::GroupFold(fold) => {
-                    let value = self.pop();
-                    let key = self.pop();
-                    let map = self.pop();
-                    let origins = value.origins() | key.origins() | map.origins();
-                    let (value, key) = (value.into_plain(), key.into_plain());
-                    match map.into_plain() {
-                        Value::Map(map) => {
-                            let mut map = take_map(map);
-                            let folded = match (*fold, map.get(&key)) {
-                                (_, None) => value,
-                                (GroupFold::Sum, Some(current)) => {
-                                    try_op!(self.binary(BinaryOp::Add, current.clone(), value))
-                                }
-                                (GroupFold::First, Some(current)) => current.clone(),
-                                (GroupFold::Any, Some(current)) => Value::Boolean(
-                                    matches!(current, Value::Boolean(true))
-                                        || matches!(value, Value::Boolean(true)),
-                                ),
-                                (GroupFold::All, Some(current)) => Value::Boolean(
-                                    matches!(current, Value::Boolean(true))
-                                        && matches!(value, Value::Boolean(true)),
-                                ),
-                            };
-                            map.insert(key, folded);
-                            self.stack.push(Value::Map(Rc::new(map)).guarded(origins));
-                        }
-                        other => crash!(format!("cannot group into {}", other.kind_name())),
-                    }
+                    let value = try_op!(self.op_group_fold(*fold));
+                    self.stack.push(value);
                 }
                 Op::SortByKey { descending } => {
-                    let list = self.pop();
-                    let origins = list.origins();
-                    let pairs = match list.into_plain() {
-                        Value::List(list) => take_list(list),
-                        other => crash!(format!("cannot sort {}", other.kind_name())),
-                    };
-                    let mut keyed: Vec<(Value, Value)> = pairs
-                        .into_iter()
-                        .map(|pair| match pair {
-                            Value::Pair(pair) => (pair.0.clone(), pair.1.clone()),
-                            other => (Value::Nothing, other),
-                        })
-                        .collect();
-                    try_op!(self.sort_by_key(&mut keyed, *descending));
-                    let items: Vec<Value> = keyed.into_iter().map(|(_, item)| item).collect();
-                    self.stack.push(Value::list(items).guarded(origins));
+                    let value = try_op!(self.op_sort_by_key(*descending));
+                    self.stack.push(value);
                 }
                 Op::Deadline(slot) => {
                     let limit = match self.pop().into_plain() {
@@ -1704,16 +1716,7 @@ impl<'p> Vm<'p> {
                     self.stack.truncate(height);
                 }
                 Op::CheckDeadline(slot) => {
-                    let expired = match &self.stack[base + *slot as usize] {
-                        Value::Native(native) => match &**native {
-                            Native::Deadline(at, limit) if natives::now_millis() > *at => {
-                                Some(*limit)
-                            }
-                            _ => None,
-                        },
-                        _ => None,
-                    };
-                    if let Some(limit) = expired {
+                    if let Some(limit) = self.expired_deadline(base + *slot as usize) {
                         let error =
                             Value::record(program.builtins.timed_out, vec![Value::Duration(limit)]);
                         settle!(Value::failure(error));
@@ -1738,7 +1741,7 @@ impl<'p> Vm<'p> {
     /// The explicit implementation an ability call resolves to, by the
     /// type of the receiver: the first of the `count` arguments on the
     /// stack.
-    fn ability_target(
+    pub(crate) fn ability_target(
         &self,
         ability: AbilityId,
         method: usize,
@@ -1779,7 +1782,7 @@ impl<'p> Vm<'p> {
 
     /// An ability call without an explicit implementation: the derived
     /// abilities, whose results carry the operands' origins.
-    fn derived_ability(
+    pub(crate) fn derived_ability(
         &mut self,
         ability: AbilityId,
         method: usize,
@@ -1825,7 +1828,7 @@ impl<'p> Vm<'p> {
         Value::variant(self.program.builtins.ordering, tag, Vec::new())
     }
 
-    fn global(&mut self, index: usize) -> Result<Value, Interrupt> {
+    pub(crate) fn global(&mut self, index: usize) -> Result<Value, Interrupt> {
         if let Some(value) = &self.globals[index] {
             return Ok(value.clone());
         }
@@ -1955,7 +1958,12 @@ impl<'p> Vm<'p> {
 
     /// A field of a record or a variant through the site's cache, which a
     /// miss fills (decision X3); the other holders go by name.
-    fn field_at(&mut self, site: usize, holder: &Value, name: &str) -> Result<Value, Interrupt> {
+    pub(crate) fn field_at(
+        &mut self,
+        site: usize,
+        holder: &Value,
+        name: &str,
+    ) -> Result<Value, Interrupt> {
         let (ty, tag, fields) = match holder {
             Value::Record(record) => (record.ty, usize::MAX, &record.fields),
             Value::Variant(variant) => (variant.ty, variant.tag, &variant.fields),
@@ -2012,7 +2020,11 @@ impl<'p> Vm<'p> {
         })
     }
 
-    fn with(&mut self, base: Value, updates: Vec<(Value, Value)>) -> Result<Value, Interrupt> {
+    pub(crate) fn with(
+        &mut self,
+        base: Value,
+        updates: Vec<(Value, Value)>,
+    ) -> Result<Value, Interrupt> {
         let Value::Record(record) = base else {
             return Err(Interrupt::crash(format!(
                 "`with` needs a record, found {}",
@@ -2036,7 +2048,7 @@ impl<'p> Vm<'p> {
         self.refined_record(record.ty, record.fields)
     }
 
-    fn unpack(&self, value: Value, count: usize) -> Result<Vec<Value>, Interrupt> {
+    pub(crate) fn unpack(&self, value: Value, count: usize) -> Result<Vec<Value>, Interrupt> {
         let parts = match value {
             Value::Pair(pair) => vec![pair.0.clone(), pair.1.clone()],
             Value::List(items) => take_list(items),
@@ -2134,7 +2146,12 @@ impl<'p> Vm<'p> {
         Ok(left == right)
     }
 
-    fn binary(&mut self, op: BinaryOp, left: Value, right: Value) -> Result<Value, Interrupt> {
+    pub(crate) fn binary(
+        &mut self,
+        op: BinaryOp,
+        left: Value,
+        right: Value,
+    ) -> Result<Value, Interrupt> {
         Ok(match op {
             BinaryOp::Is => Value::Boolean(self.equal(&left, &right)?),
             BinaryOp::IsNot => Value::Boolean(!self.equal(&left, &right)?),
@@ -2213,7 +2230,7 @@ impl<'p> Vm<'p> {
 }
 
 /// The crash of an operation that needed a Boolean.
-fn not_boolean(found: Option<Value>) -> String {
+pub(crate) fn not_boolean(found: Option<Value>) -> String {
     format!(
         "expected a Boolean, found {}",
         found.unwrap_or(Value::Nothing).kind_name()
@@ -2223,7 +2240,7 @@ fn not_boolean(found: Option<Value>) -> String {
 /// An operator on two small Integers without the general path: `None` on
 /// overflow and for the operators the general path defines (decision X3).
 #[inline]
-fn small_binary(op: BinaryOp, a: i64, b: i64) -> Option<Value> {
+pub(crate) fn small_binary(op: BinaryOp, a: i64, b: i64) -> Option<Value> {
     Some(match op {
         BinaryOp::Is => Value::Boolean(a == b),
         BinaryOp::IsNot => Value::Boolean(a != b),
@@ -2234,13 +2251,16 @@ fn small_binary(op: BinaryOp, a: i64, b: i64) -> Option<Value> {
         BinaryOp::Add => Value::integer(a.checked_add(b)?),
         BinaryOp::Subtract => Value::integer(a.checked_sub(b)?),
         BinaryOp::Multiply => Value::integer(a.checked_mul(b)?),
+        // the remainder stays on the fast path too (decision AG1); a zero
+        // divisor and `i64::MIN remainder -1` take the general one
+        BinaryOp::Remainder if b != 0 && b != -1 => Value::integer(a % b),
         _ => return None,
     })
 }
 
 /// The comparisons of two texts without the general path.
 #[inline]
-fn text_binary(op: BinaryOp, a: &str, b: &str) -> Option<Value> {
+pub(crate) fn text_binary(op: BinaryOp, a: &str, b: &str) -> Option<Value> {
     Some(match op {
         BinaryOp::Is => Value::Boolean(a == b),
         BinaryOp::IsNot => Value::Boolean(a != b),
@@ -2254,7 +2274,7 @@ fn text_binary(op: BinaryOp, a: &str, b: &str) -> Option<Value> {
 
 /// `is`, `is not`, `and` and `or` on two Booleans without the general path.
 #[inline]
-fn boolean_binary(op: BinaryOp, a: bool, b: bool) -> Option<Value> {
+pub(crate) fn boolean_binary(op: BinaryOp, a: bool, b: bool) -> Option<Value> {
     Some(match op {
         BinaryOp::Is => Value::Boolean(a == b),
         BinaryOp::IsNot => Value::Boolean(a != b),
@@ -2292,7 +2312,7 @@ fn native_json(native: &Native) -> Json {
     match native {
         Native::Connection { path, .. } => Json::Text(format!("<connection {path}>")),
         Native::CsvRow { .. } => Json::Text("<row>".to_string()),
-        Native::Iterator(_) => Json::Text("<iterator>".to_string()),
+        Native::Iterator(_) | Native::RangeIterator { .. } => Json::Text("<iterator>".to_string()),
         Native::Deadline(..) => Json::Text("<deadline>".to_string()),
     }
 }

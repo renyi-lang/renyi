@@ -84,6 +84,16 @@ pub enum Native {
     /// A loop's position over its source: the list itself when the source
     /// was one, else a snapshot of the items.
     Iterator(RefCell<(Rc<Vec<Value>>, usize)>),
+    /// A loop's position over a range of small Integers: the next value,
+    /// the last one and the step, and whether it has run out; the shape
+    /// the generated code keeps in registers (decision AG3), so that a
+    /// frame can change hands in the middle of such a loop.
+    RangeIterator {
+        current: std::cell::Cell<i64>,
+        to: i64,
+        by: i64,
+        done: std::cell::Cell<bool>,
+    },
     /// A `within` deadline as an instant in milliseconds, with the duration.
     Deadline(i64, i64),
     /// An SQLite connection and the path it was opened on; `None` once

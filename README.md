@@ -90,7 +90,11 @@ checker (M2), the project map (`renyi index`), the VM (M3) and packages
   one offline, `renyi reproduce` replays one under its manifest and
   compares the outcome and the output, `--explain` narrates a run
   through the `purpose:` clauses it passes, and `--profile` reports where
-  its time went; `renyi test`
+  its time went; the VM generates machine code for the hot code
+  objects inside the binary (decision AG1: integer loops run in
+  registers, an Integer that leaves the machine word goes back to the
+  interpreter, which has the big ones), and `--interpret` keeps a run
+  on the interpreter; `renyi test`
   runs every `example:` line and `test` block, a `replays` test from its
   recording (`--strict`, `--refresh`); `renyi compile` writes a program
   as a bytecode file (`.ryc`, the derived JSON of the types of
@@ -115,7 +119,9 @@ checker (M2), the project map (`renyi index`), the VM (M3) and packages
   (`std.process`, decision AE1) and C libraries through foreign modules
   (decision AF1; `renyi bind` writes one from a header); `run concurrently`
   runs its tasks one after the other (decision S2); the binary
-  allocates through `mimalloc` (decision X6).
+  allocates through `mimalloc` (decision X6). `bench/` holds six
+  benchmarks, four of them with CPython twins, and `tools/bench.py`
+  times them (decision AG4; CI prints the numbers).
 
 ```
 cargo build
@@ -127,6 +133,8 @@ cargo build
 ./target/debug/renyi run examples/hello.ry Renyi
 ./target/debug/renyi run --explain examples/statistics.ry 2 4 4 4 5 5 7 9
 ./target/debug/renyi run --profile compiler/parse.ry compiler/parser.ry   # where the VM's time goes
+./target/debug/renyi run --interpret bench/primes.ry   # the interpreter alone; by default the hot code runs as machine code
+python tools/bench.py target/debug/renyi              # the benchmarks of bench/, with --interpret and against CPython
 ./target/debug/renyi record --to hello.json examples/hello.ry Renyi
 ./target/debug/renyi run --replay hello.json examples/hello.ry
 ./target/debug/renyi reproduce hello.json

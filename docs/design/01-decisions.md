@@ -2000,3 +2000,117 @@ grants `foreign` (07-system-design.md, section 2.2); and `renyi publish`
 refuses a project with foreign modules, since a package carries no
 native code. `capability-unavailable` goes: nothing waits for M4 any
 more. (user)
+
+## AG. Machine code for the bytecode (session 8)
+
+**AG1. The VM generates machine code for the bytecode through Cranelift
+inside the one `renyi` binary, per code object once it is hot; the
+bytecode file stays the contract between the front ends and the VM, the
+compiler written in Renyi is untouched, and the interpreter remains the
+reference: a frame whose typed assumptions fail at run time is handed to
+it at the op in question.** The owner's direction of 2026-10-07:
+strengthen performance at the root, ahead-of-time compilation included.
+The four options and the choice: (i) Cranelift in the process (chosen):
+one binary, no toolchain at run time, and the same backend serves a later
+`renyi build`; (ii) a C or LLVM backend: a compiler at run time, or a
+second build pipeline; (iii) a faster interpreter alone: the loop of
+decision X3 had reached 3.3 times slower than CPython on integer loops,
+near the ceiling of a loop over boxed values; (iv) WASM: another target,
+not a speed-up. How it works (`crates/renyi_vm/src/native/`): `infer.rs`
+runs an abstract interpretation over a code object's stack bytecode and
+settles which operands and slots stay unboxed (small Integers, Booleans,
+Floats and the bounds of a range, in registers); `codegen.rs` translates
+every op to Cranelift IR over that analysis, arithmetic, comparisons,
+branches and range loops in registers and everything else as a call to a
+runtime helper that does what the interpreter's arm does on the VM's
+stack; `runtime.rs` holds those helpers and the hand-back (`rt_deopt`
+boxes the registers into the interpreter's frame and operand stack at
+the op). The generated code and the interpreter share every op's
+implementation (`Vm::op_*`), so a change to an op is one change. The
+conformance suite runs every program a third time with machine code for
+every code object (`RENYI_NATIVE_HOT=1`), and `crates/renyi_vm/tests/native.rs`
+covers the hand-backs: an Integer that leaves the machine word, a guarded
+Integer in a typed parameter, a call past the depth of native frames,
+failures, crashes and deadlines inside generated code. (user)
+
+**AG2. Integer stays arbitrary precision (decision B9): the generated
+code computes on `i64` with overflow checks and hands the op to the
+interpreter, which has the big integers, when a result leaves the machine
+word.** The alternatives were a fixed-width Integer, a change to the
+language, or big integers in the generated code, every arithmetic op a
+call. A program that overflows a word at every op runs at the
+interpreter's speed; one that never does runs in registers; the result is
+the same either way. (user)
+
+**AG3. Machine code is on by default for `run`, `record`, `test` and
+`reproduce` and so for the judges; `--explain` and `--profile` use the
+interpreter, which narrates and counts; `--interpret` forces the
+interpreter.** A code object is compiled once the interpreter has run
+`HOT_FACTOR` (2000) times its size in ops of it, and the machine code
+takes over at the code's next call or, when the interpreter is inside
+one of its loops, at the loop's next turn: the generated function has an
+entry at every loop header whose operand stack holds nothing in
+registers, which takes the frame's slots into registers under the same
+checks as the parameters (a slot that does not fit leaves the frame
+with the interpreter for good). Compiling an op costs a few hundred
+times running it on the interpreter, so code run once or twice (a
+driver, a setup, a short loop) never pays for machine code it would not
+use, and a small script compiles nothing; the first rule, "a code
+object with a loop at its first call", compiled 130 code objects of the
+checker written in Renyi on `examples/hello.ry` for 0.13 s a run, most
+of them loops of a few turns. A range of small Integers is iterated by
+both tiers in the same shape (`Native::RangeIterator`: the next value,
+the last and the step, no longer a list of its items), so a frame can
+change hands inside such a loop. Measured on the development build:
+`examples/hello.ry` starts in 46 ms either way; the front end written in
+Renyi, compiling `compiler/lexer.ry` with every code object forced
+native, generates code for 676 code objects (39,502 ops, 240,713
+Cranelift instructions) in 0.42 s, three quarters of it Cranelift's own
+register allocation and lowering. (user)
+
+**AG4. A `bench/` directory with six benchmarks and `tools/bench.py`; CI
+runs them and prints the numbers, it does not gate on them.** The
+programs: `primes.ry` (integer loops), `strings.ry` (text building and
+character counting), `records.ry` (records in lists),
+`json_round_trip.ry` (JSON rendering and parsing), the self-check of the
+compiler written in Renyi (`compiler/checker.ry` on `compiler/bodies.ry`)
+and the start of `examples/hello.ry`; the first four have CPython twins
+next to them, and `bench/*.ry` are held to `renyi check` and the
+canonical layout like `compiler/`. The targets the owner set: `primes`
+at least five times faster than CPython (met: 84 ms against 529 ms on
+the development build, 6.3 times), the compiler's self-check at least
+twice as fast as before (not met by machine code; AG5), `hello` no
+slower (met). (user)
+
+**AG5. What the machine code does not do, measured, and what follows:
+the VM's own operations are the next performance work, bounded; an
+ahead-of-time image (`renyi build`) and a baseline JIT that inlines the
+boxed operations are planned after release 0.1.** Measured 2026-10-07 on
+the release build (Linux under WSL): the compiler written in Renyi
+checking `compiler/bodies.ry` takes 1.6 s of CPU on the interpreter and
+1.5 s on machine code for every code object, plus 0.36 s to generate it;
+of its 5.4 million calls none hands a frame back. The time of such a
+program is in the values, not in the dispatch: the profile (`perf`)
+puts 32% in the interpreter's loop (of it 12% pushing values on the
+stack), 14% in cloning values, 8% in dropping them, 10% in the allocator
+(records and lists), 6% in the kernel zeroing fresh pages, 5% in pushing
+frames and 4% in field access, and the generated code calls the same
+runtime for all of it. So: (i) a bounded round of VM work on those paths
+comes next (the stack push, the clone and drop of values, the allocation
+of records, the call frame, the boundary of the pure primitives),
+measured against `bench/`, after which positioning and release proceed
+whatever the number (the owner's choice over "until the self-check is
+twice as fast" and "no VM work now"); (ii) `renyi build`, an image of
+the bytecode with the machine code of this machine that `run` loads in
+place of generating it, is deferred until the machine code wins on
+ordinary programs, since today it wins only on numeric loops, which
+generate in milliseconds; (iii) inlining the boxed operations (loads,
+stores, field access, calls) in the generated code, the road of a
+baseline JIT, is deferred the same way. The development aids of the
+backend: `RENYI_NATIVE_REPORT` prints what was compiled, the time per
+phase and the hand-back and call counts on the standard error when the
+run ends; `RENYI_NATIVE_HOT` sets the factor (`0` compiles everything
+at its first call and enters every loop at its first turn);
+`RENYI_NATIVE_OPT` sets Cranelift's optimisation level (`none` by
+default: the optimiser found nothing in helper-call code for twice the
+time); `RENYI_NATIVE_VERIFY` turns Cranelift's IR verifier on. (user)

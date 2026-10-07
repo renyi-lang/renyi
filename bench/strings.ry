@@ -1,0 +1,25 @@
+module strings
+  purpose: Build one long text from a hundred thousand pieces, then count its digits, for a timing.
+
+import std.console
+
+function digits_in(text: Text) returns Integer
+  purpose: How many of the text's characters are digits.
+
+  let mutable found be 0
+  for each glyph in text.characters()
+    if "0123456789".contains(glyph) then change found to found + 1 end
+  end
+  return found
+end
+
+public function main() needs console
+  purpose: Print the length of the joined pieces and how many digits they hold.
+
+  let mutable pieces: List of Text be []
+  for each index from 1 to 100000
+    change pieces to pieces.append("item {index}; ")
+  end
+  let joined be pieces.join("")
+  console.print("{joined.length()} {digits_in(joined)}")
+end

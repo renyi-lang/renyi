@@ -45,6 +45,11 @@ jobs:
       - name: Self-hosted front end
         run: cargo run -q -- check compiler/*.ry
 
+      # the benchmark programs (decision AG4) are held to the same
+      # standard as the front end
+      - name: Benchmark programs
+        run: cargo run -q -- check bench/*.ry && cargo run -q -- format --check bench/*.ry
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -59,3 +64,8 @@ jobs:
 
       - name: Conformance suite
         run: python tools/conformance.py target/debug/renyi
+
+      # the numbers are printed, not gated (decision AG4); the
+      # development build optimizes the VM, so they are indicative
+      - name: Benchmarks (printed, not gated)
+        run: python tools/bench.py target/debug/renyi --runs 1

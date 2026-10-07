@@ -129,6 +129,11 @@ fn run_measured(program: &Program, mut options: Options) -> (Run, Option<(String
         Err(interrupt) => crashed(interrupt),
     };
     vm.report_profile();
+    if std::env::var_os("RENYI_NATIVE_REPORT").is_some() {
+        if let Some(jit) = &vm.native {
+            let _ = writeln!(vm.stderr, "{}", jit.report(&vm.hotness));
+        }
+    }
     let unused = vm.end_replay();
     let output = digest.as_ref().map(digest_text);
     let mut recording = vm.take_recording();
