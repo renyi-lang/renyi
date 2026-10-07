@@ -13,6 +13,7 @@
 //! toolchain served to an agent host over standard input and output, in
 //! `mcp.rs`).
 
+mod bind;
 mod maps;
 mod mcp;
 mod packages;
@@ -77,6 +78,9 @@ const USAGE: &str = "usage:
                                       project, and the capabilities no dependency uses
   renyi fetch                         the locked packages from the registry, every hash verified
   renyi publish [--to <directory>]    the project into a directory registry as a new version
+  renyi bind <header.h> --module <name> --library <name>[,<name>...] [--to <directory>]
+                                      a C header as a foreign module: the declaration file <name>.ry
+                                      and the module's entry in renyi.json (printed when there is none)
   renyi mcp [path]                    serve the toolchain to an agent host over standard input and
                                       output (Model Context Protocol), for the directory given
   renyi version
@@ -113,6 +117,7 @@ fn main() -> ExitCode {
         Some("audit") => packages::audit_command(&args[1..]),
         Some("fetch") => packages::fetch_command(&args[1..]),
         Some("publish") => packages::publish_command(&args[1..]),
+        Some("bind") => bind::bind_command(&args[1..]),
         Some("mcp") => mcp::serve(&args[1..]),
         Some("version") | Some("--version") => {
             println!("renyi {}", env!("CARGO_PKG_VERSION"));
@@ -142,12 +147,18 @@ fn load(path: &str) -> Result<SourceFile, ExitCode> {
 /// Every diagnostic of a file: the parser's, the checker's when the file
 /// parses, and the layout's, in source order.
 pub(crate) fn diagnose(file: &SourceFile) -> Vec<renyi_syntax::Diagnostic> {
-    let parsed = parse(&file.text);
+    // a foreign module of the project declares (decision AF1): no bodies
+    let file = renyi_check::tagged(file.clone());
+    let parsed = if file.foreign.is_some() {
+        parse_declarations(&file.text)
+    } else {
+        parse(&file.text)
+    };
     let mut diagnostics = parsed.diagnostics;
     if !diagnostics.iter().any(|diagnostic| diagnostic.is_error()) {
-        diagnostics.extend(renyi_check::check_file(file));
+        diagnostics.extend(renyi_check::check_file(&file));
     }
-    diagnostics.extend(check_layout(file));
+    diagnostics.extend(check_layout(&file));
     diagnostics.sort_by_key(|diagnostic| diagnostic.span.start);
     diagnostics
 }
@@ -365,6 +376,28 @@ fn compile_with_sources(path: &str) -> Result<(renyi_vm::Program, Hashed), ExitC
             Err(ExitCode::FAILURE)
         }
     }
+}
+
+/// The foreign modules of a program, each in backticks, in name order.
+fn foreign_modules(program: &renyi_vm::Program) -> Vec<String> {
+    let mut names: Vec<String> = Vec::new();
+    for meta in &program.function_metas {
+        if meta.foreign.is_some() && !names.contains(&meta.module) {
+            names.push(meta.module.clone());
+        }
+    }
+    names.sort();
+    names.into_iter().map(|name| format!("`{name}`")).collect()
+}
+
+/// Whether `main` grants `foreign`.
+fn grants_foreign(program: &renyi_vm::Program) -> bool {
+    program.main.is_some_and(|id| {
+        program.function_metas[id]
+            .needs
+            .iter()
+            .any(|capability| capability.path == ["foreign"])
+    })
 }
 
 /// A program from a bytecode file, with the file's text; the error names
@@ -700,6 +733,14 @@ fn run_command(args: &[String], record: bool) -> ExitCode {
         Ok(compiled) => compiled,
         Err(code) => return code,
     };
+    // native code is visible (decision AF1, 07-system-design.md section 2.2)
+    let native = foreign_modules(&program);
+    if !native.is_empty() && grants_foreign(&program) {
+        eprintln!(
+            "renyi: this program can call native code through {}",
+            native.join(", ")
+        );
+    }
     for denied in &flags.narrowing.deny {
         let functions = renyi_vm::denied_functions(&program, denied);
         if !functions.is_empty() {

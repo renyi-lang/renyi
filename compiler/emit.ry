@@ -43,6 +43,7 @@ import bytecode exposing Program,
   AbilityMeta,
   MethodEntry,
   FunctionMeta,
+  ForeignBinding,
   ConstantMeta,
   TestMeta,
   ExampleMeta,
@@ -55,6 +56,7 @@ import bytecode exposing Program,
   Op
 import declare exposing World,
   ModuleInfo,
+  ForeignModule,
   BodyLocation,
   FunctionInfo,
   TypeInfo,
@@ -2848,7 +2850,7 @@ function assemble(context: Context, modules: List of CheckedModule) returns Prog
     for each declared in world.abilities
     collect AbilityMeta(name: declared.name, methods: method_names(declared.methods))
   return Program(
-    format: 1,
+    format: 2,
     modules: module_sources(world: world, modules: modules),
     builtins: builtin_ids(world.builtins),
     types: context.types,
@@ -3014,8 +3016,41 @@ function function_meta(context: Context, id: Integer, info: FunctionInfo) return
     failures: info.failures,
     capabilities: info.capabilities,
     summary: declare.function_purpose(world: world, id: id),
-    code: code
+    code: code,
+    foreign: foreign_binding(world: world, info: info)
   )
+end
+
+function foreign_binding(world: World, info: FunctionInfo) returns maybe ForeignBinding
+  purpose: A foreign function's binding (decision AF1): its libraries, its symbol, its C signature.
+
+  let owner_info be declare.module_at(world: world, id: info.owner)
+  let binding be owner_info.foreign otherwise return nothing
+  let parameters be
+    for each param in info.params
+    collect spelling_or_empty(declare.c_type_of(world: world, ty: param.ty))
+  return ForeignBinding(
+    libraries: binding.libraries,
+    symbol: symbol_of(binding: binding, name: info.name),
+    parameters: parameters,
+    result: spelling_or_empty(declare.c_result_of(world: world, result: info.result))
+  )
+end
+
+function spelling_or_empty(spelling: maybe Text) returns Text
+  purpose: A C type's spelling, or an empty text for a type the checker refused.
+
+  let found be spelling otherwise return ""
+  return found
+end
+
+function symbol_of(binding: ForeignModule, name: Text) returns Text
+  purpose: The C symbol of a function: the manifest's renaming, else the function's own name.
+
+  for each renamed in binding.symbols
+    if renamed.name is name then return renamed.symbol end
+  end
+  return name
 end
 
 function specials_of(world: World) returns List of Specials

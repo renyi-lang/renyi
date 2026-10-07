@@ -21,7 +21,8 @@ the front end from its bytecode; then packages, decision AC1, the first
 slice of stage 3 in two commits; then the diagnostics of the front end
 in Renyi, decision AD1: the Rust lexer's and parser's codes, fixes and
 recovery, the three judges byte-equal on rejected programs too; then
-`std.process`, decision AE1, the second slice of stage 3).
+`std.process`, decision AE1, the second slice of stage 3; then the
+foreign function interface, decision AF1, the third).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -33,9 +34,10 @@ M3 (the VM: `renyi run`, `record`, `run --replay`, `reproduce`,
 run manifest of Q2, every library module, the `only to` guards of P3,
 tasks one after the other by S2) are done, with the project map (`renyi
 index`, `--budgets`, `--diff`), `renyi tools` and `renyi mcp` on top. M4
-is under way (packages, decision AC1; `docs/GAPS.md`, section 4); M5 and
+is done but for its residue (packages AC1, `std.process` AE1, the FFI
+AF1; `docs/GAPS.md`, section 4); M5 and
 M6 are not started. Design decisions are
-in sections 0 to AE of `01-decisions.md`; the agent tooling in
+in sections 0 to AF of `01-decisions.md`; the agent tooling in
 `05-agent-tooling.md`, the signature capabilities in
 `06-runtime-guarantees.md`, the system-level commitments in
 `07-system-design.md`; the open items in section 18 of the sketch (R3-1,
@@ -87,11 +89,12 @@ revision>]`, `run [--manifest] [options] <file> [arguments]`, `record
 [<file>]`, `test [--strict] [--refresh name [--redact name]] [--explain]
 <file>...`, `compile [--to file] <file.ry>`, `add <name> [<version>]`,
 `update [--accept-effects]`, `audit`, `fetch`, `publish [--to
-<directory>]`, `tools [path]`, `mcp [path]` and `version`; 252 tests,
+<directory>]`, `bind <header.h> --module <name> --library <names>
+[--to <directory>]`, `tools [path]`, `mcp [path]` and `version`; 262 tests,
 clippy and fmt clean on Windows
 with rustc 1.94.1. CI (`.github/workflows/ci.yml`) runs the same gates,
 `renyi check compiler/*.ry` and the conformance suite
-(`tests/conformance/`, 50 cases, every `run` case a second time from
+(`tests/conformance/`, 51 cases, every `run` case a second time from
 its bytecode file;
 runners `tools/conformance.py` and `crates/renyi/tests/conformance.rs`)
 on a toolchain pinned to the owner's machine (rustc 1.94.1), so that CI
@@ -226,7 +229,7 @@ sheet, with `change` (decision AA1).
   statements, calls and overloads, constructions, patterns and
   exhaustiveness with witnesses, queries, the recorded references of
   W8). `checker.ry` is the command line: `renyi run compiler/checker.ry
-  [--json] [--strict] [--library <dir>] <file>...` reads the thirteen
+  [--json] [--strict] [--library <dir>] <file>...` reads the fourteen
   library declaration files from `library/std` under the working
   directory (`--library` names another), lexes and parses with the
   Renyi front end, reads the imports from the file's directory as
@@ -897,10 +900,10 @@ package name as the first segment of an import, packages before
   `fetch` on a changed file and a stale lock; `update` refused without
   the flag and until `main` declares the new kind; a URL registry served
   by a thread; the map's labels and the budgets).
-- **Next**: the FFI (`foreign`, F0), the last slice of M4. The parity
-  of the Renyi front end's diagnostics with the Rust parser's (the
-  "2" of the owner's answer) is done: the next section; `std.process`
-  (decision AE1) is done: the section after it.
+- **Next**: nothing of M4. The parity of the Renyi front end's
+  diagnostics with the Rust parser's (the "2" of the owner's answer)
+  is done: the next section; `std.process` (decision AE1) and the FFI
+  (decision AF1) are done: the sections after it.
 
 ## The diagnostics of the front end in Renyi (decision AD1)
 
@@ -1010,15 +1013,12 @@ matched text for text, the parent's environment inherited.
   call with its `Completion`; `run --replay` answers it and starts
   nothing (and prints nothing, as a replay does); `reproduce` shows the
   output.
-- **The checker.** `effects::unavailable` keeps only `foreign`
-  (`capability-unavailable`, message "`foreign` is not available until
-  the foreign function interface (milestone M4)"), in `effects.rs` and
-  `compiler/effects.ry`; `process.ry` is in `LIBRARY` of
+- **The checker.** `process.ry` is in `LIBRARY` of
   `crates/renyi_check/src/lib.rs` and in `library_modules` of
-  `compiler/project.ry` (last in both, the order the judges depend on);
-  `crates/renyi_syntax/tests/library.rs` counts thirteen files, and
-  `crates/renyi_check/tests/rules.rs` holds `process` clean and
-  `foreign` unavailable.
+  `compiler/project.ry` (the order the judges depend on);
+  `effects::unavailable` kept `foreign` alone (`capability-unavailable`)
+  in `effects.rs` and `compiler/effects.ry` until decision AF1 removed
+  it (the next section).
 - **The tests.** `crates/renyi/tests/process.rs` (six, every child the
   `renyi` binary itself running a small program, so nothing else needs
   to be installed): `renyi version` through `execute` (status, output,
@@ -1029,12 +1029,104 @@ matched text for text, the parent's environment inherited.
   missing program and the budget (`OverBudget`); a guard; a recording
   replayed and reproduced with no marker file written. Conformance case
   50 (`process_errors.ry`) prints `NotFound`, `OverBudget` and
-  `ProgramNotAllowed` without starting anything; case 20 now holds
-  `foreign` unavailable.
+  `ProgramNotAllowed` without starting anything (case 20 held
+  `foreign` unavailable until decision AF1).
 - **What bit.** `run` as a function name (reserved); a call with one
   argument may not name it (`report("x")`); an `otherwise` on a
   continuation line is `otherwise-line` (break inside the parentheses
   instead); a replay prints no console output, by design.
+
+## The foreign function interface (decision AF1; stage 3, the third slice)
+
+The last slice of M4 in the order the owner chose (packages, then
+`std.process`, then the FFI); the four design questions and their
+answers are the entry AF1.
+
+- **The rule.** A foreign module is a declaration file of the project
+  (bodiless `public function`s, each `needs foreign` and nothing else)
+  that the manifest's `foreign` section binds to shared libraries:
+  `"foreign": {"libc": {"library": ["ucrtbase", "libc.so.6",
+  "libSystem.B.dylib"], "symbols": {"renyi_name": "c_symbol"}}}`; the
+  libraries are tried in order, `symbols` is optional. The resolver
+  tags the file (`Project::foreign_of_file` for the main file by its
+  path from the root, `Project::foreign_module` for an own import by
+  its qualified name; `renyi_package::tagged` for a command's file,
+  which `diagnose` of `main.rs` and `load_project` of the index use),
+  `SourceFile.foreign` carries the `ForeignModule`, `check_project`
+  parses a tagged file with `parse_declarations` and declares it with
+  `is_library = true` (its functions are primitives: no body, recorded
+  at the boundary), `ModuleInfo.foreign` holds the binding.
+- **The types.** `library/std/foreign.ry`: `Int8` to `UInt64` and
+  `Size` as refinements of `Integer`; `crates/renyi_check/src/foreign.rs`:
+  `CType` (the spellings `i8` to `u64`, `size`, `f64`, `bool`, `text`,
+  `bytes`), `CResult` (`void`, a type, `text_or_null`), `World::c_type_of`
+  and `c_result_of`. `declare_function` of `world.rs` runs
+  `check_foreign_signature` after the needs loop: `foreign-signature`
+  (needs other than `foreign` alone, `or fails with`, `for any`),
+  `foreign-type` (a parameter or a result the boundary does not carry),
+  `foreign-arity` (over six words, `Bytes` counting two). A declared
+  function's parameters are not `unused-binding` (`check_function` of
+  `check.rs` marks them used when there is no body).
+  `capability-unavailable` is gone from both checkers, the reference
+  and the suite.
+- **The bytecode.** `FunctionMeta.foreign: Option<Foreign>` (libraries,
+  symbol, parameter spellings, result spelling) filled in
+  `compile/mod.rs` from the module's binding; `file.rs` writes it as
+  `"foreign"` after `"code"` and `FORMAT` is 2; `compiler/bytecode.ry`
+  (`ForeignBinding`) and `compiler/emit.ry` (`foreign_binding`) mirror
+  it; `compiler/declare.ry` holds the port of `foreign.rs` beside
+  `world.rs`'s (`c_type_of`, `c_result_of`, the checks), `project.ry`
+  the manifest section, the tagging and the declarations parse.
+- **The VM.** `natives/foreign.rs`: at the first call `bind` loads the
+  first library of the list that loads (`libloading`, kept in
+  `Vm.libraries` by its name list) and looks the symbol up; `invoke`
+  marshals the arguments into the words of `foreign_abi.rs` (generated
+  by `tools/gen_foreign_abi.py`: `call(address, slots, returns)` matches
+  the arity, the class mask and the result class to a `transmute`d
+  `extern "C"` signature; at most six words), calls, and reads the
+  result back by its C type (a narrower integer by its width, `Text`
+  copied from the `char *`, a null `Text` a crash, a null `maybe Text`
+  nothing). `Vm::run_primitive` dispatches a function without a native
+  to it; the boundary (`call_native`) does the rest: the grant check
+  (`foreign`, no scope, no budget), the recording, the replay, the
+  `only to` guard. A library or a symbol that is missing, or a `Text`
+  with a NUL, is a crash at the call. This is the VM's only unsafe
+  code; what the C function does is outside every guarantee (Q3).
+- **The commands.** `renyi run` prints "renyi: this program can call
+  native code through `libc`" on the standard error when `main` grants
+  `foreign` (07-system-design.md, section 2.2); `renyi bind
+  <header.h> --module <name> --library <name>[,<name>...] [--to
+  <directory>]` (`bind.rs`) writes `<name>.ry` from the prototypes of a
+  header (comments and preprocessor lines removed, `extern "C"`
+  dropped, the C types mapped; `long`, `float`, pointers other than
+  `char *` and variadic functions left as `# skipped:` comments with
+  the reason; names snake-cased and never reserved, a single letter
+  becoming `argument_N`) and the entry into `renyi.json` when there is
+  one (printed otherwise); `renyi publish` refuses a project with
+  foreign modules; `renyi format` does not read a foreign module (a
+  declaration file, like the library's).
+- **The tests.** `crates/renyi/tests/foreign.rs` (seven, every library
+  the C library of the platform: `ucrtbase` on Windows, `libc.so.6`
+  and `libm.so.6` on Linux, `libSystem.B.dylib` on macOS): `strlen`,
+  `abs`, `atoi`, `sqrt` through a renamed symbol and `getenv` as
+  `maybe Text`, from the source and from the bytecode file; a
+  recording replayed and reproduced with the libraries renamed to
+  nothing that loads; `--deny foreign`; a missing symbol and a missing
+  library; `bind` on a header, the module written, the manifest
+  updated, the module checked; `publish` refused. The fixtures
+  `tests/conformance/foreign/` (`libc.ry`, `length.ry` printing 5 and
+  7; case 51) and `tests/conformance/foreign_bad/` (`bad.ry`, the
+  three diagnostics; case 20) are under the three judges, the Renyi
+  checker and compiler byte-equal on them; `tests/fixture.rs` holds
+  their manifests canonical; `tests/library.rs` counts fourteen files.
+- **What bit.** A heredoc un-escapes backslashes (a patch script
+  written through it got a raw carriage return); a patch applied twice
+  duplicated the additions whose anchor survived the first run; the
+  `check` command parsed its file before the resolver tagged it;
+  `json` is the namespace of an import in `project.ry` (no local of
+  that name); a name is bound once per function (two `match` arms may
+  not bind the same name); a single-letter parameter name is an error
+  (`single-letter-identifier`), so the generator avoids it.
 
 ## The VM as it exists (`crates/renyi_vm`)
 
@@ -1456,6 +1548,24 @@ Three commits on `main`, each gated as in session 7:
     the run-time errors), the cheat sheet (`process` and the module
     back on the sheet, within the budget), the decisions (section AE),
     `CLAUDE.md`, `README.md`, `docs/GAPS.md`, this file.
+18. The foreign function interface (decision AF1, the section "The
+    foreign function interface" above): `library/std/foreign.ry`,
+    section 14 of the library sketch, `crates/renyi_check/src/foreign.rs`
+    and the three diagnostics of `world.rs`, the `foreign` section of
+    `manifest.rs` and the tagging of `resolve.rs`, `SourceFile.foreign`,
+    `FunctionMeta.foreign` and `FORMAT` 2 of the bytecode file,
+    `natives/foreign.rs` with the generated `foreign_abi.rs` and
+    `tools/gen_foreign_abi.py`, `Vm::run_primitive`, `bind.rs`, the run
+    notice, the `publish` refusal, `capability-unavailable` removed; the
+    mirrors in `project.ry`, `declare.ry`, `effects.ry`, `bodies.ry`,
+    `bytecode.ry` and `emit.ry`; `crates/renyi/tests/foreign.rs`, the
+    fixtures `tests/conformance/foreign/` and `foreign_bad/` with cases
+    20 and 51, `tests/fixture.rs`, `tests/library.rs`, `tests/rules.rs`,
+    the judges' directories; the reference (the module list, the
+    manifest, the capability table, the static rules, the run time,
+    appendices A and B), the library sketch, the cheat sheet, the
+    decisions (section AF), `CLAUDE.md`, `README.md`, `docs/GAPS.md`,
+    the conformance `README.md`, this file.
 
 ## Done in session 7 (stage 1 of the gap audit)
 
@@ -1808,8 +1918,8 @@ on a fresh clone).
   the checker and the emitter, W1 to W8 and Z3), R3-2 is decided (AB1)
   and the judges run the front end from its bytecode (the section "The
   judges run from bytecode"): the next piece is the owner's to choose
-  between the remaining performance items and stage 3 (M4: packages,
-  FFI, the `only to` runtime).
+  between the remaining performance items and stage 3 (M4), which is
+  done since: packages, `std.process`, the FFI.
 - **Readability**: the scores are no longer the gate (decision V1).
   Round 5 (U9's sentence) and gpt-5.5 run only if the owner asks.
 - Session 5 printed the values of `ANTHROPIC_API_KEY` and
@@ -1889,16 +1999,23 @@ on a fresh clone).
    the Predict answer on `traffic_light` (0 of 5 with right lines); the
    rubric's reading of "only X and Y" when Z is also needed (round 1 and
    2 read it as a need missing).
-4. **M4**, under way: the first slice (packages, decision AC1, the
-   section "Packages" above) and the second (`std.process`, decision
-   AE1, the section "The process module" above) are done; next the
-   FFI (`foreign`, decision F0);
+4. **M4**: its three slices (packages, decision AC1; `std.process`,
+   decision AE1; the FFI, decision AF1; the sections above) are done;
    **M5**
    (embedding API, `serve --watch`, LSP, a resident `World`, open item
    R5-5) after: stage 3 of `docs/GAPS.md`.
 
 ## Known gaps and risks
 
+- **The FFI.** `natives/foreign.rs` and `foreign_abi.rs` are the VM's
+  only unsafe code: a declaration that does not match the C side (a
+  width, a missing length, a pointer the function keeps) is undefined
+  behaviour in C's sense, not a Renyi crash; the signature family stops
+  at six words and at integer-class and double-class scalars (no
+  `float`, no struct by value, no callback); the libraries are named by
+  the manifest per platform, so a project that binds `libc` names three
+  names. `renyi format` does not read a foreign module. Nothing in the
+  tests calls a library other than the platform's C library.
 - **The front end in Renyi.** Its diagnostics are a transcription of
   the Rust lexer's and parser's (decision AD1): a new error site, a
   changed message or fix in `lexer.rs` or `parser.rs` is the same

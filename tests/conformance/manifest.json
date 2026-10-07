@@ -94,10 +94,11 @@
       "exit_code": 1
     },
     {
-      "name": "foreign is not available before the FFI",
+      "name": "a foreign module's declarations must fit the boundary to C",
       "command": "check",
-      "program": "tests/conformance/programs/capability_unavailable.ry",
-      "diagnostics": ["capability-unavailable"],
+      "program": "tests/conformance/foreign_bad/bad.ry",
+      "stdout": "tests/conformance/expected/foreign_bad.out",
+      "diagnostics": ["foreign-signature", "foreign-type", "foreign-arity"],
       "exit_code": 1
     },
     {
@@ -358,6 +359,14 @@
       "command": "run",
       "program": "tests/conformance/programs/process_errors.ry",
       "stdout": "tests/conformance/expected/process_errors.out",
+      "exit_code": 0
+    },
+    {
+      "name": "a program calls the C library through a foreign module of the project",
+      "command": "run",
+      "program": "tests/conformance/foreign/length.ry",
+      "stdout": "tests/conformance/expected/foreign_length.out",
+      "stderr_contains": ["this program can call native code through `libc`"],
       "exit_code": 0
     }
   ]

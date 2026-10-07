@@ -19,7 +19,7 @@ fn library_files() -> Vec<PathBuf> {
         .filter(|path| path.extension().and_then(|e| e.to_str()) == Some("ry"))
         .collect();
     files.sort();
-    assert_eq!(files.len(), 13, "thirteen library modules");
+    assert_eq!(files.len(), 14, "fourteen library modules");
     files
 }
 

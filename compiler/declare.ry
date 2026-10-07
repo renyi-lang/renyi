@@ -35,6 +35,44 @@ public type PackageTag
   has version: Text
 end
 
+public type ForeignModule
+  purpose: A foreign module (decision AF1): its libraries, tried in order, and its renamed symbols.
+  has libraries: List of Text
+  has symbols: List of SymbolRename
+end
+
+public type SymbolRename
+  purpose: A function of a foreign module whose C symbol differs from its Renyi name.
+  has name: Text
+  has symbol: Text
+end
+
+type Width
+  purpose: A width type of `std.foreign` with its spelling in the bytecode file.
+  has name: Text
+  has spelling: Text
+end
+
+let widths: List of Width be [
+  Width(name: "Int8", spelling: "i8"),
+  Width(name: "UInt8", spelling: "u8"),
+  Width(name: "Int16", spelling: "i16"),
+  Width(name: "UInt16", spelling: "u16"),
+  Width(name: "Int32", spelling: "i32"),
+  Width(name: "UInt32", spelling: "u32"),
+  Width(name: "Int64", spelling: "i64"),
+  Width(name: "UInt64", spelling: "u64"),
+  Width(name: "Size", spelling: "size")
+]
+
+let width_names: Text be "Int8, UInt8, Int16, UInt16, Int32, UInt32, Int64, UInt64 or Size"
+
+let parameter_types: Text be "{width_names} of `std.foreign`, Float, Boolean, Text or Bytes"
+
+let results: Text be "a type of `std.foreign`, Float, Boolean, Text or `maybe Text`, or nothing"
+
+let max_words: Integer be 6
+
 public type ModuleInfo
   purpose: One module's names and tables; library and user modules go through the same pass.
   has name: Text
@@ -50,6 +88,7 @@ public type ModuleInfo
   has line_starts: List of Integer
   has source_chars: List of Text
   has package: maybe PackageTag
+  has foreign: maybe ForeignModule
 end
 
 public type ConstantInfo
@@ -411,7 +450,8 @@ public function add_module(world: World, tree: Module, is_library: Boolean) retu
     exposed_abilities: {},
     line_starts: [],
     source_chars: [],
-    package: nothing
+    package: nothing,
+    foreign: nothing
   )
   let mutable state be ModuleState(info: info, world: world)
   if name is "std.prelude" then
@@ -508,6 +548,13 @@ public function set_package(world: World, id: Integer, package: PackageTag) retu
   let qualified be
     if info.name is package.name then info.name otherwise "{package.name}.{info.name}" end
   return update_module(world: world, id: id, info: info with name: qualified, package: package)
+end
+
+public function set_foreign(world: World, id: Integer, foreign: ForeignModule) returns World
+  purpose: Tag a module as a foreign module of the project (decision AF1).
+
+  let info be module_at(world: world, id: id)
+  return update_module(world: world, id: id, info: info with foreign: foreign)
 end
 
 function imported_module(world: World, importer: ModuleInfo, name: Text) returns maybe Integer
@@ -2666,6 +2713,14 @@ public function declare_function(
     func: func,
     grants: signature.grants
   )
+  if module_at(world: updated, id: owner).foreign is not nothing then
+    change updated to check_foreign_signature(
+      world: updated,
+      owner: owner,
+      func: func,
+      signature: signature
+    )
+  end
   change updated to check_function_docs(
     world: updated,
     owner: owner,
@@ -2808,18 +2863,6 @@ function check_capability(
   returns World
   purpose: One capability of a `needs` clause.
 
-  let unavailable_path be unavailable_in(grant)
-  if unavailable_path is not nothing then
-    let path be unavailable_path otherwise crash with "a path"
-    return push_error(
-      world: world,
-      owner: owner,
-      code: "capability-unavailable",
-      message: effects.unavailable_message(path),
-      span: syntax.span,
-      fix: "remove it from `needs`"
-    )
-  end
   let mutable updated be world
   if effects.has_grant_clauses(grant) and func.name.text is not "main" then
     change updated to push_error(
@@ -2863,16 +2906,6 @@ function check_capability(
     )
   end
   return updated
-end
-
-function unavailable_in(grant: Grant) returns maybe List of Text
-  purpose: The first path of the grant or its sinks that waits for milestone M4 (decision V6).
-
-  if effects.unavailable(grant.path) then return grant.path end
-  for each sink in grant.only_to
-    if effects.unavailable(sink.path) then return sink.path end
-  end
-  return nothing
 end
 
 function check_sinks(world: World, owner: Integer, grant: Grant, span: Span) returns World
@@ -3366,4 +3399,243 @@ public function named(ty: Type) returns maybe TypeName
     when NamedType(name) then return name
     otherwise return nothing
   end
+end
+
+function check_foreign_signature(
+  world: World,
+  owner: Integer,
+  func: Function,
+  signature: DeclaredSignature
+)
+  returns World
+  purpose: Decision AF1: a foreign module's function is a C function, within the boundary's rules.
+
+  let mutable updated be check_foreign_clauses(
+    world: world,
+    owner: owner,
+    func: func,
+    signature: signature
+  )
+  let counted be check_foreign_params(
+    world: updated,
+    owner: owner,
+    func: func,
+    params: signature.params
+  )
+  change updated to check_foreign_result(
+    world: counted.world,
+    owner: owner,
+    func: func,
+    result: signature.result
+  )
+  if counted.value is greater than max_words then
+    let limit be "the limit is six (`Bytes` counts two)"
+    change updated to push_error(
+      world: updated,
+      owner: owner,
+      code: "foreign-arity",
+      message: "`{func.name.text}` takes {counted.value} words across the boundary; {limit}",
+      span: func.name.span,
+      fix: "pass fewer arguments"
+    )
+  end
+  return updated
+end
+
+function check_foreign_clauses(
+  world: World,
+  owner: Integer,
+  func: Function,
+  signature: DeclaredSignature
+)
+  returns World
+  purpose: A C function needs `foreign` alone, declares no failures and takes no type parameters.
+
+  let head be "`{func.name.text}` is declared in a foreign module"
+  let mutable updated be world
+  if not only_foreign(signature.grants) then
+    change updated to push_error(
+      world: updated,
+      owner: owner,
+      code: "foreign-signature",
+      message: "{head}; it needs `foreign` and nothing else",
+      span: func.name.span,
+      fix: "write `needs foreign`"
+    )
+  end
+  if not signature.failures.is_empty() then
+    change updated to push_error(
+      world: updated,
+      owner: owner,
+      code: "foreign-signature",
+      message: "{head}; a C function declares no failures",
+      span: func.name.span,
+      fix: "drop `or fails with`"
+    )
+  end
+  if func.type_params is not nothing then
+    change updated to push_error(
+      world: updated,
+      owner: owner,
+      code: "foreign-signature",
+      message: "{head}; a C function takes no type parameters",
+      span: func.name.span,
+      fix: "drop `for any`"
+    )
+  end
+  return updated
+end
+
+function only_foreign(grants: List of Grant) returns Boolean
+  purpose: Whether a `needs` clause is `foreign` alone: one grant, no scope, no budget, no sinks.
+
+  let grant be grants.first() otherwise return false
+  let head be grant.path.first() otherwise return false
+  if grants.length() is not 1 or grant.path.length() is not 1 or head is not "foreign" then
+    return false
+  end
+  return grant.scope is nothing and not effects.has_grant_clauses(grant)
+end
+
+function check_foreign_params(world: World, owner: Integer, func: Function, params: List of NamedTy)
+  returns Built of Integer
+  purpose: Every parameter a type of the boundary; the words they take, `Bytes` counting two.
+
+  let mutable updated be world
+  let mutable words be 0
+  let mutable index be 0
+  for each param in params
+    match c_type_of(world: updated, ty: param.ty)
+      when some(spelling) then change words to words + c_words(spelling)
+      when nothing then
+        change updated to foreign_param_error(
+          world: updated,
+          owner: owner,
+          func: func,
+          param: param,
+          index: index
+        )
+    end
+    change index to index + 1
+  end
+  return Built(value: words, world: updated)
+end
+
+function foreign_param_error(
+  world: World,
+  owner: Integer,
+  func: Function,
+  param: NamedTy,
+  index: Integer
+)
+  returns World
+  purpose: The error for a parameter whose type does not cross the boundary.
+
+  let span be
+    match func.params.at(index)
+      when some(declared) then declared.name.span
+      when nothing then func.name.span
+    end
+  let shown be show(world: world, ty: param.ty)
+  let head be "the parameter `{param.name}` of `{func.name.text}` has type `{shown}`"
+  return push_error(
+    world: world,
+    owner: owner,
+    code: "foreign-type",
+    message: "{head}; across the boundary a parameter is {parameter_types}",
+    span: span,
+    fix: "declare it with a type of `std.foreign`"
+  )
+end
+
+function check_foreign_result(world: World, owner: Integer, func: Function, result: maybe Ty)
+  returns World
+  purpose: The result a type of the boundary, `maybe Text` for a nullable `char *`, or nothing.
+
+  if c_result_of(world: world, result: result) is not nothing then return world end
+  let name be func.name.text
+  let shown be
+    match result
+      when some(ty) then show(world: world, ty: ty)
+      when nothing then ""
+    end
+  let span be
+    match func.result
+      when some(ty) then result_span(ty)
+      when nothing then func.name.span
+    end
+  return push_error(
+    world: world,
+    owner: owner,
+    code: "foreign-type",
+    message: "`{name}` returns `{shown}`; across the boundary a result is {results}",
+    span: span,
+    fix: "declare it with a type of `std.foreign`, or drop `returns`"
+  )
+end
+
+function result_span(ty: Type) returns Span
+  purpose: The span of a result type annotation.
+
+  match ty
+    when NamedType(span) then return span
+    when MaybeType(span) then return span
+    when FunctionType(span) then return span
+  end
+end
+
+public function c_type_of(world: World, ty: Ty) returns maybe Text
+  purpose: The C type a parameter crosses the boundary as (decision AF1), spelled for the bytecode.
+
+  match ty
+    when App(id, args) where args.is_empty() then
+      let info be type_at(world: world, id: id)
+      let owner_name be module_at(world: world, id: info.owner).name
+      if owner_name is "std.foreign" then return width_spelling(info.name) end
+      if owner_name is "std.prelude" then return prelude_spelling(info.name) end
+      return nothing
+    otherwise return nothing
+  end
+end
+
+function width_spelling(name: Text) returns maybe Text
+  purpose: The bytecode's spelling of a width type of `std.foreign`.
+
+  for each width in widths
+    if width.name is name then return width.spelling end
+  end
+  return nothing
+end
+
+function prelude_spelling(name: Text) returns maybe Text
+  purpose: The bytecode's spelling of a prelude type that crosses the boundary.
+
+  if name is "Float" then return "f64" end
+  if name is "Boolean" then return "bool" end
+  if name is "Text" then return "text" end
+  if name is "Bytes" then return "bytes" end
+  return nothing
+end
+
+public function c_result_of(world: World, result: maybe Ty) returns maybe Text
+  purpose: The C result of a declared result: `void`, a type other than `Bytes`, or `text_or_null`.
+
+  match result
+    when nothing then return "void"
+    when some(MaybeTy(inner)) then
+      let inner_spelling be c_type_of(world: world, ty: inner) otherwise return nothing
+      if inner_spelling is "text" then return "text_or_null" end
+      return nothing
+    when some(ty) then
+      let own_spelling be c_type_of(world: world, ty: ty) otherwise return nothing
+      if own_spelling is "bytes" then return nothing end
+      return own_spelling
+  end
+end
+
+function c_words(spelling: Text) returns Integer
+  purpose: The words of the calling convention a C type takes: `Bytes` is a pointer and a length.
+
+  if spelling is "bytes" then return 2 end
+  return 1
 end

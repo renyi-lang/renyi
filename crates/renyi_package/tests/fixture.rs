@@ -5,7 +5,7 @@
 
 use std::path::PathBuf;
 
-use renyi_package::{hash_of, resolve, Lock, PackageFile};
+use renyi_package::{hash_of, resolve, Lock, Manifest, PackageFile};
 use renyi_syntax::SourceFile;
 
 fn root() -> PathBuf {
@@ -71,4 +71,19 @@ fn the_resolver_reads_the_projects_as_the_suite_expects() {
         3,
         "a package whose hash differs is reported and read all the same"
     );
+}
+
+#[test]
+fn the_foreign_fixtures_are_in_canonical_form() {
+    // decision AF1: a manifest with a `foreign` section renders to itself
+    for directory in ["tests/conformance/foreign", "tests/conformance/foreign_bad"] {
+        let text = read(&format!("{directory}/renyi.json"));
+        let manifest = Manifest::read(&text).expect("the manifest reads");
+        assert_eq!(
+            manifest.render(),
+            text,
+            "{directory}/renyi.json is not as the manifest renders"
+        );
+        assert_eq!(manifest.foreign.len(), 1, "{directory}: one foreign module");
+    }
 }

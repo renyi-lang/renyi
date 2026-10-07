@@ -212,14 +212,14 @@ for each url in urls concurrently collect web.get(url) otherwise fail
 ```
 
 ## Effects
-`needs` lists capabilities; callers must declare a superset; no `needs` means
+`needs` lists capabilities; callers declare a superset; no `needs` means
 pure. Capabilities: `console`, `filesystem.read`, `filesystem.write`,
 `network.http`, `network.socket`, `environment`, `time`, `random`,
-`process`. A parent
+`process`, `foreign`. A parent
 covers its children. A literal argument narrows a scope:
 `filesystem.read("data")`, `network.http("api.example.com")`; no argument
-covers every scope. `main` declares the program's whole grant. Only there: `at most 60 per minute` (budget; also `per run`) and
-`only to console` (data read through it may leave only there).
+covers every scope. `main` declares the whole grant. Only there: `at most 60 per minute` (budget; also `per run`) and
+`only to console` (data read through it leaves only there).
 ```
 public function main() or fails with AppError
   needs console, network.http("api.example.com") at most 60 per minute
@@ -271,10 +271,11 @@ Set: length() is_empty() contains(item) add(item) without(item) union(other)
 Numbers: to_decimal() to_float() to_text() quotient(divisor) absolute()
   at_least(other) at_most(other) rounded(places) truncated() square_root()
 Modules: std.console (print, print_error, read_line); std.environment
-  (arguments, get, exit); std.time (now, today, seconds, parse_date, Date,
+  (arguments, get, exit); std.time (now, seconds, parse_date, Date,
   Instant, Duration); std.random; std.filesystem (Path, read_text, write_text,
   exists, list); std.json (parse, render); std.http (Url, get, post_json);
-  std.server; std.csv; std.sqlite; std.regex; std.process (execute, attempt)
+  std.server; std.csv; std.sqlite; std.regex; std.process (execute, attempt);
+  std.foreign
 ```
 One parameter is positional, more are named: `line.split(",")`,
 `text.replace(old: "a", new: "b")`.

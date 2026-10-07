@@ -645,11 +645,10 @@ process              start other processes
 foreign              call code across the FFI boundary
 ```
 
-Naming a parent (`needs filesystem`) grants its children. `process` and
-`foreign` are reserved for the package manager's `std.process` and the
-foreign function interface (milestone M4); until then no library function
-needs them, the cheat sheet does not list them and the checker rejects them
-in a `needs` clause (`capability-unavailable`, decision V6).
+Naming a parent (`needs filesystem`) grants its children. `process` is
+needed by `std.process` (decision AE1) and `foreign` by the functions of a
+foreign module (decision AF1); until those decisions the checker rejected
+them in a `needs` clause (`capability-unavailable`, decision V6).
 
 **Scopes.** A capability may carry one literal argument that narrows it: a
 path prefix for `filesystem` and its children (`filesystem.read("data")`), a

@@ -1072,6 +1072,12 @@ impl<'w> Checker<'w> {
             };
             self.bind(&param.name, ty, false, BindingKind::Param);
         }
+        if function.body.is_none() {
+            // a declaration (a foreign module, decision AF1): no body reads them
+            for binding in &mut self.scopes.last_mut().expect("a scope").bindings {
+                binding.used = true;
+            }
+        }
         if function.docs.expose_as_tool {
             self.check_tool_signature(id, function);
         }
@@ -1172,16 +1178,6 @@ impl<'w> Checker<'w> {
     pub fn check_test(&mut self, index: usize, test: &Test) {
         self.owner = BodyLocation::Item(index);
         let needs: Vec<Capability> = test.needs.iter().map(Capability::from_ast).collect();
-        for (capability, syntax) in needs.iter().zip(&test.needs) {
-            if crate::effects::unavailable(&capability.path) {
-                self.error_fix(
-                    "capability-unavailable",
-                    crate::effects::unavailable_message(&capability.path),
-                    syntax.span,
-                    "remove it from `needs`",
-                );
-            }
-        }
         self.context = Context {
             name: format!("test {:?}", test.name),
             returns: None,

@@ -493,21 +493,26 @@ fn tasks_of_run_concurrently_are_independent() {
 }
 
 #[test]
-fn foreign_waits_for_the_ffi_and_process_is_available() {
-    // decision AE1: `process` has `std.process`; only `foreign` waits
-    let unavailable = "capability-unavailable".to_string();
-    assert!(!codes(&program(
-        "public function main() needs console, process(\"git\")\n  purpose: Not yet.\n\n  console.print(\"hi\")\nend\n"
-    ))
-    .contains(&unavailable));
+fn process_and_foreign_are_capabilities_of_the_tree() {
+    // decisions AE1 and AF1: `process` has `std.process`, `foreign` the FFI
+    for source in [
+        "public function main() needs console, process(\"git\")\n  purpose: Native.\n\n  console.print(\"hi\")\nend\n",
+        "function go() needs foreign\n  ignore 1\nend\n",
+        "test \"spawning\" needs process\n  check true\nend\n",
+    ] {
+        let found = codes(&program(source));
+        assert!(
+            !found
+                .iter()
+                .any(|code| code == "capability-unavailable" || code == "unknown-capability"),
+            "{source}: {found:?}"
+        );
+    }
+    // `foreign` takes no budget
     raises(
-        &program("function go() needs foreign\n  ignore 1\nend\n"),
-        "capability-unavailable",
+        &program("public function main() needs foreign at most 3 per run\n  purpose: Native.\n\n  ignore 1\nend\n"),
+        "grant-clause",
     );
-    assert!(!codes(&program(
-        "test \"spawning\" needs process\n  check true\nend\n"
-    ))
-    .contains(&unavailable));
 }
 
 #[test]

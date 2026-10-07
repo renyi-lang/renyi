@@ -1,0 +1,15 @@
+{
+  "name": "ffibad",
+  "version": "0.1.0",
+  "purpose": "Declarations the boundary to C refuses.",
+  "dependencies": {},
+  "foreign": {
+    "bad": {
+      "library": [
+        "ucrtbase",
+        "libc.so.6",
+        "libSystem.B.dylib"
+      ]
+    }
+  }
+}

@@ -39,21 +39,6 @@ pub fn takes_scope(path: &[String]) -> bool {
     )
 }
 
-/// The capability of the tree that no library function needs yet:
-/// `foreign` waits for the foreign function interface of milestone M4
-/// (decision V6); a `needs` clause may not name it until then. `process`
-/// has `std.process` since decision AE1.
-pub fn unavailable(path: &[String]) -> bool {
-    path.first().map(String::as_str) == Some("foreign")
-}
-
-pub fn unavailable_message(path: &[String]) -> String {
-    format!(
-        "`{}` is not available until the foreign function interface (milestone M4)",
-        path.join(".")
-    )
-}
-
 impl Capability {
     pub fn from_ast(capability: &ast::Capability) -> Capability {
         Capability {

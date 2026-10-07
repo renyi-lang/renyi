@@ -235,9 +235,11 @@ freeze, or take it out of the frozen surface until it exists.
    `std.process`, section 13 of the library sketch, `execute` and
    `attempt` with their options; the scope, the budget and the guards
    at the boundary; `crates/renyi/tests/process.rs` and a conformance
-   case). **`foreign`**: in the tree (`crates/renyi_check/src/effects.rs`),
-   accepted in grants, no library function needs it, no FFI (decisions
-   F0, F1; `capability-unavailable` until then).
+   case). Done for `foreign` too (decision AF1, 2026-10-07: foreign
+   modules bound by the manifest's `foreign` section, `std.foreign`, the
+   fixed signature family of `foreign_abi.rs`, `renyi bind`;
+   `crates/renyi/tests/foreign.rs` and two conformance cases);
+   `capability-unavailable` is gone.
 5. **`lazy`** is reserved with no grammar rule (decision B4, as intended).
 6. The memory budget of a grant (`at most 256 megabytes memory`, open item
    R7-1) has no syntax and no enforcement; the VM has no step or
@@ -256,8 +258,8 @@ freeze, or take it out of the frozen surface until it exists.
   verify, the run manifest names the dependencies with their hashes and
   `reproduce` compares them, and `renyi index --budgets` reads the
   thresholds of `renyi.json` (decision R7); since decision AE1 (the same
-  day) `std.process`. Absent: the FFI generators and the `only to`
-  runtime.
+  day) `std.process`, and since decision AF1 (the same day) the FFI.
+  Absent: the `only to` runtime.
 - **M5** (LSP, index, compiler API): the index half exists (`index`,
   `--budgets`, `--diff`, `mcp` with ten tools). Absent: the LSP, the
   embedding API with per-module grants and memory budgets (decision Q3:
@@ -573,4 +575,6 @@ second commit the commands (`renyi add`, `update`, `audit`, `fetch`,
 `publish`), the dependencies in the run manifest and the budgets of the
 manifest; its third commit `std.process` (decision AE1: `execute`,
 `attempt`, the options, the scope as spelled, the parent's environment
-inherited). Next: the foreign function interface.
+inherited); its fourth commit the foreign function interface (decision
+AF1: foreign modules bound by the manifest, `std.foreign`, the signature
+family, `renyi bind`). The three slices of stage 3 are done.

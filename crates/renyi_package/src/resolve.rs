@@ -9,7 +9,7 @@
 
 use std::collections::HashSet;
 
-use renyi_syntax::{parse, Diagnostic, Package, SourceFile, Span};
+use renyi_syntax::{parse, Diagnostic, ForeignModule, Package, SourceFile, Span};
 
 use crate::manifest::{Lock, Manifest, PackageFile, LOCK_FILE, MANIFEST_FILE, PACKAGE_FILE};
 use crate::registry::{hash_of, is_absolute, join, Registry};
@@ -36,6 +36,20 @@ pub struct Project {
     /// What went wrong reading the manifest or the lockfile, as
     /// `manifest-invalid` diagnostics without a position.
     pub problems: Vec<Diagnostic>,
+}
+
+/// The file, tagged as the foreign module it declares when the manifest of
+/// its project names it (decision AF1); any other file as it is. The
+/// commands tag the file they are given before parsing it, since a foreign
+/// module is parsed as declarations.
+pub fn tagged(file: SourceFile) -> SourceFile {
+    if file.foreign.is_some() {
+        return file;
+    }
+    match Project::of(&file.name).foreign_of_file(&file.name) {
+        Some(binding) => file.in_foreign(binding),
+        None => file,
+    }
 }
 
 /// The files of a program with its imports, and the problems found.
@@ -146,6 +160,34 @@ impl Project {
             .map(|registry| registry.package_root(&self.root, name, version))
     }
 
+    /// The binding of a foreign module of the project (decision AF1), by
+    /// the module's qualified name.
+    pub fn foreign_module(&self, name: &str) -> Option<ForeignModule> {
+        self.manifest
+            .as_ref()?
+            .foreign
+            .iter()
+            .find(|(module, _)| module == name)
+            .map(|(_, binding)| binding.clone())
+    }
+
+    /// The binding of a file of the project that declares a foreign module:
+    /// the file's path from the root, without its extension, is the
+    /// module's name.
+    pub fn foreign_of_file(&self, file_name: &str) -> Option<ForeignModule> {
+        let relative = if self.root.is_empty() {
+            file_name
+        } else {
+            file_name
+                .strip_prefix(self.root.as_str())?
+                .trim_start_matches(['/', '\\'])
+        };
+        let stem = relative
+            .strip_suffix(".ry")
+            .or_else(|| relative.strip_suffix(".renyi"))?;
+        self.foreign_module(&stem.replace(['/', '\\'], "."))
+    }
+
     /// The names of the manifest's dependencies.
     pub fn dependencies(&self) -> Vec<String> {
         self.manifest
@@ -223,7 +265,13 @@ pub fn resolve(file: &SourceFile) -> Resolved {
 /// from the registry as a project whose dependencies the lock names.
 pub fn resolve_in(project: &Project, file: &SourceFile) -> Resolved {
     let mut resolved = Resolved::default();
-    resolved.files.push(file.clone());
+    let mut main = file.clone();
+    if main.foreign.is_none() {
+        if let Some(binding) = project.foreign_of_file(&main.name) {
+            main = main.in_foreign(binding);
+        }
+    }
+    resolved.files.push(main);
     for diagnostic in &project.problems {
         resolved.problems.push(Problem {
             file: file.name.clone(),
@@ -303,7 +351,7 @@ pub fn resolve_in(project: &Project, file: &SourceFile) -> Resolved {
                 package,
             )
         };
-        if !seen.insert(qualified) {
+        if !seen.insert(qualified.clone()) {
             continue;
         }
         let Some((path, text)) = read_source(&base) else {
@@ -320,6 +368,8 @@ pub fn resolve_in(project: &Project, file: &SourceFile) -> Resolved {
         let mut source = SourceFile::new(path, text);
         if let Some(package) = package {
             source = source.in_package(package);
+        } else if let Some(binding) = project.foreign_module(&qualified) {
+            source = source.in_foreign(binding);
         }
         resolved.files.push(source);
     }

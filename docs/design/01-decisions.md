@@ -1949,3 +1949,54 @@ argument of a `process` primitive as the scope of its effect and
 counted its budget; the module adds the natives, the module's
 `ProgramNotAllowed` and `OverBudget`, the tests, a conformance case,
 and `foreign` alone stays unavailable (V6). (user)
+
+## AF. The foreign function interface (session 8)
+
+**AF1. A foreign module is a declaration file of the project that the
+manifest binds to shared libraries; scalars, text and bytes cross the
+boundary; the libraries load at run time through `libloading` and a call
+goes through a fixed signature family; a foreign call is a primitive at
+the boundary.** The third slice of stage 3 (M4), after packages (AC1)
+and `std.process` (AE1), in the order the owner chose; decisions F0 and
+F1 named the capability and left the mechanism open. The four questions
+of 2026-10-07 and their answers: (i) Bindings are declared, not written
+in a new syntax (the surface is frozen, V11): a foreign module is a file
+of bodiless `public function` declarations, each `needs foreign` and
+nothing else, that the manifest's `foreign` section names (`"foreign":
+{"libc": {"library": ["ucrtbase", "libc.so.6", "libSystem.B.dylib"],
+"symbols": {"renyi_name": "c_symbol"}}}`): the libraries are tried in
+order and the first that loads is used; `symbols` renames a function
+whose C symbol is spelled otherwise. The resolver tags the file (the
+main file by its path from the project root, an imported one by its
+qualified name), the checker parses it as declarations and declares it
+as a library module (its functions are primitives, recorded like the
+library's), and `renyi bind <header.h> --module <name> --library
+<name>[,<name>...] [--to <directory>]` writes such a file from a C
+header's prototypes, with the manifest entry. The alternative, an
+`external` clause on a function, was a surface change for what a file
+and a manifest entry say as well. (ii) Only scalars, text and bytes
+cross: the width types of `std.foreign` (`Int8` to `UInt64` and `Size`,
+refinements of `Integer`), `Float` (a C `double`), `Boolean`, `Text` (a
+NUL-terminated `char *`, copied each way) and `Bytes` (a pointer and a
+length, two words, parameters only); a result is one of those but
+`Bytes`, `maybe Text` for a `char *` that may be null, or nothing.
+Records, lists, callbacks and ownership wait for a later slice; what the
+first slice carries is what `libc` and `libm` take. The checker holds a
+foreign module to it: `foreign-signature`, `foreign-type` and
+`foreign-arity` (at most six words). (iii) The libraries load at run
+time through `libloading`, a runtime dependency like those of S1, and a
+call goes through a fixed family of signatures generated into
+`foreign_abi.rs` by `tools/gen_foreign_abi.py` (every arity to six,
+every pattern of integer-class and double-class words, three result
+classes): the one unsafe corner of the VM; no `libffi`, no C compiler at
+run time, and a C function that does not fit the family is reached
+through a C wrapper that does. (iv) A foreign call is a primitive at the
+boundary: a recording holds it with its result, a replay answers it
+without calling, `reproduce` likewise; a guarded value (`only to`)
+refuses to cross; `foreign` takes no scope and no budget (a budget
+meters the world; a C call is the program's own code); `renyi run`
+prints "this program can call native code through `libc`" when `main`
+grants `foreign` (07-system-design.md, section 2.2); and `renyi publish`
+refuses a project with foreign modules, since a package carries no
+native code. `capability-unavailable` goes: nothing waits for M4 any
+more. (user)

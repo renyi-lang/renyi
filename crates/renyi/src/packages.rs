@@ -386,6 +386,19 @@ fn publish(args: &[String]) -> Fallible<String> {
     };
     let project = project_here()?;
     let manifest = manifest_of(&project).clone();
+    // decision AF1: a package is written in Renyi; native code stays in the
+    // program that grants it
+    if !manifest.foreign.is_empty() {
+        let names: Vec<String> = manifest
+            .foreign
+            .iter()
+            .map(|(name, _)| format!("`{name}`"))
+            .collect();
+        return Err(format!(
+            "the project has foreign modules ({}); a package carries no native code",
+            names.join(", ")
+        ));
+    }
     let registry = match to {
         Some(directory) => Registry::parse(&directory, ""),
         None => registry_of(&project)?,
@@ -913,6 +926,7 @@ fn verify_effects(
             dependencies: package.file.dependencies.clone(),
             registry: None,
             budgets: None,
+            foreign: Vec::new(),
         }),
         lock: Some(lock.clone()),
         registry: Some(dependencies_from),

@@ -31,8 +31,9 @@ fn root() -> PathBuf {
 }
 
 /// Where the programs the judges run on are: the corpus, the conformance
-/// programs, the package fixture (decision AC1) and the compiler itself.
-const PROGRAM_DIRECTORIES: [&str; 8] = [
+/// programs, the package fixture (decision AC1), the foreign fixtures (decision
+/// AF1) and the compiler itself.
+const PROGRAM_DIRECTORIES: [&str; 10] = [
     "examples",
     "tests/conformance/programs",
     "tests/conformance/packages/project",
@@ -40,6 +41,8 @@ const PROGRAM_DIRECTORIES: [&str; 8] = [
     "tests/conformance/packages/unlocked",
     "tests/conformance/packages/broken",
     "tests/conformance/packages/registry/greeting/1.0.0",
+    "tests/conformance/foreign",
+    "tests/conformance/foreign_bad",
     "compiler",
 ];
 

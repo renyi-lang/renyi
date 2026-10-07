@@ -1,0 +1,15 @@
+{
+  "name": "ffi",
+  "version": "0.1.0",
+  "purpose": "The conformance program that calls the C library through the foreign function interface.",
+  "dependencies": {},
+  "foreign": {
+    "libc": {
+      "library": [
+        "ucrtbase",
+        "libc.so.6",
+        "libSystem.B.dylib"
+      ]
+    }
+  }
+}

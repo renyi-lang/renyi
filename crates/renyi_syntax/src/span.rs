@@ -43,6 +43,9 @@ pub struct SourceFile {
     /// The package the file belongs to (decision AC1); `None` for a file
     /// of the program itself.
     pub package: Option<Package>,
+    /// The foreign module the file declares (decision AF1): its libraries
+    /// and its symbols; `None` for a module written in Renyi.
+    pub foreign: Option<ForeignModule>,
 }
 
 /// A dependency a file was read from: its name and its version.
@@ -50,6 +53,15 @@ pub struct SourceFile {
 pub struct Package {
     pub name: String,
     pub version: String,
+}
+
+/// A foreign module of the project (decision AF1): the libraries its
+/// symbols are looked up in, tried in order, and the functions whose C
+/// symbol differs from their Renyi name.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ForeignModule {
+    pub libraries: Vec<String>,
+    pub symbols: Vec<(String, String)>,
 }
 
 impl SourceFile {
@@ -66,12 +78,19 @@ impl SourceFile {
             text,
             line_starts,
             package: None,
+            foreign: None,
         }
     }
 
     /// The same file, tagged with the package it belongs to.
     pub fn in_package(mut self, package: Package) -> SourceFile {
         self.package = Some(package);
+        self
+    }
+
+    /// The same file, tagged as the foreign module it declares.
+    pub fn in_foreign(mut self, foreign: ForeignModule) -> SourceFile {
+        self.foreign = Some(foreign);
         self
     }
 

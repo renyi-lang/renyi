@@ -54,20 +54,6 @@ public function takes_scope(path: List of Text) returns Boolean
   return ["filesystem", "network", "environment", "process"].contains(head)
 end
 
-public function unavailable(path: List of Text) returns Boolean
-  purpose: Whether the capability waits for the FFI of milestone M4 (decisions V6, AE1): `foreign`.
-
-  let head be path.first() otherwise ""
-  return head is "foreign"
-end
-
-public function unavailable_message(path: List of Text) returns Text
-  purpose: The message of `capability-unavailable`.
-
-  let joined be path.join(".")
-  return "`{joined}` is not available until the foreign function interface (milestone M4)"
-end
-
 public function names_of(names: List of Name) returns List of Text
   purpose: The spellings of a dotted path.
 

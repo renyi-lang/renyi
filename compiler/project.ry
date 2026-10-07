@@ -9,7 +9,7 @@ import ast exposing Module, Span
 import lexer
 import parser
 import report exposing Diagnostic
-import declare exposing World, PackageTag
+import declare exposing World, PackageTag, ForeignModule, SymbolRename
 import bodies exposing Reference
 import effects
 
@@ -27,6 +27,7 @@ public type Source
   has starts: List of Integer
   has front: Front
   has package: maybe PackageTag
+  has foreign: maybe ForeignModule
 end
 
 public type CheckedModule
@@ -62,6 +63,13 @@ type Manifest
   has described: maybe Text
   has dependencies: List of Text
   has registry: maybe Text
+  has foreign: List of ForeignEntry
+end
+
+type ForeignEntry
+  purpose: One entry of the manifest's `foreign` section (decision AF1): a module and its binding.
+  has name: Text
+  has binding: ForeignModule
 end
 
 type Locked
@@ -164,7 +172,8 @@ let library_modules: List of Text be [
   "csv",
   "sqlite",
   "regex",
-  "process"
+  "process",
+  "foreign"
 ]
 
 let manifest_file: Text be "renyi.json"
@@ -181,7 +190,8 @@ let manifest_fields: List of Text be [
   "purpose",
   "dependencies",
   "registry",
-  "budgets"
+  "budgets",
+  "foreign"
 ]
 
 let budget_names: List of Text be [
@@ -222,25 +232,34 @@ public function read_file(path: Text) returns Text needs console, environment, f
   end
 end
 
-public function source_of(name: Text, text: Text) returns Source
-  purpose: A file as the commands hold it: its characters, its line starts and its tree.
+public function source_of(name: Text, text: Text) returns Source needs filesystem.read
+  purpose: A file as the commands hold it, tagged as a foreign module when its manifest names it.
 
-  return file_source(name: name, text: text, package: nothing)
+  let root be root_of(name)
+  let binding be foreign_of_file(root: root, file_name: name)
+  return file_source(name: name, text: text, package: nothing, binding: binding)
 end
 
-function file_source(name: Text, text: Text, package: maybe PackageTag) returns Source
-  purpose: A file as the commands hold it, tagged with its package when it belongs to one.
+function file_source(
+  name: Text,
+  text: Text,
+  package: maybe PackageTag,
+  binding: maybe ForeignModule
+)
+  returns Source
+  purpose: A file as the commands hold it, tagged with its package or as a foreign module (AF1).
 
   let chars be text.characters()
   let starts be report.line_starts(chars)
-  let front be front_end(text: text, chars: chars, declarations: false)
+  let front be front_end(text: text, chars: chars, declarations: binding is not nothing)
   return Source(
     name: name,
     text: text,
     chars: chars,
     starts: starts,
     front: front,
-    package: package
+    package: package,
+    foreign: binding
   )
 end
 
@@ -309,7 +328,11 @@ public function check_project(files: List of Source, library: List of Module) re
           when some(diagnostic) then change diagnostics to [diagnostic]
           when nothing then change diagnostics to diagnostics
         end
-        let built be declare.add_module(world: world, tree: tree, is_library: false)
+        let built be declare.add_module(
+          world: world,
+          tree: tree,
+          is_library: file.foreign is not nothing
+        )
         change world to declare.set_source_lines(
           world: built.world,
           id: built.value,
@@ -317,6 +340,7 @@ public function check_project(files: List of Source, library: List of Module) re
           starts: file.starts
         )
         change world to tagged(world: world, id: built.value, package: file.package)
+        change world to foreign_tagged(world: world, id: built.value, binding: file.foreign)
         change modules to modules.append(
           CheckedModule(id: built.value, path: file.name, diagnostics: diagnostics, references: [])
         )
@@ -332,6 +356,13 @@ function tagged(world: World, id: Integer, package: maybe PackageTag) returns Wo
 
   let found be package otherwise return world
   return declare.set_package(world: world, id: id, package: found)
+end
+
+function foreign_tagged(world: World, id: Integer, binding: maybe ForeignModule) returns World
+  purpose: The module tagged as a foreign module (decision AF1), when the manifest names it.
+
+  let found be binding otherwise return world
+  return declare.set_foreign(world: world, id: id, foreign: found)
 end
 
 public function check_project_with_problems(
@@ -474,7 +505,12 @@ public function resolve(program: Source) returns Resolved needs filesystem.read
     let step be placed.step otherwise continue
     if seen.contains(step.qualified) then continue end
     change seen to seen.append(step.qualified)
-    let found be read_source(base: step.base, package: step.package) otherwise continue
+    let binding be step_binding(root: root, step: step)
+    let found be read_source(
+      base: step.base,
+      package: step.package,
+      binding: binding
+    ) otherwise continue
     let imports be pending_imports(front: found.front, origin: step.origin, importer: found.name)
     change queue to queue.append_all(imports)
     change files to files.append(found)
@@ -571,7 +607,7 @@ function package_step(located: Located, pending: Pending, name: Text) returns St
   )
 end
 
-function read_source(base: Text, package: maybe PackageTag)
+function read_source(base: Text, package: maybe PackageTag, binding: maybe ForeignModule)
   returns maybe Source
   needs filesystem.read
   purpose: An imported file with the `.ry` or the `.renyi` extension (decision G3), parsed.
@@ -579,7 +615,46 @@ function read_source(base: Text, package: maybe PackageTag)
   for each extension in ["ry", "renyi"]
     let path be "{base}.{extension}"
     let text be filesystem.read_text(Path(path)) otherwise continue
-    return file_source(name: path, text: text, package: package)
+    return file_source(name: path, text: text, package: package, binding: binding)
+  end
+  return nothing
+end
+
+function step_binding(root: Root, step: Step) returns maybe ForeignModule
+  purpose: The foreign binding of an own file of the program (decision AF1); a dependency has none.
+
+  if step.package is not nothing then return nothing end
+  return foreign_of_module(root: root, name: step.qualified)
+end
+
+function foreign_of_module(root: Root, name: Text) returns maybe ForeignModule
+  purpose: The binding of a foreign module of the project (decision AF1), by its qualified name.
+
+  let manifest be root.manifest otherwise return nothing
+  let entry be foreign_named(modules: manifest.foreign, name: name) otherwise return nothing
+  return entry.binding
+end
+
+function foreign_of_file(root: Root, file_name: Text) returns maybe ForeignModule
+  purpose: The binding of a file that declares a foreign module: its path from the root is its name.
+
+  let mutable relative be file_name
+  if not root.directory.is_empty() then
+    if not file_name.starts_with(root.directory) then return nothing end
+    change relative to file_name.drop(root.directory.length())
+  end
+  let components be path_components(relative)
+  let last be components.last() otherwise return nothing
+  if not (last.ends_with(".ry") or last.ends_with(".renyi")) then return nothing end
+  let segments be components.without_last().append(without_extension(last))
+  return foreign_of_module(root: root, name: segments.join("."))
+end
+
+function foreign_named(modules: List of ForeignEntry, name: Text) returns maybe ForeignEntry
+  purpose: The entry of the `foreign` section for a module name, if there is one.
+
+  for each entry in modules
+    if entry.name is name then return entry end
   end
   return nothing
 end
@@ -995,13 +1070,113 @@ function read_manifest(text: Text) returns Manifest or fails with Refused
   let described be optional_text(fields: fields, name: "purpose", what: what) otherwise fail
   let dependencies be dependency_names(fields: fields, what: what) otherwise fail
   let registry be optional_text(fields: fields, name: "registry", what: what) otherwise fail
+  let bindings be foreign_modules(fields: fields, what: what) otherwise fail
   return Manifest(
     name: name,
     version: version,
     described: described,
     dependencies: dependencies,
-    registry: registry
+    registry: registry,
+    foreign: bindings
   )
+end
+
+function foreign_modules(fields: Map of Text to JsonValue, what: Text)
+  returns List of ForeignEntry
+  or fails with Refused
+  purpose: The `foreign` section (decision AF1): each module's libraries and its renamed symbols.
+
+  let entries be
+    match fields.get("foreign")
+      when some(JsonObject(fields: inner)) then inner
+      when some(JsonNull) then return []
+      when nothing then return []
+      otherwise fail with Refused(detail: "`foreign` of {what} is not an object")
+    end
+  let mutable modules: List of ForeignEntry be []
+  for each name, value in entries
+    if not is_module_name(name) then
+      fail with Refused(detail: "`{name}` in the foreign modules of {what} is not a module name")
+    end
+    if foreign_named(modules: modules, name: name) is not nothing then
+      fail with Refused(detail: "`{name}` is given twice in the foreign modules of {what}")
+    end
+    let entry_what be "the foreign module `{name}` of {what}"
+    let binding be foreign_entry(value: value, what: entry_what) otherwise fail
+    change modules to modules.append(ForeignEntry(name: name, binding: binding))
+  end
+  return modules
+end
+
+function foreign_entry(value: JsonValue, what: Text) returns ForeignModule or fails with Refused
+  purpose: One foreign module of the manifest: its `library` list, in order, and its `symbols`.
+
+  let entry be
+    match value
+      when JsonObject(fields: found) then found
+      otherwise fail with Refused(detail: "{what} is not an object")
+    end
+  keys_known(fields: entry, allowed: ["library", "symbols"], what: what) otherwise fail
+  let library_json be
+    match entry.get("library")
+      when some(found) then found
+      when nothing then fail with Refused(detail: "{what} has no `library`")
+    end
+  let libraries be text_list(value: library_json, what: "`library` of {what}") otherwise fail
+  if libraries.is_empty() then fail with Refused(detail: "`library` of {what} is empty") end
+  let symbols be symbol_renames(entry: entry, what: what) otherwise fail
+  return ForeignModule(libraries: libraries, symbols: symbols)
+end
+
+function text_list(value: JsonValue, what: Text) returns List of Text or fails with Refused
+  purpose: A JSON list of strings, refused in the Rust reader's words.
+
+  let items be
+    match value
+      when JsonArray(items: found) then found
+      otherwise fail with Refused(detail: "{what} is not a list")
+    end
+  let mutable texts: List of Text be []
+  for each item in items
+    match item
+      when JsonText(value: text) then change texts to texts.append(text)
+      otherwise fail with Refused(detail: "{what} holds something that is not a string")
+    end
+  end
+  return texts
+end
+
+function symbol_renames(entry: Map of Text to JsonValue, what: Text)
+  returns List of SymbolRename
+  or fails with Refused
+  purpose: The `symbols` object of a foreign module: Renyi name to C symbol, in the order given.
+
+  let inner be
+    match entry.get("symbols")
+      when some(JsonObject(fields: found)) then found
+      when some(JsonNull) then return []
+      when nothing then return []
+      otherwise fail with Refused(detail: "`symbols` of {what} is not an object")
+    end
+  let mutable renames: List of SymbolRename be []
+  for each name, value in inner
+    let symbol be
+      match value
+        when JsonText(value: spelled) then spelled
+        otherwise fail with Refused(detail: "`{name}` in the symbols of {what} is not a string")
+      end
+    change renames to renames.append(SymbolRename(name: name, symbol: symbol))
+  end
+  return renames
+end
+
+function is_module_name(name: Text) returns Boolean
+  purpose: A module name: package-name segments separated by dots.
+
+  for each segment in name.split(".")
+    if not is_package_name(segment) then return false end
+  end
+  return true
 end
 
 function read_lock(text: Text) returns List of Locked or fails with Refused

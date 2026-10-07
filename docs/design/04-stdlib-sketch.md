@@ -22,7 +22,7 @@ Rules that generate the library:
    Core modules: `std.console`, `std.environment`, `std.time`, `std.random`.
    Extension packages, released in lockstep with the compiler (decision G2):
    `std.filesystem`, `std.json`, `std.http`, `std.server`, `std.csv`,
-   `std.sqlite`, `std.regex`, `std.process`.
+   `std.sqlite`, `std.regex`, `std.process`, `std.foreign`.
 4. **One error type per module**, a sum type whose variants carry the context a
    caller needs. "Absent" is `maybe`; "went wrong" is a failure.
 5. **Effects are declared exactly.** Constructors and conversions are pure;
@@ -757,7 +757,34 @@ scoped-capability mismatch (decision J11): the scope `process("git")` names
 the program as the call spells it. A program a signal ended has the status
 128 plus the signal, as a shell reports it.
 
-## 14. Not in v1
+## 14. std.foreign
+
+```
+module std.foreign
+  purpose: The integer types of a fixed width that cross the boundary to a C library (decision AF1).
+
+public type Int8 is Integer where value is at least -128 and value is at most 127
+public type UInt8 is Integer where value is at least 0 and value is at most 255
+public type Int16 is Integer where value is at least -32768 and value is at most 32767
+public type UInt16 is Integer where value is at least 0 and value is at most 65535
+public type Int32 is Integer where value is at least -2147483648 and value is at most 2147483647
+public type UInt32 is Integer where value is at least 0 and value is at most 4294967295
+public type Int64 is Integer where value is at least -9223372036854775808 and value is at most 9223372036854775807
+public type UInt64 is Integer where value is at least 0 and value is at most 18446744073709551615
+public type Size is Integer where value is at least 0 and value is at most 18446744073709551615
+```
+
+The module declares no function: it holds the types a foreign module
+declares its C functions with (decision AF1; reference section 11). A
+foreign module is a declaration file of the project that the manifest's
+`foreign` section binds to shared libraries; each of its functions needs
+`foreign` and nothing else, its parameters are these types, `Float` (a C
+`double`), `Boolean`, `Text` (a NUL-terminated `char *`) or `Bytes` (a
+pointer and a length), and its result one of those but `Bytes`, `maybe
+Text` for a `char *` that may be null, or nothing. `renyi bind` writes
+such a module from a C header.
+
+## 15. Not in v1
 
 Candidates for later extension packages, in no order: `std.socket` (raw
 sockets), `std.crypto`
@@ -766,7 +793,7 @@ with persistent settings (default headers, per-client timeouts, retries), and
 streaming variants of the file and HTTP functions for data that does not fit
 in memory.
 
-## 15. Open questions
+## 16. Open questions
 
 R3-1 to R3-3 were decided (decisions K9 to K11). New questions are listed here
 as they arise.

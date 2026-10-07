@@ -1,0 +1,10 @@
+module libc
+  purpose: Two functions of the C library, declared for the boundary.
+
+import std.foreign exposing Int32, Size
+
+public function strlen(text: Text) returns Size needs foreign
+  purpose: `size_t strlen(const char *s)`.
+
+public function abs(value: Int32) returns Int32 needs foreign
+  purpose: `int abs(int value)`.

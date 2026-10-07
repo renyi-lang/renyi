@@ -1611,6 +1611,7 @@ public function check_function(checker: Checker, id: Integer, func: Function) re
     with type_params: params
   change updated to push_scope(updated)
   change updated to bind_params(checker: updated, info: info, func: func)
+  if func.body is nothing then change updated to mark_all_used(updated) end
   if func.docs.expose_as_tool then
     change updated to check_tool_signature(checker: updated, id: id, func: func)
   end
@@ -1770,20 +1771,6 @@ public function check_test(checker: Checker, index: Integer, block: Test) return
 
   let grants be for each capability in block.capabilities collect effects.from_ast(capability)
   let mutable updated be checker with owner: ItemBody(item: index)
-  let mutable position be 0
-  for each grant in grants
-    let syntax be block.capabilities.at(position) otherwise break
-    if effects.unavailable(grant.path) then
-      change updated to push_error(
-        checker: updated,
-        code: "capability-unavailable",
-        message: effects.unavailable_message(grant.path),
-        span: syntax.span,
-        fix: "remove it from `needs`"
-      )
-    end
-    change position to position + 1
-  end
   let quoted_name be debug_quoted(block.name)
   let context be fresh_context(
     name: "test {quoted_name}",

@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 
 use renyi_syntax::ast::{self, Item, TypeKind};
-use renyi_syntax::{Diagnostic, Package, Span};
+use renyi_syntax::{Diagnostic, ForeignModule, Package, Span};
 
 use crate::effects::Capability;
 use crate::suggest::{closest, foreign_type, quoted};
@@ -20,6 +20,8 @@ pub struct ModuleInfo {
     pub is_library: bool,
     /// The dependency the module belongs to (decision AC1).
     pub package: Option<Package>,
+    /// The foreign module the file declares (decision AF1).
+    pub foreign: Option<ForeignModule>,
     pub ast: ast::Module,
     pub types: HashMap<String, TypeId>,
     pub abilities: HashMap<String, AbilityId>,
@@ -245,6 +247,7 @@ impl World {
             name: name.clone(),
             is_library,
             package: None,
+            foreign: None,
             ast: module,
             types: HashMap::new(),
             abilities: HashMap::new(),
@@ -331,6 +334,10 @@ impl World {
             self.modules[id].name = format!("{}.{}", package.name, self.modules[id].name);
         }
         self.modules[id].package = Some(package);
+    }
+
+    pub fn set_foreign(&mut self, id: ModuleId, foreign: ForeignModule) {
+        self.modules[id].foreign = Some(foreign);
     }
 
     /// The module an import names, from a module: inside a dependency an
@@ -1609,6 +1616,112 @@ impl World {
             })
     }
 
+    /// Decision AF1: a function of a foreign module is a C function. It
+    /// needs `foreign` and nothing else, declares no failures and no type
+    /// parameters, and its parameters and result are types of the boundary,
+    /// at most six words of them.
+    fn check_foreign_signature(
+        &mut self,
+        module: ModuleId,
+        function: &ast::Function,
+        params: &[(String, Ty)],
+        returns: Option<&Ty>,
+        fails: &[Ty],
+        needs: &[Capability],
+    ) {
+        let name = function.name.text.clone();
+        let only_foreign = needs.len() == 1
+            && needs[0].path == ["foreign"]
+            && needs[0].scope.is_none()
+            && !needs[0].has_grant_clauses();
+        if !only_foreign {
+            self.error_with_fix(
+                module,
+                "foreign-signature",
+                format!(
+                    "`{name}` is declared in a foreign module; it needs `foreign` and nothing else"
+                ),
+                function.name.span,
+                "write `needs foreign`".into(),
+            );
+        }
+        if !fails.is_empty() {
+            self.error_with_fix(
+                module,
+                "foreign-signature",
+                format!(
+                    "`{name}` is declared in a foreign module; a C function declares no failures"
+                ),
+                function.name.span,
+                "drop `or fails with`".into(),
+            );
+        }
+        if function.type_params.is_some() {
+            self.error_with_fix(
+                module,
+                "foreign-signature",
+                format!(
+                    "`{name}` is declared in a foreign module; a C function takes no type parameters"
+                ),
+                function.name.span,
+                "drop `for any`".into(),
+            );
+        }
+        let mut words = 0;
+        for (index, (param_name, ty)) in params.iter().enumerate() {
+            match self.c_type_of(ty) {
+                Some(c_type) => words += c_type.words(),
+                None => {
+                    let span = function
+                        .params
+                        .get(index)
+                        .map(|param| param.name.span)
+                        .unwrap_or(function.name.span);
+                    self.error_with_fix(
+                        module,
+                        "foreign-type",
+                        format!(
+                            "the parameter `{param_name}` of `{name}` has type `{}`; across the boundary a parameter is {}",
+                            self.show(ty),
+                            crate::foreign::PARAMETER_TYPES
+                        ),
+                        span,
+                        "declare it with a type of `std.foreign`".into(),
+                    );
+                }
+            }
+        }
+        if self.c_result_of(returns).is_none() {
+            let shown = returns.map(|ty| self.show(ty)).unwrap_or_default();
+            let span = function
+                .returns
+                .as_ref()
+                .map(|ty| ty.span())
+                .unwrap_or(function.name.span);
+            self.error_with_fix(
+                module,
+                "foreign-type",
+                format!(
+                    "`{name}` returns `{shown}`; across the boundary a result is {}",
+                    crate::foreign::RESULT_TYPES
+                ),
+                span,
+                "declare it with a type of `std.foreign`, or drop `returns`".into(),
+            );
+        }
+        if words > crate::foreign::MAX_WORDS {
+            self.error_with_fix(
+                module,
+                "foreign-arity",
+                format!(
+                    "`{name}` takes {words} words across the boundary; the limit is six (`Bytes` counts two)"
+                ),
+                function.name.span,
+                "pass fewer arguments".into(),
+            );
+        }
+    }
+
     fn declare_function(
         &mut self,
         module: ModuleId,
@@ -1658,27 +1771,13 @@ impl World {
             .returns
             .as_ref()
             .map(|r| self.resolve_type(module, &params, r));
-        let fails = function
+        let fails: Vec<Ty> = function
             .fails
             .iter()
             .map(|f| self.resolve_type(module, &params, f))
             .collect();
         let needs: Vec<Capability> = function.needs.iter().map(Capability::from_ast).collect();
         for (capability, syntax) in needs.iter().zip(&function.needs) {
-            // decision V6: `process` and `foreign` wait for the package manager
-            let unavailable = std::iter::once(&capability.path)
-                .chain(capability.only_to.iter().map(|(path, _)| path))
-                .find(|path| crate::effects::unavailable(path));
-            if let Some(path) = unavailable {
-                self.error_with_fix(
-                    module,
-                    "capability-unavailable",
-                    crate::effects::unavailable_message(path),
-                    syntax.span,
-                    "remove it from `needs`".into(),
-                );
-                continue;
-            }
             if capability.has_grant_clauses() && function.name.text != "main" {
                 self.error_with_fix(
                     module,
@@ -1772,6 +1871,16 @@ impl World {
                     "drop the scope argument".into(),
                 );
             }
+        }
+        if self.modules[module].foreign.is_some() {
+            self.check_foreign_signature(
+                module,
+                function,
+                &param_types,
+                returns.as_ref(),
+                &fails,
+                &needs,
+            );
         }
         if function.public
             && function.docs.purpose.is_none()

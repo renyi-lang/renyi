@@ -95,7 +95,9 @@ checker (M2), the project map (`renyi index`), the VM (M3) and packages
   recording (`--strict`, `--refresh`); `renyi compile` writes a program
   as a bytecode file (`.ryc`, the derived JSON of the types of
   `compiler/bytecode.ry`), which `run`, `record`, `test` and
-  `reproduce` load in place of the source; `renyi add`, `update
+  `reproduce` load in place of the source; `renyi bind <header.h>
+  --module <name> --library <names>` writes a foreign module from a C
+  header (decision AF1); `renyi add`, `update
   [--accept-effects]`, `audit`, `fetch` and `publish` manage a project's
   dependencies (decision AC1: `renyi.json` names them and a registry,
   a directory or a URL; `renyi.lock.json` pins each version's hash;
@@ -110,7 +112,8 @@ checker (M2), the project map (`renyi index`), the VM (M3) and packages
   prelude, console, environment, time, random, filesystem, JSON, CSV,
   regular expressions, the HTTP client (`ureq`), the HTTP server (over
   `std::net`), SQLite (`rusqlite`, compiled in) and other programs
-  (`std.process`, decision AE1); `run concurrently`
+  (`std.process`, decision AE1) and C libraries through foreign modules
+  (decision AF1; `renyi bind` writes one from a header); `run concurrently`
   runs its tasks one after the other (decision S2); the binary
   allocates through `mimalloc` (decision X6).
 

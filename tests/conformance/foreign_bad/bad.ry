@@ -1,0 +1,26 @@
+module bad
+  purpose: Declarations a foreign module may not hold: each one breaks a rule of the boundary.
+
+import std.foreign exposing Int8, Int32
+import std.filesystem exposing Path
+
+public function console_too(value: Int32) returns Int32 needs console, foreign
+  purpose: `int console_too(int value)`, needing more than `foreign`.
+
+public function failing(value: Int32) returns Int32 or fails with Text needs foreign
+  purpose: `int failing(int value)`, declaring a failure.
+
+public function generic(value: Item) returns Item needs foreign for any Item
+  purpose: `int generic(int value)`, taking a type parameter.
+
+public function listed(values: List of Int32) returns Int32 needs foreign
+  purpose: `int listed(int *values)`: a list does not cross the boundary.
+
+public function pathed(path: Path) needs foreign
+  purpose: `void pathed(const char *path)`: a Path does not cross the boundary.
+
+public function sized() returns Bytes needs foreign
+  purpose: `unsigned char *sized(void)`: no C function reports the length of its bytes.
+
+public function wide(aa: Int8, bb: Int8, cc: Int8, dd: Bytes, ee: Int8, ff: Int8) needs foreign
+  purpose: `void wide(...)`: seven words, one over the limit.

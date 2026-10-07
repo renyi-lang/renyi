@@ -145,6 +145,16 @@ public type FunctionMeta
   has capabilities: List of Grant
   has summary: maybe Text
   has code: maybe Integer
+  has foreign: maybe ForeignBinding
+  can ToJson
+end
+
+public type ForeignBinding
+  purpose: A foreign function's binding (decision AF1): its libraries, its symbol, its C signature.
+  has libraries: List of Text
+  has symbol: Text
+  has parameters: List of Text
+  has result: Text
   can ToJson
 end
 

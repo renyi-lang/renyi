@@ -1,0 +1,18 @@
+tests/conformance/foreign_bad/bad.ry:7:17: error [foreign-signature]: `console_too` is declared in a foreign module; it needs `foreign` and nothing else
+  fix: write `needs foreign`
+tests/conformance/foreign_bad/bad.ry:10:17: error [foreign-signature]: `failing` is declared in a foreign module; a C function declares no failures
+  fix: drop `or fails with`
+tests/conformance/foreign_bad/bad.ry:13:17: error [foreign-signature]: `generic` is declared in a foreign module; a C function takes no type parameters
+  fix: drop `for any`
+tests/conformance/foreign_bad/bad.ry:13:25: error [foreign-type]: the parameter `value` of `generic` has type `Item`; across the boundary a parameter is Int8, UInt8, Int16, UInt16, Int32, UInt32, Int64, UInt64 or Size of `std.foreign`, Float, Boolean, Text or Bytes
+  fix: declare it with a type of `std.foreign`
+tests/conformance/foreign_bad/bad.ry:13:46: error [foreign-type]: `generic` returns `Item`; across the boundary a result is a type of `std.foreign`, Float, Boolean, Text or `maybe Text`, or nothing
+  fix: declare it with a type of `std.foreign`, or drop `returns`
+tests/conformance/foreign_bad/bad.ry:16:24: error [foreign-type]: the parameter `values` of `listed` has type `List of Int32`; across the boundary a parameter is Int8, UInt8, Int16, UInt16, Int32, UInt32, Int64, UInt64 or Size of `std.foreign`, Float, Boolean, Text or Bytes
+  fix: declare it with a type of `std.foreign`
+tests/conformance/foreign_bad/bad.ry:19:24: error [foreign-type]: the parameter `path` of `pathed` has type `Path`; across the boundary a parameter is Int8, UInt8, Int16, UInt16, Int32, UInt32, Int64, UInt64 or Size of `std.foreign`, Float, Boolean, Text or Bytes
+  fix: declare it with a type of `std.foreign`
+tests/conformance/foreign_bad/bad.ry:22:33: error [foreign-type]: `sized` returns `Bytes`; across the boundary a result is a type of `std.foreign`, Float, Boolean, Text or `maybe Text`, or nothing
+  fix: declare it with a type of `std.foreign`, or drop `returns`
+tests/conformance/foreign_bad/bad.ry:25:17: error [foreign-arity]: `wide` takes 7 words across the boundary; the limit is six (`Bytes` counts two)
+  fix: pass fewer arguments

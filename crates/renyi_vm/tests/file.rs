@@ -269,8 +269,8 @@ fn a_file_that_does_not_fit_is_refused_naming_the_place() {
     let text = render(&compile("demo.ry", PROGRAM));
     let error = |text: &str| load(text).err().expect("refused");
     assert_eq!(
-        error("{\n  \"format\": 2\n}\n"),
-        "the file is format 2; this VM reads format 1"
+        error("{\n  \"format\": 3\n}\n"),
+        "the file is format 3; this VM reads format 2"
     );
     assert_eq!(
         error("{\"format\": \"1\"}"),
@@ -278,7 +278,7 @@ fn a_file_that_does_not_fit_is_refused_naming_the_place() {
     );
     assert_eq!(error("{}"), "the file: no `format`");
     assert_eq!(error("[]"), "the file: expected an object, found an array");
-    assert!(error("{\n  \"format\": 1,\n").starts_with("line "));
+    assert!(error("{\n  \"format\": 2,\n").starts_with("line "));
     let out_of_range = text.replacen("\"main\": ", "\"main\": 99999", 1);
     assert!(
         error(&out_of_range).starts_with("the file is not consistent: main 99999"),

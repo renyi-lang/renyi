@@ -230,14 +230,16 @@ optional type `maybe`, the core abilities of section 5, the built-in error
 types `ConstraintViolation`, `InvalidNumber`, `InvalidEncoding`, `TimedOut`
 and `Guarded`, and the methods of the base types. The modules `std.console`,
 `std.environment`, `std.time`, `std.random`, `std.filesystem`, `std.json`,
-`std.http`, `std.server`, `std.csv`, `std.sqlite`, `std.regex` and
-`std.process` are imported by name.
+`std.http`, `std.server`, `std.csv`, `std.sqlite`, `std.regex`,
+`std.process` and `std.foreign` are imported by name.
 
 A program's own imports resolve from its project root: the directory of
 the nearest `renyi.json` in the file's directory or above it (up to the
 working directory for a relative path), else the file's directory
 (decision J17). `renyi.json` (decision AC1) names the project's
-dependencies and their registry, a directory or a URL; `import <name>` and
+dependencies and their registry, a directory or a URL, and (decision AF1)
+its foreign modules, each with the shared libraries it is bound to;
+`import <name>` and
 `import <name>.<path>` reach a dependency's root module `<name>.ry` or its
 file `<path>.ry`, at the version the lockfile `renyi.lock.json` beside the
 manifest names, read from the registry directory or, for a URL registry,
@@ -1023,7 +1025,7 @@ environment          environment variables and command-line arguments
 time                 the clock
 random               random numbers
 process              start other programs (`std.process`)
-foreign              call code across the FFI boundary (milestone M4)
+foreign              call the C functions of a foreign module (decision AF1)
 ```
 
 A parent (`filesystem`, `network`) covers its children. A capability may
@@ -1064,11 +1066,20 @@ leave the program only through the listed sinks.
   the capability statically, its scope by the grant stack at run time,
   and the diagnostic names the package ("`announce` (package `greeting`
   1.0.0) needs `console`, which `main` does not declare").
-- `foreign` is not available until the foreign function interface of
-  milestone M4 (`capability-unavailable`, decision V6; `process` has
-  `std.process` since decision AE1); a sink after `only to` is a
-  capability of the tree (`unknown-capability`); a scope is a text literal
-  (`capability-scope`).
+- A **foreign module** (decision AF1) is a declaration file of the
+  project that the manifest's `foreign` section binds to shared
+  libraries (`"foreign": {"libc": {"library": ["ucrtbase", "libc.so.6",
+  "libSystem.B.dylib"], "symbols": {"renyi_name": "c_symbol"}}}`: the
+  libraries tried in order, `symbols` optional); the main file is one by
+  its path from the project root, an import by its qualified name. Each
+  of its functions needs `foreign` and nothing else, declares no failures
+  and no type parameters (`foreign-signature`); its parameters are the
+  width types of `std.foreign`, `Float`, `Boolean`, `Text` or `Bytes` and
+  its result one of those but `Bytes`, `maybe Text` or nothing
+  (`foreign-type`); it takes at most six words, `Bytes` counting two
+  (`foreign-arity`). `renyi bind` writes such a file from a C header.
+- A sink after `only to` is a capability of the tree
+  (`unknown-capability`); a scope is a text literal (`capability-scope`).
 - A budget or a guard stands in the `needs` of `main` or a test
   (`grant-clause`); a guard whose sinks are all outside the grant can let
   nothing leave (`guard-no-sink`, a warning).
@@ -1105,6 +1116,20 @@ primitive (a `console` print, a `filesystem.write`, an `http` request's
 URL, headers or body) that would send a tagged value toward a sink the
 guard does not list fails with the built-in `Guarded(origin, sink)` before
 anything leaves. The design is `design/06-runtime-guarantees.md`.
+
+A function of a foreign module (decision AF1) is a primitive bound at its
+first call: the first library of its list that loads is kept for the run
+and the symbol looked up; the arguments are marshalled by their C types
+(`Text` as a NUL-terminated copy, `Bytes` as a pointer and a length, an
+integer by its width) and the result read back by its (a narrower integer
+by its width, `maybe Text` nothing for a null pointer). A library or a
+symbol that is missing, a `Text` holding a NUL character and a null
+pointer where `Text` was declared are crashes at the call. The call is
+recorded like any primitive and a replay answers it without calling; a
+guarded value refuses to cross; `foreign` takes no scope and no budget;
+`renyi run` says "this program can call native code through `libc`" on
+its standard error when `main` grants `foreign`. What the C function does
+is outside every guarantee of the VM.
 
 ---
 
@@ -1394,7 +1419,6 @@ that `renyi check --strict` makes an error.
 | `body-length` | E | 3 |
 | `capability-missing` | E | 11 |
 | `capability-scope` | E | 11 |
-| `capability-unavailable` | E | 11 |
 | `check-outside-test` | E | 14 |
 | `constraint-violation` | E | 4, 7 |
 | `construct-opaque` | E | 4 |
@@ -1411,7 +1435,10 @@ that `renyi check --strict` makes an error.
 | `example-shape` | E | 13 |
 | `expected` | E | 1 |
 | `external-name` | E | 4 |
+| `foreign-arity` | E | 11 |
 | `foreign-keyword` | E | 1 |
+| `foreign-signature` | E | 11 |
+| `foreign-type` | E | 11 |
 | `grant-clause` | E | 11 |
 | `guard-no-sink` | W | 11 |
 | `hole-syntax` | E | 1 |
@@ -1525,6 +1552,7 @@ Python scripts under `tools/` are development aids.
 | `renyi audit` | every locked dependency's effects against each `main` that reaches it, and the capabilities of a `main` no dependency uses | 1 when a `main` does not cover a dependency it reaches |
 | `renyi fetch` | the locked packages from the registry, each file verified against its hash and the effect manifest against the sources; into `.renyi/packages/` for a URL registry | 1 when refused |
 | `renyi publish [--to <directory>]` | the project, checked clean, into a directory registry as a new version with its `package.json` (the files' hashes, the effect manifest); the version must be what the semantic diff against the highest published version demands (decision G1), and a published version is never overwritten | 1 when refused |
+| `renyi bind <header.h> --module <name> --library <name>[,<name>...] [--to <directory>]` | a C header's prototypes as a foreign module (decision AF1): the declaration file `<name>.ry` in canonical layout, a prototype the boundary cannot carry left as a comment with the reason, and the module's entry in the `renyi.json` of the directory (written when the manifest exists, printed otherwise) | 1 when refused |
 | `renyi mcp [path]` | serve the toolchain to an agent host | |
 | `renyi version` | the toolchain's version | |
 

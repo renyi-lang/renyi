@@ -5,6 +5,8 @@
 
 pub mod csv;
 pub mod filesystem;
+pub mod foreign;
+pub mod foreign_abi;
 pub mod http;
 pub mod json;
 pub mod prelude;

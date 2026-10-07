@@ -22,8 +22,8 @@ use renyi_syntax::Span;
 
 use crate::bytecode::{Code, CodeKind, GroupFold, Op};
 use crate::compile::{
-    CodeId, ConstantMeta, ExampleMeta, Expected, FunctionMeta, Program, SourceLines, Specials,
-    TestMeta,
+    CodeId, ConstantMeta, ExampleMeta, Expected, Foreign, FunctionMeta, Program, SourceLines,
+    Specials, TestMeta,
 };
 use crate::decimal::Decimal;
 use crate::integer::Int;
@@ -33,7 +33,7 @@ use crate::types::{FieldMeta, TypeMeta, TypeShape, Types, VariantMeta};
 use crate::value::Value;
 
 /// The version of the format, the first field of the file.
-pub const FORMAT: usize = 1;
+pub const FORMAT: usize = 2;
 
 /// The extension of a bytecode file.
 pub const EXTENSION: &str = "ryc";
@@ -286,6 +286,16 @@ fn function_json(meta: &FunctionMeta, code: Option<CodeId>) -> Out {
             optional(meta.purpose.as_ref(), |purpose| string(purpose)),
         ),
         ("code", optional(code.as_ref(), |code| number(*code))),
+        ("foreign", optional(meta.foreign.as_ref(), foreign_json)),
+    ])
+}
+
+fn foreign_json(foreign: &Foreign) -> Out {
+    record(vec![
+        ("libraries", strings(&foreign.libraries)),
+        ("symbol", string(&foreign.symbol)),
+        ("parameters", strings(&foreign.parameters)),
+        ("result", string(&foreign.result)),
     ])
 }
 
@@ -951,8 +961,19 @@ fn read_function(json: &In, at: &str) -> Read<(FunctionMeta, Option<CodeId>)> {
         purpose: optional_at(fields, "summary", at, |json, at| {
             text_of(json, at).map(str::to_string)
         })?,
+        foreign: optional_at(fields, "foreign", at, read_foreign)?,
     };
     Ok((meta, optional_at(fields, "code", at, usize_of)?))
+}
+
+fn read_foreign(json: &In, at: &str) -> Read<Foreign> {
+    let fields = object(json, at)?;
+    Ok(Foreign {
+        libraries: texts_at(fields, "libraries", at)?,
+        symbol: text_at(fields, "symbol", at)?,
+        parameters: texts_at(fields, "parameters", at)?,
+        result: text_at(fields, "result", at)?,
+    })
 }
 
 fn read_constant_meta(json: &In, at: &str) -> Read<ConstantMeta> {

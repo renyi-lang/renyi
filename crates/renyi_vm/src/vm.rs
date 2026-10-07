@@ -181,6 +181,11 @@ pub struct Vm<'p> {
     scratch: Vec<Value>,
     globals: Vec<Option<Value>>,
     natives: Vec<Option<NativeFn>>,
+    /// Per function, its foreign binding once made (decision AF1).
+    pub(crate) foreign: Vec<Option<natives::foreign::Bound>>,
+    /// The libraries loaded for foreign modules, by the list of names that
+    /// found them; a library is never unloaded while the VM lives.
+    pub(crate) libraries: Vec<(Vec<String>, libloading::Library)>,
     pub stdout: Box<dyn Write>,
     pub stderr: Box<dyn Write>,
     pub stdin: Box<dyn BufRead>,
@@ -249,6 +254,8 @@ impl<'p> Vm<'p> {
             scratch: Vec::with_capacity(8),
             globals: vec![None; program.constants.len()],
             natives,
+            foreign: vec![None; program.function_metas.len()],
+            libraries: Vec::new(),
             stdout: options.stdout,
             stderr: options.stderr,
             stdin: options.stdin,
@@ -447,10 +454,7 @@ impl<'p> Vm<'p> {
         let meta = &program.function_metas[function];
         let origins = plain_in_place(args);
         let Some(effect) = grant::effect_of(meta, args) else {
-            let Some(native) = native else {
-                return Err(self.unavailable(function));
-            };
-            return self.run_native(native, origins, args);
+            return self.run_primitive(function, native, origins, args);
         };
         if !effects::covered(self.effective_grant(), &effect, true) {
             self.expected = None;
@@ -487,12 +491,9 @@ impl<'p> Vm<'p> {
             self.expected = None;
             return self.over_budget(function, &effect, &budget, args);
         }
-        let Some(native) = native else {
-            return Err(self.unavailable(function));
-        };
         let shown_args = self.explain.then(|| args.to_vec());
         // a live primitive takes the context type itself (`sqlite.query`)
-        let result = self.run_native(native, origins, args);
+        let result = self.run_primitive(function, native, origins, args);
         self.expected = None;
         let duration_ms = natives::now_millis() - self.started - at_ms;
         let value = match &result {
@@ -528,6 +529,25 @@ impl<'p> Vm<'p> {
     /// receives the arguments' origins on its own arguments, and the result
     /// carries those origins together with the origins of what the
     /// callbacks returned.
+    /// A primitive: a native of this build, or a foreign function bound
+    /// through its library (decision AF1); a function with neither is not
+    /// available.
+    fn run_primitive(
+        &mut self,
+        function: FunctionId,
+        native: Option<NativeFn>,
+        origins: u64,
+        args: &mut [Value],
+    ) -> Result<Value, Interrupt> {
+        if let Some(native) = native {
+            return self.run_native(native, origins, args);
+        }
+        if self.program.function_metas[function].foreign.is_some() {
+            return natives::foreign::run(self, function, origins, args);
+        }
+        Err(self.unavailable(function))
+    }
+
     fn run_native(
         &mut self,
         native: NativeFn,

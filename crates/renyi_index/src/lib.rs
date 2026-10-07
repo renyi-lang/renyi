@@ -207,7 +207,7 @@ pub fn load_project(path: &Path) -> Result<Vec<SourceFile>, String> {
         paths.sort();
         let mut files: Vec<SourceFile> = paths
             .iter()
-            .map(|path| read(path))
+            .map(|path| read(path).map(renyi_check::tagged))
             .collect::<Result<_, _>>()?;
         let own = files.clone();
         for file in &own {
@@ -219,7 +219,7 @@ pub fn load_project(path: &Path) -> Result<Vec<SourceFile>, String> {
         }
         Ok(files)
     } else {
-        let file = read(path)?;
+        let file = renyi_check::tagged(read(path)?);
         let mut files = vec![file.clone()];
         files.extend(renyi_check::imported_files(&file));
         Ok(files)

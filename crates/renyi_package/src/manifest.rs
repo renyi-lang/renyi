@@ -6,6 +6,7 @@
 //! content hash is the hash of its `package.json` text.
 
 use renyi_json::{read_json, write_json, Json};
+use renyi_syntax::ForeignModule;
 
 use crate::version::Version;
 
@@ -34,6 +35,8 @@ pub struct Manifest {
     /// `http://` or `https://` base.
     pub registry: Option<String>,
     pub budgets: Option<Budgets>,
+    /// The foreign modules of the project (decision AF1), by module name.
+    pub foreign: Vec<(String, ForeignModule)>,
 }
 
 /// One entry of the lockfile.
@@ -223,6 +226,88 @@ fn dependencies_of(fields: &Fields, what: &str) -> Result<Vec<(String, Version)>
     Ok(dependencies)
 }
 
+/// The `foreign` section (decision AF1): module name to the libraries the
+/// module's symbols are looked up in, tried in order, and the functions
+/// whose C symbol differs from their Renyi name; sorted by module name.
+fn foreign_of(fields: &Fields, what: &str) -> Result<Vec<(String, ForeignModule)>, String> {
+    let Some(object) = optional_object(fields, "foreign", what)? else {
+        return Ok(Vec::new());
+    };
+    let mut modules: Vec<(String, ForeignModule)> = Vec::new();
+    for (name, json) in object {
+        if !name.split('.').all(is_package_name) {
+            return Err(format!(
+                "`{name}` in the foreign modules of {what} is not a module name"
+            ));
+        }
+        if modules.iter().any(|(other, _)| other == name) {
+            return Err(format!(
+                "`{name}` is given twice in the foreign modules of {what}"
+            ));
+        }
+        let entry_what = format!("the foreign module `{name}` of {what}");
+        let Json::Object(entry) = json else {
+            return Err(format!("{entry_what} is not an object"));
+        };
+        only(entry, &["library", "symbols"], &entry_what)?;
+        let libraries = match field(entry, "library") {
+            Some(json) => texts(json, &format!("`library` of {entry_what}"))?,
+            None => return Err(format!("{entry_what} has no `library`")),
+        };
+        if libraries.is_empty() {
+            return Err(format!("`library` of {entry_what} is empty"));
+        }
+        let mut symbols: Vec<(String, String)> = Vec::new();
+        if let Some(object) = optional_object(entry, "symbols", &entry_what)? {
+            for (renyi, json) in object {
+                let Json::Text(symbol) = json else {
+                    return Err(format!(
+                        "`{renyi}` in the symbols of {entry_what} is not a string"
+                    ));
+                };
+                symbols.push((renyi.clone(), symbol.clone()));
+            }
+            symbols.sort();
+        }
+        modules.push((name.clone(), ForeignModule { libraries, symbols }));
+    }
+    modules.sort_by(|a, b| a.0.cmp(&b.0));
+    Ok(modules)
+}
+
+fn foreign_json(modules: &[(String, ForeignModule)]) -> Json {
+    Json::Object(
+        modules
+            .iter()
+            .map(|(name, module)| {
+                let mut fields = vec![(
+                    "library".to_string(),
+                    Json::Array(
+                        module
+                            .libraries
+                            .iter()
+                            .map(|library| Json::Text(library.clone()))
+                            .collect(),
+                    ),
+                )];
+                if !module.symbols.is_empty() {
+                    fields.push((
+                        "symbols".to_string(),
+                        Json::Object(
+                            module
+                                .symbols
+                                .iter()
+                                .map(|(renyi, symbol)| (renyi.clone(), Json::Text(symbol.clone())))
+                                .collect(),
+                        ),
+                    ));
+                }
+                (name.clone(), Json::Object(fields))
+            })
+            .collect(),
+    )
+}
+
 impl Manifest {
     pub fn read(source: &str) -> Result<Manifest, String> {
         let what = "the manifest";
@@ -236,6 +321,7 @@ impl Manifest {
                 "dependencies",
                 "registry",
                 "budgets",
+                "foreign",
             ],
             what,
         )?;
@@ -270,6 +356,7 @@ impl Manifest {
             dependencies: dependencies_of(&fields, what)?,
             registry: optional_text(&fields, "registry", what)?,
             budgets,
+            foreign: foreign_of(&fields, what)?,
         })
     }
 
@@ -297,6 +384,9 @@ impl Manifest {
                 }
             }
             fields.push(("budgets", Json::Object(inner)));
+        }
+        if !self.foreign.is_empty() {
+            fields.push(("foreign", foreign_json(&self.foreign)));
         }
         render(fields)
     }

@@ -87,6 +87,54 @@ pub struct FunctionMeta {
     pub needs: Vec<Capability>,
     /// The `purpose:` clause, for narrated runs.
     pub purpose: Option<String>,
+    /// A foreign function's binding (decision AF1).
+    pub foreign: Option<Foreign>,
+}
+
+/// A foreign function's binding (decision AF1): the libraries its symbol
+/// is looked up in, tried in order, the symbol, and the C signature as
+/// `renyi_check::foreign` spells it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Foreign {
+    pub libraries: Vec<String>,
+    pub symbol: String,
+    pub parameters: Vec<String>,
+    pub result: String,
+}
+
+/// The binding of a function of a foreign module (decision AF1): the
+/// symbol the manifest renames or the function's own name, and the C
+/// signature the checker accepted.
+fn foreign_binding(
+    world: &World,
+    info: &renyi_check::world::FunctionInfo,
+    module: &renyi_check::world::ModuleInfo,
+) -> Option<Foreign> {
+    let binding = module.foreign.as_ref()?;
+    let symbol = binding
+        .symbols
+        .iter()
+        .find(|(renyi, _)| *renyi == info.name)
+        .map(|(_, symbol)| symbol.clone())
+        .unwrap_or_else(|| info.name.clone());
+    Some(Foreign {
+        libraries: binding.libraries.clone(),
+        symbol,
+        parameters: info
+            .params
+            .iter()
+            .map(|(_, ty)| {
+                world
+                    .c_type_of(ty)
+                    .map(|c_type| c_type.spelling().to_string())
+                    .unwrap_or_default()
+            })
+            .collect(),
+        result: world
+            .c_result_of(info.returns.as_ref())
+            .map(|result| result.spelling().to_string())
+            .unwrap_or_default(),
+    })
 }
 
 /// The compiled project.
@@ -340,6 +388,7 @@ pub fn compile_project(checked: &CheckedProject, files: &[SourceFile]) -> Progra
             fails: info.fails.clone(),
             needs: info.needs.clone(),
             purpose,
+            foreign: foreign_binding(world, info, module),
         });
     }
     // constants by name per module, so that bodies can refer to them

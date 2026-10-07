@@ -20,6 +20,6 @@ pub use manifest::{
 };
 pub use registry::{hash_of, is_absolute, join, Registry, STORE};
 pub use resolve::{directory_of, resolve_in};
-pub use resolve::{resolve, Problem, Project, Resolved};
+pub use resolve::{resolve, tagged, Problem, Project, Resolved};
 pub use select::{select, Requirement};
 pub use version::Version;

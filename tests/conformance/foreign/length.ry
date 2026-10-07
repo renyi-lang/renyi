@@ -1,0 +1,14 @@
+module length
+  purpose: Call the C library through the foreign function interface; `libc` is a foreign module.
+
+import std.console
+import libc
+
+function main() needs console, foreign
+  purpose: Print what C computes: the length of a text and the magnitude of an integer.
+
+  let length be libc.strlen("hello")
+  console.print("{length}")
+  let magnitude be libc.abs(-7)
+  console.print("{magnitude}")
+end

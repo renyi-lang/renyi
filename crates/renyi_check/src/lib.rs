@@ -6,6 +6,7 @@
 
 pub mod check;
 pub mod effects;
+pub mod foreign;
 pub mod refine;
 mod suggest;
 pub mod types;
@@ -14,7 +15,7 @@ pub mod world;
 use renyi_syntax::{parse, parse_declarations, Diagnostic, SourceFile, Span};
 
 pub use check::{NumberKind, Reference, Target};
-pub use renyi_package::{resolve, Problem, Project, Resolved};
+pub use renyi_package::{resolve, tagged, Problem, Project, Resolved};
 pub use types::{AbilityId, FunctionId, ModuleId, TypeId};
 pub use world::{BodyLocation, World};
 
@@ -47,6 +48,10 @@ pub const LIBRARY: &[(&str, &str)] = &[
     (
         "std.process",
         include_str!("../../../library/std/process.ry"),
+    ),
+    (
+        "std.foreign",
+        include_str!("../../../library/std/foreign.ry"),
     ),
 ];
 
@@ -92,7 +97,12 @@ pub fn check_project(files: &[SourceFile]) -> CheckedProject {
     let mut world = library_world();
     let mut modules = Vec::new();
     for (index, file) in files.iter().enumerate() {
-        let parsed = parse(&file.text);
+        // a foreign module declares (decision AF1): no bodies
+        let parsed = if file.foreign.is_some() {
+            parse_declarations(&file.text)
+        } else {
+            parse(&file.text)
+        };
         let mut diagnostics = parsed.diagnostics;
         let id = if diagnostics.iter().any(Diagnostic::is_error) {
             None
@@ -100,10 +110,13 @@ pub fn check_project(files: &[SourceFile]) -> CheckedProject {
             if let Some(diagnostic) = module_name_mismatch(&file.name, &parsed.module) {
                 diagnostics.push(diagnostic);
             }
-            let id = world.add_module(parsed.module, false);
+            let id = world.add_module(parsed.module, file.foreign.is_some());
             world.set_source_lines(id, &file.text);
             if let Some(package) = &file.package {
                 world.set_package(id, package.clone());
+            }
+            if let Some(foreign) = &file.foreign {
+                world.set_foreign(id, foreign.clone());
             }
             Some(id)
         };
