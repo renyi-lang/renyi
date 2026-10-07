@@ -1738,3 +1738,53 @@ and the lint, in one commit. `set` leaves the reserved words and
 `change` joins them (88 words still); `Set` and `Map.set` are unchanged.
 The readability rounds under `tests/readability/` keep the grammar they
 measured. (user)
+
+## AB. Constraints with type arguments (session 8)
+
+**AB1. A constraint takes the type arguments its ability declares, and
+the collections are `Iterable`.** Open item R3-2 of the sketch, deferred
+by Y4 until after the emitter, asked as a batch of four and answered
+with the recommended options. (i) `for any Bag, Item where Bag can
+Iterable of Item`: a constraint names an ability with as many type
+arguments as the ability declares (`type-arity` otherwise, with the fix
+`write `Bag can Iterable of Item``), and the arguments are any types in
+scope: the clause's own parameters, concrete types and composites. An
+ability's requirement follows the same rule with the ability's own
+parameters in scope (`ability Countable of Item where self can Iterable
+of Item`). Inside the body a parameter constrained to `Iterable of Item`
+is walked by `for each` and the queries with items of type `Item`, and
+a method of the ability called on it has the ability's parameters
+substituted (`bag.to_list()` is a `List of Item`). At a call site the
+argument's type must have the ability with matching arguments: those of
+its implementation, with the implementation's parameters read as the
+type's arguments (`Iterable of Item for Stack of Item` gives `Stack of
+Text` the argument `Text`), or those a constraint of its own gives it;
+matching binds what the constraint leaves open, so `Item` is inferred
+from `Deck`'s `Iterable of Text`, and a mismatch is `missing-ability`
+naming the arguments (``total` needs `Iterable of Integer`, which `Deck`
+does not have`). (ii) The prelude implements `Iterable` for `List of
+Item`, `Set of Item`, `Map of Key to Value` (its pairs), `Range`
+(`Integer`) and `Text` (its characters), so that a generic walker
+accepts a list and `to_list` exists on each; the loop's own rules for
+the collections are these implementations now, an implementation head
+takes full types as arguments (`ability Iterable of Pair of Key, Value
+for Map of Key to Value`), a declaration file holds an implementation
+with its methods' heads alone, and the VM dispatches an ability call on
+a base value by its declared type. The alternative, a constraint that
+only a declared implementation satisfies, would have refused a list to
+every generic walker. (iii) An ability named without the arguments its
+parameters call for, `Bag can Iterable`, is `type-arity`, the rule the
+implementation head already followed; an item type left unknown would
+have been an existential for little gain. (iv) One implementation of an
+ability per type, whatever the arguments: a second is
+`duplicate-implementation`, since dispatch is by the value's type alone
+and a loop needs one item type; two implementations were accepted
+silently before. In the same entry: an implementation's methods are as
+visible as their ability, which the reference said and the checker did
+not do (`private-name` on a public ability's method from another
+module). A surface change under decision V11: this entry, then the
+reference (sections 2, 3, 4, 5 and 8, appendix A), the grammar
+(`Implementation` takes types after `of`; `ImplDeclaration` for a
+declaration file), the cheat sheet, both front ends, the library and its
+sketch, the conformance suite (four cases) and the checker's tests, in
+one commit. (user)

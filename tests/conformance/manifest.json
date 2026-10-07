@@ -271,6 +271,34 @@
       "program": "tests/conformance/programs/refinement_field.ry",
       "diagnostics": ["refinement-field"],
       "exit_code": 1
+    },
+    {
+      "name": "a constraint with a type argument walks a type and the collections",
+      "command": "run",
+      "program": "tests/conformance/programs/constraint_arguments.ry",
+      "stdout": "tests/conformance/expected/constraint_arguments.out",
+      "exit_code": 0
+    },
+    {
+      "name": "a constraint names an ability with the arguments it declares",
+      "command": "check",
+      "program": "tests/conformance/programs/constraint_arity.ry",
+      "diagnostics": ["type-arity"],
+      "exit_code": 1
+    },
+    {
+      "name": "a type implements an ability once",
+      "command": "check",
+      "program": "tests/conformance/programs/duplicate_implementation.ry",
+      "diagnostics": ["duplicate-implementation"],
+      "exit_code": 1
+    },
+    {
+      "name": "a constraint's arguments must match the implementation's",
+      "command": "check",
+      "program": "tests/conformance/programs/constraint_mismatch.ry",
+      "diagnostics": ["missing-ability"],
+      "exit_code": 1
     }
   ]
 }

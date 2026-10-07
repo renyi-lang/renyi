@@ -123,6 +123,7 @@ pub fn lookup(name: &str, head: Option<&str>, receiver: Option<&str>) -> Option<
         ("Set", "is_subset_of") => set_is_subset_of,
         ("Set", "sorted") => set_sorted,
         ("Set", "to_list") => set_to_list,
+        ("List", "to_list") | ("Map", "to_list") | ("Text", "to_list") => iterable_to_list,
         ("Range", "contains") => range_contains,
         ("Range", "to_list") => range_to_list,
         ("Range", "length") => range_length,
@@ -844,6 +845,12 @@ fn set_sorted(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
 
 fn set_to_list(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     Ok(Value::list(set(arg(args, 0))?.iter().cloned().collect()))
+}
+
+/// `to_list` of the prelude's `Iterable` for a list (itself), a map (its
+/// pairs) and a text (its characters): what a loop walks (decision AB1).
+fn iterable_to_list(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::List(vm.iterate(take(args, 0))?))
 }
 
 // ------------------------------------------------------------------ ranges

@@ -1717,9 +1717,35 @@ impl<'p> Vm<'p> {
     ) -> Option<FunctionId> {
         let program = self.program;
         let receiver = self.stack.get(self.stack.len().checked_sub(count)?)?;
-        let ty = receiver.type_id()?;
+        // a base value dispatches by its declared type: a list is `Iterable`
+        // through the prelude's implementation (decision AB1)
+        let ty = receiver
+            .type_id()
+            .or_else(|| self.builtin_type_id(receiver))?;
         let method_name = program.abilities.get(ability)?.1.get(method)?;
         program.types.implementation(ability, ty, method_name)
+    }
+
+    /// The declared type of a base value (a number, a text, a collection);
+    /// `None` for a record or a variant, which carry their type, and for a
+    /// value without a prelude type.
+    fn builtin_type_id(&self, value: &Value) -> Option<TypeId> {
+        let b = &self.program.builtins;
+        Some(match value.plain() {
+            Value::Integer(_) => b.integer,
+            Value::Decimal(_) => b.decimal,
+            Value::Float(_) => b.float,
+            Value::Boolean(_) => b.boolean,
+            Value::Text(_) => b.text,
+            Value::Bytes(_) => b.bytes,
+            Value::List(_) => b.list,
+            Value::Map(_) => b.map,
+            Value::Set(_) => b.set,
+            Value::Range(_) => b.range,
+            Value::Pair(_) => b.pair,
+            Value::Duration(_) => b.duration,
+            _ => return None,
+        })
     }
 
     /// An ability call without an explicit implementation: the derived
@@ -2041,22 +2067,11 @@ impl<'p> Vm<'p> {
             }
             return false;
         }
-        let b = &self.program.builtins;
-        match value {
-            Value::Integer(_) => ty == b.integer,
-            Value::Decimal(_) => ty == b.decimal,
-            Value::Float(_) => ty == b.float,
-            Value::Boolean(_) => ty == b.boolean,
-            Value::Text(_) => ty == b.text,
-            Value::Bytes(_) => ty == b.bytes,
-            Value::List(_) => ty == b.list,
-            Value::Map(_) => ty == b.map,
-            Value::Set(_) => ty == b.set,
-            Value::Range(_) => ty == b.range,
-            Value::Pair(_) => ty == b.pair,
-            Value::Duration(_) => ty == b.duration,
-            Value::Instant(_) => self.program.types.meta(ty).name == "Instant",
-            _ => false,
+        match self.builtin_type_id(value) {
+            Some(id) => id == ty,
+            None => {
+                matches!(value, Value::Instant(_)) && self.program.types.meta(ty).name == "Instant"
+            }
         }
     }
 

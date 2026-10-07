@@ -59,6 +59,7 @@ Item                ::= 'public'? (Function | TypeDefinition | Ability | Constan
                       | Implementation
                       | Test
 DeclaredItem        ::= 'public'? (FunctionDeclaration | TypeDefinition | Ability | Constant)
+                      | ImplDeclaration
                       | Implementation
                       | Test
 
@@ -110,8 +111,10 @@ Ability             ::= 'ability' TypeName TypeParameters?
                         DocClause* MethodDeclaration* 'end' Newline
 Requirement         ::= 'self' 'can' Type
 MethodDeclaration   ::= FunctionHead Newline DocClause*
-Implementation      ::= 'ability' TypeName TypeParameters? 'for' Type ForAny? Newline
+Implementation      ::= 'ability' TypeName ('of' Type (',' Type)*)? 'for' Type ForAny? Newline
                         Function* 'end' Newline
+ImplDeclaration     ::= 'ability' TypeName ('of' Type (',' Type)*)? 'for' Type ForAny? Newline
+                        MethodDeclaration* 'end' Newline
 
 /* Sections 6 and 14: constants and tests */
 

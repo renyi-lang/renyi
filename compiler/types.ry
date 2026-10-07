@@ -88,7 +88,7 @@ public function substitute_all(tys: List of Ty, bindings: List of Substitution) 
   return for each ty in tys collect substitute(ty: ty, bindings: bindings)
 end
 
-function substitute_maybe(ty: maybe Ty, bindings: List of Substitution) returns maybe Ty
+public function substitute_maybe(ty: maybe Ty, bindings: List of Substitution) returns maybe Ty
   purpose: An optional type with the bound parameters replaced.
 
   match ty

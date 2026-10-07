@@ -131,9 +131,10 @@ public type AbilityInfo
   has owner: Integer
   has is_public: Boolean
   has params: List of Integer
-  has requirements: List of Integer
+  has requirements: List of AbilityRef
   has methods: List of AbilityMethod
   has span: Span
+  has resolved: Boolean
 end
 
 public type AbilityMethod
@@ -155,10 +156,16 @@ public type ImplInfo
   has span: Span
 end
 
+public type AbilityRef
+  purpose: An ability with its type arguments, as a constraint or a requirement names one (AB1).
+  has ability_id: Integer
+  has args: List of Ty
+end
+
 public type ParamInfo
-  purpose: A type parameter and the abilities it must have.
+  purpose: A type parameter and the abilities it must have, with their arguments.
   has name: Text
-  has constraints: List of Integer
+  has constraints: List of AbilityRef
 end
 
 public type Builtins
@@ -457,7 +464,8 @@ function add_ability(state: ModuleState, id: Integer, abil: Ability) returns Mod
     params: [],
     requirements: [],
     methods: [],
-    span: abil.span
+    span: abil.span,
+    resolved: false
   )
   let mutable updated be world with abilities: world.abilities.append(info)
   if state.info.abilities.contains_key(abil.name.text) then
@@ -546,12 +554,29 @@ function check_requirements(world: World) returns World
   for each implementation in world.impls
     let abil be ability_at(world: world, id: implementation.ability_id)
     for each required in abil.requirements
-      if not type_has(world: world, ty: implementation.target, ability_id: required) then
+      # the requirement's arguments, with the ability's parameters read as
+      # this implementation's arguments (decision AB1)
+      let bindings be pair_params(params: abil.params, args: implementation.ability_args)
+      let expected be types.substitute_all(tys: required.args, bindings: bindings)
+      let found be implemented_args(
+        world: world,
+        ty: implementation.target,
+        ability_id: required.ability_id
+      )
+      if found is not expected then
         let target be show(world: world, ty: implementation.target)
-        let required_name be ability_at(world: world, id: required).name
+        let required_name be show_ability(
+          world: world,
+          ability_id: required.ability_id,
+          args: expected
+        )
         let lacks be "`{target}` lacks `{required_name}`"
         let message be "{lacks}, which `{abil.name}` requires of its implementations"
-        let fix be "add `can {required_name}` to `{target}`, or implement `{required_name}` for it"
+        let derive be "add `can {required_name}` to `{target}`"
+        let fix be
+          if expected.is_empty() then "{derive}, or implement `{required_name}` for it"
+          otherwise "implement `{required_name}` for `{target}`"
+          end
         change updated to push_error(
           world: updated,
           owner: implementation.owner,
@@ -584,9 +609,103 @@ public function type_has(world: World, ty: Ty, ability_id: Integer) returns Bool
         when SubtypeKind(base) then return type_has(world: world, ty: base, ability_id: ability_id)
         otherwise return false
       end
-    when Param(id) then return param_at(world: world, id: id).constraints.contains(ability_id)
+    when Param(id) then return has_constraint(world: world, param: id, ability_id: ability_id)
     otherwise return false
   end
+end
+
+function has_constraint(world: World, param: Integer, ability_id: Integer) returns Boolean
+  purpose: Whether a type parameter's constraints name the ability.
+
+  for each constraint in param_at(world: world, id: param).constraints
+    if constraint.ability_id is ability_id then return true end
+  end
+  return false
+end
+
+public function implemented_args(world: World, ty: Ty, ability_id: Integer) returns maybe List of Ty
+  purpose: The type arguments a type has an ability with (decision AB1); nothing when it lacks it.
+
+  if ability_id is world.builtins.equal then
+    match ty
+      when FunctionTy then return nothing
+      otherwise return []
+    end
+  end
+  match ty
+    when App(id, args) then
+      let info be type_at(world: world, id: id)
+      if info.derives.contains(ability_id) then return [] end
+      match implementation_for(world: world, ability_id: ability_id, head: id)
+        when some(implementation) then
+          let bound be bind_target_params(target: implementation.target, args: args)
+          return types.substitute_all(tys: implementation.ability_args, bindings: bound)
+        when nothing then
+          match info.kind
+            when SubtypeKind(base) then
+              return implemented_args(world: world, ty: base, ability_id: ability_id)
+            otherwise return nothing
+          end
+      end
+    when Param(id) then return param_args(world: world, param: id, ability_id: ability_id)
+    otherwise return nothing
+  end
+end
+
+function param_args(world: World, param: Integer, ability_id: Integer) returns maybe List of Ty
+  purpose: A parameter's arguments for an ability: a constraint's, or what a constraint requires.
+
+  for each constraint in param_at(world: world, id: param).constraints
+    if constraint.ability_id is ability_id then return constraint.args end
+    let through be ability_at(world: world, id: constraint.ability_id)
+    for each requirement in through.requirements
+      if requirement.ability_id is ability_id then
+        let bindings be pair_params(params: through.params, args: constraint.args)
+        return types.substitute_all(tys: requirement.args, bindings: bindings)
+      end
+    end
+  end
+  return nothing
+end
+
+function implementation_for(world: World, ability_id: Integer, head: Integer) returns maybe ImplInfo
+  purpose: The implementation of the ability for the type, when one exists.
+
+  for each implementation in world.impls
+    let same_head be types.head_type(implementation.target) is head
+    if implementation.ability_id is ability_id and same_head then return implementation end
+  end
+  return nothing
+end
+
+public function bind_target_params(target: Ty, args: List of Ty) returns List of Substitution
+  purpose: The implementation's parameters bound to the type's actual arguments, by position.
+
+  match target
+    when App(args: declared) then
+      let mutable bound: List of Substitution be []
+      let mutable index be 0
+      for each declared_arg in declared
+        let actual be args.at(index) otherwise break
+        match declared_arg
+          when Param(id) then change bound to bound.append(Substitution(param: id, ty: actual))
+          otherwise change index to index
+        end
+        change index to index + 1
+      end
+      return bound
+    otherwise return []
+  end
+end
+
+public function show_ability(world: World, ability_id: Integer, args: List of Ty) returns Text
+  purpose: An ability with its type arguments, as a message shows it: `Iterable of Integer`.
+
+  let name be ability_at(world: world, id: ability_id).name
+  if args.is_empty() then return name end
+  let shown be for each arg in args collect show(world: world, ty: arg)
+  let joined be shown.join(", ")
+  return "{name} of {joined}"
 end
 
 public function implemented_for(world: World, ability_id: Integer, head: Integer) returns Boolean
@@ -1182,8 +1301,8 @@ function needs_clause(capabilities: List of Grant) returns Text
   return " needs {shown}"
 end
 
-public function constraints(world: World, param: Integer) returns List of Integer
-  purpose: The abilities a type parameter must have.
+public function constraints(world: World, param: Integer) returns List of AbilityRef
+  purpose: The abilities a type parameter must have, with their arguments.
 
   return param_at(world: world, id: param).constraints
 end
@@ -1425,10 +1544,15 @@ function add_constraint(
       let name be named(constraint.requirement) otherwise return world
       match lookup_ability(world: world, owner: owner, name: name.text)
         when some(ability_id) then
-          let info be param_at(world: world, id: param_id)
-          let listed be info with constraints: info.constraints.append(ability_id)
-          return world
-            with params: lists.replace_at(items: world.params, index: param_id, item: listed)
+          return add_resolved_constraint(
+            world: world,
+            owner: owner,
+            params: params,
+            param_id: param_id,
+            ability_id: ability_id,
+            requirement: constraint.requirement,
+            before: "{constraint.param.text} can "
+          )
         when nothing then
           let message be "unknown ability `{name.text}`"
           let fix be suggest_ability(world: world, owner: owner, name: name.text)
@@ -1442,6 +1566,86 @@ function add_constraint(
           )
       end
   end
+end
+
+function add_resolved_constraint(
+  world: World,
+  owner: Integer,
+  params: List of NamedParam,
+  param_id: Integer,
+  ability_id: Integer,
+  requirement: Type,
+  before: Text
+)
+  returns World
+  purpose: A constraint's arguments resolved and counted, then the constraint recorded (AB1).
+
+  let span be
+    match requirement
+      when NamedType(span: place) then place
+      otherwise return world
+    end
+  let built be ability_type_args(world: world, id: owner, params: params, ability_type: requirement)
+  let checked be check_ability_arity(
+    world: built.world,
+    owner: owner,
+    ability_id: ability_id,
+    found: built.value.length(),
+    span: span,
+    before: before,
+    after: ""
+  )
+  let expected be ability_at(world: checked.world, id: ability_id).params.length()
+  let args be
+    if checked.value then built.value otherwise padded(args: built.value, expected: expected) end
+  let info be param_at(world: checked.world, id: param_id)
+  let listed be info
+    with constraints: info.constraints.append(AbilityRef(ability_id: ability_id, args: args))
+  return checked.world
+    with params: lists.replace_at(items: checked.world.params, index: param_id, item: listed)
+end
+
+function check_ability_arity(
+  world: World,
+  owner: Integer,
+  ability_id: Integer,
+  found: Integer,
+  span: Span,
+  before: Text,
+  after: Text
+)
+  returns Built of Boolean
+  purpose: `type-arity` when an ability is named with the wrong number of type arguments.
+
+  let abil be ability_at(world: world, id: ability_id)
+  let expected be abil.params.length()
+  if found is expected then return Built(value: true, world: world) end
+  let names be for each param_id in abil.params collect param_name(world: world, id: param_id)
+  let joined be names.join(", ")
+  let fix be
+    if expected is 0 then "write `{before}{abil.name}{after}`"
+    otherwise "write `{before}{abil.name} of {joined}{after}`"
+    end
+  let plural be if expected is 1 then "" otherwise "s" end
+  let updated be push_error(
+    world: world,
+    owner: owner,
+    code: "type-arity",
+    message: "`{abil.name}` takes {expected} type argument{plural}, found {found}",
+    span: span,
+    fix: fix
+  )
+  return Built(value: false, world: updated)
+end
+
+function padded(args: List of Ty, expected: Integer) returns List of Ty
+  purpose: The arguments cut or filled with the error type to the ability's arity, after an error.
+
+  let mutable out be args.take(expected)
+  repeat until out.length() is at least expected
+    change out to out.append(ErrorTy)
+  end
+  return out
 end
 
 function resolve_fields(
@@ -1689,32 +1893,60 @@ function resolve_definition_derives(
 end
 
 function resolve_ability_items(world: World, id: Integer) returns World
-  purpose: Resolve every ability declaration of a module.
+  purpose: Resolve every ability declaration of a module: the parameters of all, then the rest.
 
   let info be module_at(world: world, id: id)
   let mutable updated be world
+  let mutable pending: List of PendingAbility be []
   for each item in info.tree.items
     match item
       when AbilityItem(value: abil) then
-        change updated to resolve_ability_item(world: updated, id: id, abil: abil)
+        let registered be register_ability_params(world: updated, id: id, abil: abil)
+        change updated to registered.world
+        change pending to pending.append_all(registered.value)
       otherwise continue
     end
+  end
+  for each waiting in pending
+    change updated to resolve_ability_item(world: updated, id: id, pending: waiting)
   end
   return updated
 end
 
-function resolve_ability_item(world: World, id: Integer, abil: Ability) returns World
-  purpose: One ability: its parameters, its requirements, its method heads, its purpose.
+type PendingAbility
+  purpose: An ability whose parameters are registered and whose requirements and methods wait.
+  has abil: Ability
+  has ability_id: Integer
+  has params: List of NamedParam
+end
+
+function register_ability_params(world: World, id: Integer, abil: Ability)
+  returns Built of List of PendingAbility
+  purpose: An ability's parameters first, so that a requirement can count a later ability's.
 
   let ability_id be module_at(world: world, id: id).abilities.get(
     abil.name.text
   ) otherwise crash with "a registered ability"
-  if not ability_at(world: world, id: ability_id).methods.is_empty() then return world end
+  let base be ability_at(world: world, id: ability_id)
+  if not base.methods.is_empty() or base.resolved then return Built(value: [], world: world) end
   let built be new_params(world: world, names: abil.type_params)
-  let params be built.value
+  let param_ids be for each param in built.value collect param.id
+  let info be base with params: param_ids, resolved: true
+  let updated be update_ability(world: built.world, id: ability_id, info: info)
+  let waiting be PendingAbility(abil: abil, ability_id: ability_id, params: built.value)
+  return Built(value: [waiting], world: updated)
+end
+
+function resolve_ability_item(world: World, id: Integer, pending: PendingAbility) returns World
+  purpose: One ability: its requirements, its method heads, its purpose.
+
+  let abil be pending.abil
+  let ability_id be pending.ability_id
+  let params be pending.params
   let requirements_built be ability_requirements(
-    world: built.world,
+    world: world,
     id: id,
+    params: params,
     requirements: abil.requirements
   )
   let mutable updated be requirements_built.world
@@ -1725,11 +1957,10 @@ function resolve_ability_item(world: World, id: Integer, abil: Ability) returns 
     functions: abil.functions
   )
   change updated to methods_built.world
-  let param_ids be for each param in params collect param.id
   let required be requirements_built.value
   let methods be methods_built.value
   let base be ability_at(world: updated, id: ability_id)
-  let info be base with params: param_ids, requirements: required, methods: methods
+  let info be base with requirements: required, methods: methods
   change updated to update_ability(world: updated, id: ability_id, info: info)
   if abil.is_public
     and abil.docs.summary is nothing
@@ -1746,16 +1977,30 @@ function resolve_ability_item(world: World, id: Integer, abil: Ability) returns 
   return updated
 end
 
-function ability_requirements(world: World, id: Integer, requirements: List of Type)
-  returns Built of List of Integer
-  purpose: `ability X where self can Y`: the abilities every implementing type must have.
+function ability_requirements(
+  world: World,
+  id: Integer,
+  params: List of NamedParam,
+  requirements: List of Type
+)
+  returns Built of List of AbilityRef
+  purpose: `ability X where self can Y`: what every implementing type must have, with arguments.
 
-  let mutable out: List of Integer be []
+  let mutable out: List of AbilityRef be []
   let mutable updated be world
   for each requirement in requirements
     let name be named(requirement) otherwise continue
     match lookup_ability(world: updated, owner: id, name: name.text)
-      when some(required) then change out to out.append(required)
+      when some(required) then
+        let built be resolved_requirement(
+          world: updated,
+          id: id,
+          params: params,
+          required: required,
+          requirement: requirement
+        )
+        change updated to built.world
+        change out to out.append(built.value)
       when nothing then
         let message be "unknown ability `{name.text}`"
         let fix be suggest_ability(world: updated, owner: id, name: name.text)
@@ -1770,6 +2015,37 @@ function ability_requirements(world: World, id: Integer, requirements: List of T
     end
   end
   return Built(value: out, world: updated)
+end
+
+function resolved_requirement(
+  world: World,
+  id: Integer,
+  params: List of NamedParam,
+  required: Integer,
+  requirement: Type
+)
+  returns Built of AbilityRef
+  purpose: One requirement's arguments, which may name the ability's own parameters, counted.
+
+  let span be
+    match requirement
+      when NamedType(span: place) then place
+      otherwise crash with "a named requirement"
+    end
+  let built be ability_type_args(world: world, id: id, params: params, ability_type: requirement)
+  let checked be check_ability_arity(
+    world: built.world,
+    owner: id,
+    ability_id: required,
+    found: built.value.length(),
+    span: span,
+    before: "self can ",
+    after: ""
+  )
+  let expected be ability_at(world: checked.world, id: required).params.length()
+  let args be
+    if checked.value then built.value otherwise padded(args: built.value, expected: expected) end
+  return Built(value: AbilityRef(ability_id: required, args: args), world: checked.world)
 end
 
 function ability_methods(
@@ -2038,28 +2314,23 @@ function implementation_head(
     params: params,
     ability_type: implementation.ability_type
   )
-  let mutable updated be args_built.world
-  let expected be ability_at(world: updated, id: ability_id).params.length()
-  if args_built.value.length() is not expected then
-    let names be
-      for each param_id in ability_at(world: updated, id: ability_id).params
-      collect param_name(world: updated, id: param_id)
-    let joined be names.join(", ")
-    let fix be
-      if expected is 0 then "write `ability {ability_name.text} for ...`"
-      otherwise "write `ability {ability_name.text} of {joined} for ...`"
-      end
-    let plural be if expected is 1 then "" otherwise "s" end
-    let found be args_built.value.length()
-    change updated to push_error(
-      world: updated,
-      owner: id,
-      code: "type-arity",
-      message: "`{ability_name.text}` takes {expected} type argument{plural}, found {found}",
-      span: ability_name.span,
-      fix: fix
-    )
-  end
+  let checked be check_ability_arity(
+    world: args_built.world,
+    owner: id,
+    ability_id: ability_id,
+    found: args_built.value.length(),
+    span: ability_name.span,
+    before: "ability ",
+    after: " for ..."
+  )
+  let updated be note_duplicate_implementation(
+    world: checked.world,
+    id: id,
+    implementation: implementation,
+    ability_id: ability_id,
+    ability_name: ability_name,
+    target: target_built.value
+  )
   return ImplementationHead(
     ability_id: ability_id,
     params: params,
@@ -2067,6 +2338,55 @@ function implementation_head(
     ability_args: args_built.value,
     world: updated
   )
+end
+
+function note_duplicate_implementation(
+  world: World,
+  id: Integer,
+  implementation: Implementation,
+  ability_id: Integer,
+  ability_name: TypeName,
+  target: Ty
+)
+  returns World
+  purpose: One implementation of an ability per type, whatever the arguments (decision AB1).
+
+  let head be types.head_type(target) otherwise return world
+  let twice be implemented_elsewhere(
+    world: world,
+    ability_id: ability_id,
+    head: head,
+    owner: id,
+    span: implementation.span
+  )
+  if not twice then return world end
+  let target_name be type_at(world: world, id: head).name
+  return push_error(
+    world: world,
+    owner: id,
+    code: "duplicate-implementation",
+    message: "`{target_name}` already implements `{ability_name.text}`",
+    span: ability_name.span,
+    fix: "keep one implementation of `{ability_name.text}` for `{target_name}`"
+  )
+end
+
+function implemented_elsewhere(
+  world: World,
+  ability_id: Integer,
+  head: Integer,
+  owner: Integer,
+  span: Span
+)
+  returns Boolean
+  purpose: Whether an implementation of the ability for the type exists at another place.
+
+  for each implementation in world.impls
+    let same_head be types.head_type(implementation.target) is head
+    let same_place be implementation.owner is owner and implementation.span is span
+    if implementation.ability_id is ability_id and same_head and not same_place then return true end
+  end
+  return false
 end
 
 function ability_type_args(
@@ -2102,10 +2422,12 @@ function adopt_method(
         lists.replace_at(items: info.params, index: 0, item: first_param with ty: head.target)
       otherwise info.params
     end
+  # the ability's visibility covers its methods (reference section 5)
+  let is_public be ability_at(world: world, id: head.ability_id).is_public
   let mutable updated be update_function(
     world: world,
     id: function_id,
-    info: info with params: params, is_method: true
+    info: info with params: params, is_method: true, is_public: is_public
   )
   change updated to index_under(
     world: updated,
@@ -2806,7 +3128,7 @@ function ability_method_named(methods: List of AbilityMethod, name: Text)
   return nothing
 end
 
-function pair_params(params: List of Integer, args: List of Ty) returns List of Substitution
+public function pair_params(params: List of Integer, args: List of Ty) returns List of Substitution
   purpose: The ability's own type parameters bound to the implementation's arguments, by position.
 
   let mutable out: List of Substitution be []

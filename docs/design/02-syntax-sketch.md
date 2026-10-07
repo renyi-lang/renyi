@@ -358,8 +358,9 @@ end
 
 An implementation's method never declares `needs`: an ability's methods
 have no effects (`method-signature` otherwise). A constraint with a type
-argument (`for any Bag where Bag can Iterable of Item`) is not in v1
-(open item R3-2).
+argument (`for any Bag where Bag can Iterable of Item`) is decision AB1:
+the arguments are any types, counted against the ability's parameters,
+and the collections implement `Iterable`.
 
 An ability may require another of its implementing types: `ability
 Printable where self can ToText`; an implementation for a type without the
@@ -897,6 +898,9 @@ open items start at R3-1 and are listed here when they arise.
 - R3-1: an `Iterable` ability, so that `for each` can walk a program's own
   types. Decided as V10: one method, `to_list`, in section 5.
 - R3-2: constraints with type arguments (`for any Bag where Bag can
-  Iterable of Item`), so that generic code can walk a parameter; v1 walks
-  concrete types only. Deferred until after the bytecode emitter by
-  decision Y4.
+  Iterable of Item`), so that generic code can walk a parameter. Deferred
+  until after the bytecode emitter by decision Y4; decided as AB1 in
+  session 8: the arguments are any types, counted against the ability's
+  parameters, the call site matches them against the implementation's
+  and infers what they leave open, and the prelude's collections
+  implement `Iterable`.

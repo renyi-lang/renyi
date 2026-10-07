@@ -135,10 +135,13 @@ pub struct AbilityInfo {
     pub public: bool,
     /// The ability's own type parameters, in scope in its method signatures.
     pub params: Vec<ParamId>,
-    /// `ability X where self can Y`: what every implementing type must have.
-    pub requirements: Vec<AbilityId>,
+    /// `ability X where self can Y`: what every implementing type must have,
+    /// with the ability's own parameters in scope for the arguments.
+    pub requirements: Vec<AbilityRef>,
     pub methods: Vec<AbilityMethod>,
     pub span: Span,
+    /// Whether `resolve_abilities` has given it its parameters.
+    pub resolved: bool,
 }
 
 pub struct AbilityMethod {
@@ -161,9 +164,18 @@ pub struct ImplInfo {
     pub span: Span,
 }
 
+/// An ability with its type arguments, as a constraint names one (`Bag can
+/// Iterable of Item`) or a requirement does (`self can Iterable of Item`),
+/// decision AB1. An ability without parameters has no arguments.
+#[derive(Clone, Debug, PartialEq)]
+pub struct AbilityRef {
+    pub ability: AbilityId,
+    pub args: Vec<Ty>,
+}
+
 pub struct ParamInfo {
     pub name: String,
-    pub constraints: Vec<AbilityId>,
+    pub constraints: Vec<AbilityRef>,
 }
 
 /// The ids of the prelude's types and abilities, looked up once.
@@ -276,6 +288,7 @@ impl World {
                         public: ability.public,
                         params: Vec::new(),
                         requirements: Vec::new(),
+                        resolved: false,
                         methods: Vec::new(),
                         span: ability.span,
                     });
@@ -349,19 +362,43 @@ impl World {
     fn check_requirements(&mut self) {
         let mut problems = Vec::new();
         for implementation in &self.impls {
-            for &required in &self.abilities[implementation.ability].requirements {
-                if !self.type_has(&implementation.target, required) {
+            let ability = &self.abilities[implementation.ability];
+            for required in &ability.requirements {
+                // the requirement's arguments, with the ability's parameters
+                // read as this implementation's arguments (decision AB1)
+                let expected: Vec<Ty> = required
+                    .args
+                    .iter()
+                    .map(|arg| {
+                        arg.substitute(&|p: ParamId| {
+                            ability
+                                .params
+                                .iter()
+                                .position(|&q| q == p)
+                                .and_then(|index| implementation.ability_args.get(index).cloned())
+                        })
+                    })
+                    .collect();
+                let has = self.implemented_args(&implementation.target, required.ability)
+                    == Some(expected.clone());
+                if !has {
                     problems.push((
                         implementation.module,
                         implementation.span,
                         self.show(&implementation.target),
-                        self.abilities[implementation.ability].name.clone(),
-                        self.abilities[required].name.clone(),
+                        ability.name.clone(),
+                        self.show_ability(required.ability, &expected),
+                        expected.is_empty(),
                     ));
                 }
             }
         }
-        for (module, span, target, ability, required) in problems {
+        for (module, span, target, ability, required, derivable) in problems {
+            let fix = if derivable {
+                format!("add `can {required}` to `{target}`, or implement `{required}` for it")
+            } else {
+                format!("implement `{required}` for `{target}`")
+            };
             self.error_with_fix(
                 module,
                 "missing-ability",
@@ -369,7 +406,7 @@ impl World {
                     "`{target}` lacks `{required}`, which `{ability}` requires of its implementations"
                 ),
                 span,
-                format!("add `can {required}` to `{target}`, or implement `{required}` for it"),
+                fix,
             );
         }
     }
@@ -391,9 +428,144 @@ impl World {
                         .any(|i| i.ability == ability && head_type(&i.target) == Some(*id))
                     || matches!(&info.kind, TypeKindInfo::Subtype { base, .. } if self.type_has(base, ability))
             }
-            Ty::Param(id) => self.params[*id].constraints.contains(&ability),
+            Ty::Param(id) => self.params[*id]
+                .constraints
+                .iter()
+                .any(|constraint| constraint.ability == ability),
             _ => false,
         }
+    }
+
+    /// The type arguments with which a type has an ability (decision AB1):
+    /// those of its implementation, with the implementation's parameters
+    /// read as the type's arguments (`Iterable of Item for Stack of Item`
+    /// gives `Stack of Text` the arguments `[Text]`); none for a derived
+    /// ability; a type parameter's from its constraints, or from what a
+    /// constraint's ability requires; a subtype's from its base. `None`
+    /// when the type lacks the ability.
+    pub fn implemented_args(&self, ty: &Ty, ability: AbilityId) -> Option<Vec<Ty>> {
+        if ability == self.builtins.equal {
+            return (!matches!(ty, Ty::Function(_))).then(Vec::new);
+        }
+        match ty {
+            Ty::App(id, args) => {
+                let info = &self.types[*id];
+                if info.derives.contains(&ability) {
+                    return Some(Vec::new());
+                }
+                let found = self
+                    .impls
+                    .iter()
+                    .find(|i| i.ability == ability && head_type(&i.target) == Some(*id));
+                if let Some(implementation) = found {
+                    let bound: Vec<(ParamId, Ty)> = match &implementation.target {
+                        Ty::App(_, declared) => declared
+                            .iter()
+                            .zip(args)
+                            .filter_map(|(declared, actual)| match declared {
+                                Ty::Param(param) => Some((*param, actual.clone())),
+                                _ => None,
+                            })
+                            .collect(),
+                        _ => Vec::new(),
+                    };
+                    let substituted = implementation
+                        .ability_args
+                        .iter()
+                        .map(|arg| {
+                            arg.substitute(&|p: ParamId| {
+                                bound.iter().find(|(q, _)| *q == p).map(|(_, t)| t.clone())
+                            })
+                        })
+                        .collect();
+                    return Some(substituted);
+                }
+                match &info.kind {
+                    TypeKindInfo::Subtype { base, .. } => self.implemented_args(base, ability),
+                    _ => None,
+                }
+            }
+            Ty::Param(id) => {
+                for constraint in &self.params[*id].constraints {
+                    if constraint.ability == ability {
+                        return Some(constraint.args.clone());
+                    }
+                    let through = &self.abilities[constraint.ability];
+                    if let Some(requirement) =
+                        through.requirements.iter().find(|r| r.ability == ability)
+                    {
+                        let substituted = requirement
+                            .args
+                            .iter()
+                            .map(|arg| {
+                                arg.substitute(&|p: ParamId| {
+                                    through
+                                        .params
+                                        .iter()
+                                        .position(|&q| q == p)
+                                        .and_then(|index| constraint.args.get(index).cloned())
+                                })
+                            })
+                            .collect();
+                        return Some(substituted);
+                    }
+                }
+                None
+            }
+            _ => None,
+        }
+    }
+
+    /// An ability with its type arguments, as a message shows it:
+    /// `Iterable of Integer`.
+    pub fn show_ability(&self, ability: AbilityId, args: &[Ty]) -> String {
+        let name = &self.abilities[ability].name;
+        if args.is_empty() {
+            return name.clone();
+        }
+        let shown: Vec<String> = args.iter().map(|arg| self.show(arg)).collect();
+        format!("{name} of {}", shown.join(", "))
+    }
+
+    /// `type-arity` when an ability is named with the wrong number of type
+    /// arguments; `before` and `after` surround the ability in the fix
+    /// (`ability ... for ...`, `Bag can ...`, `self can ...`). Whether the
+    /// count is right.
+    fn check_ability_arity(
+        &mut self,
+        module: ModuleId,
+        ability: AbilityId,
+        found: usize,
+        span: Span,
+        before: &str,
+        after: &str,
+    ) -> bool {
+        let expected = self.abilities[ability].params.len();
+        if found == expected {
+            return true;
+        }
+        let name = self.abilities[ability].name.clone();
+        let names: Vec<String> = self.abilities[ability]
+            .params
+            .iter()
+            .map(|&p| self.param_name(p))
+            .collect();
+        let fix = if expected == 0 {
+            format!("write `{before}{name}{after}`")
+        } else {
+            format!("write `{before}{name} of {}{after}`", names.join(", "))
+        };
+        self.error_with_fix(
+            module,
+            "type-arity",
+            format!(
+                "`{name}` takes {expected} type argument{}, found {found}",
+                if expected == 1 { "" } else { "s" }
+            ),
+            span,
+            fix,
+        );
+        false
     }
 
     /// `see also:` names definitions (decision C8b): one of this module's,
@@ -800,8 +972,8 @@ impl World {
         .to_string()
     }
 
-    /// The abilities a type parameter must have.
-    pub fn constraints(&self, param: ParamId) -> &[AbilityId] {
+    /// The abilities a type parameter must have, with their arguments.
+    pub fn constraints(&self, param: ParamId) -> &[AbilityRef] {
         &self.params[param].constraints
     }
 
@@ -938,16 +1110,28 @@ impl World {
                 continue;
             };
             let param = *param;
-            if let ast::Type::Named { name, .. } = &constraint.ability {
-                match self.lookup_ability(module, &name.text) {
-                    Some(ability) => self.params[param].constraints.push(ability),
-                    None => {
-                        let message = format!("unknown ability `{}`", name.text);
-                        let fix = self.suggest_ability(module, &name.text);
-                        self.error_with_fix(module, "unknown-ability", message, name.span, fix);
-                    }
-                }
+            let ast::Type::Named { name, args, span } = &constraint.ability else {
+                continue;
+            };
+            let Some(ability) = self.lookup_ability(module, &name.text) else {
+                let message = format!("unknown ability `{}`", name.text);
+                let fix = self.suggest_ability(module, &name.text);
+                self.error_with_fix(module, "unknown-ability", message, name.span, fix);
+                continue;
+            };
+            // the arguments are any types in scope, the clause's own
+            // parameters among them (decision AB1)
+            let mut args: Vec<Ty> = args
+                .iter()
+                .map(|arg| self.resolve_type(module, &params, arg))
+                .collect();
+            let before = format!("{} can ", constraint.param.text);
+            if !self.check_ability_arity(module, ability, args.len(), *span, &before, "") {
+                args.resize(self.abilities[ability].params.len(), Ty::Error);
             }
+            self.params[param]
+                .constraints
+                .push(AbilityRef { ability, args });
         }
         params
     }
@@ -1109,28 +1293,49 @@ impl World {
 
     fn resolve_abilities(&mut self, id: ModuleId) {
         let items = self.modules[id].ast.items.clone();
+        // every ability's parameters first, so that a requirement can count
+        // the arguments of an ability declared later in the module
+        let mut pending = Vec::new();
         for item in &items {
             let Item::Ability(ability) = item else {
                 continue;
             };
             let ability_id = self.modules[id].abilities[&ability.name.text];
-            if !self.abilities[ability_id].methods.is_empty() {
+            if !self.abilities[ability_id].methods.is_empty() || self.abilities[ability_id].resolved
+            {
                 continue;
             }
             let params = self.new_params(&ability.type_params);
+            self.abilities[ability_id].params = params.iter().map(|(_, p)| *p).collect();
+            self.abilities[ability_id].resolved = true;
+            pending.push((ability, ability_id, params));
+        }
+        for (ability, ability_id, params) in pending {
             let mut requirements = Vec::new();
             for requirement in &ability.requirements {
-                let Some(name) = named(requirement) else {
+                let ast::Type::Named { name, args, span } = requirement else {
                     continue;
                 };
-                match self.lookup_ability(id, &name.text) {
-                    Some(required) => requirements.push(required),
-                    None => {
-                        let message = format!("unknown ability `{}`", name.text);
-                        let fix = self.suggest_ability(id, &name.text);
-                        self.error_with_fix(id, "unknown-ability", message, name.span, fix);
-                    }
+                let Some(required) = self.lookup_ability(id, &name.text) else {
+                    let message = format!("unknown ability `{}`", name.text);
+                    let fix = self.suggest_ability(id, &name.text);
+                    self.error_with_fix(id, "unknown-ability", message, name.span, fix);
+                    continue;
+                };
+                // the arguments may name the ability's own parameters
+                // (decision AB1)
+                let mut args: Vec<Ty> = args
+                    .iter()
+                    .map(|arg| self.resolve_type(id, &params, arg))
+                    .collect();
+                let count = args.len();
+                if !self.check_ability_arity(id, required, count, *span, "self can ", "") {
+                    args.resize(self.abilities[required].params.len(), Ty::Error);
                 }
+                requirements.push(AbilityRef {
+                    ability: required,
+                    args,
+                });
             }
             self.abilities[ability_id].requirements = requirements;
             let mut methods = Vec::new();
@@ -1160,7 +1365,6 @@ impl World {
                         .collect(),
                 });
             }
-            self.abilities[ability_id].params = params.iter().map(|(_, p)| *p).collect();
             self.abilities[ability_id].methods = methods;
             if ability.public && ability.docs.purpose.is_none() && !self.modules[id].is_library {
                 self.error_with_fix(
@@ -1214,34 +1418,36 @@ impl World {
                             .collect(),
                         _ => Vec::new(),
                     };
-                    let expected_args = self.abilities[ability].params.len();
-                    if ability_args.len() != expected_args {
-                        let names: Vec<String> = self.abilities[ability]
-                            .params
-                            .iter()
-                            .map(|&p| self.param_name(p))
-                            .collect();
-                        let fix = if expected_args == 0 {
-                            format!("write `ability {} for ...`", ability_name.text)
-                        } else {
-                            format!(
-                                "write `ability {} of {} for ...`",
-                                ability_name.text,
-                                names.join(", ")
-                            )
-                        };
-                        self.error_with_fix(
-                            id,
-                            "type-arity",
-                            format!(
-                                "`{}` takes {expected_args} type argument{}, found {}",
-                                ability_name.text,
-                                if expected_args == 1 { "" } else { "s" },
-                                ability_args.len()
-                            ),
-                            ability_name.span,
-                            fix,
-                        );
+                    self.check_ability_arity(
+                        id,
+                        ability,
+                        ability_args.len(),
+                        ability_name.span,
+                        "ability ",
+                        " for ...",
+                    );
+                    // one implementation of an ability per type, whatever the
+                    // arguments: dispatch is by the value's type alone, and
+                    // a loop needs one item type (decision AB1)
+                    if let Some(head) = head_type(&target) {
+                        let twice = self.impls.iter().any(|i| {
+                            i.ability == ability
+                                && head_type(&i.target) == Some(head)
+                                && !(i.module == id && i.span == implementation.span)
+                        });
+                        if twice {
+                            let type_name = self.type_name(head);
+                            self.error_with_fix(
+                                id,
+                                "duplicate-implementation",
+                                format!("`{type_name}` already implements `{}`", ability_name.text),
+                                ability_name.span,
+                                format!(
+                                    "keep one implementation of `{}` for `{type_name}`",
+                                    ability_name.text
+                                ),
+                            );
+                        }
                     }
                     let mut functions = Vec::new();
                     for (function_index, function) in implementation.functions.iter().enumerate() {
@@ -1260,6 +1466,10 @@ impl World {
                                 }
                             }
                             self.functions[function_id].is_method = true;
+                            // the ability's visibility covers its methods
+                            // (reference section 5), so that a public
+                            // ability's method is called from any module
+                            self.functions[function_id].public = self.abilities[ability].public;
                             if let Some(head) = head_type(&target) {
                                 self.method_index
                                     .entry((head, function.name.text.clone()))

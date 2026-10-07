@@ -527,5 +527,24 @@ compiler to refuse what `renyi compile` refuses (Z3). With it, the
 references of W8 have their judge, and the Rust VM runs what the Renyi
 compiler emits: the toolchain written in Renyi is the lexer, the
 parser, the checker and the emitter, with the Rust toolchain as stage
-0. Next: R3-2 (constraints with type arguments, deferred by Y4), and
-the remaining performance items as a profile calls for them.
+0. R3-2 (constraints with type arguments) is decision AB1, the
+subsection below; next: the remaining performance items as a profile
+calls for them.
+
+### Constraints with type arguments (session 8, decision AB1)
+
+Open item R3-2 is closed. A constraint names an ability with the type
+arguments it declares (`for any Bag, Item where Bag can Iterable of
+Item`), any types in scope, `type-arity` otherwise; a requirement
+follows the same rule. The body walks the parameter and calls the
+ability's methods with the arguments substituted; a call site matches
+the arguments of the argument's implementation against the
+constraint's and infers what they leave open, and a mismatch is
+`missing-ability` with the arguments named. One implementation per
+ability and type (`duplicate-implementation`). The prelude implements
+`Iterable` for the collections, a range and a text, so that a generic
+walker takes a list. Both checkers, the VM's dispatch on base values,
+the grammar, the reference, the cheat sheet and four conformance cases
+changed in one commit. Still open from section 7: 1.11, 3.4 and 3.6.
+Next: the remaining performance items as a profile calls for them, or
+stage 3.

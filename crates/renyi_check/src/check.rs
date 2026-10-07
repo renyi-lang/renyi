@@ -102,6 +102,7 @@ enum Deferred {
     Constraint {
         ty: Ty,
         ability: AbilityId,
+        args: Vec<Ty>,
         span: Span,
         what: String,
     },
@@ -757,12 +758,13 @@ impl<'w> Checker<'w> {
             Ty::Param(id) => {
                 // a constraint brings what its ability requires (`where self can`)
                 let constraints = self.world.constraints(*id);
-                Some(
-                    constraints.contains(&ability)
-                        || constraints
+                Some(constraints.iter().any(|c| {
+                    c.ability == ability
+                        || self.world.abilities[c.ability]
+                            .requirements
                             .iter()
-                            .any(|c| self.world.abilities[*c].requirements.contains(&ability)),
-                )
+                            .any(|r| r.ability == ability)
+                }))
             }
             Ty::Maybe(inner) => {
                 if ability == b.hash || self.is_json_ability(ability) {
@@ -855,26 +857,93 @@ impl<'w> Checker<'w> {
     }
 
     fn require_ability(&mut self, ty: &Ty, ability: AbilityId, span: Span, what: &str) {
+        self.require_constraint(ty, ability, &[], span, what);
+    }
+
+    /// An error when the type lacks the ability, or has it with other type
+    /// arguments than the constraint names; deferred while the type is
+    /// unknown. Matching the arguments binds what they leave open, so a
+    /// parameter that only a constraint mentions (`Item` in `for any Bag,
+    /// Item where Bag can Iterable of Item`) is inferred here (decision AB1).
+    fn require_constraint(
+        &mut self,
+        ty: &Ty,
+        ability: AbilityId,
+        args: &[Ty],
+        span: Span,
+        what: &str,
+    ) {
         match self.has_ability(ty, ability) {
-            Some(true) => {}
-            Some(false) => {
-                let name = self.world.abilities[ability].name.clone();
-                let shown = self.show(ty);
-                let fix = self.ability_fix(ty, &name);
-                self.error_fix(
-                    "missing-ability",
-                    format!("{what} needs `{name}`, which `{shown}` does not have"),
-                    span,
-                    fix,
-                );
+            Some(true) => {
+                if !args.is_empty() {
+                    self.match_ability_args(ty, ability, args, span, what);
+                }
             }
+            Some(false) => self.report_missing_ability(ty, ability, args, span, what),
             None => self.deferred.push(Deferred::Constraint {
                 ty: ty.clone(),
                 ability,
+                args: args.to_vec(),
                 span,
                 what: what.to_string(),
             }),
         }
+    }
+
+    /// The arguments a type has an ability with, against a constraint's.
+    fn match_ability_args(
+        &mut self,
+        ty: &Ty,
+        ability: AbilityId,
+        args: &[Ty],
+        span: Span,
+        what: &str,
+    ) {
+        let resolved = self.resolve(ty);
+        let found = self
+            .world
+            .implemented_args(&resolved, ability)
+            .unwrap_or_default();
+        let fits = found.len() == args.len()
+            && found
+                .iter()
+                .zip(args)
+                .all(|(found, expected)| self.unify(found, expected, span));
+        if !fits {
+            self.report_missing_ability(ty, ability, args, span, what);
+        }
+    }
+
+    fn report_missing_ability(
+        &mut self,
+        ty: &Ty,
+        ability: AbilityId,
+        args: &[Ty],
+        span: Span,
+        what: &str,
+    ) {
+        let name = self.show_ability(ability, args);
+        let shown = self.show(ty);
+        let fix = if args.is_empty() {
+            self.ability_fix(ty, &name)
+        } else if self.is_own_type(ty) {
+            format!("implement `{name}` for `{shown}`")
+        } else {
+            format!("use a type that has `{name}`")
+        };
+        self.error_fix(
+            "missing-ability",
+            format!("{what} needs `{name}`, which `{shown}` does not have"),
+            span,
+            fix,
+        );
+    }
+
+    /// `Iterable of Integer`: an ability with its arguments as a message
+    /// shows them.
+    fn show_ability(&self, ability: AbilityId, args: &[Ty]) -> String {
+        let zonked: Vec<Ty> = args.iter().map(|arg| self.zonk(arg)).collect();
+        self.world.show_ability(ability, &zonked)
     }
 
     // ----------------------------------------------------------------- scopes
@@ -1390,21 +1459,16 @@ impl<'w> Checker<'w> {
                 Deferred::Constraint {
                     ty,
                     ability,
+                    args,
                     span,
                     what,
-                } => {
-                    if let Some(false) = self.has_ability(&ty, ability) {
-                        let name = self.world.abilities[ability].name.clone();
-                        let shown = self.show(&ty);
-                        let fix = self.ability_fix(&ty, &name);
-                        self.error_fix(
-                            "missing-ability",
-                            format!("{what} needs `{name}`, which `{shown}` does not have"),
-                            span,
-                            fix,
-                        );
+                } => match self.has_ability(&ty, ability) {
+                    Some(false) => self.report_missing_ability(&ty, ability, &args, span, &what),
+                    Some(true) if !args.is_empty() => {
+                        self.match_ability_args(&ty, ability, &args, span, &what)
                     }
-                }
+                    _ => {}
+                },
             }
         }
     }
@@ -1961,49 +2025,21 @@ impl<'w> Checker<'w> {
 
     // ------------------------------------------------------------ loops, maps
 
-    /// The item type of a loop over a type with an `Iterable` implementation
-    /// (decision V10): the implementation's type argument, with the type's
-    /// own arguments substituted for the implementation's parameters.
-    fn iterable_item(&self, head: TypeId, args: &[Ty]) -> Option<Ty> {
-        let ability = self.world.builtins.iterable;
-        let implementation = self
-            .world
-            .impls
-            .iter()
-            .find(|i| i.ability == ability && head_type(&i.target) == Some(head))?;
-        let item = implementation.ability_args.first()?.clone();
-        let bound: Vec<(ParamId, Ty)> = match &implementation.target {
-            Ty::App(_, target_args) => target_args
-                .iter()
-                .zip(args)
-                .filter_map(|(declared, actual)| match declared {
-                    Ty::Param(param) => Some((*param, actual.clone())),
-                    _ => None,
-                })
-                .collect(),
-            _ => Vec::new(),
-        };
-        Some(item.substitute(&|p: ParamId| {
-            bound
-                .iter()
-                .find(|(q, _)| *q == p)
-                .map(|(_, ty)| ty.clone())
-        }))
-    }
-
-    /// The item types a loop or query header binds for a source.
+    /// The item types a loop or query header binds for a source: the
+    /// argument of its `Iterable` (decision V10), which the prelude gives
+    /// the collections, a range and a text, and a constraint gives a type
+    /// parameter (decision AB1).
     fn loop_items(&mut self, bindings: &[Name], source: &Expr) -> Vec<Ty> {
         let info = self.infer(source, None);
         self.require_handled(&info, source.span);
         let b = self.world.builtins.clone();
         let ty = self.resolve(&info.ty);
-        let iterable = match &ty {
-            Ty::App(id, args) => self.iterable_item(*id, args),
-            _ => None,
-        };
+        let iterable = self
+            .world
+            .implemented_args(&ty, b.iterable)
+            .and_then(|args| args.first().cloned());
         let (item, pair): (Ty, Option<(Ty, Ty)>) = match &ty {
-            Ty::App(..) if iterable.is_some() => {
-                // a type with an `Iterable` implementation (decision V10)
+            _ if iterable.is_some() => {
                 let item = iterable.clone().expect("checked above");
                 let pair = match self.resolve(&item) {
                     Ty::App(pid, pargs) if pid == b.pair => {
@@ -2013,22 +2049,6 @@ impl<'w> Checker<'w> {
                 };
                 (item, pair)
             }
-            Ty::App(id, args) if *id == b.list || *id == b.set => {
-                let item = args[0].clone();
-                let pair = match self.resolve(&item) {
-                    Ty::App(pid, pargs) if pid == b.pair => {
-                        Some((pargs[0].clone(), pargs[1].clone()))
-                    }
-                    _ => None,
-                };
-                (item, pair)
-            }
-            Ty::App(id, args) if *id == b.map => (
-                Ty::App(b.pair, vec![args[0].clone(), args[1].clone()]),
-                Some((args[0].clone(), args[1].clone())),
-            ),
-            Ty::App(id, _) if *id == b.range => (self.builtin(b.integer), None),
-            Ty::App(id, _) if *id == b.text => (self.builtin(b.text), None),
             Ty::Error => (Ty::Error, Some((Ty::Error, Ty::Error))),
             Ty::Maybe(_) => {
                 self.mismatch(
@@ -2937,14 +2957,34 @@ impl<'w> Checker<'w> {
             }
             Some(Method::Ability(ability, index)) => {
                 self.record(Target::AbilityMethod(ability, index), name.span);
+                // the ability's parameters are the arguments the receiver's
+                // type has the ability with (decision AB1)
+                let ability_params = self.world.abilities[ability].params.clone();
+                let ability_args = self
+                    .world
+                    .implemented_args(&ty, ability)
+                    .unwrap_or_default();
+                let subst = |p: ParamId| {
+                    ability_params
+                        .iter()
+                        .position(|&q| q == p)
+                        .and_then(|index| ability_args.get(index).cloned())
+                };
                 let method = &self.world.abilities[ability].methods[index];
                 let params: Vec<(String, Ty)> = method
                     .params
                     .iter()
-                    .map(|(n, t)| (n.clone(), t.with_self(&ty)))
+                    .map(|(n, t)| (n.clone(), t.with_self(&ty).substitute(&subst)))
                     .collect();
-                let returns = method.returns.as_ref().map(|r| r.with_self(&ty));
-                let fails: Vec<Ty> = method.fails.iter().map(|f| f.with_self(&ty)).collect();
+                let returns = method
+                    .returns
+                    .as_ref()
+                    .map(|r| r.with_self(&ty).substitute(&subst));
+                let fails: Vec<Ty> = method
+                    .fails
+                    .iter()
+                    .map(|f| f.with_self(&ty).substitute(&subst))
+                    .collect();
                 self.check_args(&params, args, span, &name.text);
                 Info {
                     ty: returns.unwrap_or(Ty::Unit),
@@ -3194,11 +3234,18 @@ impl<'w> Checker<'w> {
         for (capability, runtime_scoped, source) in needed {
             self.require_capability(&capability, runtime_scoped, &source, span);
         }
-        // constraints of the instantiated parameters, checked when known
+        // constraints of the instantiated parameters, checked when known;
+        // matching a constraint's arguments binds the parameters only it
+        // mentions (decision AB1)
         for (param, ty) in &instances {
-            for &ability in self.world.constraints(*param) {
+            for constraint in self.world.constraints(*param).to_vec() {
+                let args: Vec<Ty> = constraint
+                    .args
+                    .iter()
+                    .map(|arg| arg.substitute(&subst))
+                    .collect();
                 let what = format!("`{name}`");
-                self.require_ability(ty, ability, span, &what);
+                self.require_constraint(ty, constraint.ability, &args, span, &what);
             }
         }
         Info {
@@ -3543,13 +3590,18 @@ impl<'w> Checker<'w> {
     /// The fix for a type without an ability: `can` for the program's own
     /// types, another type for the library's.
     fn ability_fix(&self, ty: &Ty, ability: &str) -> String {
-        let own = head_type(&self.base_of(ty))
-            .is_some_and(|id| !self.world.modules[self.world.types[id].module].is_library);
-        if own {
+        if self.is_own_type(ty) {
             format!("add `can {ability}` to `{}`", self.show(ty))
         } else {
             format!("use a type that has `{ability}`")
         }
+    }
+
+    /// Whether the program declares the type (or the base of the subtype)
+    /// itself, so that a fix can send the reader to its declaration.
+    fn is_own_type(&self, ty: &Ty) -> bool {
+        head_type(&self.base_of(ty))
+            .is_some_and(|id| !self.world.modules[self.world.types[id].module].is_library)
     }
 
     // ---------------------------------------------------------- constructions

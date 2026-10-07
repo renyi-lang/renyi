@@ -206,16 +206,44 @@ function difference(self: Set of Item, other: Set of Item) returns Set of Item f
   purpose: The items of self that are not in other.
 function is_subset_of(self: Set of Item, other: Set of Item) returns Boolean for any Item
 function sorted(self: Set of Item) returns List of Item for any Item where Item can Compare
-function to_list(self: Set of Item) returns List of Item for any Item
 
 function contains(self: Range, value: Integer) returns Boolean
-function to_list(self: Range) returns List of Integer
 function length(self: Range) returns Integer
 ```
 
 The list, map and set methods that take a `self` with type parameters are
 written here with an explicit `for any` clause; in the prelude source the
 clause sits on each declaration exactly as shown.
+
+The collections, a range and a text implement `Iterable` in the prelude
+(decision AB1), so that a constraint `Bag can Iterable of Item` accepts
+them and `to_list` exists on each; a map's items are its pairs, a text's
+its characters:
+
+```
+ability Iterable of Item for List of Item
+  for any Item
+  function to_list(self) returns List of Item
+end
+
+ability Iterable of Item for Set of Item
+  for any Item
+  function to_list(self) returns List of Item
+end
+
+ability Iterable of Pair of Key, Value for Map of Key to Value
+  for any Key, Value
+  function to_list(self) returns List of Pair of Key, Value
+end
+
+ability Iterable of Integer for Range
+  function to_list(self) returns List of Integer
+end
+
+ability Iterable of Text for Text
+  function to_list(self) returns List of Text
+end
+```
 
 ### 1.4 Core abilities
 
@@ -229,7 +257,7 @@ data type without being named.
 | `Compare` | `compare(self, other: Self) returns Ordering` | the four ordering phrases, `sorted`, `sorted by`, `largest`, `smallest` |
 | `Hash` | `hash(self) returns Integer` | `Set` items, `Map` keys, `distinct`, `to_set`; derived only, a declared `hash` is not consulted |
 | `ToText` | `to_text(self) returns Text` | interpolation (`console.print` takes `Text` only, decision K11) |
-| `Iterable of Item` | `to_list(self) returns List of Item` | `for each` and the queries over a program's own types (decision V10); declared without `needs` |
+| `Iterable of Item` | `to_list(self) returns List of Item` | `for each` and the queries over a program's own types (decision V10) and over a type parameter constrained to `Iterable of Item` (decision AB1); declared without `needs`; implemented by the prelude for `List`, `Set`, `Map`, `Range` and `Text` |
 | `ToJson`, `FromJson` | `to_json(self) returns JsonValue`, `from_json(value: JsonValue) returns Self or fails with JsonError` | `std.json`, `std.http`, `std.server` |
 | `FromRow` | `from_row(row: Row) returns Self or fails with DbError` | `std.sqlite` |
 

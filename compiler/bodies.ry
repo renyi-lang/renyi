@@ -112,9 +112,10 @@ public type Context
 end
 
 public type Deferred
-  purpose: An ability check postponed until the type is known.
+  purpose: An ability check postponed until the type is known, with the constraint's arguments.
   has ty: Ty
   has ability_id: Integer
+  has args: List of Ty
   has span: Span
   has what: Text
 end
@@ -1162,11 +1163,12 @@ end
 function param_has(checker: Checker, param: Integer, ability_id: Integer) returns Boolean
   purpose: A type parameter has what its constraints give it, and what those abilities require.
 
-  let constraints be declare.constraints(world: checker.world, param: param)
-  if constraints.contains(ability_id) then return true end
-  for each constraint in constraints
-    let required be declare.ability_at(world: checker.world, id: constraint).requirements
-    if required.contains(ability_id) then return true end
+  for each constraint in declare.constraints(world: checker.world, param: param)
+    if constraint.ability_id is ability_id then return true end
+    let required be declare.ability_at(world: checker.world, id: constraint.ability_id).requirements
+    for each requirement in required
+      if requirement.ability_id is ability_id then return true end
+    end
   end
   return false
 end
@@ -1261,29 +1263,110 @@ function require_ability(checker: Checker, ty: Ty, ability_id: Integer, span: Sp
   returns Checker
   purpose: An error when the type lacks the ability; deferred while the type is unknown.
 
+  return require_constraint(
+    checker: checker,
+    ty: ty,
+    ability_id: ability_id,
+    args: [],
+    span: span,
+    what: what
+  )
+end
+
+function require_constraint(
+  checker: Checker,
+  ty: Ty,
+  ability_id: Integer,
+  args: List of Ty,
+  span: Span,
+  what: Text
+)
+  returns Checker
+  purpose: An error when the type lacks the ability, or has it with other arguments (decision AB1).
+
   match has_ability(checker: checker, ty: ty, ability_id: ability_id)
-    when some(true) then return checker
+    when some(true) then
+      if args.is_empty() then return checker end
+      return match_ability_args(
+        checker: checker,
+        ty: ty,
+        ability_id: ability_id,
+        args: args,
+        span: span,
+        what: what
+      )
     when some(false) then
       return missing_ability(
         checker: checker,
         ty: ty,
         ability_id: ability_id,
+        args: args,
         span: span,
         what: what
       )
     when nothing then
-      let deferred be Deferred(ty: ty, ability_id: ability_id, span: span, what: what)
+      let deferred be Deferred(ty: ty, ability_id: ability_id, args: args, span: span, what: what)
       return checker with deferred: checker.deferred.append(deferred)
   end
 end
 
-function missing_ability(checker: Checker, ty: Ty, ability_id: Integer, span: Span, what: Text)
+function match_ability_args(
+  checker: Checker,
+  ty: Ty,
+  ability_id: Integer,
+  args: List of Ty,
+  span: Span,
+  what: Text
+)
   returns Checker
-  purpose: The error for a type without an ability it needs.
+  purpose: The arguments a type has an ability with, against a constraint's; matching binds vars.
 
-  let name be declare.ability_at(world: checker.world, id: ability_id).name
+  let resolved be resolve(checker: checker, ty: ty)
+  let found be declare.implemented_args(
+    world: checker.world,
+    ty: resolved,
+    ability_id: ability_id
+  ) otherwise []
+  let mutable updated be checker
+  let mutable fits be found.length() is args.length()
+  let mutable index be 0
+  for each arg in args
+    if not fits then break end
+    let found_arg be found.at(index) otherwise break
+    let done be unify(checker: updated, left: found_arg, right: arg, span: span)
+    change updated to done.checker
+    change fits to done.value
+    change index to index + 1
+  end
+  if fits then return updated end
+  return missing_ability(
+    checker: updated,
+    ty: ty,
+    ability_id: ability_id,
+    args: args,
+    span: span,
+    what: what
+  )
+end
+
+function missing_ability(
+  checker: Checker,
+  ty: Ty,
+  ability_id: Integer,
+  args: List of Ty,
+  span: Span,
+  what: Text
+)
+  returns Checker
+  purpose: The error for a type without an ability it needs, with the arguments the need names.
+
+  let name be show_ability(checker: checker, ability_id: ability_id, args: args)
   let shown be show(checker: checker, ty: ty)
-  let fix be ability_fix(checker: checker, ty: ty, ability_name: name)
+  let fix be
+    if args.is_empty() then ability_fix(checker: checker, ty: ty, ability_name: name)
+    otherwise if is_own_type(checker: checker, ty: ty) then "implement `{name}` for `{shown}`"
+    otherwise "use a type that has `{name}`"
+    end
   return push_error(
     checker: checker,
     code: "missing-ability",
@@ -1291,6 +1374,13 @@ function missing_ability(checker: Checker, ty: Ty, ability_id: Integer, span: Sp
     span: span,
     fix: fix
   )
+end
+
+function show_ability(checker: Checker, ability_id: Integer, args: List of Ty) returns Text
+  purpose: `Iterable of Integer`: an ability with its arguments as a message shows them.
+
+  let zonked be for each arg in args collect zonk(checker: checker, ty: arg)
+  return declare.show_ability(world: checker.world, ability_id: ability_id, args: zonked)
 end
 
 function push_scope(checker: Checker) returns Checker
@@ -2009,17 +2099,36 @@ function finish_body(checker: Checker) returns Checker
   let deferred be updated.deferred
   change updated to updated with deferred: []
   for each item in deferred
-    if has_ability(checker: updated, ty: item.ty, ability_id: item.ability_id) is false then
-      change updated to missing_ability(
-        checker: updated,
+    change updated to settle_deferred(checker: updated, item: item)
+  end
+  return updated
+end
+
+function settle_deferred(checker: Checker, item: Deferred) returns Checker
+  purpose: A postponed ability check, once the body has bound what it could.
+
+  match has_ability(checker: checker, ty: item.ty, ability_id: item.ability_id)
+    when some(false) then
+      return missing_ability(
+        checker: checker,
         ty: item.ty,
         ability_id: item.ability_id,
+        args: item.args,
         span: item.span,
         what: item.what
       )
-    end
+    when some(true) then
+      if item.args.is_empty() then return checker end
+      return match_ability_args(
+        checker: checker,
+        ty: item.ty,
+        ability_id: item.ability_id,
+        args: item.args,
+        span: item.span,
+        what: item.what
+      )
+    when nothing then return checker
   end
-  return updated
 end
 
 public function statement_span(statement: Statement) returns Span
@@ -2871,38 +2980,15 @@ function require_handled(checker: Checker, info: Info, span: Span) returns Check
   )
 end
 
-function iterable_item(checker: Checker, head: Integer, args: List of Ty) returns maybe Ty
-  purpose: The item type of a loop over a type with an `Iterable` implementation (decision V10).
+function iterable_item(checker: Checker, ty: Ty) returns maybe Ty
+  purpose: The item type of a loop source: the argument of its `Iterable` (decisions V10 and AB1).
 
-  let wanted be checker.world.builtins.iterable
-  for each implementation in checker.world.impls
-    if implementation.ability_id is wanted and types.head_type(implementation.target) is head then
-      let item be implementation.ability_args.first() otherwise return nothing
-      let bound be bind_target_params(target: implementation.target, args: args)
-      return types.substitute(ty: item, bindings: bound)
-    end
-  end
-  return nothing
-end
-
-function bind_target_params(target: Ty, args: List of Ty) returns List of Substitution
-  purpose: The implementation's parameters bound to the type's actual arguments, by position.
-
-  match target
-    when App(args: declared) then
-      let mutable bound: List of Substitution be []
-      let mutable index be 0
-      for each declared_arg in declared
-        let actual be args.at(index) otherwise break
-        match declared_arg
-          when Param(id) then change bound to bound.append(Substitution(param: id, ty: actual))
-          otherwise change index to index
-        end
-        change index to index + 1
-      end
-      return bound
-    otherwise return []
-  end
+  let args be declare.implemented_args(
+    world: checker.world,
+    ty: ty,
+    ability_id: checker.world.builtins.iterable
+  ) otherwise return nothing
+  return args.first()
 end
 
 type Items
@@ -2936,47 +3022,23 @@ function error_items() returns Items
 end
 
 function source_items(checker: Checker, ty: Ty, source: Expr) returns Done of Items
-  purpose: What a source yields: by its type, a collection, a range, a text or an `Iterable`.
+  purpose: What a source yields: the argument of its `Iterable` (decisions V10 and AB1).
+
+  match iterable_item(checker: checker, ty: ty)
+    when some(item) then
+      return Done(
+        value: Items(item: item, pair: pair_halves(checker: checker, item: item)),
+        checker: checker
+      )
+    when nothing then return source_without_iterable(checker: checker, ty: ty, source: source)
+  end
+end
+
+function source_without_iterable(checker: Checker, ty: Ty, source: Expr) returns Done of Items
+  purpose: A source whose type has no `Iterable`: an error, unless the type is an error already.
 
   let builtins be checker.world.builtins
   match ty
-    when App(id, args) then
-      match iterable_item(checker: checker, head: id, args: args)
-        when some(item) then
-          return Done(
-            value: Items(item: item, pair: pair_halves(checker: checker, item: item)),
-            checker: checker
-          )
-        when nothing then
-          let first_arg be args.at(0) otherwise ErrorTy
-          let second_arg be args.at(1) otherwise ErrorTy
-          if id is builtins.list or id is builtins.set_type then
-            return Done(
-              value: Items(item: first_arg, pair: pair_halves(checker: checker, item: first_arg)),
-              checker: checker
-            )
-          end
-          if id is builtins.map then
-            let pair be App(id: builtins.pair, args: [first_arg, second_arg])
-            return Done(
-              value: Items(item: pair, pair: ItemPair(left: first_arg, right: second_arg)),
-              checker: checker
-            )
-          end
-          if id is builtins.range then
-            return Done(
-              value: Items(item: builtin(builtins.integer), pair: nothing),
-              checker: checker
-            )
-          end
-          if id is builtins.text then
-            return Done(value: Items(item: builtin(builtins.text), pair: nothing), checker: checker)
-          end
-          return Done(
-            value: error_items(),
-            checker: not_iterable(checker: checker, ty: ty, source: source)
-          )
-      end
     when ErrorTy then return Done(value: error_items(), checker: checker)
     when MaybeTy then
       let wanted be App(id: builtins.list, args: [ErrorTy])
@@ -4619,14 +4681,30 @@ function call_ability_method(
     target: AbilityMethodTarget(ability_id: ability_id, index: index),
     span: name.span
   )
-  let method be declare.ability_at(world: checker.world, id: ability_id).methods.at(
-    index
-  ) otherwise crash with "a method"
+  let abil be declare.ability_at(world: checker.world, id: ability_id)
+  let method be abil.methods.at(index) otherwise crash with "a method"
+  # the ability's parameters are the arguments the receiver's type has the
+  # ability with (decision AB1)
+  let ability_args be declare.implemented_args(
+    world: checker.world,
+    ty: ty,
+    ability_id: ability_id
+  ) otherwise []
+  let bindings be declare.pair_params(params: abil.params, args: ability_args)
   let params be
     for each param in method.params
-    collect NamedTy(name: param.name, ty: types.with_self(ty: param.ty, self_type: ty))
-  let result be types.with_self_maybe(ty: method.result, self_type: ty)
-  let failures be types.with_self_all(tys: method.failures, self_type: ty)
+    collect NamedTy(
+      name: param.name,
+      ty: types.substitute(ty: types.with_self(ty: param.ty, self_type: ty), bindings: bindings)
+    )
+  let result be types.substitute_maybe(
+    ty: types.with_self_maybe(ty: method.result, self_type: ty),
+    bindings: bindings
+  )
+  let failures be types.substitute_all(
+    tys: types.with_self_all(tys: method.failures, self_type: ty),
+    bindings: bindings
+  )
   change updated to check_args(
     checker: updated,
     params: params,
@@ -4985,11 +5063,14 @@ function check_instance_constraints(
 
   let mutable updated be checker
   for each instance in instances
-    for each ability_id in declare.constraints(world: checker.world, param: instance.param)
-      change updated to require_ability(
+    for each constraint in declare.constraints(world: checker.world, param: instance.param)
+      # matching a constraint's arguments binds the parameters only it mentions
+      let args be types.substitute_all(tys: constraint.args, bindings: instances)
+      change updated to require_constraint(
         checker: updated,
         ty: instance.ty,
-        ability_id: ability_id,
+        ability_id: constraint.ability_id,
+        args: args,
         span: span,
         what: "`{name}`"
       )
@@ -5438,21 +5519,24 @@ end
 function ability_fix(checker: Checker, ty: Ty, ability_name: Text) returns Text
   purpose: The fix for a type without an ability: `can` for the program's own types, else another.
 
-  let head be types.head_type(base_of(checker: checker, ty: ty))
-  let own be
-    match head
-      when some(id) then
-        not declare.module_at(
-          world: checker.world,
-          id: declare.type_at(world: checker.world, id: id).owner
-        ).is_library
-      when nothing then false
-    end
-  if own then
+  if is_own_type(checker: checker, ty: ty) then
     let shown be show(checker: checker, ty: ty)
     return "add `can {ability_name}` to `{shown}`"
   end
   return "use a type that has `{ability_name}`"
+end
+
+function is_own_type(checker: Checker, ty: Ty) returns Boolean
+  purpose: Whether the program declares the type (or the base of the subtype) itself.
+
+  match types.head_type(base_of(checker: checker, ty: ty))
+    when some(id) then
+      return not declare.module_at(
+        world: checker.world,
+        id: declare.type_at(world: checker.world, id: id).owner
+      ).is_library
+    when nothing then return false
+  end
 end
 
 function declared_failure_variant(checker: Checker, variants: List of VariantRef)

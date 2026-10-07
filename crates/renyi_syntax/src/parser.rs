@@ -1180,11 +1180,15 @@ impl<'s> Parser<'s> {
     fn ability(&mut self, public: bool, start: usize) -> ParseResult<Item> {
         self.expect_word(Word::Ability)?;
         let name = self.type_name("an ability name")?;
-        let mut type_params = Vec::new();
+        // after `of`: the parameters of a declaration, which are names, or
+        // the arguments of an implementation, which are types (`ability
+        // Iterable of Pair of Key, Value for Map of Key to Value`, decision
+        // AB1); `for` tells which
+        let mut arguments = Vec::new();
         if self.eat_word(Word::Of) {
-            type_params.push(self.type_name("a type parameter")?);
+            arguments.push(self.type_()?);
             while self.eat(&TokenKind::Comma) {
-                type_params.push(self.type_name("a type parameter")?);
+                arguments.push(self.type_()?);
             }
         }
         if self.eat_word(Word::For) {
@@ -1192,14 +1196,7 @@ impl<'s> Parser<'s> {
             let target = self.type_()?;
             let ability_span = name.span;
             let ability = Type::Named {
-                args: type_params
-                    .iter()
-                    .map(|param| Type::Named {
-                        name: param.clone(),
-                        args: Vec::new(),
-                        span: param.span,
-                    })
-                    .collect(),
+                args: arguments,
                 name,
                 span: ability_span,
             };
@@ -1212,7 +1209,8 @@ impl<'s> Parser<'s> {
                 None
             };
             self.end_of_line()?;
-            let functions = self.ability_functions(true)?;
+            // a declaration file gives the methods' heads alone
+            let functions = self.ability_functions(!self.declarations)?;
             self.expect_word(Word::End)?;
             let end = self.tokens[self.pos - 1].span.end;
             self.end_of_line()?;
@@ -1231,6 +1229,20 @@ impl<'s> Parser<'s> {
                 functions,
                 span: Span::new(start, end),
             }));
+        }
+        let mut type_params = Vec::new();
+        for argument in arguments {
+            match argument {
+                Type::Named { name, args, .. } if args.is_empty() => type_params.push(name),
+                other => {
+                    self.expected(
+                        "a type parameter",
+                        other.span(),
+                        "write a name: `ability Iterable of Item`",
+                    );
+                    return Err(());
+                }
+            }
         }
         let mut requirements = Vec::new();
         if self.eat_word(Word::Where) {

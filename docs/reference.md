@@ -200,6 +200,7 @@ Item                ::= 'public'? (Function | TypeDefinition | Ability | Constan
                       | Implementation
                       | Test
 DeclaredItem        ::= 'public'? (FunctionDeclaration | TypeDefinition | Ability | Constant)
+                      | ImplDeclaration
                       | Implementation
                       | Test
 ```
@@ -233,7 +234,8 @@ and `Guarded`, and the methods of the base types. The modules `std.console`,
 imported by name.
 
 `Declarations` is the form of a library declaration file: the same module,
-with every function a head and its clauses and no body.
+with every function a head and its clauses and no body, an
+implementation's methods among them (`ImplDeclaration`).
 
 ### Static rules
 
@@ -287,7 +289,8 @@ parameters. The signature clauses come in one order, each optional:
 nothing); `or fails with E1 or E2` names the error types the function can
 fail with (section 9); `needs` lists the capabilities its body uses
 directly (section 11); `for any T, U where T can Ability` introduces type
-parameters and their constraints (section 4). The clauses share the head
+parameters and their constraints, an ability with its type arguments each
+(section 4). The clauses share the head
 line when they fit in 100 columns, otherwise each stands on its own line;
 the tokens are the same.
 
@@ -329,8 +332,9 @@ B1); a higher-order function declares only its own effects.
   through a function type is positional. The callee exists
   (`unknown-function`, `unknown-method`, with the closest name or the
   module to import as the fix) and is a function (`not-callable`).
-- A type parameter takes no type arguments, and a generic type takes as
-  many as it declares (`type-arity`); every type named exists
+- A type parameter takes no type arguments, a generic type takes as many
+  as it declares, and a constraint names an ability with as many as it
+  declares (`type-arity`); every type named exists
   (`unknown-type`).
 - `example:` lines belong to pure functions only (`example-effects`).
 
@@ -417,7 +421,15 @@ ability with other methods is implemented by hand (section 5).
 
 **Generics.** `type Pair of Left, Right` introduces type parameters, in
 scope for the fields; a function introduces them with `for any` (section
-3).
+3). A constraint gives its ability the type arguments the ability
+declares, any types in scope: `for any Bag, Item where Bag can Iterable
+of Item`. In the body the parameter is walked by `for each` with items of
+type `Item`, and the ability's methods are called on it with `Item` in
+place of the ability's parameter (`bag.to_list()` is a `List of Item`).
+A call passes a type that has the ability with matching arguments, those
+of its implementation with the implementation's parameters read as the
+type's arguments, which binds what the constraint leaves open: `Item` is
+inferred from `Deck`'s `Iterable of Text` (decision AB1).
 
 ### Static rules
 
@@ -463,8 +475,10 @@ Ability             ::= 'ability' TypeName TypeParameters?
                         DocClause* MethodDeclaration* 'end' Newline
 Requirement         ::= 'self' 'can' Type
 MethodDeclaration   ::= FunctionHead Newline DocClause*
-Implementation      ::= 'ability' TypeName TypeParameters? 'for' Type ForAny? Newline
+Implementation      ::= 'ability' TypeName ('of' Type (',' Type)*)? 'for' Type ForAny? Newline
                         Function* 'end' Newline
+ImplDeclaration     ::= 'ability' TypeName ('of' Type (',' Type)*)? 'for' Type ForAny? Newline
+                        MethodDeclaration* 'end' Newline
 ```
 
 ### Meaning
@@ -474,20 +488,24 @@ the implementing type. A type gains an ability through an implementation
 block, `ability Describable for Shape ... end`, or a `can` derivation
 (section 4); the methods are called with the dot. An ability may require
 others of its implementing types: `ability Printable where self can
-ToText`. An ability may take type parameters after `of`; an implementation
-names the arguments in its head, `ability Iterable of Card for Deck`. An
-implementation for a generic type introduces the type parameters with a
-`for any` clause after its head. Default method bodies are not in version
-1 (decision J10).
+ToText`, with the ability's own parameters in scope for the arguments of
+a requirement (`ability Countable of Item where self can Iterable of
+Item`). An ability may take type parameters after `of`; an implementation
+names the arguments, any types, in its head: `ability Iterable of Card
+for Deck`, `ability Iterable of Pair of Key, Value for Map of Key to
+Value`. An implementation for a generic type introduces the type
+parameters with a `for any` clause after its head. Default method bodies
+are not in version 1 (decision J10).
 
 The core abilities of the prelude: `Equal` (`equals`), `Compare`
 (`compare`, returning `Ordering`: `Less`, `Same`, `Greater`), `Hash`
 (`hash`), `ToText` (`to_text`), `ToJson`, `FromJson` and `Iterable of Item`
 (`to_list(self) returns List of Item`). `for each` and the queries of
 section 10 walk any type that implements `Iterable`, through the list
-`to_list` returns (decision V10). A constraint with a type argument (`for
-any Bag where Bag can Iterable of Item`) is not in version 1 (open item
-R3-2).
+`to_list` returns (decision V10); the prelude implements `Iterable` for
+`List`, `Set`, `Map` (its pairs), `Range` and `Text` (its characters), so
+that a constraint `Bag can Iterable of Item` accepts them and `to_list`
+exists on each (decision AB1).
 
 ### Static rules
 
@@ -497,9 +515,15 @@ R3-2).
   ability's type parameters are substituted (`method-signature`); an
   ability's method never declares `needs`, since an ability's methods have
   no effects (`method-signature`).
-- An implementation for a type without an ability the ability requires is
-  an error (`missing-ability`); a type parameter constrained to an ability
-  has what that ability requires.
+- An implementation for a type without an ability the ability requires,
+  with the arguments the requirement names once the ability's parameters
+  are substituted, is an error (`missing-ability`); a type parameter
+  constrained to an ability has what that ability requires.
+- An ability is named with as many type arguments as it declares, in an
+  implementation head, a constraint and a requirement (`type-arity`); a
+  type implements an ability once, whatever the arguments
+  (`duplicate-implementation`); an implementation's methods are as
+  visible as the ability (decision AB1).
 - An implementation is never `public` (`public-implementation`); a method
   is never `public` by itself, the ability's visibility covers it
   (`public-method`).
@@ -770,7 +794,8 @@ is matched with `success(value)` and `failure(error)` arms, and inside
 
 **`for each`.** `for each item in collection` walks a `List`, a `Set`, a
 `Map` (as pairs: `for each key, value in map`), a `Range`, a `Text` (by
-character) or any type with an `Iterable` implementation (section 5); a
+character) or any type with an `Iterable` implementation (section 5), a
+type parameter constrained to one among them (section 4); a
 loop over a range literal drops `in`: `for each index from 1 to 10 by 2`,
 the one spelling. The head accepts `where condition` and `sorted by key
 [descending]`. `break` leaves the loop, `continue` advances it.
@@ -1350,6 +1375,7 @@ that `renyi check --strict` makes an error.
 | `construct-sum` | E | 4 |
 | `crlf` | E | 1 |
 | `deprecated` | W | 13 |
+| `duplicate-implementation` | E | 5 |
 | `duplicate-name` | E | 2, 4 |
 | `empty-hole` | E | 1 |
 | `equals-sign` | E | 1 |

@@ -1,0 +1,25 @@
+module constraint_mismatch
+  purpose: A type satisfies a constraint only with the type arguments the constraint names.
+
+public type Deck
+  purpose: A hand of cards.
+  has cards: List of Text
+end
+
+ability Iterable of Text for Deck
+  function to_list(self) returns List of Text
+    return self.cards
+  end
+end
+
+public function total(bag: Bag) returns Integer for any Bag where Bag can Iterable of Integer
+  purpose: Add up the items of a bag of numbers.
+
+  return for each item in bag sum item
+end
+
+public function count_deck(deck: Deck) returns Integer
+  purpose: Misuse a deck of texts as a bag of numbers.
+
+  return total(deck)
+end

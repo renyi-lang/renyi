@@ -1097,3 +1097,81 @@ fn a_type_with_iterable_is_walked_by_loops_and_queries() {
         "unknown-method",
     );
 }
+
+#[test]
+fn a_constraint_names_an_ability_with_its_type_arguments() {
+    // decision AB1: `Bag can Iterable of Item` walks the parameter, calls the
+    // ability's methods with the argument substituted, and accepts a type
+    // whose implementation has that argument, the prelude's collections among
+    // them; matching the arguments binds `Item` at the call site
+    let deck = "type Deck\n  has cards: List of Text\nend\n\nability Iterable of Text for Deck\n  function to_list(self) returns List of Text\n    return self.cards\n  end\nend\n\n";
+    let walker = "function size(bag: Bag) returns Integer for any Bag, Item where Bag can Iterable of Item\n  return bag.to_list().length()\nend\n\nfunction first_item(bag: Bag) returns maybe Item for any Bag, Item where Bag can Iterable of Item\n  for each item in bag\n    return item\n  end\n  return nothing\nend\n\n";
+    clean(&program(&format!(
+        "{deck}{walker}function go(deck: Deck, ages: Map of Text to Integer) returns Text\n  let first_card: Text be first_item(deck) otherwise \"none\"\n  let first_age: Integer be first_item([7, 8]) otherwise 0\n  let total be size(deck) + size([1, 2, 3]) + size(ages) + size(\"hey\") + size(from 1 to 4) + first_age\n  return \"{{first_card}} {{total}}\"\nend\n"
+    )));
+    // the argument is inferred through the constraint, so a wrong annotation is a mismatch
+    raises(
+        &program(&format!(
+            "{deck}{walker}function go(deck: Deck) returns Integer\n  let first_card: Integer be first_item(deck) otherwise 0\n  return first_card\nend\n"
+        )),
+        "type-mismatch",
+    );
+    // the type's implementation must carry the constraint's argument
+    raises(
+        &program(&format!(
+            "{deck}function total(bag: Bag) returns Integer for any Bag where Bag can Iterable of Integer\n  return for each item in bag sum item\nend\n\nfunction go(deck: Deck) returns Integer\n  return total(deck)\nend\n"
+        )),
+        "missing-ability",
+    );
+    assert_eq!(
+        fix_of(
+            &program(&format!(
+                "{deck}function total(bag: Bag) returns Integer for any Bag where Bag can Iterable of Integer\n  return for each item in bag sum item\nend\n\nfunction go(deck: Deck) returns Integer\n  return total(deck)\nend\n"
+            )),
+            "missing-ability"
+        ),
+        "implement `Iterable of Integer` for `Deck`"
+    );
+    // an ability with parameters takes its arguments in a constraint and in a requirement
+    raises(
+        &program("function total(bag: Bag) returns Integer for any Bag where Bag can Iterable\n  return for each item in bag sum item\nend\n"),
+        "type-arity",
+    );
+    assert_eq!(
+        fix_of(
+            &program("function total(bag: Bag) returns Integer for any Bag where Bag can Iterable\n  return for each item in bag sum item\nend\n"),
+            "type-arity"
+        ),
+        "write `Bag can Iterable of Item`"
+    );
+    raises(
+        &program("function render(item: Item) returns Text for any Item where Item can ToText of Text\n  return item.to_text()\nend\n"),
+        "type-arity",
+    );
+    raises(
+        &program("ability Countable where self can Iterable\n  function size(self) returns Integer\nend\n"),
+        "type-arity",
+    );
+    // a requirement's argument names the ability's own parameter
+    clean(&program(&format!(
+        "{deck}ability Countable of Item where self can Iterable of Item\n  function size(self) returns Integer\nend\n\nability Countable of Text for Deck\n  function size(self) returns Integer\n    return self.cards.length()\n  end\nend\n"
+    )));
+    raises(
+        &program(&format!(
+            "{deck}ability Countable of Item where self can Iterable of Item\n  function size(self) returns Integer\nend\n\nability Countable of Integer for Deck\n  function size(self) returns Integer\n    return self.cards.length()\n  end\nend\n"
+        )),
+        "missing-ability",
+    );
+    // one implementation of an ability per type, whatever the arguments
+    raises(
+        &program(&format!(
+            "{deck}ability Iterable of Integer for Deck\n  function to_list(self) returns List of Integer\n    return [self.cards.length()]\n  end\nend\n"
+        )),
+        "duplicate-implementation",
+    );
+    // an implementation's methods are as visible as the ability: the prelude's
+    // `to_list` of a text, and a composite argument in an implementation head
+    clean(&program(
+        "type Grid\n  has rows: List of List of Integer\nend\n\nability Iterable of List of Integer for Grid\n  function to_list(self) returns List of List of Integer\n    return self.rows\n  end\nend\n\nfunction go(grid: Grid) returns Integer\n  let letters be \"abc\".to_list()\n  return for each row in grid sum row.length() + letters.length()\nend\n",
+    ));
+}

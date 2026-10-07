@@ -1,0 +1,48 @@
+module constraint_arguments
+  purpose: A constraint with a type argument walks a program's own type and the prelude's collections.
+
+import std.console
+
+public type Deck
+  purpose: A hand of cards.
+  has cards: List of Text
+end
+
+ability Iterable of Text for Deck
+  function to_list(self) returns List of Text
+    return self.cards
+  end
+end
+
+public function size(bag: Bag) returns Integer for any Bag, Item where Bag can Iterable of Item
+  purpose: How many items a bag holds, whatever the bag.
+
+  return bag.to_list().length()
+end
+
+public function first_item(bag: Bag)
+  returns maybe Item
+  for any Bag, Item where Bag can Iterable of Item
+  purpose: The first item of a bag, or nothing when it is empty.
+
+  for each item in bag
+    return item
+  end
+  return nothing
+end
+
+public function main() needs console
+  purpose: Count and read a deck, a list, a map, a text and a range.
+
+  let deck be Deck(cards: ["ace", "king"])
+  let ages be {"ann": 31}
+  let word be "hey"
+  console.print("{size(deck)} {size([1, 2, 3])} {size(ages)} {size(word)} {size(from 1 to 4)}")
+  let first_card be first_item(deck) otherwise "none"
+  let first_number be first_item([7, 8]) otherwise 0
+  console.print("{first_card} {first_number}")
+  for each key, value in ages
+    console.print("{key}: {value}")
+  end
+  console.print(word.to_list().join("-"))
+end

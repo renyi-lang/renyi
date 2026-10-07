@@ -114,8 +114,9 @@ end
 Derivable: `Equal`, `Compare by`, `Hash`, `ToText` (a variant prints as its
 bare name, `Green`; a record in constructor form), `ToJson`, `FromJson`.
 `Iterable of Item` is implemented (`to_list(self) returns List of Item`) and
-`for each` walks the type. Generic: `ability Sized for Stack of Item` then
-`for any Item`.
+`for each` walks the type; collections, ranges and texts have it too, so
+`for any Bag, Item where Bag can Iterable of Item` walks any.
+Generic: `ability Sized for Stack of Item` then `for any Item`.
 
 ## Expressions
 ```
@@ -132,7 +133,6 @@ Numbers: `Integer` (unbounded), `Decimal` (decimal128, literals like `19.99`),
 `Float`. No implicit conversion: `count.to_decimal()`. `is` compares
 values of one type: `32.0 is 32.00`. `/` needs `Decimal` or `Float` operands;
 `a.quotient(b)` divides two Integers down.
-`a.at_least(b)` is the larger of two values, `a.at_most(b)` the smaller.
 
 ## Optionals and errors
 ```

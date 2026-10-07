@@ -1206,13 +1206,15 @@ function parse_ability(cursor: Cursor, is_public: Boolean, start: Integer)
   let keyword be expect_word(cursor: cursor, spelling: "ability") otherwise fail
   let name be type_name(keyword.cursor) otherwise fail
   let mutable current be name.cursor
-  let mutable type_params: List of TypeName be []
+  # after `of`: the parameters of a declaration, which are names, or the
+  # arguments of an implementation, which are types (decision AB1)
+  let mutable ability_args: List of Type be []
   let of_word be eat_word(cursor: current, spelling: "of")
   change current to of_word.cursor
   if of_word.found then
-    let params be type_name_list(current) otherwise fail
-    change type_params to params.node
-    change current to params.cursor
+    let parsed be type_list(current) otherwise fail
+    change ability_args to parsed.node
+    change current to parsed.cursor
   end
   let for_word be eat_word(cursor: current, spelling: "for")
   if for_word.found then
@@ -1221,9 +1223,10 @@ function parse_ability(cursor: Cursor, is_public: Boolean, start: Integer)
       is_public: is_public,
       start: start,
       name: name.node,
-      type_params: type_params
+      ability_args: ability_args
     ) otherwise fail
   end
+  let type_params be parameter_names(ability_args) otherwise fail
   return ability_declaration(
     cursor: for_word.cursor,
     is_public: is_public,
@@ -1233,21 +1236,54 @@ function parse_ability(cursor: Cursor, is_public: Boolean, start: Integer)
   ) otherwise fail
 end
 
+function type_list(cursor: Cursor) returns Parsed of List of Type or fails with ParseError
+  purpose: Types separated by commas, after `of` in an ability's head.
+
+  let head be parse_type(cursor) otherwise fail
+  let mutable tys be [head.node]
+  let mutable current be head.cursor
+  let mutable comma be eat_symbol(cursor: current, text: ",")
+  change current to comma.cursor
+  repeat until not comma.found
+    let next be parse_type(current) otherwise fail
+    change tys to tys.append(next.node)
+    change comma to eat_symbol(cursor: next.cursor, text: ",")
+    change current to comma.cursor
+  end
+  return Parsed(node: tys, cursor: current)
+end
+
+function parameter_names(ability_args: List of Type)
+  returns List of TypeName
+  or fails with ParseError
+  purpose: The parameters of an ability declaration are names: `ability Iterable of Item`.
+
+  let mutable names: List of TypeName be []
+  for each written in ability_args
+    match written
+      when NamedType(name, args) where args.is_empty() then change names to names.append(name)
+      otherwise
+        fail with ParseError(
+          message: "expected a type parameter",
+          position: type_span(written).start
+        )
+    end
+  end
+  return names
+end
+
 function implementation(
   cursor: Cursor,
   is_public: Boolean,
   start: Integer,
   name: TypeName,
-  type_params: List of TypeName
+  ability_args: List of Type
 )
   returns Parsed of Item
   or fails with ParseError
 
   let target be parse_type(cursor) otherwise fail
-  let args be
-    for each param in type_params
-    collect NamedType(name: param, args: [], span: param.span)
-  let ability_type be NamedType(name: name, args: args, span: name.span)
+  let ability_type be NamedType(name: name, args: ability_args, span: name.span)
   let mutable current be target.cursor
   let mutable for_any: maybe ForAny be nothing
   let look be peek(current)
@@ -1258,7 +1294,9 @@ function implementation(
     change current to parsed.cursor
   end
   change current to end_of_line(current) otherwise fail
-  let functions be ability_functions(cursor: current, with_bodies: true) otherwise fail
+  # a declaration file gives the methods' heads alone
+  let with_bodies be not cursor.declarations
+  let functions be ability_functions(cursor: current, with_bodies: with_bodies) otherwise fail
   let end_word be expect_word(cursor: functions.cursor, spelling: "end") otherwise fail
   change current to end_of_line(end_word.cursor) otherwise fail
   if is_public then

@@ -15,7 +15,8 @@ residue of stage 1, decisions Y1 to Y4; then the bytecode file itself,
 decisions Z1 to Z4, with `renyi compile` and the loader; then the rename
 of `set` to `change`, decision AA1; then the emitter written in Renyi,
 `compiler/emit.ry` and `compiler/compile.ry`, held equal to `renyi
-compile` byte for byte by the same test, decision Z3).
+compile` byte for byte by the same test, decision Z3; then constraints
+with type arguments, open item R3-2, decision AB1).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -446,8 +447,8 @@ options, done in one commit.
   section 4 and appendix A; `rules.rs`,
   `refinement_conditions_are_checked_as_bodies`; conformance case 38,
   `refinement_field.ry`. The VM's condition code still takes every field.
-- **R3-2** (constraints with type arguments) waits until after the
-  emitter (Y4).
+- **R3-2** (constraints with type arguments) is done: decision AB1, the
+  section "Constraints with type arguments" below.
 
 ## The bytecode file (decisions Z1 to Z4)
 
@@ -631,6 +632,80 @@ checked tree into the `Program` of `compiler/bytecode.ry`, and
   in about a second and `bodies.ry` in about three (checking and
   loading the whole front end included); the judge adds about a minute
   to `cargo test` on eight threads.
+
+## Constraints with type arguments (decision AB1)
+
+Open item R3-2, chosen by the owner after the emitter; the four design
+questions and their answers are the entry AB1.
+
+- **The rule.** `for any Bag, Item where Bag can Iterable of Item`: a
+  constraint, and an ability's `where self can` requirement, names an
+  ability with as many type arguments as it declares, any types in
+  scope; `type-arity` otherwise ("`Iterable` takes 1 type argument,
+  found 0", fix "write `Bag can Iterable of Item`"). In the body the
+  parameter is walked with items of `Item`, and the ability's methods
+  are called on it with the ability's parameters substituted. At a call
+  site `require_constraint` matches the arguments the argument's type
+  has the ability with (`World::implemented_args`: the implementation's
+  arguments with its parameters read as the type's, a parameter's
+  constraint or what that constraint's ability requires, a subtype's
+  base, an empty list for a derived ability) against the constraint's,
+  which binds what the constraint leaves open; a mismatch is
+  `missing-ability` naming the arguments, fix "implement `Iterable of
+  Integer` for `Deck`". One implementation per ability and type:
+  `duplicate-implementation`.
+- **The collections are `Iterable`.** `library/std/prelude.ry` holds
+  implementations for `List of Item`, `Set of Item`, `Map of Key to
+  Value` (pairs), `Range` and `Text` (characters), with the methods'
+  heads alone (both parsers read an implementation without bodies in a
+  declaration file; `ImplDeclaration` in the grammar); the free
+  `to_list` of `Set` and `Range` moved into them, the library sketch and
+  `crates/renyi_syntax/tests/library.rs` follow. The checker's own loop
+  rules for the collections are gone: `loop_items` asks
+  `implemented_args` for `Iterable`, for a type and a parameter alike.
+  An implementation head takes full types after `of` (`Implementation`
+  in the grammar; `ability()` of both parsers parses types after `of`
+  and demands names when no `for` follows).
+- **Rust.** `parser.rs` (`ability`), `world.rs` (`AbilityRef`, carried
+  by `ParamInfo.constraints` and `AbilityInfo.requirements`; `resolved`
+  on `AbilityInfo`, so that the parameters of every ability of a module
+  are known before a requirement is counted; `for_any_params`,
+  `resolve_abilities`, `check_requirements`, `implemented_args`,
+  `show_ability`, `check_ability_arity`, the duplicate check in the
+  implementation branch of `resolve_functions`; an implementation's
+  methods take the ability's visibility), `check.rs` (`Deferred` with
+  `args`, `require_constraint`, `match_ability_args`,
+  `report_missing_ability`, `show_ability`, `is_own_type`,
+  `loop_items`, the ability arm of `infer_method_call`, the constraint
+  loop of `call_known`), `vm.rs` (`builtin_type_id`: an ability call on
+  a base value dispatches by its declared type; `has_type` uses it),
+  `natives/prelude.rs` (`iterable_to_list` for `List`, `Map` and
+  `Text`).
+- **Renyi.** `parser.ry` (`type_list`, `parameter_names`,
+  `implementation` with `ability_args`, bodies by
+  `cursor.declarations`), `declare.ry` (`AbilityRef`, `PendingAbility`
+  and the two-phase `resolve_ability_items`, `add_resolved_constraint`,
+  `resolved_requirement`, `check_ability_arity`, `padded`,
+  `implemented_args`, `param_args`, `implementation_for`,
+  `bind_target_params` moved in from `bodies.ry`, `show_ability`,
+  `has_constraint`, `note_duplicate_implementation`,
+  `implemented_elsewhere`, `pair_params` public, `adopt_method` sets
+  `is_public`), `bodies.ry` (`require_constraint`,
+  `match_ability_args`, `missing_ability` with `args`, `show_ability`,
+  `is_own_type`, `settle_deferred`, `iterable_item` over
+  `implemented_args`, `source_without_iterable`,
+  `call_ability_method` substitutes, `check_instance_constraints`),
+  `types.ry` (`substitute_maybe` public). Judged by the three judges of
+  `selfhost.rs` as before.
+- **Tests and documents.** `rules.rs`
+  (`a_constraint_names_an_ability_with_its_type_arguments`); the
+  conformance cases 39 to 42 (`constraint_arguments.ry`, a run case;
+  `constraint_arity.ry`, `duplicate_implementation.ry`,
+  `constraint_mismatch.ry`); the reference (sections 2, 3, 4, 5 and 8,
+  appendix A), the grammar, the cheat sheet (3000 of 3000 tokens: the
+  `at_least`/`at_most` sentence went, the library line keeps them), the
+  sketch (section 5, R3-2 in section 18), the library sketch, the
+  decisions (section AB), `CLAUDE.md`, `docs/GAPS.md`, this file.
 
 ## The VM as it exists (`crates/renyi_vm`)
 
@@ -998,6 +1073,14 @@ Three commits on `main`, each gated as in session 7:
     lib.rs` (`imported_files` joins with `/`), the judge in
     `crates/renyi/tests/selfhost.rs`, `README.md`, `CLAUDE.md`,
     `docs/GAPS.md`, this file.
+12. Constraints with type arguments (decision AB1, the section
+    "Constraints with type arguments" above): `parser.rs`, `world.rs`,
+    `check.rs`, `vm.rs`, `natives/prelude.rs`, `library/std/prelude.ry`,
+    `compiler/parser.ry`, `declare.ry`, `bodies.ry` and `types.ry`,
+    `rules.rs`, `tests/library.rs`, conformance cases 39 to 42, the
+    grammar, the reference, the cheat sheet, the sketch, the library
+    sketch, the decisions (section AB), `CLAUDE.md`, `docs/GAPS.md`,
+    this file.
 
 ## Done in session 7 (stage 1 of the gap audit)
 
@@ -1339,17 +1422,19 @@ on a fresh clone).
 
 ## Owner actions pending
 
-- **The residue of stage 1** is done (decisions Y1 to Y4) except open
-  item R3-2 (constraints with type arguments), deferred until after the
-  emitter; `docs/GAPS.md` section 7 keeps 1.11, 3.4 and 3.6 open.
+- **The residue of stage 1** is done (decisions Y1 to Y4), and open item
+  R3-2 (constraints with type arguments) is decision AB1; `docs/GAPS.md`
+  section 7 keeps 1.11, 3.4 and 3.6 open.
 - **The rename of `set` to `change`** (the owner's decision of
   2026-10-06, asked back as a structured question after the owner raised
   it) is done: decision AA1 and the section "The rename of `set` to
   `change`" above.
 - **Stage 2's toolchain in Renyi is complete** (the lexer, the parser,
-  the checker and the emitter, W1 to W8 and Z3): the next piece is the
-  owner's to choose; R3-2 (constraints with type arguments) was
-  deferred until after the emitter (Y4) and is the open design item.
+  the checker and the emitter, W1 to W8 and Z3) and R3-2 is decided
+  (AB1): the next piece is the owner's to choose among the judges
+  running the front end from its own bytecode, the remaining
+  performance items, and stage 3 (M4: packages, FFI, the `only to`
+  runtime).
 - **Readability**: the scores are no longer the gate (decision V1).
   Round 5 (U9's sentence) and gpt-5.5 run only if the owner asks.
 - Session 5 printed the values of `ANTHROPIC_API_KEY` and
@@ -1388,12 +1473,12 @@ on a fresh clone).
    in Renyi are `compiler/`, W1 to W4; the checker in Renyi is
    `compiler/declare.ry`, `bodies.ry` and `checker.ry`, W5 to W8; the
    profile and the loop are done, X1 to X6; the residue of stage 1 is
-   done, Y1 to Y4, R3-2 deferred; the bytecode file, `renyi compile`
-   and the loader are done, Z1 to Z4; the rename of `set` to `change`
-   is done, AA1; the emitter written in Renyi is done and judged, Z3):
-   the toolchain in Renyi is complete with the Rust toolchain as stage
-   0. Next, in the order the owner chooses: R3-2 (constraints with type
-   arguments, deferred by Y4); the judges could run the front end from
+   done, Y1 to Y4; the bytecode file, `renyi compile` and the loader
+   are done, Z1 to Z4; the rename of `set` to `change` is done, AA1;
+   the emitter written in Renyi is done and judged, Z3; constraints
+   with type arguments are done, AB1, which closes R3-2): the toolchain
+   in Renyi is complete with the Rust toolchain as stage 0. Next, in
+   the order the owner chooses: the judges could run the front end from
    its own bytecode (`renyi compile compiler/compile.ry`, then `renyi
    run compiler/compile.ryc`, which skips checking the 25 000 lines of
    the front end on every run); the remaining performance items (string

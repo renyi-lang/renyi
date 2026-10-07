@@ -58,6 +58,16 @@ fn every_library_file_parses_as_declarations() {
                     def.name.text
                 ),
                 Item::Ability(ability) => assert!(ability.public, "{}", path.display()),
+                Item::Implementation(implementation) => {
+                    for function in &implementation.functions {
+                        assert!(
+                            function.body.is_none(),
+                            "{}: {} has a body",
+                            path.display(),
+                            function.name.text
+                        );
+                    }
+                }
                 other => panic!("{}: unexpected item {other:?}", path.display()),
             }
         }
@@ -98,8 +108,16 @@ fn the_library_declares_what_the_sketch_lists() {
         // table of the sketch, not in a code block, so only free functions and
         // methods are compared
         for item in &parsed.module.items {
-            if let Item::Function(function) = item {
-                declared.insert(function.name.text.clone());
+            match item {
+                Item::Function(function) => {
+                    declared.insert(function.name.text.clone());
+                }
+                Item::Implementation(implementation) => {
+                    for function in &implementation.functions {
+                        declared.insert(function.name.text.clone());
+                    }
+                }
+                _ => {}
             }
         }
     }

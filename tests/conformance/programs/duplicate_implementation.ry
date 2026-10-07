@@ -1,0 +1,19 @@
+module duplicate_implementation
+  purpose: A type implements an ability once, whatever the type arguments.
+
+public type Deck
+  purpose: A hand of cards.
+  has cards: List of Text
+end
+
+ability Iterable of Text for Deck
+  function to_list(self) returns List of Text
+    return self.cards
+  end
+end
+
+ability Iterable of Integer for Deck
+  function to_list(self) returns List of Integer
+    return [self.cards.length()]
+  end
+end

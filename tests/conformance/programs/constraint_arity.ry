@@ -1,0 +1,8 @@
+module constraint_arity
+  purpose: A constraint names an ability with the type arguments the ability declares.
+
+public function total(bag: Bag) returns Integer for any Bag where Bag can Iterable
+  purpose: Add up the items of a bag.
+
+  return for each item in bag sum item
+end

@@ -100,6 +100,29 @@ public ability Iterable of Item
   function to_list(self) returns List of Item
 end
 
+ability Iterable of Item for List of Item
+  for any Item
+  function to_list(self) returns List of Item
+end
+
+ability Iterable of Item for Set of Item
+  for any Item
+  function to_list(self) returns List of Item
+end
+
+ability Iterable of Pair of Key, Value for Map of Key to Value
+  for any Key, Value
+  function to_list(self) returns List of Pair of Key, Value
+end
+
+ability Iterable of Integer for Range
+  function to_list(self) returns List of Integer
+end
+
+ability Iterable of Text for Text
+  function to_list(self) returns List of Text
+end
+
 public ability ToJson
   purpose: Values that std.json can render; derivable, with the rules in the library sketch.
 end
@@ -277,10 +300,8 @@ public function difference(self: Set of Item, other: Set of Item) returns Set of
   purpose: The items of self that are not in other.
 public function is_subset_of(self: Set of Item, other: Set of Item) returns Boolean for any Item
 public function sorted(self: Set of Item) returns List of Item for any Item where Item can Compare
-public function to_list(self: Set of Item) returns List of Item for any Item
 
 public function contains(self: Range, value: Integer) returns Boolean
-public function to_list(self: Range) returns List of Integer
 public function length(self: Range) returns Integer
 
 public function to_milliseconds(self: Duration) returns Integer
