@@ -1,0 +1,36 @@
+{
+  "name": "greeting",
+  "version": "1.0.0",
+  "purpose": "A greeting package: a greeting as text, and announced on the console.",
+  "dependencies": {},
+  "toolchain": "renyi 0.0.1",
+  "files": [
+    {
+      "path": "greeting.ry",
+      "hash": "sha256:75ec8de11227f7a1b27e728806255c902e9bee9faf9768ca85989822394e86f1"
+    },
+    {
+      "path": "words.ry",
+      "hash": "sha256:e05a662ab30d4f66bb6db8bf314ab73d609eeaa3dfa6eeb5cabb556cc1fd27ab"
+    }
+  ],
+  "effects": [
+    {
+      "function": "greeting.announce",
+      "needs": [
+        "console"
+      ],
+      "fails": []
+    },
+    {
+      "function": "greeting.hello",
+      "needs": [],
+      "fails": []
+    },
+    {
+      "function": "words.exclaim",
+      "needs": [],
+      "fails": []
+    }
+  ]
+}

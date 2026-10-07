@@ -86,8 +86,13 @@ function compile_file(options: Options) needs console, environment, filesystem
   let text be project.read_file(path)
   let source be project.source_of(name: path, text: text)
   let library be project.library_trees(options.library)
-  let files be [source].append_all(project.imported_files(source))
-  let checked be project.check_project(files: files, library: library)
+  let resolved be project.resolve(source)
+  let files be resolved.files
+  let checked be project.check_project_with_problems(
+    files: files,
+    problems: resolved.problems,
+    library: library
+  )
   if report_diagnostics(files: files, modules: checked.modules) then environment.exit(1) end
   let program be emit.compile_project(world: checked.world, modules: checked.modules)
   let target be options.target otherwise default_target(path)

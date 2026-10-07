@@ -7,6 +7,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+renyi_json = { path = "../renyi_json" }
 renyi_syntax = { path = "../renyi_syntax" }
 renyi_check = { path = "../renyi_check" }
 num-bigint = "0.4"

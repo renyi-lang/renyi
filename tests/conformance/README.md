@@ -12,6 +12,7 @@ suite is the contract; `crates/` is one implementation of it.
 | `manifest.json` | the cases, one object each (fields below) |
 | `expected/<name>.out` | the exact standard output a `run` case must print; the ten Predict references of the readability test are the first members |
 | `programs/<name>.ry` | programs written for one diagnostic or one runtime guarantee; the corpus programs under `examples/` are referred to in place |
+| `packages/` | the package fixture of decision AC1: a directory registry with one package (`registry/greeting/1.0.0/`, its `package.json` as `renyi publish` renders it) and the projects that use it, each with its `renyi.json` (`project/` with the lockfile that matches, `stale/` with one that does not, `unlocked/` without one, `broken/` with a manifest the format refuses) |
 | `../../tools/conformance.py` | the runner: `python tools/conformance.py <renyi-binary>` from the repository root |
 | `../../crates/renyi/tests/conformance.rs` | the same manifest run by `cargo test` against the Rust binary |
 

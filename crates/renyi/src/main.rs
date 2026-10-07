@@ -441,10 +441,9 @@ pub(crate) enum CompileError {
 /// commands print what comes back, the MCP server answers with it.
 pub(crate) fn compile_sources(path: &str) -> Result<Compiled, CompileError> {
     let file = read_source(path).map_err(CompileError::Read)?;
-    let imports = renyi_check::imported_files(&file);
-    let mut files = vec![file];
-    files.extend(imports);
-    let checked = renyi_check::check_project(&files);
+    let resolved = renyi_check::resolve(&file);
+    let files = resolved.files;
+    let checked = renyi_check::check_project_with_problems(&files, &resolved.problems);
     let mut failed = false;
     let mut diagnostics = String::new();
     for module in &checked.modules {

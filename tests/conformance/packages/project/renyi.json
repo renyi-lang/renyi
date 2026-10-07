@@ -1,0 +1,9 @@
+{
+  "name": "report",
+  "version": "0.1.0",
+  "purpose": "The conformance programs that use the greeting package.",
+  "dependencies": {
+    "greeting": "1.0.0"
+  },
+  "registry": "../registry"
+}

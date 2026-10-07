@@ -1,0 +1,10 @@
+module broken
+  purpose: A program under a manifest that cannot be read.
+
+import std.console
+
+function main() needs console
+  purpose: Print a line; the manifest is reported all the same.
+
+  console.print("hello")
+end

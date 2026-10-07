@@ -239,6 +239,8 @@ public function is_empty(self: Bytes) returns Boolean
 public function to_text(self: Bytes) returns Text or fails with InvalidEncoding
   purpose: Decode as UTF-8.
 public function to_base64(self: Bytes) returns Text
+public function sha256(self: Bytes) returns Text
+  purpose: The SHA-256 digest as 64 hex digits.
 
 public function length(self: List of Item) returns Integer for any Item
 public function is_empty(self: List of Item) returns Boolean for any Item

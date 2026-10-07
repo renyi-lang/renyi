@@ -40,6 +40,16 @@ pub struct SourceFile {
     pub name: String,
     pub text: String,
     line_starts: Vec<usize>,
+    /// The package the file belongs to (decision AC1); `None` for a file
+    /// of the program itself.
+    pub package: Option<Package>,
+}
+
+/// A dependency a file was read from: its name and its version.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Package {
+    pub name: String,
+    pub version: String,
 }
 
 impl SourceFile {
@@ -55,7 +65,14 @@ impl SourceFile {
             name: name.into(),
             text,
             line_starts,
+            package: None,
         }
+    }
+
+    /// The same file, tagged with the package it belongs to.
+    pub fn in_package(mut self, package: Package) -> SourceFile {
+        self.package = Some(package);
+        self
     }
 
     /// The line and column of a byte offset.

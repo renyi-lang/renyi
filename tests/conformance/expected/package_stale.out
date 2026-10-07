@@ -1,0 +1,2 @@
+tests/conformance/packages/stale/stale.ry:5:1: error [package-mismatch]: `greeting` 1.0.0 is not the package renyi.lock.json names: its hash differs
+  fix: run `renyi fetch` to get the locked package, or `renyi update` to take this one

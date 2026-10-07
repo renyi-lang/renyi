@@ -5,7 +5,7 @@ import std.console
 import std.environment
 import ast exposing Module, Span
 import report exposing Diagnostic
-import project exposing Source
+import project exposing Source, Project
 
 type Options
   purpose: What the command line asked for: the output format, strictness, the library, the files.
@@ -126,17 +126,20 @@ end
 function check_file(source: Source, library: List of Module)
   returns List of Diagnostic
   needs filesystem.read
-  purpose: A file checked together with the imports read from its directory.
+  purpose: A file checked with its imports and dependencies; the resolver's problems are its own.
 
-  let imports be project.imported_files(source)
-  return check_sources(program: source, imports: imports, library: library)
+  let resolved be project.resolve(source)
+  let checked be project.check_project_with_problems(
+    files: resolved.files,
+    problems: resolved.problems,
+    library: library
+  )
+  return summarize(checked: checked, imports: resolved.files.drop(1))
 end
 
-function check_sources(program: Source, imports: List of Source, library: List of Module)
-  returns List of Diagnostic
+function summarize(checked: Project, imports: List of Source) returns List of Diagnostic
   purpose: The main file's diagnostics; an import with errors is summarized as one diagnostic.
 
-  let checked be project.check_project(files: [program].append_all(imports), library: library)
   let modules be checked.modules
   let main_module be modules.first() otherwise crash with "the main module"
   if main_module.id is nothing then return main_module.diagnostics end

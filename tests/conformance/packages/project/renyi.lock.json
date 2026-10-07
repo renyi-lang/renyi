@@ -1,0 +1,9 @@
+{
+  "packages": [
+    {
+      "name": "greeting",
+      "version": "1.0.0",
+      "hash": "sha256:5a0f7d1d6b3b82d2ac4413b1c37d8098ec0aaf9c425ecd562b76d25dec23d4b6"
+    }
+  ]
+}

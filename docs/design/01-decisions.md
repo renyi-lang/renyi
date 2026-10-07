@@ -1788,3 +1788,91 @@ reference (sections 2, 3, 4, 5 and 8, appendix A), the grammar
 declaration file), the cheat sheet, both front ends, the library and its
 sketch, the conformance suite (four cases) and the checker's tests, in
 one commit. (user)
+
+## AC. Packages (session 8)
+
+**AC1. Packages: a static registry, JSON manifests, the package name as
+the first segment of an import, and the first slice of M4.** The owner's
+batch after the judges ran from bytecode, four questions answered with
+the recommended options; the rules that carry them out are this entry.
+(i) *The registry is a directory or a URL*, not a service:
+`<registry>/<name>/versions.json` lists the versions,
+`<registry>/<name>/<version>/package.json` holds the package's name,
+version, purpose, dependencies, the toolchain that published it, every
+source file's path with its SHA-256 and the effect manifest of Q1 (for
+every public function, its transitive capabilities and failure types),
+and the source files lie beside it. A package's content hash is the
+SHA-256 of its `package.json` text, spelled `sha256:` and the hex digest
+as the index spells hashes. A directory registry (absolute, or relative
+to the project root) is read in place; a `http://` or `https://`
+registry is fetched into `.renyi/packages/<name>/<version>/` under the
+project root by `renyi fetch` and by `renyi add`, which check every
+file's hash and recompute the effect manifest from the sources, refusing
+a package whose claimed manifest differs: Q1's recomputation by the
+registry is the client's until a registry with signatures exists (R7-2).
+`renyi publish [--to <directory>]` writes a project into a directory
+registry (a URL registry is published through its local copy): the
+project must check clean, the version must be at least what the
+semantic diff against the highest published version demands (G1: a new
+major when a public signature went or changed, a new minor when one
+came, else greater than the previous), and a published version is never
+overwritten. (ii) *The manifest is JSON.* `renyi.json` in the project
+root holds `name`, `version`, `purpose`, `dependencies` (package name to
+the version required), `registry` and `budgets` (the thresholds of R7,
+`public_per_module`, `effect_paths_per_module` and
+`fan_out_per_definition`, which `renyi index --budgets` reads when they
+are there); the lockfile `renyi.lock.json` beside it holds `packages`,
+every package the program reaches with its `name`, `version` and
+`hash`, sorted by name, written by `renyi add` and `renyi update` and
+read by every other command. A project is the directory holding
+`renyi.json`; a program's project root is the nearest such directory in
+its file's directory or above it (up to the working directory for a
+relative path), else the file's directory as before (J17), and its own
+imports resolve from the root. A version is `major.minor.patch`; a
+requirement names a version and means the same major and at least that
+version; a program holds one version of a package, the highest one every
+requirement allows, and requirements that disagree on the major are an
+error. One format for the recording, the run manifest, the bytecode file
+and the manifests, read by one reader (`crates/renyi_json`, the VM's
+reader moved out); the alternatives were a `package.ry` in Renyi syntax
+(a surface change under V11) and TOML (a new dependency). (iii) *The
+package name is the first segment.* `import <name>.<path>` reaches the
+dependency's file `<path>.ry` from the package's root and `import
+<name>` its root module `<name>.ry`; inside the package a module header
+is the path from the package's root (`module fetch`), and the checker
+names the module `<name>.fetch`, the root module `<name>`; an import
+inside a package that names one of the package's own dependencies
+reaches that dependency, any other its own files; at the program level
+an import reaches a package only when the manifest lists it as a
+dependency. A dependency wins over a directory of the project with its
+name; `renyi add` refuses such a name and `std`. No new keyword, and no
+package name in the headers. (iv) *The first slice is packages*: the
+manifest, the lockfile, `renyi add <name> [<version>]` (resolve, fetch,
+print every public function's effects and failures, write both files),
+`renyi update [--accept-effects]` (every dependency to the highest
+version its requirement allows; one whose effects widen is refused
+unless the flag is given and `main`'s grant covers them), `renyi audit`
+(every dependency's transitive effects against `main`'s grant, and the
+capabilities of the grant no dependency uses), `renyi fetch`, `renyi
+publish`, the dependencies with their hashes in the run manifest, which
+`renyi reproduce` compares (Q2), and the thresholds of R7 in the
+manifest; `std.process` with the capability `process` is the next slice
+and the foreign function interface (`foreign`, F0) the one after. Across
+a package boundary the static coverage rule checks the kind of a
+capability and the grant stack its scope, as reference section 11
+already said, and the error names the package ("`announce` (package
+`greeting` 1.0.0) needs `console`, which `main` does not declare"). A
+package whose `package.json` differs from the lockfile is
+`package-mismatch` on the import, a dependency of the manifest that the
+lockfile or the registry lacks `package-missing`, and a manifest, a
+lockfile or a `package.json` that cannot be read `manifest-invalid`. The
+resolver is `crates/renyi_package`, used by the checker and the binary;
+`Bytes.sha256()` joins the prelude so that the front end written in
+Renyi verifies a package as the Rust resolver does
+(`compiler/project.ry`), and the judges hold the two equal over the
+projects with a dependency in the conformance suite
+(`tests/conformance/packages/`). The front end written in Renyi reads the
+manifests through `std.json`, whose maps keep one value per key, so a key
+given twice is refused by the Rust resolver alone, as is a budget spelled
+`1.0` or `1e2` or a version part beyond 64 bits; the two are left to
+differ there. (user)

@@ -244,12 +244,15 @@ freeze, or take it out of the frozen surface until it exists.
 ## 4. Milestones not started, or half done
 
 - **M4** (library and package manager): the library half exists (12
-  modules, 189 functions, natives for each). Absent: the registry, the
-  lockfile, the project manifest, `renyi add`, `update --accept-effects`,
-  `audit`, package effect manifests with package-named coverage errors,
-  dependency hashes in the run manifest, the FFI generators, the `only to`
-  runtime, budget thresholds read from the manifest (decision R7),
-  `std.process`.
+  modules, natives for each); since decision AC1 (2026-10-07) the project
+  manifest `renyi.json`, the lockfile, the layout of a directory or URL
+  registry and the resolver exist in both front ends, with package-named
+  coverage errors and the diagnostics `package-missing`,
+  `package-mismatch` and `manifest-invalid`. Absent: `renyi add`,
+  `update --accept-effects`, `audit`, `fetch` and `publish` (the effect
+  manifests they write and check), dependency hashes in the run manifest,
+  budget thresholds read from the manifest (decision R7), the FFI
+  generators, the `only to` runtime, `std.process`.
 - **M5** (LSP, index, compiler API): the index half exists (`index`,
   `--budgets`, `--diff`, `mcp` with ten tools). Absent: the LSP, the
   embedding API with per-module grants and memory budgets (decision Q3:
@@ -550,3 +553,15 @@ The judges of `selfhost.rs` run the front end from the bytecode `renyi
 compile` writes of each driver when the test starts, and the Renyi
 compiler writes the file it ran from (its fixed point). Next: the
 remaining performance items as a profile calls for them, or stage 3.
+
+### Status at the start of stage 3 (2026-10-07)
+
+The owner chose stage 3 (M4) and, beside it, the parity of the Renyi
+front end's diagnostics with the Rust parser's (the difference the
+judges tolerate on a rejected program). Decision AC1 answered the four
+questions of packages; its first commit holds the manifest, the
+lockfile, the registry layout and the resolver in both front ends, with
+the package fixture of the conformance suite under the three judges.
+Next: the commands (`renyi add`, `update`, `audit`, `fetch`, `publish`)
+and the dependencies in the run manifest, then `std.process`, then the
+foreign function interface.

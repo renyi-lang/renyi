@@ -1,0 +1,17 @@
+module greeting
+  purpose: A greeting package: a greeting as text, and announced on the console.
+
+import std.console
+import words
+
+public function hello(name: Text) returns Text
+  purpose: The greeting for a name.
+
+  return words.exclaim("Hello, {name}")
+end
+
+public function announce(name: Text) needs console
+  purpose: Print the greeting for a name.
+
+  console.print(hello(name))
+end

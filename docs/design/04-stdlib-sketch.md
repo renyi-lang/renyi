@@ -137,6 +137,8 @@ function is_empty(self: Bytes) returns Boolean
 function to_text(self: Bytes) returns Text or fails with InvalidEncoding
   purpose: Decode as UTF-8.
 function to_base64(self: Bytes) returns Text
+function sha256(self: Bytes) returns Text
+  purpose: The SHA-256 digest as 64 hex digits.
 ```
 
 ### 1.3 Collections

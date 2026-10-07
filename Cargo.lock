@@ -407,6 +407,7 @@ name = "renyi_check"
 version = "0.0.1"
 dependencies = [
  "regex",
+ "renyi_package",
  "renyi_syntax",
 ]
 
@@ -415,6 +416,19 @@ name = "renyi_index"
 version = "0.0.1"
 dependencies = [
  "renyi_check",
+ "renyi_syntax",
+ "sha2",
+]
+
+[[package]]
+name = "renyi_json"
+version = "0.0.1"
+
+[[package]]
+name = "renyi_package"
+version = "0.0.1"
+dependencies = [
+ "renyi_json",
  "renyi_syntax",
  "sha2",
 ]
@@ -433,6 +447,7 @@ dependencies = [
  "num-traits",
  "regex",
  "renyi_check",
+ "renyi_json",
  "renyi_syntax",
  "rusqlite",
  "sha2",

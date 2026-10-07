@@ -6,16 +6,20 @@
 use std::collections::HashMap;
 
 use renyi_syntax::ast::{self, Item, TypeKind};
-use renyi_syntax::{Diagnostic, Span};
+use renyi_syntax::{Diagnostic, Package, Span};
 
 use crate::effects::Capability;
 use crate::suggest::{closest, foreign_type, quoted};
 use crate::types::*;
 
 pub struct ModuleInfo {
-    /// The dotted module name, `std.json` or `invoice`.
+    /// The dotted module name, `std.json` or `invoice`; for a module of a
+    /// dependency the package name and the path from the package's root,
+    /// `greeting.words`, or the package name alone for its root module.
     pub name: String,
     pub is_library: bool,
+    /// The dependency the module belongs to (decision AC1).
+    pub package: Option<Package>,
     pub ast: ast::Module,
     pub types: HashMap<String, TypeId>,
     pub abilities: HashMap<String, AbilityId>,
@@ -240,6 +244,7 @@ impl World {
         let mut info = ModuleInfo {
             name: name.clone(),
             is_library,
+            package: None,
             ast: module,
             types: HashMap::new(),
             abilities: HashMap::new(),
@@ -316,6 +321,28 @@ impl World {
 
     pub fn module_id(&self, name: &str) -> Option<ModuleId> {
         self.modules.iter().position(|m| m.name == name)
+    }
+
+    /// Tag a module as a dependency's (decision AC1) and name it as the
+    /// program imports it: the package name and the declared name, or the
+    /// package name alone for the root module.
+    pub fn set_package(&mut self, id: ModuleId, package: Package) {
+        if self.modules[id].name != package.name {
+            self.modules[id].name = format!("{}.{}", package.name, self.modules[id].name);
+        }
+        self.modules[id].package = Some(package);
+    }
+
+    /// The module an import names, from a module: inside a dependency an
+    /// own module first (`import words` is `greeting.words`), then the
+    /// name as written.
+    fn imported_module(&self, from: ModuleId, name: &str) -> Option<ModuleId> {
+        if let Some(package) = &self.modules[from].package {
+            if let Some(id) = self.module_id(&format!("{}.{name}", package.name)) {
+                return Some(id);
+            }
+        }
+        self.module_id(name)
     }
 
     /// Remember where the lines of a module's file start, so that the body
@@ -712,7 +739,7 @@ impl World {
         for import in &imports {
             let path: Vec<&str> = import.path.iter().map(|n| n.text.as_str()).collect();
             let name = path.join(".");
-            let Some(target) = self.module_id(&name) else {
+            let Some(target) = self.imported_module(id, &name) else {
                 let fix = match closest(&name, self.modules.iter().map(|m| m.name.as_str())) {
                     Some(close) => format!("did you mean `{close}`?"),
                     None => format!(

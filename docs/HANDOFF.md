@@ -17,7 +17,8 @@ of `set` to `change`, decision AA1; then the emitter written in Renyi,
 `compiler/emit.ry` and `compiler/compile.ry`, held equal to `renyi
 compile` byte for byte by the same test, decision Z3; then constraints
 with type arguments, open item R3-2, decision AB1; then the judges run
-the front end from its bytecode).
+the front end from its bytecode; then packages, decision AC1, the first
+commit of stage 3).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -29,8 +30,9 @@ M3 (the VM: `renyi run`, `record`, `run --replay`, `reproduce`,
 run manifest of Q2, every library module, the `only to` guards of P3,
 tasks one after the other by S2) are done, with the project map (`renyi
 index`, `--budgets`, `--diff`), `renyi tools` and `renyi mcp` on top. M4
-to M6 are not started (`docs/GAPS.md`, section 4). Design decisions are
-in sections 0 to AA of `01-decisions.md`; the agent tooling in
+is under way (packages, decision AC1; `docs/GAPS.md`, section 4); M5 and
+M6 are not started. Design decisions are
+in sections 0 to AC of `01-decisions.md`; the agent tooling in
 `05-agent-tooling.md`, the signature capabilities in
 `06-runtime-guarantees.md`, the system-level commitments in
 `07-system-design.md`; the open items in section 18 of the sketch (R3-1,
@@ -65,23 +67,26 @@ file's); the emitter written in Renyi, which writes that file, exists
 and is held equal to `renyi compile` byte for byte (decision Z3, the
 section after the rename's): the toolchain in Renyi is the lexer, the
 parser, the checker and the emitter, with the Rust toolchain as stage 0.
+Stage 3 began on 2026-10-07 with packages (decision AC1, the section
+"Packages" below).
 
 The corpus has 30 programs, passes the lint, is in canonical layout,
 checks cleanly, has nothing over budget, and its `example:` lines and
 `test` blocks pass on the VM (six are `replays` tests answered from
 recordings under `examples/fixtures/`). The cheat sheet measures
-2998 of 3000 tokens. The Rust workspace has five crates:
-`renyi_syntax`, `renyi_check`, `renyi_index`, `renyi_vm` and the `renyi`
+2998 of 3000 tokens. The Rust workspace has seven crates:
+`renyi_json`, `renyi_syntax`, `renyi_package`, `renyi_check`,
+`renyi_index`, `renyi_vm` and the `renyi`
 binary with `check`, `format`, `tokens`, `parse [--json]
 [--declarations]`, `index [--json | --budgets | --diff <map or
 revision>]`, `run [--manifest] [options] <file> [arguments]`, `record
 [--to file] [options] <file> [arguments]`, `reproduce <recording>
 [<file>]`, `test [--strict] [--refresh name [--redact name]] [--explain]
 <file>...`, `compile [--to file] <file.ry>`, `tools [path]`, `mcp
-[path]` and `version`; 226 tests, clippy and fmt clean on Windows
+[path]` and `version`; 237 tests, clippy and fmt clean on Windows
 with rustc 1.94.1. CI (`.github/workflows/ci.yml`) runs the same gates,
 `renyi check compiler/*.ry` and the conformance suite
-(`tests/conformance/`, 38 cases, every `run` case a second time from
+(`tests/conformance/`, 47 cases, every `run` case a second time from
 its bytecode file;
 runners `tools/conformance.py` and `crates/renyi/tests/conformance.rs`)
 on a toolchain pinned to the owner's machine (rustc 1.94.1), so that CI
@@ -742,6 +747,105 @@ script `judge_emit.sh` runs the same way.
   the repository; `renyi run compiler/parse.ry` and the other two
   source forms work as before, and `README.md` names them.
 
+## Packages (decision AC1; stage 3, the first commit)
+
+The owner's choice after the judges ran from bytecode: stage 3 (M4) and,
+beside it, the parity of the Renyi front end's diagnostics with the Rust
+parser's ("1+2"); the four design questions of packages and their
+answers are the entry AC1 (a static registry, JSON manifests, the
+package name as the first segment of an import, packages before
+`std.process` and the FFI).
+
+- **The rule.** A program's project root is the directory of the nearest
+  `renyi.json` in its file's directory or above it (a relative path
+  stops at the working directory, an absolute one at its root), else
+  the file's directory (J17); its own imports resolve from the root.
+  The manifest names the dependencies (name to the version required,
+  `major.minor.patch`; a requirement means the same major and at least
+  that version) and the registry, a directory (absolute, or relative to
+  the root) or an `http://` or `https://` base whose packages are
+  fetched into `.renyi/packages/<name>/<version>/` under the root; the
+  lockfile `renyi.lock.json` names every package's version and the
+  `sha256:` hash of its `package.json`. `import <name>` is the package's
+  root module `<name>.ry` and `import <name>.<path>` its file
+  `<path>.ry`, both under `<registry>/<name>/<version>/`; the checker
+  names the modules `<name>` and `<name>.<module>`; inside a package an
+  import reaches the package's own files first, then one of its own
+  dependencies; an import reaches a package only when the manifest (or
+  the package's `package.json`) lists it as a dependency. A dependency's
+  capabilities are covered as a library's are (the kind statically, the
+  scope by the grant stack at run time) and the diagnostic names the
+  package: "`announce` (package `greeting` 1.0.0) needs `console`, which
+  `main` does not declare". `package-missing` (not in the lockfile, no
+  registry, not at the registry), `package-mismatch` (the hash differs;
+  the package is read all the same) and `manifest-invalid` (a manifest,
+  a lockfile or a package file refused: not JSON, not an object, a field
+  the format lacks, a wrong type, a bad name or version) are reported on
+  the import; the manifest's and the lockfile's problems at the start of
+  the main file.
+- **Rust.** `crates/renyi_json` (the VM's `Json`, `read_json` and
+  `write_json` moved out; `natives/json.rs` re-exports them).
+  `crates/renyi_package`: `version.rs`; `manifest.rs` (`Manifest`,
+  `Lock`, `PackageFile`, `Versions`, `Budgets`, `Effect`; strict readers
+  with one message per refusal, `render` with two-space indentation and
+  a fixed key order, so that a package's hash is the hash of its
+  rendered `package.json`); `registry.rs` (`Registry`, `STORE`,
+  `hash_of`, `is_absolute`, `join`: a textual join with `/` and `.` and
+  `..` folded, so that every toolchain names a file the same way);
+  `resolve.rs` (`Project::of`, `resolve`: a stack of pending imports,
+  the last import of a file first as before, `seen` by qualified name,
+  `locate_package` reporting once per package). `renyi_syntax`:
+  `SourceFile.package` and `Package`. `renyi_check`:
+  `ModuleInfo.package`, `World::set_package` (the rename),
+  `imported_module`, `check_project_with_problems`, `charge_of` in
+  `check.rs`, `check_file` and `imported_files` through `resolve`; the
+  binary's `compile_sources` the same; `renyi_index::load_project` skips
+  `.renyi/` and indexes the dependency files it reaches;
+  `Bytes.sha256()` in the prelude (`sha2`).
+- **Renyi.** `compiler/project.ry` (`resolve`, `root_of` and
+  `root_above`, `root_at`, `read_manifest`, `read_lock`,
+  `read_package_file` with the Rust reader's messages in the Rust
+  reader's order, through `std.json`'s `JsonValue` and a `Refused`
+  failure type; `join_path(base, relative)` is the textual join;
+  `check_project_with_problems`), `declare.ry` (`PackageTag`,
+  `ModuleInfo.package`, `set_package`, `imported_module`), `bodies.ry`
+  (`Charge`, `charge_of`, `same_package`), `checker.ry` and
+  `compile.ry` (`resolve` in place of `imported_files`). The three
+  judges run over the fixture too (`PROGRAM_DIRECTORIES` in
+  `selfhost.rs`).
+- **Where the two resolvers differ, by construction**: a key given
+  twice in a manifest is refused by the Rust reader alone (a Renyi map
+  keeps one value per key); a budget spelled `1.0` or `1e2` is a whole
+  number to the Renyi side alone; a version part beyond 64 bits is
+  refused by Rust alone; an import that does not parse contributes no
+  imports on the Renyi side (as before).
+- **The fixture** `tests/conformance/packages/`:
+  `registry/greeting/1.0.0/` (`package.json` as `renyi publish` will
+  render it, `greeting.ry` importing `words`, `words.ry`,
+  `versions.json` beside the version), `project/` (`renyi.json`, the
+  lockfile with the right hash, `report.ry` run as case 43,
+  `uncovered.ry` case 44), `stale/` (a wrong hash, case 45),
+  `unlocked/` (no lockfile, case 46), `broken/` (a field the format
+  lacks, case 47). `crates/renyi_package/tests/fixture.rs` holds
+  `package.json` canonical and the lock hash right and checks the
+  resolver's file order and tags; `rules.rs`,
+  `a_dependency_is_charged_with_its_package_named`. The fixture was
+  written by `make_fixture.py` in the session's scratchpad; `renyi
+  publish` will regenerate `package.json` once it exists.
+- **Next, the second commit of AC1**: `renyi add <name> [<version>]`,
+  `update [--accept-effects]`, `audit`, `fetch` and `publish [--to
+  <directory>]` in the binary (HTTP through `ureq`; the effect manifest
+  from the index's transitive effects and failures; `publish` checks
+  the version against the semantic diff and never overwrites a
+  version); the dependencies with their hashes in the run manifest,
+  compared by `reproduce`; `renyi index --budgets` reading the
+  thresholds of `renyi.json`; the index labelling a dependency's
+  definitions with their package; the USAGE text, appendix B,
+  `README.md`, section 2.3 of `07-system-design.md`. Then `std.process`
+  and the FFI (the next slices of M4), and the parity of the Renyi
+  front end's diagnostics with the Rust parser's (the "2" of the
+  owner's answer).
+
 ## The VM as it exists (`crates/renyi_vm`)
 
 - **The loop** is described in the section above (decision X3): one
@@ -1120,6 +1224,19 @@ Three commits on `main`, each gated as in session 7:
     bytecode" above): `crates/renyi/tests/selfhost.rs` (`front_end`,
     the driver's file passed to every judge, the fixed point of
     `compile.ry`), `CLAUDE.md`, `docs/GAPS.md`, this file.
+14. Packages, the first commit (decision AC1, the section "Packages"
+    above): `crates/renyi_json` and `crates/renyi_package` (new),
+    `renyi_syntax` (`Package`, `SourceFile.package`), `renyi_check`
+    (`world.rs`, `check.rs`, `lib.rs`, `rules.rs`), `renyi_index`
+    (`load_project`), the binary (`compile_sources`, the judges'
+    `PROGRAM_DIRECTORIES`), `renyi_vm` (`natives/json.rs` re-exports,
+    `Bytes.sha256`), `library/std/prelude.ry` and the library sketch,
+    `compiler/project.ry`, `declare.ry`, `bodies.ry`, `checker.ry` and
+    `compile.ry`, the fixture `tests/conformance/packages/` with
+    conformance cases 43 to 47 and `renyi_package/tests/fixture.rs`,
+    the reference (sections 2 and 11, appendix A), the decisions
+    (section AC), `CLAUDE.md`, `docs/GAPS.md`,
+    `tests/conformance/README.md`, `.gitignore`, this file.
 
 ## Done in session 7 (stage 1 of the gap audit)
 
@@ -1524,7 +1641,9 @@ on a fresh clone).
    and `micro.py` against the `base` worktree, the two binaries run
    back to back. The front end in Renyi reports one syntax error with a
    position and no fix; parity with the Rust parser's diagnostics
-   (codes, fixes, recovery) is a later step.
+   (codes, fixes, recovery, the judges byte-equal on rejected programs
+   too) is the step the owner chose beside stage 3 ("1+2", 2026-10-07),
+   after the second commit of AC1.
 2. **Readability, only on request**: round 5 on Sonnet measures U9
    (`run.py prepare`, the Sonnet command at the end of this item after
    its probe, the graders, `score`, the U5 search, `report`, the
@@ -1552,9 +1671,11 @@ on a fresh clone).
    the Predict answer on `traffic_light` (0 of 5 with right lines); the
    rubric's reading of "only X and Y" when Z is also needed (round 1 and
    2 read it as a need missing).
-4. **M4** (the package manager, budgets in the manifest, `std.process`,
-   FFI) and **M5** (embedding API, `serve --watch`, LSP, a resident
-   `World`, open item R5-5) as before: stage 3 of `docs/GAPS.md`.
+4. **M4**, under way: the second commit of AC1 (the commands, the run
+   manifest's dependencies, the budgets of the manifest; the section
+   "Packages" above), then `std.process`, then the FFI; **M5**
+   (embedding API, `serve --watch`, LSP, a resident `World`, open item
+   R5-5) after: stage 3 of `docs/GAPS.md`.
 
 ## Known gaps and risks
 

@@ -1,0 +1,9 @@
+{
+  "name": "unlocked",
+  "version": "0.1.0",
+  "purpose": "A project that never ran `renyi add`.",
+  "dependencies": {
+    "greeting": "1.0.0"
+  },
+  "registry": "../registry"
+}

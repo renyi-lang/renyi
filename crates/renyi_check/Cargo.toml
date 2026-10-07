@@ -8,4 +8,5 @@ repository.workspace = true
 
 [dependencies]
 renyi_syntax = { path = "../renyi_syntax" }
+renyi_package = { path = "../renyi_package" }
 regex = "1"

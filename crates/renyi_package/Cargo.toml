@@ -1,0 +1,12 @@
+[package]
+name = "renyi_package"
+description = "Packages of Renyi programs: the manifest, the lockfile, versions, the registry layout and the resolution of imports (decision AC1)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+renyi_syntax = { path = "../renyi_syntax" }
+renyi_json = { path = "../renyi_json" }
+sha2 = "0.10"

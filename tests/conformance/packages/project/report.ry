@@ -1,0 +1,12 @@
+module report
+  purpose: Greet through a package: `import greeting` reaches the registry through the lockfile.
+
+import std.console
+import greeting
+
+function main() needs console
+  purpose: Print a greeting the package makes, then let the package announce one.
+
+  console.print(greeting.hello("world"))
+  greeting.announce("Renyi")
+end

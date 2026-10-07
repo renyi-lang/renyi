@@ -1,0 +1,6 @@
+tests/conformance/packages/unlocked/unlocked.ry:5:1: error [unknown-module]: no module named `greeting`
+  fix: create `greeting.ry` with `module greeting` as its first line
+tests/conformance/packages/unlocked/unlocked.ry:5:1: error [package-missing]: `greeting` is a dependency of renyi.json but not in renyi.lock.json
+  fix: run `renyi add greeting`
+tests/conformance/packages/unlocked/unlocked.ry:10:17: error [unknown-name]: there is no binding, constant or function named `greeting`
+  fix: declare it first: `let greeting be ...`

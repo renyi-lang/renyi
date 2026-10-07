@@ -1,4 +1,5 @@
 target/
+.renyi/
 __pycache__/
 examples/.scratch*.ry
 .ce/

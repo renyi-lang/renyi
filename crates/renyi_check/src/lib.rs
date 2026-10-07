@@ -1,6 +1,8 @@
 //! Name resolution, type checking and effect checking (milestone M2). The
 //! standard library's declarations are compiled in from `library/std/*.ry`;
-//! a program's own imports are read from the directory of its file.
+//! a program's own imports are read from its project root and its
+//! dependencies' files from the registry or the store (decision AC1, the
+//! resolver of `renyi_package`).
 
 pub mod check;
 pub mod effects;
@@ -9,12 +11,10 @@ mod suggest;
 pub mod types;
 pub mod world;
 
-use std::collections::HashSet;
-use std::path::Path;
-
 use renyi_syntax::{parse, parse_declarations, Diagnostic, SourceFile, Span};
 
 pub use check::{NumberKind, Reference, Target};
+pub use renyi_package::{resolve, Problem, Project, Resolved};
 pub use types::{AbilityId, FunctionId, ModuleId, TypeId};
 pub use world::{BodyLocation, World};
 
@@ -98,6 +98,9 @@ pub fn check_project(files: &[SourceFile]) -> CheckedProject {
             }
             let id = world.add_module(parsed.module, false);
             world.set_source_lines(id, &file.text);
+            if let Some(package) = &file.package {
+                world.set_package(id, package.clone());
+            }
             Some(id)
         };
         modules.push(CheckedModule {
@@ -133,6 +136,25 @@ pub fn check_project(files: &[SourceFile]) -> CheckedProject {
         modules,
         references,
     }
+}
+
+/// `check_project`, with the resolver's problems (a manifest that cannot be
+/// read, a package missing or not the one the lockfile names) added to the
+/// diagnostics of the files they belong to.
+pub fn check_project_with_problems(files: &[SourceFile], problems: &[Problem]) -> CheckedProject {
+    let mut checked = check_project(files);
+    for problem in problems {
+        let Some(module) = checked
+            .modules
+            .iter_mut()
+            .find(|module| files[module.file].name == problem.file)
+        else {
+            continue;
+        };
+        module.diagnostics.push(problem.diagnostic.clone());
+        module.diagnostics.sort_by_key(|d| d.span.start);
+    }
+    checked
 }
 
 /// Decision G3: the module name equals the path. The last segment is the
@@ -187,7 +209,12 @@ pub fn check_sources(main: &SourceFile, imports: &[SourceFile]) -> Vec<Diagnosti
     let mut files = Vec::with_capacity(imports.len() + 1);
     files.push(main.clone());
     files.extend(imports.iter().cloned());
-    let checked = check_project(&files);
+    summarize(&check_project(&files), imports)
+}
+
+/// The main module's diagnostics of a checked project, with an import
+/// that has errors summarized as one diagnostic.
+fn summarize(checked: &CheckedProject, imports: &[SourceFile]) -> Vec<Diagnostic> {
     let main_module = &checked.modules[0];
     if main_module.id.is_none() {
         return main_module.diagnostics.clone();
@@ -220,64 +247,21 @@ pub fn check_sources(main: &SourceFile, imports: &[SourceFile]) -> Vec<Diagnosti
     diagnostics
 }
 
-/// The non-library modules a file imports, transitively, read from its
-/// directory (decision J17: the file's directory is the project root). A
-/// file that cannot be read is left out; the resolver then reports an
-/// unknown module. The path of an import is the file's directory and the
-/// import's segments joined with `/` on every platform, so that a
-/// bytecode file, which remembers the paths, does not depend on the
-/// machine that wrote it (decision Z3).
+/// The non-library modules a file imports, transitively: its own from the
+/// project root (decision J17: the file's directory, when there is no
+/// manifest above it) and its dependencies' from the registry or the store
+/// (decision AC1), without the problems the resolver found. The path of a
+/// file is joined with `/` on every platform, so that a bytecode file,
+/// which remembers the paths, does not depend on the machine that wrote it
+/// (decision Z3).
 pub fn imported_files(file: &SourceFile) -> Vec<SourceFile> {
-    let directory = Path::new(&file.name)
-        .parent()
-        .map(|parent| parent.display().to_string())
-        .unwrap_or_default();
-    let parsed = parse(&file.text);
-    let mut imports = Vec::new();
-    let mut seen: HashSet<String> = HashSet::new();
-    let mut queue: Vec<Vec<String>> = parsed
-        .module
-        .imports
-        .iter()
-        .map(|i| i.path.iter().map(|n| n.text.clone()).collect())
-        .collect();
-    while let Some(path) = queue.pop() {
-        if path.first().map(String::as_str) == Some("std") {
-            continue;
-        }
-        let name = path.join(".");
-        if !seen.insert(name.clone()) {
-            continue;
-        }
-        let mut base = directory.clone();
-        for segment in &path {
-            if !base.is_empty() {
-                base.push('/');
-            }
-            base.push_str(segment);
-        }
-        // `.renyi` and `.ry` are equivalent (decision G3)
-        let mut found = None;
-        for extension in ["ry", "renyi"] {
-            let file_path = format!("{base}.{extension}");
-            if let Ok(read) = std::fs::read_to_string(&file_path) {
-                found = Some((file_path, read));
-                break;
-            }
-        }
-        let Some((file_path, text)) = found else {
-            continue;
-        };
-        let imported = parse(&text);
-        for import in &imported.module.imports {
-            queue.push(import.path.iter().map(|n| n.text.clone()).collect());
-        }
-        imports.push(SourceFile::new(file_path, text));
-    }
-    imports
+    resolve(file).files.into_iter().skip(1).collect()
 }
 
-/// Check a file on disk together with the imports read from its directory.
+/// Check a file on disk together with its imports and dependencies; the
+/// resolver's problems count as the main file's diagnostics.
 pub fn check_file(file: &SourceFile) -> Vec<Diagnostic> {
-    check_sources(file, &imported_files(file))
+    let resolved = resolve(file);
+    let checked = check_project_with_problems(&resolved.files, &resolved.problems);
+    summarize(&checked, &resolved.files[1..])
 }

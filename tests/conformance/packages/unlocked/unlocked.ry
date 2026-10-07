@@ -1,0 +1,11 @@
+module unlocked
+  purpose: A dependency the manifest names but the lockfile does not.
+
+import std.console
+import greeting
+
+function main() needs console
+  purpose: Print a greeting; the package cannot be found.
+
+  console.print(greeting.hello("world"))
+end

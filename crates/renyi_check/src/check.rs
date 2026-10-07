@@ -3214,18 +3214,15 @@ impl<'w> Checker<'w> {
             }
         }
         // effects: the callee's needs plus those of function-valued arguments
+        let (runtime_scoped, source) = self.charge_of(id);
         let mut needed: Vec<(Capability, bool, String)> = needs
             .into_iter()
-            .map(|c| (c, is_library, name.clone()))
+            .map(|c| (c, runtime_scoped, source.clone()))
             .collect();
         for passed in function_args {
-            let passed_info = &self.world.functions[passed];
-            for capability in &passed_info.needs {
-                needed.push((
-                    capability.clone(),
-                    passed_info.is_library,
-                    passed_info.name.clone(),
-                ));
+            let (runtime_scoped, source) = self.charge_of(passed);
+            for capability in &self.world.functions[passed].needs {
+                needed.push((capability.clone(), runtime_scoped, source.clone()));
             }
         }
         if !needed.is_empty() {
@@ -3472,6 +3469,26 @@ impl<'w> Checker<'w> {
         }
     }
 
+    /// How a callee's capabilities are charged to the body: whether a
+    /// scoped grant covers an unscoped need (the library checks the actual
+    /// path or host at run time, and so does a function of another
+    /// package, through the grant stack, decision AC1), and the callee as
+    /// the message names it, with its package when it has one.
+    fn charge_of(&self, id: FunctionId) -> (bool, String) {
+        let info = &self.world.functions[id];
+        let package = &self.world.modules[info.module].package;
+        let cross_package =
+            package.is_some() && *package != self.world.modules[self.module].package;
+        let source = match package {
+            Some(package) if cross_package => format!(
+                "`{}` (package `{}` {})",
+                info.name, package.name, package.version
+            ),
+            _ => format!("`{}`", info.name),
+        };
+        (info.is_library || cross_package, source)
+    }
+
     fn require_capability(
         &mut self,
         needed: &Capability,
@@ -3494,7 +3511,7 @@ impl<'w> Checker<'w> {
         self.error_fix(
             "capability-missing",
             format!(
-                "`{source}` needs `{spelling}`, which `{}` does not declare",
+                "{source} needs `{spelling}`, which `{}` does not declare",
                 self.context.name
             ),
             span,

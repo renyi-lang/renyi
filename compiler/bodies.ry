@@ -48,7 +48,8 @@ import declare exposing World,
   AbilityMethod,
   VariantRef,
   ModuleInfo,
-  ConstantInfo
+  ConstantInfo,
+  PackageTag
 
 public type VarKind is one of
   purpose: What an inference variable stands for: anything, or a number literal of a kind.
@@ -241,6 +242,12 @@ end
 type Needed
   purpose: A capability a call needs, from the callee or a passed function.
   has grant: Grant
+  has runtime_scoped: Boolean
+  has source: Text
+end
+
+type Charge
+  purpose: How a callee's capabilities are charged: scoped at run time or not, and its name.
   has runtime_scoped: Boolean
   has source: Text
 end
@@ -5023,16 +5030,22 @@ function charge_effects(checker: Checker, info: FunctionInfo, passed: List of In
   purpose: The callee's needs plus those of function-valued arguments, each required of the body.
 
   let mutable needed: List of Needed be []
+  let charge be charge_of(checker: checker, info: info)
   for each grant in info.capabilities
     change needed to needed.append(
-      Needed(grant: grant, runtime_scoped: info.is_library, source: info.name)
+      Needed(grant: grant, runtime_scoped: charge.runtime_scoped, source: charge.source)
     )
   end
   for each passed_id in passed
     let passed_info be declare.function_at(world: checker.world, id: passed_id)
+    let passed_charge be charge_of(checker: checker, info: passed_info)
     for each grant in passed_info.capabilities
       change needed to needed.append(
-        Needed(grant: grant, runtime_scoped: passed_info.is_library, source: passed_info.name)
+        Needed(
+          grant: grant,
+          runtime_scoped: passed_charge.runtime_scoped,
+          source: passed_charge.source
+        )
       )
     end
   end
@@ -5385,6 +5398,29 @@ function check_date_literal(checker: Checker, type_id: Integer, args: List of Ar
   )
 end
 
+function charge_of(checker: Checker, info: FunctionInfo) returns Charge
+  purpose: The library and another package check the path or host at run time (AC1); named with it.
+
+  let callee be declare.module_at(world: checker.world, id: info.owner)
+  let package be callee.package otherwise return Charge(
+    runtime_scoped: info.is_library,
+    source: "`{info.name}`"
+  )
+  let caller be declare.module_at(world: checker.world, id: checker.module_id)
+  if same_package(own: caller.package, other: package) then
+    return Charge(runtime_scoped: info.is_library, source: "`{info.name}`")
+  end
+  let named be "`{info.name}` (package `{package.name}` {package.version})"
+  return Charge(runtime_scoped: true, source: named)
+end
+
+function same_package(own: maybe PackageTag, other: PackageTag) returns Boolean
+  purpose: Whether a module's package is the one given.
+
+  let mine be own otherwise return false
+  return mine.name is other.name and mine.version is other.version
+end
+
 function require_capability(
   checker: Checker,
   needed: Grant,
@@ -5411,7 +5447,7 @@ function require_capability(
   return push_error(
     checker: checker,
     code: "capability-missing",
-    message: "`{source}` needs `{spelling}`, which `{owner}` does not declare",
+    message: "{source} needs `{spelling}`, which `{owner}` does not declare",
     span: span,
     fix: fix
   )

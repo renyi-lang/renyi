@@ -1,0 +1,9 @@
+{
+  "name": "stale",
+  "version": "0.1.0",
+  "purpose": "A project whose lockfile does not match the registry.",
+  "dependencies": {
+    "greeting": "1.0.0"
+  },
+  "registry": "../registry"
+}

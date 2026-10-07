@@ -1,7 +1,7 @@
 //! Each rule of the checker on a small program: the diagnostic it must
 //! raise (by code), or that it must stay silent.
 
-use renyi_syntax::SourceFile;
+use renyi_syntax::{Package, SourceFile};
 
 fn check(source: &str) -> Vec<renyi_syntax::Diagnostic> {
     let file = SourceFile::new("demo.ry", source);
@@ -1174,4 +1174,40 @@ fn a_constraint_names_an_ability_with_its_type_arguments() {
     clean(&program(
         "type Grid\n  has rows: List of List of Integer\nend\n\nability Iterable of List of Integer for Grid\n  function to_list(self) returns List of List of Integer\n    return self.rows\n  end\nend\n\nfunction go(grid: Grid) returns Integer\n  let letters be \"abc\".to_list()\n  return for each row in grid sum row.length() + letters.length()\nend\n",
     ));
+}
+
+#[test]
+fn a_dependency_is_charged_with_its_package_named() {
+    // decision AC1: across a package boundary the kind of the capability is
+    // checked statically, its scope at run time, and the message names the
+    // package
+    let greeting = SourceFile::new(
+        "greeting.ry",
+        "module greeting\n  purpose: Greet.\n\nimport std.console\n\npublic function announce(name: Text) needs console\n  purpose: Print the name.\n\n  console.print(name)\nend\n",
+    )
+    .in_package(Package {
+        name: "greeting".to_string(),
+        version: "1.0.0".to_string(),
+    });
+    let main = |needs: &str| {
+        SourceFile::new(
+            "main.ry",
+            format!("module main\n  purpose: Use the package.\n\nimport greeting\n\nfunction main(){needs}\n  purpose: Announce.\n\n  greeting.announce(\"x\")\nend\n"),
+        )
+    };
+    let diagnostics = renyi_check::check_sources(&main(""), std::slice::from_ref(&greeting));
+    let missing = diagnostics
+        .iter()
+        .find(|d| d.code == "capability-missing")
+        .expect("capability-missing");
+    assert_eq!(
+        missing.message,
+        "`announce` (package `greeting` 1.0.0) needs `console`, which `main` does not declare"
+    );
+    let diagnostics = renyi_check::check_sources(&main(" needs console"), &[greeting]);
+    assert!(
+        diagnostics.iter().all(|d| !d.is_error()),
+        "{}",
+        renyi_syntax::diagnostics::render_text(&main(" needs console"), &diagnostics)
+    );
 }

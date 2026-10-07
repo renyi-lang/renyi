@@ -191,14 +191,27 @@ pub struct Index {
 // ---------------------------------------------------------------- loading
 
 /// The files of a project: every `.ry` or `.renyi` file under a directory
-/// (recursively, in path order), or one file with the imports read from its
-/// directory.
+/// (recursively, in path order, the store `.renyi` left out) with the
+/// files of the dependencies they import, or one file with its imports
+/// and dependencies.
 pub fn load_project(path: &Path) -> Result<Vec<SourceFile>, String> {
     if path.is_dir() {
         let mut paths = Vec::new();
         collect_sources(path, &mut paths)?;
         paths.sort();
-        paths.iter().map(|path| read(path)).collect()
+        let mut files: Vec<SourceFile> = paths
+            .iter()
+            .map(|path| read(path))
+            .collect::<Result<_, _>>()?;
+        let own = files.clone();
+        for file in &own {
+            for resolved in renyi_check::imported_files(file) {
+                if resolved.package.is_some() && !files.iter().any(|f| f.name == resolved.name) {
+                    files.push(resolved);
+                }
+            }
+        }
+        Ok(files)
     } else {
         let file = read(path)?;
         let mut files = vec![file.clone()];
@@ -215,6 +228,9 @@ fn collect_sources(directory: &Path, out: &mut Vec<PathBuf>) -> Result<(), Strin
             .map_err(|error| format!("cannot read {}: {error}", directory.display()))?
             .path();
         if path.is_dir() {
+            if path.file_name().is_some_and(|name| name == ".renyi") {
+                continue;
+            }
             collect_sources(&path, out)?;
         } else if matches!(
             path.extension().and_then(|e| e.to_str()),

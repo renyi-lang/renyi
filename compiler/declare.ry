@@ -29,6 +29,12 @@ import effects exposing Grant
 import suggest
 import types exposing Ty, FunctionSignature, Substitution
 
+public type PackageTag
+  purpose: A dependency a module belongs to (decision AC1): its name and its version.
+  has name: Text
+  has version: Text
+end
+
 public type ModuleInfo
   purpose: One module's names and tables; library and user modules go through the same pass.
   has name: Text
@@ -43,6 +49,7 @@ public type ModuleInfo
   has exposed_abilities: Map of Text to Integer
   has line_starts: List of Integer
   has source_chars: List of Text
+  has package: maybe PackageTag
 end
 
 public type ConstantInfo
@@ -403,7 +410,8 @@ public function add_module(world: World, tree: Module, is_library: Boolean) retu
     exposed_types: {},
     exposed_abilities: {},
     line_starts: [],
-    source_chars: []
+    source_chars: [],
+    package: nothing
   )
   let mutable state be ModuleState(info: info, world: world)
   if name is "std.prelude" then
@@ -491,6 +499,25 @@ public function module_id(world: World, name: Text) returns maybe Integer
     change index to index + 1
   end
   return nothing
+end
+
+public function set_package(world: World, id: Integer, package: PackageTag) returns World
+  purpose: Tag a module as a dependency's (AC1) and name it as the program imports it.
+
+  let info be module_at(world: world, id: id)
+  let qualified be
+    if info.name is package.name then info.name otherwise "{package.name}.{info.name}" end
+  return update_module(world: world, id: id, info: info with name: qualified, package: package)
+end
+
+function imported_module(world: World, importer: ModuleInfo, name: Text) returns maybe Integer
+  purpose: The module an import names: inside a dependency an own module first, then as written.
+
+  let package be importer.package otherwise return module_id(world: world, name: name)
+  match module_id(world: world, name: "{package.name}.{name}")
+    when some(found) then return found
+    when nothing then return module_id(world: world, name: name)
+  end
 end
 
 public function set_source_lines(
@@ -916,7 +943,8 @@ function resolve_import(world: World, id: Integer, entry: Import) returns World
 
   let path be effects.names_of(entry.path)
   let name be path.join(".")
-  match module_id(world: world, name: name)
+  let importer be module_at(world: world, id: id)
+  match imported_module(world: world, importer: importer, name: name)
     when nothing then
       let module_names be for each found in world.modules collect found.name
       let file be name.replace(old: ".", new: "/")

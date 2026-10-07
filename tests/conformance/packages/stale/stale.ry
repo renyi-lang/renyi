@@ -1,0 +1,11 @@
+module stale
+  purpose: The package in the registry is not the one the lockfile names.
+
+import std.console
+import greeting
+
+function main() needs console
+  purpose: Print a greeting; the check reports the mismatch first.
+
+  console.print(greeting.hello("world"))
+end

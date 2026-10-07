@@ -233,6 +233,19 @@ and `Guarded`, and the methods of the base types. The modules `std.console`,
 `std.http`, `std.server`, `std.csv`, `std.sqlite` and `std.regex` are
 imported by name.
 
+A program's own imports resolve from its project root: the directory of
+the nearest `renyi.json` in the file's directory or above it (up to the
+working directory for a relative path), else the file's directory
+(decision J17). `renyi.json` (decision AC1) names the project's
+dependencies and their registry, a directory or a URL; `import <name>` and
+`import <name>.<path>` reach a dependency's root module `<name>.ry` or its
+file `<path>.ry`, at the version the lockfile `renyi.lock.json` beside the
+manifest names, read from the registry directory or, for a URL registry,
+from `.renyi/packages/<name>/<version>/` under the project root. Inside a
+package a module is named from the package's root, and the checker names it
+`<name>.<module>` (the root module `<name>`); an import there reaches the
+package's own files, or one of the package's own dependencies.
+
 `Declarations` is the form of a library declaration file: the same module,
 with every function a head and its clauses and no body, an
 implementation's methods among them (`ImplDeclaration`).
@@ -244,6 +257,13 @@ implementation's methods among them (`ImplDeclaration`).
 - An import names a module that exists (`unknown-module`); a module whose
   import has errors reports them once as `import-errors` and is checked no
   further against it.
+- A dependency of the manifest is in the lockfile and at the registry
+  (`package-missing`), its `package.json` is the one the lockfile names
+  (`package-mismatch`, and the package is read all the same), and
+  `renyi.json`, `renyi.lock.json` and a `package.json` are readable, with
+  only the fields their formats have (`manifest-invalid`); the three are
+  reported on the import, or at the start of the file for the manifest and
+  the lockfile.
 - A name is declared once per module (`duplicate-name`): a type, an
   ability, a function or a constant, with the methods of one type counted by
   their receiver; a namespace is imported once.
@@ -1039,7 +1059,11 @@ leave the program only through the listed sinks.
 
 - Every capability a body uses, directly or through a call, is covered by
   the function's `needs` (`capability-missing`); a function passed as an
-  argument is charged where it is passed (section 3).
+  argument is charged where it is passed (section 3). A call into a
+  dependency (decision AC1) is covered like a library call: the kind of
+  the capability statically, its scope by the grant stack at run time,
+  and the diagnostic names the package ("`announce` (package `greeting`
+  1.0.0) needs `console`, which `main` does not declare").
 - `process` and `foreign` are not available until milestone M4
   (`capability-unavailable`, decision V6); a sink after `only to` is a
   capability of the tree (`unknown-capability`); a scope is a text literal
@@ -1399,6 +1423,7 @@ that `renyi check --strict` makes an error.
 | `kind-field` | E | 4 |
 | `line-width` | W | 1 |
 | `loop-variables` | E | 8 |
+| `manifest-invalid` | E | 2 |
 | `maybe-value` | E | 7 |
 | `method-call` | E | 3 |
 | `method-module` | E | 3 |
@@ -1420,6 +1445,8 @@ that `renyi check --strict` makes an error.
 | `otherwise-fail-maybe` | E | 9 |
 | `otherwise-line` | E | 1 |
 | `outside-loop` | E | 8 |
+| `package-mismatch` | E | 2 |
+| `package-missing` | E | 2 |
 | `pattern-mismatch` | E | 8 |
 | `private-name` | E | 2 |
 | `public-implementation` | E | 5 |

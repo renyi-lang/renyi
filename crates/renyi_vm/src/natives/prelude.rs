@@ -8,6 +8,8 @@ use indexmap::IndexSet;
 use num_bigint::BigInt;
 use num_traits::FromPrimitive;
 
+use sha2::{Digest, Sha256};
+
 use super::{
     arg, bytes, crash, decimal, float, int, list, map, range, set, small, take, text, NativeFn,
 };
@@ -72,6 +74,7 @@ pub fn lookup(name: &str, head: Option<&str>, receiver: Option<&str>) -> Option<
         ("Bytes", "is_empty") => bytes_is_empty,
         ("Bytes", "to_text") => bytes_to_text,
         ("Bytes", "to_base64") => bytes_to_base64,
+        ("Bytes", "sha256") => bytes_sha256,
         ("List", "length") => list_length,
         ("List", "is_empty") => list_is_empty,
         ("List", "at") => list_at,
@@ -441,6 +444,15 @@ fn bytes_to_text(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
 
 fn bytes_to_base64(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     Ok(Value::text(super::base64_encode(bytes(arg(args, 0))?)))
+}
+
+/// The SHA-256 digest as 64 hex digits (decision AC1: the front end written
+/// in Renyi verifies a package's hash with it).
+fn bytes_sha256(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::text(format!(
+        "{:x}",
+        Sha256::digest(bytes(arg(args, 0))?)
+    )))
 }
 
 // ------------------------------------------------------------------- lists

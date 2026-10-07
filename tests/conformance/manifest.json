@@ -299,6 +299,45 @@
       "program": "tests/conformance/programs/constraint_mismatch.ry",
       "diagnostics": ["missing-ability"],
       "exit_code": 1
+    },
+    {
+      "name": "a program greets through a package of the registry",
+      "command": "run",
+      "program": "tests/conformance/packages/project/report.ry",
+      "stdout": "tests/conformance/expected/package_report.out",
+      "exit_code": 0
+    },
+    {
+      "name": "a dependency's capability is charged to the caller, with the package named",
+      "command": "check",
+      "program": "tests/conformance/packages/project/uncovered.ry",
+      "stdout": "tests/conformance/expected/package_uncovered.out",
+      "diagnostics": ["capability-missing"],
+      "exit_code": 1
+    },
+    {
+      "name": "a package whose hash differs from the lockfile is reported",
+      "command": "check",
+      "program": "tests/conformance/packages/stale/stale.ry",
+      "stdout": "tests/conformance/expected/package_stale.out",
+      "diagnostics": ["package-mismatch"],
+      "exit_code": 1
+    },
+    {
+      "name": "a dependency the lockfile lacks is reported",
+      "command": "check",
+      "program": "tests/conformance/packages/unlocked/unlocked.ry",
+      "stdout": "tests/conformance/expected/package_unlocked.out",
+      "diagnostics": ["package-missing", "unknown-module"],
+      "exit_code": 1
+    },
+    {
+      "name": "a manifest with a field the format does not have is refused",
+      "command": "check",
+      "program": "tests/conformance/packages/broken/broken.ry",
+      "stdout": "tests/conformance/expected/package_broken.out",
+      "diagnostics": ["manifest-invalid"],
+      "exit_code": 1
     }
   ]
 }

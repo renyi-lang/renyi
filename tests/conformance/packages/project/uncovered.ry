@@ -1,0 +1,10 @@
+module uncovered
+  purpose: A package's function that needs the console, called without the grant.
+
+import greeting
+
+function main()
+  purpose: Announce without the console: the diagnostic names the package.
+
+  greeting.announce("world")
+end

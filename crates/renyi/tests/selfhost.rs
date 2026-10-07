@@ -30,6 +30,19 @@ fn root() -> PathBuf {
         .to_path_buf()
 }
 
+/// Where the programs the judges run on are: the corpus, the conformance
+/// programs, the package fixture (decision AC1) and the compiler itself.
+const PROGRAM_DIRECTORIES: [&str; 8] = [
+    "examples",
+    "tests/conformance/programs",
+    "tests/conformance/packages/project",
+    "tests/conformance/packages/stale",
+    "tests/conformance/packages/unlocked",
+    "tests/conformance/packages/broken",
+    "tests/conformance/packages/registry/greeting/1.0.0",
+    "compiler",
+];
+
 /// The `.ry` files of a directory, in name order.
 fn programs_in(directory: &str) -> Vec<PathBuf> {
     let mut files: Vec<PathBuf> = std::fs::read_dir(root().join(directory))
@@ -234,7 +247,7 @@ fn judge_all<Case: Sync>(
 fn the_renyi_parser_prints_what_the_rust_parser_prints() {
     let parser = front_end("parse");
     let mut cases: Vec<(PathBuf, bool)> = Vec::new();
-    for directory in ["examples", "tests/conformance/programs", "compiler"] {
+    for directory in PROGRAM_DIRECTORIES {
         cases.extend(programs_in(directory).into_iter().map(|path| (path, false)));
     }
     cases.extend(
@@ -253,7 +266,7 @@ fn the_renyi_parser_prints_what_the_rust_parser_prints() {
 fn the_renyi_checker_prints_what_the_rust_checker_prints() {
     let checker = front_end("checker");
     let mut programs: Vec<PathBuf> = Vec::new();
-    for directory in ["examples", "tests/conformance/programs", "compiler"] {
+    for directory in PROGRAM_DIRECTORIES {
         programs.extend(programs_in(directory));
     }
     assert!(programs.len() >= 70, "{} programs", programs.len());
@@ -269,7 +282,7 @@ fn the_renyi_checker_prints_what_the_rust_checker_prints() {
 fn the_renyi_compiler_writes_what_renyi_compile_writes() {
     let compiler = front_end("compile");
     let mut programs: Vec<String> = Vec::new();
-    for directory in ["examples", "tests/conformance/programs", "compiler"] {
+    for directory in PROGRAM_DIRECTORIES {
         programs.extend(programs_in(directory).into_iter().map(|path| {
             let file = path.file_name().expect("a file name").to_string_lossy();
             format!("{directory}/{file}")

@@ -1,0 +1,8 @@
+module words
+  purpose: Punctuation for greetings.
+
+public function exclaim(text: Text) returns Text
+  purpose: The text with an exclamation mark.
+
+  return "{text}!"
+end

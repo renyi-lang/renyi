@@ -1,0 +1,10 @@
+{
+  "name": "broken",
+  "version": "0.1.0",
+  "purpose": "A manifest with a field the format does not have.",
+  "dependencies": {
+    "greeting": "1.0.0"
+  },
+  "registry": "../registry",
+  "author": "nobody"
+}

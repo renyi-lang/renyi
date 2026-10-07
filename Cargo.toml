@@ -1,7 +1,9 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/renyi_json",
     "crates/renyi_syntax",
+    "crates/renyi_package",
     "crates/renyi_check",
     "crates/renyi_index",
     "crates/renyi_vm",

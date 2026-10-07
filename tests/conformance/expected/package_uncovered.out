@@ -1,0 +1,2 @@
+tests/conformance/packages/project/uncovered.ry:9:3: error [capability-missing]: `announce` (package `greeting` 1.0.0) needs `console`, which `main` does not declare
+  fix: add `needs console` to the signature of `main`

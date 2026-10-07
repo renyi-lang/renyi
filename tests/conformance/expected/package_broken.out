@@ -1,0 +1,2 @@
+tests/conformance/packages/broken/broken.ry:1:1: error [manifest-invalid]: tests/conformance/packages/broken/renyi.json: `author` is not a field of the manifest
+  fix: fix the file, or write it again with `renyi add`
