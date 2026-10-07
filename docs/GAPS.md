@@ -248,11 +248,13 @@ freeze, or take it out of the frozen surface until it exists.
   manifest `renyi.json`, the lockfile, the layout of a directory or URL
   registry and the resolver exist in both front ends, with package-named
   coverage errors and the diagnostics `package-missing`,
-  `package-mismatch` and `manifest-invalid`. Absent: `renyi add`,
-  `update --accept-effects`, `audit`, `fetch` and `publish` (the effect
-  manifests they write and check), dependency hashes in the run manifest,
-  budget thresholds read from the manifest (decision R7), the FFI
-  generators, the `only to` runtime, `std.process`.
+  `package-mismatch` and `manifest-invalid`; since the second commit of
+  AC1 (the same day) `renyi add`, `update --accept-effects`, `audit`,
+  `fetch` and `publish` exist with the effect manifests they write and
+  verify, the run manifest names the dependencies with their hashes and
+  `reproduce` compares them, and `renyi index --budgets` reads the
+  thresholds of `renyi.json` (decision R7). Absent: the FFI generators,
+  the `only to` runtime, `std.process`.
 - **M5** (LSP, index, compiler API): the index half exists (`index`,
   `--budgets`, `--diff`, `mcp` with ten tools). Absent: the LSP, the
   embedding API with per-module grants and memory budgets (decision Q3:
@@ -561,7 +563,8 @@ front end's diagnostics with the Rust parser's (the difference the
 judges tolerate on a rejected program). Decision AC1 answered the four
 questions of packages; its first commit holds the manifest, the
 lockfile, the registry layout and the resolver in both front ends, with
-the package fixture of the conformance suite under the three judges.
-Next: the commands (`renyi add`, `update`, `audit`, `fetch`, `publish`)
-and the dependencies in the run manifest, then `std.process`, then the
-foreign function interface.
+the package fixture of the conformance suite under the three judges; its
+second commit the commands (`renyi add`, `update`, `audit`, `fetch`,
+`publish`), the dependencies in the run manifest and the budgets of the
+manifest. Next: `std.process`, then the foreign function interface, and
+the parity of the Renyi front end's diagnostics.

@@ -15,6 +15,7 @@
 
 mod maps;
 mod mcp;
+mod packages;
 
 use std::io::Write;
 use std::path::Path;
@@ -25,6 +26,7 @@ use renyi_syntax::diagnostics::{render_json, render_text};
 use renyi_syntax::layout::check_layout;
 use renyi_syntax::{format, lex, module_to_json, parse, parse_declarations, SourceFile, TokenKind};
 use renyi_vm::grant::{parse_capability, Unit};
+use renyi_vm::recording::Dependency;
 use renyi_vm::{file, Manifest};
 
 /// The allocator of the whole binary (decision X6): the VM allocates a
@@ -66,6 +68,15 @@ const USAGE: &str = "usage:
   renyi compile [--to <file.ryc>] <file.ry>
                                       check the program and write its bytecode (default: <name>.ryc);
                                       run, record, test and reproduce load a .ryc in place of a .ry
+  renyi add <name> [<version>]        a dependency from the registry renyi.json names: choose the
+                                      versions, fetch and verify the packages, print the effects of
+                                      the package added, write renyi.json and renyi.lock.json
+  renyi update [--accept-effects]     every dependency to the highest version its requirement allows;
+                                      a version whose effects widen is refused without the flag
+  renyi audit                         every dependency's effects against the `main` functions of the
+                                      project, and the capabilities no dependency uses
+  renyi fetch                         the locked packages from the registry, every hash verified
+  renyi publish [--to <directory>]    the project into a directory registry as a new version
   renyi mcp [path]                    serve the toolchain to an agent host over standard input and
                                       output (Model Context Protocol), for the directory given
   renyi version
@@ -97,6 +108,11 @@ fn main() -> ExitCode {
         Some("reproduce") => reproduce_command(&args[1..]),
         Some("test") => test_command(&args[1..]),
         Some("compile") => compile_command(&args[1..]),
+        Some("add") => packages::add_command(&args[1..]),
+        Some("update") => packages::update_command(&args[1..]),
+        Some("audit") => packages::audit_command(&args[1..]),
+        Some("fetch") => packages::fetch_command(&args[1..]),
+        Some("publish") => packages::publish_command(&args[1..]),
         Some("mcp") => mcp::serve(&args[1..]),
         Some("version") | Some("--version") => {
             println!("renyi {}", env!("CARGO_PKG_VERSION"));
@@ -477,6 +493,48 @@ fn code_hash(program: &renyi_vm::Program, hashed: &Hashed) -> Option<String> {
     }
 }
 
+/// The dependencies of a program compiled from its sources: every package
+/// among them, with the version and the hash the lockfile names (decision
+/// AC1). A program loaded from a bytecode file has none to name: the
+/// file's hash covers them.
+fn dependencies_of(path: &str, hashed: &Hashed) -> Vec<Dependency> {
+    let Hashed::Sources(files) = hashed else {
+        return Vec::new();
+    };
+    let Some(lock) = renyi_package::Project::of(path).lock else {
+        return Vec::new();
+    };
+    let mut dependencies: Vec<Dependency> = Vec::new();
+    for file in files {
+        let Some(package) = &file.package else {
+            continue;
+        };
+        if dependencies.iter().any(|known| known.name == package.name) {
+            continue;
+        }
+        if let Some(locked) = lock.get(&package.name) {
+            dependencies.push(Dependency {
+                name: package.name.clone(),
+                version: locked.version.to_string(),
+                hash: locked.hash.clone(),
+            });
+        }
+    }
+    dependencies.sort_by(|a, b| a.name.cmp(&b.name));
+    dependencies
+}
+
+fn describe_dependencies(dependencies: &[Dependency]) -> String {
+    if dependencies.is_empty() {
+        return "none".to_string();
+    }
+    dependencies
+        .iter()
+        .map(|d| format!("{} {} {}", d.name, d.version, d.hash))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
 fn main_hash(program: &renyi_vm::Program, files: &[SourceFile]) -> Option<String> {
     let main = program.main?;
     let module = &program.function_metas[main].module;
@@ -670,6 +728,7 @@ fn run_command(args: &[String], record: bool) -> ExitCode {
             toolchain: Some(toolchain()),
             source: Some(path.clone()),
             code: code_hash(&program, &sources),
+            dependencies: dependencies_of(path, &sources),
             ..Manifest::default()
         }
     } else {
@@ -828,6 +887,15 @@ fn reproduce_command(args: &[String]) -> ExitCode {
         );
         return ExitCode::FAILURE;
     }
+    let dependencies = dependencies_of(&path, &sources);
+    if dependencies != recording.manifest.dependencies {
+        eprintln!(
+            "renyi: the dependencies differ from the manifest: the recording names {}, this run has {}",
+            describe_dependencies(&recording.manifest.dependencies),
+            describe_dependencies(&dependencies)
+        );
+        return ExitCode::FAILURE;
+    }
     if let Some(recorded) = &recording.manifest.toolchain {
         if *recorded != toolchain() {
             eprintln!(
@@ -886,6 +954,35 @@ fn tools_command(args: &[String]) -> ExitCode {
     let tools = renyi_index::tools_of(&files);
     print!("{}", renyi_index::manifest_json(&tools).render());
     ExitCode::SUCCESS
+}
+
+/// The thresholds of `renyi index --budgets`: those `renyi.json` sets
+/// when the project has them (decision AC1), else the defaults (R7).
+fn budgets_of(path: &Path) -> renyi_index::Budgets {
+    let defaults = renyi_index::Budgets::default();
+    let shown = path.display().to_string();
+    let directory = if path.is_dir() {
+        shown
+    } else {
+        renyi_package::directory_of(&shown)
+    };
+    match renyi_package::Project::of_directory(&directory)
+        .manifest
+        .and_then(|manifest| manifest.budgets)
+    {
+        Some(budgets) => renyi_index::Budgets {
+            public_per_module: budgets
+                .public_per_module
+                .unwrap_or(defaults.public_per_module),
+            effect_paths_per_module: budgets
+                .effect_paths_per_module
+                .unwrap_or(defaults.effect_paths_per_module),
+            fan_out_per_definition: budgets
+                .fan_out_per_definition
+                .unwrap_or(defaults.fan_out_per_definition),
+        },
+        None => defaults,
+    }
 }
 
 fn index_command(args: &[String]) -> ExitCode {
@@ -947,7 +1044,7 @@ fn index_command(args: &[String]) -> ExitCode {
         }
     } else if budgets {
         // a report, not a gate: CI treats it as a warning (decision O3)
-        let over = renyi_index::over_budget(&index, &renyi_index::Budgets::default());
+        let over = renyi_index::over_budget(&index, &budgets_of(path));
         if over.is_empty() {
             "nothing over budget\n".to_string()
         } else {

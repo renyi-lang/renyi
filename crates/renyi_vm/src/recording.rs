@@ -62,6 +62,17 @@ pub struct Manifest {
     pub outcome: Option<String>,
     /// The hash of the standard output and its length in bytes.
     pub output: Option<(String, u64)>,
+    /// Every package the program reaches, with the version and the hash
+    /// the lockfile names (decision AC1), in name order.
+    pub dependencies: Vec<Dependency>,
+}
+
+/// One dependency of the run manifest.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Dependency {
+    pub name: String,
+    pub version: String,
+    pub hash: String,
 }
 
 /// `sha256:` and the hex digest, as the index spells content hashes.
@@ -118,6 +129,26 @@ impl Recording {
             if let Some(value) = value {
                 fields.push((name.to_string(), text(value)));
             }
+        }
+        if !manifest.dependencies.is_empty() {
+            fields.push((
+                "dependencies".to_string(),
+                Json::Object(
+                    manifest
+                        .dependencies
+                        .iter()
+                        .map(|dependency| {
+                            (
+                                dependency.name.clone(),
+                                Json::Object(vec![
+                                    ("version".to_string(), text(&dependency.version)),
+                                    ("hash".to_string(), text(&dependency.hash)),
+                                ]),
+                            )
+                        })
+                        .collect(),
+                ),
+            ));
         }
         fields.push(("recorded_at".to_string(), text(&self.recorded_at)));
         fields.push((
@@ -270,6 +301,27 @@ impl Recording {
                     }
                 }
                 _ => None,
+            },
+            dependencies: match field(fields, "dependencies") {
+                Some(Json::Object(entries)) => entries
+                    .iter()
+                    .filter_map(|(name, value)| {
+                        let Json::Object(inner) = value else {
+                            return None;
+                        };
+                        match (field(inner, "version"), field(inner, "hash")) {
+                            (Some(Json::Text(version)), Some(Json::Text(hash))) => {
+                                Some(Dependency {
+                                    name: name.clone(),
+                                    version: version.clone(),
+                                    hash: hash.clone(),
+                                })
+                            }
+                            _ => None,
+                        }
+                    })
+                    .collect(),
+                _ => Vec::new(),
             },
         };
         let Some(Json::Array(entries)) = field(fields, "calls") else {

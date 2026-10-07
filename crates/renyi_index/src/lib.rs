@@ -143,6 +143,9 @@ pub struct Definition {
     pub file: String,
     pub line: usize,
     pub end_line: usize,
+    /// `<name> <version>` of the dependency the definition belongs to
+    /// (decision AC1); none for the project's own.
+    pub package: Option<String>,
 }
 
 impl Definition {
@@ -170,6 +173,9 @@ pub struct Module {
     /// Whether the file was already in canonical layout; when it was not,
     /// lines and hashes refer to the formatted text.
     pub canonical: bool,
+    /// `<name> <version>` of the dependency the module belongs to
+    /// (decision AC1); none for the project's own.
+    pub package: Option<String>,
 }
 
 /// The map header.
@@ -313,6 +319,13 @@ fn body_key(body: BodyLocation) -> BodyKey {
             field.unwrap_or(usize::MAX),
         ),
     }
+}
+
+/// The package a file belongs to, as the map labels it.
+fn package_label(file: &SourceFile) -> Option<String> {
+    file.package
+        .as_ref()
+        .map(|package| format!("{} {}", package.name, package.version))
 }
 
 /// Index the files given, in memory.
@@ -500,6 +513,7 @@ pub fn index_files(files: &[SourceFile], header: Header) -> Index {
             file: display_path(&text.name),
             line,
             end_line,
+            package: package_label(text),
         });
     }
 
@@ -551,6 +565,7 @@ pub fn index_files(files: &[SourceFile], header: Header) -> Index {
             ids: own.iter().map(|d| d.id.clone()).collect(),
             errors,
             canonical: was_canonical[checked_module.file],
+            package: package_label(file),
         });
     }
 
@@ -570,7 +585,9 @@ fn canonical_files(files: &[SourceFile]) -> (Vec<SourceFile>, Vec<bool>) {
         match format(file) {
             Ok(text) => {
                 was_canonical.push(text == file.text);
-                canonical.push(SourceFile::new(file.name.clone(), text));
+                let mut copy = SourceFile::new(file.name.clone(), text);
+                copy.package = file.package.clone();
+                canonical.push(copy);
             }
             Err(_) => {
                 was_canonical.push(true);

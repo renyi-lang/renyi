@@ -29,6 +29,9 @@ pub fn to_text(index: &Index) -> String {
             module.lines,
             list_or_none(&module.effects)
         ));
+        if let Some(package) = &module.package {
+            out.push_str(&format!("  package: {package}"));
+        }
         if module.errors > 0 {
             out.push_str(&format!("  errors: {}", module.errors));
         }
@@ -92,6 +95,7 @@ fn module_json(module: &Module) -> Json {
     Json::Object(vec![
         ("name", string(&module.name)),
         ("file", string(&module.file)),
+        ("package", optional(module.package.as_deref())),
         ("purpose", optional(module.purpose.as_deref())),
         ("imports", strings(&module.imports)),
         ("definitions", Json::Number(module.definitions)),
@@ -111,6 +115,7 @@ pub fn definition_json(definition: &Definition) -> Json {
         ("id", string(&definition.id)),
         ("text_hash", string(&definition.text_hash)),
         ("module", string(&definition.module)),
+        ("package", optional(definition.package.as_deref())),
         ("name", string(&definition.name)),
         ("kind", string(definition.kind.name())),
         ("public", Json::Bool(definition.public)),

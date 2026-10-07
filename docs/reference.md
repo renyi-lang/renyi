@@ -1513,11 +1513,16 @@ Python scripts under `tools/` are development aids.
 | `renyi index [--json \| --budgets \| --diff <base>] [path]` | the project map, its budgets, the semantic diff (`design/05-agent-tooling.md`) | |
 | `renyi tools [path]` | the tool manifest (section 15) | |
 | `renyi run [options] <file> [arguments]` | check, then run `main` under its grant | 0; 1 when `main` fails; 2 on a crash; the code of `environment.exit` |
-| `renyi run --manifest ...` | also print the run manifest (toolchain, code hash, grant, arguments, environment, outcome, output hash) | as `run` |
+| `renyi run --manifest ...` | also print the run manifest (toolchain, code hash, the dependencies with the lockfile's version and hash of each, grant, arguments, environment, outcome, output hash) | as `run` |
 | `renyi record [--to <file>] [options] <file> [arguments]` | run `main` and write a recording of its effects, the manifest in its header | as `run` |
-| `renyi reproduce <recording> [<file>]` | replay a recording under its manifest and compare the outcome and the output | 1 when they differ |
+| `renyi reproduce <recording> [<file>]` | replay a recording under its manifest and compare the outcome and the output; the code hash and the dependencies must be the manifest's | 1 when they differ |
 | `renyi test [--strict] [--refresh <name> [--redact <name>]] [--explain] <file>...` | run every `example:` and `test` | 1 when any fails |
 | `renyi compile [--to <file.ryc>] <file>` | check, then write the program as a bytecode file (default `<name>.ryc`); `run`, `record`, `test` and `reproduce` take a `.ryc` file in place of a source | 1 when any error |
+| `renyi add <name> [<version>]` | a dependency (decision AC1): the versions chosen for every requirement (the same major, at least the version required, the highest the registry has, the chosen packages' own requirements included), every package fetched and verified, the effects of the package added printed, `renyi.json` and `renyi.lock.json` written | 1 when refused |
+| `renyi update [--accept-effects]` | every dependency to the highest version its requirement allows; a version whose effects widen is refused without the flag, and with it when a `main` that reaches the package does not declare the new capability | 1 when refused |
+| `renyi audit` | every locked dependency's effects against each `main` that reaches it, and the capabilities of a `main` no dependency uses | 1 when a `main` does not cover a dependency it reaches |
+| `renyi fetch` | the locked packages from the registry, each file verified against its hash and the effect manifest against the sources; into `.renyi/packages/` for a URL registry | 1 when refused |
+| `renyi publish [--to <directory>]` | the project, checked clean, into a directory registry as a new version with its `package.json` (the files' hashes, the effect manifest); the version must be what the semantic diff against the highest published version demands (decision G1), and a published version is never overwritten | 1 when refused |
 | `renyi mcp [path]` | serve the toolchain to an agent host | |
 | `renyi version` | the toolchain's version | |
 

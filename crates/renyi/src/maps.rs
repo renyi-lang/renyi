@@ -51,6 +51,7 @@ fn module_from_json(json: &Json) -> Result<Module, String> {
     Ok(Module {
         name: text_field(json, "name")?,
         file: text_field(json, "file")?,
+        package: optional_text_field(json, "package")?,
         purpose: optional_text_field(json, "purpose")?,
         imports: texts_field(json, "imports")?,
         definitions: number_field(json, "definitions")?,
@@ -82,6 +83,7 @@ fn definition_from_json(json: &Json) -> Result<Definition, String> {
         id: text_field(json, "id")?,
         text_hash: optional_text_field(json, "text_hash")?.unwrap_or_default(),
         module: text_field(json, "module")?,
+        package: optional_text_field(json, "package")?,
         name: text_field(json, "name")?,
         kind,
         public: boolean_field(json, "public")?,

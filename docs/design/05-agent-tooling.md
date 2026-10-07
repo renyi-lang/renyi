@@ -42,6 +42,7 @@ A definition record:
 | `id` | content hash of the definition (section 3) |
 | `text_hash` | hash of the definition's own canonical text with its name and its references blanked; unlike `id`, unchanged when a dependency changes (section 6) |
 | `module`, `name`, `kind` | dotted module name; the definition's name; `function`, `method`, `type`, `ability`, `implementation`, `constant`, `test` |
+| `package` | `<name> <version>` of the dependency the definition was read from (decision AC1); `null` for the project's own |
 | `public` | whether the definition is part of the module's API |
 | `signature` | the head and signature clauses in canonical form, one line |
 | `purpose`, `tags`, `see_also`, `deprecated`, `exposed_as_tool` | the documentation clauses |
@@ -191,7 +192,12 @@ budget", and exits 0 either way: CI treats it as a warning until the
 thresholds have been measured on real projects. The thresholds are the
 defaults of decision R7 (public definitions per module 10, transitive
 effect paths per module 5, fan-out per definition 7, `renyi_index::Budgets`);
-they live in the project manifest once the package manager exists (M4).
+since decision AC1 the `budgets` object of `renyi.json`
+(`public_per_module`, `effect_paths_per_module`, `fan_out_per_definition`)
+overrides each one it names. A module or a definition read from a
+dependency carries `package: <name> <version>` in the map (the text line
+and the JSON field), so that a budget report or a diff can be read per
+package.
 
 First measurements, the corpus at revision 3c7ee41 (30 modules, 166
 definitions: 95 functions, 4 methods, 52 types, 2 abilities, 3
@@ -329,8 +335,8 @@ the same entries.
    `diff` as M3 and `--diff` land. Done 2026-10-06
    (`crates/renyi/src/mcp.rs`, decisions T1 to T5).
 4. Budgets with corpus-derived thresholds (done 2026-10-05, decision R7:
-   `renyi index --budgets`); the diff (done 2026-10-06, decision T5); M4
-   reads budgets from the manifest.
+   `renyi index --budgets`); the diff (done 2026-10-06, decision T5); the
+   budgets of `renyi.json` (done 2026-10-07, decision AC1).
 5. `renyi run --profile` (done 2026-10-06, decision X4): a timer raises a
    flag every half millisecond, the operation running when it was raised
    gets the sample (a primitive's time lands on the primitive), and every

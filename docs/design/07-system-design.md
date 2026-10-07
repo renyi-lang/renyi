@@ -77,9 +77,14 @@ say nothing per dependency; audits (cargo-vet, crev) are social.
 
 ### 2.3 Where it sits
 
-M4 (package manager and registry). The checker's coverage rule and the
-index are in place; the grant stack is part of the M3 runtime because the
-sandbox needs it too.
+M4 (package manager and registry), done for a static registry with
+decision AC1 (2026-10-07): `renyi add`, `update --accept-effects`,
+`audit`, `fetch` and `publish`; the effect manifest is recomputed by the
+client from the sources on every fetch, since the registry is a
+directory or a URL that serves files and computes nothing (R7-2 stays
+open). The checker's coverage rule and the index were in place before;
+the grant stack is part of the M3 runtime because the sandbox needs it
+too.
 
 ## 3. Reproducibility by construction (decision Q2)
 
@@ -95,8 +100,8 @@ by arguments. What remains is to name the inputs.
   `main` reaches, so it is the hash of the closure), the grant, the
   arguments, the environment variables read with the hash of each value
   (the redaction placeholder kept), the outcome, and the SHA-256 and
-  length of the standard output. The dependency hashes from the lockfile
-  join it with M4.
+  length of the standard output, and, since decision AC1, every package
+  the program reaches with the version and the hash the lockfile names.
 - **`renyi reproduce recording.json [program.ry]`** checks that `main` of
   the program hashes as the manifest says (fetching code by hash needs the
   registry, M4), warns when the toolchain differs, replays the recording
@@ -107,8 +112,9 @@ by arguments. What remains is to name the inputs.
 - **Reproducible builds.** `renyi build` output is a function of the same
   hashes; two builds of the same manifest are identical files (M6).
 
-The manifest and `reproduce` exist (M3); the dependency hashes come with
-M4.
+The manifest and `reproduce` exist (M3), the dependency hashes since
+decision AC1 (M4): `reproduce` refuses a run whose dependencies differ
+from the manifest's.
 
 ## 4. In-process sandboxing (decision Q3)
 
@@ -186,7 +192,7 @@ before it runs: Erlang's hot code loading with static types.
    and `renyi reproduce` (section 3).
 2. M4: the package manager with computed effect manifests, `renyi add`,
    `update --accept-effects`, `audit` (section 2); dependency hashes in
-   the manifest (section 3).
+   the manifest (section 3). Done 2026-10-07 (decision AC1).
 3. M5: the embedding API with grants and memory budgets (section 4);
    `renyi serve --watch` and checked swaps (section 5).
 

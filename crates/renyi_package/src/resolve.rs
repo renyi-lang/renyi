@@ -64,7 +64,23 @@ impl Project {
     /// nearest `renyi.json`; a relative path stops at the working
     /// directory, an absolute one at its root.
     pub fn of(file_name: &str) -> Project {
-        let own = directory_of(file_name);
+        Project::walk(directory_of(file_name))
+    }
+
+    /// The project of a directory: the nearest `renyi.json` in it or above
+    /// it, else the directory itself (`.` and an empty text are the
+    /// working directory).
+    pub fn of_directory(directory: &str) -> Project {
+        let own = directory.trim_end_matches(['/', '\\']);
+        let own = if own == "." {
+            String::new()
+        } else {
+            own.to_string()
+        };
+        Project::walk(own)
+    }
+
+    fn walk(own: String) -> Project {
         let mut directory = own.clone();
         loop {
             let manifest_path = join(&directory, MANIFEST_FILE);
@@ -200,7 +216,12 @@ fn read_source(base: &str) -> Option<(String, String)> {
 /// file that cannot be read is left out, and the checker then reports an
 /// unknown module.
 pub fn resolve(file: &SourceFile) -> Resolved {
-    let project = Project::of(&file.name);
+    resolve_in(&Project::of(&file.name), file)
+}
+
+/// `resolve` in a project given: the commands read a package's own files
+/// from the registry as a project whose dependencies the lock names.
+pub fn resolve_in(project: &Project, file: &SourceFile) -> Resolved {
     let mut resolved = Resolved::default();
     resolved.files.push(file.clone());
     for diagnostic in &project.problems {
@@ -237,7 +258,7 @@ pub fn resolve(file: &SourceFile) -> Resolved {
         let (qualified, base, origin, package) = if dependencies.contains(first) {
             // a dependency: the file from the package's root
             let Some((root, package_file, package)) = locate_package(
-                &project,
+                project,
                 first,
                 &pending,
                 &mut reported,

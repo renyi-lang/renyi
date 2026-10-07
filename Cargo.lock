@@ -398,8 +398,10 @@ dependencies = [
  "mimalloc",
  "renyi_check",
  "renyi_index",
+ "renyi_package",
  "renyi_syntax",
  "renyi_vm",
+ "ureq",
 ]
 
 [[package]]

@@ -5,7 +5,7 @@ use crate::Index;
 
 /// The thresholds. The defaults are the first setting (decision R7), each
 /// one just above the corpus maximum measured in section 5 of the design
-/// document; they move to the project manifest with the package manager.
+/// document; the `budgets` of `renyi.json` override them (decision AC1).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Budgets {
     pub public_per_module: usize,

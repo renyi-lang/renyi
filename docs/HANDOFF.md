@@ -18,7 +18,7 @@ of `set` to `change`, decision AA1; then the emitter written in Renyi,
 compile` byte for byte by the same test, decision Z3; then constraints
 with type arguments, open item R3-2, decision AB1; then the judges run
 the front end from its bytecode; then packages, decision AC1, the first
-commit of stage 3).
+slice of stage 3 in two commits).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -82,8 +82,10 @@ binary with `check`, `format`, `tokens`, `parse [--json]
 revision>]`, `run [--manifest] [options] <file> [arguments]`, `record
 [--to file] [options] <file> [arguments]`, `reproduce <recording>
 [<file>]`, `test [--strict] [--refresh name [--redact name]] [--explain]
-<file>...`, `compile [--to file] <file.ry>`, `tools [path]`, `mcp
-[path]` and `version`; 237 tests, clippy and fmt clean on Windows
+<file>...`, `compile [--to file] <file.ry>`, `add <name> [<version>]`,
+`update [--accept-effects]`, `audit`, `fetch`, `publish [--to
+<directory>]`, `tools [path]`, `mcp [path]` and `version`; 246 tests,
+clippy and fmt clean on Windows
 with rustc 1.94.1. CI (`.github/workflows/ci.yml`) runs the same gates,
 `renyi check compiler/*.ry` and the conformance suite
 (`tests/conformance/`, 47 cases, every `run` case a second time from
@@ -284,7 +286,11 @@ sheet, with `change` (decision AA1).
   failure(UsageError(message))`); the formatter puts every argument of
   a wrapped call on its own line, so a function near the 60-line limit
   before formatting must be split; `renyi format` must run before
-  anchors for a patch script are taken from the file.
+  anchors for a patch script are taken from the file; `ignore` of a
+  call that has no effect is an error even when the call can fail (bind
+  the result, or make the function return nothing and call it as a
+  statement with `otherwise fail`); a call with one argument must not
+  name it.
 
 ## The profile and the loop of the VM (W6; decisions X1 to X4)
 
@@ -747,7 +753,7 @@ script `judge_emit.sh` runs the same way.
   the repository; `renyi run compiler/parse.ry` and the other two
   source forms work as before, and `README.md` names them.
 
-## Packages (decision AC1; stage 3, the first commit)
+## Packages (decision AC1; stage 3, the first slice: two commits)
 
 The owner's choice after the judges ran from bytecode: stage 3 (M4) and,
 beside it, the parity of the Renyi front end's diagnostics with the Rust
@@ -832,17 +838,61 @@ package name as the first segment of an import, packages before
   `a_dependency_is_charged_with_its_package_named`. The fixture was
   written by `make_fixture.py` in the session's scratchpad; `renyi
   publish` will regenerate `package.json` once it exists.
-- **Next, the second commit of AC1**: `renyi add <name> [<version>]`,
-  `update [--accept-effects]`, `audit`, `fetch` and `publish [--to
-  <directory>]` in the binary (HTTP through `ureq`; the effect manifest
-  from the index's transitive effects and failures; `publish` checks
-  the version against the semantic diff and never overwrites a
-  version); the dependencies with their hashes in the run manifest,
-  compared by `reproduce`; `renyi index --budgets` reading the
-  thresholds of `renyi.json`; the index labelling a dependency's
-  definitions with their package; the USAGE text, appendix B,
-  `README.md`, section 2.3 of `07-system-design.md`. Then `std.process`
-  and the FFI (the next slices of M4), and the parity of the Renyi
+- **The second commit: the commands** (`crates/renyi/src/packages.rs`,
+  `crates/renyi_package/src/select.rs`). `select` chooses one version
+  per package: a requirement means the same major and at least that
+  version, the choice is the highest the registry has, the chosen
+  packages' own requirements join the manifest's, and the rounds repeat
+  until the choice is stable; requirements that disagree on the major
+  are refused naming both parties. `renyi add <name> [<version>]`
+  (refuses `std`, a name that is not a package name, a name that is a
+  directory of the project, and needs a `renyi.json` with a `registry`)
+  writes the requirement (the version given, else the registry's
+  highest), chooses, fetches and verifies every package, prints the
+  added package's public functions with their effects and failures, and
+  writes both files. `update [--accept-effects]` takes every dependency
+  to the highest version its requirement allows; the capability kinds
+  of the new version's effect manifest are compared with the old
+  version's, a widening is refused without the flag, and with it each
+  `main` of the project that reaches the package (found through the
+  index: a public or private function `main` of an own module; reach
+  through `resolve_in`) must declare the new kind. `audit` prints every
+  locked dependency's kinds, whether each `main` that reaches it covers
+  them (exit 1 when one does not), and the capabilities of a `main` no
+  dependency uses. `fetch` takes the locked packages (the lock's hash
+  must be the registry's). `publish [--to <directory>]` requires the
+  project to check clean, publishes every `.ry` and `.renyi` under the
+  root (`.renyi/` left out), writes `package.json` with the files'
+  hashes and the effect manifest, updates `versions.json`, never
+  overwrites a version, and checks the version against the semantic
+  diff of the own definitions since the highest published version (G1:
+  a new major, a new minor, or greater). A URL registry is read through
+  `ureq` (404 is "not there"), its packages are written into the store
+  and verified there; a directory registry is read in place. The effect
+  manifest is recomputed from the sources on every fetch through the
+  index (every public function or method of the package's own modules,
+  its transitive effects and failures, sorted by name), with the package
+  checked as a project of its own rooted where its files are and its
+  dependencies read from the registry or, for a URL, from the store.
+  The run manifest names every package the program reaches with the
+  lockfile's version and hash (`Dependency` in `recording.rs`, after
+  `code`; none for a program loaded from a `.ryc` file, whose hash
+  covers them), and `reproduce` refuses a run whose dependencies differ.
+  `renyi index` labels a dependency's modules and definitions with
+  `package: <name> <version>` (the text line and the JSON field, which
+  `maps.rs` reads back; the canonical copies the index checks keep the
+  tag, which they lost before), and `--budgets` reads the thresholds of
+  `renyi.json`. The commands act on the working directory, so they are
+  not conformance cases: `crates/renyi/tests/packages.rs` runs the
+  binary in scratch projects under `target/packages/` (seven tests:
+  `publish` writes the fixture's `package.json` byte for byte and
+  refuses an overwrite, an unclean project and a version too small;
+  `add`, the run manifest, `reproduce` on a changed dependency; `audit`;
+  `fetch` on a changed file and a stale lock; `update` refused without
+  the flag and until `main` declares the new kind; a URL registry served
+  by a thread; the map's labels and the budgets).
+- **Next**: `std.process` with the capability `process`, then the FFI
+  (`foreign`, F0), the next slices of M4; and the parity of the Renyi
   front end's diagnostics with the Rust parser's (the "2" of the
   owner's answer).
 
@@ -1237,6 +1287,16 @@ Three commits on `main`, each gated as in session 7:
     the reference (sections 2 and 11, appendix A), the decisions
     (section AC), `CLAUDE.md`, `docs/GAPS.md`,
     `tests/conformance/README.md`, `.gitignore`, this file.
+15. Packages, the second commit (decision AC1, the section "Packages"
+    above): `crates/renyi_package` (`select.rs`, `Project::of_directory`,
+    `resolve_in`), `crates/renyi/src/packages.rs` (the five commands) and
+    `main.rs` (the dispatch, the usage, the run manifest's dependencies,
+    `reproduce`, the budgets of the manifest), `renyi_vm/recording.rs`
+    (`Dependency`), `renyi_index` (`package` on modules and definitions,
+    the canonical copies keep the tag), `maps.rs`, `budgets.rs`,
+    `crates/renyi/tests/packages.rs`, the reference (appendix B),
+    `README.md`, `07-system-design.md` (2.3, 3, 6),
+    `05-agent-tooling.md`, `CLAUDE.md`, `docs/GAPS.md`, this file.
 
 ## Done in session 7 (stage 1 of the gap audit)
 
@@ -1671,9 +1731,9 @@ on a fresh clone).
    the Predict answer on `traffic_light` (0 of 5 with right lines); the
    rubric's reading of "only X and Y" when Z is also needed (round 1 and
    2 read it as a need missing).
-4. **M4**, under way: the second commit of AC1 (the commands, the run
-   manifest's dependencies, the budgets of the manifest; the section
-   "Packages" above), then `std.process`, then the FFI; **M5**
+4. **M4**, under way: the first slice (packages, decision AC1, the
+   section "Packages" above) is done; next `std.process`, then the FFI;
+   **M5**
    (embedding API, `serve --watch`, LSP, a resident `World`, open item
    R5-5) after: stage 3 of `docs/GAPS.md`.
 

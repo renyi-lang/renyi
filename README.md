@@ -29,8 +29,8 @@ Source files use the `.renyi` or `.ry` extension; the two are equivalent.
 ## Status
 
 The design is complete (M0); the front end (M1), the type and effect
-checker (M2), the project map (`renyi index`) and the VM (M3) exist. What
-exists:
+checker (M2), the project map (`renyi index`), the VM (M3) and packages
+(the first slice of M4, decision AC1) exist. What exists:
 
 - `docs/design/01-decisions.md`: every design decision taken so far, with the
   reasoning.
@@ -95,7 +95,14 @@ exists:
   recording (`--strict`, `--refresh`); `renyi compile` writes a program
   as a bytecode file (`.ryc`, the derived JSON of the types of
   `compiler/bytecode.ry`), which `run`, `record`, `test` and
-  `reproduce` load in place of the source. Every example checks cleanly, is in
+  `reproduce` load in place of the source; `renyi add`, `update
+  [--accept-effects]`, `audit`, `fetch` and `publish` manage a project's
+  dependencies (decision AC1: `renyi.json` names them and a registry,
+  a directory or a URL; `renyi.lock.json` pins each version's hash;
+  every package's files are verified against their hashes and its
+  effect manifest recomputed from its sources, so a package cannot
+  understate what it does, and a version whose effects widen is never
+  taken silently). Every example checks cleanly, is in
   canonical form, and its examples and tests pass, the five that reach
   the network and the one on SQLite from recordings under
   `examples/fixtures/`; the ten programs with a reference output print
@@ -122,6 +129,7 @@ cargo build
 ./target/debug/renyi test examples/invoice.ry
 ./target/debug/renyi compile --to hello.ryc examples/hello.ry && ./target/debug/renyi run hello.ryc Renyi   # from the bytecode file
 ./target/debug/renyi mcp examples        # the toolchain for an agent host, over standard input and output
+(cd tests/conformance/packages/project && ../../../../target/debug/renyi audit)   # a dependency's effects against every main
 ./target/debug/renyi run compiler/parse.ry examples/hello.ry   # the parser written in Renyi, on the VM
 ./target/debug/renyi run compiler/checker.ry --json examples/hello.ry   # the checker written in Renyi, on the VM
 ./target/debug/renyi run compiler/compile.ry --to hello.ryc examples/hello.ry   # the compiler written in Renyi, on the VM
