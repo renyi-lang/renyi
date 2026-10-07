@@ -8,7 +8,10 @@
 //! (`compiler/checker.ry`) must print, for every program the Rust parser
 //! accepts, what `renyi check --json` prints, with and without `--strict`,
 //! and exit as it exits; the library declarations are not programs, so
-//! they are left out.
+//! they are left out. Decision Z3: the compiler written in Renyi
+//! (`compiler/compile.ry`) must write, for every program `renyi compile`
+//! accepts, the bytecode file it writes, byte for byte, and must refuse
+//! every program it refuses.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -137,6 +140,51 @@ fn judge_checker(program: &Path, parses: bool, strict: bool) -> Option<String> {
     None
 }
 
+/// Where one of the two compilers writes the file of a program, under the
+/// workspace's `target/`.
+fn bytecode_target(side: &str, name: &str) -> PathBuf {
+    let directory = root().join("target").join("selfhost").join(side);
+    std::fs::create_dir_all(&directory).expect("the target directory");
+    directory.join(format!("{}.ryc", name.replace(['/', '.'], "_")))
+}
+
+/// What the Renyi compiler got wrong on one program, named relative to
+/// the workspace root with `/`; `None` when it wrote what `renyi compile`
+/// writes, or refused what it refuses.
+fn judge_emitter(name: &str) -> Option<String> {
+    let rust_target = bytecode_target("rust", name);
+    let own_target = bytecode_target("self", name);
+    let _ = std::fs::remove_file(&own_target);
+    let rust_to = rust_target.to_string_lossy().to_string();
+    let own_to = own_target.to_string_lossy().to_string();
+    let rust = renyi(&["compile", "--to", &rust_to], Path::new(name));
+    let own = renyi(
+        &["run", "compiler/compile.ry", "--to", &own_to],
+        Path::new(name),
+    );
+    if rust.status.success() {
+        if !own.status.success() {
+            return Some(format!(
+                "{name}: `renyi compile` accepts it, the Renyi compiler fails:\n  {}",
+                String::from_utf8_lossy(&own.stderr).trim()
+            ));
+        }
+        let expected = std::fs::read(&rust_target).expect("the file `renyi compile` wrote");
+        let got = std::fs::read(&own_target).unwrap_or_default();
+        if expected != got {
+            return Some(format!(
+                "{name}: the two files differ at {}",
+                first_difference(&expected, &got)
+            ));
+        }
+    } else if own.status.success() {
+        return Some(format!(
+            "{name}: `renyi compile` rejects it, the Renyi compiler accepts it"
+        ));
+    }
+    None
+}
+
 /// Judge every case on a few threads: each run of a Renyi program checks
 /// and loads the whole front end first.
 fn judge_all<Case: Sync>(
@@ -189,6 +237,20 @@ fn the_renyi_checker_prints_what_the_rust_checker_prints() {
         let parses = renyi(&["parse"], program).status.success();
         judge_checker(program, parses, false).or_else(|| judge_checker(program, parses, true))
     });
+    assert!(problems.is_empty(), "\n{}", problems.join("\n"));
+}
+
+#[test]
+fn the_renyi_compiler_writes_what_renyi_compile_writes() {
+    let mut programs: Vec<String> = Vec::new();
+    for directory in ["examples", "tests/conformance/programs", "compiler"] {
+        programs.extend(programs_in(directory).into_iter().map(|path| {
+            let file = path.file_name().expect("a file name").to_string_lossy();
+            format!("{directory}/{file}")
+        }));
+    }
+    assert!(programs.len() >= 70, "{} programs", programs.len());
+    let problems = judge_all(programs, |program| judge_emitter(program));
     assert!(problems.is_empty(), "\n{}", problems.join("\n"));
 }
 

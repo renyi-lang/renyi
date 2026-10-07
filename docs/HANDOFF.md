@@ -57,7 +57,10 @@ the profile's); the bytecode file exists with `renyi compile` and the
 loader (decisions Z1 to Z4, the section after the residue's); the
 statement `set name to value` is `change name to value` since decision
 AA1 (the owner's question of 2026-10-06; the section after the bytecode
-file's); the emitter written in Renyi, which writes that file, is next.
+file's); the emitter written in Renyi, which writes that file, exists
+and is held equal to `renyi compile` byte for byte (decision Z3, the
+section after the rename's): the toolchain in Renyi is the lexer, the
+parser, the checker and the emitter, with the Rust toolchain as stage 0.
 
 The corpus has 30 programs, passes the lint, is in canonical layout,
 checks cleanly, has nothing over budget, and its `example:` lines and
@@ -559,6 +562,74 @@ under V11, one commit:
   readability rounds' records, the sketch (`02-syntax-sketch.md`, the
   design record) and the earlier decisions, which keep `set` as history.
 
+## The compiler written in Renyi (decision Z3)
+
+The last piece of stage 2's toolchain: `compiler/emit.ry` turns the
+checked tree into the `Program` of `compiler/bytecode.ry`, and
+`compiler/compile.ry` writes it as `renyi compile` does.
+
+- **`project.ry`** (new): what the command lines share, moved out of
+  `checker.ry` unchanged: `Source` and `Front`, `source_of`, the front
+  end (`front_end`), the library (`library_trees`), the imports
+  (`imported_files`, `directory_of`, `join_path`), `read_file`,
+  `print_block`, `has_error`, and `check_project`, which now returns a
+  `Project` (the world and one `CheckedModule` per file: its module id,
+  its path, its diagnostics and the references of its bodies).
+  `checker.ry` keeps the options, the layout checks and `diagnose`.
+- **`emit.ry`** (new, about 3500 lines): the transcription of
+  `crates/renyi_vm/src/compile/{mod,expr,stmt,pattern,query}.rs` and
+  `types.rs`, function for function. The Rust `Compiler` is the record
+  `Emitter`, threaded through every function as `Checker` is in
+  `bodies.ry` (`Step of Value` carries a value and the emitter); the
+  shared `Context` (the world, the globals, the references by body, the
+  result types, the field-site counter, and the tables being built:
+  codes, function codes, constants, tests, examples, types) travels
+  inside it and comes back out between bodies. The references are keyed
+  by module and body (`"{owner}/{body key}"`), then by span
+  (`"{start}:{stop}"`), in the order the checker recorded them, so
+  "the first `Function` target at this span" means the same in both
+  compilers. A code's constants are pooled as typed values (`Pooled`:
+  an Integer, a Decimal, a Float, a text, a Boolean, nothing or a
+  function id), compared with `is` and rendered to digits at the end,
+  which reproduces the Rust pool's "an equal constant of the same kind
+  is reused" exactly (`1.5` and `1.50` are one Decimal constant). Spans
+  need no conversion: the Renyi parser's spans already count
+  characters. A `match` of either kind goes through one `emit_match`
+  over `GenericArm`s (`BlockBody` or `OutcomeBody`); `run concurrently`
+  runs its tasks one after the other (S2), as the Rust compiler does.
+  `bodies.ry` made `debug_quoted`, `statement_span`, `expr_span` and
+  `pattern_span` public for it.
+- **`compile.ry`** (new): `renyi run compiler/compile.ry [--to
+  <file.ryc>] [--library <dir>] <file>` reads the file and its imports,
+  checks the project, prints every module's diagnostics as `check`
+  prints them, exits 1 when any is an error, and otherwise writes
+  `json.render_indented(program)` with a trailing line break to the
+  target (`<stem>.ryc` in the working directory by default, as `renyi
+  compile` names it). A `.ryc` as input is refused with `renyi
+  compile`'s message.
+- **The judge** (`selfhost.rs`, `the_renyi_compiler_writes_what_renyi_
+  compile_writes`): for every program of the corpus, the conformance
+  programs and `compiler/`, named relative to the root with `/`, `renyi
+  compile --to target/selfhost/rust/<name>.ryc` and `renyi run
+  compiler/compile.ry --to target/selfhost/self/<name>.ryc`; when the
+  Rust one succeeds the Renyi one must succeed and the two files must be
+  equal byte for byte (the first differing line is reported); when the
+  Rust one refuses, the Renyi one must refuse. The first full run agreed
+  on every program: the 30 examples, the 29 conformance programs (9
+  compiled, 20 refused by both) and the compiler's own 18 files, the
+  7600-line `bodies.ry` among them.
+- **One change on the Rust side.** `renyi_check::imported_files` now
+  names an imported file as the importing file's directory and the
+  import's segments joined with `/` on every platform (it joined with
+  the platform's separator before, `\` on Windows), so that a bytecode
+  file, which remembers the paths of its modules, is the same file
+  wherever it is written; the Renyi `imported_files` always joined with
+  `/`.
+- **Time.** The Renyi compiler, run on the VM, compiles a corpus program
+  in about a second and `bodies.ry` in about three (checking and
+  loading the whole front end included); the judge adds about a minute
+  to `cargo test` on eight threads.
+
 ## The VM as it exists (`crates/renyi_vm`)
 
 - **The loop** is described in the section above (decision X3): one
@@ -918,6 +989,13 @@ Three commits on `main`, each gated as in session 7:
     cheat sheet, the decisions (section AA), both front ends, the
     corpus, the conformance programs, the crates' tests, the lint,
     `docs/GAPS.md`, this file.
+11. The compiler written in Renyi (decision Z3, the section "The
+    compiler written in Renyi" above): `compiler/project.ry`, `emit.ry`
+    and `compile.ry` (new), `checker.ry` (the shared pieces moved out),
+    `bodies.ry` (four helpers made public), `crates/renyi_check/src/
+    lib.rs` (`imported_files` joins with `/`), the judge in
+    `crates/renyi/tests/selfhost.rs`, `README.md`, `CLAUDE.md`,
+    `docs/GAPS.md`, this file.
 
 ## Done in session 7 (stage 1 of the gap audit)
 
@@ -1266,12 +1344,10 @@ on a fresh clone).
   2026-10-06, asked back as a structured question after the owner raised
   it) is done: decision AA1 and the section "The rename of `set` to
   `change`" above.
-- **Stage 2, the next piece**: the emitter written in Renyi
-  (`compiler/emit.ry`, the transcription of `crates/renyi_vm/src/
-  compile/`, and the driver `compiler/compile.ry`), judged by byte
-  equality with `renyi compile` over the corpus, the conformance
-  programs and the compiler itself (decision Z3); the file, the
-  loader and `renyi compile` exist (Z1 to Z4).
+- **Stage 2's toolchain in Renyi is complete** (the lexer, the parser,
+  the checker and the emitter, W1 to W8 and Z3): the next piece is the
+  owner's to choose; R3-2 (constraints with type arguments) was
+  deferred until after the emitter (Y4) and is the open design item.
 - **Readability**: the scores are no longer the gate (decision V1).
   Round 5 (U9's sentence) and gpt-5.5 run only if the owner asks.
 - Session 5 printed the values of `ANTHROPIC_API_KEY` and
@@ -1312,26 +1388,19 @@ on a fresh clone).
    profile and the loop are done, X1 to X6; the residue of stage 1 is
    done, Y1 to Y4, R3-2 deferred; the bytecode file, `renyi compile`
    and the loader are done, Z1 to Z4; the rename of `set` to `change`
-   is done, AA1): next the emitter
-   written in Renyi (`compiler/emit.ry`: `compile/{mod,expr,stmt,pattern,query}.rs`
-   and `types.rs` transcribed over `declare.World`, the tree and the
-   references of `bodies.ry`; a driver `compiler/compile.ry` that runs
-   the front end, the checker and the emitter and writes
-   `json.render_indented` of the `Program` of `compiler/bytecode.ry`),
-   judged in `selfhost.rs` by byte equality with `renyi compile --to`
-   over the corpus, the conformance programs and `compiler/`, with
-   both refusing what the Rust checker refuses (Z3),
-   so that the Rust VM runs what the Renyi compiler emits, with the
-   Rust toolchain as stage 0, which is where the references of W8 get
-   their judge; the remaining performance items (string building, the
-   pattern cache of `Text.matches`) as a later profile calls for them;
-   any
-   change to the loop is measured with `bench.py` and `micro.py`
-   against the `base` worktree, the two binaries run back to back. The
-   front end in
-   Renyi reports one syntax error with a position and no fix; parity
-   with the Rust parser's diagnostics (codes, fixes, recovery) is a
-   later step.
+   is done, AA1; the emitter written in Renyi is done and judged, Z3):
+   the toolchain in Renyi is complete with the Rust toolchain as stage
+   0. Next, in the order the owner chooses: R3-2 (constraints with type
+   arguments, deferred by Y4); the judges could run the front end from
+   its own bytecode (`renyi compile compiler/compile.ry`, then `renyi
+   run compiler/compile.ryc`, which skips checking the 25 000 lines of
+   the front end on every run); the remaining performance items (string
+   building, the pattern cache of `Text.matches`) as a later profile
+   calls for them; any change to the loop is measured with `bench.py`
+   and `micro.py` against the `base` worktree, the two binaries run
+   back to back. The front end in Renyi reports one syntax error with a
+   position and no fix; parity with the Rust parser's diagnostics
+   (codes, fixes, recovery) is a later step.
 2. **Readability, only on request**: round 5 on Sonnet measures U9
    (`run.py prepare`, the Sonnet command at the end of this item after
    its probe, the graders, `score`, the U5 search, `report`, the
@@ -1403,8 +1472,11 @@ on a fresh clone).
   written by hand can still underflow the operand stack (a panic, not
   an exploit: the VM holds no unsafe code). The name of a test's code
   object is Rust's `{:?}` of the test's name, which the Renyi emitter
-  must reproduce (quotes and backslashes escaped; other escapes do not
-  occur in the corpus). A `.ryc` is tied to the toolchain that wrote
+  reproduces through `bodies.debug_quoted` (quotes, backslashes, `\n`
+  and `\t` escaped; other escapes do not occur in the corpus). The
+  Renyi emitter's whitespace, when it puts an example's or a condition's
+  text on one line, is what `Text.trim` strips (Rust's
+  `char::is_whitespace`, as `split_whitespace` uses). A `.ryc` is tied to the toolchain that wrote
   it by nothing but `format`; a change to `Op`, `Program` or the
   format types bumps `FORMAT` and `compiler/bytecode.ry` together.
 - **VM.** A declared `equals` decides `is` and `is not` (session 7);

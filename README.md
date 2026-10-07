@@ -58,16 +58,19 @@ exists:
   the grammar file and its list of diagnostic codes to the crates.
 - `examples/`: thirty example programs, checked by
   `python3 tools/lint_examples.py`.
-- `compiler/`: the front end written in Renyi itself, run by the Rust VM:
+- `compiler/`: the compiler written in Renyi itself, run by the Rust VM:
   the syntax tree as Renyi types (whose derived JSON is what `renyi parse
-  --json` prints), the lexer, the parser and the type and effect checker;
-  `renyi run compiler/parse.ry <file>` prints the same tree as `renyi
-  parse --json <file>`, byte for byte on every program of the corpus, the
-  conformance suite, the library and the compiler itself, and `renyi run
-  compiler/checker.ry --json <file>` prints the same diagnostics as
-  `renyi check --json <file>`, with and without `--strict`, on every
-  program of the corpus, the conformance suite and the compiler itself;
-  a test holds both pairs equal.
+  --json` prints), the lexer, the parser, the type and effect checker and
+  the bytecode emitter; `renyi run compiler/parse.ry <file>` prints the
+  same tree as `renyi parse --json <file>`, byte for byte on every
+  program of the corpus, the conformance suite, the library and the
+  compiler itself, `renyi run compiler/checker.ry --json <file>` prints
+  the same diagnostics as `renyi check --json <file>`, with and without
+  `--strict`, on every program of the corpus, the conformance suite and
+  the compiler itself, and `renyi run compiler/compile.ry --to
+  <file.ryc> <file>` writes the same bytecode file as `renyi compile`,
+  byte for byte, on the same programs; a test holds all three pairs
+  equal.
 - `crates/`: the Rust toolchain. `renyi check` reports lexer, parser, type,
   effect and layout diagnostics as text or JSON, each with a suggested fix;
   `renyi format` rewrites files in the canonical layout; `renyi tokens` and
@@ -121,6 +124,7 @@ cargo build
 ./target/debug/renyi mcp examples        # the toolchain for an agent host, over standard input and output
 ./target/debug/renyi run compiler/parse.ry examples/hello.ry   # the parser written in Renyi, on the VM
 ./target/debug/renyi run compiler/checker.ry --json examples/hello.ry   # the checker written in Renyi, on the VM
+./target/debug/renyi run compiler/compile.ry --to hello.ryc examples/hello.ry   # the compiler written in Renyi, on the VM
 cargo test
 ```
 

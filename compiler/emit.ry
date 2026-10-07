@@ -1,0 +1,3463 @@
+module emit
+  purpose: The checked tree to bytecode: a `Program` of `bytecode` (the Rust `compile/` modules).
+
+import lists
+import ast exposing Span,
+  Name,
+  TypeName,
+  Item,
+  Function,
+  Constant,
+  Test,
+  Example,
+  Type,
+  TypeDefinition,
+  TypeKind,
+  Field,
+  Derive,
+  Block,
+  Statement,
+  Arm,
+  Branch,
+  SortOrder,
+  Pattern,
+  FieldPattern,
+  Expr,
+  TextPiece,
+  Arg,
+  BinaryOp,
+  Outcome,
+  ExprArm,
+  QuerySource,
+  QueryTerminal,
+  ExampleOutcome
+import bytecode exposing Program,
+  ModuleSource,
+  BuiltinIds,
+  TypeMeta,
+  TypeShape,
+  FieldMeta,
+  VariantMeta,
+  ImplEntry,
+  MethodBinding,
+  AbilityMeta,
+  MethodEntry,
+  FunctionMeta,
+  ConstantMeta,
+  TestMeta,
+  ExampleMeta,
+  Expected,
+  Code,
+  CodeKind,
+  CodeConstant,
+  Specials,
+  GroupFold,
+  Op
+import declare exposing World,
+  ModuleInfo,
+  BodyLocation,
+  FunctionInfo,
+  TypeInfo,
+  TypeKindInfo,
+  FieldInfo,
+  VariantInfo,
+  AbilityMethod,
+  Builtins
+import bodies exposing Target, Reference, NumberKind
+import types exposing Ty
+import effects
+import project exposing CheckedModule
+
+public type Pooled is one of
+  purpose: A constant of a code with its value, so that an equal one of the same kind is reused.
+  PooledNothing
+  PooledBoolean(value: Boolean)
+  PooledInteger(value: Integer)
+  PooledDecimal(value: Decimal)
+  PooledFloat(value: Float)
+  PooledText(text: Text)
+  PooledFunction(function_id: Integer)
+end
+
+type Local
+  purpose: A name bound to a slot of the frame.
+  has name: Text
+  has slot: Integer
+end
+
+type LoopContext
+  purpose: Where `break` and `continue` go, the handled regions open at entry, the stack mark (Y4).
+  has breaks: List of Integer
+  has continues: List of Integer
+  has handler_depth: Integer
+  has mark: Integer
+end
+
+type Context
+  purpose: What every body's emitter shares: the world, the tables being built and the counters.
+  has world: World
+  has globals: Map of Text to Integer
+  has refs: Map of Text to List of Reference
+  has result_types: List of Ty
+  has field_sites: Integer
+  has codes: List of Code
+  has function_codes: List of maybe Integer
+  has constants: List of ConstantMeta
+  has tests: List of TestMeta
+  has examples: List of ExampleMeta
+  has types: List of TypeMeta
+end
+
+type Emitter
+  purpose: The state of compiling one body (the Rust `Compiler`), threaded through every function.
+  has context: Context
+  has owner: Integer
+  has targets: Map of Text to List of Target
+  has name: Text
+  has kind: CodeKind
+  has function_id: maybe Integer
+  has params: Integer
+  has ops: List of Op
+  has spans: List of Span
+  has pool: List of Pooled
+  has scopes: List of List of Local
+  has next_slot: Integer
+  has loops: List of LoopContext
+  has handler_depth: Integer
+  has in_test: Boolean
+  has move_receiver: maybe Span
+end
+
+type Step of Value
+  purpose: A value computed while emitting, and the emitter after it.
+  has value: Value
+  has emitter: Emitter
+end
+
+type ArmBody is one of
+  purpose: What an arm of a `match` runs: a block in a statement, an outcome in an expression.
+  BlockBody(block: Block)
+  OutcomeBody(outcome: Outcome)
+end
+
+type GenericArm
+  purpose: An arm of either kind of `match`: its pattern, its guard and what it runs.
+  has pattern: Pattern
+  has guard: maybe Expr
+  has body: ArmBody
+  has span: Span
+end
+
+type Query
+  purpose: The clauses of a query expression, carried together.
+  has sources: List of QuerySource
+  has deadline: maybe Expr
+  has filter: maybe Expr
+  has order: maybe SortOrder
+  has group_by: maybe Expr
+  has terminal: QueryTerminal
+  has span: Span
+end
+
+type SourceLoops
+  purpose: The loops over a query's sources: their tops, their `IterNext` ops, the item's slot.
+  has tops: List of Integer
+  has nexts: List of Integer
+  has item: Integer
+end
+
+type ImplKey
+  purpose: An implementation by ability and type, in the order the file lists them.
+  has ability_id: Integer
+  has type_id: Integer
+  can Equal
+  can Compare by ability_id, type_id
+end
+
+type MethodKey
+  purpose: A method index entry by type and name, in the order the file lists them.
+  has type_id: Integer
+  has name: Text
+  can Equal
+  can Compare by type_id, name
+end
+
+type VariantFound
+  purpose: What a pattern's name resolved to: a variant by its tag, or a record without one.
+  has tag: maybe Integer
+end
+
+type MethodCall
+  purpose: A call on a named receiver: the receiver's name token and the arguments.
+  has receiver: Name
+  has args: List of Arg
+end
+
+type Placed
+  purpose: A code added to the program: its id and the context after it.
+  has id: Integer
+  has context: Context
+end
+
+type ExampleOwner
+  purpose: The item and the method the examples of a body belong to.
+  has item: Integer
+  has method: maybe Integer
+end
+
+type Expectation
+  purpose: What an example expects, compiled, and the context after it.
+  has value: Expected
+  has context: Context
+end
+
+type FieldPlace
+  purpose: A refined field of a record or of a variant, by position.
+  has variant: maybe Integer
+  has field: Integer
+end
+
+let unset_code: Integer be 18446744073709551615
+
+function body_key(body: BodyLocation) returns Text
+  purpose: A body as a map key.
+
+  match body
+    when NoBody then return "n"
+    when ItemBody(item) then return "i{item}"
+    when ImplementationBody(item, method) then return "m{item}.{method}"
+    when ExampleBody(item, method, sample) then
+      let method_key be maybe_key(method)
+      return "e{item}.{method_key}.{sample}"
+    when ConditionBody(item, variant, field) then
+      let variant_key be maybe_key(variant)
+      let field_key be maybe_key(field)
+      return "c{item}.{variant_key}.{field_key}"
+  end
+end
+
+function maybe_key(value: maybe Integer) returns Text
+  purpose: An optional number as part of a key.
+
+  match value
+    when some(found) then return "{found}"
+    when nothing then return "-"
+  end
+end
+
+function span_key(span: Span) returns Text
+  purpose: A span as a map key.
+
+  return "{span.start}:{span.stop}"
+end
+
+function refs_key(owner: Integer, body: BodyLocation) returns Text
+  purpose: A body of a module as a map key.
+
+  let body_text be body_key(body)
+  return "{owner}/{body_text}"
+end
+
+function targets_of(context: Context, owner: Integer, body: BodyLocation)
+  returns Map of Text to List of Target
+  purpose: The references of one body by span; two references may share a span.
+
+  let references be context.refs.get(refs_key(owner: owner, body: body)) otherwise []
+  let mutable targets: Map of Text to List of Target be {}
+  for each reference in references
+    let key be span_key(reference.span)
+    let existing be targets.get(key) otherwise []
+    change targets to targets.set(key: key, value: existing.append(reference.target))
+  end
+  return targets
+end
+
+function new_emitter(
+  context: Context,
+  owner: Integer,
+  body: BodyLocation,
+  name: Text,
+  kind: CodeKind
+)
+  returns Emitter
+  purpose: An emitter for one body with nothing emitted yet.
+
+  return Emitter(
+    context: context,
+    owner: owner,
+    targets: targets_of(context: context, owner: owner, body: body),
+    name: name,
+    kind: kind,
+    function_id: nothing,
+    params: 0,
+    ops: [],
+    spans: [],
+    pool: [],
+    scopes: [[]],
+    next_slot: 0,
+    loops: [],
+    handler_depth: 0,
+    in_test: false,
+    move_receiver: nothing
+  )
+end
+
+function finish(emitter: Emitter) returns Code
+  purpose: The code object of a finished body.
+
+  return Code(
+    name: emitter.name,
+    owner: emitter.owner,
+    kind: emitter.kind,
+    function_id: emitter.function_id,
+    params: emitter.params,
+    locals: emitter.next_slot,
+    ops: emitter.ops,
+    spans: emitter.spans,
+    constants: for each pooled in emitter.pool
+    collect constant_of(pooled)
+  )
+end
+
+function constant_of(pooled: Pooled) returns CodeConstant
+  purpose: A pooled constant as the file holds it: a number by its digits.
+
+  match pooled
+    when PooledNothing then return NothingConstant
+    when PooledBoolean(value) then return BooleanConstant(value: value)
+    when PooledInteger(value) then return IntegerConstant(digits: "{value}")
+    when PooledDecimal(value) then return DecimalConstant(digits: "{value}")
+    when PooledFloat(value) then return FloatConstant(digits: "{value}")
+    when PooledText(text) then return TextConstant(text: text)
+    when PooledFunction(function_id) then return FunctionConstant(function_id: function_id)
+  end
+end
+
+function push_code(context: Context, code: Code) returns Placed
+  purpose: The code added to the program; its id.
+
+  let id be context.codes.length()
+  return Placed(id: id, context: context with codes: context.codes.append(code))
+end
+
+function declare_local(emitter: Emitter, name: Text) returns Step of Integer
+  purpose: A new local in the current scope.
+
+  let made be temp(emitter)
+  let named be alias(emitter: made.emitter, name: name, slot: made.value)
+  return Step(value: made.value, emitter: named)
+end
+
+function temp(emitter: Emitter) returns Step of Integer
+  purpose: A fresh unnamed local.
+
+  let slot be emitter.next_slot
+  return Step(value: slot, emitter: emitter with next_slot: slot + 1)
+end
+
+function alias(emitter: Emitter, name: Text, slot: Integer) returns Emitter
+  purpose: An existing slot given a name in the current scope (a pattern binding).
+
+  let last be emitter.scopes.last() otherwise crash with "a scope"
+  let extended be last.append(Local(name: name, slot: slot))
+  return emitter with scopes: emitter.scopes.without_last().append(extended)
+end
+
+function lookup(emitter: Emitter, name: Text) returns maybe Integer
+  purpose: The slot of a name in scope, the innermost binding first.
+
+  for each scope in emitter.scopes.reversed()
+    for each local in scope.reversed()
+      if local.name is name then return local.slot end
+    end
+  end
+  return nothing
+end
+
+function push_scope(emitter: Emitter) returns Emitter
+  purpose: A new scope.
+
+  return emitter with scopes: emitter.scopes.append([])
+end
+
+function pop_scope(emitter: Emitter) returns Emitter
+  purpose: The innermost scope closed.
+
+  return emitter with scopes: emitter.scopes.without_last()
+end
+
+function targets_at(emitter: Emitter, span: Span) returns List of Target
+  purpose: What the checker recorded at a span, in the order it recorded it.
+
+  return emitter.targets.get(span_key(span)) otherwise []
+end
+
+function global_index(emitter: Emitter, owner: Integer, name: Text) returns maybe Integer
+  purpose: The index of a top-level constant among the program's constants.
+
+  return emitter.context.globals.get("{owner}:{name}")
+end
+
+function number_at(emitter: Emitter, span: Span) returns maybe NumberKind
+  purpose: The number type the checker gave a literal or a `sum`.
+
+  for each target in targets_at(emitter: emitter, span: span)
+    match target
+      when NumberTarget(kind) then return kind
+      otherwise continue
+    end
+  end
+  return nothing
+end
+
+function result_type_at(emitter: Emitter, span: Span) returns Step of maybe Integer
+  purpose: The index in the program's result types of the context type recorded for a call.
+
+  let ty be
+    match result_target(emitter: emitter, span: span)
+      when some(found) then found
+      when nothing then return Step(value: nothing, emitter: emitter)
+    end
+  let context be emitter.context
+  let mutable index be 0
+  for each known in context.result_types
+    if known is ty then return Step(value: index, emitter: emitter) end
+    change index to index + 1
+  end
+  let extended be context with result_types: context.result_types.append(ty)
+  return Step(value: index, emitter: emitter with context: extended)
+end
+
+function result_target(emitter: Emitter, span: Span) returns maybe Ty
+  purpose: The context type the checker recorded for a call, when it recorded one.
+
+  for each target in targets_at(emitter: emitter, span: span)
+    match target
+      when ResultTarget(ty) then return ty
+      otherwise continue
+    end
+  end
+  return nothing
+end
+
+function text_of(context: Context, owner: Integer, span: Span) returns maybe Text
+  purpose: The source text of a span on one line, when the module has a source.
+
+  let info be declare.module_at(world: context.world, id: owner)
+  if info.is_library then return nothing end
+  let piece be info.source_chars.drop(span.start).take(span.stop - span.start)
+  return collapse_whitespace(piece)
+end
+
+function collapse_whitespace(chars: List of Text) returns Text
+  purpose: The words of a text joined by single spaces (Rust's `split_whitespace`).
+
+  let mutable words: List of Text be []
+  let mutable current be ""
+  for each ch in chars
+    if is_whitespace(ch) then
+      if not current.is_empty() then change words to words.append(current) end
+      change current to ""
+    otherwise
+      change current to "{current}{ch}"
+    end
+  end
+  if not current.is_empty() then change words to words.append(current) end
+  return words.join(" ")
+end
+
+function is_whitespace(ch: Text) returns Boolean
+  purpose: Whether a character is whitespace.
+
+  return ch.trim().is_empty()
+end
+
+function source_text(emitter: Emitter, span: Span) returns Text
+  purpose: The source text of a span of the body's module, or empty.
+
+  return text_of(context: emitter.context, owner: emitter.owner, span: span) otherwise ""
+end
+
+function emit(emitter: Emitter, op: Op, span: Span) returns Emitter
+  purpose: An operation under a span of the tree.
+
+  return emitter with ops: emitter.ops.append(op), spans: emitter.spans.append(span)
+end
+
+function emit_jump(emitter: Emitter, op: Op, span: Span) returns Step of Integer
+  purpose: An operation whose target is patched later; its index.
+
+  let index be emitter.ops.length()
+  return Step(value: index, emitter: emit(emitter: emitter, op: op, span: span))
+end
+
+function here(emitter: Emitter) returns Integer
+  purpose: The index of the next operation.
+
+  return emitter.ops.length()
+end
+
+function patch(emitter: Emitter, position: Integer) returns Emitter
+  purpose: A jump emitted earlier pointed at the current position.
+
+  return patch_to(emitter: emitter, position: position, target: here(emitter))
+end
+
+function patch_to(emitter: Emitter, position: Integer, target: Integer) returns Emitter
+  purpose: A jump emitted earlier pointed at a target.
+
+  let op be emitter.ops.at(position) otherwise crash with "an operation to patch"
+  let patched be retarget(op: op, target: target)
+  return emitter with ops: lists.replace_at(items: emitter.ops, index: position, item: patched)
+end
+
+function retarget(op: Op, target: Integer) returns Op
+  purpose: A jump with its target replaced.
+
+  match op
+    when OpJump then return OpJump(target: target)
+    when OpJumpIfFalse then return OpJumpIfFalse(target: target)
+    when OpJumpIfTrue then return OpJumpIfTrue(target: target)
+    when OpJumpIfAbsent then return OpJumpIfAbsent(target: target)
+    when OpJumpIfFailure then return OpJumpIfFailure(target: target)
+    when OpPushHandler then return OpPushHandler(target: target)
+    when OpIterNext(slot) then return OpIterNext(slot: slot, exit: target)
+    otherwise crash with "not a jump"
+  end
+end
+
+function pool_constant(emitter: Emitter, value: Pooled) returns Step of Integer
+  purpose: A constant added to the code, reusing an equal one of the same kind; its index.
+
+  let mutable index be 0
+  for each pooled in emitter.pool
+    if pooled is value then return Step(value: index, emitter: emitter) end
+    change index to index + 1
+  end
+  return Step(value: index, emitter: emitter with pool: emitter.pool.append(value))
+end
+
+function push_constant(emitter: Emitter, value: Pooled, span: Span) returns Emitter
+  purpose: A constant pushed.
+
+  let pooled be pool_constant(emitter: emitter, value: value)
+  return emit(emitter: pooled.emitter, op: OpConst(index: pooled.value), span: span)
+end
+
+function push_text(emitter: Emitter, text: Text, span: Span) returns Emitter
+  purpose: A text constant pushed.
+
+  return push_constant(emitter: emitter, value: PooledText(text: text), span: span)
+end
+
+function push_integer(emitter: Emitter, value: Integer, span: Span) returns Emitter
+  purpose: An integer constant pushed.
+
+  return push_constant(emitter: emitter, value: PooledInteger(value: value), span: span)
+end
+
+function push_boolean(emitter: Emitter, value: Boolean, span: Span) returns Emitter
+  purpose: A Boolean constant pushed.
+
+  return push_constant(emitter: emitter, value: PooledBoolean(value: value), span: span)
+end
+
+function name_constant(emitter: Emitter, name: Text) returns Step of Integer
+  purpose: The index of a name among the constants.
+
+  return pool_constant(emitter: emitter, value: PooledText(text: name))
+end
+
+function field_site(emitter: Emitter) returns Step of Integer
+  purpose: The number of the next `OpField` in the program (decision X3).
+
+  let context be emitter.context
+  let site be context.field_sites
+  let counted be context with field_sites: site + 1
+  return Step(value: site, emitter: emitter with context: counted)
+end
+
+function unsupported(emitter: Emitter, what: Text, span: Span) returns Emitter
+  purpose: A crash for a construct the compiler does not know how to run.
+
+  let pushed be push_text(
+    emitter: emitter,
+    text: "{what} is not supported by this build of the VM",
+    span: span
+  )
+  return emit(emitter: pushed, op: OpCrash, span: span)
+end
+
+function push_handler(emitter: Emitter, span: Span) returns Step of Integer
+  purpose: A handled region opened; the index of the `PushHandler` to patch.
+
+  let deeper be emitter with handler_depth: emitter.handler_depth + 1
+  return emit_jump(emitter: deeper, op: OpPushHandler(target: 0), span: span)
+end
+
+function pop_handler(emitter: Emitter, span: Span) returns Emitter
+  purpose: A handled region closed.
+
+  let shallower be emitter with handler_depth: emitter.handler_depth - 1
+  return emit(emitter: shallower, op: OpPopHandler, span: span)
+end
+
+function enter_loop(emitter: Emitter, span: Span) returns Emitter
+  purpose: A loop opened: its entry marks the operand stack's height (decision Y4).
+
+  let made be temp(emitter)
+  let marked be emit(emitter: made.emitter, op: OpMarkStack(slot: made.value), span: span)
+  let context be LoopContext(
+    breaks: [],
+    continues: [],
+    handler_depth: marked.handler_depth,
+    mark: made.value
+  )
+  return marked with loops: marked.loops.append(context)
+end
+
+function leave_loop(emitter: Emitter, continue_target: Integer) returns Emitter
+  purpose: The loop closed: `break`s jump here, `continue`s to the target.
+
+  let context be emitter.loops.last() otherwise crash with "a loop"
+  let mutable updated be emitter with loops: emitter.loops.without_last()
+  for each position in context.breaks
+    change updated to patch(emitter: updated, position: position)
+  end
+  for each position in context.continues
+    change updated to patch_to(emitter: updated, position: position, target: continue_target)
+  end
+  return updated
+end
+
+function leave_regions_of_loop(emitter: Emitter, span: Span) returns Emitter
+  purpose: Every handled region opened inside the innermost loop left, the operands dropped.
+
+  let context be emitter.loops.last() otherwise return emitter
+  let open be emitter.handler_depth - context.handler_depth
+  let mutable updated be emitter
+  let mutable left be 0
+  repeat until left is open
+    change updated to emit(emitter: updated, op: OpPopHandler, span: span)
+    change left to left + 1
+  end
+  return emit(emitter: updated, op: OpUnwindStack(slot: context.mark), span: span)
+end
+
+function emit_break(emitter: Emitter, span: Span) returns Emitter
+  purpose: `break`: leave the loop's regions and jump to its end.
+
+  let left be leave_regions_of_loop(emitter: emitter, span: span)
+  let jumped be emit_jump(emitter: left, op: OpJump(target: 0), span: span)
+  let updated be jumped.emitter
+  match updated.loops.last()
+    when some(context) then
+      let noted be context with breaks: context.breaks.append(jumped.value)
+      return updated with loops: updated.loops.without_last().append(noted)
+    when nothing then
+      return unsupported(emitter: updated, what: "`break` outside a loop", span: span)
+  end
+end
+
+function emit_continue(emitter: Emitter, span: Span) returns Emitter
+  purpose: `continue`: leave the loop's regions and jump to its next round.
+
+  let left be leave_regions_of_loop(emitter: emitter, span: span)
+  let jumped be emit_jump(emitter: left, op: OpJump(target: 0), span: span)
+  let updated be jumped.emitter
+  match updated.loops.last()
+    when some(context) then
+      let noted be context with continues: context.continues.append(jumped.value)
+      return updated with loops: updated.loops.without_last().append(noted)
+    when nothing then
+      return unsupported(emitter: updated, what: "`continue` outside a loop", span: span)
+  end
+end
+
+function record_fields(emitter: Emitter, type_id: Integer) returns List of Text
+  purpose: The fields of a record type in declaration order.
+
+  match declare.type_at(world: emitter.context.world, id: type_id).kind
+    when RecordKind(fields) then return for each field in fields collect field.name
+    otherwise return []
+  end
+end
+
+function variant_fields(emitter: Emitter, type_id: Integer, tag: Integer) returns List of Text
+  purpose: The fields of a variant in declaration order.
+
+  match declare.type_at(world: emitter.context.world, id: type_id).kind
+    when SumKind(variants) then
+      let variant be variants.at(tag) otherwise return []
+      return for each field in variant.fields collect field.name
+    otherwise return []
+  end
+end
+
+function param_names(emitter: Emitter, function_id: Integer) returns List of Text
+  purpose: The parameter names of a function, `self` included.
+
+  let info be declare.function_at(world: emitter.context.world, id: function_id)
+  return for each param in info.params collect param.name
+end
+
+function is_method(emitter: Emitter, function_id: Integer) returns Boolean
+  purpose: Whether the function is called after a dot.
+
+  return declare.function_at(world: emitter.context.world, id: function_id).is_method
+end
+
+function lookup_type(emitter: Emitter, name: Text) returns maybe Integer
+  purpose: A type by name as the body's module sees it.
+
+  return declare.lookup_type(world: emitter.context.world, owner: emitter.owner, name: name)
+end
+
+function emit_block(emitter: Emitter, block: Block) returns Emitter
+  purpose: The statements of a block in a scope of their own.
+
+  let mutable updated be push_scope(emitter)
+  for each statement in block.statements
+    change updated to emit_statement(emitter: updated, statement: statement)
+  end
+  return pop_scope(updated)
+end
+
+function statements_inline(emitter: Emitter, block: Block) returns Emitter
+  purpose: The statements of a block in the current scope (`run concurrently` keeps its bindings).
+
+  let mutable updated be emitter
+  for each statement in block.statements
+    change updated to emit_statement(emitter: updated, statement: statement)
+  end
+  return updated
+end
+
+function emit_expr(emitter: Emitter, expr: Expr) returns Emitter
+  purpose: An expression: it leaves exactly one value on the operand stack, or jumps away.
+
+  match expr
+    when IntegerLiteral(text, span) then
+      return emit_number(emitter: emitter, text: text, span: span, decimal_syntax: false)
+    when DecimalLiteral(text, span) then
+      return emit_number(emitter: emitter, text: text, span: span, decimal_syntax: true)
+    when TextLiteral(pieces, span) then
+      return emit_text(emitter: emitter, pieces: pieces, span: span)
+    when RawTextLiteral(text, span) then return push_text(emitter: emitter, text: text, span: span)
+    when BooleanLiteral(value, span) then
+      return push_boolean(emitter: emitter, value: value, span: span)
+    when NothingLiteral(span) then return emit(emitter: emitter, op: OpNothing, span: span)
+    when SelfValue(span) then return emit_self(emitter: emitter, span: span)
+    when NameExpr(name) then return emit_name(emitter: emitter, name: name)
+    when TypeNameExpr(name, span) then
+      return bare_type_name(emitter: emitter, name: name, span: span)
+    when Member(base, name, span) then
+      return emit_member(emitter: emitter, base: base, name: name, span: span)
+    when Call(callee, args, span) then
+      return emit_call(emitter: emitter, callee: callee, args: args, span: span)
+    when Construct(name, args, span) then
+      return emit_construct(emitter: emitter, name: name, args: args, span: span)
+    when ListLiteral(items, span) then
+      let mutable updated be emitter
+      for each item in items
+        change updated to emit_expr(emitter: updated, expr: item)
+      end
+      return emit(emitter: updated, op: OpMakeList(size: items.length()), span: span)
+    when MapLiteral(entries, span) then
+      let mutable updated be emitter
+      for each entry in entries
+        change updated to emit_expr(emitter: updated, expr: entry.key)
+        change updated to emit_expr(emitter: updated, expr: entry.value)
+      end
+      return emit(emitter: updated, op: OpMakeMap(entries: entries.length()), span: span)
+    when RangeLiteral(lower, upper, step, span) then
+      return emit_range(emitter: emitter, lower: lower, upper: upper, step: step, span: span)
+    when Not(value, span) then
+      let updated be emit_expr(emitter: emitter, expr: value)
+      return emit(emitter: updated, op: OpNot, span: span)
+    when Paren(value) then return emit_expr(emitter: emitter, expr: value)
+    otherwise return emit_compound(emitter: emitter, expr: expr)
+  end
+end
+
+function emit_compound(emitter: Emitter, expr: Expr) returns Emitter
+  purpose: The compound expressions: operators, updates, `otherwise`, `if`, `match` and queries.
+
+  match expr
+    when Binary(operator, left, right, span) then
+      return emit_binary(emitter: emitter, operator: operator, left: left, right: right, span: span)
+    when With(base, updates, span) then
+      return emit_with(emitter: emitter, base: base, updates: updates, span: span)
+    when Otherwise(value, fallback, span) then
+      return emit_otherwise(emitter: emitter, value: value, fallback: fallback, span: span)
+    when IfExpr(branches, fallback) then
+      let mutable updated be emitter
+      let mutable ends: List of Integer be []
+      for each branch in branches
+        change updated to emit_expr(emitter: updated, expr: branch.condition)
+        let condition_span be bodies.expr_span(branch.condition)
+        let next be emit_jump(emitter: updated, op: OpJumpIfFalse(target: 0), span: condition_span)
+        change updated to emit_outcome(emitter: next.emitter, outcome: branch.outcome)
+        let jumped be emit_jump(
+          emitter: updated,
+          op: OpJump(target: 0),
+          span: outcome_span(branch.outcome)
+        )
+        change ends to ends.append(jumped.value)
+        change updated to patch(emitter: jumped.emitter, position: next.value)
+      end
+      change updated to emit_outcome(emitter: updated, outcome: fallback)
+      return patch_all(emitter: updated, positions: ends)
+    when MatchExpr(subject, arms, fallback, span) then
+      let generic be for each arm in arms collect outcome_arm(arm)
+      let fallback_body: maybe ArmBody be
+        match fallback
+          when some(outcome) then OutcomeBody(outcome: outcome)
+          when nothing then nothing
+        end
+      return emit_match(
+        emitter: emitter,
+        subject: subject,
+        arms: generic,
+        fallback: fallback_body,
+        span: span
+      )
+    when QueryExpr(sources, deadline, filter, order, group_by, terminal, span) then
+      let query be Query(
+        sources: sources,
+        deadline: deadline,
+        filter: filter,
+        order: order,
+        group_by: group_by,
+        terminal: terminal,
+        span: span
+      )
+      return emit_query(emitter: emitter, query: query)
+    otherwise crash with "an expression the emitter does not know"
+  end
+end
+
+function outcome_arm(arm: ExprArm) returns GenericArm
+  purpose: An arm of a `match` expression as a generic arm.
+
+  return GenericArm(
+    pattern: arm.pattern,
+    guard: arm.guard,
+    body: OutcomeBody(outcome: arm.body),
+    span: arm.span
+  )
+end
+
+function block_arm(arm: Arm) returns GenericArm
+  purpose: An arm of a `match` statement as a generic arm.
+
+  return GenericArm(
+    pattern: arm.pattern,
+    guard: arm.guard,
+    body: BlockBody(block: arm.body),
+    span: arm.span
+  )
+end
+
+function patch_all(emitter: Emitter, positions: List of Integer) returns Emitter
+  purpose: Every jump listed pointed at the current position.
+
+  let mutable updated be emitter
+  for each position in positions
+    change updated to patch(emitter: updated, position: position)
+  end
+  return updated
+end
+
+function outcome_span(outcome: Outcome) returns Span
+  purpose: The span of an outcome.
+
+  match outcome
+    when ValueOutcome(span) then return span
+    when FailOutcome(span) then return span
+    when ReturnOutcome(span) then return span
+    when CrashOutcome(span) then return span
+    when BreakOutcome(span) then return span
+    when ContinueOutcome(span) then return span
+  end
+end
+
+function emit_outcome(emitter: Emitter, outcome: Outcome) returns Emitter
+  purpose: A branch of an `if` or `match` expression: a value, or a way out.
+
+  match outcome
+    when ValueOutcome(value) then return emit_expr(emitter: emitter, expr: value)
+    when FailOutcome(value, span) then
+      match value
+        when some(error) then
+          let updated be emit_expr(emitter: emitter, expr: error)
+          return emit(emitter: updated, op: OpFail, span: span)
+        when nothing then return bare_fail(emitter: emitter, span: span)
+      end
+    when ReturnOutcome(value, span) then
+      match value
+        when some(result) then
+          let updated be emit_expr(emitter: emitter, expr: result)
+          return emit(emitter: updated, op: OpReturn, span: span)
+        when nothing then return emit(emitter: emitter, op: OpReturnNothing, span: span)
+      end
+    when CrashOutcome(message, span) then
+      let updated be emit_expr(emitter: emitter, expr: message)
+      return emit(emitter: updated, op: OpCrash, span: span)
+    when BreakOutcome(span) then return emit_break(emitter: emitter, span: span)
+    when ContinueOutcome(span) then return emit_continue(emitter: emitter, span: span)
+  end
+end
+
+function bare_fail(emitter: Emitter, span: Span) returns Emitter
+  purpose: `fail` without an error: ends a test; elsewhere the checker has rejected it.
+
+  if emitter.in_test then
+    let pushed be push_text(emitter: emitter, text: "the test called `fail`", span: span)
+    return emit(emitter: pushed, op: OpFail, span: span)
+  end
+  return unsupported(
+    emitter: emitter,
+    what: "`fail` without an error outside `otherwise`",
+    span: span
+  )
+end
+
+function emit_self(emitter: Emitter, span: Span) returns Emitter
+  purpose: `self`: the slot it was declared in.
+
+  match lookup(emitter: emitter, name: "self")
+    when some(slot) then return emit(emitter: emitter, op: OpLoad(slot: slot), span: span)
+    when nothing then return unsupported(emitter: emitter, what: "`self` here", span: span)
+  end
+end
+
+function syntax_kind(decimal_syntax: Boolean) returns NumberKind
+  purpose: The number type a literal's spelling gives it when the checker recorded none.
+
+  if decimal_syntax then return DecimalKind end
+  return IntegerKind
+end
+
+function emit_number(emitter: Emitter, text: Text, span: Span, decimal_syntax: Boolean)
+  returns Emitter
+  purpose: A number literal as a constant of the type the checker gave it.
+
+  let digits be text.replace(old: "_", new: "")
+  let kind be number_at(emitter: emitter, span: span) otherwise syntax_kind(decimal_syntax)
+  let what be "the number `{text}`"
+  match kind
+    when IntegerKind then
+      match digits.to_integer()
+        when success(value) then return push_integer(emitter: emitter, value: value, span: span)
+        otherwise return unsupported(emitter: emitter, what: what, span: span)
+      end
+    when DecimalKind then
+      match digits.to_decimal()
+        when success(value) then
+          return push_constant(emitter: emitter, value: PooledDecimal(value: value), span: span)
+        otherwise return unsupported(emitter: emitter, what: what, span: span)
+      end
+    when FloatKind then
+      match digits.to_float()
+        when success(value) then
+          return push_constant(emitter: emitter, value: PooledFloat(value: value), span: span)
+        otherwise return unsupported(emitter: emitter, what: what, span: span)
+      end
+  end
+end
+
+function single_literal(pieces: List of TextPiece) returns maybe Text
+  purpose: The text of a literal made of one run of characters.
+
+  if pieces.length() is not 1 then return nothing end
+  match pieces.first()
+    when some(Literal(text)) then return text
+    otherwise return nothing
+  end
+end
+
+function emit_text(emitter: Emitter, pieces: List of TextPiece, span: Span) returns Emitter
+  purpose: A text literal: a constant, or its pieces rendered and joined.
+
+  if pieces.is_empty() then return push_text(emitter: emitter, text: "", span: span) end
+  let mutable updated be emitter
+  match single_literal(pieces)
+    when some(text) then return push_text(emitter: emitter, text: text, span: span)
+    when nothing then change updated to updated
+  end
+  for each piece in pieces
+    match piece
+      when Literal(text) then change updated to push_text(emitter: updated, text: text, span: span)
+      when Hole(expression) then
+        change updated to emit_expr(emitter: updated, expr: expression)
+        change updated to emit(emitter: updated, op: OpToText, span: bodies.expr_span(expression))
+    end
+  end
+  return emit(emitter: updated, op: OpConcat(pieces: pieces.length()), span: span)
+end
+
+function emit_range(emitter: Emitter, lower: Expr, upper: Expr, step: maybe Expr, span: Span)
+  returns Emitter
+  purpose: `from a to b`, with `by c` when stepped.
+
+  let mutable updated be emit_expr(emitter: emitter, expr: lower)
+  change updated to emit_expr(emitter: updated, expr: upper)
+  match step
+    when some(by_step) then change updated to emit_expr(emitter: updated, expr: by_step)
+    when nothing then change updated to updated
+  end
+  return emit(emitter: updated, op: OpMakeRange(stepped: step is not nothing), span: span)
+end
+
+function emit_with(emitter: Emitter, base: Expr, updates: List of Arg, span: Span) returns Emitter
+  purpose: `base with field: value, ...`: the updated copy.
+
+  let mutable updated be emit_expr(emitter: emitter, expr: base)
+  for each update in updates
+    let field_name be
+      match update.name
+        when some(name) then name.text
+        when nothing then ""
+      end
+    let named be name_constant(emitter: updated, name: field_name)
+    let op be OpConst(index: named.value)
+    change updated to emit(emitter: named.emitter, op: op, span: update.span)
+    change updated to emit_expr(emitter: updated, expr: update.value)
+  end
+  return emit(emitter: updated, op: OpWith(fields: updates.length()), span: span)
+end
+
+function emit_name(emitter: Emitter, name: Name) returns Emitter
+  purpose: A name: a local, a constant of a module, or a function as a value.
+
+  let mutable updated be emitter
+  match lookup(emitter: emitter, name: name.text)
+    when some(slot) then
+      let moving be is_move_receiver(emitter: emitter, span: name.span)
+      let op be if moving then OpLoadMove(slot: slot) otherwise OpLoad(slot: slot) end
+      return emit(emitter: emitter, op: op, span: name.span)
+    when nothing then change updated to updated
+  end
+  for each target in targets_at(emitter: updated, span: name.span)
+    match target
+      when ConstantTarget(owner, name: constant_name) then
+        return emit_global(emitter: updated, owner: owner, name: constant_name, span: name.span)
+      when FunctionTarget(function_id) then
+        return push_constant(
+          emitter: updated,
+          value: PooledFunction(function_id: function_id),
+          span: name.span
+        )
+      otherwise continue
+    end
+  end
+  return unsupported(emitter: updated, what: "the name `{name.text}`", span: name.span)
+end
+
+function is_move_receiver(emitter: Emitter, span: Span) returns Boolean
+  purpose: Whether the name token is the receiver of `change x to x.method(...)` (decision O1).
+
+  let receiver be emitter.move_receiver otherwise return false
+  return receiver.start is span.start and receiver.stop is span.stop
+end
+
+function emit_global(emitter: Emitter, owner: Integer, name: Text, span: Span) returns Emitter
+  purpose: A top-level constant's value pushed.
+
+  match global_index(emitter: emitter, owner: owner, name: name)
+    when some(index) then return emit(emitter: emitter, op: OpGlobal(index: index), span: span)
+    when nothing then
+      return unsupported(emitter: emitter, what: "the constant `{name}`", span: span)
+  end
+end
+
+function bare_type_name(emitter: Emitter, name: TypeName, span: Span) returns Emitter
+  purpose: `Point`, `Red`: a variant without fields used as a value.
+
+  for each target in targets_at(emitter: emitter, span: name.span)
+    match target
+      when VariantTarget(type_id, index) then
+        return emit(
+          emitter: emitter,
+          op: OpConstructVariant(ty: type_id, tag: index, fields: 0),
+          span: span
+        )
+      when TypeTarget(type_id) then
+        return emit(emitter: emitter, op: OpConstruct(ty: type_id, fields: 0), span: span)
+      otherwise continue
+    end
+  end
+  return unsupported(emitter: emitter, what: "`{name.text}` as a value", span: span)
+end
+
+function function_target(emitter: Emitter, span: Span) returns maybe Integer
+  purpose: The function the checker recorded at a span, when it recorded one.
+
+  for each target in targets_at(emitter: emitter, span: span)
+    match target
+      when FunctionTarget(function_id) then return function_id
+      otherwise continue
+    end
+  end
+  return nothing
+end
+
+function ability_target(emitter: Emitter, span: Span) returns maybe Target
+  purpose: The ability method the checker recorded at a span, when it recorded one.
+
+  for each target in targets_at(emitter: emitter, span: span)
+    match target
+      when AbilityMethodTarget then return target
+      otherwise continue
+    end
+  end
+  return nothing
+end
+
+function constant_target(emitter: Emitter, span: Span) returns maybe Target
+  purpose: The constant the checker recorded at a span, when it recorded one.
+
+  for each target in targets_at(emitter: emitter, span: span)
+    match target
+      when ConstantTarget then return target
+      otherwise continue
+    end
+  end
+  return nothing
+end
+
+function emit_member(emitter: Emitter, base: Expr, name: Name, span: Span) returns Emitter
+  purpose: `module.function` as a value, `module.constant`, or a field of a value.
+
+  let mutable updated be emitter
+  match module_member(emitter: emitter, base: base, name: name, span: span)
+    when some(done) then return done
+    when nothing then change updated to updated
+  end
+  change updated to emit_expr(emitter: updated, expr: base)
+  let named be name_constant(emitter: updated, name: name.text)
+  let site be field_site(named.emitter)
+  change updated to site.emitter
+  return emit(emitter: updated, op: OpField(name: named.value, site: site.value), span: span)
+end
+
+function module_member(emitter: Emitter, base: Expr, name: Name, span: Span) returns maybe Emitter
+  purpose: A member whose base names a module: the function as a value, or the constant.
+
+  match base
+    when NameExpr(name: namespace) then
+      if lookup(emitter: emitter, name: namespace.text) is not nothing then return nothing end
+      let mutable updated be emitter
+      match function_target(emitter: emitter, span: name.span)
+        when some(function_id) then
+          return push_constant(
+            emitter: emitter,
+            value: PooledFunction(function_id: function_id),
+            span: span
+          )
+        when nothing then change updated to updated
+      end
+      match constant_target(emitter: updated, span: name.span)
+        when some(ConstantTarget(owner, name: constant_name)) then
+          return emit_global(emitter: updated, owner: owner, name: constant_name, span: span)
+        otherwise return nothing
+      end
+    otherwise return nothing
+  end
+end
+
+function emit_call(emitter: Emitter, callee: Expr, args: List of Arg, span: Span) returns Emitter
+  purpose: A call: of a declared function, of an ability method, or of a function value.
+
+  let mutable updated be emitter
+  match call_direct(emitter: emitter, callee: callee, args: args, span: span)
+    when some(done) then return done
+    when nothing then change updated to updated
+  end
+  change updated to emit_expr(emitter: updated, expr: callee)
+  change updated to emit_args(emitter: updated, args: args, params: [])
+  return emit(emitter: updated, op: OpCallValue(args: args.length()), span: span)
+end
+
+function call_direct(emitter: Emitter, callee: Expr, args: List of Arg, span: Span)
+  returns maybe Emitter
+  purpose: A call the checker resolved to a function or an ability method; none for a value.
+
+  match callee
+    when NameExpr(name) then
+      let function_id be function_target(emitter: emitter, span: name.span) otherwise return nothing
+      let params be param_names(emitter: emitter, function_id: function_id)
+      let updated be emit_args(emitter: emitter, args: args, params: params)
+      return emit_known_call(
+        emitter: updated,
+        function_id: function_id,
+        arity: args.length(),
+        span: span
+      )
+    when Member(base, name) then
+      return call_member(emitter: emitter, base: base, name: name, args: args, span: span)
+    otherwise return nothing
+  end
+end
+
+function call_member(emitter: Emitter, base: Expr, name: Name, args: List of Arg, span: Span)
+  returns maybe Emitter
+  purpose: `receiver.method(...)` or `module.function(...)`, as the checker resolved it.
+
+  let mutable updated be emitter
+  match function_target(emitter: emitter, span: name.span)
+    when some(function_id) then
+      return call_function(
+        emitter: emitter,
+        base: base,
+        function_id: function_id,
+        args: args,
+        span: span
+      )
+    when nothing then change updated to updated
+  end
+  match ability_target(emitter: updated, span: name.span)
+    when some(AbilityMethodTarget(ability_id, index)) then
+      change updated to emit_expr(emitter: updated, expr: base)
+      change updated to emit_args(emitter: updated, args: args, params: [])
+      let op be OpCallAbility(ability_id: ability_id, method: index, args: args.length() + 1)
+      return emit(emitter: updated, op: op, span: span)
+    otherwise return nothing
+  end
+end
+
+function call_function(
+  emitter: Emitter,
+  base: Expr,
+  function_id: Integer,
+  args: List of Arg,
+  span: Span
+)
+  returns Emitter
+  purpose: A declared function called after a dot: a method on its receiver, or by its module.
+
+  let params be param_names(emitter: emitter, function_id: function_id)
+  if is_method(emitter: emitter, function_id: function_id) then
+    let mutable updated be emit_expr(emitter: emitter, expr: base)
+    change updated to emit_args(emitter: updated, args: args, params: params.drop(1))
+    return emit_known_call(
+      emitter: updated,
+      function_id: function_id,
+      arity: args.length() + 1,
+      span: span
+    )
+  end
+  let placed be emit_args(emitter: emitter, args: args, params: params)
+  return emit_known_call(
+    emitter: placed,
+    function_id: function_id,
+    arity: args.length(),
+    span: span
+  )
+end
+
+function emit_known_call(emitter: Emitter, function_id: Integer, arity: Integer, span: Span)
+  returns Emitter
+  purpose: The call of a declared function, with the context type the checker recorded.
+
+  let result be result_type_at(emitter: emitter, span: span)
+  let mutable updated be result.emitter
+  match result.value
+    when some(index) then
+      change updated to emit(emitter: updated, op: OpResultType(index: index), span: span)
+    when nothing then change updated to updated
+  end
+  return emit(emitter: updated, op: OpCall(function_id: function_id, args: arity), span: span)
+end
+
+function emit_args(emitter: Emitter, args: List of Arg, params: List of Text) returns Emitter
+  purpose: The arguments in parameter order: named ones matched to the names, the rest as they are.
+
+  let mutable updated be emitter
+  for each arg in ordered_args(args: args, params: params)
+    change updated to emit_expr(emitter: updated, expr: arg.value)
+  end
+  return updated
+end
+
+function ordered_args(args: List of Arg, params: List of Text) returns List of Arg
+  purpose: The arguments reordered by the parameter names when every one is named and found.
+
+  if args.length() is not params.length() then return args end
+  for each arg in args
+    if arg.name is nothing then return args end
+  end
+  let mutable by_name: List of Arg be []
+  for each param in params
+    match find_arg(args: args, name: param)
+      when some(arg) then change by_name to by_name.append(arg)
+      when nothing then change by_name to by_name
+    end
+  end
+  if by_name.length() is args.length() then return by_name end
+  return args
+end
+
+function find_arg(args: List of Arg, name: Text) returns maybe Arg
+  purpose: The first argument carrying a name.
+
+  for each arg in args
+    match arg.name
+      when some(given) then if given.text is name then return arg end
+      when nothing then continue
+    end
+  end
+  return nothing
+end
+
+function emit_construct(emitter: Emitter, name: TypeName, args: List of Arg, span: Span)
+  returns Emitter
+  purpose: A variant, a pair, a record or a refined subtype constructed from its arguments.
+
+  for each target in targets_at(emitter: emitter, span: name.span)
+    match target
+      when VariantTarget(type_id, index) then
+        let fields be variant_fields(emitter: emitter, type_id: type_id, tag: index)
+        let placed be emit_args(emitter: emitter, args: args, params: fields)
+        let op be OpConstructVariant(ty: type_id, tag: index, fields: args.length())
+        return emit(emitter: placed, op: op, span: span)
+      when TypeTarget(type_id) then
+        if type_id is emitter.context.world.builtins.pair then
+          let halves be emit_args(emitter: emitter, args: args, params: ["left", "right"])
+          return emit(emitter: halves, op: OpMakePair, span: span)
+        end
+        let fields be record_fields(emitter: emitter, type_id: type_id)
+        let placed be emit_args(emitter: emitter, args: args, params: fields)
+        let op be OpConstruct(ty: type_id, fields: args.length())
+        return emit(emitter: placed, op: op, span: span)
+      otherwise continue
+    end
+  end
+  return unsupported(emitter: emitter, what: "constructing `{name.text}`", span: span)
+end
+
+function emit_binary(emitter: Emitter, operator: BinaryOp, left: Expr, right: Expr, span: Span)
+  returns Emitter
+  purpose: A binary operator; `and` and `or` short-circuit.
+
+  let mutable updated be emit_expr(emitter: emitter, expr: left)
+  match operator
+    when And then
+      change updated to emit(emitter: updated, op: OpDup, span: span)
+      let skip be emit_jump(emitter: updated, op: OpJumpIfFalse(target: 0), span: span)
+      change updated to emit(emitter: skip.emitter, op: OpPop, span: span)
+      change updated to emit_expr(emitter: updated, expr: right)
+      return patch(emitter: updated, position: skip.value)
+    when Or then
+      change updated to emit(emitter: updated, op: OpDup, span: span)
+      let skip be emit_jump(emitter: updated, op: OpJumpIfTrue(target: 0), span: span)
+      change updated to emit(emitter: skip.emitter, op: OpPop, span: span)
+      change updated to emit_expr(emitter: updated, expr: right)
+      return patch(emitter: updated, position: skip.value)
+    otherwise
+      change updated to emit_expr(emitter: updated, expr: right)
+      return emit(emitter: updated, op: OpBinary(op: operator), span: span)
+  end
+end
+
+function handles_failure(emitter: Emitter, span: Span) returns Boolean
+  purpose: Whether the `otherwise` at a span handles a failure rather than an absence.
+
+  for each target in targets_at(emitter: emitter, span: span)
+    match target
+      when OtherwiseTarget(fallible) then if fallible then return true end
+      otherwise continue
+    end
+  end
+  return false
+end
+
+function emit_otherwise(emitter: Emitter, value: Expr, fallback: Outcome, span: Span)
+  returns Emitter
+  purpose: `value otherwise fallback`: the value in a handled region, the fallback on absence.
+
+  let fallible be handles_failure(emitter: emitter, span: span)
+  let handler be push_handler(emitter: emitter, span: span)
+  let mutable updated be emit_expr(emitter: handler.emitter, expr: value)
+  change updated to pop_handler(emitter: updated, span: span)
+  change updated to patch(emitter: updated, position: handler.value)
+  let to_fallback be
+    if fallible then emit_jump(emitter: updated, op: OpJumpIfFailure(target: 0), span: span)
+    otherwise emit_jump(emitter: updated, op: OpJumpIfAbsent(target: 0), span: span)
+    end
+  let to_end be emit_jump(emitter: to_fallback.emitter, op: OpJump(target: 0), span: span)
+  change updated to patch(emitter: to_end.emitter, position: to_fallback.value)
+  change updated to emit_fallback(emitter: updated, fallback: fallback, span: span)
+  return patch(emitter: updated, position: to_end.value)
+end
+
+function emit_fallback(emitter: Emitter, fallback: Outcome, span: Span) returns Emitter
+  purpose: The fallback of an `otherwise`, with the absent value on top of the stack.
+
+  match fallback
+    when ValueOutcome(value) then
+      let popped be emit(emitter: emitter, op: OpPop, span: span)
+      return emit_expr(emitter: popped, expr: value)
+    when FailOutcome(value, span: fail_span) then
+      match value
+        when some(error) then
+          let popped be emit(emitter: emitter, op: OpPop, span: span)
+          let pushed be emit_expr(emitter: popped, expr: error)
+          return emit(emitter: pushed, op: OpFail, span: fail_span)
+        when nothing then return emit(emitter: emitter, op: OpFail, span: fail_span)
+      end
+    otherwise
+      let popped be emit(emitter: emitter, op: OpPop, span: span)
+      return emit_outcome(emitter: popped, outcome: fallback)
+  end
+end
+
+function is_fallible_pattern(pattern: Pattern) returns Boolean
+  purpose: Whether the pattern is `success` or `failure`, which make the subject a handled region.
+
+  match pattern
+    when SuccessPattern then return true
+    when FailurePattern then return true
+    otherwise return false
+  end
+end
+
+function emit_match(
+  emitter: Emitter,
+  subject: Expr,
+  arms: List of GenericArm,
+  fallback: maybe ArmBody,
+  span: Span
+)
+  returns Emitter
+  purpose: A `match` as a statement or an expression: the subject in a slot, every arm tried.
+
+  let made be temp(emitter)
+  let slot be made.value
+  let fallible be for each arm in arms any is_fallible_pattern(arm.pattern)
+  let mutable updated be made.emitter
+  if fallible then
+    let handler be push_handler(emitter: updated, span: span)
+    change updated to emit_expr(emitter: handler.emitter, expr: subject)
+    change updated to pop_handler(emitter: updated, span: span)
+    change updated to patch(emitter: updated, position: handler.value)
+  otherwise
+    change updated to emit_expr(emitter: updated, expr: subject)
+  end
+  change updated to emit(emitter: updated, op: OpStore(slot: slot), span: span)
+  let mutable ends: List of Integer be []
+  for each arm in arms
+    let done be emit_arm(emitter: updated, arm: arm, slot: slot)
+    change ends to ends.append(done.value)
+    change updated to done.emitter
+  end
+  match fallback
+    when some(body) then change updated to emit_arm_body(emitter: updated, body: body)
+    when nothing then
+      change updated to push_text(
+        emitter: updated,
+        text: "no arm of the match fits the value",
+        span: span
+      )
+      change updated to emit(emitter: updated, op: OpCrash, span: span)
+  end
+  return patch_all(emitter: updated, positions: ends)
+end
+
+function emit_arm(emitter: Emitter, arm: GenericArm, slot: Integer) returns Step of Integer
+  purpose: One arm: its pattern and guard tested, its body run; the jump past the other arms.
+
+  let mutable updated be push_scope(emitter)
+  let tested be emit_pattern(emitter: updated, pattern: arm.pattern, slot: slot)
+  change updated to tested.emitter
+  let mutable next be tested.value
+  match arm.guard
+    when some(guard) then
+      change updated to emit_expr(emitter: updated, expr: guard)
+      let skip be emit_jump(
+        emitter: updated,
+        op: OpJumpIfFalse(target: 0),
+        span: bodies.expr_span(guard)
+      )
+      change next to next.append(skip.value)
+      change updated to skip.emitter
+    when nothing then change updated to updated
+  end
+  change updated to emit_arm_body(emitter: updated, body: arm.body)
+  let jumped be emit_jump(emitter: updated, op: OpJump(target: 0), span: arm.span)
+  change updated to pop_scope(jumped.emitter)
+  return Step(value: jumped.value, emitter: patch_all(emitter: updated, positions: next))
+end
+
+function emit_arm_body(emitter: Emitter, body: ArmBody) returns Emitter
+  purpose: What an arm runs.
+
+  match body
+    when BlockBody(block) then return emit_block(emitter: emitter, block: block)
+    when OutcomeBody(outcome) then return emit_outcome(emitter: emitter, outcome: outcome)
+  end
+end
+
+function emit_statement(emitter: Emitter, statement: Statement) returns Emitter
+  purpose: One statement.
+
+  match statement
+    when Let(name, value, span) then
+      let placed be emit_expr(emitter: emitter, expr: value)
+      let made be declare_local(emitter: placed, name: name.text)
+      return emit(emitter: made.emitter, op: OpStore(slot: made.value), span: span)
+    when Change(name, value, span) then
+      return emit_change(emitter: emitter, name: name, value: value, span: span)
+    when If(branches, fallback) then
+      return emit_if(emitter: emitter, branches: branches, fallback: fallback)
+    when Match(subject, arms, fallback, span) then
+      let generic be for each arm in arms collect block_arm(arm)
+      let fallback_body: maybe ArmBody be
+        match fallback
+          when some(block) then BlockBody(block: block)
+          when nothing then nothing
+        end
+      return emit_match(
+        emitter: emitter,
+        subject: subject,
+        arms: generic,
+        fallback: fallback_body,
+        span: span
+      )
+    when ForEach(bindings, source, filter, order, body, span) then
+      match order
+        when some(ordering) then
+          return for_each_sorted(
+            emitter: emitter,
+            bindings: bindings,
+            source: source,
+            filter: filter,
+            order: ordering,
+            body: body,
+            span: span
+          )
+        when nothing then
+          return for_each_plain(
+            emitter: emitter,
+            bindings: bindings,
+            source: source,
+            filter: filter,
+            body: body,
+            span: span
+          )
+      end
+    when RepeatUntil(condition, body, span) then
+      return emit_repeat(emitter: emitter, condition: condition, body: body, span: span)
+    when RunConcurrently(deadline, body) then
+      return emit_run_concurrently(emitter: emitter, deadline: deadline, body: body)
+    otherwise return emit_leaving(emitter: emitter, statement: statement)
+  end
+end
+
+function emit_leaving(emitter: Emitter, statement: Statement) returns Emitter
+  purpose: The statements that leave or discard: `return`, `fail`, `crash`, `check`, and so on.
+
+  match statement
+    when Return(value, span) then
+      match value
+        when some(result) then
+          let placed be emit_expr(emitter: emitter, expr: result)
+          return emit(emitter: placed, op: OpReturn, span: span)
+        when nothing then return emit(emitter: emitter, op: OpReturnNothing, span: span)
+      end
+    when Fail(value, span) then
+      match value
+        when some(error) then
+          let placed be emit_expr(emitter: emitter, expr: error)
+          return emit(emitter: placed, op: OpFail, span: span)
+        when nothing then return bare_fail(emitter: emitter, span: span)
+      end
+    when Crash(message, span) then
+      let placed be emit_expr(emitter: emitter, expr: message)
+      return emit(emitter: placed, op: OpCrash, span: span)
+    when Break(span) then return emit_break(emitter: emitter, span: span)
+    when Continue(span) then return emit_continue(emitter: emitter, span: span)
+    when Ignore(value, span) then
+      let placed be emit_expr(emitter: emitter, expr: value)
+      return emit(emitter: placed, op: OpPop, span: span)
+    when Expression(value, span) then
+      let placed be emit_expr(emitter: emitter, expr: value)
+      return emit(emitter: placed, op: OpPop, span: span)
+    when Check(value, span) then
+      let placed be emit_expr(emitter: emitter, expr: value)
+      let text be source_text(emitter: placed, span: bodies.expr_span(value))
+      let pooled be pool_constant(emitter: placed, value: PooledText(text: text))
+      return emit(emitter: pooled.emitter, op: OpCheck(index: pooled.value), span: span)
+    otherwise crash with "a statement the emitter does not know"
+  end
+end
+
+function emit_change(emitter: Emitter, name: Name, value: Expr, span: Span) returns Emitter
+  purpose: `change x to value`: the value stored in the binding's slot.
+
+  let what be "changing `{name.text}`"
+  let mutable updated be emitter
+  let slot be
+    match lookup(emitter: emitter, name: name.text)
+      when some(found) then found
+      when nothing then return unsupported(emitter: emitter, what: what, span: span)
+    end
+  let receiver be move_candidate(name: name, value: value)
+  let primed be updated with move_receiver: receiver
+  change updated to emit_expr(emitter: primed, expr: value)
+  change updated to updated with move_receiver: nothing
+  return emit(emitter: updated, op: OpStore(slot: slot), span: span)
+end
+
+function emit_if(emitter: Emitter, branches: List of Branch, fallback: maybe Block) returns Emitter
+  purpose: An `if` statement: each condition tested in turn, one body run.
+
+  let mutable updated be emitter
+  let mutable ends: List of Integer be []
+  for each branch in branches
+    change updated to emit_expr(emitter: updated, expr: branch.condition)
+    let next be emit_jump(
+      emitter: updated,
+      op: OpJumpIfFalse(target: 0),
+      span: bodies.expr_span(branch.condition)
+    )
+    change updated to emit_block(emitter: next.emitter, block: branch.body)
+    let jumped be emit_jump(emitter: updated, op: OpJump(target: 0), span: branch.body.span)
+    change ends to ends.append(jumped.value)
+    change updated to patch(emitter: jumped.emitter, position: next.value)
+  end
+  match fallback
+    when some(body) then change updated to emit_block(emitter: updated, block: body)
+    when nothing then change updated to updated
+  end
+  return patch_all(emitter: updated, positions: ends)
+end
+
+function emit_repeat(emitter: Emitter, condition: Expr, body: Block, span: Span) returns Emitter
+  purpose: `repeat until condition`: the condition tested before every round.
+
+  let mutable updated be enter_loop(emitter: emitter, span: span)
+  let top be here(updated)
+  change updated to emit_expr(emitter: updated, expr: condition)
+  let exit be emit_jump(
+    emitter: updated,
+    op: OpJumpIfTrue(target: 0),
+    span: bodies.expr_span(condition)
+  )
+  change updated to emit_block(emitter: exit.emitter, block: body)
+  change updated to emit(emitter: updated, op: OpJump(target: top), span: span)
+  change updated to patch(emitter: updated, position: exit.value)
+  return leave_loop(emitter: updated, continue_target: top)
+end
+
+function emit_run_concurrently(emitter: Emitter, deadline: maybe Expr, body: Block) returns Emitter
+  purpose: `run concurrently`: the tasks one after the other (decision S2), the deadline checked.
+
+  let limit be deadline otherwise return statements_inline(emitter: emitter, block: body)
+  let mutable updated be emit_expr(emitter: emitter, expr: limit)
+  let made be temp(updated)
+  let slot be made.value
+  change updated to emit(
+    emitter: made.emitter,
+    op: OpDeadline(slot: slot),
+    span: bodies.expr_span(limit)
+  )
+  for each statement in body.statements
+    change updated to emit_statement(emitter: updated, statement: statement)
+    change updated to emit(
+      emitter: updated,
+      op: OpCheckDeadline(slot: slot),
+      span: bodies.statement_span(statement)
+    )
+  end
+  return updated
+end
+
+function for_each_plain(
+  emitter: Emitter,
+  bindings: List of Name,
+  source: Expr,
+  filter: maybe Expr,
+  body: Block,
+  span: Span
+)
+  returns Emitter
+  purpose: `for each x in xs where ... do ... end` in source order.
+
+  let mutable updated be push_scope(emitter)
+  change updated to emit_expr(emitter: updated, expr: source)
+  let made be temp(updated)
+  let iterator be made.value
+  change updated to emit(emitter: made.emitter, op: OpIterInit(slot: iterator), span: span)
+  change updated to enter_loop(emitter: updated, span: span)
+  let top be here(updated)
+  let next be emit_jump(emitter: updated, op: OpIterNext(slot: iterator, exit: 0), span: span)
+  change updated to bind_item(emitter: next.emitter, bindings: bindings, span: span)
+  change updated to emit_filter(emitter: updated, filter: filter, top: top)
+  change updated to emit_block(emitter: updated, block: body)
+  change updated to emit(emitter: updated, op: OpJump(target: top), span: span)
+  change updated to patch(emitter: updated, position: next.value)
+  change updated to leave_loop(emitter: updated, continue_target: top)
+  return pop_scope(updated)
+end
+
+function emit_filter(emitter: Emitter, filter: maybe Expr, top: Integer) returns Emitter
+  purpose: A `where` clause: an item that fails it goes back to the loop's top.
+
+  let condition be filter otherwise return emitter
+  let placed be emit_expr(emitter: emitter, expr: condition)
+  let skip be emit_jump(
+    emitter: placed,
+    op: OpJumpIfFalse(target: 0),
+    span: bodies.expr_span(condition)
+  )
+  return patch_to(emitter: skip.emitter, position: skip.value, target: top)
+end
+
+function for_each_sorted(
+  emitter: Emitter,
+  bindings: List of Name,
+  source: Expr,
+  filter: maybe Expr,
+  order: SortOrder,
+  body: Block,
+  span: Span
+)
+  returns Emitter
+  purpose: `for each ... sorted by key`: the items collected with their keys, then the body.
+
+  let mutable updated be push_scope(emitter)
+  let buffered be temp(updated)
+  let buffer be buffered.value
+  change updated to emit(emitter: buffered.emitter, op: OpMakeList(size: 0), span: span)
+  change updated to emit(emitter: updated, op: OpStore(slot: buffer), span: span)
+  change updated to emit_expr(emitter: updated, expr: source)
+  let made be temp(updated)
+  let iterator be made.value
+  change updated to emit(emitter: made.emitter, op: OpIterInit(slot: iterator), span: span)
+  let top be here(updated)
+  let next be emit_jump(emitter: updated, op: OpIterNext(slot: iterator, exit: 0), span: span)
+  let item_made be temp(next.emitter)
+  let item be item_made.value
+  change updated to emit(emitter: item_made.emitter, op: OpDup, span: span)
+  change updated to emit(emitter: updated, op: OpStore(slot: item), span: span)
+  change updated to bind_item(emitter: updated, bindings: bindings, span: span)
+  change updated to emit_filter(emitter: updated, filter: filter, top: top)
+  change updated to push_keyed(
+    emitter: updated,
+    buffer: buffer,
+    key: order.key,
+    item: item,
+    span: span
+  )
+  change updated to emit(emitter: updated, op: OpJump(target: top), span: span)
+  change updated to patch(emitter: updated, position: next.value)
+  change updated to emit(emitter: updated, op: OpLoad(slot: buffer), span: span)
+  let sort be OpSortByKey(is_descending: order.is_descending)
+  change updated to emit(emitter: updated, op: sort, span: span)
+  let sorted_made be temp(updated)
+  let sorted_slot be sorted_made.value
+  let sorted_init be OpIterInit(slot: sorted_slot)
+  change updated to emit(emitter: sorted_made.emitter, op: sorted_init, span: span)
+  change updated to enter_loop(emitter: updated, span: span)
+  let second_top be here(updated)
+  let second_next be emit_jump(
+    emitter: updated,
+    op: OpIterNext(slot: sorted_slot, exit: 0),
+    span: span
+  )
+  change updated to bind_item(emitter: second_next.emitter, bindings: bindings, span: span)
+  change updated to emit_block(emitter: updated, block: body)
+  change updated to emit(emitter: updated, op: OpJump(target: second_top), span: span)
+  change updated to patch(emitter: updated, position: second_next.value)
+  change updated to leave_loop(emitter: updated, continue_target: second_top)
+  return pop_scope(updated)
+end
+
+function push_keyed(emitter: Emitter, buffer: Integer, key: Expr, item: Integer, span: Span)
+  returns Emitter
+  purpose: The item in the slot appended to the buffer with its sort key.
+
+  let mutable updated be emit(emitter: emitter, op: OpLoadMove(slot: buffer), span: span)
+  change updated to emit_expr(emitter: updated, expr: key)
+  change updated to emit(emitter: updated, op: OpLoad(slot: item), span: span)
+  change updated to emit(emitter: updated, op: OpMakePair, span: span)
+  change updated to emit(emitter: updated, op: OpListPush, span: span)
+  return emit(emitter: updated, op: OpStore(slot: buffer), span: span)
+end
+
+function bind_item(emitter: Emitter, bindings: List of Name, span: Span) returns Emitter
+  purpose: The item on top of the stack bound to the loop's names: one takes it, several its parts.
+
+  if bindings.length() is 1 then
+    let name be bindings.first() otherwise crash with "a binding"
+    let made be declare_local(emitter: emitter, name: name.text)
+    return emit(emitter: made.emitter, op: OpStore(slot: made.value), span: span)
+  end
+  let mutable updated be emit(emitter: emitter, op: OpUnpack(parts: bindings.length()), span: span)
+  for each name in bindings.reversed()
+    let made be declare_local(emitter: updated, name: name.text)
+    change updated to emit(emitter: made.emitter, op: OpStore(slot: made.value), span: span)
+  end
+  return updated
+end
+
+function move_candidate(name: Name, value: Expr) returns maybe Span
+  purpose: `change x to x.method(...)`: the receiver's name token when the arguments do not read it.
+
+  let call be method_call(value) otherwise return nothing
+  if call.receiver.text is not name.text then return nothing end
+  for each arg in call.args
+    if mentions(expr: arg.value, name: name.text) then return nothing end
+  end
+  return call.receiver.span
+end
+
+function method_call(value: Expr) returns maybe MethodCall
+  purpose: `receiver.method(...)`: the receiver's name token and the arguments, when it is one.
+
+  match value
+    when Call(callee, args) then
+      match callee
+        when Member(base) then
+          match base
+            when NameExpr(name: receiver) then return MethodCall(receiver: receiver, args: args)
+            otherwise return nothing
+          end
+        otherwise return nothing
+      end
+    otherwise return nothing
+  end
+end
+
+function mentions(expr: Expr, name: Text) returns Boolean
+  purpose: Whether an expression reads a name anywhere inside it.
+
+  match expr
+    when NameExpr(name: found) then return found.text is name
+    when TextLiteral(pieces) then
+      for each piece in pieces
+        match piece
+          when Hole(expression) then if mentions(expr: expression, name: name) then return true end
+          when Literal then continue
+        end
+      end
+      return false
+    when Member(base) then return mentions(expr: base, name: name)
+    when Call(callee, args) then
+      if mentions(expr: callee, name: name) then return true end
+      return mentions_args(args: args, name: name)
+    when Construct(args) then return mentions_args(args: args, name: name)
+    when ListLiteral(items) then return mentions_any(items: items, name: name)
+    when MapLiteral(entries) then
+      for each entry in entries
+        if mentions(expr: entry.key, name: name) then return true end
+        if mentions(expr: entry.value, name: name) then return true end
+      end
+      return false
+    when RangeLiteral(lower, upper, step) then
+      if mentions(expr: lower, name: name) then return true end
+      if mentions(expr: upper, name: name) then return true end
+      return mentions_maybe(expr: step, name: name)
+    when Not(value) then return mentions(expr: value, name: name)
+    when Paren(value) then return mentions(expr: value, name: name)
+    when Binary(left, right) then
+      if mentions(expr: left, name: name) then return true end
+      return mentions(expr: right, name: name)
+    when With(base, updates) then
+      if mentions(expr: base, name: name) then return true end
+      return mentions_args(args: updates, name: name)
+    otherwise return mentions_branching(expr: expr, name: name)
+  end
+end
+
+function mentions_branching(expr: Expr, name: Text) returns Boolean
+  purpose: Whether a branching expression or a query reads a name anywhere inside it.
+
+  match expr
+    when Otherwise(value, fallback) then
+      if mentions(expr: value, name: name) then return true end
+      return mentions_outcome(outcome: fallback, name: name)
+    when IfExpr(branches, fallback) then
+      for each branch in branches
+        if mentions(expr: branch.condition, name: name) then return true end
+        if mentions_outcome(outcome: branch.outcome, name: name) then return true end
+      end
+      return mentions_outcome(outcome: fallback, name: name)
+    when MatchExpr(subject, arms, fallback) then
+      if mentions(expr: subject, name: name) then return true end
+      for each arm in arms
+        if mentions_maybe(expr: arm.guard, name: name) then return true end
+        if mentions_outcome(outcome: arm.body, name: name) then return true end
+      end
+      match fallback
+        when some(outcome) then return mentions_outcome(outcome: outcome, name: name)
+        when nothing then return false
+      end
+    when QueryExpr(sources, deadline, filter, order, group_by, terminal) then
+      for each source in sources
+        if mentions(expr: source.source, name: name) then return true end
+      end
+      if mentions_maybe(expr: deadline, name: name) then return true end
+      if mentions_maybe(expr: filter, name: name) then return true end
+      if mentions_maybe(expr: order_key(order), name: name) then return true end
+      if mentions_maybe(expr: group_by, name: name) then return true end
+      return mentions_terminal(terminal: terminal, name: name)
+    otherwise return false
+  end
+end
+
+function order_key(order: maybe SortOrder) returns maybe Expr
+  purpose: The key of a `sorted by` clause, when there is one.
+
+  let ordering be order otherwise return nothing
+  return ordering.key
+end
+
+function mentions_terminal(terminal: QueryTerminal, name: Text) returns Boolean
+  purpose: Whether a query's terminal reads a name.
+
+  match terminal
+    when Collect(value) then return mentions(expr: value, name: name)
+    when Sum(value) then return mentions(expr: value, name: name)
+    when Any(condition) then return mentions(expr: condition, name: name)
+    when All(condition) then return mentions(expr: condition, name: name)
+    otherwise return false
+  end
+end
+
+function mentions_outcome(outcome: Outcome, name: Text) returns Boolean
+  purpose: Whether an outcome reads a name.
+
+  match outcome
+    when ValueOutcome(value) then return mentions(expr: value, name: name)
+    when CrashOutcome(message) then return mentions(expr: message, name: name)
+    when FailOutcome(value) then return mentions_maybe(expr: value, name: name)
+    when ReturnOutcome(value) then return mentions_maybe(expr: value, name: name)
+    otherwise return false
+  end
+end
+
+function mentions_maybe(expr: maybe Expr, name: Text) returns Boolean
+  purpose: Whether an optional expression reads a name.
+
+  let found be expr otherwise return false
+  return mentions(expr: found, name: name)
+end
+
+function mentions_any(items: List of Expr, name: Text) returns Boolean
+  purpose: Whether any of the expressions reads a name.
+
+  for each item in items
+    if mentions(expr: item, name: name) then return true end
+  end
+  return false
+end
+
+function mentions_args(args: List of Arg, name: Text) returns Boolean
+  purpose: Whether any argument's value reads a name.
+
+  for each arg in args
+    if mentions(expr: arg.value, name: name) then return true end
+  end
+  return false
+end
+
+function emit_pattern(emitter: Emitter, pattern: Pattern, slot: Integer)
+  returns Step of List of Integer
+  purpose: A pattern tested against the slot; the jumps taken when it does not fit.
+
+  match pattern
+    when BindingPattern(name) then
+      return Step(value: [], emitter: alias(emitter: emitter, name: name.text, slot: slot))
+    when NothingPattern(span) then
+      let loaded be emit(emitter: emitter, op: OpLoad(slot: slot), span: span)
+      let tested be emit(emitter: loaded, op: OpIsNothing, span: span)
+      let skip be emit_jump(emitter: tested, op: OpJumpIfFalse(target: 0), span: span)
+      return Step(value: [skip.value], emitter: skip.emitter)
+    when SomePattern(inner, span) then
+      let loaded be emit(emitter: emitter, op: OpLoad(slot: slot), span: span)
+      let tested be emit(emitter: loaded, op: OpIsNothing, span: span)
+      let skip be emit_jump(emitter: tested, op: OpJumpIfTrue(target: 0), span: span)
+      let rest be emit_pattern(emitter: skip.emitter, pattern: inner, slot: slot)
+      return Step(value: [skip.value].append_all(rest.value), emitter: rest.emitter)
+    when SuccessPattern(inner, span) then
+      let loaded be emit(emitter: emitter, op: OpLoad(slot: slot), span: span)
+      let tested be emit(emitter: loaded, op: OpIsFailure, span: span)
+      let skip be emit_jump(emitter: tested, op: OpJumpIfTrue(target: 0), span: span)
+      let rest be emit_pattern(emitter: skip.emitter, pattern: inner, slot: slot)
+      return Step(value: [skip.value].append_all(rest.value), emitter: rest.emitter)
+    when FailurePattern(inner, span) then
+      return failure_pattern(emitter: emitter, inner: inner, slot: slot, span: span)
+    when LiteralPattern(value, span) then
+      let loaded be emit(emitter: emitter, op: OpLoad(slot: slot), span: span)
+      let placed be emit_expr(emitter: loaded, expr: value)
+      let compared be emit(emitter: placed, op: OpBinary(op: Is), span: span)
+      let skip be emit_jump(emitter: compared, op: OpJumpIfFalse(target: 0), span: span)
+      return Step(value: [skip.value], emitter: skip.emitter)
+    when TypedPattern(name, annotation, span) then
+      return typed_pattern(
+        emitter: emitter,
+        name: name,
+        annotation: annotation,
+        slot: slot,
+        span: span
+      )
+    when VariantPattern(name, fields, span) then
+      return variant_pattern(emitter: emitter, name: name, fields: fields, slot: slot, span: span)
+  end
+end
+
+function failure_pattern(emitter: Emitter, inner: Pattern, slot: Integer, span: Span)
+  returns Step of List of Integer
+  purpose: `failure(pattern)`: the error unwrapped into a slot of its own, the inner pattern on it.
+
+  let loaded be emit(emitter: emitter, op: OpLoad(slot: slot), span: span)
+  let tested be emit(emitter: loaded, op: OpIsFailure, span: span)
+  let skip be emit_jump(emitter: tested, op: OpJumpIfFalse(target: 0), span: span)
+  let made be temp(skip.emitter)
+  let error be made.value
+  let mutable updated be emit(emitter: made.emitter, op: OpLoad(slot: slot), span: span)
+  change updated to emit(emitter: updated, op: OpUnwrapFailure, span: span)
+  change updated to emit(emitter: updated, op: OpStore(slot: error), span: span)
+  let rest be emit_pattern(emitter: updated, pattern: inner, slot: error)
+  return Step(value: [skip.value].append_all(rest.value), emitter: rest.emitter)
+end
+
+function typed_pattern(emitter: Emitter, name: Name, annotation: Type, slot: Integer, span: Span)
+  returns Step of List of Integer
+  purpose: `name: Type`: the value's runtime type tested, the name bound.
+
+  match type_of_pattern(emitter: emitter, annotation: annotation)
+    when some(type_id) then
+      let loaded be emit(emitter: emitter, op: OpLoad(slot: slot), span: span)
+      let tested be emit(emitter: loaded, op: OpIsType(ty: type_id), span: span)
+      let skip be emit_jump(emitter: tested, op: OpJumpIfFalse(target: 0), span: span)
+      let bound be alias(emitter: skip.emitter, name: name.text, slot: slot)
+      return Step(value: [skip.value], emitter: bound)
+    when nothing then
+      let crashed be unsupported(emitter: emitter, what: "the type of this pattern", span: span)
+      return Step(value: [], emitter: alias(emitter: crashed, name: name.text, slot: slot))
+  end
+end
+
+function type_of_pattern(emitter: Emitter, annotation: Type) returns maybe Integer
+  purpose: The declared type a typed pattern names.
+
+  match annotation
+    when NamedType(name) then return lookup_type(emitter: emitter, name: name.text)
+    when MaybeType(inner) then return type_of_pattern(emitter: emitter, annotation: inner)
+    when FunctionType then return nothing
+  end
+end
+
+function variant_tag(emitter: Emitter, span: Span) returns maybe VariantFound
+  purpose: The variant or the record the checker recorded for a pattern's name; the last one wins.
+
+  let mutable found: maybe VariantFound be nothing
+  for each target in targets_at(emitter: emitter, span: span)
+    match target
+      when VariantTarget(index) then change found to VariantFound(tag: index)
+      when TypeTarget then change found to VariantFound(tag: nothing)
+      otherwise continue
+    end
+  end
+  return found
+end
+
+function variant_pattern(
+  emitter: Emitter,
+  name: TypeName,
+  fields: List of FieldPattern,
+  slot: Integer,
+  span: Span
+)
+  returns Step of List of Integer
+  purpose: `Variant(field, field: pattern)`: the tag tested, every field read into its own slot.
+
+  let mutable updated be emitter
+  let mutable next: List of Integer be []
+  let what be "the pattern `{name.text}`"
+  let found be
+    match variant_tag(emitter: emitter, span: name.span)
+      when some(tag) then tag
+      when nothing then
+        return Step(value: [], emitter: unsupported(emitter: emitter, what: what, span: span))
+    end
+  match found.tag
+    when some(tag) then
+      change updated to emit(emitter: updated, op: OpLoad(slot: slot), span: span)
+      change updated to emit(emitter: updated, op: OpIsVariant(tag: tag), span: span)
+      let skip be emit_jump(emitter: updated, op: OpJumpIfFalse(target: 0), span: span)
+      change next to next.append(skip.value)
+      change updated to skip.emitter
+    when nothing then change updated to updated
+  end
+  for each field in fields
+    let read be field_pattern(emitter: updated, field: field, slot: slot)
+    change next to next.append_all(read.value)
+    change updated to read.emitter
+  end
+  return Step(value: next, emitter: updated)
+end
+
+function field_pattern(emitter: Emitter, field: FieldPattern, slot: Integer)
+  returns Step of List of Integer
+  purpose: One field of a variant pattern: the field read into a slot, its pattern on it.
+
+  let made be temp(emitter)
+  let field_slot be made.value
+  let named be name_constant(emitter: made.emitter, name: field.field.text)
+  let site be field_site(named.emitter)
+  let span be field.field.span
+  let mutable updated be emit(emitter: site.emitter, op: OpLoad(slot: slot), span: span)
+  change updated to emit(
+    emitter: updated,
+    op: OpField(name: named.value, site: site.value),
+    span: span
+  )
+  change updated to emit(emitter: updated, op: OpStore(slot: field_slot), span: span)
+  match field.pattern
+    when some(inner) then return emit_pattern(emitter: updated, pattern: inner, slot: field_slot)
+    when nothing then
+      let bound be alias(emitter: updated, name: field.field.text, slot: field_slot)
+      return Step(value: [], emitter: bound)
+  end
+end
+
+public function compile_project(world: World, modules: List of CheckedModule) returns Program
+  purpose: Every module of a checked project compiled into the program its bytecode file holds.
+
+  let mutable context be new_context(world: world, modules: modules)
+  let mutable owner be 0
+  for each info in world.modules
+    if not info.is_library then
+      change context to compile_module(context: context, owner: owner, info: info)
+    end
+    change owner to owner + 1
+  end
+  change owner to 0
+  for each info in world.modules
+    if info.is_library then
+      change context to compile_type_items(context: context, owner: owner, info: info)
+    end
+    change owner to owner + 1
+  end
+  return assemble(context: context, modules: modules)
+end
+
+function new_context(world: World, modules: List of CheckedModule) returns Context
+  purpose: The shared state before any body is compiled: the references, the constants, the types.
+
+  let mutable refs: Map of Text to List of Reference be {}
+  for each entry in modules
+    let id be entry.id otherwise continue
+    for each reference in entry.references
+      let key be refs_key(owner: id, body: reference.body)
+      let existing be refs.get(key) otherwise []
+      change refs to refs.set(key: key, value: existing.append(reference))
+    end
+  end
+  let mutable globals: Map of Text to Integer be {}
+  let mutable constants: List of ConstantMeta be []
+  let mutable owner be 0
+  for each info in world.modules
+    for each item in info.tree.items
+      match item
+        when ConstantItem(value: constant) then
+          let name be constant.name.text
+          change globals to globals.set(key: "{owner}:{name}", value: constants.length())
+          let meta be ConstantMeta(owner: owner, name: name, code: unset_code)
+          change constants to constants.append(meta)
+        otherwise continue
+      end
+    end
+    change owner to owner + 1
+  end
+  let mutable function_codes: List of maybe Integer be []
+  repeat until function_codes.length() is world.functions.length()
+    change function_codes to function_codes.append(nothing)
+  end
+  return Context(
+    world: world,
+    globals: globals,
+    refs: refs,
+    result_types: [],
+    field_sites: 0,
+    codes: [],
+    function_codes: function_codes,
+    constants: constants,
+    tests: [],
+    examples: [],
+    types: type_metas(world)
+  )
+end
+
+function compile_module(context: Context, owner: Integer, info: ModuleInfo) returns Context
+  purpose: Every body of a user module, item by item.
+
+  let mutable updated be context
+  let mutable index be 0
+  for each item in info.tree.items
+    match item
+      when FunctionItem(value: func) then
+        let body be ItemBody(item: index)
+        match function_at(world: context.world, owner: owner, body: body)
+          when some(id) then
+            change updated to compile_function(
+              context: updated,
+              owner: owner,
+              id: id,
+              func: func,
+              body: body
+            )
+          when nothing then change updated to updated
+        end
+      when ImplementationItem(value: implementation) then
+        change updated to compile_implementation(
+          context: updated,
+          owner: owner,
+          index: index,
+          functions: implementation.functions
+        )
+      when ConstantItem(value: constant) then
+        change updated to compile_constant(
+          context: updated,
+          owner: owner,
+          index: index,
+          constant: constant
+        )
+      when TestItem(value: block) then
+        change updated to compile_test(context: updated, owner: owner, index: index, block: block)
+      when TypeItem(value: def) then
+        change updated to compile_refinements(
+          context: updated,
+          owner: owner,
+          item_index: index,
+          def: def
+        )
+      when AbilityItem then change updated to updated
+    end
+    change index to index + 1
+  end
+  return updated
+end
+
+function compile_implementation(
+  context: Context,
+  owner: Integer,
+  index: Integer,
+  functions: List of Function
+)
+  returns Context
+  purpose: The methods of an implementation item.
+
+  let mutable updated be context
+  let mutable method be 0
+  for each func in functions
+    let body be ImplementationBody(item: index, method: method)
+    match function_at(world: context.world, owner: owner, body: body)
+      when some(id) then
+        change updated to compile_function(
+          context: updated,
+          owner: owner,
+          id: id,
+          func: func,
+          body: body
+        )
+      when nothing then change updated to updated
+    end
+    change method to method + 1
+  end
+  return updated
+end
+
+function compile_type_items(context: Context, owner: Integer, info: ModuleInfo) returns Context
+  purpose: The refinements of a library module's types, which guard construction too.
+
+  let mutable updated be context
+  let mutable index be 0
+  for each item in info.tree.items
+    match item
+      when TypeItem(value: def) then
+        change updated to compile_refinements(
+          context: updated,
+          owner: owner,
+          item_index: index,
+          def: def
+        )
+      otherwise change updated to updated
+    end
+    change index to index + 1
+  end
+  return updated
+end
+
+function function_at(world: World, owner: Integer, body: BodyLocation) returns maybe Integer
+  purpose: The declared function whose body is at a location of a module.
+
+  let mutable id be 0
+  for each info in world.functions
+    if info.owner is owner and info.body is body then return id end
+    change id to id + 1
+  end
+  return nothing
+end
+
+function compile_function(
+  context: Context,
+  owner: Integer,
+  id: Integer,
+  func: Function,
+  body: BodyLocation
+)
+  returns Context
+  purpose: A function's body as a code object, then its `example:` lines.
+
+  let block be func.body otherwise return context
+  let mutable emitter be new_emitter(
+    context: context,
+    owner: owner,
+    body: body,
+    name: func.name.text,
+    kind: FunctionCode
+  )
+  change emitter to emitter with function_id: id
+  for each param in func.params
+    change emitter to declare_local(emitter: emitter, name: param.name.text).emitter
+  end
+  change emitter to emitter with params: func.params.length()
+  change emitter to emit_block(emitter: emitter, block: block)
+  change emitter to emit(emitter: emitter, op: OpReturnNothing, span: func.span)
+  let placed be push_code(context: emitter.context, code: finish(emitter))
+  let code: maybe Integer be placed.id
+  let codes be lists.replace_at(items: placed.context.function_codes, index: id, item: code)
+  let noted be placed.context with function_codes: codes
+  return compile_examples(context: noted, owner: owner, id: id, func: func, body: body)
+end
+
+function example_owner(body: BodyLocation) returns maybe ExampleOwner
+  purpose: The item and the method the examples of a body belong to.
+
+  match body
+    when ItemBody(item) then return ExampleOwner(item: item, method: nothing)
+    when ImplementationBody(item, method) then return ExampleOwner(item: item, method: method)
+    otherwise return nothing
+  end
+end
+
+function compile_examples(
+  context: Context,
+  owner: Integer,
+  id: Integer,
+  func: Function,
+  body: BodyLocation
+)
+  returns Context
+  purpose: The `example:` lines of a function, each as a call and an expectation.
+
+  let location be example_owner(body) otherwise return context
+  let mutable updated be context
+  let mutable index be 0
+  for each sample in func.docs.examples
+    let example_body be ExampleBody(item: location.item, method: location.method, sample: index)
+    change updated to compile_example(
+      context: updated,
+      owner: owner,
+      id: id,
+      func: func,
+      body: example_body,
+      sample: sample
+    )
+    change index to index + 1
+  end
+  return updated
+end
+
+function compile_example(
+  context: Context,
+  owner: Integer,
+  id: Integer,
+  func: Function,
+  body: BodyLocation,
+  sample: Example
+)
+  returns Context
+  purpose: One `example:` line: the call's code, the expectation's code, the metadata.
+
+  let name be "example of {func.name.text}"
+  let mutable emitter be new_emitter(
+    context: context,
+    owner: owner,
+    body: body,
+    name: name,
+    kind: ExampleCode
+  )
+  change emitter to emit_expr(emitter: emitter, expr: sample.expression)
+  change emitter to emit(emitter: emitter, op: OpReturn, span: sample.span)
+  let call be push_code(context: emitter.context, code: finish(emitter))
+  let expected be compile_expected(
+    context: call.context,
+    owner: owner,
+    body: body,
+    name: name,
+    outcome: sample.outcome
+  )
+  let text be text_of(context: expected.context, owner: owner, span: sample.span) otherwise name
+  let meta be ExampleMeta(
+    function_id: id,
+    owner: owner,
+    text: text,
+    span: sample.span,
+    call: call.id,
+    expected: expected.value
+  )
+  let updated be expected.context
+  return updated with examples: updated.examples.append(meta)
+end
+
+function compile_expected(
+  context: Context,
+  owner: Integer,
+  body: BodyLocation,
+  name: Text,
+  outcome: ExampleOutcome
+)
+  returns Expectation
+  purpose: What an example expects: the value's code, or a predicate over the error.
+
+  match outcome
+    when IsValue(value) then
+      let mutable emitter be new_emitter(
+        context: context,
+        owner: owner,
+        body: body,
+        name: name,
+        kind: ExampleCode
+      )
+      change emitter to emit_expr(emitter: emitter, expr: value)
+      change emitter to emit(emitter: emitter, op: OpReturn, span: bodies.expr_span(value))
+      let placed be push_code(context: emitter.context, code: finish(emitter))
+      return Expectation(value: IsExpected(code: placed.id), context: placed.context)
+    when FailsWith(pattern) then
+      let predicate be failure_predicate(
+        context: context,
+        owner: owner,
+        body: body,
+        name: name,
+        pattern: pattern
+      )
+      let placed be push_code(context: predicate.context, code: finish(predicate))
+      return Expectation(value: FailsWithExpected(code: placed.id), context: placed.context)
+  end
+end
+
+function failure_predicate(
+  context: Context,
+  owner: Integer,
+  body: BodyLocation,
+  name: Text,
+  pattern: Pattern
+)
+  returns Emitter
+  purpose: `fails with Pattern`: a code taking the error and returning whether the pattern fits.
+
+  let mutable emitter be new_emitter(
+    context: context,
+    owner: owner,
+    body: body,
+    name: name,
+    kind: RefinementCode
+  )
+  let made be declare_local(emitter: emitter, name: "error")
+  change emitter to made.emitter with params: 1
+  let span be bodies.pattern_span(pattern)
+  let tested be emit_pattern(emitter: emitter, pattern: pattern, slot: made.value)
+  change emitter to push_boolean(emitter: tested.emitter, value: true, span: span)
+  change emitter to emit(emitter: emitter, op: OpReturn, span: span)
+  change emitter to patch_all(emitter: emitter, positions: tested.value)
+  change emitter to push_boolean(emitter: emitter, value: false, span: span)
+  return emit(emitter: emitter, op: OpReturn, span: span)
+end
+
+function compile_constant(context: Context, owner: Integer, index: Integer, constant: Constant)
+  returns Context
+  purpose: A top-level `let` as a code object; its metadata takes the code.
+
+  let mutable emitter be new_emitter(
+    context: context,
+    owner: owner,
+    body: ItemBody(item: index),
+    name: constant.name.text,
+    kind: ConstantCode
+  )
+  change emitter to emit_expr(emitter: emitter, expr: constant.value)
+  change emitter to emit(emitter: emitter, op: OpReturn, span: constant.span)
+  let placed be push_code(context: emitter.context, code: finish(emitter))
+  let name be constant.name.text
+  let position be placed.context.globals.get("{owner}:{name}") otherwise crash with "a constant"
+  let metas be placed.context.constants
+  let meta be metas.at(position) otherwise crash with "a constant's metadata"
+  let replaced be lists.replace_at(items: metas, index: position, item: meta with code: placed.id)
+  return placed.context with constants: replaced
+end
+
+function compile_test(context: Context, owner: Integer, index: Integer, block: Test) returns Context
+  purpose: A `test` block as a code object with its metadata.
+
+  let quoted be bodies.debug_quoted(block.name)
+  let mutable emitter be new_emitter(
+    context: context,
+    owner: owner,
+    body: ItemBody(item: index),
+    name: "test {quoted}",
+    kind: TestCode
+  )
+  change emitter to emitter with in_test: true
+  change emitter to emit_block(emitter: emitter, block: block.body)
+  change emitter to emit(emitter: emitter, op: OpReturnNothing, span: block.span)
+  let placed be push_code(context: emitter.context, code: finish(emitter))
+  let grants be for each capability in block.capabilities collect effects.from_ast(capability)
+  let meta be TestMeta(
+    owner: owner,
+    name: block.name,
+    capabilities: grants,
+    fixture: block.recording,
+    span: block.span,
+    code: placed.id
+  )
+  let updated be placed.context
+  return updated with tests: updated.tests.append(meta)
+end
+
+function compile_refinements(
+  context: Context,
+  owner: Integer,
+  item_index: Integer,
+  def: TypeDefinition
+)
+  returns Context
+  purpose: The refinement predicates of a type: a subtype's condition and the field conditions.
+
+  let info be declare.module_at(world: context.world, id: owner)
+  let type_id be info.types.get(def.name.text) otherwise return context
+  match def.definition
+    when SubtypeDefinition(refinement) then
+      let condition be refinement otherwise return context
+      return compile_refinement(
+        context: context,
+        owner: owner,
+        body: ConditionBody(item: item_index, variant: nothing, field: nothing),
+        params: ["value"],
+        condition: condition,
+        type_id: type_id,
+        place: nothing
+      )
+    when RecordDefinition(fields) then
+      return compile_field_refinements(
+        context: context,
+        owner: owner,
+        item_index: item_index,
+        variant: nothing,
+        fields: fields,
+        type_id: type_id
+      )
+    when SumDefinition(variants) then
+      let mutable updated be context
+      let mutable tag be 0
+      for each variant in variants
+        change updated to compile_field_refinements(
+          context: updated,
+          owner: owner,
+          item_index: item_index,
+          variant: tag,
+          fields: variant.fields,
+          type_id: type_id
+        )
+        change tag to tag + 1
+      end
+      return updated
+  end
+end
+
+function compile_field_refinements(
+  context: Context,
+  owner: Integer,
+  item_index: Integer,
+  variant: maybe Integer,
+  fields: List of Field,
+  type_id: Integer
+)
+  returns Context
+  purpose: The conditions of the fields of a record or a variant, each as a code over every field.
+
+  let names be for each field in fields collect field.name.text
+  let mutable updated be context
+  let mutable index be 0
+  for each field in fields
+    match field.refinement
+      when some(condition) then
+        change updated to compile_refinement(
+          context: updated,
+          owner: owner,
+          body: ConditionBody(item: item_index, variant: variant, field: index),
+          params: names,
+          condition: condition,
+          type_id: type_id,
+          place: FieldPlace(variant: variant, field: index)
+        )
+      when nothing then change updated to updated
+    end
+    change index to index + 1
+  end
+  return updated
+end
+
+function compile_refinement(
+  context: Context,
+  owner: Integer,
+  body: BodyLocation,
+  params: List of Text,
+  condition: Expr,
+  type_id: Integer,
+  place: maybe FieldPlace
+)
+  returns Context
+  purpose: One refinement compiled and listed on its type; a field's meta points at it.
+
+  let emitter be compile_predicate(
+    context: context,
+    owner: owner,
+    body: body,
+    params: params,
+    condition: condition,
+    type_id: type_id
+  )
+  let placed be push_code(context: emitter.context, code: finish(emitter))
+  let metas be placed.context.types
+  let meta be metas.at(type_id) otherwise crash with "a type's metadata"
+  let refinements be meta.refinements.append(placed.id)
+  let shape be
+    match place
+      when some(found) then
+        mark_refined(shape: meta.shape, place: found, position: refinements.length() - 1)
+      when nothing then meta.shape
+    end
+  let marked be meta with refinements: refinements, shape: shape
+  return placed.context with types: lists.replace_at(items: metas, index: type_id, item: marked)
+end
+
+function mark_refined(shape: TypeShape, place: FieldPlace, position: Integer) returns TypeShape
+  purpose: The field's meta pointed at its refinement, by the refinement's position on the type.
+
+  match shape
+    when RecordShape(fields) then
+      return RecordShape(fields: mark_field(fields: fields, index: place.field, position: position))
+    when SumShape(variants) then
+      let tag be place.variant otherwise return shape
+      let variant be variants.at(tag) otherwise return shape
+      let fields be mark_field(fields: variant.fields, index: place.field, position: position)
+      let marked be variant with fields: fields
+      return SumShape(variants: lists.replace_at(items: variants, index: tag, item: marked))
+    otherwise return shape
+  end
+end
+
+function mark_field(fields: List of FieldMeta, index: Integer, position: Integer)
+  returns List of FieldMeta
+  purpose: One field's meta with its refinement set.
+
+  let field be fields.at(index) otherwise return fields
+  let refined: maybe Integer be position
+  return lists.replace_at(items: fields, index: index, item: field with refinement: refined)
+end
+
+function compile_predicate(
+  context: Context,
+  owner: Integer,
+  body: BodyLocation,
+  params: List of Text,
+  condition: Expr,
+  type_id: Integer
+)
+  returns Emitter
+  purpose: A condition as a code over its parameters; constant 0 is the condition's text.
+
+  let type_name be declare.type_at(world: context.world, id: type_id).name
+  let span be bodies.expr_span(condition)
+  let text be text_of(context: context, owner: owner, span: span) otherwise "its condition"
+  let mutable emitter be new_emitter(
+    context: context,
+    owner: owner,
+    body: body,
+    name: "refinement of {type_name}",
+    kind: RefinementCode
+  )
+  for each param in params
+    change emitter to declare_local(emitter: emitter, name: param).emitter
+  end
+  change emitter to emitter with params: params.length()
+  change emitter to pool_constant(emitter: emitter, value: PooledText(text: text)).emitter
+  change emitter to emit_expr(emitter: emitter, expr: condition)
+  return emit(emitter: emitter, op: OpReturn, span: span)
+end
+
+function type_metas(world: World) returns List of TypeMeta
+  purpose: Every declared type as the VM knows it.
+
+  let mutable metas: List of TypeMeta be []
+  let mutable id be 0
+  for each info in world.types
+    change metas to metas.append(type_meta(world: world, id: id, info: info))
+    change id to id + 1
+  end
+  return metas
+end
+
+function type_meta(world: World, id: Integer, info: TypeInfo) returns TypeMeta
+  purpose: One type: its name, shape, derived abilities and `Compare by` fields.
+
+  let owner_info be declare.module_at(world: world, id: info.owner)
+  let def be type_definition(items: owner_info.tree.items, name: info.name)
+  return TypeMeta(
+    id: id,
+    name: info.name,
+    module_name: owner_info.name,
+    is_library: owner_info.is_library,
+    params: info.params,
+    shape: shape_of(kind: info.kind, def: def),
+    derives: info.derives,
+    compare_by: compare_by_of(def: def, kind: info.kind),
+    refinements: []
+  )
+end
+
+function type_definition(items: List of Item, name: Text) returns maybe TypeDefinition
+  purpose: The type item of a name among a module's items.
+
+  for each item in items
+    match item
+      when TypeItem(value: def) then if def.name.text is name then return def end
+      otherwise continue
+    end
+  end
+  return nothing
+end
+
+function shape_of(kind: TypeKindInfo, def: maybe TypeDefinition) returns TypeShape
+  purpose: The shape of a declared type.
+
+  match kind
+    when Opaque then return OpaqueShape
+    when Unresolved then return OpaqueShape
+    when RecordKind(fields) then
+      let metas be
+        for each field in fields
+        collect field_meta(field: field, external: external_name(def: def, field: field.name))
+      return RecordShape(fields: metas)
+    when SumKind(variants) then
+      return SumShape(variants: for each variant in variants collect variant_meta(variant))
+    when SubtypeKind(base) then return SubtypeShape(base: base)
+  end
+end
+
+function variant_meta(variant: VariantInfo) returns VariantMeta
+  purpose: A variant with its fields.
+
+  let fields be for each field in variant.fields collect field_meta(field: field, external: nothing)
+  return VariantMeta(name: variant.name, fields: fields)
+end
+
+function field_meta(field: FieldInfo, external: maybe Text) returns FieldMeta
+  purpose: A field with its external name and whether it may be absent.
+
+  return FieldMeta(
+    name: field.name,
+    ty: field.ty,
+    external_name: external,
+    optional: is_maybe(field.ty),
+    refinement: nothing
+  )
+end
+
+function is_maybe(ty: Ty) returns Boolean
+  purpose: Whether a type is a `maybe`.
+
+  match ty
+    when MaybeTy then return true
+    otherwise return false
+  end
+end
+
+function external_name(def: maybe TypeDefinition, field: Text) returns maybe Text
+  purpose: The `as "name"` of a record field, read from its definition.
+
+  let found be def otherwise return nothing
+  match found.definition
+    when RecordDefinition(fields) then
+      for each candidate in fields
+        if candidate.name.text is field then return candidate.external_name end
+      end
+      return nothing
+    otherwise return nothing
+  end
+end
+
+function compare_by_of(def: maybe TypeDefinition, kind: TypeKindInfo) returns maybe List of Integer
+  purpose: `can Compare by a, b` as field indices; none when every field counts.
+
+  let found be def otherwise return nothing
+  let derives be
+    match found.definition
+      when RecordDefinition(derives: record_derives) then record_derives
+      when SumDefinition(derives: sum_derives) then sum_derives
+      when SubtypeDefinition then return nothing
+    end
+  let derive be compare_derive(derives) otherwise return nothing
+  if derive.fields.is_empty() then return nothing end
+  let names be
+    match kind
+      when RecordKind(fields) then for each field in fields collect field.name
+      otherwise return nothing
+    end
+  let mutable indices: List of Integer be []
+  for each by_name in derive.fields
+    match names.index_of(by_name.text)
+      when some(position) then change indices to indices.append(position)
+      when nothing then change indices to indices
+    end
+  end
+  return indices
+end
+
+function compare_derive(derives: List of Derive) returns maybe Derive
+  purpose: The `can Compare` clause of a definition, when it has one.
+
+  for each derive in derives
+    if derive.ability_name.text is "Compare" then return derive end
+  end
+  return nothing
+end
+
+function assemble(context: Context, modules: List of CheckedModule) returns Program
+  purpose: The program from the tables, in the order the file lists them.
+
+  let world be context.world
+  let abilities be
+    for each declared in world.abilities
+    collect AbilityMeta(name: declared.name, methods: method_names(declared.methods))
+  return Program(
+    format: 1,
+    modules: module_sources(world: world, modules: modules),
+    builtins: builtin_ids(world.builtins),
+    types: context.types,
+    impls: impl_entries(world),
+    abilities: abilities,
+    method_index: method_entries(world),
+    functions: function_metas(context),
+    constants: context.constants,
+    tests: context.tests,
+    examples: context.examples,
+    codes: context.codes,
+    result_types: context.result_types,
+    specials: specials_of(world),
+    field_sites: context.field_sites,
+    main: main_of(world: world, modules: modules),
+    date: date_of(context.types)
+  )
+end
+
+function method_names(methods: List of AbilityMethod) returns List of Text
+  purpose: The names of an ability's methods, in order.
+
+  return for each method in methods collect method.name
+end
+
+function module_sources(world: World, modules: List of CheckedModule) returns List of ModuleSource
+  purpose: Every module's name, its path when a file declared it, and where its lines start.
+
+  let mutable sources: List of ModuleSource be []
+  let mutable id be 0
+  for each info in world.modules
+    let path be path_of(modules: modules, id: id)
+    let line_starts be if path is nothing then [] otherwise info.line_starts end
+    let source be ModuleSource(name: info.name, path: path, line_starts: line_starts)
+    change sources to sources.append(source)
+    change id to id + 1
+  end
+  return sources
+end
+
+function path_of(modules: List of CheckedModule, id: Integer) returns maybe Text
+  purpose: The path of the file that declared a module.
+
+  for each entry in modules
+    match entry.id
+      when some(found) then if found is id then return entry.path end
+      when nothing then continue
+    end
+  end
+  return nothing
+end
+
+function builtin_ids(builtins: Builtins) returns BuiltinIds
+  purpose: The prelude's ids as the file lists them.
+
+  return BuiltinIds(
+    integer: builtins.integer,
+    decimal: builtins.decimal,
+    float: builtins.float,
+    boolean: builtins.boolean,
+    text: builtins.text,
+    bytes: builtins.bytes,
+    list: builtins.list,
+    map: builtins.map,
+    set_type: builtins.set_type,
+    range: builtins.range,
+    pair: builtins.pair,
+    duration: builtins.duration,
+    ordering: builtins.ordering,
+    timed_out: builtins.timed_out,
+    constraint_violation: builtins.constraint_violation,
+    guarded: builtins.guarded,
+    equal: builtins.equal,
+    compare: builtins.compare,
+    hash: builtins.hash,
+    to_text: builtins.to_text,
+    iterable: builtins.iterable
+  )
+end
+
+function impl_entries(world: World) returns List of ImplEntry
+  purpose: The explicit implementations by ability and type, their methods by name, sorted.
+
+  let mutable keyed: Map of Text to Map of Text to Integer be {}
+  let mutable keys: List of ImplKey be []
+  for each implementation in world.impls
+    let head be types.head_type(implementation.target) otherwise continue
+    let key_text be "{implementation.ability_id}:{head}"
+    if not keyed.contains_key(key_text) then
+      change keys to keys.append(ImplKey(ability_id: implementation.ability_id, type_id: head))
+    end
+    let mutable methods be keyed.get(key_text) otherwise {}
+    for each function_id in implementation.functions
+      let name be declare.function_at(world: world, id: function_id).name
+      change methods to methods.set(key: name, value: function_id)
+    end
+    change keyed to keyed.set(key: key_text, value: methods)
+  end
+  let mutable entries: List of ImplEntry be []
+  for each key in keys.sorted()
+    let methods be keyed.get("{key.ability_id}:{key.type_id}") otherwise {}
+    let bindings be
+      for each name in methods.keys().sorted()
+      collect MethodBinding(name: name, function_id: methods.get(name) otherwise 0)
+    let entry be ImplEntry(ability_id: key.ability_id, type_id: key.type_id, methods: bindings)
+    change entries to entries.append(entry)
+  end
+  return entries
+end
+
+function method_entries(world: World) returns List of MethodEntry
+  purpose: The methods declared on every type, by type and name, sorted.
+
+  let mutable keys: List of MethodKey be []
+  for each key_text in world.method_index.keys()
+    let separator be key_text.index_of(":") otherwise crash with "a method key"
+    let type_id be key_text.take(separator).to_integer() otherwise crash with "a type id"
+    change keys to keys.append(MethodKey(type_id: type_id, name: key_text.drop(separator + 1)))
+  end
+  return for each key in keys.sorted() collect method_entry(world: world, key: key)
+end
+
+function method_entry(world: World, key: MethodKey) returns MethodEntry
+  purpose: One entry of the method index.
+
+  let functions be declare.methods_of(world: world, type_id: key.type_id, name: key.name)
+  return MethodEntry(type_id: key.type_id, name: key.name, functions: functions)
+end
+
+function function_metas(context: Context) returns List of FunctionMeta
+  purpose: Every declared function as the VM knows it at run time.
+
+  let mutable metas: List of FunctionMeta be []
+  let mutable id be 0
+  for each info in context.world.functions
+    change metas to metas.append(function_meta(context: context, id: id, info: info))
+    change id to id + 1
+  end
+  return metas
+end
+
+function function_meta(context: Context, id: Integer, info: FunctionInfo) returns FunctionMeta
+  purpose: One function: its names, its types as the checker spells them, its code when it has one.
+
+  let world be context.world
+  let receiver: maybe Text be
+    match info.params.first()
+      when some(param) then declare.show(world: world, ty: param.ty)
+      when nothing then nothing
+    end
+  let code: maybe Integer be context.function_codes.at(id) otherwise nothing
+  return FunctionMeta(
+    module_name: declare.module_at(world: world, id: info.owner).name,
+    name: info.name,
+    is_library: info.is_library,
+    is_method: info.is_method,
+    params: for each param in info.params
+    collect param.name,
+    receiver: receiver,
+    param_types: for each param in info.params
+    collect declare.show(world: world, ty: param.ty),
+    result: info.result,
+    failures: info.failures,
+    capabilities: info.capabilities,
+    summary: declare.function_purpose(world: world, id: id),
+    code: code
+  )
+end
+
+function specials_of(world: World) returns List of Specials
+  purpose: Per type, the declared `equals`, `compare`, `to_text` and `to_list`, when exactly one.
+
+  let mutable specials: List of Specials be []
+  let mutable type_id be 0
+  repeat until type_id is world.types.length()
+    change specials to specials.append(
+      Specials(
+        equals: single(world: world, type_id: type_id, name: "equals"),
+        compare: single(world: world, type_id: type_id, name: "compare"),
+        to_text: single(world: world, type_id: type_id, name: "to_text"),
+        to_list: single(world: world, type_id: type_id, name: "to_list")
+      )
+    )
+    change type_id to type_id + 1
+  end
+  return specials
+end
+
+function single(world: World, type_id: Integer, name: Text) returns maybe Integer
+  purpose: The one method of a name declared on a type, when exactly one is.
+
+  let ids be declare.methods_of(world: world, type_id: type_id, name: name)
+  if ids.length() is 1 then return ids.first() end
+  return nothing
+end
+
+function main_of(world: World, modules: List of CheckedModule) returns maybe Integer
+  purpose: The `main` function of the first file given, when it has one.
+
+  let entry be modules.first() otherwise return nothing
+  let id be entry.id otherwise return nothing
+  return declare.lookup_function(world: world, owner: id, name: "main")
+end
+
+function date_of(metas: List of TypeMeta) returns maybe Integer
+  purpose: `std.time.Date`, whose construction also checks the day against the month.
+
+  let mutable id be 0
+  for each meta in metas
+    if meta.module_name is "std.time" and meta.name is "Date" then return id end
+    change id to id + 1
+  end
+  return nothing
+end
+
+function emit_query(emitter: Emitter, query: Query) returns Emitter
+  purpose: A query: a loop over its sources with an accumulator; `sorted by` collects keys first.
+
+  let span be query.span
+  let mutable updated be push_scope(emitter)
+  let made be temp(updated)
+  let accumulator be made.value
+  change updated to query_start(emitter: made.emitter, query: query)
+  change updated to emit(emitter: updated, op: OpStore(slot: accumulator), span: span)
+  let deadline be query_deadline(emitter: updated, deadline: query.deadline)
+  change updated to deadline.emitter
+  let buffer be query_buffer(emitter: updated, order: query.order, span: span)
+  change updated to buffer.emitter
+  let loops be source_loops(emitter: updated, sources: query.sources, span: span)
+  change updated to loops.emitter
+  let innermost be loops.value.tops.last() otherwise crash with "a source"
+  let item be loops.value.item
+  change updated to emit_filter(emitter: updated, filter: query.filter, top: innermost)
+  match deadline.value
+    when some(slot) then
+      change updated to emit(emitter: updated, op: OpCheckDeadline(slot: slot), span: span)
+    when nothing then change updated to updated
+  end
+  let mutable dones: List of Integer be []
+  match buffer.value
+    when some(slot) then
+      let key be query_key(query.order)
+      change updated to push_keyed(emitter: updated, buffer: slot, key: key, item: item, span: span)
+    when nothing then
+      let stepped be terminal_step(
+        emitter: updated,
+        query: query,
+        accumulator: accumulator,
+        item: item,
+        continue_target: innermost
+      )
+      change dones to stepped.value
+      change updated to stepped.emitter
+  end
+  change updated to emit(emitter: updated, op: OpJump(target: innermost), span: span)
+  change updated to close_source_loops(emitter: updated, loops: loops.value, span: span)
+  match buffer.value
+    when some(slot) then
+      let sorted_pass be sorted_terminal(
+        emitter: updated,
+        query: query,
+        accumulator: accumulator,
+        item: item,
+        buffer: slot
+      )
+      change dones to dones.append_all(sorted_pass.value)
+      change updated to sorted_pass.emitter
+    when nothing then change updated to updated
+  end
+  change updated to patch_all(emitter: updated, positions: dones)
+  change updated to emit(emitter: updated, op: OpLoad(slot: accumulator), span: span)
+  return pop_scope(updated)
+end
+
+function query_key(order: maybe SortOrder) returns Expr
+  purpose: The key of a `sorted by` clause that is present.
+
+  let ordering be order otherwise crash with "a sort order"
+  return ordering.key
+end
+
+function query_start(emitter: Emitter, query: Query) returns Emitter
+  purpose: The accumulator's first value, by the terminal; a grouped query starts from a map.
+
+  let span be query.span
+  let grouped be query.group_by is not nothing
+  if grouped then return emit(emitter: emitter, op: OpMakeMap(entries: 0), span: span) end
+  match query.terminal
+    when Collect then return emit(emitter: emitter, op: OpMakeList(size: 0), span: span)
+    when GroupOnly then return emit(emitter: emitter, op: OpMakeMap(entries: 0), span: span)
+    when Sum then return push_zero(emitter: emitter, span: span)
+    when Count then return push_integer(emitter: emitter, value: 0, span: span)
+    when First then return emit(emitter: emitter, op: OpNothing, span: span)
+    when Any then return push_boolean(emitter: emitter, value: false, span: span)
+    when All then return push_boolean(emitter: emitter, value: true, span: span)
+  end
+end
+
+function push_zero(emitter: Emitter, span: Span) returns Emitter
+  purpose: The zero a `sum` starts from, of the number type the checker gave the query.
+
+  match number_at(emitter: emitter, span: span)
+    when some(DecimalKind) then
+      let zero be "0".to_decimal() otherwise crash with "a decimal zero"
+      return push_constant(emitter: emitter, value: PooledDecimal(value: zero), span: span)
+    when some(FloatKind) then
+      let zero be "0.0".to_float() otherwise crash with "a float zero"
+      return push_constant(emitter: emitter, value: PooledFloat(value: zero), span: span)
+    otherwise return push_integer(emitter: emitter, value: 0, span: span)
+  end
+end
+
+function query_deadline(emitter: Emitter, deadline: maybe Expr) returns Step of maybe Integer
+  purpose: A `within` clause: the deadline stored in a slot of its own.
+
+  let limit be deadline otherwise return Step(value: nothing, emitter: emitter)
+  let placed be emit_expr(emitter: emitter, expr: limit)
+  let made be temp(placed)
+  let stored be emit(
+    emitter: made.emitter,
+    op: OpDeadline(slot: made.value),
+    span: bodies.expr_span(limit)
+  )
+  return Step(value: made.value, emitter: stored)
+end
+
+function query_buffer(emitter: Emitter, order: maybe SortOrder, span: Span)
+  returns Step of maybe Integer
+  purpose: A `sorted by` clause: the buffer of keyed items, in a slot of its own.
+
+  if order is nothing then return Step(value: nothing, emitter: emitter) end
+  let made be temp(emitter)
+  let mutable updated be emit(emitter: made.emitter, op: OpMakeList(size: 0), span: span)
+  change updated to emit(emitter: updated, op: OpStore(slot: made.value), span: span)
+  return Step(value: made.value, emitter: updated)
+end
+
+function source_loops(emitter: Emitter, sources: List of QuerySource, span: Span)
+  returns Step of SourceLoops
+  purpose: One loop per source, its names bound; the item's slot holds the item or every binding.
+
+  let made be temp(emitter)
+  let item be made.value
+  let several be sources.length() is greater than 1
+  let mutable updated be made.emitter
+  let mutable tops: List of Integer be []
+  let mutable nexts: List of Integer be []
+  for each source in sources
+    change updated to emit_expr(emitter: updated, expr: source.source)
+    let iterator be temp(updated)
+    let init be OpIterInit(slot: iterator.value)
+    change updated to emit(emitter: iterator.emitter, op: init, span: span)
+    change tops to tops.append(here(updated))
+    let next be emit_jump(
+      emitter: updated,
+      op: OpIterNext(slot: iterator.value, exit: 0),
+      span: span
+    )
+    change nexts to nexts.append(next.value)
+    change updated to next.emitter
+    if not several then
+      change updated to emit(emitter: updated, op: OpDup, span: span)
+      change updated to emit(emitter: updated, op: OpStore(slot: item), span: span)
+    end
+    change updated to bind_item(emitter: updated, bindings: source.bindings, span: span)
+  end
+  if several then
+    change updated to gather_bindings(emitter: updated, sources: sources, item: item, span: span)
+  end
+  return Step(value: SourceLoops(tops: tops, nexts: nexts, item: item), emitter: updated)
+end
+
+function gather_bindings(emitter: Emitter, sources: List of QuerySource, item: Integer, span: Span)
+  returns Emitter
+  purpose: Every binding of several sources gathered into one list in the item's slot.
+
+  let mutable updated be emitter
+  let mutable gathered be 0
+  for each source in sources
+    for each name in source.bindings
+      match lookup(emitter: updated, name: name.text)
+        when some(slot) then
+          change updated to emit(emitter: updated, op: OpLoad(slot: slot), span: span)
+          change gathered to gathered + 1
+        when nothing then continue
+      end
+    end
+  end
+  change updated to emit(emitter: updated, op: OpMakeList(size: gathered), span: span)
+  return emit(emitter: updated, op: OpStore(slot: item), span: span)
+end
+
+function close_source_loops(emitter: Emitter, loops: SourceLoops, span: Span) returns Emitter
+  purpose: After the innermost body: each loop's exit continues the loop around it.
+
+  let mutable updated be emitter
+  let mutable level be loops.tops.length() - 1
+  repeat until level is less than 0
+    let next be loops.nexts.at(level) otherwise crash with "a source loop"
+    change updated to patch(emitter: updated, position: next)
+    if level is greater than 0 then
+      let outer be loops.tops.at(level - 1) otherwise crash with "an outer loop"
+      change updated to emit(emitter: updated, op: OpJump(target: outer), span: span)
+    end
+    change level to level - 1
+  end
+  return updated
+end
+
+function rebind_sources(emitter: Emitter, sources: List of QuerySource, span: Span) returns Emitter
+  purpose: The sources' names bound again from the item on top of the stack (the sorted pass).
+
+  if sources.length() is 1 then
+    let source be sources.first() otherwise crash with "a source"
+    return bind_item(emitter: emitter, bindings: source.bindings, span: span)
+  end
+  let mutable names: List of Name be []
+  for each source in sources
+    change names to names.append_all(source.bindings)
+  end
+  return bind_item(emitter: emitter, bindings: names, span: span)
+end
+
+function sorted_terminal(
+  emitter: Emitter,
+  query: Query,
+  accumulator: Integer,
+  item: Integer,
+  buffer: Integer
+)
+  returns Step of List of Integer
+  purpose: The second pass of a sorted query: the terminal over the sorted items.
+
+  let span be query.span
+  let is_descending be
+    match query.order
+      when some(ordering) then ordering.is_descending
+      when nothing then false
+    end
+  let mutable updated be emit(emitter: emitter, op: OpLoad(slot: buffer), span: span)
+  let sort be OpSortByKey(is_descending: is_descending)
+  change updated to emit(emitter: updated, op: sort, span: span)
+  let iterator be temp(updated)
+  let init be OpIterInit(slot: iterator.value)
+  change updated to emit(emitter: iterator.emitter, op: init, span: span)
+  let top be here(updated)
+  let advance be OpIterNext(slot: iterator.value, exit: 0)
+  let next be emit_jump(emitter: updated, op: advance, span: span)
+  change updated to emit(emitter: next.emitter, op: OpDup, span: span)
+  change updated to emit(emitter: updated, op: OpStore(slot: item), span: span)
+  change updated to rebind_sources(emitter: updated, sources: query.sources, span: span)
+  let stepped be terminal_step(
+    emitter: updated,
+    query: query,
+    accumulator: accumulator,
+    item: item,
+    continue_target: top
+  )
+  change updated to emit(emitter: stepped.emitter, op: OpJump(target: top), span: span)
+  change updated to patch(emitter: updated, position: next.value)
+  return Step(value: stepped.value, emitter: updated)
+end
+
+function terminal_step(
+  emitter: Emitter,
+  query: Query,
+  accumulator: Integer,
+  item: Integer,
+  continue_target: Integer
+)
+  returns Step of List of Integer
+  purpose: What one item contributes to the accumulator; the jumps of an early answer come back.
+
+  match query.group_by
+    when some(key) then
+      let grouped be grouped_step(
+        emitter: emitter,
+        query: query,
+        accumulator: accumulator,
+        item: item,
+        key: key
+      )
+      return Step(value: [], emitter: grouped)
+    when nothing then
+      return plain_step(
+        emitter: emitter,
+        query: query,
+        accumulator: accumulator,
+        item: item,
+        continue_target: continue_target
+      )
+  end
+end
+
+function grouped_step(
+  emitter: Emitter,
+  query: Query,
+  accumulator: Integer,
+  item: Integer,
+  key: Expr
+)
+  returns Emitter
+  purpose: A terminal after `group by` applied per group (decision M1): the map's entry folded.
+
+  let span be query.span
+  let mutable updated be emit(emitter: emitter, op: OpLoadMove(slot: accumulator), span: span)
+  change updated to emit_expr(emitter: updated, expr: key)
+  match query.terminal
+    when Collect(value) then change updated to emit_expr(emitter: updated, expr: value)
+    when GroupOnly then change updated to emit(emitter: updated, op: OpLoad(slot: item), span: span)
+    when Sum(value) then change updated to emit_expr(emitter: updated, expr: value)
+    when Count then change updated to push_integer(emitter: updated, value: 1, span: span)
+    when First then change updated to emit(emitter: updated, op: OpLoad(slot: item), span: span)
+    when Any(condition) then change updated to emit_expr(emitter: updated, expr: condition)
+    when All(condition) then change updated to emit_expr(emitter: updated, expr: condition)
+  end
+  change updated to emit(emitter: updated, op: group_fold(query.terminal), span: span)
+  return emit(emitter: updated, op: OpStore(slot: accumulator), span: span)
+end
+
+function group_fold(terminal: QueryTerminal) returns Op
+  purpose: How a terminal folds a group's values: an insertion, or a fold by its kind.
+
+  match terminal
+    when Collect then return OpGroupInsert
+    when GroupOnly then return OpGroupInsert
+    when Sum then return OpGroupFold(fold: SumFold)
+    when Count then return OpGroupFold(fold: SumFold)
+    when First then return OpGroupFold(fold: FirstFold)
+    when Any then return OpGroupFold(fold: AnyFold)
+    when All then return OpGroupFold(fold: AllFold)
+  end
+end
+
+function plain_step(
+  emitter: Emitter,
+  query: Query,
+  accumulator: Integer,
+  item: Integer,
+  continue_target: Integer
+)
+  returns Step of List of Integer
+  purpose: A terminal without `group by`: the accumulator extended, or answered early.
+
+  let span be query.span
+  match query.terminal
+    when Collect(value) then
+      let taken be OpLoadMove(slot: accumulator)
+      let mutable updated be emit(emitter: emitter, op: taken, span: span)
+      change updated to emit_expr(emitter: updated, expr: value)
+      change updated to emit(emitter: updated, op: OpListPush, span: span)
+      change updated to emit(emitter: updated, op: OpStore(slot: accumulator), span: span)
+      return Step(value: [], emitter: updated)
+    when GroupOnly then return Step(value: [], emitter: emitter)
+    when Sum(value) then
+      let mutable updated be emit(emitter: emitter, op: OpLoad(slot: accumulator), span: span)
+      change updated to emit_expr(emitter: updated, expr: value)
+      change updated to emit(emitter: updated, op: OpBinary(op: Add), span: span)
+      change updated to emit(emitter: updated, op: OpStore(slot: accumulator), span: span)
+      return Step(value: [], emitter: updated)
+    when Count then
+      let mutable updated be emit(emitter: emitter, op: OpLoad(slot: accumulator), span: span)
+      change updated to push_integer(emitter: updated, value: 1, span: span)
+      change updated to emit(emitter: updated, op: OpBinary(op: Add), span: span)
+      change updated to emit(emitter: updated, op: OpStore(slot: accumulator), span: span)
+      return Step(value: [], emitter: updated)
+    when First then
+      let mutable updated be emit(emitter: emitter, op: OpLoad(slot: item), span: span)
+      change updated to emit(emitter: updated, op: OpStore(slot: accumulator), span: span)
+      let done be emit_jump(emitter: updated, op: OpJump(target: 0), span: span)
+      return Step(value: [done.value], emitter: done.emitter)
+    when Any(condition) then
+      return early_answer(
+        emitter: emitter,
+        condition: condition,
+        accumulator: accumulator,
+        continue_target: continue_target,
+        answer: true,
+        span: span
+      )
+    when All(condition) then
+      return early_answer(
+        emitter: emitter,
+        condition: condition,
+        accumulator: accumulator,
+        continue_target: continue_target,
+        answer: false,
+        span: span
+      )
+  end
+end
+
+function early_answer(
+  emitter: Emitter,
+  condition: Expr,
+  accumulator: Integer,
+  continue_target: Integer,
+  answer: Boolean,
+  span: Span
+)
+  returns Step of List of Integer
+  purpose: `any` and `all`: an item that decides the answer stores it and leaves the loops.
+
+  let mutable updated be emit_expr(emitter: emitter, expr: condition)
+  let jump be if answer then OpJumpIfFalse(target: 0) otherwise OpJumpIfTrue(target: 0) end
+  let skip be emit_jump(emitter: updated, op: jump, span: bodies.expr_span(condition))
+  change updated to patch_to(emitter: skip.emitter, position: skip.value, target: continue_target)
+  change updated to push_boolean(emitter: updated, value: answer, span: span)
+  change updated to emit(emitter: updated, op: OpStore(slot: accumulator), span: span)
+  let done be emit_jump(emitter: updated, op: OpJump(target: 0), span: span)
+  return Step(value: [done.value], emitter: done.emitter)
+end

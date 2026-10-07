@@ -10,7 +10,7 @@ pub mod types;
 pub mod world;
 
 use std::collections::HashSet;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use renyi_syntax::{parse, parse_declarations, Diagnostic, SourceFile, Span};
 
@@ -223,12 +223,15 @@ pub fn check_sources(main: &SourceFile, imports: &[SourceFile]) -> Vec<Diagnosti
 /// The non-library modules a file imports, transitively, read from its
 /// directory (decision J17: the file's directory is the project root). A
 /// file that cannot be read is left out; the resolver then reports an
-/// unknown module.
+/// unknown module. The path of an import is the file's directory and the
+/// import's segments joined with `/` on every platform, so that a
+/// bytecode file, which remembers the paths, does not depend on the
+/// machine that wrote it (decision Z3).
 pub fn imported_files(file: &SourceFile) -> Vec<SourceFile> {
     let directory = Path::new(&file.name)
         .parent()
-        .map(Path::to_path_buf)
-        .unwrap_or_else(|| PathBuf::from("."));
+        .map(|parent| parent.display().to_string())
+        .unwrap_or_default();
     let parsed = parse(&file.text);
     let mut imports = Vec::new();
     let mut seen: HashSet<String> = HashSet::new();
@@ -246,27 +249,30 @@ pub fn imported_files(file: &SourceFile) -> Vec<SourceFile> {
         if !seen.insert(name.clone()) {
             continue;
         }
-        let mut file_path = directory.clone();
+        let mut base = directory.clone();
         for segment in &path {
-            file_path.push(segment);
+            if !base.is_empty() {
+                base.push('/');
+            }
+            base.push_str(segment);
         }
         // `.renyi` and `.ry` are equivalent (decision G3)
-        let mut text = None;
+        let mut found = None;
         for extension in ["ry", "renyi"] {
-            file_path.set_extension(extension);
+            let file_path = format!("{base}.{extension}");
             if let Ok(read) = std::fs::read_to_string(&file_path) {
-                text = Some(read);
+                found = Some((file_path, read));
                 break;
             }
         }
-        let Some(text) = text else {
+        let Some((file_path, text)) = found else {
             continue;
         };
         let imported = parse(&text);
         for import in &imported.module.imports {
             queue.push(import.path.iter().map(|n| n.text.clone()).collect());
         }
-        imports.push(SourceFile::new(file_path.display().to_string(), text));
+        imports.push(SourceFile::new(file_path, text));
     }
     imports
 }

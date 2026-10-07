@@ -1,0 +1,152 @@
+module compile
+  purpose: The self-hosted compiler's command line: what `renyi compile` writes, computed in Renyi.
+
+import std.console
+import std.environment
+import std.filesystem exposing Path
+import std.json
+import report
+import project exposing Source, CheckedModule
+import emit
+
+type Options
+  purpose: What the command line asked for: the file, where to write, the library.
+  has path: Text
+  has target: maybe Text
+  has library: Text
+end
+
+type UsageError
+  purpose: A command line the compiler cannot act on.
+  has message: Text
+  can ToText
+end
+
+public function main() needs console, environment, filesystem
+  purpose: Compile a file with its imports and write its bytecode; one with errors writes nothing.
+
+  match read_options(environment.arguments())
+    when success(options) then compile_file(options)
+    when failure(UsageError(message)) then
+      console.print_error("renyi: {message}")
+      console.print_error(usage())
+      environment.exit(1)
+  end
+end
+
+function usage() returns Text
+  purpose: The command line as the compiler reads it.
+
+  return "usage: renyi run compiler/compile.ry [--to <file.ryc>] [--library <dir>] <file.ry>"
+end
+
+function read_options(arguments: List of Text) returns Options or fails with UsageError
+  purpose: The options and the file from the arguments.
+
+  let mutable options be Options(path: "", target: nothing, library: "library/std")
+  let mutable expecting: maybe Text be nothing
+  let mutable found be false
+  for each argument in arguments
+    match expecting
+      when some(option) then
+        if option is "--to" then
+          change options to options with target: argument
+        otherwise
+          change options to options with library: argument
+        end
+        change expecting to nothing
+        continue
+      when nothing then change expecting to expecting
+    end
+    if argument is "--to" or argument is "--library" then
+      change expecting to argument
+    otherwise if argument.starts_with("--") then
+      fail with UsageError(message: "unknown option `{argument}`")
+    otherwise
+      change options to options with path: argument
+      change found to true
+    end
+  end
+  match expecting
+    when some(option) then fail with UsageError(message: "`{option}` needs a value")
+    when nothing then change expecting to expecting
+  end
+  if not found then fail with UsageError(message: "no file to compile") end
+  return options
+end
+
+function compile_file(options: Options) needs console, environment, filesystem
+  purpose: Check the file with its imports, print the diagnostics, write the bytecode or exit 1.
+
+  let path be options.path
+  if path.ends_with(".ryc") then
+    console.print_error("renyi: {path} is a bytecode file already; `compile` takes a .ry file")
+    environment.exit(1)
+  end
+  let text be project.read_file(path)
+  let source be project.source_of(name: path, text: text)
+  let library be project.library_trees(options.library)
+  let files be [source].append_all(project.imported_files(source))
+  let checked be project.check_project(files: files, library: library)
+  if report_diagnostics(files: files, modules: checked.modules) then environment.exit(1) end
+  let program be emit.compile_project(world: checked.world, modules: checked.modules)
+  let target be options.target otherwise default_target(path)
+  let rendered be json.render_indented(program)
+  if write_file(target: target, content: "{rendered}\n") then
+    console.print_error("renyi: compiled {path} to {target}")
+  otherwise
+    console.print_error("renyi: cannot write {target}")
+    environment.exit(1)
+  end
+end
+
+function write_file(target: Text, content: Text) returns Boolean needs filesystem.write
+  purpose: Whether the target could be written.
+
+  filesystem.write_text(path: Path(target), content: content) otherwise return false
+  return true
+end
+
+function report_diagnostics(files: List of Source, modules: List of CheckedModule)
+  returns Boolean
+  needs console
+  purpose: Every module's diagnostics printed as `check` prints them; whether any is an error.
+
+  let mutable failed be false
+  let mutable index be 0
+  for each entry in modules
+    let file be files.at(index) otherwise crash with "a checked file"
+    change index to index + 1
+    if entry.diagnostics.is_empty() then continue end
+    if project.has_error(entry.diagnostics) then change failed to true end
+    let rendered be report.render_text(
+      file_name: file.name,
+      starts: file.starts,
+      length: file.chars.length(),
+      diagnostics: entry.diagnostics
+    )
+    project.print_block(rendered)
+  end
+  return failed
+end
+
+function default_target(path: Text) returns Text
+  purpose: `<stem>.ryc` in the working directory, as `renyi compile` names it.
+
+  let components be path.replace(old: "\\", new: "/").split("/")
+  let file_name be components.last() otherwise path
+  return "{file_stem(file_name)}.ryc"
+end
+
+function file_stem(file_name: Text) returns Text
+  purpose: The file name before its last `.`, unless it starts with the only `.` it has.
+
+  let mutable last_dot: maybe Integer be nothing
+  let mutable index be 0
+  for each ch in file_name.characters()
+    if ch is "." and index is greater than 0 then change last_dot to index end
+    change index to index + 1
+  end
+  let cut be last_dot otherwise return file_name
+  return file_name.take(cut)
+end

@@ -1651,7 +1651,7 @@ function check_tool_signature(checker: Checker, id: Integer, func: Function) ret
   return updated
 end
 
-function debug_quoted(text: Text) returns Text
+public function debug_quoted(text: Text) returns Text
   purpose: A text as Rust's debug formatting prints it: quoted, with quotes and backslashes escaped.
 
   let mutable out be "\""
@@ -2022,7 +2022,7 @@ function finish_body(checker: Checker) returns Checker
   return updated
 end
 
-function statement_span(statement: Statement) returns Span
+public function statement_span(statement: Statement) returns Span
   purpose: The span of a statement.
 
   match statement
@@ -2044,7 +2044,7 @@ function statement_span(statement: Statement) returns Span
   end
 end
 
-function expr_span(expr: Expr) returns Span
+public function expr_span(expr: Expr) returns Span
   purpose: The span of an expression.
 
   match expr
@@ -2074,7 +2074,7 @@ function expr_span(expr: Expr) returns Span
   end
 end
 
-function pattern_span(pattern: Pattern) returns Span
+public function pattern_span(pattern: Pattern) returns Span
   purpose: The span of a pattern.
 
   match pattern

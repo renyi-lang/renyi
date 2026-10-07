@@ -510,8 +510,22 @@ compile [--to <file.ryc>] <file.ry>` writes it and `run`, `record`,
 through a loader hand-written over the VM's own JSON reader that refuses
 what does not fit (Z2). Every `run` case of the conformance suite runs a
 second time from its file (Z3). The spans a program keeps count
-characters since this entry, as the syntax tree's JSON does. The emitter
-written in Renyi (`compiler/emit.ry`, the transcription of
-`crates/renyi_vm/src/compile/`), its driver `compiler/compile.ry` and
-their judge in `selfhost.rs` (byte equality with `renyi compile`, Z3)
-are the next piece.
+characters since this entry, as the syntax tree's JSON does.
+
+### The emitter written in Renyi (session 8, decision Z3)
+
+The emitter exists: `compiler/emit.ry` is the transcription of
+`crates/renyi_vm/src/compile/` and `types.rs` over the world of
+`declare.ry`, the tree and the references `bodies.ry` records;
+`compiler/project.ry` holds what the command lines share (the files,
+the imports, the library, the checked project); `renyi run
+compiler/compile.ry [--to <file.ryc>] <file>` writes what `renyi
+compile` writes. The judge in `crates/renyi/tests/selfhost.rs` holds
+the two files equal, byte for byte, over the corpus, the conformance
+programs and the compiler's own sources, and requires the Renyi
+compiler to refuse what `renyi compile` refuses (Z3). With it, the
+references of W8 have their judge, and the Rust VM runs what the Renyi
+compiler emits: the toolchain written in Renyi is the lexer, the
+parser, the checker and the emitter, with the Rust toolchain as stage
+0. Next: R3-2 (constraints with type arguments, deferred by Y4), and
+the remaining performance items as a profile calls for them.
