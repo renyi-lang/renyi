@@ -79,15 +79,42 @@ public function json_string(text: Text) returns Text
 end
 
 function escaped(ch: Text) returns Text
-  purpose: One character as JSON writes it inside a string.
+  purpose: One character as JSON writes it inside a string, as the Rust `json_string` writes it.
 
   if ch is "\"" then return "\\\"" end
   if ch is "\\" then return "\\\\" end
   if ch is "\n" then return "\\n" end
   if ch is "\t" then return "\\t" end
-  if ch is " " then return ch end
-  if ch.trim() is "" then return "\\r" end
-  return ch
+  let code be control_code(ch) otherwise return ch
+  if code is 13 then return "\\r" end
+  let high be hex_digits.characters().at(code.quotient(16)) otherwise crash with "a hex digit"
+  let low be hex_digits.characters().at(code remainder 16) otherwise crash with "a hex digit"
+  return "\\u00{high}{low}"
+end
+
+let hex_digits: Text be "0123456789abcdef"
+
+let base64_high: Text be "ABCDEFGH"
+
+let base64_low: Text be "AQgw"
+
+function control_code(ch: Text) returns maybe Integer
+  purpose: The code of a control character (below 32), read off the base64 of its one byte.
+
+  let encoded be ch.to_bytes().to_base64()
+  if encoded.length() is not 4 or encoded.drop(2) is not "==" then return nothing end
+  let high be index_of_char(digits: base64_high, ch: encoded.take(1)) otherwise return nothing
+  let low be index_of_char(digits: base64_low, ch: encoded.drop(1).take(1)) otherwise return nothing
+  return high * 4 + low
+end
+
+function index_of_char(digits: Text, ch: Text) returns maybe Integer
+  let mutable index be 0
+  for each digit in digits.characters()
+    if digit is ch then return index end
+    change index to index + 1
+  end
+  return nothing
 end
 
 public function render_json(

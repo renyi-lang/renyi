@@ -18,7 +18,9 @@ of `set` to `change`, decision AA1; then the emitter written in Renyi,
 compile` byte for byte by the same test, decision Z3; then constraints
 with type arguments, open item R3-2, decision AB1; then the judges run
 the front end from its bytecode; then packages, decision AC1, the first
-slice of stage 3 in two commits).
+slice of stage 3 in two commits; then the diagnostics of the front end
+in Renyi, decision AD1: the Rust lexer's and parser's codes, fixes and
+recovery, the three judges byte-equal on rejected programs too).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -88,7 +90,7 @@ revision>]`, `run [--manifest] [options] <file> [arguments]`, `record
 clippy and fmt clean on Windows
 with rustc 1.94.1. CI (`.github/workflows/ci.yml`) runs the same gates,
 `renyi check compiler/*.ry` and the conformance suite
-(`tests/conformance/`, 47 cases, every `run` case a second time from
+(`tests/conformance/`, 49 cases, every `run` case a second time from
 its bytecode file;
 runners `tools/conformance.py` and `crates/renyi/tests/conformance.rs`)
 on a toolchain pinned to the owner's machine (rustc 1.94.1), so that CI
@@ -119,8 +121,10 @@ sheet, with `change` (decision AA1).
   `TypeIdentifier`, `MemberName`, `IntegerToken`, `DecimalToken`,
   `TextToken(parts, is_block)` with holes lexed by a sub-lexer over the
   same character list, `RawToken`, `ClauseToken`, `CommentToken`,
-  `LineBreak`, `Symbol(text)` and `EndOfFile`; it fails with `LexError`
-  at the first bad character. `parser.ry` turns tokens into the tree
+  `LineBreak`, `Symbol(text)`, `ErrorToken` and `EndOfFile`; it reports
+  every bad character with the Rust lexer's code, message and fix and
+  reads on (`Lexed`: the tokens and the diagnostics; decision AD1).
+  `parser.ry` turns tokens into the tree
   rule for rule as `crates/renyi_syntax/src/parser.rs` does; the Rust
   parser's mutable cursor is a `Cursor` record (tokens, position, open
   brackets, whether functions have bodies) threaded through every
@@ -129,12 +133,17 @@ sheet, with `change` (decision AA1).
   insignificant (inside brackets, after a comma, before a continuation
   word) exactly as the Rust `peek` does, including the spans that end at
   a line break after such a move, so that the two trees agree byte for
-  byte; it fails with `ParseError` at the first error (a message and a
-  character offset; no recovery, no fixes). `parse.ry` is the command
-  line: `renyi run compiler/parse.ry [--declarations] <file>` lexes,
-  parses and prints `json.render_indented` of the tree; `tokens.ry`
-  prints the tokens as `renyi tokens` does (a development aid for
-  comparing the lexers line by line).
+  byte; since decision AD1 it reports every syntax error with the Rust
+  parser's code, message, span and fix, recovers where the Rust parser
+  recovers and returns the partial tree with the diagnostics
+  (`ParsedModule`; the section "The diagnostics of the front end in
+  Renyi" below). `parse.ry` is the command line: `renyi run
+  compiler/parse.ry [--declarations] <file>` lexes, parses and prints
+  `json.render_indented` of the tree, then the diagnostics as `renyi
+  parse --json` prints them, and exits 1 on an error; `tokens.ry`
+  prints the tokens as `renyi tokens` does, then the lexer's
+  diagnostics (a development aid for comparing the lexers line by
+  line).
 - **The JSON** (decision W1) is the derived JSON of the `ast.ry` types:
   a record is an object keyed by its fields in declaration order, a
   variant an object with `kind` first, a `maybe` without a value `null`,
@@ -148,8 +157,9 @@ sheet, with `change` (decision AA1).
   `renyi run compiler/parse.ry` over `examples/`,
   `tests/conformance/programs/`, `compiler/` and, with `--declarations`,
   `library/std/` on a few threads and compares with `renyi parse --json
-  [--declarations]` byte for byte (83 programs: 80 equal, 3 rejected by
-  both); a second test does the same for the checker (next section);
+  [--declarations]` byte for byte, the exit status and the diagnostics
+  of a rejected program included since decision AD1; a second test does
+  the same for the checker (next section);
   a third checks `renyi format --check compiler/*.ry`. CI runs `renyi
   check compiler/*.ry` besides. Every judge runs its driver from the
   bytecode `renyi compile` writes of it when the test starts (the
@@ -225,16 +235,17 @@ sheet, with `change` (decision AA1).
   warnings of `layout.rs` (`line-width`, `trailing-whitespace`), sorts
   by start, turns `deprecated` into an error under `--strict`, prints
   the JSON or the text, and exits 1 on any error. A file that does not
-  lex or parse gets one `syntax` diagnostic (the message and the
-  position of the Renyi front end, not the Rust codes) and exit 1.
+  lex or parse gets the front end's diagnostics, the Rust codes and
+  fixes (decision AD1), the layout warnings and exit 1; the imports of
+  its partial tree are followed as the Rust resolver follows them.
 - **The judge** (decision W7): the test
   `the_renyi_checker_prints_what_the_rust_checker_prints` in
   `crates/renyi/tests/selfhost.rs` runs `renyi parse` to learn whether
   the Rust parser accepts a program, then `renyi run compiler/checker.ry
   --json [--strict]` against `renyi check --json [--strict]` on every
   program of `examples/`, `tests/conformance/programs/` and `compiler/`
-  (71 programs, 142 cases: output byte for byte and exit status; a
-  rejected program must make the Renyi checker fail). All equal at the
+  (output byte for byte and exit status, on a program with syntax
+  errors too since decision AD1). All equal at the
   first full comparison after the compiler's own sources were made
   clean; the run takes about 51 s on eight threads after X3 (64 s with
   X1 alone, 170 s before X1, when a small program took 1.5 s and
@@ -251,18 +262,13 @@ sheet, with `change` (decision AA1).
 - **Where the two checkers could differ, by construction** (none shows
   on a program in the repository): the Rust checker iterates `HashMap`s
   in `suggest_*`, the imports and the method index, so a tie between
-  two equally close names may be broken differently; `json_string`
-  escapes `\n`, `\t` and `\r` and cannot write `\u00xx` for another
-  control character; the `Path` literal check tests only `"\n"` (a
+  two equally close names may be broken differently; the `Path`
+  literal check tests only `"\n"` (a
   NUL cannot be written in Renyi); `debug_quoted` escapes `"`, `\`,
   `\n` and `\t` where Rust's `{:?}` escapes every control character;
   the `import-errors` message joins the import's path with `/` where
   Rust uses the platform separator (no program in the repository
-  imports a module with errors); an import that does not parse
-  contributes none of its own imports (Rust parses with recovery and
-  follows them); the Renyi front end stops at the first syntax error
-  where the Rust one reports several with codes and fixes (the judge
-  only requires failure there). Positions are characters on the Renyi
+  imports a module with errors). Positions are characters on the Renyi
   side and bytes on the Rust side, printed as line and column in both,
   so they agree on any text.
 - **Writing the checker in Renyi, what bit** (besides the parser's
@@ -823,8 +829,7 @@ package name as the first segment of an import, packages before
   twice in a manifest is refused by the Rust reader alone (a Renyi map
   keeps one value per key); a budget spelled `1.0` or `1e2` is a whole
   number to the Renyi side alone; a version part beyond 64 bits is
-  refused by Rust alone; an import that does not parse contributes no
-  imports on the Renyi side (as before).
+  refused by Rust alone.
 - **The fixture** `tests/conformance/packages/`:
   `registry/greeting/1.0.0/` (`package.json` as `renyi publish` will
   render it, `greeting.ry` importing `words`, `words.ry`,
@@ -892,9 +897,79 @@ package name as the first segment of an import, packages before
   the flag and until `main` declares the new kind; a URL registry served
   by a thread; the map's labels and the budgets).
 - **Next**: `std.process` with the capability `process`, then the FFI
-  (`foreign`, F0), the next slices of M4; and the parity of the Renyi
-  front end's diagnostics with the Rust parser's (the "2" of the
-  owner's answer).
+  (`foreign`, F0), the next slices of M4. The parity of the Renyi front
+  end's diagnostics with the Rust parser's (the "2" of the owner's
+  answer) is done: the next section.
+
+## The diagnostics of the front end in Renyi (decision AD1)
+
+The "2" of the owner's answer "1+2" (2026-10-07): the front end written
+in Renyi reports what the Rust front end reports, so that the three
+judges compare output and exit status on every program, rejected ones
+included, and `checker.ry` and `compile.ry` answer as `renyi check` and
+`renyi compile` do on a file with syntax errors too.
+
+- **The lexer** (`compiler/lexer.ry`): `lex(source) returns Lexed`, the
+  tokens and the diagnostics in source order; every error site of
+  `lexer.rs` is mirrored with its code, message, span and fix (`tab`,
+  `crlf`, `equals-sign`, `semicolon`, `symbolic-operator`,
+  `unknown-character`, `identifier-shape`, `single-letter-identifier`,
+  `type-name-shape`, `number-shape`, `unterminated-text`,
+  `unknown-escape`, `empty-hole`, `text-in-hole`, `unterminated-hole`);
+  a bad character becomes an `ErrorToken`, which the parser's `expected`
+  is silent about, as the Rust parser is. A carriage return is found
+  through the base64 of its byte (`\r` is not an escape in Renyi);
+  `tokens.ry` prints it as `\r`.
+- **The parser** (`compiler/parser.ry`, 3400 lines): the `Cursor`
+  carries the diagnostics so far and the source characters; a construct
+  that cannot be parsed stops with `Halt`, a failure type that carries
+  the cursor (its position, nesting and diagnostics); every error site
+  of `parser.rs` is mirrored with its code, message, span and fix
+  through the helpers `expected` (silent on an error token, the foreign
+  spelling of decision C4 as the fix), `describe`, `token_for` (the
+  Rust parser's `token_at`), `foreign_spelling`, `halt` and `diagnose`;
+  `identifier` takes a reserved word with `reserved-word` and goes on,
+  as the Rust one does; the recovery points are the Rust parser's
+  (`recover` to the end of the line after a bad import, a bad statement
+  in a block, a bad clause or example, and `skip_to_next_item` to the
+  next item at the margin after a bad item; `lenient_end_of_line` and
+  `lenient_symbol` where the Rust parser ignores the result);
+  `parse_hole` parses a hole on its own cursor and reports
+  `hole-syntax`; `parse(lexed, chars, declarations) returns
+  ParsedModule`, the partial tree and the diagnostics, the lexer's
+  first. The transcription left the line-break handling untouched.
+- **The drivers**: `parse.ry` prints the tree, then `report.render_json`
+  of the diagnostics when there are any, and exits 1 on an error, as
+  `renyi parse --json` does; `project.ry`'s `Front` is `Parsed(tree)` or
+  `Rejected(tree, diagnostics)`, the partial tree kept because the Rust
+  resolver follows the imports of a file that does not parse;
+  `check_project` gives a rejected file its parse diagnostics and no
+  module, `checker.ry`'s `diagnose` appends the layout warnings and
+  sorts, `compile.ry` prints them as `renyi compile` does. `report.ry`'s
+  `json_string` writes `\u00xx` for a control character other than
+  `\n`, `\t` and `\r` (the code read off the base64 of the byte), as
+  the Rust one does.
+- **The judges** (`selfhost.rs`): the parser judge compares stdout and
+  exit status on every program; the checker judge no longer asks `renyi
+  parse` whether a program parses; the emitter judge compares stdout
+  and exit status, then the files when both wrote one. The lane scripts
+  `judge_parse.sh`, `judge_check.sh` and `judge_compile.sh` under
+  `D:\Projects\.worktrees\Renyi\selfhost\` run the same comparisons
+  over the repository's programs and the probes under `probes/` (21
+  lexer probes from `make_lex_probes.py`, 24 parser probes from
+  `make_parse_probes.py`, both in the session's scratchpad), which
+  exercise the error sites no program in the repository reaches: 135
+  files, all equal, at the end of the session. Conformance cases 48
+  and 49 (`lexer_errors.ry`, `syntax_recovery.ry`) hold a sample of
+  both in the suite.
+- **What bit**: a pattern binds a record's field by name, so
+  `failure(Halt(cursor: halted))` is the spelling (`Halt(halted)` is
+  `unknown-field`); `x with a: 1,` followed by another field of the
+  enclosing constructor swallows that field (parenthesize the `with`);
+  `return` followed by a line break ends the statement; `/` on two
+  Integers is `integer-division` (`quotient`); a message over 100
+  columns is built from two halves in a function, since a line of a
+  constant cannot be broken.
 
 ## The VM as it exists (`crates/renyi_vm`)
 
@@ -1297,6 +1372,14 @@ Three commits on `main`, each gated as in session 7:
     `crates/renyi/tests/packages.rs`, the reference (appendix B),
     `README.md`, `07-system-design.md` (2.3, 3, 6),
     `05-agent-tooling.md`, `CLAUDE.md`, `docs/GAPS.md`, this file.
+16. The diagnostics of the front end in Renyi (decision AD1, the
+    section "The diagnostics of the front end in Renyi" above):
+    `compiler/lexer.ry` (rewritten around `Lexed`), `parser.ry`
+    (rewritten around `Cursor.diagnostics` and `Halt`), `parse.ry`,
+    `tokens.ry`, `project.ry` (`Front`), `checker.ry`, `report.ry`
+    (`json_string`), the three judges of `selfhost.rs`, conformance
+    cases 48 and 49, the decisions (section AD), `CLAUDE.md`,
+    `README.md`, `docs/GAPS.md`, this file.
 
 ## Done in session 7 (stage 1 of the gap audit)
 
@@ -1699,11 +1782,10 @@ on a fresh clone).
    building, the pattern cache of `Text.matches`) as a later profile
    calls for them; any change to the loop is measured with `bench.py`
    and `micro.py` against the `base` worktree, the two binaries run
-   back to back. The front end in Renyi reports one syntax error with a
-   position and no fix; parity with the Rust parser's diagnostics
-   (codes, fixes, recovery, the judges byte-equal on rejected programs
-   too) is the step the owner chose beside stage 3 ("1+2", 2026-10-07),
-   after the second commit of AC1.
+   back to back. The front end in Renyi reports the Rust parser's
+   diagnostics (codes, fixes, recovery; decision AD1) and the judges
+   are byte-equal on rejected programs too, the step the owner chose
+   beside stage 3 ("1+2", 2026-10-07).
 2. **Readability, only on request**: round 5 on Sonnet measures U9
    (`run.py prepare`, the Sonnet command at the end of this item after
    its probe, the graders, `score`, the U5 search, `report`, the
@@ -1739,18 +1821,17 @@ on a fresh clone).
 
 ## Known gaps and risks
 
-- **The front end in Renyi.** The parser stops at the first error with
-  a message and a character offset: no diagnostic codes, no fixes, no
-  recovery, so it is not yet a replacement for `renyi check`'s
-  front-end diagnostics; the judge covers acceptance and the tree only
-  (the checker's judge likewise requires only failure on a program the
-  Rust parser rejects).
+- **The front end in Renyi.** Its diagnostics are a transcription of
+  the Rust lexer's and parser's (decision AD1): a new error site, a
+  changed message or fix in `lexer.rs` or `parser.rs` is the same
+  change in `lexer.ry` or `parser.ry` in the same commit, or the judges
+  fail; the probes that exercise the error sites live in the lane, not
+  in the repository (two conformance cases hold a sample).
   Its equality with the Rust parser is exact on every program in the
   repository, by construction of its `peek` (the Rust parser's
   side-effecting peek is simulated, line-break spans included); a new
   layout rule in `parser.rs` must be mirrored in `parser.ry` or the judge
-  fails. The lexer's error messages are its own, not the Rust lexer's
-  codes. The run time grows with the file (0.6 s for `parser.ry` in the
+  fails. The run time grows with the file (0.6 s for `parser.ry` in the
   release build after X3; the profile above says where it goes); the
   `"{text}{ch}"` concatenation in the lexer's `scan_segment` is
   quadratic in a token's length (negligible for tokens, visible on a
@@ -1761,9 +1842,8 @@ on a fresh clone).
   message, a fix, a rule or the order of checks in `crates/renyi_check`
   is a change to `declare.ry` or `bodies.ry` in the same commit, or the
   judge fails (CLAUDE.md says so). The by-construction differences
-  listed above (hash-map ties, control characters in `json_string`,
-  the NUL in a `Path`, `debug_quoted`, the import path separator, the
-  imports of a broken import) show on no program in the repository and
+  listed above (hash-map ties, the NUL in a `Path`, `debug_quoted`, the
+  import path separator) show on no program in the repository and
   have no test. The checker's run time after X3: 2.3 s on `bodies.ry`
   in the release build, 2.7 s in the optimized development build; the
   two judges add about 51 s to `cargo test` on eight threads and more

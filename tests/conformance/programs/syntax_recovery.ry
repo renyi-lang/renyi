@@ -1,0 +1,21 @@
+module syntax_recovery
+  purpose: Several syntax errors in one file: each is reported with a fix and the parser reads on.
+
+import std.console
+
+class Account
+  has balance: Integer
+end
+
+function main() needs console
+  let first be 1
+  let total be 2
+  otherwise console.print("no")
+  total + 1
+  console.print("{1 2}")
+  return 1 2
+end
+
+function helper(amount Integer) returns Integer
+  return amount
+end

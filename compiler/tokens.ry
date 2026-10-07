@@ -4,18 +4,33 @@ module tokens
 import std.console
 import std.environment
 import std.filesystem exposing Path
-import lexer exposing Token, TokenKind, LexError
+import lexer exposing Token, TokenKind
+import report exposing Diagnostic
 
 public function main() needs console, environment, filesystem
-  purpose: Lex the file named by the first argument and print one line per token.
+  purpose: Lex the file named by the first argument, print one line per token, then the diagnostics.
 
   let arguments be environment.arguments()
   let path be arguments.first() otherwise crash with "usage: renyi run compiler/tokens.ry <file>"
   let source be filesystem.read_text(Path(path)) otherwise crash with "cannot read {path}"
-  match lexer.lex(source)
-    when success(tokens) then print_all(tokens: tokens, source: source)
-    when failure(error: LexError) then console.print("error: {error.to_text()}")
+  let lexed be lexer.lex(source)
+  print_all(tokens: lexed.tokens, source: source)
+  let chars be source.characters()
+  let rendered be report.render_text(
+    file_name: path,
+    starts: report.line_starts(chars),
+    length: chars.length(),
+    diagnostics: lexed.diagnostics
+  )
+  if rendered is not "" then console.print(rendered.take(rendered.length() - 1)) end
+  if has_error(lexed.diagnostics) then environment.exit(1) end
+end
+
+function has_error(diagnostics: List of Diagnostic) returns Boolean
+  for each diagnostic in diagnostics
+    if diagnostic.is_error then return true end
   end
+  return false
 end
 
 function print_all(tokens: List of Token, source: Text) needs console
@@ -58,6 +73,7 @@ function kind_name(kind: TokenKind) returns Text
     when CommentToken then return "comment"
     when LineBreak then return "newline"
     when Symbol(text) then return text
+    when ErrorToken then return "error"
     when EndOfFile then return "eof"
   end
 end
@@ -80,5 +96,19 @@ function quoted(text: Text) returns Text
   let quotes be backslashes.replace(old: "\"", new: "\\\"")
   let breaks be quotes.replace(old: "\n", new: "\\n")
   let escaped be breaks.replace(old: "\t", new: "\\t")
-  return "\"{escaped}\""
+  return "\"{without_carriage_returns(escaped)}\""
+end
+
+function without_carriage_returns(text: Text) returns Text
+  purpose: Every carriage return as `\r`; the character has no escape of its own in Renyi.
+
+  let mutable out be ""
+  for each ch in text.characters()
+    if ch.to_bytes().to_base64() is "DQ==" then
+      change out to "{out}\\r"
+    otherwise
+      change out to "{out}{ch}"
+    end
+  end
+  return out
 end

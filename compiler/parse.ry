@@ -5,13 +5,12 @@ import std.console
 import std.environment
 import std.filesystem exposing Path, FileError
 import std.json
-import lexer exposing LexError
-import parser exposing ParseError
+import lexer
+import parser
+import report exposing Diagnostic
 
-public function main()
-  or fails with FileError or LexError or ParseError
-  needs console, environment, filesystem.read
-  purpose: Print the tree of a file as JSON; `--declarations` reads a library declaration file.
+public function main() or fails with FileError needs console, environment, filesystem.read
+  purpose: Print a file's tree as JSON, then its diagnostics; `--declarations` reads a library file.
 
   let arguments be environment.arguments()
   let declarations be arguments.contains("--declarations")
@@ -22,7 +21,25 @@ public function main()
   let usage be "usage: renyi run compiler/parse.ry [--declarations] <file>"
   let path be paths.first() otherwise crash with usage
   let source be filesystem.read_text(Path(path)) otherwise fail
-  let tokens be lexer.lex(source) otherwise fail
-  let tree be parser.parse(tokens: tokens, declarations: declarations) otherwise fail
-  console.print(json.render_indented(tree))
+  let chars be source.characters()
+  let lexed be lexer.lex(source)
+  let parsed be parser.parse(lexed: lexed, chars: chars, declarations: declarations)
+  console.print(json.render_indented(parsed.tree))
+  if not parsed.diagnostics.is_empty() then
+    let rendered be report.render_json(
+      file_name: path,
+      starts: report.line_starts(chars),
+      length: chars.length(),
+      diagnostics: parsed.diagnostics
+    )
+    console.print(rendered.take(rendered.length() - 1))
+  end
+  if has_error(parsed.diagnostics) then environment.exit(1) end
+end
+
+function has_error(diagnostics: List of Diagnostic) returns Boolean
+  for each diagnostic in diagnostics
+    if diagnostic.is_error then return true end
+  end
+  return false
 end

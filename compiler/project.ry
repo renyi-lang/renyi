@@ -6,17 +6,17 @@ import std.environment
 import std.filesystem exposing Path
 import std.json exposing JsonValue, JsonError
 import ast exposing Module, Span
-import lexer exposing LexError
-import parser exposing ParseError
+import lexer
+import parser
 import report exposing Diagnostic
 import declare exposing World, PackageTag
 import bodies exposing Reference
 import effects
 
 public type Front is one of
-  purpose: What the front end made of a text: a tree, or the diagnostic that stopped it.
+  purpose: What the front end made of a text: its tree, or a partial tree with the syntax errors.
   Parsed(tree: Module)
-  Rejected(diagnostic: Diagnostic)
+  Rejected(tree: Module, diagnostics: List of Diagnostic)
 end
 
 public type Source
@@ -232,7 +232,7 @@ function file_source(name: Text, text: Text, package: maybe PackageTag) returns 
 
   let chars be text.characters()
   let starts be report.line_starts(chars)
-  let front be front_end(text: text, declarations: false)
+  let front be front_end(text: text, chars: chars, declarations: false)
   return Source(
     name: name,
     text: text,
@@ -259,31 +259,15 @@ public function has_error(diagnostics: List of Diagnostic) returns Boolean
   return false
 end
 
-public function front_end(text: Text, declarations: Boolean) returns Front
-  purpose: Lex and parse a text; the first problem stops the front end.
+public function front_end(text: Text, chars: List of Text, declarations: Boolean) returns Front
+  purpose: Lex and parse a text; a syntax error rejects it, with every diagnostic found.
 
-  let tokens be
-    match lexer.lex(text)
-      when success(tokens) then tokens
-      when failure(LexError(message, position)) then
-        return Rejected(diagnostic: syntax_error(message: message, position: position))
-    end
-  match parser.parse(tokens: tokens, declarations: declarations)
-    when success(tree) then return Parsed(tree: tree)
-    when failure(ParseError(message, position)) then
-      return Rejected(diagnostic: syntax_error(message: message, position: position))
+  let lexed be lexer.lex(text)
+  let parsed be parser.parse(lexed: lexed, chars: chars, declarations: declarations)
+  if has_error(parsed.diagnostics) then
+    return Rejected(tree: parsed.tree, diagnostics: parsed.diagnostics)
   end
-end
-
-function syntax_error(message: Text, position: Integer) returns Diagnostic
-  purpose: A lexer's or parser's problem as a diagnostic.
-
-  return report.error(
-    code: "syntax",
-    message: message,
-    span: Span(start: position, stop: position),
-    fix: "fix the syntax first; `renyi check` names the problem and its fix"
-  )
+  return Parsed(tree: parsed.tree)
 end
 
 public function library_trees(directory: Text) returns List of Module needs filesystem.read
@@ -299,10 +283,11 @@ function library_tree(directory: Text, name: Text) returns Module needs filesyst
   let text be filesystem.read_text(
     Path(path)
   ) otherwise crash with "cannot read the library file {path}"
-  match front_end(text: text, declarations: true)
+  match front_end(text: text, chars: text.characters(), declarations: true)
     when Parsed(tree) then return tree
-    when Rejected(diagnostic) then
-      crash with "the library file {path} does not parse: {diagnostic.message}"
+    when Rejected(diagnostics) then
+      let head be diagnostics.first() otherwise crash with "the library file {path} does not parse"
+      crash with "the library file {path} does not parse: {head.message}"
   end
 end
 
@@ -313,9 +298,9 @@ public function check_project(files: List of Source, library: List of Module) re
   let mutable modules: List of CheckedModule be []
   for each file in files
     match file.front
-      when Rejected(diagnostic) then
+      when Rejected(diagnostics) then
         change modules to modules.append(
-          CheckedModule(id: nothing, path: file.name, diagnostics: [diagnostic], references: [])
+          CheckedModule(id: nothing, path: file.name, diagnostics: diagnostics, references: [])
         )
       when Parsed(tree) then
         let mutable diagnostics: List of Diagnostic be []
@@ -504,22 +489,23 @@ function manifest_dependencies(manifest: maybe Manifest) returns List of Text
 end
 
 function pending_imports(front: Front, origin: Origin, importer: Text) returns List of Pending
-  purpose: The imports of a parsed file, in order, without the library's; none when unparsed.
+  purpose: The imports of a file, without the library's; a rejected file's partial tree counts too.
 
-  match front
-    when Parsed(tree) then
-      let pending be
-        for each imported in tree.imports
-        where not is_library_import(effects.names_of(imported.path))
-        collect Pending(
-          path: effects.names_of(imported.path),
-          origin: origin,
-          importer: importer,
-          span: imported.span
-        )
-      return pending
-    when Rejected then return []
-  end
+  let tree be
+    match front
+      when Parsed(tree) then tree
+      when Rejected(tree) then tree
+    end
+  let pending be
+    for each imported in tree.imports
+    where not is_library_import(effects.names_of(imported.path))
+    collect Pending(
+      path: effects.names_of(imported.path),
+      origin: origin,
+      importer: importer,
+      span: imported.span
+    )
+  return pending
 end
 
 function is_library_import(path: List of Text) returns Boolean

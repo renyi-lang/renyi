@@ -1,7 +1,8 @@
 module lexer
-  purpose: Source text to tokens, by the rules of the reference's section 1.
+  purpose: Source text to tokens and diagnostics, by the rules of the reference's section 1.
 
 import ast exposing Span
+import report exposing Diagnostic
 
 public type TokenKind is one of
   purpose: What a token is; a phrase such as `is at least` is one Word.
@@ -17,6 +18,7 @@ public type TokenKind is one of
   CommentToken
   LineBreak
   Symbol(text: Text)
+  ErrorToken
   EndOfFile
 end
 
@@ -33,16 +35,16 @@ public type Token
   has span: Span
 end
 
-public type LexError
-  purpose: A character the lexer cannot read, at a character offset.
-  has message: Text
-  has position: Integer
-  can ToText
+public type Lexed
+  purpose: The tokens of a text, ending with EndOfFile, and the lexer's diagnostics in source order.
+  has tokens: List of Token
+  has diagnostics: List of Diagnostic
 end
 
 type Step
-  purpose: The tokens one step of the lexer produced and where the next step starts.
+  purpose: What one step of the lexer produced and where the next step starts.
   has tokens: List of Token
+  has diagnostics: List of Diagnostic
   has next: Integer
 end
 
@@ -56,6 +58,12 @@ type BlockLines
   purpose: The content lines of a block text and the span of its closing quotes.
   has lines: List of Span
   has closing: Span
+end
+
+type Segment
+  purpose: The parts of a text literal's content and the diagnostics met in it.
+  has parts: List of Part
+  has diagnostics: List of Diagnostic
 end
 
 let reserved_words: List of Text be [
@@ -187,103 +195,148 @@ let clause_words: List of Text be ["purpose", "tags", "see also", "deprecated"]
 
 let symbols: List of Text be ["(", ")", "[", "]", "\{", "}", ",", ":", ".", "+", "-", "*", "/"]
 
-let foreign_symbols: List of Text be [
-  "=",
-  "<",
-  ">",
-  ";",
-  "!",
-  "&",
-  "|",
-  "%",
-  "^",
-  "~",
-  "?",
-  "@",
-  "$",
-  "`",
-  "\\",
-  "'"
-]
+let operator_symbols: List of Text be ["!", "&", "|", "%", "^", "~", "?", "@", "$", "`", "\\", "'"]
 
-public function lex(source: Text) returns List of Token or fails with LexError
-  purpose: The tokens of a whole source text, ending with EndOfFile.
+let operator_tail: List of Text be ["=", "<", ">", "!", "&", "|"]
+
+let carriage_return_base64: Text be "DQ=="
+
+public function lex(source: Text) returns Lexed
+  purpose: The tokens of a whole source text, ending with EndOfFile, and every problem met.
 
   let chars be source.characters()
   let limit be chars.length()
-  let tokens be lex_range(chars: chars, start: 0, limit: limit) otherwise fail
+  let lexed be lex_range(chars: chars, start: 0, limit: limit)
   let eof be Token(kind: EndOfFile, text: "", span: Span(start: limit, stop: limit))
-  return tokens.append(eof)
+  return Lexed(tokens: lexed.tokens.append(eof), diagnostics: lexed.diagnostics)
 end
 
-function lex_range(chars: List of Text, start: Integer, limit: Integer)
-  returns List of Token
-  or fails with LexError
-
+function lex_range(chars: List of Text, start: Integer, limit: Integer) returns Lexed
   let mutable tokens: List of Token be []
+  let mutable diagnostics: List of Diagnostic be []
   let mutable position be start
   repeat until position is at least limit
-    let step be next_step(
-      chars: chars,
-      position: position,
-      limit: limit,
-      previous: tokens.last()
-    ) otherwise fail
+    let step be next_step(chars: chars, position: position, limit: limit, previous: tokens.last())
     change tokens to tokens.append_all(step.tokens)
+    change diagnostics to diagnostics.append_all(step.diagnostics)
     change position to step.next
   end
-  return tokens
+  return Lexed(tokens: tokens, diagnostics: diagnostics)
 end
 
 function next_step(chars: List of Text, position: Integer, limit: Integer, previous: maybe Token)
   returns Step
-  or fails with LexError
 
   let ch be char_at(chars: chars, index: position)
-  if ch is " " then return Step(tokens: [], next: position + 1) end
+  if ch is " " then return Step(tokens: [], diagnostics: [], next: position + 1) end
   if ch is "\n" then
     return single(kind: LineBreak, chars: chars, start: position, stop: position + 1)
   end
   if ch is "#" then return lex_comment(chars: chars, position: position, limit: limit) end
   if ch is "\"" then
-    return lex_text(
-      chars: chars,
-      position: position,
-      limit: limit,
-      previous: previous
-    ) otherwise fail
+    return lex_text(chars: chars, position: position, limit: limit, previous: previous)
   end
-  if is_digit(ch) then
-    return lex_number(chars: chars, position: position, limit: limit) otherwise fail
-  end
+  if is_digit(ch) then return lex_number(chars: chars, position: position, limit: limit) end
   if is_lower(ch) then
-    return lex_word(
-      chars: chars,
-      position: position,
-      limit: limit,
-      previous: previous
-    ) otherwise fail
+    return lex_word(chars: chars, position: position, limit: limit, previous: previous)
   end
-  if is_upper(ch) then
-    return lex_type_name(chars: chars, position: position, limit: limit) otherwise fail
-  end
+  if is_upper(ch) then return lex_type_name(chars: chars, position: position, limit: limit) end
   if symbols.contains(ch) then
     return single(kind: Symbol(text: ch), chars: chars, start: position, stop: position + 1)
   end
-  if ch is "\t" then fail with LexError(message: "tab character", position: position) end
-  if ch.trim() is "" then
-    fail with LexError(
-      message: "a carriage return or another whitespace character",
-      position: position
+  return other_step(chars: chars, position: position, limit: limit, ch: ch)
+end
+
+function other_step(chars: List of Text, position: Integer, limit: Integer, ch: Text) returns Step
+  purpose: A character no token starts with: other whitespace, another language's symbol.
+
+  let span be Span(start: position, stop: position + 1)
+  if ch is "\t" then
+    let diagnostic be report.error(
+      code: "tab",
+      message: "tab character; Renyi indents with two spaces",
+      span: span,
+      fix: "replace the tab with spaces"
     )
+    return Step(tokens: [], diagnostics: [diagnostic], next: position + 1)
   end
-  if foreign_symbols.contains(ch) then
-    fail with LexError(message: "`{ch}` is not Renyi", position: position)
+  if ch.to_bytes().to_base64() is carriage_return_base64 then
+    let diagnostic be report.bare_error(
+      code: "crlf",
+      message: "carriage return; Renyi files use LF line endings",
+      span: span
+    )
+    return Step(tokens: [], diagnostics: [diagnostic], next: position + 1)
+  end
+  if ch is "=" or ch is "<" or ch is ">" or ch is ";" or operator_symbols.contains(ch) then
+    return symbol_error(chars: chars, position: position, limit: limit, ch: ch)
   end
   if ch is "_" then
-    fail with LexError(message: "a name cannot start with an underscore", position: position)
+    let stop be scan_while(chars: chars, start: position, limit: limit, keep: is_word_char)
+    let diagnostic be report.error(
+      code: "identifier-shape",
+      message: "a name cannot start with an underscore",
+      span: Span(start: position, stop: stop),
+      fix: "start the name with a lowercase letter"
+    )
+    return error_token(chars: chars, start: position, stop: stop, diagnostic: diagnostic)
   end
-  fail with LexError(message: "unexpected character `{ch}`", position: position)
+  let diagnostic be report.error(
+    code: "unknown-character",
+    message: "unexpected character `{ch}`",
+    span: span,
+    fix: "remove it, or put it inside a text literal"
+  )
+  return error_token(chars: chars, start: position, stop: position + 1, diagnostic: diagnostic)
+end
+
+function symbol_error(chars: List of Text, position: Integer, limit: Integer, ch: Text) returns Step
+  purpose: A symbol of another language, with the following operator characters as one error token.
+
+  let stop be scan_while(chars: chars, start: position + 1, limit: limit, keep: is_operator_tail)
+  let found be slice(chars: chars, start: position, stop: stop)
+  let single_message be
+    if ch is "<" or ch is ">" then "`<` and `>` are not Renyi" otherwise "`{ch}` is not Renyi" end
+  let message be
+    if found.length() is greater than 1 then "`{found}` is not Renyi" otherwise single_message end
+  let span be Span(start: position, stop: stop)
+  let diagnostic be report.error(
+    code: symbol_code(ch),
+    message: message,
+    span: span,
+    fix: symbol_fix(ch)
+  )
+  return error_token(chars: chars, start: position, stop: stop, diagnostic: diagnostic)
+end
+
+function symbol_code(ch: Text) returns Text
+  if ch is "=" then return "equals-sign" end
+  if ch is "<" or ch is ">" then return "angle-comparison" end
+  if ch is ";" then return "semicolon" end
+  return "symbolic-operator"
+end
+
+function symbol_fix(ch: Text) returns Text
+  if ch is "=" then
+    return "write `let name be value` to define, `change name to value` to change, `is` to compare"
+  end
+  if ch is "<" or ch is ">" then
+    return "write `is less than`, `is at most`, `is greater than` or `is at least`"
+  end
+  if ch is ";" then return "one statement per line, no terminator" end
+  return "use the English word for the operation (`and`, `or`, `not`, `remainder`, `power`)"
+end
+
+function error_token(chars: List of Text, start: Integer, stop: Integer, diagnostic: Diagnostic)
+  returns Step
+  purpose: An error token over the characters a diagnostic is about, as the Rust lexer pushes one.
+
+  let token be Token(
+    kind: ErrorToken,
+    text: slice(chars: chars, start: start, stop: stop),
+    span: Span(start: start, stop: stop)
+  )
+  return Step(tokens: [token], diagnostics: [diagnostic], next: stop)
 end
 
 function single(kind: TokenKind, chars: List of Text, start: Integer, stop: Integer) returns Step
@@ -292,7 +345,13 @@ function single(kind: TokenKind, chars: List of Text, start: Integer, stop: Inte
     text: slice(chars: chars, start: start, stop: stop),
     span: Span(start: start, stop: stop)
   )
-  return Step(tokens: [token], next: stop)
+  return Step(tokens: [token], diagnostics: [], next: stop)
+end
+
+function flagged(step: Step, diagnostic: Diagnostic) returns Step
+  purpose: A step with a diagnostic about the token it produced all the same.
+
+  return step with diagnostics: step.diagnostics.append(diagnostic)
 end
 
 function char_at(chars: List of Text, index: Integer) returns Text
@@ -337,6 +396,10 @@ function is_space(ch: Text) returns Boolean
   return ch is " "
 end
 
+function is_operator_tail(ch: Text) returns Boolean
+  return ch is not "" and operator_tail.contains(ch)
+end
+
 function scan_while(
   chars: List of Text,
   start: Integer,
@@ -375,15 +438,46 @@ function previous_is_adjacent_dot(previous: maybe Token, start: Integer) returns
   end
 end
 
+public function pascal_case(text: Text) returns Text
+  purpose: `user_record` as `UserRecord`: the spelling of a type name (decision C5), for a fix.
+
+  let mutable out be ""
+  for each part in text.split("_")
+    if part is not "" then change out to "{out}{part.take(1).to_upper()}{part.drop(1)}" end
+  end
+  return out
+end
+
+public function snake_case(text: Text) returns Text
+  purpose: `userName` as `user_name`, `HTTPClient` as `http_client` (decision C5), for a fix.
+
+  let chars be text.characters()
+  let mutable out be ""
+  let mutable index be 0
+  for each ch in chars
+    if is_upper(ch) then
+      let previous be char_at(chars: chars, index: index - 1)
+      let following be char_at(chars: chars, index: index + 1)
+      let after_lower be index is greater than 0 and (is_lower(previous) or is_digit(previous))
+      let after_upper be index is greater than 0 and is_upper(previous)
+      if (after_lower or (after_upper and is_lower(following))) and not out.ends_with("_") then
+        change out to "{out}_"
+      end
+      change out to "{out}{ch.to_lower()}"
+    otherwise
+      change out to "{out}{ch}"
+    end
+    change index to index + 1
+  end
+  return out
+end
+
 function lex_comment(chars: List of Text, position: Integer, limit: Integer) returns Step
   let stop be line_end(chars: chars, position: position, limit: limit)
   return single(kind: CommentToken, chars: chars, start: position, stop: stop)
 end
 
-function lex_number(chars: List of Text, position: Integer, limit: Integer)
-  returns Step
-  or fails with LexError
-
+function lex_number(chars: List of Text, position: Integer, limit: Integer) returns Step
   let mutable stop be scan_while(
     chars: chars,
     start: position,
@@ -398,37 +492,67 @@ function lex_number(chars: List of Text, position: Integer, limit: Integer)
     change kind to DecimalToken
   end
   let next_char be char_at(chars: chars, index: stop)
-  if stop is less than limit and is_alphanumeric_or_underscore(next_char) then
-    fail with LexError(message: "a number cannot run into letters", position: position)
+  let runs_on be is_lower(next_char) or is_upper(next_char) or next_char is "_"
+  if stop is less than limit and runs_on then
+    let bad_stop be scan_while(
+      chars: chars,
+      start: stop,
+      limit: limit,
+      keep: is_alphanumeric_or_underscore
+    )
+    let diagnostic be report.error(
+      code: "number-shape",
+      message: "a number cannot run into letters",
+      span: Span(start: position, stop: bad_stop),
+      fix: "separate the number and the name with a space or an operator"
+    )
+    return error_token(chars: chars, start: position, stop: bad_stop, diagnostic: diagnostic)
   end
+  let step be single(kind: kind, chars: chars, start: position, stop: stop)
   if char_at(chars: chars, index: stop - 1) is "_" then
-    fail with LexError(message: "a number cannot end with an underscore", position: position)
+    let diagnostic be report.bare_error(
+      code: "number-shape",
+      message: "a number cannot end with an underscore",
+      span: Span(start: position, stop: stop)
+    )
+    return flagged(step: step, diagnostic: diagnostic)
   end
-  return single(kind: kind, chars: chars, start: position, stop: stop)
+  return step
 end
 
-function lex_type_name(chars: List of Text, position: Integer, limit: Integer)
-  returns Step
-  or fails with LexError
-
+function lex_type_name(chars: List of Text, position: Integer, limit: Integer) returns Step
   let stop be scan_while(chars: chars, start: position, limit: limit, keep: is_alphanumeric)
   if stop is less than limit and char_at(chars: chars, index: stop) is "_" then
-    fail with LexError(
-      message: "type, ability and variant names are PascalCase without underscores",
-      position: position
+    let full_stop be scan_while(
+      chars: chars,
+      start: stop,
+      limit: limit,
+      keep: is_alphanumeric_or_underscore
     )
+    let diagnostic be report.error(
+      code: "type-name-shape",
+      message: "type, ability and variant names are PascalCase without underscores",
+      span: Span(start: position, stop: full_stop),
+      fix: "remove the underscores and capitalize each word"
+    )
+    return error_token(chars: chars, start: position, stop: full_stop, diagnostic: diagnostic)
   end
   return single(kind: TypeIdentifier, chars: chars, start: position, stop: stop)
 end
 
 function lex_word(chars: List of Text, position: Integer, limit: Integer, previous: maybe Token)
   returns Step
-  or fails with LexError
 
   let stop be scan_while(chars: chars, start: position, limit: limit, keep: is_word_char)
   let text be slice(chars: chars, start: position, stop: stop)
   if stop is less than limit and is_upper(char_at(chars: chars, index: stop)) then
-    fail with LexError(message: "name `{text}` is not snake_case", position: position)
+    return camel_case_word(
+      chars: chars,
+      position: position,
+      stop: stop,
+      limit: limit,
+      previous: previous
+    )
   end
   if previous_is_adjacent_dot(previous: previous, start: position) then
     return single(kind: MemberName, chars: chars, start: position, stop: stop)
@@ -436,16 +560,58 @@ function lex_word(chars: List of Text, position: Integer, limit: Integer, previo
   if reserved_words.contains(text) then
     return lex_reserved(chars: chars, position: position, stop: stop, limit: limit)
   end
+  let step be single(kind: Identifier, chars: chars, start: position, stop: stop)
+  let span be Span(start: position, stop: stop)
   if text.length() is 1 then
-    fail with LexError(message: "single-letter name `{text}`", position: position)
+    let diagnostic be report.error(
+      code: "single-letter-identifier",
+      message: "single-letter name `{text}`",
+      span: span,
+      fix: "use a word that says what the value is"
+    )
+    return flagged(step: step, diagnostic: diagnostic)
   end
   if text.ends_with("_") or text.contains("__") then
-    fail with LexError(
+    let diagnostic be report.error(
+      code: "identifier-shape",
       message: "name `{text}` has a trailing or doubled underscore",
-      position: position
+      span: span,
+      fix: "separate words with single underscores"
     )
+    return flagged(step: step, diagnostic: diagnostic)
   end
-  return single(kind: Identifier, chars: chars, start: position, stop: stop)
+  return step
+end
+
+function camel_case_word(
+  chars: List of Text,
+  position: Integer,
+  stop: Integer,
+  limit: Integer,
+  previous: maybe Token
+)
+  returns Step
+  purpose: `userName`: one name in another language's casing (decision C5), kept as one token.
+
+  let full_stop be scan_while(
+    chars: chars,
+    start: stop,
+    limit: limit,
+    keep: is_alphanumeric_or_underscore
+  )
+  let full be slice(chars: chars, start: position, stop: full_stop)
+  let kind be
+    if previous_is_adjacent_dot(previous: previous, start: position) then MemberName
+    otherwise Identifier
+    end
+  let diagnostic be report.error(
+    code: "identifier-shape",
+    message: "name `{full}` is not snake_case",
+    span: Span(start: position, stop: full_stop),
+    fix: "write `{snake_case(full)}`"
+  )
+  let step be single(kind: kind, chars: chars, start: position, stop: full_stop)
+  return flagged(step: step, diagnostic: diagnostic)
 end
 
 function lex_reserved(chars: List of Text, position: Integer, stop: Integer, limit: Integer)
@@ -485,7 +651,8 @@ function lex_reserved(chars: List of Text, position: Integer, stop: Integer, lim
       text: clause,
       span: Span(start: text_start, stop: text_stop)
     )
-    return Step(tokens: word.tokens.append(colon_token).append(clause_token), next: text_stop)
+    let tokens be word.tokens.append(colon_token).append(clause_token)
+    return Step(tokens: tokens, diagnostics: [], next: text_stop)
   end
   return word
 end
@@ -523,34 +690,33 @@ end
 
 function lex_text(chars: List of Text, position: Integer, limit: Integer, previous: maybe Token)
   returns Step
-  or fails with LexError
 
   if slice(chars: chars, start: position, stop: position + 3) is "\"\"\"" then
-    return lex_block_text(chars: chars, position: position, limit: limit) otherwise fail
+    return lex_block_text(chars: chars, position: position, limit: limit)
   end
   let raw_pending be
     match previous
       when some(token) then token.kind is Word(spelling: "raw")
       otherwise false
     end
-  if raw_pending then
-    return lex_raw_text(chars: chars, position: position, limit: limit) otherwise fail
-  end
-  return lex_simple_text(chars: chars, position: position, limit: limit) otherwise fail
+  if raw_pending then return lex_raw_text(chars: chars, position: position, limit: limit) end
+  return lex_simple_text(chars: chars, position: position, limit: limit)
 end
 
-function lex_raw_text(chars: List of Text, position: Integer, limit: Integer)
-  returns Step
-  or fails with LexError
-
+function lex_raw_text(chars: List of Text, position: Integer, limit: Integer) returns Step
   let mutable stop be position + 1
   repeat until stop is at least limit
     or char_at(chars: chars, index: stop) is "\""
     or char_at(chars: chars, index: stop) is "\n"
     change stop to stop + 1
   end
-  if char_at(chars: chars, index: stop) is not "\"" then
-    fail with LexError(message: "raw text without a closing quote", position: position)
+  if stop is at least limit or char_at(chars: chars, index: stop) is not "\"" then
+    let diagnostic be report.bare_error(
+      code: "unterminated-text",
+      message: "raw text without a closing quote",
+      span: Span(start: position, stop: stop)
+    )
+    return error_token(chars: chars, start: position, stop: stop, diagnostic: diagnostic)
   end
   let content be slice(chars: chars, start: position + 1, stop: stop)
   return single(kind: RawToken(text: content), chars: chars, start: position, stop: stop + 1)
@@ -584,36 +750,51 @@ function hole_close(chars: List of Text, position: Integer, limit: Integer) retu
   return index + 1
 end
 
-function lex_simple_text(chars: List of Text, position: Integer, limit: Integer)
-  returns Step
-  or fails with LexError
-
+function lex_simple_text(chars: List of Text, position: Integer, limit: Integer) returns Step
   let stop be simple_text_end(chars: chars, position: position, limit: limit)
-  if char_at(chars: chars, index: stop) is not "\"" then
-    fail with LexError(message: "text without a closing quote on the same line", position: position)
+  if stop is at least limit or char_at(chars: chars, index: stop) is not "\"" then
+    let clamped be stop.at_most(limit)
+    let diagnostic be report.error(
+      code: "unterminated-text",
+      message: "text without a closing quote on the same line",
+      span: Span(start: position, stop: clamped),
+      fix: "close the quote, or use `\"\"\"` for text that spans lines"
+    )
+    return error_token(chars: chars, start: position, stop: clamped, diagnostic: diagnostic)
   end
-  let parts be scan_segment(chars: chars, start: position + 1, stop: stop, parts: []) otherwise fail
-  return single(
-    kind: TextToken(parts: parts, is_block: false),
-    chars: chars,
-    start: position,
-    stop: stop + 1
+  let segment be scan_segment(chars: chars, start: position + 1, stop: stop, parts: [])
+  let token be Token(
+    kind: TextToken(parts: segment.parts, is_block: false),
+    text: slice(chars: chars, start: position, stop: stop + 1),
+    span: Span(start: position, stop: stop + 1)
   )
+  return Step(tokens: [token], diagnostics: segment.diagnostics, next: stop + 1)
 end
 
-function lex_block_text(chars: List of Text, position: Integer, limit: Integer)
-  returns Step
-  or fails with LexError
-
+function lex_block_text(chars: List of Text, position: Integer, limit: Integer) returns Step
   let after_quotes be position + 3
   let first_line_end be line_end(chars: chars, position: after_quotes, limit: limit)
+  let mutable diagnostics: List of Diagnostic be []
   if slice(chars: chars, start: after_quotes, stop: first_line_end).trim() is not "" then
-    fail with LexError(
+    let diagnostic be report.error(
+      code: "block-text-start",
       message: "block text starts on the line after the opening quotes",
-      position: position
+      span: Span(start: after_quotes, stop: first_line_end),
+      fix: "move the text to the next line"
     )
+    change diagnostics to [diagnostic]
   end
-  let block be block_lines(chars: chars, cursor: first_line_end, limit: limit) otherwise fail
+  let block be
+    match block_lines(chars: chars, cursor: first_line_end, limit: limit)
+      when some(found) then found
+      when nothing then
+        return unterminated_block(
+          chars: chars,
+          position: position,
+          limit: limit,
+          diagnostics: diagnostics
+        )
+    end
   let indent be common_indent(chars: chars, lines: block.lines)
   let mutable parts: List of Part be []
   let mutable index be 0
@@ -621,24 +802,38 @@ function lex_block_text(chars: List of Text, position: Integer, limit: Integer)
     if index is greater than 0 then change parts to push_text(parts: parts, text: "\n") end
     change index to index + 1
     let content_start be (line.start + indent).at_most(line.stop)
-    change parts to scan_segment(
-      chars: chars,
-      start: content_start,
-      stop: line.stop,
-      parts: parts
-    ) otherwise fail
+    let segment be scan_segment(chars: chars, start: content_start, stop: line.stop, parts: parts)
+    change parts to segment.parts
+    change diagnostics to diagnostics.append_all(segment.diagnostics)
   end
-  return single(
+  let token be Token(
     kind: TextToken(parts: parts, is_block: true),
-    chars: chars,
-    start: position,
-    stop: block.closing.stop
+    text: slice(chars: chars, start: position, stop: block.closing.stop),
+    span: Span(start: position, stop: block.closing.stop)
   )
+  return Step(tokens: [token], diagnostics: diagnostics, next: block.closing.stop)
 end
 
-function block_lines(chars: List of Text, cursor: Integer, limit: Integer)
-  returns BlockLines
-  or fails with LexError
+function unterminated_block(
+  chars: List of Text,
+  position: Integer,
+  limit: Integer,
+  diagnostics: List of Diagnostic
+)
+  returns Step
+  purpose: Block text without closing quotes: one error token to the end of the file.
+
+  let unterminated be report.bare_error(
+    code: "unterminated-block-text",
+    message: "block text without closing `\"\"\"` on its own line",
+    span: Span(start: position, stop: limit)
+  )
+  let step be error_token(chars: chars, start: position, stop: limit, diagnostic: unterminated)
+  return step with diagnostics: diagnostics.append(unterminated)
+end
+
+function block_lines(chars: List of Text, cursor: Integer, limit: Integer) returns maybe BlockLines
+  purpose: The content lines up to the closing quotes on their own line; nothing without them.
 
   let mutable lines: List of Span be []
   let mutable position be cursor
@@ -653,10 +848,7 @@ function block_lines(chars: List of Text, cursor: Integer, limit: Integer)
     change lines to lines.append(Span(start: line_start, stop: line_stop))
     change position to line_stop
   end
-  fail with LexError(
-    message: "block text without closing quotes on their own line",
-    position: cursor
-  )
+  return nothing
 end
 
 function common_indent(chars: List of Text, lines: List of Span) returns Integer
@@ -683,44 +875,84 @@ function push_text(parts: List of Part, text: Text) returns List of Part
 end
 
 function scan_segment(chars: List of Text, start: Integer, stop: Integer, parts: List of Part)
-  returns List of Part
-  or fails with LexError
+  returns Segment
+  purpose: Escapes and `{holes}` within one line of text content, with the diagnostics met.
 
   let mutable out be parts
+  let mutable diagnostics: List of Diagnostic be []
   let mutable buffer be ""
   let mutable position be start
   repeat until position is at least stop
     let ch be char_at(chars: chars, index: position)
     if ch is "\\" then
-      let piece be escape(chars: chars, position: position, stop: stop) otherwise fail
-      change buffer to "{buffer}{piece}"
+      let piece be escape(chars: chars, position: position, stop: stop)
+      change buffer to "{buffer}{piece.text}"
+      change diagnostics to diagnostics.append_all(piece.diagnostics)
       change position to (position + 2).at_most(stop)
     otherwise if ch is "\{" then
       let hole_stop be hole_end(chars: chars, start: position + 1, stop: stop)
       if hole_stop is at least stop then
-        fail with LexError(message: "`\{` without a closing `}` in text", position: position)
+        let unterminated be report.error(
+          code: "unterminated-hole",
+          message: "`\{` without a closing `}` in text",
+          span: Span(start: position, stop: stop),
+          fix: "close the hole, or write `\\\{` for a literal brace"
+        )
+        change diagnostics to diagnostics.append(unterminated)
+        change position to stop
+      otherwise
+        let hole be hole_part(chars: chars, position: position, hole_stop: hole_stop)
+        if buffer is not "" then
+          change out to push_text(parts: out, text: buffer)
+          change buffer to ""
+        end
+        change out to out.append(hole.part)
+        change diagnostics to diagnostics.append_all(hole.diagnostics)
+        change position to hole_stop + 1
       end
-      let hole be slice(chars: chars, start: position + 1, stop: hole_stop)
-      if hole.trim() is "" then
-        fail with LexError(message: "empty `\{}` in text", position: position)
-      end
-      if hole.contains("\"") then
-        fail with LexError(message: "a text literal inside a hole", position: position)
-      end
-      if buffer is not "" then
-        change out to push_text(parts: out, text: buffer)
-        change buffer to ""
-      end
-      let tokens be lex_range(chars: chars, start: position + 1, limit: hole_stop) otherwise fail
-      change out to out.append(HolePart(tokens: tokens))
-      change position to hole_stop + 1
     otherwise
       change buffer to "{buffer}{ch}"
       change position to position + 1
     end
   end
   if buffer is not "" then change out to push_text(parts: out, text: buffer) end
-  return out
+  return Segment(parts: out, diagnostics: diagnostics)
+end
+
+type Hole
+  purpose: The part a hole became and the diagnostics about it, its own tokens' among them.
+  has part: Part
+  has diagnostics: List of Diagnostic
+end
+
+function hole_part(chars: List of Text, position: Integer, hole_stop: Integer) returns Hole
+  purpose: The tokens of a hole; an empty hole or a text literal inside it is reported first.
+
+  let hole_start be position + 1
+  let hole be slice(chars: chars, start: hole_start, stop: hole_stop)
+  let mutable diagnostics: List of Diagnostic be []
+  if hole.trim() is "" then
+    let empty be report.error(
+      code: "empty-hole",
+      message: "empty `\{}` in text",
+      span: Span(start: position, stop: hole_stop + 1),
+      fix: "put an expression in the hole, or write `\\\{}` for a literal brace"
+    )
+    change diagnostics to [empty]
+  otherwise if hole.contains("\"") then
+    let quoted be report.error(
+      code: "text-in-hole",
+      message: "a text literal inside a hole",
+      span: Span(start: hole_start, stop: hole_stop),
+      fix: "bind the text to a name first and use the name in the hole"
+    )
+    change diagnostics to [quoted]
+  end
+  let inner be lex_range(chars: chars, start: hole_start, limit: hole_stop)
+  return Hole(
+    part: HolePart(tokens: inner.tokens),
+    diagnostics: diagnostics.append_all(inner.diagnostics)
+  )
 end
 
 function hole_end(chars: List of Text, start: Integer, stop: Integer) returns Integer
@@ -731,18 +963,28 @@ function hole_end(chars: List of Text, start: Integer, stop: Integer) returns In
   return index
 end
 
-function escape(chars: List of Text, position: Integer, stop: Integer)
-  returns Text
-  or fails with LexError
+type Escape
+  purpose: What an escape sequence stands for, or nothing and a diagnostic for an unknown one.
+  has text: Text
+  has diagnostics: List of Diagnostic
+end
 
-  if position + 1 is at least stop then
-    fail with LexError(message: "unknown escape", position: position)
-  end
+function escape(chars: List of Text, position: Integer, stop: Integer) returns Escape
+  purpose: What an escape stands for; the character after the backslash may lie past the segment.
+
   let code be char_at(chars: chars, index: position + 1)
-  if code is "n" then return "\n" end
-  if code is "t" then return "\t" end
-  if code is "\"" then return "\"" end
-  if code is "\\" then return "\\" end
-  if code is "\{" then return "\{" end
-  fail with LexError(message: "unknown escape `\\{code}`", position: position)
+  if code is "n" then return Escape(text: "\n", diagnostics: []) end
+  if code is "t" then return Escape(text: "\t", diagnostics: []) end
+  if code is "\"" then return Escape(text: "\"", diagnostics: []) end
+  if code is "\\" then return Escape(text: "\\", diagnostics: []) end
+  if code is "\{" then return Escape(text: "\{", diagnostics: []) end
+  let bad_stop be (position + 2).at_most(stop)
+  let shown be slice(chars: chars, start: position, stop: bad_stop)
+  let diagnostic be report.error(
+    code: "unknown-escape",
+    message: "unknown escape `{shown}`",
+    span: Span(start: position, stop: bad_stop),
+    fix: "the escapes are \\n \\t \\\" \\\\ and \\\{"
+  )
+  return Escape(text: "", diagnostics: [diagnostic])
 end

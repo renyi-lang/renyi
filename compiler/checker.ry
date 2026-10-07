@@ -108,7 +108,7 @@ function diagnose(source: Source, library: List of Module, strict: Boolean)
   let mutable diagnostics be
     match source.front
       when Parsed then check_file(source: source, library: library)
-      when Rejected(diagnostic) then [diagnostic]
+      when Rejected(diagnostics) then diagnostics
     end
   change diagnostics to diagnostics.append_all(check_layout(source.chars))
   change diagnostics to report.sorted_by_start(diagnostics)

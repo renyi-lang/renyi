@@ -62,9 +62,9 @@ checker (M2), the project map (`renyi index`), the VM (M3) and packages
   the syntax tree as Renyi types (whose derived JSON is what `renyi parse
   --json` prints), the lexer, the parser, the type and effect checker and
   the bytecode emitter; `renyi run compiler/parse.ry <file>` prints the
-  same tree as `renyi parse --json <file>`, byte for byte on every
-  program of the corpus, the conformance suite, the library and the
-  compiler itself, `renyi run compiler/checker.ry --json <file>` prints
+  same tree and the same diagnostics as `renyi parse --json <file>`,
+  byte for byte on every program of the corpus, the conformance suite,
+  the library and the compiler itself, `renyi run compiler/checker.ry --json <file>` prints
   the same diagnostics as `renyi check --json <file>`, with and without
   `--strict`, on every program of the corpus, the conformance suite and
   the compiler itself, and `renyi run compiler/compile.ry --to

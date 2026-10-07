@@ -338,6 +338,20 @@
       "stdout": "tests/conformance/expected/package_broken.out",
       "diagnostics": ["manifest-invalid"],
       "exit_code": 1
+    },
+    {
+      "name": "the lexer reports every bad character with a fix and reads on",
+      "command": "check",
+      "program": "tests/conformance/programs/lexer_errors.ry",
+      "diagnostics": ["equals-sign", "semicolon", "tab", "identifier-shape", "symbolic-operator", "unterminated-text", "empty-hole"],
+      "exit_code": 1
+    },
+    {
+      "name": "the parser reports every syntax error with a fix and recovers",
+      "command": "check",
+      "program": "tests/conformance/programs/syntax_recovery.ry",
+      "diagnostics": ["foreign-keyword", "reserved-word", "otherwise-line", "statement-shape", "hole-syntax", "expected"],
+      "exit_code": 1
     }
   ]
 }

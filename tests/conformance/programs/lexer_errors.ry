@@ -1,0 +1,11 @@
+module lexer_errors
+  purpose: Characters the lexer refuses: each is reported with a fix and the file read on.
+
+import std.console
+
+function main() needs console
+  let total = 1;
+	let userName be total != 2
+  let value be "unterminated
+  console.print("{}")
+end

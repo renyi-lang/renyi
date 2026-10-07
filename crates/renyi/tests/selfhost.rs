@@ -1,17 +1,17 @@
 //! The judges of the self-hosted front end. Decision W3: the parser written
 //! in Renyi (`compiler/parse.ry`, run on the VM) must print, for every
-//! program the Rust parser accepts, the document `renyi parse --json`
-//! prints, byte for byte, and must reject every program the Rust parser
-//! rejects; the inputs are the corpus, the conformance programs, the
+//! program, the document `renyi parse --json` prints, byte for byte (the
+//! tree, then the diagnostics when there are any, decision AD1), and exit
+//! as it exits; the inputs are the corpus, the conformance programs, the
 //! compiler's own sources and, with `--declarations`, the library
 //! declarations. Decision W7: the checker written in Renyi
-//! (`compiler/checker.ry`) must print, for every program the Rust parser
-//! accepts, what `renyi check --json` prints, with and without `--strict`,
-//! and exit as it exits; the library declarations are not programs, so
-//! they are left out. Decision Z3: the compiler written in Renyi
-//! (`compiler/compile.ry`) must write, for every program `renyi compile`
-//! accepts, the bytecode file it writes, byte for byte, and must refuse
-//! every program it refuses.
+//! (`compiler/checker.ry`) must print, for every program, what `renyi
+//! check --json` prints, with and without `--strict`, and exit as it
+//! exits; the library declarations are not programs, so they are left
+//! out. Decision Z3: the compiler written in Renyi (`compiler/compile.ry`)
+//! must write, for every program `renyi compile` accepts, the bytecode
+//! file it writes, byte for byte, and must refuse every program it
+//! refuses, printing the diagnostics it prints.
 //!
 //! Each judge runs its driver from the bytecode file `renyi compile`
 //! writes of it when the test starts (`target/selfhost/front/<driver>.ryc`,
@@ -107,7 +107,8 @@ fn first_difference(expected: &[u8], got: &[u8]) -> String {
 }
 
 /// What the Renyi parser, run from `parser`, got wrong on one program;
-/// `None` when it agreed with the Rust parser.
+/// `None` when it printed what the Rust parser printed, the diagnostics
+/// of a rejected program included, and exited as it exited.
 fn judge(program: &Path, declarations: bool, parser: &str) -> Option<String> {
     let mut rust_args = vec!["parse", "--json"];
     let mut self_args = vec!["run", parser];
@@ -122,31 +123,27 @@ fn judge(program: &Path, declarations: bool, parser: &str) -> Option<String> {
         .unwrap_or(program)
         .display()
         .to_string();
-    if rust.status.success() {
-        if !own.status.success() {
-            return Some(format!(
-                "{name}: the Rust parser accepts it, the Renyi parser fails:\n  {}",
-                String::from_utf8_lossy(&own.stderr).trim()
-            ));
-        }
-        if rust.stdout != own.stdout {
-            return Some(format!(
-                "{name}: the two trees differ at {}",
-                first_difference(&rust.stdout, &own.stdout)
-            ));
-        }
-    } else if own.status.success() {
+    if rust.status.code() != own.status.code() {
         return Some(format!(
-            "{name}: the Rust parser rejects it, the Renyi parser accepts it"
+            "{name}: `renyi parse` exits with {:?}, the Renyi parser with {:?}:\n  {}",
+            rust.status.code(),
+            own.status.code(),
+            String::from_utf8_lossy(&own.stderr).trim()
+        ));
+    }
+    if rust.stdout != own.stdout {
+        return Some(format!(
+            "{name}: the two documents differ at {}",
+            first_difference(&rust.stdout, &own.stdout)
         ));
     }
     None
 }
 
 /// What the Renyi checker, run from `checker`, got wrong on one program,
-/// in one mode; `None` when it agreed with the Rust checker. A program the
-/// Rust parser rejects only has to fail.
-fn judge_checker(program: &Path, parses: bool, strict: bool, checker: &str) -> Option<String> {
+/// in one mode; `None` when it agreed with the Rust checker, on a program
+/// with syntax errors too.
+fn judge_checker(program: &Path, strict: bool, checker: &str) -> Option<String> {
     let mut rust_args = vec!["check", "--json"];
     let mut self_args = vec!["run", checker, "--json"];
     if strict {
@@ -160,14 +157,6 @@ fn judge_checker(program: &Path, parses: bool, strict: bool, checker: &str) -> O
         .display()
         .to_string();
     let mode = if strict { " (--strict)" } else { "" };
-    if !parses {
-        if own.status.success() {
-            return Some(format!(
-                "{name}{mode}: the Rust parser rejects it, the Renyi checker accepts it"
-            ));
-        }
-        return None;
-    }
     let rust = renyi(&rust_args, program);
     if rust.status.code() != own.status.code() {
         return Some(format!(
@@ -188,7 +177,8 @@ fn judge_checker(program: &Path, parses: bool, strict: bool, checker: &str) -> O
 
 /// What the Renyi compiler, run from `compiler`, got wrong on one program,
 /// named relative to the workspace root with `/`; `None` when it wrote
-/// what `renyi compile` writes, or refused what it refuses.
+/// what `renyi compile` writes, or refused what it refuses with the same
+/// diagnostics on the standard output.
 fn judge_emitter(name: &str, compiler: &str) -> Option<String> {
     let rust_target = bytecode_target("rust", name);
     let own_target = bytecode_target("self", name);
@@ -197,13 +187,21 @@ fn judge_emitter(name: &str, compiler: &str) -> Option<String> {
     let own_to = own_target.to_string_lossy().to_string();
     let rust = renyi(&["compile", "--to", &rust_to], Path::new(name));
     let own = renyi(&["run", compiler, "--to", &own_to], Path::new(name));
+    if rust.status.code() != own.status.code() {
+        return Some(format!(
+            "{name}: `renyi compile` exits with {:?}, the Renyi compiler with {:?}:\n  {}",
+            rust.status.code(),
+            own.status.code(),
+            String::from_utf8_lossy(&own.stderr).trim()
+        ));
+    }
+    if rust.stdout != own.stdout {
+        return Some(format!(
+            "{name}: the diagnostics differ at {}",
+            first_difference(&rust.stdout, &own.stdout)
+        ));
+    }
     if rust.status.success() {
-        if !own.status.success() {
-            return Some(format!(
-                "{name}: `renyi compile` accepts it, the Renyi compiler fails:\n  {}",
-                String::from_utf8_lossy(&own.stderr).trim()
-            ));
-        }
         let expected = std::fs::read(&rust_target).expect("the file `renyi compile` wrote");
         let got = std::fs::read(&own_target).unwrap_or_default();
         if expected != got {
@@ -212,10 +210,6 @@ fn judge_emitter(name: &str, compiler: &str) -> Option<String> {
                 first_difference(&expected, &got)
             ));
         }
-    } else if own.status.success() {
-        return Some(format!(
-            "{name}: `renyi compile` rejects it, the Renyi compiler accepts it"
-        ));
     }
     None
 }
@@ -271,9 +265,7 @@ fn the_renyi_checker_prints_what_the_rust_checker_prints() {
     }
     assert!(programs.len() >= 70, "{} programs", programs.len());
     let problems = judge_all(programs, |program| {
-        let parses = renyi(&["parse"], program).status.success();
-        judge_checker(program, parses, false, &checker)
-            .or_else(|| judge_checker(program, parses, true, &checker))
+        judge_checker(program, false, &checker).or_else(|| judge_checker(program, true, &checker))
     });
     assert!(problems.is_empty(), "\n{}", problems.join("\n"));
 }

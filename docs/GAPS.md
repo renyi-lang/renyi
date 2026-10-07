@@ -560,11 +560,12 @@ remaining performance items as a profile calls for them, or stage 3.
 
 The owner chose stage 3 (M4) and, beside it, the parity of the Renyi
 front end's diagnostics with the Rust parser's (the difference the
-judges tolerate on a rejected program). Decision AC1 answered the four
+judges tolerated on a rejected program; done, decision AD1: the Rust
+lexer's and parser's codes, fixes and recovery in `compiler/lexer.ry`
+and `parser.ry`, the three judges byte-equal on every program). Decision AC1 answered the four
 questions of packages; its first commit holds the manifest, the
 lockfile, the registry layout and the resolver in both front ends, with
 the package fixture of the conformance suite under the three judges; its
 second commit the commands (`renyi add`, `update`, `audit`, `fetch`,
 `publish`), the dependencies in the run manifest and the budgets of the
-manifest. Next: `std.process`, then the foreign function interface, and
-the parity of the Renyi front end's diagnostics.
+manifest. Next: `std.process`, then the foreign function interface.

@@ -1876,3 +1876,37 @@ manifests through `std.json`, whose maps keep one value per key, so a key
 given twice is refused by the Rust resolver alone, as is a budget spelled
 `1.0` or `1e2` or a version part beyond 64 bits; the two are left to
 differ there. (user)
+
+## AD. The diagnostics of the front end in Renyi (session 8)
+
+**AD1. The front end written in Renyi reports what the Rust front end
+reports: every diagnostic with its code, message, span and fix, and the
+same recovery.** The "2" of the owner's answer "1+2" of 2026-10-07
+(stage 3 and, beside it, this). Until this entry `compiler/lexer.ry`
+and `parser.ry` stopped at the first problem with a message and an
+offset, and the judges of `crates/renyi/tests/selfhost.rs` asked only
+that both front ends reject the same programs; a toolchain in Renyi
+that answers for `renyi check` and `renyi compile` must say what they
+say on a broken file too. The rule: (i) the lexer and the parser in
+Renyi carry every error site of `crates/renyi_syntax/src/lexer.rs` and
+`parser.rs` with the code, the message, the span and the fix verbatim,
+and recover where the Rust ones recover (the lexer reads on after a bad
+character, which becomes an `ErrorToken`; the parser skips to the end
+of the line after a bad import, statement, clause or example and to the
+next item at the margin after a bad item, and keeps the partial tree);
+the parser's `Cursor` carries the diagnostics and its failure `Halt`
+carries the cursor, so that a caller that recovers reads them off it.
+(ii) `renyi run compiler/parse.ry` prints the tree, then the
+diagnostics as `renyi parse --json` prints them, and exits as it exits;
+`checker.ry` and `compile.ry` print a rejected file's diagnostics as
+`renyi check` and `renyi compile` do, and follow the imports of its
+partial tree as the Rust resolver does. (iii) The three judges compare
+the standard output and the exit status on every program, rejected
+ones included (the emitter judge compares the files besides when both
+wrote one); lane probes exercise the error sites no program in the
+repository reaches, and two conformance cases hold a sample. (iv) The
+rule of W7 extends to the front end: a new diagnostic, message or fix
+in the lexer or the parser of `crates/renyi_syntax` is the same change
+in `compiler/lexer.ry` or `compiler/parser.ry` in the same commit. The
+alternative, one `syntax` diagnostic per rejected file, was what
+existed: enough for the trees, not for the toolchain. (user)
