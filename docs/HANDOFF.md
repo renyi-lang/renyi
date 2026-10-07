@@ -16,7 +16,8 @@ decisions Z1 to Z4, with `renyi compile` and the loader; then the rename
 of `set` to `change`, decision AA1; then the emitter written in Renyi,
 `compiler/emit.ry` and `compiler/compile.ry`, held equal to `renyi
 compile` byte for byte by the same test, decision Z3; then constraints
-with type arguments, open item R3-2, decision AB1).
+with type arguments, open item R3-2, decision AB1; then the judges run
+the front end from its bytecode).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -143,8 +144,10 @@ sheet, with `change` (decision AA1).
   [--declarations]` byte for byte (83 programs: 80 equal, 3 rejected by
   both); a second test does the same for the checker (next section);
   a third checks `renyi format --check compiler/*.ry`. CI runs `renyi
-  check compiler/*.ry` besides. Every compiler source is `renyi check`
-  clean (no warnings) and in canonical layout.
+  check compiler/*.ry` besides. Every judge runs its driver from the
+  bytecode `renyi compile` writes of it when the test starts (the
+  section "The judges run from bytecode" below). Every compiler source
+  is `renyi check` clean (no warnings) and in canonical layout.
 - **Speed, the first measurement** (W4): on the VM the lexer and the
   parser take about 0.3 s on `examples/hello.ry`, 0.6 s on the prelude
   declarations, 1.0 s on the 750-line `lexer.ry` and 3.9 s on the
@@ -631,7 +634,9 @@ checked tree into the `Program` of `compiler/bytecode.ry`, and
 - **Time.** The Renyi compiler, run on the VM, compiles a corpus program
   in about a second and `bodies.ry` in about three (checking and
   loading the whole front end included); the judge adds about a minute
-  to `cargo test` on eight threads.
+  to `cargo test` on eight threads. The judges run the front end from
+  its bytecode since the end of the session (the section "The judges
+  run from bytecode" below), which takes the checking out of every run.
 
 ## Constraints with type arguments (decision AB1)
 
@@ -706,6 +711,36 @@ questions and their answers are the entry AB1.
   `at_least`/`at_most` sentence went, the library line keeps them), the
   sketch (section 5, R3-2 in section 18), the library sketch, the
   decisions (section AB), `CLAUDE.md`, `docs/GAPS.md`, this file.
+
+## The judges run from bytecode (session 8, after AB1)
+
+The owner's choice after R3-2 among the three pieces "Next steps"
+named. Each judge of `crates/renyi/tests/selfhost.rs` compiles its
+driver with `renyi compile` when the test starts (`front_end`:
+`compiler/parse.ry`, `checker.ry` or `compile.ry` to
+`target/selfhost/front/<driver>.ryc`, written anew on every run, so
+that the file is never older than the sources) and passes that file to
+`renyi run` in place of the source, which loads the front end (decision
+Z4) instead of checking its 25 000 lines first. The emitter's judge
+adds the fixed point: the file the Renyi compiler writes of
+`compiler/compile.ry` while running from its bytecode must equal the
+file it ran from (the first differing line is reported). The lane
+script `judge_emit.sh` runs the same way.
+
+- **What it saves**, best of five on the development build, a corpus
+  program as the input: a run of the parser 225 to 185 ms, of the
+  checker 440 to 303 ms, of the compiler 521 to 345 ms (2432 to 2222 ms
+  with `bodies.ry` as the input). `renyi check` of `compile.ry` alone
+  takes 419 ms where a one-page program takes 163 ms, and loading the
+  9.8 MB `compile.ryc` costs about 100 ms of a run, so a run saves the
+  checking of the front end less the loading of its file. The selfhost
+  test binary on eight threads: 56.3 s before, 50.3 s after.
+  The rest of the judges' time is the VM running the front end on the
+  inputs, the compiler's own sources above all (`bodies.ry`: about a
+  second to parse, two to compile).
+- **Not changed.** The files are build products under `target/`, not in
+  the repository; `renyi run compiler/parse.ry` and the other two
+  source forms work as before, and `README.md` names them.
 
 ## The VM as it exists (`crates/renyi_vm`)
 
@@ -1081,6 +1116,10 @@ Three commits on `main`, each gated as in session 7:
     grammar, the reference, the cheat sheet, the sketch, the library
     sketch, the decisions (section AB), `CLAUDE.md`, `docs/GAPS.md`,
     this file.
+13. The judges run from bytecode (the section "The judges run from
+    bytecode" above): `crates/renyi/tests/selfhost.rs` (`front_end`,
+    the driver's file passed to every judge, the fixed point of
+    `compile.ry`), `CLAUDE.md`, `docs/GAPS.md`, this file.
 
 ## Done in session 7 (stage 1 of the gap audit)
 
@@ -1430,11 +1469,11 @@ on a fresh clone).
   it) is done: decision AA1 and the section "The rename of `set` to
   `change`" above.
 - **Stage 2's toolchain in Renyi is complete** (the lexer, the parser,
-  the checker and the emitter, W1 to W8 and Z3) and R3-2 is decided
-  (AB1): the next piece is the owner's to choose among the judges
-  running the front end from its own bytecode, the remaining
-  performance items, and stage 3 (M4: packages, FFI, the `only to`
-  runtime).
+  the checker and the emitter, W1 to W8 and Z3), R3-2 is decided (AB1)
+  and the judges run the front end from its bytecode (the section "The
+  judges run from bytecode"): the next piece is the owner's to choose
+  between the remaining performance items and stage 3 (M4: packages,
+  FFI, the `only to` runtime).
 - **Readability**: the scores are no longer the gate (decision V1).
   Round 5 (U9's sentence) and gpt-5.5 run only if the owner asks.
 - Session 5 printed the values of `ANTHROPIC_API_KEY` and
@@ -1477,11 +1516,9 @@ on a fresh clone).
    are done, Z1 to Z4; the rename of `set` to `change` is done, AA1;
    the emitter written in Renyi is done and judged, Z3; constraints
    with type arguments are done, AB1, which closes R3-2): the toolchain
-   in Renyi is complete with the Rust toolchain as stage 0. Next, in
-   the order the owner chooses: the judges could run the front end from
-   its own bytecode (`renyi compile compiler/compile.ry`, then `renyi
-   run compiler/compile.ryc`, which skips checking the 25 000 lines of
-   the front end on every run); the remaining performance items (string
+   in Renyi is complete with the Rust toolchain as stage 0, and the
+   judges run the front end from its bytecode. Next, in the order the
+   owner chooses: the remaining performance items (string
    building, the pattern cache of `Text.matches`) as a later profile
    calls for them; any change to the loop is measured with `bench.py`
    and `micro.py` against the `base` worktree, the two binaries run

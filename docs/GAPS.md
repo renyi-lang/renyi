@@ -546,5 +546,7 @@ ability and type (`duplicate-implementation`). The prelude implements
 walker takes a list. Both checkers, the VM's dispatch on base values,
 the grammar, the reference, the cheat sheet and four conformance cases
 changed in one commit. Still open from section 7: 1.11, 3.4 and 3.6.
-Next: the remaining performance items as a profile calls for them, or
-stage 3.
+The judges of `selfhost.rs` run the front end from the bytecode `renyi
+compile` writes of each driver when the test starts, and the Renyi
+compiler writes the file it ran from (its fixed point). Next: the
+remaining performance items as a profile calls for them, or stage 3.

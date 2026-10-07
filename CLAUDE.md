@@ -72,7 +72,10 @@ compiler.
   conformance suite and `compiler/`, and exit as it exits (decision W7);
   and the Renyi compiler must write, byte for byte, the bytecode file
   `renyi compile` writes on every program of the corpus, the conformance
-  suite and `compiler/`, and refuse what it refuses (decision Z3).
+  suite and `compiler/`, and refuse what it refuses (decision Z3); each
+  judge runs its driver from the bytecode `renyi compile` writes of it
+  when the test starts (`target/selfhost/front/`), and the Renyi
+  compiler must write that file of itself.
   A change to the tree's shape is a change to `compiler/ast.ry` and to
   `crates/renyi_syntax/src/json.rs` in one commit (decision W1); a
   change to the bytecode is a change to `compiler/bytecode.ry`,

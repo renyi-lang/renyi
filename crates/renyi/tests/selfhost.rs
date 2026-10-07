@@ -12,6 +12,12 @@
 //! (`compiler/compile.ry`) must write, for every program `renyi compile`
 //! accepts, the bytecode file it writes, byte for byte, and must refuse
 //! every program it refuses.
+//!
+//! Each judge runs its driver from the bytecode file `renyi compile`
+//! writes of it when the test starts (`target/selfhost/front/<driver>.ryc`,
+//! loaded in place of the source by decision Z4), so that a run loads the
+//! front end instead of checking its sources first; and the Renyi
+//! compiler, run from that file, must write that file of itself.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -44,6 +50,33 @@ fn renyi(args: &[&str], program: &Path) -> Output {
         .expect("the renyi binary runs")
 }
 
+/// Where a bytecode file is written under the workspace's `target/`: the
+/// side is `rust` or `self` for the two compilers' files of a program,
+/// `front` for the drivers of the judges.
+fn bytecode_target(side: &str, name: &str) -> PathBuf {
+    let directory = root().join("target").join("selfhost").join(side);
+    std::fs::create_dir_all(&directory).expect("the target directory");
+    directory.join(format!("{}.ryc", name.replace(['/', '.'], "_")))
+}
+
+/// The driver of a judge, `compiler/<driver>.ry`, compiled by `renyi
+/// compile` to the file `renyi run` takes in place of the source; written
+/// anew on every call, so that it is never older than the sources.
+fn front_end(driver: &str) -> String {
+    let target = bytecode_target("front", driver);
+    let _ = std::fs::remove_file(&target);
+    let to = target.to_string_lossy().to_string();
+    let source = format!("compiler/{driver}.ry");
+    let output = renyi(&["compile", "--to", &to], Path::new(&source));
+    assert!(
+        output.status.success(),
+        "{source} does not compile:\n{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    to
+}
+
 /// The first line on which two documents differ, for the report.
 fn first_difference(expected: &[u8], got: &[u8]) -> String {
     let expected = String::from_utf8_lossy(expected);
@@ -60,11 +93,11 @@ fn first_difference(expected: &[u8], got: &[u8]) -> String {
     )
 }
 
-/// What the Renyi parser got wrong on one program; `None` when it agreed
-/// with the Rust parser.
-fn judge(program: &Path, declarations: bool) -> Option<String> {
+/// What the Renyi parser, run from `parser`, got wrong on one program;
+/// `None` when it agreed with the Rust parser.
+fn judge(program: &Path, declarations: bool, parser: &str) -> Option<String> {
     let mut rust_args = vec!["parse", "--json"];
-    let mut self_args = vec!["run", "compiler/parse.ry"];
+    let mut self_args = vec!["run", parser];
     if declarations {
         rust_args.push("--declarations");
         self_args.push("--declarations");
@@ -97,12 +130,12 @@ fn judge(program: &Path, declarations: bool) -> Option<String> {
     None
 }
 
-/// What the Renyi checker got wrong on one program, in one mode; `None`
-/// when it agreed with the Rust checker. A program the Rust parser
-/// rejects only has to fail.
-fn judge_checker(program: &Path, parses: bool, strict: bool) -> Option<String> {
+/// What the Renyi checker, run from `checker`, got wrong on one program,
+/// in one mode; `None` when it agreed with the Rust checker. A program the
+/// Rust parser rejects only has to fail.
+fn judge_checker(program: &Path, parses: bool, strict: bool, checker: &str) -> Option<String> {
     let mut rust_args = vec!["check", "--json"];
-    let mut self_args = vec!["run", "compiler/checker.ry", "--json"];
+    let mut self_args = vec!["run", checker, "--json"];
     if strict {
         rust_args.push("--strict");
         self_args.push("--strict");
@@ -140,28 +173,17 @@ fn judge_checker(program: &Path, parses: bool, strict: bool) -> Option<String> {
     None
 }
 
-/// Where one of the two compilers writes the file of a program, under the
-/// workspace's `target/`.
-fn bytecode_target(side: &str, name: &str) -> PathBuf {
-    let directory = root().join("target").join("selfhost").join(side);
-    std::fs::create_dir_all(&directory).expect("the target directory");
-    directory.join(format!("{}.ryc", name.replace(['/', '.'], "_")))
-}
-
-/// What the Renyi compiler got wrong on one program, named relative to
-/// the workspace root with `/`; `None` when it wrote what `renyi compile`
-/// writes, or refused what it refuses.
-fn judge_emitter(name: &str) -> Option<String> {
+/// What the Renyi compiler, run from `compiler`, got wrong on one program,
+/// named relative to the workspace root with `/`; `None` when it wrote
+/// what `renyi compile` writes, or refused what it refuses.
+fn judge_emitter(name: &str, compiler: &str) -> Option<String> {
     let rust_target = bytecode_target("rust", name);
     let own_target = bytecode_target("self", name);
     let _ = std::fs::remove_file(&own_target);
     let rust_to = rust_target.to_string_lossy().to_string();
     let own_to = own_target.to_string_lossy().to_string();
     let rust = renyi(&["compile", "--to", &rust_to], Path::new(name));
-    let own = renyi(
-        &["run", "compiler/compile.ry", "--to", &own_to],
-        Path::new(name),
-    );
+    let own = renyi(&["run", compiler, "--to", &own_to], Path::new(name));
     if rust.status.success() {
         if !own.status.success() {
             return Some(format!(
@@ -185,8 +207,8 @@ fn judge_emitter(name: &str) -> Option<String> {
     None
 }
 
-/// Judge every case on a few threads: each run of a Renyi program checks
-/// and loads the whole front end first.
+/// Judge every case on a few threads: each run of a Renyi program loads
+/// the whole front end first.
 fn judge_all<Case: Sync>(
     cases: Vec<Case>,
     judge: impl Fn(&Case) -> Option<String> + Sync,
@@ -210,6 +232,7 @@ fn judge_all<Case: Sync>(
 
 #[test]
 fn the_renyi_parser_prints_what_the_rust_parser_prints() {
+    let parser = front_end("parse");
     let mut cases: Vec<(PathBuf, bool)> = Vec::new();
     for directory in ["examples", "tests/conformance/programs", "compiler"] {
         cases.extend(programs_in(directory).into_iter().map(|path| (path, false)));
@@ -221,13 +244,14 @@ fn the_renyi_parser_prints_what_the_rust_parser_prints() {
     );
     assert!(cases.len() >= 70, "{} programs", cases.len());
     let problems = judge_all(cases, |(program, declarations)| {
-        judge(program, *declarations)
+        judge(program, *declarations, &parser)
     });
     assert!(problems.is_empty(), "\n{}", problems.join("\n"));
 }
 
 #[test]
 fn the_renyi_checker_prints_what_the_rust_checker_prints() {
+    let checker = front_end("checker");
     let mut programs: Vec<PathBuf> = Vec::new();
     for directory in ["examples", "tests/conformance/programs", "compiler"] {
         programs.extend(programs_in(directory));
@@ -235,13 +259,15 @@ fn the_renyi_checker_prints_what_the_rust_checker_prints() {
     assert!(programs.len() >= 70, "{} programs", programs.len());
     let problems = judge_all(programs, |program| {
         let parses = renyi(&["parse"], program).status.success();
-        judge_checker(program, parses, false).or_else(|| judge_checker(program, parses, true))
+        judge_checker(program, parses, false, &checker)
+            .or_else(|| judge_checker(program, parses, true, &checker))
     });
     assert!(problems.is_empty(), "\n{}", problems.join("\n"));
 }
 
 #[test]
 fn the_renyi_compiler_writes_what_renyi_compile_writes() {
+    let compiler = front_end("compile");
     let mut programs: Vec<String> = Vec::new();
     for directory in ["examples", "tests/conformance/programs", "compiler"] {
         programs.extend(programs_in(directory).into_iter().map(|path| {
@@ -250,8 +276,18 @@ fn the_renyi_compiler_writes_what_renyi_compile_writes() {
         }));
     }
     assert!(programs.len() >= 70, "{} programs", programs.len());
-    let problems = judge_all(programs, |program| judge_emitter(program));
+    let problems = judge_all(programs, |program| judge_emitter(program, &compiler));
     assert!(problems.is_empty(), "\n{}", problems.join("\n"));
+    // The fixed point: the compiler, run from its bytecode, writes that
+    // bytecode of itself.
+    let written = std::fs::read(bytecode_target("self", "compiler/compile.ry"))
+        .expect("the file the Renyi compiler wrote of itself");
+    let ran_from = std::fs::read(&compiler).expect("the file the Renyi compiler ran from");
+    assert!(
+        written == ran_from,
+        "the Renyi compiler writes a different file of itself than it ran from, at {}",
+        first_difference(&ran_from, &written)
+    );
 }
 
 #[test]
