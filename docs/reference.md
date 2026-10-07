@@ -1463,6 +1463,7 @@ Python scripts under `tools/` are development aids.
 | `renyi record [--to <file>] [options] <file> [arguments]` | run `main` and write a recording of its effects, the manifest in its header | as `run` |
 | `renyi reproduce <recording> [<file>]` | replay a recording under its manifest and compare the outcome and the output | 1 when they differ |
 | `renyi test [--strict] [--refresh <name> [--redact <name>]] [--explain] <file>...` | run every `example:` and `test` | 1 when any fails |
+| `renyi compile [--to <file.ryc>] <file>` | check, then write the program as a bytecode file (default `<name>.ryc`); `run`, `record`, `test` and `reproduce` take a `.ryc` file in place of a source | 1 when any error |
 | `renyi mcp [path]` | serve the toolchain to an agent host | |
 | `renyi version` | the toolchain's version | |
 
@@ -1473,6 +1474,20 @@ and `--at-most` narrow the grant (section 11); `--redact <name>` keeps a
 secret out of a recording; `--profile` counts every operation, call and
 primitive call, samples where the time goes, and prints the report on the
 standard error when the run ends (decision X4).
+
+A bytecode file is the derived JSON of the types of `compiler/bytecode.ry`
+(decision Z1): `format` first, then the modules with their source paths
+and line starts, the prelude's ids, the types, the implementations, the
+abilities, the functions with their signatures and grants, the
+constants, the tests, the examples and the code objects, each a list of
+operations with a span per operation and its constants; every span
+counts characters, every number is a JSON number, and a constant's
+digits are a string. `renyi run` and the other commands load it with the
+VM's own JSON reader and refuse a file that does not fit, naming the
+place (decision Z2); the run manifest's code hash of a program loaded
+from a file is the SHA-256 of the file's bytes (decision Z4). The emitter
+written in Renyi writes the same document, held equal byte for byte to
+`renyi compile`'s by `crates/renyi/tests/selfhost.rs` (decision Z3).
 
 The tree `renyi parse --json` prints is the derived JSON (section 7 of
 `design/04-stdlib-sketch.md`) of the types of `compiler/ast.ry`, the

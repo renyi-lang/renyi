@@ -500,3 +500,18 @@ collections; the loop's stack mark and `refinement-field`); R3-2 waits
 until after the emitter (Y4). Still open from the status of session 7:
 1.11 (a function value stored in a collection is charged nowhere
 statically), 3.4 and 3.6. Next: the bytecode emitter.
+
+### The bytecode file (session 8, decisions Z1 to Z4)
+
+The emitter's target exists before the emitter: a bytecode file is the
+derived JSON of the types of `compiler/bytecode.ry` (Z1), `renyi
+compile [--to <file.ryc>] <file.ry>` writes it and `run`, `record`,
+`test` and `reproduce` load a `.ryc` file in place of a source (Z4),
+through a loader hand-written over the VM's own JSON reader that refuses
+what does not fit (Z2). Every `run` case of the conformance suite runs a
+second time from its file (Z3). The spans a program keeps count
+characters since this entry, as the syntax tree's JSON does. The emitter
+written in Renyi (`compiler/emit.ry`, the transcription of
+`crates/renyi_vm/src/compile/`), its driver `compiler/compile.ry` and
+their judge in `selfhost.rs` (byte equality with `renyi compile`, Z3)
+are the next piece.

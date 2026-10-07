@@ -19,6 +19,7 @@
 pub mod bytecode;
 pub mod compile;
 pub mod decimal;
+pub mod file;
 pub mod grant;
 pub mod integer;
 pub mod natives;

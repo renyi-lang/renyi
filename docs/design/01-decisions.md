@@ -1631,3 +1631,89 @@ takes every field, unchanged. The sketch's open item R3-2 (constraints
 with type arguments, `for any Bag where Bag can Iterable of Item`) is
 deferred until after the emitter: it needs a design round of its own
 and nothing in the compiler waits on it. (user)
+
+## Z. The bytecode file and the emitter (session 8)
+
+Decision X5 set the emitter's shape: it writes a file the VM loads.
+What the file is, how the VM reads it, how the emitter written in Renyi
+is judged and where the commands go were asked as one batch of four,
+answered with the recommended options.
+
+**Z1. The bytecode file is the derived JSON of Renyi types.** The
+format is declared once, as the types of `compiler/bytecode.ry`
+(`Program`, `Code`, `Op` and the rest, each `can ToJson`), and a
+bytecode file is their derived JSON (library sketch, section 7), as the
+syntax tree's JSON is the derived JSON of `compiler/ast.ry` (decision
+W1): a record is an object whose keys are its fields in declaration
+order, a variant an object with `kind` first, a `maybe` without a value
+`null`, a list an array, a number a JSON number, and every span counts
+characters. The first field is `format`, the version of the layout; the
+extension is `.ryc`. The emitter written in Renyi builds the `Program`
+value and prints it with `json.render_indented`; the Rust side
+(`crates/renyi_vm/src/file.rs`) renders the same document from the VM's
+own `Program` through the JSON writer of `renyi_syntax`, which the judge
+of decision W3 already holds equal to Renyi's. A binary layout would be
+smaller and faster to load, and would need a second definition of every
+structure on each side; the JSON is read by any tool, diffed in a
+review, and defined by the types the Renyi compiler needs anyway. The
+maps of the VM's program (`impls`, `method_index`) are written sorted,
+so that the document is a function of the program alone. Field names
+that are reserved words of Renyi (`function`, `module`, `returns`,
+`fails`, `needs`, `set`, `ability`, `count`, `purpose`) are renamed in
+the file (`function_id`, `owner` or `module_name`, `result`,
+`failures`, `capabilities`, `set_type`, `ability_id`, `size`,
+`summary`), and a number constant is written as its digits in a string,
+so that an `Integer` past a machine word and a `Decimal`'s scale
+survive the trip. (user)
+
+**Z2. The loader is hand-written over the VM's own JSON reader.** No
+serialization crate: `file::load` reads the document with
+`natives::json::read_json`, the reader behind `json.parse`, and walks it
+field by field into the VM's `Program`, refusing anything that does not
+fit with the path of the place (`the file.codes[3].ops[7].target: ...`)
+and refusing a `format` that is not the one this VM reads. After the
+walk a consistency pass checks every index, a function's code, a
+constant's code, an example's codes, a jump's target, a slot against
+the code's locals, a constant against the code's table, a type, a
+field site and a result type against the program's tables, so that a
+file written by hand cannot send the VM past a table. This keeps the
+dependency list at decision S1's (the reader exists already) and the
+format readable by the Renyi compiler itself one day. (user)
+
+**Z3. The judge is byte equality, then behaviour.** The emitter written
+in Renyi is right when `renyi run compiler/compile.ry <file.ry> --to
+a.ryc` writes, byte for byte, what `renyi compile --to b.ryc <file.ry>`
+writes, over the corpus, the conformance programs and the compiler's own
+sources, and when both refuse every program the Rust checker refuses
+(`crates/renyi/tests/selfhost.rs`, as decisions W3 and W7 judge the
+parser and the checker). Behaviour is judged by running: every `run`
+case of the conformance suite runs a second time from the `.ryc` file
+`renyi compile` writes for its program and must print the same output
+and exit the same way (`crates/renyi/tests/conformance.rs`), the VM's
+own test renders a program, loads it back, renders it again and runs
+both (`crates/renyi_vm/tests/file.rs`), and the binary's test runs,
+records and reproduces a program from its file
+(`crates/renyi/tests/compile.rs`). Byte equality is the stricter judge
+and the one that locates a difference; the reruns catch what a file
+loses on the way (a span, a constant's digits, a fixture's path). (user)
+
+**Z4. `renyi compile`, and the file loads by its extension.** `renyi
+compile [--to <file.ryc>] <file.ry>` checks the program with its
+imports and writes its bytecode, by default `<name>.ryc` in the working
+directory, as `renyi record` names its recording; its diagnostics are
+those of `check`, and a program with errors writes nothing. `renyi
+run`, `record`, `test` and `reproduce` take a `.ryc` file wherever they
+take a `.ry` file and load it instead of checking and compiling, so a
+program's `main`, tests and examples run from the file alone; the
+`replays` fixtures are found beside the source paths the file remembers.
+The run manifest's code hash of a program loaded from a file is the
+SHA-256 of the file's bytes, since the definitions `main` reaches are
+not there to hash: a recording made from a `.ryc` reproduces from the
+same `.ryc`. No separate `load` command and no `--bytecode` option: the
+extension says what the file is. In the same entry: the spans a program
+keeps, in process or in a file, count characters, as the syntax tree's
+JSON does, so that a program loaded from a file is the program compiled
+in process; the compiler converts the parser's byte offsets when it
+emits, and a module's source is remembered as its path and the
+character offsets of its line starts, which is what a crash location
+and a test report need. (user)

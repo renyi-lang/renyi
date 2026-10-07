@@ -7,8 +7,11 @@
 //! every effect with the run manifest in its header), `reproduce` (replay a
 //! recording under its manifest and compare), `test` (every `example:`
 //! line and `test` block, with `replays` tests answered from their
-//! recordings) and `mcp` (the toolchain served to an agent host over
-//! standard input and output, in `mcp.rs`).
+//! recordings), `compile` (check, then write the program as a bytecode
+//! file, which `run`, `record`, `test` and `reproduce` load in place of
+//! the source when the path ends in `.ryc`, decision Z4) and `mcp` (the
+//! toolchain served to an agent host over standard input and output, in
+//! `mcp.rs`).
 
 mod maps;
 mod mcp;
@@ -22,7 +25,7 @@ use renyi_syntax::diagnostics::{render_json, render_text};
 use renyi_syntax::layout::check_layout;
 use renyi_syntax::{format, lex, module_to_json, parse, parse_declarations, SourceFile, TokenKind};
 use renyi_vm::grant::{parse_capability, Unit};
-use renyi_vm::Manifest;
+use renyi_vm::{file, Manifest};
 
 /// The allocator of the whole binary (decision X6): the VM allocates a
 /// record, a list, a text or a frame's locals at a time, and the system
@@ -60,6 +63,9 @@ const USAGE: &str = "usage:
                                       output byte for byte (exit 1 when they differ)
   renyi test [--strict] [--refresh <name> [--redact <name>]] [--explain] <file.ry>...
                                       run every `example:` line and `test` block (exit 1 when any fails)
+  renyi compile [--to <file.ryc>] <file.ry>
+                                      check the program and write its bytecode (default: <name>.ryc);
+                                      run, record, test and reproduce load a .ryc in place of a .ry
   renyi mcp [path]                    serve the toolchain to an agent host over standard input and
                                       output (Model Context Protocol), for the directory given
   renyi version
@@ -90,6 +96,7 @@ fn main() -> ExitCode {
         Some("record") => run_command(&args[1..], true),
         Some("reproduce") => reproduce_command(&args[1..]),
         Some("test") => test_command(&args[1..]),
+        Some("compile") => compile_command(&args[1..]),
         Some("mcp") => mcp::serve(&args[1..]),
         Some("version") | Some("--version") => {
             println!("renyi {}", env!("CARGO_PKG_VERSION"));
@@ -302,18 +309,36 @@ fn format_command(args: &[String]) -> ExitCode {
     }
 }
 
-/// Check a file with its imports and compile it; diagnostics go to stdout as
-/// `check` prints them, and an error stops here.
+/// Check a file with its imports and compile it, or load a bytecode file
+/// (`.ryc`, decision Z4); diagnostics go to stdout as `check` prints them,
+/// and an error stops here.
 fn compile(path: &str) -> Result<renyi_vm::Program, ExitCode> {
     compile_with_sources(path).map(|(program, _)| program)
 }
 
-/// `compile`, with the source files kept for the manifest's code hash.
-fn compile_with_sources(path: &str) -> Result<(renyi_vm::Program, Vec<SourceFile>), ExitCode> {
+/// What the manifest's code hash is computed from: the source files of a
+/// program compiled here, or the text of the bytecode file it was loaded
+/// from.
+enum Hashed {
+    Sources(Vec<SourceFile>),
+    File(String),
+}
+
+/// `compile`, with what the manifest's code hash is computed from.
+fn compile_with_sources(path: &str) -> Result<(renyi_vm::Program, Hashed), ExitCode> {
+    if file::is_bytecode(path) {
+        return match load_bytecode(path) {
+            Ok((program, text)) => Ok((program, Hashed::File(text))),
+            Err(message) => {
+                eprintln!("renyi: {message}");
+                Err(ExitCode::FAILURE)
+            }
+        };
+    }
     match compile_sources(path) {
         Ok(compiled) => {
             print!("{}", compiled.diagnostics);
-            Ok((compiled.program, compiled.sources))
+            Ok((compiled.program, Hashed::Sources(compiled.sources)))
         }
         Err(CompileError::Read(message)) => {
             eprintln!("renyi: {message}");
@@ -322,6 +347,77 @@ fn compile_with_sources(path: &str) -> Result<(renyi_vm::Program, Vec<SourceFile
         Err(CompileError::Diagnostics(text)) => {
             print!("{text}");
             Err(ExitCode::FAILURE)
+        }
+    }
+}
+
+/// A program from a bytecode file, with the file's text; the error names
+/// the path and the place in the file.
+fn load_bytecode(path: &str) -> Result<(renyi_vm::Program, String), String> {
+    let text =
+        std::fs::read_to_string(path).map_err(|error| format!("cannot read {path}: {error}"))?;
+    let program = file::load(&text).map_err(|detail| format!("{path}: {detail}"))?;
+    Ok((program, text))
+}
+
+/// `renyi compile [--to <file.ryc>] <file.ry>`: check the program with its
+/// imports and write it as a bytecode file (decision Z4).
+fn compile_command(args: &[String]) -> ExitCode {
+    let mut to: Option<String> = None;
+    let mut path: Option<&String> = None;
+    let mut rest = args.iter();
+    while let Some(arg) = rest.next() {
+        match arg.as_str() {
+            "--to" => match rest.next() {
+                Some(value) => to = Some(value.clone()),
+                None => {
+                    eprintln!("renyi: `--to` needs a value");
+                    return ExitCode::FAILURE;
+                }
+            },
+            other if other.starts_with("--") => {
+                eprintln!("renyi: unknown option `{other}`");
+                eprintln!("{USAGE}");
+                return ExitCode::FAILURE;
+            }
+            _ => path = Some(arg),
+        }
+    }
+    let Some(path) = path else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    if file::is_bytecode(path) {
+        eprintln!("renyi: {path} is a bytecode file already; `compile` takes a .ry file");
+        return ExitCode::FAILURE;
+    }
+    let compiled = match compile_sources(path) {
+        Ok(compiled) => compiled,
+        Err(CompileError::Read(message)) => {
+            eprintln!("renyi: {message}");
+            return ExitCode::FAILURE;
+        }
+        Err(CompileError::Diagnostics(text)) => {
+            print!("{text}");
+            return ExitCode::FAILURE;
+        }
+    };
+    print!("{}", compiled.diagnostics);
+    let target = to.unwrap_or_else(|| {
+        let stem = Path::new(path)
+            .file_stem()
+            .map(|stem| stem.to_string_lossy().to_string())
+            .unwrap_or_else(|| "program".to_string());
+        format!("{stem}.{}", file::EXTENSION)
+    });
+    match std::fs::write(&target, file::render(&compiled.program)) {
+        Ok(()) => {
+            eprintln!("renyi: compiled {path} to {target}");
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            eprintln!("renyi: cannot write {target}: {error}");
+            ExitCode::FAILURE
         }
     }
 }
@@ -372,9 +468,17 @@ pub(crate) fn toolchain() -> String {
     format!("renyi {}", env!("CARGO_PKG_VERSION"))
 }
 
-/// The content hash of `main` from the project map, which covers every
-/// definition `main` reaches (design document 05, section 3).
-fn code_hash(program: &renyi_vm::Program, files: &[SourceFile]) -> Option<String> {
+/// The content hash of the manifest: of `main` from the project map, which
+/// covers every definition `main` reaches (design document 05, section 3),
+/// or of the whole bytecode file the program was loaded from (decision Z4).
+fn code_hash(program: &renyi_vm::Program, hashed: &Hashed) -> Option<String> {
+    match hashed {
+        Hashed::Sources(files) => main_hash(program, files),
+        Hashed::File(text) => Some(renyi_vm::recording::sha256_of(text.as_bytes())),
+    }
+}
+
+fn main_hash(program: &renyi_vm::Program, files: &[SourceFile]) -> Option<String> {
     let main = program.main?;
     let module = &program.function_metas[main].module;
     let header = renyi_index::Header {

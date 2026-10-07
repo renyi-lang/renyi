@@ -89,7 +89,10 @@ exists:
   through the `purpose:` clauses it passes, and `--profile` reports where
   its time went; `renyi test`
   runs every `example:` line and `test` block, a `replays` test from its
-  recording (`--strict`, `--refresh`). Every example checks cleanly, is in
+  recording (`--strict`, `--refresh`); `renyi compile` writes a program
+  as a bytecode file (`.ryc`, the derived JSON of the types of
+  `compiler/bytecode.ry`), which `run`, `record`, `test` and
+  `reproduce` load in place of the source. Every example checks cleanly, is in
   canonical form, and its examples and tests pass, the five that reach
   the network and the one on SQLite from recordings under
   `examples/fixtures/`; the ten programs with a reference output print
@@ -114,6 +117,7 @@ cargo build
 ./target/debug/renyi run --replay hello.json examples/hello.ry
 ./target/debug/renyi reproduce hello.json
 ./target/debug/renyi test examples/invoice.ry
+./target/debug/renyi compile --to hello.ryc examples/hello.ry && ./target/debug/renyi run hello.ryc Renyi   # from the bytecode file
 ./target/debug/renyi mcp examples        # the toolchain for an agent host, over standard input and output
 ./target/debug/renyi run compiler/parse.ry examples/hello.ry   # the parser written in Renyi, on the VM
 ./target/debug/renyi run compiler/checker.ry --json examples/hello.ry   # the checker written in Renyi, on the VM

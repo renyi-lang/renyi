@@ -9,18 +9,21 @@ public type Grant
   has scope: maybe Text
   has budget: maybe BudgetSpelling
   has only_to: List of SinkPath
+  can ToJson
 end
 
 public type BudgetSpelling
   purpose: `at most LIMIT per UNIT` on a grant (decision P2); not part of coverage.
   has limit: Text
   has unit: Text
+  can ToJson
 end
 
 public type SinkPath
   purpose: A sink after `only to` (decision P3): a capability path with its optional scope.
   has path: List of Text
   has scope: maybe Text
+  can ToJson
 end
 
 let tree: List of Text be [

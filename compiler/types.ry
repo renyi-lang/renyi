@@ -15,6 +15,7 @@ public type Ty is one of
   Unit
   Never
   ErrorTy
+  can ToJson
 end
 
 public type FunctionSignature
@@ -23,6 +24,7 @@ public type FunctionSignature
   has result: maybe Ty
   has failures: List of Ty
   has capabilities: List of Grant
+  can ToJson
 end
 
 public type Substitution

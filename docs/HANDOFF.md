@@ -11,7 +11,8 @@ then the checker written in Renyi, decisions W5 to W8, held equal to
 with decisions X1 to X4: the development profile optimizes the VM,
 `List.slice`, the interpreter loop rewritten, `renyi run --profile`;
 then X5, the emitter writes a bytecode file, and X6, mimalloc; then the
-residue of stage 1, decisions Y1 to Y4).
+residue of stage 1, decisions Y1 to Y4; then the bytecode file itself,
+decisions Z1 to Z4, with `renyi compile` and the loader).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -24,7 +25,7 @@ run manifest of Q2, every library module, the `only to` guards of P3,
 tasks one after the other by S2) are done, with the project map (`renyi
 index`, `--budgets`, `--diff`), `renyi tools` and `renyi mcp` on top. M4
 to M6 are not started (`docs/GAPS.md`, section 4). Design decisions are
-in sections 0 to Y of `01-decisions.md`; the agent tooling in
+in sections 0 to Z of `01-decisions.md`; the agent tooling in
 `05-agent-tooling.md`, the signature capabilities in
 `06-runtime-guarantees.md`, the system-level commitments in
 `07-system-design.md`; the open items in section 18 of the sketch (R3-1,
@@ -51,7 +52,9 @@ set (W4, W5): the lexer, the parser and the checker written in Renyi
 exist under `compiler/` (the next two sections) and the VM is profiled
 and its loop rewritten (the section after them, decisions X1 to X6);
 the residue of stage 1 is done (decisions Y1 to Y4, the section after
-the profile's); the bytecode emitter, which writes a file (X5), is next.
+the profile's); the bytecode file exists with `renyi compile` and the
+loader (decisions Z1 to Z4, the section after the residue's); the
+emitter written in Renyi, which writes that file, is next.
 
 The corpus has 30 programs, passes the lint, is in canonical layout,
 checks cleanly, has nothing over budget, and its `example:` lines and
@@ -64,10 +67,12 @@ binary with `check`, `format`, `tokens`, `parse [--json]
 revision>]`, `run [--manifest] [options] <file> [arguments]`, `record
 [--to file] [options] <file> [arguments]`, `reproduce <recording>
 [<file>]`, `test [--strict] [--refresh name [--redact name]] [--explain]
-<file>...`, `tools [path]`, `mcp [path]` and `version`; 220 tests, clippy
-and fmt clean on Windows with rustc 1.94.1. CI
-(`.github/workflows/ci.yml`) runs the same gates, `renyi check
-compiler/*.ry` and the conformance suite (`tests/conformance/`, 38 cases;
+<file>...`, `compile [--to file] <file.ry>`, `tools [path]`, `mcp
+[path]` and `version`; 226 tests, clippy and fmt clean on Windows
+with rustc 1.94.1. CI (`.github/workflows/ci.yml`) runs the same gates,
+`renyi check compiler/*.ry` and the conformance suite
+(`tests/conformance/`, 38 cases, every `run` case a second time from
+its bytecode file;
 runners `tools/conformance.py` and `crates/renyi/tests/conformance.rs`)
 on a toolchain pinned to the owner's machine (rustc 1.94.1), so that CI
 and the local gates agree on clippy's lints; `gh run list --limit 3`
@@ -434,6 +439,86 @@ options, done in one commit.
 - **R3-2** (constraints with type arguments) waits until after the
   emitter (Y4).
 
+## The bytecode file (decisions Z1 to Z4)
+
+The owner's batch after the residue, answered with the recommended
+options: JSON, a hand-written loader, byte equality plus reruns as the
+judge, `renyi compile` with loading by extension. The file side is done;
+the emitter written in Renyi is next.
+
+- **The format** is `compiler/bytecode.ry`: the VM's `Program` as Renyi
+  types, each `can ToJson` (`Program`, `ModuleSource`, `BuiltinIds`,
+  `TypeMeta`, `TypeShape`, `FieldMeta`, `VariantMeta`, `ImplEntry`,
+  `MethodBinding`, `AbilityMeta`, `MethodEntry`, `FunctionMeta`,
+  `ConstantMeta`, `TestMeta`, `ExampleMeta`, `Expected`, `Code`,
+  `CodeKind`, `CodeConstant`, `Specials`, `GroupFold`, `Op` with its 52
+  variants in the order of `bytecode.rs`, `OpConst` to `OpCheck`);
+  `Ty`, `FunctionSignature` (`compiler/types.ry`) and `Grant`,
+  `BudgetSpelling`, `SinkPath` (`compiler/effects.ry`) derive `ToJson`
+  since this entry so that the format can hold them. A `.ryc` file is
+  the derived JSON, `format` first (1). Names that are reserved words
+  in Renyi are renamed in the file: `function_id`, `owner` (a module
+  id) or `module_name` (its text), `result`, `failures`,
+  `capabilities`, `fixture`, `summary`, `set_type`, `ability_id`,
+  `is_descending`, `size`. Number constants are their digits in a
+  string: `Int` and `Decimal` through `Display`, a Float through
+  `render::float_text`, so that `Float.to_text` in Renyi gives the same
+  digits.
+- **The Rust side** is `crates/renyi_vm/src/file.rs`: `render(&Program)
+  -> String` builds a `renyi_syntax::json::Json` tree (the writer of
+  `renyi parse --json`, held equal to `json.render_indented` by the W3
+  judge) with `impls` sorted by (ability, type) and methods by name and
+  `method_index` sorted by (type, name); `load(&str) -> Result<Program,
+  String>` reads with `natives::json::read_json`, names the place of a
+  misfit (`the file.codes[3].ops[7].target: expected a number, found a
+  string`), refuses another `format`, and ends with a consistency pass
+  over every index (codes, functions, constants, jumps against the
+  code's length, slots against `locals`, constants against the code's
+  table, types, field sites, result types). `is_bytecode(path)` tests
+  the extension `ryc`.
+- **Spans count characters** everywhere now (`compile/mod.rs`:
+  `Context.characters` holds a byte-to-character table per module with
+  a source, built as `json.rs`'s encoder builds it; `Compiler::emit`
+  converts every span it stores, `TestMeta.span` and `ExampleMeta.span`
+  are converted where they are built; `text_of` and `source_text` keep
+  taking the tree's byte spans). `Program.sources` is `Vec<Option<
+  SourceLines { name, line_starts }>>` by module id, the line starts in
+  characters, `None` for a library module; `Program::source(module)`
+  and `location(module, span)` (`SourceLines::line_of`, a binary
+  search) serve crash locations and test reports, and `runner.rs`'s
+  `fixture_path` finds a `replays` file beside `source.name`. The
+  repository's sources are ASCII, so nothing moved; a program with a
+  wide character before a crash now reports the right line
+  (`tests/file.rs`).
+- **The commands** (`crates/renyi/src/main.rs`): `renyi compile [--to
+  <file.ryc>] <file.ry>` (`compile_command`: the diagnostics of
+  `check`, nothing written on an error, the default target
+  `<stem>.ryc` in the working directory, "renyi: compiled X to Y" on
+  stderr; a `.ryc` given to it is refused). `compile_with_sources`
+  returns `(Program, Hashed)` where `Hashed::Sources(files)` hashes
+  `main` through the project map as before and `Hashed::File(text)`
+  hashes the file's bytes (`recording::sha256_of`); `run`, `record`,
+  `test` and `reproduce` go through it, so a `.ryc` path works in each
+  (`load_bytecode` prefixes the path to the loader's message).
+- **The judges so far**: `crates/renyi/tests/conformance.rs` runs every
+  `run` case without a `diagnostics` key a second time from
+  `target/conformance/case<N>.ryc` and compares the same things (the
+  thirteenth `run` case is the guarded print, whose failure comes from
+  the boundary at run time and so from the file too);
+  `crates/renyi/tests/compile.rs` compiles `hello.ry`, runs it, checks
+  the manifest's hash is the file's, records and reproduces from the
+  file, checks the default target, runs `weather_client.ry`'s tests
+  from a file (the fixture found beside the source), and the refusals;
+  `crates/renyi_vm/tests/file.rs` renders a program with every kind of
+  code object and constant, loads it, renders again (equal), runs both
+  and their tests (equal), locates a crash after wide characters, and
+  tries the misfits (format, broken JSON, a wrong type, an index out
+  of range).
+- **Size**: `hello.ryc` is about 170 KB, because every library module's
+  functions, types and signatures are in it (the VM needs them for
+  calls, rendering and JSON decoding); fine for now, and the first
+  thing to cut if files ever matter.
+
 ## The VM as it exists (`crates/renyi_vm`)
 
 - **The loop** is described in the section above (decision X3): one
@@ -779,6 +864,15 @@ Three commits on `main`, each gated as in session 7:
    reference (sections 4, 5, 7, 11, 14, appendix A), the decisions
    (section Y), `06-runtime-guarantees.md`, the sketch's R3-2,
    `docs/GAPS.md`, this file.
+9. The bytecode file (decisions Z1 to Z4, the section "The bytecode
+   file" above): `compiler/bytecode.ry` (new), `compiler/types.ry` and
+   `effects.ry` (`can ToJson`), `crates/renyi_vm/src/file.rs` (new),
+   `lib.rs`, `compile/mod.rs` (spans in characters, `SourceLines`),
+   `runner.rs`, `crates/renyi/src/main.rs` (`compile`, `Hashed`, the
+   `.ryc` loading), `tests/file.rs` and `tests/compile.rs` (new),
+   `tests/conformance.rs` (the rerun), the reference's appendix B, the
+   decisions (section Z), `README.md`, `CLAUDE.md`, `docs/GAPS.md`,
+   this file.
 
 ## Done in session 7 (stage 1 of the gap audit)
 
@@ -1123,9 +1217,22 @@ on a fresh clone).
 - **The residue of stage 1** is done (decisions Y1 to Y4) except open
   item R3-2 (constraints with type arguments), deferred until after the
   emitter; `docs/GAPS.md` section 7 keeps 1.11, 3.4 and 3.6 open.
-- **Stage 2, the next piece**: the bytecode emitter, which writes a
-  file the VM loads (X5); its format is designed when it is written,
-  and the design questions it raises are asked as a batch of four.
+- **The rename of `set` to `change`** (the owner's decision of
+  2026-10-06, asked in this session after the owner raised it): done
+  before the emitter, as a surface change under decision V11 (a decision
+  entry first, then the reference, the grammar, the cheat sheet, the
+  formatter, both front ends, the corpus, the conformance suite and the
+  readability harness's inputs in one commit). The grammar has no `=`
+  and binds a name once per function (`shadowing`), so `set` on a `let
+  mutable` is already the only way to change a value; the rename removes
+  the three meanings of `set` (the statement, the `Set` type, the
+  `Map.set` method).
+- **Stage 2, the next piece**: the emitter written in Renyi
+  (`compiler/emit.ry`, the transcription of `crates/renyi_vm/src/
+  compile/`, and the driver `compiler/compile.ry`), judged by byte
+  equality with `renyi compile` over the corpus, the conformance
+  programs and the compiler itself (decision Z3); the file, the
+  loader and `renyi compile` exist (Z1 to Z4).
 - **Readability**: the scores are no longer the gate (decision V1).
   Round 5 (U9's sentence) and gpt-5.5 run only if the owner asks.
 - Session 5 printed the values of `ANTHROPIC_API_KEY` and
@@ -1164,8 +1271,20 @@ on a fresh clone).
    in Renyi are `compiler/`, W1 to W4; the checker in Renyi is
    `compiler/declare.ry`, `bodies.ry` and `checker.ry`, W5 to W8; the
    profile and the loop are done, X1 to X6; the residue of stage 1 is
-   done, Y1 to Y4, R3-2 deferred): next the bytecode emitter, which
-   writes a file the VM loads (X5),
+   done, Y1 to Y4, R3-2 deferred; the bytecode file, `renyi compile`
+   and the loader are done, Z1 to Z4): first the rename of `set` to
+   `change` (the owner's decision of 2026-10-06, a surface change under
+   V11: a decision entry, the reference, the grammar, the cheat sheet,
+   the formatter, both front ends, the corpus, the conformance suite and
+   the readability harness's inputs in one commit), then the emitter
+   written in Renyi (`compiler/emit.ry`: `compile/{mod,expr,stmt,pattern,query}.rs`
+   and `types.rs` transcribed over `declare.World`, the tree and the
+   references of `bodies.ry`; a driver `compiler/compile.ry` that runs
+   the front end, the checker and the emitter and writes
+   `json.render_indented` of the `Program` of `compiler/bytecode.ry`),
+   judged in `selfhost.rs` by byte equality with `renyi compile --to`
+   over the corpus, the conformance programs and `compiler/`, with
+   both refusing what the Rust checker refuses (Z3),
    so that the Rust VM runs what the Renyi compiler emits, with the
    Rust toolchain as stage 0, which is where the references of W8 get
    their judge; the remaining performance items (string building, the
@@ -1242,6 +1361,16 @@ on a fresh clone).
   checker's quirk that a `failure(x)` binding's fields are unknown is
   reproduced on purpose (W7: equality first); fixing it is a change to
   both checkers and a conformance case.
+- **The bytecode file.** JSON, about 170 KB for `hello.ry` since the
+  whole library's metadata travels with every program; the loader's
+  consistency pass checks indices, not stack discipline, so a file
+  written by hand can still underflow the operand stack (a panic, not
+  an exploit: the VM holds no unsafe code). The name of a test's code
+  object is Rust's `{:?}` of the test's name, which the Renyi emitter
+  must reproduce (quotes and backslashes escaped; other escapes do not
+  occur in the corpus). A `.ryc` is tied to the toolchain that wrote
+  it by nothing but `format`; a change to `Op`, `Program` or the
+  format types bumps `FORMAT` and `compiler/bytecode.ry` together.
 - **VM.** A declared `equals` decides `is` and `is not` (session 7);
   `contains`, `index_of`, sets and maps keep the derived form, and a
   user `Hash` implementation is never called, by decision Y3 and the

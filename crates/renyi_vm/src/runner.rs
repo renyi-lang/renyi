@@ -480,9 +480,8 @@ fn fixture_path(program: &Program, module: ModuleId, path: &str) -> PathBuf {
         return relative;
     }
     let base = program
-        .sources
-        .get(&module)
-        .and_then(|file| Path::new(&file.name).parent())
+        .source(module)
+        .and_then(|source| Path::new(&source.name).parent())
         .filter(|parent| !parent.as_os_str().is_empty());
     match base {
         Some(base) => {

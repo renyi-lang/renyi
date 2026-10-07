@@ -3,6 +3,9 @@
 //! resolved through the references the checker recorded (`Target`), so the
 //! compiler never resolves a name itself; a construct it cannot compile
 //! crashes at run time with a message rather than failing the whole program.
+//! Every span the program keeps counts characters, as the bytecode file
+//! does (decision Z1), so that a program loaded from a file is the program
+//! compiled in process.
 
 mod expr;
 mod pattern;
@@ -102,7 +105,10 @@ pub struct Program {
     pub builtins: Builtins,
     /// `Op::ResultType(i)` names the i-th.
     pub result_types: Vec<Ty>,
-    pub sources: HashMap<ModuleId, SourceFile>,
+    /// Per module, the path of its source file and where its lines start,
+    /// `None` for a library module; the location of a crash or a test
+    /// comes from it.
+    pub sources: Vec<Option<SourceLines>>,
     pub module_names: Vec<String>,
     /// Methods by the head type of their receiver and their name.
     pub method_index: HashMap<(TypeId, String), Vec<FunctionId>>,
@@ -132,18 +138,48 @@ pub struct Specials {
     pub to_list: Option<FunctionId>,
 }
 
+/// A source file as the program remembers it: its path and the character
+/// offset at which each line starts.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SourceLines {
+    pub name: String,
+    pub line_starts: Vec<usize>,
+}
+
+impl SourceLines {
+    pub fn new(name: &str, text: &str) -> SourceLines {
+        let mut line_starts = vec![0];
+        for (offset, c) in text.chars().enumerate() {
+            if c == '\n' {
+                line_starts.push(offset + 1);
+            }
+        }
+        SourceLines {
+            name: name.to_string(),
+            line_starts,
+        }
+    }
+
+    /// The line (from 1) holding a character offset.
+    pub fn line_of(&self, offset: usize) -> usize {
+        self.line_starts.partition_point(|start| *start <= offset)
+    }
+}
+
 impl Program {
     pub fn code(&self, id: CodeId) -> &Code {
         &self.codes[id]
     }
 
+    /// The source of a module, when it has one.
+    pub fn source(&self, module: ModuleId) -> Option<&SourceLines> {
+        self.sources.get(module).and_then(|source| source.as_ref())
+    }
+
     /// Where a span of a module lies, as `file:line`.
     pub fn location(&self, module: ModuleId, span: Span) -> String {
-        match self.sources.get(&module) {
-            Some(file) => {
-                let position = file.position(span.start);
-                format!("{}:{}", file.name, position.line)
-            }
+        match self.source(module) {
+            Some(source) => format!("{}:{}", source.name, source.line_of(span.start)),
             None => self.module_names[module].clone(),
         }
     }
@@ -158,6 +194,10 @@ struct Context<'w> {
     world: &'w World,
     globals: HashMap<(ModuleId, String), u32>,
     sources: HashMap<ModuleId, String>,
+    /// Per module with a source, the character offset of every byte offset
+    /// of its text (one more entry for the end), so that the spans the
+    /// program keeps count characters.
+    characters: HashMap<ModuleId, Vec<usize>>,
     result_types: Vec<Ty>,
     refs: HashMap<(ModuleId, BodyLocation), Refs>,
     /// The `Op::Field` sites numbered so far.
@@ -179,6 +219,30 @@ impl Context<'_> {
             .and_then(|text| text.get(span.start..span.end))
             .map(|text| text.split_whitespace().collect::<Vec<_>>().join(" "))
     }
+
+    /// A span of the syntax tree, in bytes, as the program keeps it, in
+    /// characters; a module without a source (the library) is ASCII.
+    fn characters(&self, module: ModuleId, span: Span) -> Span {
+        match self.characters.get(&module) {
+            Some(table) => {
+                let last = table.len() - 1;
+                Span::new(table[span.start.min(last)], table[span.end.min(last)])
+            }
+            None => span,
+        }
+    }
+}
+
+/// The character offset of every byte offset of a text, and of its end.
+fn character_table(text: &str) -> Vec<usize> {
+    let mut characters = vec![0; text.len() + 1];
+    let mut count = 0;
+    for (offset, c) in text.char_indices() {
+        characters[offset..offset + c.len_utf8()].fill(count);
+        count += 1;
+    }
+    characters[text.len()] = count;
+    characters
 }
 
 /// Compile every module of a checked project; `files` are the sources the
@@ -193,12 +257,14 @@ pub fn compile_project(checked: &CheckedProject, files: &[SourceFile]) -> Progra
             .or_default()
             .push(reference.target.clone());
     }
-    let mut sources = HashMap::new();
+    let mut sources = vec![None; world.modules.len()];
     let mut source_texts = HashMap::new();
+    let mut characters = HashMap::new();
     for module in &checked.modules {
         if let (Some(id), Some(file)) = (module.id, files.get(module.file)) {
-            sources.insert(id, file.clone());
+            sources[id] = Some(SourceLines::new(&file.name, &file.text));
             source_texts.insert(id, file.text.clone());
+            characters.insert(id, character_table(&file.text));
         }
     }
     let main_module = checked.modules.first().and_then(|m| m.id);
@@ -295,6 +361,7 @@ pub fn compile_project(checked: &CheckedProject, files: &[SourceFile]) -> Progra
         world,
         globals,
         sources: source_texts,
+        characters,
         result_types: Vec::new(),
         refs,
         field_sites: 0,
@@ -344,7 +411,7 @@ pub fn compile_project(checked: &CheckedProject, files: &[SourceFile]) -> Progra
                         name: test.name.clone(),
                         needs: test.needs.iter().map(Capability::from_ast).collect(),
                         replays: test.replays.clone(),
-                        span: test.span,
+                        span: ctx.characters(module_id, test.span),
                         code: program.codes.len(),
                     });
                     program.codes.push(code);
@@ -463,7 +530,7 @@ fn compile_function(
             function: id,
             module,
             text,
-            span: example.span,
+            span: ctx.characters(module, example.span),
             call,
             expected,
         });
@@ -706,13 +773,16 @@ impl<'c, 'w> Compiler<'c, 'w> {
 
     // ------------------------------------------------------------ emission
 
+    /// Emit an operation under a span of the tree (in bytes); the code
+    /// keeps the span in characters.
     pub fn emit(&mut self, op: Op, span: Span) -> usize {
+        let span = self.ctx.characters(self.module, span);
         self.code.emit(op, span)
     }
 
     pub fn constant(&mut self, value: Value, span: Span) {
         let index = self.code.constant(value);
-        self.code.emit(Op::Const(index), span);
+        self.emit(Op::Const(index), span);
     }
 
     pub fn name_constant(&mut self, name: &str) -> u32 {

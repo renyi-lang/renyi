@@ -1,0 +1,297 @@
+module bytecode
+  purpose: The bytecode file (decision Z1): the VM's program as Renyi types; the file is their JSON.
+
+import ast exposing Span, BinaryOp
+import types exposing Ty
+import effects exposing Grant
+
+public type Program
+  purpose: A compiled program as `renyi compile` writes it and `renyi run` loads it.
+  has format: Integer
+  has modules: List of ModuleSource
+  has builtins: BuiltinIds
+  has types: List of TypeMeta
+  has impls: List of ImplEntry
+  has abilities: List of AbilityMeta
+  has method_index: List of MethodEntry
+  has functions: List of FunctionMeta
+  has constants: List of ConstantMeta
+  has tests: List of TestMeta
+  has examples: List of ExampleMeta
+  has codes: List of Code
+  has result_types: List of Ty
+  has specials: List of Specials
+  has field_sites: Integer
+  has main: maybe Integer
+  has date: maybe Integer
+  can ToJson
+end
+
+public type ModuleSource
+  purpose: One module of the program: its name, its file when it has one, where its lines start.
+  has name: Text
+  has path: maybe Text
+  has line_starts: List of Integer
+  can ToJson
+end
+
+public type BuiltinIds
+  purpose: The ids of the prelude's types and abilities, as the VM looks them up.
+  has integer: Integer
+  has decimal: Integer
+  has float: Integer
+  has boolean: Integer
+  has text: Integer
+  has bytes: Integer
+  has list: Integer
+  has map: Integer
+  has set_type: Integer
+  has range: Integer
+  has pair: Integer
+  has duration: Integer
+  has ordering: Integer
+  has timed_out: Integer
+  has constraint_violation: Integer
+  has guarded: Integer
+  has equal: Integer
+  has compare: Integer
+  has hash: Integer
+  has to_text: Integer
+  has iterable: Integer
+  can ToJson
+end
+
+public type TypeMeta
+  purpose: A type as the VM knows it: name, shape, derived abilities, `Compare by`, refinements.
+  has id: Integer
+  has name: Text
+  has module_name: Text
+  has is_library: Boolean
+  has params: List of Integer
+  has shape: TypeShape
+  has derives: List of Integer
+  has compare_by: maybe List of Integer
+  has refinements: List of Integer
+  can ToJson
+end
+
+public type TypeShape is one of
+  purpose: The shape of a type: opaque, a record, a sum, or a refined subtype of a base type.
+  OpaqueShape
+  RecordShape(fields: List of FieldMeta)
+  SumShape(variants: List of VariantMeta)
+  SubtypeShape(base: Ty)
+  can ToJson
+end
+
+public type FieldMeta
+  purpose: A field: its name and type, its external name, whether it may be absent, its refinement.
+  has name: Text
+  has ty: Ty
+  has external_name: maybe Text
+  has optional: Boolean
+  has refinement: maybe Integer
+  can ToJson
+end
+
+public type VariantMeta
+  purpose: A variant of a sum type with its fields.
+  has name: Text
+  has fields: List of FieldMeta
+  can ToJson
+end
+
+public type ImplEntry
+  purpose: An explicit implementation of an ability for a type: its methods by name.
+  has ability_id: Integer
+  has type_id: Integer
+  has methods: List of MethodBinding
+  can ToJson
+end
+
+public type MethodBinding
+  purpose: One method of an implementation: the ability's method name and the function.
+  has name: Text
+  has function_id: Integer
+  can ToJson
+end
+
+public type AbilityMeta
+  purpose: An ability's name and the names of its methods, in order.
+  has name: Text
+  has methods: List of Text
+  can ToJson
+end
+
+public type MethodEntry
+  purpose: The methods declared on a type under one name, in declaration order.
+  has type_id: Integer
+  has name: Text
+  has functions: List of Integer
+  can ToJson
+end
+
+public type FunctionMeta
+  purpose: A declared function as the VM knows it at run time, with its code when it has a body.
+  has module_name: Text
+  has name: Text
+  has is_library: Boolean
+  has is_method: Boolean
+  has params: List of Text
+  has receiver: maybe Text
+  has param_types: List of Text
+  has result: maybe Ty
+  has failures: List of Ty
+  has capabilities: List of Grant
+  has summary: maybe Text
+  has code: maybe Integer
+  can ToJson
+end
+
+public type ConstantMeta
+  purpose: A top-level `let`: its module, its name and the code that computes it.
+  has owner: Integer
+  has name: Text
+  has code: Integer
+  can ToJson
+end
+
+public type TestMeta
+  purpose: A `test` block: its module, name, grant, recording and code.
+  has owner: Integer
+  has name: Text
+  has capabilities: List of Grant
+  has fixture: maybe Text
+  has span: Span
+  has code: Integer
+  can ToJson
+end
+
+public type ExampleMeta
+  purpose: An `example:` line: its function, its text for reports, the call's code, the outcome.
+  has function_id: Integer
+  has owner: Integer
+  has text: Text
+  has span: Span
+  has call: Integer
+  has expected: Expected
+  can ToJson
+end
+
+public type Expected is one of
+  purpose: What an example expects: a value, or a failure that a pattern matches.
+  IsExpected(code: Integer)
+  FailsWithExpected(code: Integer)
+  can ToJson
+end
+
+public type Code
+  purpose: One code object: a function body, a test, a constant, an example or a refinement.
+  has name: Text
+  has owner: Integer
+  has kind: CodeKind
+  has function_id: maybe Integer
+  has params: Integer
+  has locals: Integer
+  has ops: List of Op
+  has spans: List of Span
+  has constants: List of CodeConstant
+  can ToJson
+end
+
+public type CodeKind is one of
+  purpose: Why a code object exists.
+  FunctionCode
+  TestCode
+  ConstantCode
+  ExampleCode
+  RefinementCode
+  can ToJson
+end
+
+public type CodeConstant is one of
+  purpose: A literal of a code: a number by its digits, a text, a Boolean, nothing or a function.
+  NothingConstant
+  BooleanConstant(value: Boolean)
+  IntegerConstant(digits: Text)
+  DecimalConstant(digits: Text)
+  FloatConstant(digits: Text)
+  TextConstant(text: Text)
+  FunctionConstant(function_id: Integer)
+  can ToJson
+end
+
+public type Specials
+  purpose: The declared `equals`, `compare`, `to_text` and `to_list` of a type, when exactly one.
+  has equals: maybe Integer
+  has compare: maybe Integer
+  has to_text: maybe Integer
+  has to_list: maybe Integer
+  can ToJson
+end
+
+public type GroupFold is one of
+  purpose: How a terminal after `group by` folds one group's values (decision M1).
+  SumFold
+  FirstFold
+  AnyFold
+  AllFold
+  can ToJson
+end
+
+public type Op is one of
+  purpose: One instruction of the stack machine, as `crates/renyi_vm/src/bytecode.rs` defines it.
+  OpConst(index: Integer)
+  OpNothing
+  OpGlobal(index: Integer)
+  OpLoad(slot: Integer)
+  OpLoadMove(slot: Integer)
+  OpStore(slot: Integer)
+  OpPop
+  OpDup
+  OpMakeList(size: Integer)
+  OpMakeMap(entries: Integer)
+  OpMakePair
+  OpMakeRange(stepped: Boolean)
+  OpConstruct(ty: Integer, fields: Integer)
+  OpConstructVariant(ty: Integer, tag: Integer, fields: Integer)
+  OpField(name: Integer, site: Integer)
+  OpWith(fields: Integer)
+  OpCall(function_id: Integer, args: Integer)
+  OpCallAbility(ability_id: Integer, method: Integer, args: Integer)
+  OpCallValue(args: Integer)
+  OpResultType(index: Integer)
+  OpNot
+  OpBinary(op: BinaryOp)
+  OpToText
+  OpConcat(pieces: Integer)
+  OpJump(target: Integer)
+  OpJumpIfFalse(target: Integer)
+  OpJumpIfTrue(target: Integer)
+  OpJumpIfAbsent(target: Integer)
+  OpJumpIfFailure(target: Integer)
+  OpPushHandler(target: Integer)
+  OpPopHandler
+  OpReturn
+  OpReturnNothing
+  OpFail
+  OpCrash
+  OpIsVariant(tag: Integer)
+  OpIsNothing
+  OpIsFailure
+  OpIsType(ty: Integer)
+  OpUnpack(parts: Integer)
+  OpUnwrapFailure
+  OpIterInit(slot: Integer)
+  OpIterNext(slot: Integer, exit: Integer)
+  OpListPush
+  OpGroupInsert
+  OpGroupFold(fold: GroupFold)
+  OpSortByKey(is_descending: Boolean)
+  OpDeadline(slot: Integer)
+  OpCheckDeadline(slot: Integer)
+  OpMarkStack(slot: Integer)
+  OpUnwindStack(slot: Integer)
+  OpCheck(index: Integer)
+  can ToJson
+end
