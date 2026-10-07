@@ -1,0 +1,52 @@
+module std.process
+  purpose: Start a program, wait for it to end and report how it ended.
+
+import std.filesystem exposing Path
+
+public type Completion
+  purpose: How a program ended: its exit status, what it wrote to its standard output (as text and as bytes) and to its standard error.
+  has status: Integer
+  has output: Text
+  has errors: Text
+  has bytes: Bytes
+end
+
+public type Options
+  purpose: How a program is started: its working directory, the variables added to its environment, the text on its standard input and its time limit; `defaults()` sets none.
+  has directory: maybe Path
+  has environment: Map of Text to Text
+  has input: Text
+  has limit: maybe Duration
+end
+
+public type ProcessError is one of
+  purpose: Why a program produced no completion with status 0.
+  NotFound(program: Text)
+  CannotStart(program: Text, detail: Text)
+  Exited(program: Text, status: Integer, output: Text, errors: Text)
+  Timeout(program: Text)
+  ProgramNotAllowed(program: Text)
+  OverBudget(program: Text)
+  can ToText
+end
+
+public function execute(program: Text, arguments: List of Text) returns Completion
+  or fails with ProcessError
+  needs process
+  purpose: Run the program to its end with the parent's environment and directory; a status other than 0 is the failure `Exited`.
+public function execute_with(program: Text, arguments: List of Text, options: Options)
+  returns Completion
+  or fails with ProcessError
+  needs process
+  purpose: `execute` with the options.
+public function attempt(program: Text, arguments: List of Text) returns Completion
+  or fails with ProcessError
+  needs process
+  purpose: Run the program to its end and report its completion whatever its status.
+public function attempt_with(program: Text, arguments: List of Text, options: Options)
+  returns Completion
+  or fails with ProcessError
+  needs process
+  purpose: `attempt` with the options.
+public function defaults() returns Options
+  purpose: No directory, no variables, no input, no limit.

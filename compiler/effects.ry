@@ -55,20 +55,17 @@ public function takes_scope(path: List of Text) returns Boolean
 end
 
 public function unavailable(path: List of Text) returns Boolean
-  purpose: Whether the capability waits for milestone M4 (decision V6): `process` and `foreign`.
+  purpose: Whether the capability waits for the FFI of milestone M4 (decisions V6, AE1): `foreign`.
 
   let head be path.first() otherwise ""
-  return head is "process" or head is "foreign"
+  return head is "foreign"
 end
 
 public function unavailable_message(path: List of Text) returns Text
   purpose: The message of `capability-unavailable`.
 
-  let head be path.first() otherwise ""
-  let brings be
-    if head is "process" then "`std.process`" otherwise "the foreign function interface" end
   let joined be path.join(".")
-  return "`{joined}` is not available until the package manager brings {brings} (milestone M4)"
+  return "`{joined}` is not available until the foreign function interface (milestone M4)"
 end
 
 public function names_of(names: List of Name) returns List of Text

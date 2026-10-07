@@ -94,7 +94,7 @@
       "exit_code": 1
     },
     {
-      "name": "process is not available before M4",
+      "name": "foreign is not available before the FFI",
       "command": "check",
       "program": "tests/conformance/programs/capability_unavailable.ry",
       "diagnostics": ["capability-unavailable"],
@@ -352,6 +352,13 @@
       "program": "tests/conformance/programs/syntax_recovery.ry",
       "diagnostics": ["foreign-keyword", "reserved-word", "otherwise-line", "statement-shape", "hole-syntax", "expected"],
       "exit_code": 1
+    },
+    {
+      "name": "process reports a missing program, the budget and the scope without starting anything",
+      "command": "run",
+      "program": "tests/conformance/programs/process_errors.ry",
+      "stdout": "tests/conformance/expected/process_errors.out",
+      "exit_code": 0
     }
   ]
 }

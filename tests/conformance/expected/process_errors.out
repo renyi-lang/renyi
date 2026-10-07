@@ -1,0 +1,3 @@
+NotFound(program: "renyi-no-such-program")
+OverBudget(program: "renyi-no-such-program")
+ProgramNotAllowed(program: "renyi-other-program")

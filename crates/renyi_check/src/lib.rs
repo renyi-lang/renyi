@@ -44,6 +44,10 @@ pub const LIBRARY: &[(&str, &str)] = &[
     ("std.csv", include_str!("../../../library/std/csv.ry")),
     ("std.sqlite", include_str!("../../../library/std/sqlite.ry")),
     ("std.regex", include_str!("../../../library/std/regex.ry")),
+    (
+        "std.process",
+        include_str!("../../../library/std/process.ry"),
+    ),
 ];
 
 /// A world with the standard library declared.

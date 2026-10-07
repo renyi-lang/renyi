@@ -1,0 +1,22 @@
+module process_errors
+  purpose: Three failures of `std.process` that start nothing: missing, over budget, out of scope.
+
+import std.console
+import std.process
+
+public function main() needs console, process("renyi-no-such-program") at most 1 per run
+  purpose: Report the three failures by their text.
+
+  report("renyi-no-such-program")
+  report("renyi-no-such-program")
+  report("renyi-other-program")
+end
+
+function report(program: Text) needs console, process("renyi-no-such-program")
+  purpose: Print how starting the program ended.
+
+  match process.execute(program: program, arguments: ["--version"])
+    when success(finished) then console.print("status {finished.status}")
+    when failure(error) then console.print(error.to_text())
+  end
+end

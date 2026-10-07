@@ -231,11 +231,13 @@ freeze, or take it out of the frozen surface until it exists.
    result that JSON cannot carry. `serve --mcp` stays with M5.
 3. **`deprecated:`** (item 2.6): the cheat sheet (line 253) says it warns
    existing callers.
-4. **`process` and `foreign` capabilities**: in the tree
-   (`crates/renyi_check/src/effects.rs:29-30`), scoped, accepted in
-   grants (`needs process("git") at most 3 per run` checks clean), no
-   library function needs them, no `std.process`, no FFI (decisions F0,
-   F1; `std.process` is "Not in v1" in the library sketch).
+4. Done in stage 3 for `process` (decision AE1, 2026-10-07:
+   `std.process`, section 13 of the library sketch, `execute` and
+   `attempt` with their options; the scope, the budget and the guards
+   at the boundary; `crates/renyi/tests/process.rs` and a conformance
+   case). **`foreign`**: in the tree (`crates/renyi_check/src/effects.rs`),
+   accepted in grants, no library function needs it, no FFI (decisions
+   F0, F1; `capability-unavailable` until then).
 5. **`lazy`** is reserved with no grammar rule (decision B4, as intended).
 6. The memory budget of a grant (`at most 256 megabytes memory`, open item
    R7-1) has no syntax and no enforcement; the VM has no step or
@@ -253,8 +255,9 @@ freeze, or take it out of the frozen surface until it exists.
   `fetch` and `publish` exist with the effect manifests they write and
   verify, the run manifest names the dependencies with their hashes and
   `reproduce` compares them, and `renyi index --budgets` reads the
-  thresholds of `renyi.json` (decision R7). Absent: the FFI generators,
-  the `only to` runtime, `std.process`.
+  thresholds of `renyi.json` (decision R7); since decision AE1 (the same
+  day) `std.process`. Absent: the FFI generators and the `only to`
+  runtime.
 - **M5** (LSP, index, compiler API): the index half exists (`index`,
   `--budgets`, `--diff`, `mcp` with ten tools). Absent: the LSP, the
   embedding API with per-module grants and memory budgets (decision Q3:
@@ -568,4 +571,6 @@ lockfile, the registry layout and the resolver in both front ends, with
 the package fixture of the conformance suite under the three judges; its
 second commit the commands (`renyi add`, `update`, `audit`, `fetch`,
 `publish`), the dependencies in the run manifest and the budgets of the
-manifest. Next: `std.process`, then the foreign function interface.
+manifest; its third commit `std.process` (decision AE1: `execute`,
+`attempt`, the options, the scope as spelled, the parent's environment
+inherited). Next: the foreign function interface.

@@ -1,9 +1,9 @@
 module capability_unavailable
-  purpose: The process capability waits for milestone M4 (decision V6).
+  purpose: The foreign capability waits for the foreign function interface (decision V6).
 
 import std.console
 
-public function main() needs console, process("git")
+public function main() needs console, foreign
   purpose: Not yet.
 
   console.print("hi")

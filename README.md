@@ -109,7 +109,8 @@ checker (M2), the project map (`renyi index`), the VM (M3) and packages
   it. The VM covers the whole library: the
   prelude, console, environment, time, random, filesystem, JSON, CSV,
   regular expressions, the HTTP client (`ureq`), the HTTP server (over
-  `std::net`) and SQLite (`rusqlite`, compiled in); `run concurrently`
+  `std::net`), SQLite (`rusqlite`, compiled in) and other programs
+  (`std.process`, decision AE1); `run concurrently`
   runs its tasks one after the other (decision S2); the binary
   allocates through `mimalloc` (decision X6).
 

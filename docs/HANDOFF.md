@@ -20,7 +20,8 @@ with type arguments, open item R3-2, decision AB1; then the judges run
 the front end from its bytecode; then packages, decision AC1, the first
 slice of stage 3 in two commits; then the diagnostics of the front end
 in Renyi, decision AD1: the Rust lexer's and parser's codes, fixes and
-recovery, the three judges byte-equal on rejected programs too).
+recovery, the three judges byte-equal on rejected programs too; then
+`std.process`, decision AE1, the second slice of stage 3).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -34,7 +35,7 @@ tasks one after the other by S2) are done, with the project map (`renyi
 index`, `--budgets`, `--diff`), `renyi tools` and `renyi mcp` on top. M4
 is under way (packages, decision AC1; `docs/GAPS.md`, section 4); M5 and
 M6 are not started. Design decisions are
-in sections 0 to AC of `01-decisions.md`; the agent tooling in
+in sections 0 to AE of `01-decisions.md`; the agent tooling in
 `05-agent-tooling.md`, the signature capabilities in
 `06-runtime-guarantees.md`, the system-level commitments in
 `07-system-design.md`; the open items in section 18 of the sketch (R3-1,
@@ -86,11 +87,11 @@ revision>]`, `run [--manifest] [options] <file> [arguments]`, `record
 [<file>]`, `test [--strict] [--refresh name [--redact name]] [--explain]
 <file>...`, `compile [--to file] <file.ry>`, `add <name> [<version>]`,
 `update [--accept-effects]`, `audit`, `fetch`, `publish [--to
-<directory>]`, `tools [path]`, `mcp [path]` and `version`; 246 tests,
+<directory>]`, `tools [path]`, `mcp [path]` and `version`; 252 tests,
 clippy and fmt clean on Windows
 with rustc 1.94.1. CI (`.github/workflows/ci.yml`) runs the same gates,
 `renyi check compiler/*.ry` and the conformance suite
-(`tests/conformance/`, 49 cases, every `run` case a second time from
+(`tests/conformance/`, 50 cases, every `run` case a second time from
 its bytecode file;
 runners `tools/conformance.py` and `crates/renyi/tests/conformance.rs`)
 on a toolchain pinned to the owner's machine (rustc 1.94.1), so that CI
@@ -225,7 +226,7 @@ sheet, with `change` (decision AA1).
   statements, calls and overloads, constructions, patterns and
   exhaustiveness with witnesses, queries, the recorded references of
   W8). `checker.ry` is the command line: `renyi run compiler/checker.ry
-  [--json] [--strict] [--library <dir>] <file>...` reads the twelve
+  [--json] [--strict] [--library <dir>] <file>...` reads the thirteen
   library declaration files from `library/std` under the working
   directory (`--library` names another), lexes and parses with the
   Renyi front end, reads the imports from the file's directory as
@@ -896,10 +897,10 @@ package name as the first segment of an import, packages before
   `fetch` on a changed file and a stale lock; `update` refused without
   the flag and until `main` declares the new kind; a URL registry served
   by a thread; the map's labels and the budgets).
-- **Next**: `std.process` with the capability `process`, then the FFI
-  (`foreign`, F0), the next slices of M4. The parity of the Renyi front
-  end's diagnostics with the Rust parser's (the "2" of the owner's
-  answer) is done: the next section.
+- **Next**: the FFI (`foreign`, F0), the last slice of M4. The parity
+  of the Renyi front end's diagnostics with the Rust parser's (the
+  "2" of the owner's answer) is done: the next section; `std.process`
+  (decision AE1) is done: the section after it.
 
 ## The diagnostics of the front end in Renyi (decision AD1)
 
@@ -970,6 +971,70 @@ included, and `checker.ry` and `compile.ry` answer as `renyi check` and
   Integers is `integer-division` (`quotient`); a message over 100
   columns is built from two halves in a function, since a line of a
   constant cannot be broken.
+
+## The process module (decision AE1; stage 3, the second slice)
+
+The owner's four answers of 2026-10-07, all the recommended ones: one
+call per run (no handle), a status other than 0 a failure, the scope
+matched text for text, the parent's environment inherited.
+
+- **The module.** `library/std/process.ry` and section 13 of the
+  library sketch: `Completion` (`status`, `output`, `errors`, `bytes`),
+  `Options` (`directory: maybe Path`, `environment: Map of Text to
+  Text`, `input: Text`, `limit: maybe Duration`), `ProcessError`
+  (`NotFound`, `CannotStart`, `Exited(program, status, output,
+  errors)`, `Timeout`, `ProgramNotAllowed`, `OverBudget`), the functions
+  `execute`, `execute_with`, `attempt`, `attempt_with` (all `needs
+  process`) and `defaults()` (pure: no directory, no variables, no
+  input, no limit; a program writes `process.defaults() with input:
+  text`). `run` is a reserved word, hence `execute`.
+- **The natives.** `crates/renyi_vm/src/natives/process.rs`:
+  `std::process::Command` with the arguments one by one (no shell), the
+  three streams piped, the output and the errors read on two threads
+  while the parent waits (a child that fills a pipe does not stall), the
+  input written on a third and the pipe closed after it; a limit polls
+  `try_wait` every 5 ms and kills the child past it (`Timeout`); the
+  status is the code, or 128 plus the signal on Unix; `output` and
+  `errors` are decoded with replacement characters, `bytes` is the raw
+  standard output. `NotFound` is the spawn error of that kind,
+  `CannotStart(program, detail)` any other.
+- **The boundary.** Nothing new in `call_primitive`: `grant::effect_of`
+  already took the first `Text` argument of a `process` primitive as
+  the scope, `scope_contains` compares a program name text for text,
+  the counters count it; `vm.rs` maps a denial to
+  `ProcessError.ProgramNotAllowed(program)` and an exhausted budget to
+  `ProcessError.OverBudget(program)`, as the other modules do; a denied
+  call is not counted, a `NotFound` one is. A guarded value (`only to`)
+  as the program or an argument fails with `Guarded(origin, sink:
+  "process(\"...\")")` before anything starts. A recording holds the
+  call with its `Completion`; `run --replay` answers it and starts
+  nothing (and prints nothing, as a replay does); `reproduce` shows the
+  output.
+- **The checker.** `effects::unavailable` keeps only `foreign`
+  (`capability-unavailable`, message "`foreign` is not available until
+  the foreign function interface (milestone M4)"), in `effects.rs` and
+  `compiler/effects.ry`; `process.ry` is in `LIBRARY` of
+  `crates/renyi_check/src/lib.rs` and in `library_modules` of
+  `compiler/project.ry` (last in both, the order the judges depend on);
+  `crates/renyi_syntax/tests/library.rs` counts thirteen files, and
+  `crates/renyi_check/tests/rules.rs` holds `process` clean and
+  `foreign` unavailable.
+- **The tests.** `crates/renyi/tests/process.rs` (six, every child the
+  `renyi` binary itself running a small program, so nothing else needs
+  to be installed): `renyi version` through `execute` (status, output,
+  the empty errors, the byte count); `renyi nonsense` is `Exited` for
+  `execute` and a completion with status 1 for `attempt`; the options
+  (a child prints its directory, a variable, the line it read; a
+  sleeper is killed at 300 ms); the scope (`ProgramNotAllowed`), a
+  missing program and the budget (`OverBudget`); a guard; a recording
+  replayed and reproduced with no marker file written. Conformance case
+  50 (`process_errors.ry`) prints `NotFound`, `OverBudget` and
+  `ProgramNotAllowed` without starting anything; case 20 now holds
+  `foreign` unavailable.
+- **What bit.** `run` as a function name (reserved); a call with one
+  argument may not name it (`report("x")`); an `otherwise` on a
+  continuation line is `otherwise-line` (break inside the parentheses
+  instead); a replay prints no console output, by design.
 
 ## The VM as it exists (`crates/renyi_vm`)
 
@@ -1380,6 +1445,17 @@ Three commits on `main`, each gated as in session 7:
     (`json_string`), the three judges of `selfhost.rs`, conformance
     cases 48 and 49, the decisions (section AD), `CLAUDE.md`,
     `README.md`, `docs/GAPS.md`, this file.
+17. `std.process` (decision AE1, the section "The process module"
+    above): `library/std/process.ry`, section 13 of the library
+    sketch, `natives/process.rs`, the two failure arms of `vm.rs`,
+    `effects.rs` and `effects.ry` (`foreign` alone unavailable), the
+    library lists of `lib.rs` and `project.ry`, `tests/library.rs`,
+    `tests/rules.rs`, `crates/renyi/tests/process.rs`, conformance cases
+    20 and 50, the
+    reference (the module list, the capability table, the static rule,
+    the run-time errors), the cheat sheet (`process` and the module
+    back on the sheet, within the budget), the decisions (section AE),
+    `CLAUDE.md`, `README.md`, `docs/GAPS.md`, this file.
 
 ## Done in session 7 (stage 1 of the gap audit)
 
@@ -1814,7 +1890,9 @@ on a fresh clone).
    rubric's reading of "only X and Y" when Z is also needed (round 1 and
    2 read it as a need missing).
 4. **M4**, under way: the first slice (packages, decision AC1, the
-   section "Packages" above) is done; next `std.process`, then the FFI;
+   section "Packages" above) and the second (`std.process`, decision
+   AE1, the section "The process module" above) are done; next the
+   FFI (`foreign`, decision F0);
    **M5**
    (embedding API, `serve --watch`, LSP, a resident `World`, open item
    R5-5) after: stage 3 of `docs/GAPS.md`.
@@ -1838,6 +1916,13 @@ on a fresh clone).
   long block text; `slice` is one `List.slice` since X2). `json.rs` and
   `ast.ry` must change together (W1); nothing checks that the Rust
   encoder's keys match `ast.ry` except the judge's byte comparison.
+- **`std.process`.** One call per run, by decision AE1: no handle, no
+  interactive reading or writing, no background process, and the
+  child's whole output is held in memory. A limited run polls every
+  5 ms. The program is found as `std::process::Command` finds it: on
+  Windows a `.exe` on the `PATH`, not a `.cmd` or `.bat`. The scope is
+  the program text for text, so `git` and `/usr/bin/git` are two
+  grants. A program a signal ended reports 128 plus the signal.
 - **The checker in Renyi.** It is a transcription: a change to a
   message, a fix, a rule or the order of checks in `crates/renyi_check`
   is a change to `declare.ry` or `bodies.ry` in the same commit, or the

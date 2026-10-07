@@ -654,6 +654,12 @@ impl<'p> Vm<'p> {
             ("std.sqlite", false) => {
                 self.fail_variant("std.sqlite", "DbError", "PermissionDenied", vec![scope])
             }
+            ("std.process", false) => self.fail_variant(
+                "std.process",
+                "ProcessError",
+                "ProgramNotAllowed",
+                vec![scope],
+            ),
             // `serve` names its port: the capability carries no scope
             ("std.server", false) => {
                 let port = args.first().cloned().unwrap_or(Value::Nothing);
@@ -692,6 +698,9 @@ impl<'p> Vm<'p> {
             }
             ("std.sqlite", false) => {
                 self.fail_variant("std.sqlite", "DbError", "OverBudget", vec![scope])
+            }
+            ("std.process", false) => {
+                self.fail_variant("std.process", "ProcessError", "OverBudget", vec![scope])
             }
             ("std.server", false) => {
                 let port = args.first().cloned().unwrap_or(Value::Nothing);

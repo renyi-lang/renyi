@@ -230,8 +230,8 @@ optional type `maybe`, the core abilities of section 5, the built-in error
 types `ConstraintViolation`, `InvalidNumber`, `InvalidEncoding`, `TimedOut`
 and `Guarded`, and the methods of the base types. The modules `std.console`,
 `std.environment`, `std.time`, `std.random`, `std.filesystem`, `std.json`,
-`std.http`, `std.server`, `std.csv`, `std.sqlite` and `std.regex` are
-imported by name.
+`std.http`, `std.server`, `std.csv`, `std.sqlite`, `std.regex` and
+`std.process` are imported by name.
 
 A program's own imports resolve from its project root: the directory of
 the nearest `renyi.json` in the file's directory or above it (up to the
@@ -1022,7 +1022,7 @@ network.socket       raw sockets
 environment          environment variables and command-line arguments
 time                 the clock
 random               random numbers
-process              start other processes (milestone M4)
+process              start other programs (`std.process`)
 foreign              call code across the FFI boundary (milestone M4)
 ```
 
@@ -1064,8 +1064,9 @@ leave the program only through the listed sinks.
   the capability statically, its scope by the grant stack at run time,
   and the diagnostic names the package ("`announce` (package `greeting`
   1.0.0) needs `console`, which `main` does not declare").
-- `process` and `foreign` are not available until milestone M4
-  (`capability-unavailable`, decision V6); a sink after `only to` is a
+- `foreign` is not available until the foreign function interface of
+  milestone M4 (`capability-unavailable`, decision V6; `process` has
+  `std.process` since decision AE1); a sink after `only to` is a
   capability of the tree (`unknown-capability`); a scope is a text literal
   (`capability-scope`).
 - A budget or a guard stands in the `needs` of `main` or a test
@@ -1082,7 +1083,8 @@ the program's grant with the declared scopes along the call chain (the
 grant stack, decision Q1), and reports a mismatch through its module's
 error type: `PermissionDenied(path)` in `FileError`,
 `HostNotAllowed(host)` in `HttpError`, `PermissionDenied(path)` in
-`DbError`, `PermissionDenied(port)` in `StartError` (decisions J11, Y1); a
+`DbError`, `PermissionDenied(port)` in `StartError`,
+`ProgramNotAllowed(program)` in `ProcessError` (decisions J11, Y1, AE1); a
 call past a budget is the module's `OverBudget` the same way. A primitive
 that cannot fail (`filesystem.exists`, `environment.get`) crashes instead,
 naming the function whose `needs` narrowed the grant. A path scope

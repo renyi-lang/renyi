@@ -1910,3 +1910,42 @@ in the lexer or the parser of `crates/renyi_syntax` is the same change
 in `compiler/lexer.ry` or `compiler/parser.ry` in the same commit. The
 alternative, one `syntax` diagnostic per rejected file, was what
 existed: enough for the trees, not for the toolchain. (user)
+
+## AE. The process module (session 8)
+
+**AE1. `std.process` starts a program and waits for it: one call per
+run, a status other than 0 a failure, the scope the program's name as
+spelled, the parent's environment inherited.** The second slice of
+stage 3 (M4), after packages (AC1), in the order the owner chose. The
+four questions of 2026-10-07 and their answers: (i) the shape of the
+module: `execute(program, arguments)` and `attempt(program, arguments)`
+run the program to its end and report a `Completion` (the status, the
+standard output as text and as bytes, the standard error as text);
+`execute_with` and `attempt_with` take an `Options` record (a working
+directory, variables added to the environment, text for the standard
+input, a time limit past which the program is killed and the call fails
+with `Timeout`) and `defaults()` sets none; no handle, no interactive
+reading or writing, no background process: one primitive call is one
+record of a recording, and a handle would sit badly with tasks that run
+one after the other (S2); a handle can be a later entry when a program
+needs one. (ii) A status other than 0 is the failure `Exited(program,
+status, output, errors)` of `execute`, so that a caller handles it like
+any failure (as `http.get` fails on a status outside 2xx, K2);
+`attempt` reports any status as a completion, for the programs whose
+status is an answer (`grep`, `diff`). (iii) The scope `process("git")`
+is matched by the program as the call spells it, text for text: the
+rule J11 states ("a program name contains only itself"), the simplest
+to explain, and the one under which a package's effect manifest says
+exactly which programs the package may start; a full path needs a grant
+of that path, and `git.exe` is not `git`. The alternative, the file
+stem, would have let `process("git")` start any file so named anywhere.
+(iv) The program inherits the parent's environment and working
+directory; `Options` adds to or overrides them. A clean environment
+would have made most programs (`git` wants `HOME`) need variables
+passed by hand, for a capability the grant already limits by program.
+The function is `execute`, not `run`: `run` is a reserved word (`run
+concurrently`). The VM's boundary already took the first `Text`
+argument of a `process` primitive as the scope of its effect and
+counted its budget; the module adds the natives, the module's
+`ProgramNotAllowed` and `OverBudget`, the tests, a conformance case,
+and `foreign` alone stays unavailable (V6). (user)

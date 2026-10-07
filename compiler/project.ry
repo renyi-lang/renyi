@@ -163,7 +163,8 @@ let library_modules: List of Text be [
   "server",
   "csv",
   "sqlite",
-  "regex"
+  "regex",
+  "process"
 ]
 
 let manifest_file: Text be "renyi.json"

@@ -13,8 +13,7 @@ import std.json                              # use as json.parse(...)
 import std.http as web                       # renamed namespace
 import accounts.models exposing User, UserId # types and abilities only
 ```
-Imported functions are called qualified (`json.parse(text)`), own-module
-ones bare. Definitions are private unless `public`.
+Imported functions are called qualified, own-module ones bare. Definitions are private unless `public`.
 
 ## Function
 ```
@@ -215,7 +214,8 @@ for each url in urls concurrently collect web.get(url) otherwise fail
 ## Effects
 `needs` lists capabilities; callers must declare a superset; no `needs` means
 pure. Capabilities: `console`, `filesystem.read`, `filesystem.write`,
-`network.http`, `network.socket`, `environment`, `time`, `random`. A parent
+`network.http`, `network.socket`, `environment`, `time`, `random`,
+`process`. A parent
 covers its children. A literal argument narrows a scope:
 `filesystem.read("data")`, `network.http("api.example.com")`; no argument
 covers every scope. `main` declares the program's whole grant. Only there: `at most 60 per minute` (budget; also `per run`) and
@@ -274,10 +274,10 @@ Modules: std.console (print, print_error, read_line); std.environment
   (arguments, get, exit); std.time (now, today, seconds, parse_date, Date,
   Instant, Duration); std.random; std.filesystem (Path, read_text, write_text,
   exists, list); std.json (parse, render); std.http (Url, get, post_json);
-  std.server; std.csv; std.sqlite; std.regex
+  std.server; std.csv; std.sqlite; std.regex; std.process (execute, attempt)
 ```
 One parameter is positional, more are named: `line.split(",")`,
-`price.rounded(2)`, `text.replace(old: "a", new: "b")`.
+`text.replace(old: "a", new: "b")`.
 
 ## Names and reserved words
 snake_case for values and functions, PascalCase for types, abilities and

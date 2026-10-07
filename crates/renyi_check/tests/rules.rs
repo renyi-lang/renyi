@@ -493,19 +493,21 @@ fn tasks_of_run_concurrently_are_independent() {
 }
 
 #[test]
-fn process_and_foreign_wait_for_the_package_manager() {
-    raises(
-        &program("public function main() needs console, process(\"git\")\n  purpose: Not yet.\n\n  console.print(\"hi\")\nend\n"),
-        "capability-unavailable",
-    );
+fn foreign_waits_for_the_ffi_and_process_is_available() {
+    // decision AE1: `process` has `std.process`; only `foreign` waits
+    let unavailable = "capability-unavailable".to_string();
+    assert!(!codes(&program(
+        "public function main() needs console, process(\"git\")\n  purpose: Not yet.\n\n  console.print(\"hi\")\nend\n"
+    ))
+    .contains(&unavailable));
     raises(
         &program("function go() needs foreign\n  ignore 1\nend\n"),
         "capability-unavailable",
     );
-    raises(
-        &program("test \"spawning\" needs process\n  check true\nend\n"),
-        "capability-unavailable",
-    );
+    assert!(!codes(&program(
+        "test \"spawning\" needs process\n  check true\nend\n"
+    ))
+    .contains(&unavailable));
 }
 
 #[test]

@@ -8,6 +8,7 @@ pub mod filesystem;
 pub mod http;
 pub mod json;
 pub mod prelude;
+pub mod process;
 pub mod regex;
 pub mod server;
 pub mod sqlite;
@@ -44,6 +45,7 @@ pub fn lookup(module: &str, name: &str, receiver: Option<&str>) -> Option<Native
         "std.http" => http::lookup(name),
         "std.server" => server::lookup(name, head),
         "std.sqlite" => sqlite::lookup(name, head),
+        "std.process" => process::lookup(name),
         _ => None,
     }
 }

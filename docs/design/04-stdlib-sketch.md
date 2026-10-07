@@ -22,7 +22,7 @@ Rules that generate the library:
    Core modules: `std.console`, `std.environment`, `std.time`, `std.random`.
    Extension packages, released in lockstep with the compiler (decision G2):
    `std.filesystem`, `std.json`, `std.http`, `std.server`, `std.csv`,
-   `std.sqlite`, `std.regex`.
+   `std.sqlite`, `std.regex`, `std.process`.
 4. **One error type per module**, a sum type whose variants carry the context a
    caller needs. "Absent" is `maybe`; "went wrong" is a failure.
 5. **Effects are declared exactly.** Constructors and conversions are pure;
@@ -700,16 +700,73 @@ public function problem(pattern: Text) returns maybe Text
 
 ---
 
-## 13. Not in v1
+## 13. std.process
 
-Candidates for later extension packages, in no order: `std.process` (start
-programs, capability `process`), `std.socket` (raw sockets), `std.crypto`
+```
+public type Completion
+  has status: Integer
+  has output: Text
+  has errors: Text
+  has bytes: Bytes
+end
+public type Options
+  has directory: maybe Path
+  has environment: Map of Text to Text
+  has input: Text
+  has limit: maybe Duration
+end
+public type ProcessError is one of
+  NotFound(program: Text)
+  CannotStart(program: Text, detail: Text)
+  Exited(program: Text, status: Integer, output: Text, errors: Text)
+  Timeout(program: Text)
+  ProgramNotAllowed(program: Text)
+  OverBudget(program: Text)
+end
+
+public function execute(program: Text, arguments: List of Text) returns Completion
+  or fails with ProcessError
+  needs process
+public function execute_with(program: Text, arguments: List of Text, options: Options)
+  returns Completion
+  or fails with ProcessError
+  needs process
+public function attempt(program: Text, arguments: List of Text) returns Completion
+  or fails with ProcessError
+  needs process
+public function attempt_with(program: Text, arguments: List of Text, options: Options)
+  returns Completion
+  or fails with ProcessError
+  needs process
+public function defaults() returns Options
+```
+
+A program is started by name (the operating system searches its `PATH`) or
+by path, with its arguments one by one and no shell between, runs to its
+end and is reported as a `Completion` (decision AE1). `execute` makes a
+status other than 0 the failure `Exited`, which carries the status and both
+outputs; `attempt` reports any status as a completion. The program inherits
+the parent's environment and working directory; `Options` sets a directory,
+adds variables, writes text to its standard input and limits its running
+time (past the limit the program is killed and the call fails with
+`Timeout`); `defaults()` sets none. `output` and `errors` are the bytes
+decoded as UTF-8 with replacement characters for invalid sequences, `bytes`
+the raw standard output. A program the system cannot find is `NotFound`,
+one it cannot start `CannotStart`. `ProgramNotAllowed` reports a
+scoped-capability mismatch (decision J11): the scope `process("git")` names
+the program as the call spells it. A program a signal ended has the status
+128 plus the signal, as a shell reports it.
+
+## 14. Not in v1
+
+Candidates for later extension packages, in no order: `std.socket` (raw
+sockets), `std.crypto`
 (hashes, HMAC), `std.yaml` and `std.toml`, `std.markdown`, an HTTP client
 with persistent settings (default headers, per-client timeouts, retries), and
 streaming variants of the file and HTTP functions for data that does not fit
 in memory.
 
-## 14. Open questions
+## 15. Open questions
 
 R3-1 to R3-3 were decided (decisions K9 to K11). New questions are listed here
 as they arise.
