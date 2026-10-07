@@ -199,8 +199,9 @@ python tools/bench.py target/debug/renyi              # the benchmarks of bench/
 cargo test
 ```
 
-Next: release 0.1 (decisions AI1 to AI4; the procedure in
-`docs/RELEASE.md`).
+Release 0.1.0 is out (2026-10-07; decisions AI1 to AI5, the
+procedure in `docs/RELEASE.md`). Next: the registration API for Rust
+natives and the typed Python bridge (decisions AJ1 to AJ4), then M5.
 
 ## Working on this repository
 

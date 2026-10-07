@@ -35,7 +35,9 @@ crates.io metadata; then decision AI5, the copies that make the two
 crates self-contained, so that `cargo package --workspace` verifies
 all seven; then foreign packages decided, AJ1 to AJ4: Rust natives
 through a registration API, Python through a typed bridge, after
-0.1).
+0.1; then release 0.1.0 itself, the evening of 2026-10-07: the
+repository public under `renyi-lang/renyi`, the seven crates on
+crates.io, the tag `v0.1.0` with its release and the site live).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -50,10 +52,13 @@ index`, `--budgets`, `--diff`), `renyi tools` and `renyi mcp` on top. M4
 is done but for its residue (packages AC1, `std.process` AE1, the FFI
 AF1; `docs/GAPS.md`, section 4); M5 is not started; of M6 the
 machine code exists (decisions AG1 to AG5) and the interpreter had its
-bounded round (AG6), `renyi build` does not. Release 0.1 (decisions AI1
-to AI4) has its engineering in the repository (the section "Release 0.1
-engineering" below) and waits for the owner's by-hand steps of
-`docs/RELEASE.md` section 2.
+bounded round (AG6), `renyi build` does not. Release 0.1.0 is out
+(2026-10-07, the section "Release 0.1 engineering" below): the
+repository is public at `github.com/renyi-lang/renyi`, the release
+page carries the three archives, their checksums and the `.vsix`,
+the seven crates are on crates.io (`cargo install renyi` builds
+0.1.0), the installers were run against the release, and the site is
+at `renyi-lang.github.io/renyi`.
 Design decisions are
 in sections 0 to AJ of `01-decisions.md`; the positioning in
 `08-positioning.md`; the agent tooling in
@@ -1302,20 +1307,14 @@ next sections of the plan, below).
    that of a general language. Still to do from it: the documentation
    site's front page (AI2) and the measurements of its section 5 on the
    starter pack (AI3).
-3. **Release 0.1** (decisions AI1 to AI4; the engineering is in the
-   repository, the section "Release 0.1 engineering" below): CI on a
-   tag builds Linux, macOS and Windows binaries and a GitHub Release
-   (`.github/workflows/release.yml`); `install.sh` and `install.ps1`;
-   `cargo install renyi` (the name is free on crates.io, checked
-   2026-10-07; the crates package and verify, decision AI5); the
-   documentation site on GitHub Pages (`tools/site.py`,
-   `.github/workflows/pages.yml`, `docs/index.md`); the VS Code
-   extension (`editors/vscode/`); the starter pack for agents
-   (`starter/`); the name stays, the repository moves to a GitHub
-   organisation `renyi-lang` as `renyi-lang/renyi`, and the owner buys
-   renyi-lang.org. What remains is in `docs/RELEASE.md` section 2: the
-   owner's steps (the organisation, the repository public, Pages on,
-   `cargo login`, the tag, the Marketplace) and the version bump.
+3. **Release 0.1** (decisions AI1 to AI5): done on 2026-10-07. The
+   engineering is the section "Release 0.1 engineering" below; the
+   release itself is its last bullet and `docs/RELEASE.md` section 5.
+   What remains of it: the announcement (the owner, with the texts of
+   `08-positioning.md` section 6), the VS Code Marketplace publisher
+   (optional: the `.vsix` is on the release page), the domain
+   renyi-lang.org (AI4, when the owner wants it), and the three
+   measurements of the positioning's section 5.
 4. **Deferred** (decision AG5): `renyi build` (the image of bytecode
    and machine code) and the baseline JIT that inlines the boxed
    operations, both after 0.1.
@@ -1406,6 +1405,27 @@ and the commit of the site and the crates.io metadata.
   command line (it reads it as git's flag); use `--list` or the full
   verification instead, and never while another cargo command runs on
   the same target directory (a `cargo test` beside it failed to build).
+- **Release 0.1.0, as it went** (2026-10-07, 20:00 to 23:30 UTC;
+  `docs/RELEASE.md` section 5 has the lessons). The owner created the
+  organisation and transferred the repository; the session renamed it
+  to the lowercase `renyi` of AI4 (`gh repo rename`), registered the
+  Pages site (`gh api -X POST repos/renyi-lang/renyi/pages -f
+  build_type=workflow`; the organisation is on the Team plan), scanned
+  the tracked files and the history for secrets and private paths
+  (none), made the repository public (`gh repo edit --visibility
+  public`), bumped the version to 0.1.0 (the fixture's `package.json`,
+  the lockfile hash and two test strings followed; commit 868db78
+  "Release 0.1.0"), published the crates with the login already on
+  the machine (five at once, then crates.io's limit on new crates:
+  one more every ten minutes, so `renyi_vm` at 22:46 and `renyi` at
+  22:56 UTC), tagged `v0.1.0` on 868db78, and the release workflow
+  built the three binaries, ran the conformance suite on each,
+  packaged the extension and published the release page (about
+  fifteen minutes; the Windows build the slowest). Checked after:
+  the Site workflow deployed on the push of 868db78 and the pages
+  answer; `install.sh` under WSL installed and ran 0.1.0 from the
+  release; the Windows archive's checksum and binary were verified
+  by hand; `cargo install renyi` built the binary from crates.io.
 
 ## The VM as it exists (`crates/renyi_vm`)
 
@@ -2186,12 +2206,21 @@ on a fresh clone).
 
 ## Owner actions pending
 
-- **Release 0.1, the owner's steps** (`docs/RELEASE.md` section 2):
-  the organisation `renyi-lang` and the transfer (AI4), the repository
-  public, Pages set to "GitHub Actions" in the settings, `cargo login`
-  for the publish (or the say-so for a session to run it), the tag
-  `v0.1.0` after the version bump, the Marketplace publisher for the
-  extension.
+- **Release 0.1.0 is out** (2026-10-07). Left to the owner: the
+  announcement with the texts of `08-positioning.md` section 6; the
+  VS Code Marketplace publisher `renyi-lang` and `vsce publish` from
+  `editors/vscode/` if the extension is to be found by search (the
+  `.vsix` on the release page installs by hand); the domain
+  renyi-lang.org (AI4).
+- **Updates and installers** (the owner's question of 2026-10-07,
+  evening): the one-line installers overwrite the binary in place and
+  `RENYI_VERSION` pins a version; `cargo install renyi` upgrades in
+  place too; there is no package-manager manifest (winget, scoop,
+  Homebrew) and no update check in the binary. The session's advice,
+  not decided: never an automatic check (the toolchain of a language
+  whose point is no undeclared effect should not phone home); an
+  explicit `renyi upgrade` command and the three manifests are
+  candidates after 0.1, for the owner to order.
 - **Decision AI5** (the owner's answer at the end of session 8): the
   two crates that embedded files from outside their directories now
   embed copies held equal by tests; nothing remains for the owner on
@@ -2241,21 +2270,21 @@ on a fresh clone).
 
 ## Next steps
 
-1. **Release 0.1**: the owner's steps of `docs/RELEASE.md`
-   section 2 in order, the version bump (`[workspace.package]` and
-   `[workspace.dependencies]`), the tag, the release page checked, one
-   installer tried on a clean machine, the extension published, the
-   announcement with the texts of `08-positioning.md` section 6. Then,
-   before the rest of M5: the registration API for Rust natives
+1. **After release 0.1.0** (out on 2026-10-07): the announcement
+   (owner); the three measurements of the positioning's section 5 on
+   the starter pack (review time, first-run rate, reproduction on
+   another operating system), reported with the release; the
+   Marketplace if wanted; then, before the rest of M5 and in the
+   order the owner sets against the update candidates above (`renyi
+   upgrade`, the package-manager manifests): the registration API
+   for Rust natives
    (AJ1) and the Python bridge (AJ2, AJ3), in that order (AJ4); the
    first design questions are the shape of the registration API
    (how a declaration file and a Rust function meet; how an
    extension is built into the binary) and the bridge's protocol.
-   Also after the release: the measurements of the positioning's section 5 on
-   the starter pack (the time to a first working workflow, the review
-   time), and `renyi tools <directory>` on a directory that holds
-   library declaration files (it parses them as programs and fails;
-   `renyi index` on the same directory does not), a small fix in
+   Small fix pending: `renyi tools <directory>` on a directory that
+   holds library declaration files parses them as programs and
+   fails (`renyi index` on the same directory does not), in
    `crates/renyi/src/main.rs`.
 2. **Stage 2 of `docs/GAPS.md`, section 7, continued** (the grammar is
    frozen, V11; the formal grammar is `docs/grammar.ebnf`, V12; the
@@ -2318,11 +2347,11 @@ on a fresh clone).
   an edit to the canonical file without the copy fails `cargo test`,
   which is the point, but the failure names the file to copy rather
   than copying it.
-- **The site is unverified in a browser**: `tools/site.py` was run
-  locally and its pages, titles and links inspected as text; the Site
-  workflow's build job runs on every push, the deploy job only from a
-  public repository. The `markdown` package renders the documents'
-  tables and fenced blocks; nothing highlights Renyi.
+- **The site is checked as text, not in a browser**: the live pages
+  were fetched over HTTP (status, size, titles, the example links,
+  the build stamp) and the generator's output inspected as text; no
+  one has looked at the rendering. The `markdown` package renders the
+  documents' tables and fenced blocks; nothing highlights Renyi.
 - **The FFI.** `natives/foreign.rs` and `foreign_abi.rs` are the VM's
   only unsafe code: a declaration that does not match the C side (a
   width, a missing length, a pointer the function keeps) is undefined

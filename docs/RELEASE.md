@@ -109,3 +109,40 @@ a major bump, one added or widened a minor bump, anything else a patch.
 | the documentation site | `.github/workflows/pages.yml`, `tools/site.py`, `docs/` |
 | the starter pack for agents | `starter/` |
 | the wording of announcements | `docs/design/08-positioning.md`, section 6 |
+
+## 5. Release 0.1.0, as it went (2026-10-07)
+
+The steps of section 2 ran in order in one evening, 20:00 to 23:30 UTC,
+and these are the things the procedure did not say:
+
+1. The organisation and the transfer kept the repository's capitalised
+   name; `gh repo rename renyi` made it the `renyi-lang/renyi` of
+   decision AI4 (GitHub redirects the old names). The local clone's
+   remote was pointed at the new address.
+2. The organisation is on GitHub's Team plan, so the Pages site could be
+   registered while the repository was still private:
+   `gh api -X POST repos/renyi-lang/renyi/pages -f build_type=workflow`.
+   The Site workflow deployed on the first push after the repository
+   went public (`gh repo edit --visibility public
+   --accept-visibility-change-consequences`), and the pages answered
+   within a minute.
+3. The version bump reaches the conformance fixture (step 4 above says
+   how); the first gate run after the bump failed on it.
+4. crates.io limits new crates: five published at once, then one more
+   every ten minutes (`429 Too Many Requests` with the time to retry).
+   Seven crates took about twenty-five minutes, with a loop that waits
+   for the time the error names. Publish the libraries a day earlier,
+   or budget the wait. The login was already on the machine
+   (`~/.cargo/credentials.toml`); no token was read or printed.
+5. The tag was pushed while the last crate waited for the limit, so
+   for about an hour the release page existed and `cargo install
+   renyi` did not work. Next time, tag after the last crate is on
+   crates.io, as section 2 orders it.
+6. The release workflow took about fifteen minutes; the Windows build
+   was the slowest. The release page carries the three archives, their
+   `.sha256` files and the `.vsix`.
+7. Checked afterwards: `install.sh` under WSL installed and ran 0.1.0
+   from the release; the Windows archive's checksum and binary were
+   verified by hand (the PowerShell installer edits the user's PATH, so
+   it was not run on the owner's machine); `cargo install renyi` built
+   the binary from crates.io.
