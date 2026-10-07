@@ -22,7 +22,7 @@ use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 
 use renyi_check::effects::Capability;
-use renyi_check::{check_project, BodyLocation, FunctionId, ModuleId, Target};
+use renyi_check::{check_project_in, BodyLocation, FunctionId, Library, ModuleId, Target};
 use renyi_syntax::ast::Item;
 use renyi_syntax::{format, SourceFile, Span};
 
@@ -31,7 +31,7 @@ use drafts::{Draft, Key};
 pub use budgets::{over_budget, Budgets};
 pub use diff::{diff, diff_json, render_diff, Bump, Change, Diff, Entry};
 pub use render::{definition_json, to_json, to_text};
-pub use tools::{manifest_json, tools_of, Tool};
+pub use tools::{manifest_json, tools_of, tools_of_in, Tool};
 
 /// What a definition is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -328,10 +328,16 @@ fn package_label(file: &SourceFile) -> Option<String> {
         .map(|package| format!("{} {}", package.name, package.version))
 }
 
-/// Index the files given, in memory.
+/// Index the files given, in memory, against the standard library.
 pub fn index_files(files: &[SourceFile], header: Header) -> Index {
+    index_files_in(&Library::standard(), files, header)
+}
+
+/// Index the files given, in memory, against the declaration files of
+/// the toolchain's extensions (decision AJ1).
+pub fn index_files_in(library: &Library, files: &[SourceFile], header: Header) -> Index {
     let (canonical, was_canonical) = canonical_files(files);
-    let checked = check_project(&canonical);
+    let checked = check_project_in(library, &canonical, &[]);
     let world = &checked.world;
 
     let mut body_refs: HashMap<(ModuleId, BodyKey), Vec<(Target, Span)>> = HashMap::new();

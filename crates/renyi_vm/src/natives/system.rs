@@ -4,27 +4,31 @@ use std::rc::Rc;
 
 use num_bigint::BigInt;
 
-use super::{arg, crash, list, small, text, NativeFn};
+use super::{arg, crash, list, small, text};
 use crate::decimal::Decimal;
+use crate::extension::Native;
 use crate::value::Value;
 use crate::vm::{Interrupt, Vm};
 
-pub fn lookup(module: &str, name: &str) -> Option<NativeFn> {
-    Some(match (module, name) {
-        ("std.console", "print") => console_print,
-        ("std.console", "print_error") => console_print_error,
-        ("std.console", "read_line") => console_read_line,
-        ("std.environment", "arguments") => environment_arguments,
-        ("std.environment", "get") => environment_get,
-        ("std.environment", "current_directory") => environment_current_directory,
-        ("std.environment", "exit") => environment_exit,
-        ("std.random", "integer") => random_integer,
-        ("std.random", "decimal") => random_decimal,
-        ("std.random", "choice") => random_choice,
-        ("std.random", "shuffled") => random_shuffled,
-        _ => return None,
-    })
-}
+/// The natives of the three modules (decision AK2): the declared function
+/// each implements, by module, name and the type of its first parameter.
+pub(crate) const NATIVES: &[Native] = &[
+    Native::function("std.console", "print", console_print),
+    Native::function("std.console", "print_error", console_print_error),
+    Native::function("std.console", "read_line", console_read_line),
+    Native::function("std.environment", "arguments", environment_arguments),
+    Native::function("std.environment", "get", environment_get),
+    Native::function(
+        "std.environment",
+        "current_directory",
+        environment_current_directory,
+    ),
+    Native::function("std.environment", "exit", environment_exit),
+    Native::function("std.random", "integer", random_integer),
+    Native::function("std.random", "decimal", random_decimal),
+    Native::function("std.random", "choice", random_choice),
+    Native::function("std.random", "shuffled", random_shuffled),
+];
 
 // ----------------------------------------------------------------- console
 

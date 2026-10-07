@@ -231,7 +231,9 @@ types `ConstraintViolation`, `InvalidNumber`, `InvalidEncoding`, `TimedOut`
 and `Guarded`, and the methods of the base types. The modules `std.console`,
 `std.environment`, `std.time`, `std.random`, `std.filesystem`, `std.json`,
 `std.http`, `std.server`, `std.csv`, `std.sqlite`, `std.regex`,
-`std.process` and `std.foreign` are imported by name.
+`std.process` and `std.foreign` are imported by name, and so are the
+modules of the extensions a toolchain is built with (decision AJ1; the
+guide is `extensions.md`), which `renyi version` lists.
 
 A program's own imports resolve from its project root: the directory of
 the nearest `renyi.json` in the file's directory or above it (up to the
@@ -1096,7 +1098,11 @@ error type: `PermissionDenied(path)` in `FileError`,
 `HostNotAllowed(host)` in `HttpError`, `PermissionDenied(path)` in
 `DbError`, `PermissionDenied(port)` in `StartError`,
 `ProgramNotAllowed(program)` in `ProcessError` (decisions J11, Y1, AE1); a
-call past a budget is the module's `OverBudget` the same way. A primitive
+call past a budget is the module's `OverBudget` the same way. The variant
+is found by its name and its one field among the function's declared
+failure types, with the scope as the field (the first argument when the
+capability carries no scope, as `serve` names its port), so a function of
+an extension reports through its own type (decision AK4). A primitive
 that cannot fail (`filesystem.exists`, `environment.get`) crashes instead,
 naming the function whose `needs` narrowed the grant. A path scope
 contains a path by its text once `.`, `..` and the separators are
@@ -1542,9 +1548,9 @@ Python scripts under `tools/` are development aids.
 | `renyi index [--json \| --budgets \| --diff <base>] [path]` | the project map, its budgets, the semantic diff (`design/05-agent-tooling.md`) | |
 | `renyi tools [path]` | the tool manifest (section 15) | |
 | `renyi run [options] <file> [arguments]` | check, then run `main` under its grant | 0; 1 when `main` fails; 2 on a crash; the code of `environment.exit` |
-| `renyi run --manifest ...` | also print the run manifest (toolchain, code hash, the dependencies with the lockfile's version and hash of each, grant, arguments, environment, outcome, output hash) | as `run` |
+| `renyi run --manifest ...` | also print the run manifest (toolchain, the extensions beyond the standard library, code hash, the dependencies with the lockfile's version and hash of each, grant, arguments, environment, outcome, output hash) | as `run` |
 | `renyi record [--to <file>] [options] <file> [arguments]` | run `main` and write a recording of its effects, the manifest in its header | as `run` |
-| `renyi reproduce <recording> [<file>]` | replay a recording under its manifest and compare the outcome and the output; the code hash and the dependencies must be the manifest's | 1 when they differ |
+| `renyi reproduce <recording> [<file>]` | replay a recording under its manifest and compare the outcome and the output; the code hash and the dependencies must be the manifest's, a different toolchain or extension list is a warning | 1 when they differ |
 | `renyi test [--strict] [--refresh <name> [--redact <name>]] [--explain] [--interpret] <file>...` | run every `example:` and `test` | 1 when any fails |
 | `renyi compile [--to <file.ryc>] <file>` | check, then write the program as a bytecode file (default `<name>.ryc`); `run`, `record`, `test` and `reproduce` take a `.ryc` file in place of a source | 1 when any error |
 | `renyi add <name> [<version>]` | a dependency (decision AC1): the versions chosen for every requirement (the same major, at least the version required, the highest the registry has, the chosen packages' own requirements included), every package fetched and verified, the effects of the package added printed, `renyi.json` and `renyi.lock.json` written | 1 when refused |
@@ -1554,7 +1560,7 @@ Python scripts under `tools/` are development aids.
 | `renyi publish [--to <directory>]` | the project, checked clean, into a directory registry as a new version with its `package.json` (the files' hashes, the effect manifest); the version must be what the semantic diff against the highest published version demands (decision G1), and a published version is never overwritten | 1 when refused |
 | `renyi bind <header.h> --module <name> --library <name>[,<name>...] [--to <directory>]` | a C header's prototypes as a foreign module (decision AF1): the declaration file `<name>.ry` in canonical layout, a prototype the boundary cannot carry left as a comment with the reason, and the module's entry in the `renyi.json` of the directory (written when the manifest exists, printed otherwise) | 1 when refused |
 | `renyi mcp [path]` | serve the toolchain to an agent host | |
-| `renyi version` | the toolchain's version | |
+| `renyi version` | the toolchain's version, then one line per extension it is built with (decision AK1) | |
 
 The options of `run` and `record`: `--explain` narrates the run on the
 standard error; `--replay <recording>` (run only) answers every effect from

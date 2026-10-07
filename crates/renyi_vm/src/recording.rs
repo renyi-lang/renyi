@@ -65,6 +65,10 @@ pub struct Manifest {
     /// Every package the program reaches, with the version and the hash
     /// the lockfile names (decision AC1), in name order.
     pub dependencies: Vec<Dependency>,
+    /// The extensions the toolchain was built with beyond the standard
+    /// library, each `name version` (decision AK1); `reproduce` warns
+    /// when they differ.
+    pub extensions: Vec<String>,
 }
 
 /// One dependency of the run manifest.
@@ -129,6 +133,12 @@ impl Recording {
             if let Some(value) = value {
                 fields.push((name.to_string(), text(value)));
             }
+        }
+        if !manifest.extensions.is_empty() {
+            fields.push((
+                "extensions".to_string(),
+                Json::Array(manifest.extensions.iter().map(|e| text(e)).collect()),
+            ));
         }
         if !manifest.dependencies.is_empty() {
             fields.push((
@@ -319,6 +329,16 @@ impl Recording {
                             }
                             _ => None,
                         }
+                    })
+                    .collect(),
+                _ => Vec::new(),
+            },
+            extensions: match field(fields, "extensions") {
+                Some(Json::Array(items)) => items
+                    .iter()
+                    .filter_map(|item| match item {
+                        Json::Text(text) => Some(text.clone()),
+                        _ => None,
                     })
                     .collect(),
                 _ => Vec::new(),

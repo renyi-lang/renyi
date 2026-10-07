@@ -1,7 +1,9 @@
-//! The library's primitives in Rust, behind one boundary: a declared library
-//! function is looked up by module, name and receiver type, and runs as a
-//! `NativeFn`. A function the build does not implement has no entry, and a
-//! call to it crashes with a message that says so.
+//! The standard library's primitives in Rust, behind one boundary: a
+//! declared library function runs as the `NativeFn` its module's table
+//! names (decision AK2), found by module, name and receiver type through
+//! the registry of `extension.rs`, where the standard library is the first
+//! extension. A function no extension implements has no entry, and a call
+//! to it crashes with a message that says so.
 
 pub mod csv;
 pub mod filesystem;
@@ -18,11 +20,13 @@ pub mod system;
 pub mod time;
 
 use std::rc::Rc;
+use std::sync::OnceLock;
 
 use indexmap::{IndexMap, IndexSet};
 use renyi_check::TypeId;
 
 use crate::decimal::Decimal;
+use crate::extension::{Extension, Native};
 use crate::integer::Int;
 use crate::value::{RangeValue, Value};
 use crate::vm::{Interrupt, Vm};
@@ -32,23 +36,31 @@ use crate::vm::{Interrupt, Vm};
 /// argument in place takes it out with `take`.
 pub type NativeFn = fn(&mut Vm, &mut [Value]) -> Result<Value, Interrupt>;
 
-/// The primitive behind a library function: its module, its name and the
-/// type of its first parameter as the checker spells it (`List of Item`).
-pub fn lookup(module: &str, name: &str, receiver: Option<&str>) -> Option<NativeFn> {
-    let head = receiver.map(|r| r.split(' ').next().unwrap_or(r));
-    match module {
-        "std.prelude" => prelude::lookup(name, head, receiver),
-        "std.console" | "std.environment" | "std.random" => system::lookup(module, name),
-        "std.time" => time::lookup(name, head),
-        "std.filesystem" => filesystem::lookup(name, head),
-        "std.json" => json::lookup(name),
-        "std.csv" => csv::lookup(name, head),
-        "std.regex" => regex::lookup(name, head),
-        "std.http" => http::lookup(name),
-        "std.server" => server::lookup(name, head),
-        "std.sqlite" => sqlite::lookup(name, head),
-        "std.process" => process::lookup(name),
-        _ => None,
+/// The standard library as the first extension (decision AJ1): the
+/// declaration files of `renyi_check::LIBRARY` and the natives of every
+/// module, the tables of this directory joined.
+pub fn standard() -> Extension {
+    static NATIVES: OnceLock<Vec<Native>> = OnceLock::new();
+    Extension {
+        name: "std",
+        version: env!("CARGO_PKG_VERSION"),
+        modules: renyi_check::LIBRARY,
+        natives: NATIVES.get_or_init(|| {
+            [
+                prelude::NATIVES,
+                system::NATIVES,
+                time::NATIVES,
+                filesystem::NATIVES,
+                json::NATIVES,
+                csv::NATIVES,
+                regex::NATIVES,
+                http::NATIVES,
+                server::NATIVES,
+                sqlite::NATIVES,
+                process::NATIVES,
+            ]
+            .concat()
+        }),
     }
 }
 

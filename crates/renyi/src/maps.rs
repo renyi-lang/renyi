@@ -265,7 +265,11 @@ fn index_at_revision(path: &Path, revision: &str, toolchain: &str) -> Result<Ind
         revision: revision.to_string(),
         toolchain: toolchain.to_string(),
     };
-    Ok(renyi_index::index_files(&files, header))
+    Ok(renyi_index::index_files_in(
+        &crate::library(),
+        &files,
+        header,
+    ))
 }
 
 fn imports_of(text: &str) -> Vec<Vec<String>> {

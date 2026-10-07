@@ -9,24 +9,24 @@ use std::time::Duration;
 use indexmap::IndexMap;
 use renyi_check::effects::{self, Capability};
 
-use super::{arg, map, text, NativeFn};
+use super::{arg, map, text};
+use crate::extension::Native;
 use crate::grant::host_of;
 use crate::natives::json::{self, Naming};
 use crate::value::Value;
 use crate::vm::{Interrupt, Vm};
 
-pub fn lookup(name: &str) -> Option<NativeFn> {
-    Some(match name {
-        "get" => get,
-        "get_with" => get_with,
-        "post" => post,
-        "post_json" => post_json,
-        "put" => put,
-        "delete" => delete,
-        "request" => request,
-        _ => return None,
-    })
-}
+/// The natives of `std.http` (decision AK2): the declared function
+/// each implements, by module, name and the type of its first parameter.
+pub(crate) const NATIVES: &[Native] = &[
+    Native::function("std.http", "get", get),
+    Native::function("std.http", "get_with", get_with),
+    Native::function("std.http", "post", post),
+    Native::function("std.http", "post_json", post_json),
+    Native::function("std.http", "put", put),
+    Native::function("std.http", "delete", delete),
+    Native::function("std.http", "request", request),
+];
 
 /// Each request has a 30-second limit (library sketch, section 8).
 const LIMIT: Duration = Duration::from_secs(30);

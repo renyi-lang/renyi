@@ -98,14 +98,16 @@ against any value (decision S3). The `assistant` fixture of the corpus
 carries a redacted `Authorization` header.
 
 `renyi record` also writes the run manifest of decision Q2 into the
-header (decision S5): `toolchain`, `source`, `code` (the content hash of
+header (decision S5): `toolchain`, `extensions` (those beyond the
+standard library, decision AK1), `source`, `code` (the content hash of
 `main`, which covers everything it reaches), `arguments`, `environment`
 (each variable read with the hash of its value, `<redacted>` kept, `null`
 when unset; empty lists and maps are left out), `outcome` and `output`
 (the SHA-256 and length of the standard output). `renyi run --manifest`
 prints that header without writing a file. `renyi reproduce FILE
 [program.ry]` refuses when `main` hashes differently, warns when the
-toolchain differs, replays the recording under its arguments with the
+toolchain or the extensions differ, replays the recording under its
+arguments with the
 console output written, and reports a different outcome or output and
 any recorded call not reached.
 

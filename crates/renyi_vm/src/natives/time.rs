@@ -1,34 +1,39 @@
 //! `std.time`: the clock, durations, calendar dates (records of the
 //! library's `Date` type) and instants (milliseconds since the epoch, UTC).
 
-use super::{arg, crash, duration, instant, now_millis, small, text, NativeFn};
+use super::{arg, crash, duration, instant, now_millis, small, text};
+use crate::extension::Native;
 use crate::value::Value;
 use crate::vm::{Interrupt, Vm};
 
-pub fn lookup(name: &str, head: Option<&str>) -> Option<NativeFn> {
-    Some(match (head, name) {
-        (None, "now") => time_now,
-        (None, "today") => time_today,
-        (Some("Integer"), "milliseconds") => time_milliseconds,
-        (Some("Integer"), "seconds") => time_seconds,
-        (Some("Integer"), "minutes") => time_minutes,
-        (Some("Integer"), "hours") => time_hours,
-        (Some("Duration"), "sleep") => time_sleep,
-        (Some("Text"), "parse_date") => time_parse_date,
-        (Some("Text"), "parse_instant") => time_parse_instant,
-        (Some("Date"), "plus_days") => date_plus_days,
-        (Some("Date"), "minus_days") => date_minus_days,
-        (Some("Date"), "days_until") => date_days_until,
-        (Some("Date"), "weekday") => date_weekday,
-        (Some("Date"), "to_text") => date_to_text,
-        (Some("Instant"), "plus") => instant_plus,
-        (Some("Instant"), "minus") => instant_minus,
-        (Some("Instant"), "elapsed_since") => instant_elapsed_since,
-        (Some("Instant"), "date") => instant_date,
-        (Some("Instant"), "to_text") => instant_to_text,
-        _ => return None,
-    })
-}
+/// The natives of `std.time` (decision AK2): the declared function
+/// each implements, by module, name and the type of its first parameter.
+pub(crate) const NATIVES: &[Native] = &[
+    Native::function("std.time", "now", time_now),
+    Native::function("std.time", "today", time_today),
+    Native::method("std.time", "milliseconds", "Integer", time_milliseconds),
+    Native::method("std.time", "seconds", "Integer", time_seconds),
+    Native::method("std.time", "minutes", "Integer", time_minutes),
+    Native::method("std.time", "hours", "Integer", time_hours),
+    Native::method("std.time", "sleep", "Duration", time_sleep),
+    Native::method("std.time", "parse_date", "Text", time_parse_date),
+    Native::method("std.time", "parse_instant", "Text", time_parse_instant),
+    Native::method("std.time", "plus_days", "Date", date_plus_days),
+    Native::method("std.time", "minus_days", "Date", date_minus_days),
+    Native::method("std.time", "days_until", "Date", date_days_until),
+    Native::method("std.time", "weekday", "Date", date_weekday),
+    Native::method("std.time", "to_text", "Date", date_to_text),
+    Native::method("std.time", "plus", "Instant", instant_plus),
+    Native::method("std.time", "minus", "Instant", instant_minus),
+    Native::method(
+        "std.time",
+        "elapsed_since",
+        "Instant",
+        instant_elapsed_since,
+    ),
+    Native::method("std.time", "date", "Instant", instant_date),
+    Native::method("std.time", "to_text", "Instant", instant_to_text),
+];
 
 // ---------------------------------------------------------- the calendar
 

@@ -30,8 +30,8 @@ use renyi_vm::natives::json::{read_json, write_json, Json};
 use renyi_vm::{Narrowing, Options, RunOutcome};
 
 use crate::{
-    compile_sources, diagnose, load_recording, parse_budget, read_source, scoped, toolchain,
-    CompileError,
+    compile_sources, diagnose, library, load_recording, parse_budget, read_source, registry,
+    scoped, toolchain, CompileError,
 };
 
 /// The revision this server answers per-request metadata with.
@@ -456,7 +456,7 @@ impl Map {
                 revision: renyi_index::git_revision(Path::new(".")),
                 toolchain: toolchain(),
             };
-            let index = renyi_index::index_files(&files, header);
+            let index = renyi_index::index_files_in(&library(), &files, header);
             let canonical = files
                 .iter()
                 .map(|file| format(file).unwrap_or_else(|_| file.text.clone()))
@@ -866,6 +866,7 @@ fn run_tool(arguments: &Json) -> Result<String, String> {
         narrowing,
         replay,
         explain: flag(arguments, "explain")?,
+        registry: registry().clone(),
         ..Options::default()
     };
     let run = renyi_vm::run_program(&compiled.program, options);
@@ -911,6 +912,7 @@ fn run_tests_tool(arguments: &Json) -> Result<String, String> {
         stdin: Box::new(std::io::Cursor::new(Vec::new())),
         strict: flag(arguments, "strict")?,
         explain: flag(arguments, "explain")?,
+        registry: registry().clone(),
         ..Options::default()
     };
     let report = renyi_vm::run_tests(&compiled.program, options);

@@ -2,20 +2,20 @@
 
 use regex::Regex;
 
-use super::{arg, crash, text, NativeFn};
+use super::{arg, crash, text};
+use crate::extension::Native;
 use crate::value::Value;
 use crate::vm::{Interrupt, Vm};
 
-pub fn lookup(name: &str, head: Option<&str>) -> Option<NativeFn> {
-    Some(match (head, name) {
-        (Some("Pattern"), "find_all") => find_all,
-        (Some("Pattern"), "captures") => captures,
-        (Some("Pattern"), "replace_all") => replace_all,
-        (Some("Pattern"), "split") => split,
-        (Some("Text"), "problem") => problem,
-        _ => return None,
-    })
-}
+/// The natives of `std.regex` (decision AK2): the declared function
+/// each implements, by module, name and the type of its first parameter.
+pub(crate) const NATIVES: &[Native] = &[
+    Native::method("std.regex", "find_all", "Pattern", find_all),
+    Native::method("std.regex", "captures", "Pattern", captures),
+    Native::method("std.regex", "replace_all", "Pattern", replace_all),
+    Native::method("std.regex", "split", "Pattern", split),
+    Native::method("std.regex", "problem", "Text", problem),
+];
 
 fn compile(pattern: &str) -> Result<Regex, Interrupt> {
     Regex::new(pattern).map_err(|error| crash(format!("invalid regular expression: {error}")))

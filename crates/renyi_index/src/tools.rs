@@ -16,7 +16,7 @@
 use renyi_check::effects::Capability;
 use renyi_check::types::{ParamId, Ty};
 use renyi_check::world::{FieldInfo, TypeKindInfo, World};
-use renyi_check::{check_project, TypeId};
+use renyi_check::{check_project_in, Library, TypeId};
 use renyi_syntax::json::Json;
 use renyi_syntax::SourceFile;
 
@@ -41,10 +41,17 @@ pub struct Tool {
     pub line: usize,
 }
 
-/// The tools of a project: its files are checked together; a file that does
-/// not check still contributes nothing, so the caller reports errors first.
+/// The tools of a project checked against the standard library.
 pub fn tools_of(files: &[SourceFile]) -> Vec<Tool> {
-    let checked = check_project(files);
+    tools_of_in(&Library::standard(), files)
+}
+
+/// The tools of a project: its files are checked together, against the
+/// declaration files of the toolchain's extensions (decision AJ1); a file
+/// that does not check still contributes nothing, so the caller reports
+/// errors first.
+pub fn tools_of_in(library: &Library, files: &[SourceFile]) -> Vec<Tool> {
+    let checked = check_project_in(library, files, &[]);
     let world = &checked.world;
     let mut tools = Vec::new();
     for (id, info) in world.functions.iter().enumerate() {

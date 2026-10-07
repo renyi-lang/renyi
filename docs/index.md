@@ -71,6 +71,9 @@ renyi run program.ry        # main, under the grant it declares
 - [The starter pack for agents](../starter/README.md): a skill file,
   the MCP configuration and five workflows that do real work, with their
   tests and recordings.
+- [Extending Renyi with Rust](extensions.md): a declaration file, a
+  table of natives and a binary of three lines; what the boundary does
+  for them.
 - [The positioning](design/08-positioning.md): the niche, the four
   points the language leads with and the comparison with the
   alternatives; [the design decisions](design/01-decisions.md), with

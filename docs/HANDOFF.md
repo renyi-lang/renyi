@@ -37,7 +37,10 @@ all seven; then foreign packages decided, AJ1 to AJ4: Rust natives
 through a registration API, Python through a typed bridge, after
 0.1; then release 0.1.0 itself, the evening of 2026-10-07: the
 repository public under `renyi-lang/renyi`, the seven crates on
-crates.io, the tag `v0.1.0` with its release and the site live).
+crates.io, the tag `v0.1.0` with its release and the site live; then
+the registration API for Rust natives, decisions AK1 to AK4: the
+standard library as the first extension, `renyi` a library too, the
+guide `docs/extensions.md`).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -50,7 +53,10 @@ run manifest of Q2, every library module, the `only to` guards of P3,
 tasks one after the other by S2) are done, with the project map (`renyi
 index`, `--budgets`, `--diff`), `renyi tools` and `renyi mcp` on top. M4
 is done but for its residue (packages AC1, `std.process` AE1, the FFI
-AF1; `docs/GAPS.md`, section 4); M5 is not started; of M6 the
+AF1; `docs/GAPS.md`, section 4); of M5 the host-facing half of the
+embedding API exists, the registration API of decisions AJ1 and AK1
+to AK4 (the section "The registration API as it exists" below); of
+M6 the
 machine code exists (decisions AG1 to AG5) and the interpreter had its
 bounded round (AG6), `renyi build` does not. Release 0.1.0 is out
 (2026-10-07, the section "Release 0.1 engineering" below): the
@@ -1326,7 +1332,77 @@ next sections of the plan, below).
    the binary; half of M5's embedding API), then the typed Python
    bridge as the first extension package (one worker process per
    run, JSON messages, each call one recorded primitive) under the
-   capability `python("<package>")`. Nothing of it exists yet.
+   capability `python("<package>")`. The registration API exists
+   (decisions AK1 to AK4, the section "The registration API as it
+   exists" below); the bridge does not.
+
+## The registration API as it exists (decisions AJ1, AK1 to AK4; session 8, 2026-10-07, late)
+
+One commit, after the owner's four answers (AK1 to AK4, every
+recommended option). The pieces:
+
+- `crates/renyi_vm/src/extension.rs`: `Native` (module, name, the
+  receiver as the checker spells it or its head, or none;
+  `Native::function` and `Native::method` are `const fn`, so a table is
+  a constant), `Extension` (name, version, the declaration files, the
+  table), `Registry` (`standard()`, `add`, `with`, `extensions`,
+  `extras` for the manifest, `library()` for the checker, `lookup` with
+  the rule full spelling, then head, then bare, and `verify`, which
+  reports every mismatch of the tables at once and the first problem of
+  the files).
+- The standard library is the first extension: `natives::standard()`
+  joins the eleven per-module tables (`pub(crate) const NATIVES` in each
+  file under `natives/`, written by a script from the old `lookup`
+  functions; 200 entries) into one `Extension` behind a `OnceLock`;
+  `natives::lookup` is gone and `Vm::new` asks `options.registry`. The
+  two-way check passed on the standard library at its first real run.
+- `renyi_check::Library` (`standard()`, `empty()`, `add`, `modules`,
+  `world()`), `check_project_in(library, files, problems)` and
+  `check_file_in`; the old names check against the standard library.
+  `World::resolve_all` is public: a world of declarations alone needs
+  it before its functions exist (without it the check passed
+  vacuously, which the test caught).
+- `renyi_index::index_files_in` and `tools_of_in`.
+- `renyi_vm::Options::registry` (default `Registry::standard()`). The
+  boundary's refusals are found by the shape of the declared failure
+  types (`Vm::boundary_failure`: the variant named `PermissionDenied`,
+  `HostNotAllowed`, `ProgramNotAllowed` or `OverBudget` with one field,
+  the scope or, without one, the first argument), which replaced the
+  match on the five module names and reports an extension's own types
+  the same way.
+- `Manifest::extensions` (`"extensions": ["demo 0.1.0"]`, left out when
+  empty), rendered and parsed; `renyi reproduce` warns when the
+  recording's list differs from the binary's.
+- The crate `renyi` is a library and a binary: `src/lib.rs` is the old
+  `main.rs` with `pub fn main_with(extensions: Vec<Extension>) ->
+  ExitCode` (verifies when there are extensions, stores the registry in
+  a `OnceLock`, then the 64 MB thread as before), `registry()` and
+  `library()` for the commands, and `src/main.rs` is
+  `renyi::main_with(Vec::new())`; every check, index, tools, run, test,
+  reproduce and MCP path goes through them; `renyi version` prints one
+  `extension name version` line per extension; the bin target has
+  `doc = false` against the name collision.
+- The test `crates/renyi_vm/tests/extension.rs`: the standard library
+  verifies; the lookup rule; a three-native extension (`twice`, `shout`
+  under `console`, `peek` under `filesystem.read` with its own
+  `PeekError`) checks, runs, is recorded and is refused through
+  `PeekError.PermissionDenied`; its native fails with `Missing`; the
+  check names a declaration without a native, a native without a
+  declaration, a capability outside the reference, a module declared
+  twice and a file registered under another name.
+- The documents: decisions AK1 to AK4; `docs/extensions.md`, the guide
+  (the declaration file, the natives, the `Extension` value, the binary
+  of three lines, what the boundary does, what an extension is trusted
+  with); the reference (section 2: extension modules import by name;
+  section 11: the refusal rule by shape; appendix B: the manifest,
+  `reproduce`, `version`); `06-runtime-guarantees.md` and
+  `07-system-design.md` on the manifest's `extensions` and the
+  host-facing half of the embedding API; the front page and the site's
+  navigation; the README's status; CLAUDE.md.
+
+Gates: `cargo fmt`, `cargo clippy --all-targets` clean, `cargo test`
+278 passed (270 before, the eight of the extension test new); the
+corpus and `compiler/` untouched.
 
 ## Release 0.1 engineering (decisions AI1 to AI4; session 8, 2026-10-07)
 
@@ -2270,22 +2346,32 @@ on a fresh clone).
 
 ## Next steps
 
-1. **After release 0.1.0** (out on 2026-10-07): the announcement
-   (owner); the three measurements of the positioning's section 5 on
-   the starter pack (review time, first-run rate, reproduction on
-   another operating system), reported with the release; the
-   Marketplace if wanted; then, before the rest of M5 and in the
-   order the owner sets against the update candidates above (`renyi
-   upgrade`, the package-manager manifests): the registration API
-   for Rust natives
-   (AJ1) and the Python bridge (AJ2, AJ3), in that order (AJ4); the
-   first design questions are the shape of the registration API
-   (how a declaration file and a Rust function meet; how an
-   extension is built into the binary) and the bridge's protocol.
-   Small fix pending: `renyi tools <directory>` on a directory that
-   holds library declaration files parses them as programs and
-   fails (`renyi index` on the same directory does not), in
-   `crates/renyi/src/main.rs`.
+1. **The Python bridge** (decisions AJ2 and AJ3; after the
+   registration API, AJ4): an extension in the official binary,
+   written against `extension.rs`: a declaration file per Python
+   package over the types JSON carries, one `python` worker process
+   per run, each call a JSON message and one recorded primitive,
+   under the capability `python("<package>")`, a new kind in the
+   reference's section 11 and `effects::TREE` (with `takes_scope`),
+   and a failure type of the bridge's own. The first design
+   questions: the protocol (one request and one response per call on
+   the worker's standard input and output; how a Python exception
+   comes back as a failure; how the worker is found, `python3` on
+   the PATH or a path in `renyi.json`); where the bridge's
+   declaration files live (`library/python/`?) and how a user writes
+   one for a package the bridge does not know; how the checker
+   written in Renyi (`compiler/project.ry`, a fixed list of the
+   fourteen standard modules under `--library`) sees extension
+   modules, which the judges need once the corpus has a program
+   that imports one. Also pending from the release: the
+   announcement (owner), the three measurements of the
+   positioning's section 5 on the starter pack, the Marketplace if
+   wanted, and the update candidates above (`renyi upgrade`, the
+   package-manager manifests), in the order the owner sets. Small
+   fix pending: `renyi tools <directory>` on a directory that holds
+   library declaration files parses them as programs and fails
+   (`renyi index` on the same directory does not), in
+   `crates/renyi/src/lib.rs` (the former `main.rs`).
 2. **Stage 2 of `docs/GAPS.md`, section 7, continued** (the grammar is
    frozen, V11; the formal grammar is `docs/grammar.ebnf`, V12; the
    language reference is `docs/reference.md`; the lexer and the parser
@@ -2341,6 +2427,13 @@ on a fresh clone).
 
 ## Known gaps and risks
 
+- **Extensions and the checker in Renyi.** `compiler/project.ry`
+  reads the fourteen standard modules by name from `--library`; an
+  extension's modules are invisible to it, so the self-hosted judges
+  cannot compare a program that imports one (none does today). A
+  bytecode file compiled with an extension runs on a binary without
+  it until the first call, which crashes as a library function this
+  build does not implement, rather than being refused at load.
 - **Two copies to keep.** `crates/renyi_check/library/std/` and
   `crates/renyi/cheatsheet.md` are copies (decision AI5) that a test
   in each crate holds equal to `library/std/` and `docs/cheatsheet.md`;

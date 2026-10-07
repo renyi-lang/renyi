@@ -2,31 +2,31 @@
 
 use std::rc::Rc;
 
-use super::{arg, bytes, text, NativeFn};
+use super::{arg, bytes, text};
+use crate::extension::Native;
 use crate::value::Value;
 use crate::vm::{Interrupt, Vm};
 
-pub fn lookup(name: &str, head: Option<&str>) -> Option<NativeFn> {
-    Some(match (head, name) {
-        (Some("Path"), "name") => path_name,
-        (Some("Path"), "parent") => path_parent,
-        (Some("Path"), "join") => path_join,
-        (Some("Path"), "extension") => path_extension,
-        (_, "read_text") => read_text,
-        (_, "read_bytes") => read_bytes,
-        (_, "write_text") => write_text,
-        (_, "write_bytes") => write_bytes,
-        (_, "append_text") => append_text,
-        (_, "exists") => exists,
-        (_, "inspect") => inspect,
-        (_, "list") => list_directory,
-        (_, "create_directory") => create_directory,
-        (_, "remove") => remove,
-        (_, "copy") => copy,
-        (_, "move") => move_path,
-        _ => return None,
-    })
-}
+/// The natives of `std.filesystem` (decision AK2): the declared function
+/// each implements, by module, name and the type of its first parameter.
+pub(crate) const NATIVES: &[Native] = &[
+    Native::method("std.filesystem", "name", "Path", path_name),
+    Native::method("std.filesystem", "parent", "Path", path_parent),
+    Native::method("std.filesystem", "join", "Path", path_join),
+    Native::method("std.filesystem", "extension", "Path", path_extension),
+    Native::function("std.filesystem", "read_text", read_text),
+    Native::function("std.filesystem", "read_bytes", read_bytes),
+    Native::function("std.filesystem", "write_text", write_text),
+    Native::function("std.filesystem", "write_bytes", write_bytes),
+    Native::function("std.filesystem", "append_text", append_text),
+    Native::function("std.filesystem", "exists", exists),
+    Native::function("std.filesystem", "inspect", inspect),
+    Native::function("std.filesystem", "list", list_directory),
+    Native::function("std.filesystem", "create_directory", create_directory),
+    Native::function("std.filesystem", "remove", remove),
+    Native::function("std.filesystem", "copy", copy),
+    Native::function("std.filesystem", "move", move_path),
+];
 
 fn segments(path: &str) -> Vec<&str> {
     path.split(['/', '\\'])

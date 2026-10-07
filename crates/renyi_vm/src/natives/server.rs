@@ -10,23 +10,23 @@ use std::time::Duration;
 use indexmap::IndexMap;
 use renyi_check::effects::Capability;
 
-use super::{arg, crash, small, text, NativeFn};
+use super::{arg, crash, small, text};
+use crate::extension::Native;
 use crate::natives::json::{self, Naming};
 use crate::value::Value;
 use crate::vm::{Interrupt, Vm};
 
-pub fn lookup(name: &str, head: Option<&str>) -> Option<NativeFn> {
-    Some(match (head, name) {
-        (_, "serve") => serve,
-        (_, "ok") => ok,
-        (_, "ok_json") => ok_json,
-        (_, "not_found") => not_found,
-        (_, "bad_request") => bad_request,
-        (_, "respond") => respond,
-        (Some("Response"), "with_header") => with_header,
-        _ => return None,
-    })
-}
+/// The natives of `std.server` (decision AK2): the declared function
+/// each implements, by module, name and the type of its first parameter.
+pub(crate) const NATIVES: &[Native] = &[
+    Native::function("std.server", "serve", serve),
+    Native::function("std.server", "ok", ok),
+    Native::function("std.server", "ok_json", ok_json),
+    Native::function("std.server", "not_found", not_found),
+    Native::function("std.server", "bad_request", bad_request),
+    Native::function("std.server", "respond", respond),
+    Native::method("std.server", "with_header", "Response", with_header),
+];
 
 /// Headers and bodies larger than these are refused with 400.
 const MAX_HEAD: usize = 64 * 1024;

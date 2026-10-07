@@ -15,20 +15,20 @@ use std::time::{Duration, Instant};
 
 use indexmap::IndexMap;
 
-use super::{arg, crash, list, text, NativeFn};
+use super::{arg, crash, list, text};
+use crate::extension::Native;
 use crate::value::Value;
 use crate::vm::{Interrupt, Vm};
 
-pub fn lookup(name: &str) -> Option<NativeFn> {
-    Some(match name {
-        "execute" => execute,
-        "execute_with" => execute_with,
-        "attempt" => attempt,
-        "attempt_with" => attempt_with,
-        "defaults" => defaults,
-        _ => return None,
-    })
-}
+/// The natives of `std.process` (decision AK2): the declared function
+/// each implements, by module, name and the type of its first parameter.
+pub(crate) const NATIVES: &[Native] = &[
+    Native::function("std.process", "execute", execute),
+    Native::function("std.process", "execute_with", execute_with),
+    Native::function("std.process", "attempt", attempt),
+    Native::function("std.process", "attempt_with", attempt_with),
+    Native::function("std.process", "defaults", defaults),
+];
 
 /// How often a limited run looks at the child.
 const POLL: Duration = Duration::from_millis(5);

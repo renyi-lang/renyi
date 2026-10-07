@@ -2302,3 +2302,69 @@ checker's table, not to the surface frozen by V11. (user)
 first, then the bridge of AJ2 and AJ3, before the other items of M5.**
 The alternatives, before 0.1 or after M5, either delay the release or
 leave the ecosystem question open while the first users arrive. (user)
+
+## AK. The registration API (session 8)
+
+The owner's answers of 2026-10-07, late evening, to the four questions
+decision AJ1 left open. The API is `crates/renyi_vm/src/extension.rs`,
+the guide `docs/extensions.md`, the test
+`crates/renyi_vm/tests/extension.rs`.
+
+**AK1. An extension is built into a binary by a crate that depends on
+`renyi` as a library: `renyi::main_with(vec![EXTENSION])` is the whole
+program of such a binary, and the official `renyi` is
+`main_with(Vec::new())`.** The crate `renyi` is a library and a binary;
+an extension is an ordinary Rust crate that depends on `renyi_vm` for
+the value types and holds an `Extension` value; a user builds a `renyi`
+with it in a crate of three lines and `cargo install --path .`. The run
+manifest names the extensions a run had beyond the standard library
+(`extensions`, each `name version`), `reproduce` warns when they differ,
+and `renyi version` lists them. The alternatives: Cargo features of the
+`renyi` crate, which would make every extension a dependency of this
+repository and leave a third party to fork it; or loading an extension
+as a shared library at run time, which Rust's unstable ABI would reduce
+to the C family of AF1, without lists, maps and records. (user)
+
+**AK2. A declaration file and its natives meet by name: an `Extension`
+names its modules with their declaration files and a table of `Native`
+entries, each a module, a function name, the type of the function's
+first parameter as the checker spells it, in full (`List of Integer`) or
+by its head (`List`), or no receiver, and the Rust function;
+`Registry::verify` holds the table and the declarations equal both ways,
+and a binary with an extension that fails it does not start.** A lookup
+takes the entry whose receiver is the full spelling, then the head, then
+the entry without one. The standard library is the first extension
+(`natives::standard()`): the eleven lookup functions under `natives/`
+became the same keys as data, two hundred entries, and the two-way check
+passed on them at once, which is the test of the API that decision AJ1
+asked for. The alternative, a procedural macro reading the Rust
+signature and writing the declaration, would move the place a reviewer
+reads the capability and the failures into Rust source, for machinery
+the table does not need. (user)
+
+**AK3. A native of an extension sees what the standard library's natives
+see: the `Vm`, the plain `Value`s of its arguments and the helpers of
+`renyi_vm::natives` (`arg`, `text`, `int`, `small`, `list`, `map`,
+`Vm::library_record`, `Vm::fail_variant` and the rest); `NativeFn` is
+the one signature.** The standard library's two hundred natives are the
+proof that it is enough. A typed layer (`FromValue`, `IntoValue`, a Rust
+signature per Renyi signature) can be laid over it later without
+changing it; it is not needed to write an extension. (user)
+
+**AK4. An extension declares its capabilities from the kinds of
+reference section 11 and adds none: `console`, `filesystem`, `network`,
+`environment`, `time`, `random`, `process` and `foreign`, with `python`
+to come by AJ3; a new kind is a decision and a change to the reference
+and the checker's table.** The reviewer's vocabulary does not grow with
+the extensions a binary carries, and a native declared under a kind
+that takes a scope gets the scope check, the budgets and the guards of
+the boundary from its `Path` or `Url` parameter without code of its own.
+A denied call or one past a budget is reported through the variant of
+the function's declared failure type named `PermissionDenied`,
+`HostNotAllowed` or `ProgramNotAllowed`, or `OverBudget`, with the scope
+as its one field (the first argument when the capability carries none,
+as `serve` names its port): the rule the library's modules followed by
+name, now followed by shape, so that an extension's own error type is
+reported the same way; a function without such a variant crashes, as
+before. The alternative, kinds registered by extensions, would make the
+grant's names depend on the binary. (user)

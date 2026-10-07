@@ -200,8 +200,9 @@ cargo test
 ```
 
 Release 0.1.0 is out (2026-10-07; decisions AI1 to AI5, the
-procedure in `docs/RELEASE.md`). Next: the registration API for Rust
-natives and the typed Python bridge (decisions AJ1 to AJ4), then M5.
+procedure in `docs/RELEASE.md`), and the registration API for Rust
+natives is in (decisions AJ1 and AK1 to AK4; `docs/extensions.md`).
+Next: the typed Python bridge (AJ2, AJ3), then M5.
 
 ## Working on this repository
 

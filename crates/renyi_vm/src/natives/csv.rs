@@ -2,20 +2,20 @@
 
 use std::rc::Rc;
 
-use super::{arg, crash, list, text, NativeFn};
+use super::{arg, crash, list, text};
+use crate::extension::Native as Entry;
 use crate::value::{Native, Value};
 use crate::vm::{Interrupt, Vm};
 
-pub fn lookup(name: &str, head: Option<&str>) -> Option<NativeFn> {
-    Some(match (head, name) {
-        (Some("Row"), "get") => row_get,
-        (Some("Row"), "cells") => row_cells,
-        (_, "parse") => parse,
-        (_, "parse_without_header") => parse_without_header,
-        (_, "render") => render,
-        _ => return None,
-    })
-}
+/// The natives of `std.csv` (decision AK2): the declared function
+/// each implements, by module, name and the type of its first parameter.
+pub(crate) const NATIVES: &[Entry] = &[
+    Entry::method("std.csv", "get", "Row", row_get),
+    Entry::method("std.csv", "cells", "Row", row_cells),
+    Entry::function("std.csv", "parse", parse),
+    Entry::function("std.csv", "parse_without_header", parse_without_header),
+    Entry::function("std.csv", "render", render),
+];
 
 /// A record: the line it starts on and its cells.
 pub type Record = (i64, Vec<String>);

@@ -1,10 +1,11 @@
 //! Name resolution, type checking and effect checking (milestone M2). The
 //! standard library's declarations are compiled in from the crate's copy of
 //! `library/std/*.ry`, held equal to the canonical files by a test (decision
-//! AI5: a crates.io tarball carries only the files under the crate);
-//! a program's own imports are read from its project root and its
-//! dependencies' files from the registry or the store (decision AC1, the
-//! resolver of `renyi_package`).
+//! AI5: a crates.io tarball carries only the files under the crate); a
+//! toolchain built with extensions adds their declaration files through a
+//! [`Library`] (decision AJ1); a program's own imports are read from its
+//! project root and its dependencies' files from the registry or the
+//! store (decision AC1, the resolver of `renyi_package`).
 
 pub mod check;
 pub mod effects;
@@ -46,19 +47,64 @@ pub const LIBRARY: &[(&str, &str)] = &[
     ("std.foreign", include_str!("../library/std/foreign.ry")),
 ];
 
+/// The declaration files the checker knows besides a project's own: the
+/// standard library's, and those of the extensions a toolchain is built
+/// with (decision AJ1), in the order they are declared.
+#[derive(Clone, Debug, Default)]
+pub struct Library {
+    modules: Vec<(String, String)>,
+}
+
+impl Library {
+    /// The standard library alone.
+    pub fn standard() -> Library {
+        let mut library = Library::empty();
+        for (name, source) in LIBRARY {
+            library.add(name, source);
+        }
+        library
+    }
+
+    /// No declaration file yet: the VM's registry starts from this and
+    /// adds the standard library first.
+    pub fn empty() -> Library {
+        Library::default()
+    }
+
+    /// A declaration file after those already added.
+    pub fn add(&mut self, name: &str, source: &str) {
+        self.modules.push((name.to_string(), source.to_string()));
+    }
+
+    /// Each module's name and the text of its declaration file, in order.
+    pub fn modules(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.modules
+            .iter()
+            .map(|(name, source)| (name.as_str(), source.as_str()))
+    }
+
+    /// A world with every module of the library declared. A declaration
+    /// file that does not parse is a bug of the build (the VM's
+    /// `Registry::verify` reports it before a binary starts), so it is a
+    /// panic here.
+    pub fn world(&self) -> World {
+        let mut world = World::new();
+        for (name, source) in self.modules() {
+            let parsed = parse_declarations(source);
+            assert!(
+                parsed.diagnostics.is_empty(),
+                "the library file {name} does not parse: {:?}",
+                parsed.diagnostics
+            );
+            world.add_module(parsed.module, true);
+        }
+        world
+    }
+}
+
 /// A world with the standard library declared.
 pub fn library_world() -> World {
-    let mut world = World::new();
-    for (name, source) in LIBRARY {
-        let parsed = parse_declarations(source);
-        assert!(
-            parsed.diagnostics.is_empty(),
-            "the library file {name} does not parse: {:?}",
-            parsed.diagnostics
-        );
-        world.add_module(parsed.module, true);
-    }
-    world
+    Library::standard().world()
 }
 
 /// One file of a project after `check_project`.
@@ -85,7 +131,19 @@ pub struct CheckedProject {
 /// parse keeps its parse diagnostics and declares no module, so a module
 /// that imports it sees an unknown module.
 pub fn check_project(files: &[SourceFile]) -> CheckedProject {
-    let mut world = library_world();
+    check_project_in(&Library::standard(), files, &[])
+}
+
+/// `check_project` against the declaration files of a library, with the
+/// resolver's problems (a manifest that cannot be read, a package missing
+/// or not the one the lockfile names) added to the diagnostics of the
+/// files they belong to.
+pub fn check_project_in(
+    library: &Library,
+    files: &[SourceFile],
+    problems: &[Problem],
+) -> CheckedProject {
+    let mut world = library.world();
     let mut modules = Vec::new();
     for (index, file) in files.iter().enumerate() {
         // a foreign module declares (decision AF1): no bodies
@@ -139,18 +197,11 @@ pub fn check_project(files: &[SourceFile]) -> CheckedProject {
                 .map(|(body, reference)| (id, body, reference)),
         );
     }
-    CheckedProject {
+    let mut checked = CheckedProject {
         world,
         modules,
         references,
-    }
-}
-
-/// `check_project`, with the resolver's problems (a manifest that cannot be
-/// read, a package missing or not the one the lockfile names) added to the
-/// diagnostics of the files they belong to.
-pub fn check_project_with_problems(files: &[SourceFile], problems: &[Problem]) -> CheckedProject {
-    let mut checked = check_project(files);
+    };
     for problem in problems {
         let Some(module) = checked
             .modules
@@ -163,6 +214,12 @@ pub fn check_project_with_problems(files: &[SourceFile], problems: &[Problem]) -
         module.diagnostics.sort_by_key(|d| d.span.start);
     }
     checked
+}
+
+/// `check_project` against the standard library, with the resolver's
+/// problems.
+pub fn check_project_with_problems(files: &[SourceFile], problems: &[Problem]) -> CheckedProject {
+    check_project_in(&Library::standard(), files, problems)
 }
 
 /// Decision G3: the module name equals the path. The last segment is the
@@ -269,7 +326,12 @@ pub fn imported_files(file: &SourceFile) -> Vec<SourceFile> {
 /// Check a file on disk together with its imports and dependencies; the
 /// resolver's problems count as the main file's diagnostics.
 pub fn check_file(file: &SourceFile) -> Vec<Diagnostic> {
+    check_file_in(&Library::standard(), file)
+}
+
+/// `check_file` against the declaration files of a library.
+pub fn check_file_in(library: &Library, file: &SourceFile) -> Vec<Diagnostic> {
     let resolved = resolve(file);
-    let checked = check_project_with_problems(&resolved.files, &resolved.problems);
+    let checked = check_project_in(library, &resolved.files, &resolved.problems);
     summarize(&checked, &resolved.files[1..])
 }

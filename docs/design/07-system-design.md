@@ -96,7 +96,8 @@ by arguments. What remains is to name the inputs.
 
 - **The run manifest.** `renyi record` writes it into the header of the
   recording (decision S5) and `renyi run --manifest` prints it: the
-  toolchain version, the content hash of `main` (which covers everything
+  toolchain version, the extensions beyond the standard library
+  (decision AK1), the content hash of `main` (which covers everything
   `main` reaches, so it is the hash of the closure), the grant, the
   arguments, the environment variables read with the hash of each value
   (the redaction placeholder kept), the outcome, and the SHA-256 and
@@ -104,7 +105,8 @@ by arguments. What remains is to name the inputs.
   the program reaches with the version and the hash the lockfile names.
 - **`renyi reproduce recording.json [program.ry]`** checks that `main` of
   the program hashes as the manifest says (fetching code by hash needs the
-  registry, M4), warns when the toolchain differs, replays the recording
+  registry, M4), warns when the toolchain or the extensions differ,
+  replays the recording
   under its arguments with the console output written, and compares the
   outcome and the output byte for byte; a difference is a bug in the
   toolchain or a dependency on something outside the manifest, and the
@@ -154,6 +156,9 @@ scheduling from the module, and `foreign` code, once granted, is outside
 every guarantee. The document says so.
 
 Scheduled after section 2 (the grant stack) with the embedding API at M5.
+The half of that API that faces the host exists: natives registered
+under declaration files and built into the binary (decisions AJ1 and
+AK1 to AK4; the guide is `extensions.md`).
 
 ## 5. Checked live update (decision Q4)
 

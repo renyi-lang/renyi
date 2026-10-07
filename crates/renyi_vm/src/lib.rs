@@ -14,11 +14,15 @@
 //! guards what enters through it: such values carry their origins, and the
 //! boundary refuses a call that would send them past the sinks (decision
 //! P3). `run concurrently` and `concurrently` queries run their tasks one
-//! after the other (decision S2).
+//! after the other (decision S2). The primitives come from the extensions
+//! the toolchain is built with (`extension.rs`, decision AJ1): the
+//! standard library is the first, and another is a declaration file with
+//! a table of natives, registered the same way.
 
 pub mod bytecode;
 pub mod compile;
 pub mod decimal;
+pub mod extension;
 pub mod file;
 pub mod grant;
 pub mod integer;
@@ -34,6 +38,7 @@ pub mod vm;
 
 pub use compile::{compile_project, Program};
 pub use decimal::Decimal;
+pub use extension::{Extension, Native, Registry};
 pub use grant::Narrowing;
 pub use integer::Int;
 pub use recording::{Manifest, Recording};

@@ -9,28 +9,28 @@ use std::rc::Rc;
 use renyi_check::types::Ty;
 use rusqlite::types::{Value as SqlValue, ValueRef};
 
-use super::{arg, crash, list, text, NativeFn};
+use super::{arg, crash, list, text};
 use crate::decimal::Decimal;
+use crate::extension::Native as Entry;
 use crate::integer::Int;
 use crate::render::float_text;
 use crate::types::TypeShape;
 use crate::value::{Native, Value};
 use crate::vm::{Interrupt, Vm};
 
-pub fn lookup(name: &str, head: Option<&str>) -> Option<NativeFn> {
-    Some(match (head, name) {
-        (_, "open") => open,
-        (_, "integer") => integer_parameter,
-        (_, "decimal") => decimal_parameter,
-        (_, "text") => text_parameter,
-        (_, "boolean") => boolean_parameter,
-        (_, "absent") => absent_parameter,
-        (Some("Connection"), "query") => query,
-        (Some("Connection"), "execute") => execute,
-        (Some("Connection"), "close") => close,
-        _ => return None,
-    })
-}
+/// The natives of `std.sqlite` (decision AK2): the declared function
+/// each implements, by module, name and the type of its first parameter.
+pub(crate) const NATIVES: &[Entry] = &[
+    Entry::function("std.sqlite", "open", open),
+    Entry::function("std.sqlite", "integer", integer_parameter),
+    Entry::function("std.sqlite", "decimal", decimal_parameter),
+    Entry::function("std.sqlite", "text", text_parameter),
+    Entry::function("std.sqlite", "boolean", boolean_parameter),
+    Entry::function("std.sqlite", "absent", absent_parameter),
+    Entry::method("std.sqlite", "query", "Connection", query),
+    Entry::method("std.sqlite", "execute", "Connection", execute),
+    Entry::method("std.sqlite", "close", "Connection", close),
+];
 
 fn error(vm: &Vm, variant: &str, fields: Vec<Value>) -> Result<Value, Interrupt> {
     vm.fail_variant("std.sqlite", "DbError", variant, fields)

@@ -6,9 +6,16 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
+# decision AK1: the crate is a library too, so that a binary built with
+# extensions is a crate of three lines on top of it
+[lib]
+name = "renyi"
+path = "src/lib.rs"
+
 [[bin]]
 name = "renyi"
 path = "src/main.rs"
+doc = false
 
 [dependencies]
 renyi_syntax.workspace = true

@@ -23,6 +23,7 @@ use renyi_syntax::ast::BinaryOp;
 use crate::bytecode::{Code, CodeKind, Op};
 use crate::compile::{CodeId, Program};
 use crate::decimal::{Decimal, DecimalError};
+use crate::extension::Registry;
 use crate::grant::{self, Counter, Guard, Narrowing};
 use crate::integer::Int;
 use crate::native::{self, Jit};
@@ -100,6 +101,9 @@ pub struct Options {
     /// code (`--interpret`, decision AG3); a narrated or profiled run does
     /// so by itself.
     pub interpret: bool,
+    /// The extensions the toolchain is built with (decision AJ1): where
+    /// the natives behind the program's library calls come from.
+    pub registry: Registry,
 }
 
 impl Default for Options {
@@ -122,6 +126,7 @@ impl Default for Options {
             replay_output: false,
             profile: false,
             interpret: false,
+            registry: Registry::standard(),
         }
     }
 }
@@ -263,7 +268,9 @@ impl<'p> Vm<'p> {
             .iter()
             .map(|meta| {
                 if meta.is_library {
-                    natives::lookup(&meta.module, &meta.name, meta.receiver.as_deref())
+                    options
+                        .registry
+                        .lookup(&meta.module, &meta.name, meta.receiver.as_deref())
                 } else {
                     None
                 }
@@ -721,6 +728,46 @@ impl<'p> Vm<'p> {
         None
     }
 
+    /// The variant of a function's declared failure type that reports a
+    /// refusal of the boundary, for the library's modules and an
+    /// extension's alike (decision AK4): `PermissionDenied`,
+    /// `HostNotAllowed` or `ProgramNotAllowed` for a denied call,
+    /// `OverBudget` for a call past a budget, each with one field, the
+    /// scope of the effect, or the first argument when the capability
+    /// carries no scope (`serve` names its port). `None` when the
+    /// function cannot fail or no failure type has such a variant: the
+    /// call crashes then.
+    fn boundary_failure(
+        &self,
+        function: FunctionId,
+        names: &[&str],
+        effect: &Capability,
+        args: &[Value],
+    ) -> Option<Value> {
+        let meta = &self.program.function_metas[function];
+        let field = match &effect.scope {
+            Some(scope) => Value::text(scope.clone()),
+            None => args.first().cloned().unwrap_or(Value::Nothing),
+        };
+        for ty in &meta.fails {
+            let Ty::App(id, _) = ty else {
+                continue;
+            };
+            let TypeShape::Sum(variants) = &self.program.types.meta(*id).shape else {
+                continue;
+            };
+            for name in names {
+                let found = variants
+                    .iter()
+                    .position(|variant| variant.name == *name && variant.fields.len() == 1);
+                if let Some(tag) = found {
+                    return Some(Value::failure(Value::variant(*id, tag, vec![field])));
+                }
+            }
+        }
+        None
+    }
+
     /// A call outside the grant: the module's error when the primitive can
     /// fail (decision J11), else a crash naming the function whose `needs`
     /// narrowed the grant (decision Y1).
@@ -730,34 +777,10 @@ impl<'p> Vm<'p> {
         effect: &Capability,
         args: &[Value],
     ) -> Result<Value, Interrupt> {
-        let program = self.program;
-        let meta = &program.function_metas[function];
-        let scope = Value::text(effect.scope.clone().unwrap_or_default());
-        match (meta.module.as_str(), meta.fails.is_empty()) {
-            ("std.filesystem", false) => self.fail_variant(
-                "std.filesystem",
-                "FileError",
-                "PermissionDenied",
-                vec![scope],
-            ),
-            ("std.http", false) => {
-                self.fail_variant("std.http", "HttpError", "HostNotAllowed", vec![scope])
-            }
-            ("std.sqlite", false) => {
-                self.fail_variant("std.sqlite", "DbError", "PermissionDenied", vec![scope])
-            }
-            ("std.process", false) => self.fail_variant(
-                "std.process",
-                "ProcessError",
-                "ProgramNotAllowed",
-                vec![scope],
-            ),
-            // `serve` names its port: the capability carries no scope
-            ("std.server", false) => {
-                let port = args.first().cloned().unwrap_or(Value::Nothing);
-                self.fail_variant("std.server", "StartError", "PermissionDenied", vec![port])
-            }
-            _ => Err(Interrupt::crash(format!(
+        let names = ["PermissionDenied", "HostNotAllowed", "ProgramNotAllowed"];
+        match self.boundary_failure(function, &names, effect, args) {
+            Some(failure) => Ok(failure),
+            None => Err(Interrupt::crash(format!(
                 "`{}` needs {}, which the grant {}{} does not allow",
                 self.qualified(function),
                 effect.spelling(),
@@ -778,27 +801,9 @@ impl<'p> Vm<'p> {
         budget: &str,
         args: &[Value],
     ) -> Result<Value, Interrupt> {
-        let program = self.program;
-        let meta = &program.function_metas[function];
-        let scope = Value::text(effect.scope.clone().unwrap_or_default());
-        match (meta.module.as_str(), meta.fails.is_empty()) {
-            ("std.filesystem", false) => {
-                self.fail_variant("std.filesystem", "FileError", "OverBudget", vec![scope])
-            }
-            ("std.http", false) => {
-                self.fail_variant("std.http", "HttpError", "OverBudget", vec![scope])
-            }
-            ("std.sqlite", false) => {
-                self.fail_variant("std.sqlite", "DbError", "OverBudget", vec![scope])
-            }
-            ("std.process", false) => {
-                self.fail_variant("std.process", "ProcessError", "OverBudget", vec![scope])
-            }
-            ("std.server", false) => {
-                let port = args.first().cloned().unwrap_or(Value::Nothing);
-                self.fail_variant("std.server", "StartError", "OverBudget", vec![port])
-            }
-            _ => Err(Interrupt::crash(format!(
+        match self.boundary_failure(function, &["OverBudget"], effect, args) {
+            Some(failure) => Ok(failure),
+            None => Err(Interrupt::crash(format!(
                 "`{}` exceeds the budget `{budget}`",
                 self.qualified(function)
             ))),

@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use renyi_index::{index_files, Bump, Header, Index, Kind};
+use renyi_index::{index_files_in, Bump, Header, Index, Kind};
 use renyi_package::{
     hash_of, is_absolute, is_package_name, join, resolve_in, select, Effect, Lock, Locked,
     Manifest, PackageFile, Project, Registry, Requirement, Version, Versions, LOCK_FILE,
@@ -665,7 +665,7 @@ fn index_of(project: &Project, own: &[SourceFile]) -> Fallible<(Index, Vec<Strin
             }
         }
     }
-    let checked = renyi_check::check_project_with_problems(&files, &problems);
+    let checked = renyi_check::check_project_in(&crate::library(), &files, &problems);
     let mut errors = Vec::new();
     for module in &checked.modules {
         let file = &files[module.file];
@@ -678,7 +678,7 @@ fn index_of(project: &Project, own: &[SourceFile]) -> Fallible<(Index, Vec<Strin
         revision: String::new(),
         toolchain: toolchain(),
     };
-    Ok((index_files(&files, header), errors))
+    Ok((index_files_in(&crate::library(), &files, header), errors))
 }
 
 /// The map without the dependencies' modules and definitions.

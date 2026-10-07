@@ -8,8 +8,9 @@ use std::rc::Rc;
 use indexmap::{IndexMap, IndexSet};
 use renyi_check::types::Ty;
 
-use super::{arg, base64_decode, base64_encode, crash, text, NativeFn};
+use super::{arg, base64_decode, base64_encode, crash, text};
 use crate::decimal::Decimal;
+use crate::extension::Native;
 use crate::integer::Int;
 use crate::natives::time::{instant_text, parse_instant_text};
 use crate::render::float_text;
@@ -17,16 +18,15 @@ use crate::types::{FieldMeta, TypeShape};
 use crate::value::Value;
 use crate::vm::{Interrupt, Vm};
 
-pub fn lookup(name: &str) -> Option<NativeFn> {
-    Some(match name {
-        "parse" => parse,
-        "parse_with" => parse_with,
-        "render" => render,
-        "render_indented" => render_indented,
-        "render_with" => render_with,
-        _ => return None,
-    })
-}
+/// The natives of `std.json` (decision AK2): the declared function
+/// each implements, by module, name and the type of its first parameter.
+pub(crate) const NATIVES: &[Native] = &[
+    Native::function("std.json", "parse", parse),
+    Native::function("std.json", "parse_with", parse_with),
+    Native::function("std.json", "render", render),
+    Native::function("std.json", "render_indented", render_indented),
+    Native::function("std.json", "render_with", render_with),
+];
 
 pub use renyi_json::{read_json, write_json, Json, ReadError};
 

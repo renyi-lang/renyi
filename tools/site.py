@@ -36,6 +36,7 @@ NAVIGATION = [
     ("Grammar", "docs/grammar.ebnf"),
     ("Examples", "examples/README.md"),
     ("Starter pack", "starter/README.md"),
+    ("Extensions", "docs/extensions.md"),
     ("Positioning", "docs/design/08-positioning.md"),
     ("Decisions", "docs/design/01-decisions.md"),
 ]
