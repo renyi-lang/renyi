@@ -163,7 +163,7 @@ function without_trailing_slashes(text: Text) returns Text
 
   let mutable trimmed be text
   repeat until not trimmed.ends_with("/")
-    set trimmed to trimmed.take(trimmed.length() - 1)
+    change trimmed to trimmed.take(trimmed.length() - 1)
   end
   return trimmed
 end

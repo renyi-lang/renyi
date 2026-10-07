@@ -739,7 +739,7 @@ impl<'s> Parser<'s> {
 
     /// A function name. A method, whose first parameter is `self`, is only
     /// ever called after a dot, so like a member name it may be any word,
-    /// reserved words included (`first`, `at`, `set`, `sum`, `repeat`).
+    /// reserved words included (`first`, `at`, `change`, `sum`, `repeat`).
     fn method_or_function_name(&mut self) -> ParseResult<Name> {
         let token = self.peek().clone();
         let is_method = matches!(token.kind, TokenKind::Word(word) if !word.is_phrase())
@@ -1601,13 +1601,13 @@ impl<'s> Parser<'s> {
                     value,
                 })
             }
-            TokenKind::Word(Word::Set) => {
+            TokenKind::Word(Word::Change) => {
                 self.advance();
                 let name = self.identifier("the name of a mutable binding")?;
                 self.expect_word(Word::To)?;
                 self.skip_newlines_before_value();
                 let value = self.expr()?;
-                Ok(StmtKind::Set { name, value })
+                Ok(StmtKind::Change { name, value })
             }
             TokenKind::Word(Word::If) => self.if_statement(),
             TokenKind::Word(Word::Match) => self.match_statement(),
@@ -1712,7 +1712,7 @@ impl<'s> Parser<'s> {
                 ) {
                     self.error(
                         "statement-shape",
-                        "a statement is a call, or starts with `let`, `set`, `if`, `match`, `for each`, `repeat until`, `return`, `fail`, `crash`, `ignore` or `check`",
+                        "a statement is a call, or starts with `let`, `change`, `if`, `match`, `for each`, `repeat until`, `return`, `fail`, `crash`, `ignore` or `check`",
                         expr.span,
                         "bind the value with `let name be ...`, or pass it to a function",
                     );
@@ -2725,7 +2725,7 @@ mod tests {
     #[test]
     fn statements_and_continuation_lines() {
         let statements = function_body(
-            "  let text be files.read_text(path) otherwise fail\n  let users: List of User be json.parse(text) otherwise fail with Bad(detail: \"x\")\n  let mutable total be 0\n  set total to total + 1\n  if total is at least 18 then\n    set total to 1\n  otherwise if total is 2 then\n    set total to 2\n  otherwise\n    set total to 3\n  end\n  for each user in users where user.is_active sorted by user.name descending\n    console.print(user.name)\n  end\n  repeat until total is at least 3\n    set total to total + 1\n    if done then break end\n  end\n  return total",
+            "  let text be files.read_text(path) otherwise fail\n  let users: List of User be json.parse(text) otherwise fail with Bad(detail: \"x\")\n  let mutable total be 0\n  change total to total + 1\n  if total is at least 18 then\n    change total to 1\n  otherwise if total is 2 then\n    change total to 2\n  otherwise\n    change total to 3\n  end\n  for each user in users where user.is_active sorted by user.name descending\n    console.print(user.name)\n  end\n  repeat until total is at least 3\n    change total to total + 1\n    if done then break end\n  end\n  return total",
         );
         assert_eq!(statements.len(), 8);
         assert!(matches!(
@@ -2789,7 +2789,7 @@ mod tests {
     #[test]
     fn foreign_loop_keywords_get_the_renyi_form() {
         let parsed = parse(
-            "module demo\n\nfunction run_all() returns Integer\n  let mutable total be 0\n  while total is less than 3\n    set total to total + 1\n  end\n  return total\nend\n",
+            "module demo\n\nfunction run_all() returns Integer\n  let mutable total be 0\n  while total is less than 3\n    change total to total + 1\n  end\n  return total\nend\n",
         );
         let foreign: Vec<_> = parsed
             .diagnostics
@@ -3011,7 +3011,7 @@ mod tests {
 
     #[test]
     fn errors_have_positions_and_recover() {
-        let parsed = parse("module tests\n\nfunction body()\n  let total be 1 +\n  set total to 2\nend\n\nfunction other()\n  return 1\nend\n");
+        let parsed = parse("module tests\n\nfunction body()\n  let total be 1 +\n  change total to 2\nend\n\nfunction other()\n  return 1\nend\n");
         assert_eq!(parsed.diagnostics.len(), 1);
         assert_eq!(parsed.diagnostics[0].code, "expected");
         assert_eq!(parsed.module.items.len(), 2);

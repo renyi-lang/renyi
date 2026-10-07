@@ -73,7 +73,7 @@ public function errors_per_hour(entries: List of Entry) returns Map of Text to I
   let grouped be for each entry in errors group by hour_of(entry.timestamp)
   let mutable totals: Map of Text to Integer be {}
   for each hour, bucket in grouped
-    set totals to totals.set(key: hour, value: bucket.length())
+    change totals to totals.set(key: hour, value: bucket.length())
   end
   return totals
 end

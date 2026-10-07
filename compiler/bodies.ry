@@ -372,9 +372,9 @@ function line_of(checker: Checker, offset: Integer) returns Integer
     let middle be (low + high).quotient(2)
     let start be starts.at(middle) otherwise crash with "a line start"
     if start is at most offset then
-      set low to middle + 1
+      change low to middle + 1
     otherwise
-      set high to middle
+      change high to middle
     end
   end
   return low
@@ -385,7 +385,7 @@ function without_trailing_dots(text: Text) returns Text
 
   let mutable current be text
   repeat until not current.ends_with(".")
-    set current to current.take(current.length() - 1)
+    change current to current.take(current.length() - 1)
   end
   return current
 end
@@ -467,26 +467,30 @@ function record_type_names(checker: Checker, ty: Type) returns Checker
       let mutable updated be checker
       match declare.lookup_type(world: checker.world, owner: checker.module_id, name: name.text)
         when some(id) then
-          set updated to record(checker: updated, target: TypeTarget(type_id: id), span: name.span)
-        when nothing then set updated to updated
+          change updated to record(
+            checker: updated,
+            target: TypeTarget(type_id: id),
+            span: name.span
+          )
+        when nothing then change updated to updated
       end
       for each arg in args
-        set updated to record_type_names(checker: updated, ty: arg)
+        change updated to record_type_names(checker: updated, ty: arg)
       end
       return updated
     when MaybeType(inner) then return record_type_names(checker: checker, ty: inner)
     when FunctionType(params, result, failures) then
       let mutable updated be checker
       for each param in params
-        set updated to record_type_names(checker: updated, ty: param)
+        change updated to record_type_names(checker: updated, ty: param)
       end
       match result
         when some(result_type) then
-          set updated to record_type_names(checker: updated, ty: result_type)
-        when nothing then set updated to updated
+          change updated to record_type_names(checker: updated, ty: result_type)
+        when nothing then change updated to updated
       end
       for each failing in failures
-        set updated to record_type_names(checker: updated, ty: failing)
+        change updated to record_type_names(checker: updated, ty: failing)
       end
       return updated
   end
@@ -526,7 +530,7 @@ function resolve(checker: Checker, ty: Ty) returns Ty
   let mutable current be ty
   repeat until not is_bound_var(checker: checker, ty: current)
     match current
-      when Var(id) then set current to var_at(checker: checker, id: id).binding otherwise current
+      when Var(id) then change current to var_at(checker: checker, id: id).binding otherwise current
       otherwise break
     end
   end
@@ -607,7 +611,7 @@ function base_of(checker: Checker, ty: Ty) returns Ty
     match current
       when App(id) then
         match declare.type_at(world: checker.world, id: id).kind
-          when SubtypeKind(base) then set current to resolve(checker: checker, ty: base)
+          when SubtypeKind(base) then change current to resolve(checker: checker, ty: base)
           otherwise break
         end
       otherwise break
@@ -666,7 +670,7 @@ function bind_var(checker: Checker, id: Integer, ty: Ty, span: Span) returns Don
         right: var_at(checker: checker, id: other).kind
       )
       let mutable updated be set_var_kind(checker: checker, id: other, kind: kind)
-      set updated to set_var_binding(checker: updated, id: id, ty: resolved)
+      change updated to set_var_binding(checker: updated, id: id, ty: resolved)
       return Done(value: true, checker: updated)
     when nothing then
       if types.mentions_var(ty: resolved, var: id) then
@@ -759,9 +763,9 @@ function check_subtype_refinements(checker: Checker, ty: Ty, literal: Literal, s
               )
               return Done(value: false, checker: updated)
             end
-          when nothing then set current to current
+          when nothing then change current to current
         end
-        set current to resolve(checker: checker, ty: base)
+        change current to resolve(checker: checker, ty: base)
       otherwise break
     end
   end
@@ -903,9 +907,9 @@ function assign_all(checker: Checker, actual: List of Ty, expected: List of Ty, 
   for each actual_ty in actual
     let expected_ty be expected.at(index) otherwise break
     let done be assign(checker: updated, actual: actual_ty, expected: expected_ty, span: span)
-    set updated to done.checker
+    change updated to done.checker
     if not done.value then return Done(value: false, checker: updated) end
-    set index to index + 1
+    change index to index + 1
   end
   return Done(value: true, checker: updated)
 end
@@ -917,7 +921,7 @@ function assign_each(checker: Checker, members: List of Ty, expected: Ty, span: 
   let mutable updated be checker
   for each member in members
     let done be assign(checker: updated, actual: member, expected: expected, span: span)
-    set updated to done.checker
+    change updated to done.checker
     if not done.value then return Done(value: false, checker: updated) end
   end
   return Done(value: true, checker: updated)
@@ -965,11 +969,11 @@ function assign_functions(
             expected: expected_result,
             span: span
           )
-          set updated to done.checker
-          set returns_ok to done.value
-        when nothing then set returns_ok to false
+          change updated to done.checker
+          change returns_ok to done.value
+        when nothing then change returns_ok to false
       end
-    when nothing then set returns_ok to expected.result is nothing
+    when nothing then change returns_ok to expected.result is nothing
   end
   let fails_ok be all_members_in(
     checker: updated,
@@ -988,9 +992,9 @@ function unify_all(checker: Checker, left: List of Ty, right: List of Ty, span: 
   for each left_ty in left
     let right_ty be right.at(index) otherwise break
     let done be unify(checker: updated, left: left_ty, right: right_ty, span: span)
-    set updated to done.checker
+    change updated to done.checker
     if not done.value then return Done(value: false, checker: updated) end
-    set index to index + 1
+    change index to index + 1
   end
   return Done(value: true, checker: updated)
 end
@@ -1173,8 +1177,8 @@ function union_has(checker: Checker, members: List of Ty, ability_id: Integer) r
   let mutable every be true
   for each member in members
     match has_ability(checker: checker, ty: member, ability_id: ability_id)
-      when some(true) then set every to every
-      when some(false) then set every to false
+      when some(true) then change every to every
+      when some(false) then change every to false
       when nothing then return nothing
     end
   end
@@ -1211,7 +1215,7 @@ function app_has(checker: Checker, id: Integer, args: List of Ty, ability_id: In
   end
   match subtype_base(info.kind)
     when some(base) then return has_ability(checker: checker, ty: base, ability_id: ability_id)
-    when nothing then set builtins to builtins
+    when nothing then change builtins to builtins
   end
   let is_json be is_json_ability(checker: checker, ability_id: ability_id)
   let first_arg be args.at(0) otherwise ErrorTy
@@ -1302,7 +1306,7 @@ function pop_scope(checker: Checker) returns Checker
   let mutable updated be checker with scopes: checker.scopes.without_last()
   for each binding in scope.bindings
     if not binding.used and binding.name is not "self" then
-      set updated to unused_binding(checker: updated, binding: binding)
+      change updated to unused_binding(checker: updated, binding: binding)
     end
   end
   return updated
@@ -1375,9 +1379,9 @@ function update_binding(checker: Checker, name: Text, replacement: Binding) retu
         )
         return checker with scopes: scopes
       end
-      set binding_index to binding_index + 1
+      change binding_index to binding_index + 1
     end
-    set scope_index to scope_index - 1
+    change scope_index to scope_index - 1
   end
   return checker
 end
@@ -1408,7 +1412,9 @@ function bind(checker: Checker, name: Name, ty: Ty, is_mutable: Boolean, kind: B
   purpose: Bind a name in the innermost scope; a name is bound once per function.
 
   let mutable updated be checker
-  if name.text is not "self" then set updated to check_shadowing(checker: updated, name: name) end
+  if name.text is not "self" then
+    change updated to check_shadowing(checker: updated, name: name)
+  end
   let binding be Binding(
     name: name.text,
     ty: ty,
@@ -1506,27 +1512,27 @@ public function check_function(checker: Checker, id: Integer, func: Function) re
     collect NamedParam(name: declare.param_name(world: checker.world, id: param), id: param)
   let mutable updated be start_body(checker: checker, owner: info.body, context: context)
     with type_params: params
-  set updated to push_scope(updated)
-  set updated to bind_params(checker: updated, info: info, func: func)
+  change updated to push_scope(updated)
+  change updated to bind_params(checker: updated, info: info, func: func)
   if func.docs.expose_as_tool then
-    set updated to check_tool_signature(checker: updated, id: id, func: func)
+    change updated to check_tool_signature(checker: updated, id: id, func: func)
   end
   match func.body
     when some(body) then
       if not info.is_library then
-        set updated to check_body_length(checker: updated, func: func, body: body)
+        change updated to check_body_length(checker: updated, func: func, body: body)
       end
       let done be check_block_in_scope(checker: updated, block: body)
-      set updated to done.checker
+      change updated to done.checker
       match info.result
         when some(result) where not done.value then
-          set updated to missing_return(checker: updated, func: func, result: result)
-        otherwise set updated to updated
+          change updated to missing_return(checker: updated, func: func, result: result)
+        otherwise change updated to updated
       end
-    when nothing then set updated to updated
+    when nothing then change updated to updated
   end
-  set updated to pop_scope(updated)
-  set updated to finish_body(updated)
+  change updated to pop_scope(updated)
+  change updated to finish_body(updated)
   return check_examples(checker: updated, id: id, func: func)
 end
 
@@ -1542,14 +1548,14 @@ function bind_params(checker: Checker, info: FunctionInfo, func: Function) retur
         when SelfTy then ErrorTy
         otherwise declared.ty
       end
-    set updated to bind(
+    change updated to bind(
       checker: updated,
       name: param.name,
       ty: ty,
       is_mutable: false,
       kind: ParamBinding
     )
-    set index to index + 1
+    change index to index + 1
   end
   return updated
 end
@@ -1594,7 +1600,7 @@ function check_tool_signature(checker: Checker, id: Integer, func: Function) ret
   let mutable updated be checker
   let no_purpose be "`{func.name.text}` is exposed as a tool but has no purpose"
   if func.docs.summary is nothing then
-    set updated to push_error(
+    change updated to push_error(
       checker: updated,
       code: "purpose-missing",
       message: "{no_purpose}, which is the tool's description",
@@ -1620,7 +1626,7 @@ function check_tool_signature(checker: Checker, id: Integer, func: Function) ret
     if has_ability(checker: updated, ty: declared.ty, ability_id: from_json) is false then
       let shown be show(checker: updated, ty: declared.ty)
       let must_be_json be "the parameter `{declared.name}` of a tool must be JSON"
-      set updated to push_error(
+      change updated to push_error(
         checker: updated,
         code: "tool-type",
         message: "{must_be_json}; `{shown}` cannot be decoded",
@@ -1628,13 +1634,13 @@ function check_tool_signature(checker: Checker, id: Integer, func: Function) ret
         fix: fix
       )
     end
-    set index to index + 1
+    change index to index + 1
   end
   let result be info.result otherwise return updated
   let result_syntax be func.result otherwise return updated
   if has_ability(checker: updated, ty: result, ability_id: to_json) is false then
     let shown be show(checker: updated, ty: result)
-    set updated to push_error(
+    change updated to push_error(
       checker: updated,
       code: "tool-type",
       message: "the result of a tool must be JSON; `{shown}` cannot be encoded",
@@ -1657,7 +1663,7 @@ function debug_quoted(text: Text) returns Text
       otherwise if ch is "\t" then "\\t"
       otherwise ch
       end
-    set out to "{out}{piece}"
+    change out to "{out}{piece}"
   end
   return "{out}\""
 end
@@ -1671,7 +1677,7 @@ public function check_test(checker: Checker, index: Integer, block: Test) return
   for each grant in grants
     let syntax be block.capabilities.at(position) otherwise break
     if effects.unavailable(grant.path) then
-      set updated to push_error(
+      change updated to push_error(
         checker: updated,
         code: "capability-unavailable",
         message: effects.unavailable_message(grant.path),
@@ -1679,7 +1685,7 @@ public function check_test(checker: Checker, index: Integer, block: Test) return
         fix: "remove it from `needs`"
       )
     end
-    set position to position + 1
+    change position to position + 1
   end
   let quoted_name be debug_quoted(block.name)
   let context be fresh_context(
@@ -1690,11 +1696,11 @@ public function check_test(checker: Checker, index: Integer, block: Test) return
     capabilities: grants,
     is_test: true
   )
-  set updated to start_body(checker: updated, owner: ItemBody(item: index), context: context)
+  change updated to start_body(checker: updated, owner: ItemBody(item: index), context: context)
     with type_params: []
-  set updated to push_scope(updated)
-  set updated to check_block_in_scope(checker: updated, block: block.body).checker
-  set updated to pop_scope(updated)
+  change updated to push_scope(updated)
+  change updated to check_block_in_scope(checker: updated, block: block.body).checker
+  change updated to pop_scope(updated)
   return finish_body(updated)
 end
 
@@ -1727,14 +1733,14 @@ public function check_type_conditions(checker: Checker, index: Integer, def: Typ
       let mutable updated be checker
       let mutable tag be 0
       for each variant in variants
-        set updated to check_field_conditions(
+        change updated to check_field_conditions(
           checker: updated,
           index: index,
           variant: tag,
           type_name: def.name.text,
           fields: variant.fields
         )
-        set tag to tag + 1
+        change tag to tag + 1
       end
       return updated
     otherwise return checker
@@ -1759,16 +1765,16 @@ function check_field_conditions(
         let owner be ConditionBody(item: index, variant: variant, field: field_index)
         let others be for each other in fields where other.name is not field.name collect other.name
         let scope be ConditionScope(type_name: type_name, field: field.name, others: others)
-        set updated to check_condition_body(
+        change updated to check_condition_body(
           checker: updated,
           owner: owner,
           bindings: [NamedTy(name: field.name, ty: field.ty)],
           condition: condition,
           scope: scope
         )
-      when nothing then set updated to updated
+      when nothing then change updated to updated
     end
-    set field_index to field_index + 1
+    change field_index to field_index + 1
   end
   return updated
 end
@@ -1793,11 +1799,11 @@ function check_condition_body(
   )
   let mutable updated be checker
     with owner: owner, context: context, vars: [], deferred: [], type_params: [], condition: scope
-  set updated to push_scope(updated)
+  change updated to push_scope(updated)
   let span be expr_span(condition)
   for each binding in bindings
     let name be Name(text: binding.name, span: span)
-    set updated to bind(
+    change updated to bind(
       checker: updated,
       name: name,
       ty: binding.ty,
@@ -1805,9 +1811,9 @@ function check_condition_body(
       kind: ParamBinding
     )
   end
-  set updated to check_condition(checker: updated, condition: condition)
-  set updated to mark_all_used(updated)
-  set updated to pop_scope(updated)
+  change updated to check_condition(checker: updated, condition: condition)
+  change updated to mark_all_used(updated)
+  change updated to pop_scope(updated)
   return finish_body(updated) with condition: nothing
 end
 
@@ -1825,19 +1831,19 @@ public function check_constant(checker: Checker, index: Integer, constant: Const
   )
   let mutable updated be checker
     with owner: ItemBody(item: index), context: context, vars: [], deferred: [], type_params: []
-  set updated to push_scope(updated)
+  change updated to push_scope(updated)
   let done be infer(checker: updated, expr: constant.value, expected: ty)
-  set updated to done.checker
+  change updated to done.checker
   let span be expr_span(constant.value)
-  set updated to require_handled(checker: updated, info: done.value, span: span)
-  set updated to expect(
+  change updated to require_handled(checker: updated, info: done.value, span: span)
+  change updated to expect(
     checker: updated,
     actual: done.value.ty,
     expected: ty,
     span: span,
     what: "the value"
   )
-  set updated to pop_scope(updated)
+  change updated to pop_scope(updated)
   return finish_body(updated)
 end
 
@@ -1855,8 +1861,8 @@ function check_examples(checker: Checker, id: Integer, func: Function) returns C
           ExampleBody(item: item, method: method, sample: index)
         otherwise return updated
       end
-    set updated to check_example(checker: updated, owner: owner, func: func, sample: sample)
-    set index to index + 1
+    change updated to check_example(checker: updated, owner: owner, func: func, sample: sample)
+    change index to index + 1
   end
   return updated
 end
@@ -1874,21 +1880,25 @@ function check_example(checker: Checker, owner: BodyLocation, func: Function, sa
     is_test: false
   )
   let mutable updated be checker with owner: owner, context: context, vars: [], deferred: []
-  set updated to push_scope(updated)
+  change updated to push_scope(updated)
   let result be infer(checker: updated, expr: sample.expression, expected: nothing)
-  set updated to result.checker
+  change updated to result.checker
   match sample.outcome
     when IsValue(value) then
-      set updated to check_example_value(
+      change updated to check_example_value(
         checker: updated,
         result: result.value,
         value: value,
         span: sample.span
       )
     when FailsWith(pattern) then
-      set updated to check_example_failure(checker: updated, result: result.value, pattern: pattern)
+      change updated to check_example_failure(
+        checker: updated,
+        result: result.value,
+        pattern: pattern
+      )
   end
-  set updated to pop_scope(updated)
+  change updated to pop_scope(updated)
   return finish_body(updated)
 end
 
@@ -1899,9 +1909,9 @@ function check_example_value(checker: Checker, result: Info, value: Expr, span: 
   let expected be infer(checker: checker, expr: value, expected: result.ty)
   let mutable updated be expected.checker
   let value_span be expr_span(value)
-  set updated to require_handled(checker: updated, info: expected.value, span: value_span)
+  change updated to require_handled(checker: updated, info: expected.value, span: value_span)
   let value_ty be resolve(checker: updated, ty: result.ty)
-  set updated to expect(
+  change updated to expect(
     checker: updated,
     actual: expected.value.ty,
     expected: value_ty,
@@ -1930,12 +1940,12 @@ function check_example_failure(checker: Checker, result: Info, pattern: Pattern)
     )
   end
   let mutable updated be push_scope(checker)
-  set updated to check_pattern(
+  change updated to check_pattern(
     checker: updated,
     pattern: pattern,
     subject: Union(members: result.failures)
   ).checker
-  set updated to mark_all_used(updated)
+  change updated to mark_all_used(updated)
   return pop_scope(updated)
 end
 
@@ -1950,7 +1960,7 @@ function number_kind(checker: Checker, ty: Ty) returns maybe NumberKind
     if id is builtins.decimal then return DecimalKind end
     if id is builtins.float then return FloatKind end
     match declare.type_at(world: checker.world, id: id).kind
-      when SubtypeKind(base) then set current to resolve(checker: checker, ty: base)
+      when SubtypeKind(base) then change current to resolve(checker: checker, ty: base)
       otherwise return nothing
     end
   end
@@ -1967,36 +1977,40 @@ function finish_body(checker: Checker) returns Checker
     if var.binding is nothing then
       match var.kind
         when IntegerVar then
-          set updated to set_var_binding(checker: updated, id: id, ty: builtin(builtins.integer))
+          change updated to set_var_binding(checker: updated, id: id, ty: builtin(builtins.integer))
         when DecimalVar then
-          set updated to set_var_binding(checker: updated, id: id, ty: builtin(builtins.decimal))
-        when AnyVar then set updated to updated
+          change updated to set_var_binding(checker: updated, id: id, ty: builtin(builtins.decimal))
+        when AnyVar then change updated to updated
       end
     end
-    set id to id + 1
+    change id to id + 1
   end
   let literals be updated.literals
-  set updated to updated with literals: []
+  change updated to updated with literals: []
   for each noted in literals
     match number_kind(checker: updated, ty: noted.ty)
       when some(kind) then
-        set updated to record(checker: updated, target: NumberTarget(kind: kind), span: noted.span)
-      when nothing then set updated to updated
+        change updated to record(
+          checker: updated,
+          target: NumberTarget(kind: kind),
+          span: noted.span
+        )
+      when nothing then change updated to updated
     end
   end
   let results be updated.results
-  set updated to updated with results: []
+  change updated to updated with results: []
   for each noted in results
     let ty be zonk(checker: updated, ty: noted.ty)
     if not types.has_vars(ty) then
-      set updated to record(checker: updated, target: ResultTarget(ty: ty), span: noted.span)
+      change updated to record(checker: updated, target: ResultTarget(ty: ty), span: noted.span)
     end
   end
   let deferred be updated.deferred
-  set updated to updated with deferred: []
+  change updated to updated with deferred: []
   for each item in deferred
     if has_ability(checker: updated, ty: item.ty, ability_id: item.ability_id) is false then
-      set updated to missing_ability(
+      change updated to missing_ability(
         checker: updated,
         ty: item.ty,
         ability_id: item.ability_id,
@@ -2013,7 +2027,7 @@ function statement_span(statement: Statement) returns Span
 
   match statement
     when Let(span) then return span
-    when Set(span) then return span
+    when Change(span) then return span
     when If(span) then return span
     when Match(span) then return span
     when ForEach(span) then return span
@@ -2105,12 +2119,12 @@ function check_block_in_scope(checker: Checker, block: Block) returns Done of Bo
   let mutable reported be false
   for each statement in block.statements
     if diverges and not reported then
-      set updated to unreachable(checker: updated, span: statement_span(statement))
-      set reported to true
+      change updated to unreachable(checker: updated, span: statement_span(statement))
+      change reported to true
     end
     let done be check_statement(checker: updated, statement: statement)
-    set updated to done.checker
-    if done.value then set diverges to true end
+    change updated to done.checker
+    if done.value then change diverges to true end
   end
   return Done(value: diverges, checker: updated)
 end
@@ -2143,7 +2157,7 @@ function check_statement(checker: Checker, statement: Statement) returns Done of
       let mutable updated be checker with depth: checker.depth + 1
       if updated.depth is nesting_depth + 1 then
         let start be statement_span(statement).start
-        set updated to push_error(
+        change updated to push_error(
           checker: updated,
           code: "nesting-depth",
           message: "`{word}` opens a fifth level of nesting; four is the limit",
@@ -2171,7 +2185,7 @@ function check_statement_kind(checker: Checker, statement: Statement) returns Do
         value: value
       )
       return Done(value: false, checker: bound)
-    when Set(name, value) then
+    when Change(name, value) then
       return Done(value: false, checker: check_set(checker: checker, name: name, value: value))
     when If(branches, fallback) then
       return check_if(checker: checker, branches: branches, fallback: fallback)
@@ -2250,28 +2264,28 @@ function check_let(
   match annotation
     when some(ty) then
       let resolved be resolve_type(checker: updated, ty: ty)
-      set updated to resolved.checker
-      set declared to resolved.value
-    when nothing then set declared to nothing
+      change updated to resolved.checker
+      change declared to resolved.value
+    when nothing then change declared to nothing
   end
   let done be infer(checker: updated, expr: value, expected: declared)
-  set updated to done.checker
+  change updated to done.checker
   let span be expr_span(value)
-  set updated to require_handled(checker: updated, info: done.value, span: span)
+  change updated to require_handled(checker: updated, info: done.value, span: span)
   let mutable ty be ErrorTy
   match declared
     when some(wanted) then
-      set updated to expect(
+      change updated to expect(
         checker: updated,
         actual: done.value.ty,
         expected: wanted,
         span: span,
         what: "the value"
       )
-      set ty to wanted
+      change ty to wanted
     when nothing then
       if resolve(checker: updated, ty: done.value.ty) is Unit then
-        set updated to push_error(
+        change updated to push_error(
           checker: updated,
           code: "type-mismatch",
           message: "this call returns nothing, so there is no value to bind",
@@ -2279,27 +2293,27 @@ function check_let(
           fix: "call it as a statement, without `let`"
         )
       otherwise
-        set updated to default_literal(checker: updated, ty: done.value.ty)
-        set ty to done.value.ty
+        change updated to default_literal(checker: updated, ty: done.value.ty)
+        change ty to done.value.ty
       end
   end
   return bind(checker: updated, name: name, ty: ty, is_mutable: is_mutable, kind: LetBinding)
 end
 
 function check_set(checker: Checker, name: Name, value: Expr) returns Checker
-  purpose: `set`: the binding must exist and be mutable; the new value has its type.
+  purpose: `change`: the binding must exist and be mutable; the new value has its type.
 
   let mutable updated be checker
   match task_conflict(checker: checker, name: name.text, changing: true)
     when some(reason) then
-      set updated to push_error(
+      change updated to push_error(
         checker: updated,
         code: "task-independence",
         message: reason,
         span: name.span,
         fix: task_fix()
       )
-    when nothing then set updated to updated
+    when nothing then change updated to updated
   end
   match find_binding(checker: updated, name: name.text)
     when nothing then
@@ -2307,7 +2321,7 @@ function check_set(checker: Checker, name: Name, value: Expr) returns Checker
         checker: updated,
         name: name.text
       ) otherwise "declare it first: `let mutable {name.text} be ...`"
-      set updated to push_error(
+      change updated to push_error(
         checker: updated,
         code: "unknown-name",
         message: "there is no binding named `{name.text}`",
@@ -2317,7 +2331,7 @@ function check_set(checker: Checker, name: Name, value: Expr) returns Checker
       return infer(checker: updated, expr: value, expected: nothing).checker
     when some(binding) then
       if not binding.is_mutable then
-        set updated to push_error(
+        change updated to push_error(
           checker: updated,
           code: "immutable-binding",
           message: "`{name.text}` cannot be changed",
@@ -2326,9 +2340,9 @@ function check_set(checker: Checker, name: Name, value: Expr) returns Checker
         )
       end
       let done be infer(checker: updated, expr: value, expected: binding.ty)
-      set updated to done.checker
+      change updated to done.checker
       let span be expr_span(value)
-      set updated to require_handled(checker: updated, info: done.value, span: span)
+      change updated to require_handled(checker: updated, info: done.value, span: span)
       return expect(
         checker: updated,
         actual: done.value.ty,
@@ -2346,16 +2360,16 @@ function check_if(checker: Checker, branches: List of Branch, fallback: maybe Bl
   let mutable updated be checker
   let mutable all_diverge be true
   for each branch in branches
-    set updated to check_condition(checker: updated, condition: branch.condition)
+    change updated to check_condition(checker: updated, condition: branch.condition)
     let done be check_block(checker: updated, block: branch.body)
-    set updated to done.checker
-    if not done.value then set all_diverge to false end
+    change updated to done.checker
+    if not done.value then change all_diverge to false end
   end
   match fallback
     when some(block) then
       let done be check_block(checker: updated, block: block)
-      set updated to done.checker
-      if not done.value then set all_diverge to false end
+      change updated to done.checker
+      if not done.value then change all_diverge to false end
       return Done(value: all_diverge, checker: updated)
     when nothing then return Done(value: false, checker: updated)
   end
@@ -2377,24 +2391,24 @@ function check_match_statement(
   let mutable all_diverge be true
   let mutable rows: List of List of Shape be []
   for each arm in arms
-    set updated to push_scope(updated)
+    change updated to push_scope(updated)
     let shape be check_pattern(checker: updated, pattern: arm.pattern, subject: matched.value.ty)
-    set updated to shape.checker
+    change updated to shape.checker
     match arm.guard
-      when some(guard) then set updated to check_condition(checker: updated, condition: guard)
-      when nothing then set rows to rows.append([shape.value])
+      when some(guard) then change updated to check_condition(checker: updated, condition: guard)
+      when nothing then change rows to rows.append([shape.value])
     end
     let done be check_block_in_scope(checker: updated, block: arm.body)
-    set updated to done.checker
-    if not done.value then set all_diverge to false end
-    set updated to pop_scope(updated)
+    change updated to done.checker
+    if not done.value then change all_diverge to false end
+    change updated to pop_scope(updated)
   end
-  set updated to updated with current_errors: saved_errors
+  change updated to updated with current_errors: saved_errors
   match fallback
     when some(block) then
       let done be check_block(checker: updated, block: block)
-      set updated to done.checker
-      if not done.value then set all_diverge to false end
+      change updated to done.checker
+      if not done.value then change all_diverge to false end
       return Done(value: all_diverge, checker: updated)
     when nothing then
       let exhaustive be check_exhaustive(
@@ -2433,20 +2447,27 @@ function check_for_each(
   let mutable index be 0
   for each name in bindings
     let ty be items.value.at(index) otherwise break
-    set updated to bind(checker: updated, name: name, ty: ty, is_mutable: false, kind: LoopBinding)
-    set index to index + 1
+    change updated to bind(
+      checker: updated,
+      name: name,
+      ty: ty,
+      is_mutable: false,
+      kind: LoopBinding
+    )
+    change index to index + 1
   end
   match filter
-    when some(condition) then set updated to check_condition(checker: updated, condition: condition)
-    when nothing then set updated to updated
+    when some(condition) then
+      change updated to check_condition(checker: updated, condition: condition)
+    when nothing then change updated to updated
   end
   match order
-    when some(ordering) then set updated to check_ordering(checker: updated, order: ordering)
-    when nothing then set updated to updated
+    when some(ordering) then change updated to check_ordering(checker: updated, order: ordering)
+    when nothing then change updated to updated
   end
-  set updated to updated with loop_depth: updated.loop_depth + 1
-  set updated to check_block_in_scope(checker: updated, block: body).checker
-  set updated to updated with loop_depth: updated.loop_depth - 1
+  change updated to updated with loop_depth: updated.loop_depth + 1
+  change updated to check_block_in_scope(checker: updated, block: body).checker
+  change updated to updated with loop_depth: updated.loop_depth - 1
   return pop_scope(updated)
 end
 
@@ -2454,8 +2475,8 @@ function check_repeat(checker: Checker, condition: Expr, body: Block) returns Ch
   purpose: `repeat until`: a Boolean condition and a loop body.
 
   let mutable updated be check_condition(checker: checker, condition: condition)
-  set updated to updated with loop_depth: updated.loop_depth + 1
-  set updated to check_block(checker: updated, block: body).checker
+  change updated to updated with loop_depth: updated.loop_depth + 1
+  change updated to check_block(checker: updated, block: body).checker
   return updated with loop_depth: updated.loop_depth - 1
 end
 
@@ -2465,7 +2486,7 @@ function all_binding_names(checker: Checker) returns List of Text
   let mutable names: List of Text be []
   for each scope in checker.scopes
     for each binding in scope.bindings
-      set names to names.append(binding.name)
+      change names to names.append(binding.name)
     end
   end
   return names
@@ -2491,28 +2512,28 @@ function check_run_concurrently(checker: Checker, deadline: maybe Expr, body: Bl
 
   let mutable updated be checker
   match deadline
-    when some(limit) then set updated to check_within(checker: updated, deadline: limit)
-    when nothing then set updated to updated
+    when some(limit) then change updated to check_within(checker: updated, deadline: limit)
+    when nothing then change updated to updated
   end
   let saved be updated.task
-  set updated to updated with concurrent_depth: updated.concurrent_depth + 1, task: nothing
+  change updated to updated with concurrent_depth: updated.concurrent_depth + 1, task: nothing
   let outer be all_binding_names(updated)
   let mutable siblings: List of Text be []
   let mutable diverges be false
   let mutable reported be false
   for each statement in body.statements
     if diverges and not reported then
-      set updated to unreachable(checker: updated, span: statement_span(statement))
-      set reported to true
+      change updated to unreachable(checker: updated, span: statement_span(statement))
+      change reported to true
     end
-    set updated to updated with task: TaskScope(outer: outer, siblings: siblings)
+    change updated to updated with task: TaskScope(outer: outer, siblings: siblings)
     let before be last_scope_length(updated)
     let done be check_statement(checker: updated, statement: statement)
-    set updated to done.checker
-    if done.value then set diverges to true end
-    set siblings to siblings.append_all(last_scope_names(checker: updated, start: before))
+    change updated to done.checker
+    if done.value then change diverges to true end
+    change siblings to siblings.append_all(last_scope_names(checker: updated, start: before))
   end
-  set updated to updated with task: saved, concurrent_depth: updated.concurrent_depth - 1
+  change updated to updated with task: saved, concurrent_depth: updated.concurrent_depth - 1
   return Done(value: diverges, checker: updated)
 end
 
@@ -2547,7 +2568,7 @@ function check_ignore(checker: Checker, value: Expr) returns Checker
   let done be infer(checker: checker, expr: value, expected: nothing)
   let mutable updated be done.checker
   let span be expr_span(value)
-  set updated to require_handled(checker: updated, info: done.value, span: span)
+  change updated to require_handled(checker: updated, info: done.value, span: span)
   let ty be resolve(checker: updated, ty: done.value.ty)
   if ty is Unit then
     return push_error(
@@ -2576,7 +2597,7 @@ function check_check(checker: Checker, value: Expr, span: Span) returns Checker
 
   let mutable updated be checker
   if not checker.context.is_test then
-    set updated to push_error(
+    change updated to push_error(
       checker: updated,
       code: "check-outside-test",
       message: "`check` belongs in a `test` block",
@@ -2593,7 +2614,7 @@ function check_expression(checker: Checker, value: Expr) returns Checker
   let done be infer(checker: checker, expr: value, expected: nothing)
   let mutable updated be done.checker
   let span be expr_span(value)
-  set updated to require_handled(checker: updated, info: done.value, span: span)
+  change updated to require_handled(checker: updated, info: done.value, span: span)
   let ty be resolve(checker: updated, ty: done.value.ty)
   if ty is Unit or types.is_error(ty) or ty is Never then return updated end
   let shown be show(checker: updated, ty: ty)
@@ -2614,14 +2635,14 @@ type MethodCall
 end
 
 function unused_result_fix(checker: Checker, value: Expr) returns Text
-  purpose: The fix for an unused result: `set x to x.method(...)` on a mutable binding (J15).
+  purpose: The fix for an unused result: `change x to x.method(...)` on a mutable binding (J15).
 
   let call be mutable_method_call(
     checker: checker,
     value: value
   ) otherwise return "bind it with `let`, or discard it with `ignore`"
-  let set_call be "write `set {call.receiver} to {call.receiver}.{call.method}(...)`"
-  return "{set_call}, or bind it with `let`, or discard it with `ignore`"
+  let change_call be "write `change {call.receiver} to {call.receiver}.{call.method}(...)`"
+  return "{change_call}, or bind it with `let`, or discard it with `ignore`"
 end
 
 function ignored_pure_fix(checker: Checker, value: Expr) returns Text
@@ -2629,7 +2650,8 @@ function ignored_pure_fix(checker: Checker, value: Expr) returns Text
 
   match mutable_method_call(checker: checker, value: value)
     when some(call) then
-      return "write `set {call.receiver} to {call.receiver}.{call.method}(...)`, or remove the call"
+      let change_call be "write `change {call.receiver} to {call.receiver}.{call.method}(...)`"
+      return "{change_call}, or remove the call"
     when nothing then return "bind the result with `let`, or remove the call"
   end
 end
@@ -2803,14 +2825,14 @@ function check_error_declared(checker: Checker, ty: Ty, span: Span) returns Chec
     let mutable found be false
     for each declared in updated.context.failures
       let done be assign(checker: updated, actual: member, expected: declared, span: span)
-      set updated to done.checker
+      change updated to done.checker
       if done.value then
-        set found to true
+        change found to true
         break
       end
     end
     if not found then
-      set updated to error_not_declared(checker: updated, member: member, span: span)
+      change updated to error_not_declared(checker: updated, member: member, span: span)
     end
   end
   return updated
@@ -2873,10 +2895,10 @@ function bind_target_params(target: Ty, args: List of Ty) returns List of Substi
       for each declared_arg in declared
         let actual be args.at(index) otherwise break
         match declared_arg
-          when Param(id) then set bound to bound.append(Substitution(param: id, ty: actual))
-          otherwise set index to index
+          when Param(id) then change bound to bound.append(Substitution(param: id, ty: actual))
+          otherwise change index to index
         end
-        set index to index + 1
+        change index to index + 1
       end
       return bound
     otherwise return []
@@ -2998,7 +3020,7 @@ function loop_items(checker: Checker, bindings: List of Name, source: Expr)
   let mutable updated be require_handled(checker: done.checker, info: done.value, span: span)
   let ty be resolve(checker: updated, ty: done.value.ty)
   let items be source_items(checker: updated, ty: ty, source: source)
-  set updated to items.checker
+  change updated to items.checker
   match bindings.length()
     when 1 then return Done(value: [items.value.item], checker: updated)
     when 2 then
@@ -3006,7 +3028,7 @@ function loop_items(checker: Checker, bindings: List of Name, source: Expr)
         when some(pair) then return Done(value: [pair.left, pair.right], checker: updated)
         when nothing then
           let shown be show(checker: updated, ty: items.value.item)
-          set updated to push_error(
+          change updated to push_error(
             checker: updated,
             code: "type-mismatch",
             message: "two loop variables need pairs or a map, but the items are `{shown}`",
@@ -3016,7 +3038,7 @@ function loop_items(checker: Checker, bindings: List of Name, source: Expr)
           return Done(value: [ErrorTy, ErrorTy], checker: updated)
       end
     otherwise
-      set updated to push_error(
+      change updated to push_error(
         checker: updated,
         code: "loop-variables",
         message: "a loop binds one variable, or two for pairs",
@@ -3162,13 +3184,13 @@ function infer_integer(checker: Checker, expr: Expr, digits: Text, span: Span, e
       let mutable updated be checker
       match literal
         when some(value) then
-          set updated to check_subtype_refinements(
+          change updated to check_subtype_refinements(
             checker: updated,
             ty: resolved,
             literal: value,
             span: span
           ).checker
-        when nothing then set updated to updated
+        when nothing then change updated to updated
       end
       let fits be literal_fits(
         checker: updated,
@@ -3177,16 +3199,16 @@ function infer_integer(checker: Checker, expr: Expr, digits: Text, span: Span, e
         ty: resolved,
         span: span
       )
-      set updated to fits.checker
+      change updated to fits.checker
       if not fits.value then
-        set updated to integer_mismatch(
+        change updated to integer_mismatch(
           checker: updated,
           digits: digits,
           resolved: resolved,
           span: span
         )
       end
-      set updated to note_literal(checker: updated, span: span, ty: resolved)
+      change updated to note_literal(checker: updated, span: span, ty: resolved)
       return Done(value: plain(resolved), checker: updated)
     when nothing then
       let var be fresh(checker: checker, kind: IntegerVar(literal: literal))
@@ -3230,7 +3252,7 @@ function infer_decimal(checker: Checker, expr: Expr, digits: Text, span: Span, e
       let mutable updated be fits.checker
       if not fits.value then
         let shown be show(checker: updated, ty: resolved)
-        set updated to push_error(
+        change updated to push_error(
           checker: updated,
           code: "type-mismatch",
           message: "the literal `{digits}` is a Decimal, but `{shown}` is needed",
@@ -3240,16 +3262,16 @@ function infer_decimal(checker: Checker, expr: Expr, digits: Text, span: Span, e
       otherwise
         match literal
           when some(value) then
-            set updated to check_subtype_refinements(
+            change updated to check_subtype_refinements(
               checker: updated,
               ty: resolved,
               literal: value,
               span: span
             ).checker
-          when nothing then set updated to updated
+          when nothing then change updated to updated
         end
       end
-      set updated to note_literal(checker: updated, span: span, ty: resolved)
+      change updated to note_literal(checker: updated, span: span, ty: resolved)
       return Done(value: plain(resolved), checker: updated)
     when nothing then
       let var be fresh(checker: checker, kind: DecimalVar(literal: literal))
@@ -3272,8 +3294,9 @@ function infer_text(
   let mutable updated be checker
   for each piece in pieces
     match piece
-      when Hole(expression) then set updated to check_hole(checker: updated, expression: expression)
-      otherwise set updated to updated
+      when Hole(expression) then
+        change updated to check_hole(checker: updated, expression: expression)
+      otherwise change updated to updated
     end
   end
   let text be builtin(builtins.text)
@@ -3294,7 +3317,7 @@ function infer_text(
             )
             if holds.value then return Done(value: plain(resolved), checker: holds.checker) end
             return Done(value: plain(ErrorTy), checker: holds.checker)
-          when nothing then set updated to updated
+          when nothing then change updated to updated
         end
       end
       return Done(value: plain(text), checker: updated)
@@ -3383,14 +3406,14 @@ function infer_list(checker: Checker, items: List of Expr, expected: maybe Ty) r
   let mutable updated be checker
   let mutable item_ty be ErrorTy
   match expected_app_args(checker: checker, expected: expected, id: builtins.list)
-    when some(args) then set item_ty to args.at(0) otherwise ErrorTy
+    when some(args) then change item_ty to args.at(0) otherwise ErrorTy
     when nothing then
       let var be fresh(checker: updated, kind: AnyVar)
-      set updated to var.checker
-      set item_ty to var.value
+      change updated to var.checker
+      change item_ty to var.value
   end
   for each item in items
-    set updated to infer_value(checker: updated, expr: item, expected: item_ty, what: "the item")
+    change updated to infer_value(checker: updated, expr: item, expected: item_ty, what: "the item")
   end
   return Done(value: plain(App(id: builtins.list, args: [item_ty])), checker: updated)
 end
@@ -3405,25 +3428,30 @@ function infer_map(checker: Checker, entries: List of MapEntry, span: Span, expe
   let mutable value_ty be ErrorTy
   match expected_app_args(checker: checker, expected: expected, id: builtins.map)
     when some(args) then
-      set key_ty to args.at(0) otherwise ErrorTy
-      set value_ty to args.at(1) otherwise ErrorTy
+      change key_ty to args.at(0) otherwise ErrorTy
+      change value_ty to args.at(1) otherwise ErrorTy
     when nothing then
       let key_var be fresh(checker: updated, kind: AnyVar)
       let value_var be fresh(checker: key_var.checker, kind: AnyVar)
-      set updated to value_var.checker
-      set key_ty to key_var.value
-      set value_ty to value_var.value
+      change updated to value_var.checker
+      change key_ty to key_var.value
+      change value_ty to value_var.value
   end
   for each entry in entries
-    set updated to infer_value(checker: updated, expr: entry.key, expected: key_ty, what: "the key")
-    set updated to infer_value(
+    change updated to infer_value(
+      checker: updated,
+      expr: entry.key,
+      expected: key_ty,
+      what: "the key"
+    )
+    change updated to infer_value(
       checker: updated,
       expr: entry.value,
       expected: value_ty,
       what: "the value"
     )
   end
-  set updated to require_ability(
+  change updated to require_ability(
     checker: updated,
     ty: key_ty,
     ability_id: builtins.hash,
@@ -3445,7 +3473,7 @@ function infer_range(checker: Checker, lower: Expr, upper: Expr, step: maybe Exp
     expected: integer,
     what: "the range bound"
   )
-  set updated to infer_value(
+  change updated to infer_value(
     checker: updated,
     expr: upper,
     expected: integer,
@@ -3453,13 +3481,13 @@ function infer_range(checker: Checker, lower: Expr, upper: Expr, step: maybe Exp
   )
   match step
     when some(step_expr) then
-      set updated to infer_value(
+      change updated to infer_value(
         checker: updated,
         expr: step_expr,
         expected: integer,
         what: "the range bound"
       )
-    when nothing then set updated to updated
+    when nothing then change updated to updated
   end
   return Done(value: plain(builtin(builtins.range)), checker: updated)
 end
@@ -3486,13 +3514,13 @@ function infer_with(checker: Checker, base: Expr, updates: List of Arg, expected
           update: update,
           failures: failures
         )
-        set updated to changed.checker
-        set failures to changed.value
+        change updated to changed.checker
+        change failures to changed.value
       end
     when nothing then
       if not types.is_error(ty) then
         let shown be show(checker: updated, ty: ty)
-        set updated to push_error(
+        change updated to push_error(
           checker: updated,
           code: "type-mismatch",
           message: "`with` updates a record, but this is `{shown}`",
@@ -3501,7 +3529,7 @@ function infer_with(checker: Checker, base: Expr, updates: List of Arg, expected
         )
       end
       for each update in updates
-        set updated to infer(checker: updated, expr: update.value, expected: nothing).checker
+        change updated to infer(checker: updated, expr: update.value, expected: nothing).checker
       end
   end
   return Done(value: Info(ty: ty, failures: failures, function_id: nothing), checker: updated)
@@ -3540,7 +3568,7 @@ function check_update(
         info: done.value,
         span: value_span
       )
-      set updated to expect(
+      change updated to expect(
         checker: updated,
         actual: done.value.ty,
         expected: field.ty,
@@ -3568,7 +3596,7 @@ function check_update(
         span: field_name.span,
         fix: fix
       )
-      set updated to infer(checker: updated, expr: update.value, expected: nothing).checker
+      change updated to infer(checker: updated, expr: update.value, expected: nothing).checker
       return Done(value: failures, checker: updated)
   end
 end
@@ -3584,7 +3612,7 @@ function unnamed_update(checker: Checker, update: Arg, failures: List of Ty)
     span: update.span,
     fix: "write `with field: value`"
   )
-  set updated to infer(checker: updated, expr: update.value, expected: nothing).checker
+  change updated to infer(checker: updated, expr: update.value, expected: nothing).checker
   return Done(value: failures, checker: updated)
 end
 
@@ -3600,10 +3628,10 @@ function infer_if(
   let mutable updated be checker
   let mutable result be expected
   for each branch in branches
-    set updated to check_condition(checker: updated, condition: branch.condition)
+    change updated to check_condition(checker: updated, condition: branch.condition)
     let done be check_outcome(checker: updated, outcome: branch.outcome, result: result)
-    set updated to done.checker
-    set result to done.value
+    change updated to done.checker
+    change result to done.value
   end
   let done be check_outcome(checker: updated, outcome: fallback, result: result)
   return Done(value: plain(done.value otherwise Never), checker: done.checker)
@@ -3626,26 +3654,26 @@ function infer_match(
   let mutable result be expected
   let mutable rows: List of List of Shape be []
   for each arm in arms
-    set updated to push_scope(updated)
+    change updated to push_scope(updated)
     let shape be check_pattern(checker: updated, pattern: arm.pattern, subject: matched.value.ty)
-    set updated to shape.checker
+    change updated to shape.checker
     match arm.guard
-      when some(guard) then set updated to check_condition(checker: updated, condition: guard)
-      when nothing then set rows to rows.append([shape.value])
+      when some(guard) then change updated to check_condition(checker: updated, condition: guard)
+      when nothing then change rows to rows.append([shape.value])
     end
     let done be check_outcome(checker: updated, outcome: arm.body, result: result)
-    set updated to done.checker
-    set result to done.value
-    set updated to pop_scope(updated)
+    change updated to done.checker
+    change result to done.value
+    change updated to pop_scope(updated)
   end
-  set updated to updated with current_errors: saved_errors
+  change updated to updated with current_errors: saved_errors
   match fallback
     when some(outcome) then
       let done be check_outcome(checker: updated, outcome: outcome, result: result)
-      set updated to done.checker
-      set result to done.value
+      change updated to done.checker
+      change result to done.value
     when nothing then
-      set updated to check_exhaustive(
+      change updated to check_exhaustive(
         checker: updated,
         subject: matched.value.ty,
         rows: rows,
@@ -3729,36 +3757,36 @@ function infer_name(checker: Checker, name: Name) returns Done of Info
   let mutable updated be checker
   match task_conflict(checker: checker, name: name.text, changing: false)
     when some(reason) then
-      set updated to push_error(
+      change updated to push_error(
         checker: updated,
         code: "task-independence",
         message: reason,
         span: name.span,
         fix: task_fix()
       )
-    when nothing then set updated to updated
+    when nothing then change updated to updated
   end
   match find_binding(checker: updated, name: name.text)
     when some(binding) then
       return Done(value: plain(binding.ty), checker: mark_used(checker: updated, name: name.text))
-    when nothing then set updated to updated
+    when nothing then change updated to updated
   end
   match refinement_field_error(checker: updated, name: name)
     when some(failed) then return Done(value: plain(ErrorTy), checker: failed)
-    when nothing then set updated to updated
+    when nothing then change updated to updated
   end
   match module_info(updated).constants.get(name.text)
     when some(constant) then
       return infer_constant_name(checker: updated, name: name, constant: constant)
-    when nothing then set updated to updated
+    when nothing then change updated to updated
   end
   match declare.lookup_function(world: updated.world, owner: updated.module_id, name: name.text)
     when some(function_id) then
       return infer_function_name(checker: updated, name: name, function_id: function_id)
-    when nothing then set updated to updated
+    when nothing then change updated to updated
   end
   if module_info(updated).imports.contains_key(name.text) then
-    set updated to push_error(
+    change updated to push_error(
       checker: updated,
       code: "unknown-name",
       message: "`{name.text}` is a module, not a value",
@@ -3768,7 +3796,7 @@ function infer_name(checker: Checker, name: Name) returns Done of Info
     return Done(value: plain(ErrorTy), checker: updated)
   end
   let fix be unknown_name_fix(checker: updated, name: name.text)
-  set updated to push_error(
+  change updated to push_error(
     checker: updated,
     code: "unknown-name",
     message: "there is no binding, constant or function named `{name.text}`",
@@ -3784,7 +3812,7 @@ function infer_constant_name(checker: Checker, name: Name, constant: ConstantInf
 
   let target be ConstantTarget(owner: checker.module_id, name: name.text)
   let mutable updated be record(checker: checker, target: target, span: name.span)
-  set updated to note_deprecated(
+  change updated to note_deprecated(
     checker: updated,
     name: name.text,
     deprecation: constant.deprecation,
@@ -3804,7 +3832,7 @@ function infer_function_name(checker: Checker, name: Name, function_id: Integer)
   )
   if not inside(checker: updated, function_id: function_id) then
     let deprecation be declare.function_at(world: updated.world, id: function_id).deprecation
-    set updated to note_deprecated(
+    change updated to note_deprecated(
       checker: updated,
       name: name.text,
       deprecation: deprecation,
@@ -3922,8 +3950,8 @@ function infer_bare_type_name(checker: Checker, name: TypeName, expected: maybe 
     let head be expected_head(checker: checker, expected: expected)
     match head
       when some(type_id) then
-        set chosen to variant_with_type(candidates: candidates, type_id: type_id)
-      when nothing then set chosen to nothing
+        change chosen to variant_with_type(candidates: candidates, type_id: type_id)
+      when nothing then change chosen to nothing
     end
     if chosen is nothing then
       return ambiguous_bare_variant(checker: checker, name: name, candidates: candidates)
@@ -3942,7 +3970,7 @@ function infer_bare_type_name(checker: Checker, name: TypeName, expected: maybe 
       if not found.fields.is_empty() then
         let fields be for each field in found.fields collect "{field.name}: ..."
         let joined be fields.join(", ")
-        set updated to push_error(
+        change updated to push_error(
           checker: updated,
           code: "missing-fields",
           message: "`{name.text}` has fields",
@@ -3950,7 +3978,7 @@ function infer_bare_type_name(checker: Checker, name: TypeName, expected: maybe 
           fix: "write `{name.text}({joined})`"
         )
       end
-    otherwise set updated to updated
+    otherwise change updated to updated
   end
   let args be fresh_args(checker: updated, count_of: info.params.length())
   return Done(value: plain(App(id: variant.type_id, args: args.value)), checker: args.checker)
@@ -3964,9 +3992,9 @@ function fresh_args(checker: Checker, count_of: Integer) returns Done of List of
   let mutable index be 0
   repeat until index is at least count_of
     let var be fresh(checker: updated, kind: AnyVar)
-    set updated to var.checker
-    set args to args.append(var.value)
-    set index to index + 1
+    change updated to var.checker
+    change args to args.append(var.value)
+    change index to index + 1
   end
   return Done(value: args, checker: updated)
 end
@@ -4031,10 +4059,10 @@ function param_bindings(params: List of Integer, args: List of Ty) returns List 
   let mutable index be 0
   for each param in params
     match args.at(index)
-      when some(arg) then set bound to bound.append(Substitution(param: param, ty: arg))
+      when some(arg) then change bound to bound.append(Substitution(param: param, ty: arg))
       when nothing then break
     end
-    set index to index + 1
+    change index to index + 1
   end
   return bound
 end
@@ -4093,7 +4121,7 @@ function infer_member(checker: Checker, base: Expr, name: Name, span: Span) retu
       )
       let ty be resolve(checker: updated, ty: done.value.ty)
       if is_maybe(ty) then
-        set updated to mismatch(
+        change updated to mismatch(
           checker: updated,
           actual: ty,
           expected: ErrorTy,
@@ -4164,14 +4192,14 @@ function infer_module_member(checker: Checker, target: Integer, name: Name) retu
   let mutable updated be checker
   match declare.lookup_function(world: checker.world, owner: target, name: name.text)
     when some(function_id) then
-      set updated to record(
+      change updated to record(
         checker: updated,
         target: FunctionTarget(function_id: function_id),
         span: name.span
       )
-      set updated to require_public(checker: updated, function_id: function_id, span: name.span)
+      change updated to require_public(checker: updated, function_id: function_id, span: name.span)
       let deprecation be declare.function_at(world: updated.world, id: function_id).deprecation
-      set updated to note_deprecated(
+      change updated to note_deprecated(
         checker: updated,
         name: name.text,
         deprecation: deprecation,
@@ -4183,7 +4211,7 @@ function infer_module_member(checker: Checker, target: Integer, name: Name) retu
         function_id: function_id
       )
       return Done(value: info, checker: updated)
-    when nothing then set updated to updated
+    when nothing then change updated to updated
   end
   let target_info be declare.module_at(world: checker.world, id: target)
   match target_info.constants.get(name.text)
@@ -4195,7 +4223,7 @@ function infer_module_member(checker: Checker, target: Integer, name: Name) retu
         name: name,
         constant: constant
       )
-    when nothing then set updated to updated
+    when nothing then change updated to updated
   end
   let fallback be "see `renyi index` for what `{target_info.name}` declares"
   let fix be suggest_module_function(
@@ -4203,7 +4231,7 @@ function infer_module_member(checker: Checker, target: Integer, name: Name) retu
     target: target,
     name: name.text
   ) otherwise fallback
-  set updated to push_error(
+  change updated to push_error(
     checker: updated,
     code: "unknown-name",
     message: "`{target_info.name}` has no function or constant named `{name.text}`",
@@ -4225,7 +4253,7 @@ function module_constant(
 
   let mutable updated be checker
   if not constant.is_public then
-    set updated to push_error(
+    change updated to push_error(
       checker: updated,
       code: "private-name",
       message: "`{name.text}` is not public in `{target_info.name}`",
@@ -4233,12 +4261,12 @@ function module_constant(
       fix: "add `public` to its declaration in `{target_info.name}`"
     )
   end
-  set updated to record(
+  change updated to record(
     checker: updated,
     target: ConstantTarget(owner: target, name: name.text),
     span: name.span
   )
-  set updated to note_deprecated(
+  change updated to note_deprecated(
     checker: updated,
     name: name.text,
     deprecation: constant.deprecation,
@@ -4252,7 +4280,7 @@ function infer_args_only(checker: Checker, args: List of Arg) returns Checker
 
   let mutable updated be checker
   for each arg in args
-    set updated to infer(checker: updated, expr: arg.value, expected: nothing).checker
+    change updated to infer(checker: updated, expr: arg.value, expected: nothing).checker
   end
   return updated
 end
@@ -4304,20 +4332,20 @@ function call_by_name(
   let mutable updated be checker
   match task_conflict(checker: checker, name: name.text, changing: false)
     when some(reason) then
-      set updated to push_error(
+      change updated to push_error(
         checker: updated,
         code: "task-independence",
         message: reason,
         span: name.span,
         fix: task_fix()
       )
-    when nothing then set updated to updated
+    when nothing then change updated to updated
   end
   match find_binding(checker: updated, name: name.text)
     when some(binding) then
-      set updated to mark_used(checker: updated, name: name.text)
+      change updated to mark_used(checker: updated, name: name.text)
       return call_binding(checker: updated, name: name, ty: binding.ty, args: args, span: span)
-    when nothing then set updated to updated
+    when nothing then change updated to updated
   end
   match declare.lookup_function(world: updated.world, owner: updated.module_id, name: name.text)
     when some(function_id) then
@@ -4332,7 +4360,7 @@ function call_by_name(
       )
     when nothing then
       let fix be unknown_function_fix(checker: updated, name: name.text)
-      set updated to push_error(
+      change updated to push_error(
         checker: updated,
         code: "unknown-function",
         message: "there is no function named `{name.text}` in this module",
@@ -4518,7 +4546,7 @@ function infer_method_call(
     return Done(value: plain(ErrorTy), checker: infer_args_only(checker: updated, args: args))
   end
   if is_maybe(ty) then
-    set updated to mismatch(
+    change updated to mismatch(
       checker: updated,
       actual: ty,
       expected: ErrorTy,
@@ -4563,7 +4591,7 @@ function infer_method_call(
         ty: ty,
         name: name.text
       ) otherwise "call a function with the value as its argument: `{name.text}(value)`"
-      set updated to push_error(
+      change updated to push_error(
         checker: updated,
         code: "unknown-method",
         message: "`{shown}` has no method named `{name.text}`",
@@ -4599,7 +4627,7 @@ function call_ability_method(
     collect NamedTy(name: param.name, ty: types.with_self(ty: param.ty, self_type: ty))
   let result be types.with_self_maybe(ty: method.result, self_type: ty)
   let failures be types.with_self_all(tys: method.failures, self_type: ty)
-  set updated to check_args(
+  change updated to check_args(
     checker: updated,
     params: params,
     args: args,
@@ -4636,8 +4664,8 @@ function restore_bindings(checker: Checker, saved: List of VarInfo) returns Chec
   let mutable index be 0
   for each old in saved
     let current be checker.vars.at(index) otherwise crash with "a variable"
-    set vars to vars.append(current with binding: old.binding)
-    set index to index + 1
+    change vars to vars.append(current with binding: old.binding)
+    change index to index + 1
   end
   return checker with vars: vars
 end
@@ -4650,8 +4678,8 @@ function instantiate(checker: Checker, type_params: List of Integer)
   let mutable instances: List of Substitution be []
   for each param in type_params
     let var be fresh(checker: updated, kind: AnyVar)
-    set updated to var.checker
-    set instances to instances.append(Substitution(param: param, ty: var.value))
+    change updated to var.checker
+    change instances to instances.append(Substitution(param: param, ty: var.value))
   end
   return Done(value: instances, checker: updated)
 end
@@ -4675,7 +4703,7 @@ function choose_overload(checker: Checker, fallback: Integer, receiver: Ty, name
     let self_ty be types.substitute(ty: self_param.ty, bindings: instances.value)
     let fits be assign(checker: instances.checker, actual: receiver, expected: self_ty, span: span)
     let reverted be fits.checker with diagnostics: saved_diagnostics
-    set updated to restore_bindings(checker: reverted, saved: saved_vars)
+    change updated to restore_bindings(checker: reverted, saved: saved_vars)
     if fits.value then return Done(value: candidate, checker: updated) end
   end
   return Done(value: fallback, checker: updated)
@@ -4690,12 +4718,12 @@ function find_method(checker: Checker, ty: Ty, name: Text) returns maybe Method
       when App(id) then
         match declare.methods_of(world: checker.world, type_id: id, name: name).first()
           when some(function_id) then return DeclaredMethod(function_id: function_id)
-          when nothing then set current to current
+          when nothing then change current to current
         end
         let found be ability_method(checker: checker, ty: current, name: name)
         if found is not nothing then return found end
         match declare.type_at(world: checker.world, id: id).kind
-          when SubtypeKind(base) then set current to resolve(checker: checker, ty: base)
+          when SubtypeKind(base) then change current to resolve(checker: checker, ty: base)
           otherwise return nothing
         end
       when Param then return ability_method(checker: checker, ty: current, name: name)
@@ -4716,9 +4744,9 @@ function ability_method(checker: Checker, ty: Ty, name: Text) returns maybe Meth
         if has_ability(checker: checker, ty: ty, ability_id: ability_id) is true then
           return MethodOfAbility(ability_id: ability_id, index: index)
         end
-      when nothing then set ability_id to ability_id
+      when nothing then change ability_id to ability_id
     end
-    set ability_id to ability_id + 1
+    change ability_id to ability_id + 1
   end
   return nothing
 end
@@ -4729,7 +4757,7 @@ function method_position(methods: List of AbilityMethod, name: Text) returns may
   let mutable index be 0
   for each method in methods
     if method.name is name then return index end
-    set index to index + 1
+    change index to index + 1
   end
   return nothing
 end
@@ -4770,7 +4798,7 @@ function call_known(
   let info be declare.function_at(world: checker.world, id: id)
   let name be info.name
   if not inside(checker: updated, function_id: id) then
-    set updated to note_deprecated(
+    change updated to note_deprecated(
       checker: updated,
       name: name,
       deprecation: info.deprecation,
@@ -4778,14 +4806,14 @@ function call_known(
     )
   end
   let instances be instantiate(checker: updated, type_params: info.type_params)
-  set updated to instances.checker
+  change updated to instances.checker
   let subst be instances.value
   let params be
     for each named in info.params
     collect NamedTy(name: named.name, ty: types.substitute(ty: named.ty, bindings: subst))
   let result be substitute_result(result: info.result, subst: subst)
   let failures be types.substitute_all(tys: info.failures, bindings: subst)
-  set updated to note_result(checker: updated, info: info, result: result, span: span)
+  change updated to note_result(checker: updated, info: info, result: result, span: span)
   let explicit be explicit_params(
     checker: updated,
     id: id,
@@ -4795,8 +4823,8 @@ function call_known(
     span: span,
     name_span: name_span
   )
-  set updated to explicit.checker
-  set updated to guide_result(checker: updated, result: result, expected: expected, span: span)
+  change updated to explicit.checker
+  change updated to guide_result(checker: updated, result: result, expected: expected, span: span)
   let passed be check_args(
     checker: updated,
     params: explicit.value,
@@ -4804,9 +4832,9 @@ function call_known(
     span: span,
     name: name
   )
-  set updated to check_matches_literal(checker: passed.checker, info: info, args: args)
-  set updated to charge_effects(checker: updated, info: info, passed: passed.value, span: span)
-  set updated to check_instance_constraints(
+  change updated to check_matches_literal(checker: passed.checker, info: info, args: args)
+  change updated to charge_effects(checker: updated, info: info, passed: passed.value, span: span)
+  change updated to check_instance_constraints(
     checker: updated,
     instances: subst,
     name: name,
@@ -4877,9 +4905,9 @@ function explicit_params(
         expected: self_param.ty,
         span: found.span
       )
-      set updated to fits.checker
+      change updated to fits.checker
       if not fits.value then
-        set updated to mismatch(
+        change updated to mismatch(
           checker: updated,
           actual: found.ty,
           expected: self_param.ty,
@@ -4918,24 +4946,24 @@ function charge_effects(checker: Checker, info: FunctionInfo, passed: List of In
 
   let mutable needed: List of Needed be []
   for each grant in info.capabilities
-    set needed to needed.append(
+    change needed to needed.append(
       Needed(grant: grant, runtime_scoped: info.is_library, source: info.name)
     )
   end
   for each passed_id in passed
     let passed_info be declare.function_at(world: checker.world, id: passed_id)
     for each grant in passed_info.capabilities
-      set needed to needed.append(
+      change needed to needed.append(
         Needed(grant: grant, runtime_scoped: passed_info.is_library, source: passed_info.name)
       )
     end
   end
   let mutable updated be checker
   if not needed.is_empty() then
-    set updated to updated with effect_calls: updated.effect_calls + 1
+    change updated to updated with effect_calls: updated.effect_calls + 1
   end
   for each need in needed
-    set updated to require_capability(
+    change updated to require_capability(
       checker: updated,
       needed: need.grant,
       runtime_scoped: need.runtime_scoped,
@@ -4958,7 +4986,7 @@ function check_instance_constraints(
   let mutable updated be checker
   for each instance in instances
     for each ability_id in declare.constraints(world: checker.world, param: instance.param)
-      set updated to require_ability(
+      change updated to require_ability(
         checker: updated,
         ty: instance.ty,
         ability_id: ability_id,
@@ -4985,7 +5013,7 @@ function call_function_type(
   if args.length() is not wanted then
     let plural be if wanted is 1 then "" otherwise "s" end
     let found be args.length()
-    set updated to push_error(
+    change updated to push_error(
       checker: updated,
       code: "argument-count",
       message: "`{name}` takes {wanted} argument{plural}, found {found}",
@@ -4998,25 +5026,25 @@ function call_function_type(
     let param be signature.params.at(index) otherwise break
     match arg.name
       when some(label) then
-        set updated to push_error(
+        change updated to push_error(
           checker: updated,
           code: "argument-name",
           message: "arguments of a function passed by name are positional",
           span: label.span,
           fix: "drop the name"
         )
-      when nothing then set updated to updated
+      when nothing then change updated to updated
     end
-    set updated to infer_value(
+    change updated to infer_value(
       checker: updated,
       expr: arg.value,
       expected: param,
       what: "the argument"
     )
-    set index to index + 1
+    change index to index + 1
   end
   if not signature.capabilities.is_empty() then
-    set updated to updated with effect_calls: updated.effect_calls + 1
+    change updated to updated with effect_calls: updated.effect_calls + 1
   end
   let info be Info(
     ty: signature.result otherwise Unit,
@@ -5053,19 +5081,19 @@ function check_args(
     let param be params.at(index) otherwise break
     let done be infer(checker: updated, expr: arg.value, expected: param.ty)
     let value_span be expr_span(arg.value)
-    set updated to require_handled(checker: done.checker, info: done.value, span: value_span)
+    change updated to require_handled(checker: done.checker, info: done.value, span: value_span)
     match done.value.function_id
-      when some(function_id) then set passed to passed.append(function_id)
-      when nothing then set passed to passed
+      when some(function_id) then change passed to passed.append(function_id)
+      when nothing then change passed to passed
     end
-    set updated to expect(
+    change updated to expect(
       checker: updated,
       actual: done.value.ty,
       expected: param.ty,
       span: value_span,
       what: "the argument"
     )
-    set index to index + 1
+    change index to index + 1
   end
   return Done(value: passed, checker: updated)
 end
@@ -5133,7 +5161,7 @@ function check_arg_names(checker: Checker, params: List of NamedTy, args: List o
     let param be params.at(index) otherwise break
     match arg.name
       when nothing then
-        set updated to push_error(
+        change updated to push_error(
           checker: updated,
           code: "argument-name",
           message: "a call with two or more arguments names every argument",
@@ -5142,7 +5170,7 @@ function check_arg_names(checker: Checker, params: List of NamedTy, args: List o
         )
       when some(label) where label.text is not param.name then
         if names.contains(label.text) then
-          set updated to push_error(
+          change updated to push_error(
             checker: updated,
             code: "argument-order",
             message: "`{label.text}` is out of order",
@@ -5150,7 +5178,7 @@ function check_arg_names(checker: Checker, params: List of NamedTy, args: List o
             fix: "the arguments of `{name}` are {order_joined}"
           )
         otherwise
-          set updated to push_error(
+          change updated to push_error(
             checker: updated,
             code: "argument-name",
             message: "`{name}` has no parameter named `{label.text}`",
@@ -5158,9 +5186,9 @@ function check_arg_names(checker: Checker, params: List of NamedTy, args: List o
             fix: "the arguments are {order_joined}"
           )
         end
-      otherwise set updated to updated
+      otherwise change updated to updated
     end
-    set index to index + 1
+    change index to index + 1
   end
   return updated
 end
@@ -5244,7 +5272,7 @@ function zero_padded(value: Integer, width: Integer) returns Text
   let sign be if value is less than 0 then "-" otherwise "" end
   let mutable padded be digits
   repeat until padded.length() + sign.length() is at least width
-    set padded to "0{padded}"
+    change padded to "0{padded}"
   end
   return "{sign}{padded}"
 end
@@ -5338,7 +5366,7 @@ function suggest_module_function(checker: Checker, target: Integer, name: Text) 
     let plain_function be
       for each id in ids
       any not declare.function_at(world: checker.world, id: id).is_method
-    if plain_function then set names to names.append(candidate) end
+    if plain_function then change names to names.append(candidate) end
   end
   return did_you_mean(suggest.closest(name: name, candidates: names))
 end
@@ -5350,7 +5378,7 @@ function suggest_method(checker: Checker, ty: Ty, name: Text) returns maybe Text
   let prefix be "{head}:"
   let mutable names: List of Text be []
   for each key in checker.world.method_index.keys()
-    if key.starts_with(prefix) then set names to names.append(key.drop(prefix.length())) end
+    if key.starts_with(prefix) then change names to names.append(key.drop(prefix.length())) end
   end
   return did_you_mean(suggest.closest(name: name, candidates: names))
 end
@@ -5436,7 +5464,7 @@ function declared_failure_variant(checker: Checker, variants: List of VariantRef
     let listed be
       for each failing in checker.context.failures
       any types.head_type(resolve(checker: checker, ty: failing)) is variant.type_id
-    if listed then set declared to declared.append(variant) end
+    if listed then change declared to declared.append(variant) end
   end
   if declared.length() is 1 then return declared.first() end
   return nothing
@@ -5502,8 +5530,9 @@ function construct_variant(
   if variants.length() is greater than 1 then
     match expected_head(checker: checker, expected: expected)
       when some(type_id) then
-        set chosen to variant_with_type(candidates: variants, type_id: type_id)
-      when nothing then set chosen to declared_failure_variant(checker: checker, variants: variants)
+        change chosen to variant_with_type(candidates: variants, type_id: type_id)
+      when nothing then
+        change chosen to declared_failure_variant(checker: checker, variants: variants)
     end
   end
   let variant be chosen otherwise return ambiguous_construct(
@@ -5517,7 +5546,7 @@ function construct_variant(
     span: name.span
   )
   let info be declare.type_at(world: checker.world, id: variant.type_id)
-  set updated to note_deprecated(
+  change updated to note_deprecated(
     checker: updated,
     name: info.name,
     deprecation: info.deprecation,
@@ -5583,14 +5612,14 @@ function construct_type(
     span: name.span
   )
   let info be declare.type_at(world: checker.world, id: type_id)
-  set updated to note_deprecated(
+  change updated to note_deprecated(
     checker: updated,
     name: name.text,
     deprecation: info.deprecation,
     span: name.span
   )
   let args_tys be fresh_args(checker: updated, count_of: info.params.length())
-  set updated to args_tys.checker
+  change updated to args_tys.checker
   if type_id is checker.world.builtins.pair then
     return construct_pair(
       checker: updated,
@@ -5766,16 +5795,21 @@ function construct_subtype(
   let mutable updated be checker
   match arg.name
     when some(label) then
-      set updated to push_error(
+      change updated to push_error(
         checker: updated,
         code: "argument-name",
         message: "a construction from one value does not name it",
         span: label.span,
         fix: "drop the name"
       )
-    when nothing then set updated to updated
+    when nothing then change updated to updated
   end
-  set updated to infer_value(checker: updated, expr: arg.value, expected: base, what: "the value")
+  change updated to infer_value(
+    checker: updated,
+    expr: arg.value,
+    expected: base,
+    what: "the value"
+  )
   let mutable failures: List of Ty be []
   match refinement
     when some(condition) then
@@ -5785,11 +5819,11 @@ function construct_subtype(
         condition: condition,
         value: arg.value
       )
-      set updated to checked.checker
-      set failures to checked.value
-    when nothing then set updated to updated
+      change updated to checked.checker
+      change failures to checked.value
+    when nothing then change updated to updated
   end
-  set updated to check_text_literal(checker: updated, type_id: type_id, value: arg.value)
+  change updated to check_text_literal(checker: updated, type_id: type_id, value: arg.value)
   return Done(value: Info(ty: ty, failures: failures, function_id: nothing), checker: updated)
 end
 
@@ -5840,7 +5874,7 @@ function construct_fields(
   let mutable index be 0
   for each arg in args
     let field be fields.at(index) otherwise break
-    set updated to check_field_label(
+    change updated to check_field_label(
       checker: updated,
       name: name,
       fields: fields,
@@ -5848,7 +5882,7 @@ function construct_fields(
       arg: arg
     )
     let field_ty be types.substitute(ty: field.ty, bindings: subst)
-    set updated to infer_value(
+    change updated to infer_value(
       checker: updated,
       expr: arg.value,
       expected: field_ty,
@@ -5863,11 +5897,11 @@ function construct_fields(
           value: arg.value,
           failures: failures
         )
-        set updated to checked.checker
-        set failures to checked.value
-      when nothing then set updated to updated
+        change updated to checked.checker
+        change failures to checked.value
+      when nothing then change updated to updated
     end
-    set index to index + 1
+    change index to index + 1
   end
   return Done(value: failures, checker: updated)
 end
@@ -6002,15 +6036,15 @@ function infer_otherwise(
   match ty
     when MaybeTy(inner: present) then
       if fallible then
-        set inner to ty
+        change inner to ty
       otherwise
-        set inner to present
+        change inner to present
       end
     otherwise
       if not fallible and not types.is_error(ty) then
         let shown be show(checker: updated, ty: ty)
         let after_plain be "`otherwise` after a value that cannot fail and is not optional"
-        set updated to push_error(
+        change updated to push_error(
           checker: updated,
           code: "superfluous-otherwise",
           message: "{after_plain} (it is `{shown}`)",
@@ -6019,7 +6053,7 @@ function infer_otherwise(
         )
       end
   end
-  set updated to check_fallback(
+  change updated to check_fallback(
     checker: updated,
     info: info,
     ty: ty,
@@ -6152,7 +6186,7 @@ function infer_logic(checker: Checker, left: Expr, right: Expr) returns Done of 
   purpose: `and` and `or`: two conditions.
 
   let mutable updated be check_condition(checker: checker, condition: left)
-  set updated to check_condition(checker: updated, condition: right)
+  change updated to check_condition(checker: updated, condition: right)
   return Done(value: plain(builtin(checker.world.builtins.boolean)), checker: updated)
 end
 
@@ -6168,7 +6202,7 @@ function infer_equality(checker: Checker, left: Expr, right: Expr, span: Span) r
   )
   let right_done be infer(checker: updated, expr: right, expected: left_done.value.ty)
   let right_span be expr_span(right)
-  set updated to require_handled(
+  change updated to require_handled(
     checker: right_done.checker,
     info: right_done.value,
     span: right_span
@@ -6180,7 +6214,7 @@ function infer_equality(checker: Checker, left: Expr, right: Expr, span: Span) r
     expected: left_ty,
     span: right_span
   )
-  set updated to forward.checker
+  change updated to forward.checker
   let mutable ok be forward.value
   if not ok then
     let backward be assign(
@@ -6189,11 +6223,11 @@ function infer_equality(checker: Checker, left: Expr, right: Expr, span: Span) r
       expected: right_done.value.ty,
       span: right_span
     )
-    set updated to backward.checker
-    set ok to backward.value
+    change updated to backward.checker
+    change ok to backward.value
   end
   if not ok then
-    set updated to mismatch(
+    change updated to mismatch(
       checker: updated,
       actual: right_done.value.ty,
       expected: left_ty,
@@ -6201,7 +6235,7 @@ function infer_equality(checker: Checker, left: Expr, right: Expr, span: Span) r
       what: "the right side of `is`"
     )
   end
-  set updated to require_ability(
+  change updated to require_ability(
     checker: updated,
     ty: left_done.value.ty,
     ability_id: builtins.equal,
@@ -6225,7 +6259,7 @@ function infer_comparison(checker: Checker, operator: BinaryOp, left: Expr, righ
   )
   let right_done be infer(checker: updated, expr: right, expected: left_done.value.ty)
   let right_span be expr_span(right)
-  set updated to require_handled(
+  change updated to require_handled(
     checker: right_done.checker,
     info: right_done.value,
     span: right_span
@@ -6236,7 +6270,7 @@ function infer_comparison(checker: Checker, operator: BinaryOp, left: Expr, righ
     expected: left_done.value.ty,
     span: right_span
   )
-  set updated to forward.checker
+  change updated to forward.checker
   let mutable ok be forward.value
   if not ok then
     let backward be assign(
@@ -6245,11 +6279,11 @@ function infer_comparison(checker: Checker, operator: BinaryOp, left: Expr, righ
       expected: right_done.value.ty,
       span: left_span
     )
-    set updated to backward.checker
-    set ok to backward.value
+    change updated to backward.checker
+    change ok to backward.value
   end
   if not ok then
-    set updated to mismatch(
+    change updated to mismatch(
       checker: updated,
       actual: right_done.value.ty,
       expected: left_done.value.ty,
@@ -6258,7 +6292,7 @@ function infer_comparison(checker: Checker, operator: BinaryOp, left: Expr, righ
     )
   end
   let spelled be spelling_of(operator)
-  set updated to require_ability(
+  change updated to require_ability(
     checker: updated,
     ty: left_done.value.ty,
     ability_id: builtins.compare,
@@ -6294,7 +6328,7 @@ function infer_arithmetic(
       if is_builtin(checker: updated, ty: base, id: builtins.float) then builtin(builtins.float)
       otherwise builtin(builtins.integer)
       end
-    set updated to infer_value(
+    change updated to infer_value(
       checker: updated,
       expr: right,
       expected: exponent,
@@ -6303,7 +6337,7 @@ function infer_arithmetic(
   otherwise
     let right_done be infer(checker: updated, expr: right, expected: left_ty)
     let right_span be expr_span(right)
-    set updated to require_handled(
+    change updated to require_handled(
       checker: right_done.checker,
       info: right_done.value,
       span: right_span
@@ -6311,9 +6345,9 @@ function infer_arithmetic(
     let left_base be base_of(checker: updated, ty: left_ty)
     let right_base be base_of(checker: updated, ty: right_done.value.ty)
     let unified be unify(checker: updated, left: left_base, right: right_base, span: span)
-    set updated to unified.checker
+    change updated to unified.checker
     if not unified.value then
-      set updated to mismatch(
+      change updated to mismatch(
         checker: updated,
         actual: right_done.value.ty,
         expected: left_ty,
@@ -6344,7 +6378,7 @@ function arithmetic_result(checker: Checker, operator: BinaryOp, result: Ty, lef
     let spelled be spelling_of(operator)
     let mutable fix be "arithmetic works on Integer, Decimal and Float"
     if is_builtin(checker: checker, ty: resolved, id: builtins.text) then
-      set fix to "join texts with interpolation: \"\{left}\{right}\""
+      change fix to "join texts with interpolation: \"\{left}\{right}\""
     end
     let updated be push_error(
       checker: checker,
@@ -6486,17 +6520,17 @@ function check_failure_pattern(checker: Checker, inner: Pattern) returns Done of
   match inner
     when TypedPattern(annotation) then
       let handled be resolve_type(checker: updated, ty: annotation)
-      set updated to handled.checker
+      change updated to handled.checker
       match updated.current_errors
         when some(Union(members)) then
           let remaining be
             for each member in members
             where not same_type(checker: updated, left: member, right: handled.value)
             collect member
-          set updated to updated with current_errors: Union(members: remaining)
-        otherwise set updated to updated
+          change updated to updated with current_errors: Union(members: remaining)
+        otherwise change updated to updated
       end
-    otherwise set updated to updated
+    otherwise change updated to updated
   end
   return Done(value: Constructed(ctor: FailureCtor, subs: [done.value]), checker: updated)
 end
@@ -6544,7 +6578,7 @@ function check_typed_pattern(
         let shown be show(checker: updated, ty: wanted)
         let errors be for each member in members collect show(checker: updated, ty: member)
         let quoted be suggest.quoted(errors)
-        set updated to push_error(
+        change updated to push_error(
           checker: updated,
           code: "pattern-mismatch",
           message: "the errors here are not `{shown}`",
@@ -6552,16 +6586,16 @@ function check_typed_pattern(
           fix: "write one of {quoted}"
         )
       end
-      set shape to Constructed(
+      change shape to Constructed(
         ctor: MemberCtor(ty: zonk(checker: updated, ty: wanted)),
         subs: [Wild]
       )
-    when ErrorTy then set shape to Wild
+    when ErrorTy then change shape to Wild
     otherwise
       if not same_type(checker: updated, left: subject_ty, right: wanted) then
         let shown be show(checker: updated, ty: wanted)
         let subject_shown be show(checker: updated, ty: subject_ty)
-        set updated to push_error(
+        change updated to push_error(
           checker: updated,
           code: "pattern-mismatch",
           message: "`{shown}` does not match a `{subject_shown}`",
@@ -6570,7 +6604,7 @@ function check_typed_pattern(
         )
       end
   end
-  set updated to bind(
+  change updated to bind(
     checker: updated,
     name: name,
     ty: wanted,
@@ -6659,8 +6693,8 @@ function check_variant_pattern(
   let mutable updated be checker
   match target
     when some(found) then
-      set updated to record_variant_target(checker: updated, target: found, name: name)
-    when nothing then set updated to updated
+      change updated to record_variant_target(checker: updated, target: found, name: name)
+    when nothing then change updated to updated
   end
   let subject be variant_subject(checker: updated, subject_ty: subject_ty, name: name.text)
   let shaped be
@@ -6706,7 +6740,7 @@ function unknown_variant_pattern(
   if not types.is_error(subject_ty) then
     let shown be show(checker: updated, ty: subject_ty)
     let fix be suggest_variant(checker: updated, ty: subject_ty, name: name.text)
-    set updated to push_error(
+    change updated to push_error(
       checker: updated,
       code: "pattern-mismatch",
       message: "`{shown}` has no variant named `{name.text}`",
@@ -6715,7 +6749,7 @@ function unknown_variant_pattern(
     )
   end
   for each field in fields
-    set updated to bind_unknown_field(checker: updated, field: field)
+    change updated to bind_unknown_field(checker: updated, field: field)
   end
   return Done(value: Wild, checker: updated)
 end
@@ -6743,7 +6777,7 @@ function field_position(fields: List of FieldInfo, name: Text) returns maybe Int
   let mutable index be 0
   for each field in fields
     if field.name is name then return index end
-    set index to index + 1
+    change index to index + 1
   end
   return nothing
 end
@@ -6769,10 +6803,10 @@ function variant_fields_patterns(
         match field.pattern
           when some(inner) then
             let done be check_pattern(checker: updated, pattern: inner, subject: field_ty)
-            set updated to done.checker
-            set subs to lists.replace_at(items: subs, index: index, item: done.value)
+            change updated to done.checker
+            change subs to lists.replace_at(items: subs, index: index, item: done.value)
           when nothing then
-            set updated to bind(
+            change updated to bind(
               checker: updated,
               name: field.field,
               ty: field_ty,
@@ -6781,13 +6815,13 @@ function variant_fields_patterns(
             )
         end
       when nothing then
-        set updated to unknown_pattern_field(
+        change updated to unknown_pattern_field(
           checker: updated,
           name: name,
           field: field,
           target: target
         )
-        set updated to bind_unknown_field(checker: updated, field: field)
+        change updated to bind_unknown_field(checker: updated, field: field)
     end
   end
   return Done(
@@ -6972,7 +7006,7 @@ function default_rows(rows: List of List of Shape) returns List of List of Shape
   let mutable out: List of List of Shape be []
   for each row in rows
     match row.first()
-      when some(Wild) then set out to out.append(row.drop(1))
+      when some(Wild) then change out to out.append(row.drop(1))
       otherwise continue
     end
   end
@@ -6985,7 +7019,7 @@ function row_heads(rows: List of List of Shape) returns List of Ctor
   let mutable heads: List of Ctor be []
   for each row in rows
     match row.first()
-      when some(Constructed(ctor)) then set heads to heads.append(ctor)
+      when some(Constructed(ctor)) then change heads to heads.append(ctor)
       otherwise continue
     end
   end
@@ -7001,8 +7035,8 @@ function specialise(rows: List of List of Shape, ctor: Ctor, arity: Integer)
   for each row in rows
     match row.first()
       when some(Constructed(ctor: head, subs)) then
-        if head is ctor then set out to out.append(subs.append_all(row.drop(1))) end
-      when some(Wild) then set out to out.append(wilds.append_all(row.drop(1)))
+        if head is ctor then change out to out.append(subs.append_all(row.drop(1))) end
+      when some(Wild) then change out to out.append(wilds.append_all(row.drop(1)))
       when nothing then continue
     end
   end
@@ -7015,8 +7049,8 @@ function wild_texts(total: Integer) returns List of Text
   let mutable out: List of Text be []
   let mutable index be 0
   repeat until index is at least total
-    set out to out.append(wild)
-    set index to index + 1
+    change out to out.append(wild)
+    change index to index + 1
   end
   return out
 end
@@ -7027,8 +7061,8 @@ function error_types(total: Integer) returns List of Ty
   let mutable out: List of Ty be []
   let mutable index be 0
   repeat until index is at least total
-    set out to out.append(ErrorTy)
-    set index to index + 1
+    change out to out.append(ErrorTy)
+    change index to index + 1
   end
   return out
 end
@@ -7039,8 +7073,8 @@ function wild_shapes(arity: Integer) returns List of Shape
   let mutable out: List of Shape be []
   let mutable index be 0
   repeat until index is at least arity
-    set out to out.append(Wild)
-    set index to index + 1
+    change out to out.append(Wild)
+    change index to index + 1
   end
   return out
 end
@@ -7072,7 +7106,7 @@ function missing(checker: Checker, columns: List of Column, rows: List of List o
     when Infinite then
       let mutable witnesses: List of Witness be []
       for each witness in missing(checker: checker, columns: rest, rows: default_rows(rows))
-        set witnesses to witnesses.append(Witness(parts: [wild].append_all(witness.parts)))
+        change witnesses to witnesses.append(Witness(parts: [wild].append_all(witness.parts)))
       end
       return witnesses
   end
@@ -7097,7 +7131,7 @@ function missing_complete(
       let tail be witness.parts.drop(entry.fields.length())
       let spelled_head be spell(checker: checker, ctor: entry.ctor, fields: entry.fields, subs: own)
       let spelled be Witness(parts: [spelled_head].append_all(tail))
-      if not witnesses.contains(spelled) then set witnesses to witnesses.append(spelled) end
+      if not witnesses.contains(spelled) then change witnesses to witnesses.append(spelled) end
     end
   end
   return witnesses
@@ -7125,7 +7159,7 @@ function missing_incomplete(
         subs: wilds
       )
       let spelled be Witness(parts: [spelled_head].append_all(witness.parts))
-      if not witnesses.contains(spelled) then set witnesses to witnesses.append(spelled) end
+      if not witnesses.contains(spelled) then change witnesses to witnesses.append(spelled) end
     end
   end
   return witnesses
@@ -7163,8 +7197,8 @@ function spell_variant(name: Text, fields: List of NamedTy, subs: List of Text) 
   let mutable index be 0
   for each field in fields
     let sub be subs.at(index) otherwise break
-    set parts to parts.append("{field.name}: {sub}")
-    set index to index + 1
+    change parts to parts.append("{field.name}: {sub}")
+    change index to index + 1
   end
   let joined be parts.join(", ")
   return "{name}({joined})"
@@ -7180,29 +7214,29 @@ function infer_query(checker: Checker, query: Expr, expected: maybe Ty) returns 
       let mutable last_item be ErrorTy
       for each source in sources
         let items be loop_items(checker: updated, bindings: source.bindings, source: source.source)
-        set updated to items.checker
-        set last_item to single_or_pair(checker: updated, items: items.value)
+        change updated to items.checker
+        change last_item to single_or_pair(checker: updated, items: items.value)
         let mutable index be 0
         for each name in source.bindings
           let ty be items.value.at(index) otherwise break
-          set updated to bind(
+          change updated to bind(
             checker: updated,
             name: name,
             ty: ty,
             is_mutable: false,
             kind: QueryBinding
           )
-          set index to index + 1
+          change index to index + 1
         end
       end
-      set updated to check_query_clauses(
+      change updated to check_query_clauses(
         checker: updated,
         deadline: deadline,
         filter: filter,
         order: order
       )
       let key be query_key(checker: updated, group_by: group_by)
-      set updated to key.checker
+      change updated to key.checker
       let expected_inner be query_expected_inner(
         checker: updated,
         expected: expected,
@@ -7217,7 +7251,7 @@ function infer_query(checker: Checker, query: Expr, expected: maybe Ty) returns 
         last_item: last_item,
         span: span
       )
-      set updated to pop_scope(result.checker)
+      change updated to pop_scope(result.checker)
       let ty be
         match key.value
           when some(key_ty) then App(id: builtins.map, args: [key_ty, result.value])
@@ -7246,16 +7280,17 @@ function check_query_clauses(
 
   let mutable updated be checker
   match deadline
-    when some(limit) then set updated to check_within(checker: updated, deadline: limit)
-    when nothing then set updated to updated
+    when some(limit) then change updated to check_within(checker: updated, deadline: limit)
+    when nothing then change updated to updated
   end
   match filter
-    when some(condition) then set updated to check_condition(checker: updated, condition: condition)
-    when nothing then set updated to updated
+    when some(condition) then
+      change updated to check_condition(checker: updated, condition: condition)
+    when nothing then change updated to updated
   end
   match order
-    when some(ordering) then set updated to check_ordering(checker: updated, order: ordering)
-    when nothing then set updated to updated
+    when some(ordering) then change updated to check_ordering(checker: updated, order: ordering)
+    when nothing then change updated to updated
   end
   return updated
 end
@@ -7267,7 +7302,7 @@ function query_key(checker: Checker, group_by: maybe Expr) returns Done of maybe
   let done be infer(checker: checker, expr: key, expected: nothing)
   let span be expr_span(key)
   let mutable updated be require_handled(checker: done.checker, info: done.value, span: span)
-  set updated to require_ability(
+  change updated to require_ability(
     checker: updated,
     ty: done.value.ty,
     ability_id: checker.world.builtins.hash,
@@ -7365,7 +7400,7 @@ function query_sum(checker: Checker, value: Expr, span: Span) returns Done of Ty
   let unknown be var_id(resolved) is not nothing or types.is_error(resolved)
   if not unknown and not is_numeric(checker: updated, ty: resolved) then
     let shown be show(checker: updated, ty: resolved)
-    set updated to push_error(
+    change updated to push_error(
       checker: updated,
       code: "type-mismatch",
       message: "`sum` adds numbers, but these are `{shown}`",
@@ -7422,9 +7457,9 @@ function resolve_in_body(checker: Checker, ty: Type) returns Done of Ty
       match result
         when some(result_type) then
           let done be resolve_in_body(checker: updated, ty: result_type)
-          set updated to done.checker
-          set resolved_result to done.value
-        when nothing then set updated to updated
+          change updated to done.checker
+          change resolved_result to done.value
+        when nothing then change updated to updated
       end
       let failures_done be resolve_in_body_all(checker: updated, tys: failures)
       let grants be for each capability in capabilities collect effects.from_ast(capability)
@@ -7447,8 +7482,8 @@ function resolve_in_body_all(checker: Checker, tys: List of Type) returns Done o
   let mutable out: List of Ty be []
   for each ty in tys
     let done be resolve_in_body(checker: updated, ty: ty)
-    set updated to done.checker
-    set out to out.append(done.value)
+    change updated to done.checker
+    change out to out.append(done.value)
   end
   return Done(value: out, checker: updated)
 end
@@ -7505,8 +7540,8 @@ public function check_module(world: World, module_id: Integer) returns Checked
   let bodies be body_index(world: world, module_id: module_id)
   let mutable index be 0
   for each item in info.tree.items
-    set checker to check_item(checker: checker, index: index, item: item, bodies: bodies)
-    set index to index + 1
+    change checker to check_item(checker: checker, index: index, item: item, bodies: bodies)
+    change index to index + 1
   end
   if info.tree.docs.summary is nothing then
     let stop be
@@ -7514,7 +7549,7 @@ public function check_module(world: World, module_id: Integer) returns Checked
         when some(last) then last.span.stop
         when nothing then 0
       end
-    set checker to push_error(
+    change checker to push_error(
       checker: checker,
       code: "purpose-missing",
       message: "the module has no purpose",
@@ -7541,10 +7576,10 @@ function check_item(checker: Checker, index: Integer, item: Item, bodies: Map of
       let mutable method be 0
       for each func in implementation.functions
         match bodies.get("{index}:{method}")
-          when some(id) then set updated to check_function(checker: updated, id: id, func: func)
-          when nothing then set updated to updated
+          when some(id) then change updated to check_function(checker: updated, id: id, func: func)
+          when nothing then change updated to updated
         end
-        set method to method + 1
+        change method to method + 1
       end
       return updated
     when TestItem(value: block) then return check_test(checker: checker, index: index, block: block)
@@ -7570,13 +7605,13 @@ function body_index(world: World, module_id: Integer) returns Map of Text to Int
   for each func in world.functions
     if func.owner is module_id then
       match func.body
-        when ItemBody(item) then set bodies to bodies.set(key: "{item}", value: id)
+        when ItemBody(item) then change bodies to bodies.set(key: "{item}", value: id)
         when ImplementationBody(item, method) then
-          set bodies to bodies.set(key: "{item}:{method}", value: id)
-        otherwise set bodies to bodies
+          change bodies to bodies.set(key: "{item}:{method}", value: id)
+        otherwise change bodies to bodies
       end
     end
-    set id to id + 1
+    change id to id + 1
   end
   return bodies
 end

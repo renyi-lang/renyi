@@ -12,7 +12,8 @@ with decisions X1 to X4: the development profile optimizes the VM,
 `List.slice`, the interpreter loop rewritten, `renyi run --profile`;
 then X5, the emitter writes a bytecode file, and X6, mimalloc; then the
 residue of stage 1, decisions Y1 to Y4; then the bytecode file itself,
-decisions Z1 to Z4, with `renyi compile` and the loader).
+decisions Z1 to Z4, with `renyi compile` and the loader; then the rename
+of `set` to `change`, decision AA1).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -25,7 +26,7 @@ run manifest of Q2, every library module, the `only to` guards of P3,
 tasks one after the other by S2) are done, with the project map (`renyi
 index`, `--budgets`, `--diff`), `renyi tools` and `renyi mcp` on top. M4
 to M6 are not started (`docs/GAPS.md`, section 4). Design decisions are
-in sections 0 to Z of `01-decisions.md`; the agent tooling in
+in sections 0 to AA of `01-decisions.md`; the agent tooling in
 `05-agent-tooling.md`, the signature capabilities in
 `06-runtime-guarantees.md`, the system-level commitments in
 `07-system-design.md`; the open items in section 18 of the sketch (R3-1,
@@ -54,13 +55,15 @@ and its loop rewritten (the section after them, decisions X1 to X6);
 the residue of stage 1 is done (decisions Y1 to Y4, the section after
 the profile's); the bytecode file exists with `renyi compile` and the
 loader (decisions Z1 to Z4, the section after the residue's); the
-emitter written in Renyi, which writes that file, is next.
+statement `set name to value` is `change name to value` since decision
+AA1 (the owner's question of 2026-10-06; the section after the bytecode
+file's); the emitter written in Renyi, which writes that file, is next.
 
 The corpus has 30 programs, passes the lint, is in canonical layout,
 checks cleanly, has nothing over budget, and its `example:` lines and
 `test` blocks pass on the VM (six are `replays` tests answered from
 recordings under `examples/fixtures/`). The cheat sheet measures
-2999 of 3000 tokens. The Rust workspace has five crates:
+2998 of 3000 tokens. The Rust workspace has five crates:
 `renyi_syntax`, `renyi_check`, `renyi_index`, `renyi_vm` and the `renyi`
 binary with `check`, `format`, `tokens`, `parse [--json]
 [--declarations]`, `index [--json | --budgets | --diff <map or
@@ -86,7 +89,9 @@ Readability: four live rounds exist under `tests/readability/`; the last
 stands at Predict 90, Explain 100, Complete 79, Write 40. The rounds'
 `notes.md` and "Done in session 6" below hold the detail; decisions R1 to
 R8 and U1 to U9 came from them; they continue only if the owner asks
-(decision V1).
+(decision V1). The rounds' records (`system.txt`, the outputs) keep the
+grammar they measured, with `set`; a new round reads the current cheat
+sheet, with `change` (decision AA1).
 
 ## The self-hosted front end as it exists (`compiler/`)
 
@@ -141,7 +146,7 @@ R8 and U1 to U9 came from them; they continue only if the owner asks
   every run pays first, is 0.25 s). The lexer slices token text by
   characters in a loop, since `Text.drop` and `take` copy the whole text
   per call (79 s for `parser.ry` before that change). Growing a list
-  with `set xs to xs.append(x)` or `xs.append_all(step.xs)` in a loop is
+  with `change xs to xs.append(x)` or `xs.append_all(step.xs)` in a loop is
   linear (80 000 appends in 0.26 s, startup included: decision O1's
   `LoadMove` moves the receiver out of its slot and `take_list` in
   `value.rs` reuses the vector), so the list growth is not where the
@@ -253,7 +258,7 @@ R8 and U1 to U9 came from them; they continue only if the owner asks
   record into a local first); a `match` expression's arm holds one
   expression or an outcome (`return`, `crash with`), never a statement,
   and a `let x: maybe T be match ... end` needs the annotation when an
-  arm is `nothing`; a one-line `if c then set a to x otherwise set a to
+  arm is `nothing`; a one-line `if c then change a to x otherwise change a to
   y end` statement does not parse (write it on several lines); a call
   with one argument must not name it; an unused loop or pattern binding
   is an error, so `for each x in xs collect Constant` needs a helper; a
@@ -519,6 +524,41 @@ the emitter written in Renyi is next.
   calls, rendering and JSON decoding); fine for now, and the first
   thing to cut if files ever matter.
 
+## The rename of `set` to `change` (decision AA1)
+
+The owner asked, while the bytecode file was being built, whether to
+rename `set` to `change` and forbid every other way of changing a
+binding. The second half was already the rule (no `=`; a name is bound
+once per function, `shadowing`; `set` on a `let mutable` binding the
+only mutation), so the question was the rename alone, asked back as one
+structured question and answered "before the emitter". A surface change
+under V11, one commit:
+
+- **The grammar and the documents**: `docs/grammar.ebnf` (`'change'
+  Identifier 'to'`), the reference (sections 1, 6, 8 and 17; 88 reserved
+  words still, `set` out, `change` in), the cheat sheet (the same list,
+  the examples; 2998 tokens), section AA of the decisions,
+  `docs/GAPS.md`.
+- **The Rust front end**: `Word::Change` in `token.rs`,
+  `StmtKind::Change` in `ast.rs`, `parser.rs` (and its statement
+  message), `json.rs` (the kind `Change`), `format.rs` (`change x to`);
+  `check.rs` (the arm and the fixes `write `change x to
+  x.method(...)``), `metrics.rs`, the VM's `compile/stmt.rs`.
+- **The front end in Renyi**: `compiler/lexer.ry` (the reserved list),
+  `ast.ry` (`Change(name, value, span)`), `parser.ry`
+  (`change_statement`), `bodies.ry` (the arms, the purpose, the fixes),
+  and every statement of the compiler's own sources (about 700).
+- **The corpus and the tests**: the examples, the conformance programs
+  (`body_length.ry` is sixty of them), the crates' tests, the lint's
+  reserved words and `=` message. The sweep was one script
+  (`sweep_set.py`, five patterns: a line start, after `\n` in a Rust
+  string, after a backtick or quote, after `then` or `otherwise`, after a
+  quote and spaces), then the keyword plumbing by hand; nothing else in
+  the repository spells the statement.
+- **Unchanged**: the `Set` type, `Map.set(key:, value:)`, `to_set`, the
+  readability rounds' records, the sketch (`02-syntax-sketch.md`, the
+  design record) and the earlier decisions, which keep `set` as history.
+
 ## The VM as it exists (`crates/renyi_vm`)
 
 - **The loop** is described in the section above (decision X3): one
@@ -544,7 +584,7 @@ the emitter written in Renyi is next.
   (`Target::Function`, `AbilityMethod`, `Constant`, `Type`, `Variant`,
   `Number` for the type of every numeric literal and of every `sum`,
   `Result` for a call whose result type only the context decides, such as
-  `json.parse`). Locals are slots on the value stack; `set x to
+  `json.parse`). Locals are slots on the value stack; `change x to
   x.method(...)` loads the receiver with `LoadMove` when the arguments do
   not read `x`, so lists, maps and sets grow in place (decision O1).
   `Op::GroupFold` folds `sum`, `count`, `first`, `any` and `all` per group
@@ -873,6 +913,11 @@ Three commits on `main`, each gated as in session 7:
    `tests/conformance.rs` (the rerun), the reference's appendix B, the
    decisions (section Z), `README.md`, `CLAUDE.md`, `docs/GAPS.md`,
    this file.
+10. The rename of `set` to `change` (decision AA1, the section "The
+    rename of `set` to `change`" above): the grammar, the reference, the
+    cheat sheet, the decisions (section AA), both front ends, the
+    corpus, the conformance programs, the crates' tests, the lint,
+    `docs/GAPS.md`, this file.
 
 ## Done in session 7 (stage 1 of the gap audit)
 
@@ -1218,15 +1263,9 @@ on a fresh clone).
   item R3-2 (constraints with type arguments), deferred until after the
   emitter; `docs/GAPS.md` section 7 keeps 1.11, 3.4 and 3.6 open.
 - **The rename of `set` to `change`** (the owner's decision of
-  2026-10-06, asked in this session after the owner raised it): done
-  before the emitter, as a surface change under decision V11 (a decision
-  entry first, then the reference, the grammar, the cheat sheet, the
-  formatter, both front ends, the corpus, the conformance suite and the
-  readability harness's inputs in one commit). The grammar has no `=`
-  and binds a name once per function (`shadowing`), so `set` on a `let
-  mutable` is already the only way to change a value; the rename removes
-  the three meanings of `set` (the statement, the `Set` type, the
-  `Map.set` method).
+  2026-10-06, asked back as a structured question after the owner raised
+  it) is done: decision AA1 and the section "The rename of `set` to
+  `change`" above.
 - **Stage 2, the next piece**: the emitter written in Renyi
   (`compiler/emit.ry`, the transcription of `crates/renyi_vm/src/
   compile/`, and the driver `compiler/compile.ry`), judged by byte
@@ -1272,11 +1311,8 @@ on a fresh clone).
    `compiler/declare.ry`, `bodies.ry` and `checker.ry`, W5 to W8; the
    profile and the loop are done, X1 to X6; the residue of stage 1 is
    done, Y1 to Y4, R3-2 deferred; the bytecode file, `renyi compile`
-   and the loader are done, Z1 to Z4): first the rename of `set` to
-   `change` (the owner's decision of 2026-10-06, a surface change under
-   V11: a decision entry, the reference, the grammar, the cheat sheet,
-   the formatter, both front ends, the corpus, the conformance suite and
-   the readability harness's inputs in one commit), then the emitter
+   and the loader are done, Z1 to Z4; the rename of `set` to `change`
+   is done, AA1): next the emitter
    written in Renyi (`compiler/emit.ry`: `compile/{mod,expr,stmt,pattern,query}.rs`
    and `types.rs` transcribed over `declare.World`, the tree and the
    references of `bodies.ry`; a driver `compiler/compile.ry` that runs

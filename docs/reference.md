@@ -89,7 +89,7 @@ Comments are for why; what belongs in `purpose:` clauses (section 13).
 | `Newline` | a line break that ends a statement, clause or head | 1.7 |
 
 Every other character is an error. The symbols of other languages name the
-Renyi spelling in their fix: `=` (`equals-sign`: `let`, `set` or `is`),
+Renyi spelling in their fix: `=` (`equals-sign`: `let`, `change` or `is`),
 `<` and `>` with the operators built on them (`angle-comparison`: the four
 ordering phrases), `;` (`semicolon`), and `! & | % ^ ~ ? @ $ ` \ '`
 (`symbolic-operator`: `and`, `or`, `not`, `remainder`, `power`); any other
@@ -526,19 +526,20 @@ declared `equals` or `hash` (decision Y3).
 Constant            ::= 'let' Identifier ':' Type 'be' Newline? Expression Newline DocClause*
 ```
 
-The statements `let`, `let mutable` and `set` are alternatives of the
+The statements `let`, `let mutable` and `change` are alternatives of the
 `Statement` rule of section 8.
 
 ### Meaning
 
 `let name be expression` binds a name once; `let name: Type be expression`
 pins the type, which is how a generic result such as `json.parse` learns
-its target. `let mutable name be expression` binds a local that `set name
-to expression` changes; `set` is the only way to change it, and a mutable
-binding never escapes its function. A name is bound once per function:
-rebinding it, or shadowing it in a nested scope, is an error; sibling
-scopes (two loop bodies, two `when` arms) may reuse a name. A top-level
-`let` is a constant: it has a type, and a public one has a `purpose:`.
+its target. `let mutable name be expression` binds a local that `change
+name to expression` changes; `change` is the only way to change it, and a
+mutable binding never escapes its function. A name is bound once per
+function: rebinding it, or shadowing it in a nested scope, is an error;
+sibling scopes (two loop bodies, two `when` arms) may reuse a name. A
+top-level `let` is a constant: it has a type, and a public one has a
+`purpose:`.
 
 The language has no `=`.
 
@@ -551,12 +552,12 @@ The language has no `=`.
   it" (`unused-binding`, decision J8); the loop variable of a query whose
   terminal is `count` is unread, and the fix is the source's `length()`
   (decision M2).
-- A call whose result is not used is an error with the likely fix (`set
-  items to items.append(item)`) (`unused-result`); `ignore call` discards
-  the result of a call that has effects; discarding the result of a pure
-  call is dead code (`ignore-pure`), and `ignore` on a call that returns
-  nothing is an error (`ignore-nothing`) (decisions J15, R6).
-- `set` changes a mutable binding (`immutable-binding`) that exists
+- A call whose result is not used is an error with the likely fix
+  (`change items to items.append(item)`) (`unused-result`); `ignore call`
+  discards the result of a call that has effects; discarding the result of
+  a pure call is dead code (`ignore-pure`), and `ignore` on a call that
+  returns nothing is an error (`ignore-nothing`) (decisions J15, R6).
+- `change` changes a mutable binding (`immutable-binding`) that exists
   (`unknown-name`); a name that is read exists (`unknown-name`, with the
   closest name, the foreign spelling such as `null` for `nothing`, or the
   module to import as the fix).
@@ -569,8 +570,8 @@ The language has no `=`.
 
 ### At run time
 
-A binding holds a value; `set` replaces it. A constant is evaluated on its
-first use and kept; a constant whose construction fails crashes the
+A binding holds a value; `change` replaces it. A constant is evaluated on
+its first use and kept; a constant whose construction fails crashes the
 program ("the constant `name` could not be built").
 
 ---
@@ -715,7 +716,7 @@ and variants by structure; on a `maybe` by presence and then value.
 ```ebnf
 Block               ::= Newline? (Statement Newline)* Statement?
 Statement           ::= 'let' 'mutable'? Identifier (':' Type)? 'be' Newline? Expression
-                      | 'set' Identifier 'to' Newline? Expression
+                      | 'change' Identifier 'to' Newline? Expression
                       | 'if' Expression 'then' Block
                         ('otherwise' 'if' Expression 'then' Block)* ('otherwise' Block)? 'end'
                       | 'match' Expression Newline MatchArm* ('otherwise' Block)? 'end'
@@ -1292,13 +1293,13 @@ reports a file that differs from its canonical form. The canonical form:
 method may be declared under one.
 
 ```
-ability all also and any as at be break by can check collect concurrently
-continue count crash deprecated descending each end example expose exposing
-fail fails failure false first for from function greater group has if ignore
-import in is lazy least less let match maybe module most mutable needs not
-nothing of one only or otherwise per power public purpose raw remainder repeat
-replays return returns run see self set some sorted success sum tags test than
-then to tool true type until when where with within
+ability all also and any as at be break by can change check collect
+concurrently continue count crash deprecated descending each end example
+expose exposing fail fails failure false first for from function greater
+group has if ignore import in is lazy least less let match maybe module most
+mutable needs not nothing of one only or otherwise per power public purpose
+raw remainder repeat replays return returns run see self some sorted success
+sum tags test than then to tool true type until when where with within
 ```
 
 Phrase table (17 phrases, single tokens, longest match, exactly one space

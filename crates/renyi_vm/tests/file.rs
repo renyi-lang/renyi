@@ -124,7 +124,7 @@ public function total(values: List of Integer) returns Integer
   let sums be for each value in values group by value remainder 2 sum value
   let mutable result be 0
   for each parity, part in sums sorted by parity
-    set result to result + part
+    change result to result + part
   end
   return result
 end
@@ -137,7 +137,7 @@ public function first_past(values: List of Integer, limit: Integer) returns mayb
   let mutable found: maybe Integer be nothing
   for each value in values sorted by value
     if value is greater than limit then
-      set found to value
+      change found to value
       break
     end
   end
@@ -156,7 +156,7 @@ public function main() needs console
   let ratio: Float be 1.5
   let mutable steps be 0
   repeat until steps is 3
-    set steps to steps + 1
+    change steps to steps + 1
   end
   console.print("{banner}: {area(Square(side: 3.0))} {apply(measure: area, shape: Circle(radius: 2.0))}")
   console.print("{total([1, 2, 3, 4])} {first_past(values: [3, 8, 1], limit: 2) otherwise 0} {steps} {ratio * 2.0}")

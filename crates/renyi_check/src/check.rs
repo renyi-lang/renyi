@@ -74,7 +74,7 @@ fn condition_scope(type_name: &str, fields: &[FieldInfo], index: usize) -> Condi
 }
 
 /// What a task of `run concurrently` may not touch (decision V7): the
-/// bindings declared before the block, which it may not `set`, and the
+/// bindings declared before the block, which it may not `change`, and the
 /// bindings of the tasks before it, which it may not read.
 struct TaskScope {
     outer: Vec<String>,
@@ -1508,7 +1508,7 @@ impl<'w> Checker<'w> {
                 self.bind(name, ty, *mutable, BindingKind::Let);
                 false
             }
-            StmtKind::Set { name, value } => {
+            StmtKind::Change { name, value } => {
                 if let Some(reason) = self.task_conflict(&name.text, true) {
                     self.error_fix("task-independence", reason, name.span, TASK_FIX);
                 }
@@ -1771,23 +1771,23 @@ impl<'w> Checker<'w> {
         }
     }
 
-    /// The fix for an unused result: `set x to x.method(...)` when the call is
+    /// The fix for an unused result: `change x to x.method(...)` when the call is
     /// a method on a mutable binding (decision J15), else `let` or `ignore`.
     fn unused_result_fix(&mut self, value: &Expr) -> String {
         match self.mutable_method_call(value) {
             Some((receiver, method)) => format!(
-                "write `set {receiver} to {receiver}.{method}(...)`, or bind it with `let`, or discard it with `ignore`"
+                "write `change {receiver} to {receiver}.{method}(...)`, or bind it with `let`, or discard it with `ignore`"
             ),
             None => "bind it with `let`, or discard it with `ignore`".to_string(),
         }
     }
 
-    /// The fix for `ignore` of a pure result (decision R6): the same `set`
+    /// The fix for `ignore` of a pure result (decision R6): the same `change`
     /// proposal, else bind or remove.
     fn ignored_pure_fix(&mut self, value: &Expr) -> String {
         match self.mutable_method_call(value) {
             Some((receiver, method)) => {
-                format!("write `set {receiver} to {receiver}.{method}(...)`, or remove the call")
+                format!("write `change {receiver} to {receiver}.{method}(...)`, or remove the call")
             }
             None => "bind the result with `let`, or remove the call".to_string(),
         }

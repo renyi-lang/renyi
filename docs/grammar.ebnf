@@ -131,7 +131,7 @@ Example             ::= Expression 'fails' 'with' Pattern
 
 Block               ::= Newline? (Statement Newline)* Statement?
 Statement           ::= 'let' 'mutable'? Identifier (':' Type)? 'be' Newline? Expression
-                      | 'set' Identifier 'to' Newline? Expression
+                      | 'change' Identifier 'to' Newline? Expression
                       | 'if' Expression 'then' Block
                         ('otherwise' 'if' Expression 'then' Block)* ('otherwise' Block)? 'end'
                       | 'match' Expression Newline MatchArm* ('otherwise' Block)? 'end'

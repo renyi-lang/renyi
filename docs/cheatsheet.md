@@ -52,11 +52,11 @@ One argument is never named: `web.get(url)`, not `web.get(url: url)`.
 let total be 0                       # immutable
 let users: List of User be json.parse(text) otherwise fail   # pin a type
 let mutable count be 0               # mutable local
-set count to count + 1               # the only way to change it
+change count to count + 1            # the only mutation
 ignore connection.execute(sql)       # discard the result of a call with effects
 ```
 A name is bound once per scope; shadowing is an error. Every binding must be
-used, and an unused result is an error (`set items to items.append(item)`),
+used, and an unused result is an error (`change items to items.append(item)`),
 as is `ignore` of a pure call's result.
 
 ## Types
@@ -157,11 +157,11 @@ value or a way out: `fail`, `fail with E(...)`, `return value`, `break`,
 ## Control flow
 ```
 if age is at least 18 then
-  set adults to adults + 1
+  change adults to adults + 1
 otherwise if age is at least 13 then
-  set teens to teens + 1
+  change teens to teens + 1
 otherwise
-  set children to children + 1
+  change children to children + 1
 end
 
 match shape
@@ -177,13 +177,13 @@ match user.nickname
 end
 
 for each line in invoice.lines
-  set total to total + line.amount
+  change total to total + line.amount
 end
 for each key, value in settings
   console.print("{key}: {value}")
 end
 repeat until attempts is at least 3
-  set attempts to attempts + 1
+  change attempts to attempts + 1
   if done then break end
 end
 ```
@@ -283,12 +283,12 @@ One parameter is positional, more are named: `line.split(",")`,
 snake_case for values and functions, PascalCase for types, abilities and
 variants. ASCII only. No single-letter names. Reserved:
 ```
-ability all also and any as at be break by can check collect concurrently
-continue count crash deprecated descending each end example expose exposing
-fail fails failure false first for from function greater group has if ignore
-import in is lazy least less let match maybe module most mutable needs not
-nothing of one only or otherwise per power public purpose raw remainder repeat
-replays return returns run see self set some sorted success sum tags test than
-then to tool true type until when where with within
+ability all also and any as at be break by can change check collect
+concurrently continue count crash deprecated descending each end example
+expose exposing fail fails failure false first for from function greater
+group has if ignore import in is lazy least less let match maybe module most
+mutable needs not nothing of one only or otherwise per power public purpose
+raw remainder repeat replays return returns run see self some sorted success
+sum tags test than then to tool true type until when where with within
 ```
 Any word is valid after a dot.

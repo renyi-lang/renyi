@@ -18,7 +18,7 @@ public function granted_by(roles: List of Role) returns Set of Permission
 
   let mutable granted: Set of Permission be [].to_set()
   for each role in roles
-    set granted to granted.union(role.granted)
+    change granted to granted.union(role.granted)
   end
   return granted
 end

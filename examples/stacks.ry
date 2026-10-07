@@ -71,12 +71,12 @@ public function balanced(text: Text) returns Boolean
     match pairs.get(character)
       when some(expected) then
         match pop(opened)
-          when some(popped) where popped.top is expected then set opened to popped.rest
+          when some(popped) where popped.top is expected then change opened to popped.rest
           otherwise return false
         end
       when nothing then
         if pairs.values().contains(character) then
-          set opened to push(stack: opened, item: character)
+          change opened to push(stack: opened, item: character)
         end
     end
   end

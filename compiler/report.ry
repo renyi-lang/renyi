@@ -42,8 +42,8 @@ public function line_starts(chars: List of Text) returns List of Integer
   let mutable starts be [0]
   let mutable index be 0
   for each ch in chars
-    if ch is "\n" then set starts to starts.append(index + 1) end
-    set index to index + 1
+    if ch is "\n" then change starts to starts.append(index + 1) end
+    change index to index + 1
   end
   return starts
 end
@@ -58,9 +58,9 @@ public function position(starts: List of Integer, offset: Integer, length: Integ
     let middle be (low + high + 1).quotient(2)
     let start be starts.at(middle) otherwise crash with "a line start"
     if start is at most clamped then
-      set low to middle
+      change low to middle
     otherwise
-      set high to middle - 1
+      change high to middle - 1
     end
   end
   let line_start be starts.at(low) otherwise crash with "a line start"
@@ -73,7 +73,7 @@ public function json_string(text: Text) returns Text
   let mutable out be "\""
   for each ch in text.characters()
     let piece be escaped(ch)
-    set out to "{out}{piece}"
+    change out to "{out}{piece}"
   end
   return "{out}\""
 end
@@ -113,10 +113,10 @@ public function render_json(
     let head be "\{\"file\": {name}, \"line\": {start.line}, \"column\": {start.column}"
     let tail be "\"end_line\": {stop.line}, \"end_column\": {stop.column}, \"severity\": {severity}"
     let rest be "\"code\": {code}, \"message\": {message}, \"fix\": {fix}}"
-    set out to "{out}{separator}\n  {head}, {tail}, {rest}"
-    set index to index + 1
+    change out to "{out}{separator}\n  {head}, {tail}, {rest}"
+    change index to index + 1
   end
-  if index is greater than 0 then set out to "{out}\n" end
+  if index is greater than 0 then change out to "{out}\n" end
   return "{out}]\n"
 end
 
@@ -135,9 +135,9 @@ public function render_text(
     let severity be if diagnostic.is_error then "error" otherwise "warning" end
     let head be "{file_name}:{start.line}:{start.column}"
     let line be "{head}: {severity} [{diagnostic.code}]: {diagnostic.message}\n"
-    set out to "{out}{line}"
+    change out to "{out}{line}"
     match diagnostic.fix
-      when some(fix) then set out to "{out}  fix: {fix}\n"
+      when some(fix) then change out to "{out}  fix: {fix}\n"
       when nothing then continue
     end
   end
@@ -165,7 +165,7 @@ public function sorted_by_start(diagnostics: List of Diagnostic) returns List of
 
   let mutable ordered: List of Diagnostic be []
   for each diagnostic in diagnostics
-    set ordered to insert_by_start(items: ordered, item: diagnostic)
+    change ordered to insert_by_start(items: ordered, item: diagnostic)
   end
   return ordered
 end
@@ -176,7 +176,7 @@ function insert_by_start(items: List of Diagnostic, item: Diagnostic) returns Li
   let mutable index be 0
   for each existing in items
     if existing.span.start is greater than item.span.start then break end
-    set index to index + 1
+    change index to index + 1
   end
   return items.take(index).append(item).append_all(items.drop(index))
 end

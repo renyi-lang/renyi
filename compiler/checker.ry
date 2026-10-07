@@ -89,20 +89,20 @@ function read_options(arguments: List of Text) returns Options or fails with Usa
   let mutable library_next be false
   for each argument in arguments
     if library_next then
-      set options to options with library: argument
-      set library_next to false
+      change options to options with library: argument
+      change library_next to false
       continue
     end
     if argument is "--json" then
-      set options to options with json: true
+      change options to options with json: true
     otherwise if argument is "--strict" then
-      set options to options with strict: true
+      change options to options with strict: true
     otherwise if argument is "--library" then
-      set library_next to true
+      change library_next to true
     otherwise if argument.starts_with("--") then
       fail with UsageError(message: "unknown option `{argument}`")
     otherwise
-      set options to options with files: options.files.append(argument)
+      change options to options with files: options.files.append(argument)
     end
   end
   if library_next then fail with UsageError(message: "`--library` needs a directory") end
@@ -119,7 +119,7 @@ function check_files(options: Options) needs console, environment, filesystem.re
     let text be read_file(path)
     let source be source_of(name: path, text: text)
     let found be diagnose(source: source, library: library, strict: options.strict)
-    if has_error(found) then set failed to true end
+    if has_error(found) then change failed to true end
     let starts be source.starts
     let length be source.chars.length()
     let rendered be
@@ -188,8 +188,8 @@ function diagnose(source: Source, library: List of Module, strict: Boolean)
       when Parsed then check_file(source: source, library: library)
       when Rejected(diagnostic) then [diagnostic]
     end
-  set diagnostics to diagnostics.append_all(check_layout(source.chars))
-  set diagnostics to report.sorted_by_start(diagnostics)
+  change diagnostics to diagnostics.append_all(check_layout(source.chars))
+  change diagnostics to report.sorted_by_start(diagnostics)
   if not strict then return diagnostics end
   return for each diagnostic in diagnostics collect as_strict(diagnostic)
 end
@@ -268,12 +268,12 @@ function check_sources(program: Source, imports: List of Source, library: List o
   let mutable index be 1
   for each imported in imports
     let entry be modules.at(index) otherwise crash with "a checked import"
-    set index to index + 1
+    change index to index + 1
     if entry.id is nothing then continue end
     let errors be error_count(entry.diagnostics)
     if errors is 0 then continue end
     let plural be if errors is 1 then "" otherwise "s" end
-    set diagnostics to diagnostics.append(
+    change diagnostics to diagnostics.append(
       report.error(
         code: "import-errors",
         message: "the imported module `{imported.name}` has {errors} error{plural}",
@@ -290,7 +290,7 @@ function error_count(diagnostics: List of Diagnostic) returns Integer
 
   let mutable errors be 0
   for each diagnostic in diagnostics
-    if diagnostic.is_error then set errors to errors + 1 end
+    if diagnostic.is_error then change errors to errors + 1 end
   end
   return errors
 end
@@ -303,24 +303,24 @@ function check_project(files: List of Source, library: List of Module) returns L
   for each file in files
     match file.front
       when Rejected(diagnostic) then
-        set modules to modules.append(Checked(id: nothing, diagnostics: [diagnostic]))
+        change modules to modules.append(Checked(id: nothing, diagnostics: [diagnostic]))
       when Parsed(tree) then
         let mutable diagnostics: List of Diagnostic be []
         match module_name_mismatch(file_name: file.name, tree: tree)
-          when some(diagnostic) then set diagnostics to [diagnostic]
-          when nothing then set diagnostics to diagnostics
+          when some(diagnostic) then change diagnostics to [diagnostic]
+          when nothing then change diagnostics to diagnostics
         end
         let built be declare.add_module(world: world, tree: tree, is_library: false)
-        set world to declare.set_source_lines(
+        change world to declare.set_source_lines(
           world: built.world,
           id: built.value,
           chars: file.chars,
           starts: file.starts
         )
-        set modules to modules.append(Checked(id: built.value, diagnostics: diagnostics))
+        change modules to modules.append(Checked(id: built.value, diagnostics: diagnostics))
     end
   end
-  set world to declare.resolve_all(world)
+  change world to declare.resolve_all(world)
   return for each entry in modules collect finish_module(world: world, entry: entry)
 end
 
@@ -340,7 +340,7 @@ function library_world(library: List of Module) returns World
   let mutable world be declare.new_world()
   for each tree in library
     let built be declare.add_module(world: world, tree: tree, is_library: true)
-    set world to built.world
+    change world to built.world
   end
   return world
 end
@@ -383,7 +383,7 @@ function tail_matches(parents: List of Text, components: List of Text) returns B
     let parent be parents.at(parent_count - 1 - index) otherwise crash with "a parent segment"
     let component be components.at(component_count - 1 - index) otherwise return false
     if parent is not component then return false end
-    set index to index + 1
+    change index to index + 1
   end
   return true
 end
@@ -415,16 +415,16 @@ function imported_files(program: Source) returns List of Source needs filesystem
   let mutable queue be import_paths(program.front)
   repeat until queue.is_empty()
     let path be queue.last() otherwise break
-    set queue to queue.without_last()
+    change queue to queue.without_last()
     let head be path.first() otherwise continue
     if head is "std" then continue end
     let name be path.join(".")
     if seen.contains(name) then continue end
-    set seen to seen.append(name)
+    change seen to seen.append(name)
     let base be join_path(directory: directory, segments: path)
     let found be read_import(base) otherwise continue
-    set queue to queue.append_all(import_paths(found.front))
-    set imports to imports.append(found)
+    change queue to queue.append_all(import_paths(found.front))
+    change imports to imports.append(found)
   end
   return imports
 end
@@ -456,8 +456,8 @@ function directory_of(file_name: Text) returns Text
   let mutable last_separator: maybe Integer be nothing
   let mutable index be 0
   for each ch in file_name.characters()
-    if ch is "/" or ch is "\\" then set last_separator to index end
-    set index to index + 1
+    if ch is "/" or ch is "\\" then change last_separator to index end
+    change index to index + 1
   end
   let cut be last_separator otherwise return ""
   return file_name.take(cut)
@@ -469,9 +469,9 @@ function join_path(directory: Text, segments: List of Text) returns Text
   let mutable path be directory
   for each segment in segments
     if path.is_empty() then
-      set path to segment
+      change path to segment
     otherwise
-      set path to "{path}/{segment}"
+      change path to "{path}/{segment}"
     end
   end
   return path
@@ -488,23 +488,23 @@ function check_layout(chars: List of Text) returns List of Diagnostic
   for each ch in chars
     if ch is "\n" then
       let finished be line_layout(start: line_start, width: width, trailing: trailing)
-      set diagnostics to diagnostics.append_all(finished)
-      set line_start to index + 1
-      set width to 0
-      set trailing to 0
+      change diagnostics to diagnostics.append_all(finished)
+      change line_start to index + 1
+      change width to 0
+      change trailing to 0
     otherwise
-      set width to width + 1
+      change width to width + 1
       if ch is " " or ch is "\t" then
-        set trailing to trailing + 1
+        change trailing to trailing + 1
       otherwise
-        set trailing to 0
+        change trailing to 0
       end
     end
-    set index to index + 1
+    change index to index + 1
   end
   if width is greater than 0 then
     let finished be line_layout(start: line_start, width: width, trailing: trailing)
-    set diagnostics to diagnostics.append_all(finished)
+    change diagnostics to diagnostics.append_all(finished)
   end
   return diagnostics
 end
@@ -514,7 +514,7 @@ function line_layout(start: Integer, width: Integer, trailing: Integer) returns 
 
   let mutable diagnostics: List of Diagnostic be []
   if width is greater than max_columns then
-    set diagnostics to diagnostics.append(
+    change diagnostics to diagnostics.append(
       report.warning(
         code: "line-width",
         message: "line is {width} columns; the limit is {max_columns}",
@@ -524,7 +524,7 @@ function line_layout(start: Integer, width: Integer, trailing: Integer) returns 
     )
   end
   if trailing is greater than 0 then
-    set diagnostics to diagnostics.append(
+    change diagnostics to diagnostics.append(
       report.warning(
         code: "trailing-whitespace",
         message: "trailing whitespace",

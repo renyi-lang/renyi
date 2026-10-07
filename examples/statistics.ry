@@ -51,7 +51,7 @@ public function main() needs console, environment
   let mutable values: List of Float be []
   for each argument in environment.arguments()
     match argument.to_float()
-      when success(value) then set values to values.append(value)
+      when success(value) then change values to values.append(value)
       when failure(error) then console.print("skipping {argument}: {error.to_text()}")
     end
   end

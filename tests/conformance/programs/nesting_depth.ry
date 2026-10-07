@@ -9,11 +9,11 @@ function go(items: List of Integer) returns Integer
         when 1 then
           repeat until total is greater than 9
             if total is 3 then
-              set total to total + 2
+              change total to total + 2
             end
-            set total to total + 1
+            change total to total + 1
           end
-        otherwise set total to total + item
+        otherwise change total to total + item
       end
     end
   end

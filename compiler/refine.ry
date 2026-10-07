@@ -41,7 +41,7 @@ function text_of_pieces(pieces: List of TextPiece) returns maybe Literal
   let mutable out be ""
   for each piece in pieces
     match piece
-      when Literal(text) then set out to "{out}{text}"
+      when Literal(text) then change out to "{out}{text}"
       when Hole then return nothing
     end
   end
@@ -105,7 +105,7 @@ function eval_args(args: List of Arg, name: Text, value: Literal) returns maybe 
   let mutable out: List of Literal be []
   for each arg in args
     let literal be eval(expr: arg.value, name: name, value: value) otherwise return nothing
-    set out to out.append(literal)
+    change out to out.append(literal)
   end
   return out
 end
@@ -256,8 +256,8 @@ function power_of_ten(exponent: Integer) returns Integer
   let mutable result be 1
   let mutable remaining be exponent
   repeat until remaining is at most 0
-    set result to result * 10
-    set remaining to remaining - 1
+    change result to result * 10
+    change remaining to remaining - 1
   end
   return result
 end
@@ -340,7 +340,7 @@ function host_of(rest: Text) returns Text
   let mutable host be ""
   for each ch in rest.characters()
     if ch is "/" or ch is "?" or ch is "#" then break end
-    set host to "{host}{ch}"
+    change host to "{host}{ch}"
   end
   return host
 end

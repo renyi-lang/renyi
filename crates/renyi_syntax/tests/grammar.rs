@@ -866,7 +866,7 @@ const ACCEPTED: &[(&str, &str)] = &[
     ),
     (
         "statements, outcomes and continuation lines",
-        "module corner\n\nfunction go(items: List of Integer, flag: Boolean) returns Integer\n  let mutable total be 0\n  set total to\n    total + 1\n  let found be items.first() otherwise return 0\n  let other be items.last() otherwise fail\n  let third be items.at(2) otherwise fail with Oops(detail: \"x\")\n  let fourth be items.at(3) otherwise crash with \"unreachable\"\n  repeat until total is at least 3\n    set total to total + 1\n    let next be items.at(total) otherwise break\n    let after be items.at(next) otherwise continue\n    if flag then break end\n  end\n  run concurrently within time.seconds(5)\n    let users be accounts.fetch_all() otherwise fail\n  end\n  run concurrently\n    ignore console.print(\"x\")\n  end\n  check total is 3\n  if flag\n    and total is 3\n    or not flag then\n    return\n  end\n  let renamed be found\n    with name: \"x\", age: 2\n  fail\nend\n",
+        "module corner\n\nfunction go(items: List of Integer, flag: Boolean) returns Integer\n  let mutable total be 0\n  change total to\n    total + 1\n  let found be items.first() otherwise return 0\n  let other be items.last() otherwise fail\n  let third be items.at(2) otherwise fail with Oops(detail: \"x\")\n  let fourth be items.at(3) otherwise crash with \"unreachable\"\n  repeat until total is at least 3\n    change total to total + 1\n    let next be items.at(total) otherwise break\n    let after be items.at(next) otherwise continue\n    if flag then break end\n  end\n  run concurrently within time.seconds(5)\n    let users be accounts.fetch_all() otherwise fail\n  end\n  run concurrently\n    ignore console.print(\"x\")\n  end\n  check total is 3\n  if flag\n    and total is 3\n    or not flag then\n    return\n  end\n  let renamed be found\n    with name: \"x\", age: 2\n  fail\nend\n",
     ),
     (
         "types, abilities, constants and tests",
@@ -949,7 +949,7 @@ const REJECTED: &[(&str, &str, &str)] = &[
     ),
     (
         "a statement after a head on its line",
-        "module corner\n\nfunction go() returns Integer\n  repeat until done set total to 1\n  end\n  return 1\nend\n",
+        "module corner\n\nfunction go() returns Integer\n  repeat until done change total to 1\n  end\n  return 1\nend\n",
         "one statement per line",
     ),
     (

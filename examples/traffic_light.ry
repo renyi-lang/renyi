@@ -50,8 +50,8 @@ public function run_sequence(start: Light, events: List of Event) returns List o
   let mutable current be start
   let mutable shown: List of Light be []
   for each event in events
-    set current to next_light(current: current, event: event)
-    set shown to shown.append(current)
+    change current to next_light(current: current, event: event)
+    change shown to shown.append(current)
   end
   return shown
 end

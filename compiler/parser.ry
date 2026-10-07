@@ -245,7 +245,7 @@ end
 function after_breaks(cursor: Cursor, index: Integer) returns Integer
   let mutable next be index
   repeat until token_at(cursor: cursor, index: next).kind is not LineBreak
-    set next to next + 1
+    change next to next + 1
   end
   return next
 end
@@ -267,7 +267,7 @@ function second(cursor: Cursor) returns Peek
   let look be peek(cursor)
   let mutable index be look.cursor.position + 1
   if look.cursor.nesting is greater than 0 or is_symbol(token: look.token, text: ",") then
-    set index to after_breaks(cursor: look.cursor, index: index)
+    change index to after_breaks(cursor: look.cursor, index: index)
   end
   return Peek(token: token_at(cursor: look.cursor, index: index), cursor: look.cursor)
 end
@@ -369,26 +369,26 @@ function bracketed(
   let mutable done be false
   repeat until done
     let look be peek(current)
-    set current to look.cursor
+    change current to look.cursor
     if is_symbol(token: look.token, text: close) then
       if reject_empty and items.is_empty() then
         fail with problem(message: "expected an element inside the brackets", token: look.token)
       end
-      set done to true
+      change done to true
     otherwise
       let item be element(current) otherwise fail
-      set items to items.append(item.node)
+      change items to items.append(item.node)
       let comma be peek(item.cursor)
-      set current to comma.cursor
+      change current to comma.cursor
       if is_symbol(token: comma.token, text: ",") then
         let after_comma be comma.cursor with position: comma.cursor.position + 1
-        set current to element_after_comma(cursor: after_comma, close: close) otherwise fail
+        change current to element_after_comma(cursor: after_comma, close: close) otherwise fail
       otherwise
-        set done to true
+        change done to true
       end
     end
   end
-  set current to current with nesting: current.nesting - 1
+  change current to current with nesting: current.nesting - 1
   let closed be expect_symbol(cursor: current, text: close) otherwise fail
   return Parsed(node: items, cursor: closed.cursor)
 end
@@ -397,7 +397,7 @@ function plain_text(parts: List of Part, token: Token) returns Text or fails wit
   let mutable text be ""
   for each part in parts
     match part
-      when Characters(text: piece) then set text to "{text}{piece}"
+      when Characters(text: piece) then change text to "{text}{piece}"
       when HolePart then
         fail with problem(message: "expected plain text, found a text with a hole", token: token)
     end
@@ -425,17 +425,17 @@ function parse_module(cursor: Cursor) returns Parsed of Module or fails with Par
   let mutable done be false
   repeat until done
     let look be peek(skip_newlines(current))
-    set current to look.cursor
+    change current to look.cursor
     if look.token.kind is EndOfFile then
-      set done to true
+      change done to true
     otherwise if is_word(token: look.token, spelling: "import") then
       let import_node be parse_import(current) otherwise fail
-      set imports to imports.append(import_node.node)
-      set current to import_node.cursor
+      change imports to imports.append(import_node.node)
+      change current to import_node.cursor
     otherwise
       let item be parse_item(current) otherwise fail
-      set items to items.append(item.node)
-      set current to item.cursor
+      change items to items.append(item.node)
+      change current to item.cursor
     end
   end
   let tree be Module(
@@ -456,16 +456,16 @@ function dotted_name(cursor: Cursor) returns Parsed of List of Name or fails wit
   let mutable done be false
   repeat until done
     let dot be eat_symbol(cursor: current, text: ".")
-    set current to dot.cursor
+    change current to dot.cursor
     if dot.found then
       let part be advance(current)
-      set current to part.cursor
+      change current to part.cursor
       if part.token.kind is not MemberName then
         fail with problem(message: "expected a name directly after the dot", token: part.token)
       end
-      set path to path.append(Name(text: part.token.text, span: part.token.span))
+      change path to path.append(Name(text: part.token.text, span: part.token.span))
     otherwise
-      set done to true
+      change done to true
     end
   end
   return Parsed(node: path, cursor: current)
@@ -477,22 +477,22 @@ function parse_import(cursor: Cursor) returns Parsed of Import or fails with Par
   let mutable current be path.cursor
   let mutable alias: maybe Name be nothing
   let as_word be eat_word(cursor: current, spelling: "as")
-  set current to as_word.cursor
+  change current to as_word.cursor
   if as_word.found then
     let name be identifier(current) otherwise fail
-    set alias to name.node
-    set current to name.cursor
+    change alias to name.node
+    change current to name.cursor
   end
   let mutable exposed: List of TypeName be []
   let exposing_word be eat_word(cursor: current, spelling: "exposing")
-  set current to exposing_word.cursor
+  change current to exposing_word.cursor
   if exposing_word.found then
     let names be type_name_list(current) otherwise fail
-    set exposed to names.node
-    set current to names.cursor
+    change exposed to names.node
+    change current to names.cursor
   end
   let stop be previous(current).span
-  set current to end_of_line(current) otherwise fail
+  change current to end_of_line(current) otherwise fail
   let node be Import(
     path: path.node,
     alias: alias,
@@ -514,36 +514,36 @@ function doc_clauses(cursor: Cursor) returns Parsed of Docs or fails with ParseE
   )
   let mutable done be false
   repeat until done
-    set current to skip_newlines(current)
+    change current to skip_newlines(current)
     let token be token_under(current)
     match token.kind
       when Word(spelling: "purpose") then
         let clause be clause_text(current) otherwise fail
-        set docs to docs with summary: clause.node
-        set current to clause.cursor
+        change docs to docs with summary: clause.node
+        change current to clause.cursor
       when Word(spelling: "tags") then
         let clause be clause_text(current) otherwise fail
-        set docs to docs with labels: split_list(clause.node)
-        set current to clause.cursor
+        change docs to docs with labels: split_list(clause.node)
+        change current to clause.cursor
       when Word(spelling: "see also") then
         let clause be clause_text(current) otherwise fail
-        set docs to docs with see_also: split_list(clause.node)
-        set current to clause.cursor
+        change docs to docs with see_also: split_list(clause.node)
+        change current to clause.cursor
       when Word(spelling: "deprecated") then
         let clause be clause_text(current) otherwise fail
-        set docs to docs with deprecation: clause.node
-        set current to clause.cursor
+        change docs to docs with deprecation: clause.node
+        change current to clause.cursor
       when Word(spelling: "expose as tool") then
         let after be advance(current)
-        set docs to docs with expose_as_tool: true
-        set current to end_of_line(after.cursor) otherwise fail
+        change docs to docs with expose_as_tool: true
+        change current to end_of_line(after.cursor) otherwise fail
       when Word(spelling: "example") then
         let after be advance(current)
         let colon be expect_symbol(cursor: after.cursor, text: ":") otherwise fail
         let sample be parse_example(cursor: colon.cursor, start: token.span.start) otherwise fail
-        set docs to docs with examples: docs.examples.append(sample.node)
-        set current to end_of_line(sample.cursor) otherwise fail
-      otherwise set done to true
+        change docs to docs with examples: docs.examples.append(sample.node)
+        change current to end_of_line(sample.cursor) otherwise fail
+      otherwise change done to true
     end
   end
   return Parsed(node: docs, cursor: current)
@@ -648,11 +648,11 @@ function parse_function(cursor: Cursor, is_public: Boolean, start: Integer, with
   if with_body then
     let block_node be parse_block(cursor: current, terminators: ["end"]) otherwise fail
     let end_word be expect_word(cursor: block_node.cursor, spelling: "end") otherwise fail
-    set body to block_node.node
-    set current to end_word.cursor
+    change body to block_node.node
+    change current to end_word.cursor
   end
   let stop be previous(current).span.stop
-  if with_body then set current to end_of_line(current) otherwise fail end
+  if with_body then change current to end_of_line(current) otherwise fail end
   let node be Function(
     is_public: is_public,
     name: name.node,
@@ -698,11 +698,11 @@ function parameter(cursor: Cursor) returns Parsed of Param or fails with ParseEr
     let mutable current be look.cursor with position: look.cursor.position + 1
     let mutable annotation: maybe Type be nothing
     let colon be eat_symbol(cursor: current, text: ":")
-    set current to colon.cursor
+    change current to colon.cursor
     if colon.found then
       let parsed be parse_type(current) otherwise fail
-      set annotation to parsed.node
-      set current to parsed.cursor
+      change annotation to parsed.node
+      change current to parsed.cursor
     end
     let name be Name(text: "self", span: look.token.span)
     let span be join(left: look.token.span, right: previous(current).span)
@@ -720,21 +720,21 @@ function result_clauses(cursor: Cursor) returns Signature or fails with ParseErr
   let mutable current be cursor
   let mutable result: maybe Type be nothing
   let returns_word be eat_word(cursor: current, spelling: "returns")
-  set current to returns_word.cursor
+  change current to returns_word.cursor
   if returns_word.found then
     let parsed be parse_type(current) otherwise fail
-    set result to parsed.node
-    set current to parsed.cursor
+    change result to parsed.node
+    change current to parsed.cursor
   end
   let failures be failure_types(current) otherwise fail
-  set current to failures.cursor
+  change current to failures.cursor
   let mutable capabilities: List of Capability be []
   let needs_word be eat_word(cursor: current, spelling: "needs")
-  set current to needs_word.cursor
+  change current to needs_word.cursor
   if needs_word.found then
     let parsed be parse_capabilities(current) otherwise fail
-    set capabilities to parsed.node
-    set current to parsed.cursor
+    change capabilities to parsed.node
+    change current to parsed.cursor
   end
   return Signature(
     result: result,
@@ -761,15 +761,15 @@ function failure_types(cursor: Cursor) returns Parsed of List of Type or fails w
   let mutable current be fails_word.cursor
   if fails_word.found then
     let first_type be parse_type(current) otherwise fail
-    set failures to [first_type.node]
-    set current to first_type.cursor
+    change failures to [first_type.node]
+    change current to first_type.cursor
     let mutable more be eat_word(cursor: current, spelling: "or")
-    set current to more.cursor
+    change current to more.cursor
     repeat until not more.found
       let next be parse_type(current) otherwise fail
-      set failures to failures.append(next.node)
-      set more to eat_word(cursor: next.cursor, spelling: "or")
-      set current to more.cursor
+      change failures to failures.append(next.node)
+      change more to eat_word(cursor: next.cursor, spelling: "or")
+      change current to more.cursor
     end
   end
   return Parsed(node: failures, cursor: current)
@@ -784,13 +784,13 @@ function parse_capabilities(cursor: Cursor)
   let mutable done be false
   repeat until done
     let capability be parse_capability(current) otherwise fail
-    set capabilities to capabilities.append(capability.node)
+    change capabilities to capabilities.append(capability.node)
     let look be peek(capability.cursor)
-    set current to look.cursor
+    change current to look.cursor
     if not is_symbol(token: look.token, text: ",") or parameter_follows_comma(current) then
-      set done to true
+      change done to true
     otherwise
-      set current to current with position: current.position + 1
+      change current to current with position: current.position + 1
     end
   end
   return Parsed(node: capabilities, cursor: current)
@@ -802,19 +802,19 @@ function parse_capability(cursor: Cursor) returns Parsed of Capability or fails 
   let mutable current be path.cursor
   let mutable budget: maybe Budget be nothing
   let look be peek(current)
-  set current to look.cursor
+  change current to look.cursor
   if is_word(token: look.token, spelling: "at most") then
     let parsed be parse_budget(current) otherwise fail
-    set budget to parsed.node
-    set current to parsed.cursor
+    change budget to parsed.node
+    change current to parsed.cursor
   end
   let mutable only_to: List of Sink be []
   let only_word be eat_word(cursor: current, spelling: "only to")
-  set current to only_word.cursor
+  change current to only_word.cursor
   if only_word.found then
     let sinks be parse_sinks(current) otherwise fail
-    set only_to to sinks.node
-    set current to sinks.cursor
+    change only_to to sinks.node
+    change current to sinks.cursor
   end
   let node be Capability(
     path: path.path,
@@ -834,10 +834,10 @@ function parse_sinks(cursor: Cursor) returns Parsed of List of Sink or fails wit
     let start be peek(current).token.span
     let path be capability_path(current) otherwise fail
     let span be join(left: start, right: previous(path.cursor).span)
-    set sinks to sinks.append(Sink(path: path.path, scope: path.scope, span: span))
+    change sinks to sinks.append(Sink(path: path.path, scope: path.scope, span: span))
     let or_word be eat_word(cursor: path.cursor, spelling: "or")
-    set current to or_word.cursor
-    if not or_word.found then set done to true end
+    change current to or_word.cursor
+    if not or_word.found then change done to true end
   end
   return Parsed(node: sinks, cursor: current)
 end
@@ -845,9 +845,9 @@ end
 function parameter_follows_comma(cursor: Cursor) returns Boolean
   let mutable index be after_breaks(cursor: cursor, index: cursor.position + 1)
   if token_at(cursor: cursor, index: index).kind is not Identifier then return false end
-  set index to index + 1
+  change index to index + 1
   if cursor.nesting is greater than 0 then
-    set index to after_breaks(cursor: cursor, index: index)
+    change index to after_breaks(cursor: cursor, index: index)
   end
   return is_symbol(token: token_at(cursor: cursor, index: index), text: ":")
 end
@@ -898,11 +898,11 @@ function parse_for_any(cursor: Cursor) returns Parsed of ForAny or fails with Pa
   let mutable current be params.cursor
   let mutable constraints: List of Constraint be []
   let where_word be eat_word(cursor: current, spelling: "where")
-  set current to where_word.cursor
+  change current to where_word.cursor
   if where_word.found then
     let parsed be parse_constraints(current) otherwise fail
-    set constraints to parsed.node
-    set current to parsed.cursor
+    change constraints to parsed.node
+    change current to parsed.cursor
   end
   let node be ForAny(
     params: params.node,
@@ -923,12 +923,12 @@ function parse_constraints(cursor: Cursor)
     let param be type_name(current) otherwise fail
     let can_word be expect_word(cursor: param.cursor, spelling: "can") otherwise fail
     let requirement be parse_type(can_word.cursor) otherwise fail
-    set constraints to constraints.append(
+    change constraints to constraints.append(
       Constraint(param: param.node, requirement: requirement.node)
     )
     let and_word be eat_word(cursor: requirement.cursor, spelling: "and")
-    set current to and_word.cursor
-    if not and_word.found then set done to true end
+    change current to and_word.cursor
+    if not and_word.found then change done to true end
   end
   return Parsed(node: constraints, cursor: current)
 end
@@ -938,12 +938,12 @@ function type_name_list(cursor: Cursor) returns Parsed of List of TypeName or fa
   let mutable names be [head.node]
   let mutable current be head.cursor
   let mutable comma be eat_symbol(cursor: current, text: ",")
-  set current to comma.cursor
+  change current to comma.cursor
   repeat until not comma.found
     let next be type_name(current) otherwise fail
-    set names to names.append(next.node)
-    set comma to eat_symbol(cursor: next.cursor, text: ",")
-    set current to comma.cursor
+    change names to names.append(next.node)
+    change comma to eat_symbol(cursor: next.cursor, text: ",")
+    change current to comma.cursor
   end
   return Parsed(node: names, cursor: current)
 end
@@ -971,11 +971,11 @@ function type_definition(cursor: Cursor, is_public: Boolean, start: Integer)
   let mutable current be name.cursor
   let mutable type_params: List of TypeName be []
   let of_word be eat_word(cursor: current, spelling: "of")
-  set current to of_word.cursor
+  change current to of_word.cursor
   if of_word.found then
     let params be type_name_list(current) otherwise fail
-    set type_params to params.node
-    set current to params.cursor
+    change type_params to params.node
+    change current to params.cursor
   end
   let head be TypeHead(
     is_public: is_public,
@@ -1019,21 +1019,21 @@ function sum_definition(cursor: Cursor, head: TypeHead)
   let mutable done be false
   repeat until done
     let look be peek(skip_newlines(current))
-    set current to look.cursor
+    change current to look.cursor
     if is_word(token: look.token, spelling: "end") then
-      set done to true
+      change done to true
     otherwise if is_word(token: look.token, spelling: "can") then
       let derived be parse_derive(current) otherwise fail
-      set derives to derives.append(derived.node)
-      set current to derived.cursor
+      change derives to derives.append(derived.node)
+      change current to derived.cursor
     otherwise
       let variant be parse_variant(current) otherwise fail
-      set variants to variants.append(variant.node)
-      set current to variant.cursor
+      change variants to variants.append(variant.node)
+      change current to variant.cursor
     end
   end
   let end_word be expect_word(cursor: current, spelling: "end") otherwise fail
-  set current to end_of_line(end_word.cursor) otherwise fail
+  change current to end_of_line(end_word.cursor) otherwise fail
   let definition be SumDefinition(variants: variants, derives: derives)
   let node be definition_of(
     head: head,
@@ -1049,7 +1049,7 @@ function parse_variant(cursor: Cursor) returns Parsed of Variant or fails with P
   let mutable current be name.cursor
   let mutable fields: List of Field be []
   let look be peek(current)
-  set current to look.cursor
+  change current to look.cursor
   if is_symbol(token: look.token, text: "(") then
     let parsed be bracketed(
       cursor: current,
@@ -1058,11 +1058,11 @@ function parse_variant(cursor: Cursor) returns Parsed of Variant or fails with P
       close: ")",
       reject_empty: true
     ) otherwise fail
-    set fields to parsed.node
-    set current to parsed.cursor
+    change fields to parsed.node
+    change current to parsed.cursor
   end
   let span be join(left: name.node.span, right: previous(current).span)
-  set current to end_of_line(current) otherwise fail
+  change current to end_of_line(current) otherwise fail
   return Parsed(node: Variant(name: name.node, fields: fields, span: span), cursor: current)
 end
 
@@ -1086,11 +1086,11 @@ function parse_field(cursor: Cursor, allow_external_name: Boolean)
   let mutable external_name: maybe Text be nothing
   if allow_external_name then
     let look be peek(current)
-    set current to look.cursor
+    change current to look.cursor
     if is_word(token: look.token, spelling: "as") then
       let parsed be plain_text_token(current with position: current.position + 1) otherwise fail
-      set external_name to parsed.node
-      set current to parsed.cursor
+      change external_name to parsed.node
+      change current to parsed.cursor
     end
   end
   let node be Field(
@@ -1119,14 +1119,14 @@ function parse_derive(cursor: Cursor) returns Parsed of Derive or fails with Par
   let mutable current be ability_name.cursor
   let mutable fields: List of Name be []
   let by_word be eat_word(cursor: current, spelling: "by")
-  set current to by_word.cursor
+  change current to by_word.cursor
   if by_word.found then
     let names be identifier_list(current) otherwise fail
-    set fields to names.node
-    set current to names.cursor
+    change fields to names.node
+    change current to names.cursor
   end
   let span be join(left: start.token.span, right: previous(current).span)
-  set current to end_of_line(current) otherwise fail
+  change current to end_of_line(current) otherwise fail
   let node be Derive(ability_name: ability_name.node, fields: fields, span: span)
   return Parsed(node: node, cursor: current)
 end
@@ -1136,12 +1136,12 @@ function identifier_list(cursor: Cursor) returns Parsed of List of Name or fails
   let mutable names be [head.node]
   let mutable current be head.cursor
   let mutable comma be eat_symbol(cursor: current, text: ",")
-  set current to comma.cursor
+  change current to comma.cursor
   repeat until not comma.found
     let next be identifier(current) otherwise fail
-    set names to names.append(next.node)
-    set comma to eat_symbol(cursor: next.cursor, text: ",")
-    set current to comma.cursor
+    change names to names.append(next.node)
+    change comma to eat_symbol(cursor: next.cursor, text: ",")
+    change current to comma.cursor
   end
   return Parsed(node: names, cursor: current)
 end
@@ -1172,23 +1172,23 @@ function record_definition(cursor: Cursor, head: TypeHead)
   let mutable done be false
   repeat until done
     let look be peek(skip_newlines(current))
-    set current to look.cursor
+    change current to look.cursor
     if is_word(token: look.token, spelling: "end") then
-      set done to true
+      change done to true
     otherwise if is_word(token: look.token, spelling: "can") then
       let derived be parse_derive(current) otherwise fail
-      set derives to derives.append(derived.node)
-      set current to derived.cursor
+      change derives to derives.append(derived.node)
+      change current to derived.cursor
     otherwise if is_word(token: look.token, spelling: "has") then
       let field be record_field(current with position: current.position + 1) otherwise fail
-      set fields to fields.append(field.node)
-      set current to end_of_line(field.cursor) otherwise fail
+      change fields to fields.append(field.node)
+      change current to end_of_line(field.cursor) otherwise fail
     otherwise
       fail with problem(message: "expected `has`, `can` or `end` in a type", token: look.token)
     end
   end
   let end_word be expect_word(cursor: current, spelling: "end") otherwise fail
-  set current to end_of_line(end_word.cursor) otherwise fail
+  change current to end_of_line(end_word.cursor) otherwise fail
   let definition be RecordDefinition(fields: fields, derives: derives)
   let node be definition_of(
     head: head,
@@ -1208,11 +1208,11 @@ function parse_ability(cursor: Cursor, is_public: Boolean, start: Integer)
   let mutable current be name.cursor
   let mutable type_params: List of TypeName be []
   let of_word be eat_word(cursor: current, spelling: "of")
-  set current to of_word.cursor
+  change current to of_word.cursor
   if of_word.found then
     let params be type_name_list(current) otherwise fail
-    set type_params to params.node
-    set current to params.cursor
+    change type_params to params.node
+    change current to params.cursor
   end
   let for_word be eat_word(cursor: current, spelling: "for")
   if for_word.found then
@@ -1251,16 +1251,16 @@ function implementation(
   let mutable current be target.cursor
   let mutable for_any: maybe ForAny be nothing
   let look be peek(current)
-  set current to look.cursor
+  change current to look.cursor
   if is_word(token: look.token, spelling: "for any") then
     let parsed be parse_for_any(current) otherwise fail
-    set for_any to parsed.node
-    set current to parsed.cursor
+    change for_any to parsed.node
+    change current to parsed.cursor
   end
-  set current to end_of_line(current) otherwise fail
+  change current to end_of_line(current) otherwise fail
   let functions be ability_functions(cursor: current, with_bodies: true) otherwise fail
   let end_word be expect_word(cursor: functions.cursor, spelling: "end") otherwise fail
-  set current to end_of_line(end_word.cursor) otherwise fail
+  change current to end_of_line(end_word.cursor) otherwise fail
   if is_public then
     fail with problem(message: "an implementation is never `public`", token: token_under(cursor))
   end
@@ -1287,17 +1287,17 @@ function ability_declaration(
   let mutable current be cursor
   let mutable requirements: List of Type be []
   let where_word be eat_word(cursor: current, spelling: "where")
-  set current to where_word.cursor
+  change current to where_word.cursor
   if where_word.found then
     let parsed be parse_requirements(current) otherwise fail
-    set requirements to parsed.node
-    set current to parsed.cursor
+    change requirements to parsed.node
+    change current to parsed.cursor
   end
-  set current to end_of_line(current) otherwise fail
+  change current to end_of_line(current) otherwise fail
   let docs be doc_clauses(current) otherwise fail
   let functions be ability_functions(cursor: docs.cursor, with_bodies: false) otherwise fail
   let end_word be expect_word(cursor: functions.cursor, spelling: "end") otherwise fail
-  set current to end_of_line(end_word.cursor) otherwise fail
+  change current to end_of_line(end_word.cursor) otherwise fail
   let node be Ability(
     is_public: is_public,
     name: name,
@@ -1318,10 +1318,10 @@ function parse_requirements(cursor: Cursor) returns Parsed of List of Type or fa
     let self_word be expect_word(cursor: current, spelling: "self") otherwise fail
     let can_word be expect_word(cursor: self_word.cursor, spelling: "can") otherwise fail
     let requirement be parse_type(can_word.cursor) otherwise fail
-    set requirements to requirements.append(requirement.node)
+    change requirements to requirements.append(requirement.node)
     let and_word be eat_word(cursor: requirement.cursor, spelling: "and")
-    set current to and_word.cursor
-    if not and_word.found then set done to true end
+    change current to and_word.cursor
+    if not and_word.found then change done to true end
   end
   return Parsed(node: requirements, cursor: current)
 end
@@ -1335,9 +1335,9 @@ function ability_functions(cursor: Cursor, with_bodies: Boolean)
   let mutable done be false
   repeat until done
     let look be peek(skip_newlines(current))
-    set current to look.cursor
+    change current to look.cursor
     if is_word(token: look.token, spelling: "end") or look.token.kind is EndOfFile then
-      set done to true
+      change done to true
     otherwise if is_word(token: look.token, spelling: "public") then
       fail with problem(message: "a method is not `public` by itself", token: look.token)
     otherwise if not is_word(token: look.token, spelling: "function") then
@@ -1349,8 +1349,8 @@ function ability_functions(cursor: Cursor, with_bodies: Boolean)
         start: look.token.span.start,
         with_body: with_bodies
       ) otherwise fail
-      set functions to functions.append(node.node)
-      set current to node.cursor
+      change functions to functions.append(node.node)
+      change current to node.cursor
     end
   end
   return Parsed(node: functions, cursor: current)
@@ -1386,24 +1386,24 @@ function test_item(cursor: Cursor, start: Integer) returns Parsed of Test or fai
   let mutable current be name.cursor
   let mutable capabilities: List of Capability be []
   let needs_word be eat_word(cursor: current, spelling: "needs")
-  set current to needs_word.cursor
+  change current to needs_word.cursor
   if needs_word.found then
     let parsed be parse_capabilities(current) otherwise fail
-    set capabilities to parsed.node
-    set current to parsed.cursor
+    change capabilities to parsed.node
+    change current to parsed.cursor
   end
   let mutable recording: maybe Text be nothing
   let replays_word be eat_word(cursor: current, spelling: "replays")
-  set current to replays_word.cursor
+  change current to replays_word.cursor
   if replays_word.found then
     let parsed be plain_text_token(current) otherwise fail
-    set recording to parsed.node
-    set current to parsed.cursor
+    change recording to parsed.node
+    change current to parsed.cursor
   end
-  set current to end_of_line(current) otherwise fail
+  change current to end_of_line(current) otherwise fail
   let body be parse_block(cursor: current, terminators: ["end"]) otherwise fail
   let end_word be expect_word(cursor: body.cursor, spelling: "end") otherwise fail
-  set current to end_of_line(end_word.cursor) otherwise fail
+  change current to end_of_line(end_word.cursor) otherwise fail
   let node be Test(
     name: name.node,
     capabilities: capabilities,
@@ -1452,11 +1452,11 @@ function named_type(cursor: Cursor) returns Parsed of Type or fails with ParseEr
   let mutable current be name.cursor
   let mutable args: List of Type be []
   let of_word be eat_word(cursor: current, spelling: "of")
-  set current to of_word.cursor
+  change current to of_word.cursor
   if of_word.found then
     let parsed be type_arguments(current) otherwise fail
-    set args to parsed.node
-    set current to parsed.cursor
+    change args to parsed.node
+    change current to parsed.cursor
   end
   let span be join(left: name.node.span, right: previous(current).span)
   return Parsed(node: NamedType(name: name.node, args: args, span: span), cursor: current)
@@ -1467,7 +1467,7 @@ function type_arguments(cursor: Cursor) returns Parsed of List of Type or fails 
   let mutable args be [first_type.node]
   let mutable current be first_type.cursor
   let to_word be eat_word(cursor: current, spelling: "to")
-  set current to to_word.cursor
+  change current to to_word.cursor
   if to_word.found then
     let value_type be parse_type(current) otherwise fail
     return Parsed(node: args.append(value_type.node), cursor: value_type.cursor)
@@ -1475,13 +1475,13 @@ function type_arguments(cursor: Cursor) returns Parsed of List of Type or fails 
   let mutable done be false
   repeat until done
     let look be peek(current)
-    set current to look.cursor
+    change current to look.cursor
     if is_symbol(token: look.token, text: ",") and type_follows_comma(current) then
       let next be parse_type(current with position: current.position + 1) otherwise fail
-      set args to args.append(next.node)
-      set current to next.cursor
+      change args to args.append(next.node)
+      change current to next.cursor
     otherwise
-      set done to true
+      change done to true
     end
   end
   return Parsed(node: args, cursor: current)
@@ -1546,17 +1546,17 @@ function parse_block(cursor: Cursor, terminators: List of Text)
   let mutable statements: List of Statement be []
   let mutable done be false
   repeat until done
-    set current to skip_newlines(current)
+    change current to skip_newlines(current)
     let token be token_under(current)
     if token.kind is EndOfFile then
       fail with problem(message: "the file ended inside a block; `end` is missing", token: token)
     end
     if terminates(token: token, terminators: terminators) then
-      set done to true
+      change done to true
     otherwise
       let statement be parse_statement(current) otherwise fail
-      set statements to statements.append(statement.node)
-      set current to statement.cursor
+      change statements to statements.append(statement.node)
+      change current to statement.cursor
     end
   end
   let stop be previous(current).span.stop.at_least(start)
@@ -1584,8 +1584,8 @@ function statement_kind(cursor: Cursor, token: Token, start: Integer)
   match token.kind
     when Word(spelling: "let") then
       return let_statement(cursor: cursor, start: start) otherwise fail
-    when Word(spelling: "set") then
-      return set_statement(cursor: cursor, start: start) otherwise fail
+    when Word(spelling: "change") then
+      return change_statement(cursor: cursor, start: start) otherwise fail
     when Word(spelling: "if") then return if_statement(cursor: cursor, start: start) otherwise fail
     when Word(spelling: "match") then
       return match_statement(cursor: cursor, start: start) otherwise fail
@@ -1648,11 +1648,11 @@ function let_statement(cursor: Cursor, start: Integer)
   let mutable current be name.cursor
   let mutable annotation: maybe Type be nothing
   let colon be eat_symbol(cursor: current, text: ":")
-  set current to colon.cursor
+  change current to colon.cursor
   if colon.found then
     let parsed be parse_type(current) otherwise fail
-    set annotation to parsed.node
-    set current to parsed.cursor
+    change annotation to parsed.node
+    change current to parsed.cursor
   end
   let be_word be expect_word(cursor: current, spelling: "be") otherwise fail
   let value be expression(skip_newlines(be_word.cursor)) otherwise fail
@@ -1666,7 +1666,7 @@ function let_statement(cursor: Cursor, start: Integer)
   return Parsed(node: node, cursor: value.cursor)
 end
 
-function set_statement(cursor: Cursor, start: Integer)
+function change_statement(cursor: Cursor, start: Integer)
   returns Parsed of Statement
   or fails with ParseError
 
@@ -1674,7 +1674,7 @@ function set_statement(cursor: Cursor, start: Integer)
   let name be identifier(keyword.cursor) otherwise fail
   let to_word be expect_word(cursor: name.cursor, spelling: "to") otherwise fail
   let value be expression(skip_newlines(to_word.cursor)) otherwise fail
-  let node be Set(
+  let node be Change(
     name: name.node,
     value: value.node,
     span: span_from(start: start, cursor: value.cursor)
@@ -1693,19 +1693,19 @@ function if_statement(cursor: Cursor, start: Integer)
   let mutable done be false
   repeat until done
     let branch be if_branch(current) otherwise fail
-    set branches to branches.append(branch.node)
+    change branches to branches.append(branch.node)
     let otherwise_word be eat_word(cursor: branch.cursor, spelling: "otherwise")
-    set current to otherwise_word.cursor
+    change current to otherwise_word.cursor
     let if_word be eat_word(cursor: current, spelling: "if")
     if otherwise_word.found and if_word.found then
-      set current to if_word.cursor
+      change current to if_word.cursor
     otherwise if otherwise_word.found then
       let rest be parse_block(cursor: current, terminators: ["end"]) otherwise fail
-      set fallback to rest.node
-      set current to rest.cursor
-      set done to true
+      change fallback to rest.node
+      change current to rest.cursor
+      change done to true
     otherwise
-      set done to true
+      change done to true
     end
   end
   let end_word be expect_word(cursor: current, spelling: "end") otherwise fail
@@ -1739,19 +1739,19 @@ function match_statement(cursor: Cursor, start: Integer)
   let mutable done be false
   repeat until done
     let look be peek(skip_newlines(current))
-    set current to look.cursor
+    change current to look.cursor
     if is_word(token: look.token, spelling: "end") then
-      set done to true
+      change done to true
     otherwise if is_word(token: look.token, spelling: "otherwise") then
       let after_word be current with position: current.position + 1
       let rest be parse_block(cursor: after_word, terminators: ["end"]) otherwise fail
-      set fallback to rest.node
-      set current to rest.cursor
-      set done to true
+      change fallback to rest.node
+      change current to rest.cursor
+      change done to true
     otherwise
       let arm be match_arm(current) otherwise fail
-      set arms to arms.append(arm.node)
-      set current to arm.cursor
+      change arms to arms.append(arm.node)
+      change current to arm.cursor
     end
   end
   let end_word be expect_word(cursor: current, spelling: "end") otherwise fail
@@ -2082,14 +2082,14 @@ function expression(cursor: Cursor) returns Parsed of Expr or fails with ParseEr
   let mutable done be false
   repeat until done
     let otherwise_word be eat_word(cursor: current, spelling: "otherwise")
-    set current to otherwise_word.cursor
+    change current to otherwise_word.cursor
     if otherwise_word.found then
       let fallback be parse_outcome(current) otherwise fail
       let span be join(left: expr_span(value), right: outcome_span(fallback.node))
-      set value to Otherwise(value: value, fallback: fallback.node, span: span)
-      set current to fallback.cursor
+      change value to Otherwise(value: value, fallback: fallback.node, span: span)
+      change current to fallback.cursor
     otherwise
-      set done to true
+      change done to true
     end
   end
   return Parsed(node: value, cursor: current)
@@ -2162,13 +2162,13 @@ function binary_chain(
   let mutable done be false
   repeat until done
     let look be peek(current)
-    set current to look.cursor
+    change current to look.cursor
     match operator(look.token)
       when some(found) then
         let right be operand(current with position: current.position + 1) otherwise fail
-        set value to binary_expression(operator: found, left: value, right: right.node)
-        set current to right.cursor
-      otherwise set done to true
+        change value to binary_expression(operator: found, left: value, right: right.node)
+        change current to right.cursor
+      otherwise change done to true
     end
   end
   return Parsed(node: value, cursor: current)
@@ -2263,10 +2263,10 @@ function update_list(cursor: Cursor) returns Parsed of List of Arg or fails with
     let colon be expect_symbol(cursor: name.cursor, text: ":") otherwise fail
     let value be additive(colon.cursor) otherwise fail
     let span be join(left: name.node.span, right: expr_span(value.node))
-    set updates to updates.append(Arg(name: name.node, value: value.node, span: span))
+    change updates to updates.append(Arg(name: name.node, value: value.node, span: span))
     let comma be eat_symbol(cursor: value.cursor, text: ",")
-    set current to comma.cursor
-    if not comma.found then set done to true end
+    change current to comma.cursor
+    if not comma.found then change done to true end
   end
   return Parsed(node: updates, cursor: current)
 end
@@ -2303,19 +2303,19 @@ function postfix(cursor: Cursor) returns Parsed of Expr or fails with ParseError
   let mutable done be false
   repeat until done
     let look be peek(current)
-    set current to look.cursor
+    change current to look.cursor
     if is_symbol(token: look.token, text: ".") then
       let after_dot be current with position: current.position + 1
       let member be member_access(cursor: after_dot, base: value) otherwise fail
-      set value to member.node
-      set current to member.cursor
+      change value to member.node
+      change current to member.cursor
     otherwise if is_symbol(token: look.token, text: "(") and is_callable(value) then
       let args be arguments(current) otherwise fail
       let span be join(left: expr_span(value), right: previous(args.cursor).span)
-      set value to Call(callee: value, args: args.node, span: span)
-      set current to args.cursor
+      change value to Call(callee: value, args: args.node, span: span)
+      change current to args.cursor
     otherwise
-      set done to true
+      change done to true
     end
   end
   return Parsed(node: value, cursor: current)
@@ -2417,10 +2417,10 @@ function text_pieces(parts: List of Part) returns List of TextPiece or fails wit
   let mutable pieces: List of TextPiece be []
   for each part in parts
     match part
-      when Characters(text) then set pieces to pieces.append(Literal(text: text))
+      when Characters(text) then change pieces to pieces.append(Literal(text: text))
       when HolePart(tokens) then
         let hole be parse_hole(tokens) otherwise fail
-        set pieces to pieces.append(Hole(expression: hole))
+        change pieces to pieces.append(Hole(expression: hole))
     end
   end
   return pieces
@@ -2515,11 +2515,11 @@ function range_literal(cursor: Cursor) returns Parsed of Expr or fails with Pars
   let mutable current be upper.cursor
   let mutable step: maybe Expr be nothing
   let by_word be eat_word(cursor: current, spelling: "by")
-  set current to by_word.cursor
+  change current to by_word.cursor
   if by_word.found then
     let parsed be additive(current) otherwise fail
-    set step to parsed.node
-    set current to parsed.cursor
+    change step to parsed.node
+    change current to parsed.cursor
   end
   let span be join(left: start.token.span, right: previous(current).span)
   let node be RangeLiteral(lower: lower.node, upper: upper.node, step: step, span: span)
@@ -2533,10 +2533,10 @@ function if_expression(cursor: Cursor) returns Parsed of Expr or fails with Pars
   let mutable done be false
   repeat until done
     let branch be expression_branch(current) otherwise fail
-    set branches to branches.append(branch.node)
+    change branches to branches.append(branch.node)
     let if_word be eat_word(cursor: branch.cursor, spelling: "if")
-    set current to if_word.cursor
-    if not if_word.found then set done to true end
+    change current to if_word.cursor
+    if not if_word.found then change done to true end
   end
   let fallback be parse_outcome(skip_newlines(current)) otherwise fail
   let end_word be expect_word(
@@ -2572,18 +2572,18 @@ function match_expression(cursor: Cursor) returns Parsed of Expr or fails with P
   let mutable done be false
   repeat until done
     let look be peek(skip_newlines(current))
-    set current to look.cursor
+    change current to look.cursor
     if is_word(token: look.token, spelling: "end") then
-      set done to true
+      change done to true
     otherwise if is_word(token: look.token, spelling: "otherwise") then
       let rest be match_fallback(current with position: current.position + 1) otherwise fail
-      set fallback to rest.node
-      set current to rest.cursor
-      set done to true
+      change fallback to rest.node
+      change current to rest.cursor
+      change done to true
     otherwise
       let arm be expression_arm(current) otherwise fail
-      set arms to arms.append(arm.node)
-      set current to arm.cursor
+      change arms to arms.append(arm.node)
+      change current to arm.cursor
     end
   end
   let end_word be expect_word(cursor: current, spelling: "end") otherwise fail
@@ -2628,8 +2628,8 @@ function query_expression(cursor: Cursor) returns Parsed of Expr or fails with P
   let mutable deadline: maybe Expr be nothing
   if concurrently_word.found then
     let deadline_clause be or_expression_after(cursor: current, spelling: "within") otherwise fail
-    set deadline to deadline_clause.value
-    set current to deadline_clause.cursor
+    change deadline to deadline_clause.value
+    change current to deadline_clause.cursor
   end
   let filter be or_expression_after(cursor: current, spelling: "where") otherwise fail
   let order be ordering(filter.cursor) otherwise fail
@@ -2660,10 +2660,10 @@ function query_sources(cursor: Cursor)
   let mutable done be false
   repeat until done
     let source be loop_source(current) otherwise fail
-    set sources to sources.append(QuerySource(bindings: source.bindings, source: source.source))
+    change sources to sources.append(QuerySource(bindings: source.bindings, source: source.source))
     let comma be eat_symbol(cursor: source.cursor, text: ",")
-    set current to comma.cursor
-    if not comma.found then set done to true end
+    change current to comma.cursor
+    if not comma.found then change done to true end
   end
   return Parsed(node: sources, cursor: current)
 end

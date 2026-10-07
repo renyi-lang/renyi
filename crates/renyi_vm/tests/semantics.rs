@@ -291,8 +291,8 @@ public function main() needs console
   let ten be 10.0.to_float()
   let mutable rounds be 0
   repeat until rounds is 400
-    set value to value * ten
-    set rounds to rounds + 1
+    change value to value * ten
+    change rounds to rounds + 1
   end
   console.print("{value}")
 end
@@ -443,7 +443,7 @@ public function main() needs console
 
   let mutable total be 0
   for each number from 1 to 1000
-    set total to total + number
+    change total to total + number
   end
   console.print("{total}")
 end
@@ -508,12 +508,12 @@ public function main() needs console
 
   let mutable total be 0
   for each item in [1, 2, 3, 4, 5, 6]
-    set total to total + (if item is 3 then continue otherwise item end)
-    set total to total * (if item is 5 then break otherwise 1 end)
+    change total to total + (if item is 3 then continue otherwise item end)
+    change total to total * (if item is 5 then break otherwise 1 end)
   end
   let mutable steps be 0
   repeat until steps is 10
-    set steps to steps + (match steps when 7 then break otherwise 1 end)
+    change steps to steps + (match steps when 7 then break otherwise 1 end)
   end
   console.print("{total} {steps}")
 end

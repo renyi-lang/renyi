@@ -227,7 +227,7 @@ fn unused_results_are_errors() {
         "unused-result",
     );
     clean(&program(
-        "function go(items: List of Integer) returns List of Integer\n  let mutable kept be items\n  set kept to kept.append(1)\n  return kept\nend\n",
+        "function go(items: List of Integer) returns List of Integer\n  let mutable kept be items\n  change kept to kept.append(1)\n  return kept\nend\n",
     ));
 }
 
@@ -281,8 +281,8 @@ fn shadowing_and_mutation() {
         ),
         "shadowing",
     );
-    raises(&program("function go() returns Integer\n  let total be 1\n  set total to 2\n  return total\nend\n"), "immutable-binding");
-    clean(&program("function go() returns Integer\n  let mutable total be 1\n  set total to 2\n  return total\nend\n"));
+    raises(&program("function go() returns Integer\n  let total be 1\n  change total to 2\n  return total\nend\n"), "immutable-binding");
+    clean(&program("function go() returns Integer\n  let mutable total be 1\n  change total to 2\n  return total\nend\n"));
 }
 
 #[test]
@@ -351,7 +351,7 @@ fn sum_types_match_exhaustively() {
 #[test]
 fn generics_and_abilities() {
     clean(&program(
-        "public type Stack of Item\n  purpose: A stack.\n  has items: List of Item\nend\n\npublic function empty() returns Stack of Item for any Item\n  purpose: Nothing on it.\n\n  return Stack(items: [])\nend\n\nfunction go() returns Integer\n  let mutable stack: Stack of Text be empty()\n  set stack to Stack(items: stack.items.append(\"a\"))\n  return stack.items.length()\nend\n",
+        "public type Stack of Item\n  purpose: A stack.\n  has items: List of Item\nend\n\npublic function empty() returns Stack of Item for any Item\n  purpose: Nothing on it.\n\n  return Stack(items: [])\nend\n\nfunction go() returns Integer\n  let mutable stack: Stack of Text be empty()\n  change stack to Stack(items: stack.items.append(\"a\"))\n  return stack.items.length()\nend\n",
     ));
     // sorting needs Compare
     raises(
@@ -440,9 +440,9 @@ fn all_codes(source: &str) -> Vec<String> {
 #[test]
 fn nesting_is_limited_to_four_blocks() {
     // decision V5: the body is depth 0; the fifth block is the error
-    let four = "function go(items: List of Integer) returns Integer needs console\n  let mutable total be 0\n  for each item in items\n    if item is greater than 0 then\n      match item\n        when 1 then\n          repeat until total is greater than 9\n            set total to total + 1\n          end\n        otherwise set total to total + item\n      end\n    end\n  end\n  return total\nend\n";
+    let four = "function go(items: List of Integer) returns Integer needs console\n  let mutable total be 0\n  for each item in items\n    if item is greater than 0 then\n      match item\n        when 1 then\n          repeat until total is greater than 9\n            change total to total + 1\n          end\n        otherwise change total to total + item\n      end\n    end\n  end\n  return total\nend\n";
     clean(&program(four));
-    let five = "function go(items: List of Integer) returns Integer needs console\n  let mutable total be 0\n  for each item in items\n    if item is greater than 0 then\n      match item\n        when 1 then\n          repeat until total is greater than 9\n            if total is 3 then\n              set total to total + 2\n            end\n            set total to total + 1\n          end\n        otherwise set total to total + item\n      end\n    end\n  end\n  return total\nend\n";
+    let five = "function go(items: List of Integer) returns Integer needs console\n  let mutable total be 0\n  for each item in items\n    if item is greater than 0 then\n      match item\n        when 1 then\n          repeat until total is greater than 9\n            if total is 3 then\n              change total to total + 2\n            end\n            change total to total + 1\n          end\n        otherwise change total to total + item\n      end\n    end\n  end\n  return total\nend\n";
     raises(&program(five), "nesting-depth");
     assert_eq!(
         codes(&program(five))
@@ -458,13 +458,13 @@ fn nesting_is_limited_to_four_blocks() {
 fn a_body_spans_at_most_sixty_lines() {
     let mut long = String::from("function go() returns Integer\n  let mutable total be 0\n");
     for _ in 0..60 {
-        long.push_str("  set total to total + 1\n");
+        long.push_str("  change total to total + 1\n");
     }
     long.push_str("  return total\nend\n");
     raises(&program(&long), "body-length");
     let mut fits = String::from("function go() returns Integer\n  let mutable total be 0\n");
     for _ in 0..58 {
-        fits.push_str("  set total to total + 1\n");
+        fits.push_str("  change total to total + 1\n");
     }
     fits.push_str("  return total\nend\n");
     clean(&program(&fits));
@@ -474,7 +474,7 @@ fn a_body_spans_at_most_sixty_lines() {
 fn tasks_of_run_concurrently_are_independent() {
     // decision V7: a task may not change a binding made before the block
     raises(
-        &program("function go() returns Integer\n  let mutable total be 0\n  run concurrently\n    set total to total + 1\n    set total to total + 2\n  end\n  return total\nend\n"),
+        &program("function go() returns Integer\n  let mutable total be 0\n  run concurrently\n    change total to total + 1\n    change total to total + 2\n  end\n  return total\nend\n"),
         "task-independence",
     );
     // nor read a binding another task made
@@ -488,7 +488,7 @@ fn tasks_of_run_concurrently_are_independent() {
     ));
     // a task's own loop variable and its own mutable binding are its business
     clean(&program(
-        "function go(items: List of Integer) returns Integer needs console\n  run concurrently\n    let total be for each item in items sum item\n    for each item in items\n      let mutable seen be 0\n      set seen to seen + item\n      console.print(\"{seen}\")\n    end\n  end\n  return total\nend\n",
+        "function go(items: List of Integer) returns Integer needs console\n  run concurrently\n    let total be for each item in items sum item\n    for each item in items\n      let mutable seen be 0\n      change seen to seen + item\n      console.print(\"{seen}\")\n    end\n  end\n  return total\nend\n",
     ));
 }
 
@@ -868,12 +868,12 @@ fn the_module_name_equals_the_path() {
 fn a_range_loop_has_one_spelling() {
     raises(
         &program(
-            "function total() returns Integer\n  let mutable total_so_far be 0\n  for each step in from 1 to 3\n    set total_so_far to total_so_far + step\n  end\n  return total_so_far\nend\n",
+            "function total() returns Integer\n  let mutable total_so_far be 0\n  for each step in from 1 to 3\n    change total_so_far to total_so_far + step\n  end\n  return total_so_far\nend\n",
         ),
         "range-loop",
     );
     clean(&program(
-        "function total() returns Integer\n  let mutable total_so_far be 0\n  for each step from 1 to 3\n    set total_so_far to total_so_far + step\n  end\n  return total_so_far\nend\n",
+        "function total() returns Integer\n  let mutable total_so_far be 0\n  for each step from 1 to 3\n    change total_so_far to total_so_far + step\n  end\n  return total_so_far\nend\n",
     ));
 }
 
@@ -1064,7 +1064,7 @@ fn an_unknown_name_suggests_the_closest_one() {
 fn a_type_with_iterable_is_walked_by_loops_and_queries() {
     let deck = "type Deck\n  has cards: List of Text\nend\n\nability Iterable of Text for Deck\n  function to_list(self) returns List of Text\n    return self.cards\n  end\nend\n\n";
     clean(&program(&format!(
-        "{deck}function names(deck: Deck) returns Text\n  let mutable joined be \"\"\n  for each card in deck\n    set joined to \"{{joined}}{{card}}\"\n  end\n  return joined\nend\n\nfunction count_cards(deck: Deck) returns Integer\n  return for each card in deck where card is not \"\" count\nend\n"
+        "{deck}function names(deck: Deck) returns Text\n  let mutable joined be \"\"\n  for each card in deck\n    change joined to \"{{joined}}{{card}}\"\n  end\n  return joined\nend\n\nfunction count_cards(deck: Deck) returns Integer\n  return for each card in deck where card is not \"\" count\nend\n"
     )));
     // without the implementation a record is not iterable
     raises(

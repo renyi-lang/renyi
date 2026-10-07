@@ -70,6 +70,7 @@ let reserved_words: List of Text be [
   "break",
   "by",
   "can",
+  "change",
   "check",
   "collect",
   "concurrently",
@@ -129,7 +130,6 @@ let reserved_words: List of Text be [
   "run",
   "see",
   "self",
-  "set",
   "some",
   "sorted",
   "success",
@@ -229,8 +229,8 @@ function lex_range(chars: List of Text, start: Integer, limit: Integer)
       limit: limit,
       previous: tokens.last()
     ) otherwise fail
-    set tokens to tokens.append_all(step.tokens)
-    set position to step.next
+    change tokens to tokens.append_all(step.tokens)
+    change position to step.next
   end
   return tokens
 end
@@ -347,7 +347,7 @@ function scan_while(
 
   let mutable position be start
   repeat until position is at least limit or not keep(char_at(chars: chars, index: position))
-    set position to position + 1
+    change position to position + 1
   end
   return position
 end
@@ -355,7 +355,7 @@ end
 function line_end(chars: List of Text, position: Integer, limit: Integer) returns Integer
   let mutable stop be position
   repeat until stop is at least limit or char_at(chars: chars, index: stop) is "\n"
-    set stop to stop + 1
+    change stop to stop + 1
   end
   return stop
 end
@@ -363,7 +363,7 @@ end
 function at_line_start(chars: List of Text, offset: Integer) returns Boolean
   let mutable index be offset
   repeat until index is 0 or char_at(chars: chars, index: index - 1) is not " "
-    set index to index - 1
+    change index to index - 1
   end
   return index is 0 or char_at(chars: chars, index: index - 1) is "\n"
 end
@@ -394,8 +394,8 @@ function lex_number(chars: List of Text, position: Integer, limit: Integer)
   if stop + 1 is less than limit
     and char_at(chars: chars, index: stop) is "."
     and is_digit(char_at(chars: chars, index: stop + 1)) then
-    set stop to scan_while(chars: chars, start: stop + 1, limit: limit, keep: is_digit)
-    set kind to DecimalToken
+    change stop to scan_while(chars: chars, start: stop + 1, limit: limit, keep: is_digit)
+    change kind to DecimalToken
   end
   let next_char be char_at(chars: chars, index: stop)
   if stop is less than limit and is_alphanumeric_or_underscore(next_char) then
@@ -498,7 +498,7 @@ function longest_phrase(chars: List of Text, first_word: Text, stop: Integer, li
   let mutable position be stop
   let mutable attempts be 0
   repeat until attempts is 2
-    set attempts to attempts + 1
+    change attempts to attempts + 1
     if position + 1 is less than limit
       and char_at(chars: chars, index: position) is " "
       and is_lower(char_at(chars: chars, index: position + 1)) then
@@ -509,11 +509,13 @@ function longest_phrase(chars: List of Text, first_word: Text, stop: Integer, li
         keep: is_word_char
       )
       let word be slice(chars: chars, start: position + 1, stop: word_stop)
-      set spelling to "{spelling} {word}"
-      set position to word_stop
-      if phrases.contains(spelling) then set best to Phrase(spelling: spelling, stop: word_stop) end
+      change spelling to "{spelling} {word}"
+      change position to word_stop
+      if phrases.contains(spelling) then
+        change best to Phrase(spelling: spelling, stop: word_stop)
+      end
     otherwise
-      set attempts to 2
+      change attempts to 2
     end
   end
   return best
@@ -545,7 +547,7 @@ function lex_raw_text(chars: List of Text, position: Integer, limit: Integer)
   repeat until stop is at least limit
     or char_at(chars: chars, index: stop) is "\""
     or char_at(chars: chars, index: stop) is "\n"
-    set stop to stop + 1
+    change stop to stop + 1
   end
   if char_at(chars: chars, index: stop) is not "\"" then
     fail with LexError(message: "raw text without a closing quote", position: position)
@@ -560,13 +562,13 @@ function simple_text_end(chars: List of Text, position: Integer, limit: Integer)
   repeat until done or stop is at least limit
     let ch be char_at(chars: chars, index: stop)
     if ch is "\"" or ch is "\n" then
-      set done to true
+      change done to true
     otherwise if ch is "\\" then
-      set stop to stop + 2
+      change stop to stop + 2
     otherwise if ch is "\{" then
-      set stop to hole_close(chars: chars, position: stop, limit: limit)
+      change stop to hole_close(chars: chars, position: stop, limit: limit)
     otherwise
-      set stop to stop + 1
+      change stop to stop + 1
     end
   end
   return stop
@@ -576,7 +578,7 @@ function hole_close(chars: List of Text, position: Integer, limit: Integer) retu
   let stop be line_end(chars: chars, position: position, limit: limit)
   let mutable index be position
   repeat until index is at least stop or char_at(chars: chars, index: index) is "}"
-    set index to index + 1
+    change index to index + 1
   end
   if index is at least stop then return position + 1 end
   return index + 1
@@ -616,10 +618,10 @@ function lex_block_text(chars: List of Text, position: Integer, limit: Integer)
   let mutable parts: List of Part be []
   let mutable index be 0
   for each line in block.lines
-    if index is greater than 0 then set parts to push_text(parts: parts, text: "\n") end
-    set index to index + 1
+    if index is greater than 0 then change parts to push_text(parts: parts, text: "\n") end
+    change index to index + 1
     let content_start be (line.start + indent).at_most(line.stop)
-    set parts to scan_segment(
+    change parts to scan_segment(
       chars: chars,
       start: content_start,
       stop: line.stop,
@@ -648,8 +650,8 @@ function block_lines(chars: List of Text, cursor: Integer, limit: Integer)
       let quote_start be line_start + (line.index_of("\"") otherwise 0)
       return BlockLines(lines: lines, closing: Span(start: quote_start, stop: quote_start + 3))
     end
-    set lines to lines.append(Span(start: line_start, stop: line_stop))
-    set position to line_stop
+    change lines to lines.append(Span(start: line_start, stop: line_stop))
+    change position to line_stop
   end
   fail with LexError(
     message: "block text without closing quotes on their own line",
@@ -663,7 +665,7 @@ function common_indent(chars: List of Text, lines: List of Span) returns Integer
     where slice(chars: chars, start: line.start, stop: line.stop).trim() is not ""
     let content be scan_while(chars: chars, start: line.start, limit: line.stop, keep: is_space)
     let spaces be content - line.start
-    set indent to
+    change indent to
       match indent
         when nothing then spaces
         when some(smallest) then smallest.at_most(spaces)
@@ -691,8 +693,8 @@ function scan_segment(chars: List of Text, start: Integer, stop: Integer, parts:
     let ch be char_at(chars: chars, index: position)
     if ch is "\\" then
       let piece be escape(chars: chars, position: position, stop: stop) otherwise fail
-      set buffer to "{buffer}{piece}"
-      set position to (position + 2).at_most(stop)
+      change buffer to "{buffer}{piece}"
+      change position to (position + 2).at_most(stop)
     otherwise if ch is "\{" then
       let hole_stop be hole_end(chars: chars, start: position + 1, stop: stop)
       if hole_stop is at least stop then
@@ -706,25 +708,25 @@ function scan_segment(chars: List of Text, start: Integer, stop: Integer, parts:
         fail with LexError(message: "a text literal inside a hole", position: position)
       end
       if buffer is not "" then
-        set out to push_text(parts: out, text: buffer)
-        set buffer to ""
+        change out to push_text(parts: out, text: buffer)
+        change buffer to ""
       end
       let tokens be lex_range(chars: chars, start: position + 1, limit: hole_stop) otherwise fail
-      set out to out.append(HolePart(tokens: tokens))
-      set position to hole_stop + 1
+      change out to out.append(HolePart(tokens: tokens))
+      change position to hole_stop + 1
     otherwise
-      set buffer to "{buffer}{ch}"
-      set position to position + 1
+      change buffer to "{buffer}{ch}"
+      change position to position + 1
     end
   end
-  if buffer is not "" then set out to push_text(parts: out, text: buffer) end
+  if buffer is not "" then change out to push_text(parts: out, text: buffer) end
   return out
 end
 
 function hole_end(chars: List of Text, start: Integer, stop: Integer) returns Integer
   let mutable index be start
   repeat until index is at least stop or char_at(chars: chars, index: index) is "}"
-    set index to index + 1
+    change index to index + 1
   end
   return index
 end

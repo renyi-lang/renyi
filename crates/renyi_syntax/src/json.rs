@@ -517,8 +517,8 @@ impl<'a> Encoder<'a> {
                     span,
                 ],
             ),
-            StmtKind::Set { name, value } => variant(
-                "Set",
+            StmtKind::Change { name, value } => variant(
+                "Change",
                 vec![("name", self.name(name)), ("value", self.expr(value)), span],
             ),
             StmtKind::If {

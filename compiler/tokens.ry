@@ -24,7 +24,7 @@ function print_all(tokens: List of Token, source: Text) needs console
   for each token in tokens
     repeat until line + 1 is at least starts.length()
       or (starts.at(line + 1) otherwise 0) is greater than token.span.start
-      set line to line + 1
+      change line to line + 1
     end
     let column be token.span.start - (starts.at(line) otherwise 0) + 1
     let line_text be (line + 1).to_text().pad_left(4)
@@ -38,8 +38,8 @@ function line_starts(source: Text) returns List of Integer
   let mutable starts be [0]
   let mutable index be 0
   for each ch in source.characters()
-    set index to index + 1
-    if ch is "\n" then set starts to starts.append(index) end
+    change index to index + 1
+    if ch is "\n" then change starts to starts.append(index) end
   end
   return starts
 end

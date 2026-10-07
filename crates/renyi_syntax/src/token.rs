@@ -31,7 +31,7 @@ macro_rules! words {
 words! {
     Ability => "ability", All => "all", Also => "also", And => "and", Any => "any",
     As => "as", At => "at", Be => "be", Break => "break", By => "by", Can => "can",
-    Check => "check", Collect => "collect", Concurrently => "concurrently",
+    Change => "change", Check => "check", Collect => "collect", Concurrently => "concurrently",
     Continue => "continue", Count => "count", Crash => "crash", Deprecated => "deprecated",
     Descending => "descending", Each => "each", End => "end", Example => "example",
     Expose => "expose", Exposing => "exposing", Fail => "fail", Fails => "fails",
@@ -46,7 +46,7 @@ words! {
     Remainder => "remainder", Repeat => "repeat", Replays => "replays", Return => "return",
     Returns => "returns",
     Run => "run",
-    See => "see", SelfValue => "self", Set => "set", Some => "some", Sorted => "sorted",
+    See => "see", SelfValue => "self", Some => "some", Sorted => "sorted",
     Success => "success", Sum => "sum", Tags => "tags", Test => "test", Than => "than",
     Then => "then", To => "to", Tool => "tool", True => "true", Type => "type", Until => "until",
     When => "when", Where => "where", With => "with", Within => "within",

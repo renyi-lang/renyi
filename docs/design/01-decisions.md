@@ -1717,3 +1717,24 @@ in process; the compiler converts the parser's byte offsets when it
 emits, and a module's source is remembered as its path and the
 character offsets of its line starts, which is what a crash location
 and a test report need. (user)
+
+## AA. The rename of `set` (session 8)
+
+**AA1. `set name to expression` becomes `change name to expression`.**
+The owner asked whether to rename `set` to `change` and to forbid every
+other way of changing a binding. The second half was already the rule:
+the grammar has no `=`, a name is bound once per function (`shadowing`),
+and `set` on a `let mutable` binding was the only way to change a value.
+The rename stands on its own: `set` had three meanings, the statement,
+the `Set` type and the `Map.set` method, and `change x to x + 1` names
+what happens to an existing binding. A surface change under decision
+V11: this entry, then the reference (sections 1, 6, 8 and 17), the
+grammar, the cheat sheet, the formatter, both front ends (`Word::Change`
+and the statement `Change` of the tree and of its JSON; the reserved
+list of `compiler/lexer.ry`, `change_statement` in `compiler/parser.ry`),
+the checker's fixes (`write `change x to x.method(...)``), the corpus,
+the conformance programs, the compiler's own sources, the crates' tests
+and the lint, in one commit. `set` leaves the reserved words and
+`change` joins them (88 words still); `Set` and `Map.set` are unchanged.
+The readability rounds under `tests/readability/` keep the grammar they
+measured. (user)

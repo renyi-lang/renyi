@@ -262,7 +262,7 @@ end
 public type Statement is one of
   purpose: One statement.
   Let(is_mutable: Boolean, name: Name, annotation: maybe Type, value: Expr, span: Span)
-  Set(name: Name, value: Expr, span: Span)
+  Change(name: Name, value: Expr, span: Span)
   If(branches: List of Branch, fallback: maybe Block, span: Span)
   Match(subject: Expr, arms: List of Arm, fallback: maybe Block, span: Span)
   ForEach(

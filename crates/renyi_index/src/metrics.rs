@@ -47,7 +47,7 @@ impl Walk {
 
     fn statement(&mut self, statement: &Stmt) {
         match &statement.kind {
-            StmtKind::Let { value, .. } | StmtKind::Set { value, .. } => self.expr(value),
+            StmtKind::Let { value, .. } | StmtKind::Change { value, .. } => self.expr(value),
             StmtKind::If {
                 branches,
                 otherwise,

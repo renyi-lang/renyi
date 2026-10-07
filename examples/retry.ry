@@ -27,10 +27,10 @@ public function with_backoff(
     match action()
       when success(outcome) then return outcome
       when failure(error) then
-        set last_error to "attempt {attempt}: {error.to_text()}"
+        change last_error to "attempt {attempt}: {error.to_text()}"
         let jitter_ms be random.integer(lowest: 0, highest: delay_ms.quotient(4))
         time.sleep(time.milliseconds(delay_ms + jitter_ms))
-        set delay_ms to delay_ms * 2
+        change delay_ms to delay_ms * 2
     end
   end
   fail with GaveUp(attempts: attempts, last_error: last_error)

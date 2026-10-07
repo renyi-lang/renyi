@@ -37,9 +37,9 @@ public function fetch_all(base_url: Url)
       end
     let response be http.get(url) otherwise fail
     let page: Page be json.parse(response.body) otherwise fail
-    set customers to customers.append_all(page.items)
-    set cursor to page.next_cursor
-    set has_more to page.next_cursor is not nothing
+    change customers to customers.append_all(page.items)
+    change cursor to page.next_cursor
+    change has_more to page.next_cursor is not nothing
   end
   return customers
 end

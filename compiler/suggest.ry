@@ -9,8 +9,8 @@ public function closest(name: Text, candidates: List of Text) returns maybe Text
   for each candidate in candidates
     let distance be edit_distance(left: name, right: candidate)
     if distance is at most 2 and distance is less than best_distance then
-      set best_distance to distance
-      set best to candidate
+      change best_distance to distance
+      change best to candidate
     end
   end
   return best
@@ -24,8 +24,8 @@ function edit_distance(left: Text, right: Text) returns Integer
   let mutable previous: List of Integer be []
   let mutable column be 0
   repeat until column is greater than right_chars.length()
-    set previous to previous.append(column)
-    set column to column + 1
+    change previous to previous.append(column)
+    change column to column + 1
   end
   let mutable row be 0
   for each left_char in left_chars
@@ -36,11 +36,11 @@ function edit_distance(left: Text, right: Text) returns Integer
       let above_left be previous.at(index) otherwise crash with "a distance"
       let above be previous.at(index + 1) otherwise crash with "a distance"
       let before be current.at(index) otherwise crash with "a distance"
-      set current to current.append((above_left + cost).at_most(above + 1).at_most(before + 1))
-      set index to index + 1
+      change current to current.append((above_left + cost).at_most(above + 1).at_most(before + 1))
+      change index to index + 1
     end
-    set previous to current
-    set row to row + 1
+    change previous to current
+    change row to row + 1
   end
   return previous.at(right_chars.length()) otherwise crash with "a distance"
 end

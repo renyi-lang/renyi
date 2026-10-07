@@ -16,9 +16,9 @@ impl Compiler<'_, '_> {
                 let slot = self.declare(&name.text);
                 self.emit(Op::Store(slot), span);
             }
-            StmtKind::Set { name, value } => {
+            StmtKind::Change { name, value } => {
                 let Some(slot) = self.lookup(&name.text) else {
-                    self.unsupported(&format!("setting `{}`", name.text), span);
+                    self.unsupported(&format!("changing `{}`", name.text), span);
                     return;
                 };
                 self.move_receiver = move_candidate(name, value);
@@ -248,7 +248,7 @@ impl Compiler<'_, '_> {
     }
 }
 
-/// `set x to x.method(...)`: the span of the receiver's name token when the
+/// `change x to x.method(...)`: the span of the receiver's name token when the
 /// variable being set is the receiver and the arguments do not read it, so
 /// that the receiver can be moved out of its slot (decision O1).
 fn move_candidate(name: &Name, value: &Expr) -> Option<Span> {

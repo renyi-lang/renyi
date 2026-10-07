@@ -32,9 +32,9 @@ public function order(dependencies: Map of Text to List of Text)
       sorted by step
       collect step
     if ready.is_empty() then fail with Cycle(remaining: remaining.keys().sorted()) end
-    set ordered to ordered.append_all(ready)
+    change ordered to ordered.append_all(ready)
     for each step in ready
-      set remaining to remaining.without(step)
+      change remaining to remaining.without(step)
     end
   end
   return ordered

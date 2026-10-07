@@ -21,7 +21,7 @@ function widest(table: Table, index: Integer, minimum: Integer) returns Integer
   let mutable width be minimum
   for each row in table.rows
     let cell be row.at(index) otherwise ""
-    if cell.length() is greater than width then set width to cell.length() end
+    if cell.length() is greater than width then change width to cell.length() end
   end
   return width
 end
@@ -30,7 +30,7 @@ function render_row(cells: List of Text, widths: List of Integer) returns Text
   let mutable padded: List of Text be []
   for each width, index in widths.with_index()
     let cell be cells.at(index) otherwise ""
-    set padded to padded.append(cell.pad_right(width))
+    change padded to padded.append(cell.pad_right(width))
   end
   let separator be " | "
   return "| {padded.join(separator)} |"
@@ -49,9 +49,9 @@ public function render(table: Table) returns Text
   let widths be column_widths(table)
   let divider be for each width in widths collect "-".repeat(width)
   let mutable lines be [render_row(cells: table.header, widths: widths)]
-  set lines to lines.append(render_row(cells: divider, widths: widths))
+  change lines to lines.append(render_row(cells: divider, widths: widths))
   for each row in table.rows
-    set lines to lines.append(render_row(cells: row, widths: widths))
+    change lines to lines.append(render_row(cells: row, widths: widths))
   end
   return lines.join("\n")
 end

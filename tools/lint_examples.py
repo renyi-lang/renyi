@@ -15,17 +15,17 @@ import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-RESERVED = set("""ability all also and any as at be break by can check collect
+RESERVED = set("""ability all also and any as at be break by can change check collect
 concurrently continue count crash deprecated descending each end example expose
 exposing fail fails failure false first for from function greater group has if
 ignore import in is lazy least less let match maybe module most mutable needs
 not nothing of one only or otherwise per power public purpose raw remainder repeat
-replays return returns run see self set some sorted success sum tags test than
+replays return returns run see self some sorted success sum tags test than
 then to tool true type until when where with within""".split())
 assert len(RESERVED) == 88, len(RESERVED)
 
 FORBIDDEN = [
-    (r"(?<![=!<>])=(?![=>])", "'=' is not Renyi; use 'let x be', 'set x to', or 'is'"),
+    (r"(?<![=!<>])=(?![=>])", "'=' is not Renyi; use 'let x be', 'change x to', or 'is'"),
     (r"==|!=|<=|>=|&&|\|\||->|=>|\|>|::", "symbolic operator; use the English phrase"),
     (r"(?<![\w.\"'])[<>](?![\w.\"'])", "'<' or '>' comparison; use 'is less than' / 'is greater than'"),
     (r";\s*$", "semicolon"),

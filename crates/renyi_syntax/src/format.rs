@@ -777,8 +777,8 @@ impl Formatter<'_> {
                 head.push_str(" be");
                 concat(vec![text(head), self.value_after(value)])
             }
-            StmtKind::Set { name, value } => concat(vec![
-                text(format!("set {} to", name.text)),
+            StmtKind::Change { name, value } => concat(vec![
+                text(format!("change {} to", name.text)),
                 self.value_after(value),
             ]),
             StmtKind::If {

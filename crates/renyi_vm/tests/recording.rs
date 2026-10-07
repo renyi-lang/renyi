@@ -825,7 +825,7 @@ public function main() or fails with FileError needs console, filesystem.read("{
   repeat until reads is 3
     let text be filesystem.read_text(Path("{dir}/data/greeting.txt")) otherwise fail
     console.print(text)
-    set reads to reads + 1
+    change reads to reads + 1
   end
 end
 "#

@@ -134,7 +134,7 @@ impl<'s> Lexer<'s> {
                 b'=' => self.symbol_error(
                     "equals-sign",
                     "`=` is not Renyi",
-                    "write `let name be value` to define, `set name to value` to change, `is` to compare",
+                    "write `let name be value` to define, `change name to value` to change, `is` to compare",
                 ),
                 b'<' | b'>' => self.symbol_error(
                     "angle-comparison",

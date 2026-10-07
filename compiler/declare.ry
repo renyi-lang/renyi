@@ -401,12 +401,13 @@ public function add_module(world: World, tree: Module, is_library: Boolean) retu
   let mutable state be ModuleState(info: info, world: world)
   if name is "std.prelude" then
     let with_prelude be state.world with prelude: id
-    set state to state with world: with_prelude
+    change state to state with world: with_prelude
   end
   for each item in tree.items
     match item
-      when TypeItem(value: def) then set state to add_type(state: state, id: id, def: def)
-      when AbilityItem(value: abil) then set state to add_ability(state: state, id: id, abil: abil)
+      when TypeItem(value: def) then change state to add_type(state: state, id: id, def: def)
+      when AbilityItem(value: abil) then
+        change state to add_ability(state: state, id: id, abil: abil)
       otherwise continue
     end
   end
@@ -437,7 +438,7 @@ function add_type(state: ModuleState, id: Integer, def: TypeDefinition) returns 
       message: message,
       span: def.name.span
     )
-    set updated to push_diagnostic(world: updated, owner: id, diagnostic: diagnostic)
+    change updated to push_diagnostic(world: updated, owner: id, diagnostic: diagnostic)
   end
   let names be state.info.types.set(key: def.name.text, value: type_id)
   let module_info be state.info with types: names
@@ -466,7 +467,7 @@ function add_ability(state: ModuleState, id: Integer, abil: Ability) returns Mod
       message: message,
       span: abil.name.span
     )
-    set updated to push_diagnostic(world: updated, owner: id, diagnostic: diagnostic)
+    change updated to push_diagnostic(world: updated, owner: id, diagnostic: diagnostic)
   end
   let names be state.info.abilities.set(key: abil.name.text, value: ability_id)
   let module_info be state.info with abilities: names
@@ -479,7 +480,7 @@ public function module_id(world: World, name: Text) returns maybe Integer
   let mutable index be 0
   for each info in world.modules
     if info.name is name then return index end
-    set index to index + 1
+    change index to index + 1
   end
   return nothing
 end
@@ -506,34 +507,34 @@ public function resolve_all(world: World) returns World
 
   let mutable updated be world
   if updated.builtins.integer is 0 and updated.prelude is not nothing then
-    set updated to find_builtins(updated)
+    change updated to find_builtins(updated)
   end
   let total be updated.modules.length()
   let mutable id be 0
   repeat until id is at least total
-    set updated to resolve_imports(world: updated, id: id)
-    set id to id + 1
+    change updated to resolve_imports(world: updated, id: id)
+    change id to id + 1
   end
-  set id to 0
+  change id to 0
   repeat until id is at least total
-    set updated to resolve_type_items(world: updated, id: id)
-    set id to id + 1
+    change updated to resolve_type_items(world: updated, id: id)
+    change id to id + 1
   end
-  set id to 0
+  change id to 0
   repeat until id is at least total
-    set updated to resolve_ability_items(world: updated, id: id)
-    set id to id + 1
+    change updated to resolve_ability_items(world: updated, id: id)
+    change id to id + 1
   end
-  set id to 0
+  change id to 0
   repeat until id is at least total
-    set updated to resolve_function_items(world: updated, id: id)
-    set id to id + 1
+    change updated to resolve_function_items(world: updated, id: id)
+    change id to id + 1
   end
-  set updated to check_requirements(updated)
-  set id to 0
+  change updated to check_requirements(updated)
+  change id to 0
   repeat until id is at least total
-    set updated to check_see_also(world: updated, id: id)
-    set id to id + 1
+    change updated to check_see_also(world: updated, id: id)
+    change id to id + 1
   end
   return updated
 end
@@ -551,7 +552,7 @@ function check_requirements(world: World) returns World
         let lacks be "`{target}` lacks `{required_name}`"
         let message be "{lacks}, which `{abil.name}` requires of its implementations"
         let fix be "add `can {required_name}` to `{target}`, or implement `{required_name}` for it"
-        set updated to push_error(
+        change updated to push_error(
           world: updated,
           owner: implementation.owner,
           code: "missing-ability",
@@ -607,10 +608,15 @@ function check_see_also(world: World, id: Integer) returns World
   for each item in info.tree.items
     match item
       when FunctionItem(value: func) then
-        set updated to note_see_also(world: updated, id: id, docs: func.docs, span: func.name.span)
+        change updated to note_see_also(
+          world: updated,
+          id: id,
+          docs: func.docs,
+          span: func.name.span
+        )
       when ImplementationItem(value: implementation) then
         for each func in implementation.functions
-          set updated to note_see_also(
+          change updated to note_see_also(
             world: updated,
             id: id,
             docs: func.docs,
@@ -618,11 +624,16 @@ function check_see_also(world: World, id: Integer) returns World
           )
         end
       when TypeItem(value: def) then
-        set updated to note_see_also(world: updated, id: id, docs: def.docs, span: def.name.span)
+        change updated to note_see_also(world: updated, id: id, docs: def.docs, span: def.name.span)
       when AbilityItem(value: abil) then
-        set updated to note_see_also(world: updated, id: id, docs: abil.docs, span: abil.name.span)
+        change updated to note_see_also(
+          world: updated,
+          id: id,
+          docs: abil.docs,
+          span: abil.name.span
+        )
       when ConstantItem(value: constant) then
-        set updated to note_see_also(
+        change updated to note_see_also(
           world: updated,
           id: id,
           docs: constant.docs,
@@ -641,7 +652,7 @@ function note_see_also(world: World, id: Integer, docs: Docs, span: Span) return
   let mutable updated be world
   for each name in docs.see_also
     if not reference_exists(world: world, owner: id, name: name) then
-      set updated to push_error(
+      change updated to push_error(
         world: updated,
         owner: id,
         code: "unknown-reference",
@@ -776,7 +787,7 @@ function resolve_imports(world: World, id: Integer) returns World
   if not info.imports.is_empty() then return world end
   let mutable updated be world
   for each entry in info.tree.imports
-    set updated to resolve_import(world: updated, id: id, entry: entry)
+    change updated to resolve_import(world: updated, id: id, entry: entry)
   end
   return updated
 end
@@ -813,7 +824,7 @@ function resolve_import(world: World, id: Integer, entry: Import) returns World
       let mutable updated be world
       let info be module_at(world: updated, id: id)
       if info.imports.contains_key(namespace) then
-        set updated to push_error(
+        change updated to push_error(
           world: updated,
           owner: id,
           code: "duplicate-name",
@@ -823,9 +834,9 @@ function resolve_import(world: World, id: Integer, entry: Import) returns World
         )
       end
       let imports be info.imports.set(key: namespace, value: target)
-      set updated to update_module(world: updated, id: id, info: info with imports: imports)
+      change updated to update_module(world: updated, id: id, info: info with imports: imports)
       for each exposed in entry.exposed
-        set updated to resolve_exposed(
+        change updated to resolve_exposed(
           world: updated,
           id: id,
           target: target,
@@ -853,7 +864,7 @@ function resolve_exposed(
     when some(type_id) then
       let mutable updated be world
       if not type_at(world: updated, id: type_id).is_public then
-        set updated to private_name(
+        change updated to private_name(
           world: updated,
           id: id,
           text: text,
@@ -869,7 +880,7 @@ function resolve_exposed(
         when some(ability_id) then
           let mutable updated be world
           if not ability_at(world: updated, id: ability_id).is_public then
-            set updated to private_name(
+            change updated to private_name(
               world: updated,
               id: id,
               text: text,
@@ -1018,7 +1029,7 @@ public function lookup_variant(world: World, owner: Integer, name: Text) returns
       when SumKind(variants) then
         match variant_index(variants: variants, name: name)
           when some(index) then
-            set found to found.append(VariantRef(type_id: type_id, index: index))
+            change found to found.append(VariantRef(type_id: type_id, index: index))
           when nothing then continue
         end
       otherwise continue
@@ -1033,7 +1044,7 @@ public function variant_index(variants: List of VariantInfo, name: Text) returns
   let mutable index be 0
   for each variant in variants
     if variant.name is name then return index end
-    set index to index + 1
+    change index to index + 1
   end
   return nothing
 end
@@ -1335,8 +1346,8 @@ public function resolve_type_list(
   let mutable updated be world
   for each ty in tys
     let built be resolve_type(world: updated, owner: owner, params: params, ty: ty)
-    set out to out.append(built.value)
-    set updated to built.world
+    change out to out.append(built.value)
+    change updated to built.world
   end
   return Built(value: out, world: updated)
 end
@@ -1366,8 +1377,8 @@ function new_params(world: World, names: List of TypeName) returns Built of List
   for each name in names
     let id be updated.params.length()
     let info be ParamInfo(name: name.text, constraints: [])
-    set updated to updated with params: updated.params.append(info)
-    set out to out.append(NamedParam(name: name.text, id: id))
+    change updated to updated with params: updated.params.append(info)
+    change out to out.append(NamedParam(name: name.text, id: id))
   end
   return Built(value: out, world: updated)
 end
@@ -1379,7 +1390,7 @@ function for_any_params(world: World, owner: Integer, for_any: ForAny)
   let built be new_params(world: world, names: for_any.params)
   let mutable updated be built.world
   for each constraint in for_any.constraints
-    set updated to add_constraint(
+    change updated to add_constraint(
       world: updated,
       owner: owner,
       params: built.value,
@@ -1453,8 +1464,8 @@ function resolve_fields(
       external_name: field.external_name,
       span: field.span
     )
-    set out to out.append(info)
-    set updated to built.world
+    change out to out.append(info)
+    change updated to built.world
   end
   return Built(value: out, world: updated)
 end
@@ -1468,8 +1479,8 @@ function resolve_derives(world: World, owner: Integer, derives: List of Derive, 
   for each derive in derives
     match lookup_ability(world: updated, owner: owner, name: derive.ability_name.text)
       when some(ability_id) then
-        set out to out.append(ability_id)
-        set updated to check_derive(
+        change out to out.append(ability_id)
+        change updated to check_derive(
           world: updated,
           owner: owner,
           derive: derive,
@@ -1479,7 +1490,7 @@ function resolve_derives(world: World, owner: Integer, derives: List of Derive, 
       when nothing then
         let message be "unknown ability `{derive.ability_name.text}`"
         let fix be suggest_ability(world: updated, owner: owner, name: derive.ability_name.text)
-        set updated to push_error(
+        change updated to push_error(
           world: updated,
           owner: owner,
           code: "unknown-ability",
@@ -1505,7 +1516,7 @@ function check_derive(
   let mutable updated be world
   let ability_name be ability_at(world: world, id: ability_id).name
   if ability_name is "ToJson" or ability_name is "FromJson" then
-    set updated to check_kind_fields(world: updated, owner: owner, type_id: type_id)
+    change updated to check_kind_fields(world: updated, owner: owner, type_id: type_id)
   end
   if derive.fields.is_empty() then return updated end
   match type_at(world: world, id: type_id).kind
@@ -1519,7 +1530,7 @@ function check_derive(
               when some(close) then "did you mean `{close}`?"
               when nothing then "name one of {suggest.quoted(field_names)}"
             end
-          set updated to push_error(
+          change updated to push_error(
             world: updated,
             owner: owner,
             code: "unknown-field",
@@ -1544,7 +1555,7 @@ function check_kind_fields(world: World, owner: Integer, type_id: Integer) retur
         for each field in variant.fields
           if field.name is "kind" then
             let has_kind be "the variant `{variant.name}` has a field named `kind`"
-            set updated to push_error(
+            change updated to push_error(
               world: updated,
               owner: owner,
               code: "kind-field",
@@ -1568,7 +1579,7 @@ function resolve_type_items(world: World, id: Integer) returns World
   for each item in info.tree.items
     match item
       when TypeItem(value: def) then
-        set updated to resolve_type_item(world: updated, id: id, def: def)
+        change updated to resolve_type_item(world: updated, id: id, def: def)
       otherwise continue
     end
   end
@@ -1596,7 +1607,7 @@ function resolve_type_item(world: World, id: Integer, def: TypeDefinition) retur
     is_library: is_library
   )
   let with_kind be type_at(world: kind_built.world, id: type_id) with kind: kind_built.value
-  set updated to update_type(world: kind_built.world, id: type_id, info: with_kind)
+  change updated to update_type(world: kind_built.world, id: type_id, info: with_kind)
   let derives_built be resolve_definition_derives(
     world: updated,
     id: id,
@@ -1605,9 +1616,9 @@ function resolve_type_item(world: World, id: Integer, def: TypeDefinition) retur
   )
   let with_derives be type_at(world: derives_built.world, id: type_id)
     with derives: derives_built.value
-  set updated to update_type(world: derives_built.world, id: type_id, info: with_derives)
+  change updated to update_type(world: derives_built.world, id: type_id, info: with_derives)
   if def.is_public and def.docs.summary is nothing and not is_library then
-    set updated to push_error(
+    change updated to push_error(
       world: updated,
       owner: id,
       code: "purpose-missing",
@@ -1644,10 +1655,10 @@ function resolve_kind(
           params: params,
           fields: variant.fields
         )
-        set out to out.append(
+        change out to out.append(
           VariantInfo(name: variant.name.text, fields: built.value, span: variant.span)
         )
-        set updated to built.world
+        change updated to built.world
       end
       return Built(value: SumKind(variants: out), world: updated)
     when SubtypeDefinition(base, refinement) then
@@ -1685,7 +1696,7 @@ function resolve_ability_items(world: World, id: Integer) returns World
   for each item in info.tree.items
     match item
       when AbilityItem(value: abil) then
-        set updated to resolve_ability_item(world: updated, id: id, abil: abil)
+        change updated to resolve_ability_item(world: updated, id: id, abil: abil)
       otherwise continue
     end
   end
@@ -1713,17 +1724,17 @@ function resolve_ability_item(world: World, id: Integer, abil: Ability) returns 
     params: params,
     functions: abil.functions
   )
-  set updated to methods_built.world
+  change updated to methods_built.world
   let param_ids be for each param in params collect param.id
   let required be requirements_built.value
   let methods be methods_built.value
   let base be ability_at(world: updated, id: ability_id)
   let info be base with params: param_ids, requirements: required, methods: methods
-  set updated to update_ability(world: updated, id: ability_id, info: info)
+  change updated to update_ability(world: updated, id: ability_id, info: info)
   if abil.is_public
     and abil.docs.summary is nothing
     and not module_at(world: updated, id: id).is_library then
-    set updated to push_error(
+    change updated to push_error(
       world: updated,
       owner: id,
       code: "purpose-missing",
@@ -1744,11 +1755,11 @@ function ability_requirements(world: World, id: Integer, requirements: List of T
   for each requirement in requirements
     let name be named(requirement) otherwise continue
     match lookup_ability(world: updated, owner: id, name: name.text)
-      when some(required) then set out to out.append(required)
+      when some(required) then change out to out.append(required)
       when nothing then
         let message be "unknown ability `{name.text}`"
         let fix be suggest_ability(world: updated, owner: id, name: name.text)
-        set updated to push_error(
+        change updated to push_error(
           world: updated,
           owner: id,
           code: "unknown-ability",
@@ -1777,13 +1788,13 @@ function ability_methods(
     let mutable index be 0
     for each param in func.params
       if index is 0 and param.name.text is "self" then
-        set index to index + 1
+        change index to index + 1
         continue
       end
       let built be ability_param_type(world: updated, id: id, params: params, param: param)
-      set method_params to method_params.append(NamedTy(name: param.name.text, ty: built.value))
-      set updated to built.world
-      set index to index + 1
+      change method_params to method_params.append(NamedTy(name: param.name.text, ty: built.value))
+      change updated to built.world
+      change index to index + 1
     end
     let result_built be resolve_optional_type(
       world: updated,
@@ -1797,14 +1808,14 @@ function ability_methods(
       params: params,
       tys: func.failures
     )
-    set updated to failures_built.world
+    change updated to failures_built.world
     let method be AbilityMethod(
       name: func.name.text,
       params: method_params,
       result: result_built.value,
       failures: failures_built.value
     )
-    set out to out.append(method)
+    change out to out.append(method)
   end
   return Built(value: out, world: updated)
 end
@@ -1826,14 +1837,14 @@ function resolve_function_items(world: World, id: Integer) returns World
   let mutable updated be world
   let mutable index be 0
   for each item in info.tree.items
-    set updated to resolve_item(
+    change updated to resolve_item(
       world: updated,
       id: id,
       index: index,
       item: item,
       is_library: info.is_library
     )
-    set index to index + 1
+    change index to index + 1
   end
   return updated
 end
@@ -1967,15 +1978,15 @@ function declare_methods(
       body: ImplementationBody(item: index, method: function_index),
       is_library: is_library
     )
-    set updated to adopt_method(
+    change updated to adopt_method(
       world: declared.world,
       id: id,
       head: head,
       function_id: declared.value,
       func: func
     )
-    set functions to functions.append(declared.value)
-    set function_index to function_index + 1
+    change functions to functions.append(declared.value)
+    change function_index to function_index + 1
   end
   return Built(value: functions, world: updated)
 end
@@ -2040,7 +2051,7 @@ function implementation_head(
       end
     let plural be if expected is 1 then "" otherwise "s" end
     let found be args_built.value.length()
-    set updated to push_error(
+    change updated to push_error(
       world: updated,
       owner: id,
       code: "type-arity",
@@ -2096,7 +2107,7 @@ function adopt_method(
     id: function_id,
     info: info with params: params, is_method: true
   )
-  set updated to index_under(
+  change updated to index_under(
     world: updated,
     target: head.target,
     name: func.name.text,
@@ -2138,7 +2149,7 @@ function check_implementation_complete(
   let mutable updated be world
   for each name in expected
     if not written.contains(name) then
-      set updated to push_error(
+      change updated to push_error(
         world: updated,
         owner: id,
         code: "missing-method",
@@ -2150,7 +2161,7 @@ function check_implementation_complete(
   end
   for each func in implementation.functions
     if not expected.contains(func.name.text) then
-      set updated to push_error(
+      change updated to push_error(
         world: updated,
         owner: id,
         code: "unknown-method",
@@ -2178,7 +2189,7 @@ function resolve_constant(
   let built be resolve_type(world: world, owner: id, params: [], ty: constant.annotation)
   let mutable updated be built.world
   if constant.is_public and constant.docs.summary is nothing and not is_library then
-    set updated to push_error(
+    change updated to push_error(
       world: updated,
       owner: id,
       code: "purpose-missing",
@@ -2305,7 +2316,7 @@ public function declare_function(
     func: func,
     grants: signature.grants
   )
-  set updated to check_function_docs(
+  change updated to check_function_docs(
     world: updated,
     owner: owner,
     func: func,
@@ -2332,8 +2343,8 @@ public function declare_function(
     expose_as_tool: func.docs.expose_as_tool,
     span: func.span
   )
-  set updated to updated with functions: updated.functions.append(info)
-  set updated to register_function(
+  change updated to updated with functions: updated.functions.append(info)
+  change updated to register_function(
     world: updated,
     owner: owner,
     func: func,
@@ -2363,7 +2374,7 @@ function declare_params(world: World, owner: Integer, params: List of NamedParam
   let mutable index be 0
   for each param in func.params
     if names.contains(param.name.text) then
-      set updated to push_error(
+      change updated to push_error(
         world: updated,
         owner: owner,
         code: "duplicate-name",
@@ -2372,7 +2383,7 @@ function declare_params(world: World, owner: Integer, params: List of NamedParam
         fix: "rename one of them"
       )
     end
-    set names to names.append(param.name.text)
+    change names to names.append(param.name.text)
     let built be param_type(
       world: updated,
       owner: owner,
@@ -2380,9 +2391,9 @@ function declare_params(world: World, owner: Integer, params: List of NamedParam
       param: param,
       index: index
     )
-    set updated to built.world
+    change updated to built.world
     if index is greater than 0 and param.name.text is "self" then
-      set updated to push_error(
+      change updated to push_error(
         world: updated,
         owner: owner,
         code: "self-position",
@@ -2391,8 +2402,8 @@ function declare_params(world: World, owner: Integer, params: List of NamedParam
         fix: "move `self` before the other parameters"
       )
     end
-    set out to out.append(NamedTy(name: param.name.text, ty: built.value))
-    set index to index + 1
+    change out to out.append(NamedTy(name: param.name.text, ty: built.value))
+    change index to index + 1
   end
   return DeclaredParams(params: out, world: updated)
 end
@@ -2423,7 +2434,7 @@ function check_capabilities(world: World, owner: Integer, func: Function, grants
   let mutable index be 0
   for each grant in grants
     let syntax be func.capabilities.at(index) otherwise crash with "a capability clause"
-    set updated to check_capability(
+    change updated to check_capability(
       world: updated,
       owner: owner,
       func: func,
@@ -2431,7 +2442,7 @@ function check_capabilities(world: World, owner: Integer, func: Function, grants
       grant: grant,
       syntax: syntax
     )
-    set index to index + 1
+    change index to index + 1
   end
   return updated
 end
@@ -2461,7 +2472,7 @@ function check_capability(
   end
   let mutable updated be world
   if effects.has_grant_clauses(grant) and func.name.text is not "main" then
-    set updated to push_error(
+    change updated to push_error(
       world: updated,
       owner: owner,
       code: "grant-clause",
@@ -2470,10 +2481,10 @@ function check_capability(
       fix: "move it to the `needs` of `main` or of a `test`"
     )
   end
-  set updated to check_sinks(world: updated, owner: owner, grant: grant, span: syntax.span)
-  set updated to check_budget(world: updated, owner: owner, grant: grant, span: syntax.span)
+  change updated to check_sinks(world: updated, owner: owner, grant: grant, span: syntax.span)
+  change updated to check_budget(world: updated, owner: owner, grant: grant, span: syntax.span)
   if not grant.only_to.is_empty() and func.name.text is "main" then
-    set updated to check_guard_reachable(
+    change updated to check_guard_reachable(
       world: updated,
       owner: owner,
       grants: grants,
@@ -2483,7 +2494,7 @@ function check_capability(
   end
   let path be grant.path.join(".")
   if not effects.is_known(grant) then
-    set updated to push_error(
+    change updated to push_error(
       world: updated,
       owner: owner,
       code: "unknown-capability",
@@ -2492,7 +2503,7 @@ function check_capability(
       fix: "one of {effects.tree_spelling()}"
     )
   otherwise if grant.scope is not nothing and not effects.takes_scope(grant.path) then
-    set updated to push_error(
+    change updated to push_error(
       world: updated,
       owner: owner,
       code: "capability-scope",
@@ -2522,7 +2533,7 @@ function check_sinks(world: World, owner: Integer, grant: Grant, span: Span) ret
     let plain be effects.plain(path: sink.path, scope: nothing)
     if not effects.is_known(plain) then
       let joined be sink.path.join(".")
-      set updated to push_error(
+      change updated to push_error(
         world: updated,
         owner: owner,
         code: "unknown-capability",
@@ -2567,10 +2578,10 @@ function check_guard_reachable(
     let wanted be effects.plain(path: sink.path, scope: sink.scope)
     for each granted in grants
       if effects.covers(granted: granted, needed: wanted, runtime_scoped: true) then
-        set reachable to true
+        change reachable to true
       end
       if effects.covers(granted: wanted, needed: granted, runtime_scoped: true) then
-        set reachable to true
+        change reachable to true
       end
     end
   end
@@ -2600,7 +2611,7 @@ function check_function_docs(
 
   let mutable updated be world
   if func.is_public and func.docs.summary is nothing and not is_library and is_item_body(body) then
-    set updated to push_error(
+    change updated to push_error(
       world: updated,
       owner: owner,
       code: "purpose-missing",
@@ -2612,7 +2623,7 @@ function check_function_docs(
   if not func.docs.examples.is_empty() and not grants.is_empty() then
     let spelled be effects.spellings(grants).join(", ")
     let has_examples be "`{func.name.text}` has `example:` lines but needs {spelled}"
-    set updated to push_error(
+    change updated to push_error(
       world: updated,
       owner: owner,
       code: "example-effects",
@@ -2646,9 +2657,9 @@ function register_function(
 
   let mutable updated be world
   if is_method then
-    set updated to register_method(world: updated, owner: owner, func: func, id: id, body: body)
+    change updated to register_method(world: updated, owner: owner, func: func, id: id, body: body)
   otherwise
-    set updated to check_duplicate(world: updated, owner: owner, func: func)
+    change updated to check_duplicate(world: updated, owner: owner, func: func)
   end
   let info be module_at(world: updated, id: owner)
   let existing be info.functions.get(func.name.text) otherwise []
@@ -2693,7 +2704,7 @@ function register_method(
     let first_param be func.params.first() otherwise crash with "a self parameter"
     let is_method_of be "`{func.name.text}` is a method of `{type_info.name}`"
     let method_of be "{is_method_of}, which `{owner_name}` declares"
-    set updated to push_error(
+    change updated to push_error(
       world: updated,
       owner: owner,
       code: "method-module",
@@ -2734,7 +2745,7 @@ function check_method_signature(
   let actual be actual_shape(info: info, skip: skip, target: head.target)
   let mutable problems be signature_problems(world: world, expected: expected, actual: actual)
   if not info.capabilities.is_empty() then
-    set problems to problems.append("it declares `needs`; an ability's method has no effects")
+    change problems to problems.append("it declares `needs`; an ability's method has no effects")
   end
   if problems.is_empty() then return world end
   let signature be spell_signature(world: world, name: func.name.text, expected: expected)
@@ -2756,7 +2767,7 @@ function expected_shape(method: AbilityMethod, target: Ty, subst: List of Substi
   let mutable params: List of NamedTy be []
   for each param in method.params
     let own be types.with_self(ty: param.ty, self_type: target)
-    set params to params.append(
+    change params to params.append(
       NamedTy(name: param.name, ty: types.substitute(ty: own, bindings: subst))
     )
   end
@@ -2774,7 +2785,7 @@ function actual_shape(info: FunctionInfo, skip: Integer, target: Ty) returns Met
 
   let mutable params: List of NamedTy be []
   for each param in info.params.drop(skip)
-    set params to params.append(
+    change params to params.append(
       NamedTy(name: param.name, ty: types.with_self(ty: param.ty, self_type: target))
     )
   end
@@ -2802,10 +2813,10 @@ function pair_params(params: List of Integer, args: List of Ty) returns List of 
   let mutable index be 0
   for each param in params
     match args.at(index)
-      when some(arg) then set out to out.append(Substitution(param: param, ty: arg))
+      when some(arg) then change out to out.append(Substitution(param: param, ty: arg))
       when nothing then break
     end
-    set index to index + 1
+    change index to index + 1
   end
   return out
 end
@@ -2828,7 +2839,7 @@ function signature_problems(world: World, expected: MethodShape, actual: MethodS
     let plural be if actual.params.length() is 1 then "" otherwise "s" end
     let found be actual.params.length()
     let wanted be expected.params.length()
-    set problems to problems.append(
+    change problems to problems.append(
       "it takes {found} parameter{plural} after `self`; the ability declares {wanted}"
     )
   otherwise
@@ -2838,22 +2849,22 @@ function signature_problems(world: World, expected: MethodShape, actual: MethodS
       if found.name is not wanted.name or not conforms(expected: wanted.ty, actual: found.ty) then
         let shown be show(world: world, ty: found.ty)
         let wanted_shown be show(world: world, ty: wanted.ty)
-        set problems to problems.append(
+        change problems to problems.append(
           "its parameter `{found.name}: {shown}` should be `{wanted.name}: {wanted_shown}`"
         )
       end
-      set index to index + 1
+      change index to index + 1
     end
   end
   if not results_conform(expected: expected.result, actual: actual.result) then
     let shown be spell_result(world: world, ty: actual.result)
     let wanted be spell_result(world: world, ty: expected.result)
-    set problems to problems.append("it returns {shown}; the ability declares {wanted}")
+    change problems to problems.append("it returns {shown}; the ability declares {wanted}")
   end
   if not failures_conform(expected: expected.failures, actual: actual.failures) then
     let shown be spell_fails(world: world, failures: actual.failures)
     let wanted be spell_fails(world: world, failures: expected.failures)
-    set problems to problems.append("it fails with {shown}; the ability declares {wanted}")
+    change problems to problems.append("it fails with {shown}; the ability declares {wanted}")
   end
   return problems
 end
@@ -2888,9 +2899,9 @@ function spell_signature(world: World, name: Text, expected: MethodShape) return
   let mutable signature be "{name}(self"
   for each param in expected.params
     let shown be show(world: world, ty: param.ty)
-    set signature to "{signature}, {param.name}: {shown}"
+    change signature to "{signature}, {param.name}: {shown}"
   end
-  set signature to "{signature})"
+  change signature to "{signature})"
   let result be result_clause(world: world, result: expected.result)
   let failures be failures_clause(world: world, failures: expected.failures)
   return "{signature}{result}{failures}"
@@ -2965,7 +2976,7 @@ function all_conform(expected: List of Ty, actual: List of Ty) returns Boolean
   for each wanted in expected
     let found be actual.at(index) otherwise crash with "a type"
     if not conforms(expected: wanted, actual: found) then return false end
-    set index to index + 1
+    change index to index + 1
   end
   return true
 end

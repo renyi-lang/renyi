@@ -294,7 +294,7 @@ freeze, or take it out of the frozen surface until it exists.
   subprocess loop): `renyi version` 132 ms, `renyi run examples/hello.ry`
   100 ms; a trial-division prime count to 200,000 takes 2.50 s where
   CPython 3.13 takes 0.78 s, 3.2 times slower on integer loops. `Text.matches` compiles its pattern at every
-  call; last-use moves exist only for the receiver of `set x to
+  call; last-use moves exist only for the receiver of `change x to
   x.method(...)` (decision O1 promises them for arguments).
 - **Index and MCP details**: no per-module metric maxima; `branches`
   counts every `and`/`or` (open item R5-3); the `paths` metric strips

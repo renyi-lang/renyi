@@ -288,7 +288,7 @@ pub enum StmtKind {
         ty: Option<Type>,
         value: Expr,
     },
-    Set {
+    Change {
         name: Name,
         value: Expr,
     },

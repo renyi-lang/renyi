@@ -664,7 +664,7 @@ pub(crate) struct Compiler<'c, 'w> {
     loops: Vec<LoopContext>,
     handler_depth: usize,
     pub in_test: bool,
-    /// `set x to x.method(...)`: the receiver's name token is loaded with
+    /// `change x to x.method(...)`: the receiver's name token is loaded with
     /// `LoadMove`, so the collection is updated in place.
     move_receiver: Option<Span>,
 }
