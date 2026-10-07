@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated: 2026-10-06, session 8 (stage 2 of the gap audit of
+Last updated: 2026-10-07, session 8 (stage 2 of the gap audit of
 `docs/GAPS.md`: the formal grammar `docs/grammar.ebnf` with decision V12;
 the language reference `docs/reference.md`, normative, held to the
 grammar file and the crates by a test; the sketch retired to the design
@@ -13,7 +13,9 @@ with decisions X1 to X4: the development profile optimizes the VM,
 then X5, the emitter writes a bytecode file, and X6, mimalloc; then the
 residue of stage 1, decisions Y1 to Y4; then the bytecode file itself,
 decisions Z1 to Z4, with `renyi compile` and the loader; then the rename
-of `set` to `change`, decision AA1).
+of `set` to `change`, decision AA1; then the emitter written in Renyi,
+`compiler/emit.ry` and `compiler/compile.ry`, held equal to `renyi
+compile` byte for byte by the same test, decision Z3).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
