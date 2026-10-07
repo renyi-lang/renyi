@@ -143,6 +143,12 @@ pub enum Op {
     Deadline(u16),
     /// Fail with `TimedOut` when the deadline in the slot has passed.
     CheckDeadline(u16),
+    /// Store the height of the operand stack in the slot: the entry of a
+    /// statement loop (decision Y4).
+    MarkStack(u16),
+    /// Drop the operands above the height stored in the slot: `break` and
+    /// `continue` leave the operands of the expression they interrupt.
+    UnwindStack(u16),
     /// `check` in a test: pop a Boolean; when false, fail the test with the
     /// text constant as the message.
     Check(u32),
@@ -150,7 +156,7 @@ pub enum Op {
 
 impl Op {
     /// How many kinds `kind` tells apart.
-    pub const KINDS: usize = 50;
+    pub const KINDS: usize = 52;
 
     /// The operation's kind as a small number below `KINDS`, with its name:
     /// the profiler counts by it (decision X4).
@@ -205,7 +211,9 @@ impl Op {
             Op::SortByKey { .. } => (46, "SortByKey"),
             Op::Deadline(_) => (47, "Deadline"),
             Op::CheckDeadline(_) => (48, "CheckDeadline"),
-            Op::Check(_) => (49, "Check"),
+            Op::MarkStack(_) => (49, "MarkStack"),
+            Op::UnwindStack(_) => (50, "UnwindStack"),
+            Op::Check(_) => (51, "Check"),
         }
     }
 }

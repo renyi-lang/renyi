@@ -898,4 +898,5 @@ open items start at R3-1 and are listed here when they arise.
   types. Decided as V10: one method, `to_list`, in section 5.
 - R3-2: constraints with type arguments (`for any Bag where Bag can
   Iterable of Item`), so that generic code can walk a parameter; v1 walks
-  concrete types only.
+  concrete types only. Deferred until after the bytecode emitter by
+  decision Y4.

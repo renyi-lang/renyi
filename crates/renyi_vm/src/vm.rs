@@ -314,9 +314,21 @@ impl<'p> Vm<'p> {
         }
     }
 
-    /// Answer every effect of the run from a recording, once each recorded
-    /// call is checked against the grant.
+    /// Answer every effect of the run from a recording, once the grant the
+    /// recording names and then each recorded call are checked against the
+    /// grant (decision Y2).
     pub fn replay_with(&mut self, recording: Recording) -> Result<(), String> {
+        for spelled in &recording.grant {
+            let capability = grant::parse_capability(spelled)
+                .map_err(|detail| format!("the recording's grant: {detail}"))?;
+            if !effects::covered(&self.grant, &capability, true) {
+                return Err(format!(
+                    "the recording's grant names {}, which the grant {} does not cover",
+                    capability.spelling(),
+                    grant_text(&self.grant)
+                ));
+            }
+        }
         for call in &recording.calls {
             let capability = grant::parse_capability(&call.capability)
                 .map_err(|detail| format!("the recording's call #{}: {detail}", call.sequence))?;
@@ -442,13 +454,13 @@ impl<'p> Vm<'p> {
         };
         if !effects::covered(self.effective_grant(), &effect, true) {
             self.expected = None;
-            return self.denied(function, &effect);
+            return self.denied(function, &effect, args);
         }
         // `filesystem.copy` and `move` write their target too
         if let Some(target) = grant::target_effect_of(meta, args) {
             if !effects::covered(self.effective_grant(), &target, true) {
                 self.expected = None;
-                return self.denied(function, &target);
+                return self.denied(function, &target, args);
             }
         }
         if let Some(guard) = self.blocking_guard(origins, &effect) {
@@ -473,7 +485,7 @@ impl<'p> Vm<'p> {
         let at_ms = natives::now_millis() - self.started;
         if let Some(budget) = self.exhausted(&effect, at_ms) {
             self.expected = None;
-            return self.over_budget(function, &effect, &budget);
+            return self.over_budget(function, &effect, &budget, args);
         }
         let Some(native) = native else {
             return Err(self.unavailable(function));
@@ -618,8 +630,14 @@ impl<'p> Vm<'p> {
     }
 
     /// A call outside the grant: the module's error when the primitive can
-    /// fail (decision J11), else a crash.
-    fn denied(&mut self, function: FunctionId, effect: &Capability) -> Result<Value, Interrupt> {
+    /// fail (decision J11), else a crash naming the function whose `needs`
+    /// narrowed the grant (decision Y1).
+    fn denied(
+        &mut self,
+        function: FunctionId,
+        effect: &Capability,
+        args: &[Value],
+    ) -> Result<Value, Interrupt> {
         let program = self.program;
         let meta = &program.function_metas[function];
         let scope = Value::text(effect.scope.clone().unwrap_or_default());
@@ -635,6 +653,11 @@ impl<'p> Vm<'p> {
             }
             ("std.sqlite", false) => {
                 self.fail_variant("std.sqlite", "DbError", "PermissionDenied", vec![scope])
+            }
+            // `serve` names its port: the capability carries no scope
+            ("std.server", false) => {
+                let port = args.first().cloned().unwrap_or(Value::Nothing);
+                self.fail_variant("std.server", "StartError", "PermissionDenied", vec![port])
             }
             _ => Err(Interrupt::crash(format!(
                 "`{}` needs {}, which the grant {}{} does not allow",
@@ -655,6 +678,7 @@ impl<'p> Vm<'p> {
         function: FunctionId,
         effect: &Capability,
         budget: &str,
+        args: &[Value],
     ) -> Result<Value, Interrupt> {
         let program = self.program;
         let meta = &program.function_metas[function];
@@ -668,6 +692,10 @@ impl<'p> Vm<'p> {
             }
             ("std.sqlite", false) => {
                 self.fail_variant("std.sqlite", "DbError", "OverBudget", vec![scope])
+            }
+            ("std.server", false) => {
+                let port = args.first().cloned().unwrap_or(Value::Nothing);
+                self.fail_variant("std.server", "StartError", "OverBudget", vec![port])
             }
             _ => Err(Interrupt::crash(format!(
                 "`{}` exceeds the budget `{budget}`",
@@ -1634,6 +1662,17 @@ impl<'p> Vm<'p> {
                         natives::now_millis() + limit,
                         limit,
                     )));
+                }
+                Op::MarkStack(slot) => {
+                    let height = self.stack.len() as i64;
+                    self.stack[base + *slot as usize] = Value::integer(height);
+                }
+                Op::UnwindStack(slot) => {
+                    let height = match &self.stack[base + *slot as usize] {
+                        Value::Integer(Int::Small(height)) => *height as usize,
+                        _ => crash!("the loop's stack mark is missing".to_string()),
+                    };
+                    self.stack.truncate(height);
                 }
                 Op::CheckDeadline(slot) => {
                     let expired = match &self.stack[base + *slot as usize] {

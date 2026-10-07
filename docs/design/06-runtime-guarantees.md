@@ -87,7 +87,9 @@ in the order the calls completed. It goes to `--to FILE`, by default
   calls are matched to entries by primitive and arguments first, and by
   sequence only when several entries match (two identical requests).
 - The recording names the grant, and a replay checks that the recording
-  does not exceed the grant of the test or program it is replayed under.
+  does not exceed the grant of the test or program it is replayed under:
+  the `grant` header first, then the capability of every recorded call
+  (decision Y2).
 
 `renyi record --redact NAME` keeps a secret out of a recording: the
 argument, the map entry (a header) or the environment variable of that
@@ -191,11 +193,15 @@ per UNIT`. The runtime keeps a counter per budgeted capability and scope:
 a sliding window for `second`, `minute`, `hour` and `day`, a plain count for
 `run`. A primitive call under the capability that would exceed the budget
 fails with the module's error type, `HttpError.OverBudget(host: Text)`,
-`FileError.OverBudget(path: Path)`, `ProcessError.OverBudget(program:
+`FileError.OverBudget(path: Path)`, `DbError.OverBudget(path: Path)`,
+`StartError.OverBudget(port: Port)`, `ProcessError.OverBudget(program:
 Text)`; the program handles it like any failure (`otherwise`, a `match`, a
 retry). Budgets apply to `network`, `process` and `filesystem` and their
 children; `console`, `time`, `random`, `environment` and `foreign` take
-none.
+none. A denied call is reported the same way (`PermissionDenied`,
+`HostNotAllowed`, decision J11); a primitive that cannot fail crashes,
+naming the function whose `needs` narrowed the grant, and a path scope
+contains a path by its text, with nothing resolved on disk (decision Y1).
 
 The checker rejects a budget on any function other than `main` or a test
 (`grant-clause`): a budget is a property of the whole run, like the grant.

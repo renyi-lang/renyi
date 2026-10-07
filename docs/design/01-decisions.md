@@ -1563,3 +1563,71 @@ same batch: the development profile keeps the front end and the
 checker unoptimized (X1 stands), and the residue of stage 1 (`docs/
 GAPS.md`, section 7, the status of session 7) is finished before the
 emitter is written. (user)
+
+## Y. The residue of stage 1 (session 8)
+
+The owner's order after X6 was to finish what stage 1 of `docs/GAPS.md`
+(section 7) left open before the bytecode emitter: entries 1.8, 1.14,
+1.17 and 1.18 of the audit and the sketch's open item R3-2. Each was
+read in full and the design choices asked as one batch of four.
+
+**Y1. A denied primitive that cannot fail crashes; the server fails.**
+Decision J11 reports a scope denial through the primitive's ordinary
+error type, which a primitive without a failure type does not have:
+`filesystem.exists`, `environment.get` and their kind crash when the
+effective grant does not allow the call, and the crash names the
+function whose `needs` narrowed the grant. This is now the rule (the
+reference, section 11), not a gap: giving such primitives a failure
+type would make every call to them take `otherwise`. The server joins
+the modules that fail: `serve` outside the grant is
+`StartError.PermissionDenied(port)`, past a budget the new
+`StartError.OverBudget(port)` (`library/std/server.ry`). Containment of
+a path scope stays lexical, written into the reference: a scope
+contains a path by its text once `.`, `..` and the separators are
+normalized, nothing is resolved on disk, so a symbolic link under the
+scope reaches wherever it points. Canonical paths would cost a system
+call per check and change the answer with the state of the disk, which
+a replay cannot reproduce. (user)
+
+**Y2. A replay compares the recording's grant with the `needs`.**
+`06-runtime-guarantees.md` says a replay checks that the recording does
+not exceed the grant it is replayed under, and the implementation
+checked each recorded call's capability but never the `grant` header.
+Now `replay_with` checks the header first, then the calls: every
+capability the header names must be covered by the effective grant of
+the test or program, else the replay is refused naming the capability
+and the grant. The six fixtures of the corpus already fit their tests'
+`needs`. (user)
+
+**Y3. Collections keep the derived `Equal` and `Hash`.** A declared
+`equals` decides `is` and `is not` (stage 1); `Set` items, `Map` keys,
+`distinct`, `to_set`, `contains` and `index_of` compare and hash by
+structure and consult no declared `equals` or `hash`, as the ability
+table of the library sketch said and the reference now says (section
+5). Consulting them would make a hash depend on user code and a
+collection's behaviour on the implementation in scope, which the
+derived form avoids; a type that wants its own notion of equality in a
+collection keys it by a field. In the same entry: `repeat`, `pad_left`,
+`pad_right` and `rounded` take a count that fits a machine word, and a
+larger `Integer` is a crash, `this Integer is too large for the
+operation`, written into the reference (section 7) rather than made a
+failure. (user)
+
+**Y4. The loop unwinds its operands; a refinement sees its own field;
+R3-2 waits.** Entry 1.18 had two parts. (i) `break` or `continue` as
+the outcome of an `if` or `match` expression nested in another
+expression left the interrupted expression's operands on the stack: a
+statement loop now marks the operand stack's height at its entry
+(`Op::MarkStack`) and every `break` and `continue` drops the operands
+above the mark (`Op::UnwindStack`) before it jumps, so the stack of a
+long loop no longer grows and the emitter of X5 can assume a fixed
+height at every loop boundary. (ii) The reference says a refinement is
+a condition "over the field's name", and both checkers bound every
+field of the record or variant: a field's condition now sees that field
+alone (a subtype's `value`), and a condition that names another field
+of the type is the error `refinement-field`, with the fix to check both
+fields where the value is built; the condition code of the VM still
+takes every field, unchanged. The sketch's open item R3-2 (constraints
+with type arguments, `for any Bag where Bag can Iterable of Item`) is
+deferred until after the emitter: it needs a design round of its own
+and nothing in the compiler waits on it. (user)

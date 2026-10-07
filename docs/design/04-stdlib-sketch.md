@@ -557,6 +557,7 @@ end
 public type StartError is one of
   PortInUse(port: Port)
   PermissionDenied(port: Port)
+  OverBudget(port: Port)
 end
 
 public function serve(port: Port, handler: function(Request) returns Response)

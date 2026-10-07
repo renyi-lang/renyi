@@ -199,7 +199,8 @@ fn a_run_is_recorded_and_replayed() {
         other => panic!("{other:?}"),
     }
 
-    // a recording whose calls the grant does not cover is refused
+    // a recording whose grant header the grant does not cover is refused
+    // before its calls are looked at (decision Y2)
     let refused = run(
         &program,
         Options {
@@ -215,7 +216,52 @@ fn a_run_is_recorded_and_replayed() {
         refused.outcome,
         RunOutcome::Crashed {
             message: format!(
+                "the recording's grant names random, which the grant console, filesystem.read(\"{dir}\"), time does not cover"
+            ),
+            location: None
+        }
+    );
+    // a header within the grant whose calls are not: the call is named
+    let mut trimmed = recording.clone();
+    trimmed.grant.retain(|capability| capability != "random");
+    let refused = run(
+        &program,
+        Options {
+            replay: Some(trimmed),
+            narrowing: Narrowing {
+                deny: vec![parse_capability("random").unwrap()],
+                ..Narrowing::default()
+            },
+            ..options(&streams)
+        },
+    );
+    assert_eq!(
+        refused.outcome,
+        RunOutcome::Crashed {
+            message: format!(
                 "the recording's call #1 uses random, which the grant console, filesystem.read(\"{dir}\"), time does not cover"
+            ),
+            location: None
+        }
+    );
+    // a header wider than the grant is refused although no call uses the
+    // extra capability
+    let mut widened = recording.clone();
+    widened
+        .grant
+        .push("network.http(\"api.example.com\")".to_string());
+    let refused = run(
+        &program,
+        Options {
+            replay: Some(widened),
+            ..options(&streams)
+        },
+    );
+    assert_eq!(
+        refused.outcome,
+        RunOutcome::Crashed {
+            message: format!(
+                "the recording's grant names network.http(\"api.example.com\"), which the grant console, filesystem.read(\"{dir}\"), random, time does not cover"
             ),
             location: None
         }

@@ -8,7 +8,7 @@ use crate::effects::{covered, Capability};
 use crate::refine::{self, Literal, Verdict};
 use crate::suggest::{closest, conversion_fix, foreign_function, foreign_value, quoted};
 use crate::types::*;
-use crate::world::{head_type, BodyLocation, FunctionInfo, TypeKindInfo, World};
+use crate::world::{head_type, BodyLocation, FieldInfo, FunctionInfo, TypeKindInfo, World};
 
 struct VarInfo {
     binding: Option<Ty>,
@@ -45,6 +45,32 @@ struct Binding {
 
 struct Scope {
     bindings: Vec<Binding>,
+}
+
+/// The field whose refinement condition is being checked, with the other
+/// fields of its type, which the condition may not read (decision Y4).
+struct ConditionScope {
+    type_name: String,
+    field: String,
+    others: Vec<String>,
+}
+
+/// A field's condition sees the field alone (decision Y4).
+fn bindings_of(field: &FieldInfo) -> Vec<(String, Ty)> {
+    vec![(field.name.clone(), field.ty.clone())]
+}
+
+fn condition_scope(type_name: &str, fields: &[FieldInfo], index: usize) -> ConditionScope {
+    ConditionScope {
+        type_name: type_name.to_string(),
+        field: fields[index].name.clone(),
+        others: fields
+            .iter()
+            .enumerate()
+            .filter(|(other, _)| *other != index)
+            .map(|(_, field)| field.name.clone())
+            .collect(),
+    }
 }
 
 /// What a task of `run concurrently` may not touch (decision V7): the
@@ -234,6 +260,9 @@ pub struct Checker<'w> {
     /// The `for any` parameters of the function being checked, in scope for
     /// the type annotations of its body.
     type_params: Vec<(String, ParamId)>,
+    /// Set while a field's refinement condition is checked: another field
+    /// of the type named in it is `refinement-field` (decision Y4).
+    condition: Option<ConditionScope>,
 }
 
 impl<'w> Checker<'w> {
@@ -264,6 +293,7 @@ impl<'w> Checker<'w> {
             depth: 0,
             task: None,
             type_params: Vec::new(),
+            condition: None,
         }
     }
 
@@ -1104,7 +1134,7 @@ impl<'w> Checker<'w> {
 
     /// The refinement conditions of a type, the `index`th item of the
     /// module: a subtype's `where value ...` and the field conditions of a
-    /// record or a variant, each a Boolean expression over the fields.
+    /// record or a variant, each a Boolean expression over its own field.
     pub fn check_type_conditions(&mut self, index: usize, def: &TypeDef) {
         let Some(type_id) = self.world.modules[self.module]
             .types
@@ -1124,13 +1154,9 @@ impl<'w> Checker<'w> {
                     variant: None,
                     field: None,
                 };
-                self.check_condition_body(owner, &bindings, condition);
+                self.check_condition_body(owner, &bindings, condition, None);
             }
             TypeKindInfo::Record(fields) => {
-                let bindings: Vec<(String, Ty)> = fields
-                    .iter()
-                    .map(|f| (f.name.clone(), f.ty.clone()))
-                    .collect();
                 for (field_index, field) in fields.iter().enumerate() {
                     if let Some(condition) = &field.refinement {
                         let owner = BodyLocation::Condition {
@@ -1138,17 +1164,18 @@ impl<'w> Checker<'w> {
                             variant: None,
                             field: Some(field_index),
                         };
-                        self.check_condition_body(owner, &bindings, condition);
+                        let scope = condition_scope(&def.name.text, fields, field_index);
+                        self.check_condition_body(
+                            owner,
+                            &bindings_of(field),
+                            condition,
+                            Some(scope),
+                        );
                     }
                 }
             }
             TypeKindInfo::Sum(variants) => {
                 for (tag, variant) in variants.iter().enumerate() {
-                    let bindings: Vec<(String, Ty)> = variant
-                        .fields
-                        .iter()
-                        .map(|f| (f.name.clone(), f.ty.clone()))
-                        .collect();
                     for (field_index, field) in variant.fields.iter().enumerate() {
                         if let Some(condition) = &field.refinement {
                             let owner = BodyLocation::Condition {
@@ -1156,7 +1183,14 @@ impl<'w> Checker<'w> {
                                 variant: Some(tag),
                                 field: Some(field_index),
                             };
-                            self.check_condition_body(owner, &bindings, condition);
+                            let scope =
+                                condition_scope(&def.name.text, &variant.fields, field_index);
+                            self.check_condition_body(
+                                owner,
+                                &bindings_of(field),
+                                condition,
+                                Some(scope),
+                            );
                         }
                     }
                 }
@@ -1165,14 +1199,17 @@ impl<'w> Checker<'w> {
         }
     }
 
-    /// One condition as a small body: the fields are its parameters.
+    /// One condition as a small body: the field is its parameter, and the
+    /// scope names the other fields, which it may not read (decision Y4).
     fn check_condition_body(
         &mut self,
         owner: BodyLocation,
         bindings: &[(String, Ty)],
         condition: &Expr,
+        scope: Option<ConditionScope>,
     ) {
         self.owner = owner;
+        self.condition = scope;
         self.context = Context {
             name: "a refinement".to_string(),
             returns: None,
@@ -1201,6 +1238,7 @@ impl<'w> Checker<'w> {
         }
         self.pop_scope();
         self.finish_body();
+        self.condition = None;
     }
 
     /// A top-level constant, the `index`th item of the module.
@@ -2389,6 +2427,24 @@ impl<'w> Checker<'w> {
         if let Some(binding) = self.lookup(&name.text) {
             binding.used = true;
             return Info::plain(binding.ty.clone());
+        }
+        // a refinement condition sees its own field alone (decision Y4)
+        let other_field = self.condition.as_ref().and_then(|scope| {
+            scope.others.contains(&name.text).then(|| {
+                format!(
+                    "the condition of `{}` reads `{}`, another field of `{}`",
+                    scope.field, name.text, scope.type_name
+                )
+            })
+        });
+        if let Some(message) = other_field {
+            self.error_fix(
+                "refinement-field",
+                message,
+                name.span,
+                "a refinement sees only its own field; check both where the value is built",
+            );
+            return Info::plain(Ty::Error);
         }
         if let Some(constant) = self.world.modules[self.module].constants.get(&name.text) {
             let ty = constant.ty.clone();

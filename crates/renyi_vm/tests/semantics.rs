@@ -12,6 +12,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use renyi_syntax::SourceFile;
+use renyi_vm::bytecode::Op;
 use renyi_vm::grant::parse_capability;
 use renyi_vm::{compile_project, run_program, Narrowing, Options, Program, RunOutcome};
 
@@ -490,4 +491,51 @@ end
         .parse()
         .expect("a number");
     assert!(count > 1000, "{row}");
+}
+
+#[test]
+fn break_and_continue_inside_an_expression_drop_its_operands() {
+    // decision Y4: a statement loop marks the operand stack at its entry and
+    // every `break` or `continue` unwinds to the mark, so an outcome nested
+    // in an expression leaves nothing behind
+    let source = r#"module demo
+  purpose: Interrupt a loop from inside an expression.
+
+import std.console
+
+public function main() needs console
+  purpose: Sum the items, skipping one and stopping at another.
+
+  let mutable total be 0
+  for each item in [1, 2, 3, 4, 5, 6]
+    set total to total + (if item is 3 then continue otherwise item end)
+    set total to total * (if item is 5 then break otherwise 1 end)
+  end
+  let mutable steps be 0
+  repeat until steps is 10
+    set steps to steps + (match steps when 7 then break otherwise 1 end)
+  end
+  console.print("{total} {steps}")
+end
+"#;
+    let program = compile("demo.ry", source);
+    let main = program
+        .codes
+        .iter()
+        .find(|code| code.name == "main")
+        .expect("main");
+    let marks = main
+        .ops
+        .iter()
+        .filter(|op| matches!(op, Op::MarkStack(_)))
+        .count();
+    let unwinds = main
+        .ops
+        .iter()
+        .filter(|op| matches!(op, Op::UnwindStack(_)))
+        .count();
+    assert_eq!((marks, unwinds), (2, 3), "{:?}", main.ops);
+    let (outcome, printed) = run(source, Options::default());
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(printed, "12 7\n");
 }

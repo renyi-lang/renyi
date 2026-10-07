@@ -66,11 +66,15 @@ Ordered by how much they matter to the language's promises.
    `DbError.OverBudget` (`library/std/sqlite.ry`; `vm.rs`, `denied` and
    `over_budget`), and `filesystem.copy` and `move` compare the target
    with the write scope too (`grant.rs:525`, `target_effect_of`; tested in
-   `crates/renyi_vm/tests/semantics.rs`). Still open: the server and the
-   primitives that cannot fail (`filesystem.exists`, `environment.get`)
-   crash, and `StartError` has no `PermissionDenied` or `OverBudget`
-   variant. Containment is lexical: no canonical path, no symlink
-   handling (`grant.rs`, the path containment).
+   `crates/renyi_vm/tests/semantics.rs`). Closed by decision Y1
+   (session 8): `serve` fails with `StartError.PermissionDenied(port)`
+   or the new `OverBudget(port)` (`library/std/server.ry`; `vm.rs`,
+   `denied` and `over_budget`; tested in
+   `crates/renyi_vm/tests/network.rs`); a primitive that cannot fail
+   (`filesystem.exists`, `environment.get`) crashes by rule, naming the
+   function whose `needs` narrowed the grant, and containment is
+   lexical by rule (no canonical path, no symlink handling), both in
+   the reference's section 11.
 9. Done in stage 1 (decision V2): **indentation carries no meaning,
    continuation lines included**; the sketch's section 1 states the
    rule and the lexer and the parser follow it (commit `8c775cd`).
@@ -101,8 +105,10 @@ Ordered by how much they matter to the language's promises.
     replay counts every call against the budgets and refuses the
     recording that exceeds one (`vm.rs:646`; tested in
     `crates/renyi_vm/tests/recording.rs`, `a_replay_checks_the_budgets_too`).
-    Still open: the recording's `grant` header is never compared with
-    the test's `needs` (coverage is checked per recorded call).
+    Closed by decision Y2 (session 8): `replay_with` checks the
+    capabilities of the `grant` header against the effective grant
+    before the calls (`vm.rs`; tested in `recording.rs`,
+    `a_run_is_recorded_and_replayed`); the six fixtures fit their tests.
 15. Done in stage 1: **the range loop has one spelling**, `for each x
     from 1 to 9`; `in` before `from` is `range-loop` (`parser.rs`,
     `loop_source`), so the formatter never rewrites it. Tested in
@@ -127,13 +133,23 @@ Ordered by how much they matter to the language's promises.
     (`natives/prelude.rs:358`, `count`); `Text.split("")` gives the
     characters and `replace(old: "")` returns the text; `parse_instant`
     requires two-digit clock fields; `Ordering` stays `Less, Same,
-    Greater` by decision V3. Still through `small()`: `repeat`, `pad` and
-    the rounding places. Tested in `crates/renyi_vm/tests/semantics.rs`.
-18. **Known and still open from `HANDOFF.md`:** `break` or `continue` as
-    the outcome of an `if` or `match` expression nested in another
-    expression leaves operands on the stack (probes gave correct totals;
-    the residue is by reading); a refinement condition may read another
-    field; `--redact` works by name only.
+    Greater` by decision V3. Tested in `crates/renyi_vm/tests/semantics.rs`.
+    Decision Y3 (session 8) keeps the rest as the rule: collections
+    compare and hash by structure and consult no declared `equals` or
+    `hash`; `repeat`, `pad` and the rounding places crash on an
+    `Integer` past a machine word; both in the reference (sections 5
+    and 7).
+18. Done in session 8 (decision Y4): **a statement loop marks the
+    operand stack at its entry and `break` and `continue` unwind to the
+    mark** (`Op::MarkStack`, `Op::UnwindStack`; `compile/mod.rs`,
+    `enter_loop` and `leave_regions_of_loop`; tested in
+    `crates/renyi_vm/tests/semantics.rs`), so an outcome nested in an
+    expression leaves nothing behind; **a field's refinement condition
+    sees its own field alone** and another field of the type is
+    `refinement-field` (`check.rs` and `compiler/bodies.ry`,
+    `check_condition_body` and `infer_name`; conformance case
+    `refinement_field.ry`). `--redact` works by name by decision S3,
+    which is the design, not a gap.
 
 ## 2. Promised compile-time checks that nobody wrote
 
@@ -475,3 +491,12 @@ commit without it; about 1.9, 1.8 and 1.7 times `f770f79` in all). The
 owner's order for what follows: the residue of stage 1 (the status of
 session 7 above: 1.8, 1.14, 1.17, 1.18, R3-2), then the bytecode
 emitter, which writes a file the VM loads (X5).
+
+The residue (decisions Y1 to Y4, the same session): 1.8, 1.14, 1.17 and
+1.18 are closed as their entries now say (the server's `StartError`,
+the crash rule for primitives that cannot fail, lexical containment;
+the recording's grant header; the derived `Equal` and `Hash` of the
+collections; the loop's stack mark and `refinement-field`); R3-2 waits
+until after the emitter (Y4). Still open from the status of session 7:
+1.11 (a function value stored in a collection is charged nowhere
+statically), 3.4 and 3.6. Next: the bytecode emitter.

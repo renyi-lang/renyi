@@ -432,6 +432,9 @@ scope for the fields; a function introduces them with `for any` (section
 - A refinement that a literal fails is reported where the literal stands
   (`constraint-violation`); a refined construction or update from a
   run-time value takes `otherwise` (`missing-otherwise`).
+- A field's condition reads that field alone, and a subtype's condition
+  `value`; a condition that names another field of the type is
+  `refinement-field` (decision Y4).
 - A variant of a type with `ToJson` or `FromJson` has no field named `kind`,
   the key JSON uses for the variant's name (`kind-field`, decision K10).
 - `can` names an ability in scope (`unknown-ability`), and `by` names
@@ -508,7 +511,10 @@ R3-2).
 A method call dispatches on the type of `self`; an implementation is
 chosen when the program is compiled, since every value's type is known.
 `Equal` and `Hash` of a derived type follow its structure; `Compare by`
-compares the listed fields in order.
+compares the listed fields in order. A declared `equals` decides `is` and
+`is not`; the collections (`Set` items, `Map` keys, `distinct`, `to_set`,
+`contains`, `index_of`) compare and hash by structure and consult no
+declared `equals` or `hash` (decision Y3).
 
 ---
 
@@ -654,7 +660,10 @@ other case, with `otherwise` or a `match` (section 8).
 notation (decision J2), its keys needing `Hash`; a `Set` is built with
 `to_set()`; `from 1 to 10` is a `Range`, inclusive at both ends, with an
 optional step `by`. Lists are zero-indexed. The operations of the base
-types are methods listed in `design/04-stdlib-sketch.md`.
+types are methods listed in `design/04-stdlib-sketch.md`. A count given to
+`repeat`, `pad_left`, `pad_right` or `rounded` fits a machine word; a
+larger `Integer` crashes with `this Integer is too large for the
+operation` (decision Y3).
 
 **Update.** `value with field: expression, field: expression` copies a
 record with the named fields changed; a refined field is checked again
@@ -1022,7 +1031,14 @@ its actual path or host against the effective grant, the intersection of
 the program's grant with the declared scopes along the call chain (the
 grant stack, decision Q1), and reports a mismatch through its module's
 error type: `PermissionDenied(path)` in `FileError`,
-`HostNotAllowed(host)` in `HttpError` (decision J11). The command line
+`HostNotAllowed(host)` in `HttpError`, `PermissionDenied(path)` in
+`DbError`, `PermissionDenied(port)` in `StartError` (decisions J11, Y1); a
+call past a budget is the module's `OverBudget` the same way. A primitive
+that cannot fail (`filesystem.exists`, `environment.get`) crashes instead,
+naming the function whose `needs` narrowed the grant. A path scope
+contains a path by its text once `.`, `..` and the separators are
+normalized: nothing is resolved on disk, so a symbolic link under the
+scope reaches wherever it points. The command line
 narrows the grant and can only tighten it: `--deny capability` refuses to
 start when any function needs it, `--allow-host`, `--allow-read` and
 `--allow-write` narrow a scope, `--at-most capability=count/unit` adds a
@@ -1178,7 +1194,9 @@ against them.
 
 ### At run time
 
-A test runs under its own grant. A `check` whose condition is false fails
+A test runs under its own grant; the recording of a `replays` test names
+the grant it was made under, which the test's `needs` must cover, as it
+must cover every recorded call (decision Y2). A `check` whose condition is false fails
 the test with the condition's text; a failure that reaches the test's end
 fails it with the error's text; a test that reaches `end` passes. `renyi
 test` exits with status 1 when any test or example fails. `renyi test
@@ -1382,6 +1400,7 @@ that `renyi check --strict` makes an error.
 | `purpose-missing` | E | 2, 3, 5, 13, 15 |
 | `query-shape` | E | 10 |
 | `range-loop` | E | 8 |
+| `refinement-field` | E | 4 |
 | `regex-invalid` | E | 4 |
 | `reserved-word` | E | 1, 17 |
 | `return-value` | E | 9, 14 |

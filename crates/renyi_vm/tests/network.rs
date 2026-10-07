@@ -10,7 +10,8 @@ use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use renyi_syntax::SourceFile;
-use renyi_vm::{compile_project, run_program, Options, Program, Run, RunOutcome};
+use renyi_vm::grant::parse_capability;
+use renyi_vm::{compile_project, run_program, Narrowing, Options, Program, Run, RunOutcome};
 
 fn compile(name: &str, source: &str) -> Program {
     let file = SourceFile::new(name, source);
@@ -375,6 +376,64 @@ end
         RunOutcome::Failed(
             "Mismatch(column: \"Positive\", expected: \"a row where amount is at least 1\", found: \"a row outside the condition\")".to_string()
         )
+    );
+    assert_eq!(stdout.text(), "");
+}
+
+#[test]
+fn the_server_reports_a_denial_and_a_budget_through_start_error() {
+    // decision Y1: `serve` fails like the other modules' primitives, naming
+    // its port; nothing is bound
+    let source = r#"module service
+  purpose: Serve under a grant that does not allow it.
+
+import std.console
+import std.server exposing Request, Response, Port, StartError
+
+function handle(request: Request) returns Response
+  return server.ok(request.path)
+end
+
+public function main() or fails with StartError needs console, network.socket
+  purpose: Start the server once.
+
+  server.serve(port: Port(8080), handler: handle) otherwise fail
+  console.print("unreachable")
+end
+"#;
+    let program = compile("service.ry", source);
+    let stdout = Capture::default();
+    let denied = run(
+        &program,
+        &stdout,
+        Options {
+            narrowing: Narrowing {
+                deny: vec![parse_capability("network.socket").unwrap()],
+                ..Narrowing::default()
+            },
+            ..Options::default()
+        },
+    )
+    .outcome;
+    assert_eq!(
+        denied,
+        RunOutcome::Failed("PermissionDenied(port: 8080)".to_string())
+    );
+    let over = run(
+        &program,
+        &stdout,
+        Options {
+            narrowing: Narrowing {
+                budgets: vec![parse_capability("network.socket at most 0 per run").unwrap()],
+                ..Narrowing::default()
+            },
+            ..Options::default()
+        },
+    )
+    .outcome;
+    assert_eq!(
+        over,
+        RunOutcome::Failed("OverBudget(port: 8080)".to_string())
     );
     assert_eq!(stdout.text(), "");
 }

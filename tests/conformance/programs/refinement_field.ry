@@ -1,0 +1,7 @@
+module refinement_field
+  purpose: A refinement sees only its own field (decision Y4).
+
+type Interval
+  has low: Integer
+  has high: Integer where high is at least low
+end

@@ -85,7 +85,7 @@ compiler.
 
 | Path | Content |
 |------|---------|
-| `docs/design/01-decisions.md` | design decisions with reasons: rounds 1 and 2 (sections 0 to J), library (K), readability (L), pre-test (M), checker (N), runtime and agent tooling (O), signature capabilities (P), system-level commitments (Q), the live round (R), runtime dependencies and concurrency (S), the MCP server (T), readability round 2 (U), the gap audit and the road to self-hosting (V), the self-hosted front end (W) |
+| `docs/design/01-decisions.md` | design decisions with reasons: rounds 1 and 2 (sections 0 to J), library (K), readability (L), pre-test (M), checker (N), runtime and agent tooling (O), signature capabilities (P), system-level commitments (Q), the live round (R), runtime dependencies and concurrency (S), the MCP server (T), readability round 2 (U), the gap audit and the road to self-hosting (V), the self-hosted front end (W), the speed of the VM (X), the residue of stage 1 (Y) |
 | `docs/design/02-syntax-sketch.md` | concrete syntax; section 18 tracks open items (round 2 is settled, new items start at R3-1) |
 | `docs/design/03-readability-test.md` | the readability protocol: it measured the grammar before the freeze; decision V1 made the freeze a decision (V11), so the rounds run only on request |
 | `docs/design/04-stdlib-sketch.md` | prelude, core modules and extension packages; the lint checks corpus calls against its `function` lines |

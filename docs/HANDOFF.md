@@ -10,7 +10,8 @@ then the checker written in Renyi, decisions W5 to W8, held equal to
 `renyi check --json` by the same test; then the profile of the VM, W6,
 with decisions X1 to X4: the development profile optimizes the VM,
 `List.slice`, the interpreter loop rewritten, `renyi run --profile`;
-then X5, the emitter writes a bytecode file, and X6, mimalloc).
+then X5, the emitter writes a bytecode file, and X6, mimalloc; then the
+residue of stage 1, decisions Y1 to Y4).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -23,7 +24,7 @@ run manifest of Q2, every library module, the `only to` guards of P3,
 tasks one after the other by S2) are done, with the project map (`renyi
 index`, `--budgets`, `--diff`), `renyi tools` and `renyi mcp` on top. M4
 to M6 are not started (`docs/GAPS.md`, section 4). Design decisions are
-in sections 0 to W of `01-decisions.md`; the agent tooling in
+in sections 0 to Y of `01-decisions.md`; the agent tooling in
 `05-agent-tooling.md`, the signature capabilities in
 `06-runtime-guarantees.md`, the system-level commitments in
 `07-system-design.md`; the open items in section 18 of the sketch (R3-1,
@@ -49,8 +50,8 @@ Stage 2 of `docs/GAPS.md` section 7 is under way in the order the owner
 set (W4, W5): the lexer, the parser and the checker written in Renyi
 exist under `compiler/` (the next two sections) and the VM is profiled
 and its loop rewritten (the section after them, decisions X1 to X6);
-the owner's order for what follows: the residue of stage 1 first, then
-the bytecode emitter, which writes a file (X5).
+the residue of stage 1 is done (decisions Y1 to Y4, the section after
+the profile's); the bytecode emitter, which writes a file (X5), is next.
 
 The corpus has 30 programs, passes the lint, is in canonical layout,
 checks cleanly, has nothing over budget, and its `example:` lines and
@@ -63,10 +64,10 @@ binary with `check`, `format`, `tokens`, `parse [--json]
 revision>]`, `run [--manifest] [options] <file> [arguments]`, `record
 [--to file] [options] <file> [arguments]`, `reproduce <recording>
 [<file>]`, `test [--strict] [--refresh name [--redact name]] [--explain]
-<file>...`, `tools [path]`, `mcp [path]` and `version`; 218 tests, clippy
+<file>...`, `tools [path]`, `mcp [path]` and `version`; 220 tests, clippy
 and fmt clean on Windows with rustc 1.94.1. CI
 (`.github/workflows/ci.yml`) runs the same gates, `renyi check
-compiler/*.ry` and the conformance suite (`tests/conformance/`, 37 cases;
+compiler/*.ry` and the conformance suite (`tests/conformance/`, 38 cases;
 runners `tools/conformance.py` and `crates/renyi/tests/conformance.rs`)
 on a toolchain pinned to the owner's machine (rustc 1.94.1), so that CI
 and the local gates agree on clippy's lints; `gh run list --limit 3`
@@ -379,6 +380,60 @@ R8 and U1 to U9 came from them; they continue only if the owner asks
   1.7 times faster. After this, speed comes from the emitter and what
   it can precompute, not from the loop.
 
+## The residue of stage 1 (decisions Y1 to Y4)
+
+The owner's order after X6: finish what stage 1 left open before the
+emitter. Asked as one batch of four, answered with the recommended
+options, done in one commit.
+
+- **Y1, the boundary's denials.** `serve` outside the grant fails with
+  `StartError.PermissionDenied(port)`, past a budget with the new
+  `StartError.OverBudget(port)` (`library/std/server.ry`, the sketch;
+  `vm.rs`, `denied` and `over_budget` take the call's arguments to name
+  the port; `tests/network.rs`,
+  `the_server_reports_a_denial_and_a_budget_through_start_error`). A
+  primitive that cannot fail (`filesystem.exists`, `environment.get`)
+  crashes by rule, naming the function whose `needs` narrowed the grant;
+  containment of a path scope is lexical by rule (nothing resolved on
+  disk); both in the reference, section 11, and in
+  `06-runtime-guarantees.md`.
+- **Y2, the recording's grant header.** `Vm::replay_with` checks every
+  capability of the header against the effective grant before it checks
+  the calls, refusing with "the recording's grant names X, which the
+  grant G does not cover" (`recording.rs`,
+  `a_run_is_recorded_and_replayed`: the header first, a trimmed header
+  then the call, a widened header refused although no call uses it). The
+  six fixtures fit their tests' `needs`.
+- **Y3, documentation only.** Collections compare and hash by structure
+  and consult no declared `equals` or `hash` (reference, section 5);
+  `repeat`, `pad_left`, `pad_right` and `rounded` crash on an `Integer`
+  past a machine word (section 7).
+- **Y4 (i), the loop's mark.** `Op::MarkStack(slot)` at the entry of
+  every statement loop stores the operand stack's height in a temp;
+  `Op::UnwindStack(slot)` before the jump of every `break` and
+  `continue` truncates to it (`bytecode.rs`, kinds 49 and 50, `Check`
+  now 51, `KINDS` 52; `compile/mod.rs`, `LoopContext.mark`,
+  `enter_loop(span)` emits the mark and is called before the position a
+  `continue` returns to, `leave_regions_of_loop` emits the unwind;
+  `compile/stmt.rs`, the three loops; `vm.rs`, the two arms). Tested by
+  `tests/semantics.rs`,
+  `break_and_continue_inside_an_expression_drop_its_operands`, which
+  counts the ops of `main` and checks the output.
+- **Y4 (ii), `refinement-field`.** A field's condition binds that field
+  alone and the checker carries `ConditionScope { type_name, field,
+  others }` while it checks it; a bare name that is another field of the
+  type is `refinement-field` ("the condition of `high` reads `low`,
+  another field of `Interval`"; fix "a refinement sees only its own
+  field; check both where the value is built"), in `check.rs`
+  (`check_type_conditions`, `check_condition_body`, `infer_name`) and
+  mirrored in `compiler/bodies.ry` (`check_field_conditions`,
+  `check_condition_body`, `refinement_field_error`); the reference's
+  section 4 and appendix A; `rules.rs`,
+  `refinement_conditions_are_checked_as_bodies`; conformance case 38,
+  `refinement_field.ry`. The VM's condition code still takes every field.
+- **R3-2** (constraints with type arguments) waits until after the
+  emitter (Y4).
+
 ## The VM as it exists (`crates/renyi_vm`)
 
 - **The loop** is described in the section above (decision X3): one
@@ -457,7 +512,8 @@ R8 and U1 to U9 came from them; they continue only if the owner asks
   or a row does not satisfy the record's refinement; `std.server`
   (`natives/server.rs`) hand-written over `std::net::TcpListener`:
   HTTP/1.1, one request at a time, `PortInUse` and `PermissionDenied`
-  from `bind`, the handler called through `Vm::call_function` with a
+  from `bind`, `PermissionDenied` and `OverBudget` from the boundary
+  (decision Y1), the handler called through `Vm::call_function` with a
   `Request` record (lower-cased header names, percent-decoded query), the
   answer sent with `content-length` and `connection: close`.
 - **The primitive boundary** (`Vm::call_native`, `grant.rs`,
@@ -470,8 +526,11 @@ R8 and U1 to U9 came from them; they continue only if the owner asks
   `--allow-read`, `--allow-write` (an ancestor such as `filesystem` is
   split into its children first), with one counter per `at most` budget,
   declared or added by `--at-most`. An effect outside the grant fails with
-  `FileError.PermissionDenied` or `HttpError.HostNotAllowed`, past a budget
-  with `OverBudget`, and crashes when the primitive cannot fail. Live, the
+  `FileError.PermissionDenied`, `HttpError.HostNotAllowed`,
+  `DbError.PermissionDenied` or `StartError.PermissionDenied`, past a
+  budget with `OverBudget`, and crashes when the primitive cannot fail
+  (decision Y1). A replay first checks the recording's `grant` header
+  against the grant, then each call (decision Y2). Live, the
   call runs and is appended to the recording (`Call { capability,
   primitive, arguments by name, outcome success/failure, duration_ms,
   at_ms }`, JSON by the `ToJson` rules); replaying, the entry with the
@@ -710,6 +769,16 @@ Three commits on `main`, each gated as in session 7:
    before the emitter; `crates/renyi/Cargo.toml`, `main.rs`,
    `Cargo.lock`, section X of the decisions, `docs/GAPS.md`,
    `README.md`, this file.
+8. The residue of stage 1 (decisions Y1 to Y4, the section "The residue
+   of stage 1" above): `library/std/server.ry` and the sketch
+   (`StartError.OverBudget`), `vm.rs` (`denied`, `over_budget`,
+   `replay_with`, the two stack ops), `bytecode.rs`, `compile/mod.rs`,
+   `compile/stmt.rs`, `check.rs` and `compiler/bodies.ry`
+   (`refinement-field`), `tests/{semantics,recording,network}.rs`,
+   `crates/renyi_check/tests/rules.rs`, conformance case 38, the
+   reference (sections 4, 5, 7, 11, 14, appendix A), the decisions
+   (section Y), `06-runtime-guarantees.md`, the sketch's R3-2,
+   `docs/GAPS.md`, this file.
 
 ## Done in session 7 (stage 1 of the gap audit)
 
@@ -1051,18 +1120,12 @@ on a fresh clone).
 
 ## Owner actions pending
 
-- **The residue of stage 1**, named in `docs/GAPS.md` (section 7,
-  "Status"): the primitives that cannot fail still crash on a scope
-  denial, the recording's grant header is not compared with a test's
-  `needs`, `Hash` implementations are never called, entry 1.18, and
-  open item R3-2 (constraints with type arguments). None blocks stage
-  2; the owner decides their order when stage 2 is planned.
-- **Stage 2, the next piece**: decided at the end of session 8 (X5,
-  X6): first the residue of stage 1 (the bullet above: 1.8, 1.14, 1.17,
-  1.18 and R3-2 as `docs/GAPS.md` names them; each is read in full
-  before it is planned, and what needs a design choice is asked as a
-  batch of four), then the bytecode emitter, which writes a file the
-  VM loads; its format is designed when it is written.
+- **The residue of stage 1** is done (decisions Y1 to Y4) except open
+  item R3-2 (constraints with type arguments), deferred until after the
+  emitter; `docs/GAPS.md` section 7 keeps 1.11, 3.4 and 3.6 open.
+- **Stage 2, the next piece**: the bytecode emitter, which writes a
+  file the VM loads (X5); its format is designed when it is written,
+  and the design questions it raises are asked as a batch of four.
 - **Readability**: the scores are no longer the gate (decision V1).
   Round 5 (U9's sentence) and gpt-5.5 run only if the owner asks.
 - Session 5 printed the values of `ANTHROPIC_API_KEY` and
@@ -1100,9 +1163,9 @@ on a fresh clone).
    language reference is `docs/reference.md`; the lexer and the parser
    in Renyi are `compiler/`, W1 to W4; the checker in Renyi is
    `compiler/declare.ry`, `bodies.ry` and `checker.ry`, W5 to W8; the
-   profile and the loop are done, X1 to X6): the residue of stage 1
-   first (the owner's order; the items under "Owner actions pending"),
-   then the bytecode emitter, which writes a file the VM loads (X5),
+   profile and the loop are done, X1 to X6; the residue of stage 1 is
+   done, Y1 to Y4, R3-2 deferred): next the bytecode emitter, which
+   writes a file the VM loads (X5),
    so that the Rust VM runs what the Renyi compiler emits, with the
    Rust toolchain as stage 0, which is where the references of W8 get
    their judge; the remaining performance items (string building, the
@@ -1179,13 +1242,10 @@ on a fresh clone).
   checker's quirk that a `failure(x)` binding's fields are unknown is
   reproduced on purpose (W7: equality first); fixing it is a change to
   both checkers and a conformance case.
-- **VM.** `break` or `continue` as the outcome of an `if` or `match`
-  *expression* nested inside another expression leaves that expression's
-  partial operands on the stack (statements and loop bodies are clean); no
-  corpus program does this. A declared `equals` decides `is` and `is
-  not` (session 7); `contains`, `index_of`, sets and maps keep the
-  derived form, and a user `Hash` implementation is never called (the
-  sketch's ability table says so). A
+- **VM.** A declared `equals` decides `is` and `is not` (session 7);
+  `contains`, `index_of`, sets and maps keep the derived form, and a
+  user `Hash` implementation is never called, by decision Y3 and the
+  reference's section 5. A
   value's `IsType` test for a builtin (`when failure(error: Text)`) is by
   kind. `random` is seeded from the clock; a run is reproducible through
   its recording only. `Float.to_text` is Rust's shortest round-trip form.
@@ -1260,10 +1320,10 @@ on a fresh clone).
   session 7 exhaustiveness is the usefulness check, `see also:` names are
   checked, `deprecated:` warns, literal patterns, URLs, paths and dates
   are checked, and every diagnostic carries a fix. The `ignore-pure` rule counts a call
-  with effects anywhere inside the ignored expression. The condition
-  bodies bind every field of the record or variant, which the sketch
-  (section 4: "over the field name") does not promise; a condition that
-  reads another field type-checks and runs.
+  with effects anywhere inside the ignored expression. A field's
+  condition binds that field alone since decision Y4 (`refinement-field`
+  for another field of the type); the VM's condition code still takes
+  every field.
 - **Readability.** Explain is graded by subagents in both rounds (round
   1 re-graded, U4). They are about a point more lenient than the API
   graders, let three wrong statements pass in round 1 that the hand

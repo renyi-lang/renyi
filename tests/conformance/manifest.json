@@ -264,6 +264,13 @@
       "program": "tests/conformance/programs/one_spelling.ry",
       "diagnostics": ["public-method", "expected"],
       "exit_code": 1
+    },
+    {
+      "name": "a refinement reads only its own field",
+      "command": "check",
+      "program": "tests/conformance/programs/refinement_field.ry",
+      "diagnostics": ["refinement-field"],
+      "exit_code": 1
     }
   ]
 }

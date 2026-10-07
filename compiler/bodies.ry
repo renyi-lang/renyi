@@ -88,6 +88,13 @@ public type Scope
   has bindings: List of Binding
 end
 
+public type ConditionScope
+  purpose: The field whose refinement is being checked, and the other fields it may not read.
+  has type_name: Text
+  has field: Text
+  has others: List of Text
+end
+
 public type TaskScope
   purpose: What a task of `run concurrently` may not touch (decision V7).
   has outer: List of Text
@@ -209,6 +216,7 @@ public type Checker
   has depth: Integer
   has task: maybe TaskScope
   has type_params: List of NamedParam
+  has condition: maybe ConditionScope
 end
 
 public type Done of Value
@@ -302,7 +310,8 @@ public function new_checker(world: World, module_id: Integer) returns Checker
     results: [],
     depth: 0,
     task: nothing,
-    type_params: []
+    type_params: [],
+    condition: nothing
   )
 end
 
@@ -1703,13 +1712,15 @@ public function check_type_conditions(checker: Checker, index: Integer, def: Typ
         checker: checker,
         owner: owner,
         bindings: bindings,
-        condition: condition
+        condition: condition,
+        scope: nothing
       )
     when RecordKind(fields) then
       return check_field_conditions(
         checker: checker,
         index: index,
         variant: nothing,
+        type_name: def.name.text,
         fields: fields
       )
     when SumKind(variants) then
@@ -1720,6 +1731,7 @@ public function check_type_conditions(checker: Checker, index: Integer, def: Typ
           checker: updated,
           index: index,
           variant: tag,
+          type_name: def.name.text,
           fields: variant.fields
         )
         set tag to tag + 1
@@ -1733,23 +1745,26 @@ function check_field_conditions(
   checker: Checker,
   index: Integer,
   variant: maybe Integer,
+  type_name: Text,
   fields: List of FieldInfo
 )
   returns Checker
-  purpose: The conditions of the fields of a record or a variant, each over all the fields.
+  purpose: The conditions of the fields of a record or a variant, each over its own field.
 
-  let bindings be for each field in fields collect NamedTy(name: field.name, ty: field.ty)
   let mutable updated be checker
   let mutable field_index be 0
   for each field in fields
     match field.refinement
       when some(condition) then
         let owner be ConditionBody(item: index, variant: variant, field: field_index)
+        let others be for each other in fields where other.name is not field.name collect other.name
+        let scope be ConditionScope(type_name: type_name, field: field.name, others: others)
         set updated to check_condition_body(
           checker: updated,
           owner: owner,
-          bindings: bindings,
-          condition: condition
+          bindings: [NamedTy(name: field.name, ty: field.ty)],
+          condition: condition,
+          scope: scope
         )
       when nothing then set updated to updated
     end
@@ -1762,10 +1777,11 @@ function check_condition_body(
   checker: Checker,
   owner: BodyLocation,
   bindings: List of NamedTy,
-  condition: Expr
+  condition: Expr,
+  scope: maybe ConditionScope
 )
   returns Checker
-  purpose: One condition as a small body: the fields are its parameters.
+  purpose: One condition as a small body: the field is its parameter; the scope names the others.
 
   let context be fresh_context(
     name: "a refinement",
@@ -1776,7 +1792,7 @@ function check_condition_body(
     is_test: false
   )
   let mutable updated be checker
-    with owner: owner, context: context, vars: [], deferred: [], type_params: []
+    with owner: owner, context: context, vars: [], deferred: [], type_params: [], condition: scope
   set updated to push_scope(updated)
   let span be expr_span(condition)
   for each binding in bindings
@@ -1792,7 +1808,7 @@ function check_condition_body(
   set updated to check_condition(checker: updated, condition: condition)
   set updated to mark_all_used(updated)
   set updated to pop_scope(updated)
-  return finish_body(updated)
+  return finish_body(updated) with condition: nothing
 end
 
 public function check_constant(checker: Checker, index: Integer, constant: Constant, ty: Ty)
@@ -3727,6 +3743,10 @@ function infer_name(checker: Checker, name: Name) returns Done of Info
       return Done(value: plain(binding.ty), checker: mark_used(checker: updated, name: name.text))
     when nothing then set updated to updated
   end
+  match refinement_field_error(checker: updated, name: name)
+    when some(failed) then return Done(value: plain(ErrorTy), checker: failed)
+    when nothing then set updated to updated
+  end
   match module_info(updated).constants.get(name.text)
     when some(constant) then
       return infer_constant_name(checker: updated, name: name, constant: constant)
@@ -3797,6 +3817,22 @@ function infer_function_name(checker: Checker, name: Name, function_id: Integer)
     function_id: function_id
   )
   return Done(value: info, checker: updated)
+end
+
+function refinement_field_error(checker: Checker, name: Name) returns maybe Checker
+  purpose: The error when a refinement condition names another field of its type (decision Y4).
+
+  let scope be checker.condition otherwise return nothing
+  if not scope.others.contains(name.text) then return nothing end
+  let field be scope.field
+  let owner be scope.type_name
+  return push_error(
+    checker: checker,
+    code: "refinement-field",
+    message: "the condition of `{field}` reads `{name.text}`, another field of `{owner}`",
+    span: name.span,
+    fix: "a refinement sees only its own field; check both where the value is built"
+  )
 end
 
 function unknown_name_fix(checker: Checker, name: Text) returns Text

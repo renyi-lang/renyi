@@ -71,8 +71,8 @@ impl Compiler<'_, '_> {
                 span,
             ),
             StmtKind::RepeatUntil { condition, body } => {
+                self.enter_loop(span);
                 let top = self.here();
-                self.enter_loop();
                 self.expr(condition);
                 let exit = self.emit(Op::JumpIfTrue(0), condition.span);
                 self.block(body);
@@ -147,8 +147,8 @@ impl Compiler<'_, '_> {
                 self.expr(source);
                 let iterator = self.temp();
                 self.emit(Op::IterInit(iterator), span);
+                self.enter_loop(span);
                 let top = self.here();
-                self.enter_loop();
                 let next = self.emit(
                     Op::IterNext {
                         slot: iterator,
@@ -210,8 +210,8 @@ impl Compiler<'_, '_> {
                 );
                 let sorted = self.temp();
                 self.emit(Op::IterInit(sorted), span);
+                self.enter_loop(span);
                 let top = self.here();
-                self.enter_loop();
                 let next = self.emit(
                     Op::IterNext {
                         slot: sorted,

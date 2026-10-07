@@ -576,12 +576,14 @@ fn compile_predicate(
     compiler.finish()
 }
 
-/// Where `break` and `continue` go inside a loop, and how many handled
-/// regions were open when the loop began.
+/// Where `break` and `continue` go inside a loop, how many handled regions
+/// were open when the loop began, and the slot holding the operand stack's
+/// height at its entry (decision Y4).
 struct LoopContext {
     breaks: Vec<usize>,
     continues: Vec<usize>,
     handler_depth: usize,
+    mark: u16,
 }
 
 pub(crate) struct Compiler<'c, 'w> {
@@ -756,11 +758,17 @@ impl<'c, 'w> Compiler<'c, 'w> {
 
     // ------------------------------------------------------------ loops
 
-    pub fn enter_loop(&mut self) {
+    /// Open a loop: its entry marks the operand stack's height, which
+    /// `break` and `continue` restore (decision Y4). Called before the
+    /// position a `continue` returns to.
+    pub fn enter_loop(&mut self, span: Span) {
+        let mark = self.temp();
+        self.emit(Op::MarkStack(mark), span);
         self.loops.push(LoopContext {
             breaks: Vec::new(),
             continues: Vec::new(),
             handler_depth: self.handler_depth,
+            mark,
         });
     }
 
@@ -775,16 +783,18 @@ impl<'c, 'w> Compiler<'c, 'w> {
         }
     }
 
-    /// Leave every handled region opened inside the innermost loop, then jump.
+    /// Leave every handled region opened inside the innermost loop and drop
+    /// the operands of the expression being interrupted, then jump.
     fn leave_regions_of_loop(&mut self, span: Span) {
-        let open = self
-            .loops
-            .last()
-            .map(|l| self.handler_depth - l.handler_depth)
-            .unwrap_or(0);
+        let Some(context) = self.loops.last() else {
+            return;
+        };
+        let open = self.handler_depth - context.handler_depth;
+        let mark = context.mark;
         for _ in 0..open {
             self.emit(Op::PopHandler, span);
         }
+        self.emit(Op::UnwindStack(mark), span);
     }
 
     pub fn emit_break(&mut self, span: Span) {

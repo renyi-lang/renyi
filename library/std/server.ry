@@ -24,6 +24,7 @@ public type StartError is one of
   purpose: Why the server could not start.
   PortInUse(port: Port)
   PermissionDenied(port: Port)
+  OverBudget(port: Port)
   can ToText
 end
 

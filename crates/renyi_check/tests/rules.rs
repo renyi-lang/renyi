@@ -560,10 +560,25 @@ fn a_guard_without_a_reachable_sink_warns() {
 
 #[test]
 fn refinement_conditions_are_checked_as_bodies() {
-    // a condition is a Boolean expression over the fields, resolved like any body
+    // a condition is a Boolean expression over its own field, resolved like any body
     clean(&program(
-        "public type Email is Text where value.matches(\"^[^@]+@[^@]+$\")\n  purpose: An address.\n\npublic type Line\n  purpose: A line.\n  has quantity: Integer where quantity is at least 1\n  has price: Decimal where price is at least 0 and quantity is at most 1000\nend\n",
+        "public type Email is Text where value.matches(\"^[^@]+@[^@]+$\")\n  purpose: An address.\n\npublic type Line\n  purpose: A line.\n  has quantity: Integer where quantity is at least 1\n  has price: Decimal where price is at least 0 and price is at most 1000\nend\n",
     ));
+    // another field of the type is out of its reach (decision Y4)
+    let pair = program(
+        "public type Line\n  purpose: A line.\n  has quantity: Integer\n  has limit: Integer where limit is at least quantity\nend\n",
+    );
+    raises(&pair, "refinement-field");
+    assert_eq!(
+        fix_of(&pair, "refinement-field"),
+        "a refinement sees only its own field; check both where the value is built"
+    );
+    raises(
+        &program(
+            "public type Shape is one of\n  purpose: A shape.\n  Box(width: Integer, height: Integer where height is at least width)\nend\n",
+        ),
+        "refinement-field",
+    );
     raises(
         &program("public type Email is Text where value.nonsense()\n  purpose: An address.\n"),
         "unknown-method",
