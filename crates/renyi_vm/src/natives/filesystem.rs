@@ -34,13 +34,13 @@ fn segments(path: &str) -> Vec<&str> {
         .collect()
 }
 
-fn path_name(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let path = text(arg(&args, 0))?;
+fn path_name(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let path = text(arg(args, 0))?;
     Ok(Value::text(segments(path).last().copied().unwrap_or("")))
 }
 
-fn path_parent(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let path = text(arg(&args, 0))?;
+fn path_parent(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let path = text(arg(args, 0))?;
     let trimmed = path.trim_end_matches(['/', '\\']);
     Ok(match trimmed.rfind(['/', '\\']) {
         Some(0) => Value::text(&trimmed[..1]),
@@ -49,9 +49,9 @@ fn path_parent(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     })
 }
 
-fn path_join(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let path = text(arg(&args, 0))?;
-    let segment = text(arg(&args, 1))?;
+fn path_join(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let path = text(arg(args, 0))?;
+    let segment = text(arg(args, 1))?;
     if path.is_empty() {
         return Ok(Value::text(segment));
     }
@@ -59,8 +59,8 @@ fn path_join(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     Ok(Value::text(format!("{base}/{segment}")))
 }
 
-fn path_extension(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let path = text(arg(&args, 0))?;
+fn path_extension(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let path = text(arg(args, 0))?;
     let name = segments(path).last().copied().unwrap_or("");
     Ok(match name.rfind('.') {
         Some(index) if index > 0 && index + 1 < name.len() => Value::text(&name[index + 1..]),
@@ -83,42 +83,42 @@ fn file_error(vm: &Vm, path: &str, error: std::io::Error) -> Result<Value, Inter
     vm.fail_variant("std.filesystem", "FileError", variant, fields)
 }
 
-fn read_text(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let path = text(arg(&args, 0))?;
+fn read_text(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let path = text(arg(args, 0))?;
     match std::fs::read_to_string(path) {
         Ok(content) => Ok(Value::text(content)),
         Err(error) => file_error(vm, path, error),
     }
 }
 
-fn read_bytes(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let path = text(arg(&args, 0))?;
+fn read_bytes(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let path = text(arg(args, 0))?;
     match std::fs::read(path) {
         Ok(content) => Ok(Value::Bytes(Rc::from(content))),
         Err(error) => file_error(vm, path, error),
     }
 }
 
-fn write_text(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let path = text(arg(&args, 0))?;
-    match std::fs::write(path, text(arg(&args, 1))?) {
+fn write_text(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let path = text(arg(args, 0))?;
+    match std::fs::write(path, text(arg(args, 1))?) {
         Ok(()) => Ok(Value::Nothing),
         Err(error) => file_error(vm, path, error),
     }
 }
 
-fn write_bytes(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let path = text(arg(&args, 0))?;
-    match std::fs::write(path, bytes(arg(&args, 1))?) {
+fn write_bytes(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let path = text(arg(args, 0))?;
+    match std::fs::write(path, bytes(arg(args, 1))?) {
         Ok(()) => Ok(Value::Nothing),
         Err(error) => file_error(vm, path, error),
     }
 }
 
-fn append_text(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
+fn append_text(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     use std::io::Write;
-    let path = text(arg(&args, 0))?;
-    let content = text(arg(&args, 1))?;
+    let path = text(arg(args, 0))?;
+    let content = text(arg(args, 1))?;
     let result = std::fs::OpenOptions::new()
         .append(true)
         .create(true)
@@ -130,14 +130,14 @@ fn append_text(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     }
 }
 
-fn exists(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
+fn exists(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     Ok(Value::Boolean(
-        std::path::Path::new(text(arg(&args, 0))?).exists(),
+        std::path::Path::new(text(arg(args, 0))?).exists(),
     ))
 }
 
-fn inspect(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let path = text(arg(&args, 0))?;
+fn inspect(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let path = text(arg(args, 0))?;
     match std::fs::metadata(path) {
         Ok(metadata) => {
             if metadata.is_file() {
@@ -157,8 +157,8 @@ fn inspect(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     }
 }
 
-fn list_directory(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let path = text(arg(&args, 0))?;
+fn list_directory(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let path = text(arg(args, 0))?;
     let entries = match std::fs::read_dir(path) {
         Ok(entries) => entries,
         Err(error) => return file_error(vm, path, error),
@@ -186,16 +186,16 @@ fn list_directory(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     ))
 }
 
-fn create_directory(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let path = text(arg(&args, 0))?;
+fn create_directory(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let path = text(arg(args, 0))?;
     match std::fs::create_dir_all(path) {
         Ok(()) => Ok(Value::Nothing),
         Err(error) => file_error(vm, path, error),
     }
 }
 
-fn remove(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let path = text(arg(&args, 0))?;
+fn remove(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let path = text(arg(args, 0))?;
     let result = match std::fs::metadata(path) {
         Ok(metadata) if metadata.is_dir() => std::fs::remove_dir(path),
         Ok(_) => std::fs::remove_file(path),
@@ -207,17 +207,17 @@ fn remove(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     }
 }
 
-fn copy(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let source = text(arg(&args, 0))?;
-    match std::fs::copy(source, text(arg(&args, 1))?) {
+fn copy(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let source = text(arg(args, 0))?;
+    match std::fs::copy(source, text(arg(args, 1))?) {
         Ok(_) => Ok(Value::Nothing),
         Err(error) => file_error(vm, source, error),
     }
 }
 
-fn move_path(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let source = text(arg(&args, 0))?;
-    match std::fs::rename(source, text(arg(&args, 1))?) {
+fn move_path(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let source = text(arg(args, 0))?;
+    match std::fs::rename(source, text(arg(args, 1))?) {
         Ok(()) => Ok(Value::Nothing),
         Err(error) => file_error(vm, source, error),
     }

@@ -165,7 +165,7 @@ impl Compiler<'_, '_> {
         });
         let value = match kind {
             NumberKind::Integer => Int::parse(&digits).map(Value::Integer),
-            NumberKind::Decimal => Decimal::parse(&digits).map(Value::Decimal),
+            NumberKind::Decimal => Decimal::parse(&digits).map(Value::decimal),
             NumberKind::Float => digits.parse::<f64>().ok().map(Value::Float),
         };
         match value {
@@ -292,8 +292,9 @@ impl Compiler<'_, '_> {
             }
         }
         self.expr(base);
-        let index = self.name_constant(&name.text);
-        self.emit(Op::Field(index), span);
+        let name = self.name_constant(&name.text);
+        let site = self.field_site();
+        self.emit(Op::Field { name, site }, span);
     }
 
     // ------------------------------------------------------------ calls

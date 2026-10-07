@@ -53,8 +53,8 @@ fn response(
     )
 }
 
-fn ok(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let body = text(arg(&args, 0))?.to_string();
+fn ok(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let body = text(arg(args, 0))?.to_string();
     response(
         vm,
         200,
@@ -63,8 +63,8 @@ fn ok(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     )
 }
 
-fn ok_json(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let value = arg(&args, 0).clone();
+fn ok_json(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let value = arg(args, 0).clone();
     let encoded = json::encode(vm, &value, Naming::Exact)?;
     let mut body = String::new();
     json::write_json(&encoded, &mut body, None, 0);
@@ -76,7 +76,7 @@ fn ok_json(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     )
 }
 
-fn not_found(vm: &mut Vm, _: Vec<Value>) -> Result<Value, Interrupt> {
+fn not_found(vm: &mut Vm, _: &mut [Value]) -> Result<Value, Interrupt> {
     response(
         vm,
         404,
@@ -85,8 +85,8 @@ fn not_found(vm: &mut Vm, _: Vec<Value>) -> Result<Value, Interrupt> {
     )
 }
 
-fn bad_request(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let detail = text(arg(&args, 0))?.to_string();
+fn bad_request(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let detail = text(arg(args, 0))?.to_string();
     response(
         vm,
         400,
@@ -95,18 +95,18 @@ fn bad_request(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     )
 }
 
-fn respond(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let status = small(arg(&args, 0))?;
-    let body = text(arg(&args, 1))?.to_string();
+fn respond(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let status = small(arg(args, 0))?;
+    let body = text(arg(args, 1))?.to_string();
     response(vm, status, Vec::new(), body)
 }
 
-fn with_header(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let Value::Record(record) = arg(&args, 0) else {
+fn with_header(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let Value::Record(record) = arg(args, 0) else {
         return Err(crash("`with_header` needs a Response"));
     };
-    let name = text(arg(&args, 1))?.to_string();
-    let value = text(arg(&args, 2))?.to_string();
+    let name = text(arg(args, 1))?.to_string();
+    let value = text(arg(args, 2))?.to_string();
     let mut record = (**record).clone();
     let Some(index) = vm.program.types.field_index(record.ty, "headers") else {
         return Err(crash("a Response has no headers field"));
@@ -130,9 +130,9 @@ struct Incoming {
 
 /// Listen on the port and answer every request with the handler until the
 /// process stops, or until the VM's `serve_limit` requests were answered.
-fn serve(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let port = small(arg(&args, 0))?;
-    let Value::Function(handler) = arg(&args, 1).clone() else {
+fn serve(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let port = small(arg(args, 0))?;
+    let Value::Function(handler) = arg(args, 1).clone() else {
         return Err(crash("`server.serve` needs a handler function"));
     };
     let listener = match TcpListener::bind(("0.0.0.0", port as u16)) {

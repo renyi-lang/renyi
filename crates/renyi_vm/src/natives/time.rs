@@ -194,16 +194,16 @@ impl Vm<'_> {
 
 // --------------------------------------------------------------- the clock
 
-fn time_now(_: &mut Vm, _: Vec<Value>) -> Result<Value, Interrupt> {
+fn time_now(_: &mut Vm, _: &mut [Value]) -> Result<Value, Interrupt> {
     Ok(Value::Instant(now_millis()))
 }
 
-fn time_today(vm: &mut Vm, _: Vec<Value>) -> Result<Value, Interrupt> {
+fn time_today(vm: &mut Vm, _: &mut [Value]) -> Result<Value, Interrupt> {
     vm.date_from_days(now_millis().div_euclid(86_400_000))
 }
 
-fn time_sleep(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let ms = duration(arg(&args, 0))?.max(0) as u64;
+fn time_sleep(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let ms = duration(arg(args, 0))?.max(0) as u64;
     std::thread::sleep(std::time::Duration::from_millis(ms));
     Ok(Value::Nothing)
 }
@@ -212,32 +212,32 @@ fn scaled(args: &[Value], factor: i64) -> Result<Value, Interrupt> {
     Ok(Value::Duration(small(arg(args, 0))?.saturating_mul(factor)))
 }
 
-fn time_milliseconds(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    scaled(&args, 1)
+fn time_milliseconds(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    scaled(args, 1)
 }
 
-fn time_seconds(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    scaled(&args, 1000)
+fn time_seconds(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    scaled(args, 1000)
 }
 
-fn time_minutes(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    scaled(&args, 60_000)
+fn time_minutes(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    scaled(args, 60_000)
 }
 
-fn time_hours(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    scaled(&args, 3_600_000)
+fn time_hours(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    scaled(args, 3_600_000)
 }
 
-fn time_parse_date(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let input = text(arg(&args, 0))?;
+fn time_parse_date(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let input = text(arg(args, 0))?;
     match parse_date_parts(input) {
         Some((year, month, day)) => vm.date_value(year, month, day),
         None => vm.fail_record("std.time", "InvalidDate", vec![Value::text(input)]),
     }
 }
 
-fn time_parse_instant(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let input = text(arg(&args, 0))?;
+fn time_parse_instant(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let input = text(arg(args, 0))?;
     match parse_instant_text(input) {
         Some(ms) => Ok(Value::Instant(ms)),
         None => vm.fail_record("std.time", "InvalidDate", vec![Value::text(input)]),
@@ -246,62 +246,62 @@ fn time_parse_instant(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt>
 
 // ------------------------------------------------------------------- dates
 
-fn date_plus_days(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let days = vm.date_days(arg(&args, 0))?;
-    vm.date_from_days(days + small(arg(&args, 1))?)
+fn date_plus_days(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let days = vm.date_days(arg(args, 0))?;
+    vm.date_from_days(days + small(arg(args, 1))?)
 }
 
-fn date_minus_days(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let days = vm.date_days(arg(&args, 0))?;
-    vm.date_from_days(days - small(arg(&args, 1))?)
+fn date_minus_days(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let days = vm.date_days(arg(args, 0))?;
+    vm.date_from_days(days - small(arg(args, 1))?)
 }
 
-fn date_days_until(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let from = vm.date_days(arg(&args, 0))?;
-    let to = vm.date_days(arg(&args, 1))?;
+fn date_days_until(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let from = vm.date_days(arg(args, 0))?;
+    let to = vm.date_days(arg(args, 1))?;
     Ok(Value::integer(to - from))
 }
 
-fn date_weekday(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let days = vm.date_days(arg(&args, 0))?;
+fn date_weekday(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let days = vm.date_days(arg(args, 0))?;
     // 1970-01-01 was a Thursday; Monday is tag 0
     let tag = (days + 3).rem_euclid(7) as usize;
     let ty = vm.library_type("std.time", "Weekday")?;
     Ok(Value::variant(ty, tag, Vec::new()))
 }
 
-fn date_to_text(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let (year, month, day) = vm.date_parts(arg(&args, 0))?;
+fn date_to_text(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let (year, month, day) = vm.date_parts(arg(args, 0))?;
     Ok(Value::text(format!("{year:04}-{month:02}-{day:02}")))
 }
 
 // ---------------------------------------------------------------- instants
 
-fn instant_plus(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
+fn instant_plus(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     Ok(Value::Instant(
-        instant(arg(&args, 0))?.saturating_add(duration(arg(&args, 1))?),
+        instant(arg(args, 0))?.saturating_add(duration(arg(args, 1))?),
     ))
 }
 
-fn instant_minus(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
+fn instant_minus(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     Ok(Value::Instant(
-        instant(arg(&args, 0))?.saturating_sub(duration(arg(&args, 1))?),
+        instant(arg(args, 0))?.saturating_sub(duration(arg(args, 1))?),
     ))
 }
 
-fn instant_elapsed_since(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
+fn instant_elapsed_since(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     Ok(Value::Duration(
-        instant(arg(&args, 0))?.saturating_sub(instant(arg(&args, 1))?),
+        instant(arg(args, 0))?.saturating_sub(instant(arg(args, 1))?),
     ))
 }
 
-fn instant_date(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let ms = instant(arg(&args, 0))?;
+fn instant_date(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let ms = instant(arg(args, 0))?;
     vm.date_from_days(ms.div_euclid(86_400_000))
 }
 
-fn instant_to_text(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::text(instant_text(instant(arg(&args, 0))?)))
+fn instant_to_text(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::text(instant_text(instant(arg(args, 0))?)))
 }
 
 #[cfg(test)]

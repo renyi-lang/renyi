@@ -19,7 +19,7 @@ impl Vm<'_> {
     pub fn to_text(&mut self, value: &Value) -> Result<String, Interrupt> {
         let value = value.plain();
         if let Some(ty) = value.type_id() {
-            if let Some(function) = self.program.method(ty, "to_text") {
+            if let Some(function) = self.program.specials[ty].to_text {
                 return match self
                     .call_function(function, vec![value.clone()])?
                     .into_plain()
@@ -142,7 +142,7 @@ impl Vm<'_> {
     /// derived form with text quoted.
     fn nested_text(&mut self, value: &Value) -> Result<String, Interrupt> {
         if let Some(ty) = value.type_id() {
-            if self.program.method(ty, "to_text").is_some() {
+            if self.program.specials[ty].to_text.is_some() {
                 return self.to_text(value);
             }
         }
@@ -216,7 +216,7 @@ impl Vm<'_> {
                 }
             }
             (Value::Record(a), Value::Record(b)) if a.ty == b.ty => {
-                if let Some(function) = self.program.method(a.ty, "compare") {
+                if let Some(function) = self.program.specials[a.ty].compare {
                     return self.declared_compare(function, left, right);
                 }
                 let (a, b) = (a.clone(), b.clone());
@@ -235,7 +235,7 @@ impl Vm<'_> {
                 ordering
             }
             (Value::Variant(a), Value::Variant(b)) if a.ty == b.ty => {
-                if let Some(function) = self.program.method(a.ty, "compare") {
+                if let Some(function) = self.program.specials[a.ty].compare {
                     return self.declared_compare(function, left, right);
                 }
                 let (a, b) = (a.clone(), b.clone());

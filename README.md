@@ -85,8 +85,9 @@ exists:
   recording of every effect of a run with the run manifest in its header
   (`--redact` keeps a secret out of it), `renyi run --replay` re-executes
   one offline, `renyi reproduce` replays one under its manifest and
-  compares the outcome and the output, and `--explain` narrates a run
-  through the `purpose:` clauses it passes; `renyi test`
+  compares the outcome and the output, `--explain` narrates a run
+  through the `purpose:` clauses it passes, and `--profile` reports where
+  its time went; `renyi test`
   runs every `example:` line and `test` block, a `replays` test from its
   recording (`--strict`, `--refresh`). Every example checks cleanly, is in
   canonical form, and its examples and tests pass, the five that reach
@@ -107,6 +108,7 @@ cargo build
 ./target/debug/renyi index --diff HEAD examples   # what changed since the last commit, and the version bump
 ./target/debug/renyi run examples/hello.ry Renyi
 ./target/debug/renyi run --explain examples/statistics.ry 2 4 4 4 5 5 7 9
+./target/debug/renyi run --profile compiler/parse.ry compiler/parser.ry   # where the VM's time goes
 ./target/debug/renyi record --to hello.json examples/hello.ry Renyi
 ./target/debug/renyi run --replay hello.json examples/hello.ry
 ./target/debug/renyi reproduce hello.json

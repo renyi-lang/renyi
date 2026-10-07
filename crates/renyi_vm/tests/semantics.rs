@@ -3,7 +3,8 @@
 //! failure, an update keeps a record's refinements, a scoped grant covers
 //! the target of a copy, SQLite refuses a path outside the scope with its
 //! own error, a declared `equals` decides `is`, a Float never overflows
-//! silently, and the text and list methods answer their edge cases.
+//! silently, and the text and list methods answer their edge cases; and
+//! a profiled run reports its counts (decision X4).
 
 use std::cell::RefCell;
 use std::io::Write;
@@ -427,4 +428,66 @@ end
     let (outcome, printed) = run(source, Options::default());
     assert!(matches!(outcome, RunOutcome::Finished), "{outcome:?}");
     assert_eq!(printed, "ace\nking\nqueen\n3\n");
+}
+
+#[test]
+fn a_profiled_run_reports_its_counts() {
+    let source = r#"module demo
+  purpose: A profiled run reports what it ran.
+
+import std.console
+
+public function main() needs console
+  purpose: Add the numbers up to a thousand.
+
+  let mutable total be 0
+  for each number from 1 to 1000
+    set total to total + number
+  end
+  console.print("{total}")
+end
+"#;
+    let program = compile("demo.ry", source);
+    let stdout = Capture::default();
+    let stderr = Capture::default();
+    let outcome = run_program(
+        &program,
+        Options {
+            stdout: Box::new(stdout.clone()),
+            stderr: Box::new(stderr.clone()),
+            stdin: Box::new(std::io::Cursor::new(Vec::new())),
+            profile: true,
+            ..Options::default()
+        },
+    )
+    .outcome;
+    assert!(matches!(outcome, RunOutcome::Finished), "{outcome:?}");
+    assert_eq!(stdout.text(), "500500\n");
+    let report = stderr.text();
+    assert!(report.starts_with("profile: "), "{report}");
+    for title in [
+        "samples by function and operation",
+        "samples by function",
+        "samples by operation",
+        "operations by kind",
+        "calls by function",
+        "primitive calls",
+    ] {
+        assert!(report.contains(&format!("\n{title}")), "{report}");
+    }
+    assert!(report.contains("demo.main"), "{report}");
+    assert!(report.contains("primitive std.console.print"), "{report}");
+    // the loop's thousand steps are counted
+    let row = report
+        .lines()
+        .find(|line| line.ends_with("  IterNext"))
+        .expect("the IterNext row");
+    let count: u64 = row
+        .split_whitespace()
+        .next()
+        .expect("a count")
+        .replace(',', "")
+        .parse()
+        .expect("a number");
+    assert!(count > 1000, "{row}");
 }

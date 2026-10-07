@@ -32,27 +32,27 @@ pub fn lookup(name: &str) -> Option<NativeFn> {
 const LIMIT: Duration = Duration::from_secs(30);
 const MAX_REDIRECTS: usize = 10;
 
-fn get(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let url = text(arg(&args, 0))?.to_string();
+fn get(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let url = text(arg(args, 0))?.to_string();
     perform(vm, "GET", &url, Vec::new(), None)
 }
 
-fn get_with(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let url = text(arg(&args, 0))?.to_string();
-    let headers = header_list(arg(&args, 1))?;
+fn get_with(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let url = text(arg(args, 0))?.to_string();
+    let headers = header_list(arg(args, 1))?;
     perform(vm, "GET", &url, headers, None)
 }
 
-fn post(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let url = text(arg(&args, 0))?.to_string();
-    let body = text(arg(&args, 1))?.to_string();
-    let headers = header_list(arg(&args, 2))?;
+fn post(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let url = text(arg(args, 0))?.to_string();
+    let body = text(arg(args, 1))?.to_string();
+    let headers = header_list(arg(args, 2))?;
     perform(vm, "POST", &url, headers, Some(body))
 }
 
-fn post_json(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let url = text(arg(&args, 0))?.to_string();
-    let value = arg(&args, 1).clone();
+fn post_json(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let url = text(arg(args, 0))?.to_string();
+    let value = arg(args, 1).clone();
     let encoded = json::encode(vm, &value, Naming::Exact)?;
     let mut body = String::new();
     json::write_json(&encoded, &mut body, None, 0);
@@ -60,23 +60,23 @@ fn post_json(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     perform(vm, "POST", &url, headers, Some(body))
 }
 
-fn put(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let url = text(arg(&args, 0))?.to_string();
-    let body = text(arg(&args, 1))?.to_string();
-    let headers = header_list(arg(&args, 2))?;
+fn put(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let url = text(arg(args, 0))?.to_string();
+    let body = text(arg(args, 1))?.to_string();
+    let headers = header_list(arg(args, 2))?;
     perform(vm, "PUT", &url, headers, Some(body))
 }
 
-fn delete(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let url = text(arg(&args, 0))?.to_string();
+fn delete(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let url = text(arg(args, 0))?.to_string();
     perform(vm, "DELETE", &url, Vec::new(), None)
 }
 
-fn request(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let method = text(arg(&args, 0))?.to_ascii_uppercase();
-    let url = text(arg(&args, 1))?.to_string();
-    let body = text(arg(&args, 2))?.to_string();
-    let headers = header_list(arg(&args, 3))?;
+fn request(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let method = text(arg(args, 0))?.to_ascii_uppercase();
+    let url = text(arg(args, 1))?.to_string();
+    let body = text(arg(args, 2))?.to_string();
+    let headers = header_list(arg(args, 3))?;
     let body =
         (!body.is_empty() || !matches!(method.as_str(), "GET" | "HEAD" | "DELETE")).then_some(body);
     perform(vm, &method, &url, headers, body)

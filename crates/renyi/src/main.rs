@@ -59,6 +59,8 @@ const USAGE: &str = "usage:
   renyi version
 options of run and record:
   --explain                           narrate the run on stderr: purposes, arguments, results, effects
+  --profile                           count every operation, call and primitive call and sample where the
+                                      time goes; the report on stderr when the run ends
   --replay <file.json>                run only: answer every effect from the recording; nothing is written or sent
   --deny <capability>                 refuse to start when any function needs the capability
   --allow-host <host>                 narrow network.http to one host
@@ -388,6 +390,7 @@ fn code_hash(program: &renyi_vm::Program, files: &[SourceFile]) -> Option<String
 struct Flags {
     narrowing: renyi_vm::Narrowing,
     explain: bool,
+    profile: bool,
     replay: Option<String>,
     to: Option<String>,
     strict: bool,
@@ -411,6 +414,11 @@ fn parse_flags(args: &[String]) -> Result<(Flags, &[String]), String> {
         match arg.as_str() {
             "--explain" => {
                 flags.explain = true;
+                index += 1;
+                continue;
+            }
+            "--profile" => {
+                flags.profile = true;
                 index += 1;
                 continue;
             }
@@ -565,6 +573,7 @@ fn run_command(args: &[String], record: bool) -> ExitCode {
         replay,
         revision: revision.filter(|text| text != "unknown"),
         explain: flags.explain,
+        profile: flags.profile,
         redact: flags.redact,
         manifest,
         ..renyi_vm::Options::default()
@@ -638,6 +647,7 @@ fn test_command(args: &[String]) -> ExitCode {
     if flags.replay.is_some()
         || flags.to.is_some()
         || flags.manifest
+        || flags.profile
         || !narrowing.deny.is_empty()
         || !narrowing.allow.is_empty()
         || !narrowing.budgets.is_empty()

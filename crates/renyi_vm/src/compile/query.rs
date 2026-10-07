@@ -28,7 +28,7 @@ impl Compiler<'_, '_> {
             }
             (QueryTerminal::Sum(_), _) => {
                 let zero = match self.number_at(span) {
-                    Some(NumberKind::Decimal) => Value::Decimal(Decimal::zero()),
+                    Some(NumberKind::Decimal) => Value::decimal(Decimal::zero()),
                     Some(NumberKind::Float) => Value::Float(0.0),
                     _ => Value::integer(0),
                 };

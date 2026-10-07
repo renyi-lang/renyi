@@ -471,7 +471,7 @@ pub fn decode(
     if id == b.decimal {
         return Ok(match json {
             Json::Number(text) => match decimal_of(text) {
-                Some(value) => Ok(Value::Decimal(value)),
+                Some(value) => Ok(Value::decimal(value)),
                 None => return mismatch(vm, path, "Decimal", json),
             },
             _ => return mismatch(vm, path, "Decimal", json),
@@ -677,7 +677,7 @@ fn json_value(vm: &Vm, json: &Json) -> Result<Value, Interrupt> {
         Json::Boolean(value) => make("JsonBoolean", vec![Value::Boolean(*value)]),
         Json::Number(text) => {
             let value = decimal_of(text).ok_or_else(|| crash("a JSON number is out of range"))?;
-            make("JsonNumber", vec![Value::Decimal(value)])
+            make("JsonNumber", vec![Value::decimal(value)])
         }
         Json::Text(text) => make("JsonText", vec![Value::text(text)]),
         Json::Array(items) => {
@@ -818,14 +818,14 @@ fn parse_into(vm: &mut Vm, content: &str, naming: Naming) -> Result<Value, Inter
     }
 }
 
-fn parse(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let content = text(arg(&args, 0))?.to_string();
+fn parse(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let content = text(arg(args, 0))?.to_string();
     parse_into(vm, &content, Naming::Exact)
 }
 
-fn parse_with(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let content = text(arg(&args, 0))?.to_string();
-    let naming = Naming::of(arg(&args, 1));
+fn parse_with(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let content = text(arg(args, 0))?.to_string();
+    let naming = Naming::of(arg(args, 1));
     parse_into(vm, &content, naming)
 }
 
@@ -841,19 +841,19 @@ fn render_as(
     Ok(Value::text(out))
 }
 
-fn render(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let value = arg(&args, 0).clone();
+fn render(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let value = arg(args, 0).clone();
     render_as(vm, &value, Naming::Exact, None)
 }
 
-fn render_indented(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let value = arg(&args, 0).clone();
+fn render_indented(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let value = arg(args, 0).clone();
     render_as(vm, &value, Naming::Exact, Some(2))
 }
 
-fn render_with(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let value = arg(&args, 0).clone();
-    let naming = Naming::of(arg(&args, 1));
+fn render_with(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let value = arg(args, 0).clone();
+    let naming = Naming::of(arg(args, 1));
     render_as(vm, &value, naming, None)
 }
 

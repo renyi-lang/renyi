@@ -8,7 +8,9 @@ use indexmap::IndexSet;
 use num_bigint::BigInt;
 use num_traits::FromPrimitive;
 
-use super::{arg, bytes, crash, decimal, float, int, list, map, range, set, small, text, NativeFn};
+use super::{
+    arg, bytes, crash, decimal, float, int, list, map, range, set, small, take, text, NativeFn,
+};
 use crate::decimal::Decimal;
 use crate::integer::Int;
 use crate::value::{take_list, take_map, take_set, Value};
@@ -132,33 +134,33 @@ pub fn lookup(name: &str, head: Option<&str>, receiver: Option<&str>) -> Option<
 
 // ----------------------------------------------------------------- numbers
 
-fn integer_to_decimal(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::Decimal(Decimal::from_int(int(arg(&args, 0))?)))
+fn integer_to_decimal(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::decimal(Decimal::from_int(int(arg(args, 0))?)))
 }
 
-fn integer_to_float(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    finite_float(int(arg(&args, 0))?.to_f64())
+fn integer_to_float(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    finite_float(int(arg(args, 0))?.to_f64())
 }
 
-fn integer_to_text(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::text(int(arg(&args, 0))?.to_string()))
+fn integer_to_text(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::text(int(arg(args, 0))?.to_string()))
 }
 
-fn integer_quotient(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let dividend = int(arg(&args, 0))?;
-    let divisor = int(arg(&args, 1))?;
+fn integer_quotient(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let dividend = int(arg(args, 0))?;
+    let divisor = int(arg(args, 1))?;
     dividend
         .quotient(divisor)
         .map(Value::Integer)
         .ok_or_else(|| crash("division by zero"))
 }
 
-fn integer_absolute(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::Integer(int(arg(&args, 0))?.absolute()))
+fn integer_absolute(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::Integer(int(arg(args, 0))?.absolute()))
 }
 
-fn number_at_least(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let (a, b) = (arg(&args, 0).clone(), arg(&args, 1).clone());
+fn number_at_least(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let (a, b) = (arg(args, 0).clone(), arg(args, 1).clone());
     Ok(if vm.compare(&a, &b)? == Ordering::Less {
         b
     } else {
@@ -166,8 +168,8 @@ fn number_at_least(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     })
 }
 
-fn number_at_most(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let (a, b) = (arg(&args, 0).clone(), arg(&args, 1).clone());
+fn number_at_most(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let (a, b) = (arg(args, 0).clone(), arg(args, 1).clone());
     Ok(if vm.compare(&a, &b)? == Ordering::Greater {
         b
     } else {
@@ -175,97 +177,97 @@ fn number_at_most(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     })
 }
 
-fn any_to_text(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let value = arg(&args, 0).clone();
+fn any_to_text(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let value = arg(args, 0).clone();
     Ok(Value::text(vm.render(&value, false)?))
 }
 
-fn decimal_rounded(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let value = decimal(arg(&args, 0))?;
-    let places = small(arg(&args, 1))?;
+fn decimal_rounded(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let value = decimal(arg(args, 0))?;
+    let places = small(arg(args, 1))?;
     value
         .rounded(places)
-        .map(Value::Decimal)
+        .map(Value::decimal)
         .map_err(|_| crash("cannot round to that many places"))
 }
 
-fn decimal_truncated(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::Integer(decimal(arg(&args, 0))?.truncated()))
+fn decimal_truncated(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::Integer(decimal(arg(args, 0))?.truncated()))
 }
 
-fn decimal_to_float(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    finite_float(decimal(arg(&args, 0))?.to_f64())
+fn decimal_to_float(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    finite_float(decimal(arg(args, 0))?.to_f64())
 }
 
-fn decimal_absolute(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::Decimal(decimal(arg(&args, 0))?.absolute()))
+fn decimal_absolute(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::decimal(decimal(arg(args, 0))?.absolute()))
 }
 
-fn float_rounded(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let value = float(arg(&args, 0))?;
-    let places = small(arg(&args, 1))?;
+fn float_rounded(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let value = float(arg(args, 0))?;
+    let places = small(arg(args, 1))?;
     let factor = 10f64.powi(places.clamp(-300, 300) as i32);
     Ok(Value::Float((value * factor).round() / factor))
 }
 
-fn float_truncated(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let value = float(arg(&args, 0))?;
+fn float_truncated(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let value = float(arg(args, 0))?;
     BigInt::from_f64(value.trunc())
         .map(|big| Value::Integer(Int::from_big(big)))
         .ok_or_else(|| crash("cannot truncate a Float that is not finite"))
 }
 
-fn float_square_root(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let value = float(arg(&args, 0))?;
+fn float_square_root(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let value = float(arg(args, 0))?;
     if value < 0.0 {
         return Err(crash("the square root of a negative number"));
     }
     Ok(Value::Float(value.sqrt()))
 }
 
-fn float_to_decimal(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Decimal::from_f64(float(arg(&args, 0))?)
-        .map(Value::Decimal)
+fn float_to_decimal(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Decimal::from_f64(float(arg(args, 0))?)
+        .map(Value::decimal)
         .ok_or_else(|| crash("cannot convert a Float that is not finite to a Decimal"))
 }
 
-fn float_absolute(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::Float(float(arg(&args, 0))?.abs()))
+fn float_absolute(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::Float(float(arg(args, 0))?.abs()))
 }
 
 // -------------------------------------------------------------------- text
 
-fn text_length(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::integer(text(arg(&args, 0))?.chars().count() as i64))
+fn text_length(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::integer(text(arg(args, 0))?.chars().count() as i64))
 }
 
-fn text_is_empty(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::Boolean(text(arg(&args, 0))?.is_empty()))
+fn text_is_empty(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::Boolean(text(arg(args, 0))?.is_empty()))
 }
 
-fn text_trim(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::text(text(arg(&args, 0))?.trim()))
+fn text_trim(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::text(text(arg(args, 0))?.trim()))
 }
 
-fn text_trim_start(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::text(text(arg(&args, 0))?.trim_start()))
+fn text_trim_start(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::text(text(arg(args, 0))?.trim_start()))
 }
 
-fn text_trim_end(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::text(text(arg(&args, 0))?.trim_end()))
+fn text_trim_end(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::text(text(arg(args, 0))?.trim_end()))
 }
 
-fn text_to_lower(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::text(text(arg(&args, 0))?.to_lowercase()))
+fn text_to_lower(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::text(text(arg(args, 0))?.to_lowercase()))
 }
 
-fn text_to_upper(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::text(text(arg(&args, 0))?.to_uppercase()))
+fn text_to_upper(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::text(text(arg(args, 0))?.to_uppercase()))
 }
 
-fn text_split(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let value = text(arg(&args, 0))?;
-    let separator = text(arg(&args, 1))?;
+fn text_split(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let value = text(arg(args, 0))?;
+    let separator = text(arg(args, 1))?;
     if separator.is_empty() {
         // nothing lies between empty separators but the characters
         return Ok(Value::list(
@@ -277,60 +279,60 @@ fn text_split(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     ))
 }
 
-fn text_lines(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
+fn text_lines(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     Ok(Value::list(
-        text(arg(&args, 0))?.lines().map(Value::text).collect(),
+        text(arg(args, 0))?.lines().map(Value::text).collect(),
     ))
 }
 
-fn text_characters(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
+fn text_characters(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     Ok(Value::list(
-        text(arg(&args, 0))?
+        text(arg(args, 0))?
             .chars()
             .map(|c| Value::text(c.to_string()))
             .collect(),
     ))
 }
 
-fn text_contains(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
+fn text_contains(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     Ok(Value::Boolean(
-        text(arg(&args, 0))?.contains(text(arg(&args, 1))?),
+        text(arg(args, 0))?.contains(text(arg(args, 1))?),
     ))
 }
 
-fn text_starts_with(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
+fn text_starts_with(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     Ok(Value::Boolean(
-        text(arg(&args, 0))?.starts_with(text(arg(&args, 1))?),
+        text(arg(args, 0))?.starts_with(text(arg(args, 1))?),
     ))
 }
 
-fn text_ends_with(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
+fn text_ends_with(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     Ok(Value::Boolean(
-        text(arg(&args, 0))?.ends_with(text(arg(&args, 1))?),
+        text(arg(args, 0))?.ends_with(text(arg(args, 1))?),
     ))
 }
 
-fn text_index_of(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let value = text(arg(&args, 0))?;
-    Ok(match value.find(text(arg(&args, 1))?) {
+fn text_index_of(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let value = text(arg(args, 0))?;
+    Ok(match value.find(text(arg(args, 1))?) {
         Some(byte) => Value::integer(value[..byte].chars().count() as i64),
         None => Value::Nothing,
     })
 }
 
-fn text_replace(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let value = text(arg(&args, 0))?;
-    let old = text(arg(&args, 1))?;
+fn text_replace(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let value = text(arg(args, 0))?;
+    let old = text(arg(args, 1))?;
     if old.is_empty() {
         // an empty part occurs nowhere: nothing changes
         return Ok(Value::text(value));
     }
-    Ok(Value::text(value.replace(old, text(arg(&args, 2))?)))
+    Ok(Value::text(value.replace(old, text(arg(args, 2))?)))
 }
 
-fn text_pad_left(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let value = text(arg(&args, 0))?;
-    let width = small(arg(&args, 1))?.max(0) as usize;
+fn text_pad_left(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let value = text(arg(args, 0))?;
+    let width = small(arg(args, 1))?.max(0) as usize;
     let length = value.chars().count();
     Ok(Value::text(format!(
         "{}{value}",
@@ -338,9 +340,9 @@ fn text_pad_left(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     )))
 }
 
-fn text_pad_right(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let value = text(arg(&args, 0))?;
-    let width = small(arg(&args, 1))?.max(0) as usize;
+fn text_pad_right(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let value = text(arg(args, 0))?;
+    let width = small(arg(args, 1))?.max(0) as usize;
     let length = value.chars().count();
     Ok(Value::text(format!(
         "{value}{}",
@@ -348,9 +350,9 @@ fn text_pad_right(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     )))
 }
 
-fn text_repeat(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let value = text(arg(&args, 0))?;
-    let times = small(arg(&args, 1))?.max(0) as usize;
+fn text_repeat(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let value = text(arg(args, 0))?;
+    let times = small(arg(args, 1))?.max(0) as usize;
     Ok(Value::text(value.repeat(times)))
 }
 
@@ -364,26 +366,26 @@ fn count(value: &Value) -> Result<usize, Interrupt> {
     })
 }
 
-fn text_take(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let value = text(arg(&args, 0))?;
-    let length = count(arg(&args, 1))?;
+fn text_take(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let value = text(arg(args, 0))?;
+    let length = count(arg(args, 1))?;
     Ok(Value::text(value.chars().take(length).collect::<String>()))
 }
 
-fn text_drop(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let value = text(arg(&args, 0))?;
-    let length = count(arg(&args, 1))?;
+fn text_drop(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let value = text(arg(args, 0))?;
+    let length = count(arg(args, 1))?;
     Ok(Value::text(value.chars().skip(length).collect::<String>()))
 }
 
-fn text_reversed(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
+fn text_reversed(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     Ok(Value::text(
-        text(arg(&args, 0))?.chars().rev().collect::<String>(),
+        text(arg(args, 0))?.chars().rev().collect::<String>(),
     ))
 }
 
-fn text_to_integer(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let value = text(arg(&args, 0))?;
+fn text_to_integer(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let value = text(arg(args, 0))?;
     let digits = value.strip_prefix('+').unwrap_or(value);
     let plain = digits.strip_prefix('-').unwrap_or(digits);
     if plain.is_empty() || !plain.chars().all(|c| c.is_ascii_digit()) {
@@ -395,38 +397,38 @@ fn text_to_integer(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     }
 }
 
-fn text_to_decimal(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let value = text(arg(&args, 0))?;
+fn text_to_decimal(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let value = text(arg(args, 0))?;
     match Decimal::parse(value) {
-        Some(parsed) if !value.contains('_') => Ok(Value::Decimal(parsed)),
+        Some(parsed) if !value.contains('_') => Ok(Value::decimal(parsed)),
         _ => vm.fail_record("std.prelude", "InvalidNumber", vec![Value::text(value)]),
     }
 }
 
-fn text_to_float(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let value = text(arg(&args, 0))?;
+fn text_to_float(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let value = text(arg(args, 0))?;
     match value.parse::<f64>() {
         Ok(parsed) if parsed.is_finite() => Ok(Value::Float(parsed)),
         _ => vm.fail_record("std.prelude", "InvalidNumber", vec![Value::text(value)]),
     }
 }
 
-fn text_to_bytes(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::Bytes(Rc::from(text(arg(&args, 0))?.as_bytes())))
+fn text_to_bytes(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::Bytes(Rc::from(text(arg(args, 0))?.as_bytes())))
 }
 
 // ------------------------------------------------------------------- bytes
 
-fn bytes_length(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::integer(bytes(arg(&args, 0))?.len() as i64))
+fn bytes_length(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::integer(bytes(arg(args, 0))?.len() as i64))
 }
 
-fn bytes_is_empty(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::Boolean(bytes(arg(&args, 0))?.is_empty()))
+fn bytes_is_empty(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::Boolean(bytes(arg(args, 0))?.is_empty()))
 }
 
-fn bytes_to_text(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    match std::str::from_utf8(bytes(arg(&args, 0))?) {
+fn bytes_to_text(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    match std::str::from_utf8(bytes(arg(args, 0))?) {
         Ok(decoded) => Ok(Value::text(decoded)),
         Err(error) => vm.fail_record(
             "std.prelude",
@@ -436,8 +438,8 @@ fn bytes_to_text(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     }
 }
 
-fn bytes_to_base64(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::text(super::base64_encode(bytes(arg(&args, 0))?)))
+fn bytes_to_base64(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::text(super::base64_encode(bytes(arg(args, 0))?)))
 }
 
 // ------------------------------------------------------------------- lists
@@ -450,18 +452,18 @@ fn index_in(length: usize, index: i64) -> Option<usize> {
     }
 }
 
-fn list_length(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::integer(list(arg(&args, 0))?.len() as i64))
+fn list_length(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::integer(list(arg(args, 0))?.len() as i64))
 }
 
-fn list_is_empty(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::Boolean(list(arg(&args, 0))?.is_empty()))
+fn list_is_empty(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::Boolean(list(arg(args, 0))?.is_empty()))
 }
 
-fn list_at(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let items = list(arg(&args, 0))?;
+fn list_at(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let items = list(arg(args, 0))?;
     // an index beyond a machine word is out of range like any other
-    let Some(index) = int(arg(&args, 1))?.to_i64() else {
+    let Some(index) = int(arg(args, 1))?.to_i64() else {
         return Ok(Value::Nothing);
     };
     Ok(index_in(items.len(), index)
@@ -469,34 +471,34 @@ fn list_at(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
         .unwrap_or(Value::Nothing))
 }
 
-fn list_first(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(list(arg(&args, 0))?
+fn list_first(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(list(arg(args, 0))?
         .first()
         .cloned()
         .unwrap_or(Value::Nothing))
 }
 
-fn list_last(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(list(arg(&args, 0))?
+fn list_last(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(list(arg(args, 0))?
         .last()
         .cloned()
         .unwrap_or(Value::Nothing))
 }
 
-fn list_rest(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let items = list(arg(&args, 0))?;
+fn list_rest(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let items = list(arg(args, 0))?;
     Ok(Value::list(items.iter().skip(1).cloned().collect()))
 }
 
-fn list_without_last(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let items = list(arg(&args, 0))?;
+fn list_without_last(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let items = list(arg(args, 0))?;
     let keep = items.len().saturating_sub(1);
     Ok(Value::list(items[..keep].to_vec()))
 }
 
-fn list_without_index(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let items = list(arg(&args, 0))?;
-    let index = small(arg(&args, 1))?;
+fn list_without_index(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let items = list(arg(args, 0))?;
+    let index = small(arg(args, 1))?;
     let mut out: Vec<Value> = (**items).clone();
     if let Some(i) = index_in(out.len(), index) {
         out.remove(i);
@@ -504,85 +506,85 @@ fn list_without_index(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> 
     Ok(Value::list(out))
 }
 
-fn list_take(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let items = list(arg(&args, 0))?;
-    let length = count(arg(&args, 1))?;
+fn list_take(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let items = list(arg(args, 0))?;
+    let length = count(arg(args, 1))?;
     Ok(Value::list(items.iter().take(length).cloned().collect()))
 }
 
-fn list_drop(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let items = list(arg(&args, 0))?;
-    let length = count(arg(&args, 1))?;
+fn list_drop(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let items = list(arg(args, 0))?;
+    let length = count(arg(args, 1))?;
     Ok(Value::list(items.iter().skip(length).cloned().collect()))
 }
 
 /// `slice(start, stop)`: the items from `start` to `stop`, the end exclusive,
 /// both clamped to the list (decision X2).
-fn list_slice(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let items = list(arg(&args, 0))?;
-    let start = count(arg(&args, 1))?.min(items.len());
-    let stop = count(arg(&args, 2))?.min(items.len()).max(start);
+fn list_slice(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let items = list(arg(args, 0))?;
+    let start = count(arg(args, 1))?.min(items.len());
+    let stop = count(arg(args, 2))?.min(items.len()).max(start);
     Ok(Value::list(items[start..stop].to_vec()))
 }
 
-fn list_append(_: &mut Vm, mut args: Vec<Value>) -> Result<Value, Interrupt> {
-    let item = args.pop().unwrap_or(Value::Nothing);
-    match args.pop() {
-        Some(Value::List(items)) => {
+fn list_append(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let item = take(args, 1);
+    match take(args, 0) {
+        Value::List(items) => {
             let mut items = take_list(items);
             items.push(item);
             Ok(Value::list(items))
         }
         other => Err(crash(format!(
             "`append` needs a List, found {}",
-            other.map(|v| v.kind_name()).unwrap_or("nothing")
+            other.kind_name()
         ))),
     }
 }
 
-fn list_append_all(_: &mut Vm, mut args: Vec<Value>) -> Result<Value, Interrupt> {
-    let others = args.pop().unwrap_or(Value::Nothing);
+fn list_append_all(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let others = take(args, 1);
     let others = list(&others)?.clone();
-    match args.pop() {
-        Some(Value::List(items)) => {
+    match take(args, 0) {
+        Value::List(items) => {
             let mut items = take_list(items);
             items.extend(others.iter().cloned());
             Ok(Value::list(items))
         }
         other => Err(crash(format!(
             "`append_all` needs a List, found {}",
-            other.map(|v| v.kind_name()).unwrap_or("nothing")
+            other.kind_name()
         ))),
     }
 }
 
-fn list_reversed(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let items = list(arg(&args, 0))?;
+fn list_reversed(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let items = list(arg(args, 0))?;
     Ok(Value::list(items.iter().rev().cloned().collect()))
 }
 
-fn list_sorted(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let mut items: Vec<Value> = (**list(arg(&args, 0))?).clone();
+fn list_sorted(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let mut items: Vec<Value> = (**list(arg(args, 0))?).clone();
     vm.sort_values(&mut items)?;
     Ok(Value::list(items))
 }
 
-fn list_distinct(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let items = list(arg(&args, 0))?;
+fn list_distinct(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let items = list(arg(args, 0))?;
     let distinct: IndexSet<Value> = items.iter().cloned().collect();
     Ok(Value::list(distinct.into_iter().collect()))
 }
 
-fn list_contains(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let items = list(arg(&args, 0))?;
-    Ok(Value::Boolean(items.contains(arg(&args, 1))))
+fn list_contains(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let items = list(arg(args, 0))?;
+    Ok(Value::Boolean(items.contains(arg(args, 1))))
 }
 
-fn list_index_of(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let items = list(arg(&args, 0))?;
+fn list_index_of(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let items = list(arg(args, 0))?;
     Ok(items
         .iter()
-        .position(|item| item == arg(&args, 1))
+        .position(|item| item == arg(args, 1))
         .map(|i| Value::integer(i as i64))
         .unwrap_or(Value::Nothing))
 }
@@ -605,16 +607,16 @@ fn extreme(vm: &mut Vm, args: &[Value], wanted: Ordering) -> Result<Value, Inter
     Ok(best.unwrap_or(Value::Nothing))
 }
 
-fn list_largest(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    extreme(vm, &args, Ordering::Greater)
+fn list_largest(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    extreme(vm, args, Ordering::Greater)
 }
 
-fn list_smallest(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    extreme(vm, &args, Ordering::Less)
+fn list_smallest(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    extreme(vm, args, Ordering::Less)
 }
 
-fn list_with_index(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let items = list(arg(&args, 0))?;
+fn list_with_index(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let items = list(arg(args, 0))?;
     Ok(Value::list(
         items
             .iter()
@@ -624,13 +626,13 @@ fn list_with_index(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     ))
 }
 
-fn list_to_set(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let items = list(arg(&args, 0))?;
+fn list_to_set(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let items = list(arg(args, 0))?;
     Ok(Value::Set(Rc::new(items.iter().cloned().collect())))
 }
 
-fn list_flattened(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let items = list(arg(&args, 0))?;
+fn list_flattened(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let items = list(arg(args, 0))?;
     let mut out = Vec::new();
     for item in items.iter() {
         out.extend(list(item)?.iter().cloned());
@@ -638,9 +640,9 @@ fn list_flattened(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     Ok(Value::list(out))
 }
 
-fn list_join(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let items = list(arg(&args, 0))?;
-    let separator = text(arg(&args, 1))?;
+fn list_join(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let items = list(arg(args, 0))?;
+    let separator = text(arg(args, 1))?;
     let mut parts = Vec::with_capacity(items.len());
     for item in items.iter() {
         parts.push(text(item)?);
@@ -648,8 +650,8 @@ fn list_join(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     Ok(Value::text(parts.join(separator)))
 }
 
-fn list_sum_integers(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let items = list(arg(&args, 0))?;
+fn list_sum_integers(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let items = list(arg(args, 0))?;
     let mut total = Int::Small(0);
     for item in items.iter() {
         total = total.add(int(item)?);
@@ -657,19 +659,19 @@ fn list_sum_integers(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     Ok(Value::Integer(total))
 }
 
-fn list_sum_decimals(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let items = list(arg(&args, 0))?;
+fn list_sum_decimals(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let items = list(arg(args, 0))?;
     let mut total = Decimal::zero();
     for item in items.iter() {
         total = total
             .add(decimal(item)?)
             .map_err(|_| crash("the Decimal sum is out of range"))?;
     }
-    Ok(Value::Decimal(total))
+    Ok(Value::decimal(total))
 }
 
-fn list_sum_floats(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let items = list(arg(&args, 0))?;
+fn list_sum_floats(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let items = list(arg(args, 0))?;
     let mut total = 0.0;
     for item in items.iter() {
         total += float(item)?;
@@ -679,80 +681,80 @@ fn list_sum_floats(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
 
 // -------------------------------------------------------------------- maps
 
-fn map_length(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::integer(map(arg(&args, 0))?.len() as i64))
+fn map_length(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::integer(map(arg(args, 0))?.len() as i64))
 }
 
-fn map_is_empty(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::Boolean(map(arg(&args, 0))?.is_empty()))
+fn map_is_empty(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::Boolean(map(arg(args, 0))?.is_empty()))
 }
 
-fn map_get(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(map(arg(&args, 0))?
-        .get(arg(&args, 1))
+fn map_get(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(map(arg(args, 0))?
+        .get(arg(args, 1))
         .cloned()
         .unwrap_or(Value::Nothing))
 }
 
-fn map_set(_: &mut Vm, mut args: Vec<Value>) -> Result<Value, Interrupt> {
-    let value = args.pop().unwrap_or(Value::Nothing);
-    let key = args.pop().unwrap_or(Value::Nothing);
-    match args.pop() {
-        Some(Value::Map(entries)) => {
+fn map_set(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let value = take(args, 2);
+    let key = take(args, 1);
+    match take(args, 0) {
+        Value::Map(entries) => {
             let mut entries = take_map(entries);
             entries.insert(key, value);
             Ok(Value::Map(Rc::new(entries)))
         }
         other => Err(crash(format!(
             "`set` needs a Map, found {}",
-            other.map(|v| v.kind_name()).unwrap_or("nothing")
+            other.kind_name()
         ))),
     }
 }
 
-fn map_without(_: &mut Vm, mut args: Vec<Value>) -> Result<Value, Interrupt> {
-    let key = args.pop().unwrap_or(Value::Nothing);
-    match args.pop() {
-        Some(Value::Map(entries)) => {
+fn map_without(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let key = take(args, 1);
+    match take(args, 0) {
+        Value::Map(entries) => {
             let mut entries = take_map(entries);
             entries.shift_remove(&key);
             Ok(Value::Map(Rc::new(entries)))
         }
         other => Err(crash(format!(
             "`without` needs a Map, found {}",
-            other.map(|v| v.kind_name()).unwrap_or("nothing")
+            other.kind_name()
         ))),
     }
 }
 
-fn map_contains_key(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
+fn map_contains_key(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     Ok(Value::Boolean(
-        map(arg(&args, 0))?.contains_key(arg(&args, 1)),
+        map(arg(args, 0))?.contains_key(arg(args, 1)),
     ))
 }
 
-fn map_keys(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::list(map(arg(&args, 0))?.keys().cloned().collect()))
+fn map_keys(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::list(map(arg(args, 0))?.keys().cloned().collect()))
 }
 
-fn map_values(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::list(map(arg(&args, 0))?.values().cloned().collect()))
+fn map_values(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::list(map(arg(args, 0))?.values().cloned().collect()))
 }
 
-fn map_entries(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
+fn map_entries(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     Ok(Value::list(
-        map(arg(&args, 0))?
+        map(arg(args, 0))?
             .iter()
             .map(|(key, value)| Value::pair(key.clone(), value.clone()))
             .collect(),
     ))
 }
 
-fn map_merged(_: &mut Vm, mut args: Vec<Value>) -> Result<Value, Interrupt> {
-    let other = args.pop().unwrap_or(Value::Nothing);
+fn map_merged(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let other = take(args, 1);
     let other = map(&other)?.clone();
-    match args.pop() {
-        Some(Value::Map(entries)) => {
+    match take(args, 0) {
+        Value::Map(entries) => {
             let mut entries = take_map(entries);
             for (key, value) in other.iter() {
                 entries.insert(key.clone(), value.clone());
@@ -761,94 +763,94 @@ fn map_merged(_: &mut Vm, mut args: Vec<Value>) -> Result<Value, Interrupt> {
         }
         other => Err(crash(format!(
             "`merged` needs a Map, found {}",
-            other.map(|v| v.kind_name()).unwrap_or("nothing")
+            other.kind_name()
         ))),
     }
 }
 
 // -------------------------------------------------------------------- sets
 
-fn set_length(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::integer(set(arg(&args, 0))?.len() as i64))
+fn set_length(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::integer(set(arg(args, 0))?.len() as i64))
 }
 
-fn set_is_empty(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::Boolean(set(arg(&args, 0))?.is_empty()))
+fn set_is_empty(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::Boolean(set(arg(args, 0))?.is_empty()))
 }
 
-fn set_contains(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::Boolean(set(arg(&args, 0))?.contains(arg(&args, 1))))
+fn set_contains(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::Boolean(set(arg(args, 0))?.contains(arg(args, 1))))
 }
 
-fn set_add(_: &mut Vm, mut args: Vec<Value>) -> Result<Value, Interrupt> {
-    let item = args.pop().unwrap_or(Value::Nothing);
-    match args.pop() {
-        Some(Value::Set(items)) => {
+fn set_add(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let item = take(args, 1);
+    match take(args, 0) {
+        Value::Set(items) => {
             let mut items = take_set(items);
             items.insert(item);
             Ok(Value::Set(Rc::new(items)))
         }
         other => Err(crash(format!(
             "`add` needs a Set, found {}",
-            other.map(|v| v.kind_name()).unwrap_or("nothing")
+            other.kind_name()
         ))),
     }
 }
 
-fn set_without(_: &mut Vm, mut args: Vec<Value>) -> Result<Value, Interrupt> {
-    let item = args.pop().unwrap_or(Value::Nothing);
-    match args.pop() {
-        Some(Value::Set(items)) => {
+fn set_without(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let item = take(args, 1);
+    match take(args, 0) {
+        Value::Set(items) => {
             let mut items = take_set(items);
             items.shift_remove(&item);
             Ok(Value::Set(Rc::new(items)))
         }
         other => Err(crash(format!(
             "`without` needs a Set, found {}",
-            other.map(|v| v.kind_name()).unwrap_or("nothing")
+            other.kind_name()
         ))),
     }
 }
 
-fn set_union(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let a = set(arg(&args, 0))?;
-    let b = set(arg(&args, 1))?;
+fn set_union(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let a = set(arg(args, 0))?;
+    let b = set(arg(args, 1))?;
     Ok(Value::Set(Rc::new(a.union(b).cloned().collect())))
 }
 
-fn set_intersection(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let a = set(arg(&args, 0))?;
-    let b = set(arg(&args, 1))?;
+fn set_intersection(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let a = set(arg(args, 0))?;
+    let b = set(arg(args, 1))?;
     Ok(Value::Set(Rc::new(a.intersection(b).cloned().collect())))
 }
 
-fn set_difference(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let a = set(arg(&args, 0))?;
-    let b = set(arg(&args, 1))?;
+fn set_difference(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let a = set(arg(args, 0))?;
+    let b = set(arg(args, 1))?;
     Ok(Value::Set(Rc::new(a.difference(b).cloned().collect())))
 }
 
-fn set_is_subset_of(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let a = set(arg(&args, 0))?;
-    let b = set(arg(&args, 1))?;
+fn set_is_subset_of(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let a = set(arg(args, 0))?;
+    let b = set(arg(args, 1))?;
     Ok(Value::Boolean(a.is_subset(b)))
 }
 
-fn set_sorted(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let mut items: Vec<Value> = set(arg(&args, 0))?.iter().cloned().collect();
+fn set_sorted(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let mut items: Vec<Value> = set(arg(args, 0))?.iter().cloned().collect();
     vm.sort_values(&mut items)?;
     Ok(Value::list(items))
 }
 
-fn set_to_list(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::list(set(arg(&args, 0))?.iter().cloned().collect()))
+fn set_to_list(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::list(set(arg(args, 0))?.iter().cloned().collect()))
 }
 
 // ------------------------------------------------------------------ ranges
 
-fn range_contains(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let range = range(arg(&args, 0))?;
-    let value = int(arg(&args, 1))?;
+fn range_contains(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let range = range(arg(args, 0))?;
+    let value = int(arg(args, 1))?;
     if range.by.is_zero() {
         return Err(crash("a range cannot step by 0"));
     }
@@ -868,25 +870,25 @@ fn range_contains(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     Ok(Value::Boolean(aligned))
 }
 
-fn range_to_list(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::list(range_items(range(arg(&args, 0))?)?))
+fn range_to_list(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::list(range_items(range(arg(args, 0))?)?))
 }
 
-fn range_length(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
+fn range_length(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     Ok(Value::integer(
-        range_items(range(arg(&args, 0))?)?.len() as i64
+        range_items(range(arg(args, 0))?)?.len() as i64
     ))
 }
 
 // --------------------------------------------------------------- durations
 
-fn duration_to_milliseconds(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(Value::integer(super::duration(arg(&args, 0))?))
+fn duration_to_milliseconds(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(Value::integer(super::duration(arg(args, 0))?))
 }
 
-fn duration_to_seconds(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let ms = super::duration(arg(&args, 0))?;
+fn duration_to_seconds(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let ms = super::duration(arg(args, 0))?;
     Decimal::new(BigInt::from(ms), -3)
-        .map(Value::Decimal)
+        .map(Value::decimal)
         .map_err(|_| crash("the duration is out of range"))
 }

@@ -9,8 +9,7 @@ to W4, held equal to the Rust parser by `crates/renyi/tests/selfhost.rs`;
 then the checker written in Renyi, decisions W5 to W8, held equal to
 `renyi check --json` by the same test; then the profile of the VM, W6,
 with decisions X1 to X4: the development profile optimizes the VM,
-`List.slice`, the interpreter loop to be rewritten next, `renyi run
---profile`).
+`List.slice`, the interpreter loop rewritten, `renyi run --profile`).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -48,9 +47,8 @@ sketch is the design record.
 Stage 2 of `docs/GAPS.md` section 7 is under way in the order the owner
 set (W4, W5): the lexer, the parser and the checker written in Renyi
 exist under `compiler/` (the next two sections) and the VM is profiled
-(the section after them, decisions X1 to X4); the rewrite of the
-interpreter loop (X3, with `--profile`, X4) comes next, then the
-bytecode emitter.
+and its loop rewritten (the section after them, decisions X1 to X4);
+the bytecode emitter comes next, its shape the owner's call.
 
 The corpus has 30 programs, passes the lint, is in canonical layout,
 checks cleanly, has nothing over budget, and its `example:` lines and
@@ -63,7 +61,7 @@ binary with `check`, `format`, `tokens`, `parse [--json]
 revision>]`, `run [--manifest] [options] <file> [arguments]`, `record
 [--to file] [options] <file> [arguments]`, `reproduce <recording>
 [<file>]`, `test [--strict] [--refresh name [--redact name]] [--explain]
-<file>...`, `tools [path]`, `mcp [path]` and `version`; 216 tests, clippy
+<file>...`, `tools [path]`, `mcp [path]` and `version`; 218 tests, clippy
 and fmt clean on Windows with rustc 1.94.1. CI
 (`.github/workflows/ci.yml`) runs the same gates, `renyi check
 compiler/*.ry` and the conformance suite (`tests/conformance/`, 37 cases;
@@ -208,9 +206,9 @@ R8 and U1 to U9 came from them; they continue only if the owner asks
   (71 programs, 142 cases: output byte for byte and exit status; a
   rejected program must make the Renyi checker fail). All equal at the
   first full comparison after the compiler's own sources were made
-  clean; the run takes about 64 s on eight threads since the
-  development profile optimizes the VM (X1; 170 s before, when a
-  small program took 1.5 s and `bodies.ry` 32 s). The lane
+  clean; the run takes about 51 s on eight threads after X3 (64 s with
+  X1 alone, 170 s before X1, when a small program took 1.5 s and
+  `bodies.ry` 32 s). The lane
   `D:\Projects\.worktrees\Renyi\selfhost\compare.py` runs the same
   comparison outside `cargo test` and names the first differing line;
   `bench.py` there times the parser's and the checker's runs, best of
@@ -260,7 +258,7 @@ R8 and U1 to U9 came from them; they continue only if the owner asks
   before formatting must be split; `renyi format` must run before
   anchors for a patch script are taken from the file.
 
-## The profile of the VM (W6; decisions X1 to X4)
+## The profile and the loop of the VM (W6; decisions X1 to X4)
 
 - **Build modes.** Every number reported before this profile came from
   the development build (`target/debug`, which `cargo test`, CI and
@@ -270,40 +268,29 @@ R8 and U1 to U9 came from them; they continue only if the owner asks
   `renyi_vm` and for every dependency in the development profile; a
   development build now runs the interpreter at release speed (the
   parser 1.07 s, the checker on `bodies.ry` 4.2 s with the sources of
-  this commit) while `renyi_syntax`, `renyi_check` and the binary keep
+  `f770f79`) while `renyi_syntax`, `renyi_check` and the binary keep
   their fast rebuilds. The first build after the change recompiles
   every dependency (a few minutes).
-- **The profiler.** A sampling profiler was built into the VM in the
-  scratch worktree `D:\Projects\.worktrees\Renyi\profile` (detached
-  at `246fca4`, `RENYI_PROFILE=sample` or `=count` in `vm.rs`): a timer
-  thread raises an atomic flag every half millisecond; `step` gives the
-  sample to the op it ran last (so a primitive's time lands on the
-  primitive, checked at the end of `call_native`); `count` also counts
-  every op by kind, every call by function and every primitive by name;
-  the report goes to stderr when the `Vm` is dropped. Decision X4 brings
-  it into the product as `renyi run --profile` in the next commit, with
-  the rewritten loop.
-- **What it found** (release build, the checker on `bodies.ry`, 148
-  million ops, 5.5 million calls, 3.9 million primitive calls, 6.7 s
-  before any fix): a tenth of the time in `line_of` of `bodies.ry`
-  (a linear scan of the line starts, called twice per function body);
-  a tenth in the lexer's `slice` (`chars.at(index)` and a concatenation
-  per character); `line_starts` and `check_layout` of the driver 6
-  percent together (per-character loops, the characters computed three
-  times per file); `find_function` 2 percent (a linear scan of the
-  world's functions per item); the primitives `at`, `contains`,
-  `length` and `append` 15 percent together (half of all primitive
-  calls were `at`, from `char_at`); the rest spread over the VM's plain
-  ops at about 35 ns each: `Load` 14 percent, `Field` 10 (a linear
-  search of the record's field names on every access: `field_index`
-  in `types.rs`), `Binary` 10 (`equal` looks a declared `equals` up
-  by `(TypeId, String)` with an allocation per comparison of a record
-  or variant: `Program::method`), `Call` and `Return` 16 (arguments
-  popped into a `Vec` and pushed back; a `Vec` of handlers per frame),
-  `Construct` and `ConstructVariant` 8. Sizes: `Value` 40 bytes,
-  `Interrupt` 48, `Result<Option<Value>, Interrupt>` 48 (returned by
-  every `step`), `Op` 16.
-- **What this commit fixed** (sources and the library, no VM change):
+- **What the profile found** (release build, the checker on
+  `bodies.ry`, 148 million ops, 5.5 million calls, 3.9 million primitive
+  calls, 6.7 s before any fix): a tenth of the time in `line_of` of
+  `bodies.ry` (a linear scan of the line starts, called twice per
+  function body); a tenth in the lexer's `slice` (`chars.at(index)` and
+  a concatenation per character); `line_starts` and `check_layout` of
+  the driver 6 percent together (per-character loops, the characters
+  computed three times per file); `find_function` 2 percent (a linear
+  scan of the world's functions per item); the primitives `at`,
+  `contains`, `length` and `append` 15 percent together (half of all
+  primitive calls were `at`, from `char_at`); the rest spread over the
+  VM's plain ops at about 35 ns each: `Load` 14 percent, `Field` 10 (a
+  linear search of the record's field names on every access), `Binary`
+  10 (`equal` looked a declared `equals` up by `(TypeId, String)` with
+  an allocation per comparison of a record or variant), `Call` and
+  `Return` 16 (arguments popped into a `Vec` and pushed back; a `Vec` of
+  handlers per frame), `Construct` and `ConstructVariant` 8. Sizes
+  then: `Value` 40 bytes, `Interrupt` 48, `Result<Option<Value>,
+  Interrupt>` 48 (returned by every `step`), `Op` 16.
+- **What `f770f79` fixed** (sources and the library, no VM change):
   `line_of` is a binary search; the lexer's predicates test `ch is not
   ""` instead of calling `length`; `check_module` maps each item to its
   function once (`body_index`); the driver converts a file to
@@ -311,27 +298,87 @@ R8 and U1 to U9 came from them; they continue only if the owner asks
   `set_source_lines` takes the starts); the lexer's `slice` is one
   `List.slice` and one `join` (X2). Release build on `bodies.ry`: 5.5 s
   to 3.3 s (93 million ops); the parser on `parser.ry` 1.0 s to 0.76 s.
-- **Measured in the worktree and not yet in the product**: arguments
-  left on the stack at a call to a declared function (`push_frame_in_
-  place`) and one handler stack for all frames (`Vm.handlers`,
-  `Frame.handler_base`, truncated on return and on a crash): 5 to 8
-  percent. They belong to X3.
-- **The plan for X3** (the owner's choice: the deep change, before the
-  emitter): the dispatch loop keeps the running frame's code, pc and
-  base in locals and returns nothing per op (`step`'s
-  `Result<Option<Value>, Interrupt>` goes; calls and returns reload the
-  locals); `Value` slimmed from 40 bytes (box `Decimal` and the big
-  `Int`, keep `Rc<str>`: 24 bytes; or thin pointers for text and
-  bytes: 16); `Op::Field` with an inline cache of `(TypeId, index)` per
-  site; `Program::method` without the `String` allocation (a map per
-  type) and a per-type flag for a declared `equals`; the call path and
-  the handler stack above; `--profile` (X4) in the new loop. Target: 1.5
-  to 2 times on the parser's and the checker's runs; `bench.py` and the
-  judges decide. Machine timings vary by 10 to 40 percent between runs
-  (best of five is the number to compare; the op count is exact).
+- **The loop** (decision X3, done in the same session; `vm.rs`,
+  `run_frames`). The running frame's code, pc and base live in locals of
+  one loop that returns nothing per op; a call to a declared function
+  writes the caller's pc back, pushes the callee's frame over the
+  arguments where they lie on the stack (`push_frame_in_place`) and
+  reloads the locals; a return, or a handler taking a failure, reloads
+  them too (`Flow::Reload`); every interrupt writes the pc back first
+  (`try_op!`, `crash!`), which is what locates a crash. One handler
+  stack serves every frame (`Vm::handlers`, `Frame::handler_base`,
+  truncated on return and when `execute` abandons the entry frame).
+  `Op::Field { name, site }` remembers per site the type, tag and index
+  it found last (`Vm::field_cache`, `Program::field_sites`). A
+  primitive takes its arguments as `&mut [Value]`, a slice of a buffer
+  the VM reuses (`Vm::scratch`; `natives::take` moves one out for the
+  seven primitives that build on a collection in place), so a call
+  allocates nothing. `Value` is 24 bytes (`Decimal` boxed, a compile-time
+  assertion in `value.rs`). The declared `equals`, `compare`, `to_text`
+  and `to_list` of every type are found once at compile time
+  (`Program::specials`; `Program::method` is gone) and every call goes
+  through `Program::function_codes`, a table. Two small Integers, two
+  texts or two Booleans under an operator take a fast path
+  (`small_binary`, `text_binary`, `boolean_binary`), the jumps pop their
+  Boolean inline, a loop over a list walks the list itself (no copy),
+  and a type without refinements constructs without the loop over its
+  fields. `Interrupt` is unchanged (48 bytes; only the error path moves
+  it).
+- **The profiler** (decision X4, `profile.rs`): `renyi run --profile`
+  (also `record`; `test` refuses it). A timer thread raises an atomic
+  flag every half millisecond (the sleep is coarser on Windows: about
+  one sample per 1.1 ms); the loop takes the flag down before an op and
+  gives the sample to the op that ran last; a primitive takes it down
+  when it returns, so its time lands on the primitive; every op is
+  counted by `Op::kind` (a small number and a name, `Op::KINDS` of
+  them), every call by code object, every primitive by name. The report
+  goes to stderr when the run ends (`Vm::report_profile`, called by the
+  runner): the totals, then samples by function and op, by function, by
+  op kind with the primitives by name, then the counts (the top twenty
+  rows of each). `tests/semantics.rs` has a case. The scratch worktree
+  `D:\Projects\.worktrees\Renyi\profile` (detached at `246fca4`) holds
+  the prototype and the micro-benchmarks `loop_count.ry`,
+  `loop_calls.ry`, `loop_natives.ry` with `micro.py` (best of five, ops
+  from `--profile`, ns per op); `D:\Projects\.worktrees\Renyi\base`
+  is a worktree at `f770f79` with a release build, the baseline the
+  numbers below were measured against.
+- **Measured** (release build, best of five, the two binaries run back
+  to back on the same machine; timings vary by 10 to 40 percent between
+  runs, so only such pairs compare): the parser on `parser.ry` 963 to
+  619 ms, the checker on `lexer.ry` 686 to 433 ms, on `bodies.ry` 3650
+  to 2339 ms (1.56 times each; the op counts are unchanged, 17.3 and
+  93.0 million); the counting loop 1475 to 794 ms (8.8 ns per op), the
+  calling loop 629 to 282 ms, the loop of primitive calls 868 to 422 ms.
+  The optimized development build (what `cargo test` runs) does the
+  three runs in 718, 661 and 2717 ms; the gap to the release build is
+  the unoptimized Rust front end that checks the program first, not the
+  VM. `cargo test` takes 1 m 45 s, the two judges 51 s of it (64 s
+  before X3). The target of X3 (1.5 to 2 times) is met at its low end
+  on the real programs and exceeded on the micro-benchmarks.
+- **What the profile says now** (the checker on `bodies.ry`, 2.2 s
+  under the profiler): `Call` 13 percent, `Load` 11, `Field` 10,
+  `Return` 10, `Binary` 6, the primitive `at` 6, `Construct` 5, `Store`
+  4, `Const` 3, `ConstructVariant` 3, `IterNext` 3, `contains` 3; the
+  parser on `parser.ry`: `Call` 13, `Load` 12, `Construct` 9, `Field`
+  9, `ConstructVariant` 6, `Binary` 6, `Return` 6, `at` 6, `contains`
+  6. The time is spread over the plain ops at about 20 ns each; a
+  call and its return cost about 70 ns (the frame, the locals filled
+  and dropped, the grant), a record two allocations (the `Rc` and its
+  field vector), and every allocation goes to the system allocator,
+  which is slow on Windows: a faster global allocator (`mimalloc`) is
+  the one remaining cheap win and a dependency decision for the owner
+  (S1 territory); after it, speed comes from the emitter and what it
+  can precompute, not from the loop.
 
 ## The VM as it exists (`crates/renyi_vm`)
 
+- **The loop** is described in the section above (decision X3): one
+  loop over the ops with the running frame's state in locals, the
+  arguments of a declared function left in place, one handler stack,
+  the field cache per site, the reusable argument buffer of the
+  primitives. A new op that can fail must leave through `try_op!` or
+  `crash!`, never `?`, or a crash is located at the last synchronised
+  pc of the frame.
 - **Pipeline.** `renyi run file.ry` reads the file and its imports,
   `check_project`s them (an error stops here, printed as `check` prints
   it), `compile_project` lowers every non-library body to bytecode, and
@@ -626,7 +673,7 @@ Three commits on `main`, each gated as in session 7:
    lines, each split into named helpers) until clean; the first full
    comparison with the Rust checker found no difference on any of the
    142 cases.
-5. The profile of the VM (the last commit; W6 and decisions X1 to X4
+5. `f770f79` the profile of the VM (W6 and decisions X1 to X4
    from the owner's batch: the development profile optimizes the VM,
    `List.slice`, the interpreter loop rewritten next instead of the
    three cheap changes, `renyi run --profile`). `Cargo.toml` (X1),
@@ -635,6 +682,19 @@ Three commits on `main`, each gated as in session 7:
    `tests/semantics.rs`; two sentences of the sheet shortened to pay
    for it), the lexer's `slice`, the checker's own hot spots as
    described above, `docs/GAPS.md` (the profile's numbers), this file.
+6. The interpreter loop and the profiler (the last commit; X3 and X4 as
+   described in the profile section): `crates/renyi_vm/src/vm.rs`
+   (`run_frames`, `settle`, `leave`, `push_frame_in_place`, `field_at`,
+   `ability_target`, `derived_ability`, the fast paths), `profile.rs`
+   (new), `bytecode.rs` (`Op::Field { name, site }`, `Op::kind`),
+   `compile/mod.rs` (`field_sites`, `specials`, `date`,
+   `function_codes`), `compile/expr.rs` and `pattern.rs` (the sites),
+   `value.rs` (`Decimal` boxed, `plain_in_place`, the iterator over the
+   list), every file under `natives/` (the slice signature,
+   `natives::take`), `render.rs`, `runner.rs` (the report), `lib.rs`,
+   `crates/renyi/src/main.rs` (`--profile`), `tests/semantics.rs` (the
+   report's case), the reference's appendix B, `05-agent-tooling.md`
+   (section 8), `README.md`, `CLAUDE.md`, `docs/GAPS.md`, this file.
 
 ## Done in session 7 (stage 1 of the gap audit)
 
@@ -982,11 +1042,13 @@ on a fresh clone).
   `needs`, `Hash` implementations are never called, entry 1.18, and
   open item R3-2 (constraints with type arguments). None blocks stage
   2; the owner decides their order when stage 2 is planned.
-- **Stage 2, the next piece**: decided (X3): the interpreter loop is
-  rewritten for speed, with `--profile` (X4), before the bytecode
-  emitter; the plan is in the profile section above. The emitter's
-  shape (file format or loader) is still the owner's call, asked as a
-  batch when X3 is done.
+- **Stage 2, the next piece**: the bytecode emitter. Its shape (a file
+  the Renyi compiler writes and the Rust VM loads, or a loader that
+  builds the VM's `Program` from the Renyi compiler's tree and
+  references in one process) is the owner's call, asked as a batch of
+  four at the end of session 8 together with the allocator question
+  (`mimalloc` as the VM's global allocator: a dependency, S1
+  territory) and the order of the remaining performance items.
 - **Readability**: the scores are no longer the gate (decision V1).
   Round 5 (U9's sentence) and gpt-5.5 run only if the owner asks.
 - Session 5 printed the values of `ANTHROPIC_API_KEY` and
@@ -1024,16 +1086,16 @@ on a fresh clone).
    language reference is `docs/reference.md`; the lexer and the parser
    in Renyi are `compiler/`, W1 to W4; the checker in Renyi is
    `compiler/declare.ry`, `bodies.ry` and `checker.ry`, W5 to W8; the
-   profile is done, X1 to X4): the rewrite of the interpreter loop with
-   `--profile` (X3, X4; the plan in the profile section), measured
-   with `bench.py` against this commit's numbers and held correct by
-   the whole test suite and both judges; then the bytecode emitter
+   profile and the loop are done, X1 to X4): the bytecode emitter
    with a file format or a loader so that the Rust VM runs what the
    Renyi compiler emits, with the Rust toolchain as stage 0, which is
    where the references of W8 get their judge (the owner's batch of
    four comes before the emitter is written); the remaining
-   performance items (string building, the pattern cache of
-   `Text.matches`) as a later profile calls for them. The front end in
+   performance items (the allocator, string building, the pattern
+   cache of `Text.matches`) as a later profile calls for them; any
+   change to the loop is measured with `bench.py` and `micro.py`
+   against the `base` worktree, the two binaries run back to back. The
+   front end in
    Renyi reports one syntax error with a position and no fix; parity
    with the Rust parser's diagnostics (codes, fixes, recovery) is a
    later step.
@@ -1081,10 +1143,11 @@ on a fresh clone).
   side-effecting peek is simulated, line-break spans included); a new
   layout rule in `parser.rs` must be mirrored in `parser.ry` or the judge
   fails. The lexer's error messages are its own, not the Rust lexer's
-  codes. The run time grows with the file (3.9 s for `parser.ry`) and
-  has not been profiled; the `"{text}{ch}"` concatenation in the
-  lexer's `slice` and `scan_segment` is quadratic in a token's length
-  (negligible for tokens, visible on a long block text). `json.rs` and
+  codes. The run time grows with the file (0.6 s for `parser.ry` in the
+  release build after X3; the profile above says where it goes); the
+  `"{text}{ch}"` concatenation in the lexer's `scan_segment` is
+  quadratic in a token's length (negligible for tokens, visible on a
+  long block text; `slice` is one `List.slice` since X2). `json.rs` and
   `ast.ry` must change together (W1); nothing checks that the Rust
   encoder's keys match `ast.ry` except the judge's byte comparison.
 - **The checker in Renyi.** It is a transcription: a change to a
@@ -1094,10 +1157,10 @@ on a fresh clone).
   listed above (hash-map ties, control characters in `json_string`,
   the NUL in a `Path`, `debug_quoted`, the import path separator, the
   imports of a broken import) show on no program in the repository and
-  have no test. The checker's run time is profiled (the section above):
-  3.3 s on `bodies.ry` in the release build, 4.2 s in the optimized
-  development build; the judge adds about 64 s to `cargo test` on
-  eight threads and more on CI's runners. The Rust
+  have no test. The checker's run time after X3: 2.3 s on `bodies.ry`
+  in the release build, 2.7 s in the optimized development build; the
+  two judges add about 51 s to `cargo test` on eight threads and more
+  on CI's runners. The Rust
   checker's quirk that a `failure(x)` binding's fields are unknown is
   reproduced on purpose (W7: equality first); fixing it is a change to
   both checkers and a conformance case.

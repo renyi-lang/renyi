@@ -90,6 +90,9 @@ pub struct FunctionMeta {
 pub struct Program {
     pub codes: Vec<Code>,
     pub functions: HashMap<FunctionId, CodeId>,
+    /// `functions` as a table over every function, `None` for a library
+    /// primitive: the lookup of every call (decision X3).
+    pub function_codes: Vec<Option<CodeId>>,
     pub function_metas: Vec<FunctionMeta>,
     /// In evaluation order; `Op::Global(i)` reads the i-th.
     pub constants: Vec<ConstantMeta>,
@@ -107,20 +110,31 @@ pub struct Program {
     pub abilities: Vec<(String, Vec<String>)>,
     /// The `main` function of the first file given, when it has one.
     pub main: Option<FunctionId>,
+    /// How many `Op::Field` sites the program has: the size of the VM's
+    /// cache of field indices (decision X3).
+    pub field_sites: usize,
+    /// Per type, the methods the VM looks up on every comparison, rendering
+    /// and loop, so that no name is looked up at run time (decision X3).
+    pub specials: Vec<Specials>,
+    /// `std.time.Date`, whose construction also checks the day against the
+    /// month (library sketch, section 4).
+    pub date: Option<TypeId>,
+}
+
+/// The declared `equals`, `compare`, `to_text` and `to_list` of a type,
+/// each when exactly one is declared for it (decision K1: a declared
+/// method replaces the derived behaviour).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Specials {
+    pub equals: Option<FunctionId>,
+    pub compare: Option<FunctionId>,
+    pub to_text: Option<FunctionId>,
+    pub to_list: Option<FunctionId>,
 }
 
 impl Program {
     pub fn code(&self, id: CodeId) -> &Code {
         &self.codes[id]
-    }
-
-    /// A method of a type by name, when exactly one is declared for it.
-    pub fn method(&self, ty: TypeId, name: &str) -> Option<FunctionId> {
-        let ids = self.method_index.get(&(ty, name.to_string()))?;
-        match ids.as_slice() {
-            [id] => Some(*id),
-            _ => None,
-        }
     }
 
     /// Where a span of a module lies, as `file:line`.
@@ -146,6 +160,8 @@ struct Context<'w> {
     sources: HashMap<ModuleId, String>,
     result_types: Vec<Ty>,
     refs: HashMap<(ModuleId, BodyLocation), Refs>,
+    /// The `Op::Field` sites numbered so far.
+    field_sites: u32,
 }
 
 impl Context<'_> {
@@ -189,6 +205,7 @@ pub fn compile_project(checked: &CheckedProject, files: &[SourceFile]) -> Progra
     let mut program = Program {
         codes: Vec::new(),
         functions: HashMap::new(),
+        function_codes: Vec::new(),
         function_metas: Vec::new(),
         constants: Vec::new(),
         tests: Vec::new(),
@@ -210,7 +227,25 @@ pub fn compile_project(checked: &CheckedProject, files: &[SourceFile]) -> Progra
             })
             .collect(),
         main: main_module.and_then(|m| world.lookup_function(m, "main")),
+        field_sites: 0,
+        specials: Vec::new(),
+        date: None,
     };
+    let single = |ty: TypeId, name: &str| -> Option<FunctionId> {
+        match world.method_index.get(&(ty, name.to_string()))?.as_slice() {
+            [id] => Some(*id),
+            _ => None,
+        }
+    };
+    program.specials = (0..program.types.metas.len())
+        .map(|ty| Specials {
+            equals: single(ty, "equals"),
+            compare: single(ty, "compare"),
+            to_text: single(ty, "to_text"),
+            to_list: single(ty, "to_list"),
+        })
+        .collect();
+    program.date = program.types.find("std.time", "Date");
     for info in &world.functions {
         let module = &world.modules[info.module];
         let purpose = match info.body {
@@ -262,6 +297,7 @@ pub fn compile_project(checked: &CheckedProject, files: &[SourceFile]) -> Progra
         sources: source_texts,
         result_types: Vec::new(),
         refs,
+        field_sites: 0,
     };
     for (module_id, module) in world.modules.iter().enumerate() {
         if module.is_library {
@@ -332,6 +368,10 @@ pub fn compile_project(checked: &CheckedProject, files: &[SourceFile]) -> Progra
         }
     }
     program.result_types = ctx.result_types;
+    program.field_sites = ctx.field_sites as usize;
+    program.function_codes = (0..program.function_metas.len())
+        .map(|id| program.functions.get(&id).copied())
+        .collect();
     program
 }
 
@@ -675,6 +715,13 @@ impl<'c, 'w> Compiler<'c, 'w> {
 
     pub fn name_constant(&mut self, name: &str) -> u32 {
         self.code.constant(Value::text(name))
+    }
+
+    /// The number of the next `Op::Field` in the program (decision X3).
+    pub fn field_site(&mut self) -> u32 {
+        let site = self.ctx.field_sites;
+        self.ctx.field_sites += 1;
+        site
     }
 
     pub fn here(&self) -> u32 {

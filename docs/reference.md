@@ -1451,7 +1451,9 @@ The options of `run` and `record`: `--explain` narrates the run on the
 standard error; `--replay <recording>` (run only) answers every effect from
 the recording; `--deny`, `--allow-host`, `--allow-read`, `--allow-write`
 and `--at-most` narrow the grant (section 11); `--redact <name>` keeps a
-secret out of a recording.
+secret out of a recording; `--profile` counts every operation, call and
+primitive call, samples where the time goes, and prints the report on the
+standard error when the run ends (decision X4).
 
 The tree `renyi parse --json` prints is the derived JSON (section 7 of
 `design/04-stdlib-sketch.md`) of the types of `compiler/ast.ry`, the

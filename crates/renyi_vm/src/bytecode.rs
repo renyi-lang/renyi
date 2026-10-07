@@ -57,8 +57,12 @@ pub enum Op {
         fields: u16,
     },
     /// A field by name (`constants[name]`) of a record, a variant, a pair or
-    /// a native value.
-    Field(u32),
+    /// a native value; `site` numbers the op in the program, the key of the
+    /// VM's cache of the field's index (decision X3).
+    Field {
+        name: u32,
+        site: u32,
+    },
     /// `base`, then `fields` pairs of (name constant, value): the updated copy.
     With(u16),
     Call {
@@ -142,6 +146,68 @@ pub enum Op {
     /// `check` in a test: pop a Boolean; when false, fail the test with the
     /// text constant as the message.
     Check(u32),
+}
+
+impl Op {
+    /// How many kinds `kind` tells apart.
+    pub const KINDS: usize = 50;
+
+    /// The operation's kind as a small number below `KINDS`, with its name:
+    /// the profiler counts by it (decision X4).
+    pub fn kind(&self) -> (usize, &'static str) {
+        match self {
+            Op::Const(_) => (0, "Const"),
+            Op::Nothing => (1, "Nothing"),
+            Op::Global(_) => (2, "Global"),
+            Op::Load(_) => (3, "Load"),
+            Op::LoadMove(_) => (4, "LoadMove"),
+            Op::Store(_) => (5, "Store"),
+            Op::Pop => (6, "Pop"),
+            Op::Dup => (7, "Dup"),
+            Op::MakeList(_) => (8, "MakeList"),
+            Op::MakeMap(_) => (9, "MakeMap"),
+            Op::MakePair => (10, "MakePair"),
+            Op::MakeRange { .. } => (11, "MakeRange"),
+            Op::Construct { .. } => (12, "Construct"),
+            Op::ConstructVariant { .. } => (13, "ConstructVariant"),
+            Op::Field { .. } => (14, "Field"),
+            Op::With(_) => (15, "With"),
+            Op::Call { .. } => (16, "Call"),
+            Op::CallAbility { .. } => (17, "CallAbility"),
+            Op::CallValue(_) => (18, "CallValue"),
+            Op::ResultType(_) => (19, "ResultType"),
+            Op::Not => (20, "Not"),
+            Op::Binary(_) => (21, "Binary"),
+            Op::ToText => (22, "ToText"),
+            Op::Concat(_) => (23, "Concat"),
+            Op::Jump(_) => (24, "Jump"),
+            Op::JumpIfFalse(_) => (25, "JumpIfFalse"),
+            Op::JumpIfTrue(_) => (26, "JumpIfTrue"),
+            Op::JumpIfAbsent(_) => (27, "JumpIfAbsent"),
+            Op::JumpIfFailure(_) => (28, "JumpIfFailure"),
+            Op::PushHandler(_) => (29, "PushHandler"),
+            Op::PopHandler => (30, "PopHandler"),
+            Op::Return => (31, "Return"),
+            Op::ReturnNothing => (32, "ReturnNothing"),
+            Op::Fail => (33, "Fail"),
+            Op::Crash => (34, "Crash"),
+            Op::IsVariant(_) => (35, "IsVariant"),
+            Op::IsNothing => (36, "IsNothing"),
+            Op::IsFailure => (37, "IsFailure"),
+            Op::IsType(_) => (38, "IsType"),
+            Op::Unpack(_) => (39, "Unpack"),
+            Op::UnwrapFailure => (40, "UnwrapFailure"),
+            Op::IterInit(_) => (41, "IterInit"),
+            Op::IterNext { .. } => (42, "IterNext"),
+            Op::ListPush => (43, "ListPush"),
+            Op::GroupInsert => (44, "GroupInsert"),
+            Op::GroupFold(_) => (45, "GroupFold"),
+            Op::SortByKey { .. } => (46, "SortByKey"),
+            Op::Deadline(_) => (47, "Deadline"),
+            Op::CheckDeadline(_) => (48, "CheckDeadline"),
+            Op::Check(_) => (49, "Check"),
+        }
+    }
 }
 
 /// Why a code object exists: its callers decide what to do with the result.

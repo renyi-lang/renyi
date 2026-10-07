@@ -88,8 +88,8 @@ fn csv_error(vm: &Vm, line: i64, detail: &str) -> Result<Value, Interrupt> {
     )
 }
 
-fn parse(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let content = text(arg(&args, 0))?;
+fn parse(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let content = text(arg(args, 0))?;
     let records = match parse_records(content) {
         Ok(records) => records,
         Err((line, detail)) => return csv_error(vm, line, &detail),
@@ -121,8 +121,8 @@ fn parse(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     Ok(Value::list(rows))
 }
 
-fn parse_without_header(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let content = text(arg(&args, 0))?;
+fn parse_without_header(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let content = text(arg(args, 0))?;
     match parse_records(content) {
         Ok(records) => Ok(Value::list(
             records
@@ -146,17 +146,17 @@ fn row(value: &Value) -> Result<(&Rc<Vec<String>>, &Vec<String>), Interrupt> {
     )))
 }
 
-fn row_get(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let (header, cells) = row(arg(&args, 0))?;
-    let column = text(arg(&args, 1))?;
+fn row_get(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let (header, cells) = row(arg(args, 0))?;
+    let column = text(arg(args, 1))?;
     Ok(match header.iter().position(|name| name == column) {
         Some(index) if !cells[index].is_empty() => Value::text(&cells[index]),
         _ => Value::Nothing,
     })
 }
 
-fn row_cells(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let (_, cells) = row(arg(&args, 0))?;
+fn row_cells(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let (_, cells) = row(arg(args, 0))?;
     Ok(Value::list(cells.iter().map(Value::text).collect()))
 }
 
@@ -168,9 +168,9 @@ fn quote_cell(cell: &str) -> String {
     }
 }
 
-fn render(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let header = list(arg(&args, 0))?;
-    let rows = list(arg(&args, 1))?;
+fn render(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let header = list(arg(args, 0))?;
+    let rows = list(arg(args, 1))?;
     let mut lines = Vec::with_capacity(rows.len() + 1);
     let mut line = Vec::with_capacity(header.len());
     for cell in header.iter() {

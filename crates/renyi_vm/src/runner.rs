@@ -128,6 +128,7 @@ fn run_measured(program: &Program, mut options: Options) -> (Run, Option<(String
         },
         Err(interrupt) => crashed(interrupt),
     };
+    vm.report_profile();
     let unused = vm.end_replay();
     let output = digest.as_ref().map(digest_text);
     let mut recording = vm.take_recording();
@@ -321,6 +322,7 @@ pub fn run_tests(program: &Program, mut options: Options) -> TestReport {
             Item::Test(index) => run_test(&mut vm, index, strict, refresh.as_deref()),
         });
     }
+    vm.report_profile();
     report
 }
 

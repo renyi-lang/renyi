@@ -23,7 +23,9 @@ pub enum Value {
     Nothing,
     Boolean(bool),
     Integer(Int),
-    Decimal(Decimal),
+    /// Boxed: a `Decimal` is 40 bytes wide, and a `Value` stays at 24
+    /// (decision X3).
+    Decimal(Rc<Decimal>),
     Float(f64),
     Text(Rc<str>),
     Bytes(Rc<[u8]>),
@@ -79,8 +81,9 @@ pub enum Native {
         header: Rc<Vec<String>>,
         cells: Vec<String>,
     },
-    /// A loop's position over a snapshot of its source.
-    Iterator(RefCell<(Vec<Value>, usize)>),
+    /// A loop's position over its source: the list itself when the source
+    /// was one, else a snapshot of the items.
+    Iterator(RefCell<(Rc<Vec<Value>>, usize)>),
     /// A `within` deadline as an instant in milliseconds, with the duration.
     Deadline(i64, i64),
     /// An SQLite connection and the path it was opened on; `None` once
@@ -91,6 +94,9 @@ pub enum Native {
     },
 }
 
+// Decision X3: the stack and every collection hold values by this width.
+const _: () = assert!(std::mem::size_of::<Value>() <= 24);
+
 impl Value {
     pub fn text(text: impl AsRef<str>) -> Value {
         Value::Text(Rc::from(text.as_ref()))
@@ -98,6 +104,10 @@ impl Value {
 
     pub fn integer(value: i64) -> Value {
         Value::Integer(Int::Small(value))
+    }
+
+    pub fn decimal(value: Decimal) -> Value {
+        Value::Decimal(Rc::new(value))
     }
 
     pub fn list(items: Vec<Value>) -> Value {
@@ -275,6 +285,20 @@ pub fn plain_all(values: Vec<Value>) -> (u64, Vec<Value>) {
         })
         .collect();
     (origins, values)
+}
+
+/// The origins of several values, which are made plain in place: the
+/// arguments of a primitive, in the VM's scratch buffer.
+pub fn plain_in_place(values: &mut [Value]) -> u64 {
+    let mut origins = 0;
+    for value in values.iter_mut() {
+        if value.is_guarded() {
+            origins |= value.origins();
+            let plain = std::mem::replace(value, Value::Nothing).into_plain();
+            *value = plain;
+        }
+    }
+    origins
 }
 
 /// Structural equality: the derived `Equal` of every data type. Numbers

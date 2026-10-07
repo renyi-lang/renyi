@@ -36,8 +36,8 @@ fn error(vm: &Vm, variant: &str, fields: Vec<Value>) -> Result<Value, Interrupt>
     vm.fail_variant("std.sqlite", "DbError", variant, fields)
 }
 
-fn open(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let path = text(arg(&args, 0))?.to_string();
+fn open(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let path = text(arg(args, 0))?.to_string();
     match rusqlite::Connection::open(&path) {
         Ok(connection) => Ok(Value::Native(Rc::new(Native::Connection {
             connection: RefCell::new(Some(connection)),
@@ -55,23 +55,23 @@ fn parameter(vm: &Vm, variant: &str, fields: Vec<Value>) -> Result<Value, Interr
     vm.library_variant("std.sqlite", "Parameter", variant, fields)
 }
 
-fn integer_parameter(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    parameter(vm, "IntegerValue", vec![arg(&args, 0).clone()])
+fn integer_parameter(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    parameter(vm, "IntegerValue", vec![arg(args, 0).clone()])
 }
 
-fn decimal_parameter(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    parameter(vm, "DecimalValue", vec![arg(&args, 0).clone()])
+fn decimal_parameter(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    parameter(vm, "DecimalValue", vec![arg(args, 0).clone()])
 }
 
-fn text_parameter(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    parameter(vm, "TextValue", vec![arg(&args, 0).clone()])
+fn text_parameter(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    parameter(vm, "TextValue", vec![arg(args, 0).clone()])
 }
 
-fn boolean_parameter(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    parameter(vm, "BooleanValue", vec![arg(&args, 0).clone()])
+fn boolean_parameter(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    parameter(vm, "BooleanValue", vec![arg(args, 0).clone()])
 }
 
-fn absent_parameter(vm: &mut Vm, _: Vec<Value>) -> Result<Value, Interrupt> {
+fn absent_parameter(vm: &mut Vm, _: &mut [Value]) -> Result<Value, Interrupt> {
     parameter(vm, "NullValue", Vec::new())
 }
 
@@ -184,7 +184,7 @@ fn decode_cell(vm: &mut Vm, cell: ValueRef, ty: &Ty, column: &str) -> Result<Val
             _ => None,
         };
         return match parsed {
-            Some(value) => Ok(Value::Decimal(value)),
+            Some(value) => Ok(Value::decimal(value)),
             None => mismatch(vm, "Decimal"),
         };
     }
@@ -244,10 +244,10 @@ fn violation_detail(violation: &Value) -> String {
     }
 }
 
-fn query(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let native = connection_of(arg(&args, 0))?;
-    let sql = text(arg(&args, 1))?.to_string();
-    let parameters = parameters(vm, arg(&args, 2))?;
+fn query(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let native = connection_of(arg(args, 0))?;
+    let sql = text(arg(args, 1))?.to_string();
+    let parameters = parameters(vm, arg(args, 2))?;
     let b = vm.program.builtins.clone();
     let row_ty = match vm.take_expected() {
         Some(Ty::App(id, items)) if id == b.list => items.into_iter().next(),
@@ -362,10 +362,10 @@ fn query(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     Ok(Value::list(out))
 }
 
-fn execute(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let native = connection_of(arg(&args, 0))?;
-    let sql = text(arg(&args, 1))?.to_string();
-    let parameters = parameters(vm, arg(&args, 2))?;
+fn execute(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let native = connection_of(arg(args, 0))?;
+    let sql = text(arg(args, 1))?.to_string();
+    let parameters = parameters(vm, arg(args, 2))?;
     let Native::Connection { connection, .. } = &*native else {
         unreachable!("checked by connection_of");
     };
@@ -383,8 +383,8 @@ fn execute(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     }
 }
 
-fn close(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let native = connection_of(arg(&args, 0))?;
+fn close(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let native = connection_of(arg(args, 0))?;
     if let Native::Connection { connection, .. } = &*native {
         connection.borrow_mut().take();
     }

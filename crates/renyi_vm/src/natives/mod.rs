@@ -24,7 +24,10 @@ use crate::integer::Int;
 use crate::value::{RangeValue, Value};
 use crate::vm::{Interrupt, Vm};
 
-pub type NativeFn = fn(&mut Vm, Vec<Value>) -> Result<Value, Interrupt>;
+/// A primitive takes its arguments as a slice of the VM's scratch buffer,
+/// so that a call allocates nothing (decision X3); one that builds on an
+/// argument in place takes it out with `take`.
+pub type NativeFn = fn(&mut Vm, &mut [Value]) -> Result<Value, Interrupt>;
 
 /// The primitive behind a library function: its module, its name and the
 /// type of its first parameter as the checker spells it (`List of Item`).
@@ -64,6 +67,16 @@ pub fn now_millis() -> i64 {
 pub fn arg(args: &[Value], index: usize) -> &Value {
     args.get(index)
         .expect("the checker verified the argument count")
+}
+
+/// The i-th argument taken out, `Nothing` left in its place: for a
+/// primitive that updates a collection in place when nothing else holds
+/// it (decision O1).
+pub fn take(args: &mut [Value], index: usize) -> Value {
+    match args.get_mut(index) {
+        Some(value) => std::mem::replace(value, Value::Nothing),
+        None => Value::Nothing,
+    }
 }
 
 fn wrong(expected: &str, found: &Value) -> Interrupt {

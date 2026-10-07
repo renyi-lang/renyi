@@ -331,6 +331,14 @@ the same entries.
 4. Budgets with corpus-derived thresholds (done 2026-10-05, decision R7:
    `renyi index --budgets`); the diff (done 2026-10-06, decision T5); M4
    reads budgets from the manifest.
+5. `renyi run --profile` (done 2026-10-06, decision X4): a timer raises a
+   flag every half millisecond, the operation running when it was raised
+   gets the sample (a primitive's time lands on the primitive), and every
+   operation, call and primitive call is counted; the report on the
+   standard error has the samples by function and operation, by function
+   and by operation kind with the primitives by name, then the counts.
+   A development aid like `renyi tokens`: it is how the VM's own hot
+   spots were found (`crates/renyi_vm/src/profile.rs`).
 
 ## 9. Open items
 

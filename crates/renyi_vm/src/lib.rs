@@ -22,6 +22,7 @@ pub mod decimal;
 pub mod grant;
 pub mod integer;
 pub mod natives;
+pub mod profile;
 pub mod recording;
 pub mod render;
 pub mod runner;

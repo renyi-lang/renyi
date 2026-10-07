@@ -446,3 +446,27 @@ checker's judge 64 s in `cargo test` (from 170 s). The
 owner chose to rewrite the interpreter loop and slim `Value` next (X3,
 target 1.5 to 2 times), then the bytecode emitter with its file format
 or loader.
+
+The loop (X3) and `--profile` (X4), the same session. `vm.rs` runs the
+loop of decision X3: the running frame's code, program counter and
+base live in locals and nothing is returned per operation; a call to a
+declared function leaves the arguments on the stack as the callee's
+first locals; one handler stack serves every frame; `Op::Field`
+remembers per site the index it found last; a primitive takes its
+arguments as a slice of a buffer the VM reuses, so a call allocates
+nothing; `Value` is 24 bytes (`Decimal` boxed); the declared `equals`,
+`compare`, `to_text` and `to_list` of every type are found once at
+compile time; two small Integers, two texts or two Booleans under an
+operator take a fast path; a loop over a list walks the list itself.
+Measured in the release build, best of five, against `f770f79` run
+back to back: the parser on `parser.ry` 963 to 619 ms, the checker on
+`lexer.ry` 686 to 433 ms and on `bodies.ry` 3650 to 2339 ms (1.56
+times each, the operation counts unchanged at 17 and 93 million); a
+counting loop 1475 to 794 ms (8.8 ns per operation), a calling loop
+629 to 282 ms, a loop of primitive calls 868 to 422 ms; `cargo test`
+1 m 45 s, the two judges 51 s of it (from 64 s). The profile now shows
+the time spread over the plain operations at about 20 ns each (`Call`
+13 percent, `Load` 11, `Field` 10, `Return` 10, `Binary` 6, the
+primitive `at` 6, `Construct` 5 on `bodies.ry`), every allocation on
+the system allocator; the next steps are the bytecode emitter, whose
+shape is the owner's call, and the allocator question.

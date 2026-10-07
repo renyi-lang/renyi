@@ -79,9 +79,10 @@ impl Compiler<'_, '_> {
                 }
                 for field in fields {
                     let field_slot = self.temp();
-                    let index = self.name_constant(&field.field.text);
+                    let name = self.name_constant(&field.field.text);
+                    let site = self.field_site();
                     self.emit(Op::Load(slot), field.field.span);
-                    self.emit(Op::Field(index), field.field.span);
+                    self.emit(Op::Field { name, site }, field.field.span);
                     self.emit(Op::Store(field_slot), field.field.span);
                     match &field.pattern {
                         Some(inner) => next.extend(self.pattern(inner, field_slot)),

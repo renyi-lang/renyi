@@ -28,19 +28,19 @@ pub fn lookup(module: &str, name: &str) -> Option<NativeFn> {
 
 // ----------------------------------------------------------------- console
 
-fn console_print(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let line = text(arg(&args, 0))?;
+fn console_print(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let line = text(arg(args, 0))?;
     writeln!(vm.stdout, "{line}").map_err(|error| crash(format!("cannot write: {error}")))?;
     Ok(Value::Nothing)
 }
 
-fn console_print_error(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let line = text(arg(&args, 0))?;
+fn console_print_error(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let line = text(arg(args, 0))?;
     writeln!(vm.stderr, "{line}").map_err(|error| crash(format!("cannot write: {error}")))?;
     Ok(Value::Nothing)
 }
 
-fn console_read_line(vm: &mut Vm, _: Vec<Value>) -> Result<Value, Interrupt> {
+fn console_read_line(vm: &mut Vm, _: &mut [Value]) -> Result<Value, Interrupt> {
     let mut line = String::new();
     match vm.stdin.read_line(&mut line) {
         Ok(0) => Ok(Value::Nothing),
@@ -55,25 +55,25 @@ fn console_read_line(vm: &mut Vm, _: Vec<Value>) -> Result<Value, Interrupt> {
 
 // ------------------------------------------------------------- environment
 
-fn environment_arguments(vm: &mut Vm, _: Vec<Value>) -> Result<Value, Interrupt> {
+fn environment_arguments(vm: &mut Vm, _: &mut [Value]) -> Result<Value, Interrupt> {
     Ok(Value::list(vm.arguments.iter().map(Value::text).collect()))
 }
 
-fn environment_get(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Ok(match std::env::var(text(arg(&args, 0))?) {
+fn environment_get(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Ok(match std::env::var(text(arg(args, 0))?) {
         Ok(value) => Value::text(value),
         Err(_) => Value::Nothing,
     })
 }
 
-fn environment_current_directory(_: &mut Vm, _: Vec<Value>) -> Result<Value, Interrupt> {
+fn environment_current_directory(_: &mut Vm, _: &mut [Value]) -> Result<Value, Interrupt> {
     std::env::current_dir()
         .map(|path| Value::text(path.display().to_string()))
         .map_err(|error| crash(format!("cannot find the current directory: {error}")))
 }
 
-fn environment_exit(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    Err(Interrupt::Exit(small(arg(&args, 0))? as i32))
+fn environment_exit(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    Err(Interrupt::Exit(small(arg(args, 0))? as i32))
 }
 
 // ------------------------------------------------------------------ random
@@ -89,9 +89,9 @@ fn next_random(vm: &mut Vm) -> u64 {
     x.wrapping_mul(0x2545_F491_4F6C_DD1D)
 }
 
-fn random_integer(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let lowest = small(arg(&args, 0))?;
-    let highest = small(arg(&args, 1))?;
+fn random_integer(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let lowest = small(arg(args, 0))?;
+    let highest = small(arg(args, 1))?;
     if highest < lowest {
         return Err(crash("`random.integer` needs lowest at most highest"));
     }
@@ -100,15 +100,15 @@ fn random_integer(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     Ok(Value::integer((lowest as i128 + offset as i128) as i64))
 }
 
-fn random_decimal(vm: &mut Vm, _: Vec<Value>) -> Result<Value, Interrupt> {
+fn random_decimal(vm: &mut Vm, _: &mut [Value]) -> Result<Value, Interrupt> {
     let digits = next_random(vm) % 1_000_000_000;
     Decimal::new(BigInt::from(digits), -9)
-        .map(Value::Decimal)
+        .map(Value::decimal)
         .map_err(|_| crash("cannot build a random Decimal"))
 }
 
-fn random_choice(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let items = list(arg(&args, 0))?.clone();
+fn random_choice(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let items = list(arg(args, 0))?.clone();
     if items.is_empty() {
         return Ok(Value::Nothing);
     }
@@ -116,8 +116,8 @@ fn random_choice(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     Ok(items[index].clone())
 }
 
-fn random_shuffled(vm: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
-    let mut items: Vec<Value> = (**list(arg(&args, 0))?).clone();
+fn random_shuffled(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let mut items: Vec<Value> = (**list(arg(args, 0))?).clone();
     for index in (1..items.len()).rev() {
         let other = (next_random(vm) % (index as u64 + 1)) as usize;
         items.swap(index, other);
