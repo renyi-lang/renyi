@@ -468,5 +468,10 @@ counting loop 1475 to 794 ms (8.8 ns per operation), a calling loop
 the time spread over the plain operations at about 20 ns each (`Call`
 13 percent, `Load` 11, `Field` 10, `Return` 10, `Binary` 6, the
 primitive `at` 6, `Construct` 5 on `bodies.ry`), every allocation on
-the system allocator; the next steps are the bytecode emitter, whose
-shape is the owner's call, and the allocator question.
+the system allocator, so the binary now allocates through `mimalloc`
+(X6: the parser 811 to 496 ms, the checker on `lexer.ry` 510 to 389 ms,
+on `bodies.ry` 2712 to 2138 ms, measured back to back against the same
+commit without it; about 1.9, 1.8 and 1.7 times `f770f79` in all). The
+owner's order for what follows: the residue of stage 1 (the status of
+session 7 above: 1.8, 1.14, 1.17, 1.18, R3-2), then the bytecode
+emitter, which writes a file the VM loads (X5).

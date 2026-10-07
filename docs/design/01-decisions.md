@@ -1537,3 +1537,29 @@ function, by operation kind with the primitives by name; the counts)
 goes to the standard error when the run ends. It is a development aid
 like `renyi tokens`, named in appendix B of the reference and in
 `05-agent-tooling.md`. (user)
+
+**X5. The bytecode emitter writes a file.** The compiler written in
+Renyi will emit the VM's own instruction set (`crates/renyi_vm/src/
+bytecode.rs`) into a file that `renyi run` loads and runs, rather than
+hand its checked tree and references to the Rust compiler in one
+process (a loader). The file format is the contract between the two
+halves and must be kept equal to `bytecode.rs`; the Rust front end can
+then be replaced without touching the VM, which is the point of
+self-hosting (decision W2). The format and the loader are designed when
+the emitter is written, after the residue of stage 1 (the owner's
+order, below). (user)
+
+**X6. The binary allocates through mimalloc.** The profile after X3
+shows the remaining time spread over the plain operations, with every
+record, list, text and frame going through the system allocator, which
+is slow on Windows. The owner chose to add `mimalloc` as the global
+allocator of the `renyi` binary (one dependency of C code, built by
+`cc` on CI's Ubuntu and on MSVC; a decision in the territory of S1),
+on the condition that it buys at least a tenth. Measured in the release
+build, best of five, the two binaries run back to back: the parser on
+`parser.ry` 811 to 496 ms, the checker on `lexer.ry` 510 to 389 ms, on
+`bodies.ry` 2712 to 2138 ms (1.3 to 1.6 times); it stays. Asked in the
+same batch: the development profile keeps the front end and the
+checker unoptimized (X1 stands), and the residue of stage 1 (`docs/
+GAPS.md`, section 7, the status of session 7) is finished before the
+emitter is written. (user)

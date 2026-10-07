@@ -97,7 +97,8 @@ exists:
   prelude, console, environment, time, random, filesystem, JSON, CSV,
   regular expressions, the HTTP client (`ureq`), the HTTP server (over
   `std::net`) and SQLite (`rusqlite`, compiled in); `run concurrently`
-  runs its tasks one after the other (decision S2).
+  runs its tasks one after the other (decision S2); the binary
+  allocates through `mimalloc` (decision X6).
 
 ```
 cargo build

@@ -9,7 +9,8 @@ to W4, held equal to the Rust parser by `crates/renyi/tests/selfhost.rs`;
 then the checker written in Renyi, decisions W5 to W8, held equal to
 `renyi check --json` by the same test; then the profile of the VM, W6,
 with decisions X1 to X4: the development profile optimizes the VM,
-`List.slice`, the interpreter loop rewritten, `renyi run --profile`).
+`List.slice`, the interpreter loop rewritten, `renyi run --profile`;
+then X5, the emitter writes a bytecode file, and X6, mimalloc).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -47,8 +48,9 @@ sketch is the design record.
 Stage 2 of `docs/GAPS.md` section 7 is under way in the order the owner
 set (W4, W5): the lexer, the parser and the checker written in Renyi
 exist under `compiler/` (the next two sections) and the VM is profiled
-and its loop rewritten (the section after them, decisions X1 to X4);
-the bytecode emitter comes next, its shape the owner's call.
+and its loop rewritten (the section after them, decisions X1 to X6);
+the owner's order for what follows: the residue of stage 1 first, then
+the bytecode emitter, which writes a file (X5).
 
 The corpus has 30 programs, passes the lint, is in canonical layout,
 checks cleanly, has nothing over budget, and its `example:` lines and
@@ -70,7 +72,8 @@ on a toolchain pinned to the owner's machine (rustc 1.94.1), so that CI
 and the local gates agree on clippy's lints; `gh run list --limit 3`
 shows the runs and `gh run view <id> --log-failed` a failure's log. The
 VM depends on `ureq` (HTTP, with rustls), `rusqlite` (SQLite compiled
-in), decision S1, and on `sha2`.
+in), decision S1, and on `sha2`; the binary allocates through
+`mimalloc` (decision X6).
 
 Readability: four live rounds exist under `tests/readability/`; the last
 (round 4, `2026-10-06-c696747/`, Sonnet 5.5 through the Claude Code CLI)
@@ -365,10 +368,16 @@ R8 and U1 to U9 came from them; they continue only if the owner asks
   call and its return cost about 70 ns (the frame, the locals filled
   and dropped, the grant), a record two allocations (the `Rc` and its
   field vector), and every allocation goes to the system allocator,
-  which is slow on Windows: a faster global allocator (`mimalloc`) is
-  the one remaining cheap win and a dependency decision for the owner
-  (S1 territory); after it, speed comes from the emitter and what it
-  can precompute, not from the loop.
+  which is slow on Windows. Decision X6, asked and measured in the same
+  session: `mimalloc` is the global allocator of the `renyi` binary
+  (`crates/renyi/src/main.rs`, `#[global_allocator]`; `cargo add
+  mimalloc -p renyi`); release build, best of five, back to back
+  against the same commit without it: the parser on `parser.ry` 811 to
+  496 ms, the checker on `lexer.ry` 510 to 389 ms, on `bodies.ry` 2712
+  to 2138 ms; the micro-benchmarks, which allocate little, within
+  noise. Against `f770f79` the three runs are now about 1.9, 1.8 and
+  1.7 times faster. After this, speed comes from the emitter and what
+  it can precompute, not from the loop.
 
 ## The VM as it exists (`crates/renyi_vm`)
 
@@ -695,6 +704,12 @@ Three commits on `main`, each gated as in session 7:
    `crates/renyi/src/main.rs` (`--profile`), `tests/semantics.rs` (the
    report's case), the reference's appendix B, `05-agent-tooling.md`
    (section 8), `README.md`, `CLAUDE.md`, `docs/GAPS.md`, this file.
+7. The owner's batch after X3 (the last commit): the emitter writes a
+   bytecode file (X5), `mimalloc` (X6, measured and kept), the
+   development profile stays as X1 set it, the residue of stage 1
+   before the emitter; `crates/renyi/Cargo.toml`, `main.rs`,
+   `Cargo.lock`, section X of the decisions, `docs/GAPS.md`,
+   `README.md`, this file.
 
 ## Done in session 7 (stage 1 of the gap audit)
 
@@ -1042,13 +1057,12 @@ on a fresh clone).
   `needs`, `Hash` implementations are never called, entry 1.18, and
   open item R3-2 (constraints with type arguments). None blocks stage
   2; the owner decides their order when stage 2 is planned.
-- **Stage 2, the next piece**: the bytecode emitter. Its shape (a file
-  the Renyi compiler writes and the Rust VM loads, or a loader that
-  builds the VM's `Program` from the Renyi compiler's tree and
-  references in one process) is the owner's call, asked as a batch of
-  four at the end of session 8 together with the allocator question
-  (`mimalloc` as the VM's global allocator: a dependency, S1
-  territory) and the order of the remaining performance items.
+- **Stage 2, the next piece**: decided at the end of session 8 (X5,
+  X6): first the residue of stage 1 (the bullet above: 1.8, 1.14, 1.17,
+  1.18 and R3-2 as `docs/GAPS.md` names them; each is read in full
+  before it is planned, and what needs a design choice is asked as a
+  batch of four), then the bytecode emitter, which writes a file the
+  VM loads; its format is designed when it is written.
 - **Readability**: the scores are no longer the gate (decision V1).
   Round 5 (U9's sentence) and gpt-5.5 run only if the owner asks.
 - Session 5 printed the values of `ANTHROPIC_API_KEY` and
@@ -1086,13 +1100,14 @@ on a fresh clone).
    language reference is `docs/reference.md`; the lexer and the parser
    in Renyi are `compiler/`, W1 to W4; the checker in Renyi is
    `compiler/declare.ry`, `bodies.ry` and `checker.ry`, W5 to W8; the
-   profile and the loop are done, X1 to X4): the bytecode emitter
-   with a file format or a loader so that the Rust VM runs what the
-   Renyi compiler emits, with the Rust toolchain as stage 0, which is
-   where the references of W8 get their judge (the owner's batch of
-   four comes before the emitter is written); the remaining
-   performance items (the allocator, string building, the pattern
-   cache of `Text.matches`) as a later profile calls for them; any
+   profile and the loop are done, X1 to X6): the residue of stage 1
+   first (the owner's order; the items under "Owner actions pending"),
+   then the bytecode emitter, which writes a file the VM loads (X5),
+   so that the Rust VM runs what the Renyi compiler emits, with the
+   Rust toolchain as stage 0, which is where the references of W8 get
+   their judge; the remaining performance items (string building, the
+   pattern cache of `Text.matches`) as a later profile calls for them;
+   any
    change to the loop is measured with `bench.py` and `micro.py`
    against the `base` worktree, the two binaries run back to back. The
    front end in

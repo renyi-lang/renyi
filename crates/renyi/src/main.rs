@@ -24,6 +24,12 @@ use renyi_syntax::{format, lex, module_to_json, parse, parse_declarations, Sourc
 use renyi_vm::grant::{parse_capability, Unit};
 use renyi_vm::Manifest;
 
+/// The allocator of the whole binary (decision X6): the VM allocates a
+/// record, a list, a text or a frame's locals at a time, and the system
+/// allocator of Windows is slow at that; mimalloc is not.
+#[global_allocator]
+static ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 const USAGE: &str = "usage:
   renyi check [--json] [--strict] <file.ry>...
                                       report diagnostics (exit 1 when any error; --strict: a call
