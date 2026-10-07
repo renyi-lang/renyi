@@ -80,6 +80,7 @@ pub fn lookup(name: &str, head: Option<&str>, receiver: Option<&str>) -> Option<
         ("List", "without_index") => list_without_index,
         ("List", "take") => list_take,
         ("List", "drop") => list_drop,
+        ("List", "slice") => list_slice,
         ("List", "append") => list_append,
         ("List", "append_all") => list_append_all,
         ("List", "reversed") => list_reversed,
@@ -513,6 +514,15 @@ fn list_drop(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
     let items = list(arg(&args, 0))?;
     let length = count(arg(&args, 1))?;
     Ok(Value::list(items.iter().skip(length).cloned().collect()))
+}
+
+/// `slice(start, stop)`: the items from `start` to `stop`, the end exclusive,
+/// both clamped to the list (decision X2).
+fn list_slice(_: &mut Vm, args: Vec<Value>) -> Result<Value, Interrupt> {
+    let items = list(arg(&args, 0))?;
+    let start = count(arg(&args, 1))?.min(items.len());
+    let stop = count(arg(&args, 2))?.min(items.len()).max(start);
+    Ok(Value::list(items[start..stop].to_vec()))
 }
 
 fn list_append(_: &mut Vm, mut args: Vec<Value>) -> Result<Value, Interrupt> {

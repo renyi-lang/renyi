@@ -22,6 +22,8 @@ type Source
   purpose: A file by the name the command line gave, its text, and what the front end made of it.
   has name: Text
   has text: Text
+  has chars: List of Text
+  has starts: List of Integer
   has front: Front
 end
 
@@ -115,12 +117,11 @@ function check_files(options: Options) needs console, environment, filesystem.re
   let mutable failed be false
   for each path in options.files
     let text be read_file(path)
-    let source be Source(name: path, text: text, front: front_end(text: text, declarations: false))
+    let source be source_of(name: path, text: text)
     let found be diagnose(source: source, library: library, strict: options.strict)
     if has_error(found) then set failed to true end
-    let chars be text.characters()
-    let starts be report.line_starts(chars)
-    let length be chars.length()
+    let starts be source.starts
+    let length be source.chars.length()
     let rendered be
       if options.json then report.render_json(
         file_name: path,
@@ -152,6 +153,15 @@ function read_file(path: Text) returns Text needs console, environment, filesyst
   end
 end
 
+function source_of(name: Text, text: Text) returns Source
+  purpose: A file as the checker holds it: its characters, its line starts and its tree.
+
+  let chars be text.characters()
+  let starts be report.line_starts(chars)
+  let front be front_end(text: text, declarations: false)
+  return Source(name: name, text: text, chars: chars, starts: starts, front: front)
+end
+
 function print_block(rendered: Text) needs console
   purpose: Print a rendering that ends with a line break, or nothing when it is empty.
 
@@ -178,7 +188,7 @@ function diagnose(source: Source, library: List of Module, strict: Boolean)
       when Parsed then check_file(source: source, library: library)
       when Rejected(diagnostic) then [diagnostic]
     end
-  set diagnostics to diagnostics.append_all(check_layout(source.text.characters()))
+  set diagnostics to diagnostics.append_all(check_layout(source.chars))
   set diagnostics to report.sorted_by_start(diagnostics)
   if not strict then return diagnostics end
   return for each diagnostic in diagnostics collect as_strict(diagnostic)
@@ -301,8 +311,12 @@ function check_project(files: List of Source, library: List of Module) returns L
           when nothing then set diagnostics to diagnostics
         end
         let built be declare.add_module(world: world, tree: tree, is_library: false)
-        let chars be file.text.characters()
-        set world to declare.set_source_lines(world: built.world, id: built.value, chars: chars)
+        set world to declare.set_source_lines(
+          world: built.world,
+          id: built.value,
+          chars: file.chars,
+          starts: file.starts
+        )
         set modules to modules.append(Checked(id: built.value, diagnostics: diagnostics))
     end
   end
@@ -431,7 +445,7 @@ function read_import(base: Text) returns maybe Source needs filesystem.read
   for each extension in ["ry", "renyi"]
     let path be "{base}.{extension}"
     let text be filesystem.read_text(Path(path)) otherwise continue
-    return Source(name: path, text: text, front: front_end(text: text, declarations: false))
+    return source_of(name: path, text: text)
   end
   return nothing
 end

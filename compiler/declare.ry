@@ -484,11 +484,16 @@ public function module_id(world: World, name: Text) returns maybe Integer
   return nothing
 end
 
-public function set_source_lines(world: World, id: Integer, chars: List of Text) returns World
+public function set_source_lines(
+  world: World,
+  id: Integer,
+  chars: List of Text,
+  starts: List of Integer
+)
+  returns World
   purpose: Remember a module's source and its line starts, so that the body checker can count lines.
 
   let info be module_at(world: world, id: id)
-  let starts be report.line_starts(chars)
   return update_module(
     world: world,
     id: id,

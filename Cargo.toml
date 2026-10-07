@@ -13,3 +13,13 @@ version = "0.0.1"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/skymanbp/Renyi"
+
+# Decision X1: the VM and every dependency are optimized in development
+# builds, so that `cargo test`, CI and every `renyi run` from a development
+# build get the release speed of the interpreter; the front end, the checker
+# and the binary keep their fast rebuilds.
+[profile.dev.package.renyi_vm]
+opt-level = 3
+
+[profile.dev.package."*"]
+opt-level = 3

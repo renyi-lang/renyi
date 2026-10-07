@@ -354,14 +354,21 @@ function source_text(checker: Checker, span: Span) returns Text
 end
 
 function line_of(checker: Checker, offset: Integer) returns Integer
-  purpose: The one-based line of an offset of the module's file.
+  purpose: The one-based line of an offset: how many of the file's lines start at or before it.
 
-  let mutable lines_before be 0
-  for each start in module_info(checker).line_starts
-    if start is greater than offset then break end
-    set lines_before to lines_before + 1
+  let starts be module_info(checker).line_starts
+  let mutable low be 0
+  let mutable high be starts.length()
+  repeat until low is high
+    let middle be (low + high).quotient(2)
+    let start be starts.at(middle) otherwise crash with "a line start"
+    if start is at most offset then
+      set low to middle + 1
+    otherwise
+      set high to middle
+    end
   end
-  return lines_before
+  return low
 end
 
 function without_trailing_dots(text: Text) returns Text
@@ -7459,9 +7466,10 @@ public function check_module(world: World, module_id: Integer) returns Checked
 
   let mutable checker be new_checker(world: world, module_id: module_id)
   let info be declare.module_at(world: world, id: module_id)
+  let bodies be body_index(world: world, module_id: module_id)
   let mutable index be 0
   for each item in info.tree.items
-    set checker to check_item(checker: checker, index: index, item: item)
+    set checker to check_item(checker: checker, index: index, item: item, bodies: bodies)
     set index to index + 1
   end
   if info.tree.docs.summary is nothing then
@@ -7481,17 +7489,14 @@ public function check_module(world: World, module_id: Integer) returns Checked
   return Checked(diagnostics: checker.diagnostics, references: checker.references)
 end
 
-function check_item(checker: Checker, index: Integer, item: Item) returns Checker
-  purpose: One item of the module: its bodies checked.
+function check_item(checker: Checker, index: Integer, item: Item, bodies: Map of Text to Integer)
+  returns Checker
+  purpose: One item of the module, its bodies checked; `bodies` maps an item to its function.
 
   let info be module_info(checker)
   match item
     when FunctionItem(value: func) then
-      match find_function(
-        world: checker.world,
-        module_id: checker.module_id,
-        body: ItemBody(item: index)
-      )
+      match bodies.get("{index}")
         when some(id) then return check_function(checker: checker, id: id, func: func)
         when nothing then return checker
       end
@@ -7499,8 +7504,7 @@ function check_item(checker: Checker, index: Integer, item: Item) returns Checke
       let mutable updated be checker
       let mutable method be 0
       for each func in implementation.functions
-        let body be ImplementationBody(item: index, method: method)
-        match find_function(world: checker.world, module_id: checker.module_id, body: body)
+        match bodies.get("{index}:{method}")
           when some(id) then set updated to check_function(checker: updated, id: id, func: func)
           when nothing then set updated to updated
         end
@@ -7522,32 +7526,21 @@ function check_item(checker: Checker, index: Integer, item: Item) returns Checke
   end
 end
 
-function find_function(world: World, module_id: Integer, body: BodyLocation) returns maybe Integer
-  purpose: The declared function whose body is the given item or implementation method.
+function body_index(world: World, module_id: Integer) returns Map of Text to Integer
+  purpose: The module's functions by body: an item's index, or `item:method` in an implementation.
 
+  let mutable bodies: Map of Text to Integer be {}
   let mutable id be 0
   for each func in world.functions
-    if func.owner is module_id and same_body(left: func.body, right: body) then return id end
+    if func.owner is module_id then
+      match func.body
+        when ItemBody(item) then set bodies to bodies.set(key: "{item}", value: id)
+        when ImplementationBody(item, method) then
+          set bodies to bodies.set(key: "{item}:{method}", value: id)
+        otherwise set bodies to bodies
+      end
+    end
     set id to id + 1
   end
-  return nothing
-end
-
-function same_body(left: BodyLocation, right: BodyLocation) returns Boolean
-  purpose: Whether two body locations name the same item or implementation method.
-
-  match left
-    when ItemBody(item: left_item) then
-      match right
-        when ItemBody(item: right_item) then return left_item is right_item
-        otherwise return false
-      end
-    when ImplementationBody(item: left_item, method: left_method) then
-      match right
-        when ImplementationBody(item: right_item, method: right_method) then
-          return left_item is right_item and left_method is right_method
-        otherwise return false
-      end
-    otherwise return false
-  end
+  return bodies
 end

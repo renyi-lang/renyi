@@ -13,8 +13,8 @@ import std.json                              # use as json.parse(...)
 import std.http as web                       # renamed namespace
 import accounts.models exposing User, UserId # types and abilities only
 ```
-Functions are always called qualified: `json.parse(text)`. Own-module
-functions are unqualified. Definitions are private unless `public`.
+Imported functions are called qualified (`json.parse(text)`), own-module
+ones bare. Definitions are private unless `public`.
 
 ## Function
 ```
@@ -56,8 +56,8 @@ set count to count + 1               # the only way to change it
 ignore connection.execute(sql)       # discard the result of a call with effects
 ```
 A name is bound once per scope; shadowing is an error. Every binding must be
-used, and an unused result is an error (`set items to items.append(item)`);
-`ignore` of a pure call's result is an error too.
+used, and an unused result is an error (`set items to items.append(item)`),
+as is `ignore` of a pure call's result.
 
 ## Types
 ```
@@ -260,7 +260,7 @@ Text: length() is_empty() trim() trim_start() trim_end() to_lower() to_upper()
   pad_right(width) repeat(times) take(length) drop(length) reversed()
   matches(pattern) to_integer() to_decimal() to_float() to_bytes()
 List: length() is_empty() at(index) first() last() rest() without_last()
-  without_index(index) take(length) drop(length) append(item)
+  without_index(index) take(length) drop(length) slice(start, stop) append(item)
   append_all(others) reversed() sorted() distinct() contains(item)
   index_of(item) largest() smallest() with_index() to_set() flattened()
   join(separator) sum()

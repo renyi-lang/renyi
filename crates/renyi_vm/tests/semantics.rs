@@ -317,6 +317,11 @@ public function main() needs console
   console.print("{far}")
   console.print("{items.take(huge).length()}")
   console.print("{items.drop(huge).length()}")
+  console.print("{items.slice(start: 1, stop: huge).length()}")
+  console.print("{items.slice(start: 2, stop: 1).length()}")
+  let first_two be items.slice(start: 0 - 1, stop: 2)
+  console.print("{first_two.length()}")
+  console.print("{first_two.last() otherwise 0}")
   let pieces be "abc".split("")
   console.print("{pieces.length()}")
   console.print("abc".replace(old: "", new: "x"))
@@ -329,8 +334,8 @@ end
     let (outcome, printed) = run(source, Options::default());
     assert_eq!(outcome, RunOutcome::Finished);
     let lines: Vec<&str> = printed.lines().collect();
-    assert_eq!(&lines[..5], ["0", "3", "0", "3", "abc"]);
-    assert!(lines[5].starts_with("InvalidDate("), "{}", lines[5]);
+    assert_eq!(&lines[..9], ["0", "3", "0", "2", "0", "2", "2", "3", "abc"]);
+    assert!(lines[9].starts_with("InvalidDate("), "{}", lines[9]);
 }
 
 #[test]

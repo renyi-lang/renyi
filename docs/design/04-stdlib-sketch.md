@@ -160,6 +160,8 @@ function without_last(self: List of Item) returns List of Item for any Item
 function without_index(self: List of Item, index: Integer) returns List of Item for any Item
 function take(self: List of Item, length: Integer) returns List of Item for any Item
 function drop(self: List of Item, length: Integer) returns List of Item for any Item
+function slice(self: List of Item, start: Integer, stop: Integer) returns List of Item for any Item
+  purpose: The items from start to stop, the end exclusive; the bounds are clamped to the list (decision X2).
 function append(self: List of Item, item: Item) returns List of Item for any Item
 function append_all(self: List of Item, others: List of Item) returns List of Item for any Item
 function reversed(self: List of Item) returns List of Item for any Item

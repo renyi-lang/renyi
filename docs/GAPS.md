@@ -423,6 +423,26 @@ not yet judged (W8). The second measurement: the Renyi checker takes
 about 1.5 s on a small program (the twelve library declaration files
 lexed, parsed and declared each run), 32 s on the 7500-line `bodies.ry`
 and 39 s on `checker.ry` with its imports; the judge takes about three
-minutes on eight threads. Next: the profile of the VM on those runs
-(W6), then the bytecode emitter with its file format or loader, and the
-performance items as the profile calls for them.
+minutes on eight threads.
+
+The profile (W6, the same session; decisions X1 to X4). Every number
+above came from the development build: the release build runs the
+parser on `parser.ry` in 1.0 s and the checker on `bodies.ry` in 5.5 s,
+four to five times faster, so the development profile now optimizes
+`renyi_vm` and the dependencies (X1). A sampling profiler built into the
+VM (X4) showed, on the checker's run over `bodies.ry` (148 million
+operations, 5.5 million calls, 3.9 million primitive calls): a tenth of
+the time in `line_of` of `bodies.ry`, a linear scan of the line starts
+per call (now a binary search); a tenth in the lexer's `slice`, which
+cut a token one character at a time (now one `List.slice`, X2); the
+rest spread over the VM's plain operations at about 35 ns each (`Load`
+14 percent, `Field` 10, `Binary` 10, `Call` and `Return` 16, the
+primitives `at`, `contains`, `length` and `append` 15 together), the
+record field found by a linear search of its names on every access,
+every `step` returning a 48-byte result and every `Value` 40 bytes
+wide. After the source fixes and `slice`: 93 million operations, 3.3 s
+in the release build (from 5.5 s); the parser 0.76 s (from 1.0 s); the
+checker's judge 64 s in `cargo test` (from 170 s). The
+owner chose to rewrite the interpreter loop and slim `Value` next (X3,
+target 1.5 to 2 times), then the bytecode emitter with its file format
+or loader.

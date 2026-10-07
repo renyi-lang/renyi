@@ -1486,3 +1486,54 @@ value, and the literals and results noted while a body is checked
 (`Reference`, `SpanTy`), as Renyi values keyed by span. They are
 produced now and judged when the emitter exists, which is the piece
 that consumes them. (user)
+
+## X. The speed of the VM (session 8)
+
+**X1. The VM is optimized in development builds.** `cargo test` and CI
+run the `renyi` binary of the development profile, where the parser
+written in Renyi took 5 s on `parser.ry` and the checker 32 s on
+`bodies.ry`; the release profile runs both four to five times faster
+(1.0 s and 5.5 s). The workspace manifest sets `opt-level = 3` for
+`renyi_vm` and for every dependency in the development profile, so that
+the judges, CI and every `renyi run` from a development build get the
+release speed of the interpreter while the front end, the checker and
+the binary keep their fast rebuilds. (user)
+
+**X2. `slice(start, stop)` on lists.** The lexer written in Renyi cut a
+token's text one character at a time (`chars.at(index)` and a text
+concatenation per character: 12 percent of a checker run), and no
+composition of the existing methods takes a middle run of a list in
+time proportional to its length (`take` and `drop` copy from the
+start). The prelude gains `slice(self: List of Item, start: Integer,
+stop: Integer) returns List of Item`: the items from `start` to `stop`,
+the end exclusive, the bounds clamped to the list as `take` and `drop`
+clamp theirs; the sketch, `library/std`, the VM and the cheat sheet
+change in one commit (a library addition, not a surface change under
+V11). The lexer's `slice` is one `slice` and one `join`. Measured on the
+checker's own 7500-line `bodies.ry`: 18 percent off the checker's run
+and 17 percent off the parser's. (user)
+
+**X3. The interpreter loop is rewritten for speed before the emitter.**
+The profile (`docs/GAPS.md`, status at the end of session 8) shows the
+time spread over the VM's plain operations, about 35 ns each: `Load`,
+`Field` (a linear search of the record's field names on every access),
+`Binary`, `Call` and `Return`, with every `step` returning a 48-byte
+`Result<Option<Value>, Interrupt>` and every `Value` 40 bytes wide. The
+owner chose the deep change over the three cheap ones measured
+(arguments left in place at a call and one handler stack for all
+frames, 5 to 8 percent; a cache of the field index, about 8 percent; a
+fast path for `is` on records, about 3 percent): the dispatch loop
+keeps the running frame's state in locals and returns nothing per
+operation, `Value` is slimmed by boxing its wide variants, and the cheap
+changes come with it. The target is 1.5 to 2 times on the parser's and
+the checker's runs, measured with X4; the bytecode emitter waits for
+it. (user)
+
+**X4. `renyi run --profile`.** The VM carries its own profiler: a timer
+raises a flag every half millisecond, the operation running when it was
+raised gets the sample, every operation, call and library primitive is
+counted, and the report (samples by function and operation, by
+function, by operation kind with the primitives by name; the counts)
+goes to the standard error when the run ends. It is a development aid
+like `renyi tokens`, named in appendix B of the reference and in
+`05-agent-tooling.md`. (user)

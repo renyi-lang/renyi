@@ -300,28 +300,21 @@ function char_at(chars: List of Text, index: Integer) returns Text
 end
 
 function slice(chars: List of Text, start: Integer, stop: Integer) returns Text
-  purpose: The characters from start to stop as one text; linear in their count.
+  purpose: The characters from start to stop as one text; linear in their count (decision X2).
 
-  let mutable text be ""
-  let mutable index be start
-  repeat until index is at least stop
-    let ch be char_at(chars: chars, index: index)
-    set text to "{text}{ch}"
-    set index to index + 1
-  end
-  return text
+  return chars.slice(start: start, stop: stop).join("")
 end
 
 function is_lower(ch: Text) returns Boolean
-  return ch.length() is 1 and "abcdefghijklmnopqrstuvwxyz".contains(ch)
+  return ch is not "" and "abcdefghijklmnopqrstuvwxyz".contains(ch)
 end
 
 function is_upper(ch: Text) returns Boolean
-  return ch.length() is 1 and "ABCDEFGHIJKLMNOPQRSTUVWXYZ".contains(ch)
+  return ch is not "" and "ABCDEFGHIJKLMNOPQRSTUVWXYZ".contains(ch)
 end
 
 function is_digit(ch: Text) returns Boolean
-  return ch.length() is 1 and "0123456789".contains(ch)
+  return ch is not "" and "0123456789".contains(ch)
 end
 
 function is_word_char(ch: Text) returns Boolean
