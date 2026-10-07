@@ -40,7 +40,8 @@ repository public under `renyi-lang/renyi`, the seven crates on
 crates.io, the tag `v0.1.0` with its release and the site live; then
 the registration API for Rust natives, decisions AK1 to AK4: the
 standard library as the first extension, `renyi` a library too, the
-guide `docs/extensions.md`).
+guide `docs/extensions.md`; and the domain renyi-lang.org in front of
+the site).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -64,7 +65,7 @@ repository is public at `github.com/renyi-lang/renyi`, the release
 page carries the three archives, their checksums and the `.vsix`,
 the seven crates are on crates.io (`cargo install renyi` builds
 0.1.0), the installers were run against the release, and the site is
-at `renyi-lang.github.io/renyi`.
+at `renyi-lang.org` (the GitHub Pages address redirects there).
 Design decisions are
 in sections 0 to AJ of `01-decisions.md`; the positioning in
 `08-positioning.md`; the agent tooling in
@@ -2286,8 +2287,13 @@ on a fresh clone).
   announcement with the texts of `08-positioning.md` section 6; the
   VS Code Marketplace publisher `renyi-lang` and `vsce publish` from
   `editors/vscode/` if the extension is to be found by search (the
-  `.vsix` on the release page installs by hand); the domain
-  renyi-lang.org (AI4).
+  `.vsix` on the release page installs by hand). The domain
+  renyi-lang.org is in front of the site (AI4, 2026-10-07, late):
+  the zone is on Cloudflare, its records name GitHub Pages, the
+  Pages setting names the domain and HTTPS is enforced; the session
+  did it with a one-hour token minted from a credential of the
+  owner's that stays on the owner's machine, outside the repository
+  (`docs/RELEASE.md` section 5, item 8).
 - **Updates and installers** (the owner's question of 2026-10-07,
   evening): the one-line installers overwrite the binary in place and
   `RENYI_VERSION` pins a version; `cargo install renyi` upgrades in

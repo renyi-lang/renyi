@@ -30,7 +30,8 @@ The owner's steps are marked (owner); the others a session does.
 
 1. (owner) Create the GitHub organisation `renyi-lang` and transfer the
    repository to it as `renyi-lang/renyi` (decision AI4); GitHub
-   redirects the old address. Register `renyi-lang.org` when wanted.
+   redirects the old address. Register `renyi-lang.org` when wanted
+   (done 2026-10-07; section 5, item 8).
    Every address in the repository already names `renyi-lang/renyi`:
    `Cargo.toml` (`repository`), `README.md`, `install.sh`,
    `install.ps1`, `editors/vscode/package.json`.
@@ -146,3 +147,16 @@ and these are the things the procedure did not say:
    verified by hand (the PowerShell installer edits the user's PATH, so
    it was not run on the owner's machine); `cargo install renyi` built
    the binary from crates.io.
+8. The domain (AI4), later the same evening: the owner registered
+   `renyi-lang.org` on Cloudflare and handed over a credential that
+   mints tokens; the session minted a token with DNS write and zone
+   read for one hour, wrote the GitHub Pages records (four `A` and
+   four `AAAA` on the apex, `www` a `CNAME` to `renyi-lang.github.io`,
+   none proxied, so that GitHub issues the certificate), deleted the
+   token, set the domain on the Pages site (`gh api -X PUT
+   repos/renyi-lang/renyi/pages -f cname=renyi-lang.org`; a workflow
+   deployment needs no `CNAME` file) and, once the certificate's
+   state was `approved` (within minutes), enforced HTTPS (`-F
+   https_enforced=true`). The old address redirects. The credential
+   stays on the owner's machine, outside the repository; no token
+   value was printed or written anywhere.
