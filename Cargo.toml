@@ -11,7 +11,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.0.1"
+version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
 # decision AI4: the repository moves to the organisation before release 0.1
@@ -21,12 +21,12 @@ repository = "https://github.com/renyi-lang/renyi"
 # the crates name each other through this table, so that a release bumps
 # `version` above and the versions here together (`docs/RELEASE.md`)
 [workspace.dependencies]
-renyi_json = { path = "crates/renyi_json", version = "0.0.1" }
-renyi_syntax = { path = "crates/renyi_syntax", version = "0.0.1" }
-renyi_package = { path = "crates/renyi_package", version = "0.0.1" }
-renyi_check = { path = "crates/renyi_check", version = "0.0.1" }
-renyi_index = { path = "crates/renyi_index", version = "0.0.1" }
-renyi_vm = { path = "crates/renyi_vm", version = "0.0.1" }
+renyi_json = { path = "crates/renyi_json", version = "0.1.0" }
+renyi_syntax = { path = "crates/renyi_syntax", version = "0.1.0" }
+renyi_package = { path = "crates/renyi_package", version = "0.1.0" }
+renyi_check = { path = "crates/renyi_check", version = "0.1.0" }
+renyi_index = { path = "crates/renyi_index", version = "0.1.0" }
+renyi_vm = { path = "crates/renyi_vm", version = "0.1.0" }
 
 # Decision X1: the VM and every dependency are optimized in development
 # builds, so that `cargo test`, CI and every `renyi run` from a development

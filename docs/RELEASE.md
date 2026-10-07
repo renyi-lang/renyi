@@ -43,7 +43,14 @@ The owner's steps are marked (owner); the others a session does.
    `Cargo.toml` and in every entry of its `[workspace.dependencies]`
    (the crates name each other through that table, with the version
    crates.io requires), then `cargo update --workspace` so that
-   `Cargo.lock` agrees; commit as "Release 0.1.0".
+   `Cargo.lock` agrees. The conformance fixture follows: the
+   `toolchain` line of
+   `tests/conformance/packages/registry/greeting/1.0.0/package.json`
+   (what `renyi publish` writes, compared by a test), then the hash of
+   that file's bytes in `tests/conformance/packages/project/renyi.lock.json`
+   (`sha256:` and the hex digest) and the two places
+   `crates/renyi/tests/packages.rs` spells it. Commit as "Release
+   0.1.0".
 5. (owner, or a session with the owner's say-so in that turn) Publish
    the crates to crates.io, in dependency order, each with
    `cargo publish -p <crate>`: `renyi_json`, `renyi_syntax`,

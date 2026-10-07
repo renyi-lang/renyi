@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "purpose": "A greeting package: a greeting as text, and announced on the console.",
   "dependencies": {},
-  "toolchain": "renyi 0.0.1",
+  "toolchain": "renyi 0.1.0",
   "files": [
     {
       "path": "greeting.ry",
