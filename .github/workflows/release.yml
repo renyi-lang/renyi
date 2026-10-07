@@ -1,0 +1,162 @@
+# The release (decision AI2): a tag `v<version>` builds the `renyi` binary
+# for Linux (x86_64), macOS (Apple silicon) and Windows (x86_64), runs the
+# conformance suite against each, and publishes a GitHub Release with the
+# three archives, their checksums and the editor extension. The tag's
+# version must be the workspace version of `Cargo.toml` (docs/RELEASE.md).
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            archive: tar.gz
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            archive: tar.gz
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            archive: zip
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@1.94.1
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ matrix.target }}
+
+      - name: Check the tag against the workspace version
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version=$(grep -m1 '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
+          if [ "$tag" != "$version" ]; then
+            echo "the tag v$tag is not the workspace version $version" >&2
+            exit 1
+          fi
+
+      - name: Build
+        run: cargo build --release --locked -p renyi --target ${{ matrix.target }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # the implementation-independent runner against the release binary:
+      # the same 51 cases CI runs against the development build
+      - name: Conformance suite on the release binary
+        shell: bash
+        run: python tools/conformance.py target/${{ matrix.target }}/release/renyi${{ matrix.archive == 'zip' && '.exe' || '' }}
+
+      - name: Package (Unix)
+        if: matrix.archive == 'tar.gz'
+        shell: bash
+        run: |
+          name="renyi-${GITHUB_REF_NAME}-${{ matrix.target }}"
+          mkdir -p "dist/$name"
+          cp "target/${{ matrix.target }}/release/renyi" README.md LICENSE "dist/$name/"
+          tar -C dist -czf "dist/$name.tar.gz" "$name"
+          (cd dist && shasum -a 256 "$name.tar.gz" > "$name.tar.gz.sha256")
+          cat "dist/$name.tar.gz.sha256"
+
+      - name: Package (Windows)
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: |
+          $name = "renyi-$env:GITHUB_REF_NAME-${{ matrix.target }}"
+          New-Item -ItemType Directory -Force "dist/$name" | Out-Null
+          Copy-Item "target/${{ matrix.target }}/release/renyi.exe", "README.md", "LICENSE" "dist/$name/"
+          Compress-Archive -Path "dist/$name" -DestinationPath "dist/$name.zip"
+          $hash = (Get-FileHash "dist/$name.zip" -Algorithm SHA256).Hash.ToLower()
+          "$hash  $name.zip" | Out-File -Encoding ascii "dist/$name.zip.sha256"
+          Get-Content "dist/$name.zip.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: renyi-${{ matrix.target }}
+          path: |
+            dist/*.tar.gz
+            dist/*.tar.gz.sha256
+            dist/*.zip
+            dist/*.zip.sha256
+          if-no-files-found: error
+
+  extension:
+    name: Build the VS Code extension
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Package
+        working-directory: editors/vscode
+        run: |
+          npx --yes @vscode/vsce@3 package --no-dependencies --out "renyi-${GITHUB_REF_NAME}.vsix"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: renyi-vscode
+          path: editors/vscode/*.vsix
+          if-no-files-found: error
+
+  release:
+    name: Publish the GitHub Release
+    needs: [build, extension]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Release notes
+        shell: bash
+        run: |
+          {
+            echo "Renyi ${GITHUB_REF_NAME}: the scripting language of AI agents. A program"
+            echo "declares what it may do, the runtime admits only that, and every run can"
+            echo "be recorded, replayed and narrated."
+            echo
+            echo "Install (Linux, macOS):"
+            echo
+            echo '```sh'
+            echo "curl -fsSL https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/install.sh | RENYI_VERSION=${GITHUB_REF_NAME} sh"
+            echo '```'
+            echo
+            echo "Install (Windows, PowerShell):"
+            echo
+            echo '```powershell'
+            echo "irm https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/install.ps1 | iex"
+            echo '```'
+            echo
+            echo "Or \`cargo install renyi --version ${GITHUB_REF_NAME#v}\` with a Rust toolchain."
+            echo "The \`.vsix\` is the VS Code extension (syntax highlighting): Extensions, \"Install from VSIX\"."
+            echo
+            echo "Checksums: the \`.sha256\` file next to each archive."
+          } > notes.md
+          ls -la artifacts
+      - uses: softprops/action-gh-release@v2
+        with:
+          body_path: notes.md
+          files: artifacts/*
+          generate_release_notes: true

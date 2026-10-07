@@ -1,0 +1,158 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Renyi",
+  "scopeName": "source.renyi",
+  "fileTypes": ["ry", "renyi"],
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#clause" },
+    { "include": "#example" },
+    { "include": "#block-text" },
+    { "include": "#raw-text" },
+    { "include": "#text" },
+    { "include": "#number" },
+    { "include": "#phrase" },
+    { "include": "#keyword" },
+    { "include": "#constant" },
+    { "include": "#capability" },
+    { "include": "#type" },
+    { "include": "#call" },
+    { "include": "#symbol" }
+  ],
+  "repository": {
+    "comment": {
+      "name": "comment.line.number-sign.renyi",
+      "match": "#.*$"
+    },
+    "clause": {
+      "comment": "purpose:, tags:, see also: and deprecated: take the rest of the line as one token (reference, section 13)",
+      "match": "^\\s*(purpose|tags|see also|deprecated)(:)(.*)$",
+      "captures": {
+        "1": { "name": "keyword.other.clause.renyi" },
+        "2": { "name": "punctuation.separator.clause.renyi" },
+        "3": { "name": "comment.block.documentation.renyi" }
+      }
+    },
+    "example": {
+      "comment": "example: is followed by an expression, highlighted as code",
+      "match": "^\\s*(example)(:)",
+      "captures": {
+        "1": { "name": "keyword.other.clause.renyi" },
+        "2": { "name": "punctuation.separator.clause.renyi" }
+      }
+    },
+    "block-text": {
+      "name": "string.quoted.triple.renyi",
+      "begin": "\"\"\"",
+      "end": "\"\"\"",
+      "patterns": [
+        { "include": "#escape" },
+        { "include": "#hole" }
+      ]
+    },
+    "raw-text": {
+      "match": "(?<![a-z0-9_.])(raw)\\s+(\"[^\"\\n]*\")",
+      "captures": {
+        "1": { "name": "keyword.other.raw.renyi" },
+        "2": { "name": "string.quoted.double.raw.renyi" }
+      }
+    },
+    "text": {
+      "name": "string.quoted.double.renyi",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        { "include": "#escape" },
+        { "include": "#hole" }
+      ]
+    },
+    "escape": {
+      "name": "constant.character.escape.renyi",
+      "match": "\\\\."
+    },
+    "hole": {
+      "name": "meta.embedded.hole.renyi",
+      "begin": "\\{",
+      "beginCaptures": { "0": { "name": "punctuation.section.hole.begin.renyi" } },
+      "end": "\\}",
+      "endCaptures": { "0": { "name": "punctuation.section.hole.end.renyi" } },
+      "patterns": [
+        { "include": "#text" },
+        { "include": "#number" },
+        { "include": "#phrase" },
+        { "include": "#keyword" },
+        { "include": "#constant" },
+        { "include": "#type" },
+        { "include": "#call" },
+        { "include": "#symbol" }
+      ]
+    },
+    "number": {
+      "name": "constant.numeric.renyi",
+      "match": "(?<![a-z0-9_])[0-9][0-9_]*(\\.[0-9]+)?\\b"
+    },
+    "phrase": {
+      "comment": "the phrases of reference section 17 are single tokens; the longest wins",
+      "patterns": [
+        {
+          "name": "keyword.operator.comparison.renyi",
+          "match": "(?<![a-z0-9_.])(is not|is less than|is at most|is greater than|is at least|is one of)(?![a-z0-9_])"
+        },
+        {
+          "name": "keyword.control.renyi",
+          "match": "(?<![a-z0-9_.])(for each|repeat until|run concurrently)(?![a-z0-9_])"
+        },
+        {
+          "name": "keyword.other.phrase.renyi",
+          "match": "(?<![a-z0-9_.])(for any|sorted by|group by|expose as tool|or fails with|at most|only to)(?![a-z0-9_])"
+        }
+      ]
+    },
+    "keyword": {
+      "comment": "a reserved word after a dot is a member name, so every word is guarded against a dot before it",
+      "patterns": [
+        {
+          "name": "keyword.control.renyi",
+          "match": "(?<![a-z0-9_.])(if|then|otherwise|end|match|when|where|collect|return|fail|crash|break|continue|within|check|ignore|concurrently|run|repeat|until|each|for)(?![a-z0-9_])"
+        },
+        {
+          "name": "storage.type.renyi",
+          "match": "(?<![a-z0-9_.])(module|function|type|ability|test)(?![a-z0-9_])"
+        },
+        {
+          "name": "storage.modifier.renyi",
+          "match": "(?<![a-z0-9_.])(public|mutable|lazy|maybe)(?![a-z0-9_])"
+        },
+        {
+          "name": "keyword.other.renyi",
+          "match": "(?<![a-z0-9_.])(import|exposing|can|has|needs|returns|fails|let|be|change|replays|expose|tool|per|see|also|example|purpose|tags|deprecated|success|failure|descending|of|as|to|from|by|in|with|at|least|most|than|less|greater|one|only)(?![a-z0-9_])"
+        },
+        {
+          "name": "keyword.operator.word.renyi",
+          "match": "(?<![a-z0-9_.])(and|or|not|is|power|remainder|sum|count|first|any|all|some)(?![a-z0-9_])"
+        }
+      ]
+    },
+    "constant": {
+      "name": "constant.language.renyi",
+      "match": "(?<![a-z0-9_.])(true|false|nothing|self)(?![a-z0-9_])"
+    },
+    "capability": {
+      "comment": "the capability tree of reference section 11, as it appears in needs clauses and as module names",
+      "name": "support.module.renyi",
+      "match": "(?<![a-z0-9_.])(console|filesystem|network|time|random|environment|process|foreign)(\\.[a-z_]+)*(?![a-z0-9_])"
+    },
+    "type": {
+      "name": "entity.name.type.renyi",
+      "match": "(?<![A-Za-z0-9_])[A-Z][A-Za-z0-9]*(?![A-Za-z0-9])"
+    },
+    "call": {
+      "name": "entity.name.function.renyi",
+      "match": "(?<![A-Za-z0-9_])[a-z][a-z0-9_]*(?=\\()"
+    },
+    "symbol": {
+      "name": "keyword.operator.arithmetic.renyi",
+      "match": "[+\\-*/]"
+    }
+  }
+}

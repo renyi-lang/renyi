@@ -14,7 +14,8 @@ members = [
 version = "0.0.1"
 edition = "2021"
 license = "Apache-2.0"
-repository = "https://github.com/skymanbp/Renyi"
+# decision AI4: the repository moves to the organisation before release 0.1
+repository = "https://github.com/renyi-lang/renyi"
 
 # Decision X1: the VM and every dependency are optimized in development
 # builds, so that `cargo test`, CI and every `renyi run` from a development

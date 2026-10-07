@@ -51,6 +51,30 @@ end
 
 Source files use the `.renyi` or `.ry` extension; the two are equivalent.
 
+## Install
+
+Every release (decisions AI1 to AI4; `v0.1.0` is the first) carries
+binaries for Linux (x86_64), macOS (Apple silicon) and Windows (x86_64).
+On Linux and macOS:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/renyi-lang/renyi/main/install.sh | sh
+```
+
+On Windows, in PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/renyi-lang/renyi/main/install.ps1 | iex
+```
+
+Both verify the archive's checksum; `RENYI_VERSION=v0.1.0` picks a
+version and `RENYI_INSTALL_DIR` a directory. With a Rust toolchain,
+`cargo install renyi` builds the same binary from crates.io, and `cargo
+install --git https://github.com/renyi-lang/renyi renyi` from the
+repository. The VS Code extension (syntax highlighting; `editors/vscode/`)
+is attached to every release as a `.vsix`. `docs/RELEASE.md` is the
+release procedure.
+
 ## Status
 
 The design is complete (M0); the front end (M1), the type and effect
@@ -173,8 +197,8 @@ python tools/bench.py target/debug/renyi              # the benchmarks of bench/
 cargo test
 ```
 
-Next: M4 (provenance guards, the package manager, budgets in the
-manifest).
+Next: release 0.1 (decisions AI1 to AI4; the procedure in
+`docs/RELEASE.md`).
 
 ## Working on this repository
 

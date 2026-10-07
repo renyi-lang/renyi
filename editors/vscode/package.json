@@ -1,0 +1,49 @@
+{
+  "name": "renyi",
+  "displayName": "Renyi",
+  "description": "Syntax highlighting for Renyi, the scripting language of AI agents: the agent writes it, you review it at a glance, and the program can only do what it declares.",
+  "version": "0.1.0",
+  "publisher": "renyi-lang",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/renyi-lang/renyi",
+    "directory": "editors/vscode"
+  },
+  "homepage": "https://github.com/renyi-lang/renyi",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "renyi",
+    "agents",
+    "capabilities",
+    "effects"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "renyi",
+        "aliases": [
+          "Renyi",
+          "renyi"
+        ],
+        "extensions": [
+          ".ry",
+          ".renyi"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "renyi",
+        "scopeName": "source.renyi",
+        "path": "./syntaxes/renyi.tmLanguage.json"
+      }
+    ]
+  }
+}
