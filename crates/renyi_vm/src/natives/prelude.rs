@@ -276,9 +276,7 @@ fn text_split(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     let separator = text(arg(args, 1))?;
     if separator.is_empty() {
         // nothing lies between empty separators but the characters
-        return Ok(Value::list(
-            value.chars().map(|c| Value::text(c.to_string())).collect(),
-        ));
+        return Ok(Value::list(characters(value)));
     }
     Ok(Value::list(
         value.split(separator).map(Value::text).collect(),
@@ -291,13 +289,16 @@ fn text_lines(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     ))
 }
 
+/// The characters of a text as one-character texts, listed in one
+/// allocation (what `characters`, `split("")` and a loop over a text walk).
+pub(crate) fn characters(text: &str) -> Vec<Value> {
+    let mut items = Vec::with_capacity(text.chars().count());
+    items.extend(text.chars().map(Value::character));
+    items
+}
+
 fn text_characters(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
-    Ok(Value::list(
-        text(arg(args, 0))?
-            .chars()
-            .map(|c| Value::text(c.to_string()))
-            .collect(),
-    ))
+    Ok(Value::list(characters(text(arg(args, 0))?)))
 }
 
 fn text_contains(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {

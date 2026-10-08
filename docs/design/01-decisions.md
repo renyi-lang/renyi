@@ -2655,3 +2655,105 @@ interpreter alone because the safe points of the generated code are not
 all the interpreter's, and a sandbox is about safety, not speed; the
 allocator in the binary because a library that declares the global
 allocator cannot be linked into a host that declares its own. (derived)
+
+## AQ. The profile-guided round on strings and JSON (session 9)
+
+**AQ1. The first of the interspersed performance items the owner set on
+2026-10-07 (the profile of decision AG5 on the two benchmarks the
+positioning compares with CPython), done and measured: `std.json`
+decodes without cloning the type's metadata per record and without
+building the error-path strings of every item and field, and renders
+text with no `Json` tree in between; the reader and the writer of
+`renyi_json` copy runs of plain bytes at once; the one-character texts
+of the ASCII range come from a table kept per thread; a compiled pattern
+of `std.regex` and `Text.matches` is kept per thread; and an
+interpolation joins its pieces where they lie on the stack.** The round
+began on the owner's machine (the profiles of `perf` on the release
+build under WSL, about a thousand samples each) and was paused on
+2026-10-08 with the change written as a script (commit 44763c4); session
+9, the first in the cloud environment, applied it, ran the gates and
+measured it. What the profiles said: on `bench/strings.ry` (a hundred
+thousand pieces joined, 1.2 million characters counted) 40% of the time
+in page faults, 19% in the interpreter loop, 11% under `characters()`
+(an allocation per one-character text, a 29 MB vector grown by
+doubling), 7% moving a primitive's arguments into the scratch buffer
+(1.2 million calls of `contains`), 6% cloning and dropping values; on
+`bench/json_round_trip.ry` (two thousand records rendered and read back
+fifty times) 18% in `decode`, 13% in the error-path strings
+`"{path}[{index}]"` and `"{path}.{key}"` made for every item and field
+whether or not an error follows, 10% in the reader (`from_utf8` once per
+UTF-8 sequence), 6% in `encode`, 15% in the allocator, 5% cloning the
+`TypeMeta` per record. The change, in five parts: (i) the decoder keeps
+its position as a chain of borrowed segments (`Path`) rendered only for
+a `Mismatch` or `Constraint` error, borrows the type's metadata and a
+field's key under the exact naming (`Cow`), substitutes a field's type
+only for a type with parameters, and `parse` no longer copies its
+argument; (ii) the encoder walks a value once into a `Sink`: `TreeSink`
+builds the `Json` tree `encode` returns (the recording,
+`http.post_json`, `server.ok_json` and the Python bridge keep it) and
+`TextSink` writes `render`'s text with no tree in between, held equal to
+`write_json` by a unit test on both layouts; the reader copies a run of
+plain bytes at once and `write_string` the runs between escapes; (iii)
+`Value::character(c)`: the ASCII one-character texts from a per-thread
+table, used by `characters()`, `split("")` and a loop over a text, the
+list allocated once at its exact length; (iv) a compiled pattern cached
+per thread (256 at most, then the cache is emptied), for `std.regex` and
+`Text.matches`; (v) `Vm::op_concat` joins the pieces where they lie on
+the stack, the text sized first, an Integer written straight into it.
+Conformance case 54 (`json_paths.ry`) holds what these paths print: the
+path of every `Mismatch` and `Constraint` error, the control characters
+and the non-ASCII text of a document on both layouts, the three namings,
+`characters()`, `split("")`, a loop over a text, every kind of value in
+a hole, and a thousand matches of one pattern and three hundred of
+different ones; its expected output was printed by the binary before the
+change. Measured on 2026-10-08 in the cloud environment (Linux, four
+cores, the release build with rustc 1.97.0, the two binaries from the
+same tree with and without the change, `cachegrind` for the user-space
+instructions and `tools/bench.py --runs 5` back to back for the
+wall-clock time): user-space instructions on `strings` 1.74 to 1.39
+billion on machine code (-20%) and 1.97 to 1.62 billion on the
+interpreter (-18%); on `json_round_trip` 2.34 to 1.00 billion (-57%) and
+2.36 to 1.01 billion (-57%); on the compiler's self-check (`checker.ry`
+on `bodies.ry`) 13.40 to 13.14 billion (-2.0%) and 13.12 to 12.84
+billion (-2.1%). Wall-clock time, the best of five: `strings` 282 to 226
+ms on machine code and 284 to 262 ms on the interpreter against
+CPython's 106 ms; `json_round_trip` 314 to 126 ms and 303 to 125 ms
+against 230 ms (from 0.7 to 1.8 times CPython's speed); the self-check
+2895 to 2679 ms and 2572 to 2496 ms; `primes`, `records` and `hello`
+unchanged within the noise of the machine, which moved a repeated
+measurement by a tenth (CPython's own `primes` twin by a fifth between
+the two rounds), so that a wall-clock difference under a tenth says
+nothing here and the instruction counts are the measure, as in AG6. The
+CI numbers of commit a2b0702 to beat were `strings` 179 ms and
+`json_round_trip` 386 ms against CPython's 43 and 89 ms. Where the rest
+goes, by `cachegrind` on the interpreter after the change: on `strings`,
+40% in the interpreter loop (`run_frames`), 30% in the primitive
+boundary once per character (`call_primitive`, the move of the arguments
+into the scratch buffer, `run_primitive`, `text_contains`, the drops of
+the arguments and of the drain, `guarded`, `effect_of`), 7% dropping and
+4% cloning values, 5% the `contains` search itself, 3% `iterator_next`,
+2% `characters`, 2% `op_concat`, the allocator under 2%; the page faults
+of the 29 MB list of 1.2 million one-character texts, now one allocation
+at its exact length, are kernel time that no instruction count shows,
+which is why the interpreter's wall-clock gain is smaller than its
+instruction gain. On `json_round_trip`, 21% in the reader (`string`,
+`value`, `expect`), 8.5% in `write_string`, 8% in `decode_at`, 4% in
+`walk`, 7% growing vectors and texts, 9% in the allocator, 5% in the
+interpreter loop, 2% parsing Integers, 3% in the keys (`Naming::key`,
+`TextSink::key`), 1% finding a field by name among the object's entries:
+the plain cost of reading and writing the format. Not done, on purpose:
+`Text` stays `Rc<str>` (decision X3), so `change out to "{out}{piece}"`
+in `compiler/` still copies the accumulated text per piece; the pure
+primitive boundary stays as AG6 left it (the move of the arguments into
+the scratch buffer, 1.2 million times on `strings`, is the next item);
+`Text.matches` is not on the compiler's path (three calls in
+`project.ry` and `refine.ry`), so the cache changes nothing for the
+self-check. Against the targets the owner named with the item (strings
+and JSON at CPython's speed, the compiler's self-check twice as fast):
+JSON is past CPython (1.8 times its speed here, from 0.7); strings
+stands at half of CPython's speed (from four tenths), with the loop and
+the primitive boundary per character left, which are the baseline JIT's
+to take out; the self-check moved by two percent, as AG6 foresaw, since
+its time is in the value operations of the interpreter, not in strings
+or JSON. What follows, in the owner's order: the baseline JIT (AG5, item
+iii), then the showcase application. (user)

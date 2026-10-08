@@ -1,6 +1,11 @@
 # Handoff
 
-Last updated: 2026-10-08, session 8 (stage 2 of the gap audit of
+Last updated: 2026-10-08, session 9, the first in the cloud environment
+(claude.ai/code), which finished the profile-guided round on strings and
+JSON that session 8 had paused: decision AQ, the first of the
+interspersed performance items the owner set after M5 (the section "The
+profile-guided round on strings and JSON as it exists" below). Session 8
+(stage 2 of the gap audit of
 `docs/GAPS.md`: the formal grammar `docs/grammar.ebnf` with decision V12;
 the language reference `docs/reference.md`, normative, held to the
 grammar file and the crates by a test; the sketch retired to the design
@@ -80,8 +85,11 @@ AO1 (the section "The watch of `serve` as it exists" below) and the
 embedding API of decisions AP1 and AP2 (the section "The embedding API
 as it exists" below); of
 M6 the
-machine code exists (decisions AG1 to AG5) and the interpreter had its
-bounded round (AG6), `renyi build` does not. Release 0.1.0 is out
+machine code exists (decisions AG1 to AG5), the interpreter had its
+bounded round (AG6) and the strings and the JSON path had the
+profile-guided round of decision AQ (the section "The profile-guided
+round on strings and JSON as it exists" below), `renyi build` does not.
+Release 0.1.0 is out
 (2026-10-07, the section "Release 0.1 engineering" below): the
 repository is public at `github.com/renyi-lang/renyi`, the release
 page carries the three archives, their checksums and the `.vsix`,
@@ -143,12 +151,13 @@ revision>]`, `run [--manifest] [options] <file> [arguments]`, `record
 <file>...`, `compile [--to file] <file.ry>`, `add <name> [<version>]`,
 `update [--accept-effects]`, `audit`, `fetch`, `publish [--to
 <directory>]`, `bind <header.h> --module <name> --library <names>
-[--to <directory>]`, `tools [path]`, `mcp [path]`, `lsp`, `serve [--watch]`, `run --sandbox` and `version`; 313 tests,
-clippy and fmt clean on Windows
-with rustc 1.94.1. CI (`.github/workflows/ci.yml`) runs the same gates,
+[--to <directory>]`, `tools [path]`, `mcp [path]`, `lsp`, `serve [--watch]`, `run --sandbox` and `version`; 315 tests,
+clippy and fmt clean with rustc 1.94.1 on Windows (the owner's machine)
+and on Linux (the cloud environment, where 1.94.1 is installed beside
+its 1.97.0 for the gates). CI (`.github/workflows/ci.yml`) runs the same gates,
 `renyi check compiler/*.ry`, the starter pack's workflows (check,
 format, test, the cheat sheet's copy) and the conformance suite
-(`tests/conformance/`, 53 cases, every `run` case a second time from
+(`tests/conformance/`, 54 cases, every `run` case a second time from
 its bytecode file;
 runners `tools/conformance.py` and `crates/renyi/tests/conformance.rs`)
 on a toolchain pinned to the owner's machine (rustc 1.94.1), so that CI
@@ -1728,6 +1737,116 @@ and the commit of the site and the crates.io metadata.
   release; the Windows archive's checksum and binary were verified
   by hand; `cargo install renyi` built the binary from crates.io.
 
+## The profile-guided round on strings and JSON as it exists (decision
+AQ; session 9, 2026-10-08)
+
+The first of the interspersed performance items the owner set on
+2026-10-07 (next steps, item 5), measured on the two benchmarks the
+positioning compares with CPython. Session 8 profiled the two programs
+on the owner's machine and paused with the change written as a script
+(commit 44763c4); session 9, the first in the cloud environment,
+applied it, reviewed the diff, ran the gates and measured it. The entry
+AQ1 of the decisions has the profiles and the change in full.
+
+- **Where the code is.** `crates/renyi_vm/src/natives/json.rs`: `Path`
+  (the position as a chain of borrowed segments, rendered only for a
+  `Mismatch` or `Constraint`), `field_type` (a `Cow`: the declared type
+  borrowed unless the type has parameters), `Naming::key` (a `Cow` too),
+  `decode_at` over `vm.program` borrowed, the `Sink` trait with
+  `TreeSink` (the tree of `encode`, kept by the recording,
+  `http.post_json`, `server.ok_json` and the Python bridge) and
+  `TextSink` (the text of `render`, `render_indented` and `render_with`,
+  no tree in between), `walk` (the one encoder over a value) and the
+  unit test that holds the text sink equal to `write_json` on both
+  layouts. `crates/renyi_json/src/lib.rs`: the reader keeps the text
+  beside its bytes and `string` copies a run of plain bytes at once;
+  `write_string` copies the runs between escapes; both it and `newline`
+  are `pub` for the sink. `crates/renyi_vm/src/value.rs`:
+  `Value::character` and the per-thread `ASCII` table;
+  `natives/prelude.rs`: `characters(text)`, used by `characters()`,
+  `split("")` and `Vm::iterate` over a text (`vm.rs`);
+  `natives/regex.rs`: `CACHE` and `CACHE_LIMIT` (256, then emptied);
+  `native/runtime.rs`: `op_concat` joins the pieces on the stack, the
+  text sized first, an Integer written straight into it.
+- **Conformance case 54**, `tests/conformance/programs/json_paths.ry`
+  with `expected/json_paths.out`: the differential program of the
+  session, printed by the binary before the change and held to by the
+  binary after it on both tiers and by the development build. It
+  covers the path of every `Mismatch` and `Constraint` error (indices
+  under keys, the variant's `kind`, a map's key, a missing field, a
+  refined subtype), a document with control characters, escapes and
+  non-ASCII text on both layouts, the three namings there and back,
+  `characters()`, `split("")`, a loop over a text, every kind of value
+  in a hole (a big Integer, a Float, a Decimal, a Boolean, a record, a
+  variant, a text) and the pattern cache (a thousand matches of one
+  pattern, three hundred of different ones, past the cache's limit).
+- **The numbers** (2026-10-08, the cloud environment: Linux, four
+  cores, the release build with rustc 1.97.0, the two binaries built
+  from the same tree with and without the change; `cachegrind` counts
+  user-space instructions, `tools/bench.py --runs 5` the wall-clock
+  time, the two binaries back to back):
+
+  | program | instructions, machine code | instructions, interpreter | wall-clock, machine code | wall-clock, interpreter | CPython |
+  |---|---|---|---|---|---|
+  | `strings` | 1.74 to 1.39 billion (-20%) | 1.97 to 1.62 billion (-18%) | 282 to 226 ms | 284 to 262 ms | 106 ms |
+  | `json_round_trip` | 2.34 to 1.00 billion (-57%) | 2.36 to 1.01 billion (-57%) | 314 to 126 ms | 303 to 125 ms | 230 ms |
+  | `checker.ry` on `bodies.ry` | 13.40 to 13.14 billion (-2.0%) | 13.12 to 12.84 billion (-2.1%) | 2895 to 2679 ms | 2572 to 2496 ms | |
+
+  `primes`, `records` and `hello` are unchanged within the machine's
+  noise, which moved a repeated measurement by a tenth (CPython's
+  `primes` twin by a fifth between the two rounds): a wall-clock
+  difference under a tenth says nothing here, and the instruction
+  counts are the measure, as in AG6. Against the owner's targets: JSON
+  is past CPython (1.8 times its speed, from 0.7); strings stands at
+  half of CPython's speed (from four tenths); the self-check moved by
+  two percent. The numbers session 8 wrote down to beat (CI's
+  development build of a2b0702, one run: `strings` 179 ms and
+  `json_round_trip` 386 ms against CPython's 43 and 89 ms) are of
+  another machine and another build, and CI prints the new ones on the
+  next push.
+- **Where the rest goes** (`cachegrind` on the interpreter after the
+  change, `cg_annotate`): on `strings`, 40% in the interpreter loop, 30%
+  in the primitive boundary once per character (`call_primitive`, the
+  move of the arguments into the scratch buffer, `run_primitive`,
+  `text_contains`, the drops, `guarded`, `effect_of`), 7% dropping and
+  4% cloning values, 5% the `contains` search itself, 2% `characters`,
+  2% `op_concat`, the allocator under 2%; the page faults of the 29 MB
+  list of one-character texts (now one allocation at its exact length)
+  are kernel time outside the count, which is why the interpreter's
+  wall-clock gain is smaller than its instruction gain. On
+  `json_round_trip`, 21% in the reader, 8.5% in `write_string`, 8% in
+  `decode_at`, 4% in `walk`, 7% growing vectors and texts, 9% in the
+  allocator, 5% in the interpreter loop, 3% in the keys, 2% parsing
+  Integers, 1% finding a field by name: the plain cost of reading and
+  writing the format. The profiles are `cg_annotate` output of the
+  session; nothing of them is in the repository.
+- **Not done, on purpose**: `Text` stays `Rc<str>` (decision X3), so
+  `change out to "{out}{piece}"` in `compiler/` still copies the
+  accumulated text per piece (the lexer's `scan_segment` stays
+  quadratic in a token's length); the pure primitive boundary stays as
+  AG6 left it, and it is now the largest item after the loop on
+  `strings`; `Text.matches` is not on the compiler's path (three calls
+  in `project.ry` and `refine.ry`), so the cache changes nothing for
+  the self-check; `http.post_json` and `server.ok_json` still build the
+  tree and write it, which `TextSink` could replace in a line each
+  (not on any benchmark).
+- **How it was gated**: `cargo fmt`, `cargo clippy --all-targets -D
+  warnings` and `cargo test` (315 tests) with rustc 1.94.1 (the CI
+  toolchain, installed beside the environment's 1.97.0 so that the
+  lints agree), the conformance suite by both runners (54 cases), the
+  corpus canonical, `compiler/*.ry`, `bench/*.ry` and the starter pack
+  checked, formatted and tested, the lint. The release binaries and
+  the measurement used 1.97.0 (both binaries alike).
+- **How to measure here**: build the previous commit's release binary
+  first and keep a copy (`cargo build --release`, then copy
+  `target/release/renyi` out of `target/`), apply the change, build
+  again; `valgrind --tool=cachegrind --cache-sim=no <binary> run
+  [--interpret] <program>` prints `I refs`, deterministic under load;
+  `python tools/bench.py <binary> --runs 5` needs a quiet machine (no
+  build or judge running). On the owner's machine the lane's
+  `ab_stat.sh` (`perf stat`) does the same with cycles beside the
+  instructions.
+
 ## The VM as it exists (`crates/renyi_vm`)
 
 - **The loop** is described in the section above (decision X3): one
@@ -2258,6 +2377,30 @@ holds between calls.
   for the corpus and for one file; a bad base), the `diff` call in
   `tests/mcp.rs`, and a unit test of `own_text_hash`.
 
+## Done in session 9 (the profile-guided round on strings and JSON, in the cloud environment)
+
+One commit on `main`, gated as in session 8 (rustc 1.94.1, the CI toolchain,
+installed beside the environment's 1.97.0 for `cargo fmt`, `cargo
+clippy --all-targets -- -D warnings` and `cargo test`; the conformance
+suite by both runners; the corpus canonical; `compiler/*.ry`,
+`bench/*.ry` and the starter pack checked, formatted and tested; the
+lint):
+
+1. the round (decision AQ; the section "The profile-guided round on
+   strings and JSON as it exists"): `crates/renyi_vm/src/natives/json.rs`
+   (`Path`, `field_type`, `Naming::key` as a `Cow`, the `Sink` trait,
+   `TreeSink`, `TextSink`, `walk`, the unit tests),
+   `crates/renyi_json/src/lib.rs` (the reader by runs, `write_string`
+   by runs, `newline` and `write_string` public), `value.rs`
+   (`Value::character`, the `ASCII` table), `natives/prelude.rs`
+   (`characters`), `vm.rs` (the loop over a text), `natives/regex.rs`
+   (the cache), `native/runtime.rs` (`op_concat`); conformance case 54
+   (`tests/conformance/programs/json_paths.ry`,
+   `expected/json_paths.out`, the manifest); `tools/apply_perf_round.py`
+   deleted; the decisions (section AQ), `docs/GAPS.md` (the performance
+   entry of section 4, the status at the end of section 7), `CLAUDE.md`
+   (the decisions row), this file.
+
 ## Done in session 8 (stage 2: the grammar, the reference, the front end in Renyi)
 
 Three commits on `main`, each gated as in session 7:
@@ -2531,6 +2674,11 @@ Three commits on `main`, each gated as in session 7:
     `docs/GAPS.md`, `README.md`, `docs/extensions.md` (the allocator
     line), `docs/index.md` and `tools/site.py` (the guide in the
     navigation), `CLAUDE.md`, this file.
+25. `44763c4` the profile-guided round on strings and JSON, paused by
+    the owner to finish it elsewhere: the change as the script
+    `tools/apply_perf_round.py` (applied, judged and deleted in session
+    9, decision AQ), the two profiles and the numbers to beat in this
+    file.
 
 ## Done in session 7 (stage 1 of the gap audit)
 
@@ -2970,9 +3118,10 @@ on a fresh clone).
    with type arguments are done, AB1, which closes R3-2): the toolchain
    in Renyi is complete with the Rust toolchain as stage 0, and the
    judges run the front end from its bytecode. Next, in the order the
-   owner chooses: the remaining performance items (string
-   building, the pattern cache of `Text.matches`) as a later profile
-   calls for them; any change to the loop is measured with `bench.py`
+   owner chooses: the remaining performance item (the string building
+   of `change out to "{out}{piece}"`, which copies the accumulated text
+   per piece; the pattern cache of `Text.matches` is done, decision AQ)
+   as a later profile calls for it; any change to the loop is measured with `bench.py`
    and `micro.py` against the `base` worktree, the two binaries run
    back to back. The front end in Renyi reports the Rust parser's
    diagnostics (codes, fixes, recovery; decision AD1) and the judges
@@ -3024,9 +3173,10 @@ on a fresh clone).
    editor, a `renyi.path` prompt when the binary is missing. Interspersed, as the owner asked the same day: the performance
    items by the profile of AG5 (the pattern cache of `Text.matches`,
    the string building, the JSON path; strings and JSON to CPython's
-   speed, the compiler's self-check twice as fast; in flight, paused by
-   the owner on 2026-10-08: the section "The profile-guided round on
-   strings and JSON" at the end of this handoff), then a baseline JIT
+   speed, the compiler's self-check twice as fast): the first round is
+   done, decision AQ (the section "The profile-guided round on strings
+   and JSON as it exists" below, with the numbers against the targets
+   and what it left), then a baseline JIT
    (AG5, item iii); and a showcase, a bookmark and reading-list web app
    in a repository of its own under `renyi-lang/` (HTTP for the titles,
    SQLite, an HTML page and a JSON API, tags and search, CSV export,
@@ -3169,7 +3319,8 @@ on a fresh clone).
   value's `IsType` test for a builtin (`when failure(error: Text)`) is by
   kind. `random` is seeded from the clock; a run is reproducible through
   its recording only. `Float.to_text` is Rust's shortest round-trip form.
-  `Text.matches` compiles its pattern at every call. Durations print as
+  `Text.matches` and `std.regex` keep a compiled pattern per thread (256
+  at most, then the cache is emptied; decision AQ). Durations print as
   `1.5s` / `250ms` (no decision covers the format). A refinement condition
   on a library type (`Date`, `Port`) runs on construction but its
   references are not recorded (the checker does not walk library bodies);
@@ -3298,89 +3449,17 @@ on a fresh clone).
   Claude Code sessions on the repository at once; they split the files
   by cross-session message, and one ran the gates and committed. A
   session that finds the working tree changing under it should list the
-  peer sessions and ask before editing a shared file.
+  peer sessions and ask before editing a shared file. In session 9 the
+  owner moved from the local machine to the cloud environment
+  (claude.ai/code), whose session names a branch of its own
+  (`claude/...`); asked, the owner kept the rule: the commit goes to
+  `main`, and the session's branch is deleted. The cloud environment
+  has rustc 1.97.0; the CI toolchain 1.94.1 is installed beside it
+  (`rustup toolchain install 1.94.1 -c clippy -c rustfmt`) for the
+  gates, with a target directory of its own.
 - The pay-per-token API keys are not spent by default (ruled 2026-10-06):
   subscription quota first (Claude Code subagents, the Codex CLI), the
   keys only when the owner says so in the same request, with the volume
   named. The readability harness drives the two CLIs itself (`run
   --provider claude`, `--provider codex`) and takes grades from the
   subagents' files (`grades.json` buckets) for that reason.
-
-## The profile-guided round on strings and JSON (in flight; session 8, 2026-10-08)
-
-The first interspersed item of next steps, item 5: the performance work
-the profile of decision AG5 left, measured on the two benchmarks the
-positioning compares with CPython. The owner paused it on 2026-10-08 to
-finish it elsewhere; nothing of it is in the crates yet.
-
-- **The numbers to beat** (the CI of commit a2b0702, a Linux runner,
-  release build, `tools/bench.py`): `strings` 179 ms (200 ms on the
-  interpreter) against CPython's 43 ms; `json_round_trip` 386 ms (394 ms)
-  against 89 ms; `checker on bodies.ry` 1810 ms (1714 ms); `primes` 31 ms
-  against 234 ms; `records` 86 ms against 116 ms; `hello` 8 ms.
-- **The profiles** (`perf record`, release build under WSL, the lane
-  script `profile_bench.sh` of `D:/Projects/.worktrees/Renyi/perf/`,
-  about a thousand samples each). `bench/strings.ry` on the interpreter:
-  40% in page faults (the kernel zeroing fresh pages), 19% `run_frames`,
-  11% under `text_characters` (9.4% of it `Value::text`), 7.3%
-  `Vec::extend_trusted<Drain>` (the move of a primitive's arguments into
-  the scratch buffer, 1.2 million calls of `contains`), 3.5% dropping
-  values, 2.3% cloning them, 2.1% the `contains` work itself: the cost is
-  the list of 1.2 million one-character texts `characters()` builds (an
-  allocation each, a 29 MB vector grown by doubling) and the primitive
-  boundary once per character. `bench/json_round_trip.ry`: `decode` 18%,
-  `format_inner` 12.6% (the error-path strings `"{path}[{index}]"` and
-  `"{path}.{key}"` made for every item and field whether or not an error
-  follows), `encode` 6.4%, the reader 10% (`Reader::value`, `string`,
-  `from_utf8` once per UTF-8 sequence), `write_string` 2.9%, the
-  allocator about 15%, the `TypeMeta` cloned per record in `encode` and
-  `decode` with `Ty::clone`, `drop Ty` and `Ty::substitute` about 5%.
-- **The change, written and not yet applied**: `tools/apply_perf_round.py`
-  rewrites `crates/renyi_vm/src/natives/json.rs` and patches
-  `crates/renyi_json/src/lib.rs`, `value.rs`, `natives/prelude.rs`,
-  `vm.rs`, `natives/regex.rs` and `native/runtime.rs` (every anchor
-  verified before a byte is written; delete the script in the commit
-  that lands the change). (1) `std.json`: `decode` keeps the position as
-  a chain of borrowed segments (`Path`) rendered only for a `Mismatch` or
-  `Constraint` error, borrows the type's metadata instead of cloning it
-  per record, borrows a field's key under the exact naming (`Cow`) and
-  substitutes a field's type only for a type with parameters; `parse`
-  no longer copies its argument; the encoder walks a value once into a
-  `Sink`: `TreeSink` builds the `Json` tree `encode` returns (the
-  recording, `http.post_json`, `server.ok_json` and the Python bridge
-  keep it), `TextSink` writes `render`'s text with no tree in between,
-  held equal to `write_json` by a unit test on both layouts. (2)
-  `renyi_json`: the reader copies runs of plain bytes at once and
-  `write_string` copies the runs between escapes; both `write_string`
-  and `newline` are `pub`. (3) `Value::character(c)`: the ASCII
-  one-character texts from a per-thread table, used by `characters()`,
-  `split("")` and `Vm::iterate` over a text, the list allocated once at
-  its exact length. (4) `std.regex` and `Text.matches`: compiled patterns
-  cached per thread (256 at most, then emptied). (5) `Vm::op_concat`:
-  the pieces joined where they lie on the stack, the text sized first,
-  an Integer written straight into it. Not done, on purpose: `Text`
-  stays `Rc<str>` (decision X3), so `change out to "{out}{piece}"` in
-  `compiler/` still copies the accumulated text per piece; the pure
-  primitive boundary stays as AG6 left it (the `extend_trusted` move is
-  the next item); `Text.matches` is not on the compiler's path (three
-  calls in `project.ry` and `refine.ry`), so the cache changes nothing
-  for the self-check.
-- **Verified on 2026-10-08** with the change applied, then put back:
-  `cargo check -p renyi_json -p renyi_vm --all-targets` clean, `cargo
-  test -p renyi_json -p renyi_vm` green (77 tests, the corpus test
-  among them). Not yet run: `cargo fmt`, `cargo clippy --all-targets`,
-  the whole `cargo test` (the selfhost judges), the conformance suite,
-  `tools/bench.py`, the measurement.
-- **How to measure**: on the owner's machine, the Linux release build of
-  the perf lane, `renyi_ap` being the baseline of commit 54d6bce
-  (`ab_stat.sh renyi_ap <new> 3 run --interpret bench/strings.ry`, the
-  same with `bench/json_round_trip.ry`: instruction and cycle counts,
-  the minimum of three interleaved rounds); elsewhere `cargo build
-  --release` then `python tools/bench.py target/release/renyi --runs 5`
-  against the CI numbers above.
-- **What follows**: apply the script, `cargo fmt`, the gates, the
-  measurement; the decision entry (the next letter is AQ) with the
-  numbers before and after and the items left; `docs/GAPS.md` section 7
-  ("string building, the pattern cache" in the order of work); this
-  handoff. Then the baseline JIT (AG5, item iii) and the showcase
-  application, as item 5 says.

@@ -1,8 +1,13 @@
 //! `std.json`: a reader and a writer for JSON text, decoding by the type the
 //! context expects (recorded by the checker as `Target::Result`) and
 //! encoding by the value's shape, with the derivation rules of the library
-//! sketch (section 7).
+//! sketch (section 7). The encoder walks a value once into a sink: the tree
+//! of `encode`, which the recording, the HTTP client, the server and the
+//! Python bridge keep, or the text of `render`, written as the value is
+//! walked.
 
+use std::borrow::Cow;
+use std::fmt::{Display, Write};
 use std::rc::Rc;
 
 use indexmap::{IndexMap, IndexSet};
@@ -14,7 +19,7 @@ use crate::extension::Native;
 use crate::integer::Int;
 use crate::natives::time::{instant_text, parse_instant_text};
 use crate::render::float_text;
-use crate::types::{FieldMeta, TypeShape};
+use crate::types::{FieldMeta, TypeMeta, TypeShape};
 use crate::value::Value;
 use crate::vm::{Interrupt, Vm};
 
@@ -48,13 +53,15 @@ impl Naming {
         }
     }
 
-    fn key(self, field: &FieldMeta) -> String {
+    /// The key of a field: its external name when it declares one, else its
+    /// name as this naming spells it; the exact spelling is borrowed.
+    fn key(self, field: &FieldMeta) -> Cow<'_, str> {
         if let Some(external) = &field.external_name {
-            return external.clone();
+            return Cow::Borrowed(external);
         }
         match self {
-            Naming::Exact => field.name.clone(),
-            Naming::Kebab => field.name.replace('_', "-"),
+            Naming::Exact => Cow::Borrowed(&field.name),
+            Naming::Kebab => Cow::Owned(field.name.replace('_', "-")),
             Naming::Camel => {
                 let mut out = String::new();
                 for (index, part) in field.name.split('_').enumerate() {
@@ -68,7 +75,7 @@ impl Naming {
                         }
                     }
                 }
-                out
+                Cow::Owned(out)
             }
         }
     }
@@ -79,6 +86,24 @@ impl Naming {
 /// The outcome of decoding: a value, or the `JsonError` to fail with.
 pub type Decoded = Result<Value, Value>;
 
+/// Where a value stands in the document, as a chain from the root that is
+/// rendered only for a message: `$`, `$[3]`, `$.name`.
+enum Path<'a> {
+    Root(&'a str),
+    Index(&'a Path<'a>, usize),
+    Key(&'a Path<'a>, &'a str),
+}
+
+impl Path<'_> {
+    fn render(&self) -> String {
+        match self {
+            Path::Root(root) => root.to_string(),
+            Path::Index(parent, index) => format!("{}[{index}]", parent.render()),
+            Path::Key(parent, key) => format!("{}.{key}", parent.render()),
+        }
+    }
+}
+
 fn json_error(vm: &Vm, variant: &str, fields: Vec<Value>) -> Result<Decoded, Interrupt> {
     Ok(Err(vm.library_variant(
         "std.json",
@@ -88,12 +113,12 @@ fn json_error(vm: &Vm, variant: &str, fields: Vec<Value>) -> Result<Decoded, Int
     )?))
 }
 
-fn mismatch(vm: &Vm, path: &str, expected: &str, found: &Json) -> Result<Decoded, Interrupt> {
+fn mismatch(vm: &Vm, path: &Path, expected: &str, found: &Json) -> Result<Decoded, Interrupt> {
     json_error(
         vm,
         "Mismatch",
         vec![
-            Value::text(path),
+            Value::text(path.render()),
             Value::text(expected),
             Value::text(found.kind()),
         ],
@@ -110,8 +135,22 @@ fn decimal_of(text: &str) -> Option<Decimal> {
     }
 }
 
+/// The type of a field of the type: as declared, or with the type's
+/// arguments put in for its parameters when it has any.
+fn field_type<'t>(ty: &'t Ty, meta: &TypeMeta, args: &[Ty]) -> Cow<'t, Ty> {
+    if meta.params.is_empty() {
+        return Cow::Borrowed(ty);
+    }
+    Cow::Owned(ty.substitute(&|param| {
+        meta.params
+            .iter()
+            .position(|p| *p == param)
+            .and_then(|index| args.get(index).cloned())
+    }))
+}
+
 /// Decode a document into a value of the type, with the derivation rules of
-/// the library sketch; `path` names the position for error messages.
+/// the library sketch; `path` names the root for error messages (`$`).
 pub fn decode(
     vm: &mut Vm,
     json: &Json,
@@ -119,15 +158,26 @@ pub fn decode(
     path: &str,
     naming: Naming,
 ) -> Result<Decoded, Interrupt> {
-    let b = vm.program.builtins.clone();
+    decode_at(vm, json, ty, &Path::Root(path), naming)
+}
+
+fn decode_at(
+    vm: &mut Vm,
+    json: &Json,
+    ty: &Ty,
+    path: &Path,
+    naming: Naming,
+) -> Result<Decoded, Interrupt> {
+    let program = vm.program;
+    let b = &program.builtins;
     let (id, args) = match ty {
         Ty::Maybe(inner) => {
             if *json == Json::Null {
                 return Ok(Ok(Value::Nothing));
             }
-            return decode(vm, json, inner, path, naming);
+            return decode_at(vm, json, inner, path, naming);
         }
-        Ty::App(id, args) => (*id, args.clone()),
+        Ty::App(id, args) => (*id, args.as_slice()),
         Ty::Unit => {
             return Ok(match json {
                 Json::Null => Ok(Value::Nothing),
@@ -199,14 +249,15 @@ pub fn decode(
             _ => return mismatch(vm, path, "Bytes as base64", json),
         });
     }
+    let open = Ty::Error;
     if id == b.list || id == b.set {
         let Json::Array(items) = json else {
             return mismatch(vm, path, "List", json);
         };
-        let item_ty = args.first().cloned().unwrap_or(Ty::Error);
+        let item_ty = args.first().unwrap_or(&open);
         let mut values = Vec::with_capacity(items.len());
         for (index, item) in items.iter().enumerate() {
-            match decode(vm, item, &item_ty, &format!("{path}[{index}]"), naming)? {
+            match decode_at(vm, item, item_ty, &Path::Index(path, index), naming)? {
                 Ok(value) => values.push(value),
                 Err(error) => return Ok(Err(error)),
             }
@@ -221,10 +272,10 @@ pub fn decode(
         let Json::Object(fields) = json else {
             return mismatch(vm, path, "Map", json);
         };
-        let value_ty = args.get(1).cloned().unwrap_or(Ty::Error);
+        let value_ty = args.get(1).unwrap_or(&open);
         let mut map = IndexMap::with_capacity(fields.len());
         for (key, item) in fields {
-            match decode(vm, item, &value_ty, &format!("{path}.{key}"), naming)? {
+            match decode_at(vm, item, value_ty, &Path::Key(path, key), naming)? {
                 Ok(value) => {
                     map.insert(Value::text(key), value);
                 }
@@ -233,7 +284,7 @@ pub fn decode(
         }
         return Ok(Ok(Value::Map(Rc::new(map))));
     }
-    let meta = vm.program.types.meta(id).clone();
+    let meta = program.types.meta(id);
     match (meta.module.as_str(), meta.name.as_str()) {
         ("std.json", "JsonValue") => return Ok(Ok(json_value(vm, json)?)),
         ("std.time", "Date") => {
@@ -256,17 +307,9 @@ pub fn decode(
         }
         _ => {}
     }
-    let substitute = |ty: &Ty| {
-        ty.substitute(&|param| {
-            meta.params
-                .iter()
-                .position(|p| *p == param)
-                .and_then(|index| args.get(index).cloned())
-        })
-    };
     match &meta.shape {
         TypeShape::Subtype { base } => {
-            let value = match decode(vm, json, &substitute(base), path, naming)? {
+            let value = match decode_at(vm, json, &field_type(base, meta, args), path, naming)? {
                 Ok(value) => value,
                 Err(error) => return Ok(Err(error)),
             };
@@ -280,11 +323,15 @@ pub fn decode(
             let mut values = Vec::with_capacity(fields.len());
             for field in fields {
                 let key = naming.key(field);
-                let field_path = format!("{path}.{key}");
-                let found = entries.iter().find(|(k, _)| *k == key).map(|(_, v)| v);
+                let field_path = Path::Key(path, &key);
+                let found = entries
+                    .iter()
+                    .find(|(k, _)| k.as_str() == &*key)
+                    .map(|(_, v)| v);
                 match found {
                     Some(item) => {
-                        match decode(vm, item, &substitute(&field.ty), &field_path, naming)? {
+                        let ty = field_type(&field.ty, meta, args);
+                        match decode_at(vm, item, &ty, &field_path, naming)? {
                             Ok(value) => values.push(value),
                             Err(error) => return Ok(Err(error)),
                         }
@@ -300,26 +347,26 @@ pub fn decode(
             let Json::Object(entries) = json else {
                 return mismatch(vm, path, &meta.name, json);
             };
+            let kind_path = Path::Key(path, "kind");
             let kind = entries.iter().find(|(k, _)| k == "kind").map(|(_, v)| v);
             let Some(Json::Text(kind)) = kind else {
-                return mismatch(vm, &format!("{path}.kind"), "the variant name", &Json::Null);
+                return mismatch(vm, &kind_path, "the variant name", &Json::Null);
             };
             let Some(tag) = variants.iter().position(|v| v.name == *kind) else {
-                return mismatch(
-                    vm,
-                    &format!("{path}.kind"),
-                    &meta.name,
-                    &Json::Text(kind.clone()),
-                );
+                return mismatch(vm, &kind_path, &meta.name, &Json::Text(kind.clone()));
             };
             let mut values = Vec::new();
             for field in &variants[tag].fields {
                 let key = naming.key(field);
-                let field_path = format!("{path}.{key}");
-                let found = entries.iter().find(|(k, _)| *k == key).map(|(_, v)| v);
+                let field_path = Path::Key(path, &key);
+                let found = entries
+                    .iter()
+                    .find(|(k, _)| k.as_str() == &*key)
+                    .map(|(_, v)| v);
                 match found {
                     Some(item) => {
-                        match decode(vm, item, &substitute(&field.ty), &field_path, naming)? {
+                        let ty = field_type(&field.ty, meta, args);
+                        match decode_at(vm, item, &ty, &field_path, naming)? {
                             Ok(value) => values.push(value),
                             Err(error) => return Ok(Err(error)),
                         }
@@ -336,7 +383,7 @@ pub fn decode(
 }
 
 /// A construction's failure becomes a `Constraint` error.
-fn constrained(vm: &Vm, built: Value, path: &str) -> Result<Decoded, Interrupt> {
+fn constrained(vm: &Vm, built: Value, path: &Path) -> Result<Decoded, Interrupt> {
     match built {
         Value::Failure(error) => {
             let detail = match &*error {
@@ -351,7 +398,7 @@ fn constrained(vm: &Vm, built: Value, path: &str) -> Result<Decoded, Interrupt> 
             json_error(
                 vm,
                 "Constraint",
-                vec![Value::text(path), Value::text(detail)],
+                vec![Value::text(path.render()), Value::text(detail)],
             )
         }
         value => Ok(Ok(value)),
@@ -389,98 +436,311 @@ fn json_value(vm: &Vm, json: &Json) -> Result<Value, Interrupt> {
 
 // ---------------------------------------------------------------- encoding
 
-/// Encode a value by its shape, with the derivation rules of the library
-/// sketch.
-pub fn encode(vm: &mut Vm, value: &Value, naming: Naming) -> Result<Json, Interrupt> {
-    Ok(match value {
+/// Where an encoding goes, in document order: `item` comes before every
+/// item of an array and `key` before every value of an object.
+trait Sink {
+    fn null(&mut self);
+    fn boolean(&mut self, value: bool);
+    fn number(&mut self, value: &dyn Display);
+    fn text(&mut self, value: &str);
+    fn begin_array(&mut self);
+    fn item(&mut self);
+    fn end_array(&mut self);
+    fn begin_object(&mut self);
+    fn key(&mut self, key: &str);
+    fn end_object(&mut self);
+}
+
+/// The tree of `encode`.
+#[derive(Default)]
+struct TreeSink {
+    /// The containers being built, innermost last.
+    open: Vec<Node>,
+    result: Option<Json>,
+}
+
+enum Node {
+    Array(Vec<Json>),
+    /// The fields so far and the key the next value goes under.
+    Object(Vec<(String, Json)>, String),
+}
+
+impl TreeSink {
+    fn put(&mut self, json: Json) {
+        match self.open.last_mut() {
+            Some(Node::Array(items)) => items.push(json),
+            Some(Node::Object(fields, key)) => fields.push((std::mem::take(key), json)),
+            None => self.result = Some(json),
+        }
+    }
+}
+
+impl Sink for TreeSink {
+    fn null(&mut self) {
+        self.put(Json::Null);
+    }
+
+    fn boolean(&mut self, value: bool) {
+        self.put(Json::Boolean(value));
+    }
+
+    fn number(&mut self, value: &dyn Display) {
+        self.put(Json::Number(value.to_string()));
+    }
+
+    fn text(&mut self, value: &str) {
+        self.put(Json::Text(value.to_string()));
+    }
+
+    fn begin_array(&mut self) {
+        self.open.push(Node::Array(Vec::new()));
+    }
+
+    fn item(&mut self) {}
+
+    fn end_array(&mut self) {
+        if let Some(Node::Array(items)) = self.open.pop() {
+            self.put(Json::Array(items));
+        }
+    }
+
+    fn begin_object(&mut self) {
+        self.open.push(Node::Object(Vec::new(), String::new()));
+    }
+
+    fn key(&mut self, key: &str) {
+        if let Some(Node::Object(_, pending)) = self.open.last_mut() {
+            *pending = key.to_string();
+        }
+    }
+
+    fn end_object(&mut self) {
+        if let Some(Node::Object(fields, _)) = self.open.pop() {
+            self.put(Json::Object(fields));
+        }
+    }
+}
+
+/// The text of `render`, written as the value is walked, in the layout of
+/// `write_json`: one line, or indented by `indent` per level.
+struct TextSink {
+    out: String,
+    indent: Option<usize>,
+    /// One entry per open container: whether it holds an item yet.
+    open: Vec<bool>,
+}
+
+impl TextSink {
+    /// Before an item or a key: the comma after the previous one, and the
+    /// line break of the indented layout.
+    fn next(&mut self) {
+        let depth = self.open.len();
+        if let Some(started) = self.open.last_mut() {
+            if *started {
+                self.out.push(',');
+            }
+            *started = true;
+        }
+        renyi_json::newline(&mut self.out, self.indent, depth);
+    }
+
+    fn close(&mut self, bracket: char) {
+        let started = self.open.pop().unwrap_or(false);
+        if started {
+            renyi_json::newline(&mut self.out, self.indent, self.open.len());
+        }
+        self.out.push(bracket);
+    }
+}
+
+impl Sink for TextSink {
+    fn null(&mut self) {
+        self.out.push_str("null");
+    }
+
+    fn boolean(&mut self, value: bool) {
+        self.out.push_str(if value { "true" } else { "false" });
+    }
+
+    fn number(&mut self, value: &dyn Display) {
+        let _ = write!(self.out, "{value}");
+    }
+
+    fn text(&mut self, value: &str) {
+        renyi_json::write_string(value, &mut self.out);
+    }
+
+    fn begin_array(&mut self) {
+        self.out.push('[');
+        self.open.push(false);
+    }
+
+    fn item(&mut self) {
+        self.next();
+    }
+
+    fn end_array(&mut self) {
+        self.close(']');
+    }
+
+    fn begin_object(&mut self) {
+        self.out.push('{');
+        self.open.push(false);
+    }
+
+    fn key(&mut self, key: &str) {
+        self.next();
+        renyi_json::write_string(key, &mut self.out);
+        self.out.push(':');
+        if self.indent.is_some() {
+            self.out.push(' ');
+        }
+    }
+
+    fn end_object(&mut self) {
+        self.close('}');
+    }
+}
+
+/// Walk a value into the sink by its shape, with the derivation rules of
+/// the library sketch.
+fn walk(vm: &mut Vm, value: &Value, naming: Naming, sink: &mut dyn Sink) -> Result<(), Interrupt> {
+    match value {
         // the origins of a guarded value are checked at the boundary, not
         // written out
-        Value::Guarded(guarded) => return encode(vm, &guarded.1, naming),
-        Value::Nothing => Json::Null,
-        Value::Boolean(value) => Json::Boolean(*value),
-        Value::Integer(value) => Json::Number(value.to_string()),
-        Value::Decimal(value) => Json::Number(value.to_string()),
+        Value::Guarded(guarded) => walk(vm, &guarded.1, naming, sink),
+        Value::Nothing => {
+            sink.null();
+            Ok(())
+        }
+        Value::Boolean(value) => {
+            sink.boolean(*value);
+            Ok(())
+        }
+        Value::Integer(value) => {
+            sink.number(value);
+            Ok(())
+        }
+        Value::Decimal(value) => {
+            sink.number(&**value);
+            Ok(())
+        }
         Value::Float(value) => {
             if !value.is_finite() {
                 return Err(crash("cannot render a Float that is not finite as JSON"));
             }
-            Json::Number(float_text(*value))
+            sink.number(&float_text(*value));
+            Ok(())
         }
-        Value::Text(text) => Json::Text(text.to_string()),
-        Value::Bytes(bytes) => Json::Text(base64_encode(bytes)),
-        Value::List(items) => {
-            let mut out = Vec::with_capacity(items.len());
-            for item in items.iter() {
-                out.push(encode(vm, item, naming)?);
-            }
-            Json::Array(out)
+        Value::Text(text) => {
+            sink.text(text);
+            Ok(())
         }
-        Value::Set(items) => {
-            let mut out = Vec::with_capacity(items.len());
-            for item in items.iter() {
-                out.push(encode(vm, item, naming)?);
-            }
-            Json::Array(out)
+        Value::Bytes(bytes) => {
+            sink.text(&base64_encode(bytes));
+            Ok(())
         }
+        Value::List(items) => sequence(vm, items.iter(), naming, sink),
+        Value::Set(items) => sequence(vm, items.iter(), naming, sink),
         Value::Map(entries) => {
-            let mut out = Vec::with_capacity(entries.len());
+            sink.begin_object();
             for (key, item) in entries.iter() {
                 let key = vm.to_text(key)?;
-                out.push((key, encode(vm, item, naming)?));
+                sink.key(&key);
+                walk(vm, item, naming, sink)?;
             }
-            Json::Object(out)
+            sink.end_object();
+            Ok(())
         }
-        Value::Pair(pair) => Json::Array(vec![
-            encode(vm, &pair.0, naming)?,
-            encode(vm, &pair.1, naming)?,
-        ]),
-        Value::Duration(ms) => Json::Number(ms.to_string()),
-        Value::Instant(ms) => Json::Text(instant_text(*ms)),
+        Value::Pair(pair) => sequence(vm, [&pair.0, &pair.1].into_iter(), naming, sink),
+        Value::Duration(ms) => {
+            sink.number(ms);
+            Ok(())
+        }
+        Value::Instant(ms) => {
+            sink.text(&instant_text(*ms));
+            Ok(())
+        }
         Value::Record(record) => {
-            let meta = vm.program.types.meta(record.ty).clone();
+            let meta = vm.program.types.meta(record.ty);
             if meta.module == "std.time" && meta.name == "Date" {
                 let (year, month, day) = vm.date_parts(value)?;
-                return Ok(Json::Text(format!("{year:04}-{month:02}-{day:02}")));
+                sink.text(&format!("{year:04}-{month:02}-{day:02}"));
+                return Ok(());
             }
             let TypeShape::Record(fields) = &meta.shape else {
                 return Err(crash(format!("cannot render a `{}` as JSON", meta.name)));
             };
-            let mut out = Vec::with_capacity(fields.len());
+            sink.begin_object();
             for (field, item) in fields.iter().zip(&record.fields) {
-                out.push((naming.key(field), encode(vm, item, naming)?));
+                sink.key(&naming.key(field));
+                walk(vm, item, naming, sink)?;
             }
-            Json::Object(out)
+            sink.end_object();
+            Ok(())
         }
         Value::Variant(variant) => {
-            let meta = vm.program.types.meta(variant.ty).clone();
+            let meta = vm.program.types.meta(variant.ty);
             let TypeShape::Sum(variants) = &meta.shape else {
                 return Err(crash(format!("cannot render a `{}` as JSON", meta.name)));
             };
             let shape = &variants[variant.tag];
             if meta.module == "std.json" && meta.name == "JsonValue" {
                 let inner = variant.fields.first().cloned().unwrap_or(Value::Nothing);
-                return Ok(match shape.name.as_str() {
-                    "JsonNull" => Json::Null,
-                    "JsonBoolean" => Json::Boolean(inner.as_bool().unwrap_or(false)),
-                    "JsonNumber" => encode(vm, &inner, naming)?,
-                    "JsonText" => Json::Text(inner.as_text().unwrap_or("").to_string()),
-                    _ => encode(vm, &inner, naming)?,
-                });
+                return match shape.name.as_str() {
+                    "JsonNull" => {
+                        sink.null();
+                        Ok(())
+                    }
+                    "JsonBoolean" => {
+                        sink.boolean(inner.as_bool().unwrap_or(false));
+                        Ok(())
+                    }
+                    "JsonText" => {
+                        sink.text(inner.as_text().unwrap_or(""));
+                        Ok(())
+                    }
+                    _ => walk(vm, &inner, naming, sink),
+                };
             }
-            let mut out = Vec::with_capacity(shape.fields.len() + 1);
-            out.push(("kind".to_string(), Json::Text(shape.name.clone())));
+            sink.begin_object();
+            sink.key("kind");
+            sink.text(&shape.name);
             for (field, item) in shape.fields.iter().zip(&variant.fields) {
-                out.push((naming.key(field), encode(vm, item, naming)?));
+                sink.key(&naming.key(field));
+                walk(vm, item, naming, sink)?;
             }
-            Json::Object(out)
+            sink.end_object();
+            Ok(())
         }
-        other => {
-            return Err(crash(format!(
-                "cannot render {} as JSON",
-                other.kind_name()
-            )))
-        }
-    })
+        other => Err(crash(format!(
+            "cannot render {} as JSON",
+            other.kind_name()
+        ))),
+    }
+}
+
+fn sequence<'a>(
+    vm: &mut Vm,
+    items: impl Iterator<Item = &'a Value>,
+    naming: Naming,
+    sink: &mut dyn Sink,
+) -> Result<(), Interrupt> {
+    sink.begin_array();
+    for item in items {
+        sink.item();
+        walk(vm, item, naming, sink)?;
+    }
+    sink.end_array();
+    Ok(())
+}
+
+/// Encode a value by its shape, with the derivation rules of the library
+/// sketch.
+pub fn encode(vm: &mut Vm, value: &Value, naming: Naming) -> Result<Json, Interrupt> {
+    let mut tree = TreeSink::default();
+    walk(vm, value, naming, &mut tree)?;
+    Ok(tree.result.unwrap_or(Json::Null))
 }
 
 // ---------------------------------------------------------------- natives
@@ -509,14 +769,12 @@ fn parse_into(vm: &mut Vm, content: &str, naming: Naming) -> Result<Value, Inter
 }
 
 fn parse(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
-    let content = text(arg(args, 0))?.to_string();
-    parse_into(vm, &content, Naming::Exact)
+    parse_into(vm, text(arg(args, 0))?, Naming::Exact)
 }
 
 fn parse_with(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
-    let content = text(arg(args, 0))?.to_string();
     let naming = Naming::of(arg(args, 1));
-    parse_into(vm, &content, naming)
+    parse_into(vm, text(arg(args, 0))?, naming)
 }
 
 fn render_as(
@@ -525,10 +783,13 @@ fn render_as(
     naming: Naming,
     indent: Option<usize>,
 ) -> Result<Value, Interrupt> {
-    let json = encode(vm, value, naming)?;
-    let mut out = String::new();
-    write_json(&json, &mut out, indent, 0);
-    Ok(Value::text(out))
+    let mut sink = TextSink {
+        out: String::new(),
+        indent,
+        open: Vec::new(),
+    };
+    walk(vm, value, naming, &mut sink)?;
+    Ok(Value::text(sink.out))
 }
 
 fn render(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
@@ -558,5 +819,56 @@ mod tests {
         write_json(&json, &mut out, None, 0);
         assert_eq!(out, r#"{"a":[1,2.5,"x\n"],"b":null,"c":true}"#);
         assert_eq!(read_json("{\n  \"a\": 1,\n").unwrap_err().1, 3);
+    }
+
+    #[test]
+    fn a_path_renders_only_when_asked() {
+        let root = Path::Root("$");
+        let item = Path::Index(&root, 1);
+        let field = Path::Key(&item, "score");
+        assert_eq!(field.render(), "$[1].score");
+        assert_eq!(Path::Key(&root, "kind").render(), "$.kind");
+    }
+
+    #[test]
+    fn the_text_sink_writes_the_layout_of_write_json() {
+        let json = read_json(r#"{"a":[1,{"b":[]},{}],"c":"q\"\\"}"#).unwrap();
+        for indent in [None, Some(2)] {
+            let mut expected = String::new();
+            write_json(&json, &mut expected, indent, 0);
+            let mut sink = TextSink {
+                out: String::new(),
+                indent,
+                open: Vec::new(),
+            };
+            replay(&json, &mut sink);
+            assert_eq!(sink.out, expected);
+        }
+    }
+
+    /// The tree walked into a sink, as `walk` walks a value.
+    fn replay(json: &Json, sink: &mut dyn Sink) {
+        match json {
+            Json::Null => sink.null(),
+            Json::Boolean(value) => sink.boolean(*value),
+            Json::Number(text) => sink.number(text),
+            Json::Text(text) => sink.text(text),
+            Json::Array(items) => {
+                sink.begin_array();
+                for item in items {
+                    sink.item();
+                    replay(item, sink);
+                }
+                sink.end_array();
+            }
+            Json::Object(fields) => {
+                sink.begin_object();
+                for (key, value) in fields {
+                    sink.key(key);
+                    replay(value, sink);
+                }
+                sink.end_object();
+            }
+        }
     }
 }

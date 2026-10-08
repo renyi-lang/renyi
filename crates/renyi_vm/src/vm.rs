@@ -2297,9 +2297,7 @@ impl<'p> Vm<'p> {
                     .collect(),
             ),
             Value::Range(range) => Rc::new(range_items(&range)?),
-            Value::Text(text) => {
-                Rc::new(text.chars().map(|c| Value::text(c.to_string())).collect())
-            }
+            Value::Text(text) => Rc::new(natives::prelude::characters(&text)),
             other => {
                 return Err(Interrupt::crash(format!(
                     "cannot loop over {}",

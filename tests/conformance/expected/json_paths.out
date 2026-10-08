@@ -1,0 +1,85 @@
+[{"name":"plain \"quoted\" back\\slash\ttab\nline","score":1,"ratio":2.5,"price":19.99,"labels":["a","b"],"note":null,"type":"x","long_label":"one_two_three","shape":{"kind":"Circle","radius":2.5},"blob":"aGkgdGhlcmU=","wait":5000},{"name":"héllo wörld 日本語 🎉 {brace}","score":1267650600228229401496703205376,"ratio":6.25,"price":0.000001,"labels":[],"note":"noted","type":"y","long_label":"","shape":{"kind":"Point"},"blob":"","wait":1}]
+[
+  {
+    "name": "plain \"quoted\" back\\slash\ttab\nline",
+    "score": 1,
+    "ratio": 2.5,
+    "price": 19.99,
+    "labels": [
+      "a",
+      "b"
+    ],
+    "note": null,
+    "type": "x",
+    "long_label": "one_two_three",
+    "shape": {
+      "kind": "Circle",
+      "radius": 2.5
+    },
+    "blob": "aGkgdGhlcmU=",
+    "wait": 5000
+  },
+  {
+    "name": "héllo wörld 日本語 🎉 {brace}",
+    "score": 1267650600228229401496703205376,
+    "ratio": 6.25,
+    "price": 0.000001,
+    "labels": [],
+    "note": "noted",
+    "type": "y",
+    "long_label": "",
+    "shape": {
+      "kind": "Point"
+    },
+    "blob": "",
+    "wait": 1
+  }
+]
+[{"name":"plain \"quoted\" back\\slash\ttab\nline","score":1,"ratio":2.5,"price":19.99,"labels":["a","b"],"note":null,"type":"x","longLabel":"one_two_three","shape":{"kind":"Circle","radius":2.5},"blob":"aGkgdGhlcmU=","wait":5000},{"name":"héllo wörld 日本語 🎉 {brace}","score":1267650600228229401496703205376,"ratio":6.25,"price":0.000001,"labels":[],"note":"noted","type":"y","longLabel":"","shape":{"kind":"Point"},"blob":"","wait":1}]
+[{"name":"plain \"quoted\" back\\slash\ttab\nline","score":1,"ratio":2.5,"price":19.99,"labels":["a","b"],"note":null,"type":"x","long-label":"one_two_three","shape":{"kind":"Circle","radius":2.5},"blob":"aGkgdGhlcmU=","wait":5000},{"name":"héllo wörld 日本語 🎉 {brace}","score":1267650600228229401496703205376,"ratio":6.25,"price":0.000001,"labels":[],"note":"noted","type":"y","long-label":"","shape":{"kind":"Point"},"blob":"","wait":1}]
+2 true
+true
+{"a":[1,2.5,-300,"x\u0001y\u001fz\r\n\t\"\\ 日本",null,true,{},[]],"b":{},"c":""}
+{
+  "a": [
+    1,
+    2.5,
+    -300,
+    "x\u0001y\u001fz\r\n\t\"\\ 日本",
+    null,
+    true,
+    {},
+    []
+  ],
+  "b": {},
+  "c": ""
+}
+big 1267650600228229401496703205376 float 2.5 record Entry(name: "plain \"quoted\" back\\slash\ttab\nline", score: 1, ratio: 2.5, price: 19.99, labels: ["a", "b"], note: nothing, kind_name: "x", long_label: "one_two_three", shape: Circle(radius: 2.5), blob: 8 bytes, wait: 5s)
+Mismatch(path: "$[0].score", expected: "a value", found: "null")
+Mismatch(path: "$[0].name", expected: "Text", found: "a number")
+Mismatch(path: "$[0]", expected: "Entry", found: "a number")
+Mismatch(path: "$", expected: "List", found: "an object")
+Malformed(detail: "expected `\"`", line: 1)
+Mismatch(path: "$[0].score", expected: "Integer", found: "a number")
+Mismatch(path: "$[0].ratio", expected: "Float", found: "a number")
+Mismatch(path: "$[0].price", expected: "Decimal", found: "a string")
+Mismatch(path: "$[0].labels[1]", expected: "Text", found: "a number")
+Mismatch(path: "$[0].shape.kind", expected: "Shape", found: "a string")
+Mismatch(path: "$[0].shape.radius", expected: "Decimal", found: "a boolean")
+Mismatch(path: "$[0].blob", expected: "Bytes as base64", found: "a string")
+Mismatch(path: "$[0].wait", expected: "a Duration in milliseconds", found: "a string")
+ok 1
+Constraint(path: "$[1].rating", detail: "value is at least 0")
+Mismatch(path: "$[0].rating", expected: "Integer", found: "a string")
+Mismatch(path: "$[0].rating", expected: "a value", found: "null")
+ok Circle(radius: 1.25)
+Mismatch(path: "$.kind", expected: "the variant name", found: "null")
+Mismatch(path: "$", expected: "Shape", found: "a number")
+Mismatch(path: "$.b", expected: "Integer", found: "a string")
+ok 2
+h|é|l|l|o| |日|本|🎉
+h|é|l|l|o
+0
+[a][b][日]
+int 7 dec 19.99 bool true list x,y variant Point none 0 text [a][b][日]
+1 1000

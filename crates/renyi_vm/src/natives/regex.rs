@@ -1,4 +1,9 @@
-//! `std.regex` and `Text.matches`, on the `regex` crate.
+//! `std.regex` and `Text.matches`, on the `regex` crate. A pattern is
+//! compiled once per thread and kept, so that a loop applying it pays the
+//! compilation once.
+
+use std::cell::RefCell;
+use std::collections::HashMap;
 
 use regex::Regex;
 
@@ -17,8 +22,28 @@ pub(crate) const NATIVES: &[Native] = &[
     Native::method("std.regex", "problem", "Text", problem),
 ];
 
+thread_local! {
+    /// The compiled patterns by their text; emptied when it holds
+    /// `CACHE_LIMIT` of them.
+    static CACHE: RefCell<HashMap<String, Regex>> = RefCell::new(HashMap::new());
+}
+
+const CACHE_LIMIT: usize = 256;
+
 fn compile(pattern: &str) -> Result<Regex, Interrupt> {
-    Regex::new(pattern).map_err(|error| crash(format!("invalid regular expression: {error}")))
+    if let Some(found) = CACHE.with(|cache| cache.borrow().get(pattern).cloned()) {
+        return Ok(found);
+    }
+    let regex = Regex::new(pattern)
+        .map_err(|error| crash(format!("invalid regular expression: {error}")))?;
+    CACHE.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        if cache.len() >= CACHE_LIMIT {
+            cache.clear();
+        }
+        cache.insert(pattern.to_string(), regex.clone());
+    });
+    Ok(regex)
 }
 
 /// `regex.problem(pattern)`: the engine's complaint about a pattern, as the

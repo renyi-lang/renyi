@@ -1,0 +1,225 @@
+module json_paths
+  purpose: What the JSON module, the text primitives and the interpolation print.
+
+import std.console
+import std.json exposing JsonError, JsonValue, Naming
+import std.time
+
+public type Entry
+  purpose: One record with every kind of field the encoder and the decoder handle.
+  has name: Text
+  has score: Integer
+  has ratio: Float
+  has price: Decimal
+  has labels: List of Text
+  has note: maybe Text
+  has kind_name: Text as "type"
+  has long_label: Text
+  has shape: Shape
+  has blob: Bytes
+  has wait: Duration
+  can ToJson
+  can FromJson
+  can ToText
+end
+
+public type Shape is one of
+  purpose: A variant with and without fields.
+  Circle(radius: Decimal)
+  Point
+  can ToJson
+  can FromJson
+  can ToText
+end
+
+public type Rating is Integer where value is at least 0
+  purpose: A non-negative rating.
+
+public type Review
+  purpose: A record with a refined field, for the constraint error.
+  has rating: Rating
+  can ToJson
+  can FromJson
+end
+
+function decode_entries(text: Text) returns List of Entry or fails with JsonError
+  purpose: Decode entries.
+
+  let entries: List of Entry be json.parse(text) otherwise fail
+  return entries
+end
+
+function decode_reviews(text: Text) returns List of Review or fails with JsonError
+  purpose: Decode reviews.
+
+  let reviews: List of Review be json.parse(text) otherwise fail
+  return reviews
+end
+
+function decode_shape(text: Text) returns Shape or fails with JsonError
+  purpose: Decode a shape.
+
+  let shape: Shape be json.parse(text) otherwise fail
+  return shape
+end
+
+function decode_counts(text: Text) returns Map of Text to Integer or fails with JsonError
+  purpose: Decode counts.
+
+  let counts: Map of Text to Integer be json.parse(text) otherwise fail
+  return counts
+end
+
+function entries_outcome(text: Text) returns Text
+  purpose: The outcome of decoding the text as entries.
+
+  match decode_entries(text)
+    when success(entries) then return "ok {entries.length()}"
+    when failure(error) then return error.to_text()
+  end
+end
+
+function reviews_outcome(text: Text) returns Text
+  purpose: The outcome of decoding the text as reviews.
+
+  match decode_reviews(text)
+    when success(reviews) then return "ok {reviews.length()}"
+    when failure(error) then return error.to_text()
+  end
+end
+
+function shape_outcome(text: Text) returns Text
+  purpose: The outcome of decoding the text as a shape.
+
+  match decode_shape(text)
+    when success(shape) then return "ok {shape}"
+    when failure(error) then return error.to_text()
+  end
+end
+
+function counts_outcome(text: Text) returns Text
+  purpose: The outcome of decoding the text as counts.
+
+  match decode_counts(text)
+    when success(counts) then return "ok {counts.length()}"
+    when failure(error) then return error.to_text()
+  end
+end
+
+public function main() or fails with JsonError needs console
+  purpose: Print what each path produces: the documents, the errors, the texts.
+
+  let ten be 10
+  let four be 4
+  let ratio be ten.to_float() / four.to_float()
+  let big be 2 power 100
+  let first_entry be Entry(
+    name: "plain \"quoted\" back\\slash\ttab\nline",
+    score: 1,
+    ratio: ratio,
+    price: 19.99,
+    labels: ["a", "b"],
+    note: nothing,
+    kind_name: "x",
+    long_label: "one_two_three",
+    shape: Circle(radius: 2.5),
+    blob: "hi there".to_bytes(),
+    wait: time.seconds(5)
+  )
+  let empty: List of Text be []
+  let second be Entry(
+    name: "héllo wörld 日本語 🎉 \{brace}",
+    score: big,
+    ratio: ratio * ratio,
+    price: 0.000001,
+    labels: empty,
+    note: "noted",
+    kind_name: "y",
+    long_label: "",
+    shape: Point,
+    blob: "".to_bytes(),
+    wait: time.milliseconds(1)
+  )
+  let entries be [first_entry, second]
+  let text be json.render(entries)
+  console.print(text)
+  console.print(json.render_indented(entries))
+  console.print(json.render_with(value: entries, naming: CamelCase))
+  let kebab be json.render_with(value: entries, naming: KebabCase)
+  console.print(kebab)
+  let back: List of Entry be json.parse(text) otherwise fail
+  console.print("{back.length()} {json.render(back) is text}")
+  let back_kebab: List of Entry be json.parse_with(text: kebab, naming: KebabCase) otherwise fail
+  console.print("{json.render(back_kebab) is text}")
+  let items be "[1, 2.5, -3e2, \"x\\u0001y\\u001fz\\r\\n\\t\\\"\\\\ 日本\", null, true, \{}, []]"
+  let any_value: JsonValue be json.parse(
+    "\{\"a\": {items}, \"b\": \{}, \"c\": \"\"}"
+  ) otherwise fail
+  console.print(json.render(any_value))
+  console.print(json.render_indented(any_value))
+  console.print("big {big} float {ratio} record {first_entry}")
+  errors()
+  texts()
+end
+
+function errors() needs console
+  purpose: Print the outcome of every decoding that fails, with the path of the error.
+
+  let prefix be "[\{\"name\": \"a\", \"score\": 1, \"ratio\": 1, \"price\": 1e3, "
+  let middle be "{prefix}\"labels\": [], \"type\": \"t\", \"long_label\": \"l\", "
+  let point be "{middle}\"shape\": \{\"kind\": \"Point\"}, \"blob\": \"aGk=\", "
+  console.print(entries_outcome("[\{\"name\": \"a\"}]"))
+  console.print(entries_outcome("[\{\"name\": 1}]"))
+  console.print(entries_outcome("[1]"))
+  console.print(entries_outcome("\{}"))
+  console.print(entries_outcome("[\{bad"))
+  console.print(entries_outcome("[\{\"name\": \"a\", \"score\": 1.5}]"))
+  console.print(entries_outcome("[\{\"name\": \"a\", \"score\": 1, \"ratio\": 1e999}]"))
+  console.print(
+    entries_outcome("[\{\"name\": \"a\", \"score\": 1, \"ratio\": 1, \"price\": \"x\"}]")
+  )
+  console.print(entries_outcome("{prefix}\"labels\": [\"ok\", 2]}]"))
+  console.print(entries_outcome("{middle}\"shape\": \{\"kind\": \"Square\"}}]"))
+  console.print(entries_outcome("{middle}\"shape\": \{\"kind\": \"Circle\", \"radius\": true}}]"))
+  console.print(entries_outcome("{middle}\"shape\": \{\"kind\": \"Point\"}, \"blob\": \"!!!\"}]"))
+  console.print(entries_outcome("{point}\"wait\": \"soon\"}]"))
+  console.print(entries_outcome("{point}\"wait\": 7}]"))
+  console.print(reviews_outcome("[\{\"rating\": 5}, \{\"rating\": -1}]"))
+  console.print(reviews_outcome("[\{\"rating\": \"x\"}]"))
+  console.print(reviews_outcome("[\{}]"))
+  console.print(shape_outcome("\{\"kind\": \"Circle\", \"radius\": 1.25}"))
+  console.print(shape_outcome("\{\"radius\": 1.25}"))
+  console.print(shape_outcome("7"))
+  console.print(counts_outcome("\{\"a\": 1, \"b\": \"x\"}"))
+  console.print(counts_outcome("\{\"a\": 1, \"b\": 2}"))
+end
+
+function texts() needs console
+  purpose: Print what the characters, the loop over a text, the holes and the patterns produce.
+
+  console.print("héllo 日本🎉".characters().join("|"))
+  console.print("héllo".split("").join("|"))
+  let none be "".characters().length()
+  console.print("{none}")
+  let mutable walked be ""
+  for each glyph in "ab日"
+    change walked to "{walked}[{glyph}]"
+  end
+  console.print(walked)
+  let shape be Point
+  let joined be ["x", "y"].join(",")
+  let flag be true
+  let price be 19.99
+  console.print(
+    "int {7} dec {price} bool {flag} list {joined} variant {shape} none {none} text {walked}"
+  )
+  let mutable found be 0
+  for each index from 1 to 300
+    if "item 150".matches("^item {index}$") then change found to found + 1 end
+  end
+  let mutable hits be 0
+  for each index from 1 to 1000
+    if "abc{index}".matches("^abc[0-9]+$") then change hits to hits + 1 end
+  end
+  console.print("{found} {hits}")
+end

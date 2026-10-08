@@ -4,6 +4,8 @@
 //! of decision AC1 are read as. One reader for every file the toolchain
 //! reads, so that every toolchain reads the same documents the same way.
 
+use std::fmt::Write;
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Json {
     Null,
@@ -32,6 +34,7 @@ impl Json {
 // ----------------------------------------------------------------- reading
 
 struct Reader<'a> {
+    text: &'a str,
     bytes: &'a [u8],
     pos: usize,
     line: i64,
@@ -43,6 +46,7 @@ pub type ReadError = (String, i64);
 /// Read a JSON document; an error carries its detail and line.
 pub fn read_json(text: &str) -> Result<Json, ReadError> {
     let mut reader = Reader {
+        text,
         bytes: text.as_bytes(),
         pos: 0,
         line: 1,
@@ -126,6 +130,17 @@ impl Reader<'_> {
         self.expect(b'"')?;
         let mut out = String::new();
         loop {
+            // a run of plain bytes is copied at once: the bytes that end it
+            // are ASCII, never inside a multibyte sequence, so the run is
+            // a text of its own
+            let start = self.pos;
+            while let Some(&byte) = self.bytes.get(self.pos) {
+                if byte == b'"' || byte == b'\\' || byte < 0x20 {
+                    break;
+                }
+                self.pos += 1;
+            }
+            out.push_str(&self.text[start..self.pos]);
             let Some(&byte) = self.bytes.get(self.pos) else {
                 return self.error("a string is not closed");
             };
@@ -161,16 +176,8 @@ impl Reader<'_> {
                     }
                 }
                 b'\n' => return self.error("a line break inside a string"),
-                _ => {
-                    // copy the whole UTF-8 sequence
-                    let start = self.pos - 1;
-                    let width = utf8_width(byte);
-                    let end = (start + width).min(self.bytes.len());
-                    out.push_str(
-                        std::str::from_utf8(&self.bytes[start..end]).unwrap_or("\u{FFFD}"),
-                    );
-                    self.pos = end;
-                }
+                // another control byte is kept as it is
+                other => out.push(other as char),
             }
         }
     }
@@ -237,15 +244,6 @@ impl Reader<'_> {
     }
 }
 
-fn utf8_width(first: u8) -> usize {
-    match first {
-        0x00..=0x7F => 1,
-        0xC0..=0xDF => 2,
-        0xE0..=0xEF => 3,
-        _ => 4,
-    }
-}
-
 // ----------------------------------------------------------------- writing
 
 pub fn write_json(json: &Json, out: &mut String, indent: Option<usize>, depth: usize) {
@@ -295,25 +293,40 @@ pub fn write_json(json: &Json, out: &mut String, indent: Option<usize>, depth: u
     }
 }
 
-fn newline(out: &mut String, indent: Option<usize>, depth: usize) {
+/// The line break before an item of the indented layout, with the
+/// indentation of its depth; nothing on one line.
+pub fn newline(out: &mut String, indent: Option<usize>, depth: usize) {
     if let Some(width) = indent {
         out.push('\n');
         out.push_str(&" ".repeat(width * depth));
     }
 }
 
-fn write_string(text: &str, out: &mut String) {
+/// A JSON string: the text quoted, with the escapes JSON needs.
+pub fn write_string(text: &str, out: &mut String) {
+    out.reserve(text.len() + 2);
     out.push('"');
-    for c in text.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
-            c => out.push(c),
+    // a run of plain characters is copied at once: the bytes that need an
+    // escape are ASCII, never inside a multibyte sequence
+    let mut start = 0;
+    for (index, byte) in text.bytes().enumerate() {
+        let escaped = match byte {
+            b'"' => "\\\"",
+            b'\\' => "\\\\",
+            b'\n' => "\\n",
+            b'\r' => "\\r",
+            b'\t' => "\\t",
+            byte if byte >= 0x20 => continue,
+            _ => "",
+        };
+        out.push_str(&text[start..index]);
+        if escaped.is_empty() {
+            let _ = write!(out, "\\u{byte:04x}");
+        } else {
+            out.push_str(escaped);
         }
+        start = index + 1;
     }
+    out.push_str(&text[start..]);
     out.push('"');
 }

@@ -384,6 +384,13 @@
       "stdout": "tests/conformance/expected/python_stats.out",
       "stderr_contains": ["this program can run Python through `analysis`"],
       "exit_code": 0
+    },
+    {
+      "name": "JSON errors name their path, and the text primitives, the holes and the patterns print as before",
+      "command": "run",
+      "program": "tests/conformance/programs/json_paths.ry",
+      "stdout": "tests/conformance/expected/json_paths.out",
+      "exit_code": 0
     }
   ]
 }

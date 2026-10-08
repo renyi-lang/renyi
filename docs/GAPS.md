@@ -317,8 +317,12 @@ freeze, or take it out of the frozen surface until it exists.
   fewer instructions and 4.1% fewer cycles on the compiler's
   self-check; the clone and drop of values, the stack traffic and the
   allocator remain, for the baseline JIT or `renyi build` after 0.1).
-  `Text.matches`
-  compiles its pattern at every call; last-use moves exist only for the
+  The profile-guided round on strings and JSON (decision AQ, session
+  9; the status below) took the JSON path and the one-character texts
+  down and keeps a compiled pattern of `Text.matches` per thread. A
+  text built piece by piece in a loop (`change out to "{out}{piece}"`)
+  still copies its accumulated text per piece (`Text` is `Rc<str>`,
+  decision X3); last-use moves exist only for the
   receiver of `change x to x.method(...)` (decision O1 promises them for
   arguments).
 - **Index and MCP details**: no per-module metric maxima; `branches`
@@ -593,3 +597,28 @@ manifest; its third commit `std.process` (decision AE1: `execute`,
 inherited); its fourth commit the foreign function interface (decision
 AF1: foreign modules bound by the manifest, `std.foreign`, the signature
 family, `renyi bind`). The three slices of stage 3 are done.
+
+### The profile-guided round on strings and JSON (session 9, decision AQ)
+
+The first of the interspersed performance items the owner set after M5
+(the owner's answers of 2026-10-07), profiled in session 8 and finished
+in session 9, the first session in the cloud environment: the JSON
+decoder without the per-record clones and the error-path strings, the
+encoder into a sink with no tree for `render`, the JSON reader and
+writer by runs, the one-character texts from a table, a compiled pattern
+kept per thread, an interpolation joined on the stack. Measured in
+session 9 (instructions by `cachegrind` and the wall-clock time by
+`tools/bench.py`, the release build, the two binaries on one machine):
+`strings` 20 percent fewer instructions on machine code and 18 on the
+interpreter, 282 to 226 ms against CPython's 106; `json_round_trip` 57
+percent fewer, 314 to 126 ms against 230, past CPython (from 0.7 to 1.8
+times its speed); the compiler's self-check 2 percent fewer. What
+remains for the two programs: on `strings` the interpreter loop and the
+primitive boundary once per character (the move of the arguments into
+the scratch buffer, the grant check, the drops), which AG6 left and the
+baseline JIT of AG5 addresses; on `json_round_trip` the reader, the
+writer and the allocator, now the plain cost of the format. `Text` stays
+`Rc<str>`, so a text built piece by piece in a loop still copies its
+accumulated text per piece. Conformance case 54 (`json_paths.ry`) holds
+what the changed paths print. Next, in the owner's order: the baseline
+JIT (AG5, item iii), then the showcase application.

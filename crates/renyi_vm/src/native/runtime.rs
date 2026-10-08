@@ -15,6 +15,7 @@
 //! call that entered the generated code, so the reference made here is
 //! the only one alive.
 
+use std::fmt::Write;
 use std::rc::Rc;
 
 use renyi_syntax::ast::BinaryOp;
@@ -1055,15 +1056,33 @@ impl Vm<'_> {
         Ok(self.with(holder.into_plain(), updates)?.guarded(origins))
     }
 
+    /// The pieces are joined where they lie on the stack, an Integer
+    /// written straight into the text, and the stack cut below them after.
     pub(crate) fn op_concat(&mut self, count: usize) -> Result<Value, Interrupt> {
-        let (origins, pieces) = plain_all(self.pop_n(count));
-        let mut text = String::new();
-        for piece in &pieces {
-            match piece {
+        let at = self.stack.len().saturating_sub(count);
+        let mut origins = 0;
+        let mut length = 0;
+        for piece in &self.stack[at..] {
+            origins |= piece.origins();
+            length += match piece.plain() {
+                Value::Text(part) => part.len(),
+                _ => 20,
+            };
+        }
+        let mut text = String::with_capacity(length);
+        for index in at..self.stack.len() {
+            match self.stack[index].plain() {
                 Value::Text(part) => text.push_str(part),
-                other => text.push_str(&self.render(other, false)?),
+                Value::Integer(value) => {
+                    let _ = write!(text, "{value}");
+                }
+                _ => {
+                    let piece = self.stack[index].clone();
+                    text.push_str(&self.render(piece.plain(), false)?);
+                }
             }
         }
+        self.stack.truncate(at);
         Ok(Value::text(text).guarded(origins))
     }
 

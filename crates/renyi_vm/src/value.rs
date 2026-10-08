@@ -107,9 +107,27 @@ pub enum Native {
 // Decision X3: the stack and every collection hold values by this width.
 const _: () = assert!(std::mem::size_of::<Value>() <= 24);
 
+thread_local! {
+    /// The one-character texts of the ASCII range (`Value::character`).
+    static ASCII: [Rc<str>; 128] = std::array::from_fn(|code| {
+        let mut buffer = [0; 4];
+        Rc::from(&*(code as u8 as char).encode_utf8(&mut buffer))
+    });
+}
+
 impl Value {
     pub fn text(text: impl AsRef<str>) -> Value {
         Value::Text(Rc::from(text.as_ref()))
+    }
+
+    /// A text of one character. The ASCII ones come from a table kept per
+    /// thread, so that the characters of a text are listed without an
+    /// allocation each.
+    pub fn character(c: char) -> Value {
+        if c.is_ascii() {
+            return ASCII.with(|table| Value::Text(table[c as usize].clone()));
+        }
+        Value::Text(Rc::from(&*c.encode_utf8(&mut [0; 4])))
     }
 
     pub fn integer(value: i64) -> Value {
