@@ -30,6 +30,7 @@
 //! declares, which counts for the memory budget.
 
 mod bind;
+mod exe;
 mod lsp;
 mod maps;
 mod mcp;
@@ -128,11 +129,13 @@ const USAGE: &str = "usage:
   renyi compile [--to <file.ryc>] <file.ry>
                                       check the program and write its bytecode (default: <name>.ryc);
                                       run, record, test and reproduce load a .ryc in place of a .ry
-  renyi build [--to <file.ryi>] [--opt speed|none] <file.ry>
+  renyi build [--exe] [--to <file>] [--opt speed|none] <file.ry>
                                       check the program, compile every function to machine code for this
                                       machine (Cranelift's `speed` level unless --opt none) and write the
                                       image (default: <name>.ryi); run, record, test and reproduce load a
-                                      .ryi in place of a .ry and compile nothing
+                                      .ryi in place of a .ry and compile nothing; --exe: a self-contained
+                                      executable instead (default: <name>), this binary with the image in
+                                      it, which runs the program with its command line as the arguments
   renyi add <name> [<version>]        a dependency from the registry renyi.json names: choose the
                                       versions, fetch and verify the packages, print the effects of
                                       the package added, write renyi.json and renyi.lock.json
@@ -216,11 +219,48 @@ pub fn main_with(extensions: Vec<Extension>) -> ExitCode {
     // the machine code of decision AG1 nests calls on the machine stack: a
     // thread with room for them, since the main thread's stack is small on
     // Windows (the size is reserved, not committed)
+    let embedded = exe::embedded_image();
     let worker = std::thread::Builder::new()
         .stack_size(64 << 20)
-        .spawn(dispatch)
+        .spawn(move || match embedded {
+            Some(image) => run_embedded(image),
+            None => dispatch(),
+        })
         .expect("a thread for the command");
     worker.join().unwrap_or(ExitCode::FAILURE)
+}
+
+/// The image a self-contained executable carries (decision AS4), run as
+/// `renyi run <image> <arguments>` runs it: the whole command line is the
+/// program's arguments, and the executable's name stands for the path.
+fn run_embedded(bytes: Vec<u8>) -> ExitCode {
+    let name = std::env::current_exe()
+        .ok()
+        .and_then(|path| {
+            path.file_name()
+                .map(|name| name.to_string_lossy().to_string())
+        })
+        .unwrap_or_else(|| "program".to_string());
+    let (program, image) = match load_image_bytes(&bytes, &name) {
+        Ok(loaded) => loaded,
+        Err(message) => {
+            eprintln!("renyi: {message}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let mut rest: Vec<String> = vec![name.clone()];
+    rest.extend(std::env::args().skip(1));
+    let text = image.bytecode.clone();
+    run_loaded(
+        &name,
+        program,
+        Hashed::File(text),
+        Some(image),
+        Flags::default(),
+        None,
+        &rest,
+        false,
+    )
 }
 
 fn dispatch() -> ExitCode {
@@ -555,7 +595,12 @@ fn grants(program: &renyi_vm::Program, kind: &str) -> bool {
 /// why the image cannot run here with the fix (build again).
 fn load_image_file(path: &str) -> Result<(renyi_vm::Program, Image), String> {
     let bytes = std::fs::read(path).map_err(|error| format!("cannot read {path}: {error}"))?;
-    let loaded = Image::read(&bytes).map_err(|detail| format!("{path}: {detail}"))?;
+    load_image_bytes(&bytes, path)
+}
+
+/// A program from an image's bytes, named `path` in the messages.
+fn load_image_bytes(bytes: &[u8], path: &str) -> Result<(renyi_vm::Program, Image), String> {
+    let loaded = Image::read(bytes).map_err(|detail| format!("{path}: {detail}"))?;
     let target = renyi_vm::native::Jit::host_target().ok_or_else(|| {
         format!("{path}: this machine generates no machine code; run the bytecode instead (`renyi compile`)")
     })?;
@@ -566,17 +611,20 @@ fn load_image_file(path: &str) -> Result<(renyi_vm::Program, Image), String> {
     Ok((program, loaded))
 }
 
-/// `renyi build [--to <file.ryi>] [--opt speed|none] <file.ry>`: check
-/// the program with its imports, compile every function to machine code
-/// for this machine (at Cranelift's `speed` level unless asked otherwise,
-/// decision AS3) and write the image (decision AS1).
+/// `renyi build [--exe] [--to <file>] [--opt speed|none] <file.ry>`:
+/// check the program with its imports, compile every function to machine
+/// code for this machine (at Cranelift's `speed` level unless asked
+/// otherwise, decision AS3) and write the image (decision AS1), or with
+/// `--exe` the self-contained executable that carries it (decision AS4).
 fn build_command(args: &[String]) -> ExitCode {
     let mut to: Option<String> = None;
     let mut opt: Option<String> = None;
+    let mut exe = false;
     let mut path: Option<&String> = None;
     let mut rest = args.iter();
     while let Some(arg) = rest.next() {
         match arg.as_str() {
+            "--exe" => exe = true,
             "--to" => match rest.next() {
                 Some(value) => to = Some(value.clone()),
                 None => {
@@ -622,17 +670,40 @@ fn build_command(args: &[String]) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    let stem = Path::new(path)
+        .file_stem()
+        .map(|stem| stem.to_string_lossy().to_string())
+        .unwrap_or_else(|| "program".to_string());
     let target = to.unwrap_or_else(|| {
-        let stem = Path::new(path)
-            .file_stem()
-            .map(|stem| stem.to_string_lossy().to_string())
-            .unwrap_or_else(|| "program".to_string());
-        format!("{stem}.{}", image::EXTENSION)
+        if exe {
+            format!("{stem}{}", std::env::consts::EXE_SUFFIX)
+        } else {
+            format!("{stem}.{}", image::EXTENSION)
+        }
     });
     let bytes = built.write();
+    let compiled = built.codes.iter().flatten().count();
+    if exe {
+        return match exe::write(Path::new(&target), &bytes) {
+            Ok(note) => {
+                eprintln!(
+                    "renyi: built {path} to {target}: a self-contained executable, {compiled} of {} code objects as machine code, the image {} bytes",
+                    built.codes.len(),
+                    bytes.len()
+                );
+                if let Some(note) = note {
+                    eprintln!("renyi: {note}");
+                }
+                ExitCode::SUCCESS
+            }
+            Err(message) => {
+                eprintln!("renyi: {message}");
+                ExitCode::FAILURE
+            }
+        };
+    }
     match std::fs::write(&target, &bytes) {
         Ok(()) => {
-            let compiled = built.codes.iter().flatten().count();
             eprintln!(
                 "renyi: built {path} to {target}: {compiled} of {} code objects as machine code, {} bytes",
                 built.codes.len(),
@@ -1013,6 +1084,24 @@ fn run_command(args: &[String], record: bool) -> ExitCode {
         Ok(compiled) => compiled,
         Err(code) => return code,
     };
+    run_loaded(path, program, sources, image, flags, memory, rest, record)
+}
+
+/// `run` or `record` of a program loaded: the checks on what it may
+/// reach, the manifest, the run, the recording written, the exit status.
+/// `rest[0]` is the path (or the executable's name, decision AS4),
+/// `rest[1..]` the program's arguments.
+#[allow(clippy::too_many_arguments)]
+fn run_loaded(
+    path: &str,
+    program: renyi_vm::Program,
+    sources: Hashed,
+    image: Option<Image>,
+    flags: Flags,
+    memory: Option<u64>,
+    rest: &[String],
+    record: bool,
+) -> ExitCode {
     // native code and Python are visible (decisions AF1 and AJ2,
     // 07-system-design.md section 2.2)
     let native = bound_modules(&program, |meta| meta.foreign.is_some());
@@ -1059,7 +1148,7 @@ fn run_command(args: &[String], record: bool) -> ExitCode {
     let manifest = if with_manifest {
         Manifest {
             toolchain: Some(toolchain()),
-            source: Some(path.clone()),
+            source: Some(path.to_string()),
             code: code_hash(&program, &sources),
             dependencies: dependencies_of(path, &sources),
             extensions: registry().extras(),

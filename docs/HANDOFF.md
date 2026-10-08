@@ -13,8 +13,9 @@ read run in place (AR4), then the tiering measured and the hotness
 factor raised (AR5), and the round closed by the owner with the
 self-check 15% below where AQ left it (AR6; the section "The baseline
 JIT" below); then `renyi build`, the image of a program that runs
-without compiling, decisions AS1 to AS3 (the section "`renyi build` as
-it exists" below), with `build --exe` as the next item. Session 8
+without compiling, decisions AS1 to AS4 (the section "`renyi build` as
+it exists" below), `build --exe`, the self-contained executable,
+included. Session 8
 (stage 2 of the gap audit of
 `docs/GAPS.md`: the formal grammar `docs/grammar.ebnf` with decision V12;
 the language reference `docs/reference.md`, normative, held to the
@@ -102,9 +103,8 @@ round on strings and JSON as it exists" below), the baseline JIT of
 decision AR1 is in (the section "The baseline JIT" below: the fused op
 `LoadField`, the direct calls with register arguments and the pinned
 layout, decisions AR2 to AR4, the tiering AR5) and `renyi build`
-writes the image a run loads in place of compiling (decisions AS1 to
-AS3; `build --exe`, the self-contained executable, does not exist
-yet).
+writes the image a run loads in place of compiling and, with `--exe`,
+the self-contained executable (decisions AS1 to AS4).
 Release 0.1.0 is out
 (2026-10-07, the section "Release 0.1 engineering" below): the
 repository is public at `github.com/renyi-lang/renyi`, the release
@@ -1379,8 +1379,8 @@ next sections of the plan, below).
    JIT that inlines the boxed operations (decisions AR1 to AR6: the
    self-check 15% fewer instructions on machine code than before the
    round, `bench/records.ry` 21% fewer) and `renyi build`, the image of
-   bytecode and machine code (decisions AS1 to AS3); `build --exe`, the
-   self-contained executable of A1, remains.
+   bytecode and machine code and, with `--exe`, the self-contained
+   executable of A1 (decisions AS1 to AS4).
 5. **Foreign packages** (decisions AJ1 to AJ4, the owner's answers of
    2026-10-07, evening): after 0.1 and before the rest of M5, the
    registration API for Rust natives (the standard library's
@@ -1762,7 +1762,7 @@ and the commit of the site and the crates.io metadata.
   release; the Windows archive's checksum and binary were verified
   by hand; `cargo install renyi` built the binary from crates.io.
 
-## `renyi build` as it exists (decisions AS1 to AS3; session 9, 2026-10-08)
+## `renyi build` as it exists (decisions AS1 to AS4; session 9, 2026-10-08)
 
 The owner's four answers of 2026-10-08 after the baseline JIT's round
 closed (decision AS1): an image file `.ryi` (the bytecode with the
@@ -1822,17 +1822,75 @@ mismatched image refused with the fix.
   (decision AS3). The cachegrind runs use images built under valgrind,
   which hides AVX-512 from the CPU-feature detection, so a native image
   is refused there by the header check, as designed.
-- **What an image is not yet.** Not portable: the target string holds
-  every CPU feature Cranelift detected, so an image moves only between
-  machines with the same features (a build on an older CPU would run on
-  a newer one, and is refused anyway: equality is the rule for now). Not
-  signed or hashed: the run manifest's code hash is the bytecode's, the
-  machine code is trusted as the file is. Not a self-contained
-  executable: `build --exe` (decision AS1's second step) copies the
-  `renyi` binary and appends the image; it is the next item. The image
-  of the compiler is large (17.6 MB for 955 code objects, 18 KB a code
-  object; its size is what the instruction-cache misses of the section
-  below point at), the inline sequences of AR4 being what they are.
+- **Stage C, the executable (decision AS4).** `crates/renyi/src/exe.rs`:
+  `TRAILER_MAGIC` (`RENYIEXE`), `TRAILER_LEN` (24 bytes: the image's
+  offset, its length, the magic; little-endian), `embedded_image` (the
+  binary's own file opened, its last 24 bytes read, the image read when
+  the trailer is there and consistent with the file's length, `None`
+  otherwise: every command of `renyi` pays one open and one small read)
+  and `write` (this binary's bytes, the image, the trailer; executable
+  on Unix; on macOS `codesign --force -s -` is run and the command is
+  the message when it is not at hand). `main_with` (`lib.rs`) asks
+  `embedded_image` before dispatching and runs an embedded image through
+  `run_embedded`: the program from `load_image_bytes` (the mismatch
+  check as for a file, the executable's name in the messages), the
+  whole command line as the arguments, the default flags, through
+  `run_loaded`, the tail of `run_command` split out (the visibility
+  notices, the sandbox refusal, the replay, the manifest, the run, the
+  recording, the exit status). `build --exe` (`build_command`): the
+  default name is the program's stem with the platform's suffix
+  (`<name>.exe` on Windows); the message says "a self-contained
+  executable" with the counts. `tests/build.rs`: the executable runs the
+  program with its command line (`greet build` prints `Hello, build!`:
+  no command of `renyi` is read from it), compiles nothing (the report
+  under `RENYI_NATIVE_REPORT`), starts with this binary's bytes and ends
+  with the magic; the default name. The compiler's executable is 35 MB:
+  the binary (17.7 MB) and its image (17.5 MB).
+- **Measured in wall-clock** (the release build on the quiet machine,
+  the best of five runs in milliseconds, the median in brackets; the
+  images built by the same binary at both levels):
+
+  | program | JIT run | `--interpret` | image `none` | image `speed` |
+  |---------|---------|---------------|--------------|---------------|
+  | the self-check (`compiler/checker.ry` on `bodies.ry`) | 1841 (1974) | 1950 (2032) | 1691 (1736) | 1511 (1583) |
+  | `bench/records.ry` | 62 (76) | 84 (94) | 54 (56) | 54 (57) |
+  | `bench/primes.ry` | 42 (52) | 1088 (1156) | 36 (44) | 35 (37) |
+  | `examples/hello.ry` | 10 (10) | 8 (9) | 11 (12) | 11 (12) |
+
+  The image at `speed` runs the self-check 18% faster than the JIT run
+  (the compile time, the warm-up and the cold code gone), records 13%,
+  primes 17%; the two levels tie on the small programs, and a program
+  as short as `hello` pays a millisecond for loading its 235 KB of code
+  (thirteen code objects of 18 KB each) and gains nothing: an image is
+  for a program that runs long enough to compile. The executable of
+  `--exe` runs as its image does. The cache simulation (cachegrind with
+  `--cache-sim=yes --branch-sim=yes` on images built under valgrind):
+  `none` 9.23 billion instructions and 167.6 million first-level
+  instruction misses, `speed` 9.07 and 158.0, `speed_and_size` 9.07 and
+  158.0 with an image nine bytes larger, so the level does not shrink
+  the code. To measure again: `renyi build --opt <level> --to x.ryi
+  compiler/checker.ry`, then time `renyi run x.ryi compiler/bodies.ry`
+  against `renyi run compiler/checker.ry compiler/bodies.ry`; `tools/bench.py`
+  prints the image column for the benchmark programs.
+- **What an image and an executable are not yet.** Not portable: the
+  target string holds every CPU feature Cranelift detected, so an image
+  moves only between machines with the same features (a build on an
+  older CPU would run on a newer one, and is refused anyway: equality is
+  the rule for now); the executable refuses a mismatch at startup with
+  the same message. Not signed or hashed: the run manifest's code hash
+  is the bytecode's, the machine code is trusted as the file is. The
+  executable is not smaller than the toolchain (the whole `renyi`
+  binary comes first, its commands unreachable rather than removed) and
+  not compressed; a `.ryi` already built is not an input of `build
+  --exe` (it builds from the sources or the bytecode, as `build` does);
+  on macOS the copy needs the ad hoc signature the build applies when
+  `codesign` is at hand. The image of the compiler is large (17.6 MB for
+  955 code objects, 18 KB a code object; its size is what the
+  instruction-cache misses of the section below point at), the inline
+  sequences of AR4 being what they are; Cranelift's `speed_and_size`
+  level does not shrink it (the same code as `speed` within nine bytes
+  and the same cache misses on the self-check), so the size is a
+  question for the sequences `codegen.rs` emits.
 
 ## The baseline JIT (decisions AR1 to AR6; session 9)
 
@@ -2839,6 +2897,14 @@ on the head (run 51 on 5e4f1d0).
    `reproduce`, the usage), `crates/renyi/tests/build.rs` (new); the
    decisions (section AS), `docs/reference.md` (appendix B),
    `docs/GAPS.md`, `CLAUDE.md`, this file.
+7. `renyi build --exe` (decision AS4; the section "`renyi build` as it
+   exists", stage C): `crates/renyi/src/exe.rs` (new), `lib.rs`
+   (`run_embedded`, `run_loaded`, `load_image_bytes`, `--exe` in
+   `build_command`, the usage), `tests/build.rs` (the executable's
+   test); the decisions (AS4), `docs/reference.md` (appendix B),
+   `docs/GAPS.md`, `CLAUDE.md`, this file; the cache simulation's
+   finding on `speed_and_size` and the wall-clock picture of the image
+   against the JIT, in the section.
 
 ## Done in session 8 (stage 2: the grammar, the reference, the front end in Renyi)
 

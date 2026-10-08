@@ -195,3 +195,54 @@ fn an_image_that_does_not_fit_is_refused_naming_the_fix() {
         text(&renyi(&["run", "bench/primes.ry"]).stdout)
     );
 }
+
+#[test]
+fn a_self_contained_executable_runs_the_program_with_its_command_line() {
+    let directory = scratch("exe");
+    let file = path(&directory.join(format!("greet{}", std::env::consts::EXE_SUFFIX)));
+    let built = renyi(&["build", "--exe", "--to", &file, "examples/hello.ry"]);
+    assert!(built.status.success(), "{}", text(&built.stderr));
+    let message = text(&built.stderr);
+    assert!(
+        message.starts_with(&format!(
+            "renyi: built examples/hello.ry to {file}: a self-contained executable, "
+        )),
+        "{message}"
+    );
+    // the whole command line is the program's arguments: no subcommand
+    // of renyi is read from it
+    let run = Command::new(&file)
+        .current_dir(&directory)
+        .args(["build"])
+        .output()
+        .expect("the executable runs");
+    assert!(run.status.success(), "{}", text(&run.stderr));
+    assert_eq!(text(&run.stdout), "Hello, build!\n");
+    // the image inside is what runs: nothing is compiled
+    let report = Command::new(&file)
+        .current_dir(&directory)
+        .env("RENYI_NATIVE_REPORT", "1")
+        .args(["Renyi"])
+        .output()
+        .expect("the executable runs");
+    assert_eq!(text(&report.stdout), "Hello, Renyi!\n");
+    let report = text(&report.stderr);
+    assert!(
+        report.contains("code objects loaded from the image; 0 code objects compiled"),
+        "{report}"
+    );
+    // the executable is this binary with the image and a trailer after it
+    let bytes = std::fs::read(&file).expect("the executable");
+    let own = std::fs::read(env!("CARGO_BIN_EXE_renyi")).expect("this binary");
+    assert!(bytes.starts_with(&own));
+    assert!(bytes.ends_with(b"RENYIEXE"));
+    // the default name is the program's stem, in the current directory
+    let built = renyi_in(
+        &directory,
+        &["build", "--exe", &path(&root().join("examples/hello.ry"))],
+    );
+    assert!(built.status.success(), "{}", text(&built.stderr));
+    assert!(directory
+        .join(format!("hello{}", std::env::consts::EXE_SUFFIX))
+        .exists());
+}

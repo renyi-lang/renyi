@@ -198,7 +198,7 @@ cargo build
 ./target/debug/renyi run --explain examples/statistics.ry 2 4 4 4 5 5 7 9
 ./target/debug/renyi run --profile compiler/parse.ry compiler/parser.ry   # where the VM's time goes
 ./target/debug/renyi run --interpret bench/primes.ry   # the interpreter alone; by default the hot code runs as machine code
-python tools/bench.py target/debug/renyi              # the benchmarks of bench/, with --interpret and against CPython
+python tools/bench.py target/debug/renyi              # the benchmarks of bench/, with --interpret, from their images and against CPython
 ./target/debug/renyi record --to hello.json examples/hello.ry Renyi
 ./target/debug/renyi run --replay hello.json examples/hello.ry
 ./target/debug/renyi reproduce hello.json

@@ -3163,3 +3163,45 @@ which is why the two tiers tie in wall-clock (about 1.9 seconds each)
 despite the count; the generated code is large (18 KB a code object),
 and its size, not its instruction count, is the lever the next
 performance round pulls first. (user)
+
+**AS4. Stage C of AS1, done: `renyi build --exe` writes the
+self-contained executable of A1, this `renyi` binary copied with the
+image appended and a trailer of 24 bytes (the image's offset, its
+length, the magic `RENYIEXE`); at startup the binary reads its own last
+24 bytes and, when the trailer is there, runs the image with its whole
+command line as the program's arguments, before any command of `renyi`
+is read. The default name is the program's stem (`.exe` on Windows);
+the file is made executable on Unix and signed ad hoc on macOS when
+`codesign` is at hand, the command being the message otherwise.** The
+reasons: no linker and no C toolchain, by H1's one binary, so that
+`build --exe` works wherever `build` does and ships nothing new; the
+trailer at the end rather than a section inside the binary, because
+bytes appended to an ELF, a Mach-O or a PE leave it an executable the
+loader accepts unchanged, while a section means a format-aware rewrite
+per platform; the check at startup, one open and one read of 24 bytes
+of the binary's own file, is what every command of `renyi` pays for it.
+What the executable is not: smaller than the toolchain (the whole binary
+comes first, its commands unreachable rather than removed: the
+compiler's executable is 35 MB, the binary and its image), compressed
+(a decompression at every start, for a file the page cache serves), a
+wrapper for a `.ryi` already built (`build --exe` builds from the
+sources or the bytecode, as `build` does, so that one command does the
+whole job; a stub binary without the toolchain would be a second
+artifact to build and ship), or portable beyond the image's own rule
+(the same `renyi`, code format and CPU features; a mismatch is refused
+at startup with the same message and the same fix). Measured on the
+quiet machine, the best of five runs, as the closing wall-clock picture
+of the round the image ends: the compiler's self-check 1841 ms on the
+JIT run, 1950 on the interpreter, 1691 as an image at `none` and 1511
+at `speed` (-18% against the JIT run, the compile time, the warm-up and
+the cold code gone); `bench/records.ry` 62 ms on the JIT run, 54 as an
+image at either level; `bench/primes.ry` 42 and 35; `hello` 10 and 11
+(the load of 235 KB of code for thirteen code objects costs a short
+program a millisecond: an image is for a program that runs long enough
+to compile). The executable runs as its image does. The cache
+simulation also settled the question AS3 left open about the level:
+Cranelift's `speed_and_size` generates the same code as `speed` within
+nine bytes (17,455,606 against 17,455,597) with the same first-level
+instruction-cache misses (158.0 million on the self-check), so the size
+of the generated code is a question for the sequences `codegen.rs`
+emits, not for Cranelift's level. (user)
