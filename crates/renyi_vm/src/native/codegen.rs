@@ -17,8 +17,8 @@ use std::time::{Duration, Instant};
 
 use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
 use cranelift_codegen::ir::{
-    types, AbiParam, Block, FuncRef, InstBuilder, Signature, StackSlot, StackSlotData,
-    StackSlotKind, Type, UserFuncName, Value as IrValue,
+    types, AbiParam, Block, FuncRef, InstBuilder, MemFlagsData, Signature, StackSlot,
+    StackSlotData, StackSlotKind, Type, UserFuncName, Value as IrValue,
 };
 use cranelift_codegen::Context;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
@@ -26,17 +26,18 @@ use cranelift_jit::JITModule;
 use cranelift_module::{FuncId, Linkage, Module};
 use renyi_syntax::ast::BinaryOp;
 
-use crate::bytecode::{Code, Op};
+use crate::bytecode::{Code, CodeKind, Op};
 use crate::compile::Program;
 use crate::integer::Int;
 use crate::native::infer::{
-    abs_of_binary, abs_of_constant, abs_of_field, abs_of_result, analyse, boxed_depth, Abs,
-    Analysis, SlotKind,
+    abs_of_binary, abs_of_constant, abs_of_field, abs_of_params, abs_of_result, abs_of_slot,
+    analyse, boxed_depth, Abs, Analysis, SlotKind,
 };
 use crate::native::runtime::{
-    binary_code, fold_code, CONTINUE, DEOPT, FAILURE, INTERRUPT, LEFT, RETURNED, STAY,
+    binary_code, fold_code, kind_code, CONTINUE, DEOPT, D_BOXED, D_DEOPT, D_FAILURE, D_INTERRUPT,
+    D_RETURNED, D_STAY, FAILURE, LEFT, RETURNED,
 };
-use crate::native::DeoptPoint;
+use crate::native::{DeoptPoint, DEPTH_LIMIT};
 use crate::value::Value;
 
 /// The signature of every helper: its parameters and its result, one
@@ -99,6 +100,13 @@ pub const SIGNATURES: &[(&str, &str, char)] = &[
     ("rt_return_bool", "pb", 'v'),
     ("rt_return_float", "pf", 'v'),
     ("rt_return_nothing", "p", 'v'),
+    ("rt_direct_entry", "pz", 'p'),
+    ("rt_direct_frame", "pzq", 'z'),
+    ("rt_direct_after", "pw", 'i'),
+    ("rt_leave_typed", "p", 'v'),
+    ("rt_leave_unbox", "pup", 'i'),
+    ("rt_leave_boxed", "p", 'i'),
+    ("rt_left_status", "p", 'i'),
     ("rt_fail", "pw", 'i'),
     ("rt_crash", "pw", 'i'),
     ("rt_crash_text", "pww", 'i'),
@@ -136,8 +144,34 @@ pub fn signature(module: &JITModule, params: &str, result: char) -> Signature {
         'v' => {}
         'i' => sig.returns.push(AbiParam::new(types::I32)),
         'b' => sig.returns.push(AbiParam::new(types::I8)),
+        'p' | 'z' => sig.returns.push(AbiParam::new(pointer)),
         other => panic!("no result letter {other}"),
     }
+    sig
+}
+
+/// The signature of a code object's body (`renyi_direct_*`, decision AR3):
+/// the VM, the frame's base, the pc to enter at, whether a direct call
+/// entered (a typed result then goes back in a register; a trampoline's
+/// caller wants it on the stack), then the typed parameters in slot order;
+/// the status (`runtime::D_*`) and the bits of a typed result come back.
+pub fn direct_signature(module: &JITModule, kinds: &[Abs]) -> Signature {
+    let pointer = module.target_config().pointer_type();
+    let mut sig = module.make_signature();
+    sig.params.push(AbiParam::new(pointer));
+    sig.params.push(AbiParam::new(pointer));
+    sig.params.push(AbiParam::new(types::I32));
+    sig.params.push(AbiParam::new(types::I8));
+    for kind in kinds {
+        match kind {
+            Abs::Int => sig.params.push(AbiParam::new(types::I64)),
+            Abs::Bool => sig.params.push(AbiParam::new(types::I8)),
+            Abs::Float => sig.params.push(AbiParam::new(types::F64)),
+            _ => {}
+        }
+    }
+    sig.returns.push(AbiParam::new(types::I32));
+    sig.returns.push(AbiParam::new(types::I64));
     sig
 }
 
@@ -177,7 +211,9 @@ impl Stats {
 
 /// What compiling a code object gives: the function, its deopt points,
 /// the loop headers it can be entered at, the statistics.
-pub type Compiled = (FuncId, Vec<DeoptPoint>, Vec<u32>, Stats);
+/// The trampoline, the body, the deopt points, the loop headers that have
+/// an entry, and the counts.
+pub type Compiled = (FuncId, FuncId, Vec<DeoptPoint>, Vec<u32>, Stats);
 
 /// A shared failure block: the innermost handler, the operand stack
 /// below its depth, the block.
@@ -226,6 +262,19 @@ struct Gen<'a, 'b> {
     base: IrValue,
     /// The pc to enter at: `0`, or one of `headers`.
     pc_param: IrValue,
+    /// Whether a direct call entered the frame (an `i8`): a typed result
+    /// then leaves in a register, else on the stack.
+    direct: IrValue,
+    /// The typed parameters, each with its slot: in the registers the
+    /// signature put them in.
+    typed_params: Vec<(usize, IrValue)>,
+    /// The address of the JIT's count of generated frames on the machine
+    /// stack, which a direct call moves in place (decision AR3).
+    depth_address: usize,
+    /// The address of the JIT's table of compiled bodies by code object.
+    direct_table: usize,
+    /// The kind the declared result is passed back as.
+    result_kind: Abs,
     /// The loop headers the interpreter may hand a frame over at: the
     /// targets of jumps backwards whose operand stack holds nothing in
     /// registers.
@@ -245,8 +294,9 @@ struct Gen<'a, 'b> {
     terminated: bool,
 }
 
-/// Compile one code object into the module; the function is defined but
-/// not finalized.
+/// Compile one code object into the module: its body and its trampoline,
+/// defined but not finalized.
+#[allow(clippy::too_many_arguments)]
 pub fn compile(
     program: &Program,
     code_id: usize,
@@ -254,6 +304,8 @@ pub fn compile(
     helper_ids: &HashMap<&'static str, FuncId>,
     ctx: &mut Context,
     fctx: &mut FunctionBuilderContext,
+    depth_address: usize,
+    direct_table: usize,
 ) -> Result<Compiled, Skipped> {
     let code = &program.codes[code_id];
     let mut stats = Stats::default();
@@ -273,8 +325,15 @@ pub fn compile(
             }
         }
     }
-    let sig = entry_signature(module);
-    let name = format!("renyi_code_{code_id}");
+    let kinds: Vec<Abs> = (0..code.params as usize)
+        .map(|slot| abs_of_slot(analysis.slots[slot]))
+        .collect();
+    let result_kind = match (code.kind, code.function) {
+        (CodeKind::Function, Some(function)) => abs_of_result(program, function),
+        _ => Abs::Boxed,
+    };
+    let sig = direct_signature(module, &kinds);
+    let name = format!("renyi_direct_{code_id}");
     let id = module
         .declare_function(&name, Linkage::Local, &sig)
         .map_err(|error| Skipped::Codegen(error.to_string()))?;
@@ -292,6 +351,14 @@ pub fn compile(
         let vm = builder.block_params(entry)[0];
         let base = builder.block_params(entry)[1];
         let pc_param = builder.block_params(entry)[2];
+        let direct = builder.block_params(entry)[3];
+        let typed_params: Vec<(usize, IrValue)> = kinds
+            .iter()
+            .enumerate()
+            .filter(|(_, kind)| !kind.is_boxed())
+            .zip(builder.block_params(entry)[4..].iter())
+            .map(|((slot, _), value)| (slot, *value))
+            .collect();
         let exit = builder.create_block();
         builder.append_block_param(exit, types::I32);
         // one word for a helper's answer, three for a range iterator's
@@ -323,6 +390,11 @@ pub fn compile(
             vm,
             base,
             pc_param,
+            direct,
+            typed_params,
+            depth_address,
+            direct_table,
+            result_kind,
             headers: headers.clone(),
             positions: Vec::new(),
             slots: vec![SlotVars::None; code.locals as usize],
@@ -351,9 +423,124 @@ pub fn compile(
     module
         .define_function(id, ctx)
         .map_err(|error| Skipped::Codegen(format!("{error:?}")))?;
+    let trampoline = trampoline(module, ctx, fctx, helper_ids, code_id, id, &kinds)?;
     stats.cranelift = started.elapsed();
     let headers = headers.into_iter().map(|header| header as u32).collect();
-    Ok((id, deopts, headers, stats))
+    Ok((trampoline, id, deopts, headers, stats))
+}
+
+/// The entry of a code object (`renyi_code_*`, the `Entry` signature): a
+/// trampoline into the body (decision AR3). At the start it takes the
+/// typed parameters from the frame's slots under a check, and hands the
+/// frame back (`DEOPT`) when one does not fit; at a loop header the body
+/// takes the slots itself and the registers carry zeros. The body leaves
+/// its result on the stack for a trampoline's caller (the flag it passes
+/// says so), and the body's status becomes the entry's.
+#[allow(clippy::too_many_arguments)]
+fn trampoline(
+    module: &mut JITModule,
+    ctx: &mut Context,
+    fctx: &mut FunctionBuilderContext,
+    helper_ids: &HashMap<&'static str, FuncId>,
+    code_id: usize,
+    body: FuncId,
+    kinds: &[Abs],
+) -> Result<FuncId, Skipped> {
+    let sig = entry_signature(module);
+    let name = format!("renyi_code_{code_id}");
+    let id = module
+        .declare_function(&name, Linkage::Local, &sig)
+        .map_err(|error| Skipped::Codegen(error.to_string()))?;
+    module.clear_context(ctx);
+    ctx.func.signature = sig;
+    ctx.func.name = UserFuncName::user(0, id.as_u32());
+    let target = module.target_config();
+    let pointer = target.pointer_type();
+    {
+        let mut b = FunctionBuilder::new(&mut ctx.func, fctx);
+        let body_ref = module.declare_func_in_func(body, b.func);
+        let mut helper = |name: &str, b: &mut FunctionBuilder| -> FuncRef {
+            module.declare_func_in_func(helper_ids[name], b.func)
+        };
+        let entry = b.create_block();
+        b.append_block_params_for_function_params(entry);
+        b.switch_to_block(entry);
+        let vm = b.block_params(entry)[0];
+        let base = b.block_params(entry)[1];
+        let pc = b.block_params(entry)[2];
+        let out = b.create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, 8, 3));
+        let zero8 = b.ins().iconst(types::I8, 0);
+        let start = b.create_block();
+        let resume = b.create_block();
+        let finish = b.create_block();
+        b.append_block_param(finish, types::I32);
+        b.append_block_param(finish, types::I64);
+        let at_start = b.ins().icmp_imm_s(IntCC::Equal, pc, 0);
+        b.ins().brif(at_start, start, &[], resume, &[]);
+        // the start: the typed parameters from the frame's slots
+        b.switch_to_block(start);
+        let mut args = vec![vm, base, pc, zero8];
+        for (slot, kind) in kinds.iter().enumerate() {
+            let (name, ty) = match kind {
+                Abs::Int => ("rt_param_int", types::I64),
+                Abs::Bool => ("rt_param_bool", types::I8),
+                Abs::Float => ("rt_param_float", types::F64),
+                _ => continue,
+            };
+            let func = helper(name, &mut b);
+            let slot_value = b.ins().iconst(types::I32, slot as i64);
+            let out_address = b.ins().stack_addr(pointer, out, 0);
+            let call = b.ins().call(func, &[vm, base, slot_value, out_address]);
+            let ok = b.inst_results(call)[0];
+            let next = b.create_block();
+            let unfit = b.create_block();
+            b.ins().brif(ok, next, &[], unfit, &[]);
+            b.switch_to_block(unfit);
+            let deopt = b.ins().iconst(types::I32, DEOPT as i64);
+            b.ins().return_(&[deopt]);
+            b.switch_to_block(next);
+            args.push(b.ins().stack_load(pointer, ty, out, 0));
+        }
+        let call = b.ins().call(body_ref, &args);
+        let results = b.inst_results(call).to_vec();
+        b.ins()
+            .jump(finish, &[results[0].into(), results[1].into()]);
+        // a loop header: the body takes the slots itself
+        b.switch_to_block(resume);
+        let mut args = vec![vm, base, pc, zero8];
+        for kind in kinds {
+            match kind {
+                Abs::Int => args.push(b.ins().iconst(types::I64, 0)),
+                Abs::Bool => args.push(b.ins().iconst(types::I8, 0)),
+                Abs::Float => args.push(b.ins().f64const(0.0)),
+                _ => {}
+            }
+        }
+        let call = b.ins().call(body_ref, &args);
+        let results = b.inst_results(call).to_vec();
+        b.ins()
+            .jump(finish, &[results[0].into(), results[1].into()]);
+        // the status: a typed result is pushed; a boxed result or a failure
+        // on the stack is `RETURNED`; the frame handed back is `DEOPT`; an
+        // interrupt and a frame left to the interpreter keep their numbers
+        b.switch_to_block(finish);
+        let status = b.block_params(finish)[0];
+        let boxed = b.ins().icmp_imm_s(IntCC::Equal, status, D_BOXED as i64);
+        let failed = b.ins().icmp_imm_s(IntCC::Equal, status, D_FAILURE as i64);
+        let left = b.ins().bor(boxed, failed);
+        let deopted = b.ins().icmp_imm_s(IntCC::Equal, status, D_DEOPT as i64);
+        let returned = b.ins().iconst(types::I32, RETURNED as i64);
+        let deopt = b.ins().iconst(types::I32, DEOPT as i64);
+        let mapped = b.ins().select(deopted, deopt, status);
+        let mapped = b.ins().select(left, returned, mapped);
+        b.ins().return_(&[mapped]);
+        b.seal_all_blocks();
+        b.finalize(target);
+    }
+    module
+        .define_function(id, ctx)
+        .map_err(|error| Skipped::Codegen(format!("{error:?}")))?;
+    Ok(id)
 }
 
 impl Gen<'_, '_> {
@@ -499,10 +686,53 @@ impl Gen<'_, '_> {
         self.terminated = true;
     }
 
-    fn return_status(&mut self, status: i32) {
+    /// Leave the body with a status of `runtime::D_*` and no payload.
+    fn return_direct(&mut self, status: i32) {
         let value = self.iconst(types::I32, status as i64);
-        self.b.ins().return_(&[value]);
+        let payload = self.iconst(types::I64, 0);
+        self.b.ins().return_(&[value, payload]);
         self.terminated = true;
+    }
+
+    /// Leave the body with a status and the bits of a typed result.
+    fn return_with(&mut self, status: IrValue, payload: IrValue) {
+        self.b.ins().return_(&[status, payload]);
+        self.terminated = true;
+    }
+
+    /// A typed result in a register as the `i64` bits the signature
+    /// carries it as.
+    fn payload_bits(&mut self, kind: Abs, value: IrValue) -> IrValue {
+        match kind {
+            Abs::Bool => self.b.ins().uextend(types::I64, value),
+            Abs::Float => self.b.ins().bitcast(types::I64, MemFlagsData::new(), value),
+            _ => value,
+        }
+    }
+
+    /// The bits of a typed result into the register of the next operand.
+    fn push_payload(&mut self, kind: Abs, payload: IrValue) {
+        let depth = self.state.len();
+        match kind {
+            Abs::Int => {
+                let var = self.int_var(depth);
+                self.b.def_var(var, payload);
+            }
+            Abs::Bool => {
+                let flag = self.b.ins().ireduce(types::I8, payload);
+                let var = self.bool_var(depth);
+                self.b.def_var(var, flag);
+            }
+            _ => {
+                let float = self
+                    .b
+                    .ins()
+                    .bitcast(types::F64, MemFlagsData::new(), payload);
+                let var = self.float_var(depth);
+                self.b.def_var(var, float);
+            }
+        }
+        self.state.push(kind);
     }
 
     /// After a helper that returns a status: continue on `CONTINUE`; else
@@ -789,7 +1019,7 @@ impl Gen<'_, '_> {
         let point = self.u32(index);
         let buffer = self.b.ins().stack_addr(self.pointer, self.deopt_slot, 0);
         self.call("rt_deopt", &[self.vm, self.base, code, point, buffer]);
-        self.return_status(DEOPT);
+        self.return_direct(D_DEOPT);
     }
 
     /// Continue when `ok` (an `i8`), else hand the frame to the
@@ -959,23 +1189,11 @@ impl Gen<'_, '_> {
             resumes.push((header, resume));
             self.switch_to(next);
         }
-        // the typed parameters, unboxed under a check; a check that fails
-        // leaves the frame to the interpreter, which starts at pc 0
-        let out = self.out_address();
-        for slot in 0..self.code.params as usize {
-            let kind = self.analysis.slots[slot];
-            let (helper, ty) = match kind {
-                SlotKind::Int => ("rt_param_int", types::I64),
-                SlotKind::Bool => ("rt_param_bool", types::I8),
-                SlotKind::Float => ("rt_param_float", types::F64),
-                _ => continue,
-            };
-            let slot_value = self.u32(slot as u32);
-            let ok = self
-                .call(helper, &[self.vm, self.base, slot_value, out])
-                .expect("an answer");
-            self.leave_unless(ok, DEOPT);
-            let value = self.out_read(ty);
+        // the typed parameters, in the registers the signature put them in
+        // (the trampoline took them from the frame's slots under a check,
+        // a direct caller had them in registers)
+        let typed = self.typed_params.clone();
+        for (slot, value) in typed {
             let var = self.slot_var(slot);
             self.b.def_var(var, value);
         }
@@ -986,8 +1204,8 @@ impl Gen<'_, '_> {
         }
     }
 
-    /// Continue when `ok` (an `i8`), else return the status to the VM with
-    /// the frame untouched.
+    /// Continue when `ok` (an `i8`), else leave the body with the status
+    /// and the frame untouched.
     fn leave_unless(&mut self, ok: IrValue, status: i32) {
         let cont = self.b.create_block();
         let leave = self.b.create_block();
@@ -996,7 +1214,7 @@ impl Gen<'_, '_> {
         self.b.seal_block(cont);
         self.b.seal_block(leave);
         self.switch_to(leave);
-        self.return_status(status);
+        self.return_direct(status);
         self.switch_to(cont);
     }
 
@@ -1019,7 +1237,7 @@ impl Gen<'_, '_> {
                     let ok = self
                         .call(helper, &[self.vm, self.base, slot_value, out])
                         .expect("an answer");
-                    self.leave_unless(ok, STAY);
+                    self.leave_unless(ok, D_STAY);
                     let value = self.out_read(ty);
                     let var = self.slot_var(slot);
                     self.b.def_var(var, value);
@@ -1028,7 +1246,7 @@ impl Gen<'_, '_> {
                     let ok = self
                         .call("rt_resume_range", &[self.vm, self.base, slot_value, out])
                         .expect("an answer");
-                    self.leave_unless(ok, STAY);
+                    self.leave_unless(ok, D_STAY);
                     let vars = self.slot_vars3(slot);
                     for (index, var) in vars.into_iter().enumerate() {
                         let value = self.b.ins().stack_load(
@@ -1056,18 +1274,23 @@ impl Gen<'_, '_> {
         if let Some(block) = self.blocks.get(&count).copied() {
             self.switch_to(block);
             self.call("rt_return_nothing", &[self.vm]);
-            self.return_status(RETURNED);
+            self.return_direct(D_BOXED);
         }
-        // the exit: `LEFT` is a return, anything else an interrupt
+        // the exit: `LEFT` is a return with the value on the caller's
+        // stack (a failure or not), anything else an interrupt
         let exit = self.exit;
         self.switch_to(exit);
         let status = self.b.block_params(exit)[0];
         let left = self.b.ins().icmp_imm_s(IntCC::Equal, status, LEFT as i64);
-        let returned = self.iconst(types::I32, RETURNED as i64);
-        let interrupted = self.iconst(types::I32, INTERRUPT as i64);
-        let result = self.b.ins().select(left, returned, interrupted);
-        self.b.ins().return_(&[result]);
-        self.terminated = true;
+        let left_block = self.b.create_block();
+        let other = self.b.create_block();
+        self.b.ins().brif(left, left_block, &[], other, &[]);
+        self.switch_to(left_block);
+        let status = self.call("rt_left_status", &[self.vm]).expect("a status");
+        let zero = self.iconst(types::I64, 0);
+        self.return_with(status, zero);
+        self.switch_to(other);
+        self.return_direct(D_INTERRUPT);
     }
 
     fn body(&mut self) {
@@ -1395,20 +1618,36 @@ impl Gen<'_, '_> {
                 self.check_status(status, pc, true);
             }
             Op::Call { function, args } => {
-                let function_value = self.usize(*function);
-                let args_value = self.u32(*args as u32);
-                let status = self
-                    .helper_on_stack(
-                        "rt_call",
-                        *args as usize,
-                        &[function_value, args_value, pc_value],
-                    )
-                    .expect("a status");
-                self.push_boxed();
-                self.check_status(status, pc, true);
-                let kind = abs_of_result(self.program, *function);
-                if !kind.is_boxed() {
-                    self.unbox_top(kind, pc + 1);
+                let count = *args as usize;
+                let result_kind = abs_of_result(self.program, *function);
+                let callee = self
+                    .program
+                    .function_codes
+                    .get(*function)
+                    .copied()
+                    .flatten();
+                let kinds = callee.map(|callee| {
+                    let params = self.program.codes[callee].params as usize;
+                    abs_of_params(self.program, *function, params)
+                });
+                let first = self.state.len() - count;
+                // a direct call (decision AR3) when the callee has a code
+                // object and every typed parameter has a typed operand here
+                let direct = match &kinds {
+                    Some(kinds) => {
+                        kinds.len() == count
+                            && count <= 64
+                            && kinds.iter().enumerate().all(|(index, kind)| {
+                                kind.is_boxed() || self.state[first + index] == *kind
+                            })
+                    }
+                    None => false,
+                };
+                match (direct, callee, kinds) {
+                    (true, Some(callee), Some(kinds)) => {
+                        self.call_direct(callee, *function, &kinds, result_kind, pc);
+                    }
+                    _ => self.call_through_helper(*function, count, result_kind, pc),
                 }
             }
             Op::CallAbility {
@@ -1501,30 +1740,87 @@ impl Gen<'_, '_> {
             Op::PushHandler(_) | Op::PopHandler => {}
             Op::Return => {
                 let depth = self.state.len() - 1;
-                match self.state[depth] {
-                    Abs::Int => {
+                let top = self.state[depth];
+                let result = self.result_kind;
+                let direct = self.direct;
+                match (top, result) {
+                    // a typed result of the declared kind goes back in a
+                    // register to a direct caller, the frame left without
+                    // a push; a trampoline's caller gets it on the stack
+                    (Abs::Int, Abs::Int) | (Abs::Bool, Abs::Bool) | (Abs::Float, Abs::Float) => {
+                        let value = match top {
+                            Abs::Int => self.pop_int(),
+                            Abs::Bool => self.pop_bool(),
+                            _ => self.pop_float(),
+                        };
+                        let in_register = self.b.create_block();
+                        let on_stack = self.b.create_block();
+                        self.b.ins().brif(direct, in_register, &[], on_stack, &[]);
+                        self.switch_to(in_register);
+                        self.call("rt_leave_typed", &[self.vm]);
+                        let bits = self.payload_bits(top, value);
+                        let status = self.iconst(types::I32, D_RETURNED as i64);
+                        self.return_with(status, bits);
+                        self.switch_to(on_stack);
+                        let helper = match top {
+                            Abs::Int => "rt_return_int",
+                            Abs::Bool => "rt_return_bool",
+                            _ => "rt_return_float",
+                        };
+                        self.call(helper, &[self.vm, value]);
+                        self.return_direct(D_BOXED);
+                    }
+                    // a typed value where the declared result is boxed
+                    // (`maybe Integer`): boxed onto the caller's stack
+                    (Abs::Int, _) => {
                         let value = self.pop_int();
                         self.call("rt_return_int", &[self.vm, value]);
+                        self.return_direct(D_BOXED);
                     }
-                    Abs::Bool => {
+                    (Abs::Bool, _) => {
                         let value = self.pop_bool();
                         self.call("rt_return_bool", &[self.vm, value]);
+                        self.return_direct(D_BOXED);
                     }
-                    Abs::Float => {
+                    (Abs::Float, _) => {
                         let value = self.pop_float();
                         self.call("rt_return_float", &[self.vm, value]);
+                        self.return_direct(D_BOXED);
+                    }
+                    // a boxed value where the declared result is typed:
+                    // unboxed on the way out when it fits, for a direct
+                    // caller; left on the stack for a trampoline's
+                    (_, Abs::Int | Abs::Bool | Abs::Float) => {
+                        self.box_top(1);
+                        self.state.pop();
+                        let in_register = self.b.create_block();
+                        let on_stack = self.b.create_block();
+                        self.b.ins().brif(direct, in_register, &[], on_stack, &[]);
+                        self.switch_to(in_register);
+                        let out = self.out_address();
+                        let kind = self.u8(kind_code(result));
+                        let status = self
+                            .call("rt_leave_unbox", &[self.vm, kind, out])
+                            .expect("a status");
+                        let bits = self.out_read(types::I64);
+                        self.return_with(status, bits);
+                        self.switch_to(on_stack);
+                        let status = self.call("rt_leave_boxed", &[self.vm]).expect("a status");
+                        let zero = self.iconst(types::I64, 0);
+                        self.return_with(status, zero);
                     }
                     _ => {
                         self.box_top(1);
                         self.state.pop();
-                        self.call("rt_return", &[self.vm]);
+                        let status = self.call("rt_leave_boxed", &[self.vm]).expect("a status");
+                        let zero = self.iconst(types::I64, 0);
+                        self.return_with(status, zero);
                     }
                 }
-                self.return_status(RETURNED);
             }
             Op::ReturnNothing => {
                 self.call("rt_return_nothing", &[self.vm]);
-                self.return_status(RETURNED);
+                self.return_direct(D_BOXED);
             }
             Op::Fail => {
                 let status = self
@@ -1733,6 +2029,176 @@ impl Gen<'_, '_> {
     }
 
     // ------------------------------------------------------------ operators
+
+    /// A call through `rt_call`: the arguments boxed on the stack, the
+    /// result boxed, and unboxed when the declared result is typed.
+    fn call_through_helper(&mut self, function: usize, count: usize, result_kind: Abs, pc: usize) {
+        let pc_value = self.u32(pc as u32);
+        let function_value = self.usize(function);
+        let args_value = self.u32(count as u32);
+        let status = self
+            .helper_on_stack("rt_call", count, &[function_value, args_value, pc_value])
+            .expect("a status");
+        self.push_boxed();
+        self.check_status(status, pc, true);
+        if !result_kind.is_boxed() {
+            self.unbox_top(result_kind, pc + 1);
+        }
+    }
+
+    /// A direct call (decision AR3): the callee's body called with its
+    /// typed arguments in registers and the boxed ones on the stack. The
+    /// body's address comes from the JIT's table, or from `rt_direct_entry`
+    /// when the table has none yet (the callee may be hot enough to compile
+    /// now); without one, or with no room on the machine stack, the call
+    /// goes through `rt_call`. A typed result comes back in a register and
+    /// a boxed one on the stack; anything else goes through
+    /// `rt_direct_after`.
+    fn call_direct(
+        &mut self,
+        callee: usize,
+        function: usize,
+        kinds: &[Abs],
+        result_kind: Abs,
+        pc: usize,
+    ) {
+        let count = kinds.len();
+        let first = self.state.len() - count;
+        let saved = self.state.clone();
+        let pointer = self.pointer;
+        let flags = MemFlagsData::trusted();
+        let have = self.b.create_block();
+        self.b.append_block_param(have, pointer);
+        let ask = self.b.create_block();
+        let slow = self.b.create_block();
+        let join = self.b.create_block();
+        // the body's address from the table, else from the helper
+        let table = self.iconst(pointer, self.direct_table as i64);
+        let known = self
+            .b
+            .ins()
+            .load(pointer, flags, table, (callee * 8) as i32);
+        let found = self.b.ins().icmp_imm_s(IntCC::NotEqual, known, 0);
+        self.b.ins().brif(found, have, &[known.into()], ask, &[]);
+        self.switch_to(ask);
+        let callee_value = self.usize(callee);
+        let asked = self
+            .call("rt_direct_entry", &[self.vm, callee_value])
+            .expect("a pointer");
+        let found = self.b.ins().icmp_imm_s(IntCC::NotEqual, asked, 0);
+        self.b.ins().brif(found, have, &[asked.into()], slow, &[]);
+        // the machine stack must have room; the frame counts on it
+        self.switch_to(have);
+        let entry = self.b.block_params(have)[0];
+        let depth_address = self.iconst(pointer, self.depth_address as i64);
+        let depth = self.b.ins().load(pointer, flags, depth_address, 0);
+        let room = self
+            .b
+            .ins()
+            .icmp_imm_u(IntCC::UnsignedLessThan, depth, DEPTH_LIMIT as i64);
+        let go = self.b.create_block();
+        self.b.ins().brif(room, go, &[], slow, &[]);
+        self.switch_to(go);
+        let deeper = self.b.ins().iadd_imm_s(depth, 1);
+        self.b.ins().store(flags, deeper, depth_address, 0);
+        // the boxed parameters' operands onto the stack, the frame pushed
+        let mut mask: u64 = 0;
+        for (index, kind) in kinds.iter().enumerate() {
+            if kind.is_boxed() {
+                mask |= 1 << index;
+                self.box_position(first + index);
+            }
+        }
+        let mask_value = self.iconst(types::I64, mask as i64);
+        let callee_value = self.usize(callee);
+        let base = self
+            .call("rt_direct_frame", &[self.vm, callee_value, mask_value])
+            .expect("a base");
+        let pc0 = self.u32(0);
+        let one = self.u8(1);
+        let mut arguments = vec![self.vm, base, pc0, one];
+        for (index, kind) in kinds.iter().enumerate() {
+            let depth = first + index;
+            match kind {
+                Abs::Int => {
+                    let var = self.int_var(depth);
+                    arguments.push(self.b.use_var(var));
+                }
+                Abs::Bool => {
+                    let var = self.bool_var(depth);
+                    arguments.push(self.b.use_var(var));
+                }
+                Abs::Float => {
+                    let var = self.float_var(depth);
+                    arguments.push(self.b.use_var(var));
+                }
+                _ => {}
+            }
+        }
+        let sig = direct_signature(self.module, kinds);
+        let sig_ref = self.b.import_signature(sig);
+        let call = self.b.ins().call_indirect(sig_ref, entry, &arguments);
+        let results = self.b.inst_results(call).to_vec();
+        let (status, payload) = (results[0], results[1]);
+        self.state.truncate(first);
+        // the frame is off the machine stack
+        let depth = self.b.ins().load(pointer, flags, depth_address, 0);
+        let shallower = self.b.ins().iadd_imm_s(depth, -1);
+        self.b.ins().store(flags, shallower, depth_address, 0);
+        let rest = self.b.create_block();
+        if result_kind.is_boxed() {
+            self.b.ins().jump(rest, &[]);
+            self.terminated = true;
+        } else {
+            let returned = self
+                .b
+                .ins()
+                .icmp_imm_s(IntCC::Equal, status, D_RETURNED as i64);
+            let fast = self.b.create_block();
+            self.b.ins().brif(returned, fast, &[], rest, &[]);
+            self.switch_to(fast);
+            self.push_payload(result_kind, payload);
+            self.b.ins().jump(join, &[]);
+            self.terminated = true;
+        }
+        // a boxed result is on the stack; anything else is the helper's
+        self.switch_to(rest);
+        self.state.truncate(first);
+        let boxed = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::Equal, status, D_BOXED as i64);
+        let ok = self.b.create_block();
+        let after = self.b.create_block();
+        self.b.ins().brif(boxed, ok, &[], after, &[]);
+        self.switch_to(ok);
+        self.push_boxed();
+        if !result_kind.is_boxed() {
+            self.unbox_top(result_kind, pc + 1);
+        }
+        self.b.ins().jump(join, &[]);
+        self.terminated = true;
+        self.switch_to(after);
+        self.state.truncate(first);
+        let settled = self
+            .call("rt_direct_after", &[self.vm, status])
+            .expect("a status");
+        self.check_status(settled, pc, true);
+        self.push_boxed();
+        if !result_kind.is_boxed() {
+            self.unbox_top(result_kind, pc + 1);
+        }
+        self.b.ins().jump(join, &[]);
+        self.terminated = true;
+        // the path through the interpreter's call
+        self.switch_to(slow);
+        self.state = saved;
+        self.call_through_helper(function, count, result_kind, pc);
+        self.b.ins().jump(join, &[]);
+        self.terminated = true;
+        // every path leaves one operand of the result's kind
+        self.switch_to(join);
+    }
 
     fn binary(&mut self, op: BinaryOp, pc: usize) {
         let n = self.state.len();

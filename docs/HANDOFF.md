@@ -5,8 +5,10 @@ Last updated: 2026-10-08, session 9, the first in the cloud environment
 JSON that session 8 had paused: decision AQ, the first of the
 interspersed performance items the owner set after M5 (the section "The
 profile-guided round on strings and JSON as it exists" below), and began
-the baseline JIT, decision AR1, with its first stage, the fused op
-`LoadField` in the bytecode (the section "The baseline JIT" below). Session 8
+the baseline JIT, decision AR1, with its first two stages: the fused op
+`LoadField` in the bytecode (AR2) and direct calls between generated
+functions with register arguments (AR3; the section "The baseline JIT"
+below). Session 8
 (stage 2 of the gap audit of
 `docs/GAPS.md`: the formal grammar `docs/grammar.ebnf` with decision V12;
 the language reference `docs/reference.md`, normative, held to the
@@ -92,7 +94,8 @@ bounded round (AG6) and the strings and the JSON path had the
 profile-guided round of decision AQ (the section "The profile-guided
 round on strings and JSON as it exists" below) and the baseline JIT of
 decision AR1 is under way (the section "The baseline JIT" below; its
-first stage, the fused op `LoadField`, is in), `renyi build` does not.
+first two stages, the fused op `LoadField` and the direct calls with
+register arguments, are in), `renyi build` does not.
 Release 0.1.0 is out
 (2026-10-07, the section "Release 0.1 engineering" below): the
 repository is public at `github.com/renyi-lang/renyi`, the release
@@ -1808,30 +1811,94 @@ arguments; the layout of `Value` pinned and the value operations inline.
   dispatch and a push or a pop, about a percent of the self-check
   apiece: under the 2% a step must bring, so the fusions stop here
   (decision AR2).
-- **Stage 2, next: direct calls.** The plan: a second entry per
-  compiled code object, `typed(vm, boxed arguments on the stack, typed
-  arguments in registers) -> (status, result)`, which pushes the frame
-  itself (the boxed arguments moved to their slots, the typed ones
-  written to the slots only by `rt_deopt`) and returns a typed result in
-  a register, popping its frame without a push; the caller reaches it
-  through a table of entry pointers the JIT keeps per code object
-  (allocated once, never moved: the generated code loads the pointer
-  and calls it indirectly, or falls back to `rt_call` when it is null,
-  which compiles the callee when it is hot); the site is typed only when
-  the caller's operands are already in registers for every typed
-  parameter, else `rt_call` as today.
-- **Stage 3, after: the pinned layout.** `#[repr(C, u8)]` on `Value`
-  and on `Int` (24 and 16 bytes stay, X3), the VM's stack as a struct
-  with a fixed layout (`ptr`, `len`, `cap`) so that the generated code
-  pushes, pops, loads and stores without a call (a push past the
+- **Stage 2, done: direct calls (decision AR3).** Every code object
+  compiles to two Cranelift functions (`codegen.rs`): the body
+  (`renyi_direct_*`; `direct_signature`: the VM, the base, the pc, a
+  flag for a direct entry, then the typed parameters in slot order;
+  back come a status of `runtime::D_*` and the bits of a typed result)
+  and the trampoline (`renyi_code_*`, the `Entry` signature the VM
+  calls; `trampoline()`: at the start the typed parameters from the
+  slots through `rt_param_*` with `DEOPT` when one does not fit, at a
+  loop header zeros for the body to overwrite, the statuses mapped; the
+  body's `Return` leaves a typed result in a register only when the
+  flag says a direct caller waits, else on the stack through
+  `rt_return_*` as before, so that a call from the interpreter costs
+  what it cost). A call site (`call_direct`)
+  loads the callee's body from the JIT's table (`Jit::direct_table`,
+  by code object, filled at compilation; its address is a constant of
+  the generated code, the box the JIT lives in keeps it fixed), asks
+  `rt_direct_entry` when the table has none yet (which compiles a hot
+  callee), reads the count of generated frames (`Jit::depth`, by its
+  address) and goes through `call_through_helper`, the `rt_call` path
+  as before, when there is no body or the count is at `DEPTH_LIMIT`;
+  else it counts the frame on, boxes the operands of the boxed
+  parameters in place, has `rt_direct_frame` (`Vm::push_frame_direct`)
+  push the frame with the boxed arguments moved into their slots by a
+  mask, calls the body with the typed operands from registers, counts
+  the frame off, takes a typed result from the payload or a boxed one
+  from the stack, and sends a failure, a handed-back frame (run by the
+  interpreter to its end) or an interrupt (its frame abandoned)
+  through `rt_direct_after`. The body's returns: `rt_leave_typed` (no
+  push), `rt_leave_unbox` (a boxed value where the declared result is
+  typed: the bits when it fits, else boxed), `rt_leave_boxed`,
+  `rt_left_status` after a helper left the frame. A site is direct
+  only when every typed parameter has a typed operand in the caller;
+  `infer.rs` holds a parameter's slot to its declared kind
+  (`abs_of_params`; a function that stores another kind there stays
+  with the interpreter, none in the compiler), so the caller derives
+  the callee's signature from the declared types alone. `run_generated`
+  counts the trampoline's frame on and off as before, on `Jit::depth`
+  now (`Vm::native_depth` is gone). On the self-check with every code
+  object compiled: 555 compiled, none rejected, 5.23 million calls from
+  generated code, none to the interpreter, no deopt; the default
+  tiering compiles 112 and sends 126 thousand of 4.1 million calls to
+  cold callees. A first form of the stage asked `rt_direct_entry` on
+  every call and carried the depth in the VM, moved by the helpers: it
+  measured 12.51 to 12.53 billion instructions on the self-check (no
+  gain; `Jit::ready` and the helper cost what the old path had cost),
+  which is why the table and the count moved into the generated code.
+  Measured against the binary of stage 1
+  (`cachegrind`, the release build of each): the self-check 12.51 to
+  12.32 billion instructions on machine code (-1.5%) and 12.63 to 12.91
+  billion on the interpreter (+2.2%: the code layout, the loop is
+  untouched); `bench/records.ry` 516 to 518 million; per turn on machine
+  code: the typed call with its argument in a register 542 to 305
+  (-44%), the same call with a boxed argument through `rt_call` 668 to
+  719 (+8%, the trampoline), the record call 1394 to 1236 (-11%), the
+  field and the record built unchanged. Kept by the rule of AG6; under
+  the 2% that ends the round by AR1, which decision AR3 flags for the
+  owner, the session going on to stage 3 as the round's purpose.
+- **Stage 3, next: the pinned layout.** `#[repr(C, u8)]` on `Value`
+  and on `Int` (24 and 16 bytes stay, X3; the discriminants become the
+  declaration order, the payload lies at offset 8), the VM's stack as a
+  struct with a fixed layout (`ptr`, `len`, `cap`) so that the generated
+  code pushes, pops, loads and stores without a call (a push past the
   capacity calls a helper to grow), clones by copying the three words
   and incrementing the strong count of an `Rc` variant (at offset 0 of
   the allocation; an `Rc<str>` and an `Rc<[u8]>` are fat pointers whose
   address is the allocation too), drops by decrementing and calling a
   helper at zero, and reads a field through the record's pointer and
   its field vector (the record's layout pinned too); every helper keeps
-  the slow path. The profile of what remains after stage 2 decides the
-  order within the stage.
+  the slow path. The order within the stage, by the profile of the
+  self-check on machine code after stage 2 (`cg_annotate`, the
+  session's scratch directory): the frame protocol first
+  (`rt_direct_frame` 3.4%, `Vec::resize` of the locals 2.1%,
+  `leave_frame` 1.9%, `frame_grant` 1.2%, `status` 3.5% with the
+  primitive calls: a frame pushed and popped by the generated code
+  needs the frames as a pinned stack too, the grant of a code object
+  that does not narrow taken from the caller's frame, and the locals
+  written as `Nothing` by the code), then the loads and stores
+  (`rt_load` 2.9%, `rt_store` 1.6%, `rt_push_const` 1.0%, `rt_take_bool`
+  1.1%, with `Value::clone` 4.1% and the drop glue 6.9% behind them),
+  then the field read in the slot (`op_load_field` 2.3% +
+  `rt_load_field` 0.9%); the primitive boundary (`call_from_stack`
+  2.6%, `call_primitive` 2.2%, the argument move 2.1%, `status`) and
+  the interpreter's own share (`run_frames` 7.8%: `main` and the cold
+  code) stay outside the stage. The micro-benchmark of the typed call
+  wants a literal loop bound (`micro_call_1000000.ry`,
+  `micro_call_200000.ry` in the scratch directory): a bound read from
+  the arguments is a `maybe Integer`, boxed, and the loop variable with
+  it, so that call never took the direct path.
 - **Measuring here.** `valgrind --tool=cachegrind --cache-sim=no
   <binary> run [--interpret] compiler/checker.ry compiler/bodies.ry`
   for the self-check (about two minutes a run), the same on
@@ -2513,6 +2580,18 @@ lint):
    profiler's table of operation pairs (`profile.rs`,
    `tests/semantics.rs`, `05-agent-tooling.md`); the decisions (section
    AR), `docs/GAPS.md`, `CLAUDE.md`, this file.
+3. the baseline JIT, stage 2 (decision AR3; the section "The baseline
+   JIT"): `codegen.rs` (`direct_signature`, the body as
+   `renyi_direct_*`, `trampoline`, `call_direct`, `call_through_helper`,
+   `return_direct`, `return_with`, `payload_bits`, `push_payload`, the
+   `Return` arms, the exit), `runtime.rs` (the `D_*` statuses,
+   `kind_code`, `rt_direct_entry`, `rt_direct_frame`, `rt_direct_after`,
+   `rt_leave_typed`, `rt_leave_unbox`, `rt_leave_boxed`,
+   `rt_left_status`), `mod.rs` (`State::Ready.direct`, `Jit::direct`,
+   `Jit::depth`, `Jit::direct_table`), `vm.rs` (`direct_entry_of`,
+   `push_frame_direct`, `run_generated` on the JIT's count), `infer.rs`
+   (`abs_of_params`, the rule on parameter slots); the decisions
+   (AR3), `docs/GAPS.md`, this file.
 
 ## Done in session 8 (stage 2: the grammar, the reference, the front end in Renyi)
 
@@ -3291,9 +3370,9 @@ on a fresh clone).
    and JSON as it exists" below, with the numbers against the targets
    and what it left); then the baseline JIT (AG5, item iii), decided as
    AR1 and under way in three stages (the section "The baseline JIT"
-   below: stage 1, `LoadField`, is in; stage 2, direct calls with
-   register arguments, is next; stage 3, the pinned layout of `Value`
-   with the value operations inline, after it); and a showcase, a bookmark and reading-list web app
+   below: stage 1, `LoadField`, and stage 2, direct calls with
+   register arguments, are in; stage 3, the pinned layout of `Value`
+   with the value operations inline, is next); and a showcase, a bookmark and reading-list web app
    in a repository of its own under `renyi-lang/` (HTTP for the titles,
    SQLite, an HTML page and a JSON API, tags and search, CSV export,
    one use of the Python bridge, `replays` tests).

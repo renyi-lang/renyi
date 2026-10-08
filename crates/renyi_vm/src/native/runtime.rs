@@ -41,6 +41,31 @@ pub const RETURNED: i32 = 0;
 pub const DEOPT: i32 = 1;
 pub const STAY: i32 = 3;
 
+/// What the body of a code object (`renyi_direct_*`, decision AR3) returns
+/// to its caller, a generated caller or its own trampoline, beside the
+/// bits of a typed result: the frame returned a typed result (the bits),
+/// the frame left with a failure on the caller's stack, an interrupt is
+/// pending, the frame is as the interpreter left it (an entry at a loop
+/// header), the frame is the interpreter's now, or the frame returned a
+/// boxed result, on the caller's stack.
+pub const D_RETURNED: i32 = 0;
+pub const D_FAILURE: i32 = 1;
+pub const D_INTERRUPT: i32 = 2;
+pub const D_STAY: i32 = 3;
+pub const D_DEOPT: i32 = 4;
+pub const D_BOXED: i32 = 5;
+
+/// The number a kind travels as between the generated code and the
+/// helpers that unbox a result by it.
+pub fn kind_code(kind: Abs) -> u8 {
+    match kind {
+        Abs::Int => 0,
+        Abs::Bool => 1,
+        Abs::Float => 2,
+        _ => 3,
+    }
+}
+
 pub type VmPtr = *mut Vm<'static>;
 
 /// The crash messages the generated code raises by number.
@@ -687,6 +712,45 @@ pub(crate) unsafe extern "C" fn rt_call_value(vm: VmPtr, args: u32, pc: u32) -> 
     status(vm, result)
 }
 
+/// The body of a code object for a direct call (decision AR3): its address
+/// when the callee is compiled, or hot enough to be compiled now, and the
+/// machine stack has room; else null, and the caller goes through
+/// `rt_call`.
+pub(crate) unsafe extern "C" fn rt_direct_entry(vm: VmPtr, code: usize) -> *const u8 {
+    vm!(vm).direct_entry_of(code)
+}
+
+/// The frame of a direct call (`Vm::push_frame_direct`): the boxed
+/// arguments lie on the stack, `mask` says which parameters they are, and
+/// the frame's base comes back.
+pub(crate) unsafe extern "C" fn rt_direct_frame(vm: VmPtr, code: usize, mask: u64) -> usize {
+    vm!(vm).push_frame_direct(code, mask)
+}
+
+/// After a direct call whose callee returned neither a typed result nor a
+/// boxed one (which the generated code handles itself): a failure is on
+/// the stack (`FAILURE`), the frame was handed to the interpreter and is
+/// run to its end here, or an interrupt is pending and the callee's frame
+/// goes.
+pub(crate) unsafe extern "C" fn rt_direct_after(vm: VmPtr, status: i32) -> i32 {
+    let vm = vm!(vm);
+    match status {
+        D_BOXED => CONTINUE,
+        D_FAILURE => FAILURE,
+        D_DEOPT => {
+            let entry = vm.frames.len();
+            let result = vm.execute(entry);
+            self::status(vm, result)
+        }
+        _ => {
+            let pending = vm.take_pending();
+            let entry = vm.frames.len();
+            let abandoned = vm.abandon(entry, pending);
+            interrupt(vm, abandoned)
+        }
+    }
+}
+
 pub(crate) unsafe extern "C" fn rt_result_type(vm: VmPtr, index: u32) {
     let vm = vm!(vm);
     vm.expected = vm.program.result_types.get(index as usize).cloned();
@@ -715,6 +779,73 @@ pub(crate) unsafe extern "C" fn rt_return_float(vm: VmPtr, value: f64) {
 
 pub(crate) unsafe extern "C" fn rt_return_nothing(vm: VmPtr) {
     vm!(vm).leave_frame(Value::Nothing);
+}
+
+/// A typed result leaves the frame without a push: the value goes back
+/// in a register (decision AR3).
+pub(crate) unsafe extern "C" fn rt_leave_typed(vm: VmPtr) {
+    let vm = vm!(vm);
+    let left = vm.frames.pop().expect("a frame");
+    vm.stack.truncate(left.base);
+    vm.handlers.truncate(left.handler_base);
+}
+
+/// The value on top returned from a frame whose declared result is typed:
+/// its bits go to `out` and the frame leaves without a push
+/// (`D_RETURNED`); a value that does not fit the kind (a big Integer, a
+/// guarded value) or a failure leaves with the frame on the caller's
+/// stack instead (`D_BOXED`, `D_FAILURE`).
+pub(crate) unsafe extern "C" fn rt_leave_unbox(vm: VmPtr, kind: u8, out: *mut i64) -> i32 {
+    let vm = vm!(vm);
+    let value = vm.pop();
+    let bits = match (kind, &value) {
+        (0, Value::Integer(Int::Small(small))) => Some(*small),
+        (1, Value::Boolean(flag)) => Some(*flag as i64),
+        (2, Value::Float(float)) => Some(float.to_bits() as i64),
+        _ => None,
+    };
+    match bits {
+        Some(bits) => {
+            unsafe { *out = bits };
+            let left = vm.frames.pop().expect("a frame");
+            vm.stack.truncate(left.base);
+            vm.handlers.truncate(left.handler_base);
+            D_RETURNED
+        }
+        None => {
+            let failed = value.is_failure();
+            vm.leave_frame(value);
+            if failed {
+                D_FAILURE
+            } else {
+                D_BOXED
+            }
+        }
+    }
+}
+
+/// The value on top returned from a frame whose result is boxed: the
+/// frame leaves with it on the caller's stack.
+pub(crate) unsafe extern "C" fn rt_leave_boxed(vm: VmPtr) -> i32 {
+    let vm = vm!(vm);
+    let value = vm.pop();
+    let failed = value.is_failure();
+    vm.leave_frame(value);
+    if failed {
+        D_FAILURE
+    } else {
+        D_BOXED
+    }
+}
+
+/// After a helper left the frame (`LEFT`): whether what it left on the
+/// caller's stack is a failure.
+pub(crate) unsafe extern "C" fn rt_left_status(vm: VmPtr) -> i32 {
+    if matches!(vm!(vm).stack.last(), Some(Value::Failure(_))) {
+        D_FAILURE
+    } else {
+        D_BOXED
+    }
 }
 
 /// `fail` with the error on top: the frame leaves with the failure.
@@ -1395,6 +1526,13 @@ pub const HELPERS: &[(&str, *const u8)] = &[
     ("rt_return_bool", rt_return_bool as *const u8),
     ("rt_return_float", rt_return_float as *const u8),
     ("rt_return_nothing", rt_return_nothing as *const u8),
+    ("rt_direct_entry", rt_direct_entry as *const u8),
+    ("rt_direct_frame", rt_direct_frame as *const u8),
+    ("rt_direct_after", rt_direct_after as *const u8),
+    ("rt_leave_typed", rt_leave_typed as *const u8),
+    ("rt_leave_unbox", rt_leave_unbox as *const u8),
+    ("rt_leave_boxed", rt_leave_boxed as *const u8),
+    ("rt_left_status", rt_left_status as *const u8),
     ("rt_fail", rt_fail as *const u8),
     ("rt_crash", rt_crash as *const u8),
     ("rt_crash_text", rt_crash_text as *const u8),

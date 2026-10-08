@@ -141,6 +141,21 @@ pub fn abs_of_spelling(spelling: &str) -> Abs {
     }
 }
 
+/// The kind each parameter of a declared function is passed as (decision
+/// AR3): what the analysis seeds its slot with, by the declared type, and
+/// holds it to.
+pub fn abs_of_params(program: &Program, function: usize, params: usize) -> Vec<Abs> {
+    let meta = &program.function_metas[function];
+    (0..params)
+        .map(|index| {
+            meta.param_types
+                .get(index)
+                .map(|spelling| abs_of_spelling(spelling))
+                .unwrap_or(Abs::Boxed)
+        })
+        .collect()
+}
+
 /// The representation of a constant of the code's table.
 pub fn abs_of_constant(value: &Value) -> Abs {
     match value {
@@ -577,6 +592,17 @@ pub fn analyse(program: &Program, code: &Code) -> Result<Analysis, Rejection> {
             break;
         }
     }
+    // a parameter keeps the kind its declared type gives it (decision
+    // AR3): a direct call passes it so, and a function that stores
+    // another kind into the slot stays with the interpreter
+    if let (Some(function), CodeKind::Function) = (code.function, code.kind) {
+        let declared = abs_of_params(program, function, code.params as usize);
+        for (index, kind) in declared.iter().enumerate() {
+            if !kind.is_boxed() && slots[index] != slot_of_abs(*kind) {
+                return Err(Rejection::SlotConflict(index as u16));
+            }
+        }
+    }
     entry.truncate(count);
     handlers.truncate(count);
     block_starts.truncate(count);
@@ -601,7 +627,7 @@ fn slot_of_abs(abs: Abs) -> SlotKind {
 }
 
 /// What a load of the slot pushes.
-fn abs_of_slot(kind: SlotKind) -> Abs {
+pub fn abs_of_slot(kind: SlotKind) -> Abs {
     match kind {
         SlotKind::Unset => Abs::Unset,
         SlotKind::Int => Abs::Int,

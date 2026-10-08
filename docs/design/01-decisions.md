@@ -2833,3 +2833,72 @@ others saves a dispatch and a push or a pop, about a percent of the
 self-check apiece by the rule of thumb of 30 to 40 instructions per op
 saved, which is under the 2% a step must bring: the fusions stop here
 and the round goes on to stage 2. (user)
+
+**AR3. Stage 2 of AR1, done and measured: a generated function calls a
+compiled callee's body directly, its Integer, Boolean and Float
+arguments and result in registers, through a second function per code
+object.** Every code object now compiles to two Cranelift functions: the
+body (`renyi_direct_*`), whose signature is the VM, the frame's base,
+the pc to enter at, whether a direct call entered, then the typed
+parameters in slot order, and which returns a status (`D_RETURNED` with
+the bits of a typed result; `D_BOXED` or `D_FAILURE` with the value on
+the caller's stack; `D_DEOPT`, `D_INTERRUPT`, `D_STAY`) beside the bits;
+and the trampoline (`renyi_code_*`), with the `Entry` signature the VM
+calls as before, which at the start takes the typed parameters from the
+frame's slots under the checks the prologue used to make (a parameter
+that does not fit hands the frame back), at a loop header passes zeros
+for the body to overwrite from the slots, and maps the body's status to
+the entry's; the body leaves a typed result in a register only for a
+direct caller, and on the stack as before for a trampoline's, so that a
+call from the interpreter costs what it cost. A call site to a declared
+function with a code object loads the callee's body from a table the JIT
+keeps by code object (filled when the code is compiled), asks
+`rt_direct_entry` when the table has none yet (the callee is compiled
+when it is hot enough), and goes through `rt_call` as before when there
+is none or when the count of generated frames on the machine stack,
+which the generated code reads and moves in place by its address in the
+JIT, is at `DEPTH_LIMIT`; else it boxes the operands of the boxed
+parameters onto the stack where they lie, has `rt_direct_frame` push the
+callee's frame (the boxed arguments moved into their slots by a mask of
+the parameters, the others `Nothing` until a hand-back writes the
+registers into them), and calls the body with the typed operands from
+its registers. A typed result comes back in a register and a boxed one
+on the stack, both handled in place; a failure, a frame handed to the
+interpreter (run to its end) and an interrupt (its frame abandoned) go
+through `rt_direct_after`, which leaves what `rt_call` would. A site is
+direct only when every typed parameter has a typed operand in the
+caller; the analysis holds a parameter's slot to the kind its declared
+type gives it (a function that stores another kind into the slot stays
+with the interpreter), so that the caller derives the callee's signature
+from the function's declared types alone and a callee compiled later
+fits. The return of a typed result of the declared kind leaves the frame
+without a push (`rt_leave_typed`); a boxed value where the declared
+result is typed is unboxed on the way out when it fits
+(`rt_leave_unbox`), else returned boxed. On the self-check with every
+code object compiled, all 555 compile (the analysis rule rejects none),
+5.23 million calls go from generated code and none to the interpreter;
+with the default tiering 112 compile and 126 thousand of 4.1 million
+calls reach the interpreter (cold callees). Measured as AR1 says,
+against the binary of stage 1: the self-check 12.51 to 12.32 billion
+instructions on machine code (-1.5%) and 12.63 to 12.91 billion on the
+interpreter (+2.2%, whose loop the stage does not touch: the code layout
+of the binary, which AG6 saw move the loop by up to 3%);
+`bench/records.ry` 516 to 518 million on machine code; per turn of the
+micro-benchmarks on machine code: a call with an Integer parameter whose
+argument is in a register (a literal loop bound; a bound read from the
+arguments is a `maybe Integer`, boxed, and its loop variable with it)
+542 to 305 (-44%), the same call with a boxed argument, through
+`rt_call` and the trampoline, 668 to 719 (+8%: the trampoline's own call
+and the status mapped), the call with a record parameter 1394 to 1236
+(-11%), the field of a local and the record built unchanged. The step
+cuts the self-check and stays; it brings under the 2% at which AR1's
+rule ends the round, but the layout inlining of stage 3 is what the
+owner chose the round for and the register convention is its ground, so
+the session goes on to stage 3 and leaves the question to the owner, who
+reads this entry first. What the profile of the self-check on machine
+code says after the stage: the frame protocol (`rt_direct_frame` 3.4%,
+the locals' resize 2.1%, `leave_frame` 1.9%, `frame_grant` 1.2%) and the
+primitive boundary (`status` 3.5%, `call_from_stack` 2.6%,
+`call_primitive` 2.2%, the argument move 2.1%) are the next largest
+items after the clone (4.1%) and the drop (6.9%) of values and the
+interpreter's own run of `main` and the cold code (7.8%). (user)

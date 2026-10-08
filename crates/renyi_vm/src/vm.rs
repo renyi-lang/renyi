@@ -283,8 +283,6 @@ pub struct Vm<'p> {
     /// Per code object, how many of its ops the interpreter has run: what
     /// makes it hot enough to compile (`native::HOT_FACTOR`).
     pub(crate) hotness: Vec<u32>,
-    /// How many generated frames are nested on the machine stack.
-    native_depth: usize,
     /// The interrupt a runtime helper of the generated code raised, on its
     /// way out through the generated frames.
     pub(crate) pending: Option<Interrupt>,
@@ -398,7 +396,6 @@ impl<'p> Vm<'p> {
             gathered: 0,
             native,
             hotness: vec![0; program.codes.len()],
-            native_depth: 0,
             pending: None,
             watch: options.watch,
             listener: options.listener,
@@ -1294,11 +1291,70 @@ impl<'p> Vm<'p> {
         self.execute(entry)
     }
 
+    /// The body of a code object for a direct call from generated code
+    /// (decision AR3): its address when the code is compiled, or hot enough
+    /// to be compiled now, and the machine stack has room; else null.
+    pub(crate) fn direct_entry_of(&mut self, code: CodeId) -> *const u8 {
+        let program = self.program;
+        let hotness = self.hotness[code];
+        match self.native.as_mut() {
+            Some(jit) => jit
+                .direct(program, code, hotness)
+                .unwrap_or(std::ptr::null()),
+            None => std::ptr::null(),
+        }
+    }
+
+    /// The frame of a direct call from generated code (decision AR3): the
+    /// boxed arguments lie on the stack in order and `mask` names the
+    /// parameters they are (bit `i` set: parameter `i` is boxed); the typed
+    /// ones stay in the caller's registers until the frame is handed back.
+    /// The boxed arguments move into their slots, the other slots start as
+    /// `Nothing`; the generated code counts the frame on the machine stack
+    /// itself.
+    pub(crate) fn push_frame_direct(&mut self, code: CodeId, mask: u64) -> usize {
+        let grant = self.frame_grant(code);
+        let boxed = mask.count_ones() as usize;
+        let base = self
+            .stack
+            .len()
+            .checked_sub(boxed)
+            .expect("the boxed arguments are on the stack");
+        let code_meta = &self.program.codes[code];
+        let locals = code_meta.locals as usize;
+        let params = code_meta.params as usize;
+        self.stack.resize(base + locals, Value::Nothing);
+        // from the last parameter down: the k-th boxed argument lies at
+        // `base + k` and goes to the k-th set bit, never past a value that
+        // is still to move
+        let mut next = boxed;
+        for slot in (0..params).rev() {
+            if mask & (1 << slot) != 0 {
+                next -= 1;
+                if next != slot {
+                    let value = std::mem::replace(&mut self.stack[base + next], Value::Nothing);
+                    self.stack[base + slot] = value;
+                }
+            }
+        }
+        self.frames.push(Frame {
+            code,
+            pc: 0,
+            base,
+            handler_base: self.handlers.len(),
+            grant,
+        });
+        if let Some(jit) = self.native.as_mut() {
+            jit.calls += 1;
+        }
+        base
+    }
+
     /// The generated function of the frame on top, when the run uses
     /// machine code, the code has some and the machine stack has room.
     #[inline]
     pub(crate) fn native_entry_of_top(&mut self) -> Option<native::Entry> {
-        if self.native_depth >= native::DEPTH_LIMIT {
+        if self.native.as_ref()?.depth >= native::DEPTH_LIMIT {
             return None;
         }
         let code = self.frames.last()?.code;
@@ -1311,7 +1367,7 @@ impl<'p> Vm<'p> {
     /// header `pc` (decision AG3), when the code is hot and has the entry.
     #[inline]
     pub(crate) fn native_resume_of_top(&mut self, pc: u32) -> Option<native::Entry> {
-        if self.native_depth >= native::DEPTH_LIMIT {
+        if self.native.as_ref()?.depth >= native::DEPTH_LIMIT {
             return None;
         }
         let code = self.frames.last()?.code;
@@ -1324,13 +1380,17 @@ impl<'p> Vm<'p> {
     /// the loop header `pc`.
     #[inline]
     pub(crate) fn run_generated(&mut self, function: native::Entry, base: usize, pc: u32) -> i32 {
-        self.native_depth += 1;
+        if let Some(jit) = self.native.as_mut() {
+            jit.depth += 1;
+        }
         // SAFETY: the generated function takes the VM it was made for, the
         // base of the frame on top, which `push_frame_in_place` made, and
         // one of the entry pcs it was made with.
         let vm: *mut Vm<'_> = self;
         let status = unsafe { function(vm.cast::<Vm<'static>>(), base, pc) };
-        self.native_depth -= 1;
+        if let Some(jit) = self.native.as_mut() {
+            jit.depth -= 1;
+        }
         status
     }
 

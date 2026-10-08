@@ -632,10 +632,17 @@ operations in the bytecode itself, direct calls between generated
 functions with register arguments, and the layout of `Value` pinned so
 that the value operations run inline. Stage 1 is in: `LoadField`, a
 field of a local read in its slot by both tiers (format 4 of the
-bytecode file). Measured against the binary before it (decision AR2):
-the compiler's self-check 4.7 percent fewer instructions on machine code
-and 1.6 on the interpreter, `bench/records.ry` 9.7 percent fewer on
-machine code; a further fused operation would bring about a percent,
-under the step's 2%, so the fusions stop there. Stage 2 (direct calls)
-and stage 3 (the layout) follow; the handoff's section "The baseline
-JIT" has the plan.
+bytecode file). Stage 2 is in: a generated function calls a compiled
+callee's body directly, Integer, Boolean and Float arguments and result
+in registers, through a second function per code object (decision AR3).
+Measured against stage 1 (decision AR3): the self-check 1.5 percent
+fewer instructions on machine code, a typed call with its argument in a
+register 44 percent fewer per turn, a call with a record parameter 11
+percent fewer; under the 2% that ends the round by AR1, flagged for the
+owner, stage 3 being the round's purpose. Measured against the binary
+before it (decision AR2): the compiler's self-check 4.7 percent fewer
+instructions on machine code and 1.6 on the interpreter,
+`bench/records.ry` 9.7 percent fewer on machine code; a further fused
+operation would bring about a percent, under the step's 2%, so the
+fusions stop there. Stage 3 (the layout) follows; the handoff's section
+"The baseline JIT" has the plan.

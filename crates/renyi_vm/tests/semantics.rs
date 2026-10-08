@@ -479,8 +479,13 @@ end
     }
     assert!(report.contains("demo.main"), "{report}");
     assert!(report.contains("primitive std.console.print"), "{report}");
-    // the loop's thousand steps are counted
-    let row = report
+    // the loop's thousand steps are counted (in the counts by kind: a
+    // sample may land on the op too, and its row would read `1`)
+    let kinds = report
+        .split("\noperations by kind")
+        .nth(1)
+        .expect("the counts by kind");
+    let row = kinds
         .lines()
         .find(|line| line.ends_with("  IterNext"))
         .expect("the IterNext row");

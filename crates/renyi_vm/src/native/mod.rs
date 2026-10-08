@@ -75,9 +75,12 @@ enum State {
     /// Not compiled yet: the interpreter runs it.
     Cold,
     Skipped,
-    /// Compiled, with the loop headers the function can be entered at.
+    /// Compiled: the trampoline the VM calls, the body a generated caller
+    /// calls directly (decision AR3), and the loop headers the function
+    /// can be entered at.
     Ready {
         entry: Entry,
+        direct: *const u8,
         headers: Vec<u32>,
     },
 }
@@ -94,6 +97,14 @@ pub struct Jit {
     /// Per code object, whether an entry at a loop header found the frame
     /// not fit for the registers: no further entry there.
     resume_refused: Vec<bool>,
+    /// How many generated frames are nested on the machine stack; the
+    /// generated code reads and moves it in place around a direct call
+    /// (decision AR3), by its address, which the box the JIT lives in
+    /// keeps fixed.
+    pub depth: usize,
+    /// Per code object, the address of its body once compiled, else null:
+    /// what a direct call site loads first (decision AR3).
+    direct_table: Box<[*const u8]>,
     /// Per code object, its deopt points, numbered as the generated code
     /// names them.
     pub deopts: Vec<Vec<DeoptPoint>>,
@@ -162,6 +173,8 @@ impl Jit {
             states: program.codes.iter().map(|_| State::Cold).collect(),
             hot_factor,
             resume_refused: vec![false; program.codes.len()],
+            depth: 0,
+            direct_table: vec![std::ptr::null(); program.codes.len()].into_boxed_slice(),
             deopts: vec![Vec::new(); program.codes.len()],
             compiled: 0,
             skipped: 0,
@@ -217,7 +230,15 @@ native: {} deopts; {} calls from generated code, {} of them to the interpreter; 
     /// that makes it hot; `None` while it is cold and when it stays with
     /// the interpreter.
     pub fn entry(&mut self, program: &Program, code: CodeId, hotness: u32) -> Option<Entry> {
-        self.ready(program, code, hotness).map(|(entry, _)| entry)
+        self.ready(program, code, hotness)
+            .map(|(entry, _, _)| entry)
+    }
+
+    /// The body of a code object for a direct call (decision AR3), under
+    /// the same rule as `entry`.
+    pub fn direct(&mut self, program: &Program, code: CodeId, hotness: u32) -> Option<*const u8> {
+        self.ready(program, code, hotness)
+            .map(|(_, direct, _)| direct)
     }
 
     /// The generated function of a code object to enter at the loop
@@ -233,7 +254,7 @@ native: {} deopts; {} calls from generated code, {} of them to the interpreter; 
         if self.resume_refused[code] {
             return None;
         }
-        let (entry, headers) = self.ready(program, code, hotness)?;
+        let (entry, _, headers) = self.ready(program, code, hotness)?;
         let found = headers.contains(&pc);
         self.resumes += found as usize;
         found.then_some(entry)
@@ -252,7 +273,12 @@ native: {} deopts; {} calls from generated code, {} of them to the interpreter; 
         hotness >= (size as u32).saturating_mul(self.hot_factor)
     }
 
-    fn ready(&mut self, program: &Program, code: CodeId, hotness: u32) -> Option<(Entry, &[u32])> {
+    fn ready(
+        &mut self,
+        program: &Program,
+        code: CodeId,
+        hotness: u32,
+    ) -> Option<(Entry, *const u8, &[u32])> {
         match &self.states[code] {
             State::Ready { .. } => {}
             State::Skipped => return None,
@@ -264,13 +290,19 @@ native: {} deopts; {} calls from generated code, {} of them to the interpreter; 
             }
         }
         match &self.states[code] {
-            State::Ready { entry, headers } => Some((*entry, headers)),
+            State::Ready {
+                entry,
+                direct,
+                headers,
+            } => Some((*entry, *direct, headers)),
             _ => None,
         }
     }
 
     /// Compile a code object; its state becomes `Ready` or `Skipped`.
     fn compile(&mut self, program: &Program, code: CodeId) {
+        let depth_address = &self.depth as *const usize as usize;
+        let direct_table = self.direct_table.as_ptr() as usize;
         let module = self.module.as_mut().expect("the module lives with the JIT");
         let compiled = codegen::compile(
             program,
@@ -279,8 +311,10 @@ native: {} deopts; {} calls from generated code, {} of them to the interpreter; 
             &self.helpers,
             &mut self.ctx,
             &mut self.fctx,
+            depth_address,
+            direct_table,
         );
-        let (id, deopts, headers, stats) = match compiled {
+        let (id, body, deopts, headers, stats) = match compiled {
             Ok(compiled) => compiled,
             Err(reason) => {
                 if std::env::var_os("RENYI_NATIVE_REPORT").is_some() {
@@ -307,8 +341,14 @@ native: {} deopts; {} calls from generated code, {} of them to the interpreter; 
         // SAFETY: the function was defined with `entry_signature`, which is
         // the signature of `Entry`.
         let entry: Entry = unsafe { std::mem::transmute::<*const u8, Entry>(pointer) };
+        let direct = module.get_finalized_function(body);
+        self.direct_table[code] = direct;
         self.deopts[code] = deopts;
-        self.states[code] = State::Ready { entry, headers };
+        self.states[code] = State::Ready {
+            entry,
+            direct,
+            headers,
+        };
         self.compiled += 1;
         self.ops += program.codes[code].ops.len();
     }
