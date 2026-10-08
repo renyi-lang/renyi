@@ -623,7 +623,7 @@ accumulated text per piece. Conformance case 54 (`json_paths.ry`) holds
 what the changed paths print. Next, in the owner's order: the baseline
 JIT (AG5, item iii), then the showcase application.
 
-### The baseline JIT (session 9, decisions AR1 to AR5)
+### The baseline JIT (session 9, decisions AR1 to AR6)
 
 The owner's four answers of 2026-10-08: the baseline JIT of AG5 (iii) in
 three stages, each kept by the rule of AG6 on the compiler's self-check
@@ -665,4 +665,7 @@ factor swept on the self-check, `HOT_FACTOR` 8000 where it was 2000
 percent more: a short program wants its one loop compiled early), a
 second factor for the loop-header entry measured and rejected; the
 handoff's section "The baseline JIT" has what remains on the profile
-and the shape to try next (a cheaper first tier).
+and the shape to try next (a cheaper first tier). The owner closed the
+round (decision AR6): the self-check 15.3 percent fewer instructions on
+machine code than before it, `bench/records.ry` 21 percent fewer;
+`renyi build` is what remains of M6.

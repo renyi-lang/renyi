@@ -3038,3 +3038,25 @@ on, is a cheaper compilation for the first tier (an IR without the
 inline sequences of AR4 for a code object that just became warm, the
 full one when it stays hot), so that the cost of being wrong about a
 function falls instead of the threshold rising. (user)
+
+**AR6. The baseline JIT's round ends (the owner's answer of 2026-10-08),
+with the machine code doing the value operations, the frame protocol and
+the field read in place and the tiering at 8000.** The round against the
+binary AQ left: the compiler's self-check 13.14 to 11.13 billion
+instructions on machine code (-15.3%) and 12.84 to 12.90 on the
+interpreter (+0.5%, the code layout of AR3); `bench/records.ry` 571 to
+451 million (-21%) and 655 to 654 on the interpreter; per turn of the
+micro-benchmarks on machine code, the typed call 668 to 130 (-81%; 605
+with a boxed argument), the field of a local 1043 to 677 (-35%), the
+call with a record argument 1535 to 849 (-45%), the record built and
+read 1357 to 1041 (-23%), the interpreter's per turn up 2 to 3% with the
+layout. AR1's rule had ended the round twice (AR3, AR4) before the owner
+did; what the profile leaves is in AR5 and the handoff: the generated
+code itself (16.6% of the self-check), the cold code in the interpreter
+(8.7%), the primitive boundary (about 9%), Cranelift's compile time
+(half of what it was under 2000), the clone and the drop in the helpers
+and the primitives (about 7%); the shape to try first in a later round
+is the cheaper first tier of AR5. The owner's other answers of the day:
+the measure stays the self-check's total instructions, compile time
+included; the micro-benchmarks live in `bench/micro/` with
+`tools/measure_native.sh`; stage 3d stays in its compact form. (user)

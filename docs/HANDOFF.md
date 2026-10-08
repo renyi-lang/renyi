@@ -10,7 +10,12 @@ the baseline JIT, decision AR1, in its three stages: the fused op
 functions with register arguments (AR3) and the layout of `Value`
 pinned so that the value operations, the frame protocol and the field
 read run in place (AR4), then the tiering measured and the hotness
-factor raised (AR5; the section "The baseline JIT" below). Session 8
+factor raised (AR5), and the round closed by the owner with the
+self-check 15% below where AQ left it (AR6; the section "The baseline
+JIT" below). The next session pushes the seven commits first (see
+"Done in session 9"), then the owner picks among what the plan of
+2026-10-07 leaves: `renyi build` (its item 4), the positioning's three
+measurements and the site's front page (items 2 and 3). Session 8
 (stage 2 of the gap audit of
 `docs/GAPS.md`: the formal grammar `docs/grammar.ebnf` with decision V12;
 the language reference `docs/reference.md`, normative, held to the
@@ -1369,8 +1374,10 @@ next sections of the plan, below).
    renyi-lang.org (AI4, when the owner wants it), and the three
    measurements of the positioning's section 5.
 4. **Deferred** (decision AG5): `renyi build` (the image of bytecode
-   and machine code) and the baseline JIT that inlines the boxed
-   operations, both after 0.1.
+   and machine code), still deferred; the baseline JIT that inlines the
+   boxed operations is done (decisions AR1 to AR6, session 9: the
+   self-check 15% fewer instructions on machine code than before the
+   round, `bench/records.ry` 21% fewer).
 5. **Foreign packages** (decisions AJ1 to AJ4, the owner's answers of
    2026-10-07, evening): after 0.1 and before the rest of M5, the
    registration API for Rust natives (the standard library's
@@ -1381,7 +1388,8 @@ next sections of the plan, below).
    run, JSON messages, each call one recorded primitive) under the
    capability `python("<package>")`. The registration API exists
    (decisions AK1 to AK4, the section "The registration API as it
-   exists" below); the bridge does not.
+   exists" below), and so do the bridge and the binder (decisions AL1
+   to AL4, AM1 and AM2, their sections below).
 
 ## The registration API as it exists (decisions AJ1, AK1 to AK4; session 8, 2026-10-07, late)
 
@@ -1751,7 +1759,7 @@ and the commit of the site and the crates.io metadata.
   release; the Windows archive's checksum and binary were verified
   by hand; `cargo install renyi` built the binary from crates.io.
 
-## The baseline JIT (decisions AR1 to AR5; session 9)
+## The baseline JIT (decisions AR1 to AR6; session 9)
 
 The owner's four answers of 2026-10-08 (decision AR1): the baseline JIT
 of AG5 (iii) in three stages, each measured on the compiler's
@@ -1983,6 +1991,15 @@ arguments; the layout of `Value` pinned and the value operations inline.
   about a function falls instead of the threshold rising; the count of
   runs so far predicts the runs to come poorly for the self-check's
   medium functions.
+- **The round's end (decision AR6).** The owner closed the round on
+  2026-10-08 after the tiering: against the binary AQ left, the
+  self-check 13.14 to 11.13 billion instructions on machine code
+  (-15.3%), `bench/records.ry` 571 to 451 million (-21%), the typed
+  call per turn 668 to 130, the field 1043 to 677, the record call
+  1535 to 849, the record built 1357 to 1041 (`tools/measure_native.sh`
+  on the release build of d26dfac; the interpreter within 3% of where
+  it was). A later round starts from the profile below and the cheaper
+  first tier of AR5.
 - **After stage 3.** The profile of the self-check on machine code
   (`cg_annotate`, the scratch directory): the generated code 16.6%,
   `run_frames` 8.7% (`main` and the 443 code objects called but cold),
@@ -2658,20 +2675,20 @@ holds between calls.
 
 ## Done in session 9 (the profile-guided round on strings and JSON and the baseline JIT, in the cloud environment)
 
-Four commits on `main` (2fcab99, cf4c912, 02380ea and the stage-3
-commit), each gated as in session 8 (rustc 1.94.1, the CI toolchain,
+Seven commits on `main` (2fcab99, cf4c912, 02380ea, 5eeb28e, 176cfc2,
+d26dfac and the commit of AR6), each gated as in session 8 (rustc 1.94.1, the CI toolchain,
 installed beside the environment's 1.97.0 for `cargo fmt`, `cargo
 clippy --all-targets -- -D warnings` and `cargo test`; the conformance
 suite by both runners; the corpus canonical; `compiler/*.ry`,
 `bench/*.ry` and the starter pack checked, formatted and tested; the
-lint). At the end of the session the four were on the local `main`
+lint). At the end of the session the seven were on the local `main`
 only: the push was refused (403) because the Claude GitHub App is not
 installed on the `renyi-lang` organisation
 (https://github.com/apps/claude/installations/select_target, or
 reconnect GitHub from the claude.ai settings); the next session pushes
 them first (`git push -u origin main`) and CI runs on the head. The
 patches were also exported from the scratch directory and handed to
-the owner.
+the owner as a bundle.
 
 1. the round (decision AQ; the section "The profile-guided round on
    strings and JSON as it exists"): `crates/renyi_vm/src/natives/json.rs`
@@ -2731,7 +2748,8 @@ the owner.
    `bench/micro/` (six programs), `tools/measure_native.sh`, the CI
    step, `CLAUDE.md`, this file; then the tiering (decision AR5):
    `HOT_FACTOR` 8000 in `crates/renyi_vm/src/native/mod.rs`, the
-   decisions (AR5), `docs/GAPS.md`, this file.
+   decisions (AR5), `docs/GAPS.md`, this file; then the round closed
+   (decision AR6: the totals), the plan's item 4, this file.
 
 ## Done in session 8 (stage 2: the grammar, the reference, the front end in Renyi)
 
