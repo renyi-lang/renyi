@@ -12,10 +12,11 @@ pinned so that the value operations, the frame protocol and the field
 read run in place (AR4), then the tiering measured and the hotness
 factor raised (AR5), and the round closed by the owner with the
 self-check 15% below where AQ left it (AR6; the section "The baseline
-JIT" below). The next session pushes the seven commits first (see
-"Done in session 9"), then the owner picks among what the plan of
-2026-10-07 leaves: `renyi build` (its item 4), the positioning's three
-measurements and the site's front page (items 2 and 3). Session 8
+JIT" below). The seven commits of the session are pushed and CI is
+green on the head (run 51 on 5e4f1d0); the next session starts where
+the owner picks among what the plan of 2026-10-07 leaves: `renyi
+build` (its item 4), the positioning's three measurements and the
+site's front page (items 2 and 3). Session 8
 (stage 2 of the gap audit of
 `docs/GAPS.md`: the formal grammar `docs/grammar.ebnf` with decision V12;
 the language reference `docs/reference.md`, normative, held to the
@@ -2681,14 +2682,12 @@ installed beside the environment's 1.97.0 for `cargo fmt`, `cargo
 clippy --all-targets -- -D warnings` and `cargo test`; the conformance
 suite by both runners; the corpus canonical; `compiler/*.ry`,
 `bench/*.ry` and the starter pack checked, formatted and tested; the
-lint). At the end of the session the seven were on the local `main`
-only: the push was refused (403) because the Claude GitHub App is not
-installed on the `renyi-lang` organisation
-(https://github.com/apps/claude/installations/select_target, or
-reconnect GitHub from the claude.ai settings); the next session pushes
-them first (`git push -u origin main`) and CI runs on the head. The
-patches were also exported from the scratch directory and handed to
-the owner as a bundle.
+lint). For most of the session the pushes were refused (403) until
+the owner installed the Claude GitHub App on the `renyi-lang`
+organisation (https://github.com/apps/claude/installations/select_target;
+a cloud session needs it, and the patches were handed to the owner as
+a bundle meanwhile); the seven then went up in one push and CI passed
+on the head (run 51 on 5e4f1d0).
 
 1. the round (decision AQ; the section "The profile-guided round on
    strings and JSON as it exists"): `crates/renyi_vm/src/natives/json.rs`
