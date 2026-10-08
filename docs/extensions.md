@@ -140,7 +140,7 @@ function``, ``extension `demo`: `demo`: unknown capability `gpu` ...``.
 
 ## 4. The binary
 
-A binary with the extension is a crate of three lines on top of the
+A binary with the extension is a crate of a few lines on top of the
 `renyi` crate (decision AK1):
 
 ```toml
@@ -159,12 +159,19 @@ demo = { path = "../demo" }
 ```
 
 ```rust
+#[global_allocator]
+static ALLOCATOR: renyi::Allocator = renyi::Allocator;
+
 fn main() -> std::process::ExitCode {
     renyi::main_with(vec![demo::DEMO])
 }
 ```
 
-`cargo install --path .` puts that `renyi` in place of the official one.
+The allocator line is decision AP1's: mimalloc under the count that the
+memory budget of a sandbox needs (`embedding.md`, section 4); a binary
+without it runs on the system allocator and refuses a grant with
+`memory`. `cargo install --path .` puts that `renyi` in place of the
+official one.
 It runs the same check as the test at start and refuses to start when
 it fails; `renyi version` prints the extensions after the toolchain's
 line (`extension demo 0.1.0`). Every command then knows the extension's

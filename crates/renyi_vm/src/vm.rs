@@ -27,6 +27,7 @@ use crate::decimal::{Decimal, DecimalError};
 use crate::extension::Registry;
 use crate::grant::{self, Counter, Guard, Narrowing};
 use crate::integer::Int;
+use crate::memory;
 use crate::native::{self, Jit};
 use crate::natives::json::{self, Json, Naming};
 use crate::natives::time::instant_text;
@@ -52,6 +53,10 @@ pub enum Interrupt {
     /// version ready between two requests: the run stops so that `main`
     /// can be run again on it, the listening socket left in the VM.
     Reload,
+    /// The memory budget of the run (decision AP1) was exceeded: the
+    /// limit, and the most bytes the run held above the level at its
+    /// start.
+    OverMemory { limit: u64, used: u64 },
 }
 
 impl Interrupt {
@@ -117,6 +122,11 @@ pub struct Options {
     /// AO1), for `server.serve` to continue on when its port is the one
     /// asked for.
     pub listener: Option<TcpListener>,
+    /// The memory budget of the run in bytes (decision AP1): the bytes it
+    /// may hold above the level at its start, counted by the allocator
+    /// of `memory`, checked at every call, primitive and loop turning;
+    /// a budgeted run stays on the interpreter.
+    pub memory: Option<u64>,
 }
 
 impl Default for Options {
@@ -142,6 +152,7 @@ impl Default for Options {
             registry: Registry::standard(),
             watch: None,
             listener: None,
+            memory: None,
         }
     }
 }
@@ -282,6 +293,18 @@ pub struct Vm<'p> {
     /// See `Options::listener`: the socket handed to this run, or the one
     /// `server.serve` leaves for the next.
     pub listener: Option<TcpListener>,
+    /// See `Options::memory`.
+    memory: Option<u64>,
+    /// Whether this VM's budget is the one `memory` counts against.
+    counting: bool,
+}
+
+impl Drop for Vm<'_> {
+    fn drop(&mut self) {
+        if self.counting {
+            memory::end();
+        }
+    }
 }
 
 impl<'p> Vm<'p> {
@@ -304,8 +327,13 @@ impl<'p> Vm<'p> {
             .map(|d| d.as_nanos() as u64)
             .unwrap_or(0x9E37_79B9_7F4A_7C15)
             | 1;
-        // a narrated or profiled run is the interpreter's (decision AG3)
-        let native = if options.interpret || options.explain || options.profile {
+        // a narrated, profiled or budgeted run is the interpreter's
+        // (decisions AG3 and AP1)
+        let native = if options.interpret
+            || options.explain
+            || options.profile
+            || options.memory.is_some()
+        {
             None
         } else {
             Jit::new(program).map(Box::new)
@@ -374,6 +402,8 @@ impl<'p> Vm<'p> {
             pending: None,
             watch: options.watch,
             listener: options.listener,
+            memory: options.memory,
+            counting: false,
         }
     }
 
@@ -390,6 +420,9 @@ impl<'p> Vm<'p> {
         self.frame_grants.iter_mut().for_each(|slot| *slot = None);
         self.counters = grant.counters;
         self.guards = grant::guards(declared);
+        if let Some(sandbox) = &self.narrowing.sandbox {
+            self.guards.extend(grant::guards(sandbox));
+        }
         if self.guards.len() > 64 {
             return Err(format!(
                 "the grant carries {} guarded capabilities (`only to`); the VM tracks at most 64 (open item R6-5)",
@@ -397,6 +430,21 @@ impl<'p> Vm<'p> {
             ));
         }
         self.started = natives::now_millis();
+        if let Some(limit) = self.memory {
+            if !memory::installed() {
+                return Err("the memory budget needs the counting allocator: a binary declares `renyi::Allocator` as its global allocator".to_string());
+            }
+            if self.counting {
+                memory::end();
+            }
+            if !memory::begin(limit) {
+                return Err(
+                    "a memory budget is in force already; one run at a time counts its memory"
+                        .to_string(),
+                );
+            }
+            self.counting = true;
+        }
         self.replay = None;
         self.recording = self.record.then(|| {
             let mut recording = Recording::new(
@@ -463,6 +511,32 @@ impl<'p> Vm<'p> {
     /// The recording of the run so far, ending it.
     pub fn take_recording(&mut self) -> Option<Recording> {
         self.recording.take()
+    }
+
+    /// The budget counters and the clock they count against, for a host
+    /// that runs several calls as one run (decision AP1).
+    pub fn budgets(&self) -> (Vec<Counter>, i64) {
+        (self.counters.clone(), self.started)
+    }
+
+    /// Continue the budgets of an earlier run under the same grant: its
+    /// counters and its clock.
+    pub fn resume_budgets(&mut self, counters: Vec<Counter>, started: i64) {
+        self.counters = counters;
+        self.started = started;
+    }
+
+    /// The memory budget at a safe point (decision AP1): exceeded since
+    /// the run began, it stops the run.
+    #[inline]
+    fn memory_check(&self) -> Result<(), Interrupt> {
+        if self.counting && memory::over() {
+            return Err(Interrupt::OverMemory {
+                limit: self.memory.unwrap_or(0),
+                used: memory::peak(),
+            });
+        }
+        Ok(())
     }
 
     /// The grant in force where the next primitive call happens: the
@@ -554,6 +628,7 @@ impl<'p> Vm<'p> {
         function: FunctionId,
         args: &mut [Value],
     ) -> Result<Value, Interrupt> {
+        self.memory_check()?;
         let program = self.program;
         let native = self.natives.get(function).copied().flatten();
         let meta = &program.function_metas[function];
@@ -1454,7 +1529,8 @@ impl<'p> Vm<'p> {
         // a declared function gets a frame over the arguments in place; a
         // primitive runs in Rust and its result is settled
         macro_rules! call {
-            ($function:expr, $count:expr) => {
+            ($function:expr, $count:expr) => {{
+                try_op!(self.memory_check());
                 if let Some(callee) = program.function_codes.get($function).copied().flatten() {
                     self.frames[frame].pc = pc;
                     self.push_frame_in_place(callee, $count);
@@ -1485,7 +1561,7 @@ impl<'p> Vm<'p> {
                     self.scratch = args;
                     settle!(try_op!(result));
                 }
-            };
+            }};
         }
         loop {
             let Some(op) = code.ops.get(pc) else {
@@ -1656,8 +1732,10 @@ impl<'p> Vm<'p> {
                 Op::Jump(target) => {
                     let target = *target as usize;
                     if target < pc {
-                        // a jump backwards: once the code is hot, the loop
+                        // a jump backwards: a safe point of the memory
+                        // budget, and once the code is hot, the loop
                         // carries on as machine code (decision AG3)
+                        try_op!(self.memory_check());
                         self.hotness[code_id] = self.hotness[code_id].saturating_add(ran);
                         ran = 0;
                         let hot = self

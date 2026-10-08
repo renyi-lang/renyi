@@ -13,18 +13,25 @@
 //! toolchain served to an agent host over standard input and output, in
 //! `mcp.rs`), `lsp` (the language server for an editor, in `lsp.rs`) and
 //! `serve` (`run` for a service; with `--watch`, reloaded between requests
-//! when its files change, in `serve.rs`).
+//! when its files change, in `serve.rs`). `run`, `record` and `serve`
+//! take `--sandbox <grant.json>`, a grant narrower than `main` declares
+//! (decision AP1, in `sandbox.rs`).
 //!
 //! The crate is a library too (decision AK1): [`main_with`] is the whole
 //! program of a binary built with extensions, and `src/main.rs`, the
 //! official binary, calls it with none. An extension is an [`Extension`]
 //! value of `renyi_vm` (decision AJ1; the guide is `docs/extensions.md`).
+//! The embedding API (decision AP1; the guide is `docs/embedding.md`) is
+//! [`Sandbox`]: a host loads a module with a [`Grant`] and calls its
+//! public functions; [`Allocator`] is the global allocator a binary
+//! declares, which counts for the memory budget.
 
 mod bind;
 mod lsp;
 mod maps;
 mod mcp;
 mod packages;
+mod sandbox;
 mod serve;
 
 use std::io::Write;
@@ -41,13 +48,44 @@ use renyi_vm::grant::{parse_capability, Unit};
 use renyi_vm::recording::Dependency;
 use renyi_vm::{file, Manifest};
 
-pub use renyi_vm::{Extension, Native, Registry};
+pub use renyi_vm::memory::Counting;
+pub use renyi_vm::{Extension, Native, Registry, Value};
+pub use sandbox::{bytes_text, CallError, Function, Grant, Sandbox};
 
-/// The allocator of the whole binary (decision X6): the VM allocates a
-/// record, a list, a text or a frame's locals at a time, and the system
-/// allocator of Windows is slow at that; mimalloc is not.
-#[global_allocator]
-static ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
+/// The allocator of a `renyi` binary (decisions X6 and AP1): mimalloc,
+/// since the VM allocates a record, a list, a text or a frame's locals
+/// at a time and the system allocator of Windows is slow at that,
+/// wrapped in the counting of `renyi_vm::memory`, which the memory
+/// budget of a sandbox needs. A binary declares it in one line,
+/// `#[global_allocator] static ALLOCATOR: renyi::Allocator =
+/// renyi::Allocator;`, as the official binary does; a host with an
+/// allocator of its own wraps that one in [`Counting`] instead.
+pub struct Allocator;
+
+static COUNTING: Counting<mimalloc::MiMalloc> = Counting(mimalloc::MiMalloc);
+
+unsafe impl std::alloc::GlobalAlloc for Allocator {
+    unsafe fn alloc(&self, layout: std::alloc::Layout) -> *mut u8 {
+        COUNTING.alloc(layout)
+    }
+
+    unsafe fn alloc_zeroed(&self, layout: std::alloc::Layout) -> *mut u8 {
+        COUNTING.alloc_zeroed(layout)
+    }
+
+    unsafe fn dealloc(&self, pointer: *mut u8, layout: std::alloc::Layout) {
+        COUNTING.dealloc(pointer, layout)
+    }
+
+    unsafe fn realloc(
+        &self,
+        pointer: *mut u8,
+        layout: std::alloc::Layout,
+        new_size: usize,
+    ) -> *mut u8 {
+        COUNTING.realloc(pointer, layout, new_size)
+    }
+}
 
 const USAGE: &str = "usage:
   renyi check [--json] [--strict] <file.ry>...
@@ -122,7 +160,11 @@ options of run and record:
   --at-most <capability>=<count>/<unit>
                                       add a budget; the unit is second, minute, hour, day or run
   --redact <name>                     record and test --refresh: replace the argument, header or
-                                      environment variable of that name with a placeholder";
+                                      environment variable of that name with a placeholder
+  --sandbox <grant.json>              run, record and serve: a grant narrower than `main` declares, as
+                                      {\"grant\": \"console, network.http(\\\"host\\\") at most 60 per minute\",
+                                      \"memory\": \"256 megabytes\"}: the program's grant intersected with it,
+                                      its budgets and guards added, the bytes held above the start bounded";
 
 /// What this binary was built with (decision AK1): the standard library
 /// and the extensions `main_with` was given, set once before any command
@@ -574,6 +616,12 @@ pub(crate) enum CompileError {
 /// commands print what comes back, the MCP server answers with it.
 pub(crate) fn compile_sources(path: &str) -> Result<Compiled, CompileError> {
     let file = read_source(path).map_err(CompileError::Read)?;
+    compile_file(file)
+}
+
+/// `compile_sources` from a file already read, or a text in memory (the
+/// sandbox of decision AP1): its imports are resolved from its name.
+pub(crate) fn compile_file(file: SourceFile) -> Result<Compiled, CompileError> {
     let resolved = renyi_check::resolve(&file);
     let files = resolved.files;
     let checked = renyi_check::check_project_in(&library(), &files, &resolved.problems);
@@ -684,6 +732,8 @@ struct Flags {
     manifest: bool,
     /// `renyi serve --watch`.
     watch: bool,
+    /// `--sandbox <grant.json>` (decision AP1).
+    sandbox: Option<String>,
 }
 
 fn parse_flags(args: &[String]) -> Result<(Flags, &[String]), String> {
@@ -732,6 +782,7 @@ fn parse_flags(args: &[String]) -> Result<(Flags, &[String]), String> {
             "--replay" => flags.replay = Some(value()?.to_string()),
             "--to" => flags.to = Some(value()?.to_string()),
             "--refresh" => flags.refresh = Some(value()?.to_string()),
+            "--sandbox" => flags.sandbox = Some(value()?.to_string()),
             "--redact" => flags.redact.push(value()?.to_string()),
             "--deny" => flags.narrowing.deny.push(parse_capability(value()?)?),
             "--allow-host" => flags
@@ -803,8 +854,15 @@ pub(crate) fn load_recording(path: &str) -> Result<renyi_vm::Recording, String> 
 
 /// `renyi run` and, with `record`, `renyi record`.
 fn run_command(args: &[String], record: bool) -> ExitCode {
-    let (flags, rest) = match parse_flags(args) {
+    let (mut flags, rest) = match parse_flags(args) {
         Ok(parsed) => parsed,
+        Err(message) => {
+            eprintln!("renyi: {message}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let memory = match sandbox::apply_flag(&mut flags) {
+        Ok(memory) => memory,
         Err(message) => {
             eprintln!("renyi: {message}");
             return ExitCode::FAILURE;
@@ -861,6 +919,10 @@ fn run_command(args: &[String], record: bool) -> ExitCode {
             return ExitCode::FAILURE;
         }
     }
+    if let Some(message) = sandbox::refusal(&program, &flags.narrowing) {
+        eprintln!("renyi: {message}");
+        return ExitCode::FAILURE;
+    }
     let replay = match &flags.replay {
         Some(file) => match load_recording(file) {
             Ok(recording) => Some(recording),
@@ -897,6 +959,7 @@ fn run_command(args: &[String], record: bool) -> ExitCode {
         redact: flags.redact,
         manifest,
         registry: registry().clone(),
+        memory,
         ..renyi_vm::Options::default()
     };
     let run = renyi_vm::run_program(&program, options);
@@ -961,6 +1024,14 @@ pub(crate) fn exit_of(path: &str, outcome: renyi_vm::RunOutcome) -> ExitCode {
             eprintln!("{path}: the run stopped for a new version, which nothing watched for");
             ExitCode::FAILURE
         }
+        renyi_vm::RunOutcome::OverMemory { limit, used } => {
+            eprintln!(
+                "{path}: the memory budget of {} was exceeded ({} held)",
+                bytes_text(limit),
+                bytes_text(used)
+            );
+            ExitCode::from(2)
+        }
     }
 }
 
@@ -982,6 +1053,7 @@ fn test_command(args: &[String]) -> ExitCode {
         || flags.manifest
         || flags.profile
         || flags.watch
+        || flags.sandbox.is_some()
         || !narrowing.deny.is_empty()
         || !narrowing.allow.is_empty()
         || !narrowing.budgets.is_empty()

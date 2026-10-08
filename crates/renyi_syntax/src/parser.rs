@@ -37,6 +37,47 @@ pub fn parse_declarations(source: &str) -> Parsed {
     parse_with(source, true)
 }
 
+/// Lex and parse a grant as a `needs` clause spells it (decision AP1):
+/// capabilities separated by commas, each with its optional scope, its
+/// budget (`at most`) and its guard (`only to`), and nothing else; an
+/// empty text is an empty grant, and line breaks carry no meaning. The
+/// diagnostics are those the clause would get in a signature.
+pub fn parse_grant(source: &str) -> Result<Vec<Capability>, Vec<Diagnostic>> {
+    if source.trim().is_empty() {
+        return Ok(Vec::new());
+    }
+    let lexed = lex(source);
+    let tokens: Vec<Token> = lexed
+        .tokens
+        .into_iter()
+        .filter(|token| token.kind != TokenKind::Comment)
+        .collect();
+    let mut parser = Parser {
+        src: source,
+        declarations: false,
+        tokens,
+        pos: 0,
+        diagnostics: lexed.diagnostics,
+        nesting: 1,
+    };
+    let capabilities = parser.capabilities();
+    if capabilities.is_ok() && !parser.at(&TokenKind::Eof) {
+        let span = parser.peek().span;
+        parser.error(
+            "expected",
+            "a grant is capabilities separated by commas",
+            span,
+            "write `console, network.http(\"api.example.com\") at most 60 per minute`",
+        );
+    }
+    match capabilities {
+        Ok(capabilities) if !parser.diagnostics.iter().any(Diagnostic::is_error) => {
+            Ok(capabilities)
+        }
+        _ => Err(parser.diagnostics),
+    }
+}
+
 fn parse_with(source: &str, declarations: bool) -> Parsed {
     let lexed = lex(source);
     let mut comments = Vec::new();

@@ -49,9 +49,12 @@ file from the package; and the resident world, decision AN1:
 `renyi_workspace`, which `renyi mcp` holds between calls, the first of
 M5's four steps in the order the owner set; and the language server,
 decisions AN2 and AN3: `renyi lsp` on that world, the client in the
-VS Code extension; and the watch of `serve`, decision AO1: `renyi
-serve --watch` runs `main` again between two requests on a clean new
-version, the socket kept open, the third step).
+VS Code extension; the watch of `serve`, decision AO1: `renyi serve
+--watch` runs `main` again between two requests on a clean new
+version, the socket kept open, the third step; and the embedding API,
+decisions AP1 and AP2: `renyi::Sandbox` with the grant as a `needs`
+clause and the memory budget, `renyi run --sandbox`, the fourth step,
+which completes M5).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -64,18 +67,18 @@ run manifest of Q2, every library module, the `only to` guards of P3,
 tasks one after the other by S2) are done, with the project map (`renyi
 index`, `--budgets`, `--diff`), `renyi tools` and `renyi mcp` on top. M4
 is done but for its residue (packages AC1, `std.process` AE1, the FFI
-AF1; `docs/GAPS.md`, section 4); of M5 the host-facing half of the
-embedding API exists, the registration API of decisions AJ1 and AK1
-to AK4 (the section "The registration API as it exists" below) and
-the Python bridge of decisions AJ2, AJ3 and AL1 to AL4 (the section
-"The Python bridge as it exists" below) with its binder of AM1 and
-AM2 (the section "The Python binder as it exists" below), and the
-resident world of decision AN1 (the section "The resident world as it
-exists" below), the language server of decisions AN2 and AN3 (the
-section "The language server as it exists" below) and the watch of
-`serve` of decision AO1 (the section "The watch of `serve` as it
-exists" below), the first three of M5's four steps in the owner's
-order; of
+AF1; `docs/GAPS.md`, section 4); M5 is done: the registration API of
+decisions AJ1 and AK1 to AK4 (the section "The registration API as it
+exists" below), the Python bridge of decisions AJ2, AJ3 and AL1 to AL4
+(the section "The Python bridge as it exists" below) with its binder
+of AM1 and AM2 (the section "The Python binder as it exists" below),
+and the four steps in the owner's order: the resident world of
+decision AN1 (the section "The resident world as it exists" below),
+the language server of decisions AN2 and AN3 (the section "The
+language server as it exists" below), the watch of `serve` of decision
+AO1 (the section "The watch of `serve` as it exists" below) and the
+embedding API of decisions AP1 and AP2 (the section "The embedding API
+as it exists" below); of
 M6 the
 machine code exists (decisions AG1 to AG5) and the interpreter had its
 bounded round (AG6), `renyi build` does not. Release 0.1.0 is out
@@ -140,7 +143,7 @@ revision>]`, `run [--manifest] [options] <file> [arguments]`, `record
 <file>...`, `compile [--to file] <file.ry>`, `add <name> [<version>]`,
 `update [--accept-effects]`, `audit`, `fetch`, `publish [--to
 <directory>]`, `bind <header.h> --module <name> --library <names>
-[--to <directory>]`, `tools [path]`, `mcp [path]`, `lsp`, `serve [--watch]` and `version`; 305 tests,
+[--to <directory>]`, `tools [path]`, `mcp [path]`, `lsp`, `serve [--watch]`, `run --sandbox` and `version`; 313 tests,
 clippy and fmt clean on Windows
 with rustc 1.94.1. CI (`.github/workflows/ci.yml`) runs the same gates,
 `renyi check compiler/*.ry`, the starter pack's workflows (check,
@@ -1874,6 +1877,79 @@ and the commit of the site and the crates.io metadata.
   green threads would be an improvement within that decision, not a
   reversal.
 
+## The embedding API as it exists (decisions AP1 and AP2; session 8, 2026-10-08)
+
+The fourth and last step of M5 in the owner's order: `renyi::Sandbox`,
+the grant as a `needs` clause, the memory budget, `renyi run --sandbox`.
+The guide is `docs/embedding.md`.
+
+- **The API.** `crates/renyi/src/sandbox.rs`, exported by the crate:
+  `Grant` (`capabilities`, `memory` in bytes; `parse` reads the `needs`
+  spelling through `renyi_syntax::parse_grant` and checks each
+  capability is known, takes its scope and names known sinks;
+  `from_json` and `from_file` read `{"grant": ..., "memory": "256
+  megabytes"}` strictly; `parse_memory`, `bytes_text`), `Sandbox`
+  (`load(path, grant)` through `compile_sources`, a `.ryc` refused;
+  `load_source(name, text, grant)` through the new `compile_file`; the
+  public functions of the main module from `renyi_index::index_files_in`
+  with the tool schemas from `tools_of_in`; `module`, `grant`,
+  `functions`, `warnings`; `call(name, args)`: the name must be a
+  public function, the arity must match, every `need` must be covered
+  by the grant, then a `Vm` of its own with `Narrowing { sandbox }` and
+  `Options.memory`, `begin_run(function.needs)`, the budgets of the
+  previous call resumed (`Vm::budgets`, `resume_budgets`), the result
+  mapped to `CallError::{Refused, Failed, Crashed, Exited, OverMemory}`;
+  `guarded(value, capability)` tags a value with the bit of the grant's
+  guard), `Function` (name, signature, purpose, parameters, needs,
+  `exposed_as_tool`, `input_schema` as a JSON text).
+- **The VM.** `memory.rs`: `Counting<A>`, a `GlobalAlloc` wrapper with
+  the statics `INSTALLED`, `ACTIVE`, `NET`, `PEAK`, `LIMIT`, `OVER`
+  (one load per allocation while inactive; `begin(limit)`, `end()`,
+  `over()`, `peak()`, `installed()`). `Options.memory`, `Vm.memory` and
+  `Vm.counting`; `begin_run` starts the count (refused without the
+  allocator, or while another budget is in force) and `Drop for Vm`
+  ends it; `memory_check` at the `call!` macro, at a backward `Jump`
+  and at `call_primitive`; a budgeted run is the interpreter's.
+  `Interrupt::OverMemory { limit, used }` and `RunOutcome::OverMemory`.
+  `Narrowing.sandbox`: `effective` intersects the declared capabilities
+  with it (`within`, then only what the sandbox covers) and adds its
+  budgets; `begin_run` adds its guards after the declared ones.
+- **The binary.** `renyi::Allocator` (mimalloc under `Counting`)
+  declared in `src/main.rs`, no longer in the library, so that a host
+  links its own; `Counting` and `Value` re-exported. `--sandbox
+  <grant.json>` among the flags of `run`, `record` and `serve`
+  (`sandbox::apply_flag` reads the file into `Narrowing.sandbox` and
+  returns the memory; `sandbox::refusal` refuses when `main` needs a
+  capability the grant does not cover; `test` refuses the flag);
+  `exit_of` exits 2 on `OverMemory` with the limit and the peak in
+  words. `renyi_syntax::parse_grant` parses a `needs` clause alone.
+- **Held equal.** `crates/renyi/tests/sandbox.rs` (its own counting
+  allocator): a module of eight public functions loaded from a text,
+  their list with purpose, parameters, needs and signature; `add`,
+  a private function refused, the arity refused, `shout` under
+  `console`, a failure rendered, a crash with its location; `shout`
+  refused under an empty grant and `add` still answered; a scope
+  (`filesystem.read` of one directory, another refused at the boundary
+  with `PermissionDenied`); `at most 2 per run` counting across three
+  calls; a guarded value printed but refused into a file with
+  `Guarded`, the file not written, a plain value written; a memory
+  budget of 8 megabytes stopping a list of four million items with
+  `OverMemory` and the next call answered; and the binary with
+  `--sandbox`: `hello` under `console, environment` with a memory
+  budget, refused under `console` alone naming `environment`, a grant
+  with an unknown capability refused, `test --sandbox` refused. The
+  unit tests of `sandbox.rs` cover the grant's spellings and the
+  memory's.
+- **Not covered.** The console output of a sandboxed call goes to the
+  process's streams, not to the host; the count is the process's, so a
+  multi-threaded host's other threads count during a budgeted call and
+  one budget is in force at a time; a bytecode file cannot be loaded
+  (no visibility in the format); each call builds a VM, which costs
+  the setup of the natives table and the field cache per call; the
+  cost of the counting allocator on the benchmarks is not measured
+  (one relaxed load per allocation and deallocation by design); no C
+  API yet (decision A5).
+
 ## The watch of `serve` as it exists (decision AO1; session 8, 2026-10-08)
 
 The third step of M5 in the owner's order: `renyi serve --watch`, a
@@ -2442,6 +2518,19 @@ Three commits on `main`, each gated as in session 7:
     AO), the reference (appendix B), `07-system-design.md` (section 5
     as implemented, R7-3 closed), `docs/GAPS.md`, `README.md`,
     `CLAUDE.md`, this file.
+24. the embedding API (decisions AP1 and AP2; the section "The
+    embedding API as it exists"): `crates/renyi/src/sandbox.rs`
+    (`Grant`, `Sandbox`, `CallError`, `Function`, `--sandbox` for
+    `run`, `record` and `serve`), `Allocator` in the binary,
+    `compile_file`, `tests/sandbox.rs`; `crates/renyi_vm/src/memory.rs`,
+    `Options.memory`, `Interrupt::OverMemory`, `RunOutcome::OverMemory`,
+    `Narrowing.sandbox`, `Vm::budgets` and `resume_budgets`;
+    `renyi_syntax::parse_grant`; the guide `docs/embedding.md`, the
+    decisions (section AP), the reference (appendix B),
+    `07-system-design.md` (section 4 as implemented, R7-1 closed),
+    `docs/GAPS.md`, `README.md`, `docs/extensions.md` (the allocator
+    line), `docs/index.md` and `tools/site.py` (the guide in the
+    navigation), `CLAUDE.md`, this file.
 
 ## Done in session 7 (stage 1 of the gap audit)
 
@@ -2925,8 +3014,12 @@ on a fresh clone).
    VS Code extension) and the watch of `serve` is done (decision AO1:
    `renyi serve --watch` runs `main` again between two requests on a
    clean new version, the socket kept open, on the same resident
-   world); next the embedding API with `--sandbox` (decision Q3), the
-   last of the four. Candidates for the server, none decided: completion (names in
+   world) and the embedding API is done (decisions AP1 and AP2:
+   `renyi::Sandbox`, the grant as a `needs` clause with the memory
+   budget, `renyi run --sandbox`): M5 is complete. Next, as the owner
+   set on 2026-10-07, the interspersed items below, and later the C
+   API of decision A5 over the Rust one. Candidates for the server,
+   none decided: completion (names in
    scope, the library's), references, rename, formatting through the
    editor, a `renyi.path` prompt when the binary is missing. Interspersed, as the owner asked the same day: the performance
    items by the profile of AG5 (the pattern cache of `Text.matches`,
@@ -2939,6 +3032,14 @@ on a fresh clone).
 
 ## Known gaps and risks
 
+- **The embedding API.** The console output of a sandboxed call goes
+  to the process's streams; the memory count is the process's (a
+  multi-threaded host's other threads count during a budgeted call, and
+  one budget is in force at a time); a bytecode file cannot be loaded
+  into a sandbox; each call sets up a VM; the counting allocator's
+  cost on the benchmarks is not measured; the `Value` type a host
+  builds arguments with is `renyi_vm`'s, re-exported, with no
+  conversion from JSON yet (the C API will need one).
 - **The watch of `serve`.** A reload runs `main` again from the top,
   so a service that does work before `server.serve` repeats it on
   every reload; a file imported from outside the project's directory

@@ -22,11 +22,11 @@ use renyi_workspace::Workspace;
 
 use crate::{
     bound_modules, compile_sources, exit_of, grants, library, parse_flags, registry, run_command,
-    toolchain, CompileError, Compiled, USAGE,
+    sandbox, toolchain, CompileError, Compiled, USAGE,
 };
 
 pub fn serve_command(args: &[String]) -> ExitCode {
-    let (flags, positional) = match parse_flags(args) {
+    let (mut flags, positional) = match parse_flags(args) {
         Ok(parsed) => parsed,
         Err(message) => {
             eprintln!("renyi: {message}");
@@ -36,6 +36,13 @@ pub fn serve_command(args: &[String]) -> ExitCode {
     if !flags.watch {
         return run_command(args, false);
     }
+    let memory = match sandbox::apply_flag(&mut flags) {
+        Ok(memory) => memory,
+        Err(message) => {
+            eprintln!("renyi: {message}");
+            return ExitCode::FAILURE;
+        }
+    };
     if flags.replay.is_some()
         || flags.to.is_some()
         || flags.refresh.is_some()
@@ -45,7 +52,7 @@ pub fn serve_command(args: &[String]) -> ExitCode {
         || flags.profile
     {
         eprintln!(
-            "renyi: `serve --watch` takes only `--deny`, `--allow-host`, `--allow-read`, `--allow-write`, `--at-most`, `--explain` and `--interpret`"
+            "renyi: `serve --watch` takes only `--deny`, `--allow-host`, `--allow-read`, `--allow-write`, `--at-most`, `--sandbox`, `--explain` and `--interpret`"
         );
         return ExitCode::FAILURE;
     }
@@ -118,6 +125,7 @@ pub fn serve_command(args: &[String]) -> ExitCode {
             registry: registry().clone(),
             watch: Some(ready),
             listener: listener.take(),
+            memory,
             ..Options::default()
         };
         let run = renyi_vm::run_program(&compiled.program, options);
@@ -162,8 +170,9 @@ fn header_of(root: &str) -> Header {
     }
 }
 
-/// `--deny`: the functions that need a denied capability, as `renyi run`
-/// refuses them.
+/// `--deny`: the functions that need a denied capability, and
+/// `--sandbox`: a capability `main` needs outside the grant, as `renyi
+/// run` refuses them.
 fn denied(compiled: &Compiled, narrowing: &Narrowing) -> Option<String> {
     for denied in &narrowing.deny {
         let functions = renyi_vm::denied_functions(&compiled.program, denied);
@@ -175,7 +184,7 @@ fn denied(compiled: &Compiled, narrowing: &Narrowing) -> Option<String> {
             ));
         }
     }
-    None
+    sandbox::refusal(&compiled.program, narrowing)
 }
 
 /// What `renyi run` says before a program that can call native code or

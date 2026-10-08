@@ -26,6 +26,7 @@ pub mod extension;
 pub mod file;
 pub mod grant;
 pub mod integer;
+pub mod memory;
 pub mod native;
 pub mod natives;
 pub mod profile;

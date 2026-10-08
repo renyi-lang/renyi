@@ -120,7 +120,7 @@ The manifest and `reproduce` exist (M3), the dependency hashes since
 decision AC1 (M4): `reproduce` refuses a run whose dependencies differ
 from the manifest's.
 
-## 4. In-process sandboxing (decision Q3)
+## 4. In-process sandboxing (decisions Q3, AP1 and AP2)
 
 ### 4.1 The use
 
@@ -132,35 +132,48 @@ runtime; Renyi's effect system is the boundary itself.
 
 ### 4.2 The design
 
-- **Loading with a grant.** The embedding API has one entry: load a module
-  (source or compiled) with a grant, which is a list of capabilities with
-  scopes, budgets (P2) and guards (P3), and call its exposed functions. The
-  module runs on its own task with that grant on the grant stack; it can
-  reach nothing the grant does not name, because there is no ambient I/O,
-  no reflection and no native call without `foreign`.
-- **Resources.** `within` deadlines (J12) bound time, budgets bound calls,
-  and the VM takes a memory budget per loaded module (`at most 256
-  megabytes memory` in the grant, open item R7-1 for the syntax); a module
-  that exceeds it fails as a whole and the host is told.
-- **Data.** Values the host hands in may carry origins (P3), so a sandboxed
-  module can be given a secret it may use only toward one host.
-- **Several modules, one process.** Each loaded module has its own grant;
-  the structured concurrency tree carries grants, so a task inherits the
-  effective grant of its parent and a module's tasks never widen it.
+- **Loading with a grant.** `renyi::Sandbox::load(path, grant)` (or
+  `load_source` for a text) loads a module, its imports resolved and
+  checked, with a `Grant`: the capabilities as a `needs` clause spells
+  them, scopes, budgets (P2) and guards (P3) included, and a memory
+  budget. `call(name, arguments)` calls a public function; a function
+  whose `needs` the grant does not cover is refused before it runs, and
+  inside the call the grant stack narrows as under `renyi run`. The
+  module reaches nothing the grant does not name, because there is no
+  ambient I/O, no reflection and no native call without `foreign`
+  (decisions AP1 and AP2; the guide is `embedding.md`).
+- **Resources.** `within` deadlines (J12) bound time, budgets bound calls
+  and count across the calls of one sandbox as one run, and `memory` in
+  the grant bounds the bytes a call holds above the level at its start,
+  counted by the process's allocator and read at every call, primitive
+  and loop turning; a call that exceeds it fails as a whole with
+  `OverMemory`, and the host is told the limit and the peak. The budget
+  is a setting of the sandbox, not a clause of the grammar (R7-1 closed).
+- **Data.** `Sandbox::guarded(value, capability)` tags a value the host
+  hands in with a guard of the grant (P3), so a sandboxed module can be
+  given a secret it may use only toward one sink.
+- **Several modules, one process.** Each `Sandbox` has its own program
+  and grant; its calls run one after the other (S2), each on a VM of its
+  own, so nothing survives between calls but the budgets; one memory
+  budget is in force at a time in a process.
 - **The same grant from the command line.** `renyi run --sandbox grant.json
-  program.ry` runs a program under a grant narrower than its `main`
-  declares (E3's `--deny` generalized).
+  program.ry` (also `record` and `serve`) runs a program under its
+  declared grant intersected with the file's, the file's budgets, guards
+  and memory budget added; `main` must need nothing the grant does not
+  cover (E3's `--deny` generalized).
 
 ### 4.3 What it does and does not promise
 
 It isolates effects, time and resource use. It does not hide timing or
-scheduling from the module, and `foreign` code and Python, once granted,
-are outside every guarantee. The document says so.
+scheduling from the module, `foreign` code and Python, once granted, are
+outside every guarantee, and the module's console output goes to the
+process's streams. The document says so.
 
-Scheduled after section 2 (the grant stack) with the embedding API at M5.
-The half of that API that faces the host exists: natives registered
-under declaration files and built into the binary (decisions AJ1 and
-AK1 to AK4; the guide is `extensions.md`).
+Done 2026-10-08 (decisions AP1 and AP2), after the half of the API that
+faces the host, natives registered under declaration files and built
+into the binary (decisions AJ1 and AK1 to AK4; the guide is
+`extensions.md`). The C API of A5 is a layer over the Rust one, for
+later.
 
 ## 5. Checked live update (decisions Q4 and AO1)
 
@@ -206,12 +219,15 @@ before it runs: Erlang's hot code loading with static types.
    `update --accept-effects`, `audit` (section 2); dependency hashes in
    the manifest (section 3). Done 2026-10-07 (decision AC1).
 3. M5: `renyi serve --watch` (section 5), done 2026-10-08 (decision
-   AO1); the embedding API with grants and memory budgets (section 4).
+   AO1); the embedding API with grants and memory budgets (section 4),
+   done the same day (decisions AP1 and AP2). M5 is complete.
 
 ## 7. Open items
 
 - R7-1: the syntax of a memory budget in a grant (`at most 256 megabytes
-  memory`, or a command-line and embedding-only setting).
+  memory`, or a command-line and embedding-only setting). Closed by
+  decision AP1: a setting of the sandbox, `memory` in the grant file and
+  in `renyi::Grant`, no clause in the grammar.
 - R7-2: who runs the registry and how its recomputation of manifests is
   trusted (signatures, reproducible builds of section 3).
 - R7-3: whether a hot swap may replace a definition on the stack of a

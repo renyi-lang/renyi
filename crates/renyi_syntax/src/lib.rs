@@ -19,6 +19,6 @@ pub use diagnostics::{Diagnostic, Severity};
 pub use format::{capabilities_text, for_any_text, format, type_text};
 pub use json::module_to_json;
 pub use lexer::{lex, Lexed};
-pub use parser::{parse, parse_declarations, Parsed};
+pub use parser::{parse, parse_declarations, parse_grant, Parsed};
 pub use span::{ForeignModule, Package, Position, PythonBinding, PythonModule, SourceFile, Span};
 pub use token::{TextPart, Token, TokenKind, Word};

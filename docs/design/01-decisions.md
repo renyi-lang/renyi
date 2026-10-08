@@ -2597,3 +2597,61 @@ answer on every machine; a change to an unrelated file of the
 directory costs one compile, which finds the program's sources
 unchanged and reloads nothing. Closes R7-3 of `07-system-design.md`.
 (user)
+
+## AP. The embedding API (session 8)
+
+The fourth of M5's four steps in the owner's order (2026-10-08), which
+completes M5. The owner's four answers, each the recommended option,
+then the derived choices.
+
+**AP1. The embedding API is a Rust API first, `renyi::Sandbox`: a host
+loads a module from a source file or a text with a `renyi::Grant` and
+calls its public functions by name with `Value` arguments, the value or
+the failure coming back; the grant is spelled as a `needs` clause is, in
+a text or in a JSON file with the memory budget beside it (`{"grant":
+"console, network.http(\"host\") at most 60 per minute", "memory": "256
+megabytes"}`), and `renyi run --sandbox grant.json` runs `main` under the
+same grant; the memory budget is a setting of the sandbox, not a clause
+of the grammar, counted by a counting allocator as the bytes a call
+holds above the level at its start, and a call that exceeds it fails as
+a whole with `OverMemory`; every public function of the module is
+callable, with the JSON Schema of those marked `expose as tool` beside
+them.** The C API of A5 is a layer over this one, for later; Python and
+JS hosts go through it. (i) Rust first: the isolation and the grant are
+the work, a language binding is a shell around them. (ii) The `needs`
+syntax for the grant: one spelling for what a program may do, wherever
+it is written, read by the language's own parser (`parse_grant`), so
+budgets and guards come with it and nothing enters the frozen surface
+(V11). (iii) A setting rather than `at most 256 megabytes memory` in the
+grammar (open item R7-1, closed): the budget is the host's to set, not
+the program's to declare; a counting allocator because the VM's values
+are Rust allocations, so the allocator sees every byte, and the count
+costs one load per allocation while no budget is in force. (iv) Every
+public function rather than those with `expose as tool`: visibility is
+the module's own word on what may be called, and the tool clause is
+documentation for agents (D6), which the API reports beside it. (user)
+
+**AP2. A call whose `needs` the grant does not cover is refused before it
+runs, as `--deny` refuses a program at start (E3); inside the call the
+grant stack narrows as under `run`. The grant's budgets count across
+the calls of one sandbox as one run; each call runs on a VM of its own,
+and nothing else survives between calls. A budgeted run stays on the
+interpreter, as a narrated or profiled one does (AG3), and the budget is
+read at every call, primitive and loop turning. One budget is in force
+at a time in a process, and it counts the process's allocations. The
+official binary declares the counting allocator, `renyi::Allocator`
+(mimalloc under the count), in `src/main.rs` rather than in the library,
+so that a host keeps its own allocator and wraps it in `renyi::Counting`
+when it wants the budget; a grant with `memory` is refused at load
+without one. A bytecode file is refused by `Sandbox::load`, since it
+carries no visibility; a format that does is a change to
+`compiler/bytecode.ry` and the file, for later. `renyi run --sandbox`
+refuses to start when `main` needs a capability the grant does not
+cover, naming it; `record` and `serve` take the option too, and the
+effective grant is what the manifest names.** A refusal before the call
+tells the host what the grant lacks in one message, where a boundary
+failure would come back as the function's own failure type; the
+interpreter alone because the safe points of the generated code are not
+all the interpreter's, and a sandbox is about safety, not speed; the
+allocator in the binary because a library that declares the global
+allocator cannot be linked into a host that declares its own. (derived)

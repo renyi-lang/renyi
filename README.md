@@ -146,7 +146,11 @@ checker (M2), the project map (`renyi index`), the VM (M3) and packages
   its time went; `renyi serve --watch` runs a service and, when a file
   of its project changes and the program checks clean, runs `main`
   again between two requests with the listening socket kept open
-  (decision AO1); the VM generates machine code for the hot code
+  (decision AO1); `renyi run --sandbox grant.json` runs a program under
+  a grant narrower than its `main` declares, with a memory budget, and a
+  Rust host loads a module the same way through `renyi::Sandbox` and
+  calls its public functions (decision AP1; the guide is
+  `docs/embedding.md`); the VM generates machine code for the hot code
   objects inside the binary (decision AG1: integer loops run in
   registers, an Integer that leaves the machine word goes back to the
   interpreter, which has the big ones), and `--interpret` keeps a run

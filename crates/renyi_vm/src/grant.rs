@@ -132,6 +132,10 @@ pub struct Narrowing {
     /// `--at-most CAPABILITY=COUNT/UNIT`: budgets added to the declared
     /// ones, so that the command line can only tighten.
     pub budgets: Vec<Capability>,
+    /// The grant of a sandbox (decision AP1: `--sandbox`, or the host's
+    /// through the embedding API): the declared capabilities are
+    /// intersected with it, and its budgets and guards are added.
+    pub sandbox: Option<Vec<Capability>>,
 }
 
 /// The grant of one run: the capabilities a primitive call is checked
@@ -220,6 +224,18 @@ pub fn effective(declared: &[Capability], narrowing: &Narrowing) -> Grant {
             .flat_map(|granted| remove(granted, deny))
             .collect();
     }
+    let sandbox: Option<Vec<Capability>> = narrowing
+        .sandbox
+        .as_ref()
+        .map(|sandbox| sandbox.iter().map(normalised).collect());
+    if let Some(sandbox) = &sandbox {
+        // the intersection: what both the declaration and the sandbox
+        // allow, on the sandbox's lines only
+        capabilities = within(&capabilities, sandbox)
+            .into_iter()
+            .filter(|capability| effects::covered(sandbox, capability, true))
+            .collect();
+    }
     let mut counters: Vec<Counter> = declared
         .iter()
         .map(normalised)
@@ -232,6 +248,9 @@ pub fn effective(declared: &[Capability], narrowing: &Narrowing) -> Grant {
             .map(normalised)
             .filter_map(|c| Counter::from_grant(&c)),
     );
+    if let Some(sandbox) = &sandbox {
+        counters.extend(sandbox.iter().filter_map(Counter::from_grant));
+    }
     Grant {
         capabilities,
         counters,

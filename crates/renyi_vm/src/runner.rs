@@ -32,6 +32,12 @@ pub enum RunOutcome {
     /// The watch of `renyi serve --watch` found a new version (decision
     /// AO1): `main` is to be run again on it.
     Reload,
+    /// The memory budget was exceeded (decision AP1): the limit, and the
+    /// most bytes the run held above the level at its start.
+    OverMemory {
+        limit: u64,
+        used: u64,
+    },
 }
 
 /// A run of `main` and what the primitive boundary produced.
@@ -91,6 +97,9 @@ pub fn describe_outcome(outcome: &RunOutcome) -> String {
         RunOutcome::Crashed { message, .. } => format!("crashed: {message}"),
         RunOutcome::Exited(code) => format!("exited with {code}"),
         RunOutcome::Reload => "stopped for a new version".to_string(),
+        RunOutcome::OverMemory { limit, used } => {
+            format!("exceeded the memory budget of {limit} bytes ({used} bytes held)")
+        }
     }
 }
 
@@ -230,6 +239,7 @@ fn crashed(interrupt: Interrupt) -> RunOutcome {
         Interrupt::Crash { message, location } => RunOutcome::Crashed { message, location },
         Interrupt::Exit(code) => RunOutcome::Exited(code),
         Interrupt::Reload => RunOutcome::Reload,
+        Interrupt::OverMemory { limit, used } => RunOutcome::OverMemory { limit, used },
     }
 }
 
@@ -522,5 +532,8 @@ fn describe_interrupt(interrupt: Interrupt) -> String {
         Interrupt::Crash { message, .. } => format!("crashed: {message}"),
         Interrupt::Exit(code) => format!("exited with code {code}"),
         Interrupt::Reload => "stopped for a new version".to_string(),
+        Interrupt::OverMemory { limit, used } => {
+            format!("exceeded the memory budget of {limit} bytes ({used} bytes held)")
+        }
     }
 }

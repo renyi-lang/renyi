@@ -241,9 +241,10 @@ freeze, or take it out of the frozen surface until it exists.
    `crates/renyi/tests/foreign.rs` and two conformance cases);
    `capability-unavailable` is gone.
 5. **`lazy`** is reserved with no grammar rule (decision B4, as intended).
-6. The memory budget of a grant (`at most 256 megabytes memory`, open item
-   R7-1) has no syntax and no enforcement; the VM has no step or
-   recursion limit either.
+6. The memory budget of a grant is a setting of the sandbox since
+   decision AP1 (`memory` in the grant file and in `renyi::Grant`,
+   enforced by the counting allocator; open item R7-1 closed); the VM
+   has no step or recursion limit.
 
 ## 4. Milestones not started, or half done
 
@@ -265,12 +266,11 @@ freeze, or take it out of the frozen surface until it exists.
   the resident `World` with the per-item refresh of the map (open item
   R5-5 closed: `renyi mcp` holds a `renyi_workspace::Workspace`), and,
   since decisions AN2 and AN3, the language server (`renyi lsp`, with
-  the client in the VS Code extension), and, since decision AO1,
-  `renyi serve --watch` (a reload between requests on that world).
-  Absent: the embedding API with
-  per-module grants and memory budgets (decision Q3: the nearest things are
-  `Vm::begin_run`, `Vm::call_function` and `Options`, one grant per
-  run) and `renyi run --sandbox grant.json`.
+  the client in the VS Code extension), since decision AO1,
+  `renyi serve --watch` (a reload between requests on that world), and,
+  since decisions AP1 and AP2, the embedding API (`renyi::Sandbox` with
+  its grant and memory budget, `renyi run --sandbox grant.json`). M5 is
+  complete. Absent: the C API of decision A5 over the Rust API.
 - **M6** (AOT and WASM): the VM generates machine code for the hot
   code objects in the process (decision AG1, session 8); no `renyi
   build` yet (an image of the bytecode with the machine code, loaded in

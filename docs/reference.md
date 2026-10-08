@@ -1589,10 +1589,10 @@ Python scripts under `tools/` are development aids.
 | `renyi parse [--json] [--declarations] <file>` | the syntax tree; `--declarations` reads a library declaration file, whose functions have no bodies | 1 on a parse error |
 | `renyi index [--json \| --budgets \| --diff <base>] [path]` | the project map, its budgets, the semantic diff (`design/05-agent-tooling.md`) | |
 | `renyi tools [path]` | the tool manifest (section 15) | |
-| `renyi run [options] <file> [arguments]` | check, then run `main` under its grant | 0; 1 when `main` fails; 2 on a crash; the code of `environment.exit` |
+| `renyi run [options] <file> [arguments]` | check, then run `main` under its grant | 0; 1 when `main` fails; 2 on a crash or over the memory budget of `--sandbox`; the code of `environment.exit` |
 | `renyi run --manifest ...` | also print the run manifest (toolchain, the extensions beyond the standard library, code hash, the dependencies with the lockfile's version and hash of each, grant, arguments, environment, outcome, output hash) | as `run` |
 | `renyi record [--to <file>] [options] <file> [arguments]` | run `main` and write a recording of its effects, the manifest in its header | as `run` |
-| `renyi serve [--watch] [options] <file> [arguments]` | `run` for a service; with `--watch` (decision AO1), the files of the program's project are looked at every half second between requests and, when one changed and the program checks clean, `main` is run again on the new version between two requests with the listening socket kept open (no request is lost), the definitions that changed named on the standard error, a changed signature among them; a version with errors is reported and the last good one keeps serving; `--watch` takes `--deny`, `--allow-host`, `--allow-read`, `--allow-write`, `--at-most`, `--explain` and `--interpret` | as `run` |
+| `renyi serve [--watch] [options] <file> [arguments]` | `run` for a service; with `--watch` (decision AO1), the files of the program's project are looked at every half second between requests and, when one changed and the program checks clean, `main` is run again on the new version between two requests with the listening socket kept open (no request is lost), the definitions that changed named on the standard error, a changed signature among them; a version with errors is reported and the last good one keeps serving; `--watch` takes `--deny`, `--allow-host`, `--allow-read`, `--allow-write`, `--at-most`, `--sandbox`, `--explain` and `--interpret` | as `run` |
 | `renyi reproduce <recording> [<file>]` | replay a recording under its manifest and compare the outcome and the output; the code hash and the dependencies must be the manifest's, a different toolchain or extension list is a warning | 1 when they differ |
 | `renyi test [--strict] [--refresh <name> [--redact <name>]] [--explain] [--interpret] <file>...` | run every `example:` and `test` | 1 when any fails |
 | `renyi compile [--to <file.ryc>] <file>` | check, then write the program as a bytecode file (default `<name>.ryc`); `run`, `record`, `test` and `reproduce` take a `.ryc` file in place of a source | 1 when any error |
@@ -1610,7 +1610,15 @@ Python scripts under `tools/` are development aids.
 The options of `run` and `record`: `--explain` narrates the run on the
 standard error; `--replay <recording>` (run only) answers every effect from
 the recording; `--deny`, `--allow-host`, `--allow-read`, `--allow-write`
-and `--at-most` narrow the grant (section 11); `--redact <name>` keeps a
+and `--at-most` narrow the grant (section 11); `--sandbox <grant.json>`
+(also `record` and `serve`, decision AP1) runs `main` under a grant
+narrower than it declares: the file's `grant`, spelled as a `needs`
+clause is, intersected with `main`'s, its budgets and guards added, and
+its `memory` (`256 megabytes`) a budget on the bytes the run holds above
+its start, which ends the run as a crash does when exceeded; `main` must
+need nothing the grant does not cover, and a budgeted run stays on the
+interpreter (the same grant through the embedding API: `embedding.md`);
+`--redact <name>` keeps a
 secret out of a recording; `--profile` counts every operation, call and
 primitive call, samples where the time goes, and prints the report on the
 standard error when the run ends (decision X4). By default the VM runs

@@ -77,6 +77,9 @@ renyi run program.ry        # main, under the grant it declares
 - [Calling Python from Renyi](python.md): a declaration file bound to a
   Python module by the manifest, one worker per run, what crosses and
   what fails.
+- [Embedding Renyi in a host](embedding.md): a module loaded with a
+  grant, its public functions called, the memory budget; the same grant
+  on the command line with `renyi run --sandbox`.
 - [The positioning](design/08-positioning.md): the niche, the four
   points the language leads with and the comparison with the
   alternatives; [the design decisions](design/01-decisions.md), with
