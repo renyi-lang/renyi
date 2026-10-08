@@ -19,6 +19,7 @@
 //! standard library is the first, and another is a declaration file with
 //! a table of natives, registered the same way.
 
+pub mod binary;
 pub mod bytecode;
 pub mod compile;
 pub mod decimal;

@@ -3290,3 +3290,35 @@ instruction count were the field read's (the two selects, a load and a
 compare per hit), the call counter's (three per call) and the ask
 path's; the locals written by the callee moved bytes, not
 instructions. (user)
+
+**AT3. Stage 2 of AT1, done and measured: the image carries the
+program in a binary encoding (`crates/renyi_vm/src/binary.rs`: an
+integer LEB128, a text its length then its bytes, an option one byte
+then the value, a list its count then its items, a variant one byte
+then its fields, the maps in key order; the same content as the
+bytecode file, written in the order `file.rs` writes it, checked on
+loading as the file is) together with the hash of the program's
+bytecode file, which the run manifest names as the code hash, so that
+a recording made from the `.ryc` reproduces against the image and the
+other way round. The `.ryc` stays the JSON of Z1. The image format is
+2.** Why an encoding of the program and not of the JSON tree: the parse
+of the text was only part of the load; the tree's million small
+strings (every number is one) and the lookups by key were the rest, and
+an encoding read straight into the program skips both. Why the hash is
+stored rather than recomputed: rendering the JSON at load would cost
+what the encoding saves. Why not the `.ryc` itself in binary: it is
+read by people and written by the compiler in Renyi too (Z3), and an
+image is written by `renyi build` alone. The census tool takes the
+bytecode file beside the image for the ops, since the image no longer
+holds them as text. Measured: the compiler's image 17.02 to 8.71 MB (the program
+8.99 MB of JSON to 0.68 MB), its load 152 to 69 ms, against 166 ms for
+compiling the compiler from source and 165 for reading its `.ryc`
+(`renyi run <file> /nonexistent`, which fails before `main`); the
+self-check as an image 12.42 to 11.37 billion estimated cycles (-8.4%:
+8.88 to 8.13 billion instructions, the parse of the JSON gone), the JIT
+run and the interpreter within the noise of the binary's own layout
+(+0.1% and -0.3%, the generated code untouched); `hello` as an image 42
+KB in place of 235 and 7 ms in place of 8 for the source, the image
+faster than the source now on the shortest program too; in wall-clock
+the self-check 1448 ms as an image against 1723 on the JIT run, the
+best of five each. (user)

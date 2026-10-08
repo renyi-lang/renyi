@@ -246,3 +246,51 @@ fn a_self_contained_executable_runs_the_program_with_its_command_line() {
         .join(format!("hello{}", std::env::consts::EXE_SUFFIX))
         .exists());
 }
+
+#[test]
+fn the_image_carries_the_program_in_binary_with_the_bytecode_hash() {
+    let directory = scratch("binary");
+    // the compiler's own program, every kind of op in it, round-trips
+    // through the encoding and renders as its bytecode file does
+    let checker = path(&directory.join("checker.ryc"));
+    let compiled = renyi(&["compile", "--to", &checker, "compiler/checker.ry"]);
+    assert!(compiled.status.success(), "{}", text(&compiled.stderr));
+    let rendered = std::fs::read_to_string(&checker).expect("the bytecode file");
+    let program = renyi_vm::file::load(&rendered).expect("the program");
+    let encoded = renyi_vm::binary::encode(&program);
+    assert!(
+        encoded.len() * 4 < rendered.len(),
+        "{} bytes encoded against {} of JSON",
+        encoded.len(),
+        rendered.len()
+    );
+    let decoded = renyi_vm::binary::decode(&encoded).expect("the program decodes");
+    assert_eq!(renyi_vm::file::render(&decoded), rendered);
+    // an image holds the encoding and the bytecode file's hash, so that a
+    // recording made from either reproduces against the other
+    let bytecode = path(&directory.join("hello.ryc"));
+    let image_file = path(&directory.join("hello.ryi"));
+    let compiled = renyi(&["compile", "--to", &bytecode, "examples/hello.ry"]);
+    assert!(compiled.status.success(), "{}", text(&compiled.stderr));
+    let built = renyi(&["build", "--to", &image_file, "examples/hello.ry"]);
+    assert!(built.status.success(), "{}", text(&built.stderr));
+    let image =
+        renyi_vm::native::image::Image::read(&std::fs::read(&image_file).expect("the image"))
+            .expect("an image");
+    let rendered = std::fs::read_to_string(&bytecode).expect("the bytecode file");
+    assert_eq!(
+        image.code_hash,
+        renyi_vm::recording::sha256_of(rendered.as_bytes())
+    );
+    let program = renyi_vm::binary::decode(&image.program).expect("the image's program");
+    assert_eq!(renyi_vm::file::render(&program), rendered);
+    let recording = path(&directory.join("hello.recording.json"));
+    let recorded = renyi(&["record", "--to", &recording, &bytecode, "Renyi"]);
+    assert!(recorded.status.success(), "{}", text(&recorded.stderr));
+    let reproduced = renyi(&["reproduce", &recording, &image_file]);
+    assert!(reproduced.status.success(), "{}", text(&reproduced.stderr));
+    let recorded = renyi(&["record", "--to", &recording, &image_file, "Renyi"]);
+    assert!(recorded.status.success(), "{}", text(&recorded.stderr));
+    let reproduced = renyi(&["reproduce", &recording, &bytecode]);
+    assert!(reproduced.status.success(), "{}", text(&reproduced.stderr));
+}

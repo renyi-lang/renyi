@@ -1303,7 +1303,7 @@ fn read_grant(json: &In, at: &str) -> Read<Capability> {
 
 /// Every index of the program points inside it, so that the VM never
 /// reaches past a table on a file written by hand.
-fn check(program: &Program) -> Read<()> {
+pub(crate) fn check(program: &Program) -> Read<()> {
     let codes = program.codes.len();
     let functions = program.function_metas.len();
     let types = program.types.metas.len();

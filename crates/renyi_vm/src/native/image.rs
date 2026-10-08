@@ -24,7 +24,7 @@ use crate::compile::Program;
 pub const MAGIC: &[u8; 4] = b"RYI\0";
 
 /// The layout of the file: bumped when it changes.
-pub const IMAGE_FORMAT: u32 = 1;
+pub const IMAGE_FORMAT: u32 = 2;
 
 /// What the generated code assumes of the VM that runs it: the layout
 /// of a value, of the VM's native state and of a frame, the order of the
@@ -79,7 +79,8 @@ pub fn build(program: &Program, opt_level: Option<&str>) -> Result<Image, String
             target: jit.target(),
             opt_level: jit.opt_level().to_string(),
         },
-        bytecode: crate::file::render(program),
+        code_hash: crate::recording::sha256_of(crate::file::render(program).as_bytes()),
+        program: crate::binary::encode(program),
         codes,
     })
 }
@@ -124,12 +125,16 @@ pub struct ImageCode {
     pub deopts: Vec<DeoptPoint>,
 }
 
-/// An image: the header, the bytecode as text, and per code object its
-/// machine code (`None` for one the analysis left to the interpreter).
+/// An image: the header, the hash of the program's bytecode file (the
+/// code hash a run manifest names, so that a recording made from the
+/// `.ryc` or from the image reproduces against either), the program in
+/// the binary encoding of `binary.rs` (decision AT3), and per code object
+/// its machine code (`None` for one the analysis left to the interpreter).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Image {
     pub header: Header,
-    pub bytecode: String,
+    pub code_hash: String,
+    pub program: Vec<u8>,
     pub codes: Vec<Option<ImageCode>>,
 }
 
@@ -143,7 +148,8 @@ impl Image {
         out.u32(self.header.code_format);
         out.text(&self.header.target);
         out.text(&self.header.opt_level);
-        out.block(self.bytecode.as_bytes());
+        out.text(&self.code_hash);
+        out.block(&self.program);
         out.u32(self.codes.len() as u32);
         for code in &self.codes {
             match code {
@@ -204,8 +210,8 @@ impl Image {
             target: input.text()?,
             opt_level: input.text()?,
         };
-        let bytecode = String::from_utf8(input.block()?.to_vec())
-            .map_err(|_| "the bytecode is not UTF-8".to_string())?;
+        let code_hash = input.text()?;
+        let program = input.block()?.to_vec();
         let count = input.u32()? as usize;
         let mut codes = Vec::with_capacity(count.min(1 << 16));
         for _ in 0..count {
@@ -264,7 +270,8 @@ impl Image {
         }
         Ok(Image {
             header,
-            bytecode,
+            code_hash,
+            program,
             codes,
         })
     }
@@ -353,7 +360,8 @@ mod tests {
                 target: "x86_64 [a=1]".to_string(),
                 opt_level: "none".to_string(),
             },
-            bytecode: "{}".to_string(),
+            code_hash: "abc".to_string(),
+            program: vec![1, 0],
             codes: vec![
                 None,
                 Some(ImageCode {

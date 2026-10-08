@@ -8,8 +8,8 @@
 #   CEst = Ir + 10 * (I1 misses + D1 misses) + 10 * conditional mispredicts
 #             + 20 * indirect mispredicts + 100 * LL misses
 #
-# then the census of the image (tools/image_census.py): the bytes of
-# machine code per code object and per op. Deterministic, so two binaries
+# then the census of the image (tools/image_census.py, with the bytecode
+# file for the ops): the bytes of machine code per code object and per op. Deterministic, so two binaries
 # compare without repetition; about ten minutes a binary. The image is
 # built under valgrind too, since valgrind hides some CPU features and an
 # image built outside it is refused inside it.
@@ -40,4 +40,5 @@ printf '%-14s %s\n' "interpreter" "$(counts "$bin" run --interpret compiler/chec
 valgrind --tool=none "$bin" build --to "$work/selfcheck.ryi" compiler/checker.ry 2>/dev/null
 printf '%-14s %s\n' "image (speed)" "$(counts "$bin" run "$work/selfcheck.ryi" compiler/bodies.ry)"
 echo "== the image's census"
-python3 "$(dirname "$0")/image_census.py" "$work/selfcheck.ryi" --summary
+"$bin" compile --to "$work/selfcheck.ryc" compiler/checker.ry 2>/dev/null
+python3 "$(dirname "$0")/image_census.py" "$work/selfcheck.ryi" "$work/selfcheck.ryc" --summary

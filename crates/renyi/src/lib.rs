@@ -250,11 +250,11 @@ fn run_embedded(bytes: Vec<u8>) -> ExitCode {
     };
     let mut rest: Vec<String> = vec![name.clone()];
     rest.extend(std::env::args().skip(1));
-    let text = image.bytecode.clone();
+    let hash = image.code_hash.clone();
     run_loaded(
         &name,
         program,
-        Hashed::File(text),
+        Hashed::Given(hash),
         Some(image),
         Flags::default(),
         None,
@@ -521,6 +521,9 @@ fn compile(path: &str) -> Result<(renyi_vm::Program, Option<Image>), ExitCode> {
 enum Hashed {
     Sources(Vec<SourceFile>),
     File(String),
+    /// The hash itself, as an image stores its bytecode file's (decision
+    /// AT3).
+    Given(String),
 }
 
 /// `compile`, with what the manifest's code hash is computed from.
@@ -530,8 +533,8 @@ fn compile_with_sources(
     if image::is_image(path) {
         return match load_image_file(path) {
             Ok((program, loaded)) => {
-                let text = loaded.bytecode.clone();
-                Ok((program, Hashed::File(text), Some(loaded)))
+                let hash = loaded.code_hash.clone();
+                Ok((program, Hashed::Given(hash), Some(loaded)))
             }
             Err(message) => {
                 eprintln!("renyi: {message}");
@@ -607,7 +610,8 @@ fn load_image_bytes(bytes: &[u8], path: &str) -> Result<(renyi_vm::Program, Imag
     if let Some(mismatch) = loaded.header.mismatch(&target) {
         return Err(format!("{path}: {mismatch}"));
     }
-    let program = file::load(&loaded.bytecode).map_err(|detail| format!("{path}: {detail}"))?;
+    let program =
+        renyi_vm::binary::decode(&loaded.program).map_err(|detail| format!("{path}: {detail}"))?;
     Ok((program, loaded))
 }
 
@@ -847,6 +851,7 @@ fn code_hash(program: &renyi_vm::Program, hashed: &Hashed) -> Option<String> {
     match hashed {
         Hashed::Sources(files) => main_hash(program, files),
         Hashed::File(text) => Some(renyi_vm::recording::sha256_of(text.as_bytes())),
+        Hashed::Given(hash) => Some(hash.clone()),
     }
 }
 

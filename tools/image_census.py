@@ -1,14 +1,18 @@
 """The census of an image `renyi build` writes (decision AT1): the bytes
-of machine code per code object and per op, the op kinds, and, when numpy
-is at hand, a least-squares attribution of the bytes to the op kinds.
+of machine code per code object and, with the program's bytecode file
+beside it (`renyi compile` writes it; the image holds the program in a
+binary encoding, decision AT3), per op, the op kinds, and, when numpy is
+at hand, a least-squares attribution of the bytes to the op kinds.
 
-usage: python tools/image_census.py <file.ryi> [--summary]
+usage: python tools/image_census.py <file.ryi> [<file.ryc>] [--summary]
 """
 
 import json
 import struct
 import sys
 from collections import Counter
+
+IMAGE_FORMAT = 2
 
 
 class Reader:
@@ -37,17 +41,21 @@ class Reader:
 
 
 def read_image(path):
-    """The header fields, the bytecode text and, per code object, None or
-    (body bytes, trampoline bytes, loop headers, deopt points)."""
+    """The file's size, the size of the program's encoding and, per code
+    object, None or (body bytes, trampoline bytes, loop headers, deopt
+    points)."""
     reader = Reader(open(path, "rb").read())
     if reader.take(4) != b"RYI\0":
         raise SystemExit(f"{path}: not an image")
-    reader.u32()  # the image format
+    image_format = reader.u32()
+    if image_format != IMAGE_FORMAT:
+        raise SystemExit(f"{path}: image format {image_format}; this script reads format {IMAGE_FORMAT}")
     reader.block()  # the renyi version
     reader.u32()  # the code format
     reader.block()  # the target
     reader.block()  # the optimisation level
-    bytecode = reader.block()
+    reader.block()  # the code hash
+    program = len(reader.block())
     codes = []
     for _ in range(reader.u32()):
         if reader.u8() == 0:
@@ -71,39 +79,46 @@ def read_image(path):
         codes.append((len(body), len(trampoline), headers, deopts))
     if reader.at != len(reader.data):
         raise SystemExit(f"{path}: {len(reader.data) - reader.at} bytes after the image")
-    return len(reader.data), bytecode, codes
+    return len(reader.data), program, codes
 
 
 def main():
     args = sys.argv[1:]
     summary = "--summary" in args
     args = [arg for arg in args if arg != "--summary"]
-    if len(args) != 1:
+    if len(args) not in (1, 2):
         raise SystemExit(__doc__)
-    size, bytecode, codes = read_image(args[0])
-    program = json.loads(bytecode)
+    size, program_size, codes = read_image(args[0])
+    metas = None
+    if len(args) == 2:
+        metas = json.load(open(args[1], encoding="utf-8"))["codes"]
+        if len(metas) != len(codes):
+            raise SystemExit(f"{args[1]} has {len(metas)} code objects, the image {len(codes)}")
+    compiled = [code for code in codes if code is not None]
+    total_body = sum(body for body, _, _, _ in compiled)
+    total_trampoline = sum(trampoline for _, trampoline, _, _ in compiled)
+    total_deopts = sum(deopts for _, _, _, deopts in compiled)
+    print(
+        f"image {size} bytes: the program {program_size}, machine code {total_body} in bodies"
+        f" and {total_trampoline} in trampolines; {len(compiled)} of {len(codes)} code objects compiled"
+    )
+    if metas is None:
+        print(f"{total_body / max(len(compiled), 1):.0f} bytes of body per code object; {total_deopts} deopt points (the bytecode file would give the ops)")
+        return
     rows = []
-    total_body = total_trampoline = total_ops = total_deopts = 0
     kinds_total = Counter()
-    for meta, code in zip(program["codes"], codes):
+    total_ops = 0
+    for meta, code in zip(metas, codes):
         if code is None:
             continue
         body, trampoline, headers, deopts = code
         kinds = Counter(op["kind"] for op in meta["ops"])
         kinds_total.update(kinds)
         rows.append((meta["name"], body, trampoline, len(meta["ops"]), deopts, meta["locals"], len(headers), kinds))
-        total_body += body
-        total_trampoline += trampoline
         total_ops += len(meta["ops"])
-        total_deopts += deopts
-    compiled = len(rows)
-    print(
-        f"image {size} bytes: bytecode {len(bytecode)}, machine code {total_body} in bodies"
-        f" and {total_trampoline} in trampolines; {compiled} of {len(codes)} code objects compiled"
-    )
     print(
         f"{total_ops} ops, {total_body / max(total_ops, 1):.1f} bytes of body per op,"
-        f" {total_body / max(compiled, 1):.0f} per code object; {total_deopts} deopt points"
+        f" {total_body / max(len(rows), 1):.0f} per code object; {total_deopts} deopt points"
     )
     if summary:
         return
@@ -128,7 +143,7 @@ def main():
     coefficients, *_ = np.linalg.lstsq(matrix, bodies, rcond=None)
     predicted = matrix @ coefficients
     r2 = 1 - ((bodies - predicted) ** 2).sum() / ((bodies - bodies.mean()) ** 2).sum()
-    print(f"\nthe bytes attributed to the op kinds by least squares over {compiled} code objects (r2 {r2:.3f}):")
+    print(f"\nthe bytes attributed to the op kinds by least squares over {len(rows)} code objects (r2 {r2:.3f}):")
     print("  kind                   bytes each    count   total bytes   share")
     contributions = [(name, coefficients[i], matrix[:, i].sum()) for i, name in enumerate(names)]
     for name, each, count in sorted(contributions, key=lambda item: -abs(item[1] * item[2])):

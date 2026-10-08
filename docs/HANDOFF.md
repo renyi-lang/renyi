@@ -16,8 +16,9 @@ JIT" below); then `renyi build`, the image of a program that runs
 without compiling, decisions AS1 to AS4 (the section "`renyi build` as
 it exists" below), `build --exe`, the self-contained executable,
 included; then the round on the size of the generated code, decisions
-AT1 and AT2 (the section "The size of the generated code" below), its
-stage 1 done, stage 2 (the image's bytecode in binary) in progress.
+AT1 to AT3 (the section "The size of the generated code" below): the
+cuts at no cost and the image's program in binary done, stage 3 (the
+shared reference-count stubs) the owner's to start or to pass.
 Session 8
 (stage 2 of the gap audit of
 `docs/GAPS.md`: the formal grammar `docs/grammar.ebnf` with decision V12;
@@ -1765,7 +1766,7 @@ and the commit of the site and the crates.io metadata.
   release; the Windows archive's checksum and binary were verified
   by hand; `cargo install renyi` built the binary from crates.io.
 
-## The size of the generated code (decisions AT1 and AT2; session 9, 2026-10-08)
+## The size of the generated code (decisions AT1 to AT3; session 9, 2026-10-08)
 
 The owner's four answers of 2026-10-08 after `renyi build` closed
 (decision AT1): the round's rule is KCachegrind's estimate of the
@@ -1795,7 +1796,7 @@ read reads.
   172 ms for compiling it from source (`renyi run <file> /nonexistent`,
   which fails before `main`), almost all of it the parse of the 9 MB of
   JSON (`renyi run selfcheck.ryc` costs 160 ms), which is why the binary
-  encoding of stage 2 belongs to the round.
+  encoding of stage 2 belongs to the round; since AT3 the load is 69 ms.
 - **The baseline** (the binary of AS4, 71965aa):
 
   | run | instructions | I1 misses | D1 misses | LL misses | mispredicts (cond, ind) | estimated cycles |
@@ -1831,13 +1832,51 @@ read reads.
 
   The compiler's image: 17,019,001 bytes, 7,829,707 of machine code in
   the bodies (-5.2%; 169.5 per op), 709 deopt points. Kept by the rule.
-- **What the round has not done yet.** Stage 2 (the binary bytecode in
-  the image) and stage 3 (shared stubs for `retain` and `release`,
-  measured by the rule) are the tasks that follow; the reference-count
-  sequence itself (fourteen instructions: the tag's bit in `RC_TAGS`, the
+- **Stage 2, the image's program in binary (decision AT3).**
+  `crates/renyi_vm/src/binary.rs` (new): `encode(&Program) -> Vec<u8>`
+  and `decode(&[u8]) -> Result<Program, String>`, the content and order
+  of the bytecode file in bytes (LEB128 integers, length-prefixed
+  texts, one byte for an option or a variant, the maps in key order;
+  `FORMAT` 1 first; a count past the end is refused before anything is
+  allocated; `file::check` runs on the result as on a loaded file);
+  `image.rs`: `Image { header, code_hash, program, codes }`,
+  `IMAGE_FORMAT` 2, `build` stores `sha256_of(file::render(program))`
+  and `binary::encode(program)`; `lib.rs` (the binary): `Hashed::Given`
+  for the image's hash (`code_hash`, `compile_with_sources`,
+  `run_embedded`), `load_image_bytes` decodes the program;
+  `tools/image_census.py` takes the `.ryc` beside the image for the
+  ops (`tools/measure_size.sh` compiles it); `tests/build.rs`: the
+  compiler's program round-trips through the encoding and renders as
+  its bytecode file, an image's hash is the bytecode file's, the
+  decoded program renders the same, and a recording made from the
+  `.ryc` reproduces against the image and the other way round.
+  Measured: the compiler's image 17,019,001 to
+  8,705,877 bytes (the program 8,989,252 of JSON to 676,056), its load
+  152 to 69 ms against 166 ms for compiling the compiler from source
+  (`renyi run <file> /nonexistent`); the rule on the self-check as an
+  image: 8,126,378,865 instructions, 151,181,468 I1 misses, 50,981,874
+  D1 misses, 2,204,948 LL misses, 21,727,334 and 39,288,677
+  mispredicts, 11,371,553,965 estimated cycles (-8.4% against stage 1);
+  the JIT run 15,147,420,418 (+0.1%, the binary's own layout: the
+  generated code is untouched) and the interpreter 17,897,196,056
+  (-0.3%); `hello` as an image 42 KB and 7 ms (235 KB and 11 before,
+  8 ms from the source); the self-check in wall-clock 1448 ms as an
+  image against 1723 on the JIT run (best of five). Kept: the stage
+  targets the image, whose estimate fell.
+- **What the round has not done yet.** Stage 3 (shared stubs for
+  `retain` and `release`, measured by the rule) is the task that
+  follows, and the round's measurements point at two more cuts at no
+  cost: the stack's length is static at every op (`base + locals + the
+  boxed depth of the state`), yet every op loads it from the VM and
+  stores it back, and the stack's pointer is loaded again at every op
+  though only a helper call can move it; the reference-count sequence
+  itself (fourteen instructions: the tag's bit in `RC_TAGS`, the
   big-integer case, two payload loads and a select) stays as AR4 made
   it, a one-compare test needing `Int` flattened into `Value`, which the
-  owner did not pick for this round.
+  owner did not pick for this round. The load of an image (69 ms for the
+  compiler's) is not yet profiled: the decode of 676 KB cannot be most
+  of it, so the placing of 7.8 MB of code (the pages, the cache flush,
+  the protection) or the VM's setup is.
 
 ## `renyi build` as it exists (decisions AS1 to AS4; session 9, 2026-10-08)
 
@@ -1873,8 +1912,10 @@ mismatched image refused with the fix.
   VM: bump it with any change to the layout, the helpers, the statuses),
   `Header { renyi, code_format, target, opt_level }` with
   `Header::mismatch` (the message with the fix), `Image { header,
-  bytecode, codes }` with `write` and `read` (little-endian, lengths
-  first; a unit test round-trips one), `ImageCode { body, trampoline,
+  code_hash, program, codes }` with `write` and `read` (little-endian,
+  lengths first; a unit test round-trips one; the program in the binary
+  encoding of `binary.rs` with its bytecode file's hash since decision
+  AT3, the `.ryc` text before), `ImageCode { body, trampoline,
   headers, deopts }`, `build(program, opt_level)`, `target_of(isa)` (the
   triple and every ISA flag), `is_image`, `EXTENSION`. `Options.image`
   (`vm.rs`): `Vm::new` loads it into the JIT after creating it (a load
@@ -1884,7 +1925,8 @@ mismatched image refused with the fix.
   `load_image_file` (read, `Header::mismatch` against
   `Jit::host_target`, the program from the embedded bytecode),
   `compile_with_sources` returns the image beside the program and the
-  hash (the bytecode text, as a `.ryc`'s), and `run`, `record`, `test`
+  hash (`Hashed::Given`, the bytecode file's, stored in the image since
+  AT3), and `run`, `record`, `test`
   and `reproduce` pass it to the options; `tests/build.rs` (an image
   runs, records and reproduces as the source does and compiles nothing;
   tests run from one and find their fixtures; a mismatched target, a
@@ -3001,6 +3043,15 @@ by one, CI green on each (runs 52 to 55; 55 on 71965aa).
    `runner.rs`; `tools/measure_size.sh` and `tools/image_census.py`
    (new); the decisions (section AT), `docs/GAPS.md`, `CLAUDE.md`, this
    file.
+9. the size round, stage 2 (decision AT3; the section "The size of the
+   generated code"): `crates/renyi_vm/src/binary.rs` (new), `lib.rs`
+   (the module), `file.rs` (`check` shared), `native/image.rs` (the
+   image's program and hash, format 2); `crates/renyi/src/lib.rs`
+   (`Hashed::Given`, the decode), `tests/build.rs` (the round trip and
+   the cross-reproduction); `tools/image_census.py` and
+   `tools/measure_size.sh` (the `.ryc` beside the image); the decisions
+   (AT3), `docs/reference.md` (appendix B), `docs/GAPS.md`,
+   `CLAUDE.md`, this file.
 
 ## Done in session 8 (stage 2: the grammar, the reference, the front end in Renyi)
 

@@ -721,4 +721,11 @@ percent), `Load` (21), `Call` (21) and `Store` (11) above all. Stage 1
 path without a range check, one deopt block per pc and state, the
 direct call without the ask path, no call counter) cut the machine code
 5.2 percent and the estimate of the JIT run 1.6 percent, of the image
-1.7 percent. Stage 2 is in progress; stage 3 follows.
+1.7 percent. Stage 2 (decision AT3: the image carries the program in a
+binary encoding with its bytecode file's hash, the `.ryc` staying JSON)
+halved the compiler's image (17.0 to 8.7 MB) and its load (152 to 69
+ms, against 166 ms for compiling from source) and cut the image's
+estimate 8.4 percent. Stage 3 (shared stubs for the reference-count
+sequences, by the rule) is the owner's to start or to pass; the static
+height of the stack and its pointer kept across ops are two more cuts
+at no cost the measurements point at.
