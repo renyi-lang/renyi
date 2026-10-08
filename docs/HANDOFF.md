@@ -2590,12 +2590,14 @@ on a fresh clone).
   bytecode file compiled with an extension runs on a binary without
   it until the first call, which crashes as a library function this
   build does not implement, rather than being refused at load.
-- **Two copies to keep.** `crates/renyi_check/library/std/` and
+- **Three copies to keep.** `crates/renyi_check/library/std/` and
   `crates/renyi/cheatsheet.md` are copies (decision AI5) that a test
-  in each crate holds equal to `library/std/` and `docs/cheatsheet.md`;
-  an edit to the canonical file without the copy fails `cargo test`,
-  which is the point, but the failure names the file to copy rather
-  than copying it.
+  in each crate holds equal to `library/std/` and `docs/cheatsheet.md`,
+  and `starter/skill/renyi/cheatsheet.md` (decision AI3) is one that
+  CI's `cmp` holds equal to the document; an edit to the canonical
+  file without the copies fails `cargo test` or CI, which is the
+  point, but the failure names the file to copy rather than copying
+  it.
 - **The site is checked as text, not in a browser**: the live pages
   were fetched over HTTP (status, size, titles, the example links,
   the build stamp) and the generator's output inspected as text; no
