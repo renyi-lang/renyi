@@ -3129,3 +3129,37 @@ direct one, the load of a table's pointer and the two loads a constant
 takes, and it is the price of an image that needs no relocation (AS1);
 the step stays by the owner's decision, not by AR1's rule, which it
 fails by that half percent. (user)
+
+**AS3. Stage B of AS1, done and measured: the image file `.ryi` and
+`renyi build`, which compiles every code object at Cranelift's `speed`
+level unless `--opt none` is asked.** The file: the magic, the image
+format, a header (the `renyi` version, the code format the generated
+code assumes of the VM, the target with every CPU feature Cranelift
+detected, the optimisation level), the bytecode as the `.ryc` text, and
+per code object the body, the trampoline, the loop headers and the deopt
+points, or a mark for one the analysis left to the interpreter
+(`native/image.rs`; the writer, the reader and a round-trip test).
+`run`, `record`, `test` and `reproduce` take it in place of a source:
+the program comes from the embedded bytecode, the manifest's code hash
+is the bytecode's as for a `.ryc`, and the VM's JIT places the code of
+every object in one allocation and marks it ready, so nothing compiles
+at run time and no code object is cold. A header that names another
+`renyi`, another code format or another target is refused with the
+message naming both sides and the fix, to build again; equality of the
+feature set is the rule (an image built on an older processor would run
+on a newer one and is refused all the same; a portable image is a later
+question). Measured as AR1 says on the release build: the compiler's
+self-check 11.18 billion instructions on the JIT run, 9.23 as an image
+at `none` (-17.5%) and 9.07 at `speed` (-18.9%); `bench/records.ry` 452
+million on the JIT run, 423 and 418 as images; the compiler's image is
+17.6 MB for 955 code objects and builds in 3.7 and 4.4 seconds. `speed`
+is the default by AR1's rule since a build pays the compile time once,
+and `none` stays available for a build that must be quick or must match
+the JIT's code exactly. What the round's measurements also showed, with
+cachegrind's cache simulation on the self-check: the machine code runs
+14% fewer instructions than the interpreter and misses the first-level
+instruction cache ten times as often (105 million misses against 10),
+which is why the two tiers tie in wall-clock (about 1.9 seconds each)
+despite the count; the generated code is large (18 KB a code object),
+and its size, not its instruction count, is the lever the next
+performance round pulls first. (user)

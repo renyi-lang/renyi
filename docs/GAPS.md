@@ -684,10 +684,13 @@ image is a plain block of bytes; every code object compiled, the
 optimisation level measured; a mismatched image refused with the fix.
 The address-free code (decision AS2) cost the self-check half a percent
 of instructions and freed the JIT from `cranelift-jit`; the image
-(decision AS3) __GAPS_IMAGE__. What the measurement of the round also
-showed: on the compiler's self-check the machine code runs 14 percent
-fewer instructions than the interpreter and no faster in wall-clock,
-because it misses the instruction cache ten times as often (105 million
-against 10 million first-level misses): the generated code is large
-(the compiler's image is 17.6 MB for 955 code objects), and its size,
-not its instruction count, is the lever a later round pulls first.
+(decision AS3) runs the compiler's self-check in 19 percent fewer
+instructions than the JIT run (no compilation at run time, no cold code
+on the interpreter), at Cranelift's `speed` level, which a build can
+afford and which measured 1.7 percent below `none`. What the measurement
+of the round also showed: on the compiler's self-check the machine code
+runs 14 percent fewer instructions than the interpreter and no faster in
+wall-clock, because it misses the instruction cache ten times as often
+(105 million against 10 million first-level misses): the generated code
+is large (the compiler's image is 17.6 MB for 955 code objects), and its
+size, not its instruction count, is the lever a later round pulls first.
