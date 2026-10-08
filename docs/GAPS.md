@@ -702,3 +702,23 @@ size, not its instruction count, is the lever a later round pulls first;
 Cranelift's `speed_and_size` level, tried for that reason, generates the
 same code as `speed` within a few bytes with the same misses, so the
 lever is in the sequences the code generator emits, not in the level.
+
+### The size of the generated code (session 9, decisions AT1 and AT2)
+
+The owner's four answers of 2026-10-08: the round is measured by
+KCachegrind's estimate of the cycles over cachegrind's counts on the
+compiler's self-check (`tools/measure_size.sh`), deterministic, with
+the wall-clock at the end of each stage; the cuts that cost no
+instruction come first, then the image's bytecode in a binary encoding
+(the `.ryc` stays JSON), then shared stubs for the reference-count
+sequences if the rule keeps them; the record gains a tag word so that a
+record and a variant share the prefix the field read reads. The census
+(`tools/image_census.py`) opened it: the compiler's image is 17.5 MB,
+9.0 MB of it the bytecode as JSON and 8.3 MB machine code at 179 bytes
+per op, charged by a least-squares attribution to `LoadField` (22
+percent), `Load` (21), `Call` (21) and `Store` (11) above all. Stage 1
+(decision AT2: the callee writes its own locals, the field read's one
+path without a range check, one deopt block per pc and state, the
+direct call without the ask path, no call counter) cut the machine code
+5.2 percent and the estimate of the JIT run 1.6 percent, of the image
+1.7 percent. Stage 2 is in progress; stage 3 follows.

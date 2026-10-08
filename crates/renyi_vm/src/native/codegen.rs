@@ -39,9 +39,9 @@ use crate::native::runtime::{
 };
 use crate::native::{DeoptPoint, DEPTH_LIMIT};
 use crate::value::layout::{
-    INT_BIG, INT_PAYLOAD, INT_SMALL, INT_TAG, PAYLOAD, RC_TAGS, RC_VALUE, RECORD_FIELDS, RECORD_TY,
-    SIZE, TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_INTEGER, TAG_NOTHING, TAG_RECORD, TAG_VARIANT,
-    VARIANT_FIELDS, VARIANT_TAG, VARIANT_TY,
+    INT_BIG, INT_PAYLOAD, INT_SMALL, INT_TAG, PAYLOAD, RC_TAGS, RC_VALUE, RECORD_FIELDS,
+    RECORD_TAG, RECORD_TY, SIZE, TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_INTEGER, TAG_NOTHING,
+    TAG_RECORD,
 };
 use crate::value::Value;
 use crate::vm::{FieldSite, Frame, NativeState, Vm};
@@ -80,8 +80,6 @@ const SITE_SIZE: usize = std::mem::size_of::<FieldSite>();
 const SITE_TY: i32 = std::mem::offset_of!(FieldSite, ty) as i32;
 const SITE_TAG: i32 = std::mem::offset_of!(FieldSite, tag) as i32;
 const SITE_INDEX: i32 = std::mem::offset_of!(FieldSite, index) as i32;
-// the merged field read reads the type at one offset for both holders
-const _: () = assert!(RECORD_TY == VARIANT_TY);
 
 /// How many values a return releases in place before it calls the helper
 /// that cuts the stack instead.
@@ -96,7 +94,6 @@ fn native_state_offset() -> i64 {
 }
 
 const STATE_DEPTH: i32 = std::mem::offset_of!(NativeState, depth) as i32;
-const STATE_CALLS: i32 = std::mem::offset_of!(NativeState, calls) as i32;
 const STATE_DIRECT: i32 = std::mem::offset_of!(NativeState, direct_table) as i32;
 const STATE_HELPERS: i32 = std::mem::offset_of!(NativeState, helpers) as i32;
 const STATE_CONSTANTS: i32 = std::mem::offset_of!(NativeState, constants) as i32;
@@ -170,7 +167,6 @@ pub const SIGNATURES: &[(&str, &str, char)] = &[
     ("rt_call_value", "pww", 'i'),
     ("rt_result_type", "pw", 'v'),
     ("rt_return", "p", 'v'),
-    ("rt_direct_entry", "pz", 'p'),
     ("rt_direct_after", "pw", 'i'),
     ("rt_left_status", "p", 'i'),
     ("rt_fail", "pw", 'i'),
@@ -365,6 +361,9 @@ struct Gen<'a, 'b> {
     out_slot: StackSlot,
     deopt_slot: StackSlot,
     deopts: Vec<DeoptPoint>,
+    /// The blocks that hand the frame to the interpreter (`deopt_block`),
+    /// one per pc and operand state, filled at the end.
+    deopt_blocks: Vec<((usize, Vec<Abs>), Block)>,
     state: Vec<Abs>,
     /// Whether the current block has been ended by a terminator.
     terminated: bool,
@@ -479,6 +478,7 @@ pub fn compile(
             out_slot,
             deopt_slot,
             deopts: Vec::new(),
+            deopt_blocks: Vec::new(),
             state: Vec::new(),
             terminated: false,
         };
@@ -1141,14 +1141,38 @@ impl Gen<'_, '_> {
     /// interpreter at `pc` with the current state.
     fn deopt_unless(&mut self, ok: IrValue, pc: usize) {
         let cont = self.b.create_block();
-        let deopt = self.b.create_block();
+        let deopt = self.deopt_block(pc);
         self.b.ins().brif(ok, cont, &[], deopt, &[]);
-        self.b.set_cold_block(deopt);
         self.b.seal_block(cont);
-        self.b.seal_block(deopt);
-        self.switch_to(deopt);
-        self.deopt_here(pc);
         self.switch_to(cont);
+    }
+
+    /// The block that hands the frame to the interpreter at `pc` with the
+    /// current operand state: one per pc and state, shared by every guard
+    /// that reaches the op so (the checks of a call's result on its paths,
+    /// for one; decision AT2), filled by `emit_deopts`.
+    fn deopt_block(&mut self, pc: usize) -> Block {
+        let known = self
+            .deopt_blocks
+            .iter()
+            .find(|((at, state), _)| *at == pc && *state == self.state);
+        if let Some((_, block)) = known {
+            return *block;
+        }
+        let block = self.b.create_block();
+        self.b.set_cold_block(block);
+        self.deopt_blocks.push(((pc, self.state.clone()), block));
+        block
+    }
+
+    /// Fill the blocks of `deopt_block`.
+    fn emit_deopts(&mut self) {
+        let blocks = std::mem::take(&mut self.deopt_blocks);
+        for ((pc, state), block) in blocks {
+            self.state = state;
+            self.switch_to(block);
+            self.deopt_here(pc);
+        }
     }
 
     /// Take the boxed value on top of the stack into a register of the
@@ -1534,8 +1558,9 @@ impl Gen<'_, '_> {
 
     /// The callee's frame pushed in place (decision AR4), as
     /// `Vm::push_frame_in_place` pushes one: the boxed arguments on top
-    /// of the stack move to their parameters' slots, every other local is
-    /// `Nothing`, and the frame record carries the grant of decision Q1:
+    /// of the stack move to their parameters' slots (every other local is
+    /// written `Nothing` by the callee's prologue, decision AT2), and the
+    /// frame record carries the grant of decision Q1:
     /// the caller's, unless the callee narrows it, when the helper
     /// computes it. The new frame's base is returned.
     fn push_frame_inline(&mut self, callee: usize, mask: u64) -> IrValue {
@@ -1582,26 +1607,15 @@ impl Gen<'_, '_> {
         // the boxed arguments to their slots, from the last parameter
         // down: the k-th lies at slot k and goes to the k-th set bit,
         // never past one that is still to move
-        let mut filled = vec![false; locals];
         let mut next = boxed;
         for slot in (0..params).rev() {
             if mask & (1 << slot) != 0 {
                 next -= 1;
-                filled[slot] = true;
                 if next != slot {
                     let from = self.b.ins().iadd_imm_s(first, (next * SIZE) as i64);
                     let to = self.b.ins().iadd_imm_s(first, (slot * SIZE) as i64);
                     self.copy_value(from, to);
                 }
-            }
-        }
-        // every other local is `Nothing`
-        let nothing = self.iconst(types::I32, TAG_NOTHING as i64);
-        for (slot, filled) in filled.iter().enumerate() {
-            if !filled {
-                self.b
-                    .ins()
-                    .istore8(flags, nothing, first, (slot * SIZE) as i32);
             }
         }
         self.b.ins().store(flags, needed, stack, 8);
@@ -1631,11 +1645,6 @@ impl Gen<'_, '_> {
         self.b.ins().store(flags, grant, record, FRAME_GRANT);
         let more = self.b.ins().iadd_imm_s(frames_len, 1);
         self.b.ins().store(flags, more, frames, 8);
-        // one more call made from generated code
-        let state = self.native_state();
-        let count = self.b.ins().load(pointer, flags, state, STATE_CALLS);
-        let counted = self.b.ins().iadd_imm_s(count, 1);
-        self.b.ins().store(flags, counted, state, STATE_CALLS);
         base
     }
 
@@ -1762,9 +1771,28 @@ impl Gen<'_, '_> {
         // (the trampoline took them from the frame's slots under a check,
         // a direct caller had them in registers)
         let typed = self.typed_params.clone();
-        for (slot, value) in typed {
-            let var = self.slot_var(slot);
-            self.b.def_var(var, value);
+        for (slot, value) in &typed {
+            let var = self.slot_var(*slot);
+            self.b.def_var(var, *value);
+        }
+        // every local that is not a boxed parameter starts as `Nothing`
+        // (decision AT2): a direct caller leaves those slots as they were,
+        // written here once per callee rather than at every call site; the
+        // interpreter's frame has them so already, and a typed parameter's
+        // slot is written too, its value being in a register now (a plain
+        // value, with nothing to release)
+        let params = self.code.params as usize;
+        let locals = self.code.locals as usize;
+        let fresh: Vec<usize> = (0..locals)
+            .filter(|slot| *slot >= params || typed.iter().any(|(typed, _)| typed == slot))
+            .collect();
+        if !fresh.is_empty() {
+            let ptr = self.stack_ptr();
+            let nothing = self.iconst(types::I32, TAG_NOTHING as i64);
+            for slot in fresh {
+                let at = self.slot_address(ptr, slot);
+                self.b.ins().istore8(flags, nothing, at, 0);
+            }
         }
         self.jump_to(0);
         for (header, block) in resumes {
@@ -1837,6 +1865,7 @@ impl Gen<'_, '_> {
     }
 
     fn epilogue(&mut self) {
+        self.emit_deopts();
         self.emit_landings();
         // the end of the code: an implicit `return nothing`
         let count = self.code.ops.len();
@@ -2234,15 +2263,12 @@ impl Gen<'_, '_> {
                 self.b.append_block_param(hit, pointer);
                 let slow = self.b.create_block();
                 let join = self.b.create_block();
-                let is_record = self
-                    .b
-                    .ins()
-                    .icmp_imm_s(IntCC::Equal, tag, TAG_RECORD as i64);
-                let is_variant = self
-                    .b
-                    .ins()
-                    .icmp_imm_s(IntCC::Equal, tag, TAG_VARIANT as i64);
-                let is_holder = self.b.ins().bor(is_record, is_variant);
+                // a record or a variant: the two tags are adjacent, and
+                // both hold their type, their tag (a record's is
+                // `usize::MAX`, as the cache has it) and their fields at
+                // the same offsets (decision AT2), so one path reads either
+                let kind = self.b.ins().iadd_imm_s(tag, -(TAG_RECORD as i64));
+                let is_holder = self.b.ins().icmp_imm_u(IntCC::UnsignedLessThan, kind, 2);
                 self.b.ins().brif(is_holder, holder, &[], slow, &[]);
                 self.switch_to(holder);
                 let rc = self.b.ins().load(pointer, flags, at, PAYLOAD);
@@ -2250,34 +2276,19 @@ impl Gen<'_, '_> {
                     .b
                     .ins()
                     .load(types::I64, flags, rc, RC_VALUE + RECORD_TY);
-                let variant_tag = self
+                let holder_tag = self
                     .b
                     .ins()
-                    .load(types::I64, flags, rc, RC_VALUE + VARIANT_TAG);
-                let no_tag = self.iconst(types::I64, -1);
-                let holder_tag = self.b.ins().select(is_record, no_tag, variant_tag);
-                let record_fields = self
+                    .load(types::I64, flags, rc, RC_VALUE + RECORD_TAG);
+                let fields_ptr = self
                     .b
                     .ins()
-                    .iadd_imm_s(rc, (RC_VALUE + RECORD_FIELDS) as i64);
-                let variant_fields = self
-                    .b
-                    .ins()
-                    .iadd_imm_s(rc, (RC_VALUE + VARIANT_FIELDS) as i64);
-                let fields = self
-                    .b
-                    .ins()
-                    .select(is_record, record_fields, variant_fields);
-                let fields_ptr = self.b.ins().load(pointer, flags, fields, 0);
-                let fields_len = self.b.ins().load(types::I64, flags, fields, 8);
+                    .load(pointer, flags, rc, RC_VALUE + RECORD_FIELDS);
                 let same_ty = self.b.ins().icmp(IntCC::Equal, ty, cached_ty);
                 let same_tag = self.b.ins().icmp(IntCC::Equal, holder_tag, cached_tag);
-                let in_range = self
-                    .b
-                    .ins()
-                    .icmp(IntCC::UnsignedLessThan, cached_index, fields_len);
+                // a hit needs no range check: the index was cached from a
+                // holder of the same type and tag, which has as many fields
                 let ok = self.b.ins().band(same_ty, same_tag);
-                let ok = self.b.ins().band(ok, in_range);
                 let field = self.item_address(fields_ptr, cached_index);
                 self.b.ins().brif(ok, hit, &[field.into()], slow, &[]);
                 // the field copied, with one more reference
@@ -2819,12 +2830,12 @@ impl Gen<'_, '_> {
 
     /// A direct call (decision AR3): the callee's body called with its
     /// typed arguments in registers and the boxed ones on the stack. The
-    /// body's address comes from the JIT's table, or from `rt_direct_entry`
-    /// when the table has none yet (the callee may be hot enough to compile
-    /// now); without one, or with no room on the machine stack, the call
-    /// goes through `rt_call`. A typed result comes back in a register and
-    /// a boxed one on the stack; anything else goes through
-    /// `rt_direct_after`.
+    /// body's address comes from the JIT's table; without one (the callee
+    /// is cold, or not placed yet), or with no room on the machine stack,
+    /// the call goes through `rt_call`, and the interpreter compiles a hot
+    /// callee on the way and enters it through its trampoline (decision
+    /// AT2). A typed result comes back in a register and a boxed one on
+    /// the stack; anything else goes through `rt_direct_after`.
     fn call_direct(
         &mut self,
         callee: usize,
@@ -2840,10 +2851,9 @@ impl Gen<'_, '_> {
         let flags = MemFlagsData::trusted();
         let have = self.b.create_block();
         self.b.append_block_param(have, pointer);
-        let ask = self.b.create_block();
         let slow = self.b.create_block();
         let join = self.b.create_block();
-        // the body's address from the table, else from the helper
+        // the body's address from the table
         let state = self.native_state();
         let table = self.b.ins().load(pointer, flags, state, STATE_DIRECT);
         let known = self
@@ -2851,14 +2861,7 @@ impl Gen<'_, '_> {
             .ins()
             .load(pointer, flags, table, (callee * 8) as i32);
         let found = self.b.ins().icmp_imm_s(IntCC::NotEqual, known, 0);
-        self.b.ins().brif(found, have, &[known.into()], ask, &[]);
-        self.switch_to(ask);
-        let callee_value = self.usize(callee);
-        let asked = self
-            .call("rt_direct_entry", &[self.vm, callee_value])
-            .expect("a pointer");
-        let found = self.b.ins().icmp_imm_s(IntCC::NotEqual, asked, 0);
-        self.b.ins().brif(found, have, &[asked.into()], slow, &[]);
+        self.b.ins().brif(found, have, &[known.into()], slow, &[]);
         // the machine stack must have room; the frame counts on it
         self.switch_to(have);
         let entry = self.b.block_params(have)[0];

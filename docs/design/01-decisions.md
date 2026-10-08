@@ -3205,3 +3205,88 @@ nine bytes (17,455,606 against 17,455,597) with the same first-level
 instruction-cache misses (158.0 million on the self-check), so the size
 of the generated code is a question for the sequences `codegen.rs`
 emits, not for Cranelift's level. (user)
+
+## AT. The size of the generated code (session 9)
+
+**AT1. A round on the size of the generated code, measured by
+KCachegrind's estimate of the cycles over cachegrind's counts on the
+compiler's self-check: `Ir + 10 (I1 misses + D1 misses) + 10
+conditional mispredicts + 20 indirect mispredicts + 100 LL misses`,
+deterministic, on the JIT run, the interpreter and the image, with the
+wall-clock reported at the end of each stage (`tools/measure_size.sh`);
+a change is kept when the estimate of the JIT run falls. The order: the
+cuts that cost no instruction first (AT2), then the bytecode of the
+image in a binary encoding (the `.ryc` stays JSON, decision Z1
+unchanged), then the reference-count sequences as shared stubs if the
+rule keeps them; the record's layout gains a tag word so that a record
+and a variant share the prefix the field read reads.** The owner's four
+answers of 2026-10-08, after `renyi build` closed (AS4). The census of
+the compiler's image (`tools/image_census.py`) that opened the round:
+17.5 MB, of which 9.0 MB is the bytecode as JSON text and 8.3 MB the
+machine code of 955 code objects, 46,193 ops, 179 bytes of body per op
+and 8.7 KB per code object; a least-squares attribution over the code
+objects (r² 0.98) charges `LoadField` 462 bytes each (22% of the
+bodies), `Load` 173 (21%), `Call` 440 (21%), `Store` 171 (11%),
+`Const` 148 (7%), `Return` 223 and `ReturnNothing` 363 (10% together),
+a deopt point 384 (4%). The measurements of AS3 and AS4 said why the
+size matters: the machine code runs 14% fewer instructions than the
+interpreter on the self-check and misses the first-level instruction
+cache ten times as often, and Cranelift's `speed_and_size` level changes
+nothing, so the lever is in the sequences `codegen.rs` emits. Why the
+estimate rather than AR1's instruction count: a sequence replaced by a
+call to a shared stub costs instructions and saves bytes, the trade this
+round exists to make, and the count alone would refuse every such step;
+why not the wall-clock alone: its noise on this machine (about 3% on a
+two-second run) hides the steps, so the estimate decides and the
+wall-clock confirms the stage; why KCachegrind's weights and not ours:
+they are the published ones and the point is a stable, deterministic
+rule, not a model of this processor. Why the image's bytecode in a
+binary encoding belongs to the round: loading the compiler's image costs
+152 ms against 172 ms for compiling the compiler from source, almost all
+of it the parse of 9 MB of JSON, so the image barely starts faster than
+the source, which its size hides; the `.ryc` stays JSON because it is
+read by people and written by the compiler in Renyi. Why the record's
+tag word: the field read's fast path selected between the record's and
+the variant's offsets twice and checked the index against the length;
+with `{ty, tag, fields}` at the same offsets in both (a record's tag is
+`usize::MAX`, as the field cache already has it) one path serves both,
+and a hit needs no range check because the index was cached from a
+holder of the same type and tag; eight bytes more per record is the
+price, accepted. The starting point, the binary of AS4 (71965aa): the self-check on the JIT run 11.18
+billion instructions, 116.6 million first-level instruction misses,
+75.1 million data misses, 2.17 million last-level misses, 35.4 million
+conditional and 85.0 million indirect mispredicts, 15.37 billion
+estimated cycles; on the interpreter 12.96 billion instructions, 12.0
+million instruction misses and 185.3 million indirect mispredicts (the
+dispatch), 18.01 billion; as an image at `speed` 9.07 billion
+instructions, 160.2 million instruction misses, 12.63 billion. What
+the indirect mispredicts say: the interpreter's dispatch costs it 3.7
+billion of its estimate, and the generated code's calls of helpers
+through the table 1.7 billion of its own, a tenth. (user)
+
+**AT2. Stage 1 of AT1, done and measured: the cuts that cost no
+instruction. The callee's prologue writes `Nothing` to every local that
+is not a boxed parameter, once per callee, where the frame push of a
+direct call wrote them at every call site; the field read's fast path
+reads a record and a variant on one path through the shared prefix
+`{ty, tag, fields}` (the record's tag word is `usize::MAX`) and drops the
+range check, which a cached index of the same type and tag does not
+need; the guards of one op that reach it with the same operand state
+share one block that hands the frame to the interpreter (the three paths
+of a call's result shared theirs); the direct call no longer asks the
+JIT for a body the table lacks (the call goes through the interpreter,
+which compiles a hot callee on the way and enters it through its
+trampoline, and the next call finds the table filled); and the count of
+calls from generated code is gone from the state and the report. The
+code format is 2.** Measured by AT1's rule against the binary of AS4:
+the self-check on the JIT run 15.37 to 15.13 billion estimated
+cycles (-1.6%: 11.18 to 11.02 billion instructions, 116.6 to 106.4
+million instruction misses), on the interpreter 18.01 to 17.96 (-0.3%),
+as an image 12.63 to 12.42 (-1.7%: 9.07 to 8.88 billion instructions,
+160.2 to 155.6 million misses); the compiler's machine code 8.26 to
+7.83 MB (-5.2%; 179 to 170 bytes of body per op, 825 to 709 deopt
+points), its image 17.46 to 17.02 MB. The cuts that moved the
+instruction count were the field read's (the two selects, a load and a
+compare per hit), the call counter's (three per call) and the ask
+path's; the locals written by the callee moved bytes, not
+instructions. (user)

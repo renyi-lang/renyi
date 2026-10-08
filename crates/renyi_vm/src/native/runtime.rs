@@ -728,14 +728,6 @@ pub(crate) unsafe extern "C" fn rt_call_value(vm: VmPtr, args: u32, pc: u32) -> 
     status(vm, result)
 }
 
-/// The body of a code object for a direct call (decision AR3): its address
-/// when the callee is compiled, or hot enough to be compiled now, and the
-/// machine stack has room; else null, and the caller goes through
-/// `rt_call`.
-pub(crate) unsafe extern "C" fn rt_direct_entry(vm: VmPtr, code: usize) -> *const u8 {
-    vm!(vm).direct_entry_of(code)
-}
-
 /// After a direct call whose callee returned neither a typed result nor a
 /// boxed one (which the generated code handles itself): a failure is on
 /// the stack (`FAILURE`), the frame was handed to the interpreter and is
@@ -1069,7 +1061,6 @@ impl Vm<'_> {
         if let Some(callee) = program.function_codes.get(function).copied().flatten() {
             self.push_frame_in_place(callee, count);
             let entry = self.frames.len();
-            self.native_state.calls += 1;
             return self.run_top_frame(entry);
         }
         let mut args = std::mem::take(&mut self.scratch);
@@ -1460,7 +1451,6 @@ pub const HELPERS: &[(&str, *const u8)] = &[
     ("rt_call_value", rt_call_value as *const u8),
     ("rt_result_type", rt_result_type as *const u8),
     ("rt_return", rt_return as *const u8),
-    ("rt_direct_entry", rt_direct_entry as *const u8),
     ("rt_direct_after", rt_direct_after as *const u8),
     ("rt_left_status", rt_left_status as *const u8),
     ("rt_fail", rt_fail as *const u8),

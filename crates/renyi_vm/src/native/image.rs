@@ -30,8 +30,10 @@ pub const IMAGE_FORMAT: u32 = 1;
 /// of a value, of the VM's native state and of a frame, the order of the
 /// helpers and their signatures, the statuses. Bumped whenever one of
 /// them changes, so that an image of another `renyi` is refused even
-/// when the version is the same (a development build).
-pub const CODE_FORMAT: u32 = 1;
+/// when the version is the same (a development build). 2: decision AT2
+/// (the record's tag word, the callee's prologue writes its locals, no
+/// call counter in the state, `rt_direct_entry` gone from the helpers).
+pub const CODE_FORMAT: u32 = 2;
 
 /// The extension of an image file.
 pub const EXTENSION: &str = "ryi";

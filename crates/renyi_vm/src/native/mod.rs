@@ -130,7 +130,7 @@ pub struct Jit {
     pub placing: std::time::Duration,
     /// How often generated code handed a frame to the interpreter, and
     /// how many calls from generated code found no generated code to
-    /// call (the calls themselves are counted in `NativeState`).
+    /// call and went through the interpreter.
     pub deopts_taken: usize,
     pub calls_cold: usize,
     /// How often a loop was entered from the interpreter, and how often
@@ -387,7 +387,6 @@ impl Jit {
     pub(crate) fn state_pointers(&self) -> crate::vm::NativeState {
         crate::vm::NativeState {
             depth: 0,
-            calls: 0,
             direct_table: self.direct_table.as_ptr(),
             helpers: self.helpers.as_ptr(),
             constants: self.constants.as_ptr(),
@@ -396,7 +395,7 @@ impl Jit {
 
     /// The counts and the time, one line; `hotness` is the VM's count of
     /// ops run per code object.
-    pub fn report(&self, hotness: &[u32], calls: usize) -> String {
+    pub fn report(&self, hotness: &[u32]) -> String {
         let cold = self
             .states
             .iter()
@@ -424,10 +423,9 @@ impl Jit {
             cold
         ) + &format!(
             "
-native: {} deopts; {} calls from generated code, {} of them to the interpreter; {} loops entered from the interpreter, {} refused
+native: {} deopts; {} calls from generated code went to the interpreter; {} loops entered from the interpreter, {} refused
 {}",
             self.deopts_taken,
-            calls,
             self.calls_cold,
             self.resumes,
             self.resumes_refused,
@@ -442,13 +440,6 @@ native: {} deopts; {} calls from generated code, {} of them to the interpreter; 
     pub fn entry(&mut self, program: &Program, code: CodeId, hotness: u32) -> Option<Entry> {
         self.ready(program, code, hotness)
             .map(|(entry, _, _)| entry)
-    }
-
-    /// The body of a code object for a direct call (decision AR3), under
-    /// the same rule as `entry`.
-    pub fn direct(&mut self, program: &Program, code: CodeId, hotness: u32) -> Option<*const u8> {
-        self.ready(program, code, hotness)
-            .map(|(_, direct, _)| direct)
     }
 
     /// The generated function of a code object to enter at the loop

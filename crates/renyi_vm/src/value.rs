@@ -64,10 +64,16 @@ pub struct RangeValue {
     pub by: Int,
 }
 
+/// A record: its type and its fields. `tag` is always `usize::MAX`, so
+/// that a record and a variant hold their type, their tag and their
+/// fields at the same offsets and the generated code reads a field of
+/// either on one path (decision AT2; the field cache has `usize::MAX` as
+/// a record's tag).
 #[derive(Clone, Debug)]
 #[repr(C)]
 pub struct Record {
     pub ty: TypeId,
+    pub tag: usize,
     pub fields: Pinned<Value>,
 }
 
@@ -154,10 +160,16 @@ pub mod layout {
     /// Inside a `Record` and a `Variant`: the type, the tag and the
     /// fields (a pinned vector: pointer, length, capacity).
     pub const RECORD_TY: i32 = std::mem::offset_of!(super::Record, ty) as i32;
+    pub const RECORD_TAG: i32 = std::mem::offset_of!(super::Record, tag) as i32;
     pub const RECORD_FIELDS: i32 = std::mem::offset_of!(super::Record, fields) as i32;
     pub const VARIANT_TY: i32 = std::mem::offset_of!(super::Variant, ty) as i32;
     pub const VARIANT_TAG: i32 = std::mem::offset_of!(super::Variant, tag) as i32;
     pub const VARIANT_FIELDS: i32 = std::mem::offset_of!(super::Variant, fields) as i32;
+    // a record and a variant share the prefix the generated code reads
+    // (decision AT2)
+    const _: () = assert!(RECORD_TY == VARIANT_TY);
+    const _: () = assert!(RECORD_TAG == VARIANT_TAG);
+    const _: () = assert!(RECORD_FIELDS == VARIANT_FIELDS);
 }
 
 thread_local! {
@@ -202,6 +214,7 @@ impl Value {
     pub fn record(ty: TypeId, fields: Vec<Value>) -> Value {
         Value::Record(Rc::new(Record {
             ty,
+            tag: usize::MAX,
             fields: fields.into(),
         }))
     }

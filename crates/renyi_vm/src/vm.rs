@@ -184,14 +184,13 @@ pub(crate) struct Frame {
 /// What the generated code reaches through the VM pointer (decision AS1),
 /// so that it holds no address of its own and an image of it loads
 /// anywhere: how many generated frames are nested on the machine stack,
-/// how many calls generated code made, and the tables the JIT owns: the
-/// compiled body of every code object (null while cold), the helpers in
-/// the order of `codegen::SIGNATURES`, and the constants of every code
-/// object. Null and zero on an interpreted run.
+/// and the tables the JIT owns: the compiled body of every code object
+/// (null while cold), the helpers in the order of `codegen::SIGNATURES`,
+/// and the constants of every code object. Null and zero on an
+/// interpreted run.
 #[repr(C)]
 pub(crate) struct NativeState {
     pub(crate) depth: usize,
-    pub(crate) calls: usize,
     pub(crate) direct_table: *const *const u8,
     pub(crate) helpers: *const *const u8,
     pub(crate) constants: *const *const Value,
@@ -201,7 +200,6 @@ impl Default for NativeState {
     fn default() -> NativeState {
         NativeState {
             depth: 0,
-            calls: 0,
             direct_table: std::ptr::null(),
             helpers: std::ptr::null(),
             constants: std::ptr::null(),
@@ -1340,20 +1338,6 @@ impl<'p> Vm<'p> {
             }
         }
         self.execute(entry)
-    }
-
-    /// The body of a code object for a direct call from generated code
-    /// (decision AR3): its address when the code is compiled, or hot enough
-    /// to be compiled now, and the machine stack has room; else null.
-    pub(crate) fn direct_entry_of(&mut self, code: CodeId) -> *const u8 {
-        let program = self.program;
-        let hotness = self.hotness[code];
-        match self.native.as_mut() {
-            Some(jit) => jit
-                .direct(program, code, hotness)
-                .unwrap_or(std::ptr::null()),
-            None => std::ptr::null(),
-        }
     }
 
     /// The generated function of the frame on top, when the run uses

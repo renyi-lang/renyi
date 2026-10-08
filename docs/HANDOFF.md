@@ -15,7 +15,10 @@ self-check 15% below where AQ left it (AR6; the section "The baseline
 JIT" below); then `renyi build`, the image of a program that runs
 without compiling, decisions AS1 to AS4 (the section "`renyi build` as
 it exists" below), `build --exe`, the self-contained executable,
-included. Session 8
+included; then the round on the size of the generated code, decisions
+AT1 and AT2 (the section "The size of the generated code" below), its
+stage 1 done, stage 2 (the image's bytecode in binary) in progress.
+Session 8
 (stage 2 of the gap audit of
 `docs/GAPS.md`: the formal grammar `docs/grammar.ebnf` with decision V12;
 the language reference `docs/reference.md`, normative, held to the
@@ -1762,6 +1765,80 @@ and the commit of the site and the crates.io metadata.
   release; the Windows archive's checksum and binary were verified
   by hand; `cargo install renyi` built the binary from crates.io.
 
+## The size of the generated code (decisions AT1 and AT2; session 9, 2026-10-08)
+
+The owner's four answers of 2026-10-08 after `renyi build` closed
+(decision AT1): the round's rule is KCachegrind's estimate of the
+cycles over cachegrind's counts on the self-check (`Ir + 10 (I1m + D1m)
++ 10 Bm + 20 Bi + 100 LLm`), deterministic, with the wall-clock at the
+end of each stage; the cuts that cost no instruction first; the image's
+bytecode in a binary encoding (the `.ryc` stays JSON); the record gains
+a tag word so that a record and a variant share the prefix the field
+read reads.
+
+- **The tools.** `tools/measure_size.sh <binary>` runs cachegrind with
+  `--cache-sim=yes --branch-sim=yes` on the self-check three times (the
+  JIT run, `--interpret`, the image built under `valgrind --tool=none`
+  since valgrind hides CPU features) and prints the counts and the
+  estimate, then the census; about ten minutes a binary.
+  `tools/image_census.py <file.ryi> [--summary]` reads an image and
+  prints the bytes of machine code per code object and per op, the op
+  kinds, and (with numpy) a least-squares attribution of the bytes to the
+  op kinds over the code objects. The census that opened the round, on
+  the compiler's image of AS4: 17.5 MB, of which 9.0 MB the bytecode as
+  JSON and 8.3 MB the machine code (955 code objects, 46,193 ops, 179
+  bytes of body per op, 8.7 KB per code object; the trampolines 151 KB);
+  the attribution (r² 0.98): `LoadField` 462 bytes each (22% of the
+  bodies), `Load` 173 (21%), `Call` 440 (21%), `Store` 171 (11%),
+  `Const` 148 (7%), `Return` 223 and `ReturnNothing` 363 (10%), a deopt
+  point 384 (4%). Loading the compiler's image costs 152 ms against
+  172 ms for compiling it from source (`renyi run <file> /nonexistent`,
+  which fails before `main`), almost all of it the parse of the 9 MB of
+  JSON (`renyi run selfcheck.ryc` costs 160 ms), which is why the binary
+  encoding of stage 2 belongs to the round.
+- **The baseline** (the binary of AS4, 71965aa):
+
+  | run | instructions | I1 misses | D1 misses | LL misses | mispredicts (cond, ind) | estimated cycles |
+  |-----|-------------:|----------:|----------:|----------:|------------------------:|-----------------:|
+  | JIT run | 11,181,306,636 | 116,596,885 | 75,149,511 | 2,173,057 | 35,445,492, 85,031,817 | 15,371,167,556 |
+  | `--interpret` | 12,956,694,773 | 11,959,382 | 64,644,504 | 1,981,283 | 38,216,065, 185,330,643 | 18,009,635,443 |
+  | image (`speed`) | 9,070,866,423 | 160,217,080 | 53,100,744 | 3,388,570 | 26,140,638, 41,528,543 | 12,634,878,903 |
+
+  The compiler's image: 17,455,597 bytes, 8,261,937 of machine code in
+  the bodies (178.9 per op), 825 deopt points.
+- **Stage 1, the cuts at no instruction cost (decision AT2).**
+  `codegen.rs`: the prologue writes `Nothing` to every local that is not
+  a boxed parameter (once per callee; `push_frame_inline` wrote them at
+  every call site), the `LoadField` fast path reads a record and a
+  variant on one path (`RECORD_TAG`, the shared prefix, the holder test
+  `tag - TAG_RECORD < 2`, no range check), `deopt_block` and
+  `emit_deopts` share one block per pc and operand state (`deopt_unless`
+  takes it; `deopt_blocks` on `Gen`), `call_direct` goes to the slow
+  path when the table has no body (the ask path and `rt_direct_entry`
+  are gone, with `Vm::direct_entry_of` and `Jit::direct`), and the call
+  counter is gone (`NativeState` has `depth`, `direct_table`, `helpers`,
+  `constants`; `Jit::report` takes the hotness alone and says how many
+  calls went to the interpreter). `value.rs`: `Record { ty, tag, fields
+  }` with `tag` always `usize::MAX`, `RECORD_TAG`, and the three
+  compile-time assertions of the shared prefix. `CODE_FORMAT` 2.
+  Measured:
+
+  | run | instructions | I1 misses | D1 misses | LL misses | mispredicts (cond, ind) | estimated cycles |
+  |-----|-------------:|----------:|----------:|----------:|------------------------:|-----------------:|
+  | JIT run | 11,019,336,948 | 106,417,090 | 74,824,738 | 2,281,534 | 35,221,233, 85,881,206 | 15,129,745,078 (-1.6%) |
+  | `--interpret` | 12,847,784,410 | 13,096,267 | 65,085,528 | 2,139,424 | 39,819,316, 185,723,809 | 17,956,214,100 (-0.3%) |
+  | image (`speed`) | 8,876,981,034 | 155,552,936 | 53,227,555 | 3,348,443 | 28,440,844, 41,641,494 | 12,416,868,564 (-1.7%) |
+
+  The compiler's image: 17,019,001 bytes, 7,829,707 of machine code in
+  the bodies (-5.2%; 169.5 per op), 709 deopt points. Kept by the rule.
+- **What the round has not done yet.** Stage 2 (the binary bytecode in
+  the image) and stage 3 (shared stubs for `retain` and `release`,
+  measured by the rule) are the tasks that follow; the reference-count
+  sequence itself (fourteen instructions: the tag's bit in `RC_TAGS`, the
+  big-integer case, two payload loads and a select) stays as AR4 made
+  it, a one-compare test needing `Int` flattened into `Value`, which the
+  owner did not pick for this round.
+
 ## `renyi build` as it exists (decisions AS1 to AS4; session 9, 2026-10-08)
 
 The owner's four answers of 2026-10-08 after the baseline JIT's round
@@ -1772,8 +1849,9 @@ every code object compiled, the optimisation level measured; a
 mismatched image refused with the fix.
 
 - **Stage A, the address-free code (decision AS2).** `vm.rs` has
-  `NativeState` (`repr(C)`: `depth`, `calls`, `direct_table`,
-  `helpers`, `constants`), a field of the VM the generated code reaches
+  `NativeState` (`repr(C)`: `depth`, `direct_table`, `helpers`,
+  `constants`; `calls` went in decision AT2), a field of the VM the
+  generated code reaches
   through the VM pointer (`codegen.rs`: `native_state_offset`, the
   `STATE_*` offsets, `Gen::native_state`, `Gen::call` through the
   helper table with `helper_index` into `SIGNATURES` and a `SigRef`
@@ -1977,9 +2055,11 @@ arguments; the layout of `Value` pinned and the value operations inline.
   what it cost). A call site (`call_direct`)
   loads the callee's body from the JIT's table (`Jit::direct_table`,
   by code object, filled at compilation; its address is a constant of
-  the generated code, the box the JIT lives in keeps it fixed), asks
-  `rt_direct_entry` when the table has none yet (which compiles a hot
-  callee), reads the count of generated frames (`Jit::depth`, by its
+  the generated code, the box the JIT lives in keeps it fixed), asked
+  `rt_direct_entry` when the table had none yet (which compiled a hot
+  callee; since decision AT2 the call goes through the interpreter
+  instead, which compiles a hot callee on the way), reads the count of
+  generated frames (`Jit::depth`, by its
   address) and goes through `call_through_helper`, the `rt_call` path
   as before, when there is no body or the count is at `DEPTH_LIMIT`;
   else it counts the frame on, boxes the operands of the boxed
@@ -2050,11 +2130,13 @@ arguments; the layout of `Value` pinned and the value operations inline.
   frame's locals and its deepest operand stack (`rt_room`), so no push
   checks; the frames section (`frames_vector`, `handlers_vector`,
   `frame_address`, `push_nothing_inline`, `push_frame_inline`: the boxed
-  arguments moved to their slots by the static mask, every other local's
-  tag `Nothing`, the record written with the caller's grant or
-  `rt_frame_grant`'s when the callee narrows, `rt_room` and
-  `rt_grow_frames` for the capacities, the count of calls at
-  `Addresses::calls`; `leave_frame_inline`: the holders among the locals
+  arguments moved to their slots by the static mask (every other local's
+  tag `Nothing` was written here until decision AT2 moved it to the
+  callee's prologue, once per callee), the record written with the
+  caller's grant or `rt_frame_grant`'s when the callee narrows,
+  `rt_room` and `rt_grow_frames` for the capacities (the count of calls
+  at `Addresses::calls` went in AT2); `leave_frame_inline`: the holders
+  among the locals
   and the boxed operands under the result released, up to
   `RELEASES_INLINE` (4) of them, else `rt_truncate`, the handlers cut,
   the frame popped; `leave_boxed_inline`: the result moved to the
@@ -2908,6 +2990,17 @@ by one, CI green on each (runs 52 to 55; 55 on 71965aa).
    `docs/GAPS.md`, `CLAUDE.md`, this file; the cache simulation's
    finding on `speed_and_size` and the wall-clock picture of the image
    against the JIT, in the section.
+8. the size round, stage 1 (decisions AT1 and AT2; the section "The
+   size of the generated code"): `crates/renyi_vm/src/native/codegen.rs`
+   (the prologue's locals, the field read's one path, `deopt_block` and
+   `emit_deopts`, the direct call without the ask path, no call
+   counter), `value.rs` (`Record::tag`, `RECORD_TAG`, the assertions),
+   `vm.rs` (`NativeState` without `calls`, `direct_entry_of` gone),
+   `native/runtime.rs` (`rt_direct_entry` gone, no count), `native/mod.rs`
+   (`report`, `Jit::direct` gone), `native/image.rs` (`CODE_FORMAT` 2),
+   `runner.rs`; `tools/measure_size.sh` and `tools/image_census.py`
+   (new); the decisions (section AT), `docs/GAPS.md`, `CLAUDE.md`, this
+   file.
 
 ## Done in session 8 (stage 2: the grammar, the reference, the front end in Renyi)
 

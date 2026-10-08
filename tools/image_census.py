@@ -1,0 +1,140 @@
+"""The census of an image `renyi build` writes (decision AT1): the bytes
+of machine code per code object and per op, the op kinds, and, when numpy
+is at hand, a least-squares attribution of the bytes to the op kinds.
+
+usage: python tools/image_census.py <file.ryi> [--summary]
+"""
+
+import json
+import struct
+import sys
+from collections import Counter
+
+
+class Reader:
+    def __init__(self, data):
+        self.data = data
+        self.at = 0
+
+    def take(self, count):
+        taken = self.data[self.at : self.at + count]
+        if len(taken) != count:
+            raise SystemExit("the image is truncated")
+        self.at += count
+        return taken
+
+    def u8(self):
+        return self.take(1)[0]
+
+    def u16(self):
+        return struct.unpack("<H", self.take(2))[0]
+
+    def u32(self):
+        return struct.unpack("<I", self.take(4))[0]
+
+    def block(self):
+        return self.take(self.u32())
+
+
+def read_image(path):
+    """The header fields, the bytecode text and, per code object, None or
+    (body bytes, trampoline bytes, loop headers, deopt points)."""
+    reader = Reader(open(path, "rb").read())
+    if reader.take(4) != b"RYI\0":
+        raise SystemExit(f"{path}: not an image")
+    reader.u32()  # the image format
+    reader.block()  # the renyi version
+    reader.u32()  # the code format
+    reader.block()  # the target
+    reader.block()  # the optimisation level
+    bytecode = reader.block()
+    codes = []
+    for _ in range(reader.u32()):
+        if reader.u8() == 0:
+            codes.append(None)
+            continue
+        body = reader.block()
+        trampoline = reader.block()
+        headers = [reader.u32() for _ in range(reader.u32())]
+        deopts = 0
+        for _ in range(reader.u32()):
+            reader.u32()  # pc
+            reader.u16()  # locals
+            for _ in range(reader.u32()):
+                reader.u8()
+            for _ in range(reader.u32()):
+                reader.u8()
+            for _ in range(reader.u32()):
+                if reader.u8() == 1:
+                    reader.u32()
+            deopts += 1
+        codes.append((len(body), len(trampoline), headers, deopts))
+    if reader.at != len(reader.data):
+        raise SystemExit(f"{path}: {len(reader.data) - reader.at} bytes after the image")
+    return len(reader.data), bytecode, codes
+
+
+def main():
+    args = sys.argv[1:]
+    summary = "--summary" in args
+    args = [arg for arg in args if arg != "--summary"]
+    if len(args) != 1:
+        raise SystemExit(__doc__)
+    size, bytecode, codes = read_image(args[0])
+    program = json.loads(bytecode)
+    rows = []
+    total_body = total_trampoline = total_ops = total_deopts = 0
+    kinds_total = Counter()
+    for meta, code in zip(program["codes"], codes):
+        if code is None:
+            continue
+        body, trampoline, headers, deopts = code
+        kinds = Counter(op["kind"] for op in meta["ops"])
+        kinds_total.update(kinds)
+        rows.append((meta["name"], body, trampoline, len(meta["ops"]), deopts, meta["locals"], len(headers), kinds))
+        total_body += body
+        total_trampoline += trampoline
+        total_ops += len(meta["ops"])
+        total_deopts += deopts
+    compiled = len(rows)
+    print(
+        f"image {size} bytes: bytecode {len(bytecode)}, machine code {total_body} in bodies"
+        f" and {total_trampoline} in trampolines; {compiled} of {len(codes)} code objects compiled"
+    )
+    print(
+        f"{total_ops} ops, {total_body / max(total_ops, 1):.1f} bytes of body per op,"
+        f" {total_body / max(compiled, 1):.0f} per code object; {total_deopts} deopt points"
+    )
+    if summary:
+        return
+    print("\nthe largest bodies:")
+    for name, body, _, ops, deopts, locals_, headers, _ in sorted(rows, key=lambda row: -row[1])[:15]:
+        print(f"  {body:8} B {ops:5} ops {body / ops:6.1f} B/op  deopts {deopts:4} locals {locals_:3} headers {headers:2}  {name}")
+    print("\nthe op kinds:")
+    for kind, count in kinds_total.most_common():
+        print(f"  {kind:22} {count:7} {100 * count / total_ops:5.1f}%")
+    try:
+        import numpy as np
+    except ImportError:
+        print("\n(numpy is not installed: no attribution of the bytes to the op kinds)")
+        return
+    kinds = [kind for kind, _ in kinds_total.most_common()]
+    names = kinds + ["deopt point", "loop header", "per code object"]
+    matrix = np.array(
+        [[kc.get(kind, 0) for kind in kinds] + [deopts, headers, 1] for _, _, _, _, deopts, _, headers, kc in rows],
+        float,
+    )
+    bodies = np.array([row[1] for row in rows], float)
+    coefficients, *_ = np.linalg.lstsq(matrix, bodies, rcond=None)
+    predicted = matrix @ coefficients
+    r2 = 1 - ((bodies - predicted) ** 2).sum() / ((bodies - bodies.mean()) ** 2).sum()
+    print(f"\nthe bytes attributed to the op kinds by least squares over {compiled} code objects (r2 {r2:.3f}):")
+    print("  kind                   bytes each    count   total bytes   share")
+    contributions = [(name, coefficients[i], matrix[:, i].sum()) for i, name in enumerate(names)]
+    for name, each, count in sorted(contributions, key=lambda item: -abs(item[1] * item[2])):
+        total = each * count
+        print(f"  {name:22} {each:9.1f} {int(count):8} {total:12.0f} {100 * total / total_body:6.1f}%")
+
+
+if __name__ == "__main__":
+    main()
