@@ -9,7 +9,8 @@ the baseline JIT, decision AR1, in its three stages: the fused op
 `LoadField` in the bytecode (AR2), direct calls between generated
 functions with register arguments (AR3) and the layout of `Value`
 pinned so that the value operations, the frame protocol and the field
-read run in place (AR4; the section "The baseline JIT" below). Session 8
+read run in place (AR4), then the tiering measured and the hotness
+factor raised (AR5; the section "The baseline JIT" below). Session 8
 (stage 2 of the gap audit of
 `docs/GAPS.md`: the formal grammar `docs/grammar.ebnf` with decision V12;
 the language reference `docs/reference.md`, normative, held to the
@@ -1236,8 +1237,11 @@ next sections of the plan, below).
   command on a thread with a 64 MB stack (`main` spawns `dispatch`),
   and `DEPTH_LIMIT` (200) bounds the generated frames nested on it.
 - **The tiering.** A code object is compiled once `hotness >=
-  HOT_FACTOR * ops` (2000): compiling an op costs about 10 µs, running
-  it on the interpreter about 25 ns. The machine code takes over at the
+  HOT_FACTOR * ops` (8000 since decision AR5, 2000 before it): Cranelift
+  spends about a quarter of a million instructions per op compiled and
+  a compiled op saves a few tens each time it runs, so a code object
+  pays for its compilation after some ten thousand runs of each of its
+  ops. The machine code takes over at the
   next call, or at the next turn of a loop the interpreter is in: the
   `Op::Jump` arm of the loop, on a jump backwards of a hot code object,
   asks `native_resume_of_top` for the entry at the target and runs it
@@ -1747,7 +1751,7 @@ and the commit of the site and the crates.io metadata.
   release; the Windows archive's checksum and binary were verified
   by hand; `cargo install renyi` built the binary from crates.io.
 
-## The baseline JIT (decisions AR1 to AR4; session 9)
+## The baseline JIT (decisions AR1 to AR5; session 9)
 
 The owner's four answers of 2026-10-08 (decision AR1): the baseline JIT
 of AG5 (iii) in three stages, each measured on the compiler's
@@ -1957,6 +1961,28 @@ arguments; the layout of `Value` pinned and the value operations inline.
   (658 to 339 ms on the self-check) and loses more in the code (the
   self-check 11.70 to 12.19 billion, +4.2%; records +11%, the record
   call per turn 789 to 1025), so `backtracking` stays.
+- **The tiering (decision AR5), the owner's choice for the round's next
+  step.** The hotness factor swept on the self-check with the stage-3
+  binary (`RENYI_NATIVE_HOT`, the same binary for every value): 500
+  13.15 billion instructions (205 code objects compiled, Cranelift 1.1
+  s), 1000 12.09, 2000 11.66 (112 compiled), 4000 11.24, 6000 11.16,
+  8000 11.13 (51 compiled, 1,477 ops, Cranelift 146 ms), 12000 11.23 (40
+  compiled), 16000 11.39, 32000 11.78; `bench/records.ry` the other way,
+  433 million at 500 to 437 at 2000, 451 at 8000 and 469 at 16000 (one
+  hot loop in `main`: every doubling is more turns interpreted before
+  the loop-header entry). `HOT_FACTOR` is 8000: the self-check -4.5%,
+  records +3.2%, by the rule. A second factor for the loop-header entry
+  (`LOOP_FACTOR` 500 beside the call factor, so that a running loop
+  compiles sooner) was built and measured and lost: with the call factor
+  2000 the self-check 11.66 to 12.05 billion (137 compiled, the loops of
+  twenty-five more code objects whose turns did not pay), with 4000
+  11.24 to 11.77; the code was reverted, the numbers are in AR5. The
+  shape to try next, if the round goes on: a cheaper first tier (the IR
+  without the inline sequences of AR4 for a code object that just became
+  warm, the full one when it stays hot), so that the cost of being wrong
+  about a function falls instead of the threshold rising; the count of
+  runs so far predicts the runs to come poorly for the self-check's
+  medium functions.
 - **After stage 3.** The profile of the self-check on machine code
   (`cg_annotate`, the scratch directory): the generated code 16.6%,
   `run_frames` 8.7% (`main` and the 443 code objects called but cold),
@@ -2701,6 +2727,11 @@ the owner.
    (`Addresses`, `RENYI_NATIVE_REGALLOC`), `lib.rs` (`pub mod pinned`);
    the decisions (AR4), `docs/GAPS.md`, `CLAUDE.md` (the `renyi_vm`
    row), this file.
+5. the micro-benchmarks into the repository (the owner's answer):
+   `bench/micro/` (six programs), `tools/measure_native.sh`, the CI
+   step, `CLAUDE.md`, this file; then the tiering (decision AR5):
+   `HOT_FACTOR` 8000 in `crates/renyi_vm/src/native/mod.rs`, the
+   decisions (AR5), `docs/GAPS.md`, this file.
 
 ## Done in session 8 (stage 2: the grammar, the reference, the front end in Renyi)
 

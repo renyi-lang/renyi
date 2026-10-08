@@ -55,7 +55,11 @@ pub const DEPTH_LIMIT: usize = 200;
 /// not use. `RENYI_NATIVE_HOT` overrides the factor, a development aid:
 /// `0` compiles everything at its first call and enters every loop at its
 /// first turn.
-pub const HOT_FACTOR: u32 = 2000;
+/// Decision AR5: a code object pays for its compilation (Cranelift's
+/// work, about a quarter of a million instructions per op) only after
+/// some ten thousand runs of each of its ops; 8000 is where the
+/// compiler's self-check measured lowest (2000 before AR5).
+pub const HOT_FACTOR: u32 = 8000;
 
 /// Where the generated code hands a frame to the interpreter: what it
 /// kept in registers at that op, so that `rt_deopt` can box it.

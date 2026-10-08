@@ -3000,3 +3000,41 @@ Cranelift and regalloc2 10.3%, the drop glue 5.1% and `Value::clone`
 `run_primitive` 1.3%), the boxed binary operations (`binary_values` and
 `rt_binary` 1.8% each), the interpreter's `push_frame_in_place` 1.7% for
 the cold callees, `Value::eq` 1.7% and mimalloc about 3%. (user)
+
+**AR5. The tiering of the cold code, the owner's choice for the round's
+next step (2026-10-08): `HOT_FACTOR` is 8000, where it was 2000, and the
+loop-header entry keeps the same factor as a call.** The measure is
+AR1's (the self-check's instructions, `cachegrind`, the release build of
+stage 3; `RENYI_NATIVE_HOT` sets the factor for one run, so one binary
+measured every value). The factor swept: 500 gives 13.15 billion
+instructions (205 code objects compiled, 9,676 ops, Cranelift 1.1
+seconds), 1000 12.09 (149 compiled), 2000 11.66 (112 compiled, 4,703
+ops), 4000 11.24 (77 compiled), 6000 11.16 (62 compiled), 8000 11.13 (51
+compiled, 1,477 ops, Cranelift 146 ms), 12000 11.23 (40 compiled), 16000
+11.39 (38 compiled), 32000 11.78 (23 compiled): Cranelift's own work is
+proportional to the size of what it compiles, about a quarter of a
+million instructions per op (the IR is 42 Cranelift instructions per op
+and each costs about 6,000 to compile), while a compiled op saves the
+interpreter's dispatch and boxing, a few tens of instructions each time
+it runs, so a code object pays for its compilation only after some ten
+thousand runs of each of its ops; the 443 code objects called but cold
+under 2000 ran about a billion instructions in the interpreter, and
+compiling them would have cost three. `bench/records.ry` goes the other
+way, 433 million at 500, 437 at 2000, 442 at 4000, 451 at 8000, 469 at
+16000: a short program with one hot loop wants that loop compiled at
+once and nothing else, and every doubling of the factor is more turns
+interpreted before the entry at the loop header. A second factor for
+that entry, so that a running loop compiles sooner than a function that
+is called (`LOOP_FACTOR` 500, `RENYI_NATIVE_HOT_LOOP`), was built and
+measured: with the call factor at 2000 the self-check rose from 11.66 to
+12.05 billion (137 compiled: the loops of twenty-five more code objects,
+whose turns did not pay for them), with 4000 from 11.24 to 11.77 and
+with 8000 from 11.13 to 11.67; the mechanism is not kept, and
+`bench/records.ry` pays the 3.2% (437 to 451 million) for the
+self-check's 4.5% (11.66 to 11.13 billion), by the rule. What a better
+rule would need is a prediction of the runs to come, which a count of
+the runs so far does not give; the shape to try next, if the round goes
+on, is a cheaper compilation for the first tier (an IR without the
+inline sequences of AR4 for a code object that just became warm, the
+full one when it stays hot), so that the cost of being wrong about a
+function falls instead of the threshold rising. (user)

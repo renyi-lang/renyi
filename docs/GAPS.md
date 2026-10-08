@@ -623,7 +623,7 @@ accumulated text per piece. Conformance case 54 (`json_paths.ry`) holds
 what the changed paths print. Next, in the owner's order: the baseline
 JIT (AG5, item iii), then the showcase application.
 
-### The baseline JIT (session 9, decisions AR1 to AR4)
+### The baseline JIT (session 9, decisions AR1 to AR5)
 
 The owner's four answers of 2026-10-08: the baseline JIT of AG5 (iii) in
 three stages, each kept by the rule of AG6 on the compiler's self-check
@@ -658,6 +658,11 @@ it, 11.3 percent fewer on the self-check and 23 percent fewer on
 every inline sequence pays at each compilation (it reached 12.5 percent
 of the self-check before the IR was made compact), the quick register
 allocator does not pay for itself, and two of the three sub-stages came
-in under the 2 percent at which AR1 ends the round: the round's end is
-the owner's call; the handoff's section "The baseline JIT" has what
-remains on the profile.
+in under the 2 percent at which AR1 ends the round. The owner chose the
+tiering of the cold code as the next step (decision AR5): the hotness
+factor swept on the self-check, `HOT_FACTOR` 8000 where it was 2000
+(the self-check 4.5 percent fewer instructions, `bench/records.ry` 3.2
+percent more: a short program wants its one loop compiled early), a
+second factor for the loop-header entry measured and rejected; the
+handoff's section "The baseline JIT" has what remains on the profile
+and the shape to try next (a cheaper first tier).
