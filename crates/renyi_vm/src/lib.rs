@@ -29,6 +29,7 @@ pub mod integer;
 pub mod memory;
 pub mod native;
 pub mod natives;
+pub mod pinned;
 pub mod profile;
 pub mod recording;
 pub mod render;

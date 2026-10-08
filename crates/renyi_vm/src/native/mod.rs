@@ -140,6 +140,12 @@ impl Jit {
         // (`RENYI_NATIVE_OPT=speed` compares, a development aid)
         let level = std::env::var("RENYI_NATIVE_OPT").unwrap_or_else(|_| "none".to_string());
         flags.set("opt_level", &level).ok()?;
+        // the register allocator: Cranelift's backtracking one unless
+        // `RENYI_NATIVE_REGALLOC` names the other (`single_pass`, quick to
+        // compile, more spills; a development aid for the comparison)
+        if let Ok(algorithm) = std::env::var("RENYI_NATIVE_REGALLOC") {
+            flags.set("regalloc_algorithm", &algorithm).ok()?;
+        }
         // the IR verifier is a development aid of Cranelift's, on by default
         // and a large part of the compile time; `RENYI_NATIVE_VERIFY` turns
         // it on when the generated IR is in question
@@ -301,8 +307,11 @@ native: {} deopts; {} calls from generated code, {} of them to the interpreter; 
 
     /// Compile a code object; its state becomes `Ready` or `Skipped`.
     fn compile(&mut self, program: &Program, code: CodeId) {
-        let depth_address = &self.depth as *const usize as usize;
-        let direct_table = self.direct_table.as_ptr() as usize;
+        let addresses = codegen::Addresses {
+            depth: &self.depth as *const usize as usize,
+            direct_table: self.direct_table.as_ptr() as usize,
+            calls: &self.calls as *const usize as usize,
+        };
         let module = self.module.as_mut().expect("the module lives with the JIT");
         let compiled = codegen::compile(
             program,
@@ -311,8 +320,7 @@ native: {} deopts; {} calls from generated code, {} of them to the interpreter; 
             &self.helpers,
             &mut self.ctx,
             &mut self.fctx,
-            depth_address,
-            direct_table,
+            addresses,
         );
         let (id, body, deopts, headers, stats) = match compiled {
             Ok(compiled) => compiled,

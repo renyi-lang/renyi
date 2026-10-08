@@ -34,11 +34,71 @@ use crate::native::infer::{
     analyse, boxed_depth, Abs, Analysis, SlotKind,
 };
 use crate::native::runtime::{
-    binary_code, fold_code, kind_code, CONTINUE, DEOPT, D_BOXED, D_DEOPT, D_FAILURE, D_INTERRUPT,
-    D_RETURNED, D_STAY, FAILURE, LEFT, RETURNED,
+    binary_code, fold_code, CONTINUE, DEOPT, D_BOXED, D_DEOPT, D_FAILURE, D_INTERRUPT, D_RETURNED,
+    D_STAY, FAILURE, LEFT, RETURNED,
 };
 use crate::native::{DeoptPoint, DEPTH_LIMIT};
+use crate::value::layout::{
+    INT_BIG, INT_PAYLOAD, INT_SMALL, INT_TAG, PAYLOAD, RC_TAGS, RC_VALUE, RECORD_FIELDS, RECORD_TY,
+    SIZE, TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_INTEGER, TAG_NOTHING, TAG_RECORD, TAG_VARIANT,
+    VARIANT_FIELDS, VARIANT_TAG, VARIANT_TY,
+};
 use crate::value::Value;
+use crate::vm::{FieldSite, Frame, Vm};
+
+/// Where the VM keeps its stack (decision AR4): the generated code reads
+/// the pinned vector's pointer, length and capacity there.
+fn stack_offset() -> i64 {
+    std::mem::offset_of!(Vm<'static>, stack) as i64
+}
+
+/// Where the VM keeps its frames and its handlers, and the layout of a
+/// frame record (decision AR4): a direct call pushes the callee's frame
+/// in place and a return pops it.
+fn frames_offset() -> i64 {
+    std::mem::offset_of!(Vm<'static>, frames) as i64
+}
+
+fn handlers_offset() -> i64 {
+    std::mem::offset_of!(Vm<'static>, handlers) as i64
+}
+
+const FRAME_SIZE: usize = std::mem::size_of::<Frame>();
+const FRAME_CODE: i32 = std::mem::offset_of!(Frame, code) as i32;
+const FRAME_PC: i32 = std::mem::offset_of!(Frame, pc) as i32;
+const FRAME_BASE: i32 = std::mem::offset_of!(Frame, base) as i32;
+const FRAME_HANDLER_BASE: i32 = std::mem::offset_of!(Frame, handler_base) as i32;
+const FRAME_GRANT: i32 = std::mem::offset_of!(Frame, grant) as i32;
+
+/// Where the VM keeps the cache of the field sites, and an entry's layout
+/// (decision AR4): a field load reads the entry and the holder in place.
+fn field_cache_offset() -> i64 {
+    std::mem::offset_of!(Vm<'static>, field_cache) as i64
+}
+
+const SITE_SIZE: usize = std::mem::size_of::<FieldSite>();
+const SITE_TY: i32 = std::mem::offset_of!(FieldSite, ty) as i32;
+const SITE_TAG: i32 = std::mem::offset_of!(FieldSite, tag) as i32;
+const SITE_INDEX: i32 = std::mem::offset_of!(FieldSite, index) as i32;
+// the merged field read reads the type at one offset for both holders
+const _: () = assert!(RECORD_TY == VARIANT_TY);
+
+/// How many values a return releases in place before it calls the helper
+/// that cuts the stack instead.
+const RELEASES_INLINE: usize = 4;
+
+/// The addresses in the JIT that the generated code reads and writes in
+/// place (decisions AR3 and AR4).
+#[derive(Clone, Copy)]
+pub struct Addresses {
+    /// The count of generated frames on the machine stack, which a
+    /// direct call moves.
+    pub depth: usize,
+    /// The table of compiled bodies by code object.
+    pub direct_table: usize,
+    /// The count of calls generated code made.
+    pub calls: usize,
+}
 
 /// The signature of every helper: its parameters and its result, one
 /// letter each (`p` a pointer, `z` a `usize`, `w` a `u32`, `q` an `i64`,
@@ -58,6 +118,10 @@ pub const SIGNATURES: &[(&str, &str, char)] = &[
     ("rt_store_bool", "pzwb", 'v'),
     ("rt_store_float", "pzwf", 'v'),
     ("rt_pop", "p", 'v'),
+    ("rt_drop_at", "p", 'v'),
+    ("rt_room", "pz", 'v'),
+    ("rt_grow_frames", "p", 'v'),
+    ("rt_frame_grant", "pz", 'i'),
     ("rt_dup", "p", 'v'),
     ("rt_truncate", "pzww", 'v'),
     ("rt_take_int", "pp", 'b'),
@@ -96,16 +160,8 @@ pub const SIGNATURES: &[(&str, &str, char)] = &[
     ("rt_call_value", "pww", 'i'),
     ("rt_result_type", "pw", 'v'),
     ("rt_return", "p", 'v'),
-    ("rt_return_int", "pq", 'v'),
-    ("rt_return_bool", "pb", 'v'),
-    ("rt_return_float", "pf", 'v'),
-    ("rt_return_nothing", "p", 'v'),
     ("rt_direct_entry", "pz", 'p'),
-    ("rt_direct_frame", "pzq", 'z'),
     ("rt_direct_after", "pw", 'i'),
-    ("rt_leave_typed", "p", 'v'),
-    ("rt_leave_unbox", "pup", 'i'),
-    ("rt_leave_boxed", "p", 'i'),
     ("rt_left_status", "p", 'i'),
     ("rt_fail", "pw", 'i'),
     ("rt_crash", "pw", 'i'),
@@ -268,11 +324,13 @@ struct Gen<'a, 'b> {
     /// The typed parameters, each with its slot: in the registers the
     /// signature put them in.
     typed_params: Vec<(usize, IrValue)>,
-    /// The address of the JIT's count of generated frames on the machine
-    /// stack, which a direct call moves in place (decision AR3).
-    depth_address: usize,
-    /// The address of the JIT's table of compiled bodies by code object.
-    direct_table: usize,
+    /// The frame's base times the width of a value: the offset of its
+    /// first slot in the stack's items (decision AR4).
+    base24: IrValue,
+    /// The deepest operand stack of the body, by the analysis.
+    max_depth: usize,
+    /// The addresses in the JIT the code reads and writes in place.
+    addresses: Addresses,
     /// The kind the declared result is passed back as.
     result_kind: Abs,
     /// The loop headers the interpreter may hand a frame over at: the
@@ -296,7 +354,6 @@ struct Gen<'a, 'b> {
 
 /// Compile one code object into the module: its body and its trampoline,
 /// defined but not finalized.
-#[allow(clippy::too_many_arguments)]
 pub fn compile(
     program: &Program,
     code_id: usize,
@@ -304,8 +361,7 @@ pub fn compile(
     helper_ids: &HashMap<&'static str, FuncId>,
     ctx: &mut Context,
     fctx: &mut FunctionBuilderContext,
-    depth_address: usize,
-    direct_table: usize,
+    addresses: Addresses,
 ) -> Result<Compiled, Skipped> {
     let code = &program.codes[code_id];
     let mut stats = Stats::default();
@@ -361,6 +417,7 @@ pub fn compile(
             .collect();
         let exit = builder.create_block();
         builder.append_block_param(exit, types::I32);
+        let base24 = builder.ins().imul_imm_s(base, SIZE as i64);
         // one word for a helper's answer, three for a range iterator's
         let out_slot =
             builder.create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, 24, 3));
@@ -392,8 +449,9 @@ pub fn compile(
             pc_param,
             direct,
             typed_params,
-            depth_address,
-            direct_table,
+            base24,
+            max_depth,
+            addresses,
             result_kind,
             headers: headers.clone(),
             positions: Vec::new(),
@@ -836,8 +894,21 @@ impl Gen<'_, '_> {
     /// operands in order.
     fn box_position(&mut self, depth: usize) {
         let above = self.boxed_above(depth);
+        let kind = self.state[depth];
+        if above == 0 && matches!(kind, Abs::Int | Abs::Bool | Abs::Float) {
+            // the register pushed as a value in place (decision AR4)
+            let var = match kind {
+                Abs::Int => self.int_var(depth),
+                Abs::Bool => self.bool_var(depth),
+                _ => self.float_var(depth),
+            };
+            let value = self.b.use_var(var);
+            self.push_typed_value(kind, value);
+            self.state[depth] = Abs::Boxed;
+            return;
+        }
         let above_value = self.usize(above);
-        match self.state[depth] {
+        match kind {
             Abs::Int => {
                 let var = self.int_var(depth);
                 let value = self.b.use_var(var);
@@ -1040,41 +1111,86 @@ impl Gen<'_, '_> {
     /// kind, or hand the frame to the interpreter at `pc` (the value stays
     /// boxed on the stack, where the interpreter expects it).
     fn unbox_top(&mut self, kind: Abs, pc: usize) {
-        let out = self.out_address();
         let depth = self.state.len() - 1;
+        let flags = MemFlagsData::trusted();
         match kind {
             Abs::Int => {
-                let ok = self
-                    .call("rt_take_int", &[self.vm, out])
-                    .expect("an answer");
+                // the top's tags read in place (decision AR4): an Integer
+                // that is small is taken, anything else stays for the
+                // interpreter
+                let len = self.stack_len();
+                let last = self.b.ins().iadd_imm_s(len, -1);
+                let ptr = self.stack_ptr();
+                let at = self.item_address(ptr, last);
+                let tag = self.tag_at(at, 0);
+                let is_int = self
+                    .b
+                    .ins()
+                    .icmp_imm_s(IntCC::Equal, tag, TAG_INTEGER as i64);
+                let int_tag = self.tag_at(at, INT_TAG);
+                let is_small = self
+                    .b
+                    .ins()
+                    .icmp_imm_s(IntCC::Equal, int_tag, INT_SMALL as i64);
+                let ok = self.b.ins().band(is_int, is_small);
                 self.deopt_unless(ok, pc);
-                let value = self.out_read(types::I64);
+                let value = self.b.ins().load(types::I64, flags, at, INT_PAYLOAD);
+                self.set_stack_len(last);
                 let var = self.int_var(depth);
                 self.b.def_var(var, value);
             }
             Abs::Float => {
-                let ok = self
-                    .call("rt_take_float", &[self.vm, out])
-                    .expect("an answer");
+                let len = self.stack_len();
+                let last = self.b.ins().iadd_imm_s(len, -1);
+                let ptr = self.stack_ptr();
+                let at = self.item_address(ptr, last);
+                let tag = self.tag_at(at, 0);
+                let ok = self.b.ins().icmp_imm_s(IntCC::Equal, tag, TAG_FLOAT as i64);
                 self.deopt_unless(ok, pc);
-                let value = self.out_read(types::F64);
+                let value = self.b.ins().load(types::F64, flags, at, PAYLOAD);
+                self.set_stack_len(last);
                 let var = self.float_var(depth);
                 self.b.def_var(var, value);
             }
             Abs::Bool => {
-                // a Boolean is never big or guarded: the take cannot fail
-                let pc_value = self.u32(pc as u32);
-                let status = self
-                    .call("rt_take_bool", &[self.vm, pc_value, out])
-                    .expect("a status");
-                self.check_status(status, pc, false);
-                let value = self.out_read(types::I8);
+                let value = self.take_bool_top(pc);
                 let var = self.bool_var(depth);
                 self.b.def_var(var, value);
             }
             _ => return,
         }
         self.state[depth] = kind;
+    }
+
+    /// The Boolean on top of the stack taken into an `i8`, in place; a
+    /// value of another type is the crash the interpreter raises, through
+    /// the helper (decision AR4).
+    fn take_bool_top(&mut self, pc: usize) -> IrValue {
+        let flags = MemFlagsData::trusted();
+        let len = self.stack_len();
+        let last = self.b.ins().iadd_imm_s(len, -1);
+        let ptr = self.stack_ptr();
+        let at = self.item_address(ptr, last);
+        let tag = self.tag_at(at, 0);
+        let ok = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::Equal, tag, TAG_BOOLEAN as i64);
+        let cont = self.b.create_block();
+        let bad = self.b.create_block();
+        self.b.ins().brif(ok, cont, &[], bad, &[]);
+        self.b.set_cold_block(bad);
+        self.switch_to(bad);
+        let out = self.out_address();
+        let pc_value = self.u32(pc as u32);
+        let status = self
+            .call("rt_take_bool", &[self.vm, pc_value, out])
+            .expect("a status");
+        self.exit_with(status);
+        self.switch_to(cont);
+        let value = self.b.ins().load(types::I8, flags, at, PAYLOAD);
+        self.set_stack_len(last);
+        value
     }
 
     /// Pop the top operand as an `i8` condition: from its register, or
@@ -1088,13 +1204,7 @@ impl Gen<'_, '_> {
             }
             _ => {
                 self.box_position(depth);
-                let out = self.out_address();
-                let pc_value = self.u32(pc as u32);
-                let status = self
-                    .call("rt_take_bool", &[self.vm, pc_value, out])
-                    .expect("a status");
-                self.check_status(status, pc, false);
-                self.out_read(types::I8)
+                self.take_bool_top(pc)
             }
         };
         self.state.pop();
@@ -1169,9 +1279,424 @@ impl Gen<'_, '_> {
         result
     }
 
+    // ------------------------------------------------------ the stack in place
+
+    /// The address of the stack's pinned vector in the VM.
+    fn stack_vector(&mut self) -> IrValue {
+        self.b.ins().iadd_imm_s(self.vm, stack_offset())
+    }
+
+    fn stack_len(&mut self) -> IrValue {
+        let vector = self.stack_vector();
+        self.b
+            .ins()
+            .load(self.pointer, MemFlagsData::trusted(), vector, 8)
+    }
+
+    fn set_stack_len(&mut self, len: IrValue) {
+        let vector = self.stack_vector();
+        self.b.ins().store(MemFlagsData::trusted(), len, vector, 8);
+    }
+
+    fn stack_ptr(&mut self) -> IrValue {
+        let vector = self.stack_vector();
+        self.b
+            .ins()
+            .load(self.pointer, MemFlagsData::trusted(), vector, 0)
+    }
+
+    /// The address of the item at `index` of the stack, from its pointer.
+    fn item_address(&mut self, ptr: IrValue, index: IrValue) -> IrValue {
+        let offset = self.b.ins().imul_imm_s(index, SIZE as i64);
+        self.b.ins().iadd(ptr, offset)
+    }
+
+    /// The address of the frame's slot, from the stack's pointer.
+    fn slot_address(&mut self, ptr: IrValue, slot: usize) -> IrValue {
+        let first = self.b.ins().iadd(ptr, self.base24);
+        self.b.ins().iadd_imm_s(first, (slot * SIZE) as i64)
+    }
+
+    /// The three words of a value copied, as a `Value` is moved.
+    fn copy_value(&mut self, from: IrValue, to: IrValue) {
+        let flags = MemFlagsData::trusted();
+        for offset in [0, 8, 16] {
+            let word = self.b.ins().load(types::I64, flags, from, offset);
+            self.b.ins().store(flags, word, to, offset);
+        }
+    }
+
+    /// The tag of the value at the address, as an `i32`.
+    fn tag_at(&mut self, at: IrValue, offset: i32) -> IrValue {
+        self.b
+            .ins()
+            .uload8(types::I32, MemFlagsData::trusted(), at, offset)
+    }
+
+    /// The allocation an `Rc` payload at the address points at, when the
+    /// value's tag says it has one (decision AR4): the block `found` gets
+    /// the pointer, the block `none` is where a value without one goes.
+    /// The test is one branch: the tag's bit in `RC_TAGS`, or an `Integer`
+    /// whose `Int` is big; both payload words are read, the right one
+    /// selected (the value is 24 bytes wide, so both reads are in it).
+    fn rc_of(&mut self, at: IrValue, found: Block, none: Block) {
+        let flags = MemFlagsData::trusted();
+        let tag = self.tag_at(at, 0);
+        let tag_wide = self.b.ins().uextend(types::I64, tag);
+        let mask = self.iconst(types::I64, RC_TAGS as i64);
+        let shifted = self.b.ins().ushr(mask, tag_wide);
+        let bit = self.b.ins().band_imm_s(shifted, 1);
+        let is_rc = self.b.ins().icmp_imm_s(IntCC::NotEqual, bit, 0);
+        let is_int = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::Equal, tag, TAG_INTEGER as i64);
+        let int_tag = self.tag_at(at, INT_TAG);
+        let is_big = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::Equal, int_tag, INT_BIG as i64);
+        let big_int = self.b.ins().band(is_int, is_big);
+        let has_rc = self.b.ins().bor(is_rc, big_int);
+        let payload = self.b.ins().load(self.pointer, flags, at, PAYLOAD);
+        let int_payload = self.b.ins().load(self.pointer, flags, at, INT_PAYLOAD);
+        let allocation = self.b.ins().select(is_rc, payload, int_payload);
+        self.b
+            .ins()
+            .brif(has_rc, found, &[allocation.into()], none, &[]);
+        self.terminated = true;
+    }
+
+    /// One more reference to the value at the address: what `Value::clone`
+    /// does to the count (decision AR4).
+    fn retain(&mut self, at: IrValue) {
+        let flags = MemFlagsData::trusted();
+        let found = self.b.create_block();
+        self.b.append_block_param(found, self.pointer);
+        let done = self.b.create_block();
+        self.rc_of(at, found, done);
+        self.switch_to(found);
+        let allocation = self.b.block_params(found)[0];
+        let strong = self.b.ins().load(types::I64, flags, allocation, 0);
+        let more = self.b.ins().iadd_imm_s(strong, 1);
+        self.b.ins().store(flags, more, allocation, 0);
+        self.b.ins().jump(done, &[]);
+        self.switch_to(done);
+    }
+
+    /// One reference fewer to the value at the address: what dropping a
+    /// `Value` does, the last one through the helper that frees (decision
+    /// AR4). The slot is dead after.
+    fn release(&mut self, at: IrValue) {
+        let flags = MemFlagsData::trusted();
+        let found = self.b.create_block();
+        self.b.append_block_param(found, self.pointer);
+        let done = self.b.create_block();
+        self.rc_of(at, found, done);
+        self.switch_to(found);
+        let allocation = self.b.block_params(found)[0];
+        let strong = self.b.ins().load(types::I64, flags, allocation, 0);
+        let last = self.b.ins().icmp_imm_s(IntCC::Equal, strong, 1);
+        let free = self.b.create_block();
+        let fewer = self.b.create_block();
+        self.b.ins().brif(last, free, &[], fewer, &[]);
+        self.switch_to(free);
+        self.call("rt_drop_at", &[at]);
+        self.b.ins().jump(done, &[]);
+        self.switch_to(fewer);
+        let less = self.b.ins().iadd_imm_s(strong, -1);
+        self.b.ins().store(flags, less, allocation, 0);
+        self.b.ins().jump(done, &[]);
+        self.switch_to(done);
+    }
+
+    /// A value pushed on the stack from the address, one more reference to
+    /// it when `retain` says so (a move needs none).
+    fn push_copy(&mut self, from: IrValue, retain: bool) {
+        let len = self.stack_len();
+        let ptr = self.stack_ptr();
+        let to = self.item_address(ptr, len);
+        self.copy_value(from, to);
+        if retain {
+            self.retain(to);
+        }
+        let more = self.b.ins().iadd_imm_s(len, 1);
+        self.set_stack_len(more);
+    }
+
+    /// A typed value written into the three words at the address.
+    fn write_typed(&mut self, at: IrValue, kind: Abs, value: IrValue) {
+        let flags = MemFlagsData::trusted();
+        match kind {
+            Abs::Int => {
+                let tag = self.iconst(types::I32, TAG_INTEGER as i64);
+                self.b.ins().istore8(flags, tag, at, 0);
+                let small = self.iconst(types::I32, INT_SMALL as i64);
+                self.b.ins().istore8(flags, small, at, INT_TAG);
+                self.b.ins().store(flags, value, at, INT_PAYLOAD);
+            }
+            Abs::Bool => {
+                let tag = self.iconst(types::I32, TAG_BOOLEAN as i64);
+                self.b.ins().istore8(flags, tag, at, 0);
+                self.b.ins().store(flags, value, at, PAYLOAD);
+            }
+            Abs::Float => {
+                let tag = self.iconst(types::I32, TAG_FLOAT as i64);
+                self.b.ins().istore8(flags, tag, at, 0);
+                self.b.ins().store(flags, value, at, PAYLOAD);
+            }
+            _ => unreachable!("a typed kind"),
+        }
+    }
+
+    /// A typed value pushed on the stack as a `Value`.
+    fn push_typed_value(&mut self, kind: Abs, value: IrValue) {
+        let len = self.stack_len();
+        let ptr = self.stack_ptr();
+        let to = self.item_address(ptr, len);
+        self.write_typed(to, kind, value);
+        let more = self.b.ins().iadd_imm_s(len, 1);
+        self.set_stack_len(more);
+    }
+
+    // ------------------------------------------------------ the frames in place
+
+    fn frames_vector(&mut self) -> IrValue {
+        self.b.ins().iadd_imm_s(self.vm, frames_offset())
+    }
+
+    fn handlers_vector(&mut self) -> IrValue {
+        self.b.ins().iadd_imm_s(self.vm, handlers_offset())
+    }
+
+    /// The address of the frame record at `index` of the frames.
+    fn frame_address(&mut self, ptr: IrValue, index: IrValue) -> IrValue {
+        let offset = self.b.ins().imul_imm_s(index, FRAME_SIZE as i64);
+        self.b.ins().iadd(ptr, offset)
+    }
+
+    /// `Nothing` pushed on the stack.
+    fn push_nothing_inline(&mut self) {
+        let len = self.stack_len();
+        let ptr = self.stack_ptr();
+        let to = self.item_address(ptr, len);
+        let nothing = self.iconst(types::I32, TAG_NOTHING as i64);
+        self.b
+            .ins()
+            .istore8(MemFlagsData::trusted(), nothing, to, 0);
+        let more = self.b.ins().iadd_imm_s(len, 1);
+        self.set_stack_len(more);
+    }
+
+    /// The callee's frame pushed in place (decision AR4), as
+    /// `Vm::push_frame_in_place` pushes one: the boxed arguments on top
+    /// of the stack move to their parameters' slots, every other local is
+    /// `Nothing`, and the frame record carries the grant of decision Q1:
+    /// the caller's, unless the callee narrows it, when the helper
+    /// computes it. The new frame's base is returned.
+    fn push_frame_inline(&mut self, callee: usize, mask: u64) -> IrValue {
+        let flags = MemFlagsData::trusted();
+        let pointer = self.pointer;
+        let program = self.program;
+        let meta = &program.codes[callee];
+        let locals = meta.locals as usize;
+        let params = meta.params as usize;
+        let boxed = mask.count_ones() as usize;
+        let narrows = meta
+            .function
+            .is_some_and(|function| !program.function_metas[function].needs.is_empty());
+        // the grant first: it is read from the caller's frame, on top
+        let frames = self.frames_vector();
+        let frames_len = self.b.ins().load(pointer, flags, frames, 8);
+        let grant = if narrows {
+            let callee_value = self.usize(callee);
+            self.call("rt_frame_grant", &[self.vm, callee_value])
+                .expect("a grant")
+        } else {
+            let frames_ptr = self.b.ins().load(pointer, flags, frames, 0);
+            let top = self.b.ins().iadd_imm_s(frames_len, -1);
+            let record = self.frame_address(frames_ptr, top);
+            self.b.ins().load(types::I32, flags, record, FRAME_GRANT)
+        };
+        // room on the stack for the locals
+        let stack = self.stack_vector();
+        let len = self.b.ins().load(pointer, flags, stack, 8);
+        let base = self.b.ins().iadd_imm_s(len, -(boxed as i64));
+        let needed = self.b.ins().iadd_imm_s(base, locals as i64);
+        let cap = self.b.ins().load(pointer, flags, stack, 16);
+        let short = self.b.ins().icmp(IntCC::UnsignedLessThan, cap, needed);
+        let grow = self.b.create_block();
+        let cont = self.b.create_block();
+        self.b.ins().brif(short, grow, &[], cont, &[]);
+        self.b.set_cold_block(grow);
+        self.switch_to(grow);
+        self.call("rt_room", &[self.vm, needed]);
+        self.b.ins().jump(cont, &[]);
+        self.switch_to(cont);
+        let ptr = self.stack_ptr();
+        let first = self.item_address(ptr, base);
+        // the boxed arguments to their slots, from the last parameter
+        // down: the k-th lies at slot k and goes to the k-th set bit,
+        // never past one that is still to move
+        let mut filled = vec![false; locals];
+        let mut next = boxed;
+        for slot in (0..params).rev() {
+            if mask & (1 << slot) != 0 {
+                next -= 1;
+                filled[slot] = true;
+                if next != slot {
+                    let from = self.b.ins().iadd_imm_s(first, (next * SIZE) as i64);
+                    let to = self.b.ins().iadd_imm_s(first, (slot * SIZE) as i64);
+                    self.copy_value(from, to);
+                }
+            }
+        }
+        // every other local is `Nothing`
+        let nothing = self.iconst(types::I32, TAG_NOTHING as i64);
+        for (slot, filled) in filled.iter().enumerate() {
+            if !filled {
+                self.b
+                    .ins()
+                    .istore8(flags, nothing, first, (slot * SIZE) as i32);
+            }
+        }
+        self.b.ins().store(flags, needed, stack, 8);
+        // the frame record
+        let frames_cap = self.b.ins().load(pointer, flags, frames, 16);
+        let full = self.b.ins().icmp(IntCC::Equal, frames_len, frames_cap);
+        let grow = self.b.create_block();
+        let cont = self.b.create_block();
+        self.b.ins().brif(full, grow, &[], cont, &[]);
+        self.b.set_cold_block(grow);
+        self.switch_to(grow);
+        self.call("rt_grow_frames", &[self.vm]);
+        self.b.ins().jump(cont, &[]);
+        self.switch_to(cont);
+        let frames_ptr = self.b.ins().load(pointer, flags, frames, 0);
+        let record = self.frame_address(frames_ptr, frames_len);
+        let code_value = self.usize(callee);
+        self.b.ins().store(flags, code_value, record, FRAME_CODE);
+        let zero = self.usize(0);
+        self.b.ins().store(flags, zero, record, FRAME_PC);
+        self.b.ins().store(flags, base, record, FRAME_BASE);
+        let handlers = self.handlers_vector();
+        let handlers_len = self.b.ins().load(pointer, flags, handlers, 8);
+        self.b
+            .ins()
+            .store(flags, handlers_len, record, FRAME_HANDLER_BASE);
+        self.b.ins().store(flags, grant, record, FRAME_GRANT);
+        let more = self.b.ins().iadd_imm_s(frames_len, 1);
+        self.b.ins().store(flags, more, frames, 8);
+        // one more call made from generated code
+        let calls = self.iconst(pointer, self.addresses.calls as i64);
+        let count = self.b.ins().load(pointer, flags, calls, 0);
+        let counted = self.b.ins().iadd_imm_s(count, 1);
+        self.b.ins().store(flags, counted, calls, 0);
+        base
+    }
+
+    /// The frame left in place (decision AR4): every local that may hold
+    /// a reference and the `operands` boxed operands above the locals are
+    /// released, the stack is cut to the base, the handlers to the frame's
+    /// height, and the frame is popped. A typed local holds `Nothing` or
+    /// a plain value and needs no release.
+    fn leave_frame_inline(&mut self, operands: usize) {
+        let flags = MemFlagsData::trusted();
+        let pointer = self.pointer;
+        let locals = self.code.locals as usize;
+        let holders: Vec<usize> = (0..locals)
+            .filter(|slot| {
+                !matches!(
+                    self.analysis.slots[*slot],
+                    SlotKind::Int | SlotKind::Bool | SlotKind::Float
+                )
+            })
+            .collect();
+        if holders.len() + operands <= RELEASES_INLINE {
+            let ptr = self.stack_ptr();
+            for slot in holders {
+                let at = self.slot_address(ptr, slot);
+                self.release(at);
+            }
+            for operand in 0..operands {
+                let at = self.slot_address(ptr, locals + operand);
+                self.release(at);
+            }
+            self.set_stack_len(self.base);
+        } else {
+            let zero = self.u32(0);
+            self.call("rt_truncate", &[self.vm, self.base, zero, zero]);
+        }
+        let frames = self.frames_vector();
+        let frames_len = self.b.ins().load(pointer, flags, frames, 8);
+        let top = self.b.ins().iadd_imm_s(frames_len, -1);
+        let frames_ptr = self.b.ins().load(pointer, flags, frames, 0);
+        let record = self.frame_address(frames_ptr, top);
+        let handler_base = self
+            .b
+            .ins()
+            .load(pointer, flags, record, FRAME_HANDLER_BASE);
+        let handlers = self.handlers_vector();
+        self.b.ins().store(flags, handler_base, handlers, 8);
+        self.b.ins().store(flags, top, frames, 8);
+    }
+
+    /// The boxed result on top of the stack returned (decision AR4): it
+    /// moves out, the frame is left, and it goes where the frame's first
+    /// local was; the status is `D_FAILURE` for a failure, else
+    /// `D_BOXED`.
+    fn leave_boxed_inline(&mut self, operands: usize) -> IrValue {
+        let flags = MemFlagsData::trusted();
+        let len = self.stack_len();
+        let last = self.b.ins().iadd_imm_s(len, -1);
+        let ptr = self.stack_ptr();
+        let from = self.item_address(ptr, last);
+        let words = [
+            self.b.ins().load(types::I64, flags, from, 0),
+            self.b.ins().load(types::I64, flags, from, 8),
+            self.b.ins().load(types::I64, flags, from, 16),
+        ];
+        self.set_stack_len(last);
+        self.leave_frame_inline(operands);
+        // the result's slot was the frame's: the stack has the room, and
+        // nothing moved it
+        let to = self.item_address(ptr, self.base);
+        for (word, offset) in words.into_iter().zip([0, 8, 16]) {
+            self.b.ins().store(flags, word, to, offset);
+        }
+        let one_more = self.b.ins().iadd_imm_s(self.base, 1);
+        self.set_stack_len(one_more);
+        let tag = self.b.ins().band_imm_s(words[0], 0xff);
+        let failed = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::Equal, tag, TAG_FAILURE as i64);
+        let failure = self.iconst(types::I32, D_FAILURE as i64);
+        let boxed = self.iconst(types::I32, D_BOXED as i64);
+        self.b.ins().select(failed, failure, boxed)
+    }
+
     // ------------------------------------------------------------ the body
 
     fn prologue(&mut self) {
+        // room on the stack for the frame's locals and its deepest operand
+        // stack, checked once (decision AR4): every push of the body then
+        // has it, and a frame handed over at a loop header has at most
+        // that much on the stack
+        let flags = MemFlagsData::trusted();
+        let stack = self.stack_vector();
+        let cap = self.b.ins().load(self.pointer, flags, stack, 16);
+        let room = (self.code.locals as usize + self.max_depth + 1) as i64;
+        let needed = self.b.ins().iadd_imm_s(self.base, room);
+        let short = self.b.ins().icmp(IntCC::UnsignedLessThan, cap, needed);
+        let grow = self.b.create_block();
+        let cont = self.b.create_block();
+        self.b.ins().brif(short, grow, &[], cont, &[]);
+        self.b.set_cold_block(grow);
+        self.switch_to(grow);
+        self.call("rt_room", &[self.vm, needed]);
+        self.b.ins().jump(cont, &[]);
+        self.switch_to(cont);
         // the entries at the loop headers are tried first: `pc` names one
         // when the interpreter hands a frame over in a loop
         let headers = self.headers.clone();
@@ -1364,14 +1889,18 @@ impl Gen<'_, '_> {
                         self.push_float(value);
                     }
                     _ => {
-                        let index = self.u32(*index);
-                        self.call("rt_push_const", &[self.vm, code_value, index]);
+                        // the constant copied from the code's table, which
+                        // lives as long as the program, with one more
+                        // reference
+                        let address = constant as *const Value as i64;
+                        let from = self.iconst(self.pointer, address);
+                        self.push_copy(from, true);
                         self.push_boxed();
                     }
                 }
             }
             Op::Nothing => {
-                self.call("rt_push_nothing", &[self.vm]);
+                self.push_nothing_inline();
                 self.push_boxed();
             }
             Op::Global(index) => {
@@ -1401,20 +1930,30 @@ impl Gen<'_, '_> {
                         self.push_float(value);
                     }
                     _ => {
-                        let helper = if matches!(self.code.ops[pc], Op::LoadMove(_)) {
-                            "rt_load_move"
+                        // the slot's value pushed in place: a copy with one
+                        // more reference, or the move that leaves `Nothing`
+                        let moving = matches!(self.code.ops[pc], Op::LoadMove(_));
+                        let len = self.stack_len();
+                        let ptr = self.stack_ptr();
+                        let from = self.slot_address(ptr, index);
+                        let to = self.item_address(ptr, len);
+                        self.copy_value(from, to);
+                        if moving {
+                            let nothing = self.iconst(types::I32, TAG_NOTHING as i64);
+                            self.b
+                                .ins()
+                                .istore8(MemFlagsData::trusted(), nothing, from, 0);
                         } else {
-                            "rt_load"
-                        };
-                        let slot_value = self.u32(*slot as u32);
-                        self.call(helper, &[self.vm, self.base, slot_value]);
+                            self.retain(to);
+                        }
+                        let more = self.b.ins().iadd_imm_s(len, 1);
+                        self.set_stack_len(more);
                         self.push_boxed();
                     }
                 }
             }
             Op::Store(slot) => {
                 let index = *slot as usize;
-                let slot_value = self.u32(*slot as u32);
                 let top = *self.state.last().expect("an operand");
                 match (self.analysis.slots[index], top) {
                     (SlotKind::Int, Abs::Int) => {
@@ -1432,28 +1971,42 @@ impl Gen<'_, '_> {
                         let var = self.slot_var(index);
                         self.b.def_var(var, value);
                     }
-                    (SlotKind::Boxed, Abs::Int) => {
-                        let value = self.pop_int();
-                        self.call("rt_store_int", &[self.vm, self.base, slot_value, value]);
-                    }
-                    (SlotKind::Boxed, Abs::Bool) => {
-                        let value = self.pop_bool();
-                        self.call("rt_store_bool", &[self.vm, self.base, slot_value, value]);
-                    }
-                    (SlotKind::Boxed, Abs::Float) => {
-                        let value = self.pop_float();
-                        self.call("rt_store_float", &[self.vm, self.base, slot_value, value]);
+                    (SlotKind::Boxed, Abs::Int | Abs::Bool | Abs::Float) => {
+                        // the register boxed into the slot, whose old value
+                        // goes
+                        let value = match top {
+                            Abs::Int => self.pop_int(),
+                            Abs::Bool => self.pop_bool(),
+                            _ => self.pop_float(),
+                        };
+                        let ptr = self.stack_ptr();
+                        let to = self.slot_address(ptr, index);
+                        self.release(to);
+                        self.write_typed(to, top, value);
                     }
                     _ => {
+                        // the top moved into the slot, whose old value goes
                         self.box_top(1);
-                        self.call("rt_store", &[self.vm, self.base, slot_value]);
+                        let len = self.stack_len();
+                        let last = self.b.ins().iadd_imm_s(len, -1);
+                        let ptr = self.stack_ptr();
+                        let from = self.item_address(ptr, last);
+                        let to = self.slot_address(ptr, index);
+                        self.release(to);
+                        self.copy_value(from, to);
+                        self.set_stack_len(last);
                         self.state.pop();
                     }
                 }
             }
             Op::Pop => {
                 if self.state.last().is_some_and(|abs| abs.is_boxed()) {
-                    self.call("rt_pop", &[self.vm]);
+                    let len = self.stack_len();
+                    let last = self.b.ins().iadd_imm_s(len, -1);
+                    let ptr = self.stack_ptr();
+                    let at = self.item_address(ptr, last);
+                    self.release(at);
+                    self.set_stack_len(last);
                 }
                 self.state.pop();
             }
@@ -1489,7 +2042,17 @@ impl Gen<'_, '_> {
                         self.state.push(Abs::Range);
                     }
                     _ => {
-                        self.call("rt_dup", &[self.vm]);
+                        // the top copied with one more reference; the
+                        // pointer is read after the room is made
+                        let len = self.stack_len();
+                        let ptr = self.stack_ptr();
+                        let last = self.b.ins().iadd_imm_s(len, -1);
+                        let from = self.item_address(ptr, last);
+                        let to = self.item_address(ptr, len);
+                        self.copy_value(from, to);
+                        self.retain(to);
+                        let more = self.b.ins().iadd_imm_s(len, 1);
+                        self.set_stack_len(more);
                         self.push_boxed();
                     }
                 }
@@ -1586,6 +2149,85 @@ impl Gen<'_, '_> {
                 }
             }
             Op::LoadField { slot, name, site } => {
+                // the site's cache entry and the holder read in place
+                // (decision AR4): a record or a variant of the cached type
+                // with the cached tag gives its field with one more
+                // reference; anything else goes through the helper, which
+                // fills the cache. A record and a variant hold the type
+                // first; the tag and the fields lie further in a variant,
+                // and a record's tag is `usize::MAX` as the cache has it
+                let flags = MemFlagsData::trusted();
+                let pointer = self.pointer;
+                let ptr = self.stack_ptr();
+                let at = self.slot_address(ptr, *slot as usize);
+                let tag = self.tag_at(at, 0);
+                let cache = self.b.ins().iadd_imm_s(self.vm, field_cache_offset());
+                let cache_ptr = self.b.ins().load(pointer, flags, cache, 0);
+                let entry = self
+                    .b
+                    .ins()
+                    .iadd_imm_s(cache_ptr, (*site as usize * SITE_SIZE) as i64);
+                let cached_ty = self.b.ins().load(types::I64, flags, entry, SITE_TY);
+                let cached_tag = self.b.ins().load(types::I64, flags, entry, SITE_TAG);
+                let cached_index = self.b.ins().load(types::I64, flags, entry, SITE_INDEX);
+                let holder = self.b.create_block();
+                let hit = self.b.create_block();
+                self.b.append_block_param(hit, pointer);
+                let slow = self.b.create_block();
+                let join = self.b.create_block();
+                let is_record = self
+                    .b
+                    .ins()
+                    .icmp_imm_s(IntCC::Equal, tag, TAG_RECORD as i64);
+                let is_variant = self
+                    .b
+                    .ins()
+                    .icmp_imm_s(IntCC::Equal, tag, TAG_VARIANT as i64);
+                let is_holder = self.b.ins().bor(is_record, is_variant);
+                self.b.ins().brif(is_holder, holder, &[], slow, &[]);
+                self.switch_to(holder);
+                let rc = self.b.ins().load(pointer, flags, at, PAYLOAD);
+                let ty = self
+                    .b
+                    .ins()
+                    .load(types::I64, flags, rc, RC_VALUE + RECORD_TY);
+                let variant_tag = self
+                    .b
+                    .ins()
+                    .load(types::I64, flags, rc, RC_VALUE + VARIANT_TAG);
+                let no_tag = self.iconst(types::I64, -1);
+                let holder_tag = self.b.ins().select(is_record, no_tag, variant_tag);
+                let record_fields = self
+                    .b
+                    .ins()
+                    .iadd_imm_s(rc, (RC_VALUE + RECORD_FIELDS) as i64);
+                let variant_fields = self
+                    .b
+                    .ins()
+                    .iadd_imm_s(rc, (RC_VALUE + VARIANT_FIELDS) as i64);
+                let fields = self
+                    .b
+                    .ins()
+                    .select(is_record, record_fields, variant_fields);
+                let fields_ptr = self.b.ins().load(pointer, flags, fields, 0);
+                let fields_len = self.b.ins().load(types::I64, flags, fields, 8);
+                let same_ty = self.b.ins().icmp(IntCC::Equal, ty, cached_ty);
+                let same_tag = self.b.ins().icmp(IntCC::Equal, holder_tag, cached_tag);
+                let in_range = self
+                    .b
+                    .ins()
+                    .icmp(IntCC::UnsignedLessThan, cached_index, fields_len);
+                let ok = self.b.ins().band(same_ty, same_tag);
+                let ok = self.b.ins().band(ok, in_range);
+                let field = self.item_address(fields_ptr, cached_index);
+                self.b.ins().brif(ok, hit, &[field.into()], slow, &[]);
+                // the field copied, with one more reference
+                self.switch_to(hit);
+                let from = self.b.block_params(hit)[0];
+                self.push_copy(from, true);
+                self.b.ins().jump(join, &[]);
+                // the helper: by name, filling the cache
+                self.switch_to(slow);
                 let slot_value = self.u32(*slot as u32);
                 let name_value = self.u32(*name);
                 let site_value = self.u32(*site);
@@ -1598,8 +2240,10 @@ impl Gen<'_, '_> {
                         ],
                     )
                     .expect("a status");
-                self.push_boxed();
                 self.check_status(status, pc, false);
+                self.b.ins().jump(join, &[]);
+                self.switch_to(join);
+                self.push_boxed();
                 let field_name = self.code.constants[*name as usize]
                     .as_text()
                     .unwrap_or("")
@@ -1723,12 +2367,25 @@ impl Gen<'_, '_> {
             Op::JumpIfAbsent(target) | Op::JumpIfFailure(target) => {
                 let depth = self.state.len() - 1;
                 if self.state[depth].is_boxed() {
-                    let helper = if matches!(self.code.ops[pc], Op::JumpIfAbsent(_)) {
-                        "rt_top_is_absent"
+                    // the top's tag: absent is `Nothing` or a failure
+                    let len = self.stack_len();
+                    let last = self.b.ins().iadd_imm_s(len, -1);
+                    let ptr = self.stack_ptr();
+                    let at = self.item_address(ptr, last);
+                    let tag = self.tag_at(at, 0);
+                    let failed = self
+                        .b
+                        .ins()
+                        .icmp_imm_s(IntCC::Equal, tag, TAG_FAILURE as i64);
+                    let taken = if matches!(self.code.ops[pc], Op::JumpIfAbsent(_)) {
+                        let nothing =
+                            self.b
+                                .ins()
+                                .icmp_imm_s(IntCC::Equal, tag, TAG_NOTHING as i64);
+                        self.b.ins().bor(failed, nothing)
                     } else {
-                        "rt_top_is_failure"
+                        failed
                     };
-                    let taken = self.call(helper, &[self.vm]).expect("an answer");
                     self.branch(taken, *target as usize, pc + 1);
                 } else {
                     // an unboxed value is never absent: the jump is not
@@ -1743,6 +2400,7 @@ impl Gen<'_, '_> {
                 let top = self.state[depth];
                 let result = self.result_kind;
                 let direct = self.direct;
+                let flags = MemFlagsData::trusted();
                 match (top, result) {
                     // a typed result of the declared kind goes back in a
                     // register to a direct caller, the frame left without
@@ -1753,38 +2411,31 @@ impl Gen<'_, '_> {
                             Abs::Bool => self.pop_bool(),
                             _ => self.pop_float(),
                         };
+                        let operands = boxed_depth(&self.state);
                         let in_register = self.b.create_block();
                         let on_stack = self.b.create_block();
                         self.b.ins().brif(direct, in_register, &[], on_stack, &[]);
                         self.switch_to(in_register);
-                        self.call("rt_leave_typed", &[self.vm]);
+                        self.leave_frame_inline(operands);
                         let bits = self.payload_bits(top, value);
                         let status = self.iconst(types::I32, D_RETURNED as i64);
                         self.return_with(status, bits);
                         self.switch_to(on_stack);
-                        let helper = match top {
-                            Abs::Int => "rt_return_int",
-                            Abs::Bool => "rt_return_bool",
-                            _ => "rt_return_float",
-                        };
-                        self.call(helper, &[self.vm, value]);
+                        self.leave_frame_inline(operands);
+                        self.push_typed_value(top, value);
                         self.return_direct(D_BOXED);
                     }
                     // a typed value where the declared result is boxed
                     // (`maybe Integer`): boxed onto the caller's stack
-                    (Abs::Int, _) => {
-                        let value = self.pop_int();
-                        self.call("rt_return_int", &[self.vm, value]);
-                        self.return_direct(D_BOXED);
-                    }
-                    (Abs::Bool, _) => {
-                        let value = self.pop_bool();
-                        self.call("rt_return_bool", &[self.vm, value]);
-                        self.return_direct(D_BOXED);
-                    }
-                    (Abs::Float, _) => {
-                        let value = self.pop_float();
-                        self.call("rt_return_float", &[self.vm, value]);
+                    (Abs::Int | Abs::Bool | Abs::Float, _) => {
+                        let value = match top {
+                            Abs::Int => self.pop_int(),
+                            Abs::Bool => self.pop_bool(),
+                            _ => self.pop_float(),
+                        };
+                        let operands = boxed_depth(&self.state);
+                        self.leave_frame_inline(operands);
+                        self.push_typed_value(top, value);
                         self.return_direct(D_BOXED);
                     }
                     // a boxed value where the declared result is typed:
@@ -1793,33 +2444,80 @@ impl Gen<'_, '_> {
                     (_, Abs::Int | Abs::Bool | Abs::Float) => {
                         self.box_top(1);
                         self.state.pop();
+                        let operands = boxed_depth(&self.state);
                         let in_register = self.b.create_block();
                         let on_stack = self.b.create_block();
                         self.b.ins().brif(direct, in_register, &[], on_stack, &[]);
                         self.switch_to(in_register);
-                        let out = self.out_address();
-                        let kind = self.u8(kind_code(result));
-                        let status = self
-                            .call("rt_leave_unbox", &[self.vm, kind, out])
-                            .expect("a status");
-                        let bits = self.out_read(types::I64);
+                        let len = self.stack_len();
+                        let last = self.b.ins().iadd_imm_s(len, -1);
+                        let ptr = self.stack_ptr();
+                        let at = self.item_address(ptr, last);
+                        let tag = self.tag_at(at, 0);
+                        let (fits, bits) = match result {
+                            Abs::Int => {
+                                let is_int =
+                                    self.b
+                                        .ins()
+                                        .icmp_imm_s(IntCC::Equal, tag, TAG_INTEGER as i64);
+                                let int_tag = self.tag_at(at, INT_TAG);
+                                let is_small = self.b.ins().icmp_imm_s(
+                                    IntCC::Equal,
+                                    int_tag,
+                                    INT_SMALL as i64,
+                                );
+                                let fits = self.b.ins().band(is_int, is_small);
+                                let bits = self.b.ins().load(types::I64, flags, at, INT_PAYLOAD);
+                                (fits, bits)
+                            }
+                            Abs::Bool => {
+                                let fits =
+                                    self.b
+                                        .ins()
+                                        .icmp_imm_s(IntCC::Equal, tag, TAG_BOOLEAN as i64);
+                                let byte = self.b.ins().load(types::I8, flags, at, PAYLOAD);
+                                let bits = self.b.ins().uextend(types::I64, byte);
+                                (fits, bits)
+                            }
+                            _ => {
+                                let fits =
+                                    self.b.ins().icmp_imm_s(IntCC::Equal, tag, TAG_FLOAT as i64);
+                                let bits = self.b.ins().load(types::I64, flags, at, PAYLOAD);
+                                (fits, bits)
+                            }
+                        };
+                        let unboxed = self.b.create_block();
+                        let stays = self.b.create_block();
+                        self.b.ins().brif(fits, unboxed, &[], stays, &[]);
+                        self.switch_to(unboxed);
+                        // a plain value: off the stack without a release
+                        self.set_stack_len(last);
+                        self.leave_frame_inline(operands);
+                        let status = self.iconst(types::I32, D_RETURNED as i64);
                         self.return_with(status, bits);
+                        self.switch_to(stays);
+                        let status = self.leave_boxed_inline(operands);
+                        let zero = self.iconst(types::I64, 0);
+                        self.return_with(status, zero);
                         self.switch_to(on_stack);
-                        let status = self.call("rt_leave_boxed", &[self.vm]).expect("a status");
+                        let status = self.leave_boxed_inline(operands);
                         let zero = self.iconst(types::I64, 0);
                         self.return_with(status, zero);
                     }
                     _ => {
                         self.box_top(1);
                         self.state.pop();
-                        let status = self.call("rt_leave_boxed", &[self.vm]).expect("a status");
+                        let operands = boxed_depth(&self.state);
+                        let status = self.leave_boxed_inline(operands);
                         let zero = self.iconst(types::I64, 0);
                         self.return_with(status, zero);
                     }
                 }
             }
             Op::ReturnNothing => {
-                self.call("rt_return_nothing", &[self.vm]);
+                let operands = boxed_depth(&self.state);
+                self.leave_frame_inline(operands);
+                self.push_nothing_inline();
                 self.return_direct(D_BOXED);
             }
             Op::Fail => {
@@ -1841,17 +2539,31 @@ impl Gen<'_, '_> {
                 let value = self.out_read(types::I8);
                 self.push_bool(value);
             }
-            Op::IsNothing => {
-                let out = self.out_address();
-                self.helper_on_stack("rt_is_nothing", 1, &[out]);
-                let value = self.out_read(types::I8);
-                self.push_bool(value);
-            }
-            Op::IsFailure => {
-                let out = self.out_address();
-                self.helper_on_stack("rt_is_failure", 1, &[out]);
-                let value = self.out_read(types::I8);
-                self.push_bool(value);
+            Op::IsNothing | Op::IsFailure => {
+                // the top's tag read, the top dropped; a typed top is
+                // neither
+                let wanted = if matches!(self.code.ops[pc], Op::IsNothing) {
+                    TAG_NOTHING
+                } else {
+                    TAG_FAILURE
+                };
+                if matches!(self.state.last(), Some(Abs::Int | Abs::Bool | Abs::Float)) {
+                    self.state.pop();
+                    let no = self.u8(0);
+                    self.push_bool(no);
+                    return;
+                }
+                self.box_top(1);
+                self.state.pop();
+                let len = self.stack_len();
+                let last = self.b.ins().iadd_imm_s(len, -1);
+                let ptr = self.stack_ptr();
+                let at = self.item_address(ptr, last);
+                let tag = self.tag_at(at, 0);
+                let is = self.b.ins().icmp_imm_s(IntCC::Equal, tag, wanted as i64);
+                self.release(at);
+                self.set_stack_len(last);
+                self.push_bool(is);
             }
             Op::IsType(ty) => {
                 let out = self.out_address();
@@ -2073,7 +2785,7 @@ impl Gen<'_, '_> {
         let slow = self.b.create_block();
         let join = self.b.create_block();
         // the body's address from the table, else from the helper
-        let table = self.iconst(pointer, self.direct_table as i64);
+        let table = self.iconst(pointer, self.addresses.direct_table as i64);
         let known = self
             .b
             .ins()
@@ -2090,7 +2802,7 @@ impl Gen<'_, '_> {
         // the machine stack must have room; the frame counts on it
         self.switch_to(have);
         let entry = self.b.block_params(have)[0];
-        let depth_address = self.iconst(pointer, self.depth_address as i64);
+        let depth_address = self.iconst(pointer, self.addresses.depth as i64);
         let depth = self.b.ins().load(pointer, flags, depth_address, 0);
         let room = self
             .b
@@ -2109,11 +2821,7 @@ impl Gen<'_, '_> {
                 self.box_position(first + index);
             }
         }
-        let mask_value = self.iconst(types::I64, mask as i64);
-        let callee_value = self.usize(callee);
-        let base = self
-            .call("rt_direct_frame", &[self.vm, callee_value, mask_value])
-            .expect("a base");
+        let base = self.push_frame_inline(callee, mask);
         let pc0 = self.u32(0);
         let one = self.u8(1);
         let mut arguments = vec![self.vm, base, pc0, one];

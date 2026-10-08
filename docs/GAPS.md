@@ -623,7 +623,7 @@ accumulated text per piece. Conformance case 54 (`json_paths.ry`) holds
 what the changed paths print. Next, in the owner's order: the baseline
 JIT (AG5, item iii), then the showcase application.
 
-### The baseline JIT (session 9, decision AR1; in progress)
+### The baseline JIT (session 9, decisions AR1 to AR4)
 
 The owner's four answers of 2026-10-08: the baseline JIT of AG5 (iii) in
 three stages, each kept by the rule of AG6 on the compiler's self-check
@@ -644,5 +644,20 @@ before it (decision AR2): the compiler's self-check 4.7 percent fewer
 instructions on machine code and 1.6 on the interpreter,
 `bench/records.ry` 9.7 percent fewer on machine code; a further fused
 operation would bring about a percent, under the step's 2%, so the
-fusions stop there. Stage 3 (the layout) follows; the handoff's section
-"The baseline JIT" has the plan.
+fusions stop there. Stage 3 is in (decision AR4): the layout of `Value`
+pinned, the VM's stack, frames, handlers and field cache and the fields
+of a record and a variant as vectors with a fixed layout, and the
+generated code doing the value operations, the frame protocol of a
+direct call and the field read in place, a helper left for each slow
+path. Measured against stage 2 (decision AR4): the self-check 5.4
+percent fewer instructions on machine code, `bench/records.ry` 15.6
+percent fewer, the typed call with its argument in a register 57
+percent fewer per turn; the round as a whole, against the binary before
+it, 11.3 percent fewer on the self-check and 23 percent fewer on
+`bench/records.ry`. Cranelift's own compile time is now a cost that
+every inline sequence pays at each compilation (it reached 12.5 percent
+of the self-check before the IR was made compact), the quick register
+allocator does not pay for itself, and two of the three sub-stages came
+in under the 2 percent at which AR1 ends the round: the round's end is
+the owner's call; the handoff's section "The baseline JIT" has what
+remains on the profile.

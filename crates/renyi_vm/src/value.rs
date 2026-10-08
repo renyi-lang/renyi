@@ -17,8 +17,14 @@ use renyi_check::{FunctionId, TypeId};
 
 use crate::decimal::Decimal;
 use crate::integer::Int;
+use crate::pinned::Pinned;
 
+// Decision AR4: the layout is fixed, so that the generated code reads the
+// tag at offset 0 and the payload at offset 8 (the discriminants are the
+// declaration order, `Rc` payloads are pointers to allocations whose first
+// word is the strong count).
 #[derive(Clone, Debug)]
+#[repr(C, u8)]
 pub enum Value {
     Nothing,
     Boolean(bool),
@@ -59,16 +65,18 @@ pub struct RangeValue {
 }
 
 #[derive(Clone, Debug)]
+#[repr(C)]
 pub struct Record {
     pub ty: TypeId,
-    pub fields: Vec<Value>,
+    pub fields: Pinned<Value>,
 }
 
 #[derive(Clone, Debug)]
+#[repr(C)]
 pub struct Variant {
     pub ty: TypeId,
     pub tag: usize,
-    pub fields: Vec<Value>,
+    pub fields: Pinned<Value>,
 }
 
 /// Values of the library that carry more than their declared fields.
@@ -106,6 +114,51 @@ pub enum Native {
 
 // Decision X3: the stack and every collection hold values by this width.
 const _: () = assert!(std::mem::size_of::<Value>() <= 24);
+
+/// The layout of a `Value` as the generated code reads it (decision AR4):
+/// the tag at offset 0, the payload at offset 8; an `Rc` payload is a
+/// pointer to an allocation whose first word is the strong count; an
+/// `Integer` holds an `Int`, whose own tag lies at offset 8 and whose
+/// payload at 16. The test below holds these to the types.
+pub mod layout {
+    pub const SIZE: usize = 24;
+    pub const PAYLOAD: i32 = 8;
+    pub const TAG_NOTHING: u8 = 0;
+    pub const TAG_BOOLEAN: u8 = 1;
+    pub const TAG_INTEGER: u8 = 2;
+    pub const TAG_FLOAT: u8 = 4;
+    pub const TAG_FAILURE: u8 = 18;
+    /// One bit per tag whose payload is an `Rc` at `PAYLOAD`.
+    pub const RC_TAGS: u64 = (1 << 3)
+        | (1 << 5)
+        | (1 << 6)
+        | (1 << 7)
+        | (1 << 8)
+        | (1 << 9)
+        | (1 << 10)
+        | (1 << 11)
+        | (1 << 12)
+        | (1 << 13)
+        | (1 << 17)
+        | (1 << 18)
+        | (1 << 19);
+    /// Inside an `Integer`: the `Int` tag and its payload.
+    pub const INT_TAG: i32 = 8;
+    pub const INT_PAYLOAD: i32 = 16;
+    pub const INT_SMALL: u8 = 0;
+    pub const INT_BIG: u8 = 1;
+    pub const TAG_RECORD: u8 = 12;
+    pub const TAG_VARIANT: u8 = 13;
+    /// Inside an `Rc` allocation: the value, after the two counts.
+    pub const RC_VALUE: i32 = 16;
+    /// Inside a `Record` and a `Variant`: the type, the tag and the
+    /// fields (a pinned vector: pointer, length, capacity).
+    pub const RECORD_TY: i32 = std::mem::offset_of!(super::Record, ty) as i32;
+    pub const RECORD_FIELDS: i32 = std::mem::offset_of!(super::Record, fields) as i32;
+    pub const VARIANT_TY: i32 = std::mem::offset_of!(super::Variant, ty) as i32;
+    pub const VARIANT_TAG: i32 = std::mem::offset_of!(super::Variant, tag) as i32;
+    pub const VARIANT_FIELDS: i32 = std::mem::offset_of!(super::Variant, fields) as i32;
+}
 
 thread_local! {
     /// The one-character texts of the ASCII range (`Value::character`).
@@ -147,11 +200,18 @@ impl Value {
     }
 
     pub fn record(ty: TypeId, fields: Vec<Value>) -> Value {
-        Value::Record(Rc::new(Record { ty, fields }))
+        Value::Record(Rc::new(Record {
+            ty,
+            fields: fields.into(),
+        }))
     }
 
     pub fn variant(ty: TypeId, tag: usize, fields: Vec<Value>) -> Value {
-        Value::Variant(Rc::new(Variant { ty, tag, fields }))
+        Value::Variant(Rc::new(Variant {
+            ty,
+            tag,
+            fields: fields.into(),
+        }))
     }
 
     pub fn failure(error: Value) -> Value {
@@ -450,4 +510,132 @@ pub fn take_map(map: Rc<IndexMap<Value, Value>>) -> IndexMap<Value, Value> {
 
 pub fn take_set(set: Rc<IndexSet<Value>>) -> IndexSet<Value> {
     Rc::try_unwrap(set).unwrap_or_else(|shared| (*shared).clone())
+}
+
+#[cfg(test)]
+mod layout_tests {
+    use super::layout::*;
+    use super::*;
+
+    fn tag(value: &Value) -> u8 {
+        // SAFETY: `Value` is `repr(C, u8)`: its first byte is the tag.
+        unsafe { *(value as *const Value as *const u8) }
+    }
+
+    fn payload_word(value: &Value, offset: usize) -> usize {
+        // SAFETY: the value is 24 bytes wide and the word lies inside it.
+        unsafe { *((value as *const Value as *const u8).add(offset) as *const usize) }
+    }
+
+    #[test]
+    fn the_constants_match_the_types() {
+        assert_eq!(std::mem::size_of::<Value>(), SIZE);
+        assert_eq!(std::mem::size_of::<Int>(), 16);
+        assert_eq!(tag(&Value::Nothing), TAG_NOTHING);
+        assert_eq!(tag(&Value::Boolean(true)), TAG_BOOLEAN);
+        assert_eq!(tag(&Value::integer(5)), TAG_INTEGER);
+        assert_eq!(tag(&Value::Float(1.5)), TAG_FLOAT);
+        assert_eq!(tag(&Value::failure(Value::Nothing)), TAG_FAILURE);
+        assert_eq!(
+            payload_word(&Value::Boolean(true), PAYLOAD as usize) as u8,
+            1
+        );
+        assert_eq!(
+            payload_word(&Value::Boolean(false), PAYLOAD as usize) as u8,
+            0
+        );
+        assert_eq!(
+            payload_word(&Value::Float(1.5), PAYLOAD as usize),
+            1.5f64.to_bits() as usize
+        );
+        let big = Int::from_big(num_bigint::BigInt::from(i64::MAX) * 4);
+        let values = [
+            Value::decimal(Decimal::parse("1.5").unwrap()),
+            Value::text("t"),
+            Value::Bytes(Rc::from(&b"b"[..])),
+            Value::list(vec![]),
+            Value::Map(Rc::new(IndexMap::new())),
+            Value::Set(Rc::new(IndexSet::new())),
+            Value::Range(Rc::new(RangeValue {
+                from: Int::Small(1),
+                to: Int::Small(2),
+                by: Int::Small(1),
+            })),
+            Value::pair(Value::Nothing, Value::Nothing),
+            Value::record(0, vec![]),
+            Value::variant(0, 0, vec![]),
+            Value::Native(Rc::new(Native::Deadline(0, 0))),
+            Value::failure(Value::Nothing),
+            Value::Guarded(Rc::new((1, Value::Nothing))),
+        ];
+        let mut rc_tags = 0u64;
+        for value in &values {
+            rc_tags |= 1 << tag(value);
+        }
+        assert_eq!(rc_tags, RC_TAGS);
+        for plain in [
+            Value::Nothing,
+            Value::Boolean(false),
+            Value::integer(1),
+            Value::Float(0.0),
+            Value::Duration(1),
+            Value::Instant(1),
+            Value::Function(0),
+        ] {
+            assert_eq!((RC_TAGS >> tag(&plain)) & 1, 0, "{plain:?}");
+        }
+        // an `Rc` payload points at its allocation, whose first word is the
+        // strong count (`Rc::as_ptr` points two words past it)
+        let list = Rc::new(vec![Value::Nothing]);
+        let value = Value::List(list.clone());
+        assert_eq!(Rc::strong_count(&list), 2);
+        let allocation = payload_word(&value, PAYLOAD as usize);
+        assert_eq!(allocation + 16, Rc::as_ptr(&list) as usize);
+        assert_eq!(unsafe { *(allocation as *const usize) }, 2);
+        // a text's payload is a fat pointer whose address is the allocation
+        let text: Rc<str> = Rc::from("abc");
+        let value = Value::Text(text.clone());
+        let allocation = payload_word(&value, PAYLOAD as usize);
+        assert_eq!(allocation + 16, Rc::as_ptr(&text) as *const u8 as usize);
+        assert_eq!(unsafe { *(allocation as *const usize) }, 2);
+        // an Integer: the Int's tag and payload
+        let small = Value::integer(7);
+        assert_eq!(payload_word(&small, INT_TAG as usize) as u8, INT_SMALL);
+        assert_eq!(payload_word(&small, INT_PAYLOAD as usize), 7);
+        let value = Value::Integer(big.clone());
+        assert_eq!(payload_word(&value, INT_TAG as usize) as u8, INT_BIG);
+        if let Int::Big(rc) = &big {
+            let allocation = payload_word(&value, INT_PAYLOAD as usize);
+            assert_eq!(allocation + 16, Rc::as_ptr(rc) as usize);
+        }
+        // a record's and a variant's type, tag and fields inside the
+        // allocation
+        let word = |address: usize| unsafe { *(address as *const usize) };
+        let record = Value::record(3, vec![Value::integer(1), Value::text("a")]);
+        let Value::Record(rc) = &record else {
+            unreachable!()
+        };
+        let allocation = payload_word(&record, PAYLOAD as usize);
+        let inner = allocation + RC_VALUE as usize;
+        assert_eq!(inner, Rc::as_ptr(rc) as usize);
+        assert_eq!(word(inner + RECORD_TY as usize), 3);
+        assert_eq!(
+            word(inner + RECORD_FIELDS as usize),
+            rc.fields.as_ptr() as usize
+        );
+        assert_eq!(word(inner + RECORD_FIELDS as usize + 8), 2);
+        let variant = Value::variant(4, 2, vec![Value::Nothing]);
+        let Value::Variant(rc) = &variant else {
+            unreachable!()
+        };
+        let inner = payload_word(&variant, PAYLOAD as usize) + RC_VALUE as usize;
+        assert_eq!(inner, Rc::as_ptr(rc) as usize);
+        assert_eq!(word(inner + VARIANT_TY as usize), 4);
+        assert_eq!(word(inner + VARIANT_TAG as usize), 2);
+        assert_eq!(
+            word(inner + VARIANT_FIELDS as usize),
+            rc.fields.as_ptr() as usize
+        );
+        assert_eq!(word(inner + VARIANT_FIELDS as usize + 8), 1);
+    }
 }

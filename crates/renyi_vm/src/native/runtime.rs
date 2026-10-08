@@ -55,17 +55,6 @@ pub const D_STAY: i32 = 3;
 pub const D_DEOPT: i32 = 4;
 pub const D_BOXED: i32 = 5;
 
-/// The number a kind travels as between the generated code and the
-/// helpers that unbox a result by it.
-pub fn kind_code(kind: Abs) -> u8 {
-    match kind {
-        Abs::Int => 0,
-        Abs::Bool => 1,
-        Abs::Float => 2,
-        _ => 3,
-    }
-}
-
 pub type VmPtr = *mut Vm<'static>;
 
 /// The crash messages the generated code raises by number.
@@ -234,6 +223,33 @@ pub(crate) unsafe extern "C" fn rt_store_bool(vm: VmPtr, base: usize, slot: u32,
 
 pub(crate) unsafe extern "C" fn rt_store_float(vm: VmPtr, base: usize, slot: u32, value: f64) {
     vm!(vm).stack[base + slot as usize] = Value::Float(value);
+}
+
+/// The stack must hold `needed` items: its capacity grows to that for a
+/// frame the generated code pushes (decision AR4).
+pub(crate) unsafe extern "C" fn rt_room(vm: VmPtr, needed: usize) {
+    vm!(vm).stack.room(needed);
+}
+
+/// The frames have no room for a push: their capacity grows (decision
+/// AR4).
+pub(crate) unsafe extern "C" fn rt_grow_frames(vm: VmPtr) {
+    vm!(vm).frames.grow();
+}
+
+/// The effective grant of a frame of `code` that the generated code
+/// pushes (decision AR4): the enclosing grant narrowed by what the
+/// function declares (decision Q1). The caller's frame is still on top.
+pub(crate) unsafe extern "C" fn rt_frame_grant(vm: VmPtr, code: usize) -> u32 {
+    vm!(vm).frame_grant(code)
+}
+
+/// The last reference to a value's allocation goes: the value is dropped
+/// in place, which frees it (decision AR4); the slot is dead after.
+pub(crate) unsafe extern "C" fn rt_drop_at(at: *mut Value) {
+    // SAFETY: the generated code found the strong count at one, so this
+    // value holds the last reference, and it reads the slot no more.
+    unsafe { std::ptr::drop_in_place(at) };
 }
 
 pub(crate) unsafe extern "C" fn rt_pop(vm: VmPtr) {
@@ -720,13 +736,6 @@ pub(crate) unsafe extern "C" fn rt_direct_entry(vm: VmPtr, code: usize) -> *cons
     vm!(vm).direct_entry_of(code)
 }
 
-/// The frame of a direct call (`Vm::push_frame_direct`): the boxed
-/// arguments lie on the stack, `mask` says which parameters they are, and
-/// the frame's base comes back.
-pub(crate) unsafe extern "C" fn rt_direct_frame(vm: VmPtr, code: usize, mask: u64) -> usize {
-    vm!(vm).push_frame_direct(code, mask)
-}
-
 /// After a direct call whose callee returned neither a typed result nor a
 /// boxed one (which the generated code handles itself): a failure is on
 /// the stack (`FAILURE`), the frame was handed to the interpreter and is
@@ -763,79 +772,6 @@ pub(crate) unsafe extern "C" fn rt_return(vm: VmPtr) {
     let vm = vm!(vm);
     let value = vm.pop();
     vm.leave_frame(value);
-}
-
-pub(crate) unsafe extern "C" fn rt_return_int(vm: VmPtr, value: i64) {
-    vm!(vm).leave_frame(Value::integer(value));
-}
-
-pub(crate) unsafe extern "C" fn rt_return_bool(vm: VmPtr, value: i8) {
-    vm!(vm).leave_frame(Value::Boolean(value != 0));
-}
-
-pub(crate) unsafe extern "C" fn rt_return_float(vm: VmPtr, value: f64) {
-    vm!(vm).leave_frame(Value::Float(value));
-}
-
-pub(crate) unsafe extern "C" fn rt_return_nothing(vm: VmPtr) {
-    vm!(vm).leave_frame(Value::Nothing);
-}
-
-/// A typed result leaves the frame without a push: the value goes back
-/// in a register (decision AR3).
-pub(crate) unsafe extern "C" fn rt_leave_typed(vm: VmPtr) {
-    let vm = vm!(vm);
-    let left = vm.frames.pop().expect("a frame");
-    vm.stack.truncate(left.base);
-    vm.handlers.truncate(left.handler_base);
-}
-
-/// The value on top returned from a frame whose declared result is typed:
-/// its bits go to `out` and the frame leaves without a push
-/// (`D_RETURNED`); a value that does not fit the kind (a big Integer, a
-/// guarded value) or a failure leaves with the frame on the caller's
-/// stack instead (`D_BOXED`, `D_FAILURE`).
-pub(crate) unsafe extern "C" fn rt_leave_unbox(vm: VmPtr, kind: u8, out: *mut i64) -> i32 {
-    let vm = vm!(vm);
-    let value = vm.pop();
-    let bits = match (kind, &value) {
-        (0, Value::Integer(Int::Small(small))) => Some(*small),
-        (1, Value::Boolean(flag)) => Some(*flag as i64),
-        (2, Value::Float(float)) => Some(float.to_bits() as i64),
-        _ => None,
-    };
-    match bits {
-        Some(bits) => {
-            unsafe { *out = bits };
-            let left = vm.frames.pop().expect("a frame");
-            vm.stack.truncate(left.base);
-            vm.handlers.truncate(left.handler_base);
-            D_RETURNED
-        }
-        None => {
-            let failed = value.is_failure();
-            vm.leave_frame(value);
-            if failed {
-                D_FAILURE
-            } else {
-                D_BOXED
-            }
-        }
-    }
-}
-
-/// The value on top returned from a frame whose result is boxed: the
-/// frame leaves with it on the caller's stack.
-pub(crate) unsafe extern "C" fn rt_leave_boxed(vm: VmPtr) -> i32 {
-    let vm = vm!(vm);
-    let value = vm.pop();
-    let failed = value.is_failure();
-    vm.leave_frame(value);
-    if failed {
-        D_FAILURE
-    } else {
-        D_BOXED
-    }
 }
 
 /// After a helper left the frame (`LEFT`): whether what it left on the
@@ -1080,7 +1016,7 @@ pub(crate) unsafe extern "C" fn rt_deopt(
     }
     // the operand stack: the boxed operands in order, the typed ones from
     // the registers
-    let boxed: Vec<Value> = vm.stack.drain(base + locals..).collect();
+    let boxed: Vec<Value> = vm.stack.split_off(base + locals);
     let mut boxed = boxed.into_iter();
     for abs in &point.stack {
         let value = match abs {
@@ -1140,7 +1076,7 @@ impl Vm<'_> {
         }
         let mut args = std::mem::take(&mut self.scratch);
         let at = self.stack.len().saturating_sub(count);
-        args.extend(self.stack.drain(at..));
+        self.stack.drain_into(at, &mut args);
         let result = self.call_native(function, &mut args);
         args.clear();
         self.scratch = args;
@@ -1484,6 +1420,10 @@ pub const HELPERS: &[(&str, *const u8)] = &[
     ("rt_store_bool", rt_store_bool as *const u8),
     ("rt_store_float", rt_store_float as *const u8),
     ("rt_pop", rt_pop as *const u8),
+    ("rt_drop_at", rt_drop_at as *const u8),
+    ("rt_room", rt_room as *const u8),
+    ("rt_grow_frames", rt_grow_frames as *const u8),
+    ("rt_frame_grant", rt_frame_grant as *const u8),
     ("rt_dup", rt_dup as *const u8),
     ("rt_truncate", rt_truncate as *const u8),
     ("rt_take_int", rt_take_int as *const u8),
@@ -1522,16 +1462,8 @@ pub const HELPERS: &[(&str, *const u8)] = &[
     ("rt_call_value", rt_call_value as *const u8),
     ("rt_result_type", rt_result_type as *const u8),
     ("rt_return", rt_return as *const u8),
-    ("rt_return_int", rt_return_int as *const u8),
-    ("rt_return_bool", rt_return_bool as *const u8),
-    ("rt_return_float", rt_return_float as *const u8),
-    ("rt_return_nothing", rt_return_nothing as *const u8),
     ("rt_direct_entry", rt_direct_entry as *const u8),
-    ("rt_direct_frame", rt_direct_frame as *const u8),
     ("rt_direct_after", rt_direct_after as *const u8),
-    ("rt_leave_typed", rt_leave_typed as *const u8),
-    ("rt_leave_unbox", rt_leave_unbox as *const u8),
-    ("rt_leave_boxed", rt_leave_boxed as *const u8),
     ("rt_left_status", rt_left_status as *const u8),
     ("rt_fail", rt_fail as *const u8),
     ("rt_crash", rt_crash as *const u8),

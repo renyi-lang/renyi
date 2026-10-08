@@ -2902,3 +2902,101 @@ primitive boundary (`status` 3.5%, `call_from_stack` 2.6%,
 `call_primitive` 2.2%, the argument move 2.1%) are the next largest
 items after the clone (4.1%) and the drop (6.9%) of values and the
 interpreter's own run of `main` and the cold code (7.8%). (user)
+
+**AR4. Stage 3 of AR1, done and measured: the layout of `Value` and of
+`Int` is pinned (`repr(C, u8)`), the VM's stack, frames, handlers and
+field-site cache and the fields of a record and of a variant are pinned
+vectors (`Pinned<T>`: the pointer, the length and the capacity, in that
+order), and the generated code does the value operations, the frame
+protocol of a direct call and the field read in place, a helper left
+only for each slow path.** The constants of the layout live in
+`value::layout` and a unit test holds them to the types: the tag at
+offset 0 in declaration order, the payload at 8; an `Rc` payload points
+at its allocation, whose first word is the strong count (an `Rc<str>`
+and an `Rc<[u8]>` are fat pointers whose address is the allocation too);
+an `Integer` holds its `Int` with the small-or-big tag at 8 and the
+payload at 16; the thirteen tags with an `Rc` payload are one mask
+(`RC_TAGS`); a `Record` and a `Variant` lie sixteen bytes into their
+allocation, the type, the tag and the field vector at fixed offsets.
+Three sub-stages, each measured as AR1 says (the binary before against
+the binary after, `cachegrind`, the release build). (3a and 3b) The
+pinned layouts, then `Load`, `LoadMove`, `Store`, `Pop`, `Dup`, `Const`
+and `Nothing` on a boxed value in place: the clone is the three words
+copied and the strong count incremented when the tag is in the mask or
+the Integer is big, the drop the count decremented and `rt_drop_at` when
+it was one, a push past the capacity `rt_grow`; the top of the stack is
+boxed (`push_typed_value`) and unboxed (the tags read, the value that
+does not fit stays for the interpreter as before, a non-Boolean
+condition crashes through `rt_take_bool`) in place, and `IsNothing`,
+`IsFailure`, `JumpIfAbsent` and `JumpIfFailure` read the tag. The
+self-check 12.32 to 12.10 billion instructions on machine code (-1.8%)
+and 12.91 to 12.90 on the interpreter; `bench/records.ry` 518 to 459
+million (-11.5%) and 663 to 658; per turn of the micro-benchmarks on
+machine code: the typed call 305 to 311, the call with a boxed argument
+719 to 633, the field of a local 901 to 731, the record call 1236 to
+1055, the record built and read 1215 to 1109. (3c) The frame of a direct
+call pushed in place (the boxed arguments moved to their parameters'
+slots by the mask, which is static, every other local's tag written
+`Nothing`, the record written with the caller's grant when the callee
+narrows nothing, else the grant from `rt_frame_grant`; `rt_room` and
+`rt_grow_frames` for the capacities; the count of calls kept), and every
+return leaves the frame in place: the boxed locals and the boxed
+operands under the result released inline up to `RELEASES_INLINE` of
+them, else through `rt_truncate`, the handlers cut to the frame's
+height, the frame popped, a boxed result moved to the frame's first
+slot, a typed one back in a register to a direct caller and boxed on the
+stack to a trampoline's, the unbox on the way out of AR3 by the tags;
+`rt_direct_frame`, `rt_leave_*`, `rt_return_*` and
+`Vm::push_frame_direct` are gone. The self-check 12.10 to 11.69 billion
+(-3.4%) and 12.90 to 12.94 on the interpreter; `bench/records.ry` 459 to
+464 million (+1.1%); per turn: the typed call 311 to 119 (-62%), the
+boxed call 633 to 587, the record call 1055 to 873, the field and the
+record built unchanged. (3d) `LoadField` reads the site's cache entry
+and the holder's tag in place: a record or a variant of the cached type
+with the cached tag and the index in range gives its field copied with
+one more reference, anything else goes through `rt_load_field`, which
+fills the cache as before; and the pinned vector's `insert`, `extend`,
+`split_off` and `resize` work on the three words instead of going
+through a `Vec`. As first written, with a path per holder and a push
+that checked the capacity each time, the step measured the self-check
+11.69 to 11.70 billion (+0.1%) while `bench/records.ry` fell 464 to 429
+million (-7.5%) and, per turn, the field of a local 730 to 648, the
+record call 873 to 790, the record built 1109 to 1005: the IR had grown
+from 131 to 236 thousand Cranelift instructions in 19 to 34 thousand
+blocks since 3b, and Cranelift's own work from 5.6% to 12.5% of the
+self-check, which ate the run-time gain. The IR made compact (the
+reference-count test one branch, both payload words read and one
+selected; the stack's capacity checked once in the prologue for the
+frame's locals and its deepest operand stack, so that no push checks;
+one path for a record and a variant in the field read, the type at one
+offset in both and the rest selected; four releases in place at a
+return, else `rt_truncate`): the self-check 11.69 to 11.66 billion
+(-0.25%), the interpreter 12.94 to 12.90, `bench/records.ry` 464 to 437
+million (-5.8%), per turn the typed call 119 to 131, the boxed call 587
+to 605, the field of a local 730 to 677, the record call 873 to 849, the
+record built 1109 to 1041 (the first form's 648, 790 and 1005 were lower
+per turn: the test without branches and the selected path cost
+instructions at run time that the compile time pays back on the
+self-check); the IR 200 thousand Cranelift instructions in 15 thousand
+blocks, Cranelift's own work 10.3% of the self-check and the generated
+code's 16.6%. The stage as a whole, against the binary of stage 2: the
+self-check 12.32 to 11.66 billion (-5.4%), the interpreter 12.91 to
+12.90, `bench/records.ry` 518 to 437 million (-15.6%); the round so far,
+against the binary AQ left: the self-check 13.14 to 11.66 billion
+(-11.3%). Each sub-stage cut the self-check and stays by the rule, 3b
+and 3d under the 2% at which AR1 ends the round, so the round's end is
+the owner's call, with this in hand: Cranelift's compile time is now a
+cost every inline sequence pays at each of the 112 compilations, and a
+cheaper register allocator does not pay (`single_pass` halves
+Cranelift's time, 658 to 339 ms on the self-check, and loses more in the
+code: the self-check +4.2%, `bench/records.ry` +11%, the record call per
+turn 789 to 1025; `RENYI_NATIVE_REGALLOC` keeps the comparison as a
+development aid); what remains on the self-check's profile after the
+stage: the generated code 16.6%, the interpreter's `run_frames` 8.7%
+(`main` and the 443 code objects called but cold under `HOT_FACTOR`),
+Cranelift and regalloc2 10.3%, the drop glue 5.1% and `Value::clone`
+2.2% in the helpers and the primitives, the primitive boundary
+(`call_from_stack` 3.0%, `status` 2.9%, `call_primitive` 2.4%,
+`run_primitive` 1.3%), the boxed binary operations (`binary_values` and
+`rt_binary` 1.8% each), the interpreter's `push_frame_in_place` 1.7% for
+the cold callees, `Value::eq` 1.7% and mimalloc about 3%. (user)

@@ -11,7 +11,9 @@ use num_bigint::BigInt;
 use num_integer::Integer as _;
 use num_traits::{Pow, Signed, ToPrimitive, Zero};
 
+// Decision AR4: the layout is fixed, like `Value`'s.
 #[derive(Clone, Debug)]
+#[repr(C, u8)]
 pub enum Int {
     Small(i64),
     Big(Rc<BigInt>),

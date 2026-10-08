@@ -4,11 +4,12 @@ Last updated: 2026-10-08, session 9, the first in the cloud environment
 (claude.ai/code), which finished the profile-guided round on strings and
 JSON that session 8 had paused: decision AQ, the first of the
 interspersed performance items the owner set after M5 (the section "The
-profile-guided round on strings and JSON as it exists" below), and began
-the baseline JIT, decision AR1, with its first two stages: the fused op
-`LoadField` in the bytecode (AR2) and direct calls between generated
-functions with register arguments (AR3; the section "The baseline JIT"
-below). Session 8
+profile-guided round on strings and JSON as it exists" below), and did
+the baseline JIT, decision AR1, in its three stages: the fused op
+`LoadField` in the bytecode (AR2), direct calls between generated
+functions with register arguments (AR3) and the layout of `Value`
+pinned so that the value operations, the frame protocol and the field
+read run in place (AR4; the section "The baseline JIT" below). Session 8
 (stage 2 of the gap audit of
 `docs/GAPS.md`: the formal grammar `docs/grammar.ebnf` with decision V12;
 the language reference `docs/reference.md`, normative, held to the
@@ -93,9 +94,9 @@ machine code exists (decisions AG1 to AG5), the interpreter had its
 bounded round (AG6) and the strings and the JSON path had the
 profile-guided round of decision AQ (the section "The profile-guided
 round on strings and JSON as it exists" below) and the baseline JIT of
-decision AR1 is under way (the section "The baseline JIT" below; its
-first two stages, the fused op `LoadField` and the direct calls with
-register arguments, are in), `renyi build` does not.
+decision AR1 is in (the section "The baseline JIT" below: the fused op
+`LoadField`, the direct calls with register arguments and the pinned
+layout, decisions AR2 to AR4), `renyi build` does not.
 Release 0.1.0 is out
 (2026-10-07, the section "Release 0.1 engineering" below): the
 repository is public at `github.com/renyi-lang/renyi`, the release
@@ -158,7 +159,7 @@ revision>]`, `run [--manifest] [options] <file> [arguments]`, `record
 <file>...`, `compile [--to file] <file.ry>`, `add <name> [<version>]`,
 `update [--accept-effects]`, `audit`, `fetch`, `publish [--to
 <directory>]`, `bind <header.h> --module <name> --library <names>
-[--to <directory>]`, `tools [path]`, `mcp [path]`, `lsp`, `serve [--watch]`, `run --sandbox` and `version`; 315 tests,
+[--to <directory>]`, `tools [path]`, `mcp [path]`, `lsp`, `serve [--watch]`, `run --sandbox` and `version`; 317 tests,
 clippy and fmt clean with rustc 1.94.1 on Windows (the owner's machine)
 and on Linux (the cloud environment, where 1.94.1 is installed beside
 its 1.97.0 for the gates). CI (`.github/workflows/ci.yml`) runs the same gates,
@@ -1746,7 +1747,7 @@ and the commit of the site and the crates.io metadata.
   release; the Windows archive's checksum and binary were verified
   by hand; `cargo install renyi` built the binary from crates.io.
 
-## The baseline JIT (decision AR1; session 9, in progress)
+## The baseline JIT (decisions AR1 to AR4; session 9)
 
 The owner's four answers of 2026-10-08 (decision AR1): the baseline JIT
 of AG5 (iii) in three stages, each measured on the compiler's
@@ -1868,42 +1869,120 @@ arguments; the layout of `Value` pinned and the value operations inline.
   field and the record built unchanged. Kept by the rule of AG6; under
   the 2% that ends the round by AR1, which decision AR3 flags for the
   owner, the session going on to stage 3 as the round's purpose.
-- **Stage 3, next: the pinned layout.** `#[repr(C, u8)]` on `Value`
-  and on `Int` (24 and 16 bytes stay, X3; the discriminants become the
-  declaration order, the payload lies at offset 8), the VM's stack as a
-  struct with a fixed layout (`ptr`, `len`, `cap`) so that the generated
-  code pushes, pops, loads and stores without a call (a push past the
-  capacity calls a helper to grow), clones by copying the three words
-  and incrementing the strong count of an `Rc` variant (at offset 0 of
-  the allocation; an `Rc<str>` and an `Rc<[u8]>` are fat pointers whose
-  address is the allocation too), drops by decrementing and calling a
-  helper at zero, and reads a field through the record's pointer and
-  its field vector (the record's layout pinned too); every helper keeps
-  the slow path. The order within the stage, by the profile of the
-  self-check on machine code after stage 2 (`cg_annotate`, the
-  session's scratch directory): the frame protocol first
-  (`rt_direct_frame` 3.4%, `Vec::resize` of the locals 2.1%,
-  `leave_frame` 1.9%, `frame_grant` 1.2%, `status` 3.5% with the
-  primitive calls: a frame pushed and popped by the generated code
-  needs the frames as a pinned stack too, the grant of a code object
-  that does not narrow taken from the caller's frame, and the locals
-  written as `Nothing` by the code), then the loads and stores
-  (`rt_load` 2.9%, `rt_store` 1.6%, `rt_push_const` 1.0%, `rt_take_bool`
-  1.1%, with `Value::clone` 4.1% and the drop glue 6.9% behind them),
-  then the field read in the slot (`op_load_field` 2.3% +
-  `rt_load_field` 0.9%); the primitive boundary (`call_from_stack`
-  2.6%, `call_primitive` 2.2%, the argument move 2.1%, `status`) and
-  the interpreter's own share (`run_frames` 7.8%: `main` and the cold
-  code) stay outside the stage. The micro-benchmark of the typed call
-  wants a literal loop bound (`micro_call_1000000.ry`,
-  `micro_call_200000.ry` in the scratch directory): a bound read from
-  the arguments is a `maybe Integer`, boxed, and the loop variable with
-  it, so that call never took the direct path.
+- **Stage 3, done: the pinned layout (decision AR4).** `Pinned<T>`
+  (`crates/renyi_vm/src/pinned.rs`): a vector as three words in a fixed
+  order, the pointer, the length and the capacity, with `push`, `pop`,
+  `truncate`, `insert`, `extend`, `split_off`, `drain_into`, `resize`,
+  `room` and `grow` on the words themselves and `with_vec` (a `Vec` made
+  of the parts, used, taken apart) for what remains; `Deref` to a slice,
+  `From<Vec<T>>` and into one. `Vm.stack`, `Vm.frames`, `Vm.handlers`
+  and `Vm.field_cache` are pinned, `Record.fields` and `Variant.fields`
+  too, `Vm`, `Frame`, `FieldSite`, `Record` and `Variant` are `repr(C)`,
+  `Value` and `Int` are `repr(C, u8)` (24 and 16 bytes as before, X3).
+  `value::layout` holds the constants (the tag at 0 in declaration
+  order, the payload at 8, `RC_TAGS` the thirteen tags with an `Rc`
+  payload, the `Int` tag at 8 and its payload at 16, `RC_VALUE` 16 into
+  an allocation, the record's and the variant's offsets) and
+  `layout_tests` holds them to the types (the strong count is the first
+  word of an `Rc` allocation; an `Rc<str>` is a fat pointer whose
+  address is the allocation). In `codegen.rs`: the stack section
+  (`stack_vector`, `stack_len`, `stack_ptr`, `item_address`,
+  `slot_address`, `copy_value`, `tag_at`, `rc_of` (one branch: the tag's
+  bit in the mask or a big `Int`, both payload words read and one
+  selected), `retain`, `release` (`rt_drop_at` when the count was one),
+  `push_copy`, `write_typed`, `push_typed_value`); `Load`, `LoadMove`,
+  `Store`, `Pop`, `Dup`, `Const`, `Nothing`, `IsNothing`, `IsFailure`,
+  `JumpIfAbsent` and `JumpIfFailure` in place; `box_position` pushes a
+  typed top in place (`rt_insert_*` below the top as before),
+  `unbox_top` and `take_bool_top` read the tags (a value that does not
+  fit deopts as before, a non-Boolean condition crashes through
+  `rt_take_bool`); the prologue checks the stack's capacity once for the
+  frame's locals and its deepest operand stack (`rt_room`), so no push
+  checks; the frames section (`frames_vector`, `handlers_vector`,
+  `frame_address`, `push_nothing_inline`, `push_frame_inline`: the boxed
+  arguments moved to their slots by the static mask, every other local's
+  tag `Nothing`, the record written with the caller's grant or
+  `rt_frame_grant`'s when the callee narrows, `rt_room` and
+  `rt_grow_frames` for the capacities, the count of calls at
+  `Addresses::calls`; `leave_frame_inline`: the holders among the locals
+  and the boxed operands under the result released, up to
+  `RELEASES_INLINE` (4) of them, else `rt_truncate`, the handlers cut,
+  the frame popped; `leave_boxed_inline`: the result moved to the
+  frame's first slot, `D_FAILURE` by its tag); every `Return` arm and
+  `ReturnNothing` through them (`rt_direct_frame`, `rt_leave_*`,
+  `rt_return_*`, `kind_code` and `Vm::push_frame_direct` are gone;
+  `Addresses { depth, direct_table, calls }` replaces the two address
+  arguments of `compile`); `LoadField` reads the site's cache entry and
+  the holder in one path for a record and a variant (the type first in
+  both, the tag and the fields selected by the holder's tag,
+  `usize::MAX` the record's tag as the cache has it) and copies the
+  field with one more reference, else `rt_load_field` as before;
+  `RENYI_NATIVE_REGALLOC` selects Cranelift's register allocator (a
+  development aid, `mod.rs`). Measured as AR1 says, each sub-stage
+  against the one before (the stage-2 binary first): 3a+3b the
+  self-check 12.32 to 12.10 billion instructions on machine code
+  (-1.8%), the interpreter 12.91 to 12.90, `bench/records.ry` 518 to 459
+  million (-11.5%), per turn the typed call 305 to 311, the boxed call
+  719 to 633, the field 901 to 731, the record call 1236 to 1055, the
+  record built 1215 to 1109; 3c the self-check 12.10 to 11.69 (-3.4%),
+  the interpreter 12.94 (+0.3%), records 459 to 464 (+1.1%, which is
+  Cranelift's time on the larger IR, the run-time code equal), the typed
+  call 311 to 119 (-62%), the boxed call 633 to 587, the record call
+  1055 to 873; 3d as first written the self-check 11.69 to 11.70 (+0.1%:
+  the IR had grown from 131 to 236 thousand Cranelift instructions in 19
+  to 34 thousand blocks since 3b, and Cranelift's own work from 5.6% to
+  12.5% of the self-check, which ate the run-time gain), the interpreter
+  12.94 to 12.90, records 464 to 429 (-7.5%), the field 730 to 648, the
+  record call 873 to 790, the record built 1109 to 1005; made compact
+  (the reference-count test one branch with both payload words read and
+  one selected, the stack's capacity checked once in the prologue for
+  the frame's locals and its deepest operand stack instead of at every
+  push, one path for a record and a variant in `LoadField` with the type
+  at one offset in both and the rest selected, `RELEASES_INLINE` 4): the
+  self-check 11.69 to 11.66 (-0.25%), the interpreter 12.90, records 464
+  to 437 (-5.8%), per turn the typed call 119 to 131, the boxed call 587
+  to 605, the field 730 to 677, the record call 873 to 849, the record
+  built 1109 to 1041; the IR 200 thousand Cranelift instructions in 15
+  thousand blocks, Cranelift 10.3% and the generated code 16.6% of the
+  self-check (the first form was faster per turn and slower on the
+  self-check: the compact test and the selected path cost at run time
+  what the compile time pays back, so a branchy test for a value without
+  a reference, cheap at run time and small in IR, is a form still to
+  try). The register allocator: `single_pass` halves Cranelift's time
+  (658 to 339 ms on the self-check) and loses more in the code (the
+  self-check 11.70 to 12.19 billion, +4.2%; records +11%, the record
+  call per turn 789 to 1025), so `backtracking` stays.
+- **After stage 3.** The profile of the self-check on machine code
+  (`cg_annotate`, the scratch directory): the generated code 16.6%,
+  `run_frames` 8.7% (`main` and the 443 code objects called but cold),
+  Cranelift and regalloc2 10.3%, `drop_glue::<Value>` 5.1%,
+  `call_from_stack` 3.0%, `status` 2.9%, `call_primitive` 2.4%,
+  `Value::clone` 2.2%, `binary_values` 1.8%, `rt_binary` 1.8%,
+  `push_frame_in_place` 1.7%, `Value::eq` 1.7%, mimalloc about 3%,
+  `refined_record` 0.8%, `rt_construct_variant` 0.8%, `op_load_field`
+  0.7% (the cache misses), `Jit::ready` 0.7% (the IR built), `op_with`
+  0.7%. The IR's size is now a cost the round must count: every inline
+  sequence is Cranelift time at each of the 112 compilations, so a
+  change is measured on the self-check with both effects, and the next
+  steps that remain are the primitive boundary (`status`,
+  `call_from_stack`, `call_primitive`, `run_primitive`, about 9%: the
+  `Result` moved, the arguments drained into the scratch vector, the
+  grant and budget checks of a pure primitive), the interpreter's own
+  share (`run_frames` 8.7%: `main` and the 443 code objects called but
+  cold under `HOT_FACTOR`, against the compile time of each), the clone
+  and the drop that remain in the helpers and the primitives
+  (`drop_glue` 4.9%, `clone` 2.1%), and the boxed binary operations
+  (`rt_binary` and `binary_values`, 3.6%).
 - **Measuring here.** `valgrind --tool=cachegrind --cache-sim=no
   <binary> run [--interpret] compiler/checker.ry compiler/bodies.ry`
-  for the self-check (about two minutes a run), the same on
+  for the self-check (about four minutes a run), the same on
   `bench/records.ry` and on the micro programs at two sizes; the binary
-  before the stage kept beside the binary after it.
+  before the stage kept beside the binary after it (`measure3.sh` in
+  the scratch directory ran the set for one binary, `measure_regalloc.sh`
+  the two allocators). `RENYI_NATIVE_REPORT=1` prints the compile
+  statistics (the IR's size in Cranelift instructions and blocks, the
+  time by phase, the cold callees) and `cg_annotate` on the self-check
+  shows Cranelift's own share, which the IR's size moves.
 
 ## The profile-guided round on strings and JSON as it exists (decision AQ; session 9, 2026-10-08)
 
@@ -2544,14 +2623,22 @@ holds between calls.
   for the corpus and for one file; a bad base), the `diff` call in
   `tests/mcp.rs`, and a unit test of `own_text_hash`.
 
-## Done in session 9 (the profile-guided round on strings and JSON, in the cloud environment)
+## Done in session 9 (the profile-guided round on strings and JSON and the baseline JIT, in the cloud environment)
 
-One commit on `main`, gated as in session 8 (rustc 1.94.1, the CI toolchain,
+Four commits on `main` (2fcab99, cf4c912, 02380ea and the stage-3
+commit), each gated as in session 8 (rustc 1.94.1, the CI toolchain,
 installed beside the environment's 1.97.0 for `cargo fmt`, `cargo
 clippy --all-targets -- -D warnings` and `cargo test`; the conformance
 suite by both runners; the corpus canonical; `compiler/*.ry`,
 `bench/*.ry` and the starter pack checked, formatted and tested; the
-lint):
+lint). At the end of the session the four were on the local `main`
+only: the push was refused (403) because the Claude GitHub App is not
+installed on the `renyi-lang` organisation
+(https://github.com/apps/claude/installations/select_target, or
+reconnect GitHub from the claude.ai settings); the next session pushes
+them first (`git push -u origin main`) and CI runs on the head. The
+patches were also exported from the scratch directory and handed to
+the owner.
 
 1. the round (decision AQ; the section "The profile-guided round on
    strings and JSON as it exists"): `crates/renyi_vm/src/natives/json.rs`
@@ -2592,6 +2679,21 @@ lint):
    `push_frame_direct`, `run_generated` on the JIT's count), `infer.rs`
    (`abs_of_params`, the rule on parameter slots); the decisions
    (AR3), `docs/GAPS.md`, this file.
+4. the baseline JIT, stage 3 (decision AR4; the section "The baseline
+   JIT"): `crates/renyi_vm/src/pinned.rs` (new: `Pinned<T>`),
+   `value.rs` (`repr(C, u8)` on `Value`, `repr(C)` on `Record` and
+   `Variant` with pinned fields, the module `layout`, `layout_tests`),
+   `integer.rs` (`repr(C, u8)` on `Int`), `vm.rs` (`repr(C)` on `Vm`,
+   `Frame` and `FieldSite`; the stack, the frames, the handlers and the
+   field cache pinned; `frame_grant` crate-visible; `push_frame_direct`
+   gone), `native/codegen.rs` (the stack and the frames sections,
+   `Addresses`, the arms in place, the prologue's room check, the
+   merged `LoadField`), `native/runtime.rs` (`rt_room`,
+   `rt_grow_frames`, `rt_frame_grant`, `rt_drop_at`; `rt_direct_frame`,
+   `rt_leave_*`, `rt_return_*` and `kind_code` gone), `native/mod.rs`
+   (`Addresses`, `RENYI_NATIVE_REGALLOC`), `lib.rs` (`pub mod pinned`);
+   the decisions (AR4), `docs/GAPS.md`, `CLAUDE.md` (the `renyi_vm`
+   row), this file.
 
 ## Done in session 8 (stage 2: the grammar, the reference, the front end in Renyi)
 

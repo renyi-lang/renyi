@@ -32,6 +32,7 @@ use crate::native::{self, Jit};
 use crate::natives::json::{self, Json, Naming};
 use crate::natives::time::instant_text;
 use crate::natives::{self, NativeFn};
+use crate::pinned::Pinned;
 use crate::profile::Profile;
 use crate::recording::{clip, redact, Call, Manifest, Outcome, Recording, Replay};
 use crate::types::TypeShape;
@@ -160,6 +161,7 @@ impl Default for Options {
 /// A grant shared by the frames it is in force for.
 pub type SharedGrant = Rc<Vec<Capability>>;
 
+#[repr(C)]
 pub(crate) struct Frame {
     pub(crate) code: CodeId,
     /// The next op to run; while the frame runs, the loop keeps it in a
@@ -178,10 +180,11 @@ pub(crate) struct Frame {
 /// What an `Op::Field` site saw last: a record's type (the tag is
 /// `usize::MAX`) or a variant's type and tag, and the field's index in it.
 #[derive(Clone, Copy)]
-struct FieldSite {
-    ty: TypeId,
-    tag: usize,
-    index: usize,
+#[repr(C)]
+pub(crate) struct FieldSite {
+    pub(crate) ty: TypeId,
+    pub(crate) tag: usize,
+    pub(crate) index: usize,
 }
 
 const EMPTY_SITE: FieldSite = FieldSite {
@@ -201,16 +204,19 @@ enum Flow {
     Done(Value),
 }
 
+// Decision AR4: the layout is fixed, so that the generated code finds the
+// stack, the frames and the handlers by `offset_of!`.
+#[repr(C)]
 pub struct Vm<'p> {
     pub program: &'p Program,
-    pub(crate) stack: Vec<Value>,
-    pub(crate) frames: Vec<Frame>,
+    pub(crate) stack: Pinned<Value>,
+    pub(crate) frames: Pinned<Frame>,
     /// The open handled regions of every frame, innermost last: the target
     /// and the stack height to unwind to; `Frame::handler_base` separates
     /// the frames.
-    pub(crate) handlers: Vec<(usize, usize)>,
+    pub(crate) handlers: Pinned<(usize, usize)>,
     /// Per `Op::Field` site, what it saw last (decision X3).
-    field_cache: Vec<FieldSite>,
+    pub(crate) field_cache: Pinned<FieldSite>,
     /// The profiler of `--profile` (decision X4).
     profile: Option<Profile>,
     /// The arguments of the primitive being called, moved off the stack
@@ -348,10 +354,10 @@ impl<'p> Vm<'p> {
         }
         Vm {
             program,
-            stack: Vec::new(),
-            frames: Vec::new(),
-            handlers: Vec::new(),
-            field_cache: vec![EMPTY_SITE; program.field_sites],
+            stack: Pinned::new(),
+            frames: Pinned::new(),
+            handlers: Pinned::new(),
+            field_cache: vec![EMPTY_SITE; program.field_sites].into(),
             profile: options.profile.then(Profile::start),
             scratch: Vec::with_capacity(8),
             globals: vec![None; program.constants.len()],
@@ -551,7 +557,7 @@ impl<'p> Vm<'p> {
     /// stays the same; a code object that narrows nothing takes its
     /// caller's index.
     #[inline]
-    fn frame_grant(&mut self, code: CodeId) -> u32 {
+    pub(crate) fn frame_grant(&mut self, code: CodeId) -> u32 {
         let enclosing = match self.frames.last() {
             Some(frame) => frame.grant,
             None => 0,
@@ -1305,51 +1311,6 @@ impl<'p> Vm<'p> {
         }
     }
 
-    /// The frame of a direct call from generated code (decision AR3): the
-    /// boxed arguments lie on the stack in order and `mask` names the
-    /// parameters they are (bit `i` set: parameter `i` is boxed); the typed
-    /// ones stay in the caller's registers until the frame is handed back.
-    /// The boxed arguments move into their slots, the other slots start as
-    /// `Nothing`; the generated code counts the frame on the machine stack
-    /// itself.
-    pub(crate) fn push_frame_direct(&mut self, code: CodeId, mask: u64) -> usize {
-        let grant = self.frame_grant(code);
-        let boxed = mask.count_ones() as usize;
-        let base = self
-            .stack
-            .len()
-            .checked_sub(boxed)
-            .expect("the boxed arguments are on the stack");
-        let code_meta = &self.program.codes[code];
-        let locals = code_meta.locals as usize;
-        let params = code_meta.params as usize;
-        self.stack.resize(base + locals, Value::Nothing);
-        // from the last parameter down: the k-th boxed argument lies at
-        // `base + k` and goes to the k-th set bit, never past a value that
-        // is still to move
-        let mut next = boxed;
-        for slot in (0..params).rev() {
-            if mask & (1 << slot) != 0 {
-                next -= 1;
-                if next != slot {
-                    let value = std::mem::replace(&mut self.stack[base + next], Value::Nothing);
-                    self.stack[base + slot] = value;
-                }
-            }
-        }
-        self.frames.push(Frame {
-            code,
-            pc: 0,
-            base,
-            handler_base: self.handlers.len(),
-            grant,
-        });
-        if let Some(jit) = self.native.as_mut() {
-            jit.calls += 1;
-        }
-        base
-    }
-
     /// The generated function of the frame on top, when the run uses
     /// machine code, the code has some and the machine stack has room.
     #[inline]
@@ -1615,7 +1576,7 @@ impl<'p> Vm<'p> {
                     // primitive calling back leaves to the nested call
                     let mut args = std::mem::take(&mut self.scratch);
                     let at = self.stack.len().saturating_sub($count);
-                    args.extend(self.stack.drain(at..));
+                    self.stack.drain_into(at, &mut args);
                     let result = self.call_native($function, &mut args);
                     args.clear();
                     self.scratch = args;
@@ -2314,15 +2275,15 @@ impl<'p> Vm<'p> {
             }
         }
         // the refinements hold for every value of the type, the copy included
-        self.refined_record(record.ty, record.fields)
+        self.refined_record(record.ty, record.fields.into())
     }
 
     pub(crate) fn unpack(&self, value: Value, count: usize) -> Result<Vec<Value>, Interrupt> {
         let parts = match value {
             Value::Pair(pair) => vec![pair.0.clone(), pair.1.clone()],
             Value::List(items) => take_list(items),
-            Value::Record(record) => record.fields.clone(),
-            Value::Variant(variant) => variant.fields.clone(),
+            Value::Record(record) => record.fields.to_vec(),
+            Value::Variant(variant) => variant.fields.to_vec(),
             other => {
                 return Err(Interrupt::crash(format!(
                     "cannot take {count} parts out of {}",
