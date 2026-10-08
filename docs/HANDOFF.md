@@ -3024,7 +3024,9 @@ on a fresh clone).
    editor, a `renyi.path` prompt when the binary is missing. Interspersed, as the owner asked the same day: the performance
    items by the profile of AG5 (the pattern cache of `Text.matches`,
    the string building, the JSON path; strings and JSON to CPython's
-   speed, the compiler's self-check twice as fast), then a baseline JIT
+   speed, the compiler's self-check twice as fast; in flight, paused by
+   the owner on 2026-10-08: the section "The profile-guided round on
+   strings and JSON" at the end of this handoff), then a baseline JIT
    (AG5, item iii); and a showcase, a bookmark and reading-list web app
    in a repository of its own under `renyi-lang/` (HTTP for the titles,
    SQLite, an HTML page and a JSON API, tags and search, CSV export,
@@ -3303,3 +3305,82 @@ on a fresh clone).
   named. The readability harness drives the two CLIs itself (`run
   --provider claude`, `--provider codex`) and takes grades from the
   subagents' files (`grades.json` buckets) for that reason.
+
+## The profile-guided round on strings and JSON (in flight; session 8, 2026-10-08)
+
+The first interspersed item of next steps, item 5: the performance work
+the profile of decision AG5 left, measured on the two benchmarks the
+positioning compares with CPython. The owner paused it on 2026-10-08 to
+finish it elsewhere; nothing of it is in the crates yet.
+
+- **The numbers to beat** (the CI of commit a2b0702, a Linux runner,
+  release build, `tools/bench.py`): `strings` 179 ms (200 ms on the
+  interpreter) against CPython's 43 ms; `json_round_trip` 386 ms (394 ms)
+  against 89 ms; `checker on bodies.ry` 1810 ms (1714 ms); `primes` 31 ms
+  against 234 ms; `records` 86 ms against 116 ms; `hello` 8 ms.
+- **The profiles** (`perf record`, release build under WSL, the lane
+  script `profile_bench.sh` of `D:/Projects/.worktrees/Renyi/perf/`,
+  about a thousand samples each). `bench/strings.ry` on the interpreter:
+  40% in page faults (the kernel zeroing fresh pages), 19% `run_frames`,
+  11% under `text_characters` (9.4% of it `Value::text`), 7.3%
+  `Vec::extend_trusted<Drain>` (the move of a primitive's arguments into
+  the scratch buffer, 1.2 million calls of `contains`), 3.5% dropping
+  values, 2.3% cloning them, 2.1% the `contains` work itself: the cost is
+  the list of 1.2 million one-character texts `characters()` builds (an
+  allocation each, a 29 MB vector grown by doubling) and the primitive
+  boundary once per character. `bench/json_round_trip.ry`: `decode` 18%,
+  `format_inner` 12.6% (the error-path strings `"{path}[{index}]"` and
+  `"{path}.{key}"` made for every item and field whether or not an error
+  follows), `encode` 6.4%, the reader 10% (`Reader::value`, `string`,
+  `from_utf8` once per UTF-8 sequence), `write_string` 2.9%, the
+  allocator about 15%, the `TypeMeta` cloned per record in `encode` and
+  `decode` with `Ty::clone`, `drop Ty` and `Ty::substitute` about 5%.
+- **The change, written and not yet applied**: `tools/apply_perf_round.py`
+  rewrites `crates/renyi_vm/src/natives/json.rs` and patches
+  `crates/renyi_json/src/lib.rs`, `value.rs`, `natives/prelude.rs`,
+  `vm.rs`, `natives/regex.rs` and `native/runtime.rs` (every anchor
+  verified before a byte is written; delete the script in the commit
+  that lands the change). (1) `std.json`: `decode` keeps the position as
+  a chain of borrowed segments (`Path`) rendered only for a `Mismatch` or
+  `Constraint` error, borrows the type's metadata instead of cloning it
+  per record, borrows a field's key under the exact naming (`Cow`) and
+  substitutes a field's type only for a type with parameters; `parse`
+  no longer copies its argument; the encoder walks a value once into a
+  `Sink`: `TreeSink` builds the `Json` tree `encode` returns (the
+  recording, `http.post_json`, `server.ok_json` and the Python bridge
+  keep it), `TextSink` writes `render`'s text with no tree in between,
+  held equal to `write_json` by a unit test on both layouts. (2)
+  `renyi_json`: the reader copies runs of plain bytes at once and
+  `write_string` copies the runs between escapes; both `write_string`
+  and `newline` are `pub`. (3) `Value::character(c)`: the ASCII
+  one-character texts from a per-thread table, used by `characters()`,
+  `split("")` and `Vm::iterate` over a text, the list allocated once at
+  its exact length. (4) `std.regex` and `Text.matches`: compiled patterns
+  cached per thread (256 at most, then emptied). (5) `Vm::op_concat`:
+  the pieces joined where they lie on the stack, the text sized first,
+  an Integer written straight into it. Not done, on purpose: `Text`
+  stays `Rc<str>` (decision X3), so `change out to "{out}{piece}"` in
+  `compiler/` still copies the accumulated text per piece; the pure
+  primitive boundary stays as AG6 left it (the `extend_trusted` move is
+  the next item); `Text.matches` is not on the compiler's path (three
+  calls in `project.ry` and `refine.ry`), so the cache changes nothing
+  for the self-check.
+- **Verified on 2026-10-08** with the change applied, then put back:
+  `cargo check -p renyi_json -p renyi_vm --all-targets` clean, `cargo
+  test -p renyi_json -p renyi_vm` green (77 tests, the corpus test
+  among them). Not yet run: `cargo fmt`, `cargo clippy --all-targets`,
+  the whole `cargo test` (the selfhost judges), the conformance suite,
+  `tools/bench.py`, the measurement.
+- **How to measure**: on the owner's machine, the Linux release build of
+  the perf lane, `renyi_ap` being the baseline of commit 54d6bce
+  (`ab_stat.sh renyi_ap <new> 3 run --interpret bench/strings.ry`, the
+  same with `bench/json_round_trip.ry`: instruction and cycle counts,
+  the minimum of three interleaved rounds); elsewhere `cargo build
+  --release` then `python tools/bench.py target/release/renyi --runs 5`
+  against the CI numbers above.
+- **What follows**: apply the script, `cargo fmt`, the gates, the
+  measurement; the decision entry (the next letter is AQ) with the
+  numbers before and after and the items left; `docs/GAPS.md` section 7
+  ("string building, the pattern cache" in the order of work); this
+  handoff. Then the baseline JIT (AG5, item iii) and the showcase
+  application, as item 5 says.
