@@ -2541,3 +2541,24 @@ a few lines, and every other editor gets the same server. It follows
 AN1; the scope of its first version (diagnostics, hover with the
 purpose and the signature, go to definition, document symbols) is
 recorded with it. (user)
+
+**AN3. The server checks the files as written, not in canonical layout:
+the workspace of AN1 has a mode for it (`as_written`), in which the
+tree, the diagnostics and the map refer to each file's text on disk or
+in its overlay, as `renyi check` reads it, and the map is built only
+when asked for. The server publishes the diagnostics of every file of
+the folder, open or not, as `renyi check` reports them (the layout's
+included), after every change and only for the files whose diagnostics
+changed; it synchronizes whole texts, counts positions in UTF-16 code
+units (the protocol's default) and answers hover for a library
+definition from the library's declaration files, with no location to go
+to. The VS Code extension carries the client, bundled into one file at
+release time, and the setting `renyi.path` names the binary.** An
+editor's positions must be those of the text in the buffer, which the
+formatter would move; the map's hashes and line counts are a tool's
+business, not the editor's, so the server never pays for them. Whole
+texts rather than incremental changes: a file is parsed again whenever
+it changed, so applying deltas would buy nothing but a second copy of
+the text. Every file of the folder rather than the open ones: an error
+a change causes in another file is the point of a project-wide check,
+and the Problems panel is where it is seen. (derived)

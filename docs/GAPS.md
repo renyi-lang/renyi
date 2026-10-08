@@ -263,9 +263,10 @@ freeze, or take it out of the frozen surface until it exists.
 - **M5** (LSP, index, compiler API): the index half exists (`index`,
   `--budgets`, `--diff`, `mcp` with ten tools) and, since decision AN1,
   the resident `World` with the per-item refresh of the map (open item
-  R5-5 closed: `renyi mcp` holds a `renyi_workspace::Workspace`).
-  Absent: the LSP (decided, AN2), the embedding API with per-module
-  grants and memory budgets (decision Q3: the nearest things are
+  R5-5 closed: `renyi mcp` holds a `renyi_workspace::Workspace`), and,
+  since decisions AN2 and AN3, the language server (`renyi lsp`, with
+  the client in the VS Code extension). Absent: the embedding API with
+  per-module grants and memory budgets (decision Q3: the nearest things are
   `Vm::begin_run`, `Vm::call_function` and `Options`, one grant per
   run), `renyi run --sandbox grant.json`, `renyi serve --watch` with
   checked swaps (decision Q4).

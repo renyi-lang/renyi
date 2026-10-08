@@ -71,8 +71,9 @@ Both verify the archive's checksum; `RENYI_VERSION=v0.1.0` picks a
 version and `RENYI_INSTALL_DIR` a directory. With a Rust toolchain,
 `cargo install renyi` builds the same binary from crates.io, and `cargo
 install --git https://github.com/renyi-lang/renyi renyi` from the
-repository. The VS Code extension (syntax highlighting; `editors/vscode/`)
-is attached to every release as a `.vsix`. `docs/RELEASE.md` is the
+repository. The VS Code extension (syntax highlighting and the client of
+the language server, `renyi lsp`; `editors/vscode/`) is attached to every
+release as a `.vsix`. `docs/RELEASE.md` is the
 release procedure, and the documentation site is
 <https://renyi-lang.org>. An agent starts from `starter/` (decision AI3): a
 skill file, the MCP configuration and five workflows that do real work,

@@ -47,8 +47,9 @@ bound by the manifest as a foreign one is, one worker per run,
 decisions AM1 and AM2: `renyi bind --python` writes the declaration
 file from the package; and the resident world, decision AN1:
 `renyi_workspace`, which `renyi mcp` holds between calls, the first of
-M5's four steps in the order the owner set, with the LSP decided next,
-AN2).
+M5's four steps in the order the owner set; and the language server,
+decisions AN2 and AN3: `renyi lsp` on that world, the client in the
+VS Code extension).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -68,7 +69,9 @@ the Python bridge of decisions AJ2, AJ3 and AL1 to AL4 (the section
 "The Python bridge as it exists" below) with its binder of AM1 and
 AM2 (the section "The Python binder as it exists" below), and the
 resident world of decision AN1 (the section "The resident world as it
-exists" below), the first of M5's four steps in the owner's order; of
+exists" below) and the language server of decisions AN2 and AN3 (the
+section "The language server as it exists" below), the first two of
+M5's four steps in the owner's order; of
 M6 the
 machine code exists (decisions AG1 to AG5) and the interpreter had its
 bounded round (AG6), `renyi build` does not. Release 0.1.0 is out
@@ -133,7 +136,7 @@ revision>]`, `run [--manifest] [options] <file> [arguments]`, `record
 <file>...`, `compile [--to file] <file.ry>`, `add <name> [<version>]`,
 `update [--accept-effects]`, `audit`, `fetch`, `publish [--to
 <directory>]`, `bind <header.h> --module <name> --library <names>
-[--to <directory>]`, `tools [path]`, `mcp [path]` and `version`; 297 tests,
+[--to <directory>]`, `tools [path]`, `mcp [path]`, `lsp` and `version`; 303 tests,
 clippy and fmt clean on Windows
 with rustc 1.94.1. CI (`.github/workflows/ci.yml`) runs the same gates,
 `renyi check compiler/*.ry`, the starter pack's workflows (check,
@@ -1867,6 +1870,78 @@ and the commit of the site and the crates.io metadata.
   green threads would be an improvement within that decision, not a
   reversal.
 
+## The language server as it exists (decisions AN2 and AN3; session 8, 2026-10-07)
+
+The second step of M5 in the owner's order: `renyi lsp`, a standard
+server over standard input and output on the resident world of AN1,
+and the client in the VS Code extension.
+
+- **The command.** `crates/renyi/src/lsp.rs`: the base protocol's
+  framing (`Content-Length`, then the JSON body), one `Workspace` in
+  as-written mode over the folder `initialize` names
+  (`workspaceFolders[0]`, else `rootUri`, else `rootPath`, else the
+  working directory), the documents the editor opens as overlays
+  (`didOpen`, `didChange` with whole texts, `didClose`), the
+  diagnostics of every file of the folder published after each change
+  for the files whose diagnostics changed (the workspace's plus
+  `check_layout`, sorted, each with its code, `renyi` as the source
+  and the fix after the message), `shutdown` and `exit` (exit status 0
+  after a shutdown, 1 otherwise), `-32002` before `initialize`,
+  `-32601` for a method it does not serve. `lsp/describe.rs`: what is
+  under a position (the innermost reference there, else the
+  declaration whose name is there), described by its signature
+  (`renyi_index::function_signature` and `type_signature`, now public)
+  and its purpose, located at its declared name; the outline (functions,
+  types with their fields or variants, abilities with their methods,
+  implementations with theirs, constants, tests); positions as
+  zero-based lines and UTF-16 code units. Hover on a library definition
+  reads the library's declaration files; definition answers null for
+  it. URIs: `file:` with percent-decoding, a drive letter's leading
+  slash dropped, an open document's URI reused as the editor spelled
+  it.
+- **The workspace** gained `as_written()` (no formatting; the tree,
+  the diagnostics and the map over the text on disk or in the overlay,
+  the mode of `renyi check`), the lazy map (`index(header)` builds it
+  when the last refresh changed anything, `index_built()` reads it;
+  `refresh()` no longer takes the header), `file`, `files`, `module_of`
+  and `file_of`. `tests/refresh.rs` holds the as-written diagnostics of
+  the corpus and the compiler equal to `check_project_in` on the files
+  as loaded.
+- **The client.** `editors/vscode/src/extension.js` starts `renyi lsp`
+  through `vscode-languageclient` for the `renyi` language; the setting
+  `renyi.path` names the binary (`renyi` on the PATH by default); a
+  server that does not start is one warning. `npm run build` bundles
+  it with its library into `out/extension.js` (esbuild); `package.json`
+  carries `main`, the activation on the language, the setting and the
+  scripts; `.vscodeignore` leaves `src/`, `node_modules/` and the
+  lockfile out of the `.vsix`; `package-lock.json` is committed for
+  `npm ci`. CI builds the bundle on every push and the release
+  workflow before packaging. The repository ignores `node_modules/`
+  and `out/` under the extension.
+- **Held equal.** `crates/renyi/tests/lsp.rs` drives the binary over
+  pipes on a two-file project under `target/lsp/`: the handshake, the
+  empty diagnostics of both files, a buffer opened with an unknown name
+  in a text hole after an emoji (the error at its UTF-16 column, the
+  fix in the message), the buffer restored (empty again), hover on a
+  call (the signature and the purpose), definition into the other file
+  at the function's name, hover on `console.print` (the library's
+  declaration and purpose), the outline of a file (a record with its
+  field, a function), hover on nothing, an unknown method, the clean
+  exit after `shutdown`; and a request before `initialize`, refused,
+  with the input closing an unclean exit. Unit tests cover the framing,
+  the URIs and the positions.
+- **Measured** (`time_lsp.py`-style driver: initialize, the first
+  diagnostics, then a keystroke inside a body followed by a hover; a
+  development build on Windows): `compiler/` 1200 ms to
+  the first diagnostics, 92 to 135 ms per keystroke;
+  `examples/` 80 ms, then 15 to 22 ms.
+- **Not covered.** No completion, references, rename or formatting
+  through the server (the editor's `renyi format` is the command line);
+  the client has not been run in a VS Code window here, only bundled;
+  incremental synchronization is not offered (whole texts); a
+  workspace with several folders gets a server per folder from the
+  client library's default.
+
 ## The resident world as it exists (decision AN1; session 8, 2026-10-07)
 
 The first step of M5 in the order the owner set on 2026-10-07 (the
@@ -1876,14 +1951,17 @@ shape): a crate of its own, `crates/renyi_workspace/`, that `renyi mcp`
 holds between calls.
 
 - **The crate.** `Workspace::new(root, &library)` parses the library's
-  declaration files once and reads nothing; `refresh(header)` does the
+  declaration files once and reads nothing; `as_written()` switches
+  it to the editor's mode (the section above); `refresh()` does the
   work and reports it (`Refresh`: files read, files parsed, whether
   the world was declared again, items checked, items reused);
-  `index()`, `checked()`, `canonical_text(file)` and
-  `diagnostics(file)` answer from the last refresh; `set_overlay(name,
-  text)` and `clear_overlay(name)` make a text stand in for a file on
-  disk (an editor's unsaved buffer). A file is named relative to the
-  root or as the map names it.
+  `index(header)` builds the map when the last refresh changed
+  anything and `index_built()` reads it; `checked()`, `file(name)`,
+  `files()`, `canonical_text(file)`, `diagnostics(file)`,
+  `module_of(name)` and `file_of(module)` answer from the last
+  refresh; `set_overlay(name, text)` and `clear_overlay(name)` make a
+  text stand in for a file on disk (an editor's unsaved buffer). A
+  file is named relative to the root or as the map names it.
 - **A refresh.** The `.ry` and `.renyi` files under the root (the
   store `.renyi/` left out) are listed and stat-ed. A file whose size
   and modification time are those kept is skipped, unless it was
@@ -1908,7 +1986,7 @@ holds between calls.
   `module-name`, the world's, the items', the module's
   `purpose-missing`, sorted by position); the map is built with
   `renyi_index::index_checked` from the canonical files and the
-  checked project.
+  checked project, when `index` is asked for.
 - **The fingerprint** is the text of everything a body elsewhere can
   see: the module's head (the text before the first item: the name,
   the docs, the imports), each function's signature and docs (the text
@@ -2280,6 +2358,18 @@ Three commits on `main`, each gated as in session 7:
     decisions (section AN, with AN2 for the LSP),
     `05-agent-tooling.md` (R5-5 closed), `docs/GAPS.md`,
     `docs/RELEASE.md` (the publish order), `CLAUDE.md`, this file.
+22. the language server (decisions AN2 and AN3; the section "The
+    language server as it exists"): `crates/renyi/src/lsp.rs` and
+    `lsp/describe.rs`, the `lsp` command, `tests/lsp.rs`; the
+    workspace's as-written mode, lazy map and accessors with their
+    test; `function_signature` and `type_signature` public in
+    `renyi_index`, the MCP server's JSON helpers shared; the VS Code
+    client (`editors/vscode/src/extension.js`, `package.json`,
+    `package-lock.json`, `.vscodeignore`, the README and the
+    changelog), the client's build in CI and in the release workflow,
+    `.gitignore`; the decisions (AN3), the reference (appendix B),
+    `README.md`, `docs/RELEASE.md`, `docs/GAPS.md`, `CLAUDE.md`, this
+    file.
 
 ## Done in session 7 (stage 1 of the gap audit)
 
@@ -2757,14 +2847,15 @@ on a fresh clone).
 5. **M4**: its three slices (packages, decision AC1; `std.process`,
    decision AE1; the FFI, decision AF1; the sections above) are done.
    **M5**, in the order the owner set on 2026-10-07: the resident
-   `World` is done (decision AN1; open item R5-5 closed); next the
-   language server, `renyi lsp` over standard input and output on a
-   `Workspace` per workspace folder with the editor's buffers as
-   overlays (decision AN2: diagnostics, hover with the purpose and the
-   signature, go to definition, document symbols first; a client of a
-   few lines in `editors/vscode/`); then `serve --watch` (decision Q4)
-   on the same world; then the embedding API with `--sandbox` (decision
-   Q3). Interspersed, as the owner asked the same day: the performance
+   `World` is done (decision AN1; open item R5-5 closed) and the
+   language server is done (decisions AN2 and AN3: `renyi lsp` with
+   diagnostics, hover, definition and the outline, the client in the
+   VS Code extension); next `serve --watch` (decision Q4: the server
+   swaps a module for a checked new version while it runs, on the same
+   resident world); then the embedding API with `--sandbox` (decision
+   Q3). Candidates for the server, none decided: completion (names in
+   scope, the library's), references, rename, formatting through the
+   editor, a `renyi.path` prompt when the binary is missing. Interspersed, as the owner asked the same day: the performance
    items by the profile of AG5 (the pattern cache of `Text.matches`,
    the string building, the JSON path; strings and JSON to CPython's
    speed, the compiler's self-check twice as fast), then a baseline JIT
@@ -2775,6 +2866,13 @@ on a fresh clone).
 
 ## Known gaps and risks
 
+- **The language server.** The VS Code client has only been bundled
+  here, not run in a window: the first real session will show whether
+  `vscode-languageclient` 9 and the server agree on every detail (the
+  settings reload, the warning when the binary is missing); the server
+  checks after every keystroke with no debounce (fine at the measured
+  speed, to be watched on a large folder); the positions assume the
+  UTF-16 default and do not negotiate `positionEncoding`.
 - **The resident world.** The manifest is watched at the served
   directory's root only; the resolver's problems are not in the map
   (as before); a dependency's files are read again only when a

@@ -9,9 +9,9 @@
 //! line and `test` block, with `replays` tests answered from their
 //! recordings), `compile` (check, then write the program as a bytecode
 //! file, which `run`, `record`, `test` and `reproduce` load in place of
-//! the source when the path ends in `.ryc`, decision Z4) and `mcp` (the
+//! the source when the path ends in `.ryc`, decision Z4), `mcp` (the
 //! toolchain served to an agent host over standard input and output, in
-//! `mcp.rs`).
+//! `mcp.rs`) and `lsp` (the language server for an editor, in `lsp.rs`).
 //!
 //! The crate is a library too (decision AK1): [`main_with`] is the whole
 //! program of a binary built with extensions, and `src/main.rs`, the
@@ -19,6 +19,7 @@
 //! value of `renyi_vm` (decision AJ1; the guide is `docs/extensions.md`).
 
 mod bind;
+mod lsp;
 mod maps;
 mod mcp;
 mod packages;
@@ -96,7 +97,10 @@ const USAGE: &str = "usage:
                                       is left out) and the entry in renyi.json (printed when none)
   renyi mcp [path]                    serve the toolchain to an agent host over standard input and
                                       output (Model Context Protocol), for the directory given
-  renyi version                       the toolchain's version, then one line per extension built in
+  renyi lsp                           serve the language server to an editor over standard input and
+                                      output (Language Server Protocol): diagnostics, hover,
+                                      definition, document symbols
+  renyi version                      the toolchain's version, then one line per extension built in
 options of run and record:
   --explain                           narrate the run on stderr: purposes, arguments, results, effects
   --profile                           count every operation, call and primitive call and sample where the
@@ -182,6 +186,7 @@ fn dispatch() -> ExitCode {
         Some("publish") => packages::publish_command(&args[1..]),
         Some("bind") => bind::bind_command(&args[1..]),
         Some("mcp") => mcp::serve(&args[1..]),
+        Some("lsp") => lsp::serve(&args[1..]),
         Some("version") | Some("--version") => {
             println!("renyi {}", env!("CARGO_PKG_VERSION"));
             for extension in registry().extras() {

@@ -17,7 +17,8 @@ in `Cargo.toml`. The tag starts `.github/workflows/release.yml`, which:
 3. packages each binary with `README.md` and `LICENSE` as
    `renyi-v<version>-<target>.tar.gz` (`.zip` on Windows), with a
    `.sha256` file next to it;
-4. packages the VS Code extension of `editors/vscode/` as a `.vsix`;
+4. bundles the client of the language server in `editors/vscode/`
+   (`npm ci && npm run build`) and packages the extension as a `.vsix`;
 5. publishes a GitHub Release with those files and generated notes.
 
 `install.sh` and `install.ps1` download the archive of a release for the

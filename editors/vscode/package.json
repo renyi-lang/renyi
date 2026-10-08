@@ -1,7 +1,7 @@
 {
   "name": "renyi",
   "displayName": "Renyi",
-  "description": "Syntax highlighting for Renyi, the scripting language of AI agents: the agent writes it, you review it at a glance, and the program can only do what it declares.",
+  "description": "Renyi, the scripting language of AI agents: syntax highlighting and the language server (diagnostics, hover, go to definition, the outline). The agent writes it, you review it at a glance, and the program can only do what it declares.",
   "version": "0.1.0",
   "publisher": "renyi-lang",
   "license": "Apache-2.0",
@@ -22,6 +22,10 @@
     "agents",
     "capabilities",
     "effects"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:renyi"
   ],
   "contributes": {
     "languages": [
@@ -44,6 +48,26 @@
         "scopeName": "source.renyi",
         "path": "./syntaxes/renyi.tmLanguage.json"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Renyi",
+      "properties": {
+        "renyi.path": {
+          "type": "string",
+          "default": "renyi",
+          "description": "The renyi binary that serves the language (`renyi lsp`): a name on the PATH or a full path. Takes effect when the window is reloaded."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "esbuild src/extension.js --bundle --platform=node --external:vscode --outfile=out/extension.js",
+    "vscode:prepublish": "npm run build"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.2"
   }
 }

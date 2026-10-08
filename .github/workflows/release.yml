@@ -109,6 +109,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      # the client of the language server is bundled into one file, so
+      # the package carries no node_modules
+      - name: Build the client
+        working-directory: editors/vscode
+        run: npm ci && npm run build
       - name: Package
         working-directory: editors/vscode
         run: |
@@ -150,7 +155,7 @@ jobs:
             echo '```'
             echo
             echo "Or \`cargo install renyi --version ${GITHUB_REF_NAME#v}\` with a Rust toolchain."
-            echo "The \`.vsix\` is the VS Code extension (syntax highlighting): Extensions, \"Install from VSIX\"."
+            echo "The \`.vsix\` is the VS Code extension (highlighting and the language server client): Extensions, \"Install from VSIX\"."
             echo
             echo "Checksums: the \`.sha256\` file next to each archive."
           } > notes.md

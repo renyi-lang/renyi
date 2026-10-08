@@ -351,7 +351,7 @@ pub fn function_signature(function: &ast::Function) -> String {
 /// A record as `Name(field: Type, ...)`, a sum type as `Name is A(...) or
 /// B`, a subtype as `Name is Base where condition`; field conditions are
 /// kept, since they decide what can be constructed.
-fn type_signature(def: &ast::TypeDef, text: &SourceFile) -> String {
+pub fn type_signature(def: &ast::TypeDef, text: &SourceFile) -> String {
     let mut head = def.name.text.clone();
     if !def.type_params.is_empty() {
         let params: Vec<&str> = def.type_params.iter().map(|p| p.text.as_str()).collect();

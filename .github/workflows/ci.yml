@@ -66,6 +66,15 @@ jobs:
           cargo run -q -- test starter/workflows/*.ry
           cmp docs/cheatsheet.md starter/skill/renyi/cheatsheet.md
 
+      # the client of the language server (decision AN2) bundles, so
+      # that a release does not find out
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: VS Code client
+        working-directory: editors/vscode
+        run: npm ci && npm run build
+
       - name: Corpus lint
         run: python tools/lint_examples.py
 

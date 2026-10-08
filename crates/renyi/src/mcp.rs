@@ -156,18 +156,19 @@ impl Server {
     /// The served directory read again where it changed, its world
     /// declared again and its map rebuilt when anything did.
     fn refresh(&mut self) -> Result<(), String> {
-        self.workspace.refresh(|| renyi_index::Header {
+        self.workspace.refresh()?;
+        self.workspace.index(|| renyi_index::Header {
             project: renyi_index::project_name(Path::new(".")),
             revision: renyi_index::git_revision(Path::new(".")),
             toolchain: toolchain(),
-        })?;
+        });
         Ok(())
     }
 
     /// The map after `refresh`.
     fn index(&self) -> &Index {
         self.workspace
-            .index()
+            .index_built()
             .expect("the workspace is refreshed before its map is read")
     }
 
@@ -999,7 +1000,7 @@ fn is_clause_line(line: &str) -> bool {
 
 // -------------------------------------------------------------------- json
 
-fn obj(fields: Vec<(&str, Json)>) -> Json {
+pub(crate) fn obj(fields: Vec<(&str, Json)>) -> Json {
     Json::Object(
         fields
             .into_iter()
@@ -1008,18 +1009,18 @@ fn obj(fields: Vec<(&str, Json)>) -> Json {
     )
 }
 
-fn text(value: &str) -> Json {
+pub(crate) fn text(value: &str) -> Json {
     Json::Text(value.to_string())
 }
 
-fn field<'a>(json: &'a Json, key: &str) -> Option<&'a Json> {
+pub(crate) fn field<'a>(json: &'a Json, key: &str) -> Option<&'a Json> {
     match json {
         Json::Object(fields) => fields.iter().find(|(k, _)| k == key).map(|(_, v)| v),
         _ => None,
     }
 }
 
-fn as_text(json: &Json) -> Option<String> {
+pub(crate) fn as_text(json: &Json) -> Option<String> {
     match json {
         Json::Text(text) => Some(text.clone()),
         _ => None,

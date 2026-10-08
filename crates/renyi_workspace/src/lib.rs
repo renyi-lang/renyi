@@ -1,16 +1,19 @@
 //! The resident world of a project (decision AN1; open item R5-5 of
 //! `docs/design/05-agent-tooling.md` closed): the files of a directory
 //! and of the dependencies they import, read once and read again only
-//! where their stamps changed, each kept with its canonical text, its
-//! syntax tree, the fingerprint of its declarations and the check of
-//! every item of it. A refresh declares the world again from the kept
-//! trees when anything changed, checks again only the items whose text
-//! changed (every item, when a declaration changed anywhere) and rebuilds
-//! the project map from the results; what it gives is what a fresh
-//! `renyi index` and `renyi check` give, byte for byte. `renyi mcp` holds
-//! one between calls; the language server holds one per workspace. An
-//! overlay stands in for a file's text on disk (an editor's unsaved
-//! buffer).
+//! where their stamps changed, each kept with its text, its syntax tree,
+//! the fingerprint of its declarations and the check of every item of
+//! it. A refresh declares the world again from the kept trees when
+//! anything changed and checks again only the items whose text changed
+//! (every item, when a declaration changed anywhere); the project map is
+//! built from the result when asked for. In canonical mode, the mode of
+//! `renyi index`, each file is formatted first and the tree, the
+//! diagnostics and the map refer to its canonical text; as written, the
+//! mode of `renyi check`, they refer to the text as it is. What it gives
+//! is what a fresh `renyi index` and `renyi check` give, byte for byte.
+//! `renyi mcp` holds one between calls; `renyi lsp` holds one per
+//! workspace folder (decision AN2). An overlay stands in for a file's
+//! text on disk (an editor's unsaved buffer).
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -19,7 +22,7 @@ use std::time::{Duration, SystemTime};
 use renyi_check::check::{check_item, module_purpose_diagnostic};
 use renyi_check::{
     imported_files, module_name_mismatch, tagged, BodyLocation, CheckedModule, CheckedProject,
-    Library, Reference, World,
+    Library, ModuleId, Reference, World,
 };
 use renyi_index::{index_checked, Header, Index};
 use renyi_syntax::ast::{Function, Item, Module};
@@ -137,9 +140,10 @@ struct Source {
     /// When the stamp was taken.
     taken: SystemTime,
     overlaid: bool,
-    /// The file in canonical layout, the text the tree, the diagnostics
-    /// and the map refer to; the file itself when it does not parse.
-    canonical: SourceFile,
+    /// The text the tree, the diagnostics and the map refer to: the file
+    /// in canonical layout, or as written, by the workspace's mode; the
+    /// file itself when it does not parse.
+    text: SourceFile,
     was_canonical: bool,
     module: Module,
     parse_diagnostics: Vec<Diagnostic>,
@@ -147,45 +151,55 @@ struct Source {
     declares: bool,
     /// The declarations of the module as text.
     fingerprint: String,
-    /// Per item of `module`: its canonical text and its check, once it
-    /// has one.
+    /// Per item of `module`: its text and its check, once it has one.
     items: Vec<(String, Option<Checked>)>,
 }
 
 impl Source {
-    /// A file formatted and parsed, as `renyi index` formats and parses
-    /// it: a file that does not parse is kept as it is.
-    fn new(file: SourceFile, stamp: Option<Stamp>, taken: SystemTime, overlaid: bool) -> Source {
+    /// A file parsed over its canonical text, as `renyi index` reads it
+    /// (a file that does not parse is kept as it is), or over its text as
+    /// written, as `renyi check` reads it.
+    fn new(
+        file: SourceFile,
+        stamp: Option<Stamp>,
+        taken: SystemTime,
+        overlaid: bool,
+        as_written: bool,
+    ) -> Source {
         let declares = file.foreign.is_some() || file.python.is_some();
         let (text, was_canonical) = match format(&file) {
-            Ok(text) => {
-                let was = text == file.text;
-                (text, was)
+            Ok(formatted) => {
+                let was = formatted == file.text;
+                if as_written {
+                    (file.text.clone(), was)
+                } else {
+                    (formatted, was)
+                }
             }
             Err(_) => (file.text.clone(), true),
         };
-        let mut canonical = SourceFile::new(file.name.clone(), text);
-        canonical.package = file.package.clone();
-        canonical.foreign = file.foreign.clone();
-        canonical.python = file.python.clone();
+        let mut text = SourceFile::new(file.name.clone(), text);
+        text.package = file.package.clone();
+        text.foreign = file.foreign.clone();
+        text.python = file.python.clone();
         let parsed = if declares {
-            parse_declarations(&canonical.text)
+            parse_declarations(&text.text)
         } else {
-            parse(&canonical.text)
+            parse(&text.text)
         };
-        let fingerprint = fingerprint(&canonical.text, &parsed.module);
+        let fingerprint = fingerprint(&text.text, &parsed.module);
         let items = parsed
             .module
             .items
             .iter()
-            .map(|item| (slice(&canonical.text, item.span()).to_string(), None))
+            .map(|item| (slice(&text.text, item.span()).to_string(), None))
             .collect();
         Source {
             file,
             stamp,
             taken,
             overlaid,
-            canonical,
+            text,
             was_canonical,
             module: parsed.module,
             parse_diagnostics: parsed.diagnostics,
@@ -324,6 +338,8 @@ fn collect(directory: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
 /// The resident world of one directory.
 pub struct Workspace {
     root: PathBuf,
+    /// The files as written rather than in canonical layout.
+    as_written: bool,
     /// The library's declaration files, parsed once.
     library_modules: Vec<Module>,
     /// The project's own files, in path order.
@@ -340,12 +356,15 @@ pub struct Workspace {
     /// dependencies again.
     manifests: (Option<Stamp>, Option<Stamp>),
     checked: Option<CheckedProject>,
+    /// The map of the last refresh, built when asked for.
     index: Option<Index>,
+    index_stale: bool,
 }
 
 impl Workspace {
     /// A workspace over a directory, against the declaration files of a
-    /// library; nothing is read until the first refresh.
+    /// library, in canonical mode; nothing is read until the first
+    /// refresh.
     pub fn new(root: impl Into<PathBuf>, library: &Library) -> Workspace {
         let library_modules = library
             .modules()
@@ -361,6 +380,7 @@ impl Workspace {
             .collect();
         Workspace {
             root: root.into(),
+            as_written: false,
             library_modules,
             own: Vec::new(),
             dependencies: Vec::new(),
@@ -369,7 +389,17 @@ impl Workspace {
             manifests: (None, None),
             checked: None,
             index: None,
+            index_stale: false,
         }
+    }
+
+    /// The same workspace over the files as written: the tree, the
+    /// diagnostics and the map refer to each file's text on disk or in
+    /// its overlay, as `renyi check` reads it, with no formatting first.
+    /// Set before the first refresh.
+    pub fn as_written(mut self) -> Workspace {
+        self.as_written = true;
+        self
     }
 
     pub fn root(&self) -> &Path {
@@ -400,8 +430,40 @@ impl Workspace {
         self.overlays.remove(&self.relative(name));
     }
 
-    /// The map, after a refresh.
-    pub fn index(&self) -> Option<&Index> {
+    /// The names of the project's own files, in the order of the checked
+    /// project's modules, as the map spells them.
+    pub fn files(&self) -> impl Iterator<Item = &str> {
+        self.own.iter().map(String::as_str)
+    }
+
+    /// The own files, then the dependencies': the order of the checked
+    /// project's modules.
+    fn order(&self) -> impl Iterator<Item = &String> {
+        self.own.iter().chain(&self.dependencies)
+    }
+
+    /// The map of the last refresh, built now when the refresh changed
+    /// anything since the last build; `header` is asked for only then.
+    /// None before the first refresh.
+    pub fn index(&mut self, header: impl FnOnce() -> Header) -> Option<&Index> {
+        if self.index_stale {
+            let checked = self.checked.as_ref()?;
+            let texts: Vec<SourceFile> = self
+                .order()
+                .map(|name| self.sources[name].text.clone())
+                .collect();
+            let was_canonical: Vec<bool> = self
+                .order()
+                .map(|name| self.sources[name].was_canonical)
+                .collect();
+            self.index = Some(index_checked(&texts, &was_canonical, checked, header()));
+            self.index_stale = false;
+        }
+        self.index.as_ref()
+    }
+
+    /// The map as last built by `index`, if it was.
+    pub fn index_built(&self) -> Option<&Index> {
         self.index.as_ref()
     }
 
@@ -411,24 +473,52 @@ impl Workspace {
         self.checked.as_ref()
     }
 
-    /// A file's canonical text, the text the map's lines refer to.
-    pub fn canonical_text(&self, file: &str) -> Option<&str> {
-        let wanted = self.relative(file);
+    /// A file as the tree, the diagnostics and the map refer to it: in
+    /// canonical layout, or as written, by the mode.
+    pub fn file(&self, name: &str) -> Option<&SourceFile> {
+        let wanted = self.relative(name);
         self.sources
             .values()
             .find(|source| self.relative(&source.file.name) == wanted)
-            .map(|source| source.canonical.text.as_str())
+            .map(|source| &source.text)
+    }
+
+    /// A file's canonical text, the text the map's lines refer to.
+    pub fn canonical_text(&self, file: &str) -> Option<&str> {
+        self.file(file).map(|file| file.text.as_str())
+    }
+
+    /// The module declared from a file, after a refresh; none when the
+    /// file does not parse.
+    pub fn module_of(&self, name: &str) -> Option<ModuleId> {
+        let wanted = self.relative(name);
+        let checked = self.checked.as_ref()?;
+        let position = self
+            .order()
+            .position(|name| self.relative(name) == wanted)?;
+        checked.modules.get(position)?.id
+    }
+
+    /// The file a module was declared from, as `file` gives it; none for
+    /// a module of the library.
+    pub fn file_of(&self, module: ModuleId) -> Option<&SourceFile> {
+        let checked = self.checked.as_ref()?;
+        let position = checked
+            .modules
+            .iter()
+            .find(|checked| checked.id == Some(module))?
+            .file;
+        let name = self.order().nth(position)?;
+        self.sources.get(name).map(|source| &source.text)
     }
 
     /// A file's diagnostics after the last refresh: parse, declaration
-    /// and body diagnostics in source order, over its canonical text.
+    /// and body diagnostics in source order, over the text `file` gives.
     pub fn diagnostics(&self, file: &str) -> Option<&[Diagnostic]> {
         let wanted = self.relative(file);
         let checked = self.checked.as_ref()?;
         let position = self
-            .own
-            .iter()
-            .chain(&self.dependencies)
+            .order()
             .position(|name| self.relative(name) == wanted)?;
         checked
             .modules
@@ -437,13 +527,13 @@ impl Workspace {
     }
 
     /// The directory read again where it changed, the world declared
-    /// again when anything did, the items checked again where their text
-    /// changed (every item, when a declaration changed anywhere) and the
-    /// map rebuilt; `header` is asked for only when the map is rebuilt.
-    pub fn refresh(&mut self, header: impl FnOnce() -> Header) -> Result<Refresh, String> {
+    /// again when anything did, and the items checked again where their
+    /// text changed (every item, when a declaration changed anywhere).
+    pub fn refresh(&mut self) -> Result<Refresh, String> {
         let mut report = Refresh::default();
         let now = SystemTime::now();
         let first = self.checked.is_none();
+        let as_written = self.as_written;
         let mut changed = false;
         let mut declarations_changed = false;
 
@@ -502,6 +592,7 @@ impl Workspace {
                 stamp,
                 now,
                 overlay.is_some(),
+                as_written,
             );
             report.parsed += 1;
             changed = true;
@@ -536,8 +627,10 @@ impl Workspace {
                 }
                 let (stamp, taken, overlaid) =
                     (source.stamp.clone(), source.taken, source.overlaid);
-                self.sources
-                    .insert(name.clone(), Source::new(fresh, stamp, taken, overlaid));
+                self.sources.insert(
+                    name.clone(),
+                    Source::new(fresh, stamp, taken, overlaid, as_written),
+                );
                 report.parsed += 1;
                 changed = true;
                 declarations_changed = true;
@@ -565,7 +658,7 @@ impl Workspace {
                 });
                 if !same {
                     self.sources
-                        .insert(name, Source::new(file, None, now, false));
+                        .insert(name, Source::new(file, None, now, false, as_written));
                     report.parsed += 1;
                     changed = true;
                     declarations_changed = true;
@@ -590,7 +683,7 @@ impl Workspace {
         for module in &self.library_modules {
             world.add_module(module.clone(), true);
         }
-        let order: Vec<String> = self.own.iter().chain(&self.dependencies).cloned().collect();
+        let order: Vec<String> = self.order().cloned().collect();
         let mut ids = Vec::with_capacity(order.len());
         for name in &order {
             let source = &self.sources[name];
@@ -599,7 +692,7 @@ impl Workspace {
                 continue;
             }
             let id = world.add_module(source.module.clone(), source.declares);
-            world.set_source_lines(id, &source.canonical.text);
+            world.set_source_lines(id, &source.text.text);
             if let Some(package) = &source.file.package {
                 world.set_package(id, package.clone());
             }
@@ -679,28 +772,12 @@ impl Workspace {
                 diagnostics,
             });
         }
-
-        // the map
-        let canonical: Vec<SourceFile> = order
-            .iter()
-            .map(|name| self.sources[name].canonical.clone())
-            .collect();
-        let was_canonical: Vec<bool> = order
-            .iter()
-            .map(|name| self.sources[name].was_canonical)
-            .collect();
-        let checked = CheckedProject {
+        self.checked = Some(CheckedProject {
             world,
             modules,
             references,
-        };
-        self.index = Some(index_checked(
-            &canonical,
-            &was_canonical,
-            &checked,
-            header(),
-        ));
-        self.checked = Some(checked);
+        });
+        self.index_stale = true;
         Ok(report)
     }
 }

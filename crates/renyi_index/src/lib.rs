@@ -32,6 +32,7 @@ use drafts::{Draft, Key};
 
 pub use budgets::{over_budget, Budgets};
 pub use diff::{diff, diff_json, render_diff, Bump, Change, Diff, Entry};
+pub use drafts::{function_signature, type_signature};
 pub use render::{definition_json, to_json, to_text};
 pub use tools::{manifest_json, tools_of, tools_of_in, Tool};
 

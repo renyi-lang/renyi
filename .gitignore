@@ -4,6 +4,8 @@ __pycache__/
 examples/.scratch*.ry
 starter/workflows/out/
 _site/
+editors/vscode/node_modules/
+editors/vscode/out/
 .ce/
 .ccm/
 .claude/
