@@ -40,8 +40,10 @@ repository public under `renyi-lang/renyi`, the seven crates on
 crates.io, the tag `v0.1.0` with its release and the site live; then
 the registration API for Rust natives, decisions AK1 to AK4: the
 standard library as the first extension, `renyi` a library too, the
-guide `docs/extensions.md`; and the domain renyi-lang.org in front of
-the site).
+guide `docs/extensions.md`; the domain renyi-lang.org in front of
+the site; and the Python bridge, decisions AL1 to AL4: a Python module
+bound by the manifest as a foreign one is, one worker per run,
+`PythonError`, the guide `docs/python.md`).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -56,7 +58,9 @@ index`, `--budgets`, `--diff`), `renyi tools` and `renyi mcp` on top. M4
 is done but for its residue (packages AC1, `std.process` AE1, the FFI
 AF1; `docs/GAPS.md`, section 4); of M5 the host-facing half of the
 embedding API exists, the registration API of decisions AJ1 and AK1
-to AK4 (the section "The registration API as it exists" below); of
+to AK4 (the section "The registration API as it exists" below) and
+the Python bridge of decisions AJ2, AJ3 and AL1 to AL4 (the section
+"The Python bridge as it exists" below); of
 M6 the
 machine code exists (decisions AG1 to AG5) and the interpreter had its
 bounded round (AG6), `renyi build` does not. Release 0.1.0 is out
@@ -67,7 +71,7 @@ the seven crates are on crates.io (`cargo install renyi` builds
 0.1.0), the installers were run against the release, and the site is
 at `renyi-lang.org` (the GitHub Pages address redirects there).
 Design decisions are
-in sections 0 to AJ of `01-decisions.md`; the positioning in
+in sections 0 to AL of `01-decisions.md`; the positioning in
 `08-positioning.md`; the agent tooling in
 `05-agent-tooling.md`, the signature capabilities in
 `06-runtime-guarantees.md`, the system-level commitments in
@@ -110,7 +114,7 @@ The corpus has 30 programs, passes the lint, is in canonical layout,
 checks cleanly, has nothing over budget, and its `example:` lines and
 `test` blocks pass on the VM (six are `replays` tests answered from
 recordings under `examples/fixtures/`). The cheat sheet measures
-2998 of 3000 tokens. The Rust workspace has seven crates:
+2999 of 3000 tokens. The Rust workspace has seven crates:
 `renyi_json`, `renyi_syntax`, `renyi_package`, `renyi_check`,
 `renyi_index`, `renyi_vm` and the `renyi`
 binary with `check`, `format`, `tokens`, `parse [--json]
@@ -121,12 +125,12 @@ revision>]`, `run [--manifest] [options] <file> [arguments]`, `record
 <file>...`, `compile [--to file] <file.ry>`, `add <name> [<version>]`,
 `update [--accept-effects]`, `audit`, `fetch`, `publish [--to
 <directory>]`, `bind <header.h> --module <name> --library <names>
-[--to <directory>]`, `tools [path]`, `mcp [path]` and `version`; 270 tests,
+[--to <directory>]`, `tools [path]`, `mcp [path]` and `version`; 288 tests,
 clippy and fmt clean on Windows
 with rustc 1.94.1. CI (`.github/workflows/ci.yml`) runs the same gates,
 `renyi check compiler/*.ry`, the starter pack's workflows (check,
 format, test, the cheat sheet's copy) and the conformance suite
-(`tests/conformance/`, 51 cases, every `run` case a second time from
+(`tests/conformance/`, 53 cases, every `run` case a second time from
 its bytecode file;
 runners `tools/conformance.py` and `crates/renyi/tests/conformance.rs`)
 on a toolchain pinned to the owner's machine (rustc 1.94.1), so that CI
@@ -261,7 +265,7 @@ sheet, with `change` (decision AA1).
   statements, calls and overloads, constructions, patterns and
   exhaustiveness with witnesses, queries, the recorded references of
   W8). `checker.ry` is the command line: `renyi run compiler/checker.ry
-  [--json] [--strict] [--library <dir>] <file>...` reads the fourteen
+  [--json] [--strict] [--library <dir>] <file>...` reads the fifteen
   library declaration files from `library/std` under the working
   directory (`--library` names another), lexes and parses with the
   Renyi front end, reads the imports from the file's directory as
@@ -1150,7 +1154,8 @@ answers are the entry AF1.
   7; case 51) and `tests/conformance/foreign_bad/` (`bad.ry`, the
   three diagnostics; case 20) are under the three judges, the Renyi
   checker and compiler byte-equal on them; `tests/fixture.rs` holds
-  their manifests canonical; `tests/library.rs` counts fourteen files.
+  their manifests canonical; `tests/library.rs` counted fourteen files
+  (fifteen since the bridge).
 - **What bit.** A heredoc un-escapes backslashes (a patch script
   written through it got a raw carriage return); a patch applied twice
   duplicated the additions whose anchor survived the first run; the
@@ -1404,6 +1409,130 @@ recommended option). The pieces:
 Gates: `cargo fmt`, `cargo clippy --all-targets` clean, `cargo test`
 278 passed (270 before, the eight of the extension test new); the
 corpus and `compiler/` untouched.
+
+## The Python bridge as it exists (decisions AJ2, AJ3, AL1 to AL4; session 8, 2026-10-07)
+
+One commit, after the owner's four answers (AL1 to AL4, every
+recommended option); the pieces mirror the foreign function interface
+(decision AF1) layer for layer.
+
+- **The rule.** A Python module is a declaration file of the project
+  (bodiless `public function`s) that the manifest's `python` section
+  binds: `"python": {"interpreter": "python3", "modules": {"analysis":
+  {"package": "analysis", "symbols": {"mean": "average"}}}}`;
+  `interpreter`, `package` (the module's own name when left out) and
+  `symbols` are optional, `Manifest::python` is a `PythonSection`
+  (`manifest.rs`, with `symbols_of` and `symbols_json` now shared with
+  the foreign section). The resolver tags the file
+  (`Project::python_of_file` by its path, `Project::python_module` by
+  its qualified name, `Project::tag` and `tagged` for a command's file;
+  the `foreign` section wins when both name a module),
+  `SourceFile.python` carries a `PythonBinding` (the `PythonModule` of
+  `renyi_syntax`, the interpreter and the project root),
+  `check_project_in` parses a tagged file with `parse_declarations` and
+  declares it with `is_library = true`, `ModuleInfo.python` holds the
+  binding.
+- **The checker.** `crates/renyi_check/src/python.rs`: each function
+  needs `python("<package>")` with the package of its binding and
+  nothing else, fails with `PythonError` of `std.python` and nothing
+  else, takes no type parameters (`python-signature`); its parameters
+  are types that can `ToJson` and its result a type that can
+  `FromJson`, or nothing (`python-type`): `World::carried` is the
+  structural rule of `check.rs::has_ability` on declared types
+  (derives, implementations, a subtype's base, lists and sets of
+  carried items, maps with `Text` keys, `maybe`, the scalars),
+  `World::json_ability` finds the prelude's abilities. `effects::TREE`
+  has `python`, `takes_scope` too; `python` takes no budget.
+  `library/std/python.ry` (and the crate's copy) declares `PythonError`:
+  `Raised(exception, message)`, `NotCarried(detail)`,
+  `Unavailable(detail)`, `PermissionDenied(package)`; the first field
+  was `kind` at first, which the JSON encoding of a variant uses for
+  its name (decision K10), so a replay decoded the recorded failure
+  wrongly until it was renamed.
+- **The bytecode.** `FunctionMeta.python: Option<Python>` (package,
+  symbol, interpreter, root) filled in `compile/mod.rs` from the
+  module's binding; `file.rs` writes it as `"python"` after
+  `"foreign"` and `FORMAT` is 3; `compiler/bytecode.ry`
+  (`PythonBinding`) and `compiler/emit.ry` (`python_binding`;
+  `symbol_of` takes the list of renames, for both bindings) mirror
+  it; `compiler/declare.ry` holds the port of `python.rs`
+  (`check_bound_signature` dispatches to the foreign or the Python
+  rules, so that `declare_function` stays under 60 lines; `carried`,
+  `carried_shape`, `json_ability`), `project.ry` the manifest section
+  (`python_section`, `python_modules`, `python_entry`), the tagging
+  (`python_of_module`, `python_of_file`, `module_of_file` shared with
+  the foreign tagging, `step_python`, `python_tagged`) and the
+  fifteenth library module in `library_modules`.
+- **The VM.** `natives/python.rs` with `python_worker.py` (embedded
+  through `include_str!`, passed to the interpreter with `-c` and the
+  project root as its argument): `Worker::start` tries the candidates
+  of decision AL3 (`candidates`: the manifest's interpreter, else
+  `RENYI_PYTHON`, else `python` then `python3` on Windows and `python3`
+  then `python` elsewhere) and keeps the first that spawns and answers
+  the greeting `{"ready": true, "version": ...}`; `Worker::call` writes
+  one request line and reads one answer line, checking the call
+  number; `run` encodes the arguments with `json::encode` by position,
+  starts the worker at the first call (`Vm.python`), decodes the answer
+  by the declared type with `json::decode` (a result the declaration
+  does not mention is dropped) and maps the worker's `error` by its
+  `where`: `call` to `Raised`, `result` to `NotCarried`, else
+  `Unavailable`; a worker that stops answering is dropped (killed on
+  `Drop`) and the next call starts another. The worker imports a
+  module once and caches it, swaps `sys.stdout` for `sys.stderr` so
+  that a package's prints cannot corrupt the protocol, and answers
+  with `ensure_ascii=False, allow_nan=False`. `grant::effect_of` gives
+  a `python` call the scope of its declared need; `Vm::run_primitive`
+  dispatches a function with a `python` binding to the bridge.
+- **The commands.** `renyi run` prints "renyi: this program can run
+  Python through `analysis`" on the standard error when `main` grants
+  `python` (`bound_modules` and `grants` of `lib.rs`, shared with the
+  foreign notice); `renyi publish` refuses a project with Python
+  modules; `diagnose` parses a tagged file as declarations.
+- **The tests.** `crates/renyi/tests/python.rs` (six, a `helpers.py`
+  beside the manifest): the run from the source and from the bytecode
+  file, the notice and a Python print on the standard error; a
+  recording replayed and reproduced with the interpreter renamed to
+  nothing that starts; `--deny python`; an interpreter that is not
+  there, through the manifest and through the variable; a worker ended
+  by `sys.exit` and started again; `publish` refused.
+  `crates/renyi_check/tests/rules.rs` has the capability and the
+  signature rules, `manifest.rs` the section's round trip. The fixtures
+  `tests/conformance/python/` (`analysis.py`, `analysis.ry`, `stats.ry`
+  printing five lines; case 53) and `tests/conformance/python_bad/`
+  (`bad.ry`, the two diagnostics; case 21) are under the three judges,
+  the Renyi checker and compiler byte-equal on them; `tests/fixture.rs`
+  holds their manifests canonical; `tests/library.rs` counts fifteen
+  files; `tests/file.rs` and `tests/compile.rs` name the format numbers
+  (3 read, 4 refused). The suite and the tests need a Python 3 on the
+  PATH: CI's `setup-python` step moved before `cargo test`, and the
+  release workflow has one before its suite.
+- **The documents.** Decisions AL1 to AL4; the guide `docs/python.md`
+  (the manifest, the declaration file and the types that cross, the
+  program and the worker, what fails) in the site's navigation and on
+  the front page; the reference (the module list, the manifest, the
+  capability table, the scopes, the static rules, the run time,
+  appendix A); the library sketch's section 15 (`std.python`; the two
+  after it renumbered); the syntax sketch's capability list; the
+  runtime and system documents; `extensions.md`; the cheat sheet
+  (`python`, `std.python`; 2999 tokens after four words were trimmed);
+  the starter skill; `README.md`; `CLAUDE.md`; the conformance
+  `README.md`.
+- **What bit.** `tags` and `count` are reserved words, as field names
+  too, and a text literal cannot stand inside a hole (the first fixture
+  tripped on all three); a purpose line is held to 100 columns like any
+  line; `ability` is reserved as a parameter name; the `kind` field of
+  `Raised` (above); the Renyi resolver's fixed list of library modules
+  had to grow (without it the judges saw `std.python` as unknown and
+  every bytecode file differed by the missing type);
+  `declare_function` passed 60 lines with the second dispatch, hence
+  `check_bound_signature`. After the gates, `cargo test` found what the
+  cheat sheet's trim and the format number had left behind: the two
+  copies of the cheat sheet (`crates/renyi/cheatsheet.md` under
+  `tests/cheat_sheet.rs`, `starter/skill/renyi/cheatsheet.md` under
+  CI's `cmp`) are copied again after every trim, `tests/library.rs`
+  counts the library's files, and `tests/file.rs` refuses the next
+  format by number; CI installed Python after `cargo test`, which the
+  bridge's tests now need before it.
 
 ## Release 0.1 engineering (decisions AI1 to AI4; session 8, 2026-10-07)
 
@@ -1943,6 +2072,24 @@ Three commits on `main`, each gated as in session 7:
     decisions (section AF), `CLAUDE.md`, `README.md`, `docs/GAPS.md`,
     the conformance `README.md`, this file.
 
+19. the Python bridge (decisions AJ2, AJ3 and AL1 to AL4; the section
+    "The Python bridge as it exists"): `library/std/python.ry`,
+    `crates/renyi_check/src/python.rs` and the two diagnostics, the
+    `python` section of `manifest.rs` and the tagging of `resolve.rs`,
+    `SourceFile.python`, `FunctionMeta.python` and `FORMAT` 3 of the
+    bytecode file, `natives/python.rs` with `python_worker.py`,
+    `Vm::run_primitive`, the run notice, the `publish` refusal; the
+    mirrors in `project.ry`, `declare.ry`, `effects.ry`, `bytecode.ry`
+    and `emit.ry`; `crates/renyi/tests/python.rs`, the fixtures
+    `tests/conformance/python/` and `python_bad/` with cases 21 and 53,
+    `tests/fixture.rs`, `tests/library.rs`, `tests/rules.rs`,
+    `tests/file.rs` and `tests/compile.rs` (the format numbers), the
+    judges' directories, `ci.yml` (Python before `cargo test`); the
+    guide `docs/python.md`, the reference, the library sketch, the
+    syntax sketch, the runtime and system documents, the cheat sheet
+    and its two copies, the decisions (section AL), `CLAUDE.md`,
+    `README.md`, the conformance `README.md`, this file.
+
 ## Done in session 7 (stage 1 of the gap audit)
 
 Fourteen commits on `main`, each gated by fmt, clippy, the tests, the
@@ -2352,29 +2499,22 @@ on a fresh clone).
 
 ## Next steps
 
-1. **The Python bridge** (decisions AJ2 and AJ3; after the
-   registration API, AJ4): an extension in the official binary,
-   written against `extension.rs`: a declaration file per Python
-   package over the types JSON carries, one `python` worker process
-   per run, each call a JSON message and one recorded primitive,
-   under the capability `python("<package>")`, a new kind in the
-   reference's section 11 and `effects::TREE` (with `takes_scope`),
-   and a failure type of the bridge's own. The first design
-   questions: the protocol (one request and one response per call on
-   the worker's standard input and output; how a Python exception
-   comes back as a failure; how the worker is found, `python3` on
-   the PATH or a path in `renyi.json`); where the bridge's
-   declaration files live (`library/python/`?) and how a user writes
-   one for a package the bridge does not know; how the checker
-   written in Renyi (`compiler/project.ry`, a fixed list of the
-   fourteen standard modules under `--library`) sees extension
-   modules, which the judges need once the corpus has a program
-   that imports one. Also pending from the release: the
-   announcement (owner), the three measurements of the
-   positioning's section 5 on the starter pack, the Marketplace if
+1. **After the bridge** (decisions AJ2, AJ3 and AL1 to AL4 are in;
+   the section "The Python bridge as it exists" above): pending from
+   the release, the announcement (owner), the three measurements of
+   the positioning's section 5 on the starter pack, the Marketplace if
    wanted, and the update candidates above (`renyi upgrade`, the
-   package-manager manifests), in the order the owner sets. Small
-   fix pending: `renyi tools <directory>` on a directory that holds
+   package-manager manifests), in the order the owner sets; then M5
+   (item 5). Candidates around the bridge, none decided: a generator
+   of declaration files from a Python module (`inspect.signature` and
+   the annotations where they exist, as `renyi bind` does from a C
+   header); a deadline per call; one worker across the tests of a
+   `renyi test` run instead of one per VM; keyword arguments by
+   parameter name instead of position; how the checker written in
+   Renyi (`compiler/project.ry`, a fixed list of the fifteen standard
+   modules under `--library`) sees extension modules, which the judges
+   need once the corpus has a program that imports one. Small fix
+   pending: `renyi tools <directory>` on a directory that holds
    library declaration files parses them as programs and fails
    (`renyi index` on the same directory does not), in
    `crates/renyi/src/lib.rs` (the former `main.rs`).
@@ -2433,8 +2573,18 @@ on a fresh clone).
 
 ## Known gaps and risks
 
+- **The bridge.** The worker's standard error is inherited from the
+  VM's process, not routed through `Options::stderr`, so a harness
+  that captures the VM's standard error does not see what Python
+  prints; a `Decimal` crosses as a JSON number, which Python reads as
+  a float; a Python function that blocks (reads its standard input,
+  waits on a socket) blocks the call with no deadline; the candidates
+  of decision AL3 are tried in order, and a stub that prints and exits
+  (the Windows Store's `python3`) costs a message on the standard
+  error before the next candidate answers; the `tests/python.rs` tests
+  and the two conformance cases need a Python 3 on the PATH.
 - **Extensions and the checker in Renyi.** `compiler/project.ry`
-  reads the fourteen standard modules by name from `--library`; an
+  reads the fifteen standard modules by name from `--library`; an
   extension's modules are invisible to it, so the self-hosted judges
   cannot compare a program that imports one (none does today). A
   bytecode file compiled with an extension runs on a binary without

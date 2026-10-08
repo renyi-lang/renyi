@@ -13,6 +13,7 @@ pub mod http;
 pub mod json;
 pub mod prelude;
 pub mod process;
+pub mod python;
 pub mod regex;
 pub mod server;
 pub mod sqlite;

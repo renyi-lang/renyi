@@ -10,6 +10,7 @@
 pub mod check;
 pub mod effects;
 pub mod foreign;
+pub mod python;
 pub mod refine;
 mod suggest;
 pub mod types;
@@ -45,6 +46,7 @@ pub const LIBRARY: &[(&str, &str)] = &[
     ("std.regex", include_str!("../library/std/regex.ry")),
     ("std.process", include_str!("../library/std/process.ry")),
     ("std.foreign", include_str!("../library/std/foreign.ry")),
+    ("std.python", include_str!("../library/std/python.ry")),
 ];
 
 /// The declaration files the checker knows besides a project's own: the
@@ -146,8 +148,10 @@ pub fn check_project_in(
     let mut world = library.world();
     let mut modules = Vec::new();
     for (index, file) in files.iter().enumerate() {
-        // a foreign module declares (decision AF1): no bodies
-        let parsed = if file.foreign.is_some() {
+        // a foreign module (decision AF1) or a Python module (decision AL1)
+        // declares: no bodies
+        let declares = file.foreign.is_some() || file.python.is_some();
+        let parsed = if declares {
             parse_declarations(&file.text)
         } else {
             parse(&file.text)
@@ -159,13 +163,16 @@ pub fn check_project_in(
             if let Some(diagnostic) = module_name_mismatch(&file.name, &parsed.module) {
                 diagnostics.push(diagnostic);
             }
-            let id = world.add_module(parsed.module, file.foreign.is_some());
+            let id = world.add_module(parsed.module, declares);
             world.set_source_lines(id, &file.text);
             if let Some(package) = &file.package {
                 world.set_package(id, package.clone());
             }
             if let Some(foreign) = &file.foreign {
                 world.set_foreign(id, foreign.clone());
+            }
+            if let Some(python) = &file.python {
+                world.set_python(id, python.clone());
             }
             Some(id)
         };

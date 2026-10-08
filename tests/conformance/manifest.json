@@ -102,6 +102,14 @@
       "exit_code": 1
     },
     {
+      "name": "a Python module's declarations must fit the bridge",
+      "command": "check",
+      "program": "tests/conformance/python_bad/bad.ry",
+      "stdout": "tests/conformance/expected/python_bad.out",
+      "diagnostics": ["python-signature", "python-type"],
+      "exit_code": 1
+    },
+    {
       "name": "a deprecated call warns",
       "command": "check",
       "program": "tests/conformance/programs/deprecated_call.ry",
@@ -367,6 +375,14 @@
       "program": "tests/conformance/foreign/length.ry",
       "stdout": "tests/conformance/expected/foreign_length.out",
       "stderr_contains": ["this program can call native code through `libc`"],
+      "exit_code": 0
+    },
+    {
+      "name": "a program calls a Python module of the project through the bridge",
+      "command": "run",
+      "program": "tests/conformance/python/stats.ry",
+      "stdout": "tests/conformance/expected/python_stats.out",
+      "stderr_contains": ["this program can run Python through `analysis`"],
       "exit_code": 0
     }
   ]

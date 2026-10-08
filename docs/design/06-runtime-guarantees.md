@@ -199,8 +199,8 @@ fails with the module's error type, `HttpError.OverBudget(host: Text)`,
 `StartError.OverBudget(port: Port)`, `ProcessError.OverBudget(program:
 Text)`; the program handles it like any failure (`otherwise`, a `match`, a
 retry). Budgets apply to `network`, `process` and `filesystem` and their
-children; `console`, `time`, `random`, `environment` and `foreign` take
-none. A denied call is reported the same way (`PermissionDenied`,
+children; `console`, `time`, `random`, `environment`, `foreign` and
+`python` take none. A denied call is reported the same way (`PermissionDenied`,
 `HostNotAllowed`, decision J11); a primitive that cannot fail crashes,
 naming the function whose `needs` narrowed the grant, and a path scope
 contains a path by its text, with nothing resolved on disk (decision Y1).
@@ -241,7 +241,7 @@ from an origin-carrying value carries the same origin (interpolation,
 record construction, list and map operations, arithmetic, conversions). A
 value may leave the program through an **outgoing primitive** (a `console`
 print, a `filesystem.write`, an `http` request's URL, headers or body, a
-`process` argument, a `foreign` call) only when the sink is one of those
+`process` argument, a `foreign` or a `python` call) only when the sink is one of those
 listed, or a sub-scope of one (`network.http("api.example.com")` is covered
 by `network.http`); otherwise the primitive fails with the built-in error
 `Guarded(origin: Text, sink: Text)` before anything leaves. A capability

@@ -231,16 +231,18 @@ types `ConstraintViolation`, `InvalidNumber`, `InvalidEncoding`, `TimedOut`
 and `Guarded`, and the methods of the base types. The modules `std.console`,
 `std.environment`, `std.time`, `std.random`, `std.filesystem`, `std.json`,
 `std.http`, `std.server`, `std.csv`, `std.sqlite`, `std.regex`,
-`std.process` and `std.foreign` are imported by name, and so are the
-modules of the extensions a toolchain is built with (decision AJ1; the
-guide is `extensions.md`), which `renyi version` lists.
+`std.process`, `std.foreign` and `std.python` are imported by name, and
+so are the modules of the extensions a toolchain is built with (decision
+AJ1; the guide is `extensions.md`), which `renyi version` lists.
 
 A program's own imports resolve from its project root: the directory of
 the nearest `renyi.json` in the file's directory or above it (up to the
 working directory for a relative path), else the file's directory
 (decision J17). `renyi.json` (decision AC1) names the project's
-dependencies and their registry, a directory or a URL, and (decision AF1)
-its foreign modules, each with the shared libraries it is bound to;
+dependencies and their registry, a directory or a URL, (decision AF1)
+its foreign modules, each with the shared libraries it is bound to, and
+(decision AL1) its Python modules, each with the Python module it is
+bound to, and the interpreter that runs them;
 `import <name>` and
 `import <name>.<path>` reach a dependency's root module `<name>.ry` or its
 file `<path>.ry`, at the version the lockfile `renyi.lock.json` beside the
@@ -1028,18 +1030,20 @@ time                 the clock
 random               random numbers
 process              start other programs (`std.process`)
 foreign              call the C functions of a foreign module (decision AF1)
+python               call the functions of a Python module through the bridge (decision AJ3)
 ```
 
 A parent (`filesystem`, `network`) covers its children. A capability may
 carry one literal **scope** that narrows it: a path prefix for
 `filesystem` and its children, a host for `network` and its children, a
-variable name for `environment`, a program name for `process`; `console`,
-`time`, `random` and `foreign` take none. A declaration without a scope
-covers every scope. A granted capability covers a needed one when its path
-is the same or an ancestor and its scope contains the needed scope: a
-path prefix contains its sub-paths (`filesystem.read("data")` covers
-`filesystem.read("data/2024")`), a host, a variable or a program name
-contains only itself; a needed capability without a scope is covered by a
+variable name for `environment`, a program name for `process`, a package
+for `python`; `console`, `time`, `random` and `foreign` take none. A
+declaration without a scope covers every scope. A granted capability
+covers a needed one when its path is the same or an ancestor and its
+scope contains the needed scope: a path prefix contains its sub-paths
+(`filesystem.read("data")` covers `filesystem.read("data/2024")`), a
+host, a variable, a program name or a package contains only itself; a
+needed capability without a scope is covered by a
 scoped grant only when the callee checks its actual path or host at run
 time, which the library primitives do.
 
@@ -1080,6 +1084,19 @@ leave the program only through the listed sinks.
   its result one of those but `Bytes`, `maybe Text` or nothing
   (`foreign-type`); it takes at most six words, `Bytes` counting two
   (`foreign-arity`). `renyi bind` writes such a file from a C header.
+- A **Python module** (decision AL1) is a declaration file of the
+  project that the manifest's `python` section binds to a Python module
+  (`"python": {"interpreter": "python3", "modules": {"analysis":
+  {"package": "analysis", "symbols": {"renyi_name": "python_name"}}}}`:
+  `interpreter`, `package` (the module's own name when left out) and
+  `symbols` optional); it is found by its path or its qualified name as
+  a foreign module is. Each of its functions needs
+  `python("<package>")`, the package of its binding, and nothing else,
+  fails with `PythonError` of `std.python` and nothing else and takes no
+  type parameters (`python-signature`); its parameters are types that
+  can `ToJson` and its result a type that can `FromJson`, or nothing
+  (`python-type`), since a call crosses as JSON both ways. The guide is
+  `python.md`.
 - A sink after `only to` is a capability of the tree
   (`unknown-capability`); a scope is a text literal (`capability-scope`).
 - A budget or a guard stands in the `needs` of `main` or a test
@@ -1136,6 +1153,28 @@ guarded value refuses to cross; `foreign` takes no scope and no budget;
 `renyi run` says "this program can call native code through `libc`" on
 its standard error when `main` grants `foreign`. What the C function does
 is outside every guarantee of the VM.
+
+A function of a Python module (decision AL1) is a primitive that runs in
+the worker of the bridge (decision AL2): one Python process per run,
+started at the first call with the project root on its module path and
+ended with the VM, found through the manifest's `interpreter`, else the
+variable `RENYI_PYTHON`, else `python3` and `python` on the PATH
+(decision AL3). The arguments cross as `std.json` renders them, by
+position in the declared order; the result comes back as JSON and is
+read by the declared type; a result the declaration does not mention is
+dropped. What the Python function prints goes to the standard error. The
+call fails with `PythonError` (decision AL4): `Raised(exception,
+message)` when the function let an exception escape,
+`NotCarried(detail)` when the result does not fit the declared type or
+JSON does not carry it, `Unavailable(detail)` when no interpreter
+answers, the module does not import, the function is not there or the
+worker ended (the next call starts one again), `PermissionDenied(package)`
+for a package outside the grant. The call is recorded like any primitive
+and a replay answers it without starting the worker; a guarded value
+refuses to cross; `python` takes a scope and no budget; `renyi run` says
+"this program can run Python through `analysis`" on its standard error
+when `main` grants `python`. What the Python side does is outside every
+guarantee of the VM.
 
 ---
 
@@ -1487,6 +1526,8 @@ that `renyi check --strict` makes an error.
 | `public-implementation` | E | 5 |
 | `public-method` | E | 5 |
 | `purpose-missing` | E | 2, 3, 5, 13, 15 |
+| `python-signature` | E | 11 |
+| `python-type` | E | 11 |
 | `query-shape` | E | 10 |
 | `range-loop` | E | 8 |
 | `refinement-field` | E | 4 |

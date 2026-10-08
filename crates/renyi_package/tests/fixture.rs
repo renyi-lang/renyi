@@ -74,6 +74,25 @@ fn the_resolver_reads_the_projects_as_the_suite_expects() {
 }
 
 #[test]
+fn the_python_fixtures_are_in_canonical_form() {
+    // decision AL1: a manifest with a `python` section renders to itself
+    for directory in ["tests/conformance/python", "tests/conformance/python_bad"] {
+        let text = read(&format!("{directory}/renyi.json"));
+        let manifest = Manifest::read(&text).expect("the manifest reads");
+        assert_eq!(
+            manifest.render(),
+            text,
+            "{directory}/renyi.json is not as the manifest renders"
+        );
+        assert_eq!(
+            manifest.python.modules.len(),
+            1,
+            "{directory}: one Python module"
+        );
+    }
+}
+
+#[test]
 fn the_foreign_fixtures_are_in_canonical_form() {
     // decision AF1: a manifest with a `foreign` section renders to itself
     for directory in ["tests/conformance/foreign", "tests/conformance/foreign_bad"] {

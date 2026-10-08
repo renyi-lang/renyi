@@ -146,6 +146,7 @@ public type FunctionMeta
   has summary: maybe Text
   has code: maybe Integer
   has foreign: maybe ForeignBinding
+  has python: maybe PythonBinding
   can ToJson
 end
 
@@ -155,6 +156,15 @@ public type ForeignBinding
   has symbol: Text
   has parameters: List of Text
   has result: Text
+  can ToJson
+end
+
+public type PythonBinding
+  purpose: A Python function's binding (decision AL1): package, symbol, interpreter and root.
+  has package: Text
+  has symbol: Text
+  has interpreter: maybe Text
+  has root: Text
   can ToJson
 end
 

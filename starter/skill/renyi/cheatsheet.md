@@ -128,7 +128,7 @@ raw "^[0-9]{4}$"                           # no holes, no escapes
 from 1 to 10   from 0 to 100 by 5         # inclusive ranges
 [1, 2, 3]   {"key": value}   nothing   true   false
 ```
-Numbers: `Integer` (unbounded), `Decimal` (decimal128, literals like `19.99`),
+Numbers: `Integer` (unbounded), `Decimal` (decimal128, `19.99`),
 `Float`. No implicit conversion: `count.to_decimal()`. `is` compares
 values of one type: `32.0 is 32.00`. `/` needs `Decimal` or `Float` operands;
 `a.quotient(b)` divides two Integers down.
@@ -215,11 +215,11 @@ for each url in urls concurrently collect web.get(url) otherwise fail
 `needs` lists capabilities; callers declare a superset; no `needs` means
 pure. Capabilities: `console`, `filesystem.read`, `filesystem.write`,
 `network.http`, `network.socket`, `environment`, `time`, `random`,
-`process`, `foreign`. A parent
+`process`, `foreign`, `python`. A parent
 covers its children. A literal argument narrows a scope:
 `filesystem.read("data")`, `network.http("api.example.com")`; no argument
 covers every scope. `main` declares the whole grant. Only there: `at most 60 per minute` (budget; also `per run`) and
-`only to console` (data read through it leaves only there).
+`only to console` (what it reads leaves only there).
 ```
 public function main() or fails with AppError
   needs console, network.http("api.example.com") at most 60 per minute
@@ -247,10 +247,10 @@ test "the forecast is read" needs network.http replays "fixtures/forecast.json"
   check weather.fetch(city: "Berlin").temperature is 21.5
 end
 ```
-A recording (`renyi record`) answers every effect of a `replays` test offline.
+A recording (`renyi record`) answers a `replays` test's effects offline.
 `expose as tool` publishes a function to agents (schema from the parameters,
 description from `purpose:`, permissions from `needs`; `renyi tools` prints it).
-`deprecated: since 2.0, replaced by new_name` warns existing callers.
+`deprecated: since 2.0, replaced by new_name` warns callers.
 
 ## Library (names and parameters; nothing else exists)
 ```
@@ -275,7 +275,7 @@ Modules: std.console (print, print_error, read_line); std.environment
   Instant, Duration); std.random; std.filesystem (Path, read_text, write_text,
   exists, list); std.json (parse, render); std.http (Url, get, post_json);
   std.server; std.csv; std.sqlite; std.regex; std.process (execute, attempt);
-  std.foreign
+  std.foreign; std.python
 ```
 One parameter is positional, more are named: `line.split(",")`,
 `text.replace(old: "a", new: "b")`.

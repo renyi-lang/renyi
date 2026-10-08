@@ -209,9 +209,10 @@ fn load(path: &str) -> Result<SourceFile, ExitCode> {
 /// Every diagnostic of a file: the parser's, the checker's when the file
 /// parses, and the layout's, in source order.
 pub(crate) fn diagnose(file: &SourceFile) -> Vec<renyi_syntax::Diagnostic> {
-    // a foreign module of the project declares (decision AF1): no bodies
+    // a foreign module (decision AF1) or a Python module (decision AL1) of
+    // the project declares: no bodies
     let file = renyi_check::tagged(file.clone());
-    let parsed = if file.foreign.is_some() {
+    let parsed = if file.foreign.is_some() || file.python.is_some() {
         parse_declarations(&file.text)
     } else {
         parse(&file.text)
@@ -440,11 +441,15 @@ fn compile_with_sources(path: &str) -> Result<(renyi_vm::Program, Hashed), ExitC
     }
 }
 
-/// The foreign modules of a program, each in backticks, in name order.
-fn foreign_modules(program: &renyi_vm::Program) -> Vec<String> {
+/// The modules of a program whose functions are bound outside Renyi, those
+/// `bound` selects: each in backticks, in name order.
+fn bound_modules(
+    program: &renyi_vm::Program,
+    bound: impl Fn(&renyi_vm::compile::FunctionMeta) -> bool,
+) -> Vec<String> {
     let mut names: Vec<String> = Vec::new();
     for meta in &program.function_metas {
-        if meta.foreign.is_some() && !names.contains(&meta.module) {
+        if bound(meta) && !names.contains(&meta.module) {
             names.push(meta.module.clone());
         }
     }
@@ -452,13 +457,13 @@ fn foreign_modules(program: &renyi_vm::Program) -> Vec<String> {
     names.into_iter().map(|name| format!("`{name}`")).collect()
 }
 
-/// Whether `main` grants `foreign`.
-fn grants_foreign(program: &renyi_vm::Program) -> bool {
+/// Whether `main` grants the capability, with any scope.
+fn grants(program: &renyi_vm::Program, kind: &str) -> bool {
     program.main.is_some_and(|id| {
         program.function_metas[id]
             .needs
             .iter()
-            .any(|capability| capability.path == ["foreign"])
+            .any(|capability| capability.path == [kind])
     })
 }
 
@@ -801,12 +806,20 @@ fn run_command(args: &[String], record: bool) -> ExitCode {
         Ok(compiled) => compiled,
         Err(code) => return code,
     };
-    // native code is visible (decision AF1, 07-system-design.md section 2.2)
-    let native = foreign_modules(&program);
-    if !native.is_empty() && grants_foreign(&program) {
+    // native code and Python are visible (decisions AF1 and AJ2,
+    // 07-system-design.md section 2.2)
+    let native = bound_modules(&program, |meta| meta.foreign.is_some());
+    if !native.is_empty() && grants(&program, "foreign") {
         eprintln!(
             "renyi: this program can call native code through {}",
             native.join(", ")
+        );
+    }
+    let python = bound_modules(&program, |meta| meta.python.is_some());
+    if !python.is_empty() && grants(&program, "python") {
+        eprintln!(
+            "renyi: this program can run Python through {}",
+            python.join(", ")
         );
     }
     for denied in &flags.narrowing.deny {

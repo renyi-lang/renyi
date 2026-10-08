@@ -38,7 +38,8 @@ let tree: List of Text be [
   "time",
   "random",
   "process",
-  "foreign"
+  "foreign",
+  "python"
 ]
 
 public function tree_spelling() returns Text
@@ -48,10 +49,10 @@ public function tree_spelling() returns Text
 end
 
 public function takes_scope(path: List of Text) returns Boolean
-  purpose: Whether the capability takes a scope argument (a path, a host, a variable, a program).
+  purpose: Whether the capability takes a scope (a path, a host, a variable, a program, a package).
 
   let head be path.first() otherwise ""
-  return ["filesystem", "network", "environment", "process"].contains(head)
+  return ["filesystem", "network", "environment", "process", "python"].contains(head)
 end
 
 public function names_of(names: List of Name) returns List of Text
@@ -131,7 +132,7 @@ public function covers(granted: Grant, needed: Grant, runtime_scoped: Boolean) r
 end
 
 public function scope_contains(path: List of Text, granted: Text, wanted: Text) returns Boolean
-  purpose: A path prefix contains its sub-paths; a host or a variable contains only itself.
+  purpose: A path prefix contains its sub-paths; a host, a variable, a program or a package itself.
 
   let head be path.first() otherwise ""
   if head is "filesystem" then

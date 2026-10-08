@@ -1,0 +1,18 @@
+tests/conformance/python_bad/bad.ry:11:17: error [python-signature]: `elsewhere` is declared in a Python module; it needs `python("bad")` and nothing else
+  fix: write `needs python("bad")`
+tests/conformance/python_bad/bad.ry:17:17: error [python-signature]: `quiet` is declared in a Python module; it fails with `PythonError` and nothing else
+  fix: write `or fails with PythonError`, imported from `std.python`
+tests/conformance/python_bad/bad.ry:20:17: error [python-signature]: `generic` is declared in a Python module; a Python function takes no type parameters
+  fix: drop `for any`
+tests/conformance/python_bad/bad.ry:20:25: error [python-type]: the parameter `value` of `generic` has type `Item`; across the bridge a parameter is a type `std.json` renders, one that can ToJson
+  fix: declare it with a type that can ToJson
+tests/conformance/python_bad/bad.ry:21:11: error [python-type]: `generic` returns `Item`; across the bridge a result is a type `std.json` parses, one that can FromJson, or nothing
+  fix: declare it with a type that can FromJson, or drop `returns`
+tests/conformance/python_bad/bad.ry:27:24: error [python-type]: the parameter `value` of `opaque` has type `Opaque`; across the bridge a parameter is a type `std.json` renders, one that can ToJson
+  fix: declare it with a type that can ToJson
+tests/conformance/python_bad/bad.ry:28:11: error [python-type]: `opaque` returns `Opaque`; across the bridge a result is a type `std.json` parses, one that can FromJson, or nothing
+  fix: declare it with a type that can FromJson, or drop `returns`
+tests/conformance/python_bad/bad.ry:33:23: error [python-type]: the parameter `table` of `keyed` has type `Map of Integer to Text`; across the bridge a parameter is a type `std.json` renders, one that can ToJson
+  fix: declare it with a type that can ToJson
+tests/conformance/python_bad/bad.ry:34:11: error [python-type]: `keyed` returns `Pair of Integer, Text`; across the bridge a result is a type `std.json` parses, one that can FromJson, or nothing
+  fix: declare it with a type that can FromJson, or drop `returns`

@@ -643,17 +643,20 @@ time                 the clock
 random               random numbers
 process              start other processes
 foreign              call code across the FFI boundary
+python               call the functions of a Python module through the bridge
 ```
 
 Naming a parent (`needs filesystem`) grants its children. `process` is
-needed by `std.process` (decision AE1) and `foreign` by the functions of a
-foreign module (decision AF1); until those decisions the checker rejected
-them in a `needs` clause (`capability-unavailable`, decision V6).
+needed by `std.process` (decision AE1), `foreign` by the functions of a
+foreign module (decision AF1) and `python` by the functions of a Python
+module (decision AJ3); until those decisions the checker rejected them
+in a `needs` clause (`capability-unavailable`, decision V6).
 
 **Scopes.** A capability may carry one literal argument that narrows it: a
 path prefix for `filesystem` and its children (`filesystem.read("data")`), a
 host for `network` and its children (`network.http("api.example.com")`), a
-variable name for `environment("HOME")`, a program name for `process("git")`.
+variable name for `environment("HOME")`, a program name for `process("git")`,
+a package for `python("pandas")`.
 `console`, `time`, `random` and `foreign` take no argument. A declaration
 without an argument covers every scope. The checker requires a caller to cover
 each callee: the same or an ancestor capability, with no argument or with one

@@ -9,7 +9,7 @@
 
 use std::collections::HashSet;
 
-use renyi_syntax::{parse, Diagnostic, ForeignModule, Package, SourceFile, Span};
+use renyi_syntax::{parse, Diagnostic, ForeignModule, Package, PythonBinding, SourceFile, Span};
 
 use crate::manifest::{Lock, Manifest, PackageFile, LOCK_FILE, MANIFEST_FILE, PACKAGE_FILE};
 use crate::registry::{hash_of, is_absolute, join, Registry};
@@ -38,18 +38,15 @@ pub struct Project {
     pub problems: Vec<Diagnostic>,
 }
 
-/// The file, tagged as the foreign module it declares when the manifest of
-/// its project names it (decision AF1); any other file as it is. The
-/// commands tag the file they are given before parsing it, since a foreign
-/// module is parsed as declarations.
+/// The file, tagged as the foreign module (decision AF1) or the Python
+/// module (decision AL1) it declares when the manifest of its project names
+/// it; any other file as it is. The commands tag the file they are given
+/// before parsing it, since a bound module is parsed as declarations.
 pub fn tagged(file: SourceFile) -> SourceFile {
-    if file.foreign.is_some() {
+    if file.foreign.is_some() || file.python.is_some() {
         return file;
     }
-    match Project::of(&file.name).foreign_of_file(&file.name) {
-        Some(binding) => file.in_foreign(binding),
-        None => file,
-    }
+    Project::of(&file.name).tag(file)
 }
 
 /// The files of a program with its imports, and the problems found.
@@ -175,6 +172,46 @@ impl Project {
     /// the file's path from the root, without its extension, is the
     /// module's name.
     pub fn foreign_of_file(&self, file_name: &str) -> Option<ForeignModule> {
+        self.foreign_module(&self.module_of_file(file_name)?)
+    }
+
+    /// The binding of a Python module of the project (decision AL1), by
+    /// the module's qualified name: the manifest's entry with the
+    /// interpreter the manifest names and the project root.
+    pub fn python_module(&self, name: &str) -> Option<PythonBinding> {
+        let section = &self.manifest.as_ref()?.python;
+        section
+            .modules
+            .iter()
+            .find(|(module, _)| module == name)
+            .map(|(_, module)| PythonBinding {
+                module: module.clone(),
+                interpreter: section.interpreter.clone(),
+                root: self.root.clone(),
+            })
+    }
+
+    /// The binding of a file of the project that declares a Python module,
+    /// named like a foreign one by its path from the root.
+    pub fn python_of_file(&self, file_name: &str) -> Option<PythonBinding> {
+        self.python_module(&self.module_of_file(file_name)?)
+    }
+
+    /// A file of the project tagged by its path: as the foreign or the
+    /// Python module the manifest binds under that name, else as it is.
+    pub fn tag(&self, file: SourceFile) -> SourceFile {
+        if let Some(binding) = self.foreign_of_file(&file.name) {
+            return file.in_foreign(binding);
+        }
+        match self.python_of_file(&file.name) {
+            Some(binding) => file.in_python(binding),
+            None => file,
+        }
+    }
+
+    /// The module name a file of the project declares by its path: from
+    /// the root, without its extension, the separators as dots.
+    fn module_of_file(&self, file_name: &str) -> Option<String> {
         let relative = if self.root.is_empty() {
             file_name
         } else {
@@ -185,7 +222,7 @@ impl Project {
         let stem = relative
             .strip_suffix(".ry")
             .or_else(|| relative.strip_suffix(".renyi"))?;
-        self.foreign_module(&stem.replace(['/', '\\'], "."))
+        Some(stem.replace(['/', '\\'], "."))
     }
 
     /// The names of the manifest's dependencies.
@@ -265,12 +302,11 @@ pub fn resolve(file: &SourceFile) -> Resolved {
 /// from the registry as a project whose dependencies the lock names.
 pub fn resolve_in(project: &Project, file: &SourceFile) -> Resolved {
     let mut resolved = Resolved::default();
-    let mut main = file.clone();
-    if main.foreign.is_none() {
-        if let Some(binding) = project.foreign_of_file(&main.name) {
-            main = main.in_foreign(binding);
-        }
-    }
+    let main = if file.foreign.is_none() && file.python.is_none() {
+        project.tag(file.clone())
+    } else {
+        file.clone()
+    };
     resolved.files.push(main);
     for diagnostic in &project.problems {
         resolved.problems.push(Problem {
@@ -370,6 +406,8 @@ pub fn resolve_in(project: &Project, file: &SourceFile) -> Resolved {
             source = source.in_package(package);
         } else if let Some(binding) = project.foreign_module(&qualified) {
             source = source.in_foreign(binding);
+        } else if let Some(binding) = project.python_module(&qualified) {
+            source = source.in_python(binding);
         }
         resolved.files.push(source);
     }

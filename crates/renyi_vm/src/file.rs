@@ -22,8 +22,8 @@ use renyi_syntax::Span;
 
 use crate::bytecode::{Code, CodeKind, GroupFold, Op};
 use crate::compile::{
-    CodeId, ConstantMeta, ExampleMeta, Expected, Foreign, FunctionMeta, Program, SourceLines,
-    Specials, TestMeta,
+    CodeId, ConstantMeta, ExampleMeta, Expected, Foreign, FunctionMeta, Program, Python,
+    SourceLines, Specials, TestMeta,
 };
 use crate::decimal::Decimal;
 use crate::integer::Int;
@@ -33,7 +33,7 @@ use crate::types::{FieldMeta, TypeMeta, TypeShape, Types, VariantMeta};
 use crate::value::Value;
 
 /// The version of the format, the first field of the file.
-pub const FORMAT: usize = 2;
+pub const FORMAT: usize = 3;
 
 /// The extension of a bytecode file.
 pub const EXTENSION: &str = "ryc";
@@ -287,6 +287,7 @@ fn function_json(meta: &FunctionMeta, code: Option<CodeId>) -> Out {
         ),
         ("code", optional(code.as_ref(), |code| number(*code))),
         ("foreign", optional(meta.foreign.as_ref(), foreign_json)),
+        ("python", optional(meta.python.as_ref(), python_json)),
     ])
 }
 
@@ -296,6 +297,20 @@ fn foreign_json(foreign: &Foreign) -> Out {
         ("symbol", string(&foreign.symbol)),
         ("parameters", strings(&foreign.parameters)),
         ("result", string(&foreign.result)),
+    ])
+}
+
+fn python_json(python: &Python) -> Out {
+    record(vec![
+        ("package", string(&python.package)),
+        ("symbol", string(&python.symbol)),
+        (
+            "interpreter",
+            optional(python.interpreter.as_ref(), |interpreter| {
+                string(interpreter)
+            }),
+        ),
+        ("root", string(&python.root)),
     ])
 }
 
@@ -962,6 +977,7 @@ fn read_function(json: &In, at: &str) -> Read<(FunctionMeta, Option<CodeId>)> {
             text_of(json, at).map(str::to_string)
         })?,
         foreign: optional_at(fields, "foreign", at, read_foreign)?,
+        python: optional_at(fields, "python", at, read_python)?,
     };
     Ok((meta, optional_at(fields, "code", at, usize_of)?))
 }
@@ -973,6 +989,18 @@ fn read_foreign(json: &In, at: &str) -> Read<Foreign> {
         symbol: text_at(fields, "symbol", at)?,
         parameters: texts_at(fields, "parameters", at)?,
         result: text_at(fields, "result", at)?,
+    })
+}
+
+fn read_python(json: &In, at: &str) -> Read<Python> {
+    let fields = object(json, at)?;
+    Ok(Python {
+        package: text_at(fields, "package", at)?,
+        symbol: text_at(fields, "symbol", at)?,
+        interpreter: optional_at(fields, "interpreter", at, |json, at| {
+            text_of(json, at).map(str::to_string)
+        })?,
+        root: text_at(fields, "root", at)?,
     })
 }
 

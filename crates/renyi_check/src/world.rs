@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 
 use renyi_syntax::ast::{self, Item, TypeKind};
-use renyi_syntax::{Diagnostic, ForeignModule, Package, Span};
+use renyi_syntax::{Diagnostic, ForeignModule, Package, PythonBinding, Span};
 
 use crate::effects::Capability;
 use crate::suggest::{closest, foreign_type, quoted};
@@ -22,6 +22,8 @@ pub struct ModuleInfo {
     pub package: Option<Package>,
     /// The foreign module the file declares (decision AF1).
     pub foreign: Option<ForeignModule>,
+    /// The Python module the file declares (decision AL1).
+    pub python: Option<PythonBinding>,
     pub ast: ast::Module,
     pub types: HashMap<String, TypeId>,
     pub abilities: HashMap<String, AbilityId>,
@@ -248,6 +250,7 @@ impl World {
             is_library,
             package: None,
             foreign: None,
+            python: None,
             ast: module,
             types: HashMap::new(),
             abilities: HashMap::new(),
@@ -338,6 +341,10 @@ impl World {
 
     pub fn set_foreign(&mut self, id: ModuleId, foreign: ForeignModule) {
         self.modules[id].foreign = Some(foreign);
+    }
+
+    pub fn set_python(&mut self, id: ModuleId, python: PythonBinding) {
+        self.modules[id].python = Some(python);
     }
 
     /// The module an import names, from a module: inside a dependency an
@@ -712,7 +719,7 @@ impl World {
         };
     }
 
-    fn error_with_fix(
+    pub(crate) fn error_with_fix(
         &mut self,
         module: ModuleId,
         code: &'static str,
@@ -1874,6 +1881,16 @@ impl World {
         }
         if self.modules[module].foreign.is_some() {
             self.check_foreign_signature(
+                module,
+                function,
+                &param_types,
+                returns.as_ref(),
+                &fails,
+                &needs,
+            );
+        }
+        if self.modules[module].python.is_some() {
+            self.check_python_signature(
                 module,
                 function,
                 &param_types,

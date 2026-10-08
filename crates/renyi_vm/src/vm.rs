@@ -197,6 +197,9 @@ pub struct Vm<'p> {
     /// The libraries loaded for foreign modules, by the list of names that
     /// found them; a library is never unloaded while the VM lives.
     pub(crate) libraries: Vec<(Vec<String>, libloading::Library)>,
+    /// The worker of the Python bridge, started at the first call into a
+    /// Python module (decision AL2) and ended with the VM.
+    pub(crate) python: Option<natives::python::Worker>,
     pub stdout: Box<dyn Write>,
     pub stderr: Box<dyn Write>,
     pub stdin: Box<dyn BufRead>,
@@ -309,6 +312,7 @@ impl<'p> Vm<'p> {
             natives,
             foreign: vec![None; program.function_metas.len()],
             libraries: Vec::new(),
+            python: None,
             stdout: options.stdout,
             stderr: options.stderr,
             stdin: options.stdin,
@@ -608,9 +612,10 @@ impl<'p> Vm<'p> {
     /// receives the arguments' origins on its own arguments, and the result
     /// carries those origins together with the origins of what the
     /// callbacks returned.
-    /// A primitive: a native of this build, or a foreign function bound
-    /// through its library (decision AF1); a function with neither is not
-    /// available.
+    /// A primitive: a native of this build, a foreign function bound
+    /// through its library (decision AF1) or a function of a Python module
+    /// run through the bridge (decision AL2); a function with none of them
+    /// is not available.
     fn run_primitive(
         &mut self,
         function: FunctionId,
@@ -623,6 +628,9 @@ impl<'p> Vm<'p> {
         }
         if self.program.function_metas[function].foreign.is_some() {
             return natives::foreign::run(self, function, origins, args);
+        }
+        if self.program.function_metas[function].python.is_some() {
+            return natives::python::run(self, function, origins, args);
         }
         Err(self.unavailable(function))
     }

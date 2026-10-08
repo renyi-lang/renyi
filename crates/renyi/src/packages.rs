@@ -14,8 +14,8 @@ use std::process::ExitCode;
 use renyi_index::{index_files_in, Bump, Header, Index, Kind};
 use renyi_package::{
     hash_of, is_absolute, is_package_name, join, resolve_in, select, Effect, Lock, Locked,
-    Manifest, PackageFile, Project, Registry, Requirement, Version, Versions, LOCK_FILE,
-    MANIFEST_FILE, PACKAGE_FILE, STORE, VERSIONS_FILE,
+    Manifest, PackageFile, Project, PythonSection, Registry, Requirement, Version, Versions,
+    LOCK_FILE, MANIFEST_FILE, PACKAGE_FILE, STORE, VERSIONS_FILE,
 };
 use renyi_syntax::diagnostics::render_text;
 use renyi_syntax::SourceFile;
@@ -396,6 +396,19 @@ fn publish(args: &[String]) -> Fallible<String> {
             .collect();
         return Err(format!(
             "the project has foreign modules ({}); a package carries no native code",
+            names.join(", ")
+        ));
+    }
+    // decision AL1: nor Python
+    if !manifest.python.modules.is_empty() {
+        let names: Vec<String> = manifest
+            .python
+            .modules
+            .iter()
+            .map(|(name, _)| format!("`{name}`"))
+            .collect();
+        return Err(format!(
+            "the project has Python modules ({}); a package carries no Python",
             names.join(", ")
         ));
     }
@@ -927,6 +940,7 @@ fn verify_effects(
             registry: None,
             budgets: None,
             foreign: Vec::new(),
+            python: PythonSection::default(),
         }),
         lock: Some(lock.clone()),
         registry: Some(dependencies_from),

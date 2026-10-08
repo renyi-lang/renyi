@@ -44,6 +44,7 @@ import bytecode exposing Program,
   MethodEntry,
   FunctionMeta,
   ForeignBinding,
+  PythonBinding,
   ConstantMeta,
   TestMeta,
   ExampleMeta,
@@ -56,7 +57,7 @@ import bytecode exposing Program,
   Op
 import declare exposing World,
   ModuleInfo,
-  ForeignModule,
+  SymbolRename,
   BodyLocation,
   FunctionInfo,
   TypeInfo,
@@ -2850,7 +2851,7 @@ function assemble(context: Context, modules: List of CheckedModule) returns Prog
     for each declared in world.abilities
     collect AbilityMeta(name: declared.name, methods: method_names(declared.methods))
   return Program(
-    format: 2,
+    format: 3,
     modules: module_sources(world: world, modules: modules),
     builtins: builtin_ids(world.builtins),
     types: context.types,
@@ -3017,7 +3018,8 @@ function function_meta(context: Context, id: Integer, info: FunctionInfo) return
     capabilities: info.capabilities,
     summary: declare.function_purpose(world: world, id: id),
     code: code,
-    foreign: foreign_binding(world: world, info: info)
+    foreign: foreign_binding(world: world, info: info),
+    python: python_binding(world: world, info: info)
   )
 end
 
@@ -3031,9 +3033,22 @@ function foreign_binding(world: World, info: FunctionInfo) returns maybe Foreign
     collect spelling_or_empty(declare.c_type_of(world: world, ty: param.ty))
   return ForeignBinding(
     libraries: binding.libraries,
-    symbol: symbol_of(binding: binding, name: info.name),
+    symbol: symbol_of(symbols: binding.symbols, name: info.name),
     parameters: parameters,
     result: spelling_or_empty(declare.c_result_of(world: world, result: info.result))
+  )
+end
+
+function python_binding(world: World, info: FunctionInfo) returns maybe PythonBinding
+  purpose: A Python function's binding (decision AL1): package, symbol, interpreter and root.
+
+  let owner_info be declare.module_at(world: world, id: info.owner)
+  let binding be owner_info.python otherwise return nothing
+  return PythonBinding(
+    package: binding.package,
+    symbol: symbol_of(symbols: binding.symbols, name: info.name),
+    interpreter: binding.interpreter,
+    root: binding.root
   )
 end
 
@@ -3044,10 +3059,10 @@ function spelling_or_empty(spelling: maybe Text) returns Text
   return found
 end
 
-function symbol_of(binding: ForeignModule, name: Text) returns Text
-  purpose: The C symbol of a function: the manifest's renaming, else the function's own name.
+function symbol_of(symbols: List of SymbolRename, name: Text) returns Text
+  purpose: The name of a function on the other side: the manifest's renaming, else its own name.
 
-  for each renamed in binding.symbols
+  for each renamed in symbols
     if renamed.name is name then return renamed.symbol end
   end
   return name

@@ -46,6 +46,9 @@ pub struct SourceFile {
     /// The foreign module the file declares (decision AF1): its libraries
     /// and its symbols; `None` for a module written in Renyi.
     pub foreign: Option<ForeignModule>,
+    /// The Python module the file declares (decision AL1); `None` for a
+    /// module written in Renyi.
+    pub python: Option<PythonBinding>,
 }
 
 /// A dependency a file was read from: its name and its version.
@@ -64,6 +67,25 @@ pub struct ForeignModule {
     pub symbols: Vec<(String, String)>,
 }
 
+/// A Python module of the project (decisions AJ2 and AL1): the name the
+/// Python side imports it by and the functions whose Python name differs
+/// from their Renyi name.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PythonModule {
+    pub package: String,
+    pub symbols: Vec<(String, String)>,
+}
+
+/// A Python module as a file is tagged with it: the module, the
+/// interpreter the manifest names, if any, and the project root, which the
+/// worker puts on its module path.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PythonBinding {
+    pub module: PythonModule,
+    pub interpreter: Option<String>,
+    pub root: String,
+}
+
 impl SourceFile {
     pub fn new(name: impl Into<String>, text: impl Into<String>) -> SourceFile {
         let text = text.into();
@@ -79,6 +101,7 @@ impl SourceFile {
             line_starts,
             package: None,
             foreign: None,
+            python: None,
         }
     }
 
@@ -91,6 +114,12 @@ impl SourceFile {
     /// The same file, tagged as the foreign module it declares.
     pub fn in_foreign(mut self, foreign: ForeignModule) -> SourceFile {
         self.foreign = Some(foreign);
+        self
+    }
+
+    /// The same file, tagged as the Python module it declares.
+    pub fn in_python(mut self, python: PythonBinding) -> SourceFile {
+        self.python = Some(python);
         self
     }
 

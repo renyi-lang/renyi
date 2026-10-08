@@ -1,0 +1,11 @@
+module std.python
+  purpose: The failure type of the Python bridge (decision AL4): what a call into a Python module reports instead of a value.
+
+public type PythonError is one of
+  purpose: Why a call through the bridge produced no value: the function raised, the result does not fit the declared type, the interpreter or the module is not there, or the package is outside the grant.
+  Raised(exception: Text, message: Text)
+  NotCarried(detail: Text)
+  Unavailable(detail: Text)
+  PermissionDenied(package: Text)
+  can ToText
+end

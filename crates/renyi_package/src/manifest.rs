@@ -6,7 +6,7 @@
 //! content hash is the hash of its `package.json` text.
 
 use renyi_json::{read_json, write_json, Json};
-use renyi_syntax::ForeignModule;
+use renyi_syntax::{ForeignModule, PythonModule};
 
 use crate::version::Version;
 
@@ -37,6 +37,17 @@ pub struct Manifest {
     pub budgets: Option<Budgets>,
     /// The foreign modules of the project (decision AF1), by module name.
     pub foreign: Vec<(String, ForeignModule)>,
+    /// The Python modules of the project and their interpreter (decision
+    /// AL1).
+    pub python: PythonSection,
+}
+
+/// The `python` section of `renyi.json` (decision AL1): the interpreter
+/// the project names, if any, and its Python modules by module name.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct PythonSection {
+    pub interpreter: Option<String>,
+    pub modules: Vec<(String, PythonModule)>,
 }
 
 /// One entry of the lockfile.
@@ -257,18 +268,7 @@ fn foreign_of(fields: &Fields, what: &str) -> Result<Vec<(String, ForeignModule)
         if libraries.is_empty() {
             return Err(format!("`library` of {entry_what} is empty"));
         }
-        let mut symbols: Vec<(String, String)> = Vec::new();
-        if let Some(object) = optional_object(entry, "symbols", &entry_what)? {
-            for (renyi, json) in object {
-                let Json::Text(symbol) = json else {
-                    return Err(format!(
-                        "`{renyi}` in the symbols of {entry_what} is not a string"
-                    ));
-                };
-                symbols.push((renyi.clone(), symbol.clone()));
-            }
-            symbols.sort();
-        }
+        let symbols = symbols_of(entry, &entry_what)?;
         modules.push((name.clone(), ForeignModule { libraries, symbols }));
     }
     modules.sort_by(|a, b| a.0.cmp(&b.0));
@@ -291,21 +291,114 @@ fn foreign_json(modules: &[(String, ForeignModule)]) -> Json {
                     ),
                 )];
                 if !module.symbols.is_empty() {
-                    fields.push((
-                        "symbols".to_string(),
-                        Json::Object(
-                            module
-                                .symbols
-                                .iter()
-                                .map(|(renyi, symbol)| (renyi.clone(), Json::Text(symbol.clone())))
-                                .collect(),
-                        ),
-                    ));
+                    fields.push(("symbols".to_string(), symbols_json(&module.symbols)));
                 }
                 (name.clone(), Json::Object(fields))
             })
             .collect(),
     )
+}
+
+/// The `symbols` object of a bound module: the Renyi name to the name on
+/// the other side, sorted by the Renyi name.
+fn symbols_of(entry: &Fields, what: &str) -> Result<Vec<(String, String)>, String> {
+    let mut symbols: Vec<(String, String)> = Vec::new();
+    if let Some(object) = optional_object(entry, "symbols", what)? {
+        for (renyi, json) in object {
+            let Json::Text(symbol) = json else {
+                return Err(format!(
+                    "`{renyi}` in the symbols of {what} is not a string"
+                ));
+            };
+            symbols.push((renyi.clone(), symbol.clone()));
+        }
+        symbols.sort();
+    }
+    Ok(symbols)
+}
+
+fn symbols_json(symbols: &[(String, String)]) -> Json {
+    Json::Object(
+        symbols
+            .iter()
+            .map(|(renyi, symbol)| (renyi.clone(), Json::Text(symbol.clone())))
+            .collect(),
+    )
+}
+
+/// The `python` section (decision AL1): the interpreter, when the project
+/// names one, and each Python module of the project by module name, with
+/// the name the Python side imports it by (`package`, the module's own
+/// name when left out) and the functions whose Python name differs from
+/// their Renyi name; sorted by module name.
+fn python_of(fields: &Fields, what: &str) -> Result<PythonSection, String> {
+    let Some(section) = optional_object(fields, "python", what)? else {
+        return Ok(PythonSection::default());
+    };
+    let section_what = format!("`python` of {what}");
+    only(section, &["interpreter", "modules"], &section_what)?;
+    let interpreter = optional_text(section, "interpreter", &section_what)?;
+    let mut modules: Vec<(String, PythonModule)> = Vec::new();
+    if let Some(object) = optional_object(section, "modules", &section_what)? {
+        for (name, json) in object {
+            if !name.split('.').all(is_package_name) {
+                return Err(format!(
+                    "`{name}` in the Python modules of {what} is not a module name"
+                ));
+            }
+            if modules.iter().any(|(other, _)| other == name) {
+                return Err(format!(
+                    "`{name}` is given twice in the Python modules of {what}"
+                ));
+            }
+            let entry_what = format!("the Python module `{name}` of {what}");
+            let Json::Object(entry) = json else {
+                return Err(format!("{entry_what} is not an object"));
+            };
+            only(entry, &["package", "symbols"], &entry_what)?;
+            let package =
+                optional_text(entry, "package", &entry_what)?.unwrap_or_else(|| name.clone());
+            if package.is_empty() {
+                return Err(format!("`package` of {entry_what} is empty"));
+            }
+            let symbols = symbols_of(entry, &entry_what)?;
+            modules.push((name.clone(), PythonModule { package, symbols }));
+        }
+        modules.sort_by(|a, b| a.0.cmp(&b.0));
+    }
+    Ok(PythonSection {
+        interpreter,
+        modules,
+    })
+}
+
+fn python_json(section: &PythonSection) -> Json {
+    let mut fields = Vec::new();
+    if let Some(interpreter) = &section.interpreter {
+        fields.push(("interpreter".to_string(), Json::Text(interpreter.clone())));
+    }
+    if !section.modules.is_empty() {
+        fields.push((
+            "modules".to_string(),
+            Json::Object(
+                section
+                    .modules
+                    .iter()
+                    .map(|(name, module)| {
+                        let mut entry = Vec::new();
+                        if module.package != *name {
+                            entry.push(("package".to_string(), Json::Text(module.package.clone())));
+                        }
+                        if !module.symbols.is_empty() {
+                            entry.push(("symbols".to_string(), symbols_json(&module.symbols)));
+                        }
+                        (name.clone(), Json::Object(entry))
+                    })
+                    .collect(),
+            ),
+        ));
+    }
+    Json::Object(fields)
 }
 
 impl Manifest {
@@ -322,6 +415,7 @@ impl Manifest {
                 "registry",
                 "budgets",
                 "foreign",
+                "python",
             ],
             what,
         )?;
@@ -357,6 +451,7 @@ impl Manifest {
             registry: optional_text(&fields, "registry", what)?,
             budgets,
             foreign: foreign_of(&fields, what)?,
+            python: python_of(&fields, what)?,
         })
     }
 
@@ -387,6 +482,9 @@ impl Manifest {
         }
         if !self.foreign.is_empty() {
             fields.push(("foreign", foreign_json(&self.foreign)));
+        }
+        if self.python.interpreter.is_some() || !self.python.modules.is_empty() {
+            fields.push(("python", python_json(&self.python)));
         }
         render(fields)
     }
@@ -622,6 +720,36 @@ mod tests {
             Some(12)
         );
         assert_eq!(manifest.render(), text);
+    }
+
+    #[test]
+    fn a_python_section_reads_and_renders_the_same() {
+        // decision AL1: the interpreter and the modules, `package` left out
+        // when it is the module's own name
+        let text = "{\n  \"name\": \"bridge\",\n  \"version\": \"0.1.0\",\n  \"dependencies\": {},\n  \"python\": {\n    \"interpreter\": \"python3\",\n    \"modules\": {\n      \"analysis\": {\n        \"symbols\": {\n          \"mean\": \"average\"\n        }\n      },\n      \"stats\": {\n        \"package\": \"scipy.stats\"\n      }\n    }\n  }\n}\n";
+        let manifest = Manifest::read(text).expect("a manifest");
+        assert_eq!(manifest.python.interpreter.as_deref(), Some("python3"));
+        assert_eq!(manifest.python.modules.len(), 2);
+        assert_eq!(manifest.python.modules[0].1.package, "analysis");
+        assert_eq!(
+            manifest.python.modules[0].1.symbols,
+            vec![("mean".to_string(), "average".to_string())]
+        );
+        assert_eq!(manifest.python.modules[1].1.package, "scipy.stats");
+        assert_eq!(manifest.render(), text);
+        let error = Manifest::read(
+            "{\"name\": \"a\", \"version\": \"1.0.0\", \"python\": {\"modules\": {\"Bad\": {}}}}",
+        )
+        .expect_err("refused");
+        assert_eq!(
+            error,
+            "`Bad` in the Python modules of the manifest is not a module name"
+        );
+        let error = Manifest::read(
+            "{\"name\": \"a\", \"version\": \"1.0.0\", \"python\": {\"worker\": \"x\"}}",
+        )
+        .expect_err("refused");
+        assert_eq!(error, "`worker` is not a field of `python` of the manifest");
     }
 
     #[test]

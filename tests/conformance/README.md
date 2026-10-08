@@ -14,6 +14,7 @@ suite is the contract; `crates/` is one implementation of it.
 | `programs/<name>.ry` | programs written for one diagnostic or one runtime guarantee; the corpus programs under `examples/` are referred to in place |
 | `packages/` | the package fixture of decision AC1: a directory registry with one package (`registry/greeting/1.0.0/`, its `package.json` as `renyi publish` renders it) and the projects that use it, each with its `renyi.json` (`project/` with the lockfile that matches, `stale/` with one that does not, `unlocked/` without one, `broken/` with a manifest the format refuses) |
 | `foreign/`, `foreign_bad/` | the foreign fixtures of decision AF1: a project whose `renyi.json` binds the foreign module `libc` to the C library (`length.ry` calls `strlen` and `abs`), and one whose declarations break every rule of the boundary (`bad.ry`) |
+| `python/`, `python_bad/` | the Python fixtures of decision AL1: a project whose `renyi.json` binds the module `analysis` to `analysis.py` beside it (`stats.ry` calls it through the bridge, an exception and a result of the wrong type included; the runner needs a Python 3 on the PATH), and one whose declarations break every rule of the bridge (`bad.ry`) |
 | `../../tools/conformance.py` | the runner: `python tools/conformance.py <renyi-binary>` from the repository root |
 | `../../crates/renyi/tests/conformance.rs` | the same manifest run by `cargo test` against the Rust binary |
 

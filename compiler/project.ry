@@ -9,7 +9,7 @@ import ast exposing Module, Span
 import lexer
 import parser
 import report exposing Diagnostic
-import declare exposing World, PackageTag, ForeignModule, SymbolRename
+import declare exposing World, PackageTag, ForeignModule, SymbolRename, PythonModule
 import bodies exposing Reference
 import effects
 
@@ -28,6 +28,7 @@ public type Source
   has front: Front
   has package: maybe PackageTag
   has foreign: maybe ForeignModule
+  has python: maybe PythonModule
 end
 
 public type CheckedModule
@@ -64,12 +65,27 @@ type Manifest
   has dependencies: List of Text
   has registry: maybe Text
   has foreign: List of ForeignEntry
+  has interpreter: maybe Text
+  has python: List of PythonEntry
 end
 
 type ForeignEntry
   purpose: One entry of the manifest's `foreign` section (decision AF1): a module and its binding.
   has name: Text
   has binding: ForeignModule
+end
+
+type PythonEntry
+  purpose: One module of the manifest's `python` section (decision AL1): its package, its symbols.
+  has name: Text
+  has package: Text
+  has symbols: List of SymbolRename
+end
+
+type PythonSection
+  purpose: The manifest's `python` section (decision AL1): the interpreter, if any, and the modules.
+  has interpreter: maybe Text
+  has modules: List of PythonEntry
 end
 
 type Locked
@@ -173,7 +189,8 @@ let library_modules: List of Text be [
   "sqlite",
   "regex",
   "process",
-  "foreign"
+  "foreign",
+  "python"
 ]
 
 let manifest_file: Text be "renyi.json"
@@ -191,7 +208,8 @@ let manifest_fields: List of Text be [
   "dependencies",
   "registry",
   "budgets",
-  "foreign"
+  "foreign",
+  "python"
 ]
 
 let budget_names: List of Text be [
@@ -237,21 +255,32 @@ public function source_of(name: Text, text: Text) returns Source needs filesyste
 
   let root be root_of(name)
   let binding be foreign_of_file(root: root, file_name: name)
-  return file_source(name: name, text: text, package: nothing, binding: binding)
+  let python be python_unless_foreign(root: root, file_name: name, binding: binding)
+  return file_source(name: name, text: text, package: nothing, binding: binding, python: python)
+end
+
+function python_unless_foreign(root: Root, file_name: Text, binding: maybe ForeignModule)
+  returns maybe PythonModule
+  purpose: The Python binding of a file that is not a foreign module; the `foreign` section wins.
+
+  if binding is not nothing then return nothing end
+  return python_of_file(root: root, file_name: file_name)
 end
 
 function file_source(
   name: Text,
   text: Text,
   package: maybe PackageTag,
-  binding: maybe ForeignModule
+  binding: maybe ForeignModule,
+  python: maybe PythonModule
 )
   returns Source
-  purpose: A file as the commands hold it, tagged with its package or as a foreign module (AF1).
+  purpose: A file as the commands hold it, tagged with its package or as a bound module (AF1, AL1).
 
   let chars be text.characters()
   let starts be report.line_starts(chars)
-  let front be front_end(text: text, chars: chars, declarations: binding is not nothing)
+  let declares be binding is not nothing or python is not nothing
+  let front be front_end(text: text, chars: chars, declarations: declares)
   return Source(
     name: name,
     text: text,
@@ -259,7 +288,8 @@ function file_source(
     starts: starts,
     front: front,
     package: package,
-    foreign: binding
+    foreign: binding,
+    python: python
   )
 end
 
@@ -331,7 +361,7 @@ public function check_project(files: List of Source, library: List of Module) re
         let built be declare.add_module(
           world: world,
           tree: tree,
-          is_library: file.foreign is not nothing
+          is_library: file.foreign is not nothing or file.python is not nothing
         )
         change world to declare.set_source_lines(
           world: built.world,
@@ -341,6 +371,7 @@ public function check_project(files: List of Source, library: List of Module) re
         )
         change world to tagged(world: world, id: built.value, package: file.package)
         change world to foreign_tagged(world: world, id: built.value, binding: file.foreign)
+        change world to python_tagged(world: world, id: built.value, binding: file.python)
         change modules to modules.append(
           CheckedModule(id: built.value, path: file.name, diagnostics: diagnostics, references: [])
         )
@@ -363,6 +394,13 @@ function foreign_tagged(world: World, id: Integer, binding: maybe ForeignModule)
 
   let found be binding otherwise return world
   return declare.set_foreign(world: world, id: id, foreign: found)
+end
+
+function python_tagged(world: World, id: Integer, binding: maybe PythonModule) returns World
+  purpose: The module tagged as a Python module (decision AL1), when the manifest names it.
+
+  let found be binding otherwise return world
+  return declare.set_python(world: world, id: id, python: found)
 end
 
 public function check_project_with_problems(
@@ -506,10 +544,12 @@ public function resolve(program: Source) returns Resolved needs filesystem.read
     if seen.contains(step.qualified) then continue end
     change seen to seen.append(step.qualified)
     let binding be step_binding(root: root, step: step)
+    let python be step_python(root: root, step: step, binding: binding)
     let found be read_source(
       base: step.base,
       package: step.package,
-      binding: binding
+      binding: binding,
+      python: python
     ) otherwise continue
     let imports be pending_imports(front: found.front, origin: step.origin, importer: found.name)
     change queue to queue.append_all(imports)
@@ -607,7 +647,12 @@ function package_step(located: Located, pending: Pending, name: Text) returns St
   )
 end
 
-function read_source(base: Text, package: maybe PackageTag, binding: maybe ForeignModule)
+function read_source(
+  base: Text,
+  package: maybe PackageTag,
+  binding: maybe ForeignModule,
+  python: maybe PythonModule
+)
   returns maybe Source
   needs filesystem.read
   purpose: An imported file with the `.ry` or the `.renyi` extension (decision G3), parsed.
@@ -615,7 +660,7 @@ function read_source(base: Text, package: maybe PackageTag, binding: maybe Forei
   for each extension in ["ry", "renyi"]
     let path be "{base}.{extension}"
     let text be filesystem.read_text(Path(path)) otherwise continue
-    return file_source(name: path, text: text, package: package, binding: binding)
+    return file_source(name: path, text: text, package: package, binding: binding, python: python)
   end
   return nothing
 end
@@ -625,6 +670,43 @@ function step_binding(root: Root, step: Step) returns maybe ForeignModule
 
   if step.package is not nothing then return nothing end
   return foreign_of_module(root: root, name: step.qualified)
+end
+
+function step_python(root: Root, step: Step, binding: maybe ForeignModule)
+  returns maybe PythonModule
+  purpose: The Python binding of an own file that is not a foreign module; a dependency has none.
+
+  if step.package is not nothing or binding is not nothing then return nothing end
+  return python_of_module(root: root, name: step.qualified)
+end
+
+function python_of_module(root: Root, name: Text) returns maybe PythonModule
+  purpose: The binding of a Python module of the project (decision AL1), by its qualified name.
+
+  let manifest be root.manifest otherwise return nothing
+  let entry be python_named(modules: manifest.python, name: name) otherwise return nothing
+  return PythonModule(
+    package: entry.package,
+    symbols: entry.symbols,
+    interpreter: manifest.interpreter,
+    root: root.directory
+  )
+end
+
+function python_of_file(root: Root, file_name: Text) returns maybe PythonModule
+  purpose: The binding of a file that declares a Python module: its path from the root is its name.
+
+  let name be module_of_file(root: root, file_name: file_name) otherwise return nothing
+  return python_of_module(root: root, name: name)
+end
+
+function python_named(modules: List of PythonEntry, name: Text) returns maybe PythonEntry
+  purpose: The entry of the `python` section for a module name, if there is one.
+
+  for each entry in modules
+    if entry.name is name then return entry end
+  end
+  return nothing
 end
 
 function foreign_of_module(root: Root, name: Text) returns maybe ForeignModule
@@ -638,6 +720,13 @@ end
 function foreign_of_file(root: Root, file_name: Text) returns maybe ForeignModule
   purpose: The binding of a file that declares a foreign module: its path from the root is its name.
 
+  let name be module_of_file(root: root, file_name: file_name) otherwise return nothing
+  return foreign_of_module(root: root, name: name)
+end
+
+function module_of_file(root: Root, file_name: Text) returns maybe Text
+  purpose: The module a file declares by its path from the project root, without the extension.
+
   let mutable relative be file_name
   if not root.directory.is_empty() then
     if not file_name.starts_with(root.directory) then return nothing end
@@ -647,7 +736,7 @@ function foreign_of_file(root: Root, file_name: Text) returns maybe ForeignModul
   let last be components.last() otherwise return nothing
   if not (last.ends_with(".ry") or last.ends_with(".renyi")) then return nothing end
   let segments be components.without_last().append(without_extension(last))
-  return foreign_of_module(root: root, name: segments.join("."))
+  return segments.join(".")
 end
 
 function foreign_named(modules: List of ForeignEntry, name: Text) returns maybe ForeignEntry
@@ -1071,14 +1160,94 @@ function read_manifest(text: Text) returns Manifest or fails with Refused
   let dependencies be dependency_names(fields: fields, what: what) otherwise fail
   let registry be optional_text(fields: fields, name: "registry", what: what) otherwise fail
   let bindings be foreign_modules(fields: fields, what: what) otherwise fail
+  let section be python_section(fields: fields, what: what) otherwise fail
   return Manifest(
     name: name,
     version: version,
     described: described,
     dependencies: dependencies,
     registry: registry,
-    foreign: bindings
+    foreign: bindings,
+    interpreter: section.interpreter,
+    python: section.modules
   )
+end
+
+function python_section(fields: Map of Text to JsonValue, what: Text)
+  returns PythonSection
+  or fails with Refused
+  purpose: The `python` section (decision AL1): the interpreter, each module's package and symbols.
+
+  let none: maybe Text be nothing
+  let section be
+    match fields.get("python")
+      when some(JsonObject(fields: inner)) then inner
+      when some(JsonNull) then return PythonSection(interpreter: none, modules: [])
+      when nothing then return PythonSection(interpreter: none, modules: [])
+      otherwise fail with Refused(detail: "`python` of {what} is not an object")
+    end
+  let section_what be "`python` of {what}"
+  keys_known(
+    fields: section,
+    allowed: ["interpreter", "modules"],
+    what: section_what
+  ) otherwise fail
+  let interpreter be optional_text(
+    fields: section,
+    name: "interpreter",
+    what: section_what
+  ) otherwise fail
+  let modules be python_modules(
+    section: section,
+    what: what,
+    section_what: section_what
+  ) otherwise fail
+  return PythonSection(interpreter: interpreter, modules: modules)
+end
+
+function python_modules(section: Map of Text to JsonValue, what: Text, section_what: Text)
+  returns List of PythonEntry
+  or fails with Refused
+  purpose: The `modules` object of the `python` section: each module's package and renamed symbols.
+
+  let entries be
+    match section.get("modules")
+      when some(JsonObject(fields: inner)) then inner
+      when some(JsonNull) then return []
+      when nothing then return []
+      otherwise fail with Refused(detail: "`modules` of {section_what} is not an object")
+    end
+  let mutable modules: List of PythonEntry be []
+  for each name, value in entries
+    if not is_module_name(name) then
+      fail with Refused(detail: "`{name}` in the Python modules of {what} is not a module name")
+    end
+    if python_named(modules: modules, name: name) is not nothing then
+      fail with Refused(detail: "`{name}` is given twice in the Python modules of {what}")
+    end
+    let entry_what be "the Python module `{name}` of {what}"
+    let entry be python_entry(name: name, value: value, what: entry_what) otherwise fail
+    change modules to modules.append(entry)
+  end
+  return modules
+end
+
+function python_entry(name: Text, value: JsonValue, what: Text)
+  returns PythonEntry
+  or fails with Refused
+  purpose: One Python module of the manifest: its `package` (its own name when left out), `symbols`.
+
+  let entry be
+    match value
+      when JsonObject(fields: found) then found
+      otherwise fail with Refused(detail: "{what} is not an object")
+    end
+  keys_known(fields: entry, allowed: ["package", "symbols"], what: what) otherwise fail
+  let package be optional_text(fields: entry, name: "package", what: what) otherwise fail
+  let import_name be package otherwise name
+  if import_name.is_empty() then fail with Refused(detail: "`package` of {what} is empty") end
+  let symbols be symbol_renames(entry: entry, what: what) otherwise fail
+  return PythonEntry(name: name, package: import_name, symbols: symbols)
 end
 
 function foreign_modules(fields: Map of Text to JsonValue, what: Text)

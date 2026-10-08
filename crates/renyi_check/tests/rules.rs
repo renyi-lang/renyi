@@ -516,6 +516,61 @@ fn process_and_foreign_are_capabilities_of_the_tree() {
 }
 
 #[test]
+fn python_is_a_capability_of_the_tree_with_a_package_and_no_budget() {
+    // decision AJ3: `python("<package>")`, the package the manifest binds
+    for source in [
+        "public function main() needs console, python(\"analysis\")\n  purpose: Bridge.\n\n  console.print(\"hi\")\nend\n",
+        "function go() needs python\n  ignore 1\nend\n",
+    ] {
+        let found = codes(&program(source));
+        assert!(
+            !found
+                .iter()
+                .any(|code| code == "unknown-capability" || code == "capability-scope"),
+            "{source}: {found:?}"
+        );
+    }
+    raises(
+        &program("public function main() needs python(\"analysis\") at most 3 per run\n  purpose: Bridge.\n\n  ignore 1\nend\n"),
+        "grant-clause",
+    );
+}
+
+#[test]
+fn a_python_module_declares_within_the_bridge() {
+    // decision AL1: a declaration file bound to a Python module needs
+    // `python("<package>")` alone, fails with `PythonError` alone, and its
+    // types cross as JSON
+    let binding = renyi_syntax::PythonBinding {
+        module: renyi_syntax::PythonModule {
+            package: "analysis".to_string(),
+            symbols: Vec::new(),
+        },
+        interpreter: None,
+        root: String::new(),
+    };
+    let declarations = "module analysis\n  purpose: Bound to Python.\n\nimport std.python exposing PythonError\n\npublic type Opaque\n  purpose: A record without `can ToJson`.\n  has value: Integer\nend\n\npublic function mean(values: List of Float) returns Float or fails with PythonError needs python(\"analysis\")\n  purpose: Fine.\n\npublic function elsewhere(value: Integer) returns Integer or fails with PythonError needs python(\"other\")\n  purpose: Another package.\n\npublic function quiet(value: Integer) returns Integer needs python(\"analysis\")\n  purpose: No failure.\n\npublic function opaque(value: Opaque) returns Map of Integer to Text or fails with PythonError needs python(\"analysis\")\n  purpose: Neither side crosses.\n";
+    let file = SourceFile::new("analysis.ry", declarations).in_python(binding);
+    let checked = renyi_check::check_project(&[file]);
+    let found: Vec<(String, String)> = checked.modules[0]
+        .diagnostics
+        .iter()
+        .map(|d| (d.code.to_string(), d.message.clone()))
+        .collect();
+    let expected = [
+        ("python-signature", "`elsewhere` is declared in a Python module; it needs `python(\"analysis\")` and nothing else"),
+        ("python-signature", "`quiet` is declared in a Python module; it fails with `PythonError` and nothing else"),
+        ("python-type", "the parameter `value` of `opaque` has type `Opaque`; across the bridge a parameter is a type `std.json` renders, one that can ToJson"),
+        ("python-type", "`opaque` returns `Map of Integer to Text`; across the bridge a result is a type `std.json` parses, one that can FromJson, or nothing"),
+    ];
+    assert_eq!(found.len(), expected.len(), "{found:?}");
+    for ((code, message), (expected_code, expected_message)) in found.iter().zip(expected) {
+        assert_eq!(code, expected_code, "{found:?}");
+        assert_eq!(message, expected_message, "{found:?}");
+    }
+}
+
+#[test]
 fn a_deprecated_definition_warns_its_callers() {
     let old = "function old(value: Integer) returns Integer\n  deprecated: since 0.2, replaced by fresh\n  example: old(1) is 2\n\n  return value + 1\nend\n\nfunction fresh(value: Integer) returns Integer\n  return value + 1\nend\n\n";
     let caller = format!("{old}function go() returns Integer\n  return old(1)\nend\n");

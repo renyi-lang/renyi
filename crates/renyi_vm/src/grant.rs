@@ -475,9 +475,9 @@ pub fn parse_capability(text: &str) -> Result<Capability, String> {
 
 /// The capability a primitive call exercises: the primitive's declared need
 /// with the scope its argument names (a path, the host of a URL, a
-/// variable); `None` for a pure primitive. `filesystem.copy` reads its
-/// source and `move` writes it; their target is a second effect
-/// (`target_effect_of`).
+/// variable) or its declaration names (a Python package); `None` for a pure
+/// primitive. `filesystem.copy` reads its source and `move` writes it;
+/// their target is a second effect (`target_effect_of`).
 pub fn effect_of(meta: &FunctionMeta, args: &[Value]) -> Option<Capability> {
     let need = meta.needs.first()?;
     let mut effect = Capability {
@@ -513,6 +513,8 @@ pub fn effect_of(meta: &FunctionMeta, args: &[Value]) -> Option<Capability> {
                 args.first().and_then(Value::as_text).map(str::to_string)
             }
             Some("process") => typed("Text").map(str::to_string),
+            // the package the declaration names (decision AJ3)
+            Some("python") => need.scope.clone(),
             _ => None,
         };
     }

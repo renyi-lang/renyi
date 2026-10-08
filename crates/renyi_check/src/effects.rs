@@ -28,14 +28,19 @@ pub const TREE: &[&str] = &[
     "random",
     "process",
     "foreign",
+    "python",
 ];
 
-/// Capabilities that take a scope argument (a path, a host, a variable or a
-/// program name); the others take none.
+/// Capabilities that take a scope argument (a path, a host, a variable, a
+/// program name or a Python package); the others take none.
 pub fn takes_scope(path: &[String]) -> bool {
     matches!(
         path.first().map(String::as_str),
-        Some("filesystem") | Some("network") | Some("environment") | Some("process")
+        Some("filesystem")
+            | Some("network")
+            | Some("environment")
+            | Some("process")
+            | Some("python")
     )
 }
 
@@ -95,9 +100,9 @@ impl Capability {
     }
 }
 
-/// A path prefix contains its sub-paths; a host, a variable or a program
-/// name contains only itself. The runtime uses the same rule for the grant
-/// it narrows and the paths it checks.
+/// A path prefix contains its sub-paths; a host, a variable, a program
+/// name or a package contains only itself. The runtime uses the same rule
+/// for the grant it narrows and the paths it checks.
 pub fn scope_contains(path: &[String], granted: &str, wanted: &str) -> bool {
     if path.first().map(String::as_str) == Some("filesystem") {
         let granted = granted.trim_end_matches('/');

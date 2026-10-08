@@ -74,6 +74,9 @@ renyi run program.ry        # main, under the grant it declares
 - [Extending Renyi with Rust](extensions.md): a declaration file, a
   table of natives and a binary of three lines; what the boundary does
   for them.
+- [Calling Python from Renyi](python.md): a declaration file bound to a
+  Python module by the manifest, one worker per run, what crosses and
+  what fails.
 - [The positioning](design/08-positioning.md): the niche, the four
   points the language leads with and the comparison with the
   alternatives; [the design decisions](design/01-decisions.md), with

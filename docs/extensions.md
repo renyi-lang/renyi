@@ -40,7 +40,8 @@ public function peek(path: Path) returns Text or fails with PeekError needs file
 
 The capabilities are those of reference section 11 and no others
 (decision AK4): `console`, `filesystem`, `network`, `environment`,
-`time`, `random`, `process`, `foreign`. A function declared under a kind
+`time`, `random`, `process`, `foreign` and `python` (the bridge's,
+decision AJ3; the guide is `python.md`). A function declared under a kind
 that takes a scope (`filesystem`, `network`, `environment`, `process`)
 names its scope through a parameter: a `Path` for `filesystem`, a `Url`
 for `network`, the variable's name for `environment.get`, the program's

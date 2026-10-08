@@ -63,7 +63,7 @@ jobs:
           python-version: "3.12"
 
       # the implementation-independent runner against the release binary:
-      # the same 51 cases CI runs against the development build
+      # the same 53 cases CI runs against the development build
       - name: Conformance suite on the release binary
         shell: bash
         run: python tools/conformance.py target/${{ matrix.target }}/release/renyi${{ matrix.archive == 'zip' && '.exe' || '' }}

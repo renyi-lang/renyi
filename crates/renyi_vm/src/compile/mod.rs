@@ -89,6 +89,8 @@ pub struct FunctionMeta {
     pub purpose: Option<String>,
     /// A foreign function's binding (decision AF1).
     pub foreign: Option<Foreign>,
+    /// A Python function's binding (decision AL1).
+    pub python: Option<Python>,
 }
 
 /// A foreign function's binding (decision AF1): the libraries its symbol
@@ -100,6 +102,39 @@ pub struct Foreign {
     pub symbol: String,
     pub parameters: Vec<String>,
     pub result: String,
+}
+
+/// A Python function's binding (decision AL1): the name the worker imports
+/// the module by, the function's name on the Python side, the interpreter
+/// the manifest names, if any, and the project root.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Python {
+    pub package: String,
+    pub symbol: String,
+    pub interpreter: Option<String>,
+    pub root: String,
+}
+
+/// The binding of a function of a Python module (decision AL1): the
+/// symbol the manifest renames or the function's own name.
+fn python_binding(
+    info: &renyi_check::world::FunctionInfo,
+    module: &renyi_check::world::ModuleInfo,
+) -> Option<Python> {
+    let binding = module.python.as_ref()?;
+    let symbol = binding
+        .module
+        .symbols
+        .iter()
+        .find(|(renyi, _)| *renyi == info.name)
+        .map(|(_, symbol)| symbol.clone())
+        .unwrap_or_else(|| info.name.clone());
+    Some(Python {
+        package: binding.module.package.clone(),
+        symbol,
+        interpreter: binding.interpreter.clone(),
+        root: binding.root.clone(),
+    })
 }
 
 /// The binding of a function of a foreign module (decision AF1): the
@@ -389,6 +424,7 @@ pub fn compile_project(checked: &CheckedProject, files: &[SourceFile]) -> Progra
             needs: info.needs.clone(),
             purpose,
             foreign: foreign_binding(world, info, module),
+            python: python_binding(info, module),
         });
     }
     // constants by name per module, so that bodies can refer to them

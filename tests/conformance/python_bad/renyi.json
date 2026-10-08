@@ -1,0 +1,11 @@
+{
+  "name": "bridgebad",
+  "version": "0.1.0",
+  "purpose": "Declarations the bridge to Python refuses.",
+  "dependencies": {},
+  "python": {
+    "modules": {
+      "bad": {}
+    }
+  }
+}

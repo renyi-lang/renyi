@@ -1,0 +1,37 @@
+module bad
+  purpose: Declarations a Python module may not hold: each one breaks a rule of the bridge.
+
+import std.python exposing PythonError
+
+public type Opaque
+  purpose: A record without `can ToJson` or `can FromJson`.
+  has value: Integer
+end
+
+public function elsewhere(value: Integer)
+  returns Integer
+  or fails with PythonError
+  needs python("other")
+  purpose: Needs another package than the one the manifest binds.
+
+public function quiet(value: Integer) returns Integer needs python("bad")
+  purpose: Declares no failure.
+
+public function generic(value: Item)
+  returns Item
+  or fails with PythonError
+  needs python("bad")
+  for any Item
+  purpose: Takes a type parameter.
+
+public function opaque(value: Opaque)
+  returns Opaque
+  or fails with PythonError
+  needs python("bad")
+  purpose: A record without the JSON abilities crosses neither way.
+
+public function keyed(table: Map of Integer to Text)
+  returns Pair of Integer, Text
+  or fails with PythonError
+  needs python("bad")
+  purpose: A map without Text keys and a pair are not JSON.

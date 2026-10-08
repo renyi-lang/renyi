@@ -1,0 +1,28 @@
+module stats
+  purpose: Call a Python module of the project through the bridge; the manifest binds `analysis`.
+
+import std.console
+import std.python exposing PythonError
+import analysis exposing Sample
+
+function main() or fails with PythonError needs console, python("analysis")
+  purpose: Print what Python computes, how an exception comes back, and how a wrong result does.
+
+  let mean be analysis.mean([1.0, 2.0, 4.5]) otherwise fail
+  console.print("{mean}")
+  let sample be Sample(name: "renyi", labels: ["lang", "agents"])
+  let described be analysis.describe(sample) otherwise fail
+  let joined be described.labels.join(" ")
+  console.print("{described.name} {described.total} {joined}")
+  let shouted be analysis.shout("hello") otherwise fail
+  console.print(shouted)
+  match analysis.explode("boom")
+    when failure(Raised(exception, message)) then console.print("{exception}: {message}")
+    otherwise console.print("no exception")
+  end
+  match analysis.oddly(3)
+    when failure(NotCarried) then console.print("not carried")
+    when failure(other) then console.print("other: {other}")
+    when success(value) then console.print("{value}")
+  end
+end

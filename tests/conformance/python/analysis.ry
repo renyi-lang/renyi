@@ -1,0 +1,46 @@
+module analysis
+  purpose: The functions of `analysis.py`, declared for the bridge; `mean` is `average` in Python.
+
+import std.python exposing PythonError
+
+public type Sample
+  purpose: What `describe` takes: a name and its labels.
+  has name: Text
+  has labels: List of Text
+  can ToJson
+end
+
+public type Description
+  purpose: What `describe` gives back: the name in capitals, how many labels, the labels sorted.
+  has name: Text
+  has total: Integer
+  has labels: List of Text
+  can FromJson
+end
+
+public function mean(values: List of Float)
+  returns Float
+  or fails with PythonError
+  needs python("analysis")
+  purpose: The arithmetic mean of the values.
+
+public function describe(sample: Sample)
+  returns Description
+  or fails with PythonError
+  needs python("analysis")
+  purpose: The sample described.
+
+public function shout(text: Text)
+  returns Text
+  or fails with PythonError
+  needs python("analysis")
+  purpose: The text in capitals with a bang.
+
+public function explode(message: Text) or fails with PythonError needs python("analysis")
+  purpose: Raises `ValueError` with the message.
+
+public function oddly(times: Integer)
+  returns Integer
+  or fails with PythonError
+  needs python("analysis")
+  purpose: Gives back a text where an Integer is declared.

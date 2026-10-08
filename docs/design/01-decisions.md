@@ -2368,3 +2368,72 @@ name, now followed by shape, so that an extension's own error type is
 reported the same way; a function without such a variant crashes, as
 before. The alternative, kinds registered by extensions, would make the
 grant's names depend on the binary. (user)
+
+## AL. The Python bridge (session 8)
+
+The owner's answers of 2026-10-07, late evening, to the four questions
+decision AJ2 left open. The bridge is `crates/renyi_vm/src/natives/python.rs`
+with the worker `python_worker.py` beside it, the checker's rules
+`crates/renyi_check/src/python.rs`, the guide `docs/python.md`, the
+tests `crates/renyi/tests/python.rs` and the fixtures
+`tests/conformance/python/` and `python_bad/`.
+
+**AL1. A Python module is bound as a foreign module is (decision AF1): a
+declaration file of the project, written by hand, that the manifest's
+`python` section names: `"python": {"interpreter": "...", "modules":
+{"analysis": {"package": "analysis", "symbols": {"mean": "average"}}}}`,
+`interpreter`, `package` (the Python import name; the module's own name
+when left out) and `symbols` optional.** Each function of such a file
+needs `python("<package>")` and nothing else, fails with `PythonError`
+and nothing else and takes no type parameters (`python-signature`); its
+parameters are types that can `ToJson` and its result a type that can
+`FromJson`, or nothing (`python-type`): what `std.json` renders and
+parses is what crosses, records and sum types included, and the
+checker's structural rule decides it. The bytecode file carries the
+binding per function (`python` after `foreign`; the file is format 3).
+The alternatives: declaration files shipped with the toolchain for
+known packages, which would make the toolchain answer for the shape of
+every Python package it names and go stale with each release of one; or
+declaration files generated from Python's annotations, which most
+packages do not carry and which say nothing about failures. (user)
+
+**AL2. The protocol is one JSON object per line on the worker's
+standard input and standard output: `{"call": N, "module": "...",
+"function": "...", "arguments": [...]}` and `{"call": N, "result":
+...}` or `{"call": N, "error": {"where": "import" | "call" | "result",
+"kind": "ValueError", "message": "..."}}`, the arguments by position in
+the order the declaration lists them; one worker per run, started at the
+first call with the project root on its module path, ended with the
+VM.** The worker's program is a text the VM passes with `-c`, so a
+project installs nothing; what the Python functions print goes to the
+standard error, so it cannot mix with the protocol; a replay never
+starts the worker; a result the declaration does not mention is
+dropped. The alternatives: a socket or a pipe pair with a framing of its
+own, more machinery for the same messages; or one process per call
+(`std.process`), which pays an interpreter start per call and loses the
+module-level state between calls. (user)
+
+**AL3. The interpreter is the manifest's `interpreter` when given, else
+the environment variable `RENYI_PYTHON` when set, else `python3` and
+then `python` on the PATH (`python` first on Windows, where `python3`
+is usually the Store's stub); the first that starts and answers the
+bridge's greeting is kept for the run.** A project that needs a
+particular environment (a virtual environment, a version) names it in
+the manifest, next to the modules that need it; a machine-wide choice
+goes in the variable; a plain setup needs nothing. The alternative, the
+PATH alone, would make a project's virtual environment a matter of the
+shell the program was started from. (user)
+
+**AL4. One failure type for the bridge, `PythonError` of `std.python`:
+`Raised(exception, message)` for an exception the function let escape
+(its class name and its text), `NotCarried(detail)` for a result the
+declared type does not fit or that JSON does not carry,
+`Unavailable(detail)` for an interpreter that does not answer, a module
+that does not import, a function that is not there or a worker that
+ended, and `PermissionDenied(package)` for a package outside the grant
+(the rule of AK4); `python` takes a scope and no budget.** A declaration
+cannot say which exceptions a Python function raises, so one variant
+carries them all with the class name to match on; the other cases are
+the bridge's own. The alternative, a failure type per declaration file,
+would be written by hand for every package and checked by nothing.
+(user)

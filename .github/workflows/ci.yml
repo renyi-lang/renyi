@@ -33,6 +33,12 @@ jobs:
       - name: Clippy
         run: cargo clippy --all-targets -- -D warnings
 
+      # a Python 3 on the PATH: the bridge's tests (decision AL1) and the
+      # conformance cases of `tests/conformance/python/` run one
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Test
         run: cargo test
 
@@ -59,10 +65,6 @@ jobs:
           cargo run -q -- format --check starter/workflows/*.ry
           cargo run -q -- test starter/workflows/*.ry
           cmp docs/cheatsheet.md starter/skill/renyi/cheatsheet.md
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
 
       - name: Corpus lint
         run: python tools/lint_examples.py

@@ -22,7 +22,7 @@ Rules that generate the library:
    Core modules: `std.console`, `std.environment`, `std.time`, `std.random`.
    Extension packages, released in lockstep with the compiler (decision G2):
    `std.filesystem`, `std.json`, `std.http`, `std.server`, `std.csv`,
-   `std.sqlite`, `std.regex`, `std.process`, `std.foreign`.
+   `std.sqlite`, `std.regex`, `std.process`, `std.foreign`, `std.python`.
 4. **One error type per module**, a sum type whose variants carry the context a
    caller needs. "Absent" is `maybe`; "went wrong" is a failure.
 5. **Effects are declared exactly.** Constructors and conversions are pure;
@@ -784,7 +784,35 @@ pointer and a length), and its result one of those but `Bytes`, `maybe
 Text` for a `char *` that may be null, or nothing. `renyi bind` writes
 such a module from a C header.
 
-## 15. Not in v1
+## 15. std.python
+
+```
+module std.python
+  purpose: The failure type of the Python bridge (decision AL4): what a call into a Python module reports instead of a value.
+
+public type PythonError is one of
+  Raised(exception: Text, message: Text)
+  NotCarried(detail: Text)
+  Unavailable(detail: Text)
+  PermissionDenied(package: Text)
+end
+```
+
+The module declares no function: it holds the failure type every
+function of a Python module declares (decision AL1; reference section
+11). A Python module is a declaration file of the project that the
+manifest's `python` section binds to a Python module of the same or
+another name; each of its functions needs `python("<package>")` and
+nothing else, fails with `PythonError` and nothing else, and its
+parameters are types that can `ToJson` and its result a type that can
+`FromJson`, or nothing: a call crosses as JSON both ways, to one worker
+process per run (decision AL2). `Raised` carries the class name and the
+text of an exception the function let escape, `NotCarried` a result the
+declared type does not fit, `Unavailable` an interpreter that does not
+answer, a module that does not import or a worker that ended, and
+`PermissionDenied` a package outside the grant.
+
+## 16. Not in v1
 
 Candidates for later extension packages, in no order: `std.socket` (raw
 sockets), `std.crypto`
@@ -793,7 +821,7 @@ with persistent settings (default headers, per-client timeouts, retries), and
 streaming variants of the file and HTTP functions for data that does not fit
 in memory.
 
-## 16. Open questions
+## 17. Open questions
 
 R3-1 to R3-3 were decided (decisions K9 to K11). New questions are listed here
 as they arise.

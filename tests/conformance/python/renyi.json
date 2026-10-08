@@ -1,0 +1,15 @@
+{
+  "name": "bridge",
+  "version": "0.1.0",
+  "purpose": "The conformance program that calls a Python module of the project through the bridge.",
+  "dependencies": {},
+  "python": {
+    "modules": {
+      "analysis": {
+        "symbols": {
+          "mean": "average"
+        }
+      }
+    }
+  }
+}

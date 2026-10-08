@@ -71,7 +71,9 @@ say nothing per dependency; audits (cargo-vet, crev) are social.
   stays as it is.
 - **Native code is visible.** A package that calls native code needs
   `foreign`; a program that grants `foreign` is told so by `renyi run` the
-  first time ("this program can call native code through package X").
+  first time ("this program can call native code through package X"), and
+  one that grants `python` that it can run Python through its Python
+  modules (decision AJ2).
 - **`renyi audit`** lists every dependency's transitive effects against the
   program's grant, and flags grants no dependency uses.
 
@@ -152,8 +154,8 @@ runtime; Renyi's effect system is the boundary itself.
 ### 4.3 What it does and does not promise
 
 It isolates effects, time and resource use. It does not hide timing or
-scheduling from the module, and `foreign` code, once granted, is outside
-every guarantee. The document says so.
+scheduling from the module, and `foreign` code and Python, once granted,
+are outside every guarantee. The document says so.
 
 Scheduled after section 2 (the grant stack) with the embedding API at M5.
 The half of that API that faces the host exists: natives registered

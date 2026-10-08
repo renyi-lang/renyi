@@ -168,8 +168,10 @@ checker (M2), the project map (`renyi index`), the VM (M3) and packages
   prelude, console, environment, time, random, filesystem, JSON, CSV,
   regular expressions, the HTTP client (`ureq`), the HTTP server (over
   `std::net`), SQLite (`rusqlite`, compiled in) and other programs
-  (`std.process`, decision AE1) and C libraries through foreign modules
-  (decision AF1; `renyi bind` writes one from a header); `run concurrently`
+  (`std.process`, decision AE1), C libraries through foreign modules
+  (decision AF1; `renyi bind` writes one from a header) and Python
+  modules through the bridge (decisions AJ2, AJ3 and AL1 to AL4; the
+  guide is `docs/python.md`); `run concurrently`
   runs its tasks one after the other (decision S2); the binary
   allocates through `mimalloc` (decision X6). `bench/` holds six
   benchmarks, four of them with CPython twins, and `tools/bench.py`
@@ -201,9 +203,10 @@ cargo test
 ```
 
 Release 0.1.0 is out (2026-10-07; decisions AI1 to AI5, the
-procedure in `docs/RELEASE.md`), and the registration API for Rust
-natives is in (decisions AJ1 and AK1 to AK4; `docs/extensions.md`).
-Next: the typed Python bridge (AJ2, AJ3), then M5.
+procedure in `docs/RELEASE.md`); after it came the registration API for
+Rust natives (decisions AJ1 and AK1 to AK4; `docs/extensions.md`) and
+the Python bridge (decisions AJ2, AJ3 and AL1 to AL4; `docs/python.md`).
+Next: M5.
 
 ## Working on this repository
 

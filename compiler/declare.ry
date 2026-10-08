@@ -47,6 +47,14 @@ public type SymbolRename
   has symbol: Text
 end
 
+public type PythonModule
+  purpose: A Python module of the project (AL1): import name, symbols, interpreter and root.
+  has package: Text
+  has symbols: List of SymbolRename
+  has interpreter: maybe Text
+  has root: Text
+end
+
 type Width
   purpose: A width type of `std.foreign` with its spelling in the bytecode file.
   has name: Text
@@ -71,6 +79,10 @@ let parameter_types: Text be "{width_names} of `std.foreign`, Float, Boolean, Te
 
 let results: Text be "a type of `std.foreign`, Float, Boolean, Text or `maybe Text`, or nothing"
 
+let python_parameter_types: Text be "a type `std.json` renders, one that can ToJson"
+
+let python_result_types: Text be "a type `std.json` parses, one that can FromJson, or nothing"
+
 let max_words: Integer be 6
 
 public type ModuleInfo
@@ -89,6 +101,7 @@ public type ModuleInfo
   has source_chars: List of Text
   has package: maybe PackageTag
   has foreign: maybe ForeignModule
+  has python: maybe PythonModule
 end
 
 public type ConstantInfo
@@ -451,7 +464,8 @@ public function add_module(world: World, tree: Module, is_library: Boolean) retu
     line_starts: [],
     source_chars: [],
     package: nothing,
-    foreign: nothing
+    foreign: nothing,
+    python: nothing
   )
   let mutable state be ModuleState(info: info, world: world)
   if name is "std.prelude" then
@@ -555,6 +569,13 @@ public function set_foreign(world: World, id: Integer, foreign: ForeignModule) r
 
   let info be module_at(world: world, id: id)
   return update_module(world: world, id: id, info: info with foreign: foreign)
+end
+
+public function set_python(world: World, id: Integer, python: PythonModule) returns World
+  purpose: Tag a module as a Python module of the project (decision AL1).
+
+  let info be module_at(world: world, id: id)
+  return update_module(world: world, id: id, info: info with python: python)
 end
 
 function imported_module(world: World, importer: ModuleInfo, name: Text) returns maybe Integer
@@ -2713,14 +2734,12 @@ public function declare_function(
     func: func,
     grants: signature.grants
   )
-  if module_at(world: updated, id: owner).foreign is not nothing then
-    change updated to check_foreign_signature(
-      world: updated,
-      owner: owner,
-      func: func,
-      signature: signature
-    )
-  end
+  change updated to check_bound_signature(
+    world: updated,
+    owner: owner,
+    func: func,
+    signature: signature
+  )
   change updated to check_function_docs(
     world: updated,
     owner: owner,
@@ -3401,6 +3420,25 @@ public function named(ty: Type) returns maybe TypeName
   end
 end
 
+function check_bound_signature(
+  world: World,
+  owner: Integer,
+  func: Function,
+  signature: DeclaredSignature
+)
+  returns World
+  purpose: The rules of a foreign module (AF1) or of a Python module (AL1), when the owner is one.
+
+  let info be module_at(world: world, id: owner)
+  if info.foreign is not nothing then
+    return check_foreign_signature(world: world, owner: owner, func: func, signature: signature)
+  end
+  if info.python is not nothing then
+    return check_python_signature(world: world, owner: owner, func: func, signature: signature)
+  end
+  return world
+end
+
 function check_foreign_signature(
   world: World,
   owner: Integer,
@@ -3638,4 +3676,245 @@ function c_words(spelling: Text) returns Integer
 
   if spelling is "bytes" then return 2 end
   return 1
+end
+
+function check_python_signature(
+  world: World,
+  owner: Integer,
+  func: Function,
+  signature: DeclaredSignature
+)
+  returns World
+  purpose: Decision AL1: a Python module's function is called through the bridge, within its rules.
+
+  let mutable updated be check_python_clauses(
+    world: world,
+    owner: owner,
+    func: func,
+    signature: signature
+  )
+  change updated to check_python_params(
+    world: updated,
+    owner: owner,
+    func: func,
+    params: signature.params
+  )
+  return check_python_result(world: updated, owner: owner, func: func, result: signature.result)
+end
+
+function check_python_clauses(
+  world: World,
+  owner: Integer,
+  func: Function,
+  signature: DeclaredSignature
+)
+  returns World
+  purpose: Needs `python` of its package alone, fails with `PythonError` alone, no `for any`.
+
+  let head be "`{func.name.text}` is declared in a Python module"
+  let package be python_package(world: world, owner: owner)
+  let mutable updated be world
+  if not only_python(grants: signature.grants, package: package) then
+    change updated to push_error(
+      world: updated,
+      owner: owner,
+      code: "python-signature",
+      message: "{head}; it needs `python(\"{package}\")` and nothing else",
+      span: func.name.span,
+      fix: "write `needs python(\"{package}\")`"
+    )
+  end
+  if not only_python_error(world: world, failures: signature.failures) then
+    change updated to push_error(
+      world: updated,
+      owner: owner,
+      code: "python-signature",
+      message: "{head}; it fails with `PythonError` and nothing else",
+      span: func.name.span,
+      fix: "write `or fails with PythonError`, imported from `std.python`"
+    )
+  end
+  if func.type_params is not nothing then
+    change updated to push_error(
+      world: updated,
+      owner: owner,
+      code: "python-signature",
+      message: "{head}; a Python function takes no type parameters",
+      span: func.name.span,
+      fix: "drop `for any`"
+    )
+  end
+  return updated
+end
+
+function python_package(world: World, owner: Integer) returns Text
+  purpose: The package the module is bound to; empty for a module that is not a Python module.
+
+  let binding be module_at(world: world, id: owner).python otherwise return ""
+  return binding.package
+end
+
+function only_python(grants: List of Grant, package: Text) returns Boolean
+  purpose: Whether `needs` is one grant, `python("<package>")` with that scope, no clauses.
+
+  let grant be grants.first() otherwise return false
+  let head be grant.path.first() otherwise return false
+  if grants.length() is not 1 or grant.path.length() is not 1 or head is not "python" then
+    return false
+  end
+  let scope be grant.scope otherwise return false
+  return scope is package and not effects.has_grant_clauses(grant)
+end
+
+function only_python_error(world: World, failures: List of Ty) returns Boolean
+  purpose: Whether the failures are `PythonError` alone; an unknown type is reported elsewhere.
+
+  let first_failure be failures.first() otherwise return false
+  if failures.length() is not 1 then return false end
+  match first_failure
+    when ErrorTy then return true
+    when App(id, args) then
+      if not args.is_empty() then return false end
+      let info be type_at(world: world, id: id)
+      let owner_name be module_at(world: world, id: info.owner).name
+      return info.name is "PythonError" and owner_name is "std.python"
+    otherwise return false
+  end
+end
+
+function check_python_params(world: World, owner: Integer, func: Function, params: List of NamedTy)
+  returns World
+  purpose: Every parameter a type that can ToJson.
+
+  let to_json be json_ability(world: world, name: "ToJson")
+  let mutable updated be world
+  let mutable index be 0
+  for each param in params
+    if not carried_by(world: updated, ty: param.ty, candidate: to_json) then
+      change updated to python_param_error(
+        world: updated,
+        owner: owner,
+        func: func,
+        param: param,
+        index: index
+      )
+    end
+    change index to index + 1
+  end
+  return updated
+end
+
+function carried_by(world: World, ty: Ty, candidate: maybe Integer) returns Boolean
+  purpose: Whether the type crosses the bridge by the ability, when the prelude declares it.
+
+  let ability_id be candidate otherwise return false
+  return carried(world: world, ty: ty, ability_id: ability_id)
+end
+
+function python_param_error(
+  world: World,
+  owner: Integer,
+  func: Function,
+  param: NamedTy,
+  index: Integer
+)
+  returns World
+  purpose: The error for a parameter whose type does not cross the bridge.
+
+  let span be
+    match func.params.at(index)
+      when some(declared) then declared.name.span
+      when nothing then func.name.span
+    end
+  let shown be show(world: world, ty: param.ty)
+  let head be "the parameter `{param.name}` of `{func.name.text}` has type `{shown}`"
+  return push_error(
+    world: world,
+    owner: owner,
+    code: "python-type",
+    message: "{head}; across the bridge a parameter is {python_parameter_types}",
+    span: span,
+    fix: "declare it with a type that can ToJson"
+  )
+end
+
+function check_python_result(world: World, owner: Integer, func: Function, result: maybe Ty)
+  returns World
+  purpose: The result a type that can FromJson, or nothing.
+
+  let ty be result otherwise return world
+  let from_json be json_ability(world: world, name: "FromJson")
+  if carried_by(world: world, ty: ty, candidate: from_json) then return world end
+  let name be func.name.text
+  let shown be show(world: world, ty: ty)
+  let span be
+    match func.result
+      when some(declared) then result_span(declared)
+      when nothing then func.name.span
+    end
+  return push_error(
+    world: world,
+    owner: owner,
+    code: "python-type",
+    message: "`{name}` returns `{shown}`; across the bridge a result is {python_result_types}",
+    span: span,
+    fix: "declare it with a type that can FromJson, or drop `returns`"
+  )
+end
+
+public function json_ability(world: World, name: Text) returns maybe Integer
+  purpose: The prelude's `ToJson` or `FromJson`.
+
+  let prelude be prelude_info(world) otherwise return nothing
+  return prelude.abilities.get(name)
+end
+
+public function carried(world: World, ty: Ty, ability_id: Integer) returns Boolean
+  purpose: Whether a declared type crosses the bridge by a JSON ability: the structural rule.
+
+  match ty
+    when MaybeTy(inner) then return carried(world: world, ty: inner, ability_id: ability_id)
+    when App(id, args) then
+      let info be type_at(world: world, id: id)
+      if info.derives.contains(ability_id) then return true end
+      if implemented_for(world: world, ability_id: ability_id, head: id) then return true end
+      match info.kind
+        when SubtypeKind(base) then return carried(world: world, ty: base, ability_id: ability_id)
+        otherwise return carried_shape(world: world, id: id, args: args, ability_id: ability_id)
+      end
+    otherwise return false
+  end
+end
+
+function carried_shape(world: World, id: Integer, args: List of Ty, ability_id: Integer)
+  returns Boolean
+  purpose: A list or a set of carried items, a map with Text keys and carried values, or a scalar.
+
+  let builtins be world.builtins
+  if id is builtins.list or id is builtins.set_type then
+    let item be args.first() otherwise return false
+    return carried(world: world, ty: item, ability_id: ability_id)
+  end
+  if id is builtins.map then
+    if args.length() is not 2 then return false end
+    let key be args.at(0) otherwise return false
+    let value be args.at(1) otherwise return false
+    if not is_text_type(world: world, ty: key) then return false end
+    return carried(world: world, ty: value, ability_id: ability_id)
+  end
+  return id is builtins.integer
+    or id is builtins.decimal
+    or id is builtins.float
+    or id is builtins.text
+    or id is builtins.boolean
+    or id is builtins.bytes
+end
+
+function is_text_type(world: World, ty: Ty) returns Boolean
+  purpose: Whether the type is the prelude's `Text` itself.
+
+  match ty
+    when App(id) then return id is world.builtins.text
+    otherwise return false
+  end
 end
