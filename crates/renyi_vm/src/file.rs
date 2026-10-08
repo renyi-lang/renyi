@@ -33,7 +33,7 @@ use crate::types::{FieldMeta, TypeMeta, TypeShape, Types, VariantMeta};
 use crate::value::Value;
 
 /// The version of the format, the first field of the file.
-pub const FORMAT: usize = 3;
+pub const FORMAT: usize = 4;
 
 /// The extension of a bytecode file.
 pub const EXTENSION: &str = "ryc";
@@ -481,6 +481,14 @@ fn op_json(op: &Op) -> Out {
         Op::Field { name, site } => variant(
             "OpField",
             vec![("name", wide(*name)), ("site", wide(*site))],
+        ),
+        Op::LoadField { slot, name, site } => variant(
+            "OpLoadField",
+            vec![
+                ("slot", small(*slot)),
+                ("name", wide(*name)),
+                ("site", wide(*site)),
+            ],
         ),
         Op::With(fields) => variant("OpWith", vec![("fields", small(*fields))]),
         Op::Call { function, args } => variant(
@@ -1164,6 +1172,11 @@ fn read_op(json: &In, at: &str) -> Read<Op> {
             name: index("name")?,
             site: index("site")?,
         },
+        "OpLoadField" => Op::LoadField {
+            slot: slot("slot")?,
+            name: index("name")?,
+            site: index("site")?,
+        },
         "OpWith" => Op::With(slot("fields")?),
         "OpCall" => Op::Call {
             function: usize_at(fields, "function_id", at)?,
@@ -1392,6 +1405,19 @@ fn check(program: &Program) -> Read<()> {
                     name: constant,
                     site,
                 } => {
+                    within(&format!("{name}'s constant"), *constant as usize, constants)?;
+                    within(
+                        &format!("{name}'s field site"),
+                        *site as usize,
+                        program.field_sites,
+                    )?;
+                }
+                Op::LoadField {
+                    slot,
+                    name: constant,
+                    site,
+                } => {
+                    within(&format!("{name}'s slot"), *slot as usize, locals)?;
                     within(&format!("{name}'s constant"), *constant as usize, constants)?;
                     within(
                         &format!("{name}'s field site"),

@@ -1138,11 +1138,34 @@ function emit_member(emitter: Emitter, base: Expr, name: Name, span: Span) retur
     when some(done) then return done
     when nothing then change updated to updated
   end
+  match local_holder(emitter: updated, base: base)
+    when some(slot) then
+      let named be name_constant(emitter: updated, name: name.text)
+      let site be field_site(named.emitter)
+      return emit(
+        emitter: site.emitter,
+        op: OpLoadField(slot: slot, name: named.value, site: site.value),
+        span: span
+      )
+    when nothing then change updated to updated
+  end
   change updated to emit_expr(emitter: updated, expr: base)
   let named be name_constant(emitter: updated, name: name.text)
   let site be field_site(named.emitter)
   change updated to site.emitter
   return emit(emitter: updated, op: OpField(name: named.value, site: site.value), span: span)
+end
+
+function local_holder(emitter: Emitter, base: Expr) returns maybe Integer
+  purpose: The slot of a local the base names outright (`x` unmoved, or `self`), read in place.
+
+  match base
+    when NameExpr(name) then
+      if is_move_receiver(emitter: emitter, span: name.span) then return nothing end
+      return lookup(emitter: emitter, name: name.text)
+    when SelfValue then return lookup(emitter: emitter, name: "self")
+    otherwise return nothing
+  end
 end
 
 function module_member(emitter: Emitter, base: Expr, name: Name, span: Span) returns maybe Emitter
@@ -2114,10 +2137,9 @@ function field_pattern(emitter: Emitter, field: FieldPattern, slot: Integer)
   let named be name_constant(emitter: made.emitter, name: field.field.text)
   let site be field_site(named.emitter)
   let span be field.field.span
-  let mutable updated be emit(emitter: site.emitter, op: OpLoad(slot: slot), span: span)
-  change updated to emit(
-    emitter: updated,
-    op: OpField(name: named.value, site: site.value),
+  let mutable updated be emit(
+    emitter: site.emitter,
+    op: OpLoadField(slot: slot, name: named.value, site: site.value),
     span: span
   )
   change updated to emit(emitter: updated, op: OpStore(slot: field_slot), span: span)
@@ -2851,7 +2873,7 @@ function assemble(context: Context, modules: List of CheckedModule) returns Prog
     for each declared in world.abilities
     collect AbilityMeta(name: declared.name, methods: method_names(declared.methods))
   return Program(
-    format: 3,
+    format: 4,
     modules: module_sources(world: world, modules: modules),
     builtins: builtin_ids(world.builtins),
     types: context.types,

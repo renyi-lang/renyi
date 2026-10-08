@@ -276,6 +276,7 @@ public type Op is one of
   OpConstruct(ty: Integer, fields: Integer)
   OpConstructVariant(ty: Integer, tag: Integer, fields: Integer)
   OpField(name: Integer, site: Integer)
+  OpLoadField(slot: Integer, name: Integer, site: Integer)
   OpWith(fields: Integer)
   OpCall(function_id: Integer, args: Integer)
   OpCallAbility(ability_id: Integer, method: Integer, args: Integer)

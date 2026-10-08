@@ -346,7 +346,9 @@ the same entries.
    gets the sample (a primitive's time lands on the primitive), and every
    operation, call and primitive call is counted; the report on the
    standard error has the samples by function and operation, by function
-   and by operation kind with the primitives by name, then the counts.
+   and by operation kind with the primitives by name, then the counts
+   (by kind, by pair of kinds run one after the other in one code object,
+   which says what a fused operation would save, since decision AR1).
    A development aid like `renyi tokens`: it is how the VM's own hot
    spots were found (`crates/renyi_vm/src/profile.rs`).
 

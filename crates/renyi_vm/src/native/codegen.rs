@@ -76,6 +76,7 @@ pub const SIGNATURES: &[(&str, &str, char)] = &[
     ("rt_construct", "pzww", 'i'),
     ("rt_construct_variant", "pzwww", 'i'),
     ("rt_field", "pzwww", 'i'),
+    ("rt_load_field", "pzwzwww", 'i'),
     ("rt_with", "pww", 'i'),
     ("rt_not", "pw", 'i'),
     ("rt_binary", "puw", 'i'),
@@ -1348,6 +1349,30 @@ impl Gen<'_, '_> {
                         "rt_field",
                         1,
                         &[code_value, name_value, site_value, pc_value],
+                    )
+                    .expect("a status");
+                self.push_boxed();
+                self.check_status(status, pc, false);
+                let field_name = self.code.constants[*name as usize]
+                    .as_text()
+                    .unwrap_or("")
+                    .to_string();
+                let kind = abs_of_field(self.program, &field_name);
+                if !kind.is_boxed() {
+                    self.unbox_top(kind, pc + 1);
+                }
+            }
+            Op::LoadField { slot, name, site } => {
+                let slot_value = self.u32(*slot as u32);
+                let name_value = self.u32(*name);
+                let site_value = self.u32(*site);
+                let status = self
+                    .call(
+                        "rt_load_field",
+                        &[
+                            self.vm, self.base, slot_value, code_value, name_value, site_value,
+                            pc_value,
+                        ],
                     )
                     .expect("a status");
                 self.push_boxed();

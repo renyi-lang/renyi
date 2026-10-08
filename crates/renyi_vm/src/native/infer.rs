@@ -334,6 +334,13 @@ pub fn analyse(program: &Program, code: &Code) -> Result<Analysis, Rejection> {
                     }
                     stack.push(abs_of_slot(kind));
                 }
+                Op::LoadField { slot, name, .. } => {
+                    if !matches!(slots[*slot as usize], SlotKind::Unset | SlotKind::Boxed) {
+                        return Err(Rejection::SlotConflict(*slot));
+                    }
+                    let name = code.constants[*name as usize].as_text().unwrap_or("");
+                    stack.push(abs_of_field(program, name));
+                }
                 Op::Store(slot) => {
                     let abs = pop!();
                     store!(*slot, slot_of_abs(abs));

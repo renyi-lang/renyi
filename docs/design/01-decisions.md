@@ -2757,3 +2757,79 @@ to take out; the self-check moved by two percent, as AG6 foresaw, since
 its time is in the value operations of the interpreter, not in strings
 or JSON. What follows, in the owner's order: the baseline JIT (AG5, item
 iii), then the showcase application. (user)
+
+## AR. The baseline JIT (session 9)
+
+**AR1. The baseline JIT of decision AG5 (iii) is built in this order,
+each step measured and kept by the rule of AG6 (the measure is the
+compiler's self-check, `compiler/checker.ry` on `compiler/bodies.ry`, by
+its count of user-space instructions on the interpreter and on machine
+code, with `bench/records.ry` and four micro-benchmarks beside it; a
+step stays when it cuts the self-check's instructions, and the round
+ends when a step brings under 2% or the self-check runs twice as fast as
+AG6 left it): (i) fused operations in the bytecode itself, `LoadField`
+first (a field of a local, read in its slot), so that both tiers gain
+and the interpreter's look at the next op (AG6) goes; (ii) direct calls
+between generated functions, with the parameters and the result the
+checker types as Integer, Boolean or Float passed in registers, the
+frame still pushed on the VM's frames for the handlers, the grant and
+the hand-back; (iii) the layout of `Value` pinned (`repr(C)`), so that
+the generated code clones, drops, loads, stores and reads fields inline,
+with the slow paths as helpers.** The owner's four answers of
+2026-10-08, asked after the round of AQ with the micro-benchmarks of the
+two tiers in hand (instructions per turn of a loop, `cachegrind`, the
+release build; machine code against the interpreter): a call with an
+Integer parameter 668 against 1133; a field of a local 1043 against 818;
+a call with a record parameter that reads a field of it 1535 against
+1183; a record built and a field of it read 1357 against 1480. The
+machine code of AG1 does for a boxed value what the interpreter does,
+through a helper per op on the VM's stack, so it loses on the operations
+ordinary programs are made of, where AG6's interpreter reads a field in
+the slot and the helper boundary clones and drops the holder; the
+self-check gains nothing from it (AG5). Step (iii) was the owner's
+choice over the two steps the session recommended (the fusions and the
+calling convention first, the layout only after a profile of what
+remained): the ceiling of the helper-call design is the interpreter's
+own speed less the dispatch, and the self-check's time is in the clone,
+the drop and the stack traffic (AG5), which only inline code reaches.
+Fused operations in the bytecode rather than in the code generator
+alone, the question AG6 had left as a format question (Z1): the
+interpreter is the reference and most of what runs, and a fusion both
+tiers share is one rule in the two emitters instead of a look at the
+next op in the loop; the format number moves with each addition (Z2).
+(user)
+
+**AR2. Stage 1 of AR1, done and measured: `Op::LoadField { slot, name,
+site }` is `Load(slot)` followed by `Field { name, site }`, the field of
+a local read in its slot, so that the holder is neither cloned nor
+dropped; both emitters emit it for `x.field` and `self.field` on a local
+that is not a move receiver and for the field of a variant pattern, the
+interpreter's look at the next op (AG6) is gone, the generated code
+calls one helper where it called two, and the bytecode file is format
+4.** In the compiler written in Renyi, 3,859 of the 4,480 `Field` ops
+follow a `Load` (static), and on the self-check `Load` was 29% and
+`Field` 6% of 101 million ops run. Measured as AR1 says (`cachegrind`,
+the release build, the binary of commit 2fcab99 against the stage): the
+self-check 13.14 to 12.51 billion instructions on machine code (-4.7%)
+and 12.84 to 12.63 billion on the interpreter (-1.6%);
+`bench/records.ry` 571 to 516 million (-9.7%) and 655 to 653 million
+(-0.3%); per turn of the micro-benchmarks, machine code then the
+interpreter: the field of a local 1043 to 902 and 818 to 811, the call
+with a record parameter 1535 to 1394 and 1183 to 1161, the record built
+and read 1357 to 1216 and 1480 to 1464, the call with an Integer
+parameter 668 unchanged and 1133 to 1104 (the look at the next op that
+every `Load` paid). The step stays by the rule. The profiler's report
+has a table of operation pairs since this stage (`operations by pair`,
+the kinds run one after the other in one code object), which is how the
+next fused operations are chosen; on the self-check after `LoadField`
+the pairs that remain are `Load Load` 6.1 million, `Load Call` 6.0,
+`Load Const` 4.7 and `Const Binary` 4.7, `Store Load` 3.8, `JumpIfFalse
+Load` 3.0, `Binary JumpIfFalse` 2.4, `Store LoadField` 2.1, `Binary
+Store` 1.6, `Dup JumpIfTrue` and `Binary Dup` 1.6 (the short circuit of
+`or`), `Load IsVariant` and `IsVariant JumpIfFalse` 1.1 (the dispatch of
+a `match`), of 96 million; the pairs across a statement's end (`Store
+Load`, `JumpIfFalse Load`, `Store Jump`) fuse nothing, and each of the
+others saves a dispatch and a push or a pop, about a percent of the
+self-check apiece by the rule of thumb of 30 to 40 instructions per op
+saved, which is under the 2% a step must bring: the fusions stop here
+and the round goes on to stage 2. (user)

@@ -622,3 +622,20 @@ writer and the allocator, now the plain cost of the format. `Text` stays
 accumulated text per piece. Conformance case 54 (`json_paths.ry`) holds
 what the changed paths print. Next, in the owner's order: the baseline
 JIT (AG5, item iii), then the showcase application.
+
+### The baseline JIT (session 9, decision AR1; in progress)
+
+The owner's four answers of 2026-10-08: the baseline JIT of AG5 (iii) in
+three stages, each kept by the rule of AG6 on the compiler's self-check
+(its instruction count on the interpreter and on machine code), fused
+operations in the bytecode itself, direct calls between generated
+functions with register arguments, and the layout of `Value` pinned so
+that the value operations run inline. Stage 1 is in: `LoadField`, a
+field of a local read in its slot by both tiers (format 4 of the
+bytecode file). Measured against the binary before it (decision AR2):
+the compiler's self-check 4.7 percent fewer instructions on machine code
+and 1.6 on the interpreter, `bench/records.ry` 9.7 percent fewer on
+machine code; a further fused operation would bring about a percent,
+under the step's 2%, so the fusions stop there. Stage 2 (direct calls)
+and stage 3 (the layout) follow; the handoff's section "The baseline
+JIT" has the plan.

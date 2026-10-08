@@ -1581,49 +1581,7 @@ impl<'p> Vm<'p> {
                     self.stack.push(value);
                 }
                 Op::Load(slot) => {
-                    let at = base + *slot as usize;
-                    let value = match &self.stack[at] {
-                        // `x.field` on a record or a variant in the slot: the
-                        // field is read there, so that the holder is neither
-                        // cloned nor dropped (decision AG6); a site that has
-                        // not seen this type goes the long way, through
-                        // `Op::Field`
-                        holder @ (Value::Record(_) | Value::Variant(_)) => {
-                            let found = match code.ops.get(pc) {
-                                Some(Op::Field { site, .. }) => {
-                                    let cached = self.field_cache[*site as usize];
-                                    match holder {
-                                        Value::Record(record)
-                                            if cached.ty == record.ty
-                                                && cached.tag == usize::MAX =>
-                                        {
-                                            record.fields.get(cached.index)
-                                        }
-                                        Value::Variant(variant)
-                                            if cached.ty == variant.ty
-                                                && cached.tag == variant.tag =>
-                                        {
-                                            variant.fields.get(cached.index)
-                                        }
-                                        _ => None,
-                                    }
-                                }
-                                _ => None,
-                            };
-                            match found {
-                                Some(field) => {
-                                    pc += 1;
-                                    ran += 1;
-                                    if let Some(profile) = &mut self.profile {
-                                        profile.op(code_id, &code.ops[pc - 1]);
-                                    }
-                                    field.clone()
-                                }
-                                None => holder.clone(),
-                            }
-                        }
-                        other => other.clone(),
-                    };
+                    let value = self.stack[base + *slot as usize].clone();
                     self.stack.push(value);
                 }
                 Op::LoadMove(slot) => {
@@ -1673,6 +1631,15 @@ impl<'p> Vm<'p> {
                     let holder = self.pop();
                     let value =
                         try_op!(self.op_field(code_id, *name as usize, *site as usize, &holder));
+                    self.stack.push(value);
+                }
+                Op::LoadField { slot, name, site } => {
+                    let value = try_op!(self.op_load_field(
+                        code_id,
+                        base + *slot as usize,
+                        *name as usize,
+                        *site as usize
+                    ));
                     self.stack.push(value);
                 }
                 // a refined field is checked again: the copy may be a
@@ -2205,6 +2172,34 @@ impl<'p> Vm<'p> {
                 self.describe(holder)
             ))),
         }
+    }
+
+    /// `Op::LoadField`: the field `name` of the value in the slot at `at`,
+    /// read there when the site has seen the holder's type (decision AG6,
+    /// as an op since AR2), else through `op_field` on a clone of the
+    /// holder.
+    pub(crate) fn op_load_field(
+        &mut self,
+        code: usize,
+        at: usize,
+        name: usize,
+        site: usize,
+    ) -> Result<Value, Interrupt> {
+        let cached = self.field_cache[site];
+        let found = match &self.stack[at] {
+            Value::Record(record) if cached.ty == record.ty && cached.tag == usize::MAX => {
+                record.fields.get(cached.index)
+            }
+            Value::Variant(variant) if cached.ty == variant.ty && cached.tag == variant.tag => {
+                variant.fields.get(cached.index)
+            }
+            _ => None,
+        };
+        if let Some(value) = found {
+            return Ok(value.clone());
+        }
+        let holder = self.stack[at].clone();
+        self.op_field(code, name, site, &holder)
     }
 
     /// A field by name of a pair or a native value (a record or a variant

@@ -471,6 +471,7 @@ end
         "samples by function",
         "samples by operation",
         "operations by kind",
+        "operations by pair",
         "calls by function",
         "primitive calls",
     ] {

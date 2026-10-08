@@ -472,6 +472,22 @@ pub(crate) unsafe extern "C" fn rt_field(
     status(vm, result)
 }
 
+/// `Op::LoadField`: the field read in the slot (`Vm::op_load_field`).
+pub(crate) unsafe extern "C" fn rt_load_field(
+    vm: VmPtr,
+    base: usize,
+    slot: u32,
+    code: usize,
+    name: u32,
+    site: u32,
+    pc: u32,
+) -> i32 {
+    let vm = vm!(vm);
+    vm.sync_pc(pc);
+    let result = vm.op_load_field(code, base + slot as usize, name as usize, site as usize);
+    status(vm, result)
+}
+
 pub(crate) unsafe extern "C" fn rt_with(vm: VmPtr, count: u32, pc: u32) -> i32 {
     let vm = vm!(vm);
     vm.sync_pc(pc);
@@ -1356,6 +1372,7 @@ pub const HELPERS: &[(&str, *const u8)] = &[
     ("rt_construct", rt_construct as *const u8),
     ("rt_construct_variant", rt_construct_variant as *const u8),
     ("rt_field", rt_field as *const u8),
+    ("rt_load_field", rt_load_field as *const u8),
     ("rt_with", rt_with as *const u8),
     ("rt_not", rt_not as *const u8),
     ("rt_binary", rt_binary as *const u8),

@@ -4,7 +4,9 @@ Last updated: 2026-10-08, session 9, the first in the cloud environment
 (claude.ai/code), which finished the profile-guided round on strings and
 JSON that session 8 had paused: decision AQ, the first of the
 interspersed performance items the owner set after M5 (the section "The
-profile-guided round on strings and JSON as it exists" below). Session 8
+profile-guided round on strings and JSON as it exists" below), and began
+the baseline JIT, decision AR1, with its first stage, the fused op
+`LoadField` in the bytecode (the section "The baseline JIT" below). Session 8
 (stage 2 of the gap audit of
 `docs/GAPS.md`: the formal grammar `docs/grammar.ebnf` with decision V12;
 the language reference `docs/reference.md`, normative, held to the
@@ -88,7 +90,9 @@ M6 the
 machine code exists (decisions AG1 to AG5), the interpreter had its
 bounded round (AG6) and the strings and the JSON path had the
 profile-guided round of decision AQ (the section "The profile-guided
-round on strings and JSON as it exists" below), `renyi build` does not.
+round on strings and JSON as it exists" below) and the baseline JIT of
+decision AR1 is under way (the section "The baseline JIT" below; its
+first stage, the fused op `LoadField`, is in), `renyi build` does not.
 Release 0.1.0 is out
 (2026-10-07, the section "Release 0.1 engineering" below): the
 repository is public at `github.com/renyi-lang/renyi`, the release
@@ -441,7 +445,9 @@ sheet, with `change` (decision AA1).
   them), every call by code object, every primitive by name. The report
   goes to stderr when the run ends (`Vm::report_profile`, called by the
   runner): the totals, then samples by function and op, by function, by
-  op kind with the primitives by name, then the counts (the top twenty
+  op kind with the primitives by name, then the counts: by kind, by pair
+  of kinds run one after the other in one code object (session 9, for the
+  fused ops of decision AR1), by function, the primitives (the top twenty
   rows of each). `tests/semantics.rs` has a case. The scratch worktree
   `D:\Projects\.worktrees\Renyi\profile` (detached at `246fca4`) holds
   the prototype and the micro-benchmarks `loop_count.ry`,
@@ -1737,8 +1743,102 @@ and the commit of the site and the crates.io metadata.
   release; the Windows archive's checksum and binary were verified
   by hand; `cargo install renyi` built the binary from crates.io.
 
-## The profile-guided round on strings and JSON as it exists (decision
-AQ; session 9, 2026-10-08)
+## The baseline JIT (decision AR1; session 9, in progress)
+
+The owner's four answers of 2026-10-08 (decision AR1): the baseline JIT
+of AG5 (iii) in three stages, each measured on the compiler's
+self-check by its instruction count (the rule of AG6: a step stays when
+it cuts the count, the round ends when a step brings under 2% or the
+self-check is twice as fast as AG6 left it), with `bench/records.ry`
+and four micro-benchmarks beside it; fused operations in the bytecode
+itself; direct calls between generated functions with register
+arguments; the layout of `Value` pinned and the value operations inline.
+
+- **Why.** Micro-benchmarks of the two tiers (instructions per turn of a
+  loop, `cachegrind`, the release build of commit 2fcab99; machine code
+  against the interpreter): a call with an Integer parameter 668 against
+  1133; a field of a local 1043 against 818; a call with a record
+  parameter that reads a field of it 1535 against 1183; a record built
+  and a field of it read 1357 against 1480. The generated code calls a
+  helper per boxed op on the VM's stack, so on the operations ordinary
+  programs are made of it is the interpreter less the dispatch plus the
+  helper calls, and it lost the field read in the slot that AG6 gave the
+  interpreter. The four programs are twenty lines each: a loop of
+  `rounds` turns (the first argument, `1000000` by default) around one
+  statement (`change total to total + add_one(index)`; `change total to
+  total + point.east + index` on a `Point` in a local; `change total to
+  total + first_of(point) + index` with `first_of(point: Point) returns
+  Integer` reading `point.east`; `let point be Point(east: index,
+  north: index)` then `change total to total + point.east`), run at two
+  sizes and the counts' difference divided by the size's; they live in
+  the session's scratch directory, not in the repository.
+- **Stage 1, done: `LoadField`.** `Op::LoadField { slot, name, site }`
+  is `Load(slot)` followed by `Field { name, site }`: the field read in
+  the slot, the holder neither cloned nor dropped. Both emitters emit it
+  for `x.field` and `self.field` on a local that is not a move receiver
+  (`compile/expr.rs` `member`, `compiler/emit.ry` `emit_member` with
+  `local_holder`) and for a field of a variant pattern
+  (`compile/pattern.rs`, `field_pattern`); the interpreter's arm reads
+  through the site cache (`Vm::op_load_field` in `vm.rs`) and the look
+  at the next op that AG6 had put in `Op::Load` is gone; the generated
+  code calls `rt_load_field` (one helper where it called two) and
+  unboxes a scalar field as it did after `rt_field`; the analysis
+  (`infer.rs`) treats it as a load of a boxed slot that pushes
+  `abs_of_field`; the file (`file.rs`) writes and reads `OpLoadField`
+  (`slot`, `name`, `site`), checks its three indices, and is format 4
+  (`compiler/bytecode.ry` has the variant; `emit.ry` writes 4). The
+  static count in `checker.ry`'s bytecode: 3,859 of 4,480 `Field` ops
+  followed a `Load`; dynamically on the self-check `Load` was 29% and
+  `Field` 6% of 101 million ops. Measured against the binary of
+  commit 2fcab99 (`cachegrind`, the release build of each): the
+  self-check 13.14 to 12.51 billion instructions on machine code
+  (-4.7%) and 12.84 to 12.63 billion on the interpreter (-1.6%);
+  `bench/records.ry` 571 to 516 million (-9.7%) and 655 to 653 million;
+  per turn of the micro-benchmarks, machine code then the interpreter:
+  the field of a local 1043 to 902 and 818 to 811, the call with a
+  record parameter 1535 to 1394 and 1183 to 1161, the record built and
+  read 1357 to 1216 and 1480 to 1464, the Integer call 668 unchanged
+  and 1133 to 1104. Kept by the rule of AG6. The profiler's new table
+  of operation pairs on the self-check after it (`Load Load` 6.1
+  million, `Load Call` 6.0, `Load Const` and `Const Binary` 4.7, `Store
+  Load` 3.8, `JumpIfFalse Load` 3.0, `Binary JumpIfFalse` 2.4, `Store
+  LoadField` 2.1, `Binary Store` 1.6, the `or` short circuit `Binary
+  Dup JumpIfTrue` 1.6, the `match` dispatch `Load IsVariant
+  JumpIfFalse` 1.1, of 96 million) says each further fusion saves a
+  dispatch and a push or a pop, about a percent of the self-check
+  apiece: under the 2% a step must bring, so the fusions stop here
+  (decision AR2).
+- **Stage 2, next: direct calls.** The plan: a second entry per
+  compiled code object, `typed(vm, boxed arguments on the stack, typed
+  arguments in registers) -> (status, result)`, which pushes the frame
+  itself (the boxed arguments moved to their slots, the typed ones
+  written to the slots only by `rt_deopt`) and returns a typed result in
+  a register, popping its frame without a push; the caller reaches it
+  through a table of entry pointers the JIT keeps per code object
+  (allocated once, never moved: the generated code loads the pointer
+  and calls it indirectly, or falls back to `rt_call` when it is null,
+  which compiles the callee when it is hot); the site is typed only when
+  the caller's operands are already in registers for every typed
+  parameter, else `rt_call` as today.
+- **Stage 3, after: the pinned layout.** `#[repr(C, u8)]` on `Value`
+  and on `Int` (24 and 16 bytes stay, X3), the VM's stack as a struct
+  with a fixed layout (`ptr`, `len`, `cap`) so that the generated code
+  pushes, pops, loads and stores without a call (a push past the
+  capacity calls a helper to grow), clones by copying the three words
+  and incrementing the strong count of an `Rc` variant (at offset 0 of
+  the allocation; an `Rc<str>` and an `Rc<[u8]>` are fat pointers whose
+  address is the allocation too), drops by decrementing and calling a
+  helper at zero, and reads a field through the record's pointer and
+  its field vector (the record's layout pinned too); every helper keeps
+  the slow path. The profile of what remains after stage 2 decides the
+  order within the stage.
+- **Measuring here.** `valgrind --tool=cachegrind --cache-sim=no
+  <binary> run [--interpret] compiler/checker.ry compiler/bodies.ry`
+  for the self-check (about two minutes a run), the same on
+  `bench/records.ry` and on the micro programs at two sizes; the binary
+  before the stage kept beside the binary after it.
+
+## The profile-guided round on strings and JSON as it exists (decision AQ; session 9, 2026-10-08)
 
 The first of the interspersed performance items the owner set on
 2026-10-07 (next steps, item 5), measured on the two benchmarks the
@@ -2400,6 +2500,19 @@ lint):
    deleted; the decisions (section AQ), `docs/GAPS.md` (the performance
    entry of section 4, the status at the end of section 7), `CLAUDE.md`
    (the decisions row), this file.
+2. the baseline JIT, stage 1 (decisions AR1 and AR2; the section "The
+   baseline JIT"): `Op::LoadField` in `crates/renyi_vm/src/bytecode.rs`
+   (kind 52), emitted by `compile/expr.rs` (`member`) and
+   `compile/pattern.rs` and by `compiler/emit.ry` (`emit_member`,
+   `local_holder`, `field_pattern`); the interpreter's arm and
+   `Vm::op_load_field` in `vm.rs`, the look at the next op gone from
+   `Op::Load`; `infer.rs`, `codegen.rs` and `runtime.rs`
+   (`rt_load_field`); `file.rs` (format 4, the op written, read and
+   checked) with `tests/file.rs` and `crates/renyi/tests/compile.rs`;
+   `compiler/bytecode.ry` (the variant, format 4 in `emit.ry`); the
+   profiler's table of operation pairs (`profile.rs`,
+   `tests/semantics.rs`, `05-agent-tooling.md`); the decisions (section
+   AR), `docs/GAPS.md`, `CLAUDE.md`, this file.
 
 ## Done in session 8 (stage 2: the grammar, the reference, the front end in Renyi)
 
@@ -3176,8 +3289,11 @@ on a fresh clone).
    speed, the compiler's self-check twice as fast): the first round is
    done, decision AQ (the section "The profile-guided round on strings
    and JSON as it exists" below, with the numbers against the targets
-   and what it left), then a baseline JIT
-   (AG5, item iii); and a showcase, a bookmark and reading-list web app
+   and what it left); then the baseline JIT (AG5, item iii), decided as
+   AR1 and under way in three stages (the section "The baseline JIT"
+   below: stage 1, `LoadField`, is in; stage 2, direct calls with
+   register arguments, is next; stage 3, the pinned layout of `Value`
+   with the value operations inline, after it); and a showcase, a bookmark and reading-list web app
    in a repository of its own under `renyi-lang/` (HTTP for the titles,
    SQLite, an HTML page and a JSON API, tags and search, CSV export,
    one use of the Python bridge, `replays` tests).

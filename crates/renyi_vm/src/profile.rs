@@ -42,6 +42,12 @@ pub struct Profile {
     samples: HashMap<Site, u64>,
     /// Per operation kind (`Op::kind`): its name once seen, and the count.
     ops: Vec<(&'static str, u64)>,
+    /// The code object and the kind of the operation that ran last, for
+    /// the pairs.
+    last_op: Option<(CodeId, usize)>,
+    /// Per pair of kinds run one after the other in one code object: the
+    /// count, which says what a fused operation would save (decision AR1).
+    pairs: HashMap<(usize, usize), u64>,
     calls: HashMap<CodeId, u64>,
     primitives: HashMap<FunctionId, u64>,
 }
@@ -62,6 +68,8 @@ impl Profile {
             last: None,
             samples: HashMap::new(),
             ops: vec![("", 0); Op::KINDS],
+            last_op: None,
+            pairs: HashMap::new(),
             calls: HashMap::new(),
             primitives: HashMap::new(),
         }
@@ -75,6 +83,12 @@ impl Profile {
         let slot = &mut self.ops[kind];
         slot.0 = name;
         slot.1 += 1;
+        if let Some((last_code, last_kind)) = self.last_op {
+            if last_code == code {
+                *self.pairs.entry((last_kind, kind)).or_insert(0) += 1;
+            }
+        }
+        self.last_op = Some((code, kind));
         if SAMPLE.swap(false, Ordering::Relaxed) {
             if let Some(site) = self.last {
                 *self.samples.entry(site).or_insert(0) += 1;
@@ -167,6 +181,17 @@ impl Profile {
             .map(|(name, count)| (name.to_string(), *count))
             .collect();
         table(&mut out, "operations by kind", ops, total_ops);
+        let pairs = self
+            .pairs
+            .iter()
+            .map(|((first, second), count)| {
+                (
+                    format!("{} {}", self.ops[*first].0, self.ops[*second].0),
+                    *count,
+                )
+            })
+            .collect();
+        table(&mut out, "operations by pair", pairs, total_ops);
         let calls = self
             .calls
             .iter()

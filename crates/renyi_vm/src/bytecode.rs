@@ -63,6 +63,13 @@ pub enum Op {
         name: u32,
         site: u32,
     },
+    /// `Load(slot)` followed by `Field`: the field read in the slot, so
+    /// that the holder is neither cloned nor dropped (decision AR2).
+    LoadField {
+        slot: u16,
+        name: u32,
+        site: u32,
+    },
     /// `base`, then `fields` pairs of (name constant, value): the updated copy.
     With(u16),
     Call {
@@ -156,7 +163,7 @@ pub enum Op {
 
 impl Op {
     /// How many kinds `kind` tells apart.
-    pub const KINDS: usize = 52;
+    pub const KINDS: usize = 53;
 
     /// The operation's kind as a small number below `KINDS`, with its name:
     /// the profiler counts by it (decision X4).
@@ -214,6 +221,7 @@ impl Op {
             Op::MarkStack(_) => (49, "MarkStack"),
             Op::UnwindStack(_) => (50, "UnwindStack"),
             Op::Check(_) => (51, "Check"),
+            Op::LoadField { .. } => (52, "LoadField"),
         }
     }
 }
