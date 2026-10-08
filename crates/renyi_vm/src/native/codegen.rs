@@ -15,15 +15,15 @@
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
+use cranelift_codegen::control::ControlPlane;
 use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
 use cranelift_codegen::ir::{
-    types, AbiParam, Block, FuncRef, InstBuilder, MemFlagsData, Signature, StackSlot,
-    StackSlotData, StackSlotKind, Type, UserFuncName, Value as IrValue,
+    types, AbiParam, Block, InstBuilder, MemFlagsData, SigRef, Signature, StackSlot, StackSlotData,
+    StackSlotKind, Type, UserFuncName, Value as IrValue,
 };
+use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::Context;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
-use cranelift_jit::JITModule;
-use cranelift_module::{FuncId, Linkage, Module};
 use renyi_syntax::ast::BinaryOp;
 
 use crate::bytecode::{Code, CodeKind, Op};
@@ -44,7 +44,7 @@ use crate::value::layout::{
     VARIANT_FIELDS, VARIANT_TAG, VARIANT_TY,
 };
 use crate::value::Value;
-use crate::vm::{FieldSite, Frame, Vm};
+use crate::vm::{FieldSite, Frame, NativeState, Vm};
 
 /// Where the VM keeps its stack (decision AR4): the generated code reads
 /// the pinned vector's pointer, length and capacity there.
@@ -87,17 +87,27 @@ const _: () = assert!(RECORD_TY == VARIANT_TY);
 /// that cuts the stack instead.
 const RELEASES_INLINE: usize = 4;
 
-/// The addresses in the JIT that the generated code reads and writes in
-/// place (decisions AR3 and AR4).
-#[derive(Clone, Copy)]
-pub struct Addresses {
-    /// The count of generated frames on the machine stack, which a
-    /// direct call moves.
-    pub depth: usize,
-    /// The table of compiled bodies by code object.
-    pub direct_table: usize,
-    /// The count of calls generated code made.
-    pub calls: usize,
+/// Where the VM keeps what the generated code reaches by pointer
+/// (decision AS1): the count of generated frames, the count of calls,
+/// the table of compiled bodies, the helpers and the constants. The code
+/// holds no address of its own, so an image of it loads anywhere.
+fn native_state_offset() -> i64 {
+    std::mem::offset_of!(Vm<'static>, native_state) as i64
+}
+
+const STATE_DEPTH: i32 = std::mem::offset_of!(NativeState, depth) as i32;
+const STATE_CALLS: i32 = std::mem::offset_of!(NativeState, calls) as i32;
+const STATE_DIRECT: i32 = std::mem::offset_of!(NativeState, direct_table) as i32;
+const STATE_HELPERS: i32 = std::mem::offset_of!(NativeState, helpers) as i32;
+const STATE_CONSTANTS: i32 = std::mem::offset_of!(NativeState, constants) as i32;
+
+/// The position of a helper in `SIGNATURES`, which is its index in the
+/// VM's table of helpers.
+fn helper_index(name: &str) -> usize {
+    SIGNATURES
+        .iter()
+        .position(|(known, _, _)| *known == name)
+        .unwrap_or_else(|| panic!("no helper {name}"))
 }
 
 /// The signature of every helper: its parameters and its result, one
@@ -183,9 +193,9 @@ pub const SIGNATURES: &[(&str, &str, char)] = &[
 ];
 
 /// The Cranelift signature of a helper.
-pub fn signature(module: &JITModule, params: &str, result: char) -> Signature {
-    let pointer = module.target_config().pointer_type();
-    let mut sig = module.make_signature();
+pub fn signature(isa: &dyn TargetIsa, params: &str, result: char) -> Signature {
+    let pointer = isa.pointer_type();
+    let mut sig = Signature::new(isa.default_call_conv());
     for letter in params.chars() {
         let ty = match letter {
             'p' | 'z' | 'q' => pointer,
@@ -211,9 +221,9 @@ pub fn signature(module: &JITModule, params: &str, result: char) -> Signature {
 /// entered (a typed result then goes back in a register; a trampoline's
 /// caller wants it on the stack), then the typed parameters in slot order;
 /// the status (`runtime::D_*`) and the bits of a typed result come back.
-pub fn direct_signature(module: &JITModule, kinds: &[Abs]) -> Signature {
-    let pointer = module.target_config().pointer_type();
-    let mut sig = module.make_signature();
+pub fn direct_signature(isa: &dyn TargetIsa, kinds: &[Abs]) -> Signature {
+    let pointer = isa.pointer_type();
+    let mut sig = Signature::new(isa.default_call_conv());
     sig.params.push(AbiParam::new(pointer));
     sig.params.push(AbiParam::new(pointer));
     sig.params.push(AbiParam::new(types::I32));
@@ -233,9 +243,9 @@ pub fn direct_signature(module: &JITModule, kinds: &[Abs]) -> Signature {
 
 /// The signature of a generated function: the VM, the frame's base and
 /// the pc to enter at (`0`, or a loop header), the status it leaves with.
-pub fn entry_signature(module: &JITModule) -> Signature {
-    let pointer = module.target_config().pointer_type();
-    let mut sig = module.make_signature();
+pub fn entry_signature(isa: &dyn TargetIsa) -> Signature {
+    let pointer = isa.pointer_type();
+    let mut sig = Signature::new(isa.default_call_conv());
     sig.params.push(AbiParam::new(pointer));
     sig.params.push(AbiParam::new(pointer));
     sig.params.push(AbiParam::new(types::I32));
@@ -269,7 +279,16 @@ impl Stats {
 /// the loop headers it can be entered at, the statistics.
 /// The trampoline, the body, the deopt points, the loop headers that have
 /// an entry, and the counts.
-pub type Compiled = (FuncId, FuncId, Vec<DeoptPoint>, Vec<u32>, Stats);
+/// A compiled code object (decision AS1): the machine code of its body
+/// and of its trampoline, which hold no address, with the deopt points
+/// and the loop headers the VM keeps beside them.
+pub struct Compiled {
+    pub body: Vec<u8>,
+    pub trampoline: Vec<u8>,
+    pub deopts: Vec<DeoptPoint>,
+    pub headers: Vec<u32>,
+    pub stats: Stats,
+}
 
 /// A shared failure block: the innermost handler, the operand stack
 /// below its depth, the block.
@@ -309,11 +328,12 @@ struct Gen<'a, 'b> {
     analysis: &'a Analysis,
     b: FunctionBuilder<'b>,
     pointer: Type,
-    module: &'a mut JITModule,
-    /// Every helper by name, and the ones this function has called so
-    /// far as its own references, declared on first use.
-    helper_ids: &'a HashMap<&'static str, FuncId>,
-    helpers: HashMap<&'static str, FuncRef>,
+    isa: &'a dyn TargetIsa,
+    /// The VM's table of helpers, read once at the entry: every helper is
+    /// called through it (decision AS1).
+    helper_table: IrValue,
+    /// The signatures imported so far, by helper name.
+    helper_sigs: HashMap<&'static str, SigRef>,
     vm: IrValue,
     base: IrValue,
     /// The pc to enter at: `0`, or one of `headers`.
@@ -329,8 +349,6 @@ struct Gen<'a, 'b> {
     base24: IrValue,
     /// The deepest operand stack of the body, by the analysis.
     max_depth: usize,
-    /// The addresses in the JIT the code reads and writes in place.
-    addresses: Addresses,
     /// The kind the declared result is passed back as.
     result_kind: Abs,
     /// The loop headers the interpreter may hand a frame over at: the
@@ -352,16 +370,15 @@ struct Gen<'a, 'b> {
     terminated: bool,
 }
 
-/// Compile one code object into the module: its body and its trampoline,
-/// defined but not finalized.
+/// Compile one code object (decision AS1): its body and its trampoline
+/// as machine code that holds no address, with the deopt points and the
+/// loop headers the VM keeps beside them.
 pub fn compile(
     program: &Program,
     code_id: usize,
-    module: &mut JITModule,
-    helper_ids: &HashMap<&'static str, FuncId>,
+    isa: &dyn TargetIsa,
     ctx: &mut Context,
     fctx: &mut FunctionBuilderContext,
-    addresses: Addresses,
 ) -> Result<Compiled, Skipped> {
     let code = &program.codes[code_id];
     let mut stats = Stats::default();
@@ -388,16 +405,10 @@ pub fn compile(
         (CodeKind::Function, Some(function)) => abs_of_result(program, function),
         _ => Abs::Boxed,
     };
-    let sig = direct_signature(module, &kinds);
-    let name = format!("renyi_direct_{code_id}");
-    let id = module
-        .declare_function(&name, Linkage::Local, &sig)
-        .map_err(|error| Skipped::Codegen(error.to_string()))?;
-    module.clear_context(ctx);
-    ctx.func.signature = sig;
-    ctx.func.name = UserFuncName::user(0, id.as_u32());
-    let target = module.target_config();
-    let pointer = target.pointer_type();
+    ctx.clear();
+    ctx.func.signature = direct_signature(isa, &kinds);
+    ctx.func.name = UserFuncName::user(0, code_id as u32);
+    let pointer = isa.pointer_type();
     let started = Instant::now();
     let deopts = {
         let mut builder = FunctionBuilder::new(&mut ctx.func, fctx);
@@ -418,6 +429,13 @@ pub fn compile(
         let exit = builder.create_block();
         builder.append_block_param(exit, types::I32);
         let base24 = builder.ins().imul_imm_s(base, SIZE as i64);
+        // the VM's table of helpers, read once (decision AS1)
+        let helper_table = builder.ins().load(
+            pointer,
+            MemFlagsData::trusted(),
+            vm,
+            (native_state_offset() + STATE_HELPERS as i64) as i32,
+        );
         // one word for a helper's answer, three for a range iterator's
         let out_slot =
             builder.create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, 24, 3));
@@ -441,9 +459,9 @@ pub fn compile(
             analysis: &analysis,
             b: builder,
             pointer,
-            module,
-            helper_ids,
-            helpers: HashMap::new(),
+            isa,
+            helper_table,
+            helper_sigs: HashMap::new(),
             vm,
             base,
             pc_param,
@@ -451,7 +469,6 @@ pub fn compile(
             typed_params,
             base24,
             max_depth,
-            addresses,
             result_kind,
             headers: headers.clone(),
             positions: Vec::new(),
@@ -471,61 +488,77 @@ pub fn compile(
         gen.epilogue();
         gen.b.seal_all_blocks();
         let deopts = std::mem::take(&mut gen.deopts);
-        gen.b.finalize(target);
+        gen.b.finalize(isa.frontend_config());
         deopts
     };
     stats.ir = started.elapsed();
     stats.instructions = ctx.func.dfg.num_insts();
     stats.blocks = ctx.func.layout.blocks().count();
     let started = Instant::now();
-    module
-        .define_function(id, ctx)
-        .map_err(|error| Skipped::Codegen(format!("{error:?}")))?;
-    let trampoline = trampoline(module, ctx, fctx, helper_ids, code_id, id, &kinds)?;
+    let body = machine_code(ctx, isa)?;
+    let trampoline = trampoline(isa, ctx, fctx, code_id, &kinds)?;
     stats.cranelift = started.elapsed();
     let headers = headers.into_iter().map(|header| header as u32).collect();
-    Ok((trampoline, id, deopts, headers, stats))
+    Ok(Compiled {
+        body,
+        trampoline,
+        deopts,
+        headers,
+        stats,
+    })
+}
+
+/// The machine code of the function in the context. It must hold no
+/// relocation: a reference to an address outside it would not survive
+/// the copy into an image (decision AS1), and the code reaches the VM's
+/// helpers and tables through the VM pointer instead.
+fn machine_code(ctx: &mut Context, isa: &dyn TargetIsa) -> Result<Vec<u8>, Skipped> {
+    let compiled = ctx
+        .compile(isa, &mut ControlPlane::default())
+        .map_err(|error| Skipped::Codegen(format!("{error:?}")))?;
+    if !compiled.buffer.relocs().is_empty() {
+        return Err(Skipped::Codegen(
+            "the code refers to an address outside it".to_string(),
+        ));
+    }
+    Ok(compiled.code_buffer().to_vec())
 }
 
 /// The entry of a code object (`renyi_code_*`, the `Entry` signature): a
-/// trampoline into the body (decision AR3). At the start it takes the
-/// typed parameters from the frame's slots under a check, and hands the
-/// frame back (`DEOPT`) when one does not fit; at a loop header the body
-/// takes the slots itself and the registers carry zeros. The body leaves
-/// its result on the stack for a trampoline's caller (the flag it passes
+/// trampoline into the body (decision AR3), which it reaches through the
+/// VM's table of bodies (decision AS1). At the start it takes the typed
+/// parameters from the frame's slots under a check, and hands the frame
+/// back (`DEOPT`) when one does not fit; at a loop header the body takes
+/// the slots itself and the registers carry zeros. The body leaves its
+/// result on the stack for a trampoline's caller (the flag it passes
 /// says so), and the body's status becomes the entry's.
-#[allow(clippy::too_many_arguments)]
 fn trampoline(
-    module: &mut JITModule,
+    isa: &dyn TargetIsa,
     ctx: &mut Context,
     fctx: &mut FunctionBuilderContext,
-    helper_ids: &HashMap<&'static str, FuncId>,
     code_id: usize,
-    body: FuncId,
     kinds: &[Abs],
-) -> Result<FuncId, Skipped> {
-    let sig = entry_signature(module);
-    let name = format!("renyi_code_{code_id}");
-    let id = module
-        .declare_function(&name, Linkage::Local, &sig)
-        .map_err(|error| Skipped::Codegen(error.to_string()))?;
-    module.clear_context(ctx);
-    ctx.func.signature = sig;
-    ctx.func.name = UserFuncName::user(0, id.as_u32());
-    let target = module.target_config();
-    let pointer = target.pointer_type();
+) -> Result<Vec<u8>, Skipped> {
+    ctx.clear();
+    ctx.func.signature = entry_signature(isa);
+    ctx.func.name = UserFuncName::user(1, code_id as u32);
+    let pointer = isa.pointer_type();
+    let flags = MemFlagsData::trusted();
     {
         let mut b = FunctionBuilder::new(&mut ctx.func, fctx);
-        let body_ref = module.declare_func_in_func(body, b.func);
-        let mut helper = |name: &str, b: &mut FunctionBuilder| -> FuncRef {
-            module.declare_func_in_func(helper_ids[name], b.func)
-        };
         let entry = b.create_block();
         b.append_block_params_for_function_params(entry);
         b.switch_to_block(entry);
         let vm = b.block_params(entry)[0];
         let base = b.block_params(entry)[1];
         let pc = b.block_params(entry)[2];
+        let state = b.ins().iadd_imm_s(vm, native_state_offset());
+        let helpers = b.ins().load(pointer, flags, state, STATE_HELPERS);
+        let direct_table = b.ins().load(pointer, flags, state, STATE_DIRECT);
+        let body = b
+            .ins()
+            .load(pointer, flags, direct_table, (code_id * 8) as i32);
+        let body_sig = b.import_signature(direct_signature(isa, kinds));
         let out = b.create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, 8, 3));
         let zero8 = b.ins().iconst(types::I8, 0);
         let start = b.create_block();
@@ -545,10 +578,15 @@ fn trampoline(
                 Abs::Float => ("rt_param_float", types::F64),
                 _ => continue,
             };
-            let func = helper(name, &mut b);
+            let index = helper_index(name);
+            let (_, params, result) = SIGNATURES[index];
+            let sig_ref = b.import_signature(signature(isa, params, result));
+            let address = b.ins().load(pointer, flags, helpers, (index * 8) as i32);
             let slot_value = b.ins().iconst(types::I32, slot as i64);
             let out_address = b.ins().stack_addr(pointer, out, 0);
-            let call = b.ins().call(func, &[vm, base, slot_value, out_address]);
+            let call =
+                b.ins()
+                    .call_indirect(sig_ref, address, &[vm, base, slot_value, out_address]);
             let ok = b.inst_results(call)[0];
             let next = b.create_block();
             let unfit = b.create_block();
@@ -559,7 +597,7 @@ fn trampoline(
             b.switch_to_block(next);
             args.push(b.ins().stack_load(pointer, ty, out, 0));
         }
-        let call = b.ins().call(body_ref, &args);
+        let call = b.ins().call_indirect(body_sig, body, &args);
         let results = b.inst_results(call).to_vec();
         b.ins()
             .jump(finish, &[results[0].into(), results[1].into()]);
@@ -574,7 +612,7 @@ fn trampoline(
                 _ => {}
             }
         }
-        let call = b.ins().call(body_ref, &args);
+        let call = b.ins().call_indirect(body_sig, body, &args);
         let results = b.inst_results(call).to_vec();
         b.ins()
             .jump(finish, &[results[0].into(), results[1].into()]);
@@ -593,12 +631,9 @@ fn trampoline(
         let mapped = b.ins().select(left, returned, mapped);
         b.ins().return_(&[mapped]);
         b.seal_all_blocks();
-        b.finalize(target);
+        b.finalize(isa.frontend_config());
     }
-    module
-        .define_function(id, ctx)
-        .map_err(|error| Skipped::Codegen(format!("{error:?}")))?;
-    Ok(id)
+    machine_code(ctx, isa)
 }
 
 impl Gen<'_, '_> {
@@ -684,20 +719,29 @@ impl Gen<'_, '_> {
     // ------------------------------------------------------------ helpers
 
     fn call(&mut self, name: &'static str, args: &[IrValue]) -> Option<IrValue> {
-        let func = match self.helpers.get(name) {
-            Some(func) => *func,
+        let index = helper_index(name);
+        let sig_ref = match self.helper_sigs.get(name) {
+            Some(sig_ref) => *sig_ref,
             None => {
-                let id = *self
-                    .helper_ids
-                    .get(name)
-                    .unwrap_or_else(|| panic!("no helper {name}"));
-                let func = self.module.declare_func_in_func(id, self.b.func);
-                self.helpers.insert(name, func);
-                func
+                let (_, params, result) = SIGNATURES[index];
+                let sig_ref = self.b.import_signature(signature(self.isa, params, result));
+                self.helper_sigs.insert(name, sig_ref);
+                sig_ref
             }
         };
-        let inst = self.b.ins().call(func, args);
+        let address = self.b.ins().load(
+            self.pointer,
+            MemFlagsData::trusted(),
+            self.helper_table,
+            (index * 8) as i32,
+        );
+        let inst = self.b.ins().call_indirect(sig_ref, address, args);
         self.b.inst_results(inst).first().copied()
+    }
+
+    /// The VM's native state (decision AS1): the counters and the tables.
+    fn native_state(&mut self) -> IrValue {
+        self.b.ins().iadd_imm_s(self.vm, native_state_offset())
     }
 
     fn iconst(&mut self, ty: Type, value: i64) -> IrValue {
@@ -1588,10 +1632,10 @@ impl Gen<'_, '_> {
         let more = self.b.ins().iadd_imm_s(frames_len, 1);
         self.b.ins().store(flags, more, frames, 8);
         // one more call made from generated code
-        let calls = self.iconst(pointer, self.addresses.calls as i64);
-        let count = self.b.ins().load(pointer, flags, calls, 0);
+        let state = self.native_state();
+        let count = self.b.ins().load(pointer, flags, state, STATE_CALLS);
         let counted = self.b.ins().iadd_imm_s(count, 1);
-        self.b.ins().store(flags, counted, calls, 0);
+        self.b.ins().store(flags, counted, state, STATE_CALLS);
         base
     }
 
@@ -1892,8 +1936,23 @@ impl Gen<'_, '_> {
                         // the constant copied from the code's table, which
                         // lives as long as the program, with one more
                         // reference
-                        let address = constant as *const Value as i64;
-                        let from = self.iconst(self.pointer, address);
+                        let state = self.native_state();
+                        let table = self.b.ins().load(
+                            self.pointer,
+                            MemFlagsData::trusted(),
+                            state,
+                            STATE_CONSTANTS,
+                        );
+                        let base = self.b.ins().load(
+                            self.pointer,
+                            MemFlagsData::trusted(),
+                            table,
+                            (self.code_id * 8) as i32,
+                        );
+                        let from = self
+                            .b
+                            .ins()
+                            .iadd_imm_s(base, (*index as usize * SIZE) as i64);
                         self.push_copy(from, true);
                         self.push_boxed();
                     }
@@ -2785,7 +2844,8 @@ impl Gen<'_, '_> {
         let slow = self.b.create_block();
         let join = self.b.create_block();
         // the body's address from the table, else from the helper
-        let table = self.iconst(pointer, self.addresses.direct_table as i64);
+        let state = self.native_state();
+        let table = self.b.ins().load(pointer, flags, state, STATE_DIRECT);
         let known = self
             .b
             .ins()
@@ -2802,7 +2862,7 @@ impl Gen<'_, '_> {
         // the machine stack must have room; the frame counts on it
         self.switch_to(have);
         let entry = self.b.block_params(have)[0];
-        let depth_address = self.iconst(pointer, self.addresses.depth as i64);
+        let depth_address = self.b.ins().iadd_imm_s(state, STATE_DEPTH as i64);
         let depth = self.b.ins().load(pointer, flags, depth_address, 0);
         let room = self
             .b
@@ -2843,7 +2903,7 @@ impl Gen<'_, '_> {
                 _ => {}
             }
         }
-        let sig = direct_signature(self.module, kinds);
+        let sig = direct_signature(self.isa, kinds);
         let sig_ref = self.b.import_signature(sig);
         let call = self.b.ins().call_indirect(sig_ref, entry, &arguments);
         let results = self.b.inst_results(call).to_vec();

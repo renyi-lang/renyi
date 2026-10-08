@@ -24,6 +24,8 @@ libloading = "0.8"
 # decision AG1: machine code for the bytecode, generated inside the process
 cranelift-codegen = "0.134"
 cranelift-frontend = "0.134"
-cranelift-jit = "0.134"
-cranelift-module = "0.134"
 cranelift-native = "0.134"
+# decision AS1: the generated code is placed in executable memory by the VM
+# itself (what cranelift-jit did), so that an image of it can be loaded
+region = "3.0"
+wasmtime-internal-jit-icache-coherence = "47.0.4"

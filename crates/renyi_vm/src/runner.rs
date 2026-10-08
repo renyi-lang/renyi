@@ -149,7 +149,11 @@ fn run_measured(program: &Program, mut options: Options) -> (Run, Option<(String
     vm.report_profile();
     if std::env::var_os("RENYI_NATIVE_REPORT").is_some() {
         if let Some(jit) = &vm.native {
-            let _ = writeln!(vm.stderr, "{}", jit.report(&vm.hotness));
+            let _ = writeln!(
+                vm.stderr,
+                "{}",
+                jit.report(&vm.hotness, vm.native_state.calls)
+            );
         }
     }
     let unused = vm.end_replay();

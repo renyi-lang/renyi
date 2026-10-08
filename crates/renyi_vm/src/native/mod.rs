@@ -19,18 +19,17 @@
 //!   arm for that op, on the VM's stack.
 
 pub mod codegen;
+pub mod image;
 pub mod infer;
 pub mod runtime;
 
-use std::collections::HashMap;
-
+use cranelift_codegen::isa::OwnedTargetIsa;
 use cranelift_codegen::settings::{self, Configurable};
 use cranelift_codegen::Context;
 use cranelift_frontend::FunctionBuilderContext;
-use cranelift_jit::{JITBuilder, JITModule};
-use cranelift_module::{FuncId, Linkage, Module};
 
 use crate::compile::{CodeId, Program};
+use crate::value::Value;
 use crate::vm::Vm;
 use infer::{Abs, SlotKind};
 
@@ -63,7 +62,7 @@ pub const HOT_FACTOR: u32 = 8000;
 
 /// Where the generated code hands a frame to the interpreter: what it
 /// kept in registers at that op, so that `rt_deopt` can box it.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DeoptPoint {
     pub pc: u32,
     pub locals: u16,
@@ -89,11 +88,11 @@ enum State {
     },
 }
 
-/// The JIT of one VM: the Cranelift module with every helper declared,
-/// and the state of every code object.
+/// The JIT of one VM: Cranelift's target, the state of every code
+/// object, the tables the generated code reaches through the VM
+/// (decision AS1) and the executable memory the code is placed in.
 pub struct Jit {
-    module: Option<JITModule>,
-    helpers: HashMap<&'static str, FuncId>,
+    isa: OwnedTargetIsa,
     ctx: Context,
     fctx: FunctionBuilderContext,
     states: Vec<State>,
@@ -101,14 +100,23 @@ pub struct Jit {
     /// Per code object, whether an entry at a loop header found the frame
     /// not fit for the registers: no further entry there.
     resume_refused: Vec<bool>,
-    /// How many generated frames are nested on the machine stack; the
-    /// generated code reads and moves it in place around a direct call
-    /// (decision AR3), by its address, which the box the JIT lives in
-    /// keeps fixed.
-    pub depth: usize,
     /// Per code object, the address of its body once compiled, else null:
-    /// what a direct call site loads first (decision AR3).
+    /// what a direct call site loads first (decision AR3), through
+    /// `NativeState::direct_table`.
     direct_table: Box<[*const u8]>,
+    /// The helpers in the order of `codegen::SIGNATURES`, which the
+    /// generated code calls through `NativeState::helpers`.
+    helpers: Box<[*const u8]>,
+    /// Per code object, its constants, which the generated code reads
+    /// through `NativeState::constants`.
+    constants: Box<[*const Value]>,
+    /// The executable memory of the compiled functions.
+    code: CodeArena,
+    /// Cranelift's optimisation level the code is compiled at (`none` or
+    /// `speed`); an image records it.
+    opt_level: String,
+    /// How many code objects an image provided (decision AS1).
+    pub loaded: usize,
     /// Per code object, its deopt points, numbered as the generated code
     /// names them.
     pub deopts: Vec<Vec<DeoptPoint>>,
@@ -119,12 +127,11 @@ pub struct Jit {
     pub skipped: usize,
     pub ops: usize,
     pub stats: codegen::Stats,
-    pub finalizing: std::time::Duration,
-    /// How often generated code handed a frame to the interpreter, how
-    /// many calls generated code made, and how many of those found no
-    /// generated code to call.
+    pub placing: std::time::Duration,
+    /// How often generated code handed a frame to the interpreter, and
+    /// how many calls from generated code found no generated code to
+    /// call (the calls themselves are counted in `NativeState`).
     pub deopts_taken: usize,
-    pub calls: usize,
     pub calls_cold: usize,
     /// How often a loop was entered from the interpreter, and how often
     /// such an entry was refused.
@@ -132,18 +139,142 @@ pub struct Jit {
     pub resumes_refused: usize,
 }
 
+/// The executable memory the generated code is placed in (decision
+/// AS1), as `cranelift-jit` placed it: a function is written into fresh
+/// pages, flushed from the instruction cache and made executable once,
+/// and never written again.
+#[derive(Default)]
+pub struct CodeArena {
+    allocations: Vec<region::Allocation>,
+}
+
+impl CodeArena {
+    /// Several functions placed in one allocation, each aligned to sixteen
+    /// bytes; their addresses in order.
+    pub fn place_many(&mut self, parts: &[&[u8]]) -> Result<Vec<*const u8>, String> {
+        let mut offsets = Vec::with_capacity(parts.len());
+        let mut total = 0usize;
+        for part in parts {
+            offsets.push(total);
+            total += part.len().div_ceil(16) * 16;
+        }
+        let mut allocation = region::alloc(total.max(1), region::Protection::READ_WRITE)
+            .map_err(|error| error.to_string())?;
+        let pointer = allocation.as_mut_ptr::<u8>();
+        // SAFETY: as in `place`, over one allocation that holds every part.
+        unsafe {
+            for (part, offset) in parts.iter().zip(&offsets) {
+                std::ptr::copy_nonoverlapping(part.as_ptr(), pointer.add(*offset), part.len());
+            }
+            wasmtime_internal_jit_icache_coherence::clear_cache(
+                pointer as *const std::ffi::c_void,
+                total,
+            )
+            .map_err(|error| error.to_string())?;
+            region::protect(pointer, allocation.len(), region::Protection::READ_EXECUTE)
+                .map_err(|error| error.to_string())?;
+        }
+        wasmtime_internal_jit_icache_coherence::pipeline_flush_mt()
+            .map_err(|error| error.to_string())?;
+        self.allocations.push(allocation);
+        Ok(offsets
+            .into_iter()
+            .map(|offset| pointer.wrapping_add(offset) as *const u8)
+            .collect())
+    }
+
+    /// The bytes placed, executable; the address they run at.
+    pub fn place(&mut self, bytes: &[u8]) -> Result<*const u8, String> {
+        let mut allocation = region::alloc(bytes.len().max(1), region::Protection::READ_WRITE)
+            .map_err(|error| error.to_string())?;
+        let pointer = allocation.as_mut_ptr::<u8>();
+        // SAFETY: the allocation holds at least the bytes and is writable
+        // until it is made executable below; the flush and the protection
+        // are what the instruction cache and the loader need, in the order
+        // cranelift-jit used.
+        unsafe {
+            std::ptr::copy_nonoverlapping(bytes.as_ptr(), pointer, bytes.len());
+            wasmtime_internal_jit_icache_coherence::clear_cache(
+                pointer as *const std::ffi::c_void,
+                bytes.len(),
+            )
+            .map_err(|error| error.to_string())?;
+            region::protect(pointer, allocation.len(), region::Protection::READ_EXECUTE)
+                .map_err(|error| error.to_string())?;
+        }
+        wasmtime_internal_jit_icache_coherence::pipeline_flush_mt()
+            .map_err(|error| error.to_string())?;
+        self.allocations.push(allocation);
+        Ok(pointer as *const u8)
+    }
+}
+
 impl Jit {
     /// A JIT for the program, or `None` when the host is not a machine
     /// Cranelift generates code for (the interpreter then runs alone).
-    pub fn new(program: &Program) -> Option<Jit> {
+    pub fn new(program: &Program, opt_level: Option<&str>) -> Option<Jit> {
+        // no optimisation unless asked (`renyi build --opt speed`, or
+        // `RENYI_NATIVE_OPT=speed` as a development aid): the generated
+        // code calls a helper for most ops, and Cranelift's optimiser
+        // found little in it for twice the time
+        let level = opt_level
+            .map(str::to_string)
+            .or_else(|| std::env::var("RENYI_NATIVE_OPT").ok())
+            .unwrap_or_else(|| "none".to_string());
+        let isa = Jit::isa(&level)?;
+        let hot_factor = std::env::var("RENYI_NATIVE_HOT")
+            .ok()
+            .and_then(|text| text.parse().ok())
+            .unwrap_or(HOT_FACTOR);
+        // the helpers in the order the generated code indexes them
+        let helpers: Box<[*const u8]> = codegen::SIGNATURES
+            .iter()
+            .map(|(name, _, _)| {
+                runtime::HELPERS
+                    .iter()
+                    .find(|(known, _)| known == name)
+                    .map(|(_, address)| *address)
+                    .unwrap_or_else(|| panic!("no helper {name}"))
+            })
+            .collect();
+        let constants: Box<[*const Value]> = program
+            .codes
+            .iter()
+            .map(|code| code.constants.as_ptr())
+            .collect();
+        Some(Jit {
+            isa,
+            ctx: Context::new(),
+            fctx: FunctionBuilderContext::new(),
+            states: program.codes.iter().map(|_| State::Cold).collect(),
+            hot_factor,
+            resume_refused: vec![false; program.codes.len()],
+            direct_table: vec![std::ptr::null(); program.codes.len()].into_boxed_slice(),
+            helpers,
+            constants,
+            code: CodeArena::default(),
+            opt_level: level,
+            loaded: 0,
+            deopts: vec![Vec::new(); program.codes.len()],
+            compiled: 0,
+            skipped: 0,
+            ops: 0,
+            stats: codegen::Stats::default(),
+            placing: std::time::Duration::ZERO,
+            deopts_taken: 0,
+            calls_cold: 0,
+            resumes: 0,
+            resumes_refused: 0,
+        })
+    }
+
+    /// Cranelift's target for this host at the optimisation level, or
+    /// `None` when Cranelift generates no code for this machine.
+    fn isa(opt_level: &str) -> Option<OwnedTargetIsa> {
         let mut flags = settings::builder();
         flags.set("use_colocated_libcalls", "false").ok()?;
         flags.set("is_pic", "false").ok()?;
-        // no optimisation: the generated code calls a helper for most ops,
-        // and Cranelift's optimiser finds little in it for twice the time
-        // (`RENYI_NATIVE_OPT=speed` compares, a development aid)
-        let level = std::env::var("RENYI_NATIVE_OPT").unwrap_or_else(|_| "none".to_string());
-        flags.set("opt_level", &level).ok()?;
+        flags.set("opt_level", opt_level).ok()?;
         // the register allocator: Cranelift's backtracking one unless
         // `RENYI_NATIVE_REGALLOC` names the other (`single_pass`, quick to
         // compile, more spills; a development aid for the comparison)
@@ -157,51 +288,115 @@ impl Jit {
         flags
             .set("enable_verifier", if verify { "true" } else { "false" })
             .ok()?;
-        let isa = cranelift_native::builder()
+        cranelift_native::builder()
             .ok()?
             .finish(settings::Flags::new(flags))
-            .ok()?;
-        let mut builder = JITBuilder::with_isa(isa, cranelift_module::default_libcall_names());
-        builder.symbols(runtime::HELPERS.iter().map(|(name, ptr)| (*name, *ptr)));
-        let mut module = JITModule::new(builder);
-        let mut helpers = HashMap::new();
-        for (name, params, result) in codegen::SIGNATURES {
-            let sig = codegen::signature(&module, params, *result);
-            let id = module.declare_function(name, Linkage::Import, &sig).ok()?;
-            helpers.insert(*name, id);
-        }
-        let ctx = module.make_context();
-        let hot_factor = std::env::var("RENYI_NATIVE_HOT")
             .ok()
-            .and_then(|text| text.parse().ok())
-            .unwrap_or(HOT_FACTOR);
-        Some(Jit {
-            module: Some(module),
-            helpers,
-            ctx,
-            fctx: FunctionBuilderContext::new(),
-            states: program.codes.iter().map(|_| State::Cold).collect(),
-            hot_factor,
-            resume_refused: vec![false; program.codes.len()],
+    }
+
+    /// The target an image built here names (decision AS1), or `None`
+    /// when Cranelift generates no code for this machine.
+    pub fn host_target() -> Option<String> {
+        Jit::isa("none").map(|isa| image::target_of(&*isa))
+    }
+
+    /// The target this JIT generates code for.
+    pub fn target(&self) -> String {
+        image::target_of(&*self.isa)
+    }
+
+    pub fn opt_level(&self) -> &str {
+        &self.opt_level
+    }
+
+    /// Every code object compiled, for an image (decision AS1): the
+    /// machine code of each, or `None` for one the analysis left to the
+    /// interpreter. Nothing is placed in executable memory.
+    pub fn compile_everything(&mut self, program: &Program) -> Vec<Option<image::ImageCode>> {
+        (0..program.codes.len())
+            .map(|code| match self.compile_code(program, code) {
+                Ok(compiled) => {
+                    self.compiled += 1;
+                    self.ops += program.codes[code].ops.len();
+                    Some(image::ImageCode {
+                        body: compiled.body,
+                        trampoline: compiled.trampoline,
+                        headers: compiled.headers,
+                        deopts: compiled.deopts,
+                    })
+                }
+                Err(_) => {
+                    self.skipped += 1;
+                    None
+                }
+            })
+            .collect()
+    }
+
+    /// The code of an image placed and made ready (decision AS1): every
+    /// code object the image holds runs as machine code from its first
+    /// call, the others stay with the interpreter. The image must have
+    /// been built for this machine (`Header::mismatch`) from the same
+    /// program.
+    pub fn load_image(&mut self, image: &image::Image) -> Result<(), String> {
+        if image.codes.len() != self.states.len() {
+            return Err(format!(
+                "the image holds {} code objects, the program {}",
+                image.codes.len(),
+                self.states.len()
+            ));
+        }
+        let parts: Vec<&[u8]> = image
+            .codes
+            .iter()
+            .flatten()
+            .flat_map(|code| [code.body.as_slice(), code.trampoline.as_slice()])
+            .collect();
+        let started = std::time::Instant::now();
+        let placed = self.code.place_many(&parts)?;
+        self.placing += started.elapsed();
+        let mut addresses = placed.into_iter();
+        for (index, code) in image.codes.iter().enumerate() {
+            match code {
+                None => {
+                    self.states[index] = State::Skipped;
+                    self.skipped += 1;
+                }
+                Some(code) => {
+                    let body = addresses.next().expect("a body was placed");
+                    let entry = addresses.next().expect("a trampoline was placed");
+                    // SAFETY: the trampoline was compiled with
+                    // `entry_signature`, which is the signature of `Entry`.
+                    let entry: Entry = unsafe { std::mem::transmute::<*const u8, Entry>(entry) };
+                    self.direct_table[index] = body;
+                    self.deopts[index] = code.deopts.clone();
+                    self.states[index] = State::Ready {
+                        entry,
+                        direct: body,
+                        headers: code.headers.clone(),
+                    };
+                    self.loaded += 1;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// What the VM keeps for the generated code to reach (decision AS1):
+    /// the tables' addresses, which the boxes they live in keep fixed.
+    pub(crate) fn state_pointers(&self) -> crate::vm::NativeState {
+        crate::vm::NativeState {
             depth: 0,
-            direct_table: vec![std::ptr::null(); program.codes.len()].into_boxed_slice(),
-            deopts: vec![Vec::new(); program.codes.len()],
-            compiled: 0,
-            skipped: 0,
-            ops: 0,
-            stats: codegen::Stats::default(),
-            finalizing: std::time::Duration::ZERO,
-            deopts_taken: 0,
             calls: 0,
-            calls_cold: 0,
-            resumes: 0,
-            resumes_refused: 0,
-        })
+            direct_table: self.direct_table.as_ptr(),
+            helpers: self.helpers.as_ptr(),
+            constants: self.constants.as_ptr(),
+        }
     }
 
     /// The counts and the time, one line; `hotness` is the VM's count of
     /// ops run per code object.
-    pub fn report(&self, hotness: &[u32]) -> String {
+    pub fn report(&self, hotness: &[u32], calls: usize) -> String {
         let cold = self
             .states
             .iter()
@@ -209,17 +404,22 @@ impl Jit {
             .filter(|(state, ran)| matches!(state, State::Cold) && **ran > 0)
             .count();
         let stats = &self.stats;
+        let loaded = if self.loaded > 0 {
+            format!("{} code objects loaded from the image; ", self.loaded)
+        } else {
+            String::new()
+        };
         format!(
-            "native: {} code objects compiled ({} ops, {} instructions in {} blocks) in {} ms (analysis {} ms, IR {} ms, cranelift {} ms, finalizing {} ms); {} left to the interpreter, {} called but cold",
+            "native: {loaded}{} code objects compiled ({} ops, {} instructions in {} blocks) in {} ms (analysis {} ms, IR {} ms, cranelift {} ms, placing {} ms); {} left to the interpreter, {} called but cold",
             self.compiled,
             self.ops,
             stats.instructions,
             stats.blocks,
-            (stats.analysis + stats.ir + stats.cranelift + self.finalizing).as_millis(),
+            (stats.analysis + stats.ir + stats.cranelift + self.placing).as_millis(),
             stats.analysis.as_millis(),
             stats.ir.as_millis(),
             stats.cranelift.as_millis(),
-            self.finalizing.as_millis(),
+            self.placing.as_millis(),
             self.skipped,
             cold
         ) + &format!(
@@ -227,7 +427,7 @@ impl Jit {
 native: {} deopts; {} calls from generated code, {} of them to the interpreter; {} loops entered from the interpreter, {} refused
 {}",
             self.deopts_taken,
-            self.calls,
+            calls,
             self.calls_cold,
             self.resumes,
             self.resumes_refused,
@@ -309,25 +509,20 @@ native: {} deopts; {} calls from generated code, {} of them to the interpreter; 
         }
     }
 
-    /// Compile a code object; its state becomes `Ready` or `Skipped`.
-    fn compile(&mut self, program: &Program, code: CodeId) {
-        let addresses = codegen::Addresses {
-            depth: &self.depth as *const usize as usize,
-            direct_table: self.direct_table.as_ptr() as usize,
-            calls: &self.calls as *const usize as usize,
-        };
-        let module = self.module.as_mut().expect("the module lives with the JIT");
-        let compiled = codegen::compile(
-            program,
-            code,
-            module,
-            &self.helpers,
-            &mut self.ctx,
-            &mut self.fctx,
-            addresses,
-        );
-        let (id, body, deopts, headers, stats) = match compiled {
-            Ok(compiled) => compiled,
+    /// The machine code of a code object, with its statistics counted;
+    /// the reason when it stays with the interpreter, reported under
+    /// `RENYI_NATIVE_REPORT`.
+    fn compile_code(
+        &mut self,
+        program: &Program,
+        code: CodeId,
+    ) -> Result<codegen::Compiled, codegen::Skipped> {
+        let compiled = codegen::compile(program, code, &*self.isa, &mut self.ctx, &mut self.fctx);
+        match compiled {
+            Ok(compiled) => {
+                self.stats.add(&compiled.stats);
+                Ok(compiled)
+            }
             Err(reason) => {
                 if std::env::var_os("RENYI_NATIVE_REPORT").is_some() {
                     eprintln!(
@@ -335,43 +530,47 @@ native: {} deopts; {} calls from generated code, {} of them to the interpreter; 
                         program.codes[code].name
                     );
                 }
+                Err(reason)
+            }
+        }
+    }
+
+    /// Compile a code object; its state becomes `Ready` or `Skipped`.
+    fn compile(&mut self, program: &Program, code: CodeId) {
+        let compiled = match self.compile_code(program, code) {
+            Ok(compiled) => compiled,
+            Err(_) => {
                 self.states[code] = State::Skipped;
                 self.skipped += 1;
                 return;
             }
         };
-        self.stats.add(&stats);
-        let defined = std::time::Instant::now();
-        let finalized = module.finalize_definitions();
-        self.finalizing += defined.elapsed();
-        if finalized.is_err() {
-            self.states[code] = State::Skipped;
-            self.skipped += 1;
-            return;
-        }
-        let pointer = module.get_finalized_function(id);
-        // SAFETY: the function was defined with `entry_signature`, which is
-        // the signature of `Entry`.
-        let entry: Entry = unsafe { std::mem::transmute::<*const u8, Entry>(pointer) };
-        let direct = module.get_finalized_function(body);
-        self.direct_table[code] = direct;
-        self.deopts[code] = deopts;
+        let started = std::time::Instant::now();
+        let placed = self.code.place(&compiled.body).and_then(|body| {
+            self.code
+                .place(&compiled.trampoline)
+                .map(|entry| (body, entry))
+        });
+        self.placing += started.elapsed();
+        let (body, entry) = match placed {
+            Ok(placed) => placed,
+            Err(_) => {
+                self.states[code] = State::Skipped;
+                self.skipped += 1;
+                return;
+            }
+        };
+        // SAFETY: the trampoline was compiled with `entry_signature`, which
+        // is the signature of `Entry`.
+        let entry: Entry = unsafe { std::mem::transmute::<*const u8, Entry>(entry) };
+        self.direct_table[code] = body;
+        self.deopts[code] = compiled.deopts;
         self.states[code] = State::Ready {
             entry,
-            direct,
-            headers,
+            direct: body,
+            headers: compiled.headers,
         };
         self.compiled += 1;
         self.ops += program.codes[code].ops.len();
-    }
-}
-
-impl Drop for Jit {
-    fn drop(&mut self) {
-        if let Some(module) = self.module.take() {
-            // SAFETY: no generated function outlives the VM that owns the
-            // JIT; the entries are only ever called through it.
-            unsafe { module.free_memory() };
-        }
     }
 }

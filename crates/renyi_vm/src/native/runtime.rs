@@ -1069,9 +1069,7 @@ impl Vm<'_> {
         if let Some(callee) = program.function_codes.get(function).copied().flatten() {
             self.push_frame_in_place(callee, count);
             let entry = self.frames.len();
-            if let Some(jit) = self.native.as_mut() {
-                jit.calls += 1;
-            }
+            self.native_state.calls += 1;
             return self.run_top_frame(entry);
         }
         let mut args = std::mem::take(&mut self.scratch);

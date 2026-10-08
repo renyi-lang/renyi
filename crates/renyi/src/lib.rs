@@ -9,7 +9,10 @@
 //! line and `test` block, with `replays` tests answered from their
 //! recordings), `compile` (check, then write the program as a bytecode
 //! file, which `run`, `record`, `test` and `reproduce` load in place of
-//! the source when the path ends in `.ryc`, decision Z4), `mcp` (the
+//! the source when the path ends in `.ryc`, decision Z4), `build` (the
+//! bytecode with the machine code of every function, an image the same
+//! commands load in place of the source when the path ends in `.ryi`,
+//! decision AS1), `mcp` (the
 //! toolchain served to an agent host over standard input and output, in
 //! `mcp.rs`), `lsp` (the language server for an editor, in `lsp.rs`) and
 //! `serve` (`run` for a service; with `--watch`, reloaded between requests
@@ -45,6 +48,7 @@ use renyi_syntax::diagnostics::{render_json, render_text};
 use renyi_syntax::layout::check_layout;
 use renyi_syntax::{format, lex, module_to_json, parse, parse_declarations, SourceFile, TokenKind};
 use renyi_vm::grant::{parse_capability, Unit};
+use renyi_vm::native::image::{self, Image};
 use renyi_vm::recording::Dependency;
 use renyi_vm::{file, Manifest};
 
@@ -124,6 +128,11 @@ const USAGE: &str = "usage:
   renyi compile [--to <file.ryc>] <file.ry>
                                       check the program and write its bytecode (default: <name>.ryc);
                                       run, record, test and reproduce load a .ryc in place of a .ry
+  renyi build [--to <file.ryi>] [--opt speed|none] <file.ry>
+                                      check the program, compile every function to machine code for this
+                                      machine (Cranelift's `speed` level unless --opt none) and write the
+                                      image (default: <name>.ryi); run, record, test and reproduce load a
+                                      .ryi in place of a .ry and compile nothing
   renyi add <name> [<version>]        a dependency from the registry renyi.json names: choose the
                                       versions, fetch and verify the packages, print the effects of
                                       the package added, write renyi.json and renyi.lock.json
@@ -229,6 +238,7 @@ fn dispatch() -> ExitCode {
         Some("reproduce") => reproduce_command(&args[1..]),
         Some("test") => test_command(&args[1..]),
         Some("compile") => compile_command(&args[1..]),
+        Some("build") => build_command(&args[1..]),
         Some("add") => packages::add_command(&args[1..]),
         Some("update") => packages::update_command(&args[1..]),
         Some("audit") => packages::audit_command(&args[1..]),
@@ -461,8 +471,8 @@ fn format_command(args: &[String]) -> ExitCode {
 /// Check a file with its imports and compile it, or load a bytecode file
 /// (`.ryc`, decision Z4); diagnostics go to stdout as `check` prints them,
 /// and an error stops here.
-fn compile(path: &str) -> Result<renyi_vm::Program, ExitCode> {
-    compile_with_sources(path).map(|(program, _)| program)
+fn compile(path: &str) -> Result<(renyi_vm::Program, Option<Image>), ExitCode> {
+    compile_with_sources(path).map(|(program, _, image)| (program, image))
 }
 
 /// What the manifest's code hash is computed from: the source files of a
@@ -474,10 +484,24 @@ enum Hashed {
 }
 
 /// `compile`, with what the manifest's code hash is computed from.
-fn compile_with_sources(path: &str) -> Result<(renyi_vm::Program, Hashed), ExitCode> {
+fn compile_with_sources(
+    path: &str,
+) -> Result<(renyi_vm::Program, Hashed, Option<Image>), ExitCode> {
+    if image::is_image(path) {
+        return match load_image_file(path) {
+            Ok((program, loaded)) => {
+                let text = loaded.bytecode.clone();
+                Ok((program, Hashed::File(text), Some(loaded)))
+            }
+            Err(message) => {
+                eprintln!("renyi: {message}");
+                Err(ExitCode::FAILURE)
+            }
+        };
+    }
     if file::is_bytecode(path) {
         return match load_bytecode(path) {
-            Ok((program, text)) => Ok((program, Hashed::File(text))),
+            Ok((program, text)) => Ok((program, Hashed::File(text), None)),
             Err(message) => {
                 eprintln!("renyi: {message}");
                 Err(ExitCode::FAILURE)
@@ -487,7 +511,7 @@ fn compile_with_sources(path: &str) -> Result<(renyi_vm::Program, Hashed), ExitC
     match compile_sources(path) {
         Ok(compiled) => {
             print!("{}", compiled.diagnostics);
-            Ok((compiled.program, Hashed::Sources(compiled.sources)))
+            Ok((compiled.program, Hashed::Sources(compiled.sources), None))
         }
         Err(CompileError::Read(message)) => {
             eprintln!("renyi: {message}");
@@ -524,6 +548,103 @@ fn grants(program: &renyi_vm::Program, kind: &str) -> bool {
             .iter()
             .any(|capability| capability.path == [kind])
     })
+}
+
+/// A program from an image file (decision AS1), with the image to load
+/// its machine code from; the error names the path and what is wrong, or
+/// why the image cannot run here with the fix (build again).
+fn load_image_file(path: &str) -> Result<(renyi_vm::Program, Image), String> {
+    let bytes = std::fs::read(path).map_err(|error| format!("cannot read {path}: {error}"))?;
+    let loaded = Image::read(&bytes).map_err(|detail| format!("{path}: {detail}"))?;
+    let target = renyi_vm::native::Jit::host_target().ok_or_else(|| {
+        format!("{path}: this machine generates no machine code; run the bytecode instead (`renyi compile`)")
+    })?;
+    if let Some(mismatch) = loaded.header.mismatch(&target) {
+        return Err(format!("{path}: {mismatch}"));
+    }
+    let program = file::load(&loaded.bytecode).map_err(|detail| format!("{path}: {detail}"))?;
+    Ok((program, loaded))
+}
+
+/// `renyi build [--to <file.ryi>] [--opt speed|none] <file.ry>`: check
+/// the program with its imports, compile every function to machine code
+/// for this machine (at Cranelift's `speed` level unless asked otherwise,
+/// decision AS3) and write the image (decision AS1).
+fn build_command(args: &[String]) -> ExitCode {
+    let mut to: Option<String> = None;
+    let mut opt: Option<String> = None;
+    let mut path: Option<&String> = None;
+    let mut rest = args.iter();
+    while let Some(arg) = rest.next() {
+        match arg.as_str() {
+            "--to" => match rest.next() {
+                Some(value) => to = Some(value.clone()),
+                None => {
+                    eprintln!("renyi: `--to` needs a value");
+                    return ExitCode::FAILURE;
+                }
+            },
+            "--opt" => match rest.next() {
+                Some(value) if value == "none" || value == "speed" => opt = Some(value.clone()),
+                Some(value) => {
+                    eprintln!("renyi: `--opt` takes `none` or `speed`, not `{value}`");
+                    return ExitCode::FAILURE;
+                }
+                None => {
+                    eprintln!("renyi: `--opt` needs a value");
+                    return ExitCode::FAILURE;
+                }
+            },
+            other if other.starts_with("--") => {
+                eprintln!("renyi: unknown option `{other}`");
+                eprintln!("{USAGE}");
+                return ExitCode::FAILURE;
+            }
+            _ => path = Some(arg),
+        }
+    }
+    let Some(path) = path else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    if image::is_image(path) {
+        eprintln!("renyi: {path} is an image already; `build` takes a .ry or a .ryc file");
+        return ExitCode::FAILURE;
+    }
+    let (program, _, _) = match compile_with_sources(path) {
+        Ok(compiled) => compiled,
+        Err(code) => return code,
+    };
+    let built = match image::build(&program, opt.as_deref()) {
+        Ok(built) => built,
+        Err(message) => {
+            eprintln!("renyi: {message}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let target = to.unwrap_or_else(|| {
+        let stem = Path::new(path)
+            .file_stem()
+            .map(|stem| stem.to_string_lossy().to_string())
+            .unwrap_or_else(|| "program".to_string());
+        format!("{stem}.{}", image::EXTENSION)
+    });
+    let bytes = built.write();
+    match std::fs::write(&target, &bytes) {
+        Ok(()) => {
+            let compiled = built.codes.iter().flatten().count();
+            eprintln!(
+                "renyi: built {path} to {target}: {compiled} of {} code objects as machine code, {} bytes",
+                built.codes.len(),
+                bytes.len()
+            );
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            eprintln!("renyi: cannot write {target}: {error}");
+            ExitCode::FAILURE
+        }
+    }
 }
 
 /// A program from a bytecode file, with the file's text; the error names
@@ -888,7 +1009,7 @@ fn run_command(args: &[String], record: bool) -> ExitCode {
         eprintln!("renyi: `--redact` is an option of `renyi record` and `renyi test --refresh`");
         return ExitCode::FAILURE;
     }
-    let (program, sources) = match compile_with_sources(path) {
+    let (program, sources, image) = match compile_with_sources(path) {
         Ok(compiled) => compiled,
         Err(code) => return code,
     };
@@ -948,6 +1069,7 @@ fn run_command(args: &[String], record: bool) -> ExitCode {
         Manifest::default()
     };
     let options = renyi_vm::Options {
+        image,
         arguments: rest[1..].to_vec(),
         narrowing: flags.narrowing,
         record: with_manifest,
@@ -1065,13 +1187,14 @@ fn test_command(args: &[String]) -> ExitCode {
     }
     let mut failed = false;
     for path in files {
-        let program = match compile(path) {
-            Ok(program) => program,
+        let (program, image) = match compile(path) {
+            Ok(compiled) => compiled,
             Err(code) => return code,
         };
         let options = renyi_vm::Options {
             explain: flags.explain,
             interpret: flags.interpret,
+            image,
             strict: flags.strict,
             refresh: flags.refresh.clone(),
             redact: flags.redact.clone(),
@@ -1116,7 +1239,7 @@ fn reproduce_command(args: &[String]) -> ExitCode {
         eprintln!("renyi: {file} does not name its program; give the path of the .ry file");
         return ExitCode::FAILURE;
     };
-    let (program, sources) = match compile_with_sources(&path) {
+    let (program, sources, image) = match compile_with_sources(&path) {
         Ok(compiled) => compiled,
         Err(code) => return code,
     };
@@ -1153,6 +1276,7 @@ fn reproduce_command(args: &[String]) -> ExitCode {
         );
     }
     let options = renyi_vm::Options {
+        image,
         registry: registry().clone(),
         ..renyi_vm::Options::default()
     };

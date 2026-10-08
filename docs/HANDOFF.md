@@ -12,11 +12,9 @@ pinned so that the value operations, the frame protocol and the field
 read run in place (AR4), then the tiering measured and the hotness
 factor raised (AR5), and the round closed by the owner with the
 self-check 15% below where AQ left it (AR6; the section "The baseline
-JIT" below). The seven commits of the session are pushed and CI is
-green on the head (run 51 on 5e4f1d0); the next session starts where
-the owner picks among what the plan of 2026-10-07 leaves: `renyi
-build` (its item 4), the positioning's three measurements and the
-site's front page (items 2 and 3). Session 8
+JIT" below); then `renyi build`, the image of a program that runs
+without compiling, decisions AS1 to AS3 (the section "`renyi build` as
+it exists" below), with `build --exe` as the next item. Session 8
 (stage 2 of the gap audit of
 `docs/GAPS.md`: the formal grammar `docs/grammar.ebnf` with decision V12;
 the language reference `docs/reference.md`, normative, held to the
@@ -100,10 +98,13 @@ M6 the
 machine code exists (decisions AG1 to AG5), the interpreter had its
 bounded round (AG6) and the strings and the JSON path had the
 profile-guided round of decision AQ (the section "The profile-guided
-round on strings and JSON as it exists" below) and the baseline JIT of
+round on strings and JSON as it exists" below), the baseline JIT of
 decision AR1 is in (the section "The baseline JIT" below: the fused op
 `LoadField`, the direct calls with register arguments and the pinned
-layout, decisions AR2 to AR4), `renyi build` does not.
+layout, decisions AR2 to AR4, the tiering AR5) and `renyi build`
+writes the image a run loads in place of compiling (decisions AS1 to
+AS3; `build --exe`, the self-contained executable, does not exist
+yet).
 Release 0.1.0 is out
 (2026-10-07, the section "Release 0.1 engineering" below): the
 repository is public at `github.com/renyi-lang/renyi`, the release
@@ -1374,11 +1375,12 @@ next sections of the plan, below).
    (optional: the `.vsix` is on the release page), the domain
    renyi-lang.org (AI4, when the owner wants it), and the three
    measurements of the positioning's section 5.
-4. **Deferred** (decision AG5): `renyi build` (the image of bytecode
-   and machine code), still deferred; the baseline JIT that inlines the
-   boxed operations is done (decisions AR1 to AR6, session 9: the
+4. **Deferred** (decision AG5): both done in session 9: the baseline
+   JIT that inlines the boxed operations (decisions AR1 to AR6: the
    self-check 15% fewer instructions on machine code than before the
-   round, `bench/records.ry` 21% fewer).
+   round, `bench/records.ry` 21% fewer) and `renyi build`, the image of
+   bytecode and machine code (decisions AS1 to AS3); `build --exe`, the
+   self-contained executable of A1, remains.
 5. **Foreign packages** (decisions AJ1 to AJ4, the owner's answers of
    2026-10-07, evening): after 0.1 and before the rest of M5, the
    registration API for Rust natives (the standard library's
@@ -1759,6 +1761,78 @@ and the commit of the site and the crates.io metadata.
   answer; `install.sh` under WSL installed and ran 0.1.0 from the
   release; the Windows archive's checksum and binary were verified
   by hand; `cargo install renyi` built the binary from crates.io.
+
+## `renyi build` as it exists (decisions AS1 to AS3; session 9, 2026-10-08)
+
+The owner's four answers of 2026-10-08 after the baseline JIT's round
+closed (decision AS1): an image file `.ryi` (the bytecode with the
+machine code of every code object), later `build --exe`; the generated
+code without addresses, so that the image is a plain block of bytes;
+every code object compiled, the optimisation level measured; a
+mismatched image refused with the fix.
+
+- **Stage A, the address-free code (decision AS2).** `vm.rs` has
+  `NativeState` (`repr(C)`: `depth`, `calls`, `direct_table`,
+  `helpers`, `constants`), a field of the VM the generated code reaches
+  through the VM pointer (`codegen.rs`: `native_state_offset`, the
+  `STATE_*` offsets, `Gen::native_state`, `Gen::call` through the
+  helper table with `helper_index` into `SIGNATURES` and a `SigRef`
+  per helper, the constants of a code object through the table, the
+  trampoline's call of the body through the table of bodies);
+  `codegen::compile` returns `Compiled { body, trampoline, deopts,
+  headers, stats }` as bytes from Cranelift's `Context::compile`
+  (`machine_code`: a relocation refuses the function; none occurs), and
+  `mod.rs` places them (`CodeArena::place`, `place_many`: `region` pages
+  written, flushed with the icache crate `cranelift-jit` used, made
+  executable once). `cranelift-jit` and `cranelift-module` are gone;
+  `Jit::new(program, opt_level)`, `Jit::isa`, `Jit::host_target`,
+  `compile_code`, `compile_everything`, `load_image`, `state_pointers`.
+  Measured against AR5's binary: the self-check 11.13 to 11.18 billion
+  instructions on machine code (+0.46%), records 451 to 452 million,
+  the typed call per turn 130 to 135: the price of the image.
+- **Stage B, the image (decision AS3).** `native/image.rs`: `MAGIC`,
+  `IMAGE_FORMAT` (the file), `CODE_FORMAT` (what the code assumes of the
+  VM: bump it with any change to the layout, the helpers, the statuses),
+  `Header { renyi, code_format, target, opt_level }` with
+  `Header::mismatch` (the message with the fix), `Image { header,
+  bytecode, codes }` with `write` and `read` (little-endian, lengths
+  first; a unit test round-trips one), `ImageCode { body, trampoline,
+  headers, deopts }`, `build(program, opt_level)`, `target_of(isa)` (the
+  triple and every ISA flag), `is_image`, `EXTENSION`. `Options.image`
+  (`vm.rs`): `Vm::new` loads it into the JIT after creating it (a load
+  that fails says so on stderr and compiles as before). The binary
+  (`lib.rs`): `build_command` (`--to`, `--opt none|speed`; a `.ry` or a
+  `.ryc`; the message counts the code objects and the bytes),
+  `load_image_file` (read, `Header::mismatch` against
+  `Jit::host_target`, the program from the embedded bytecode),
+  `compile_with_sources` returns the image beside the program and the
+  hash (the bytecode text, as a `.ryc`'s), and `run`, `record`, `test`
+  and `reproduce` pass it to the options; `tests/build.rs` (an image
+  runs, records and reproduces as the source does and compiles nothing;
+  tests run from one and find their fixtures; a mismatched target, a
+  truncated file and a text are refused naming the fix; `build` of an
+  image and a bad `--opt` are refused; both levels run). Measured on the
+  self-check built as an image: the self-check 11.18 billion
+  instructions on the JIT run to 9.23 as an image at `none` (-17.5%) and
+  9.07 at `speed` (-18.9%; no compilation at run time, no cold code on
+  the interpreter), `bench/records.ry` 452 million to 423 and 418; the
+  compiler's image is 17.6 MB (955 code objects, the checker with every
+  module it imports) and builds in 3.7 s at `none` and 4.4 s at `speed`;
+  `speed` is the default by AR1's rule, compile time being the build's
+  (decision AS3). The cachegrind runs use images built under valgrind,
+  which hides AVX-512 from the CPU-feature detection, so a native image
+  is refused there by the header check, as designed.
+- **What an image is not yet.** Not portable: the target string holds
+  every CPU feature Cranelift detected, so an image moves only between
+  machines with the same features (a build on an older CPU would run on
+  a newer one, and is refused anyway: equality is the rule for now). Not
+  signed or hashed: the run manifest's code hash is the bytecode's, the
+  machine code is trusted as the file is. Not a self-contained
+  executable: `build --exe` (decision AS1's second step) copies the
+  `renyi` binary and appends the image; it is the next item. The image
+  of the compiler is large (17.6 MB for 955 code objects, 18 KB a code
+  object; its size is what the instruction-cache misses of the section
+  below point at), the inline sequences of AR4 being what they are.
 
 ## The baseline JIT (decisions AR1 to AR6; session 9)
 
@@ -2749,6 +2823,22 @@ on the head (run 51 on 5e4f1d0).
    `HOT_FACTOR` 8000 in `crates/renyi_vm/src/native/mod.rs`, the
    decisions (AR5), `docs/GAPS.md`, this file; then the round closed
    (decision AR6: the totals), the plan's item 4, this file.
+6. `renyi build` (decisions AS1 to AS3; the section "`renyi build` as
+   it exists"): `crates/renyi_vm/src/vm.rs` (`NativeState`,
+   `Options.image`, the load in `Vm::new`), `native/codegen.rs` (the
+   address-free code: the helper table, the state's offsets, the
+   constants and the bodies through tables, `Compiled` as bytes,
+   `machine_code`), `native/mod.rs` (`CodeArena`, `Jit::new` with the
+   level, `isa`, `host_target`, `compile_code`, `compile_everything`,
+   `load_image`, `state_pointers`; `cranelift-jit` and
+   `cranelift-module` gone, `region` and the icache crate in),
+   `native/image.rs` (new), `native/infer.rs` (the kinds' bytes),
+   `native/runtime.rs` and `runner.rs` (the counters), `Cargo.toml`;
+   `crates/renyi/src/lib.rs` (`build_command`, `load_image_file`, the
+   image through `compile_with_sources` to `run`, `record`, `test` and
+   `reproduce`, the usage), `crates/renyi/tests/build.rs` (new); the
+   decisions (section AS), `docs/reference.md` (appendix B),
+   `docs/GAPS.md`, `CLAUDE.md`, this file.
 
 ## Done in session 8 (stage 2: the grammar, the reference, the front end in Renyi)
 

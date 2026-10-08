@@ -272,11 +272,13 @@ freeze, or take it out of the frozen surface until it exists.
   its grant and memory budget, `renyi run --sandbox grant.json`). M5 is
   complete. Absent: the C API of decision A5 over the Rust API.
 - **M6** (AOT and WASM): the VM generates machine code for the hot
-  code objects in the process (decision AG1, session 8); no `renyi
-  build` yet (an image of the bytecode with the machine code, loaded in
-  place of generating it, is planned after release 0.1, decision AG5);
-  no WASI, browser or C API target (decision A5); the toolchain has run
-  on Windows and, under WSL, on Linux.
+  code objects in the process (decision AG1, session 8; the baseline JIT
+  of decisions AR1 to AR6, session 9), and `renyi build` writes the
+  image of a program, its bytecode with the machine code of every code
+  object, which `run`, `record`, `test` and `reproduce` load in place of
+  compiling (decision AS1, session 9); the self-contained executable of
+  A1 (`build --exe`) is next; no WASI, browser or C API target (decision
+  A5); the toolchain has run on Windows and, under WSL, on Linux.
 - **Concurrency**: tasks run one after the other (decision S2); decision
   E1's green threads and the performance side of the trade-off are not
   delivered; `within` is checked between statements and items and does
@@ -668,4 +670,24 @@ handoff's section "The baseline JIT" has what remains on the profile
 and the shape to try next (a cheaper first tier). The owner closed the
 round (decision AR6): the self-check 15.3 percent fewer instructions on
 machine code than before it, `bench/records.ry` 21 percent fewer;
-`renyi build` is what remains of M6.
+`renyi build` followed in the same session (decisions AS1 to AS3, the
+subsection below).
+
+### `renyi build` (session 9, decisions AS1 to AS3)
+
+The owner's four answers of 2026-10-08: an image file (`.ryi`, the
+bytecode with the machine code of every code object) that `run`,
+`record`, `test` and `reproduce` take in place of a source and run
+without compiling, with `build --exe` (the self-contained executable of
+A1) as the next step; generated code without addresses, so that the
+image is a plain block of bytes; every code object compiled, the
+optimisation level measured; a mismatched image refused with the fix.
+The address-free code (decision AS2) cost the self-check half a percent
+of instructions and freed the JIT from `cranelift-jit`; the image
+(decision AS3) __GAPS_IMAGE__. What the measurement of the round also
+showed: on the compiler's self-check the machine code runs 14 percent
+fewer instructions than the interpreter and no faster in wall-clock,
+because it misses the instruction cache ten times as often (105 million
+against 10 million first-level misses): the generated code is large
+(the compiler's image is 17.6 MB for 955 code objects), and its size,
+not its instruction count, is the lever a later round pulls first.

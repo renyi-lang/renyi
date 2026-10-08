@@ -112,6 +112,9 @@ pub struct Options {
     /// code (`--interpret`, decision AG3); a narrated or profiled run does
     /// so by itself.
     pub interpret: bool,
+    /// The image of the program (decision AS1): its machine code, loaded
+    /// in place of compiling; built for this machine from this program.
+    pub image: Option<crate::native::image::Image>,
     /// The extensions the toolchain is built with (decision AJ1): where
     /// the natives behind the program's library calls come from.
     pub registry: Registry,
@@ -150,6 +153,7 @@ impl Default for Options {
             replay_output: false,
             profile: false,
             interpret: false,
+            image: None,
             registry: Registry::standard(),
             watch: None,
             listener: None,
@@ -175,6 +179,34 @@ pub(crate) struct Frame {
     /// The effective grant of the function running here (decision Q1), by
     /// its index in `Vm::grants`.
     pub(crate) grant: u32,
+}
+
+/// What the generated code reaches through the VM pointer (decision AS1),
+/// so that it holds no address of its own and an image of it loads
+/// anywhere: how many generated frames are nested on the machine stack,
+/// how many calls generated code made, and the tables the JIT owns: the
+/// compiled body of every code object (null while cold), the helpers in
+/// the order of `codegen::SIGNATURES`, and the constants of every code
+/// object. Null and zero on an interpreted run.
+#[repr(C)]
+pub(crate) struct NativeState {
+    pub(crate) depth: usize,
+    pub(crate) calls: usize,
+    pub(crate) direct_table: *const *const u8,
+    pub(crate) helpers: *const *const u8,
+    pub(crate) constants: *const *const Value,
+}
+
+impl Default for NativeState {
+    fn default() -> NativeState {
+        NativeState {
+            depth: 0,
+            calls: 0,
+            direct_table: std::ptr::null(),
+            helpers: std::ptr::null(),
+            constants: std::ptr::null(),
+        }
+    }
 }
 
 /// What an `Op::Field` site saw last: a record's type (the tag is
@@ -286,6 +318,9 @@ pub struct Vm<'p> {
     /// The machine code of the program's code objects (decision AG1);
     /// `None` on an interpreted run.
     pub(crate) native: Option<Box<Jit>>,
+    /// What the generated code reads and writes through the VM pointer
+    /// (decision AS1); the JIT's tables, when there is one.
+    pub(crate) native_state: NativeState,
     /// Per code object, how many of its ops the interpreter has run: what
     /// makes it hot enough to compile (`native::HOT_FACTOR`).
     pub(crate) hotness: Vec<u32>,
@@ -312,7 +347,7 @@ impl Drop for Vm<'_> {
 }
 
 impl<'p> Vm<'p> {
-    pub fn new(program: &'p Program, options: Options) -> Vm<'p> {
+    pub fn new(program: &'p Program, mut options: Options) -> Vm<'p> {
         let natives = program
             .function_metas
             .iter()
@@ -333,15 +368,24 @@ impl<'p> Vm<'p> {
             | 1;
         // a narrated, profiled or budgeted run is the interpreter's
         // (decisions AG3 and AP1)
-        let native = if options.interpret
+        let mut native = if options.interpret
             || options.explain
             || options.profile
             || options.memory.is_some()
         {
             None
         } else {
-            Jit::new(program).map(Box::new)
+            Jit::new(program, None).map(Box::new)
         };
+        if let (Some(jit), Some(image)) = (native.as_mut(), options.image.as_ref()) {
+            if let Err(message) = jit.load_image(image) {
+                let _ = writeln!(options.stderr, "renyi: the image was not loaded: {message}");
+            }
+        }
+        let native_state = native
+            .as_ref()
+            .map(|jit| jit.state_pointers())
+            .unwrap_or_default();
         let mut unit_base = Vec::with_capacity(program.types.metas.len());
         let mut units = 0;
         for meta in &program.types.metas {
@@ -401,6 +445,7 @@ impl<'p> Vm<'p> {
             ambient: 0,
             gathered: 0,
             native,
+            native_state,
             hotness: vec![0; program.codes.len()],
             pending: None,
             watch: options.watch,
@@ -1315,7 +1360,7 @@ impl<'p> Vm<'p> {
     /// machine code, the code has some and the machine stack has room.
     #[inline]
     pub(crate) fn native_entry_of_top(&mut self) -> Option<native::Entry> {
-        if self.native.as_ref()?.depth >= native::DEPTH_LIMIT {
+        if self.native_state.depth >= native::DEPTH_LIMIT {
             return None;
         }
         let code = self.frames.last()?.code;
@@ -1328,7 +1373,7 @@ impl<'p> Vm<'p> {
     /// header `pc` (decision AG3), when the code is hot and has the entry.
     #[inline]
     pub(crate) fn native_resume_of_top(&mut self, pc: u32) -> Option<native::Entry> {
-        if self.native.as_ref()?.depth >= native::DEPTH_LIMIT {
+        if self.native_state.depth >= native::DEPTH_LIMIT {
             return None;
         }
         let code = self.frames.last()?.code;
@@ -1341,17 +1386,13 @@ impl<'p> Vm<'p> {
     /// the loop header `pc`.
     #[inline]
     pub(crate) fn run_generated(&mut self, function: native::Entry, base: usize, pc: u32) -> i32 {
-        if let Some(jit) = self.native.as_mut() {
-            jit.depth += 1;
-        }
+        self.native_state.depth += 1;
         // SAFETY: the generated function takes the VM it was made for, the
         // base of the frame on top, which `push_frame_in_place` made, and
         // one of the entry pcs it was made with.
         let vm: *mut Vm<'_> = self;
         let status = unsafe { function(vm.cast::<Vm<'static>>(), base, pc) };
-        if let Some(jit) = self.native.as_mut() {
-            jit.depth -= 1;
-        }
+        self.native_state.depth -= 1;
         status
     }
 

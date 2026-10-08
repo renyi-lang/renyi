@@ -51,6 +51,30 @@ impl Abs {
     pub fn is_boxed(self) -> bool {
         self == Abs::Boxed
     }
+
+    /// The byte an image writes for the kind (decision AS1).
+    pub fn code(self) -> u8 {
+        match self {
+            Abs::Unset => 0,
+            Abs::Int => 1,
+            Abs::Bool => 2,
+            Abs::Float => 3,
+            Abs::Range => 4,
+            Abs::Boxed => 5,
+        }
+    }
+
+    pub fn from_code(code: u8) -> Option<Abs> {
+        Some(match code {
+            0 => Abs::Unset,
+            1 => Abs::Int,
+            2 => Abs::Bool,
+            3 => Abs::Float,
+            4 => Abs::Range,
+            5 => Abs::Boxed,
+            _ => return None,
+        })
+    }
 }
 
 /// What a local slot holds.
@@ -77,6 +101,36 @@ pub enum SlotKind {
 }
 
 impl SlotKind {
+    /// The byte an image writes for the kind (decision AS1).
+    pub fn code(self) -> u8 {
+        match self {
+            SlotKind::Unset => 0,
+            SlotKind::Int => 1,
+            SlotKind::Bool => 2,
+            SlotKind::Float => 3,
+            SlotKind::Boxed => 4,
+            SlotKind::Mark => 5,
+            SlotKind::RangeIter => 6,
+            SlotKind::Iter => 7,
+            SlotKind::Deadline => 8,
+        }
+    }
+
+    pub fn from_code(code: u8) -> Option<SlotKind> {
+        Some(match code {
+            0 => SlotKind::Unset,
+            1 => SlotKind::Int,
+            2 => SlotKind::Bool,
+            3 => SlotKind::Float,
+            4 => SlotKind::Boxed,
+            5 => SlotKind::Mark,
+            6 => SlotKind::RangeIter,
+            7 => SlotKind::Iter,
+            8 => SlotKind::Deadline,
+            _ => return None,
+        })
+    }
+
     /// Whether the slot holds a value the generated code keeps in a
     /// register.
     pub fn is_unboxed_value(self) -> bool {

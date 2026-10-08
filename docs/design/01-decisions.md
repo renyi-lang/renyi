@@ -3060,3 +3060,72 @@ is the cheaper first tier of AR5. The owner's other answers of the day:
 the measure stays the self-check's total instructions, compile time
 included; the micro-benchmarks live in `bench/micro/` with
 `tools/measure_native.sh`; stage 3d stays in its compact form. (user)
+
+## AS. `renyi build` (session 9)
+
+**AS1. `renyi build` writes an image file, `.ryi`: the program's
+bytecode with the machine code of every code object, which `run`,
+`record`, `test` and `reproduce` take in place of a `.ry` or a `.ryc`
+and run without compiling; `build --exe`, a second step, copies the
+`renyi` binary and appends the image, the self-contained executable of
+A1. The generated code holds no address: every helper, the table of
+compiled bodies, the counters and the constants are reached through the
+VM pointer, so the image is a plain block of bytes placed in executable
+memory at load, with a header naming the `renyi` version, the format of
+the generated code and the target with its CPU features; a mismatch
+refuses the image with a diagnostic whose fix is to build again. `build`
+compiles every code object the analysis accepts (the rest stays
+bytecode, as in a run), at the optimisation level the self-check
+measures best once compile time is no longer paid at run time; the JIT
+uses the same address-free code.** The owner's four answers of
+2026-10-08, after the baseline JIT's round closed (AR6) with the
+wall-clock picture of the release build on this machine: `primes` 64 ms
+(CPython 587), `strings` 133 (84), `records` 66 (218), `json_round_trip`
+98 (161), the self-check 1963 ms on machine code and 1918 on the
+interpreter, from 2759 and 2025 before the two rounds; machine code now
+wins on ordinary programs, which AG5 made the condition for the image.
+What an image removes is the cost that remains in every run: Cranelift's
+compilation (five percent of the self-check at `HOT_FACTOR` 8000, and
+most of a short program's time), the warm-up during which a program runs
+on the interpreter before its code is hot (`primes` lost twelve
+milliseconds to the raised factor of AR5), and the cold code the tiering
+leaves to the interpreter (nine percent of the self-check), while a
+build-time compilation can afford Cranelift's optimising level, which a
+run cannot. The alternatives not taken: the machine code as a section of
+the `.ryc` JSON (one format, but a large file and a slow load for what
+is a binary artifact); object files with relocations through
+`cranelift-object` and a loader of ours, or a native executable through
+the system linker (a C toolchain on the user's machine, against H1's one
+binary); only the hot code objects of a recorded run (a smaller image
+for one more step); a silent fall-back to the bytecode on a mismatch (a
+run that is quietly slower is the failure mode the language refuses
+elsewhere). The address-free form costs an indirect call per helper and
+a load per constant, measured by AR1's rule as the first stage; it also
+frees the JIT from `cranelift-jit`: the code is compiled by Cranelift's
+context alone and placed by the VM. (user)
+
+**AS2. Stage A of AS1, done and measured: the generated code holds no
+address. Every helper is called through the VM's table of helpers
+(`NativeState::helpers`, in the order of `codegen::SIGNATURES`), the
+table of compiled bodies, the count of generated frames and the count of
+calls are read through the VM (`NativeState::direct_table`, `depth`,
+`calls`), a constant is read through the VM's table of each code
+object's constants, and the trampoline reaches its body through the
+table of bodies; the code is compiled by Cranelift's context alone,
+refused when it carries a relocation (none does: the 555 code objects of
+the compiler compile), and placed by the VM in executable memory it
+protects itself (`CodeArena`: fresh pages per function, written, flushed
+from the instruction cache and made executable once, as `cranelift-jit`
+did, through `region` and the icache crate it used), so `cranelift-jit`
+and `cranelift-module` are gone from the dependencies.** Measured as AR1
+says against the binary of AR5 (`cachegrind`, the release build, the
+same hotness factor): the self-check 11.13 to 11.18 billion instructions
+on machine code (+0.46%) and 12.90 to 12.96 on the interpreter (+0.45%,
+the code layout); `bench/records.ry` 451 to 452 million (+0.15%); per
+turn of the micro-benchmarks the typed call 130 to 135, the boxed call
+605 to 603, the field 677, the record call 849 to 853, the record built
+1041 to 1040. The half of a percent is the indirect call in place of a
+direct one, the load of a table's pointer and the two loads a constant
+takes, and it is the price of an image that needs no relocation (AS1);
+the step stays by the owner's decision, not by AR1's rule, which it
+fails by that half percent. (user)
