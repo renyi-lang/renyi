@@ -2808,8 +2808,10 @@ holds between calls.
 
 ## Done in session 9 (the profile-guided round on strings and JSON and the baseline JIT, in the cloud environment)
 
-Seven commits on `main` (2fcab99, cf4c912, 02380ea, 5eeb28e, 176cfc2,
-d26dfac and the commit of AR6), each gated as in session 8 (rustc 1.94.1, the CI toolchain,
+Eleven commits on `main` (2fcab99, cf4c912, 02380ea, 5eeb28e, 176cfc2,
+d26dfac and 5e4f1d0, the commit of AR6; then 4af6311, the handoff,
+7094e1d and efa63a2, `renyi build` with AS1 to AS3, and 71965aa,
+`build --exe` with AS4), each gated as in session 8 (rustc 1.94.1, the CI toolchain,
 installed beside the environment's 1.97.0 for `cargo fmt`, `cargo
 clippy --all-targets -- -D warnings` and `cargo test`; the conformance
 suite by both runners; the corpus canonical; `compiler/*.ry`,
@@ -2819,7 +2821,8 @@ the owner installed the Claude GitHub App on the `renyi-lang`
 organisation (https://github.com/apps/claude/installations/select_target;
 a cloud session needs it, and the patches were handed to the owner as
 a bundle meanwhile); the seven then went up in one push and CI passed
-on the head (run 51 on 5e4f1d0).
+on the head (run 51 on 5e4f1d0), and the four after them went up one
+by one, CI green on each (runs 52 to 55; 55 on 71965aa).
 
 1. the round (decision AQ; the section "The profile-guided round on
    strings and JSON as it exists"): `crates/renyi_vm/src/natives/json.rs`
