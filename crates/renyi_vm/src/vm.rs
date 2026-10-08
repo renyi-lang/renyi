@@ -13,6 +13,7 @@
 
 use std::cmp::Ordering;
 use std::io::{BufRead, Write};
+use std::net::TcpListener;
 use std::rc::Rc;
 
 use renyi_check::effects::{self, Capability};
@@ -47,6 +48,10 @@ pub enum Interrupt {
     },
     /// `environment.exit(code)`.
     Exit(i32),
+    /// The watch of `renyi serve --watch` (decision AO1) found a new
+    /// version ready between two requests: the run stops so that `main`
+    /// can be run again on it, the listening socket left in the VM.
+    Reload,
 }
 
 impl Interrupt {
@@ -104,6 +109,14 @@ pub struct Options {
     /// The extensions the toolchain is built with (decision AJ1): where
     /// the natives behind the program's library calls come from.
     pub registry: Registry,
+    /// `renyi serve --watch` (decision AO1): asked by `server.serve`
+    /// every half second while no request is waiting; `true` when a new
+    /// version is ready, on which the run stops with `Interrupt::Reload`.
+    pub watch: Option<Box<dyn FnMut() -> bool>>,
+    /// The listening socket the previous run of `main` left (decision
+    /// AO1), for `server.serve` to continue on when its port is the one
+    /// asked for.
+    pub listener: Option<TcpListener>,
 }
 
 impl Default for Options {
@@ -127,6 +140,8 @@ impl Default for Options {
             profile: false,
             interpret: false,
             registry: Registry::standard(),
+            watch: None,
+            listener: None,
         }
     }
 }
@@ -262,6 +277,11 @@ pub struct Vm<'p> {
     /// The interrupt a runtime helper of the generated code raised, on its
     /// way out through the generated frames.
     pub(crate) pending: Option<Interrupt>,
+    /// See `Options::watch`.
+    pub watch: Option<Box<dyn FnMut() -> bool>>,
+    /// See `Options::listener`: the socket handed to this run, or the one
+    /// `server.serve` leaves for the next.
+    pub listener: Option<TcpListener>,
 }
 
 impl<'p> Vm<'p> {
@@ -352,6 +372,8 @@ impl<'p> Vm<'p> {
             hotness: vec![0; program.codes.len()],
             native_depth: 0,
             pending: None,
+            watch: options.watch,
+            listener: options.listener,
         }
     }
 

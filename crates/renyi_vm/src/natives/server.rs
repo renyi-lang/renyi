@@ -5,7 +5,7 @@
 use std::io::{ErrorKind, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::rc::Rc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use indexmap::IndexMap;
 use renyi_check::effects::Capability;
@@ -31,6 +31,11 @@ pub(crate) const NATIVES: &[Native] = &[
 /// Headers and bodies larger than these are refused with 400.
 const MAX_HEAD: usize = 64 * 1024;
 const MAX_BODY: usize = 16 * 1024 * 1024;
+
+/// Under a watch (decision AO1): how often `serve` asks it between
+/// requests, and how long it sleeps between looks at the socket.
+const WATCH_INTERVAL: Duration = Duration::from_millis(500);
+const WATCH_SLEEP: Duration = Duration::from_millis(20);
 
 fn response(
     vm: &Vm,
@@ -129,33 +134,71 @@ struct Incoming {
 }
 
 /// Listen on the port and answer every request with the handler until the
-/// process stops, or until the VM's `serve_limit` requests were answered.
+/// process stops, or until the VM's `serve_limit` requests were answered;
+/// under a watch (decision AO1), until the watch says a new version is
+/// ready between two requests: the listener is left in the VM for the
+/// next version and the run stops with `Interrupt::Reload`.
 fn serve(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     let port = small(arg(args, 0))?;
     let Value::Function(handler) = arg(args, 1).clone() else {
         return Err(crash("`server.serve` needs a handler function"));
     };
-    let listener = match TcpListener::bind(("0.0.0.0", port as u16)) {
-        Ok(listener) => listener,
-        Err(error) => {
-            let variant = match error.kind() {
-                ErrorKind::AddrInUse => "PortInUse",
-                ErrorKind::PermissionDenied => "PermissionDenied",
-                _ => return Err(crash(format!("cannot listen on port {port}: {error}"))),
-            };
-            return vm.fail_variant(
-                "std.server",
-                "StartError",
-                variant,
-                vec![Value::integer(port)],
-            );
-        }
+    // the socket the previous version handed over, when it is this port's
+    let handed = vm.listener.take().filter(|listener| {
+        listener
+            .local_addr()
+            .is_ok_and(|address| address.port() == port as u16)
+    });
+    let listener = match handed {
+        Some(listener) => listener,
+        None => match TcpListener::bind(("0.0.0.0", port as u16)) {
+            Ok(listener) => listener,
+            Err(error) => {
+                let variant = match error.kind() {
+                    ErrorKind::AddrInUse => "PortInUse",
+                    ErrorKind::PermissionDenied => "PermissionDenied",
+                    _ => return Err(crash(format!("cannot listen on port {port}: {error}"))),
+                };
+                return vm.fail_variant(
+                    "std.server",
+                    "StartError",
+                    variant,
+                    vec![Value::integer(port)],
+                );
+            }
+        },
     };
+    // under a watch the loop looks away from the socket every half second
+    // to ask the watch, because a blocking accept would hold a new
+    // version back until the next request came in
+    let watching = vm.watch.is_some();
+    if watching && listener.set_nonblocking(true).is_err() {
+        return Err(crash(format!("cannot poll the socket of port {port}")));
+    }
+    let mut asked = Instant::now();
     let mut served = 0usize;
     while vm.serve_limit.is_none_or(|limit| served < limit) {
-        let Ok((mut stream, _)) = listener.accept() else {
-            continue;
+        let mut stream = match listener.accept() {
+            Ok((stream, _)) => stream,
+            Err(error) if error.kind() == ErrorKind::WouldBlock => {
+                if asked.elapsed() >= WATCH_INTERVAL {
+                    asked = Instant::now();
+                    if vm.watch.as_mut().is_some_and(|ready| ready()) {
+                        vm.listener = Some(listener);
+                        return Err(Interrupt::Reload);
+                    }
+                }
+                // a short sleep between looks, because a spin on a
+                // non-blocking accept would burn a core for nothing
+                std::thread::sleep(WATCH_SLEEP);
+                continue;
+            }
+            Err(_) => continue,
         };
+        if watching {
+            // the request itself is read and answered as without a watch
+            let _ = stream.set_nonblocking(false);
+        }
         let _ = stream.set_read_timeout(Some(Duration::from_secs(30)));
         let (status, headers, body) = match read_request(&mut stream) {
             Ok(Some(incoming)) => {

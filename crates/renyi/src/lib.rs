@@ -11,7 +11,9 @@
 //! file, which `run`, `record`, `test` and `reproduce` load in place of
 //! the source when the path ends in `.ryc`, decision Z4), `mcp` (the
 //! toolchain served to an agent host over standard input and output, in
-//! `mcp.rs`) and `lsp` (the language server for an editor, in `lsp.rs`).
+//! `mcp.rs`), `lsp` (the language server for an editor, in `lsp.rs`) and
+//! `serve` (`run` for a service; with `--watch`, reloaded between requests
+//! when its files change, in `serve.rs`).
 //!
 //! The crate is a library too (decision AK1): [`main_with`] is the whole
 //! program of a binary built with extensions, and `src/main.rs`, the
@@ -23,6 +25,7 @@ mod lsp;
 mod maps;
 mod mcp;
 mod packages;
+mod serve;
 
 use std::io::Write;
 use std::path::Path;
@@ -71,6 +74,10 @@ const USAGE: &str = "usage:
   renyi record [--to <file.json>] [option...] <file.ry> [argument...]
                                       run `main` and write a recording of its effects, the manifest in its
                                       header (default: <name>.recording.json)
+  renyi serve [--watch] [option...] <file.ry> [argument...]
+                                      `run` for a service; --watch: compile the program again when a file
+                                      of its project changed and, when it checks clean, run `main` again
+                                      between two requests with the listening socket kept open
   renyi reproduce <file.json> [<file.ry>]
                                       replay a recording under its manifest and compare the outcome and the
                                       output byte for byte (exit 1 when they differ)
@@ -176,6 +183,7 @@ fn dispatch() -> ExitCode {
         Some("tools") => tools_command(&args[1..]),
         Some("run") => run_command(&args[1..], false),
         Some("record") => run_command(&args[1..], true),
+        Some("serve") => serve::serve_command(&args[1..]),
         Some("reproduce") => reproduce_command(&args[1..]),
         Some("test") => test_command(&args[1..]),
         Some("compile") => compile_command(&args[1..]),
@@ -674,6 +682,8 @@ struct Flags {
     refresh: Option<String>,
     redact: Vec<String>,
     manifest: bool,
+    /// `renyi serve --watch`.
+    watch: bool,
 }
 
 fn parse_flags(args: &[String]) -> Result<(Flags, &[String]), String> {
@@ -711,6 +721,11 @@ fn parse_flags(args: &[String]) -> Result<(Flags, &[String]), String> {
             }
             "--manifest" => {
                 flags.manifest = true;
+                index += 1;
+                continue;
+            }
+            "--watch" => {
+                flags.watch = true;
                 index += 1;
                 continue;
             }
@@ -801,6 +816,10 @@ fn run_command(args: &[String], record: bool) -> ExitCode {
     };
     if flags.strict || flags.refresh.is_some() {
         eprintln!("renyi: `--strict` and `--refresh` are options of `renyi test`");
+        return ExitCode::FAILURE;
+    }
+    if flags.watch {
+        eprintln!("renyi: `--watch` is an option of `renyi serve`");
         return ExitCode::FAILURE;
     }
     if record && flags.replay.is_some() {
@@ -916,7 +935,15 @@ fn run_command(args: &[String], record: bool) -> ExitCode {
             run.unused.join("; ")
         );
     }
-    match run.outcome {
+    exit_of(path, run.outcome)
+}
+
+/// How a run of `main` ended, as the exit status of appendix B: 0 when it
+/// finished, 1 when it failed, 2 on a crash, the code of
+/// `environment.exit`; a run stopped for a new version is the business
+/// of `renyi serve --watch`, which handles it before asking here.
+pub(crate) fn exit_of(path: &str, outcome: renyi_vm::RunOutcome) -> ExitCode {
+    match outcome {
         renyi_vm::RunOutcome::Finished => ExitCode::SUCCESS,
         renyi_vm::RunOutcome::Failed(error) => {
             eprintln!("{path}: main failed with {error}");
@@ -930,6 +957,10 @@ fn run_command(args: &[String], record: bool) -> ExitCode {
             ExitCode::from(2)
         }
         renyi_vm::RunOutcome::Exited(code) => ExitCode::from(code.clamp(0, 255) as u8),
+        renyi_vm::RunOutcome::Reload => {
+            eprintln!("{path}: the run stopped for a new version, which nothing watched for");
+            ExitCode::FAILURE
+        }
     }
 }
 
@@ -950,6 +981,7 @@ fn test_command(args: &[String]) -> ExitCode {
         || flags.to.is_some()
         || flags.manifest
         || flags.profile
+        || flags.watch
         || !narrowing.deny.is_empty()
         || !narrowing.allow.is_empty()
         || !narrowing.budgets.is_empty()

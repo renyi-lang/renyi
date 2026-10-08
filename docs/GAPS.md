@@ -265,11 +265,12 @@ freeze, or take it out of the frozen surface until it exists.
   the resident `World` with the per-item refresh of the map (open item
   R5-5 closed: `renyi mcp` holds a `renyi_workspace::Workspace`), and,
   since decisions AN2 and AN3, the language server (`renyi lsp`, with
-  the client in the VS Code extension). Absent: the embedding API with
+  the client in the VS Code extension), and, since decision AO1,
+  `renyi serve --watch` (a reload between requests on that world).
+  Absent: the embedding API with
   per-module grants and memory budgets (decision Q3: the nearest things are
   `Vm::begin_run`, `Vm::call_function` and `Options`, one grant per
-  run), `renyi run --sandbox grant.json`, `renyi serve --watch` with
-  checked swaps (decision Q4).
+  run) and `renyi run --sandbox grant.json`.
 - **M6** (AOT and WASM): the VM generates machine code for the hot
   code objects in the process (decision AG1, session 8); no `renyi
   build` yet (an image of the bytecode with the machine code, loaded in

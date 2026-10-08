@@ -2562,3 +2562,38 @@ it changed, so applying deltas would buy nothing but a second copy of
 the text. Every file of the folder rather than the open ones: an error
 a change causes in another file is the point of a project-wide check,
 and the Problems panel is where it is seen. (derived)
+
+## AO. The watch of `serve` (session 8)
+
+The third of M5's four steps in the owner's order (2026-10-08). The
+owner's four answers, each the recommended option.
+
+**AO1. `renyi serve [--watch] [options] <file.ry> [arguments]`: without
+`--watch`, `renyi run`; with it, the files of the program's project are
+looked at every half second while no request is waiting, through a stat
+by the resident world of AN1, and when one changed the program is
+compiled again; when it checks clean, `main` is run again on the new
+version between two requests, the listening socket kept open and handed
+to the new program so that no request is lost, and the reload's message
+names what the semantic diff found, a changed signature among the rest;
+a version with errors is reported and the last good one keeps
+serving.** This replaces the mechanism Q4 described, the swap of the
+changed definitions by content hash with a changed signature refused;
+Q4's promise (the new code at the next request, no request lost,
+nothing to migrate) stands. (i) Running `main` again rather than
+patching definitions: a Renyi service has no state outside its request
+(Q4's own argument), so a restart between requests is the swap with
+nothing to migrate, and the VM keeps its program borrowed and compiled
+to machine code whole; reference-counted code objects and a swap at
+the next call (open item R7-3) are not needed. (ii) A clean check
+rather than a refused signature change: the whole program is checked,
+so a changed signature either fits every caller or the check fails;
+what the diff finds is reported, not refused. (iii) A command of its
+own rather than an option of `run`: `run` stays the one-shot command,
+and `serve` reads as what a service is started with; `run` and `test`
+refuse `--watch`. (iv) A poll of the resident world rather than a file
+watcher, AN1's rule (ii) again: no thread, no platform API, the same
+answer on every machine; a change to an unrelated file of the
+directory costs one compile, which finds the program's sources
+unchanged and reloads nothing. Closes R7-3 of `07-system-design.md`.
+(user)

@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated: 2026-10-07, session 8 (stage 2 of the gap audit of
+Last updated: 2026-10-08, session 8 (stage 2 of the gap audit of
 `docs/GAPS.md`: the formal grammar `docs/grammar.ebnf` with decision V12;
 the language reference `docs/reference.md`, normative, held to the
 grammar file and the crates by a test; the sketch retired to the design
@@ -49,7 +49,9 @@ file from the package; and the resident world, decision AN1:
 `renyi_workspace`, which `renyi mcp` holds between calls, the first of
 M5's four steps in the order the owner set; and the language server,
 decisions AN2 and AN3: `renyi lsp` on that world, the client in the
-VS Code extension).
+VS Code extension; and the watch of `serve`, decision AO1: `renyi
+serve --watch` runs `main` again between two requests on a clean new
+version, the socket kept open, the third step).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -69,9 +71,11 @@ the Python bridge of decisions AJ2, AJ3 and AL1 to AL4 (the section
 "The Python bridge as it exists" below) with its binder of AM1 and
 AM2 (the section "The Python binder as it exists" below), and the
 resident world of decision AN1 (the section "The resident world as it
-exists" below) and the language server of decisions AN2 and AN3 (the
-section "The language server as it exists" below), the first two of
-M5's four steps in the owner's order; of
+exists" below), the language server of decisions AN2 and AN3 (the
+section "The language server as it exists" below) and the watch of
+`serve` of decision AO1 (the section "The watch of `serve` as it
+exists" below), the first three of M5's four steps in the owner's
+order; of
 M6 the
 machine code exists (decisions AG1 to AG5) and the interpreter had its
 bounded round (AG6), `renyi build` does not. Release 0.1.0 is out
@@ -136,7 +140,7 @@ revision>]`, `run [--manifest] [options] <file> [arguments]`, `record
 <file>...`, `compile [--to file] <file.ry>`, `add <name> [<version>]`,
 `update [--accept-effects]`, `audit`, `fetch`, `publish [--to
 <directory>]`, `bind <header.h> --module <name> --library <names>
-[--to <directory>]`, `tools [path]`, `mcp [path]`, `lsp` and `version`; 303 tests,
+[--to <directory>]`, `tools [path]`, `mcp [path]`, `lsp`, `serve [--watch]` and `version`; 305 tests,
 clippy and fmt clean on Windows
 with rustc 1.94.1. CI (`.github/workflows/ci.yml`) runs the same gates,
 `renyi check compiler/*.ry`, the starter pack's workflows (check,
@@ -1870,6 +1874,65 @@ and the commit of the site and the crates.io metadata.
   green threads would be an improvement within that decision, not a
   reversal.
 
+## The watch of `serve` as it exists (decision AO1; session 8, 2026-10-08)
+
+The third step of M5 in the owner's order: `renyi serve --watch`, a
+reload between two requests on the resident world of AN1.
+
+- **The command.** `crates/renyi/src/serve.rs`: `renyi serve` parses
+  the flags of `run` (`--watch` is one of them now; `run` and `test`
+  refuse it); without `--watch` it is `run_command`. With it, the first
+  version is compiled as `run` compiles (its errors end the command), a
+  `Workspace` in canonical mode is opened on the file's project (the
+  nearest `renyi.json` above it, else its directory) and refreshed once
+  for the map, and `main` runs in a loop: every run gets
+  `Options.watch`, a closure over the watch state, and
+  `Options.listener`, the socket the previous run left; a run that
+  ends with `RunOutcome::Reload` takes the version the watch prepared
+  and starts again, any other outcome is `run`'s exit status
+  (`exit_of`, shared with `run`). The watch's `poll`:
+  `Workspace::refresh`, nothing to do unless the world was declared
+  again; then `compile_sources` (errors: "the new version has errors;
+  still serving the last good one:" with the diagnostics); the
+  program's sources compared text for text with the serving version (a
+  change elsewhere in the directory is no new version); `--deny`
+  checked as at start; the map built and diffed with
+  `renyi_index::diff`; the message "reloading <file>: 2 definitions
+  changed: app.handle (body changed); app.version (added)", a signature
+  change as "signature `old` -> `new`". `--watch` takes `--deny`,
+  `--allow-*`, `--at-most`, `--explain` and `--interpret`; `--replay`,
+  `--manifest`, `--profile`, `--to`, `--redact` and a `.ryc` file are
+  refused.
+- **The VM.** `Options.watch: Option<Box<dyn FnMut() -> bool>>` and
+  `Options.listener: Option<TcpListener>`, copied into the `Vm`;
+  `Interrupt::Reload` and `RunOutcome::Reload` ("stopped for a new
+  version" in a manifest); `Run.listener` carries the socket out.
+  `natives/server.rs`: `serve` continues on the handed socket when its
+  port is the one asked for, else binds; under a watch the listener is
+  non-blocking, `accept` is tried every 20 ms and the watch asked every
+  500 ms (`WATCH_INTERVAL`, `WATCH_SLEEP`); when it answers true the
+  listener goes back into `vm.listener` and the native returns
+  `Err(Interrupt::Reload)`; an accepted stream is set blocking again.
+  A request that arrives while a new version compiles waits in the
+  backlog.
+- **Held equal.** `crates/renyi/tests/serve.rs` runs the binary on a
+  one-file service under `target/serve/`: "v1" answered; the body
+  edited and the next request answered "v2", the message naming
+  `app.handle (body changed)`; a version with an unknown name reported
+  with its diagnostic while "v2" is still served; a definition added
+  and the handler changed, "v3" with both named; the error reported
+  once, no crash; and the refusals: a first version with errors (exit
+  1, the diagnostics on the standard output), `run --watch` ("`--watch`
+  is an option of `renyi serve`"), and `serve` without the flag as
+  `run` on `examples/hello.ry`. The sequence of three reloads takes
+  3.6 s in the test, the poll interval included.
+- **Not covered.** `main` is run again whole, so what it did before
+  `server.serve` (a print, a database opened) is done again; a file
+  imported from outside the project's directory is compiled but not
+  stat-ed, so a change to it alone is not noticed; the watch does not
+  look while a request is being handled, so a reload waits for the
+  request in flight; `serve_limit` stays the tests' business.
+
 ## The language server as it exists (decisions AN2 and AN3; session 8, 2026-10-07)
 
 The second step of M5 in the owner's order: `renyi lsp`, a standard
@@ -2370,6 +2433,15 @@ Three commits on `main`, each gated as in session 7:
     `.gitignore`; the decisions (AN3), the reference (appendix B),
     `README.md`, `docs/RELEASE.md`, `docs/GAPS.md`, `CLAUDE.md`, this
     file.
+23. the watch of `serve` (decision AO1; the section "The watch of
+    `serve` as it exists"): `crates/renyi/src/serve.rs`, the `serve`
+    command with `--watch` among the flags of `run` (`exit_of` shared),
+    `tests/serve.rs`; `Options.watch` and `Options.listener`,
+    `Interrupt::Reload`, `RunOutcome::Reload`, `Run.listener` and the
+    polling `serve` native in `crates/renyi_vm`; the decisions (section
+    AO), the reference (appendix B), `07-system-design.md` (section 5
+    as implemented, R7-3 closed), `docs/GAPS.md`, `README.md`,
+    `CLAUDE.md`, this file.
 
 ## Done in session 7 (stage 1 of the gap audit)
 
@@ -2850,10 +2922,11 @@ on a fresh clone).
    `World` is done (decision AN1; open item R5-5 closed) and the
    language server is done (decisions AN2 and AN3: `renyi lsp` with
    diagnostics, hover, definition and the outline, the client in the
-   VS Code extension); next `serve --watch` (decision Q4: the server
-   swaps a module for a checked new version while it runs, on the same
-   resident world); then the embedding API with `--sandbox` (decision
-   Q3). Candidates for the server, none decided: completion (names in
+   VS Code extension) and the watch of `serve` is done (decision AO1:
+   `renyi serve --watch` runs `main` again between two requests on a
+   clean new version, the socket kept open, on the same resident
+   world); next the embedding API with `--sandbox` (decision Q3), the
+   last of the four. Candidates for the server, none decided: completion (names in
    scope, the library's), references, rename, formatting through the
    editor, a `renyi.path` prompt when the binary is missing. Interspersed, as the owner asked the same day: the performance
    items by the profile of AG5 (the pattern cache of `Text.matches`,
@@ -2866,6 +2939,14 @@ on a fresh clone).
 
 ## Known gaps and risks
 
+- **The watch of `serve`.** A reload runs `main` again from the top,
+  so a service that does work before `server.serve` repeats it on
+  every reload; a file imported from outside the project's directory
+  is not stat-ed, so a change to it alone is not noticed until a file
+  of the directory changes; a change to an unrelated file of the
+  directory costs a compile; a reload waits for the request in flight;
+  the listener is polled every 20 ms under the watch, a cost a service
+  without `--watch` does not pay.
 - **The language server.** The VS Code client has only been bundled
   here, not run in a window: the first real session will show whether
   `vscode-languageclient` 9 and the server agree on every detail (the

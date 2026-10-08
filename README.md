@@ -143,7 +143,10 @@ checker (M2), the project map (`renyi index`), the VM (M3) and packages
   one offline, `renyi reproduce` replays one under its manifest and
   compares the outcome and the output, `--explain` narrates a run
   through the `purpose:` clauses it passes, and `--profile` reports where
-  its time went; the VM generates machine code for the hot code
+  its time went; `renyi serve --watch` runs a service and, when a file
+  of its project changes and the program checks clean, runs `main`
+  again between two requests with the listening socket kept open
+  (decision AO1); the VM generates machine code for the hot code
   objects inside the binary (decision AG1: integer loops run in
   registers, an Integer that leaves the machine word goes back to the
   interpreter, which has the big ones), and `--interpret` keeps a run

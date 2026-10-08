@@ -162,7 +162,7 @@ The half of that API that faces the host exists: natives registered
 under declaration files and built into the binary (decisions AJ1 and
 AK1 to AK4; the guide is `extensions.md`).
 
-## 5. Checked live update (decision Q4)
+## 5. Checked live update (decisions Q4 and AO1)
 
 ### 5.1 The use
 
@@ -180,18 +180,23 @@ before it runs: Erlang's hot code loading with static types.
   so there is nothing to migrate; the hard part of Erlang's hot swap does
   not exist. State that must survive a swap lives where it already lives:
   the database, files, the request itself.
-- **Swapping.** `renyi serve` handles each request on a task; a swap
-  replaces the code of the changed hashes atomically between requests. A
-  task that started before the swap finishes on the code it started with
-  (code objects are reference-counted like values; the old code is freed
-  when the last such task ends). A definition on the stack of a
-  long-running task (a `repeat until` loop in `main`) is swapped when that
-  frame returns; the swap reports what it is waiting for and for how long.
-- **Compatibility.** A swap whose diff changes a public signature that a
-  running definition calls is refused with the signature named; adding
-  definitions and changing bodies always swap. `renyi serve --watch`
-  reloads on save during development; production deployment tooling
-  follows at M5 or later.
+- **Swapping.** `renyi serve --watch` looks at the files of the
+  program's project every half second while no request is waiting (a
+  stat through the resident world of decision AN1, no file watcher);
+  when one changed, the program is compiled again and, when it checks
+  clean, `main` is run again on the new version between two requests,
+  the listening socket kept open and handed to the new program: a
+  request that arrives meanwhile waits in the socket's backlog and is
+  answered by the new version (decision AO1). Nothing is swapped on a
+  stack: a Renyi service has no state outside its request, so running
+  `main` again is the swap, with no reference-counted code objects and
+  no waiting for a frame to return.
+- **Compatibility.** The whole program is checked, so a changed
+  signature either fits every caller or the check fails: the reload's
+  message names the definitions that changed and a changed signature
+  among them (the semantic diff of O4); a version with errors is
+  reported and the last good one keeps serving. Production deployment
+  tooling follows later.
 
 ## 6. Order of work
 
@@ -200,8 +205,8 @@ before it runs: Erlang's hot code loading with static types.
 2. M4: the package manager with computed effect manifests, `renyi add`,
    `update --accept-effects`, `audit` (section 2); dependency hashes in
    the manifest (section 3). Done 2026-10-07 (decision AC1).
-3. M5: the embedding API with grants and memory budgets (section 4);
-   `renyi serve --watch` and checked swaps (section 5).
+3. M5: `renyi serve --watch` (section 5), done 2026-10-08 (decision
+   AO1); the embedding API with grants and memory budgets (section 4).
 
 ## 7. Open items
 
@@ -211,7 +216,8 @@ before it runs: Erlang's hot code loading with static types.
   trusted (signatures, reproducible builds of section 3).
 - R7-3: whether a hot swap may replace a definition on the stack of a
   running task by applying at its next call (needed for `main` loops that
-  never return).
+  never return). Closed by decision AO1: a reload runs `main` again
+  between two requests; nothing is replaced on a stack.
 - R7-4: the cost of the grant stack when effective grants are intersected
   on every cross-package call; a cached effective grant per call site is
   the expected answer.

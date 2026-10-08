@@ -4,6 +4,7 @@
 
 use std::cell::RefCell;
 use std::io::Write;
+use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
@@ -28,6 +29,9 @@ pub enum RunOutcome {
         location: Option<String>,
     },
     Exited(i32),
+    /// The watch of `renyi serve --watch` found a new version (decision
+    /// AO1): `main` is to be run again on it.
+    Reload,
 }
 
 /// A run of `main` and what the primitive boundary produced.
@@ -37,6 +41,9 @@ pub struct Run {
     pub recording: Option<Recording>,
     /// Under `--replay`, the recorded calls the run never reached.
     pub unused: Vec<String>,
+    /// The listening socket `server.serve` left for the next version
+    /// (decision AO1).
+    pub listener: Option<TcpListener>,
 }
 
 pub fn run_main(program: &Program, options: Options) -> RunOutcome {
@@ -83,6 +90,7 @@ pub fn describe_outcome(outcome: &RunOutcome) -> String {
         RunOutcome::Failed(error) => format!("failed with {error}"),
         RunOutcome::Crashed { message, .. } => format!("crashed: {message}"),
         RunOutcome::Exited(code) => format!("exited with {code}"),
+        RunOutcome::Reload => "stopped for a new version".to_string(),
     }
 }
 
@@ -108,6 +116,7 @@ fn run_measured(program: &Program, mut options: Options) -> (Run, Option<(String
                 },
                 recording: None,
                 unused: Vec::new(),
+                listener: None,
             },
             None,
         )
@@ -140,11 +149,13 @@ fn run_measured(program: &Program, mut options: Options) -> (Run, Option<(String
     if let (Some(recording), Some(output)) = (&mut recording, &output) {
         recording.finish(describe_outcome(&outcome), output.clone());
     }
+    let listener = vm.listener.take();
     (
         Run {
             outcome,
             recording,
             unused,
+            listener,
         },
         output,
     )
@@ -218,6 +229,7 @@ fn crashed(interrupt: Interrupt) -> RunOutcome {
     match interrupt {
         Interrupt::Crash { message, location } => RunOutcome::Crashed { message, location },
         Interrupt::Exit(code) => RunOutcome::Exited(code),
+        Interrupt::Reload => RunOutcome::Reload,
     }
 }
 
@@ -509,5 +521,6 @@ fn describe_interrupt(interrupt: Interrupt) -> String {
         } => format!("crashed: {message} (at {location})"),
         Interrupt::Crash { message, .. } => format!("crashed: {message}"),
         Interrupt::Exit(code) => format!("exited with code {code}"),
+        Interrupt::Reload => "stopped for a new version".to_string(),
     }
 }
