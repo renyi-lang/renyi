@@ -1095,8 +1095,9 @@ leave the program only through the listed sinks.
   fails with `PythonError` of `std.python` and nothing else and takes no
   type parameters (`python-signature`); its parameters are types that
   can `ToJson` and its result a type that can `FromJson`, or nothing
-  (`python-type`), since a call crosses as JSON both ways. The guide is
-  `python.md`.
+  (`python-type`), since a call crosses as JSON both ways; `renyi bind
+  --python` writes such a file from the package (decisions AM1 and
+  AM2). The guide is `python.md`.
 - A sink after `only to` is a capability of the tree
   (`unknown-capability`); a scope is a text literal (`capability-scope`).
 - A budget or a guard stands in the `needs` of `main` or a test
@@ -1600,6 +1601,7 @@ Python scripts under `tools/` are development aids.
 | `renyi fetch` | the locked packages from the registry, each file verified against its hash and the effect manifest against the sources; into `.renyi/packages/` for a URL registry | 1 when refused |
 | `renyi publish [--to <directory>]` | the project, checked clean, into a directory registry as a new version with its `package.json` (the files' hashes, the effect manifest); the version must be what the semantic diff against the highest published version demands (decision G1), and a published version is never overwritten | 1 when refused |
 | `renyi bind <header.h> --module <name> --library <name>[,<name>...] [--to <directory>]` | a C header's prototypes as a foreign module (decision AF1): the declaration file `<name>.ry` in canonical layout, a prototype the boundary cannot carry left as a comment with the reason, and the module's entry in the `renyi.json` of the directory (written when the manifest exists, printed otherwise) | 1 when refused |
+| `renyi bind --python <package> [--module <name>] [--to <directory>]` | a Python package's functions as a Python module (decisions AM1 and AM2): the declaration file `<name>.ry` (named as the package when `--module` is left out) from what the interpreter of decision AL3 reports of the package, the types of AM2 with `JsonValue` where they stop and a comment naming what stands as `JsonValue`, a function the bridge cannot call by position left as a comment with the reason, and the module's entry in the `renyi.json` of the directory (written when the manifest exists, printed otherwise) | 1 when refused, when no interpreter answers or when the package does not import |
 | `renyi mcp [path]` | serve the toolchain to an agent host | |
 | `renyi version` | the toolchain's version, then one line per extension it is built with (decision AK1) | |
 

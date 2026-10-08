@@ -810,7 +810,8 @@ process per run (decision AL2). `Raised` carries the class name and the
 text of an exception the function let escape, `NotCarried` a result the
 declared type does not fit, `Unavailable` an interpreter that does not
 answer, a module that does not import or a worker that ended, and
-`PermissionDenied` a package outside the grant.
+`PermissionDenied` a package outside the grant. `renyi bind --python`
+writes a Python module from the package itself (decisions AM1 and AM2).
 
 ## 16. Not in v1
 

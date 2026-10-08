@@ -166,12 +166,14 @@ fn unavailable(vm: &Vm, detail: String) -> Result<Value, Interrupt> {
     fail(vm, "Unavailable", vec![Value::text(detail)])
 }
 
-/// The interpreters to try, in order (decision AL3): the manifest's, else
-/// the environment's, else the PATH's `python3` and `python` (`python`
-/// first on Windows, where `python3` is usually the Store's stub).
-fn candidates(binding: &Python) -> Vec<String> {
-    if let Some(interpreter) = &binding.interpreter {
-        return vec![interpreter.clone()];
+/// The interpreters to try, in order (decision AL3): the one configured
+/// (the manifest's), else the environment's, else the PATH's `python3` and
+/// `python` (`python` first on Windows, where `python3` is usually the
+/// Store's stub). `renyi bind --python` runs its inspection through the
+/// same list.
+pub fn interpreters(configured: Option<&str>) -> Vec<String> {
+    if let Some(interpreter) = configured {
+        return vec![interpreter.to_string()];
     }
     if let Ok(interpreter) = std::env::var(INTERPRETER_VARIABLE) {
         if !interpreter.is_empty() {
@@ -190,7 +192,7 @@ impl Worker {
     /// bridge's greeting.
     pub fn start(binding: &Python) -> Result<Worker, String> {
         let mut tried = Vec::new();
-        for interpreter in candidates(binding) {
+        for interpreter in interpreters(binding.interpreter.as_deref()) {
             match Worker::spawn(&interpreter, &binding.root) {
                 Ok(worker) => return Ok(worker),
                 Err(detail) => tried.push(format!("`{interpreter}`: {detail}")),

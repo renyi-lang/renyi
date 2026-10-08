@@ -2,8 +2,9 @@
 
 A Renyi program calls a Python module through the bridge (decisions AJ2,
 AJ3 and AL1 to AL4 in `design/01-decisions.md`): a declaration file of
-the project states each function's signature, the manifest binds the
-file to the Python module, and the VM runs the calls in one Python
+the project states each function's signature (written by hand, or by
+`renyi bind --python` from the package, section 3), the manifest binds
+the file to the Python module, and the VM runs the calls in one Python
 process per run. A call is one primitive at the boundary, like a call
 into the standard library: the checker checks it against the
 declaration, the grant admits it only under `python("<package>")`, and
@@ -118,7 +119,51 @@ def describe(sample):
     }
 ```
 
-## 3. The program
+## 3. The file written for you
+
+`renyi bind --python analysis` writes `analysis.ry` from the package
+itself (decisions AM1 and AM2): it runs the interpreter the manifest
+names (else `RENYI_PYTHON`, else the PATH) on an inspection script that
+imports the package with the project root first on its module path and
+reports its functions, and writes the module's entry into `renyi.json`
+when there is one (printed otherwise). `--module stats` names the
+module otherwise than the package, `--to <directory>` writes into
+another directory. The functions are the names of `__all__` that are
+functions when the package defines it, else the public functions
+defined in the module itself, in definition order. Each positional
+parameter is declared and required, even one Python gives a default (a
+Renyi call names every argument); `*args` and `**kwargs` are left out,
+as is a keyword-only parameter with a default; a keyword-only parameter
+without one, which the bridge cannot pass by position, leaves the
+function in the file as a comment with the reason. A name that is a
+reserved word of Renyi gets the prefix `py_` and a `symbols` entry
+(`count` is `py_count`); a single-letter name becomes `argument_1`.
+The purpose is the first line of the docstring, else the signature.
+
+The types follow the annotations: `int`, `float`, `str`, `bool` and
+`bytes` are `Integer`, `Float`, `Text`, `Boolean` and `Bytes`;
+`list[T]` (`Sequence[T]`, `Iterable[T]`) is `List of T`, `set[T]` is
+`Set of T`, `dict[str, T]` (`Mapping[str, T]`) is `Map of Text to T`,
+`Optional[T]` and `T | None` are `maybe T`; a result annotated `None`
+is none. Anything else, a missing annotation included, is `JsonValue`
+at that position, and a comment above the function says what stands as
+`JsonValue`, so that the file can be edited towards a record type where
+one serves better:
+
+```
+# as JsonValue: `value` (no annotation), `flag` (no annotation), the result (no annotation)
+public function untyped(value: JsonValue, flag: JsonValue)
+  returns JsonValue
+  or fails with PythonError
+  needs python("geometry")
+  purpose: `untyped(value, flag=False)`.
+```
+
+The file is yours after that: edit the types, the names and the
+purposes as the package deserves; running the command again overwrites
+it.
+
+## 4. The program
 
 A program imports the module like any other and grants the capability in
 `main`:
@@ -157,7 +202,7 @@ narrates each call with its duration. The capability takes a scope
 and no budget: `python` in `main` covers every package,
 `python("analysis")` this one; `--deny python` refuses the program.
 
-## 4. What fails
+## 5. What fails
 
 A call fails with `PythonError` (`library/std/python.ry`), never with
 an exception of its own:

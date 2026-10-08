@@ -2437,3 +2437,55 @@ carries them all with the class name to match on; the other cases are
 the bridge's own. The alternative, a failure type per declaration file,
 would be written by hand for every package and checked by nothing.
 (user)
+
+## AM. The Python binder (session 8)
+
+**AM1. `renyi bind --python <package> [--module <name>] [--to
+<directory>]` writes a Python module of the project from the package
+itself: the declaration file `<directory>/<name>.ry` (the module named
+as the package when `--module` is left out) and the module's entry in
+the manifest's `python` section (written when the manifest exists,
+printed otherwise), through the interpreter of decision AL3 (the
+manifest's, else `RENYI_PYTHON`, else the PATH) running an inspection
+script that imports the package with the directory first on its module
+path and reports its functions. The functions are the names of
+`__all__` that are functions when the package defines it, else the
+public functions the module itself defines, in definition order; a
+function's positional parameters are declared in order and required, a
+default or not, `*args` and `**kwargs` are left out, a keyword-only
+parameter with a default is left out and one without a default leaves
+the function as a comment with the reason, as does a function whose
+signature Python cannot give; a name becomes a Renyi name as a C name
+does (snake case, a reserved word prefixed `py_`, a single letter
+`argument_<n>`), a rename recorded in `symbols`; the purpose is the
+docstring's first line as a sentence, else the signature as Python
+prints it, cut to the line width.** The four questions of 2026-10-07
+and their answers: (i) the same command as the C binder, with
+`--python` in place of the header, rather than a command of its own:
+one place for "write me the declaration file"; (ii) the module name
+defaults to the package name; (iii) every positional parameter declared
+and required, since the bridge passes by position (AL2) and a Renyi
+call names every argument anyway; leaving out the parameters with
+defaults would hide them from the caller, and passing by keyword would
+be a new protocol; (iv) `__all__` first, the Python convention, so that
+a package which says what it exports gets exactly that. (user)
+
+**AM2. The types the binder writes: `int` is `Integer`, `float` is
+`Float`, `str` is `Text`, `bool` is `Boolean`, `bytes` is `Bytes`;
+`list[T]`, `Sequence[T]`, `MutableSequence[T]` and `Iterable[T]` are
+`List of T`, `set[T]`, `frozenset[T]`, `AbstractSet[T]` and
+`MutableSet[T]` are `Set of T`, `dict[str, T]`, `Mapping[str, T]` and
+`MutableMapping[str, T]` are `Map of Text to T`, `Optional[T]`, `T |
+None` and `Union[T, None]` are `maybe T`, `Annotated[T, ...]` is what
+`T` is, a bare `list`, `set` or `dict` is the same of `JsonValue`; a
+result annotated `None` is no result; everything else, a missing
+annotation included (`Any`, a class, a `tuple`, a union of two types, a
+`dict` with other keys), is `JsonValue` of `std.json` at that position,
+and the function carries a comment naming what stands as `JsonValue`.**
+The bridge carries what JSON carries (AL1), so the mapping stops where
+JSON does; `JsonValue` keeps every function callable from the first
+run, and the comment tells the editor where a record type would serve
+better. The alternative, skipping a function whose annotation the
+binder does not know (the C binder's rule), would drop most of a
+typical package, whose functions are annotated partially or not at
+all. (user)

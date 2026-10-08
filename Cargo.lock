@@ -678,6 +678,7 @@ dependencies = [
  "mimalloc",
  "renyi_check",
  "renyi_index",
+ "renyi_json",
  "renyi_package",
  "renyi_syntax",
  "renyi_vm",

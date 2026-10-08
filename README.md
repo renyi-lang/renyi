@@ -153,7 +153,8 @@ checker (M2), the project map (`renyi index`), the VM (M3) and packages
   `compiler/bytecode.ry`), which `run`, `record`, `test` and
   `reproduce` load in place of the source; `renyi bind <header.h>
   --module <name> --library <names>` writes a foreign module from a C
-  header (decision AF1); `renyi add`, `update
+  header (decision AF1) and `renyi bind --python <package>` a Python
+  module from a package (decisions AM1 and AM2); `renyi add`, `update
   [--accept-effects]`, `audit`, `fetch` and `publish` manage a project's
   dependencies (decision AC1: `renyi.json` names them and a registry,
   a directory or a URL; `renyi.lock.json` pins each version's hash;
@@ -170,8 +171,9 @@ checker (M2), the project map (`renyi index`), the VM (M3) and packages
   `std::net`), SQLite (`rusqlite`, compiled in) and other programs
   (`std.process`, decision AE1), C libraries through foreign modules
   (decision AF1; `renyi bind` writes one from a header) and Python
-  modules through the bridge (decisions AJ2, AJ3 and AL1 to AL4; the
-  guide is `docs/python.md`); `run concurrently`
+  modules through the bridge (decisions AJ2, AJ3 and AL1 to AL4; `renyi
+  bind --python` writes one from a package, AM1 and AM2; the guide is
+  `docs/python.md`); `run concurrently`
   runs its tasks one after the other (decision S2); the binary
   allocates through `mimalloc` (decision X6). `bench/` holds six
   benchmarks, four of them with CPython twins, and `tools/bench.py`

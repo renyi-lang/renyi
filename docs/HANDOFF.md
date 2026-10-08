@@ -43,7 +43,9 @@ standard library as the first extension, `renyi` a library too, the
 guide `docs/extensions.md`; the domain renyi-lang.org in front of
 the site; and the Python bridge, decisions AL1 to AL4: a Python module
 bound by the manifest as a foreign one is, one worker per run,
-`PythonError`, the guide `docs/python.md`).
+`PythonError`, the guide `docs/python.md`; and the Python binder,
+decisions AM1 and AM2: `renyi bind --python` writes the declaration
+file from the package).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -60,7 +62,8 @@ AF1; `docs/GAPS.md`, section 4); of M5 the host-facing half of the
 embedding API exists, the registration API of decisions AJ1 and AK1
 to AK4 (the section "The registration API as it exists" below) and
 the Python bridge of decisions AJ2, AJ3 and AL1 to AL4 (the section
-"The Python bridge as it exists" below); of
+"The Python bridge as it exists" below) with its binder of AM1 and
+AM2 (the section "The Python binder as it exists" below); of
 M6 the
 machine code exists (decisions AG1 to AG5) and the interpreter had its
 bounded round (AG6), `renyi build` does not. Release 0.1.0 is out
@@ -71,7 +74,7 @@ the seven crates are on crates.io (`cargo install renyi` builds
 0.1.0), the installers were run against the release, and the site is
 at `renyi-lang.org` (the GitHub Pages address redirects there).
 Design decisions are
-in sections 0 to AL of `01-decisions.md`; the positioning in
+in sections 0 to AM of `01-decisions.md`; the positioning in
 `08-positioning.md`; the agent tooling in
 `05-agent-tooling.md`, the signature capabilities in
 `06-runtime-guarantees.md`, the system-level commitments in
@@ -125,7 +128,7 @@ revision>]`, `run [--manifest] [options] <file> [arguments]`, `record
 <file>...`, `compile [--to file] <file.ry>`, `add <name> [<version>]`,
 `update [--accept-effects]`, `audit`, `fetch`, `publish [--to
 <directory>]`, `bind <header.h> --module <name> --library <names>
-[--to <directory>]`, `tools [path]`, `mcp [path]` and `version`; 288 tests,
+[--to <directory>]`, `tools [path]`, `mcp [path]` and `version`; 292 tests,
 clippy and fmt clean on Windows
 with rustc 1.94.1. CI (`.github/workflows/ci.yml`) runs the same gates,
 `renyi check compiler/*.ry`, the starter pack's workflows (check,
@@ -1410,6 +1413,83 @@ Gates: `cargo fmt`, `cargo clippy --all-targets` clean, `cargo test`
 278 passed (270 before, the eight of the extension test new); the
 corpus and `compiler/` untouched.
 
+## The Python binder as it exists (decisions AM1 and AM2; session 8, 2026-10-07)
+
+One commit after the bridge, from the owner's four answers (AM1, every
+recommended option): `renyi bind --python <package> [--module <name>]
+[--to <directory>]` writes the declaration file from the package.
+
+- **The command.** `crates/renyi/src/bind.rs` parses `--python` next to
+  the header form and dispatches to `bind/python.rs`; the writing of
+  the file and of the manifest entry is shared (`write_module`,
+  `ManifestEntry::{Foreign, Python}`: the `foreign` or the
+  `python.modules` section, the entry printed as `"python":
+  {"modules": {...}}` when there is no manifest), as are `renyi_name`
+  (now with the prefix of a reserved word, `c_` or `py_`) and
+  `declaration` (now with the trailing clauses given: `needs foreign`,
+  or `or fails with PythonError` and `needs python("<package>")`). The
+  module name defaults to the package name and must be a module name
+  (`scipy.stats` is one; `Geometry` is not: name one with `--module`).
+- **The inspection.** `bind/python_inspect.py`, embedded with
+  `include_str!` and passed to the interpreter with `-c`, the package
+  and the directory as its arguments: the directory first on
+  `sys.path`, `sys.stdout` swapped for `sys.stderr` so that what the
+  package prints on import cannot mix with the report, one JSON object
+  on the standard output: the version, the file, the functions (name,
+  parameters with kind, default and annotation tree, the return tree,
+  the docstring's first line, the signature as `inspect` prints it),
+  a function `skipped` with the reason, or `error`. The functions:
+  the names of `__all__` that are routines when the module has it,
+  else the public routines whose `__module__` is the module, in
+  `vars()` order. An annotation is a tree: `{"class": "builtins.int"}`,
+  `{"generic": "builtins.list", "args": [...]}`, `{"union": [...]}`,
+  `{"none": true}`, `{"other": "<text>"}`; `inspect.signature(...,
+  eval_str=True)` first, the unevaluated signature when that raises.
+  The interpreter is the first of
+  `renyi_vm::natives::python::interpreters(configured)` (the former
+  `candidates`, now public: the manifest's, `RENYI_PYTHON`, the PATH)
+  that gives a report line; an import that fails in it is the answer
+  ("`python` cannot import `x`: ModuleNotFoundError: ...").
+- **The mapping** (AM2, `Mapper` in `bind/python.rs`): the scalars,
+  the list-like, set-like and map-like origins (`LISTS`, `SETS`,
+  `MAPS`), `Optional[T]` and `T | None`, `Annotated`, a bare `list`,
+  `set` or `dict` as the same of `JsonValue`; everything else
+  `JsonValue` at that position with a note, the notes written as
+  `# as JsonValue: \`x\` (Foo), the result (no annotation)` above the
+  function; `import std.json exposing JsonValue` only when used. The
+  parameters: the positional ones declared and required, `*args`,
+  `**kwargs` and a keyword-only one with a default left out, a
+  keyword-only one without a default skips the function (`# skipped:
+  <signature> (a keyword-only parameter without a default: \`key\`)`),
+  as does a function without a signature. A single-letter parameter is
+  `argument_<n>`; the purpose is the docstring's first line as a
+  sentence, else the signature in backticks, cut to the 100-column
+  line.
+- **The tests.** The unit tests of `bind/python.rs` (a hand-written
+  report to the file and the entry, the mapping table, the purposes);
+  `bind_writes_a_module_from_a_python_package_and_the_manifest_entry`
+  in `tests/python.rs` through the binary: `geometry.py` without a
+  manifest (the entry printed) and with one, `listed.py` with
+  `__all__` and a re-export from `support.py` as `--module exports`,
+  the manifest after both, a program `shapes.ry` run through the two
+  generated modules, and the refusals (a package that does not import,
+  a name that is not an import name, a package name that is not a
+  module name, a header with `--python`).
+- **The documents.** Decisions AM1 and AM2; the reference (section 11's
+  Python bullet, appendix B's row); `docs/python.md` section 3 "The
+  file written for you" (the sections after it renumbered); the
+  library sketch's section 15; `README.md`; `CLAUDE.md`; the usage
+  text of the binary.
+- **What bit.** `renyi` had no dependency on `renyi_json` (added to its
+  `Cargo.toml`); a Renyi call with two or more arguments names every
+  argument and a construction names every field, so the test program
+  is written that way; `otherwise fail` cannot start a line
+  (`otherwise-line`), and `renyi check`'s diagnostics go to the
+  standard output, so a test that shows the standard error on failure
+  showed nothing; the scratch directory of a test was once locked on
+  Windows right after a run that wrote `__pycache__` (the rerun
+  passed; no worker lingered, `tasklist` showed none).
+
 ## The Python bridge as it exists (decisions AJ2, AJ3, AL1 to AL4; session 8, 2026-10-07)
 
 One commit, after the owner's four answers (AL1 to AL4, every
@@ -2090,6 +2170,15 @@ Three commits on `main`, each gated as in session 7:
     and its two copies, the decisions (section AL), `CLAUDE.md`,
     `README.md`, the conformance `README.md`, this file.
 
+20. the Python binder (decisions AM1 and AM2; the section "The Python
+    binder as it exists"): `--python` in `crates/renyi/src/bind.rs` with
+    the shared `write_module`, `bind/python.rs` and
+    `bind/python_inspect.py`, `interpreters` public in
+    `natives/python.rs`, `renyi_json` a dependency of `renyi`, the usage
+    text; the unit tests and the binary test in `tests/python.rs`; the
+    decisions (section AM), the reference, `docs/python.md`, the library
+    sketch, `README.md`, `CLAUDE.md`, this file.
+
 ## Done in session 7 (stage 1 of the gap audit)
 
 Fourteen commits on `main`, each gated by fmt, clippy, the tests, the
@@ -2499,25 +2588,23 @@ on a fresh clone).
 
 ## Next steps
 
-1. **After the bridge** (decisions AJ2, AJ3 and AL1 to AL4 are in;
-   the section "The Python bridge as it exists" above): pending from
-   the release, the announcement (owner), the three measurements of
-   the positioning's section 5 on the starter pack, the Marketplace if
+1. **After the bridge and the binder** (decisions AJ2, AJ3, AL1 to
+   AL4, AM1 and AM2 are in; the sections above): pending from the
+   release, the announcement (owner), the three measurements of the
+   positioning's section 5 on the starter pack, the Marketplace if
    wanted, and the update candidates above (`renyi upgrade`, the
    package-manager manifests), in the order the owner sets; then M5
-   (item 5). Candidates around the bridge, none decided: a generator
-   of declaration files from a Python module (`inspect.signature` and
-   the annotations where they exist, as `renyi bind` does from a C
-   header); a deadline per call; one worker across the tests of a
-   `renyi test` run instead of one per VM; keyword arguments by
-   parameter name instead of position; how the checker written in
-   Renyi (`compiler/project.ry`, a fixed list of the fifteen standard
-   modules under `--library`) sees extension modules, which the judges
-   need once the corpus has a program that imports one. Small fix
-   pending: `renyi tools <directory>` on a directory that holds
-   library declaration files parses them as programs and fails
-   (`renyi index` on the same directory does not), in
-   `crates/renyi/src/lib.rs` (the former `main.rs`).
+   (item 5). Candidates around the bridge, none decided: record types
+   from dataclasses and `TypedDict`s in the binder; a deadline per
+   call; one worker across the tests of a `renyi test` run instead of
+   one per VM; keyword arguments by parameter name instead of
+   position; how the checker written in Renyi (`compiler/project.ry`,
+   a fixed list of the fifteen standard modules under `--library`)
+   sees extension modules, which the judges need once the corpus has a
+   program that imports one. The behaviour of `renyi tools` on a
+   directory of declaration files (it fails on them as programs;
+   `renyi index` counts their errors) is settled: the owner struck it
+   from this list on 2026-10-07, the files are not programs.
 2. **Stage 2 of `docs/GAPS.md`, section 7, continued** (the grammar is
    frozen, V11; the formal grammar is `docs/grammar.ebnf`, V12; the
    language reference is `docs/reference.md`; the lexer and the parser
@@ -2573,6 +2660,15 @@ on a fresh clone).
 
 ## Known gaps and risks
 
+- **The binder.** `renyi bind --python` imports the package, so the
+  package's top-level code runs on the binder's machine, as it does
+  for any Python tool that imports it; the signature in a purpose is
+  the interpreter's rendering (Python 3.14 prints `Optional[int]` as
+  `int | None`), so a generated file differs in its purposes across
+  versions; a class, a dataclass or a `TypedDict` is `JsonValue`, no
+  record type is generated; classes, methods and constants are not
+  declared; a default is not carried, the Renyi caller passes every
+  positional parameter.
 - **The bridge.** The worker's standard error is inherited from the
   VM's process, not routed through `Options::stderr`, so a harness
   that captures the VM's standard error does not see what Python

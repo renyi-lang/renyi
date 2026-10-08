@@ -90,6 +90,10 @@ const USAGE: &str = "usage:
   renyi bind <header.h> --module <name> --library <name>[,<name>...] [--to <directory>]
                                       a C header as a foreign module: the declaration file <name>.ry
                                       and the module's entry in renyi.json (printed when there is none)
+  renyi bind --python <package> [--module <name>] [--to <directory>]
+                                      a Python package as a Python module, through the interpreter:
+                                      the declaration file <name>.ry (the package's name when --module
+                                      is left out) and the entry in renyi.json (printed when none)
   renyi mcp [path]                    serve the toolchain to an agent host over standard input and
                                       output (Model Context Protocol), for the directory given
   renyi version                       the toolchain's version, then one line per extension built in

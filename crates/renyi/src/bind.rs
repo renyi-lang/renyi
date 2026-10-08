@@ -6,13 +6,18 @@
 //! manifest exists, printed otherwise). A prototype the boundary cannot
 //! carry (a pointer other than `char *`, a struct, a `float`, a `long`, a
 //! variadic function) is left in the file as a comment with the reason.
+//! `renyi bind --python <package> [--module <name>] [--to <directory>]`
+//! (decisions AM1 and AM2, `python.rs`) does the same for a Python package
+//! through the interpreter of decision AL3.
 
 use std::path::Path;
 use std::process::ExitCode;
 
 use renyi_check::foreign::WIDTHS;
 use renyi_package::{Manifest, MANIFEST_FILE};
-use renyi_syntax::{ForeignModule, Word};
+use renyi_syntax::{ForeignModule, PythonModule, Word};
+
+mod python;
 
 /// What `renyi bind` makes of a header.
 pub struct Binding {
@@ -22,12 +27,17 @@ pub struct Binding {
 
 pub fn bind_command(args: &[String]) -> ExitCode {
     let mut header: Option<String> = None;
+    let mut python: Option<String> = None;
     let mut module: Option<String> = None;
     let mut libraries: Vec<String> = Vec::new();
     let mut directory = ".".to_string();
     let mut rest = args.iter();
     while let Some(arg) = rest.next() {
         match arg.as_str() {
+            "--python" => match rest.next() {
+                Some(value) => python = Some(value.clone()),
+                None => return usage("`--python` takes the package to import"),
+            },
             "--module" => match rest.next() {
                 Some(value) => module = Some(value.clone()),
                 None => return usage("`--module` takes a name"),
@@ -55,8 +65,17 @@ pub fn bind_command(args: &[String]) -> ExitCode {
             }
         }
     }
+    if let Some(package) = python {
+        if header.is_some() {
+            return usage("`--python` binds a package, not a header");
+        }
+        if !libraries.is_empty() {
+            return usage("`--library` is for a C header; a Python package needs none");
+        }
+        return python::bind_command(&package, module, &directory);
+    }
     let Some(header) = header else {
-        return usage("a header file is required");
+        return usage("a header file is required, or `--python <package>`");
     };
     let Some(module) = module else {
         return usage("`--module <name>` is required");
@@ -81,18 +100,88 @@ pub fn bind_command(args: &[String]) -> ExitCode {
         .map(|name| name.to_string_lossy().to_string())
         .unwrap_or_else(|| header.clone());
     let binding = bind(&header_name, &text, &module, libraries);
-    let file = Path::new(&directory).join(format!("{}.ry", module.replace('.', "/")));
+    write_module(
+        &directory,
+        &module,
+        &binding.declarations,
+        ManifestEntry::Foreign(binding.entry),
+    )
+}
+
+fn usage(message: &str) -> ExitCode {
+    eprintln!(
+        "renyi: {message}\nusage: renyi bind <header.h> --module <name> --library <name>[,<name>...] [--to <directory>]\n       renyi bind --python <package> [--module <name>] [--to <directory>]"
+    );
+    ExitCode::FAILURE
+}
+
+/// A module's entry for the manifest: its section says what kind of
+/// module it is.
+enum ManifestEntry {
+    Foreign(ForeignModule),
+    Python(PythonModule),
+}
+
+impl ManifestEntry {
+    fn kind(&self) -> &'static str {
+        match self {
+            ManifestEntry::Foreign(_) => "foreign",
+            ManifestEntry::Python(_) => "Python",
+        }
+    }
+
+    /// The entry into its section of the manifest, in place of an entry
+    /// of the same name.
+    fn write_into(self, manifest: &mut Manifest, module: &str) {
+        match self {
+            ManifestEntry::Foreign(entry) => {
+                manifest.foreign.retain(|(name, _)| name != module);
+                manifest.foreign.push((module.to_string(), entry));
+                manifest.foreign.sort_by(|a, b| a.0.cmp(&b.0));
+            }
+            ManifestEntry::Python(entry) => {
+                let modules = &mut manifest.python.modules;
+                modules.retain(|(name, _)| name != module);
+                modules.push((module.to_string(), entry));
+                modules.sort_by(|a, b| a.0.cmp(&b.0));
+            }
+        }
+    }
+
+    /// The section as the manifest spells it, for a directory without one.
+    fn json(&self, module: &str) -> String {
+        match self {
+            ManifestEntry::Foreign(entry) => {
+                format!("\"foreign\": {}", entry_json(module, entry))
+            }
+            ManifestEntry::Python(entry) => format!(
+                "\"python\": {{\"modules\": {}}}",
+                python::entry_json(module, entry)
+            ),
+        }
+    }
+}
+
+/// The declaration file written as `<directory>/<name>.ry`, and the entry
+/// into the manifest of the directory when it has one, printed otherwise.
+fn write_module(
+    directory: &str,
+    module: &str,
+    declarations: &str,
+    entry: ManifestEntry,
+) -> ExitCode {
+    let file = Path::new(directory).join(format!("{}.ry", module.replace('.', "/")));
     if let Some(parent) = file.parent() {
         if let Err(error) = std::fs::create_dir_all(parent) {
             eprintln!("renyi: cannot create {}: {error}", parent.display());
             return ExitCode::FAILURE;
         }
     }
-    if let Err(error) = std::fs::write(&file, &binding.declarations) {
+    if let Err(error) = std::fs::write(&file, declarations) {
         eprintln!("renyi: cannot write {}: {error}", file.display());
         return ExitCode::FAILURE;
     }
-    let manifest_path = Path::new(&directory).join(MANIFEST_FILE);
+    let manifest_path = Path::new(directory).join(MANIFEST_FILE);
     match std::fs::read_to_string(&manifest_path) {
         Ok(source) => {
             let mut manifest = match Manifest::read(&source) {
@@ -102,35 +191,27 @@ pub fn bind_command(args: &[String]) -> ExitCode {
                     return ExitCode::FAILURE;
                 }
             };
-            manifest.foreign.retain(|(name, _)| *name != module);
-            manifest.foreign.push((module.clone(), binding.entry));
-            manifest.foreign.sort_by(|a, b| a.0.cmp(&b.0));
+            let kind = entry.kind();
+            entry.write_into(&mut manifest, module);
             if let Err(error) = std::fs::write(&manifest_path, manifest.render()) {
                 eprintln!("renyi: cannot write {}: {error}", manifest_path.display());
                 return ExitCode::FAILURE;
             }
             eprintln!(
-                "renyi: wrote {} and the foreign module `{module}` of {}",
+                "renyi: wrote {} and the {kind} module `{module}` of {}",
                 file.display(),
                 manifest_path.display()
             );
         }
         Err(_) => {
             eprintln!(
-                "renyi: wrote {}; no {MANIFEST_FILE} in {directory}, so add to it:\n  \"foreign\": {}",
+                "renyi: wrote {}; no {MANIFEST_FILE} in {directory}, so add to it:\n  {}",
                 file.display(),
-                entry_json(&module, &binding.entry)
+                entry.json(module)
             );
         }
     }
     ExitCode::SUCCESS
-}
-
-fn usage(message: &str) -> ExitCode {
-    eprintln!(
-        "renyi: {message}\nusage: renyi bind <header.h> --module <name> --library <name>[,<name>...] [--to <directory>]"
-    );
-    ExitCode::FAILURE
 }
 
 /// `{"libc": {"library": [...], "symbols": {...}}}` as the manifest spells it.
@@ -233,7 +314,7 @@ pub fn bind(header_name: &str, header: &str, module: &str, libraries: Vec<String
     }
     for (name, params, returns, prototype) in &functions {
         text.push('\n');
-        text.push_str(&declaration(name, params, *returns));
+        text.push_str(&declaration(name, params, *returns, &["needs foreign"]));
         text.push_str(&format!("  purpose: `{prototype}`.\n"));
     }
     Binding {
@@ -249,27 +330,33 @@ fn note_width<'a>(widths: &mut Vec<&'a str>, ty: &'a str) {
 }
 
 /// A declaration in canonical layout: on one line when it fits, else the
-/// clauses on lines of their own.
-fn declaration(name: &str, params: &[(String, &str)], returns: Option<&str>) -> String {
+/// clauses (`returns`, then those given: the failure, the needs) on lines
+/// of their own.
+fn declaration<T: AsRef<str>>(
+    name: &str,
+    params: &[(String, T)],
+    returns: Option<&str>,
+    clauses: &[&str],
+) -> String {
     let params: Vec<String> = params
         .iter()
-        .map(|(name, ty)| format!("{name}: {ty}"))
+        .map(|(name, ty)| format!("{name}: {}", ty.as_ref()))
         .collect();
     let head = format!("public function {name}({})", params.join(", "));
-    let returns = returns.map(|ty| format!("returns {ty}"));
-    let one_line = match &returns {
-        Some(returns) => format!("{head} {returns} needs foreign\n"),
-        None => format!("{head} needs foreign\n"),
-    };
+    let mut lines: Vec<String> = returns
+        .map(|ty| format!("returns {ty}"))
+        .into_iter()
+        .collect();
+    lines.extend(clauses.iter().map(|clause| clause.to_string()));
+    let one_line = format!("{head} {}\n", lines.join(" "));
     if one_line.len() <= 100 {
         return one_line;
     }
     let mut out = head;
     out.push('\n');
-    if let Some(returns) = returns {
-        out.push_str(&format!("  {returns}\n"));
+    for line in lines {
+        out.push_str(&format!("  {line}\n"));
     }
-    out.push_str("  needs foreign\n");
     out
 }
 
@@ -451,7 +538,7 @@ fn entry_of(statement: &str) -> Option<Entry> {
             };
             // a single letter is not a Renyi name (`single-letter-identifier`)
             let mut name = name
-                .map(|name| renyi_name(&name))
+                .map(|name| renyi_name(&name, "c_"))
                 .filter(|name| name.len() > 1)
                 .unwrap_or_else(|| format!("argument_{}", index + 1));
             while names.contains(&name) {
@@ -462,7 +549,7 @@ fn entry_of(statement: &str) -> Option<Entry> {
         }
     }
     Some(Entry::Function {
-        name: renyi_name(c_name),
+        name: renyi_name(c_name, "c_"),
         symbol: c_name.to_string(),
         params,
         returns,
@@ -607,11 +694,12 @@ fn carried(c_type: &str, result: bool) -> Result<&'static str, String> {
     Ok(renyi)
 }
 
-/// A C name as a Renyi name: snake case, never a reserved word.
-fn renyi_name(c_name: &str) -> String {
+/// A C or Python name as a Renyi name: snake case, never a reserved word
+/// (the prefix marks one, `c_` or `py_`) nor starting with a digit.
+fn renyi_name(foreign_name: &str, prefix: &str) -> String {
     let mut out = String::new();
     let mut previous_lower = false;
-    for ch in c_name.chars() {
+    for ch in foreign_name.chars() {
         if ch.is_ascii_uppercase() {
             if previous_lower {
                 out.push('_');
@@ -631,10 +719,10 @@ fn renyi_name(c_name: &str) -> String {
         name.push(ch);
     }
     if name.is_empty() || name.starts_with(|ch: char| ch.is_ascii_digit()) {
-        name = format!("c_{name}");
+        name = format!("{prefix}{name}");
     }
     if Word::from_spelling(&name).is_some() {
-        name = format!("c_{name}");
+        name = format!("{prefix}{name}");
     }
     name
 }
@@ -657,10 +745,10 @@ mod tests {
 
     #[test]
     fn names_are_snake_case_and_never_reserved() {
-        assert_eq!(renyi_name("GetTickCount"), "get_tick_count");
-        assert_eq!(renyi_name("strlen"), "strlen");
-        assert_eq!(renyi_name("count"), "c_count");
-        assert_eq!(renyi_name("_exit"), "exit");
-        assert_eq!(renyi_name("SHA256Init"), "sha256_init");
+        assert_eq!(renyi_name("GetTickCount", "c_"), "get_tick_count");
+        assert_eq!(renyi_name("strlen", "c_"), "strlen");
+        assert_eq!(renyi_name("count", "c_"), "c_count");
+        assert_eq!(renyi_name("_exit", "c_"), "exit");
+        assert_eq!(renyi_name("SHA256Init", "c_"), "sha256_init");
     }
 }
