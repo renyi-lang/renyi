@@ -1,0 +1,24 @@
+module call_integer
+  purpose: Count the instructions of a call and a return: a loop of calls to a small function.
+
+import std.console
+import std.environment
+
+function add_one(value: Integer) returns Integer
+  purpose: The value plus one.
+
+  return value + 1
+end
+
+public function main() needs console, environment
+  purpose: Print the total after the calls.
+
+  let arguments be environment.arguments()
+  let text be arguments.first() otherwise "1000000"
+  let rounds be text.to_integer() otherwise 1000000
+  let mutable total be 0
+  for each index from 1 to rounds
+    change total to total + add_one(index)
+  end
+  console.print("{total}")
+end

@@ -1,0 +1,20 @@
+module call_integer_200000
+  purpose: The call of call_integer.ry with a literal bound, so that the loop variable is typed.
+
+import std.console
+
+function add_one(value: Integer) returns Integer
+  purpose: The value plus one.
+
+  return value + 1
+end
+
+public function main() needs console
+  purpose: Print the total after the calls.
+
+  let mutable total be 0
+  for each index from 1 to 200000
+    change total to total + add_one(index)
+  end
+  console.print("{total}")
+end

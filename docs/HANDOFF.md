@@ -1774,8 +1774,13 @@ arguments; the layout of `Value` pinned and the value operations inline.
   total + first_of(point) + index` with `first_of(point: Point) returns
   Integer` reading `point.east`; `let point be Point(east: index,
   north: index)` then `change total to total + point.east`), run at two
-  sizes and the counts' difference divided by the size's; they live in
-  the session's scratch directory, not in the repository.
+  sizes and the counts' difference divided by the size's; they are
+  `bench/micro/call_integer.ry`, `field_read.ry`, `call_record.ry` and
+  `record_build.ry`, with `call_integer_1000000.ry` and
+  `call_integer_200000.ry` the typed call with a literal bound (the
+  owner's answer of 2026-10-08: into the repository, held like
+  `bench/*.ry` by CI), and `tools/measure_native.sh <binary>` runs the
+  whole set.
 - **Stage 1, done: `LoadField`.** `Op::LoadField { slot, name, site }`
   is `Load(slot)` followed by `Field { name, site }`: the field read in
   the slot, the holder neither cloned nor dropped. Both emitters emit it
@@ -1973,16 +1978,18 @@ arguments; the layout of `Value` pinned and the value operations inline.
   and the drop that remain in the helpers and the primitives
   (`drop_glue` 4.9%, `clone` 2.1%), and the boxed binary operations
   (`rt_binary` and `binary_values`, 3.6%).
-- **Measuring here.** `valgrind --tool=cachegrind --cache-sim=no
-  <binary> run [--interpret] compiler/checker.ry compiler/bodies.ry`
-  for the self-check (about four minutes a run), the same on
-  `bench/records.ry` and on the micro programs at two sizes; the binary
-  before the stage kept beside the binary after it (`measure3.sh` in
-  the scratch directory ran the set for one binary, `measure_regalloc.sh`
-  the two allocators). `RENYI_NATIVE_REPORT=1` prints the compile
-  statistics (the IR's size in Cranelift instructions and blocks, the
-  time by phase, the cold callees) and `cg_annotate` on the self-check
-  shows Cranelift's own share, which the IR's size moves.
+- **Measuring here.** `tools/measure_native.sh <binary>`: `valgrind
+  --tool=cachegrind --cache-sim=no <binary> run [--interpret]
+  compiler/checker.ry compiler/bodies.ry` for the self-check (about
+  four minutes a run), the same on `bench/records.ry`, and the micro
+  programs of `bench/micro/` at two sizes; the binary before a step
+  kept beside the binary after it (the release build of each, 1.97.0
+  here). `RENYI_NATIVE_REPORT=1` prints the compile statistics (the
+  IR's size in Cranelift instructions and blocks, the time by phase,
+  the cold callees), `RENYI_NATIVE_HOT=<n>` sets the hotness factor and
+  `RENYI_NATIVE_REGALLOC=<algorithm>` the register allocator for one
+  run, and `cg_annotate` on the self-check shows Cranelift's own
+  share, which the IR's size moves.
 
 ## The profile-guided round on strings and JSON as it exists (decision AQ; session 9, 2026-10-08)
 

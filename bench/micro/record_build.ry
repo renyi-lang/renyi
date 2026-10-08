@@ -1,0 +1,25 @@
+module record_build
+  purpose: Count the instructions of a record built and one field of it read, in a loop.
+
+import std.console
+import std.environment
+
+public type Point
+  purpose: Two coordinates.
+  has east: Integer
+  has north: Integer
+end
+
+public function main() needs console, environment
+  purpose: Print the total after the constructions.
+
+  let arguments be environment.arguments()
+  let text be arguments.first() otherwise "1000000"
+  let rounds be text.to_integer() otherwise 1000000
+  let mutable total be 0
+  for each index from 1 to rounds
+    let point be Point(east: index, north: index)
+    change total to total + point.east
+  end
+  console.print("{total}")
+end

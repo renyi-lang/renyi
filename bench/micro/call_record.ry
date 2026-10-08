@@ -1,0 +1,31 @@
+module call_record
+  purpose: Count the instructions of a call with a record argument whose callee reads a field.
+
+import std.console
+import std.environment
+
+public type Point
+  purpose: Two coordinates.
+  has east: Integer
+  has north: Integer
+end
+
+function first_of(point: Point) returns Integer
+  purpose: The first coordinate.
+
+  return point.east
+end
+
+public function main() needs console, environment
+  purpose: Print the total after the calls.
+
+  let arguments be environment.arguments()
+  let text be arguments.first() otherwise "1000000"
+  let rounds be text.to_integer() otherwise 1000000
+  let point be Point(east: 3, north: 4)
+  let mutable total be 0
+  for each index from 1 to rounds
+    change total to total + first_of(point) + index
+  end
+  console.print("{total}")
+end
