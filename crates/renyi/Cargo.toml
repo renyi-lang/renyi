@@ -21,6 +21,7 @@ doc = false
 renyi_syntax.workspace = true
 renyi_check.workspace = true
 renyi_index.workspace = true
+renyi_workspace.workspace = true
 renyi_vm.workspace = true
 renyi_package.workspace = true
 renyi_json.workspace = true

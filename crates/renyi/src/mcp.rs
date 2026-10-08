@@ -12,8 +12,11 @@
 //! `initialize` request opens the handshake of the revisions up to
 //! 2025-11-25. The tools are the same in both.
 //!
-//! The project map is rebuilt from the served directory whenever a source
-//! file's text differs from the one the map was built from (decision T4).
+//! The project map comes from a resident world of the served directory
+//! (decision AN1): before a call that needs it, the directory's files are
+//! read again where their stamps changed, the world is declared again when
+//! any of them did, and only the items whose text changed are checked
+//! again (decision T4 asked for the rebuild, R5-5 for its granularity).
 
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
@@ -28,6 +31,7 @@ use renyi_syntax::{format, SourceFile};
 use renyi_vm::grant::parse_capability;
 use renyi_vm::natives::json::{read_json, write_json, Json};
 use renyi_vm::{Narrowing, Options, RunOutcome};
+use renyi_workspace::Workspace;
 
 use crate::{
     compile_sources, diagnose, library, load_recording, parse_budget, read_source, registry,
@@ -135,24 +139,36 @@ fn rpc_error(code: i64, message: impl Into<String>) -> RpcError {
 type Fields = Vec<(&'static str, Json)>;
 
 struct Server {
-    map: Option<Map>,
+    /// The resident world of the served directory (decision AN1): read
+    /// again where it changed before every call that needs the map.
+    workspace: Workspace,
     library: Vec<LibraryEntry>,
-}
-
-/// The project map with the texts it was built from.
-struct Map {
-    files: Vec<SourceFile>,
-    /// Every file in canonical layout: the text the map's lines refer to.
-    canonical: Vec<String>,
-    index: Index,
 }
 
 impl Server {
     fn new() -> Server {
         Server {
-            map: None,
+            workspace: Workspace::new(".", &library()),
             library: library_entries(),
         }
+    }
+
+    /// The served directory read again where it changed, its world
+    /// declared again and its map rebuilt when anything did.
+    fn refresh(&mut self) -> Result<(), String> {
+        self.workspace.refresh(|| renyi_index::Header {
+            project: renyi_index::project_name(Path::new(".")),
+            revision: renyi_index::git_revision(Path::new(".")),
+            toolchain: toolchain(),
+        })?;
+        Ok(())
+    }
+
+    /// The map after `refresh`.
+    fn index(&self) -> &Index {
+        self.workspace
+            .index()
+            .expect("the workspace is refreshed before its map is read")
     }
 
     /// One message in, at most one message out (a notification has no
@@ -287,25 +303,24 @@ impl Server {
             "project_map" => {
                 let module = optional_text(arguments, "module")?;
                 let json = flag(arguments, "json")?;
-                let map = Map::refresh(&mut self.map)?;
+                self.refresh()?;
+                let whole = self.index();
                 let index = match module {
                     Some(module) => {
-                        if !map.index.modules.iter().any(|m| m.name == module) {
+                        if !whole.modules.iter().any(|m| m.name == module) {
                             return Err(format!(
                                 "the served project has no module named `{module}`"
                             ));
                         }
                         Index {
-                            header: map.index.header.clone(),
-                            modules: map
-                                .index
+                            header: whole.header.clone(),
+                            modules: whole
                                 .modules
                                 .iter()
                                 .filter(|m| m.name == module)
                                 .cloned()
                                 .collect(),
-                            definitions: map
-                                .index
+                            definitions: whole
                                 .definitions
                                 .iter()
                                 .filter(|d| d.module == module)
@@ -313,7 +328,7 @@ impl Server {
                                 .collect(),
                         }
                     }
-                    None => map.index.clone(),
+                    None => whole.clone(),
                 };
                 Ok(if json {
                     renyi_index::to_json(&index)
@@ -323,19 +338,18 @@ impl Server {
             }
             "definition" => {
                 let name = required_text(arguments, "name")?;
-                let map = Map::refresh(&mut self.map)?;
-                let definition = find_definition(&map.index, &name)?;
-                let file = map
-                    .files
-                    .iter()
-                    .position(|file| display_path(&file.name) == definition.file)
-                    .ok_or_else(|| {
-                        format!(
-                            "the map names a file the project lacks: {}",
-                            definition.file
-                        )
-                    })?;
-                let source: Vec<&str> = map.canonical[file]
+                self.refresh()?;
+                let definition = find_definition(self.index(), &name)?;
+                let canonical =
+                    self.workspace
+                        .canonical_text(&definition.file)
+                        .ok_or_else(|| {
+                            format!(
+                                "the map names a file the project lacks: {}",
+                                definition.file
+                            )
+                        })?;
+                let source: Vec<&str> = canonical
                     .lines()
                     .skip(definition.line.saturating_sub(1))
                     .take(definition.end_line + 1 - definition.line)
@@ -351,10 +365,10 @@ impl Server {
             }
             "effects" => {
                 let name = required_text(arguments, "name")?;
-                let map = Map::refresh(&mut self.map)?;
-                let definition = find_definition(&map.index, &name)?;
-                let by_name: HashMap<String, &Definition> = map
-                    .index
+                self.refresh()?;
+                let definition = find_definition(self.index(), &name)?;
+                let by_name: HashMap<String, &Definition> = self
+                    .index()
                     .definitions
                     .iter()
                     .map(|d| (d.qualified(), d))
@@ -371,9 +385,9 @@ impl Server {
             "diff" => {
                 let base = required_text(arguments, "base")?;
                 let json = flag(arguments, "json")?;
-                let map = Map::refresh(&mut self.map)?;
+                self.refresh()?;
                 let old = crate::maps::load_base(&base, Path::new("."), &toolchain())?;
-                let diff = renyi_index::diff(&old, &map.index);
+                let diff = renyi_index::diff(&old, self.index());
                 Ok(if json {
                     renyi_index::diff_json(&diff)
                 } else {
@@ -435,39 +449,6 @@ impl Server {
             ));
         }
         out
-    }
-}
-
-impl Map {
-    /// The map of the served directory, rebuilt when any file changed.
-    fn refresh(slot: &mut Option<Map>) -> Result<&Map, String> {
-        let files = renyi_index::load_project(Path::new("."))?;
-        let fresh = slot.as_ref().is_some_and(|map| {
-            map.files.len() == files.len()
-                && map
-                    .files
-                    .iter()
-                    .zip(&files)
-                    .all(|(old, new)| old.name == new.name && old.text == new.text)
-        });
-        if !fresh {
-            let header = renyi_index::Header {
-                project: renyi_index::project_name(Path::new(".")),
-                revision: renyi_index::git_revision(Path::new(".")),
-                toolchain: toolchain(),
-            };
-            let index = renyi_index::index_files_in(&library(), &files, header);
-            let canonical = files
-                .iter()
-                .map(|file| format(file).unwrap_or_else(|_| file.text.clone()))
-                .collect();
-            *slot = Some(Map {
-                files,
-                canonical,
-                index,
-            });
-        }
-        Ok(slot.as_ref().expect("the map was just built"))
     }
 }
 
@@ -594,10 +575,6 @@ fn find_definition<'a>(index: &'a Index, name: &str) -> Result<&'a Definition, S
                 .join(", ")
         )),
     }
-}
-
-fn display_path(name: &str) -> String {
-    name.replace('\\', "/")
 }
 
 fn list_or_none(items: &[String]) -> String {

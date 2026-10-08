@@ -2489,3 +2489,55 @@ better. The alternative, skipping a function whose annotation the
 binder does not know (the C binder's rule), would drop most of a
 typical package, whose functions are annotated partially or not at
 all. (user)
+
+## AN. The resident world (session 8)
+
+**AN1. The toolchain keeps a resident world of a project between
+calls, in a crate of its own, `renyi_workspace`: the `.ry` files under
+a directory and the files of the dependencies they import, each kept
+with its text, its canonical layout, its syntax tree, the fingerprint
+of its declarations and the check of every item of it. A refresh stats
+the directory's files and reads again only those whose size or
+modification time changed (and those stamped within two seconds of
+their last write, since file systems round the time), formats and
+parses again only those whose text changed, declares the world again
+from the kept trees when anything changed, checks again only the items
+whose canonical text changed (every item when the fingerprint of any
+file changed, a file appeared, disappeared or stopped parsing, or the
+manifest changed) and rebuilds the map from the result. What it gives
+is what a fresh `renyi index` and `renyi check` give, byte for byte,
+which a test holds on the corpus, the compiler, the starter pack and a
+project taken through every kind of change. `renyi mcp` holds one; a
+text may overlay a file (an editor's unsaved buffer).** The owner's
+four answers of 2026-10-07: (i) a file-level parse cache with
+item-level rechecks rather than a whole-project rebuild or a
+per-definition dependency graph: a body's check depends on the
+project's declarations and on its own text and on nothing else, so an
+unchanged body under unchanged declarations has the same check, moved
+to where the item now sits; the fingerprint is the text of everything
+a body elsewhere can see (the module's head, each function's signature
+and docs, each type, ability and constant whole, each test's name,
+needs and recording), so a change to a body costs one check and a
+change to a signature costs them all, the cheap rule that is also
+exact; (ii) a stat of the files on every call rather than a file
+watcher: no thread, no platform notification API, the same answer on
+every machine; (iii) a crate of its own rather than a part of
+`renyi_check` or `renyi_index`: the checker and the index stay the
+whole-project functions the self-hosted judges mirror, and the language
+server, the watch of `serve` and the embedding API take the crate
+without the binary; (iv) AN2. Measured on `compiler/` (18 files, 23.6
+thousand lines; a development build on Windows): the first
+`project_map` call of `renyi mcp` 1.5 seconds, every later one 12
+milliseconds, the map rendered each time. Closes open item R5-5 of
+`05-agent-tooling.md`, which decision T4 had left at the file level.
+(user)
+
+**AN2. The language server is a standard LSP server, `renyi lsp`, over
+standard input and output, on the resident world of AN1: one
+`Workspace` per workspace folder, the editor's unsaved buffers as
+overlays.** A protocol every editor speaks rather than a VS Code
+extension of its own: the extension of decision AI2 gains a client of
+a few lines, and every other editor gets the same server. It follows
+AN1; the scope of its first version (diagnostics, hover with the
+purpose and the signature, go to definition, document symbols) is
+recorded with it. (user)

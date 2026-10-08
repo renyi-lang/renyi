@@ -110,9 +110,10 @@ with the toolchain version. The members of a component are hashed in
 definition order, so reordering two mutually recursive definitions changes
 their hashes; reordering independent definitions does not.
 
-The hash makes the map incremental: a file whose definitions' hashes are
-unchanged needs no new record, and `renyi mcp` refreshes only the changed
-components.
+The map is incremental through the resident world of decision AN1
+(`renyi_workspace`): the check of an item is kept across refreshes while
+its text and the project's declarations are unchanged, and the records
+are computed again from the kept checks, which is cheap next to checking.
 
 ## 4. The JSON shape
 
@@ -256,9 +257,11 @@ loaded by `crates/renyi/src/maps.rs`.
 
 `renyi mcp` (decision O5) serves the toolchain to any agent host over
 JSON-RPC on standard input and output, following the Model Context
-Protocol. It re-reads and re-checks the served directory on every call that
-needs the map; a resident `World` that refreshes only the definitions whose
-content hash changed is open item R5-5.
+Protocol. It holds a resident world of the served directory
+(`renyi_workspace`, decision AN1): before a call that needs the map, the
+files are read again where their stamps changed, the world is declared
+again when any text did, and only the items whose text changed are checked
+again (open item R5-5, closed).
 
 | Tool | Input | Output |
 |------|-------|--------|
@@ -295,10 +298,11 @@ resolve); `run` takes the arguments, the narrowing options of the command
 line (`deny`, `allow_host`, `allow_read`, `allow_write`, `at_most`),
 `replay` and `explain`, answers with what the program printed, its
 standard error and how it ended, and marks a run that did not finish as a
-tool error; `run_tests` takes `strict` and `explain`. The map is rebuilt
-whenever a file of the served directory differs from the one the last map
-was built from (a file-level refresh; the per-definition refresh of
-section 3 is open item R5-5). A missing argument or a failing tool is a
+tool error; `run_tests` takes `strict` and `explain`. The map is refreshed
+before the call through the resident world of decision AN1: a file is read
+again when its stamp changed, parsed again when its text changed, and its
+items are checked again where their text changed (every item when a
+declaration changed anywhere). A missing argument or a failing tool is a
 tool execution error (`isError`); an unknown tool or method is a protocol
 error. `diff` takes `base` (a saved map file under the served directory,
 or a git revision) and a `json` switch and answers as `renyi index --diff`
@@ -356,5 +360,7 @@ the same entries.
   readability test's failures.
 - R5-4: atomic reference counts when the scheduler runs tasks on several OS
   threads (decision O1).
-- R5-5: the per-definition refresh of the map in `renyi mcp` (decision T4
-  rebuilds the whole map when any file of the served directory changed).
+- R5-5: the per-definition refresh of the map in `renyi mcp`. Closed by
+  decision AN1: the resident world of `renyi_workspace` checks again only
+  the items whose text changed (decision T4 had rebuilt the whole map when
+  any file of the served directory changed).

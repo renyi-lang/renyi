@@ -55,7 +55,8 @@ The owner's steps are marked (owner); the others a session does.
 5. (owner, or a session with the owner's say-so in that turn) Publish
    the crates to crates.io, in dependency order, each with
    `cargo publish -p <crate>`: `renyi_json`, `renyi_syntax`,
-   `renyi_package`, `renyi_check`, `renyi_index`, `renyi_vm`, `renyi`.
+   `renyi_package`, `renyi_check`, `renyi_index`, `renyi_workspace`,
+   `renyi_vm`, `renyi`.
    `cargo login` takes the token from the owner; the token never enters
    the repository or a log. Each crate's manifest carries its
    description, license and repository, and the crates name each
@@ -63,7 +64,7 @@ The owner's steps are marked (owner); the others a session does.
    `renyi_check` and `renyi` build from their tarballs because they
    embed copies of `library/std/` and `docs/cheatsheet.md` held equal
    by tests (decision AI5). `cargo package --workspace --allow-dirty`
-   packages all seven and verifies the six libraries from their
+   packages all eight and verifies the seven libraries from their
    tarballs; on the binary it stops with a cargo internal error ("no
    hash listed for renyi_index", cargo 1.94.1: the temporary registry
    of a workspace package lacks checksums for a binary's lockfile),

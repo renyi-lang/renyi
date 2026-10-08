@@ -22,7 +22,9 @@ use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 
 use renyi_check::effects::Capability;
-use renyi_check::{check_project_in, BodyLocation, FunctionId, Library, ModuleId, Target};
+use renyi_check::{
+    check_project_in, BodyLocation, CheckedProject, FunctionId, Library, ModuleId, Target,
+};
 use renyi_syntax::ast::Item;
 use renyi_syntax::{format, SourceFile, Span};
 
@@ -338,6 +340,19 @@ pub fn index_files(files: &[SourceFile], header: Header) -> Index {
 pub fn index_files_in(library: &Library, files: &[SourceFile], header: Header) -> Index {
     let (canonical, was_canonical) = canonical_files(files);
     let checked = check_project_in(library, &canonical, &[]);
+    index_checked(&canonical, &was_canonical, &checked, header)
+}
+
+/// The map of a project checked already: the files in canonical layout
+/// (`canonical_files`), whether each one was, the checked project over
+/// those files and the header. The resident world of `renyi_workspace`
+/// (decision AN1) checks incrementally and builds its map from here.
+pub fn index_checked(
+    canonical: &[SourceFile],
+    was_canonical: &[bool],
+    checked: &CheckedProject,
+    header: Header,
+) -> Index {
     let world = &checked.world;
 
     let mut body_refs: HashMap<(ModuleId, BodyKey), Vec<(Target, Span)>> = HashMap::new();
@@ -582,9 +597,10 @@ pub fn index_files_in(library: &Library, files: &[SourceFile], header: Header) -
     }
 }
 
-/// Every file in canonical layout, and whether it already was. A file that
-/// does not parse is kept as it is.
-fn canonical_files(files: &[SourceFile]) -> (Vec<SourceFile>, Vec<bool>) {
+/// Every file in canonical layout, and whether it already was, each with
+/// the tags of the file it came from. A file that does not parse is kept
+/// as it is.
+pub fn canonical_files(files: &[SourceFile]) -> (Vec<SourceFile>, Vec<bool>) {
     let mut canonical = Vec::new();
     let mut was_canonical = Vec::new();
     for file in files {
@@ -593,6 +609,8 @@ fn canonical_files(files: &[SourceFile]) -> (Vec<SourceFile>, Vec<bool>) {
                 was_canonical.push(text == file.text);
                 let mut copy = SourceFile::new(file.name.clone(), text);
                 copy.package = file.package.clone();
+                copy.foreign = file.foreign.clone();
+                copy.python = file.python.clone();
                 canonical.push(copy);
             }
             Err(_) => {

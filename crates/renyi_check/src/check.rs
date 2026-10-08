@@ -4897,45 +4897,81 @@ pub fn check_module_with_references(
     let mut checker = Checker::new(world, module);
     let info = &world.modules[module];
     for (index, item) in info.ast.items.iter().enumerate() {
-        match item {
-            Item::Function(function) => {
-                if let Some(id) = find_function(world, module, BodyLocation::Item(index)) {
+        check_item_with(&mut checker, world, module, index, item);
+    }
+    if let Some(diagnostic) = module_purpose_diagnostic(world, module) {
+        checker.diagnostics.push(diagnostic);
+    }
+    (checker.diagnostics, checker.references)
+}
+
+/// One item of a module checked on its own, with the references its
+/// bodies make: the resident world (`renyi_workspace`, decision AN1)
+/// checks again only the items whose text changed. Over every item of a
+/// module this gives what `check_module_with_references` gives, but for
+/// the module's own purpose (`module_purpose_diagnostic`).
+pub fn check_item(
+    world: &World,
+    module: ModuleId,
+    index: usize,
+) -> (Vec<Diagnostic>, Vec<(BodyLocation, Reference)>) {
+    let mut checker = Checker::new(world, module);
+    let item = &world.modules[module].ast.items[index];
+    check_item_with(&mut checker, world, module, index, item);
+    (checker.diagnostics, checker.references)
+}
+
+/// `purpose-missing` on a module without a purpose.
+pub fn module_purpose_diagnostic(world: &World, module: ModuleId) -> Option<Diagnostic> {
+    let info = &world.modules[module];
+    if info.ast.docs.purpose.is_some() {
+        return None;
+    }
+    Some(
+        Diagnostic::error(
+            "purpose-missing",
+            "the module has no purpose",
+            Span::new(0, info.ast.name.last().map_or(0, |n| n.span.end)),
+        )
+        .with_fix("add a `purpose:` clause under the `module` line"),
+    )
+}
+
+fn check_item_with(
+    checker: &mut Checker<'_>,
+    world: &World,
+    module: ModuleId,
+    index: usize,
+    item: &Item,
+) {
+    let info = &world.modules[module];
+    match item {
+        Item::Function(function) => {
+            if let Some(id) = find_function(world, module, BodyLocation::Item(index)) {
+                checker.check_function(id, function);
+            }
+        }
+        Item::Implementation(implementation) => {
+            for (function_index, function) in implementation.functions.iter().enumerate() {
+                if let Some(id) = find_function(
+                    world,
+                    module,
+                    BodyLocation::Implementation(index, function_index),
+                ) {
                     checker.check_function(id, function);
                 }
             }
-            Item::Implementation(implementation) => {
-                for (function_index, function) in implementation.functions.iter().enumerate() {
-                    if let Some(id) = find_function(
-                        world,
-                        module,
-                        BodyLocation::Implementation(index, function_index),
-                    ) {
-                        checker.check_function(id, function);
-                    }
-                }
-            }
-            Item::Test(test) => checker.check_test(index, test),
-            Item::Constant(constant) => {
-                if let Some(constant_info) = info.constants.get(&constant.name.text) {
-                    let ty = constant_info.ty.clone();
-                    checker.check_constant(index, constant, &ty);
-                }
-            }
-            Item::Type(def) => checker.check_type_conditions(index, def),
-            Item::Ability(_) => {}
         }
+        Item::Test(test) => checker.check_test(index, test),
+        Item::Constant(constant) => {
+            if let Some(constant_info) = info.constants.get(&constant.name.text) {
+                let ty = constant_info.ty.clone();
+                checker.check_constant(index, constant, &ty);
+            }
+        }
+        Item::Type(def) => checker.check_type_conditions(index, def),
+        Item::Ability(_) => {}
     }
-    if info.ast.docs.purpose.is_none() {
-        checker.diagnostics.push(
-            Diagnostic::error(
-                "purpose-missing",
-                "the module has no purpose",
-                Span::new(0, info.ast.name.last().map_or(0, |n| n.span.end)),
-            )
-            .with_fix("add a `purpose:` clause under the `module` line"),
-        );
-    }
-    (checker.diagnostics, checker.references)
 }
 
 fn find_function(world: &World, module: ModuleId, body: BodyLocation) -> Option<FunctionId> {

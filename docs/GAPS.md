@@ -261,13 +261,14 @@ freeze, or take it out of the frozen surface until it exists.
   day) `std.process`, and since decision AF1 (the same day) the FFI.
   Absent: the `only to` runtime.
 - **M5** (LSP, index, compiler API): the index half exists (`index`,
-  `--budgets`, `--diff`, `mcp` with ten tools). Absent: the LSP, the
-  embedding API with per-module grants and memory budgets (decision Q3:
-  the nearest things are `Vm::begin_run`, `Vm::call_function` and
-  `Options`, one grant per run), `renyi run --sandbox grant.json`, `renyi
-  serve --watch` with checked swaps (decision Q4), the per-definition map
-  refresh and a resident `World` (open item R5-5: every MCP tool call
-  re-reads and recompiles the served directory).
+  `--budgets`, `--diff`, `mcp` with ten tools) and, since decision AN1,
+  the resident `World` with the per-item refresh of the map (open item
+  R5-5 closed: `renyi mcp` holds a `renyi_workspace::Workspace`).
+  Absent: the LSP (decided, AN2), the embedding API with per-module
+  grants and memory budgets (decision Q3: the nearest things are
+  `Vm::begin_run`, `Vm::call_function` and `Options`, one grant per
+  run), `renyi run --sandbox grant.json`, `renyi serve --watch` with
+  checked swaps (decision Q4).
 - **M6** (AOT and WASM): the VM generates machine code for the hot
   code objects in the process (decision AG1, session 8); no `renyi
   build` yet (an image of the bytecode with the machine code, loaded in

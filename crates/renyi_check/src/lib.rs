@@ -232,7 +232,13 @@ pub fn check_project_with_problems(files: &[SourceFile], problems: &[Problem]) -
 /// Decision G3: the module name equals the path. The last segment is the
 /// file's stem and the segments before it its parent directories, read
 /// from the end; the extension is `.ry` or `.renyi`.
-fn module_name_mismatch(file_name: &str, module: &renyi_syntax::ast::Module) -> Option<Diagnostic> {
+/// `module-name` when the module's name does not fit the file's path
+/// (the resident world of `renyi_workspace` raises it as `check_project_in`
+/// does).
+pub fn module_name_mismatch(
+    file_name: &str,
+    module: &renyi_syntax::ast::Module,
+) -> Option<Diagnostic> {
     let segments: Vec<&str> = module.name.iter().map(|n| n.text.as_str()).collect();
     let mut components: Vec<&str> = file_name
         .split(['/', '\\'])

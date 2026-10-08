@@ -45,7 +45,10 @@ the site; and the Python bridge, decisions AL1 to AL4: a Python module
 bound by the manifest as a foreign one is, one worker per run,
 `PythonError`, the guide `docs/python.md`; and the Python binder,
 decisions AM1 and AM2: `renyi bind --python` writes the declaration
-file from the package).
+file from the package; and the resident world, decision AN1:
+`renyi_workspace`, which `renyi mcp` holds between calls, the first of
+M5's four steps in the order the owner set, with the LSP decided next,
+AN2).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
@@ -63,18 +66,20 @@ embedding API exists, the registration API of decisions AJ1 and AK1
 to AK4 (the section "The registration API as it exists" below) and
 the Python bridge of decisions AJ2, AJ3 and AL1 to AL4 (the section
 "The Python bridge as it exists" below) with its binder of AM1 and
-AM2 (the section "The Python binder as it exists" below); of
+AM2 (the section "The Python binder as it exists" below), and the
+resident world of decision AN1 (the section "The resident world as it
+exists" below), the first of M5's four steps in the owner's order; of
 M6 the
 machine code exists (decisions AG1 to AG5) and the interpreter had its
 bounded round (AG6), `renyi build` does not. Release 0.1.0 is out
 (2026-10-07, the section "Release 0.1 engineering" below): the
 repository is public at `github.com/renyi-lang/renyi`, the release
 page carries the three archives, their checksums and the `.vsix`,
-the seven crates are on crates.io (`cargo install renyi` builds
+the seven crates of 0.1.0 are on crates.io (`cargo install renyi` builds
 0.1.0), the installers were run against the release, and the site is
 at `renyi-lang.org` (the GitHub Pages address redirects there).
 Design decisions are
-in sections 0 to AM of `01-decisions.md`; the positioning in
+in sections 0 to AN of `01-decisions.md`; the positioning in
 `08-positioning.md`; the agent tooling in
 `05-agent-tooling.md`, the signature capabilities in
 `06-runtime-guarantees.md`, the system-level commitments in
@@ -117,9 +122,9 @@ The corpus has 30 programs, passes the lint, is in canonical layout,
 checks cleanly, has nothing over budget, and its `example:` lines and
 `test` blocks pass on the VM (six are `replays` tests answered from
 recordings under `examples/fixtures/`). The cheat sheet measures
-2999 of 3000 tokens. The Rust workspace has seven crates:
+2999 of 3000 tokens. The Rust workspace has eight crates:
 `renyi_json`, `renyi_syntax`, `renyi_package`, `renyi_check`,
-`renyi_index`, `renyi_vm` and the `renyi`
+`renyi_index`, `renyi_workspace`, `renyi_vm` and the `renyi`
 binary with `check`, `format`, `tokens`, `parse [--json]
 [--declarations]`, `index [--json | --budgets | --diff <map or
 revision>]`, `run [--manifest] [options] <file> [arguments]`, `record
@@ -128,7 +133,7 @@ revision>]`, `run [--manifest] [options] <file> [arguments]`, `record
 <file>...`, `compile [--to file] <file.ry>`, `add <name> [<version>]`,
 `update [--accept-effects]`, `audit`, `fetch`, `publish [--to
 <directory>]`, `bind <header.h> --module <name> --library <names>
-[--to <directory>]`, `tools [path]`, `mcp [path]` and `version`; 292 tests,
+[--to <directory>]`, `tools [path]`, `mcp [path]` and `version`; 297 tests,
 clippy and fmt clean on Windows
 with rustc 1.94.1. CI (`.github/workflows/ci.yml`) runs the same gates,
 `renyi check compiler/*.ry`, the starter pack's workflows (check,
@@ -1862,6 +1867,89 @@ and the commit of the site and the crates.io metadata.
   green threads would be an improvement within that decision, not a
   reversal.
 
+## The resident world as it exists (decision AN1; session 8, 2026-10-07)
+
+The first step of M5 in the order the owner set on 2026-10-07 (the
+resident `World`, then the LSP, then `serve --watch`, then the
+embedding API; decision AN1 records the four answers, AN2 the LSP's
+shape): a crate of its own, `crates/renyi_workspace/`, that `renyi mcp`
+holds between calls.
+
+- **The crate.** `Workspace::new(root, &library)` parses the library's
+  declaration files once and reads nothing; `refresh(header)` does the
+  work and reports it (`Refresh`: files read, files parsed, whether
+  the world was declared again, items checked, items reused);
+  `index()`, `checked()`, `canonical_text(file)` and
+  `diagnostics(file)` answer from the last refresh; `set_overlay(name,
+  text)` and `clear_overlay(name)` make a text stand in for a file on
+  disk (an editor's unsaved buffer). A file is named relative to the
+  root or as the map names it.
+- **A refresh.** The `.ry` and `.renyi` files under the root (the
+  store `.renyi/` left out) are listed and stat-ed. A file whose size
+  and modification time are those kept is skipped, unless it was
+  stamped within two seconds of its last write (file systems round the
+  time; such a file is read and its text compared). A file read with
+  the same text keeps its tree and its checks. A file with a new text
+  is tagged (`renyi_check::tagged`), formatted and parsed as `renyi
+  index` does (`canonical_files` now carries the `foreign` and
+  `python` tags through, not only `package`), its declarations
+  fingerprinted, its items' texts kept; when the fingerprint is the
+  old one, the old items' checks are inherited where an item's text is
+  unchanged, their spans moved to where the item now sits. Otherwise,
+  and when a file appeared, disappeared or stopped parsing, or
+  `renyi.json` or `renyi.lock.json` at the root changed (the files are
+  tagged again), every item is checked again, and only then are the
+  dependencies resolved again (`imported_files`). The world is
+  declared again from the kept trees (the library's modules cloned,
+  then the own files in path order and the dependencies in the order
+  brought, as `load_project` orders them); each module's items are
+  checked with `check::check_item` or reused; the module's diagnostics
+  are assembled as `check_project_in` assembles them (parse,
+  `module-name`, the world's, the items', the module's
+  `purpose-missing`, sorted by position); the map is built with
+  `renyi_index::index_checked` from the canonical files and the
+  checked project.
+- **The fingerprint** is the text of everything a body elsewhere can
+  see: the module's head (the text before the first item: the name,
+  the docs, the imports), each function's signature and docs (the text
+  before its body; the docs because `deprecated` warns at call sites),
+  an implementation's head and its methods' heads, a test's name,
+  needs and recording, and a type, an ability or a constant whole. A
+  change to a body costs one check; a change to a signature costs them
+  all.
+- **The checker** gained `check::check_item(world, module, index)` and
+  `check::module_purpose_diagnostic`, over which
+  `check_module_with_references` is now written (`Checker::new` is a
+  pure constructor, so an item checked alone is checked as in the
+  loop); `module_name_mismatch` is public. The index gained
+  `index_checked` (the second half of `index_files_in`) and
+  `canonical_files` public.
+- **Held equal.** `tests/refresh.rs`: the corpus, `compiler/` and
+  `starter/workflows` give the map and every module's diagnostics of a
+  fresh `index_files_in` and `check_project_in`, and a second refresh
+  parses, declares and checks nothing; a two-file project is taken
+  through a body edit (one item checked, three reused), a signature
+  edit (all four, the caller now wrong), the caller mended, a file
+  added and removed, a file broken and mended, the same text written
+  again (read, not parsed), an overlay set (its text is what is
+  checked) and cleared, each state equal to a fresh build. Unit tests
+  cover the fingerprint, the names and the stamp's margin.
+- **Measured** (a script driving `renyi mcp` over pipes: the legacy
+  handshake, then `project_map` four times; a development build on
+  Windows): `compiler/` 1453 ms for the first call, 12 to 13 ms for
+  each later one (the map of 287 thousand characters rendered each
+  time); `examples/` 152 ms, then 5 to 6 ms.
+- **`renyi mcp`** holds a `Workspace` over `.` (it enters the served
+  directory first) and refreshes it before `project_map`, `definition`,
+  `effects` and `diff`; `Map` and its whole-directory rebuild are
+  gone; `definition` reads the canonical text from the workspace.
+- **Not covered.** The manifest is watched at the root only (a
+  `renyi.json` above the served directory is read by the resolver, but
+  a change to it is not noticed until a file changes); the resolver's
+  problems (a missing package, a manifest that does not read) are not
+  in the map, as they were not before; a dependency's files are read
+  again only when a declaration or the manifest changed.
+
 ## The MCP server as it exists (`crates/renyi/src/mcp.rs`)
 
 - `renyi mcp [path]` enters the directory (the current one by default),
@@ -1898,9 +1986,12 @@ and the commit of the site and the crates.io metadata.
   JSON as `renyi index --diff`). A missing or ill-typed argument and a
   failing tool are tool execution errors (`isError: true`); an unknown
   tool or method is a protocol error.
-- The map (`Map::refresh`) is rebuilt when any file of the served
-  directory differs from the one the last map was built from (decision
-  T4); the compiled program of `run` and `run_tests` is built per call.
+- The map comes from the resident world (`Server::refresh` on a
+  `renyi_workspace::Workspace` over the served directory, decision AN1;
+  the section above): the files read again where their stamps changed,
+  the world declared again when any text did, the items checked again
+  where their text changed; the compiled program of `run` and
+  `run_tests` is built per call.
   `main.rs` holds the non-printing `compile_sources`, `diagnose`,
   `read_source` and `toolchain` that the commands and the server share;
   `maps.rs` loads the base of a diff.
@@ -2178,6 +2269,17 @@ Three commits on `main`, each gated as in session 7:
     text; the unit tests and the binary test in `tests/python.rs`; the
     decisions (section AM), the reference, `docs/python.md`, the library
     sketch, `README.md`, `CLAUDE.md`, this file.
+21. the resident world (decision AN1; the section "The resident world
+    as it exists"): `crates/renyi_workspace/` (`src/lib.rs`,
+    `tests/refresh.rs`), `check::check_item` and
+    `check::module_purpose_diagnostic` with
+    `check_module_with_references` written over them,
+    `module_name_mismatch` public, `index_checked` and
+    `canonical_files` public with every tag carried through, `renyi
+    mcp` on a `Workspace`; the workspace manifest and `Cargo.lock`; the
+    decisions (section AN, with AN2 for the LSP),
+    `05-agent-tooling.md` (R5-5 closed), `docs/GAPS.md`,
+    `docs/RELEASE.md` (the publish order), `CLAUDE.md`, this file.
 
 ## Done in session 7 (stage 1 of the gap audit)
 
@@ -2653,13 +2755,33 @@ on a fresh clone).
    rubric's reading of "only X and Y" when Z is also needed (round 1 and
    2 read it as a need missing).
 5. **M4**: its three slices (packages, decision AC1; `std.process`,
-   decision AE1; the FFI, decision AF1; the sections above) are done;
-   **M5**
-   (embedding API, `serve --watch`, LSP, a resident `World`, open item
-   R5-5) after: stage 3 of `docs/GAPS.md`.
+   decision AE1; the FFI, decision AF1; the sections above) are done.
+   **M5**, in the order the owner set on 2026-10-07: the resident
+   `World` is done (decision AN1; open item R5-5 closed); next the
+   language server, `renyi lsp` over standard input and output on a
+   `Workspace` per workspace folder with the editor's buffers as
+   overlays (decision AN2: diagnostics, hover with the purpose and the
+   signature, go to definition, document symbols first; a client of a
+   few lines in `editors/vscode/`); then `serve --watch` (decision Q4)
+   on the same world; then the embedding API with `--sandbox` (decision
+   Q3). Interspersed, as the owner asked the same day: the performance
+   items by the profile of AG5 (the pattern cache of `Text.matches`,
+   the string building, the JSON path; strings and JSON to CPython's
+   speed, the compiler's self-check twice as fast), then a baseline JIT
+   (AG5, item iii); and a showcase, a bookmark and reading-list web app
+   in a repository of its own under `renyi-lang/` (HTTP for the titles,
+   SQLite, an HTML page and a JSON API, tags and search, CSV export,
+   one use of the Python bridge, `replays` tests).
 
 ## Known gaps and risks
 
+- **The resident world.** The manifest is watched at the served
+  directory's root only; the resolver's problems are not in the map
+  (as before); a dependency's files are read again only when a
+  declaration or the manifest changed; the stamp of a file written
+  within two seconds of a refresh is not trusted, so an editor that
+  saves every second makes every refresh read that file (the text is
+  compared, not parsed).
 - **The binder.** `renyi bind --python` imports the package, so the
   package's top-level code runs on the binder's machine, as it does
   for any Python tool that imports it; the signature in a purpose is

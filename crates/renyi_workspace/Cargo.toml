@@ -1,0 +1,12 @@
+[package]
+name = "renyi_workspace"
+description = "The resident world of a Renyi project: the files kept between calls, the world declared again from what changed and the bodies checked again only where their text changed"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+renyi_syntax.workspace = true
+renyi_check.workspace = true
+renyi_index.workspace = true

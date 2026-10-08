@@ -6,6 +6,7 @@ members = [
     "crates/renyi_package",
     "crates/renyi_check",
     "crates/renyi_index",
+    "crates/renyi_workspace",
     "crates/renyi_vm",
     "crates/renyi",
 ]
@@ -26,6 +27,7 @@ renyi_syntax = { path = "crates/renyi_syntax", version = "0.1.0" }
 renyi_package = { path = "crates/renyi_package", version = "0.1.0" }
 renyi_check = { path = "crates/renyi_check", version = "0.1.0" }
 renyi_index = { path = "crates/renyi_index", version = "0.1.0" }
+renyi_workspace = { path = "crates/renyi_workspace", version = "0.1.0" }
 renyi_vm = { path = "crates/renyi_vm", version = "0.1.0" }
 
 # Decision X1: the VM and every dependency are optimized in development
