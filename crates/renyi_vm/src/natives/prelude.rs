@@ -10,9 +10,12 @@ use num_traits::FromPrimitive;
 
 use sha2::{Digest, Sha256};
 
-use super::{arg, bytes, crash, decimal, float, int, list, map, range, set, small, take, text};
+use super::{
+    arg, bytes, crash, decimal, float, int, list, map, plain_float, plain_list, plain_map,
+    plain_set, plain_small, plain_text, range, set, small, take, text,
+};
 use crate::decimal::Decimal;
-use crate::extension::Native;
+use crate::extension::{Native, Typed};
 use crate::integer::Int;
 use crate::value::{take_list, take_map, take_set, Value};
 use crate::vm::{finite_float, range_items, Interrupt, Vm};
@@ -21,12 +24,16 @@ use crate::vm::{finite_float, range_items, Interrupt, Vm};
 /// each implements, by module, name and the type of its first parameter.
 pub(crate) const NATIVES: &[Native] = &[
     Native::method("std.prelude", "to_decimal", "Integer", integer_to_decimal),
-    Native::method("std.prelude", "to_float", "Integer", integer_to_float),
+    Native::method("std.prelude", "to_float", "Integer", integer_to_float)
+        .with_typed(Typed::Float(integer_to_float_typed)),
     Native::method("std.prelude", "to_text", "Integer", integer_to_text),
     Native::method("std.prelude", "quotient", "Integer", integer_quotient),
-    Native::method("std.prelude", "absolute", "Integer", integer_absolute),
-    Native::method("std.prelude", "at_least", "Integer", number_at_least),
-    Native::method("std.prelude", "at_most", "Integer", number_at_most),
+    Native::method("std.prelude", "absolute", "Integer", integer_absolute)
+        .with_typed(Typed::Int(integer_absolute_typed)),
+    Native::method("std.prelude", "at_least", "Integer", number_at_least)
+        .with_typed(Typed::Int(integer_at_least_typed)),
+    Native::method("std.prelude", "at_most", "Integer", number_at_most)
+        .with_typed(Typed::Int(integer_at_most_typed)),
     Native::method("std.prelude", "rounded", "Decimal", decimal_rounded),
     Native::method("std.prelude", "truncated", "Decimal", decimal_truncated),
     Native::method("std.prelude", "to_float", "Decimal", decimal_to_float),
@@ -34,36 +41,57 @@ pub(crate) const NATIVES: &[Native] = &[
     Native::method("std.prelude", "absolute", "Decimal", decimal_absolute),
     Native::method("std.prelude", "at_least", "Decimal", number_at_least),
     Native::method("std.prelude", "at_most", "Decimal", number_at_most),
-    Native::method("std.prelude", "rounded", "Float", float_rounded),
+    Native::method("std.prelude", "rounded", "Float", float_rounded)
+        .with_typed(Typed::Float(float_rounded_typed)),
     Native::method("std.prelude", "truncated", "Float", float_truncated),
-    Native::method("std.prelude", "square_root", "Float", float_square_root),
+    Native::method("std.prelude", "square_root", "Float", float_square_root)
+        .with_typed(Typed::Float(float_square_root_typed)),
     Native::method("std.prelude", "to_decimal", "Float", float_to_decimal),
     Native::method("std.prelude", "to_text", "Float", any_to_text),
-    Native::method("std.prelude", "absolute", "Float", float_absolute),
+    Native::method("std.prelude", "absolute", "Float", float_absolute)
+        .with_typed(Typed::Float(float_absolute_typed)),
     Native::method("std.prelude", "at_least", "Float", number_at_least),
     Native::method("std.prelude", "at_most", "Float", number_at_most),
     Native::method("std.prelude", "to_text", "Boolean", any_to_text),
-    Native::method("std.prelude", "length", "Text", text_length),
-    Native::method("std.prelude", "is_empty", "Text", text_is_empty),
-    Native::method("std.prelude", "trim", "Text", text_trim),
-    Native::method("std.prelude", "trim_start", "Text", text_trim_start),
-    Native::method("std.prelude", "trim_end", "Text", text_trim_end),
-    Native::method("std.prelude", "to_lower", "Text", text_to_lower),
-    Native::method("std.prelude", "to_upper", "Text", text_to_upper),
-    Native::method("std.prelude", "split", "Text", text_split),
-    Native::method("std.prelude", "lines", "Text", text_lines),
-    Native::method("std.prelude", "characters", "Text", text_characters),
-    Native::method("std.prelude", "contains", "Text", text_contains),
-    Native::method("std.prelude", "starts_with", "Text", text_starts_with),
-    Native::method("std.prelude", "ends_with", "Text", text_ends_with),
-    Native::method("std.prelude", "index_of", "Text", text_index_of),
-    Native::method("std.prelude", "replace", "Text", text_replace),
+    Native::method("std.prelude", "length", "Text", text_length)
+        .with_typed(Typed::Int(text_length_typed)),
+    Native::method("std.prelude", "is_empty", "Text", text_is_empty)
+        .with_typed(Typed::Bool(text_is_empty_typed)),
+    Native::method("std.prelude", "trim", "Text", text_trim)
+        .with_typed(Typed::Value(text_trim_typed)),
+    Native::method("std.prelude", "trim_start", "Text", text_trim_start)
+        .with_typed(Typed::Value(text_trim_start_typed)),
+    Native::method("std.prelude", "trim_end", "Text", text_trim_end)
+        .with_typed(Typed::Value(text_trim_end_typed)),
+    Native::method("std.prelude", "to_lower", "Text", text_to_lower)
+        .with_typed(Typed::Value(text_to_lower_typed)),
+    Native::method("std.prelude", "to_upper", "Text", text_to_upper)
+        .with_typed(Typed::Value(text_to_upper_typed)),
+    Native::method("std.prelude", "split", "Text", text_split)
+        .with_typed(Typed::Value(text_split_typed)),
+    Native::method("std.prelude", "lines", "Text", text_lines)
+        .with_typed(Typed::Value(text_lines_typed)),
+    Native::method("std.prelude", "characters", "Text", text_characters)
+        .with_typed(Typed::Value(text_characters_typed)),
+    Native::method("std.prelude", "contains", "Text", text_contains)
+        .with_typed(Typed::Bool(text_contains_typed)),
+    Native::method("std.prelude", "starts_with", "Text", text_starts_with)
+        .with_typed(Typed::Bool(text_starts_with_typed)),
+    Native::method("std.prelude", "ends_with", "Text", text_ends_with)
+        .with_typed(Typed::Bool(text_ends_with_typed)),
+    Native::method("std.prelude", "index_of", "Text", text_index_of)
+        .with_typed(Typed::Value(text_index_of_typed)),
+    Native::method("std.prelude", "replace", "Text", text_replace)
+        .with_typed(Typed::Value(text_replace_typed)),
     Native::method("std.prelude", "pad_left", "Text", text_pad_left),
     Native::method("std.prelude", "pad_right", "Text", text_pad_right),
     Native::method("std.prelude", "repeat", "Text", text_repeat),
-    Native::method("std.prelude", "take", "Text", text_take),
-    Native::method("std.prelude", "drop", "Text", text_drop),
-    Native::method("std.prelude", "reversed", "Text", text_reversed),
+    Native::method("std.prelude", "take", "Text", text_take)
+        .with_typed(Typed::Value(text_take_typed)),
+    Native::method("std.prelude", "drop", "Text", text_drop)
+        .with_typed(Typed::Value(text_drop_typed)),
+    Native::method("std.prelude", "reversed", "Text", text_reversed)
+        .with_typed(Typed::Value(text_reversed_typed)),
     Native::method("std.prelude", "matches", "Text", super::regex::text_matches),
     Native::method("std.prelude", "to_integer", "Text", text_to_integer),
     Native::method("std.prelude", "to_decimal", "Text", text_to_decimal),
@@ -75,11 +103,15 @@ pub(crate) const NATIVES: &[Native] = &[
     Native::method("std.prelude", "to_text", "Bytes", bytes_to_text),
     Native::method("std.prelude", "to_base64", "Bytes", bytes_to_base64),
     Native::method("std.prelude", "sha256", "Bytes", bytes_sha256),
-    Native::method("std.prelude", "length", "List", list_length),
-    Native::method("std.prelude", "is_empty", "List", list_is_empty),
-    Native::method("std.prelude", "at", "List", list_at),
-    Native::method("std.prelude", "first", "List", list_first),
-    Native::method("std.prelude", "last", "List", list_last),
+    Native::method("std.prelude", "length", "List", list_length)
+        .with_typed(Typed::Int(list_length_typed)),
+    Native::method("std.prelude", "is_empty", "List", list_is_empty)
+        .with_typed(Typed::Bool(list_is_empty_typed)),
+    Native::method("std.prelude", "at", "List", list_at).with_typed(Typed::Value(list_at_typed)),
+    Native::method("std.prelude", "first", "List", list_first)
+        .with_typed(Typed::Value(list_first_typed)),
+    Native::method("std.prelude", "last", "List", list_last)
+        .with_typed(Typed::Value(list_last_typed)),
     Native::method("std.prelude", "rest", "List", list_rest),
     Native::method("std.prelude", "without_last", "List", list_without_last),
     Native::method("std.prelude", "without_index", "List", list_without_index),
@@ -91,30 +123,40 @@ pub(crate) const NATIVES: &[Native] = &[
     Native::method("std.prelude", "reversed", "List", list_reversed),
     Native::method("std.prelude", "sorted", "List", list_sorted),
     Native::method("std.prelude", "distinct", "List", list_distinct),
-    Native::method("std.prelude", "contains", "List", list_contains),
-    Native::method("std.prelude", "index_of", "List", list_index_of),
+    Native::method("std.prelude", "contains", "List", list_contains)
+        .with_typed(Typed::Bool(list_contains_typed)),
+    Native::method("std.prelude", "index_of", "List", list_index_of)
+        .with_typed(Typed::Value(list_index_of_typed)),
     Native::method("std.prelude", "largest", "List", list_largest),
     Native::method("std.prelude", "smallest", "List", list_smallest),
     Native::method("std.prelude", "with_index", "List", list_with_index),
     Native::method("std.prelude", "to_set", "List", list_to_set),
     Native::method("std.prelude", "flattened", "List", list_flattened),
-    Native::method("std.prelude", "join", "List", list_join),
-    Native::method("std.prelude", "sum", "List of Integer", list_sum_integers),
+    Native::method("std.prelude", "join", "List", list_join)
+        .with_typed(Typed::Value(list_join_typed)),
+    Native::method("std.prelude", "sum", "List of Integer", list_sum_integers)
+        .with_typed(Typed::Int(list_sum_integers_typed)),
     Native::method("std.prelude", "sum", "List of Decimal", list_sum_decimals),
     Native::method("std.prelude", "sum", "List of Float", list_sum_floats),
-    Native::method("std.prelude", "length", "Map", map_length),
-    Native::method("std.prelude", "is_empty", "Map", map_is_empty),
-    Native::method("std.prelude", "get", "Map", map_get),
+    Native::method("std.prelude", "length", "Map", map_length)
+        .with_typed(Typed::Int(map_length_typed)),
+    Native::method("std.prelude", "is_empty", "Map", map_is_empty)
+        .with_typed(Typed::Bool(map_is_empty_typed)),
+    Native::method("std.prelude", "get", "Map", map_get).with_typed(Typed::Value(map_get_typed)),
     Native::method("std.prelude", "set", "Map", map_set),
     Native::method("std.prelude", "without", "Map", map_without),
-    Native::method("std.prelude", "contains_key", "Map", map_contains_key),
+    Native::method("std.prelude", "contains_key", "Map", map_contains_key)
+        .with_typed(Typed::Bool(map_contains_key_typed)),
     Native::method("std.prelude", "keys", "Map", map_keys),
     Native::method("std.prelude", "values", "Map", map_values),
     Native::method("std.prelude", "entries", "Map", map_entries),
     Native::method("std.prelude", "merged", "Map", map_merged),
-    Native::method("std.prelude", "length", "Set", set_length),
-    Native::method("std.prelude", "is_empty", "Set", set_is_empty),
-    Native::method("std.prelude", "contains", "Set", set_contains),
+    Native::method("std.prelude", "length", "Set", set_length)
+        .with_typed(Typed::Int(set_length_typed)),
+    Native::method("std.prelude", "is_empty", "Set", set_is_empty)
+        .with_typed(Typed::Bool(set_is_empty_typed)),
+    Native::method("std.prelude", "contains", "Set", set_contains)
+        .with_typed(Typed::Bool(set_contains_typed)),
     Native::method("std.prelude", "add", "Set", set_add),
     Native::method("std.prelude", "without", "Set", set_without),
     Native::method("std.prelude", "union", "Set", set_union),
@@ -913,4 +955,262 @@ fn duration_to_seconds(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrup
     Decimal::new(BigInt::from(ms), -3)
         .map(Value::decimal)
         .map_err(|_| crash("the duration is out of range"))
+}
+
+// ------------------------------------------------ typed entries (AU1)
+//
+// Each answers what the native beside it answers, on plain arguments of
+// the kinds it expects, and declines (`None`) on anything else: a guarded
+// argument, an Integer past the machine word, a case the native fails or
+// crashes on. The generated code calls these with the arguments borrowed
+// and takes a scalar answer in a register.
+
+fn integer_to_float_typed(args: &[Value]) -> Option<f64> {
+    Some(plain_small(&args[0])? as f64)
+}
+
+fn integer_absolute_typed(args: &[Value]) -> Option<i64> {
+    plain_small(&args[0])?.checked_abs()
+}
+
+fn integer_at_least_typed(args: &[Value]) -> Option<i64> {
+    let (a, b) = (plain_small(&args[0])?, plain_small(&args[1])?);
+    Some(if a < b { b } else { a })
+}
+
+fn integer_at_most_typed(args: &[Value]) -> Option<i64> {
+    let (a, b) = (plain_small(&args[0])?, plain_small(&args[1])?);
+    Some(if a > b { b } else { a })
+}
+
+fn float_rounded_typed(args: &[Value]) -> Option<f64> {
+    let value = plain_float(&args[0])?;
+    let places = plain_small(&args[1])?;
+    let factor = 10f64.powi(places.clamp(-300, 300) as i32);
+    Some((value * factor).round() / factor)
+}
+
+fn float_square_root_typed(args: &[Value]) -> Option<f64> {
+    let value = plain_float(&args[0])?;
+    if value < 0.0 {
+        return None;
+    }
+    Some(value.sqrt())
+}
+
+fn float_absolute_typed(args: &[Value]) -> Option<f64> {
+    Some(plain_float(&args[0])?.abs())
+}
+
+fn text_length_typed(args: &[Value]) -> Option<i64> {
+    Some(plain_text(&args[0])?.chars().count() as i64)
+}
+
+fn text_is_empty_typed(args: &[Value]) -> Option<bool> {
+    Some(plain_text(&args[0])?.is_empty())
+}
+
+fn text_trim_typed(args: &[Value]) -> Option<Value> {
+    Some(Value::text(plain_text(&args[0])?.trim()))
+}
+
+fn text_trim_start_typed(args: &[Value]) -> Option<Value> {
+    Some(Value::text(plain_text(&args[0])?.trim_start()))
+}
+
+fn text_trim_end_typed(args: &[Value]) -> Option<Value> {
+    Some(Value::text(plain_text(&args[0])?.trim_end()))
+}
+
+fn text_to_lower_typed(args: &[Value]) -> Option<Value> {
+    Some(Value::text(plain_text(&args[0])?.to_lowercase()))
+}
+
+fn text_to_upper_typed(args: &[Value]) -> Option<Value> {
+    Some(Value::text(plain_text(&args[0])?.to_uppercase()))
+}
+
+fn text_split_typed(args: &[Value]) -> Option<Value> {
+    let value = plain_text(&args[0])?;
+    let separator = plain_text(&args[1])?;
+    if separator.is_empty() {
+        return Some(Value::list(characters(value)));
+    }
+    Some(Value::list(
+        value.split(separator).map(Value::text).collect(),
+    ))
+}
+
+fn text_lines_typed(args: &[Value]) -> Option<Value> {
+    Some(Value::list(
+        plain_text(&args[0])?.lines().map(Value::text).collect(),
+    ))
+}
+
+fn text_characters_typed(args: &[Value]) -> Option<Value> {
+    Some(Value::list(characters(plain_text(&args[0])?)))
+}
+
+fn text_contains_typed(args: &[Value]) -> Option<bool> {
+    Some(plain_text(&args[0])?.contains(plain_text(&args[1])?))
+}
+
+fn text_starts_with_typed(args: &[Value]) -> Option<bool> {
+    Some(plain_text(&args[0])?.starts_with(plain_text(&args[1])?))
+}
+
+fn text_ends_with_typed(args: &[Value]) -> Option<bool> {
+    Some(plain_text(&args[0])?.ends_with(plain_text(&args[1])?))
+}
+
+fn text_index_of_typed(args: &[Value]) -> Option<Value> {
+    let value = plain_text(&args[0])?;
+    Some(match value.find(plain_text(&args[1])?) {
+        Some(byte) => Value::integer(value[..byte].chars().count() as i64),
+        None => Value::Nothing,
+    })
+}
+
+fn text_replace_typed(args: &[Value]) -> Option<Value> {
+    let value = plain_text(&args[0])?;
+    let old = plain_text(&args[1])?;
+    let new = plain_text(&args[2])?;
+    if old.is_empty() {
+        return Some(Value::text(value));
+    }
+    Some(Value::text(value.replace(old, new)))
+}
+
+fn text_take_typed(args: &[Value]) -> Option<Value> {
+    let value = plain_text(&args[0])?;
+    let length = plain_small(&args[1])?.max(0) as usize;
+    Some(Value::text(value.chars().take(length).collect::<String>()))
+}
+
+fn text_drop_typed(args: &[Value]) -> Option<Value> {
+    let value = plain_text(&args[0])?;
+    let length = plain_small(&args[1])?.max(0) as usize;
+    Some(Value::text(value.chars().skip(length).collect::<String>()))
+}
+
+fn text_reversed_typed(args: &[Value]) -> Option<Value> {
+    Some(Value::text(
+        plain_text(&args[0])?.chars().rev().collect::<String>(),
+    ))
+}
+
+fn list_length_typed(args: &[Value]) -> Option<i64> {
+    Some(plain_list(&args[0])?.len() as i64)
+}
+
+fn list_is_empty_typed(args: &[Value]) -> Option<bool> {
+    Some(plain_list(&args[0])?.is_empty())
+}
+
+fn list_at_typed(args: &[Value]) -> Option<Value> {
+    let items = plain_list(&args[0])?;
+    let index = plain_small(&args[1])?;
+    Some(
+        index_in(items.len(), index)
+            .map(|i| items[i].clone())
+            .unwrap_or(Value::Nothing),
+    )
+}
+
+fn list_first_typed(args: &[Value]) -> Option<Value> {
+    Some(
+        plain_list(&args[0])?
+            .first()
+            .cloned()
+            .unwrap_or(Value::Nothing),
+    )
+}
+
+fn list_last_typed(args: &[Value]) -> Option<Value> {
+    Some(
+        plain_list(&args[0])?
+            .last()
+            .cloned()
+            .unwrap_or(Value::Nothing),
+    )
+}
+
+fn list_contains_typed(args: &[Value]) -> Option<bool> {
+    let items = plain_list(&args[0])?;
+    if args[1].is_guarded() {
+        return None;
+    }
+    Some(items.contains(&args[1]))
+}
+
+fn list_index_of_typed(args: &[Value]) -> Option<Value> {
+    let items = plain_list(&args[0])?;
+    if args[1].is_guarded() {
+        return None;
+    }
+    Some(
+        items
+            .iter()
+            .position(|item| *item == args[1])
+            .map(|i| Value::integer(i as i64))
+            .unwrap_or(Value::Nothing),
+    )
+}
+
+fn list_join_typed(args: &[Value]) -> Option<Value> {
+    let items = plain_list(&args[0])?;
+    let separator = plain_text(&args[1])?;
+    let mut parts = Vec::with_capacity(items.len());
+    for item in items.iter() {
+        parts.push(item.as_text()?);
+    }
+    Some(Value::text(parts.join(separator)))
+}
+
+fn list_sum_integers_typed(args: &[Value]) -> Option<i64> {
+    let mut total: i64 = 0;
+    for item in plain_list(&args[0])?.iter() {
+        total = total.checked_add(plain_small(item)?)?;
+    }
+    Some(total)
+}
+
+fn map_length_typed(args: &[Value]) -> Option<i64> {
+    Some(plain_map(&args[0])?.len() as i64)
+}
+
+fn map_is_empty_typed(args: &[Value]) -> Option<bool> {
+    Some(plain_map(&args[0])?.is_empty())
+}
+
+fn map_get_typed(args: &[Value]) -> Option<Value> {
+    let entries = plain_map(&args[0])?;
+    if args[1].is_guarded() {
+        return None;
+    }
+    Some(entries.get(&args[1]).cloned().unwrap_or(Value::Nothing))
+}
+
+fn map_contains_key_typed(args: &[Value]) -> Option<bool> {
+    let entries = plain_map(&args[0])?;
+    if args[1].is_guarded() {
+        return None;
+    }
+    Some(entries.contains_key(&args[1]))
+}
+
+fn set_length_typed(args: &[Value]) -> Option<i64> {
+    Some(plain_set(&args[0])?.len() as i64)
+}
+
+fn set_is_empty_typed(args: &[Value]) -> Option<bool> {
+    Some(plain_set(&args[0])?.is_empty())
+}
+
+fn set_contains_typed(args: &[Value]) -> Option<bool> {
+    let items = plain_set(&args[0])?;
+    if args[1].is_guarded() {
+        return None;
+    }
+    Some(items.contains(&args[1]))
 }

@@ -1846,6 +1846,35 @@ does not match (AR1), so a type is the choice of the fast path, never a
 promise. The recordings, the replay, the narration and the `.ryc` as
 JSON stay as they are.
 
+**Stage 1 is in (decision AU2, 2026-10-09).** `Typed` and
+`Native::with_typed` in `extension.rs` (`Registry::lookup_entry`,
+`verify` holds an entry to the declared result's kind and to a function
+without `needs`); the `plain_*` helpers in `natives/mod.rs`; forty-two
+typed entries in `natives/prelude.rs` (the `_typed` functions beside the
+natives); `Vm::call_scratch`, `call_pure_from_stack`,
+`call_typed_in_place`, the tables `typed` and `pure`, `CallKind` and
+`call_kinds` in `vm.rs`; `rt_call_pure`, `rt_call_typed` and the status
+`BOXED` in `native/runtime.rs`; `borrowed_operands`, `kind_agrees`,
+`Gen::call_typed`, the `calls`, `borrowed` and `masks` of `Gen` in
+`native/codegen.rs`; `Jit::new` and `image::build` take the call kinds
+(the latter the registry); `Pinned::forget_from`. Tests:
+`tests/extension.rs` (a typed entry asked on both tiers, answering and
+declining; `verify` on a wrong kind and on a function with `needs`),
+`tests/native.rs` (`typed_entries_of_the_prelude_answer_or_decline_on_both_tiers`,
+the decline of `absolute` on the smallest Integer and the hand-back of
+its big answer). The guide `docs/extensions.md` has the entry. Measured:
+the self-check's estimate on the JIT run 14.83 to 13.86 billion cycles
+(-6.5%), the interpreter 17.92 to 17.23 (-3.9%; 12.85 to 12.21 billion instructions), the image 11.18 to
+10.27 (-8.2%; 7.97 to 7.16 billion instructions, -10.2%; the machine code 5.62 to 5.63 MB, 122 bytes of body per op as before); `strings` 134 to 94 ms (CPython 81); the profile after the
+stage in AU2: `rt_call_typed` itself 111 instructions a call, the
+iteration 82 a glyph, the loop variable's retain and release 54, the
+first half of the program a fifth of the whole (`core::fmt` for every
+Integer written into a text, `append` freeing and allocating its `Rc`
+each call). Next: the small cuts the profile names (the integer digits
+without `core::fmt` in `render` and `op_concat`, `append` through
+`Rc::make_mut`, the helper's fast path without `sync_pc` and without
+the consume loop when every argument is borrowed), then stage 2.
+
 ## The size of the generated code (decisions AT1 to AT7; session 9, 2026-10-08 and 09)
 
 The owner's four answers of 2026-10-08 after `renyi build` closed

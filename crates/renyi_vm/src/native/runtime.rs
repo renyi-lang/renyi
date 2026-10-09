@@ -32,6 +32,9 @@ pub const CONTINUE: i32 = 0;
 pub const FAILURE: i32 = 1;
 pub const INTERRUPT: i32 = 2;
 pub const LEFT: i32 = 3;
+/// From `rt_call_typed` alone: the typed entry declined and the general
+/// path answered, so the result is boxed on the stack, not in `out`.
+pub const BOXED: i32 = 4;
 
 /// What the generated function itself returns to the VM: the frame
 /// returned, the frame is the interpreter's at the pc `rt_deopt` set, an
@@ -702,6 +705,116 @@ pub(crate) unsafe extern "C" fn rt_call(vm: VmPtr, function: usize, args: u32, p
     status(vm, result)
 }
 
+/// A call to a pure primitive without a typed entry (decision AU1): the
+/// flat path, with its arguments on top of the stack and the result in
+/// their place.
+pub(crate) unsafe extern "C" fn rt_call_pure(
+    vm: VmPtr,
+    function: usize,
+    args: u32,
+    pc: u32,
+) -> i32 {
+    let vm = vm!(vm);
+    vm.sync_pc(pc);
+    let result = vm.call_pure_from_stack(function, args as usize);
+    status(vm, result)
+}
+
+/// A call to a primitive with a typed entry (decision AU1), its `count`
+/// arguments on top of the stack, of which the `borrowed` ones (one bit
+/// per argument, the first argument bit 0) were pushed without a
+/// reference of their own. When the entry answers a scalar, it goes to
+/// `out` (a Boolean as 0 or 1, an Integer as it is, a Float by its bits),
+/// the arguments are consumed (dropped where owned, forgotten where
+/// borrowed) and the status is `CONTINUE`; a value answered takes the
+/// arguments' place on the stack, with `CONTINUE` too. When the entry
+/// declines, or this build has none, the borrowed arguments get their
+/// reference and the general path runs, leaving its result boxed on the
+/// stack: `BOXED` where the generated code expects a scalar, `CONTINUE`
+/// where it expects a value; `FAILURE` and `INTERRUPT` as `rt_call`.
+pub(crate) unsafe extern "C" fn rt_call_typed(
+    vm: VmPtr,
+    function: usize,
+    count: u32,
+    borrowed: u32,
+    pc: u32,
+    out: *mut i64,
+) -> i32 {
+    let vm = vm!(vm);
+    vm.sync_pc(pc);
+    let count = count as usize;
+    let at = vm.stack.len().saturating_sub(count);
+    let typed = vm.typed_entry(function);
+    let answer = match typed {
+        Some(typed) => {
+            let args = &vm.stack.as_slice()[at..];
+            match typed {
+                crate::extension::Typed::Bool(answer) => {
+                    answer(args).map(|value| (value as i64, None))
+                }
+                crate::extension::Typed::Int(answer) => answer(args).map(|value| (value, None)),
+                crate::extension::Typed::Float(answer) => {
+                    answer(args).map(|value| (value.to_bits() as i64, None))
+                }
+                crate::extension::Typed::Value(answer) => {
+                    answer(args).map(|value| (0, Some(value)))
+                }
+            }
+        }
+        None => None,
+    };
+    match answer {
+        Some((scalar, value)) => {
+            // the arguments consumed: an owned one dropped, a borrowed one
+            // counted out without a drop
+            for index in 0..count {
+                if borrowed & (1 << index) == 0 {
+                    // SAFETY: the slot is counted out by `forget_from`
+                    // below, before anything reads it again.
+                    unsafe { std::ptr::drop_in_place(&mut vm.stack[at + index]) };
+                }
+            }
+            vm.stack.forget_from(at);
+            if let Err(error) = vm.memory_check() {
+                return interrupt(vm, error);
+            }
+            match value {
+                Some(value) => {
+                    let failed = value.is_failure();
+                    vm.stack.push(value);
+                    if failed {
+                        FAILURE
+                    } else {
+                        CONTINUE
+                    }
+                }
+                None => {
+                    // SAFETY: `out` is the generated code's own slot for an
+                    // answer, eight bytes wide.
+                    unsafe { *out = scalar };
+                    CONTINUE
+                }
+            }
+        }
+        None => {
+            // the general path takes the arguments as its own: a borrowed
+            // one gets the reference it was pushed without
+            for index in 0..count {
+                if borrowed & (1 << index) != 0 {
+                    std::mem::forget(vm.stack[at + index].clone());
+                }
+            }
+            let result = vm.call_from_stack(function, count);
+            let status = status(vm, result);
+            if status == CONTINUE && vm.expects_scalar(function) {
+                BOXED
+            } else {
+                status
+            }
+        }
+    }
+}
+
 pub(crate) unsafe extern "C" fn rt_call_ability(
     vm: VmPtr,
     ability: usize,
@@ -1058,6 +1171,18 @@ impl Vm<'_> {
         self.stack.truncate(left.base);
         self.handlers.truncate(left.handler_base);
         self.stack.push(value);
+    }
+
+    /// The typed entry of a function's native (decision AU1), when the
+    /// function is pure and this build has one.
+    pub(crate) fn typed_entry(&self, function: usize) -> Option<crate::extension::Typed> {
+        self.typed_of(function)
+    }
+
+    /// Whether the generated code expects a call of the function to answer
+    /// in a register: its declared result is one of the three scalars.
+    pub(crate) fn expects_scalar(&self, function: usize) -> bool {
+        !crate::native::infer::abs_of_result(self.program, function).is_boxed()
     }
 
     /// A call with the arguments on top of the stack, as the interpreter's
@@ -1459,6 +1584,8 @@ pub const HELPERS: &[(&str, *const u8)] = &[
     ("rt_unpack", rt_unpack as *const u8),
     ("rt_unwrap_failure", rt_unwrap_failure as *const u8),
     ("rt_call", rt_call as *const u8),
+    ("rt_call_pure", rt_call_pure as *const u8),
+    ("rt_call_typed", rt_call_typed as *const u8),
     ("rt_call_ability", rt_call_ability as *const u8),
     ("rt_call_value", rt_call_value as *const u8),
     ("rt_result_type", rt_result_type as *const u8),

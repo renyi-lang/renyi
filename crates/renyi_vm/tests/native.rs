@@ -129,6 +129,87 @@ end
 }
 
 #[test]
+fn typed_entries_of_the_prelude_answer_or_decline_on_both_tiers() {
+    // decision AU1: a call of a primitive with a typed entry borrows its
+    // operands and takes a scalar answer in a register; the entry declines
+    // to the native where the answer is not a plain scalar (a big
+    // Integer), and the frame goes to the interpreter where the native's
+    // answer does not fit the register either
+    let source = r#"module demo
+  purpose: The typed entries of the prelude, hot.
+
+import std.console
+
+function digits_in(text: Text) returns Integer
+  purpose: How many of the text's characters are digits.
+
+  let mutable found be 0
+  for each glyph in text.characters()
+    if "0123456789".contains(glyph) then change found to found + 1 end
+  end
+  return found
+end
+
+function sizes(items: List of Text, lookup: Map of Text to Integer) returns Text
+  purpose: Lengths and lookups, hot.
+
+  let mutable total be 0
+  let mutable hits be 0
+  for each round from 1 to 500
+    for each item in items
+      change total to total + item.length()
+      if round is at least 1 and lookup.contains_key(item) then change hits to hits + 1 end
+      if item.starts_with("b") and not items.contains("zzz") then change hits to hits + 1 end
+    end
+  end
+  let head be items.at(0) otherwise "none"
+  let missing be items.at(10) otherwise "none"
+  let found be lookup.get("bb") otherwise 0 - 1
+  let joined be items.join("+")
+  let place be items.index_of("ccc") otherwise 0 - 1
+  return "{total} {hits} {head} {missing} {found} {joined} {place}"
+end
+
+function extremes(value: Integer) returns Text
+  purpose: `absolute` past the machine word declines to the native, whose answer the frame takes to the interpreter.
+
+  let mutable low be value
+  let mutable steps be 62
+  repeat until steps is 0
+    change low to low * 2
+    change steps to steps - 1
+  end
+  change low to 0 - low - low
+  return "{low.absolute()} {(0 - 7).absolute()} {low.at_least(3)} {4.at_most(low)} {[1, 2, 3].sum()}"
+end
+
+public function main() needs console
+  purpose: Print the answers of both tiers.
+
+  let sample be "item 1; item 22; item 333; "
+  console.print("{digits_in(sample)}")
+  console.print(sizes(items: ["a", "bb", "ccc"], lookup: {"bb": 2, "dddd": 4}))
+  console.print(extremes(1))
+  let two be 2.0.to_float()
+  let root be two.square_root()
+  console.print("{root * root} {(0.0 - 1.5).to_float().absolute()} {3.14159.to_float().rounded(2)}")
+  let word be "héllo"
+  let present be word.index_of("l") otherwise 0 - 1
+  let absent be word.index_of("z") otherwise 0 - 1
+  let padded be "  x "
+  let abc be "abc"
+  console.print("{present} {absent} {padded.trim()}|{abc.reversed()}")
+end
+"#;
+    let (outcome, printed) = both_ways(source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(
+        printed,
+        "6\n3000 1000 a none 2 a+bb+ccc 2\n9223372036854775808 7 3 -9223372036854775808 6\n2.0000000000000004 1.5 3.14\n2 -1 x|cba\n"
+    );
+}
+
+#[test]
 fn a_guarded_integer_parameter_hands_the_frame_back_at_its_entry() {
     let dir = scratch("guarded");
     std::fs::write(format!("{dir}/count.txt"), "12345").expect("the data file");

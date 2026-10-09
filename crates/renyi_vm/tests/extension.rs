@@ -7,13 +7,14 @@
 use std::cell::RefCell;
 use std::io::Write;
 use std::rc::Rc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use renyi_check::check_project_in;
 use renyi_syntax::SourceFile;
-use renyi_vm::natives::{arg, crash, small, text};
+use renyi_vm::natives::{arg, crash, plain_small, small, text};
 use renyi_vm::{
-    compile_project, Extension, Interrupt, Native, Options, Program, Registry, RunOutcome, Value,
-    Vm,
+    compile_project, Extension, Interrupt, Native, Options, Program, Registry, RunOutcome, Typed,
+    Value, Vm,
 };
 
 const DEMO_MODULE: &str = r#"module demo
@@ -39,6 +40,21 @@ fn twice(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     Ok(Value::integer(small(arg(args, 0))? * 2))
 }
 
+/// How often the typed entry of `twice` was asked.
+static TWICE_ASKED: AtomicUsize = AtomicUsize::new(0);
+
+/// The typed entry of `twice` (decision AU1): it answers for a
+/// non-negative small Integer and declines for the rest, so that the test
+/// sees both ways through the call.
+fn twice_typed(args: &[Value]) -> Option<i64> {
+    TWICE_ASKED.fetch_add(1, Ordering::Relaxed);
+    let value = plain_small(&args[0])?;
+    if value < 0 {
+        return None;
+    }
+    value.checked_mul(2)
+}
+
 fn shout(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     let line = text(arg(args, 0))?.to_uppercase();
     writeln!(vm.stdout, "{line}!").map_err(|error| crash(format!("cannot write: {error}")))?;
@@ -58,11 +74,37 @@ const DEMO: Extension = Extension {
     version: "0.1.0",
     modules: &[("demo", DEMO_MODULE)],
     natives: &[
-        Native::function("demo", "twice", twice),
+        Native::function("demo", "twice", twice).with_typed(Typed::Int(twice_typed)),
         Native::function("demo", "shout", shout),
         Native::function("demo", "peek", peek),
     ],
 };
+
+/// A program that calls `twice` hot (a loop the machine code runs) and
+/// cold, on numbers its typed entry answers for and on numbers it
+/// declines.
+const TYPED_PROGRAM: &str = r#"module demo_program
+  purpose: Call the extension's typed entry hot and cold.
+
+import demo
+import std.console
+
+function doubled_all(limit: Integer) returns Integer
+  purpose: The sum of twice each number up to the limit and of twice its negation: zero.
+
+  let mutable total be 0
+  for each index from 1 to limit
+    change total to total + demo.twice(index) + demo.twice(0 - index)
+  end
+  return total
+end
+
+public function main() needs console
+  purpose: Print the sum and two doublings.
+
+  console.print("{doubled_all(1000)} {demo.twice(21)} {demo.twice(0 - 21)}")
+end
+"#;
 
 const PROGRAM: &str = r#"module demo_program
   purpose: Use the demo extension.
@@ -192,6 +234,80 @@ fn a_native_of_an_extension_fails_with_its_own_type() {
         RunOutcome::Failed(error) => assert!(error.contains("Missing"), "{error}"),
         other => panic!("{}", renyi_vm::describe_outcome(&other)),
     }
+}
+
+#[test]
+fn a_typed_entry_answers_on_both_tiers_and_declines_to_the_native() {
+    // every code object compiled before its first call (as `native.rs`
+    // runs), so that the loop's calls go through the generated code
+    std::env::set_var("RENYI_NATIVE_HOT", "0");
+    let registry = Registry::standard().with(DEMO);
+    assert_eq!(registry.verify(), Ok(()));
+    let program = compile(&registry, TYPED_PROGRAM);
+    for interpret in [false, true] {
+        let stdout = Capture::default();
+        let asked = TWICE_ASKED.load(Ordering::Relaxed);
+        let outcome = renyi_vm::run_main(
+            &program,
+            Options {
+                stdout: Box::new(stdout.clone()),
+                stderr: Box::new(Capture::default()),
+                registry: registry.clone(),
+                interpret,
+                ..Options::default()
+            },
+        );
+        assert_eq!(outcome, RunOutcome::Finished, "interpret: {interpret}");
+        assert_eq!(stdout.text(), "0 42 -42\n", "interpret: {interpret}");
+        // the entry was asked at every call: it answered the non-negative
+        // ones and declined the negative ones to the native
+        assert!(
+            TWICE_ASKED.load(Ordering::Relaxed) - asked >= 2002,
+            "interpret: {interpret}"
+        );
+    }
+}
+
+#[test]
+fn the_check_holds_a_typed_entry_to_its_declaration() {
+    fn wrong_kind(_: &[Value]) -> Option<bool> {
+        None
+    }
+    fn skips(_: &[Value]) -> Option<Value> {
+        None
+    }
+    const WRONG_KIND: &[Native] = &[
+        Native::function("demo", "twice", twice).with_typed(Typed::Bool(wrong_kind)),
+        Native::function("demo", "shout", shout),
+        Native::function("demo", "peek", peek),
+    ];
+    let problem = Registry::standard()
+        .with(Extension {
+            natives: WRONG_KIND,
+            ..DEMO
+        })
+        .verify()
+        .unwrap_err();
+    assert_eq!(
+        problem,
+        "extension `demo`: the typed entry of `demo.twice` on `Integer` answers a Boolean where the declaration returns `Integer`"
+    );
+    const SKIPS_THE_BOUNDARY: &[Native] = &[
+        Native::function("demo", "twice", twice),
+        Native::function("demo", "shout", shout).with_typed(Typed::Value(skips)),
+        Native::function("demo", "peek", peek),
+    ];
+    let problem = Registry::standard()
+        .with(Extension {
+            natives: SKIPS_THE_BOUNDARY,
+            ..DEMO
+        })
+        .verify()
+        .unwrap_err();
+    assert_eq!(
+        problem,
+        "extension `demo`: `demo.shout` on `Text` has a typed entry but needs `console`; a typed entry skips the boundary"
+    );
 }
 
 #[test]

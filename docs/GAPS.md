@@ -763,4 +763,7 @@ dispatch, typed loop variables, the retains and releases elided where
 the consumer borrows); the representation in later rounds. Measured by
 AT1's rule with the four benchmarks against CPython beside it; the
 first goal is `strings` past CPython, the second the self-check a
-quarter faster.
+quarter faster. Stage 1 (decision AU2: typed entries of the natives over
+borrowed arguments, the flat path for the pure primitives) cut the
+self-check's estimate on the JIT run 6.5 percent and `strings` from 134
+to 94 ms against CPython's 81.

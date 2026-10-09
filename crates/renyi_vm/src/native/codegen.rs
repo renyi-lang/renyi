@@ -28,6 +28,7 @@ use renyi_syntax::ast::BinaryOp;
 
 use crate::bytecode::{Code, CodeKind, Op};
 use crate::compile::Program;
+use crate::extension::TypedKind;
 use crate::integer::Int;
 use crate::native::infer::{
     abs_of_binary, abs_of_constant, abs_of_field, abs_of_params, abs_of_result, abs_of_slot,
@@ -43,7 +44,7 @@ use crate::value::layout::{
     TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_INTEGER, TAG_NOTHING, TAG_RECORD,
 };
 use crate::value::Value;
-use crate::vm::{FieldSite, Frame, NativeState, Vm};
+use crate::vm::{CallKind, FieldSite, Frame, NativeState, Vm};
 
 /// Where the VM keeps its stack (decision AR4): the generated code reads
 /// the pinned vector's pointer, length and capacity there.
@@ -187,6 +188,8 @@ pub const SIGNATURES: &[(&str, &str, char)] = &[
     ("rt_unpack", "pww", 'i'),
     ("rt_unwrap_failure", "p", 'v'),
     ("rt_call", "pzww", 'i'),
+    ("rt_call_pure", "pzww", 'i'),
+    ("rt_call_typed", "pzwwwp", 'i'),
     ("rt_call_ability", "pzwww", 'i'),
     ("rt_call_value", "pww", 'i'),
     ("rt_result_type", "pw", 'v'),
@@ -346,6 +349,14 @@ struct Gen<'a, 'b> {
     code_id: usize,
     code: &'a Code,
     analysis: &'a Analysis,
+    /// Per function, how a call to it is made (decision AU1).
+    calls: &'a [CallKind],
+    /// Per op, whether a `Load` or a `Const` pushes an operand a typed
+    /// call borrows: pushed without a reference of its own, consumed by
+    /// the call without a release (decision AU1).
+    borrowed: Vec<bool>,
+    /// Per `Call` op, the bits of the arguments it borrows.
+    masks: Vec<u32>,
     b: FunctionBuilder<'b>,
     pointer: Type,
     isa: &'a dyn TargetIsa,
@@ -397,12 +408,74 @@ struct Gen<'a, 'b> {
     terminated: bool,
 }
 
+/// Whether a typed entry's kind is the representation the declared result
+/// type gives a call's answer (decision AU1): the generated code trusts
+/// the entry only where the two agree.
+fn kind_agrees(kind: TypedKind, result: Abs) -> bool {
+    matches!(
+        (kind, result),
+        (TypedKind::Bool, Abs::Bool)
+            | (TypedKind::Int, Abs::Int)
+            | (TypedKind::Float, Abs::Float)
+            | (TypedKind::Value, Abs::Boxed)
+    )
+}
+
+/// The operands a typed call borrows (decision AU1): for a `Call` of a
+/// primitive with a typed entry, the arguments pushed by the `Load`s of
+/// boxed slots and the boxed `Const`s immediately before it, which are
+/// its last arguments in order, each pushed without a reference of its
+/// own; per op whether it pushes such an operand, and per call the bits
+/// of the arguments so pushed (the first argument bit 0).
+fn borrowed_operands(
+    program: &Program,
+    code: &Code,
+    analysis: &Analysis,
+    calls: &[CallKind],
+) -> (Vec<bool>, Vec<u32>) {
+    let mut borrowed = vec![false; code.ops.len()];
+    let mut masks = vec![0u32; code.ops.len()];
+    for (pc, op) in code.ops.iter().enumerate() {
+        let Op::Call { function, args } = op else {
+            continue;
+        };
+        let count = *args as usize;
+        if count == 0 || count > 32 {
+            continue;
+        }
+        let typed = matches!(
+            calls.get(*function),
+            Some(CallKind::Typed(kind)) if kind_agrees(*kind, abs_of_result(program, *function))
+        );
+        if !typed {
+            continue;
+        }
+        let mut mask = 0u32;
+        for back in 1..=count.min(pc) {
+            let at = pc - back;
+            let simple = match &code.ops[at] {
+                Op::Load(slot) => analysis.slots[*slot as usize] == SlotKind::Boxed,
+                Op::Const(index) => abs_of_constant(&code.constants[*index as usize]).is_boxed(),
+                _ => false,
+            };
+            if !simple {
+                break;
+            }
+            borrowed[at] = true;
+            mask |= 1 << (count - back);
+        }
+        masks[pc] = mask;
+    }
+    (borrowed, masks)
+}
+
 /// Compile one code object (decision AS1): its body and its trampoline
 /// as machine code that holds no address, with the deopt points and the
 /// loop headers the VM keeps beside them.
 pub fn compile(
     program: &Program,
     code_id: usize,
+    calls: &[CallKind],
     isa: &dyn TargetIsa,
     ctx: &mut Context,
     fctx: &mut FunctionBuilderContext,
@@ -411,6 +484,7 @@ pub fn compile(
     let mut stats = Stats::default();
     let started = Instant::now();
     let analysis = analyse(program, code).map_err(Skipped::Analysis)?;
+    let (borrowed, masks) = borrowed_operands(program, code, &analysis, calls);
     stats.analysis = started.elapsed();
     let mut headers: Vec<usize> = Vec::new();
     for (pc, op) in code.ops.iter().enumerate() {
@@ -485,6 +559,9 @@ pub fn compile(
             code_id,
             code,
             analysis: &analysis,
+            calls,
+            borrowed,
+            masks,
             b: builder,
             pointer,
             isa,
@@ -1977,7 +2054,8 @@ impl Gen<'_, '_> {
                             .b
                             .ins()
                             .iadd_imm_s(base, (*index as usize * SIZE) as i64);
-                        self.push_copy(from, true);
+                        let borrowed = self.borrowed[pc];
+                        self.push_copy(from, !borrowed);
                         self.push_boxed();
                     }
                 }
@@ -2025,7 +2103,7 @@ impl Gen<'_, '_> {
                             self.b
                                 .ins()
                                 .istore8(MemFlagsData::trusted(), nothing, from, 0);
-                        } else {
+                        } else if !self.borrowed[pc] {
                             self.retain(to);
                         }
                         let height = self.height() + 1;
@@ -2345,7 +2423,20 @@ impl Gen<'_, '_> {
                     (true, Some(callee), Some(kinds)) => {
                         self.call_direct(callee, *function, &kinds, result_kind, pc);
                     }
-                    _ => self.call_through_helper(*function, count, result_kind, pc),
+                    _ => match self.calls.get(*function).copied() {
+                        Some(CallKind::Typed(kind)) if kind_agrees(kind, result_kind) => {
+                            let mask = self.masks[pc];
+                            self.call_typed(*function, count, kind, mask, pc);
+                        }
+                        Some(CallKind::Pure) => self.call_through_helper(
+                            "rt_call_pure",
+                            *function,
+                            count,
+                            result_kind,
+                            pc,
+                        ),
+                        _ => self.call_through_helper("rt_call", *function, count, result_kind, pc),
+                    },
                 }
             }
             Op::CallAbility {
@@ -2794,18 +2885,112 @@ impl Gen<'_, '_> {
 
     /// A call through `rt_call`: the arguments boxed on the stack, the
     /// result boxed, and unboxed when the declared result is typed.
-    fn call_through_helper(&mut self, function: usize, count: usize, result_kind: Abs, pc: usize) {
+    fn call_through_helper(
+        &mut self,
+        helper: &'static str,
+        function: usize,
+        count: usize,
+        result_kind: Abs,
+        pc: usize,
+    ) {
         let pc_value = self.u32(pc as u32);
         let function_value = self.usize(function);
         let args_value = self.u32(count as u32);
         let status = self
-            .helper_on_stack("rt_call", count, &[function_value, args_value, pc_value])
+            .helper_on_stack(helper, count, &[function_value, args_value, pc_value])
             .expect("a status");
         self.push_boxed();
         self.check_status(status, pc, true);
         if !result_kind.is_boxed() {
             self.unbox_top(result_kind, pc + 1);
         }
+    }
+
+    /// A call to a primitive with a typed entry (decision AU1): the
+    /// arguments the mask names were pushed borrowed, the entry answers a
+    /// scalar into the out slot and the generated code takes it from
+    /// there into its register, or a value onto the stack; when the entry
+    /// declined and the general path answered, the answer is boxed on the
+    /// stack (`BOXED`) and is unboxed as a call through `rt_call` is,
+    /// handing the frame to the interpreter where it does not fit.
+    fn call_typed(&mut self, function: usize, count: usize, kind: TypedKind, mask: u32, pc: usize) {
+        let pc_value = self.u32(pc as u32);
+        let function_value = self.usize(function);
+        let count_value = self.u32(count as u32);
+        let mask_value = self.u32(mask);
+        let out = self.out_address();
+        let status = self
+            .helper_on_stack(
+                "rt_call_typed",
+                count,
+                &[function_value, count_value, mask_value, pc_value, out],
+            )
+            .expect("a status");
+        let abs = match kind {
+            TypedKind::Bool => Abs::Bool,
+            TypedKind::Int => Abs::Int,
+            TypedKind::Float => Abs::Float,
+            TypedKind::Value => {
+                self.push_boxed();
+                self.check_status(status, pc, true);
+                return;
+            }
+        };
+        let depth = self.state.len();
+        let fast = self.b.create_block();
+        let other = self.b.create_block();
+        let join = self.b.create_block();
+        let answered = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::Equal, status, CONTINUE as i64);
+        self.b.ins().brif(answered, fast, &[], other, &[]);
+        self.b.seal_block(fast);
+        self.b.seal_block(other);
+        // the general path answered on the stack, or failed: the state has
+        // its boxed answer on top either way
+        self.switch_to(other);
+        self.push_boxed();
+        let slow = self.b.create_block();
+        let bad = self.bad_block(pc);
+        let boxed =
+            self.b
+                .ins()
+                .icmp_imm_s(IntCC::Equal, status, crate::native::runtime::BOXED as i64);
+        self.b
+            .ins()
+            .brif(boxed, slow, &[], bad, &[status.into(), pc_value.into()]);
+        self.b.seal_block(slow);
+        self.switch_to(slow);
+        // a boxed answer that does not fit the register goes to the
+        // interpreter with the call done: at the op after it
+        self.unbox_top(abs, pc + 1);
+        self.b.ins().jump(join, &[]);
+        // the entry answered into the out slot
+        self.switch_to(fast);
+        let flags = MemFlagsData::trusted();
+        match abs {
+            Abs::Int => {
+                let value = self.b.ins().load(types::I64, flags, out, 0);
+                let var = self.int_var(depth);
+                self.b.def_var(var, value);
+            }
+            Abs::Bool => {
+                let value = self.b.ins().load(types::I8, flags, out, 0);
+                let var = self.bool_var(depth);
+                self.b.def_var(var, value);
+            }
+            _ => {
+                let value = self.b.ins().load(types::F64, flags, out, 0);
+                let var = self.float_var(depth);
+                self.b.def_var(var, value);
+            }
+        }
+        self.b.ins().jump(join, &[]);
+        self.b.seal_block(join);
+        self.switch_to(join);
+        self.state.truncate(depth);
+        self.state.push(abs);
     }
 
     /// A direct call (decision AR3): the callee's body called with its
@@ -2946,7 +3131,7 @@ impl Gen<'_, '_> {
         // the path through the interpreter's call
         self.switch_to(slow);
         self.state = saved;
-        self.call_through_helper(function, count, result_kind, pc);
+        self.call_through_helper("rt_call", function, count, result_kind, pc);
         self.b.ins().jump(join, &[]);
         self.terminated = true;
         // every path leaves one operand of the result's kind

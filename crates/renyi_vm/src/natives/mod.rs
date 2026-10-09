@@ -96,6 +96,68 @@ pub fn take(args: &mut [Value], index: usize) -> Value {
     }
 }
 
+// ------------------------------------------------- typed entries (AU1)
+
+/// The plain Text of an argument of a typed entry: `None` for anything
+/// else, a guarded Text included, so that the entry declines and the
+/// native runs with the guard's origins kept.
+#[inline]
+pub fn plain_text(value: &Value) -> Option<&str> {
+    match value {
+        Value::Text(text) => Some(text),
+        _ => None,
+    }
+}
+
+/// The plain small Integer of an argument of a typed entry.
+#[inline]
+pub fn plain_small(value: &Value) -> Option<i64> {
+    match value {
+        Value::Integer(Int::Small(value)) => Some(*value),
+        _ => None,
+    }
+}
+
+#[inline]
+pub fn plain_float(value: &Value) -> Option<f64> {
+    match value {
+        Value::Float(value) => Some(*value),
+        _ => None,
+    }
+}
+
+#[inline]
+pub fn plain_list(value: &Value) -> Option<&Rc<Vec<Value>>> {
+    match value {
+        Value::List(items) => Some(items),
+        _ => None,
+    }
+}
+
+#[inline]
+pub fn plain_map(value: &Value) -> Option<&Rc<IndexMap<Value, Value>>> {
+    match value {
+        Value::Map(entries) => Some(entries),
+        _ => None,
+    }
+}
+
+#[inline]
+pub fn plain_set(value: &Value) -> Option<&Rc<IndexSet<Value>>> {
+    match value {
+        Value::Set(items) => Some(items),
+        _ => None,
+    }
+}
+
+/// Whether no argument is guarded: what a typed entry over a key or an
+/// item it compares (`contains`, `get`) needs, since equality looks
+/// through no guard.
+#[inline]
+pub fn none_guarded(args: &[Value]) -> bool {
+    args.iter().all(|value| !value.is_guarded())
+}
+
 fn wrong(expected: &str, found: &Value) -> Interrupt {
     crash(format!(
         "a library function expected {expected}, found {}",

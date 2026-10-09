@@ -30,6 +30,7 @@ use cranelift_codegen::isa::TargetIsa;
 use super::infer::{Abs, SlotKind};
 use super::{DeoptPoint, Jit};
 use crate::compile::Program;
+use crate::extension::Registry;
 
 /// The first four bytes of an image file.
 pub const MAGIC: &[u8; 4] = b"RYI\0";
@@ -89,8 +90,13 @@ pub fn target_of(isa: &dyn TargetIsa) -> String {
 /// afford Cranelift's optimiser, which measured below `none` on the
 /// self-check; `none` on request) for this machine; `Err` when Cranelift
 /// generates no code here.
-pub fn build(program: &Program, opt_level: Option<&str>) -> Result<Image, String> {
-    let mut jit = Jit::new(program, Some(opt_level.unwrap_or("speed")))
+pub fn build(
+    program: &Program,
+    opt_level: Option<&str>,
+    registry: &Registry,
+) -> Result<Image, String> {
+    let calls = crate::vm::call_kinds(program, registry);
+    let mut jit = Jit::new(program, Some(opt_level.unwrap_or("speed")), calls)
         .ok_or_else(|| "this machine generates no machine code".to_string())?;
     let compiled = jit.compile_everything(program);
     // the section: every body and trampoline in order, sixteen-aligned

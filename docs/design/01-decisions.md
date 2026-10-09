@@ -3560,3 +3560,61 @@ a fast path, since a value of Integer type may be big or guarded at run
 time (AR1), so a type is the choice of the fast path and never a
 promise the code relies on for its safety; the recordings, the replay,
 the narration and the `.ryc` as JSON (Z1) stay as they are. (user)
+
+**AU2. Stage (i) of AU1 is in: the call to a primitive without the
+boundary. A `Native` may carry a typed entry (`Native::with_typed`,
+`Typed::Bool`, `Int`, `Float` or `Value` over `fn(&[Value]) ->
+Option<T>`), which `Registry::verify` holds to the declaration (the kind
+of the declared result; no `needs`, since the entry skips the boundary),
+and forty-two primitives of the prelude carry one (the lengths, the
+emptiness tests, `contains`, `starts_with`, `ends_with`, `index_of`,
+`get`, `contains_key`, `at`, `first`, `last`, `join`, `sum` of Integers,
+the trims and cases of a text, `split`, `lines`, `characters`,
+`replace`, `take`, `drop`, `reversed`, the absolute values, `at_least`
+and `at_most` of Integers, `to_float`, `square_root`, `rounded`). The
+generated code calls such a primitive through `rt_call_typed` with the
+arguments the `Load`s of boxed slots and the boxed `Const`s before the
+call pushed borrowed (no retain before, no release after; `borrowed_operands`,
+the mask of the call's arguments) and takes a scalar answer from the out
+slot into its register; when the entry declines, the general path runs
+with the borrowed arguments given their reference, and its boxed answer
+comes back as `BOXED`, unboxed as a call through `rt_call` is, with the
+hand-back to the interpreter at the op after the call. A pure primitive
+without an entry runs through `rt_call_pure` on the flat path
+(`Vm::call_pure_from_stack`: the memory check, the arguments into the
+scratch buffer, `plain_in_place`, the native, `guarded`); the
+interpreter's `call!` takes the typed entry in place
+(`call_typed_in_place`) and the flat path too. `CallKind` per function
+(`General`, `Pure`, `Typed(kind)`, from the registry when the VM or
+`renyi build` starts) is what the code generator compiles by; the
+helper looks the entry up again at run time, so an image compiled with
+an entry runs under a binary without one, through the general path.**
+Measured by AU1's rule against the binary of AT7 (7e09ca6): the
+self-check's estimate on the JIT run 14.83 to 13.86 billion cycles
+(-6.5%; 10.68 to 9.87 billion instructions, -7.5%), the interpreter
+17.92 to 17.23 (-3.9%; 12.85 to 12.21 billion instructions), the
+image 11.18 to 10.27 (-8.2%; 7.97 to 7.16 billion instructions,
+-10.2%; the machine code 5.62 to 5.63 MB, 122 bytes of body per op as
+before); in wall-clock `bench/strings.ry` 134 to 94 ms (CPython 81 on
+the same runs; the interpreter 175 to 157),
+`primes` 41, `records` 59, `json_round_trip` 96 ms by `tools/bench.py`
+(CPython 528, 166 and 156), the self-check 1694 ms on the JIT run and
+1256 as an image. The profile of strings after the stage (callgrind,
+733 million instructions from 1,149, 617 per glyph from 966):
+`rt_call_typed` 111 instructions a call where the boundary took 411,
+the entry's own match on the two texts 20, the search 72 as before;
+what is left of the loop is the iteration (`rt_iter_next` and
+`iterator_next`, 82 a glyph, stage ii), the generated code's own 67,
+the loop variable's retain and release (54), and the first half of the
+program, now a fifth of the whole: `rt_to_text` through `core::fmt`
+(586 instructions per Integer written into a text), `rt_concat`, and
+`append`, which frees and allocates its `Rc` on every call
+(`take_list` then `Value::list`), 400 instructions each. Why `Option`
+and a fixed family rather than a signature per primitive: AU1. Why the
+borrowed operands are only the `Load`s and `Const`s just before the
+call: they push exactly one value each and pop none, so they are the
+call's last arguments in order without an analysis of the stack
+effects of every op; `LoadMove` is not among them (its operand is the
+slot's reference, moved). Why the entry is looked up again at run time
+rather than its address placed in the code: AS1, the code holds no
+address, and a binary with other extensions may lack the entry. (user)

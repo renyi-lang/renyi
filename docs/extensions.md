@@ -121,6 +121,38 @@ in full. A lookup takes the entry whose receiver is the full spelling,
 then the head, then the entry registered with `Native::function`
 (decision AK2).
 
+A native may carry a typed entry (decision AU1), a second function from
+a fixed family of signatures that the generated code calls without the
+boundary, its arguments borrowed where they lie and its answer in a
+register:
+
+```rust
+use renyi_vm::natives::plain_small;
+use renyi_vm::Typed;
+
+fn twice_typed(args: &[Value]) -> Option<i64> {
+    plain_small(&args[0])?.checked_mul(2)
+}
+
+Native::function("demo", "twice", twice).with_typed(Typed::Int(twice_typed))
+```
+
+The entry sees the arguments plain and borrowed (`&[Value]`) and answers
+`Option<bool>`, `Option<i64>`, `Option<f64>` or `Option<Value>`
+(`Typed::Bool`, `Int`, `Float`, `Value`); its kind must be the declared
+result's (`Boolean`, `Integer`, `Float`, anything else), and the function
+must need no capability, since the entry skips the boundary. It must
+answer exactly what the native answers whenever it answers, and it
+declines with `None` wherever it cannot: on a guarded argument (the
+native's answer carries the guard's origins), on an Integer past the
+machine word, and wherever the native would fail or crash; the native
+then runs as if the entry were not there. The helpers `plain_text`,
+`plain_small`, `plain_float`, `plain_list`, `plain_map` and `plain_set`
+of `renyi_vm::natives` read a plain argument of their kind and answer
+`None` for anything else, a guarded value included. A `Value` entry
+never answers a `Failure`. The standard library's hottest primitives
+carry such entries (`length`, `contains`, `get`, `at`, ...).
+
 The table and the declaration file are held equal both ways: every
 declared function must have a native and every native a declaration,
 every file must parse and check, and a module is declared by one

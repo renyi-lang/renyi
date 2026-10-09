@@ -24,7 +24,7 @@ use renyi_syntax::ast::BinaryOp;
 use crate::bytecode::{Code, CodeKind, Op};
 use crate::compile::{CodeId, Program};
 use crate::decimal::{Decimal, DecimalError};
-use crate::extension::Registry;
+use crate::extension::{Registry, Typed, TypedKind};
 use crate::grant::{self, Counter, Guard, Narrowing};
 use crate::integer::Int;
 use crate::memory;
@@ -254,6 +254,12 @@ pub struct Vm<'p> {
     pub(crate) scratch: Vec<Value>,
     globals: Vec<Option<Value>>,
     natives: Vec<Option<NativeFn>>,
+    /// Per function, the typed entry of its native (decision AU1), which
+    /// a call takes first when the function is pure.
+    typed: Vec<Option<Typed>>,
+    /// Per function, whether it is a native of this build that needs no
+    /// capability: a call to it runs on the flat path (decision AU1).
+    pure: Vec<bool>,
     /// Per function, its foreign binding once made (decision AF1).
     pub(crate) foreign: Vec<Option<natives::foreign::Bound>>,
     /// The libraries loaded for foreign modules, by the list of names that
@@ -344,21 +350,99 @@ impl Drop for Vm<'_> {
     }
 }
 
+/// How the generated code calls a function (decision AU1): a declared
+/// function or a primitive through `rt_call`; a pure primitive (no
+/// `needs`, a native of this build) through the flat path; one with a
+/// typed entry through `rt_call_typed`, its arguments borrowed and its
+/// result in a register.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CallKind {
+    General,
+    Pure,
+    Typed(TypedKind),
+}
+
+/// Per function, the native of this build and its typed entry.
+type Entries = Vec<Option<(NativeFn, Option<Typed>)>>;
+
+fn entries_of(program: &Program, registry: &Registry) -> Entries {
+    program
+        .function_metas
+        .iter()
+        .map(|meta| {
+            if meta.is_library {
+                registry.lookup_entry(&meta.module, &meta.name, meta.receiver.as_deref())
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+/// Per function, whether it is a native of this build without `needs`.
+fn pure_of(program: &Program, natives: &[Option<NativeFn>]) -> Vec<bool> {
+    program
+        .function_metas
+        .iter()
+        .zip(natives)
+        .map(|(meta, native)| native.is_some() && meta.needs.is_empty())
+        .collect()
+}
+
+fn kinds_of(pure: &[bool], typed: &[Option<Typed>]) -> Vec<CallKind> {
+    pure.iter()
+        .zip(typed)
+        .map(|(pure, typed)| match (pure, typed) {
+            (true, Some(typed)) => CallKind::Typed(typed.kind()),
+            (true, None) => CallKind::Pure,
+            (false, _) => CallKind::General,
+        })
+        .collect()
+}
+
+/// How the generated code calls every function of the program under this
+/// registry (decision AU1): what `renyi build` compiles with.
+pub fn call_kinds(program: &Program, registry: &Registry) -> Vec<CallKind> {
+    let entries = entries_of(program, registry);
+    let natives: Vec<Option<NativeFn>> = entries
+        .iter()
+        .map(|entry| entry.map(|(run, _)| run))
+        .collect();
+    let pure = pure_of(program, &natives);
+    let typed: Vec<Option<Typed>> = entries
+        .iter()
+        .zip(&pure)
+        .map(|(entry, pure)| {
+            if *pure {
+                entry.and_then(|(_, typed)| typed)
+            } else {
+                None
+            }
+        })
+        .collect();
+    kinds_of(&pure, &typed)
+}
+
 impl<'p> Vm<'p> {
     pub fn new(program: &'p Program, mut options: Options) -> Vm<'p> {
-        let natives = program
-            .function_metas
+        let entries = entries_of(program, &options.registry);
+        let natives: Vec<Option<NativeFn>> = entries
             .iter()
-            .map(|meta| {
-                if meta.is_library {
-                    options
-                        .registry
-                        .lookup(&meta.module, &meta.name, meta.receiver.as_deref())
+            .map(|entry| entry.map(|(run, _)| run))
+            .collect();
+        let pure = pure_of(program, &natives);
+        let typed: Vec<Option<Typed>> = entries
+            .iter()
+            .zip(&pure)
+            .map(|(entry, pure)| {
+                if *pure {
+                    entry.and_then(|(_, typed)| typed)
                 } else {
                     None
                 }
             })
             .collect();
+        let calls = kinds_of(&pure, &typed);
         let seed = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_nanos() as u64)
@@ -373,7 +457,7 @@ impl<'p> Vm<'p> {
         {
             None
         } else {
-            Jit::new(program, None).map(Box::new)
+            Jit::new(program, None, calls).map(Box::new)
         };
         if let (Some(jit), Some(image)) = (native.as_mut(), options.image.as_ref()) {
             if let Err(message) = jit.load_image(image) {
@@ -404,6 +488,8 @@ impl<'p> Vm<'p> {
             scratch: Vec::with_capacity(8),
             globals: vec![None; program.constants.len()],
             natives,
+            typed,
+            pure,
             foreign: vec![None; program.function_metas.len()],
             libraries: Vec::new(),
             python: None,
@@ -575,7 +661,7 @@ impl<'p> Vm<'p> {
     /// The memory budget at a safe point (decision AP1): exceeded since
     /// the run began, it stops the run.
     #[inline]
-    fn memory_check(&self) -> Result<(), Interrupt> {
+    pub(crate) fn memory_check(&self) -> Result<(), Interrupt> {
         if self.counting && memory::over() {
             return Err(Interrupt::OverMemory {
                 limit: self.memory.unwrap_or(0),
@@ -645,6 +731,83 @@ impl<'p> Vm<'p> {
             "`{}` is not available in this build of the VM",
             self.qualified(function)
         ))
+    }
+
+    /// A primitive with the arguments on top of the stack, through the
+    /// boundary: the arguments move into the scratch buffer, which a
+    /// primitive calling back leaves to the nested call, and the result
+    /// comes back to the caller.
+    pub(crate) fn call_scratch(
+        &mut self,
+        function: FunctionId,
+        count: usize,
+    ) -> Result<Value, Interrupt> {
+        let mut args = std::mem::take(&mut self.scratch);
+        let at = self.stack.len().saturating_sub(count);
+        self.stack.drain_into(at, &mut args);
+        let result = self.call_native(function, &mut args);
+        args.clear();
+        self.scratch = args;
+        result
+    }
+
+    /// A pure primitive (no `needs`) with the arguments on top of the
+    /// stack, on the flat path of decision AU1: none of the boundary's
+    /// checks applies to it, so the arguments move to the scratch buffer,
+    /// the native runs on them plain, and its result carries their
+    /// origins; what `call_primitive` does for such a call, without the
+    /// layers.
+    pub(crate) fn call_pure_from_stack(
+        &mut self,
+        function: FunctionId,
+        count: usize,
+    ) -> Result<Value, Interrupt> {
+        let Some(native) = self.natives.get(function).copied().flatten() else {
+            return self.call_scratch(function, count);
+        };
+        self.memory_check()?;
+        let mut args = std::mem::take(&mut self.scratch);
+        let at = self.stack.len().saturating_sub(count);
+        self.stack.drain_into(at, &mut args);
+        let origins = plain_in_place(&mut args);
+        let result = self.run_native(native, origins, &mut args);
+        args.clear();
+        self.scratch = args;
+        if let Some(profile) = &mut self.profile {
+            profile.primitive(function);
+        }
+        result
+    }
+
+    /// A primitive's typed entry (decision AU1) on the `count` arguments
+    /// where they lie on top of the stack: `Some` with the answer, the
+    /// arguments popped, when the entry answers; `None`, the stack as it
+    /// was, when it declines (a guarded argument, a big Integer, a case
+    /// the native fails or crashes on) and the native itself must run.
+    pub(crate) fn call_typed_in_place(
+        &mut self,
+        function: FunctionId,
+        typed: Typed,
+        count: usize,
+    ) -> Option<Result<Value, Interrupt>> {
+        let at = self.stack.len().saturating_sub(count);
+        let args = &self.stack.as_slice()[at..];
+        let value = match typed {
+            Typed::Bool(answer) => answer(args).map(Value::Boolean),
+            Typed::Int(answer) => answer(args).map(Value::integer),
+            Typed::Float(answer) => answer(args).map(Value::Float),
+            Typed::Value(answer) => answer(args),
+        }?;
+        self.stack.truncate(at);
+        if let Some(profile) = &mut self.profile {
+            profile.primitive(function);
+        }
+        Some(self.memory_check().map(|()| value))
+    }
+
+    /// The typed entry of a pure function's native, if any (decision AU1).
+    pub(crate) fn typed_of(&self, function: FunctionId) -> Option<Typed> {
+        self.typed.get(function).copied().flatten()
     }
 
     /// A library primitive, counted and sampled when profiling.
@@ -1596,15 +1759,19 @@ impl<'p> Vm<'p> {
                         }
                         None => reload!(),
                     }
+                } else if let Some(typed) = self.typed.get($function).copied().flatten() {
+                    // a typed entry answers on the arguments where they lie
+                    // (decision AU1), or declines
+                    let result = match self.call_typed_in_place($function, typed, $count) {
+                        Some(result) => result,
+                        None => self.call_scratch($function, $count),
+                    };
+                    settle!(try_op!(result));
+                } else if self.pure.get($function).copied().unwrap_or(false) {
+                    let result = self.call_pure_from_stack($function, $count);
+                    settle!(try_op!(result));
                 } else {
-                    // the arguments move into the scratch buffer, which a
-                    // primitive calling back leaves to the nested call
-                    let mut args = std::mem::take(&mut self.scratch);
-                    let at = self.stack.len().saturating_sub($count);
-                    self.stack.drain_into(at, &mut args);
-                    let result = self.call_native($function, &mut args);
-                    args.clear();
-                    self.scratch = args;
+                    let result = self.call_scratch($function, $count);
                     settle!(try_op!(result));
                 }
             }};

@@ -89,6 +89,15 @@ impl<T> Pinned<T> {
         Some(unsafe { self.ptr.add(self.len).read() })
     }
 
+    /// Count the items from `len` on out without dropping them: for items
+    /// whose references the caller has already settled (decision AU1: the
+    /// borrowed arguments of a typed call).
+    pub fn forget_from(&mut self, len: usize) {
+        if len < self.len {
+            self.len = len;
+        }
+    }
+
     /// Drop the items from `len` on; nothing when there are fewer.
     pub fn truncate(&mut self, len: usize) {
         while self.len > len {

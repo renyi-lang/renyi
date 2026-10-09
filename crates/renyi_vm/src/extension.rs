@@ -15,6 +15,14 @@
 //! library's natives see (AK3): the VM, the plain values of its arguments
 //! and the helpers of [`crate::natives`]. It declares its capabilities
 //! from the kinds of reference section 11 and adds none (AK4).
+//!
+//! A native may carry a typed entry (decision AU1): a second Rust
+//! function from a fixed family of signatures, which reads its arguments
+//! where they lie and answers a Boolean, an Integer, a Float or a value,
+//! or declines (`None`), whereupon the native itself runs through the
+//! boundary. The generated code calls it with the arguments borrowed and
+//! takes a scalar result in a register, so a call to a pure primitive
+//! costs no more than the primitive's own work.
 
 use std::collections::HashMap;
 
@@ -22,6 +30,46 @@ use renyi_check::Library;
 use renyi_syntax::parse_declarations;
 
 use crate::natives::NativeFn;
+use crate::value::Value;
+
+/// The typed entry of a native (decision AU1): a function over the plain
+/// arguments, borrowed, that answers in one of four kinds or declines
+/// with `None`, which sends the call through the native itself and the
+/// boundary. A typed entry must answer exactly what the native answers
+/// whenever it answers; it declines on a guarded argument (the result
+/// would need the guard's origins), on an Integer past the machine word,
+/// and wherever the native would fail or crash. Its kind must agree with
+/// the declared result type: `Bool` for `Boolean`, `Int` for `Integer`,
+/// `Float` for `Float`, `Value` for anything else (`Registry::verify`
+/// checks). A `Value` entry never answers a `Failure`.
+#[derive(Clone, Copy)]
+pub enum Typed {
+    Bool(fn(&[Value]) -> Option<bool>),
+    Int(fn(&[Value]) -> Option<i64>),
+    Float(fn(&[Value]) -> Option<f64>),
+    Value(fn(&[Value]) -> Option<Value>),
+}
+
+/// The kind of a typed entry's result: what the generated code expects
+/// back.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TypedKind {
+    Bool,
+    Int,
+    Float,
+    Value,
+}
+
+impl Typed {
+    pub fn kind(self) -> TypedKind {
+        match self {
+            Typed::Bool(_) => TypedKind::Bool,
+            Typed::Int(_) => TypedKind::Int,
+            Typed::Float(_) => TypedKind::Float,
+            Typed::Value(_) => TypedKind::Value,
+        }
+    }
+}
 
 /// A native function of an extension: which declared function it
 /// implements, and the Rust function.
@@ -36,6 +84,8 @@ pub struct Native {
     /// function matched by its name alone, whatever its first parameter.
     pub receiver: Option<&'static str>,
     pub run: NativeFn,
+    /// The typed entry (decision AU1), when the native has one.
+    pub typed: Option<Typed>,
 }
 
 impl Native {
@@ -47,6 +97,20 @@ impl Native {
             name,
             receiver: None,
             run,
+            typed: None,
+        }
+    }
+
+    /// The native with a typed entry (decision AU1):
+    /// `Native::method("std.prelude", "contains", "Text", text_contains)
+    /// .with_typed(Typed::Bool(text_contains_typed))`.
+    pub const fn with_typed(self, typed: Typed) -> Native {
+        Native {
+            module: self.module,
+            name: self.name,
+            receiver: self.receiver,
+            run: self.run,
+            typed: Some(typed),
         }
     }
 
@@ -64,6 +128,7 @@ impl Native {
             name,
             receiver: Some(receiver),
             run,
+            typed: None,
         }
     }
 }
@@ -81,8 +146,9 @@ pub struct Extension {
     pub natives: &'static [Native],
 }
 
-/// The natives registered under one module and name, in registration order.
-type Entries = Vec<(Option<&'static str>, NativeFn)>;
+/// The natives registered under one module and name, in registration
+/// order: the receiver, the function and its typed entry.
+type Entries = Vec<(Option<&'static str>, NativeFn, Option<Typed>)>;
 
 /// The extensions a toolchain is built with, the standard library first,
 /// and the natives they register, by module, name and receiver.
@@ -111,7 +177,7 @@ impl Registry {
             self.table
                 .entry((native.module, native.name))
                 .or_default()
-                .push((native.receiver, native.run));
+                .push((native.receiver, native.run, native.typed));
         }
         self.extensions.push(extension);
     }
@@ -153,12 +219,23 @@ impl Registry {
     /// the type's full spelling, else its head, else the entry without a
     /// receiver.
     pub fn lookup(&self, module: &str, name: &str, receiver: Option<&str>) -> Option<NativeFn> {
+        self.lookup_entry(module, name, receiver)
+            .map(|(run, _)| run)
+    }
+
+    /// `lookup`, with the typed entry of the native found (decision AU1).
+    pub fn lookup_entry(
+        &self,
+        module: &str,
+        name: &str,
+        receiver: Option<&str>,
+    ) -> Option<(NativeFn, Option<Typed>)> {
         let entries = self.table.get(&(module, name))?;
         let find = |wanted: Option<&str>| {
             entries
                 .iter()
-                .find(|(entry, _)| *entry == wanted)
-                .map(|(_, run)| *run)
+                .find(|(entry, _, _)| *entry == wanted)
+                .map(|(_, run, typed)| (*run, *typed))
         };
         let head = receiver.map(|receiver| receiver.split(' ').next().unwrap_or(receiver));
         receiver
@@ -223,18 +300,56 @@ impl Registry {
             }
             let module = &world.modules[info.module].name;
             let receiver = info.params.first().map(|(_, ty)| world.show(ty));
-            if self
-                .lookup(module, &info.name, receiver.as_deref())
-                .is_none()
-            {
-                let on = receiver
-                    .map(|receiver| format!(" on `{receiver}`"))
-                    .unwrap_or_default();
-                problems.push(format!(
+            let on = receiver
+                .as_deref()
+                .map(|receiver| format!(" on `{receiver}`"))
+                .unwrap_or_default();
+            match self.lookup_entry(module, &info.name, receiver.as_deref()) {
+                None => problems.push(format!(
                     "extension `{}`: `{module}.{}`{on} is declared but has no native",
                     owner(module),
                     info.name
-                ));
+                )),
+                Some((_, Some(typed))) => {
+                    // a typed entry skips the boundary, so the function must
+                    // need nothing, and it answers in the kind of the
+                    // declared result (decision AU1)
+                    if !info.needs.is_empty() {
+                        let needs: Vec<String> =
+                            info.needs.iter().map(|need| need.spelling()).collect();
+                        problems.push(format!(
+                            "extension `{}`: `{module}.{}`{on} has a typed entry but needs `{}`; a typed entry skips the boundary",
+                            owner(module),
+                            info.name,
+                            needs.join(", ")
+                        ));
+                    }
+                    let returns = info
+                        .returns
+                        .as_ref()
+                        .map(|ty| world.show(ty))
+                        .unwrap_or_else(|| "nothing".to_string());
+                    let expected = match returns.as_str() {
+                        "Boolean" => TypedKind::Bool,
+                        "Integer" => TypedKind::Int,
+                        "Float" => TypedKind::Float,
+                        _ => TypedKind::Value,
+                    };
+                    if typed.kind() != expected {
+                        let answers = match typed.kind() {
+                            TypedKind::Bool => "a Boolean",
+                            TypedKind::Int => "an Integer",
+                            TypedKind::Float => "a Float",
+                            TypedKind::Value => "a value",
+                        };
+                        problems.push(format!(
+                            "extension `{}`: the typed entry of `{module}.{}`{on} answers {answers} where the declaration returns `{returns}`",
+                            owner(module),
+                            info.name
+                        ));
+                    }
+                }
+                Some((_, None)) => {}
             }
         }
         for extension in &self.extensions {

@@ -54,7 +54,7 @@ use renyi_vm::recording::Dependency;
 use renyi_vm::{file, Manifest};
 
 pub use renyi_vm::memory::Counting;
-pub use renyi_vm::{Extension, Native, Registry, Value};
+pub use renyi_vm::{Extension, Native, Registry, Typed, TypedKind, Value};
 pub use sandbox::{bytes_text, CallError, Function, Grant, Sandbox};
 
 /// The allocator of a `renyi` binary (decisions X6 and AP1): mimalloc,
@@ -671,7 +671,7 @@ fn build_command(args: &[String]) -> ExitCode {
         Ok(compiled) => compiled,
         Err(code) => return code,
     };
-    let built = match image::build(&program, opt.as_deref()) {
+    let built = match image::build(&program, opt.as_deref(), registry()) {
         Ok(built) => built,
         Err(message) => {
             eprintln!("renyi: {message}");

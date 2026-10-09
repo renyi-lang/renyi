@@ -32,7 +32,7 @@ use cranelift_frontend::FunctionBuilderContext;
 
 use crate::compile::{CodeId, Program};
 use crate::value::Value;
-use crate::vm::Vm;
+use crate::vm::{CallKind, Vm};
 use infer::{Abs, SlotKind};
 
 /// The generated function of a code object: the VM, the frame's base and
@@ -114,6 +114,8 @@ pub struct Jit {
     constants: Box<[*const Value]>,
     /// The executable memory of the compiled functions.
     code: CodeArena,
+    /// Per function, how the generated code calls it (decision AU1).
+    calls: Vec<CallKind>,
     /// Cranelift's optimisation level the code is compiled at (`none` or
     /// `speed`); an image records it.
     opt_level: String,
@@ -216,7 +218,7 @@ impl CodeArena {
 impl Jit {
     /// A JIT for the program, or `None` when the host is not a machine
     /// Cranelift generates code for (the interpreter then runs alone).
-    pub fn new(program: &Program, opt_level: Option<&str>) -> Option<Jit> {
+    pub fn new(program: &Program, opt_level: Option<&str>, calls: Vec<CallKind>) -> Option<Jit> {
         // no optimisation unless asked (`renyi build --opt speed`, or
         // `RENYI_NATIVE_OPT=speed` as a development aid): the generated
         // code calls a helper for most ops, and Cranelift's optimiser
@@ -257,6 +259,7 @@ impl Jit {
             helpers,
             constants,
             code: CodeArena::default(),
+            calls,
             opt_level: level,
             loaded: 0,
             mapped: false,
@@ -538,7 +541,14 @@ native: {} deopts; {} calls from generated code went to the interpreter; {} loop
         program: &Program,
         code: CodeId,
     ) -> Result<codegen::Compiled, codegen::Skipped> {
-        let compiled = codegen::compile(program, code, &*self.isa, &mut self.ctx, &mut self.fctx);
+        let compiled = codegen::compile(
+            program,
+            code,
+            &self.calls,
+            &*self.isa,
+            &mut self.ctx,
+            &mut self.fctx,
+        );
         match compiled {
             Ok(compiled) => {
                 self.stats.add(&compiled.stats);
