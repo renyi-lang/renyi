@@ -3826,3 +3826,21 @@ third item) types what the loads' annotations type already; the cost is
 in the interpreter's share, the reference counts and the copies of
 records and lists that `record with field: record.field.append(x)` makes,
 not in what the generated code computes. (user)
+
+**AU9. The round's order after AU8's profile, the owner's answers of
+2026-10-09: first the image cache of `renyi run` (the steady state of an
+image from a program's second run on: the self-check's image row is 28%
+below its JIT run), then, in this round, the update of a uniquely held
+record in place (`with` and `append` without a copy), the comparisons on
+borrowed operands, and the parameters borrowed across direct calls. Two
+items of AU1's step iv are dropped: the ability method chosen statically
+(the compiler emits no `CallAbility` on its hot paths; a concrete
+receiver's method is a direct `Call` already) and the loop variable typed
+from the list's item type (the loads' annotations type it already). The
+rule stays AT1's: the cold JIT run, without the cache, is the row that
+decides (the measuring scripts run with the cache off); the run from the
+cache is reported beside it.** Measured on AU8's binary for the record,
+the hotness factor of AR5 against the self-check's estimate: 2000 14.56,
+3000 14.56, 4000 14.48, 6000 14.48, 8000 14.55, 16000 15.01 billion; the
+factor stays 8000, the differences below it being within half a percent
+and the cache changing what the factor is for. (user)
