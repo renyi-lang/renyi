@@ -55,8 +55,9 @@ const PART_ALIGN: usize = 16;
 /// (the record's tag word, the callee's prologue writes its locals, no
 /// call counter in the state, `rt_direct_entry` gone from the helpers).
 /// 3: `rt_retain_at` among the helpers (decision AT6). 4: `rt_take_field`
-/// and `rt_with_slot` among the helpers (decision AU11).
-pub const CODE_FORMAT: u32 = 4;
+/// and `rt_with_slot` among the helpers (decision AU11). 5: `rt_compare`
+/// among them (decision AU13).
+pub const CODE_FORMAT: u32 = 5;
 
 /// The extension of an image file.
 pub const EXTENSION: &str = "ryi";

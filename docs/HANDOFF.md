@@ -1,13 +1,16 @@
 # Handoff
 
 Last updated: 2026-10-09, session 10, in the cloud environment, which
-did stage 6 of the typed round, decision AU11: the update of a uniquely
-held record in place (the ops `WithSlot` and `TakeField`, bytecode
-format 7, three emitter rules in both emitters, the judges equal), kept
-by AU1's rule with a small gain and a finding about why (the section
-"The typed round" below, "Stage 6 is in"), and answered the owner's
-question on the execution model (the section "The execution model, as
-the owner asked on 2026-10-09" below). Session 9, the first in the
+did stages 6 and 7 of the typed round: decision AU11, the update of a
+uniquely held record in place (the ops `WithSlot` and `TakeField`,
+bytecode format 7, three emitter rules in both emitters, the judges
+equal), kept by AU1's rule with a small gain and a finding about why;
+the owner's answers after it (AU12); and decision AU13, the comparisons
+on borrowed operands in the generated code, -2.2% on the self-check's
+cold JIT run (the section "The typed round" below, "Stage 6 is in" and
+"Stage 7 is in"); and answered the owner's question on the execution
+model (the section "The execution model, as the owner asked on
+2026-10-09" below). Session 9, the first in the
 cloud environment (claude.ai/code), finished the profile-guided round on
 strings and JSON that session 8 had paused: decision AQ, the first of the
 interspersed performance items the owner set after M5 (the section "The
@@ -2116,48 +2119,75 @@ and `refined_record` 209 to 161 million instructions (`with`,
 `refinement_violation`, `op_with`, `op_with_slot`), the list copies in
 `make_mut` 83 to 81 million, the drops of records unchanged.
 
-**What is next in this round (the owner's order, AU9), with what
-session 10 found:**
+**The owner's answers after stage 6 (decision AU12, 2026-10-09)**:
+stage 7 now and stage 8 after it, the copies of the checker's shared
+records left to the representation round (AU1's step v), where a
+liveness pass over the bytecode would serve every form at once; the
+round's second goal (the self-check a quarter faster than AT7's 14.83
+billion estimated cycles) judged on the cold JIT run, with a new profile
+after stages 7 and 8 deciding the stages that follow until the goal is
+met or the owner closes the round; the front end written in Renyi
+switched in, or not, after this round.
 
-1. **A question for the owner before stage 7**: whether to add the two
-   rules that would let stage 6's path run on the checker's hot
-   updates, or to leave them: (a) the liveness rule, `let y be x with
-   ...` where `x` is dead after the statement (`x` declared in the same
-   block, or a parameter with the statement in the body's own block,
-   and no later statement of the block mentioning `x`; the sites
-   `fresh` and `infer` in `bodies.ry`, `fresh` being `let updated be
-   checker with vars: checker.vars.append(...)` and `infer` `let
-   updated be after with typed: after.typed.append(noted)`), which
-   needs a statement-level `mentions` in both emitters; (b) the field
-   taken out of a record that is updated with the result later (`let
-   after be done.checker ... return done with checker: updated`: a
-   `TakeField` for the `let` and the `WithSlot` at the return filling
-   the hole), which needs the same liveness and a rule across
-   statements. Without them the `Checker` record is shared at nearly
-   every update and the copies stay. The alternative the owner may
-   prefer: leave the copies to a later representation round and go to
-   stage 7 now.
-2. **Stage 7, the comparisons on borrowed operands (AU12).** `rt_binary`
-   is 7% of the self-check inclusive (`binary_values`, `PartialEq`,
-   the drops of both operands). A `Binary` comparison whose operands a
-   `Load` of a boxed slot or a boxed `Const` pushed just before
-   borrows them as the typed calls do (`borrowed_operands` in
-   `native/codegen.rs` is the model, its mask too), and a helper
-   compares them where they lie: Text with Text by bytes, a variant's
-   tag with a tag, Integer with Integer; anything else the general path.
-3. **Stage 8, the parameters borrowed across direct calls (AU13).** A
+**Stage 7 is in (decision AU13, 2026-10-09, session 10)**: the
+comparisons on borrowed operands, in the generated code alone (no change
+to the bytecode, the emitters or the interpreter). `native/runtime.rs`:
+`rt_compare` (the two operands compared where they lie on the stack:
+small Integers, texts, Booleans, `Nothing` beside a value, fieldless
+variants of a type without its own `equals`; the Boolean into the out
+slot and the operands consumed, a borrowed one without a drop; anything
+else the general path, `binary_values`, with the borrowed operands given
+their reference and the boxed answer back as `BOXED`),
+`compare_in_place`, `has_declared_equals`; `native/codegen.rs`:
+`is_comparison`, `borrowed_operands` marks the operands of a `Binary`
+comparison on boxed operands when a `Load` of a boxed slot, a boxed
+`Const` or `Nothing` pushed them just before (the mask's bit 0 the left
+operand), `Gen::compare_boxed` (the helper, the Boolean read into a
+register on `CONTINUE`, `unbox_top` on `BOXED`, the exit on anything
+else); `image.rs`: code format 5. Test:
+`comparisons_on_borrowed_operands_agree_with_the_general_path` in
+`crates/renyi_vm/tests/native.rs` (every shape on both tiers, the
+tallies). Measured by AU1's rule against AU11's binary on this machine:
+the cold JIT run 14.44 to 14.12 billion cycles (-2.2%; 10.26 to 9.95
+billion instructions), the interpreter 18.07 to 18.09 (the instructions
+equal, after `#[inline(always)]` on the three fast paths of
+`binary_values`: with `rt_compare` as a second caller the compiler had
+stopped inlining `text_binary`, +1% on the interpreter), the image 10.40
+to 10.05 (-3.4%), the run from the cache 11.38 to 11.03 (-3.1%); the
+profile: `rt_binary` and its `status` gone, `rt_compare` 307 million
+instructions, `binary_values` 236 to 92 million, the operands' retains
+and drops down; wall-clock noisy today, the self-check 2.57 to 2.42 s on
+the JIT run and 2.00 to 1.77 s as an image best of seven alternating.
+The stage stays by the rule's first clause.
+
+**What is next in this round, after AU12:**
+
+1. **Stage 8, the parameters borrowed across direct calls (AU14).** A
    parameter the callee only reads (fields, borrowed calls, comparisons)
    and never stores, returns or passes on to a position that keeps it
    needs no retain at the call and no release at the return. The
    hazard: a frame handed back to the interpreter, which drops its
    locals at the return, so the flag must be honoured there too (or the
    hand-back retains the borrowed parameters first). The riskiest of
-   the three; measure 6 and 7 before starting it.
+   the three; 6 and 7 are measured (AU11, AU13).
+2. **A new profile after stage 8** (AU12): the stages that follow come
+   from it, the representation items of AU1's step v among them (small
+   texts inline, `Int` flattened into `Value`, lists of unboxed
+   Integers, values in registers across ops) and the liveness pass
+   over the bytecode that would make the checker's records held once
+   at their updates (AU11's finding); a fieldless variant built by
+   `ConstructVariant` allocates on every comparison (`kind is Public`:
+   11 sites in the checker program), a candidate micro-cut; a borrowed
+   `LoadField` operand (33 `LoadField ... is` sites) needs the helper
+   path to say whether it pushed a fresh value (a guarded holder's
+   field is wrapped anew), which this stage left out.
 
 Each stage is measured by AT1's rule (`tools/measure_size.sh` on the
 release binary, about fifteen minutes now with the fourth row; in a
-fresh container measure the previous stage's binary too, built from its
-commit, since the simulated cache differs between machines) against
+fresh container, and after a restart of the container, measure the
+previous stage's binary too, built from its commit, since the simulated
+cache misses differ between machines and between boots while the
+instructions do not) against
 the binary before it, with `tools/bench.py` beside it; the judges
 (`cargo test -p renyi --test selfhost`, about 95 s) after every change
 to an emitter. A lesson of session 10: never `git checkout <file>` to
@@ -3466,6 +3496,17 @@ holds between calls.
   checker's records are shared at nearly every update) and the two
   rules that would change that, put to the owner (the section "The
   typed round", "What is next").
+- **Decision AU12**, the owner's answers after stage 6 (stage 7 now, the
+  copies left to the representation round; the round's goal judged on
+  the cold JIT run, the round continuing by the profile after stage 8;
+  the self-hosted front end decided after the round), and **decision
+  AU13, stage 7**: the comparisons on borrowed operands in the generated
+  code (`rt_compare`, `borrowed_operands` for `Binary`, `compare_boxed`;
+  code format 5; the native test of every shape), -2.2% on the cold JIT
+  run, -3.4% on the image, the interpreter unchanged after the three
+  fast paths were inlined by force; a lesson on the measurement: the
+  simulated cache misses change between boots of the container, so a
+  stage's two binaries are measured on one boot.
 - **The owner's question on the execution model** answered with the
   numbers of this machine (the section "The execution model, as the
   owner asked on 2026-10-09").

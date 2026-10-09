@@ -379,6 +379,137 @@ end
 }
 
 #[test]
+fn comparisons_on_borrowed_operands_agree_with_the_general_path() {
+    // decision AU13: a comparison on boxed operands is answered where they
+    // lie, the operands a `Load`, a `Const` or `Nothing` pushed borrowed;
+    // texts, small Integers in `maybe` slots, Booleans, `Nothing` beside a
+    // value and fieldless variants take the fast path, records, variants
+    // with fields, Decimals and a declared `equals` the general path, and
+    // both tiers print the same tallies
+    let source = r#"module demo
+  purpose: Comparisons of every shape on borrowed operands (decision AU13), against the general path.
+
+import std.console
+
+type Color is one of
+  purpose: Fieldless variants.
+  Red
+  Green
+  Blue
+end
+
+type Shape is one of
+  purpose: Variants with fields.
+  Circle(radius: Integer)
+  Dot
+end
+
+type Word
+  purpose: A record with its own equality.
+  has text: Text
+end
+
+ability Equal for Word
+  function equals(self, other: Word) returns Boolean
+    return self.text.to_lower() is other.text.to_lower()
+  end
+end
+
+type Point
+  purpose: A record with derived equality.
+  has x_value: Integer
+  has y_value: Integer
+  can Equal
+end
+
+function pick(flag: Boolean) returns maybe Integer
+  purpose: An Integer in a maybe, or nothing.
+
+  if flag then return 7 end
+  return nothing
+end
+
+function label(flag: Boolean) returns maybe Text
+  purpose: A text in a maybe, or nothing.
+
+  if flag then return "seven" end
+  return nothing
+end
+
+function tally(words: List of Text, colors: List of Color, limit: Integer) returns Text
+  purpose: Every comparison shape in loops, so that the code is compiled.
+
+  let mutable hits be 0
+  let mutable misses be 0
+  let seven be pick(true)
+  let none be pick(false)
+  let name be label(true)
+  let unnamed be label(false)
+  for each word in words
+    if word is "seven" then change hits to hits + 1 end
+    if word is not "seven" then change misses to misses + 1 end
+    if word is less than "m" then change hits to hits + 10 end
+    if word is at least "seven" then change hits to hits + 100 end
+    if name is word then change hits to hits + 1000 end
+    if unnamed is word then change hits to hits + 10000 end
+    if word is unnamed then change hits to hits + 10000 end
+  end
+  for each color in colors
+    if color is Red then change hits to hits + 1 end
+    if color is not Green then change misses to misses + 1 end
+    if Blue is color then change hits to hits + 2 end
+  end
+  for each step from 1 to limit
+    if seven is step then change hits to hits + 1 end
+    if none is step then change hits to hits + 1000 end
+    if step is none then change hits to hits + 1000 end
+    if seven is not none then change hits to hits + 1 end
+    if none is nothing then change hits to hits + 3 end
+    if seven is nothing then change hits to hits + 5000 end
+    if nothing is not seven then change hits to hits + 7 end
+  end
+  return "{hits} {misses}"
+end
+
+function records(limit: Integer) returns Text
+  purpose: Comparisons that need the general path: records, variants with fields, decimals, a declared equals.
+
+  let mutable hits be 0
+  let shout be Word(text: "HELLO")
+  let plain be Word(text: "hello")
+  let origin be Point(x_value: 0, y_value: 0)
+  let same be Point(x_value: 0, y_value: 0)
+  let disc be Circle(radius: 2)
+  let other be Circle(radius: 3)
+  let price be 19.99
+  let cost be 19.990
+  for each step from 1 to limit
+    if step is 2 then change hits to hits + 1000000 end
+    if shout is plain then change hits to hits + 1 end
+    if shout is not plain then change hits to hits + 1000 end
+    if origin is same then change hits to hits + 10 end
+    if disc is other then change hits to hits + 1000 end
+    if disc is not Dot then change hits to hits + 100 end
+    if price is cost then change hits to hits + 1000 end
+    if price is at most cost then change hits to hits + 10000 end
+    if origin is not nothing then change hits to hits + 100000 end
+  end
+  return "{hits}"
+end
+
+public function main() needs console
+  purpose: Print the tallies.
+
+  console.print(tally(words: ["seven", "eight", "a", "zebra"], colors: [Red, Green, Blue, Red], limit: 9))
+  console.print(records(3))
+end
+"#;
+    let (outcome, printed) = both_ways(source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(printed, "1325 6\n1333333\n");
+}
+
+#[test]
 fn a_guarded_integer_parameter_hands_the_frame_back_at_its_entry() {
     let dir = scratch("guarded");
     std::fs::write(format!("{dir}/count.txt"), "12345").expect("the data file");

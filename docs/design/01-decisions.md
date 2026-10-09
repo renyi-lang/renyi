@@ -3946,3 +3946,82 @@ make it run is the move of the last read of a binding (a liveness rule)
 and the field taken out of a record that is updated with the result
 later, which the plan of AU1's stage iv did not foresee and which the
 owner is asked to order. (user)
+
+**AU12. The owner's answers of 2026-10-09 after AU11's finding: (i)
+stage 7 now, the comparisons on borrowed operands, and stage 8 after it;
+the copies that the checker's shared records keep are left to the
+representation round (AU1's step v), where a liveness pass over the
+bytecode (the last read of a slot as a move) would serve every form at
+once, rather than more syntactic rules in two emitters now; (ii) the
+round's second goal, the self-check a quarter faster than AT7 left it
+(14.83 billion estimated cycles), is judged on the cold JIT run, the row
+AU9 made the one that decides, and not on the run from the image cache
+(11.16 against 14.83 already, which removes the compiling and not the
+running); after stages 7 and 8 a new profile decides the stages that
+follow, the representation items of AU1's step v among them, until the
+goal is met or the owner closes the round; (iii) whether a command of
+the binary runs the front end written in Renyi in place of the Rust one
+is decided after this round, with the self-check's speed then, and
+nothing is added now (the cost measured in session 10: checking
+`compiler/bodies.ry` takes 0.083 s with the Rust front end and 1.87 s
+with the Renyi checker on the cold JIT tier).** Asked in a batch of
+three after AU11's measurement; the owner took the recommended option of
+each. (user)
+
+**AU13. Stage 7 of the typed round: the comparisons on borrowed
+operands, in the generated code alone. A `Binary` comparison (`is`, `is
+not`, `is less than`, `is at most`, `is greater than`, `is at least`) on
+two boxed operands goes through `rt_compare`, which compares them where
+they lie on the stack and answers the Boolean into the out slot, from
+where the generated code takes it into a register: two small Integers,
+two texts, two Booleans, `Nothing` beside a value, and two variants
+without fields of a type without its own `equals` are answered there;
+anything else (a record, a variant with fields, a Decimal, a Float, a
+declared `equals` or `compare`) takes the general path, `binary_values`,
+whose boxed answer comes back as `BOXED` and is taken into the register
+as a typed call's is. The operands a `Load` of a boxed slot, a boxed
+`Const` or `Nothing` pushed just before the comparison are borrowed as
+the typed calls' arguments are (AU2): pushed without a reference of
+their own and consumed without a release; the general path gives them
+their reference first. A Boolean carries no origins, so a guarded
+operand is looked through. No op, format or emitter changes: the
+interpreter compares as before; the image's code format is 5 (the helper
+among the helpers).** Why the comparison and not every binary operator:
+the others on boxed operands are arithmetic on Decimals and big
+Integers, rare in the self-check, and their answers are boxed. Why
+`Nothing` joins the pushes that borrow: `x is not nothing` is a fifth of
+the checker's comparisons, and `Nothing` holds no reference. Why a
+`LoadField` operand is not borrowed yet: its helper path wraps a guarded
+holder's field anew, so the code cannot tell a borrowed push from an
+owned one without the helper saying so; the 33 `LoadField ... is` sites
+of the checker program wait for that. Why `equal` asks the left
+operand's type alone: the VM's `equal` does, so `Nothing` on the left is
+answered at once and a record on the left with a declared `equals` is
+not. Of the 722 comparisons in the checker program, 233 are `Load Const
+is` on a text, the shape the self-check runs most (`Const Binary` 4.7
+million of its 6.8 million `Binary` ops). Measured by AU1's rule against
+AU11's binary (aaa44f6), both on this machine after a restart of the
+container (cachegrind's simulated cache misses change between boots, the
+same binary giving 1.15 and 2.60 million last-level misses on two boots
+with its instructions equal within 0.01%, so the two binaries of a
+comparison are measured on one boot): the self-check's estimate on the
+cold JIT run 14.44 to 14.12 billion cycles (-2.2%; 10.26 to 9.95 billion
+instructions, -3.1%), the interpreter 18.07 to 18.09 (+0.15%; the
+instructions equal within 0.01%, 12.72 billion, once the three fast
+paths `small_binary`, `text_binary` and `boolean_binary` were inlined by
+force: with a second caller the compiler had stopped inlining
+`text_binary` into `binary_values`, which had cost the interpreter one
+percent of its instructions), the image 10.40 to 10.05 (-3.4%; 7.18 to
+6.80 billion instructions, -5.2%; the machine code 5.79 MB, 125.2 bytes
+of body per op, 771 deopt points), the run from the cache 11.38 to 11.03
+(-3.1%; 7.94 to 7.56 billion instructions). The profile of the JIT run
+(callgrind): `rt_binary` (188 million instructions) and its answer
+through `status` are gone, `rt_compare` runs 307 million with the fast
+comparisons inlined, `binary_values` 236 to 92 million, the retains of
+the operands 94 to 68 million and the drops of values 664 to 595
+million. Wall-clock on this machine, noisy today (eight percent between
+runs of one binary): the self-check 2.57 to 2.42 s on the JIT run and
+2.00 to 1.77 s as an image, best of seven with the two binaries
+alternating, `bench/json_round_trip.ry` 133 to 121 ms, the other
+benchmarks within the noise. The stage stays by the rule's first clause.
+(user)

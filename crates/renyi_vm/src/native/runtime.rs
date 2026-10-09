@@ -604,6 +604,104 @@ pub(crate) unsafe extern "C" fn rt_binary(vm: VmPtr, op: u8, pc: u32) -> i32 {
     status(vm, result)
 }
 
+/// A comparison on two boxed operands where they lie on the stack
+/// (decision AU13): the Boolean answered into `out` and the operands
+/// consumed, a borrowed one without a drop, when both are small Integers,
+/// texts, Booleans, `Nothing` beside a value, or variants without fields
+/// of a type without its own `equals`; anything else takes the general
+/// path with every borrowed operand given its reference, and its boxed
+/// answer comes back as `BOXED`.
+pub(crate) unsafe extern "C" fn rt_compare(
+    vm: VmPtr,
+    op: u8,
+    borrowed: u32,
+    pc: u32,
+    out: *mut i64,
+) -> i32 {
+    let vm = vm!(vm);
+    let op = BINARY_OPS[op as usize];
+    let at = vm.stack.len() - 2;
+    if let Some(answer) = compare_in_place(vm, op, at) {
+        // SAFETY: `out` is the generated code's own slot for an answer,
+        // eight bytes wide.
+        unsafe { *out = answer as i64 };
+        consume_arguments(vm, at, 2, borrowed);
+        return CONTINUE;
+    }
+    vm.sync_pc(pc);
+    for index in 0..2 {
+        if borrowed & (1 << index) != 0 {
+            std::mem::forget(vm.stack[at + index].clone());
+        }
+    }
+    let right = vm.pop();
+    let left = vm.pop();
+    let result = vm.binary_values(op, left, right);
+    let status = status(vm, result);
+    if status == CONTINUE {
+        BOXED
+    } else {
+        status
+    }
+}
+
+/// The comparison of the two values at `at` and after it, when their kinds
+/// let it be answered without the general path. A Boolean carries no
+/// origins, so the guards of the operands are looked through.
+fn compare_in_place(vm: &Vm, op: BinaryOp, at: usize) -> Option<bool> {
+    use BinaryOp::{Is, IsNot};
+    let left = vm.stack[at].plain();
+    let right = vm.stack[at + 1].plain();
+    let fast = match (left, right) {
+        (Value::Integer(Int::Small(a)), Value::Integer(Int::Small(b))) => {
+            crate::vm::small_binary(op, *a, *b)
+        }
+        (Value::Text(a), Value::Text(b)) => crate::vm::text_binary(op, a, b),
+        (Value::Boolean(a), Value::Boolean(b)) => crate::vm::boolean_binary(op, *a, *b),
+        // `equal` asks the left operand's type for a declared `equals`:
+        // `Nothing` on the left has none, and on the right the left's
+        // type is asked
+        (Value::Nothing, Value::Nothing) => match op {
+            Is => Some(Value::Boolean(true)),
+            IsNot => Some(Value::Boolean(false)),
+            _ => None,
+        },
+        (Value::Nothing, _) => match op {
+            Is => Some(Value::Boolean(false)),
+            IsNot => Some(Value::Boolean(true)),
+            _ => None,
+        },
+        (_, Value::Nothing) if !has_declared_equals(vm, left) => match op {
+            Is => Some(Value::Boolean(false)),
+            IsNot => Some(Value::Boolean(true)),
+            _ => None,
+        },
+        (Value::Variant(a), Value::Variant(b))
+            if a.fields.is_empty() && b.fields.is_empty() && !has_declared_equals(vm, left) =>
+        {
+            let same = a.ty == b.ty && a.tag == b.tag;
+            match op {
+                Is => Some(Value::Boolean(same)),
+                IsNot => Some(Value::Boolean(!same)),
+                _ => None,
+            }
+        }
+        _ => None,
+    };
+    match fast {
+        Some(Value::Boolean(answer)) => Some(answer),
+        _ => None,
+    }
+}
+
+/// Whether the value's type declares its own `equals`, which the general
+/// path runs.
+fn has_declared_equals(vm: &Vm, value: &Value) -> bool {
+    value
+        .type_id()
+        .is_some_and(|ty| vm.program.specials[ty].equals.is_some())
+}
+
 /// `+ - * / remainder power` on two Floats in registers; a result that is
 /// not finite is a crash, as in the interpreter.
 pub(crate) unsafe extern "C" fn rt_float_binary(
@@ -1664,6 +1762,7 @@ pub const HELPERS: &[(&str, *const u8)] = &[
     ("rt_take_field", rt_take_field as *const u8),
     ("rt_not", rt_not as *const u8),
     ("rt_binary", rt_binary as *const u8),
+    ("rt_compare", rt_compare as *const u8),
     ("rt_float_binary", rt_float_binary as *const u8),
     ("rt_int_power", rt_int_power as *const u8),
     ("rt_to_text", rt_to_text as *const u8),

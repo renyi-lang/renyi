@@ -180,6 +180,7 @@ pub const SIGNATURES: &[(&str, &str, char)] = &[
     ("rt_take_field", "pzwzwww", 'i'),
     ("rt_not", "pw", 'i'),
     ("rt_binary", "puw", 'i'),
+    ("rt_compare", "puwwp", 'i'),
     ("rt_float_binary", "puffwp", 'i'),
     ("rt_int_power", "pqqwp", 'i'),
     ("rt_to_text", "pw", 'i'),
@@ -426,12 +427,25 @@ fn kind_agrees(kind: TypedKind, result: Abs) -> bool {
     )
 }
 
-/// The operands a typed call borrows (decision AU1): for a `Call` of a
-/// primitive with a typed entry, the arguments pushed by the `Load`s of
-/// boxed slots and the boxed `Const`s immediately before it, which are
-/// its last arguments in order, each pushed without a reference of its
-/// own; per op whether it pushes such an operand, and per call the bits
-/// of the arguments so pushed (the first argument bit 0).
+/// Whether the operator is a comparison: its answer is a Boolean whatever
+/// the operands.
+fn is_comparison(op: BinaryOp) -> bool {
+    use BinaryOp::*;
+    matches!(
+        op,
+        Is | IsNot | IsLessThan | IsAtMost | IsGreaterThan | IsAtLeast
+    )
+}
+
+/// The operands a typed call or a comparison borrows (decisions AU1 and
+/// AU13): for a `Call` of a primitive with a typed entry, the arguments
+/// pushed by the `Load`s of boxed slots and the boxed `Const`s immediately
+/// before it, which are its last arguments in order, each pushed without
+/// a reference of its own; for a `Binary` comparison on boxed operands,
+/// the same two kinds of pushes and `Nothing` just before it; per op
+/// whether it pushes such an operand, and per call or comparison the bits
+/// of the operands so pushed (the first argument, or the left operand,
+/// bit 0).
 fn borrowed_operands(
     program: &Program,
     code: &Code,
@@ -441,26 +455,43 @@ fn borrowed_operands(
     let mut borrowed = vec![false; code.ops.len()];
     let mut masks = vec![0u32; code.ops.len()];
     for (pc, op) in code.ops.iter().enumerate() {
-        let Op::Call { function, args } = op else {
-            continue;
+        let count = match op {
+            Op::Call { function, args } => {
+                let count = *args as usize;
+                let typed = matches!(
+                    calls.get(*function),
+                    Some(CallKind::Typed(kind))
+                        if kind_agrees(*kind, abs_of_result(program, *function))
+                );
+                if count == 0 || count > 32 || !typed {
+                    continue;
+                }
+                count
+            }
+            Op::Binary(op) if is_comparison(*op) => {
+                // both operands boxed by the analysis: a register operand
+                // takes the typed paths
+                let boxed = match analysis.entry.get(pc) {
+                    Some(Some(state)) => {
+                        state.len() >= 2
+                            && state[state.len() - 2..].iter().all(|abs| abs.is_boxed())
+                    }
+                    _ => false,
+                };
+                if !boxed {
+                    continue;
+                }
+                2
+            }
+            _ => continue,
         };
-        let count = *args as usize;
-        if count == 0 || count > 32 {
-            continue;
-        }
-        let typed = matches!(
-            calls.get(*function),
-            Some(CallKind::Typed(kind)) if kind_agrees(*kind, abs_of_result(program, *function))
-        );
-        if !typed {
-            continue;
-        }
         let mut mask = 0u32;
         for back in 1..=count.min(pc) {
             let at = pc - back;
             let simple = match &code.ops[at] {
                 Op::Load(slot) => matches!(analysis.slots[*slot as usize], SlotKind::Boxed(_)),
                 Op::Const(index) => abs_of_constant(&code.constants[*index as usize]).is_boxed(),
+                Op::Nothing => matches!(op, Op::Binary(_)),
                 _ => false,
             };
             if !simple {
@@ -3422,6 +3453,7 @@ impl Gen<'_, '_> {
                 };
                 self.push_bool(value);
             }
+            _ if is_comparison(op) => self.compare_boxed(op, pc),
             _ => {
                 let op_value = self.u8(binary_code(op));
                 let pc_value = self.u32(pc as u32);
@@ -3435,6 +3467,60 @@ impl Gen<'_, '_> {
                 }
             }
         }
+    }
+
+    /// A comparison on boxed operands (decision AU13): the helper compares
+    /// them where they lie, the ones a `Load`, a `Const` or `Nothing` just
+    /// before pushed borrowed (`borrowed_operands`), and answers the
+    /// Boolean into the out slot, from where it goes to a register; when
+    /// the operands need the general path, its boxed answer on the stack
+    /// is taken into the register as a typed call's is.
+    fn compare_boxed(&mut self, op: BinaryOp, pc: usize) {
+        let op_value = self.u8(binary_code(op));
+        let mask_value = self.u32(self.masks[pc]);
+        let pc_value = self.u32(pc as u32);
+        let out = self.out_address();
+        let status = self
+            .helper_on_stack("rt_compare", 2, &[op_value, mask_value, pc_value, out])
+            .expect("a status");
+        let depth = self.state.len();
+        let fast = self.b.create_block();
+        let other = self.b.create_block();
+        let join = self.b.create_block();
+        let answered = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::Equal, status, CONTINUE as i64);
+        self.b.ins().brif(answered, fast, &[], other, &[]);
+        self.b.seal_block(fast);
+        self.b.seal_block(other);
+        // the general path answered on the stack, or stopped the frame
+        self.switch_to(other);
+        self.push_boxed();
+        let slow = self.b.create_block();
+        let boxed =
+            self.b
+                .ins()
+                .icmp_imm_s(IntCC::Equal, status, crate::native::runtime::BOXED as i64);
+        let exit = self.exit;
+        self.b.ins().brif(boxed, slow, &[], exit, &[status.into()]);
+        self.b.seal_block(slow);
+        self.switch_to(slow);
+        self.unbox_top(Abs::Bool, pc + 1);
+        self.b.ins().jump(join, &[]);
+        // the helper answered into the out slot
+        self.switch_to(fast);
+        let value = self
+            .b
+            .ins()
+            .load(types::I8, MemFlagsData::trusted(), out, 0);
+        let var = self.bool_var(depth);
+        self.b.def_var(var, value);
+        self.b.ins().jump(join, &[]);
+        self.b.seal_block(join);
+        self.switch_to(join);
+        self.state.truncate(depth);
+        self.state.push(Abs::Bool);
     }
 
     /// Two small Integers in registers; an overflow hands the op to the

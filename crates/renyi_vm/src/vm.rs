@@ -2730,7 +2730,11 @@ pub(crate) fn not_boolean(found: Option<Value>) -> String {
 
 /// An operator on two small Integers without the general path: `None` on
 /// overflow and for the operators the general path defines (decision X3).
-#[inline]
+/// The three fast paths are inlined wherever they are called: with a
+/// second caller in `rt_compare` (decision AU13) the compiler stopped
+/// inlining them into the interpreter's `binary_values`, which cost the
+/// interpreter one percent of its instructions on the self-check.
+#[inline(always)]
 pub(crate) fn small_binary(op: BinaryOp, a: i64, b: i64) -> Option<Value> {
     Some(match op {
         BinaryOp::Is => Value::Boolean(a == b),
@@ -2750,7 +2754,7 @@ pub(crate) fn small_binary(op: BinaryOp, a: i64, b: i64) -> Option<Value> {
 }
 
 /// The comparisons of two texts without the general path.
-#[inline]
+#[inline(always)]
 pub(crate) fn text_binary(op: BinaryOp, a: &str, b: &str) -> Option<Value> {
     Some(match op {
         BinaryOp::Is => Value::Boolean(a == b),
@@ -2764,7 +2768,7 @@ pub(crate) fn text_binary(op: BinaryOp, a: &str, b: &str) -> Option<Value> {
 }
 
 /// `is`, `is not`, `and` and `or` on two Booleans without the general path.
-#[inline]
+#[inline(always)]
 pub(crate) fn boolean_binary(op: BinaryOp, a: bool, b: bool) -> Option<Value> {
     Some(match op {
         BinaryOp::Is => Value::Boolean(a == b),
