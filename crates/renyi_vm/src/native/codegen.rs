@@ -31,8 +31,8 @@ use crate::compile::Program;
 use crate::extension::TypedKind;
 use crate::integer::Int;
 use crate::native::infer::{
-    abs_of_binary, abs_of_constant, abs_of_field, abs_of_params, abs_of_result, abs_of_slot,
-    analyse, boxed_depth, Abs, Analysis, SlotKind,
+    abs_of_binary, abs_of_constant, abs_of_field_at, abs_of_params, abs_of_result, abs_of_slot,
+    analyse, boxed_depth, static_field, Abs, Analysis, SlotKind,
 };
 use crate::native::runtime::{
     binary_code, fold_code, CONTINUE, DEOPT, D_BOXED, D_DEOPT, D_FAILURE, D_INTERRUPT, D_RETURNED,
@@ -407,6 +407,8 @@ struct Gen<'a, 'b> {
     state: Vec<Abs>,
     /// Whether the current block has been ended by a terminator.
     terminated: bool,
+    /// The op being translated.
+    current_pc: usize,
 }
 
 /// Whether a typed entry's kind is the representation the declared result
@@ -418,7 +420,7 @@ fn kind_agrees(kind: TypedKind, result: Abs) -> bool {
         (TypedKind::Bool, Abs::Bool)
             | (TypedKind::Int, Abs::Int)
             | (TypedKind::Float, Abs::Float)
-            | (TypedKind::Value, Abs::Boxed)
+            | (TypedKind::Value, Abs::Boxed(_))
     )
 }
 
@@ -455,7 +457,7 @@ fn borrowed_operands(
         for back in 1..=count.min(pc) {
             let at = pc - back;
             let simple = match &code.ops[at] {
-                Op::Load(slot) => analysis.slots[*slot as usize] == SlotKind::Boxed,
+                Op::Load(slot) => matches!(analysis.slots[*slot as usize], SlotKind::Boxed(_)),
                 Op::Const(index) => abs_of_constant(&code.constants[*index as usize]).is_boxed(),
                 _ => false,
             };
@@ -505,7 +507,7 @@ pub fn compile(
         .collect();
     let result_kind = match (code.kind, code.function) {
         (CodeKind::Function, Some(function)) => abs_of_result(program, function),
-        _ => Abs::Boxed,
+        _ => Abs::Boxed(None),
     };
     ctx.clear();
     ctx.func.signature = direct_signature(isa, &kinds);
@@ -589,6 +591,7 @@ pub fn compile(
             deopt_blocks: Vec::new(),
             state: Vec::new(),
             terminated: false,
+            current_pc: 0,
         };
         gen.declare_slots();
         gen.prologue();
@@ -980,8 +983,12 @@ impl Gen<'_, '_> {
     /// way. It is filled by `emit_landings`.
     fn bad_block(&mut self, pc: usize) -> Block {
         let handler = self.analysis.handlers[pc].last().copied();
+        // keyed by the kinds alone, as the hand-backs are
         let below: Vec<Abs> = match handler {
-            Some((_, depth)) => self.state[..depth].to_vec(),
+            Some((_, depth)) => self.state[..depth]
+                .iter()
+                .map(|abs| abs.untyped())
+                .collect(),
             None => Vec::new(),
         };
         let known = self
@@ -1027,7 +1034,7 @@ impl Gen<'_, '_> {
                     let locals = self.u32(self.code.locals as u32);
                     let floor = self.u32(floor);
                     self.call("rt_settle_handler", &[self.vm, self.base, locals, floor]);
-                    self.state.push(Abs::Boxed);
+                    self.state.push(Abs::Boxed(None));
                     self.jump_to(target as usize);
                 }
                 None => {
@@ -1062,7 +1069,7 @@ impl Gen<'_, '_> {
             let value = self.b.use_var(var);
             let height = self.height();
             self.push_typed_value(height, kind, value);
-            self.state[depth] = Abs::Boxed;
+            self.state[depth] = Abs::Boxed(None);
             return;
         }
         let above_value = self.usize(above);
@@ -1089,9 +1096,9 @@ impl Gen<'_, '_> {
                 let by = self.b.use_var(vars[2]);
                 self.call("rt_insert_range", &[self.vm, above_value, from, to, by]);
             }
-            Abs::Boxed | Abs::Unset => return,
+            Abs::Boxed(_) | Abs::Unset => return,
         }
-        self.state[depth] = Abs::Boxed;
+        self.state[depth] = Abs::Boxed(None);
     }
 
     /// Box the top `count` operands.
@@ -1241,7 +1248,7 @@ impl Gen<'_, '_> {
                         store(self, value);
                     }
                 }
-                Abs::Boxed | Abs::Unset => {}
+                Abs::Boxed(_) | Abs::Unset => {}
             }
         }
         let code = self.usize(self.code_id);
@@ -1266,16 +1273,18 @@ impl Gen<'_, '_> {
     /// that reaches the op so (the checks of a call's result on its paths,
     /// for one; decision AT2), filled by `emit_deopts`.
     fn deopt_block(&mut self, pc: usize) -> Block {
+        // keyed by the kinds alone: a type changes nothing in a hand-back
+        let state: Vec<Abs> = self.state.iter().map(|abs| abs.untyped()).collect();
         let known = self
             .deopt_blocks
             .iter()
-            .find(|((at, state), _)| *at == pc && *state == self.state);
+            .find(|((at, known), _)| *at == pc && *known == state);
         if let Some((_, block)) = known {
             return *block;
         }
         let block = self.b.create_block();
         self.b.set_cold_block(block);
-        self.deopt_blocks.push(((pc, self.state.clone()), block));
+        self.deopt_blocks.push(((pc, state), block));
         block
     }
 
@@ -1410,8 +1419,16 @@ impl Gen<'_, '_> {
         self.state.push(Abs::Float);
     }
 
+    /// A boxed operand pushed by the op being translated: with the type
+    /// the checker noted for its expression when the op pushes that
+    /// expression's value (decision AU1, stage iv), as the analysis has it.
     fn push_boxed(&mut self) {
-        self.state.push(Abs::Boxed);
+        let noted = if self.code.ops[self.current_pc].pushes_its_expression() {
+            self.code.types.get(self.current_pc).copied().flatten()
+        } else {
+            None
+        };
+        self.state.push(Abs::Boxed(noted));
     }
 
     /// The top operand as a register value of its kind, popped.
@@ -1993,9 +2010,19 @@ impl Gen<'_, '_> {
             if unreachable {
                 continue;
             }
+            // the kinds must agree with the analysis; the types may not: the
+            // analysis joins the states of every round of its fixed point
+            // and loses a type where a kind changed, while the generator
+            // keeps the type of what the op before pushed
             debug_assert_eq!(
-                Some(&self.state),
-                self.analysis.entry[pc].as_ref(),
+                self.state
+                    .iter()
+                    .map(|abs| abs.untyped())
+                    .collect::<Vec<_>>(),
+                self.analysis.entry[pc]
+                    .as_ref()
+                    .map(|state| state.iter().map(|abs| abs.untyped()).collect::<Vec<_>>())
+                    .unwrap_or_default(),
                 "the state at {pc} of {}",
                 self.code.name
             );
@@ -2007,6 +2034,7 @@ impl Gen<'_, '_> {
     }
 
     fn op(&mut self, pc: usize) {
+        self.current_pc = pc;
         let pc_value = self.u32(pc as u32);
         let code_value = self.usize(self.code_id);
         match &self.code.ops[pc] {
@@ -2132,7 +2160,7 @@ impl Gen<'_, '_> {
                         let var = self.slot_var(index);
                         self.b.def_var(var, value);
                     }
-                    (SlotKind::Boxed, Abs::Int | Abs::Bool | Abs::Float) => {
+                    (SlotKind::Boxed(_), Abs::Int | Abs::Bool | Abs::Float) => {
                         // the register boxed into the slot, whose old value
                         // goes
                         let value = match top {
@@ -2198,14 +2226,16 @@ impl Gen<'_, '_> {
                         self.state.push(Abs::Range);
                     }
                     _ => {
-                        // the top copied with one more reference
+                        // the top copied with one more reference, its type
+                        // with it
                         let from = self.last_address();
                         let to = self.top_address();
                         self.copy_value(from, to);
                         self.retain(to);
                         let height = self.height() + 1;
                         self.store_height(height);
-                        self.push_boxed();
+                        let top = self.state[depth];
+                        self.state.push(top);
                     }
                 }
             }
@@ -2280,108 +2310,222 @@ impl Gen<'_, '_> {
                 self.check_status(status, pc, true);
             }
             Op::Field { name, site } => {
-                let name_value = self.u32(*name);
-                let site_value = self.u32(*site);
-                let status = self
-                    .helper_on_stack(
-                        "rt_field",
-                        1,
-                        &[code_value, name_value, site_value, pc_value],
-                    )
-                    .expect("a status");
-                self.push_boxed();
-                self.check_status(status, pc, false);
                 let field_name = self.code.constants[*name as usize]
                     .as_text()
                     .unwrap_or("")
                     .to_string();
-                let kind = abs_of_field(self.program, &field_name);
+                let name_value = self.u32(*name);
+                let site_value = self.u32(*site);
+                let fixed = self
+                    .state
+                    .last()
+                    .and_then(|abs| abs.type_index())
+                    .and_then(|ty| static_field(self.program, ty, &field_name));
+                if let Some((ty_id, index)) = fixed {
+                    // the holder's type is known (decision AU8): a record of
+                    // it holds the field at this index, so the tag and the
+                    // type are checked and the field takes the holder's
+                    // place on the stack, its words read and one more
+                    // reference to it before the holder goes (which may free
+                    // the record); anything else goes through the helper
+                    let flags = MemFlagsData::trusted();
+                    let pointer = self.pointer;
+                    let at = self.last_address();
+                    let tag = self.tag_at(at, 0);
+                    let holder = self.b.create_block();
+                    let hit = self.b.create_block();
+                    let slow = self.b.create_block();
+                    let join = self.b.create_block();
+                    let kind = self.b.ins().iadd_imm_s(tag, -(TAG_RECORD as i64));
+                    let is_holder = self.b.ins().icmp_imm_u(IntCC::UnsignedLessThan, kind, 2);
+                    self.b.ins().brif(is_holder, holder, &[], slow, &[]);
+                    self.switch_to(holder);
+                    let rc = self.b.ins().load(pointer, flags, at, PAYLOAD);
+                    let ty = self
+                        .b
+                        .ins()
+                        .load(types::I64, flags, rc, RC_VALUE + RECORD_TY);
+                    let same_ty = self.b.ins().icmp_imm_s(IntCC::Equal, ty, ty_id as i64);
+                    self.b.ins().brif(same_ty, hit, &[], slow, &[]);
+                    self.switch_to(hit);
+                    let fields_ptr =
+                        self.b
+                            .ins()
+                            .load(pointer, flags, rc, RC_VALUE + RECORD_FIELDS);
+                    let field = self.b.ins().iadd_imm_s(fields_ptr, (index * SIZE) as i64);
+                    let words: Vec<IrValue> = [0, 8, 16]
+                        .into_iter()
+                        .map(|offset| self.b.ins().load(types::I64, flags, field, offset))
+                        .collect();
+                    self.retain(field);
+                    self.release(at);
+                    for (offset, word) in [0, 8, 16].into_iter().zip(words) {
+                        self.b.ins().store(flags, word, at, offset);
+                    }
+                    self.b.ins().jump(join, &[]);
+                    self.switch_to(slow);
+                    let status = self
+                        .helper_on_stack(
+                            "rt_field",
+                            1,
+                            &[code_value, name_value, site_value, pc_value],
+                        )
+                        .expect("a status");
+                    self.check_status(status, pc, false);
+                    self.b.ins().jump(join, &[]);
+                    self.switch_to(join);
+                    self.push_boxed();
+                } else {
+                    let status = self
+                        .helper_on_stack(
+                            "rt_field",
+                            1,
+                            &[code_value, name_value, site_value, pc_value],
+                        )
+                        .expect("a status");
+                    self.push_boxed();
+                    self.check_status(status, pc, false);
+                }
+                let kind = abs_of_field_at(self.program, self.code, pc, &field_name);
                 if !kind.is_boxed() {
                     self.unbox_top(kind, pc + 1);
                 }
             }
             Op::LoadField { slot, name, site } => {
-                // the site's cache entry and the holder read in place
-                // (decision AR4): a record or a variant of the cached type
-                // with the cached tag gives its field with one more
-                // reference; anything else goes through the helper, which
-                // fills the cache. A record and a variant hold the type
-                // first; the tag and the fields lie further in a variant,
-                // and a record's tag is `usize::MAX` as the cache has it
-                let flags = MemFlagsData::trusted();
-                let pointer = self.pointer;
-                let at = self.address_at(*slot as usize);
-                let tag = self.tag_at(at, 0);
-                let cache = self.b.ins().iadd_imm_s(self.vm, field_cache_offset());
-                let cache_ptr = self.b.ins().load(pointer, flags, cache, 0);
-                let entry = self
-                    .b
-                    .ins()
-                    .iadd_imm_s(cache_ptr, (*site as usize * SITE_SIZE) as i64);
-                let cached_ty = self.b.ins().load(types::I64, flags, entry, SITE_TY);
-                let cached_tag = self.b.ins().load(types::I64, flags, entry, SITE_TAG);
-                let cached_index = self.b.ins().load(types::I64, flags, entry, SITE_INDEX);
-                let holder = self.b.create_block();
-                let hit = self.b.create_block();
-                self.b.append_block_param(hit, pointer);
-                let slow = self.b.create_block();
-                let join = self.b.create_block();
-                // a record or a variant: the two tags are adjacent, and
-                // both hold their type, their tag (a record's is
-                // `usize::MAX`, as the cache has it) and their fields at
-                // the same offsets (decision AT2), so one path reads either
-                let kind = self.b.ins().iadd_imm_s(tag, -(TAG_RECORD as i64));
-                let is_holder = self.b.ins().icmp_imm_u(IntCC::UnsignedLessThan, kind, 2);
-                self.b.ins().brif(is_holder, holder, &[], slow, &[]);
-                self.switch_to(holder);
-                let rc = self.b.ins().load(pointer, flags, at, PAYLOAD);
-                let ty = self
-                    .b
-                    .ins()
-                    .load(types::I64, flags, rc, RC_VALUE + RECORD_TY);
-                let holder_tag = self
-                    .b
-                    .ins()
-                    .load(types::I64, flags, rc, RC_VALUE + RECORD_TAG);
-                let fields_ptr = self
-                    .b
-                    .ins()
-                    .load(pointer, flags, rc, RC_VALUE + RECORD_FIELDS);
-                let same_ty = self.b.ins().icmp(IntCC::Equal, ty, cached_ty);
-                let same_tag = self.b.ins().icmp(IntCC::Equal, holder_tag, cached_tag);
-                // a hit needs no range check: the index was cached from a
-                // holder of the same type and tag, which has as many fields
-                let ok = self.b.ins().band(same_ty, same_tag);
-                let field = self.item_address(fields_ptr, cached_index);
-                self.b.ins().brif(ok, hit, &[field.into()], slow, &[]);
-                // the field copied, with one more reference
-                self.switch_to(hit);
-                let from = self.b.block_params(hit)[0];
-                self.push_copy(from, true);
-                self.b.ins().jump(join, &[]);
-                // the helper: by name, filling the cache
-                self.switch_to(slow);
-                let slot_value = self.u32(*slot as u32);
-                let name_value = self.u32(*name);
-                let site_value = self.u32(*site);
-                let status = self
-                    .call(
-                        "rt_load_field",
-                        &[
-                            self.vm, self.base, slot_value, code_value, name_value, site_value,
-                            pc_value,
-                        ],
-                    )
-                    .expect("a status");
-                self.check_status(status, pc, false);
-                self.b.ins().jump(join, &[]);
-                self.switch_to(join);
-                self.push_boxed();
                 let field_name = self.code.constants[*name as usize]
                     .as_text()
                     .unwrap_or("")
                     .to_string();
-                let kind = abs_of_field(self.program, &field_name);
+                let fixed = self.analysis.slot_types[*slot as usize]
+                    .and_then(|ty| static_field(self.program, ty, &field_name));
+                if let Some((ty_id, index)) = fixed {
+                    // the holder's type is known (decision AU8): a record of
+                    // it holds the field at this index, so the tag and the
+                    // type are checked and the field read in place with one
+                    // more reference, with no cache; anything else goes
+                    // through the helper
+                    let flags = MemFlagsData::trusted();
+                    let pointer = self.pointer;
+                    let at = self.address_at(*slot as usize);
+                    let tag = self.tag_at(at, 0);
+                    let holder = self.b.create_block();
+                    let hit = self.b.create_block();
+                    let slow = self.b.create_block();
+                    let join = self.b.create_block();
+                    let kind = self.b.ins().iadd_imm_s(tag, -(TAG_RECORD as i64));
+                    let is_holder = self.b.ins().icmp_imm_u(IntCC::UnsignedLessThan, kind, 2);
+                    self.b.ins().brif(is_holder, holder, &[], slow, &[]);
+                    self.switch_to(holder);
+                    let rc = self.b.ins().load(pointer, flags, at, PAYLOAD);
+                    let ty = self
+                        .b
+                        .ins()
+                        .load(types::I64, flags, rc, RC_VALUE + RECORD_TY);
+                    let same_ty = self.b.ins().icmp_imm_s(IntCC::Equal, ty, ty_id as i64);
+                    self.b.ins().brif(same_ty, hit, &[], slow, &[]);
+                    self.switch_to(hit);
+                    let fields_ptr =
+                        self.b
+                            .ins()
+                            .load(pointer, flags, rc, RC_VALUE + RECORD_FIELDS);
+                    let field = self.b.ins().iadd_imm_s(fields_ptr, (index * SIZE) as i64);
+                    self.push_copy(field, true);
+                    self.b.ins().jump(join, &[]);
+                    self.switch_to(slow);
+                    let slot_value = self.u32(*slot as u32);
+                    let name_value = self.u32(*name);
+                    let site_value = self.u32(*site);
+                    let status = self
+                        .call(
+                            "rt_load_field",
+                            &[
+                                self.vm, self.base, slot_value, code_value, name_value, site_value,
+                                pc_value,
+                            ],
+                        )
+                        .expect("a status");
+                    self.check_status(status, pc, false);
+                    self.b.ins().jump(join, &[]);
+                    self.switch_to(join);
+                } else {
+                    // the site's cache entry and the holder read in place
+                    // (decision AR4): a record or a variant of the cached type
+                    // with the cached tag gives its field with one more
+                    // reference; anything else goes through the helper, which
+                    // fills the cache. A record and a variant hold the type
+                    // first; the tag and the fields lie further in a variant,
+                    // and a record's tag is `usize::MAX` as the cache has it
+                    let flags = MemFlagsData::trusted();
+                    let pointer = self.pointer;
+                    let at = self.address_at(*slot as usize);
+                    let tag = self.tag_at(at, 0);
+                    let cache = self.b.ins().iadd_imm_s(self.vm, field_cache_offset());
+                    let cache_ptr = self.b.ins().load(pointer, flags, cache, 0);
+                    let entry = self
+                        .b
+                        .ins()
+                        .iadd_imm_s(cache_ptr, (*site as usize * SITE_SIZE) as i64);
+                    let cached_ty = self.b.ins().load(types::I64, flags, entry, SITE_TY);
+                    let cached_tag = self.b.ins().load(types::I64, flags, entry, SITE_TAG);
+                    let cached_index = self.b.ins().load(types::I64, flags, entry, SITE_INDEX);
+                    let holder = self.b.create_block();
+                    let hit = self.b.create_block();
+                    self.b.append_block_param(hit, pointer);
+                    let slow = self.b.create_block();
+                    let join = self.b.create_block();
+                    // a record or a variant: the two tags are adjacent, and
+                    // both hold their type, their tag (a record's is
+                    // `usize::MAX`, as the cache has it) and their fields at
+                    // the same offsets (decision AT2), so one path reads either
+                    let kind = self.b.ins().iadd_imm_s(tag, -(TAG_RECORD as i64));
+                    let is_holder = self.b.ins().icmp_imm_u(IntCC::UnsignedLessThan, kind, 2);
+                    self.b.ins().brif(is_holder, holder, &[], slow, &[]);
+                    self.switch_to(holder);
+                    let rc = self.b.ins().load(pointer, flags, at, PAYLOAD);
+                    let ty = self
+                        .b
+                        .ins()
+                        .load(types::I64, flags, rc, RC_VALUE + RECORD_TY);
+                    let holder_tag =
+                        self.b
+                            .ins()
+                            .load(types::I64, flags, rc, RC_VALUE + RECORD_TAG);
+                    let fields_ptr =
+                        self.b
+                            .ins()
+                            .load(pointer, flags, rc, RC_VALUE + RECORD_FIELDS);
+                    let same_ty = self.b.ins().icmp(IntCC::Equal, ty, cached_ty);
+                    let same_tag = self.b.ins().icmp(IntCC::Equal, holder_tag, cached_tag);
+                    // a hit needs no range check: the index was cached from a
+                    // holder of the same type and tag, which has as many fields
+                    let ok = self.b.ins().band(same_ty, same_tag);
+                    let field = self.item_address(fields_ptr, cached_index);
+                    self.b.ins().brif(ok, hit, &[field.into()], slow, &[]);
+                    // the field copied, with one more reference
+                    self.switch_to(hit);
+                    let from = self.b.block_params(hit)[0];
+                    self.push_copy(from, true);
+                    self.b.ins().jump(join, &[]);
+                    // the helper: by name, filling the cache
+                    self.switch_to(slow);
+                    let slot_value = self.u32(*slot as u32);
+                    let name_value = self.u32(*name);
+                    let site_value = self.u32(*site);
+                    let status = self
+                        .call(
+                            "rt_load_field",
+                            &[
+                                self.vm, self.base, slot_value, code_value, name_value, site_value,
+                                pc_value,
+                            ],
+                        )
+                        .expect("a status");
+                    self.check_status(status, pc, false);
+                    self.b.ins().jump(join, &[]);
+                    self.switch_to(join);
+                }
+                self.push_boxed();
+                let kind = abs_of_field_at(self.program, self.code, pc, &field_name);
                 if !kind.is_boxed() {
                     self.unbox_top(kind, pc + 1);
                 }
@@ -3211,17 +3355,17 @@ impl Gen<'_, '_> {
         let (left, right) = (self.state[n - 2], self.state[n - 1]);
         let result = abs_of_binary(op, left, right);
         match (left, right) {
-            (Abs::Int, Abs::Int) if result != Abs::Boxed => {
+            (Abs::Int, Abs::Int) if !result.is_boxed() => {
                 let b = self.pop_int();
                 let a = self.pop_int();
                 self.int_binary(op, a, b, pc);
             }
-            (Abs::Float, Abs::Float) if result != Abs::Boxed => {
+            (Abs::Float, Abs::Float) if !result.is_boxed() => {
                 let b = self.pop_float();
                 let a = self.pop_float();
                 self.float_binary(op, a, b, pc);
             }
-            (Abs::Bool, Abs::Bool) if result != Abs::Boxed => {
+            (Abs::Bool, Abs::Bool) if !result.is_boxed() => {
                 let b = self.pop_bool();
                 let a = self.pop_bool();
                 let value = match op {

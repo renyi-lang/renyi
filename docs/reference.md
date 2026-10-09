@@ -1631,8 +1631,9 @@ and `--profile` do by themselves.
 A bytecode file is the derived JSON of the types of `compiler/bytecode.ry`
 (decision Z1): `format` first, then the modules with their source paths
 and line starts, the prelude's ids, the types, the implementations, the
-abilities, the functions with their signatures and grants, the
-constants, the tests, the examples and the code objects, each a list of
+abilities, the functions with their signatures and grants (each
+parameter's type as an index among the program's types too, when the
+table holds it; decision AU8), the constants, the tests, the examples and the code objects, each a list of
 operations with a span per operation, its constants and, per operation,
 the index of the type of what it pushes among the program's types when
 the checker settled the expression's type (decision AU1); every span

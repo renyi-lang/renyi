@@ -777,5 +777,11 @@ bytecode itself, format 5: every op carries the type the checker noted
 for its expression, written by both emitters and held equal by the
 judges; stage 3b (decision AU7) recorded the notes cheaply in the Renyi
 checker and took the self-check's estimate back to 6 percent above
-stage 2b; stage 4, what the types buy in the generated code, is in
-progress.
+stage 2b; stage 4's first steps (decision AU8: the types in the
+analysis, the field read at a static index, the parameters' types in
+the file) bought 0.2 percent on the JIT run and 1.2 on the image, and
+the profile they were measured with puts the self-check's cost in the
+interpreter's share (23 percent, 30 code objects compiled), the
+reference counts (17) and the copies of records and lists, not in the
+generated code's own work (under 10); what the round does next is the
+owner's call.

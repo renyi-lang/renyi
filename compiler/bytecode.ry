@@ -140,6 +140,7 @@ public type FunctionMeta
   has params: List of Text
   has receiver: maybe Text
   has param_types: List of Text
+  has param_type_indices: List of maybe Integer
   has result: maybe Ty
   has failures: List of Ty
   has capabilities: List of Grant

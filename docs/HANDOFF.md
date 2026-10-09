@@ -1957,6 +1957,34 @@ list on every call throughout the compiler; an emitter that recognised
 the update of a field of a uniquely held record would make the compiler
 faster by a large factor on its hottest paths.
 
+**Stage 4, steps A and B are in (decision AU8, 2026-10-09)**: the types
+in the abstract state and the field read at a static index.
+`native/infer.rs`: `Abs::Boxed(Option<u32>)` and
+`SlotKind::Boxed(Option<u32>)` carry the type's index,
+`Analysis::slot_types` (the loads' annotations, else the stores', else
+the parameter's declared type), `abs_of_params` decides by
+`param_type_indices`, `abs_of_field_at`, `static_field`;
+`native/codegen.rs`: a `LoadField` or a `Field` whose holder has a known
+record type checks the tag and the type and reads the field at its index
+with no cache, `push_boxed` types what the op pushes, the landings, the
+hand-backs and the state check against the analysis are keyed by the
+kinds alone (`Abs::untyped`); `compile/mod.rs`, `file.rs`, `binary.rs`,
+`compiler/bytecode.ry`, `compiler/emit.ry`: `param_type_indices` per
+function, looked up in the finished table and never added to it
+(`known_type_index`; format 6, binary encoding 3, image format 5);
+`tools/image_census.py` reads image format 5. Measured: the self-check's
+estimate on the JIT run 14.58 to 14.55 billion, the image 10.66 to
+10.54. The profile of the JIT run (in the decision) puts the generated
+code at 9.5% of the instructions, the interpreter at 23% (30 code
+objects compiled), the reference counts at 17%, the copies of records
+and lists under `with` and `append` at several percent more: the round's
+next steps are there, not in what the generated code computes; step iii
+of AU1 (the ability method chosen statically) has nothing to buy in the
+compiler, which emits no `CallAbility` on its hot paths. The run with
+every function compiled (the image) costs 28% less than the JIT run: a
+cache of the image across runs would give `renyi run` that steady state
+from the second run on.
+
 ## The size of the generated code (decisions AT1 to AT7; session 9, 2026-10-08 and 09)
 
 The owner's four answers of 2026-10-08 after `renyi build` closed

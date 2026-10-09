@@ -1181,7 +1181,7 @@ pub(crate) unsafe extern "C" fn rt_deopt(
     let mut boxed = boxed.into_iter();
     for abs in &point.stack {
         let value = match abs {
-            Abs::Boxed | Abs::Unset => boxed.next().unwrap_or(Value::Nothing),
+            Abs::Boxed(_) | Abs::Unset => boxed.next().unwrap_or(Value::Nothing),
             Abs::Int => Value::integer(word() as i64),
             Abs::Bool => Value::Boolean(word() != 0),
             Abs::Float => Value::Float(f64::from_bits(word())),

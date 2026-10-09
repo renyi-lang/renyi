@@ -3781,3 +3781,48 @@ emitter that recognised the update of a field of a uniquely held record
 and moved the field out and back in would make the compiler itself
 faster by a large factor on its hottest paths, a candidate for a later
 round. (user)
+
+**AU8. Stage 4 of the typed round, steps A and B: the types in the
+abstract state and the field read at a static index. The analysis
+carries the noted type with every boxed value (`Abs::Boxed(Option<u32>)`,
+the index into `result_types`; `SlotKind::Boxed(Option<u32>)` by the
+stores; `Analysis::slot_types` from the loads' annotations, else the
+stores', else the parameter's declared type); the bytecode file carries
+every parameter's type as an index into the table (`param_type_indices`
+of a function, looked up in the table once it is complete and never added
+to it, so that the table stays what the expressions made it; format 6,
+binary encoding 3, image format 5), and `abs_of_params` decides by it, so
+a parameter of a refined subtype of Integer is passed in a register as an
+Integer is. A `LoadField` whose slot has a record type, and a `Field` whose
+holder on the stack has one, check the holder's tag and type against the
+expected type and read the field at the index the type's shape gives, with
+no cache (`static_field`); the kind of what a field read pushes comes from
+the op's own annotation (`abs_of_field_at`), the name-based join only
+without one. The generated code keys its landings, its hand-backs and its
+state check against the analysis by the kinds alone: the analysis joins
+the states of every round of its fixed point and loses a type where a kind
+changed on the way.** Measured by AU1's rule against AU7's binary: the
+self-check's estimate on the JIT run 14.58 to 14.55 billion cycles
+(-0.2%), the interpreter 18.04 to 18.04, the image 10.66 to 10.54 (-1.2%);
+the machine code 5.83 MB, 125.8 bytes of body per op, 771 deopt points.
+Why so little, from a profile of the JIT run (callgrind, 10.28 billion
+instructions): the generated code runs 9.5% of the instructions; the
+interpreter loop 19.6% and its frames 3.3% (the self-check compiles 30
+code objects, the rest stays below the hotness rule of AR5); reference
+counts 17.1%; the VM's glue around the helpers 17.4% (`push_frame_in_place`,
+`op_load_field`, `plain_all`, `refined_record`, `call_pure_from_stack`,
+`op_with`, `guarded`, `make_mut`, `frame_grant`); allocation and `memcpy`
+8.6%; the helpers 7.4%; comparisons 6.6%; Cranelift 4.8%; the Rust front
+end's check of the compiler 4.5%; the natives 3.3%. Of the 94 `LoadField`
+sites in the compiled code objects 46 take the static path and 12 of 12
+`Field` sites; 35 of the rest read a slot no annotation types (a binding
+from a `match` or an `otherwise`) and 9 a field every variant of a sum type
+has (`Ty`), which a later step could serve too. The step stays by the
+rule's first clause. What the profile says about the plan: step iii of
+AU1 (the ability method chosen statically) has nothing to buy, the
+compiler emits no `CallAbility` on its hot paths (a concrete receiver's
+method is a direct `Call` already); the loop variable typed (step iv's
+third item) types what the loads' annotations type already; the cost is
+in the interpreter's share, the reference counts and the copies of
+records and lists that `record with field: record.field.append(x)` makes,
+not in what the generated code computes. (user)

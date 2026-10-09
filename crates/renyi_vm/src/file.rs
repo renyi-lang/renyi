@@ -33,7 +33,7 @@ use crate::types::{FieldMeta, TypeMeta, TypeShape, Types, VariantMeta};
 use crate::value::Value;
 
 /// The version of the format, the first field of the file.
-pub const FORMAT: usize = 5;
+pub const FORMAT: usize = 6;
 
 /// The extension of a bytecode file.
 pub const EXTENSION: &str = "ryc";
@@ -278,6 +278,12 @@ fn function_json(meta: &FunctionMeta, code: Option<CodeId>) -> Out {
             optional(meta.receiver.as_ref(), |receiver| string(receiver)),
         ),
         ("param_types", strings(&meta.param_types)),
+        (
+            "param_type_indices",
+            array(&meta.param_type_indices, |ty| {
+                optional(ty.as_ref(), |index| number(*index as usize))
+            }),
+        ),
         ("result", optional(meta.returns.as_ref(), type_json)),
         ("failures", array(&meta.fails, type_json)),
         ("capabilities", array(&meta.needs, grant_json)),
@@ -984,6 +990,7 @@ fn read_function(json: &In, at: &str) -> Read<(FunctionMeta, Option<CodeId>)> {
             text_of(json, at).map(str::to_string)
         })?,
         param_types: texts_at(fields, "param_types", at)?,
+        param_type_indices: list_at(fields, "param_type_indices", at, read_type_index)?,
         returns: optional_at(fields, "result", at, read_type)?,
         fails: list_at(fields, "failures", at, read_type)?,
         needs: list_at(fields, "capabilities", at, read_grant)?,
@@ -1366,6 +1373,23 @@ pub(crate) fn check(program: &Program) -> Read<()> {
             "the file is not consistent: {} specials for {types} types",
             program.specials.len()
         ));
+    }
+    for (index, meta) in program.function_metas.iter().enumerate() {
+        if meta.param_type_indices.len() != meta.params.len() {
+            return Err(format!(
+                "the file is not consistent: function {index} has {} parameters and {} parameter types",
+                meta.params.len(),
+                meta.param_type_indices.len()
+            ));
+        }
+        for ty in meta.param_type_indices.iter().flatten() {
+            if *ty as usize >= program.result_types.len() {
+                return Err(format!(
+                    "the file is not consistent: function {index}'s parameter type {ty} is out of range (the limit is {})",
+                    program.result_types.len()
+                ));
+            }
+        }
     }
     for (index, code) in program.codes.iter().enumerate() {
         // the message is built only when a check fails: one per op would

@@ -2919,7 +2919,7 @@ function assemble(context: Context, modules: List of CheckedModule) returns Prog
     for each declared in world.abilities
     collect AbilityMeta(name: declared.name, methods: method_names(declared.methods))
   return Program(
-    format: 5,
+    format: 6,
     modules: module_sources(world: world, modules: modules),
     builtins: builtin_ids(world.builtins),
     types: context.types,
@@ -3081,6 +3081,8 @@ function function_meta(context: Context, id: Integer, info: FunctionInfo) return
     receiver: receiver,
     param_types: for each param in info.params
     collect declare.show(world: world, ty: param.ty),
+    param_type_indices: for each param in info.params
+    collect known_type_index(context: context, ty: param.ty),
     result: info.result,
     failures: info.failures,
     capabilities: info.capabilities,
@@ -3089,6 +3091,17 @@ function function_meta(context: Context, id: Integer, info: FunctionInfo) return
     foreign: foreign_binding(world: world, info: info),
     python: python_binding(world: world, info: info)
   )
+end
+
+function known_type_index(context: Context, ty: Ty) returns maybe Integer
+  purpose: The index of a type in the program's table when the table holds it, never added: a parameter's type, for the generated code.
+
+  let mutable index be 0
+  for each known in context.result_types
+    if known is ty then return index end
+    change index to index + 1
+  end
+  return nothing
 end
 
 function foreign_binding(world: World, info: FunctionInfo) returns maybe ForeignBinding

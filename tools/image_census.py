@@ -12,7 +12,7 @@ import struct
 import sys
 from collections import Counter
 
-IMAGE_FORMAT = 3
+IMAGE_FORMAT = 5
 SECTION_ALIGN = 16384
 
 

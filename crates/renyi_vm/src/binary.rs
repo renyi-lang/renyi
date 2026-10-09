@@ -29,7 +29,7 @@ use crate::types::{FieldMeta, TypeMeta, TypeShape, Types, VariantMeta};
 use crate::value::Value;
 
 /// The version of the encoding, its first integer.
-pub const FORMAT: u64 = 2;
+pub const FORMAT: u64 = 3;
 
 type Read<T> = Result<T, String>;
 
@@ -261,6 +261,9 @@ fn write_function(out: &mut Writer, meta: &FunctionMeta) {
     out.texts(&meta.params);
     out.opt(meta.receiver.as_ref(), |out, receiver| out.text(receiver));
     out.texts(&meta.param_types);
+    out.list(&meta.param_type_indices, |out, ty| {
+        out.opt(ty.as_ref(), |out, index| out.usize(*index as usize))
+    });
     out.opt(meta.returns.as_ref(), write_type);
     out.list(&meta.fails, write_type);
     out.list(&meta.needs, write_grant);
@@ -739,6 +742,8 @@ fn read_function(input: &mut Reader) -> Read<FunctionMeta> {
         params: input.texts()?,
         receiver: input.opt(Reader::text)?,
         param_types: input.texts()?,
+        param_type_indices: input
+            .list(|input| Ok(input.opt(Reader::usize)?.map(|index| index as u32)))?,
         returns: input.opt(read_type)?,
         fails: input.list(read_type)?,
         needs: input.list(read_grant)?,

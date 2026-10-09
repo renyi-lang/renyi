@@ -80,6 +80,11 @@ pub struct FunctionMeta {
     /// Every parameter's type, spelled the same way; the effect of a call
     /// finds its `Path` or `Url` argument by it.
     pub param_types: Vec<String>,
+    /// Per parameter, the index in the program's `result_types` of its
+    /// declared type, when the table holds it (decision AU8): what the
+    /// generated code knows of a parameter it reads only through its
+    /// fields.
+    pub param_type_indices: Vec<Option<u32>>,
     /// The declared result type; a recorded result is decoded by it.
     pub returns: Option<Ty>,
     /// The declared error types; a recorded failure is decoded by them.
@@ -421,6 +426,7 @@ pub fn compile_project(checked: &CheckedProject, files: &[SourceFile]) -> Progra
             params: info.params.iter().map(|(n, _)| n.clone()).collect(),
             receiver: info.params.first().map(|(_, ty)| world.show(ty)),
             param_types: info.params.iter().map(|(_, ty)| world.show(ty)).collect(),
+            param_type_indices: Vec::new(),
             returns: info.returns.clone(),
             fails: info.fails.clone(),
             needs: info.needs.clone(),
@@ -521,6 +527,16 @@ pub fn compile_project(checked: &CheckedProject, files: &[SourceFile]) -> Progra
                 compile_refinements(&mut program, &mut ctx, module_id, item_index, def);
             }
         }
+    }
+    // every parameter's type looked up in the table once it is complete,
+    // never added to it: the table holds the types of the expressions, in
+    // the order the bodies were emitted (decision AU8)
+    for (id, meta) in program.function_metas.iter_mut().enumerate() {
+        meta.param_type_indices = world.functions[id]
+            .params
+            .iter()
+            .map(|(_, ty)| ctx.type_indices.get(ty).copied())
+            .collect();
     }
     program.result_types = ctx.result_types;
     program.field_sites = ctx.field_sites as usize;
