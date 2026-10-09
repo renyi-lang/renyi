@@ -1594,9 +1594,9 @@ Python scripts under `tools/` are development aids.
 | `renyi record [--to <file>] [options] <file> [arguments]` | run `main` and write a recording of its effects, the manifest in its header | as `run` |
 | `renyi serve [--watch] [options] <file> [arguments]` | `run` for a service; with `--watch` (decision AO1), the files of the program's project are looked at every half second between requests and, when one changed and the program checks clean, `main` is run again on the new version between two requests with the listening socket kept open (no request is lost), the definitions that changed named on the standard error, a changed signature among them; a version with errors is reported and the last good one keeps serving; `--watch` takes `--deny`, `--allow-host`, `--allow-read`, `--allow-write`, `--at-most`, `--sandbox`, `--explain` and `--interpret` | as `run` |
 | `renyi reproduce <recording> [<file>]` | replay a recording under its manifest and compare the outcome and the output; the code hash and the dependencies must be the manifest's, a different toolchain or extension list is a warning | 1 when they differ |
-| `renyi test [--strict] [--refresh <name> [--redact <name>]] [--explain] [--interpret] <file>...` | run every `example:` and `test` | 1 when any fails |
+| `renyi test [--strict] [--refresh <name> [--redact <name>]] [--explain] [--interpret] [--no-cache] <file>...` | run every `example:` and `test` | 1 when any fails |
 | `renyi compile [--to <file.ryc>] <file>` | check, then write the program as a bytecode file (default `<name>.ryc`); `run`, `record`, `test` and `reproduce` take a `.ryc` file in place of a source | 1 when any error |
-| `renyi build [--exe] [--to <file>] [--opt speed\|none] <file>` | check, then compile every function to machine code for this machine (Cranelift's `speed` level unless `--opt none`, decision AS3) and write the image, the program (in a binary encoding, with the hash of its bytecode file, decision AT3) with the code (default `<name>.ryi`; decision AS1); `run`, `record`, `test` and `reproduce` take a `.ryi` file in place of a source and compile nothing; an image built by another `renyi`, for another code format or another CPU is refused, the fix being to build again; with `--exe`, a self-contained executable instead (default `<name>`, `<name>.exe` on Windows; decision AS4): the `renyi` binary with the image appended, which runs the program with its whole command line as the arguments and takes no command of its own | 1 when any error, or when the machine generates no code |
+| `renyi build [--exe] [--to <file>] [--opt speed\|none] <file>`, `renyi build --cache <file>` | check, then compile every function to machine code for this machine (Cranelift's `speed` level unless `--opt none`, decision AS3) and write the image, the program (in a binary encoding, with the hash of its bytecode file, decision AT3) with the code (default `<name>.ryi`; decision AS1); `run`, `record`, `test` and `reproduce` take a `.ryi` file in place of a source and compile nothing; an image built by another `renyi`, for another code format or another CPU is refused, the fix being to build again; with `--exe`, a self-contained executable instead (default `<name>`, `<name>.exe` on Windows; decision AS4): the `renyi` binary with the image appended, which runs the program with its whole command line as the arguments and takes no command of its own; with `--cache`, the image into the image cache instead (decision AU10), where `run`, `record`, `test` and `reproduce` of the same program find it | 1 when any error, or when the machine generates no code |
 | `renyi add <name> [<version>]` | a dependency (decision AC1): the versions chosen for every requirement (the same major, at least the version required, the highest the registry has, the chosen packages' own requirements included), every package fetched and verified, the effects of the package added printed, `renyi.json` and `renyi.lock.json` written | 1 when refused |
 | `renyi update [--accept-effects]` | every dependency to the highest version its requirement allows; a version whose effects widen is refused without the flag, and with it when a `main` that reaches the package does not declare the new capability | 1 when refused |
 | `renyi audit` | every locked dependency's effects against each `main` that reaches it, and the capabilities of a `main` no dependency uses | 1 when a `main` does not cover a dependency it reaches |
@@ -1626,7 +1626,19 @@ standard error when the run ends (decision X4). By default the VM runs
 the hot code objects of a program as machine code it generates in the
 process (decision AG1), with the same results; `--interpret` (also an
 option of `test`) keeps everything on the interpreter, as `--explain`
-and `--profile` do by themselves.
+and `--profile` do by themselves. A run of `run`, `record` or `test`
+that compiled machine code leaves the program's image (decision AS1) in
+the image cache, built in the background once the run is over, and
+every later run of the same program by the same `renyi` on the same
+machine loads its code from there and compiles nothing (decision AU10);
+`reproduce` reads the cache too. An entry is a hit only when the image
+holds, byte for byte, the program the run compiled, so the cache never
+changes what runs. The cache lies in `renyi/images` under the system's
+cache directory (`$XDG_CACHE_HOME` or `~/.cache` on Linux,
+`~/Library/Caches` on macOS, `%LOCALAPPDATA%` on Windows) or where
+`RENYI_CACHE_DIR` says, holds at most 256 MB (the least recently used
+images go first), and is off under `--no-cache` (also an option of
+`test`), under `RENYI_NO_CACHE` and for a run on the interpreter.
 
 A bytecode file is the derived JSON of the types of `compiler/bytecode.ry`
 (decision Z1): `format` first, then the modules with their source paths

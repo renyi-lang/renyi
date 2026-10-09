@@ -33,13 +33,17 @@ BENCHMARKS = [
 ]
 
 
+# the cold runs: no image from the cache of `renyi run` (decision AU10)
+COLD = dict(os.environ, RENYI_NO_CACHE="1")
+
+
 def best_of(command, runs):
     """The best wall-clock time of the command in seconds, and its output."""
     best = None
     output = b""
     for _ in range(runs):
         started = time.perf_counter()
-        completed = subprocess.run(command, cwd=ROOT, capture_output=True)
+        completed = subprocess.run(command, cwd=ROOT, capture_output=True, env=COLD)
         elapsed = time.perf_counter() - started
         if completed.returncode != 0:
             sys.stderr.write(completed.stdout.decode(errors="replace"))

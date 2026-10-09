@@ -302,3 +302,107 @@ fn the_image_carries_the_program_in_binary_with_the_bytecode_hash() {
     let reproduced = renyi(&["reproduce", &recording, &bytecode]);
     assert!(reproduced.status.success(), "{}", text(&reproduced.stderr));
 }
+
+/// The binary with the image cache on (decision AU10; `.cargo/config.toml`
+/// turns it off for the tests) in a directory of the test's own.
+fn renyi_cached(cache: &std::path::Path, args: &[&str], env: &[(&str, &str)]) -> Output {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_renyi"));
+    command
+        .current_dir(root())
+        .env_remove("RENYI_NO_CACHE")
+        .env("RENYI_CACHE_DIR", cache)
+        .args(args);
+    for (name, value) in env {
+        command.env(name, value);
+    }
+    command.output().expect("the renyi binary runs")
+}
+
+/// The files of the cache's directory with the extension.
+fn cached_files(cache: &std::path::Path, extension: &str) -> Vec<PathBuf> {
+    std::fs::read_dir(cache)
+        .map(|entries| {
+            entries
+                .flatten()
+                .map(|entry| entry.path())
+                .filter(|path| path.extension().is_some_and(|e| e == extension))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+#[test]
+fn a_run_that_compiled_machine_code_leaves_its_image_for_the_next() {
+    let cache = scratch("cache");
+    let _ = std::fs::remove_dir_all(&cache);
+    // every code object compiled at its first call, so that the run
+    // compiles machine code and leaves the image, built in the background
+    let first = renyi_cached(
+        &cache,
+        &["run", "examples/hello.ry", "Renyi"],
+        &[("RENYI_NATIVE_HOT", "0")],
+    );
+    assert!(first.status.success(), "{}", text(&first.stderr));
+    assert_eq!(text(&first.stdout), "Hello, Renyi!\n");
+    let mut waited = 0;
+    while (cached_files(&cache, "ryi").is_empty() || !cached_files(&cache, "lock").is_empty())
+        && waited < 600
+    {
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        waited += 1;
+    }
+    let images = cached_files(&cache, "ryi");
+    assert_eq!(images.len(), 1, "the cache holds {images:?}");
+    // the next run loads the code from the cache and compiles nothing
+    let report = [("RENYI_NATIVE_REPORT", "1")];
+    let second = renyi_cached(&cache, &["run", "examples/hello.ry", "Renyi"], &report);
+    assert_eq!(text(&second.stdout), "Hello, Renyi!\n");
+    assert!(
+        text(&second.stderr).contains("code objects loaded from the image"),
+        "{}",
+        text(&second.stderr)
+    );
+    // `--no-cache` and `RENYI_NO_CACHE` leave it alone
+    let unused = renyi_cached(
+        &cache,
+        &["run", "--no-cache", "examples/hello.ry", "Renyi"],
+        &report,
+    );
+    assert_eq!(text(&unused.stdout), "Hello, Renyi!\n");
+    assert!(!text(&unused.stderr).contains("loaded from the image"));
+    let off = renyi_cached(
+        &cache,
+        &["run", "examples/hello.ry", "Renyi"],
+        &[("RENYI_NATIVE_REPORT", "1"), ("RENYI_NO_CACHE", "1")],
+    );
+    assert!(!text(&off.stderr).contains("loaded from the image"));
+    // an entry that holds another program's image is a miss, never that
+    // program run
+    let other = path(&cache.join("other.ryi.build"));
+    let built = renyi(&["build", "--to", &other, "examples/active_users.ry"]);
+    assert!(built.status.success(), "{}", text(&built.stderr));
+    std::fs::copy(&other, &images[0]).expect("the entry overwritten");
+    let mismatched = renyi_cached(&cache, &["run", "examples/hello.ry", "Renyi"], &report);
+    assert_eq!(text(&mismatched.stdout), "Hello, Renyi!\n");
+    assert!(!text(&mismatched.stderr).contains("loaded from the image"));
+    // `build --cache` puts the image there at once, as the run would have
+    let stored = renyi_cached(&cache, &["build", "--cache", "examples/hello.ry"], &[]);
+    assert!(stored.status.success(), "{}", text(&stored.stderr));
+    assert!(
+        text(&stored.stderr).starts_with("renyi: cached the image of examples/hello.ry as "),
+        "{}",
+        text(&stored.stderr)
+    );
+    let tested = renyi_cached(&cache, &["test", "examples/hello.ry"], &[]);
+    assert!(tested.status.success(), "{}", text(&tested.stderr));
+    let again = renyi_cached(&cache, &["run", "examples/hello.ry", "Renyi"], &report);
+    assert!(text(&again.stderr).contains("code objects loaded from the image"));
+    // with the cache off, `build --cache` says so
+    let refused = renyi_cached(
+        &cache,
+        &["build", "--cache", "examples/hello.ry"],
+        &[("RENYI_NO_CACHE", "1")],
+    );
+    assert!(!refused.status.success());
+    assert!(text(&refused.stderr).contains("the image cache is off"));
+}

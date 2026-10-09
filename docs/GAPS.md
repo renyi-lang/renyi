@@ -783,5 +783,10 @@ the file) bought 0.2 percent on the JIT run and 1.2 on the image, and
 the profile they were measured with puts the self-check's cost in the
 interpreter's share (23 percent, 30 code objects compiled), the
 reference counts (17) and the copies of records and lists, not in the
-generated code's own work (under 10); what the round does next is the
-owner's call.
+generated code's own work (under 10). The owner then set the rest of
+the round (decision AU9): the image cache of `renyi run` (decision AU10:
+a program's second run loads the machine code its first run left in
+the background, the self-check 21 percent under its cold run), then the
+update of a uniquely held record in place, the comparisons on borrowed
+operands and the parameters borrowed across direct calls, which are
+next.

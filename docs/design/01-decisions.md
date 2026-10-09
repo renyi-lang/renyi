@@ -3844,3 +3844,40 @@ the hotness factor of AR5 against the self-check's estimate: 2000 14.56,
 3000 14.56, 4000 14.48, 6000 14.48, 8000 14.55, 16000 15.01 billion; the
 factor stays 8000, the differences below it being within half a percent
 and the cache changing what the factor is for. (user)
+
+**AU10. Stage 5 of the typed round: the image cache of `renyi run`. A
+run of `run`, `record` or `test` (and `serve` without `--watch`, which
+is `run`) that compiled machine code leaves the program's image (AS1)
+in a cache directory of the user's, built after the run by the same
+binary, `renyi build --cache <file>`, spawned in the background with no
+standard streams; every later run of the same program by the same
+`renyi` on the same machine loads its code from the cache and compiles
+nothing, and `reproduce` reads it too. An entry is named by a hash of
+the `renyi` version, the host's target and the program's binary
+encoding (AT3); a hit is an image whose header fits the machine and
+whose program is, byte for byte, the program the run compiled, so that
+a changed, corrupted or foreign file is a miss and the cache never
+changes what runs. The directory is `renyi/images` under the system's
+cache directory or `RENYI_CACHE_DIR`; the images together are kept
+under 256 MB, the least recently used going first (a hit refreshes the
+file's modification time); a lock file keeps a second build of the same
+program from starting while one runs (ten minutes, then it is taken for
+dead). The cache is off under `--no-cache` (`run`, `record`, `test`),
+under `RENYI_NO_CACHE`, for a run on the interpreter (`--interpret`,
+`--explain`, `--profile`), for a program loaded from an image, and for
+everything cargo runs (`.cargo/config.toml`), so that a test runs the
+same way every time; CI sets it too.** Why in the background: the build
+of the compiler's image takes about three seconds at `speed`, more than
+the run it follows; a script an agent runs once pays nothing, and the
+second run finds the image. Measured on the self-check (AU9: the cold
+JIT run decides and stays as it was, the cache being off there):
+the run from the cache 11.23 billion cycles against the cold JIT run's
+14.23 (-21%; the image alone 10.31, the difference being the front end's
+check of the compiler's sources and the encoding compared, 0.75 billion
+instructions); the cold JIT row moved from AU8's 14.55 to 14.23 with
+its instructions equal within 0.1% (10.27 against 10.28 billion), the
+change being in the simulated data-cache misses, which follow the
+binary's layout and not this stage. Wall-clock on this machine, with a
+cachegrind run on another core: the self-check 2.2 to 2.5 s cold, 1.6 to
+1.8 s from the cache; `hello` 8 ms either way; the first run with the
+cache 2.1 s, the image of 6.8 MB in the cache two seconds later. (user)

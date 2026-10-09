@@ -50,6 +50,10 @@ pub struct Run {
     /// The listening socket `server.serve` left for the next version
     /// (decision AO1).
     pub listener: Option<TcpListener>,
+    /// How many code objects the run compiled to machine code (none
+    /// loaded from an image): what tells `renyi run` that the program is
+    /// worth an image in the cache (decision AU10).
+    pub compiled: usize,
 }
 
 pub fn run_main(program: &Program, options: Options) -> RunOutcome {
@@ -126,6 +130,7 @@ fn run_measured(program: &Program, mut options: Options) -> (Run, Option<(String
                 recording: None,
                 unused: Vec::new(),
                 listener: None,
+                compiled: 0,
             },
             None,
         )
@@ -159,12 +164,14 @@ fn run_measured(program: &Program, mut options: Options) -> (Run, Option<(String
         recording.finish(describe_outcome(&outcome), output.clone());
     }
     let listener = vm.listener.take();
+    let compiled = vm.native.as_ref().map_or(0, |jit| jit.compiled);
     (
         Run {
             outcome,
             recording,
             unused,
             listener,
+            compiled,
         },
         output,
     )
@@ -264,6 +271,9 @@ pub struct TestResult {
 #[derive(Clone, Debug, Default)]
 pub struct TestReport {
     pub results: Vec<TestResult>,
+    /// How many code objects the tests compiled to machine code, as
+    /// `Run::compiled` (decision AU10).
+    pub compiled: usize,
 }
 
 impl TestReport {
@@ -350,6 +360,7 @@ pub fn run_tests(program: &Program, mut options: Options) -> TestReport {
         });
     }
     vm.report_profile();
+    report.compiled = vm.native.as_ref().map_or(0, |jit| jit.compiled);
     report
 }
 

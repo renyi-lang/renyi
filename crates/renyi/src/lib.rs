@@ -30,6 +30,7 @@
 //! declares, which counts for the memory budget.
 
 mod bind;
+mod cache;
 mod exe;
 mod lsp;
 mod maps;
@@ -124,18 +125,21 @@ const USAGE: &str = "usage:
   renyi reproduce <file.json> [<file.ry>]
                                       replay a recording under its manifest and compare the outcome and the
                                       output byte for byte (exit 1 when they differ)
-  renyi test [--strict] [--refresh <name> [--redact <name>]] [--explain] [--interpret] <file.ry>...
+  renyi test [--strict] [--refresh <name> [--redact <name>]] [--explain] [--interpret] [--no-cache] <file.ry>...
                                       run every `example:` line and `test` block (exit 1 when any fails)
   renyi compile [--to <file.ryc>] <file.ry>
                                       check the program and write its bytecode (default: <name>.ryc);
                                       run, record, test and reproduce load a .ryc in place of a .ry
   renyi build [--exe] [--to <file>] [--opt speed|none] <file.ry>
+  renyi build --cache <file.ry>
                                       check the program, compile every function to machine code for this
                                       machine (Cranelift's `speed` level unless --opt none) and write the
                                       image (default: <name>.ryi); run, record, test and reproduce load a
                                       .ryi in place of a .ry and compile nothing; --exe: a self-contained
                                       executable instead (default: <name>), this binary with the image in
-                                      it, which runs the program with its command line as the arguments
+                                      it, which runs the program with its command line as the arguments;
+                                      --cache: the image into the image cache, where run, record and
+                                      test of the same program find it
   renyi add <name> [<version>]        a dependency from the registry renyi.json names: choose the
                                       versions, fetch and verify the packages, print the effects of
                                       the package added, write renyi.json and renyi.lock.json
@@ -164,6 +168,11 @@ options of run and record:
                                       time goes; the report on stderr when the run ends
   --interpret                         run on the interpreter alone, never on the machine code the VM
                                       generates (also `test`); a narrated or profiled run does so by itself
+  --no-cache                          neither load the program's machine code from the image cache nor
+                                      leave an image there (also `test`); a run that compiled machine code
+                                      otherwise builds the image in the background for the next run
+                                      (RENYI_CACHE_DIR names the cache's directory, RENYI_NO_CACHE turns
+                                      it off)
   --replay <file.json>                run only: answer every effect from the recording; nothing is written or sent
   --deny <capability>                 refuse to start when any function needs the capability
   --allow-host <host>                 narrow network.http to one host
@@ -260,6 +269,7 @@ fn run_embedded(embedded: (std::fs::File, u64, usize)) -> ExitCode {
         program,
         Hashed::Given(hash),
         Some(image),
+        None,
         Flags::default(),
         None,
         &rest,
@@ -628,11 +638,13 @@ fn build_command(args: &[String]) -> ExitCode {
     let mut to: Option<String> = None;
     let mut opt: Option<String> = None;
     let mut exe = false;
+    let mut cached = false;
     let mut path: Option<&String> = None;
     let mut rest = args.iter();
     while let Some(arg) = rest.next() {
         match arg.as_str() {
             "--exe" => exe = true,
+            "--cache" => cached = true,
             "--to" => match rest.next() {
                 Some(value) => to = Some(value.clone()),
                 None => {
@@ -667,10 +679,17 @@ fn build_command(args: &[String]) -> ExitCode {
         eprintln!("renyi: {path} is an image already; `build` takes a .ry or a .ryc file");
         return ExitCode::FAILURE;
     }
+    if cached && (exe || to.is_some() || opt.is_some()) {
+        eprintln!("renyi: `--cache` takes no `--exe`, `--to` or `--opt`: the cache's images are built at `speed`");
+        return ExitCode::FAILURE;
+    }
     let (program, _, _) = match compile_with_sources(path) {
         Ok(compiled) => compiled,
         Err(code) => return code,
     };
+    if cached {
+        return build_into_cache(path, &program);
+    }
     let built = match image::build(&program, opt.as_deref(), registry()) {
         Ok(built) => built,
         Err(message) => {
@@ -721,6 +740,44 @@ fn build_command(args: &[String]) -> ExitCode {
         }
         Err(error) => {
             eprintln!("renyi: cannot write {target}: {error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// `renyi build --cache <file>`: the image of the program into the image
+/// cache (decision AU10), as a run that compiled machine code leaves it
+/// in the background; the cache's directory and the entry are reported.
+fn build_into_cache(path: &str, program: &renyi_vm::Program) -> ExitCode {
+    let Some(directory) = cache::directory() else {
+        eprintln!("renyi: the image cache is off: RENYI_NO_CACHE is set, or RENYI_CACHE_DIR is empty, or no cache directory is known (set RENYI_CACHE_DIR)");
+        return ExitCode::FAILURE;
+    };
+    let Some(entry) = cache::Entry::of(program, &directory) else {
+        eprintln!("renyi: this machine generates no machine code");
+        return ExitCode::FAILURE;
+    };
+    let built = match image::build(program, None, registry()) {
+        Ok(built) => built,
+        Err(message) => {
+            eprintln!("renyi: {message}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let bytes = built.write();
+    let compiled = built.codes.iter().flatten().count();
+    match entry.store(&bytes) {
+        Ok(()) => {
+            eprintln!(
+                "renyi: cached the image of {path} as {}: {compiled} of {} code objects as machine code, {} bytes",
+                entry.path().display(),
+                built.codes.len(),
+                bytes.len()
+            );
+            ExitCode::SUCCESS
+        }
+        Err(message) => {
+            eprintln!("renyi: {message}");
             ExitCode::FAILURE
         }
     }
@@ -935,6 +992,9 @@ struct Flags {
     watch: bool,
     /// `--sandbox <grant.json>` (decision AP1).
     sandbox: Option<String>,
+    /// `--no-cache`: neither the image cache's code nor an image stored
+    /// for the next run (decision AU10).
+    no_cache: bool,
 }
 
 fn parse_flags(args: &[String]) -> Result<(Flags, &[String]), String> {
@@ -962,6 +1022,11 @@ fn parse_flags(args: &[String]) -> Result<(Flags, &[String]), String> {
             }
             "--interpret" => {
                 flags.interpret = true;
+                index += 1;
+                continue;
+            }
+            "--no-cache" => {
+                flags.no_cache = true;
                 index += 1;
                 continue;
             }
@@ -1093,7 +1158,35 @@ fn run_command(args: &[String], record: bool) -> ExitCode {
         Ok(compiled) => compiled,
         Err(code) => return code,
     };
-    run_loaded(path, program, sources, image, flags, memory, rest, record)
+    let (image, entry) = consult_cache(&program, image, &flags);
+    run_loaded(
+        path, program, sources, image, entry, flags, memory, rest, record,
+    )
+}
+
+/// The image of a program from the cache (decision AU10), with the
+/// program's entry there when the run may leave an image for the next:
+/// neither for a program loaded from an image nor for a run on the
+/// interpreter (`--interpret`, `--explain`, `--profile`) or under
+/// `--no-cache`.
+fn consult_cache(
+    program: &renyi_vm::Program,
+    image: Option<Image>,
+    flags: &Flags,
+) -> (Option<Image>, Option<cache::Entry>) {
+    let interpreted = flags.interpret || flags.explain || flags.profile;
+    if image.is_some() || interpreted || flags.no_cache {
+        return (image, None);
+    }
+    let Some(entry) =
+        cache::directory().and_then(|directory| cache::Entry::of(program, &directory))
+    else {
+        return (None, None);
+    };
+    match entry.lookup() {
+        Some(cached) => (Some(cached), None),
+        None => (None, Some(entry)),
+    }
 }
 
 /// `run` or `record` of a program loaded: the checks on what it may
@@ -1106,6 +1199,7 @@ fn run_loaded(
     program: renyi_vm::Program,
     sources: Hashed,
     image: Option<Image>,
+    entry: Option<cache::Entry>,
     flags: Flags,
     memory: Option<u64>,
     rest: &[String],
@@ -1183,6 +1277,11 @@ fn run_loaded(
         ..renyi_vm::Options::default()
     };
     let run = renyi_vm::run_program(&program, options);
+    // a program whose run compiled machine code leaves its image for the
+    // next run (decision AU10), built once this process is gone
+    if let (Some(entry), true) = (&entry, run.compiled > 0) {
+        entry.store_later(path);
+    }
     if let (Some(recording), false) = (&run.recording, record) {
         eprint!("{}", recording.render_manifest());
     }
@@ -1279,7 +1378,7 @@ fn test_command(args: &[String]) -> ExitCode {
         || !narrowing.budgets.is_empty()
     {
         eprintln!(
-            "renyi: `renyi test` takes only `--strict`, `--refresh <name>`, `--redact <name>`, `--explain` and `--interpret`"
+            "renyi: `renyi test` takes only `--strict`, `--refresh <name>`, `--redact <name>`, `--explain`, `--interpret` and `--no-cache`"
         );
         return ExitCode::FAILURE;
     }
@@ -1289,6 +1388,7 @@ fn test_command(args: &[String]) -> ExitCode {
             Ok(compiled) => compiled,
             Err(code) => return code,
         };
+        let (image, entry) = consult_cache(&program, image, &flags);
         let options = renyi_vm::Options {
             explain: flags.explain,
             interpret: flags.interpret,
@@ -1300,6 +1400,9 @@ fn test_command(args: &[String]) -> ExitCode {
             ..renyi_vm::Options::default()
         };
         let report = renyi_vm::run_tests(&program, options);
+        if let (Some(entry), true) = (&entry, report.compiled > 0) {
+            entry.store_later(path);
+        }
         print!("{}", report.render());
         failed |= report.failed() > 0;
     }
@@ -1373,6 +1476,7 @@ fn reproduce_command(args: &[String]) -> ExitCode {
             describe_extensions(&extensions)
         );
     }
+    let (image, _) = consult_cache(&program, image, &Flags::default());
     let options = renyi_vm::Options {
         image,
         registry: registry().clone(),

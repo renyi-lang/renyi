@@ -11,6 +11,9 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  # the image cache of `renyi run` stays off in CI (decision AU10), as
+  # `.cargo/config.toml` keeps it off under cargo
+  RENYI_NO_CACHE: "1"
 
 jobs:
   checks:

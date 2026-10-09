@@ -9,7 +9,12 @@
 #             + 20 * indirect mispredicts + 100 * LL misses
 #
 # then the census of the image (tools/image_census.py, with the bytecode
-# file for the ops): the bytes of machine code per code object and per op. Deterministic, so two binaries
+# file for the ops): the bytes of machine code per code object and per op.
+# The first three rows run with the image cache off (decision AU10: the
+# cold JIT run is the row that decides); a fourth, `cached run`, is the
+# same command as the JIT run with the program's image in a cache of the
+# script's own, the second run of a program as a user sees it (a binary
+# without the cache prints `-`). Deterministic, so two binaries
 # compare without repetition; about ten minutes a binary. The image is
 # built under valgrind too, since valgrind hides some CPU features and an
 # image built outside it is refused inside it.
@@ -17,6 +22,7 @@
 #   tools/measure_size.sh <binary>          (from the repository root)
 set -u
 if [ $# -ne 1 ]; then echo "usage: tools/measure_size.sh <renyi binary>" >&2; exit 2; fi
+export RENYI_NO_CACHE=1
 bin=$1
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
@@ -39,6 +45,14 @@ printf '%-14s %s\n' "JIT run" "$(counts "$bin" run compiler/checker.ry compiler/
 printf '%-14s %s\n' "interpreter" "$(counts "$bin" run --interpret compiler/checker.ry compiler/bodies.ry)"
 valgrind --tool=none "$bin" build --to "$work/selfcheck.ryi" compiler/checker.ry 2>/dev/null
 printf '%-14s %s\n' "image (speed)" "$(counts "$bin" run "$work/selfcheck.ryi" compiler/bodies.ry)"
+# the cache filled under valgrind too, for the same reason as the image
+cached=$(unset RENYI_NO_CACHE; export RENYI_CACHE_DIR="$work/cache"
+  if valgrind --tool=none "$bin" build --cache compiler/checker.ry >/dev/null 2>&1; then
+    counts "$bin" run compiler/checker.ry compiler/bodies.ry
+  else
+    echo "-"
+  fi)
+printf '%-14s %s\n' "cached run" "$cached"
 echo "== the image's census"
 "$bin" compile --to "$work/selfcheck.ryc" compiler/checker.ry 2>/dev/null
 python3 "$(dirname "$0")/image_census.py" "$work/selfcheck.ryi" "$work/selfcheck.ryc" --summary

@@ -24,7 +24,10 @@ round closed by the owner on 2026-10-09 (AT7); then the typed round,
 decision AU1, opened by the profile of `bench/strings.ry` on the JIT
 tier and the owner's choice of a cure over another cut: the checker's
 static types brought to the code generator (the section "The typed
-round" below), in progress.
+round" below): stages 1 to 4 (decisions AU2 to AU8), the owner's order
+for the rest (AU9) and stage 5, the image cache of `renyi run` (AU10);
+the session paused there at the owner's request, stages 6 to 8 planned
+at the end of that section.
 Session 8
 (stage 2 of the gap audit of
 `docs/GAPS.md`: the formal grammar `docs/grammar.ebnf` with decision V12;
@@ -84,6 +87,33 @@ which completes M5).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
+## Start here (session 10)
+
+1. The work stopped in the typed round, whose plan the owner set in
+   decisions AU1 and AU9: read the section "The typed round" below,
+   whose last paragraphs ("Stage 5 is in" and "What is next in this
+   round") say what exists and what comes next: stage 6, the update of
+   a uniquely held record in place (format 7), then stage 7, the
+   comparisons on borrowed operands, then stage 8, the parameters
+   borrowed across direct calls.
+2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
+   release binary of the stage against the binary before it (keep a
+   copy of that binary before changing the code; the rows are
+   deterministic), the four benchmarks by `tools/bench.py` beside it; a
+   stage stays when the self-check's estimate on the cold JIT run falls,
+   or a benchmark gains more than 5% while the self-check loses at most
+   1% (AU1). The decision entry of each stage records the numbers.
+3. The gates before a commit that touches `crates/` are CLAUDE.md's,
+   with the owner's toolchain: `cargo +1.94.1 fmt --check`, `cargo
+   +1.94.1 clippy --all-targets -- -D warnings`, `cargo +1.94.1 test`
+   (the judges of `selfhost.rs` among them, about 90 s), and
+   `tools/conformance.py` against the debug binary. The image cache is
+   off for everything cargo runs (`.cargo/config.toml`); a test of the
+   cache turns it on with its own directory.
+4. In the cloud container the disk is a fixed allowance: a target
+   directory grows to about 9 GB, so keep at most two (the repository's
+   and one for the 1.94.1 gates) and delete the rest.
+
 ## Where the project stands
 
 Milestones M0 (design), M1 (front end), M2 (type and effect checker) and
@@ -123,7 +153,7 @@ the seven crates of 0.1.0 are on crates.io (`cargo install renyi` builds
 0.1.0), the installers were run against the release, and the site is
 at `renyi-lang.org` (the GitHub Pages address redirects there).
 Design decisions are
-in sections 0 to AN of `01-decisions.md`; the positioning in
+in sections 0 to AU of `01-decisions.md`; the positioning in
 `08-positioning.md`; the agent tooling in
 `05-agent-tooling.md`, the signature capabilities in
 `06-runtime-guarantees.md`, the system-level commitments in
@@ -1772,7 +1802,7 @@ and the commit of the site and the crates.io metadata.
   release; the Windows archive's checksum and binary were verified
   by hand; `cargo install renyi` built the binary from crates.io.
 
-## The typed round (decision AU1; session 9, 2026-10-09), in progress
+## The typed round (decisions AU1 to AU10; session 9, 2026-10-09), in progress
 
 The owner asked, after the size round closed, for a cure of the
 performance rather than another cut, and chose the route on
@@ -1984,6 +2014,99 @@ compiler, which emits no `CallAbility` on its hot paths. The run with
 every function compiled (the image) costs 28% less than the JIT run: a
 cache of the image across runs would give `renyi run` that steady state
 from the second run on.
+
+**Decision AU9 (2026-10-09)** records the owner's answers after AU8's
+profile: the image cache first, then, in this round, the update of a
+uniquely held record in place, the comparisons on borrowed operands and
+the parameters borrowed across direct calls; the ability method chosen
+statically and the typed loop variable are dropped; the cold JIT run,
+without the cache, stays the row that decides, the cached run reported
+beside it. The hotness factor was measured again (4000 is 0.5% below
+8000 on the self-check; it stays).
+
+**Stage 5 is in (decision AU10, 2026-10-09)**: the image cache of
+`renyi run`. `crates/renyi/src/cache.rs`: `directory()` (`RENYI_CACHE_DIR`,
+else `renyi/images` under the system's cache directory; off under
+`RENYI_NO_CACHE`), `Entry::of` (the name: a hash of this `renyi`'s
+version, the host target and the program's binary encoding),
+`Entry::lookup` (a hit is an image whose header fits and whose program
+is byte for byte the run's, marked used by its modification time),
+`Entry::store_later` (a lock file, then `renyi build --cache <path>`
+spawned with no standard streams, in a process group of its own),
+`Entry::store` (a `.part` file renamed, the lock removed, the least
+recently used images pruned to 256 MB). `lib.rs`: `consult_cache` before
+`run`, `record`, `test` and `reproduce` (not for an image, not on the
+interpreter, not under `--no-cache`), the background store after a run
+or a test file whose run compiled machine code (`Run::compiled` and
+`TestReport::compiled` in `renyi_vm::runner`), `build --cache`
+(`build_into_cache`), the flag `--no-cache`, the usage text.
+`.cargo/config.toml` sets `RENYI_NO_CACHE` for everything cargo runs and
+`ci.yml` for the workflow, so that the tests run the same way every time
+(the conformance runner's runs under `RENYI_NATIVE_HOT=0` must test the
+JIT); `tools/measure_size.sh`, `tools/measure_native.sh` and
+`tools/bench.py` run cold, and `measure_size.sh` prints a fourth row,
+`cached run`. Test: `a_run_that_compiled_machine_code_leaves_its_image_for_the_next`
+in `crates/renyi/tests/build.rs` (the background store waited for, the
+next run loads from the image, `--no-cache`, `RENYI_NO_CACHE`, an entry
+holding another program's image is a miss, `build --cache`, `test`).
+Measured: the self-check's estimate from the cache 11.23 billion cycles against
+14.23 cold (-21%), the image alone 10.31; the cold row's instructions
+unchanged (10.27 billion; its estimate moved from 14.55 through the
+simulated data-cache misses, the binary's layout). Wall-clock with a
+cachegrind run beside it: 2.2 to 2.5 s cold, 1.6 to 1.8 s from the
+cache.
+
+**What is next in this round (the owner's order, AU9), with what the
+session that paused found while planning:**
+
+1. **Stage 6, the update of a uniquely held record in place (format 7,
+   decision AU11 to come).** The compiler writes `return checker with
+   diagnostics: checker.diagnostics.append(diagnostic)` and `change x to
+   x with field: x.field.append(item)` some thirty times (`bodies.ry`
+   11, `emit.ry` 11, `declare.ry` 7); each copies the list (the field
+   read clones it, so `append` finds it shared) and then the record (the
+   base is loaded with one more reference, so `with` finds it shared).
+   Three emitter rules, in both emitters, held equal by the judges: (a)
+   `change x to x with f: e` and `return x with f: e`, where `e` reads
+   `x.f` exactly once and reads `x` otherwise only through other fields,
+   take the field out of the record in the slot (a new op, say
+   `TakeField { slot, name }`: the field moved out when the record is
+   held once, `Rc::get_mut`, else cloned) and move the base into `With`
+   (`LoadMove`), so that both `append` and `with` find their operand
+   unique; (b) `change x to f(x, ...)`, where no other argument mentions
+   `x`, moves `x` into the call as `move_candidate` in
+   `compile/stmt.rs` already does for `change x to x.method(...)`,
+   without which the callee's parameter is held twice and (a) finds the
+   record shared; (c) the same for `let y be x with ...` when `x` is
+   dead after, only if the liveness is cheap to state in both emitters.
+   The interpreter, the generated code (a helper is enough), `file.rs`,
+   `binary.rs`, `bytecode.ry`, `emit.ry`, `tests/typed.rs`
+   (`pushes_its_expression`). Expected: the copies in `op_with`,
+   `make_mut`, `refined_record` and the allocator that the AU8 profile
+   shows (several percent of the self-check), more on programs that
+   build lists in records.
+2. **Stage 7, the comparisons on borrowed operands (AU12).** `rt_binary`
+   is 7% of the self-check inclusive (`binary_values`, `PartialEq`,
+   the drops of both operands). A `Binary` comparison whose operands a
+   `Load` of a boxed slot or a boxed `Const` pushed just before
+   borrows them as the typed calls do (`borrowed_operands` in
+   `native/codegen.rs` is the model, its mask too), and a helper
+   compares them where they lie: Text with Text by bytes, a variant's
+   tag with a tag, Integer with Integer; anything else the general path.
+3. **Stage 8, the parameters borrowed across direct calls (AU13).** A
+   parameter the callee only reads (fields, borrowed calls, comparisons)
+   and never stores, returns or passes on to a position that keeps it
+   needs no retain at the call and no release at the return. The
+   hazard: a frame handed back to the interpreter, which drops its
+   locals at the return, so the flag must be honoured there too (or the
+   hand-back retains the borrowed parameters first). The riskiest of
+   the three; measure 6 and 7 before starting it.
+
+Each stage is measured by AT1's rule (`tools/measure_size.sh` on the
+release binary, about fifteen minutes now with the fourth row) against
+the binary before it, with `tools/bench.py` beside it; the judges
+(`cargo test -p renyi --test selfhost`, about 90 s) after every change
+to an emitter.
 
 ## The size of the generated code (decisions AT1 to AT7; session 9, 2026-10-08 and 09)
 
