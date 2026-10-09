@@ -177,7 +177,12 @@ pub fn abs_of_type(program: &Program, ty: &Ty) -> Abs {
             } else if *id == b.float {
                 Abs::Float
             } else {
-                Abs::Boxed
+                // a refined subtype's values are its base's (`type Part is
+                // Integer where ...` holds plain Integers)
+                match &program.types.meta(*id).shape {
+                    crate::types::TypeShape::Subtype { base } => abs_of_type(program, base),
+                    _ => Abs::Boxed,
+                }
             }
         }
         _ => Abs::Boxed,

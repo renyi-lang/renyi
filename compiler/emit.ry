@@ -122,6 +122,7 @@ type Emitter
   has params: Integer
   has ops: List of Op
   has spans: List of Span
+  has types: List of maybe Integer
   has pool: List of Pooled
   has scopes: List of List of Local
   has next_slot: Integer
@@ -295,6 +296,7 @@ function new_emitter(
     params: 0,
     ops: [],
     spans: [],
+    types: [],
     pool: [],
     scopes: [[]],
     next_slot: 0,
@@ -318,7 +320,8 @@ function finish(emitter: Emitter) returns Code
     ops: emitter.ops,
     spans: emitter.spans,
     constants: for each pooled in emitter.pool
-    collect constant_of(pooled)
+    collect constant_of(pooled),
+    types: emitter.types
   )
 end
 
@@ -421,6 +424,23 @@ function result_type_at(emitter: Emitter, span: Span) returns Step of maybe Inte
       when some(found) then found
       when nothing then return Step(value: nothing, emitter: emitter)
     end
+  return type_index(emitter: emitter, ty: ty)
+end
+
+function type_index_at(emitter: Emitter, span: Span) returns Step of maybe Integer
+  purpose: The index in the program's types of the type the checker noted for the expression at the span (decision AU1, stage iii), when it noted one.
+
+  let ty be
+    match typed_target(emitter: emitter, span: span)
+      when some(found) then found
+      when nothing then return Step(value: nothing, emitter: emitter)
+    end
+  return type_index(emitter: emitter, ty: ty)
+end
+
+function type_index(emitter: Emitter, ty: Ty) returns Step of maybe Integer
+  purpose: The index of a type in the program's table of the types it names, added when new.
+
   let context be emitter.context
   let mutable index be 0
   for each known in context.result_types
@@ -429,6 +449,18 @@ function result_type_at(emitter: Emitter, span: Span) returns Step of maybe Inte
   end
   let extended be context with result_types: context.result_types.append(ty)
   return Step(value: index, emitter: emitter with context: extended)
+end
+
+function typed_target(emitter: Emitter, span: Span) returns maybe Ty
+  purpose: The type the checker noted for the expression at the span, when it noted one.
+
+  for each target in targets_at(emitter: emitter, span: span)
+    match target
+      when TypedTarget(ty) then return ty
+      otherwise continue
+    end
+  end
+  return nothing
 end
 
 function result_target(emitter: Emitter, span: Span) returns maybe Ty
@@ -482,9 +514,23 @@ function source_text(emitter: Emitter, span: Span) returns Text
 end
 
 function emit(emitter: Emitter, op: Op, span: Span) returns Emitter
-  purpose: An operation under a span of the tree.
+  purpose: An operation under a span of the tree, with the type the checker noted for the expression there (decision AU1, stage iii).
 
-  return emitter with ops: emitter.ops.append(op), spans: emitter.spans.append(span)
+  let typed be type_index_at(emitter: emitter, span: span)
+  let updated be typed.emitter
+  return updated
+    with ops: updated.ops.append(op), spans: updated.spans.append(span), types: updated.types.append(
+      typed.value
+    )
+end
+
+function emit_untyped(emitter: Emitter, op: Op, span: Span) returns Emitter
+  purpose: An operation that pushes something other than the value of the expression whose span it carries (the comparison of a literal pattern): without the expression's type beside it (decision AU1, stage iii).
+
+  return emitter
+    with ops: emitter.ops.append(op), spans: emitter.spans.append(span), types: emitter.types.append(
+      nothing
+    )
 end
 
 function emit_jump(emitter: Emitter, op: Op, span: Span) returns Step of Integer
@@ -2019,7 +2065,7 @@ function emit_pattern(emitter: Emitter, pattern: Pattern, slot: Integer)
     when LiteralPattern(value, span) then
       let loaded be emit(emitter: emitter, op: OpLoad(slot: slot), span: span)
       let placed be emit_expr(emitter: loaded, expr: value)
-      let compared be emit(emitter: placed, op: OpBinary(op: Is), span: span)
+      let compared be emit_untyped(emitter: placed, op: OpBinary(op: Is), span: span)
       let skip be emit_jump(emitter: compared, op: OpJumpIfFalse(target: 0), span: span)
       return Step(value: [skip.value], emitter: skip.emitter)
     when TypedPattern(name, annotation, span) then
@@ -2873,7 +2919,7 @@ function assemble(context: Context, modules: List of CheckedModule) returns Prog
     for each declared in world.abilities
     collect AbilityMeta(name: declared.name, methods: method_names(declared.methods))
   return Program(
-    format: 4,
+    format: 5,
     modules: module_sources(world: world, modules: modules),
     builtins: builtin_ids(world.builtins),
     types: context.types,

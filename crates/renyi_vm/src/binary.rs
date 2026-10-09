@@ -29,7 +29,7 @@ use crate::types::{FieldMeta, TypeMeta, TypeShape, Types, VariantMeta};
 use crate::value::Value;
 
 /// The version of the encoding, its first integer.
-pub const FORMAT: u64 = 1;
+pub const FORMAT: u64 = 2;
 
 type Read<T> = Result<T, String>;
 
@@ -423,6 +423,9 @@ fn write_code(out: &mut Writer, code: &Code) {
     out.list(&code.ops, write_op);
     out.list(&code.spans, |out, span| out.span(*span));
     out.list(&code.constants, write_constant);
+    out.list(&code.types, |out, ty| {
+        out.opt(ty.as_ref(), |out, index| out.usize(*index as usize))
+    });
 }
 
 /// The program as bytes.
@@ -902,6 +905,7 @@ fn read_code(input: &mut Reader) -> Read<Code> {
         ops: input.list(read_op)?,
         spans: input.list(Reader::span)?,
         constants: input.list(read_constant)?,
+        types: input.list(|input| Ok(input.opt(Reader::usize)?.map(|index| index as u32)))?,
     })
 }
 
@@ -1064,8 +1068,9 @@ mod tests {
     #[test]
     fn a_truncated_program_is_refused() {
         assert_eq!(refusal(&[]), "the program is truncated");
-        assert!(refusal(&[2]).contains("encoding 2"));
+        let other = (FORMAT + 1) as u8;
+        assert!(refusal(&[other]).contains(&format!("encoding {other}")));
         // the format, then a count of modules past the end
-        assert_eq!(refusal(&[1, 9]), "the program is truncated");
+        assert_eq!(refusal(&[FORMAT as u8, 9]), "the program is truncated");
     }
 }

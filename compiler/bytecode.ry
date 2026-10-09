@@ -216,6 +216,7 @@ public type Code
   has ops: List of Op
   has spans: List of Span
   has constants: List of CodeConstant
+  has types: List of maybe Integer
   can ToJson
 end
 

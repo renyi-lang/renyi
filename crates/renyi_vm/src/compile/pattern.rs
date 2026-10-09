@@ -44,7 +44,8 @@ impl Compiler<'_, '_> {
             Pattern::Literal(literal) => {
                 self.emit(Op::Load(slot), span);
                 self.expr(literal);
-                self.emit(Op::Binary(BinaryOp::Is), span);
+                // the comparison pushes a Boolean under the literal's span
+                self.emit_untyped(Op::Binary(BinaryOp::Is), span);
                 next.push(self.emit(Op::JumpIfFalse(0), span));
             }
             Pattern::Typed { name, ty, .. } => {

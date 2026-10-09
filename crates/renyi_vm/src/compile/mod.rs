@@ -845,11 +845,28 @@ impl<'c, 'w> Compiler<'c, 'w> {
             Target::Result(ty) => Some(ty.clone()),
             _ => None,
         })?;
+        Some(self.type_index(ty))
+    }
+
+    /// The index in the program's `result_types` of the type the checker
+    /// noted for the expression at the span (decision AU1, stage iii),
+    /// when it noted one.
+    pub fn type_index_at(&mut self, span: Span) -> Option<u32> {
+        let ty = self.targets(span).iter().find_map(|t| match t {
+            Target::Typed(ty) => Some(ty.clone()),
+            _ => None,
+        })?;
+        Some(self.type_index(ty))
+    }
+
+    /// The index of a type in the program's table of the types it names,
+    /// added when new.
+    fn type_index(&mut self, ty: Ty) -> u32 {
         if let Some(index) = self.ctx.result_types.iter().position(|t| *t == ty) {
-            return Some(index as u32);
+            return index as u32;
         }
         self.ctx.result_types.push(ty);
-        Some((self.ctx.result_types.len() - 1) as u32)
+        (self.ctx.result_types.len() - 1) as u32
     }
 
     pub fn source_text(&self, span: Span) -> String {
@@ -861,6 +878,18 @@ impl<'c, 'w> Compiler<'c, 'w> {
     /// Emit an operation under a span of the tree (in bytes); the code
     /// keeps the span in characters.
     pub fn emit(&mut self, op: Op, span: Span) -> usize {
+        let typed = self.type_index_at(span);
+        let span = self.ctx.characters(self.module, span);
+        let at = self.code.emit(op, span);
+        self.code.types[at] = typed;
+        at
+    }
+
+    /// Emit an operation that pushes something other than the value of the
+    /// expression whose span it carries (the comparison of a literal
+    /// pattern): without the expression's type beside it (decision AU1,
+    /// stage iii).
+    pub fn emit_untyped(&mut self, op: Op, span: Span) -> usize {
         let span = self.ctx.characters(self.module, span);
         self.code.emit(op, span)
     }

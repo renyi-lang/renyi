@@ -3703,3 +3703,58 @@ glyph, the store into its slot, the branch), the typed call's helper
 72, the entry's match and search 70, the release of the previous glyph
 and the retain of the next about 40, the rest the first half of the
 program and the list of glyphs built and dropped. (user)
+
+**AU6. Stage (iii) of AU1 is in: the typed bytecode, format 5. Both
+checkers record the type of every expression of a body at its span, as
+`Target::Typed` (`check.rs`: `infer` wraps `infer_inner` and notes the
+span and the type; `finish_body` zonks each and records the ones without
+a variable left, as it does `Target::Result`; `bodies.ry`: the same,
+`record_typed` appending the body's noted types to the references at
+once). Both emitters write, per op, the index of that type in the
+program's table of types (`result_types`, which holds the context types
+of `ResultType` ops and every noted type now, first use first):
+`Compiler::emit` and `emit.ry`'s `emit` look the op's span up
+(`type_index_at`, `type_index`); `emit_untyped` writes none, for the one
+op that pushes something other than its expression's value under that
+expression's span (the comparison of a literal pattern). `Code::types`
+travels in the JSON (`"types"` per code object, `null` where none), in
+the binary encoding (encoding 2) and so in the image (format 4); the
+file's consistency check holds the list's length to the ops' and every
+index inside the table. `Op::pushes_its_expression` names the ops whose
+annotation is the type of what they push (`Const`, `Load`, `Call`,
+`Field`, `Binary`, ...); the others (`ToText`, `IterNext`, `Unpack`, the
+jumps) carry their expression's type too but push something else or
+nothing, so the VM may read the annotation for the former alone.
+`abs_of_type` sees through a refined subtype to its base (its values are
+the base's). The test `tests/typed.rs` holds the annotations to the
+inference of the baseline JIT over the corpus, the clean conformance
+programs and the compiler: wherever the analysis types what an op pushes
+as one of the three scalars, the noted type must be that scalar's, or a
+`maybe` of it; the two emitters are held equal on the new field by the
+judge of Z3 and the two checkers on the new target by W7.** Measured:
+the compiler's checker as a bytecode file 8.99 to 9.67 MB (+7.6%;
+46,272 ops of which 30,309 (65%) carry a type, 425 types in the table);
+the VM reads nothing of it yet (stage iv), and still the self-check's
+estimate rose, 13.75 to 16.67 billion cycles on the JIT run (+21%),
+17.24 to 20.20 on the interpreter, 10.12 to 12.75 as an image, because
+the program measured changed, not the VM: the self-check is the checker
+written in Renyi checking `bodies.ry`, and that checker now notes the
+type of every expression, through lists held in a record, which Renyi
+copies on every append (a field read clones the list, so `append` finds
+it shared), and joins into the module's references body by body; the
+Rust front end's own share is small (`renyi check compiler/checker.ry`
+538 to 561 million instructions, +4%). The judge of Z3 and W7 runs in
+117 s. The next commit bounds the copies. Why every op and not the pushing ops
+alone: the emitters would have had to agree on a stack-effect predicate
+per op kind in two languages, where one lookup per emitted op agrees by
+construction; the file pays 7.6%. Why the table is `result_types` and
+not a second one: one index space for the two uses, one dedup in each
+emitter, and the `.ryc` keeps its key. Why the one `emit_untyped`: the
+literal pattern's comparison is the only op the emitters write under a
+span whose expression has another type than what the op pushes and
+whose kind `pushes_its_expression` lists; the query terminals' `Add`,
+`Nothing` and `Load` under the query's span push what the query's type
+says. What the test found on the way: the literal of a refined field
+(`Version(major: 1, ...)`) is typed with the refined subtype, which the
+inference now reads as the base; a `maybe Integer` binding the analysis
+proves always an Integer is compatible, not a disagreement. (user)

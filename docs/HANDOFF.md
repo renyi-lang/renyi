@@ -1914,8 +1914,33 @@ for `contains` and its typed entry), `push_digits` pushes characters.
 Measured: strings 83 to 78 ms (77 by `tools/bench.py`, CPython 79 to
 82), the profile 625 to 589 million instructions; the self-check's
 estimate on the JIT run +0.6% (the code's layout: instruction misses up,
-instructions level), kept by the rule's second clause. Next: stage 3,
-the typed bytecode.
+instructions level), kept by the rule's second clause.
+
+**Stage 3 is in (decision AU6, 2026-10-09)**: the typed bytecode,
+format 5 (binary encoding 2, image format 4). `check.rs`: `infer` wraps
+`infer_inner` and notes every expression's type (`typed`), `finish_body`
+records `Target::Typed`; `compiler/bodies.ry`: `infer`/`infer_inner`,
+`record_typed`, `TypedTarget`. `compile/mod.rs`: `emit` writes
+`Code::types[at]` from `type_index_at` (the table `result_types`,
+`type_index`), `emit_untyped` for the literal pattern's comparison
+(`pattern.rs`); `compiler/emit.ry`: the same (`type_index_at`,
+`type_index`, `typed_target`, `emit_untyped`, `types` on `Emitter` and
+`Code`). `bytecode.rs`: `Code::types`, `Op::pushes_its_expression`;
+`file.rs`, `binary.rs`: the field written, read and checked;
+`native/infer.rs`: `abs_of_type` sees through a refined subtype;
+`renyi_index/src/edges.rs` and `lsp/describe.rs` ignore the new target.
+Tests: `crates/renyi_vm/tests/typed.rs` (the annotations against the
+inference over the corpus, the clean conformance programs and the
+compiler; more than half of the compiler's ops typed), the judges of
+`selfhost.rs` hold both emitters equal on the new field (in 117 s),
+`tests/compile.rs` and `tests/file.rs` on format 5. Measured: the
+compiler's checker as a `.ryc` 8.99 to 9.67 MB; 65% of its 46,272 ops
+typed, 425 types in the table; the self-check's estimate rose with the Renyi checker's own new work, see the decision. The VM
+reads the types nowhere yet: stage 4 is what they buy (the field read at
+a static index when the holder's type is known, the ability method
+chosen statically, the loop variable typed from the list's item type,
+the retains and releases elided where the consumer borrows, `Binary`
+comparisons first).
 
 ## The size of the generated code (decisions AT1 to AT7; session 9, 2026-10-08 and 09)
 

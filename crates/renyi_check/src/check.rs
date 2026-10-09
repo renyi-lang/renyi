@@ -206,6 +206,11 @@ pub enum Target {
     /// alone (`json.parse`), at the call's span, with that type resolved; the
     /// VM decodes by it, the map ignores it.
     Result(Ty),
+    /// The type of an expression, at its span, once the body is finished
+    /// and the type has no variable left (decision AU1, stage iii): what
+    /// the emitters write beside every op, so that the VM knows the type
+    /// of what an op pushes; the map ignores it.
+    Typed(Ty),
     /// An `otherwise`, at its expression's span: whether it handles the
     /// failure of a fallible call (`true`) or the absence of a `maybe` value
     /// (`false`); the VM branches by it, the map ignores it.
@@ -253,6 +258,9 @@ pub struct Checker<'w> {
     literals: Vec<(Span, Ty)>,
     /// Calls whose result type the context decides, resolved by `finish_body`.
     results: Vec<(Span, Ty)>,
+    /// Every expression of the body with its type, recorded as
+    /// `Target::Typed` once the body is finished (decision AU1, stage iii).
+    typed: Vec<(Span, Ty)>,
     /// How many blocks enclose the statement being checked; the body itself
     /// is 0 (decision V5).
     depth: usize,
@@ -291,6 +299,7 @@ impl<'w> Checker<'w> {
             current_errors: None,
             literals: Vec::new(),
             results: Vec::new(),
+            typed: Vec::new(),
             depth: 0,
             task: None,
             type_params: Vec::new(),
@@ -1449,6 +1458,13 @@ impl<'w> Checker<'w> {
                 self.record(Target::Result(ty), span);
             }
         }
+        let typed = std::mem::take(&mut self.typed);
+        for (span, ty) in typed {
+            let ty = self.zonk(&ty);
+            if !ty.has_vars() {
+                self.record(Target::Typed(ty), span);
+            }
+        }
         let deferred = std::mem::take(&mut self.deferred);
         for item in deferred {
             match item {
@@ -2102,7 +2118,15 @@ impl<'w> Checker<'w> {
     // ------------------------------------------------------------- expressions
 
     /// Infer an expression. `expected` guides literals and generic results.
+    /// The type of an expression, noted at its span for the emitters
+    /// (decision AU1, stage iii) and recorded once the body is finished.
     fn infer(&mut self, expr: &Expr, expected: Option<&Ty>) -> Info {
+        let info = self.infer_inner(expr, expected);
+        self.typed.push((expr.span, info.ty.clone()));
+        info
+    }
+
+    fn infer_inner(&mut self, expr: &Expr, expected: Option<&Ty>) -> Info {
         let b = self.world.builtins.clone();
         match &expr.kind {
             ExprKind::Integer(digits) => {

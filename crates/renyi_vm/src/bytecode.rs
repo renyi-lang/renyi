@@ -252,6 +252,48 @@ pub struct Code {
     /// The source span of each op, for crash messages.
     pub spans: Vec<Span>,
     pub constants: Vec<Value>,
+    /// Per op, the index in the program's `result_types` of the type of
+    /// what it pushes, when the checker noted the type of the expression
+    /// the op was emitted under (decision AU1, stage iii); `None` where it
+    /// noted none. An op that pushes something other than its expression's
+    /// value (`ToText`, `IterNext`, a jump) carries its expression's type
+    /// too: `Op::pushes_its_expression` says which ops the VM may read it
+    /// for.
+    pub types: Vec<Option<u32>>,
+}
+
+impl Op {
+    /// Whether the op pushes exactly the value of the expression it was
+    /// emitted under, so that the type the emitter wrote beside it
+    /// (`Code::types`, decision AU1, stage iii) is the type of what it
+    /// pushes. The other ops carry their expression's type too, but push
+    /// something else (`ToText` a text, `IterNext` an item, `Unpack` the
+    /// parts) or nothing.
+    pub fn pushes_its_expression(&self) -> bool {
+        matches!(
+            self,
+            Op::Const(_)
+                | Op::Nothing
+                | Op::Global(_)
+                | Op::Load(_)
+                | Op::LoadMove(_)
+                | Op::MakeList(_)
+                | Op::MakeMap(_)
+                | Op::MakePair
+                | Op::MakeRange { .. }
+                | Op::Construct { .. }
+                | Op::ConstructVariant { .. }
+                | Op::Field { .. }
+                | Op::LoadField { .. }
+                | Op::With(_)
+                | Op::Call { .. }
+                | Op::CallAbility { .. }
+                | Op::CallValue(_)
+                | Op::Not
+                | Op::Binary(_)
+                | Op::Concat(_)
+        )
+    }
 }
 
 impl Code {
@@ -266,12 +308,14 @@ impl Code {
             ops: Vec::new(),
             spans: Vec::new(),
             constants: Vec::new(),
+            types: Vec::new(),
         }
     }
 
     pub fn emit(&mut self, op: Op, span: Span) -> usize {
         self.ops.push(op);
         self.spans.push(span);
+        self.types.push(None);
         self.ops.len() - 1
     }
 

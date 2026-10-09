@@ -137,7 +137,7 @@ fn describe_target<'a>(
             let (module, decl) = ability_item(world, *id)?;
             Some(describe_ability(module, decl))
         }
-        Target::Number(_) | Target::Result(_) | Target::Otherwise { .. } => None,
+        Target::Number(_) | Target::Result(_) | Target::Typed(_) | Target::Otherwise { .. } => None,
     }
 }
 

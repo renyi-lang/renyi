@@ -772,4 +772,7 @@ in place through `Rc::make_mut`, the typed call's helper trimmed) took
 `strings` to 84 ms (77 as an image, CPython 79); stage 2 (decision
 AU4: the loop over a list walked by the generated code in place) to 78
 by `tools/bench.py`, at par with CPython, and cut the self-check's
-estimate another 1.3 percent.
+estimate another 1.3 percent. Stage 3 (decision AU6) is the typed
+bytecode itself, format 5: every op carries the type the checker noted
+for its expression, written by both emitters and held equal by the
+judges; stage 4, what the types buy in the generated code, is next.

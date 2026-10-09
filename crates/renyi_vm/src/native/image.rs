@@ -37,7 +37,7 @@ pub const MAGIC: &[u8; 4] = b"RYI\0";
 
 /// The layout of the file: bumped when it changes. 3: the code section
 /// (decision AT5).
-pub const IMAGE_FORMAT: u32 = 3;
+pub const IMAGE_FORMAT: u32 = 4;
 
 /// The alignment of the code section in the file: a multiple of every
 /// page size the toolchain runs on (16 KB on Apple silicon), so that the

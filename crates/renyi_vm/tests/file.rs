@@ -269,8 +269,11 @@ fn a_file_that_does_not_fit_is_refused_naming_the_place() {
     let text = render(&compile("demo.ry", PROGRAM));
     let error = |text: &str| load(text).err().expect("refused");
     assert_eq!(
-        error("{\n  \"format\": 5\n}\n"),
-        "the file is format 5; this VM reads format 4"
+        error(&format!("{{\n  \"format\": {}\n}}\n", FORMAT + 1)),
+        format!(
+            "the file is format {}; this VM reads format {FORMAT}",
+            FORMAT + 1
+        )
     );
     assert_eq!(
         error("{\"format\": \"1\"}"),

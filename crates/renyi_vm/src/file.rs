@@ -33,7 +33,7 @@ use crate::types::{FieldMeta, TypeMeta, TypeShape, Types, VariantMeta};
 use crate::value::Value;
 
 /// The version of the format, the first field of the file.
-pub const FORMAT: usize = 4;
+pub const FORMAT: usize = 5;
 
 /// The extension of a bytecode file.
 pub const EXTENSION: &str = "ryc";
@@ -382,6 +382,12 @@ fn code_json(code: &Code) -> Out {
         ("ops", array(&code.ops, op_json)),
         ("spans", array(&code.spans, |span| span_json(*span))),
         ("constants", array(&code.constants, constant_json)),
+        (
+            "types",
+            array(&code.types, |ty| {
+                optional(ty.as_ref(), |index| number(*index as usize))
+            }),
+        ),
     ])
 }
 
@@ -1099,7 +1105,17 @@ fn read_code(json: &In, at: &str) -> Read<Code> {
         ops: list_at(fields, "ops", at, read_op)?,
         spans: list_at(fields, "spans", at, read_span)?,
         constants: list_at(fields, "constants", at, read_constant)?,
+        types: list_at(fields, "types", at, read_type_index)?,
     })
+}
+
+/// The type of what an op pushes: an index into the program's types, or
+/// `null` (decision AU1, stage iii).
+fn read_type_index(json: &In, at: &str) -> Read<Option<u32>> {
+    match json {
+        In::Null => Ok(None),
+        other => usize_of(other, at).map(|index| Some(index as u32)),
+    }
 }
 
 fn read_constant(json: &In, at: &str) -> Read<Value> {
@@ -1369,6 +1385,16 @@ pub(crate) fn check(program: &Program) -> Read<()> {
                 code.ops.len(),
                 code.spans.len()
             ));
+        }
+        if code.types.len() != code.ops.len() {
+            return Err(format!(
+                "the file is not consistent: code {index} has {} operations and {} types",
+                code.ops.len(),
+                code.types.len()
+            ));
+        }
+        for ty in code.types.iter().flatten() {
+            place("type", *ty as usize, program.result_types.len())?;
         }
         if let Some(function) = code.function {
             place("function", function, functions)?;

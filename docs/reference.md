@@ -1633,7 +1633,9 @@ A bytecode file is the derived JSON of the types of `compiler/bytecode.ry`
 and line starts, the prelude's ids, the types, the implementations, the
 abilities, the functions with their signatures and grants, the
 constants, the tests, the examples and the code objects, each a list of
-operations with a span per operation and its constants; every span
+operations with a span per operation, its constants and, per operation,
+the index of the type of what it pushes among the program's types when
+the checker settled the expression's type (decision AU1); every span
 counts characters, every number is a JSON number, and a constant's
 digits are a string. `renyi run` and the other commands load it with the
 VM's own JSON reader and refuse a file that does not fit, naming the

@@ -175,6 +175,7 @@ public type Target is one of
   AbilityTarget(ability_id: Integer)
   NumberTarget(kind: NumberKind)
   ResultTarget(ty: Ty)
+  TypedTarget(ty: Ty)
   OtherwiseTarget(fallible: Boolean)
 end
 
@@ -215,6 +216,7 @@ public type Checker
   has current_errors: maybe Ty
   has literals: List of SpanTy
   has results: List of SpanTy
+  has typed: List of SpanTy
   has depth: Integer
   has task: maybe TaskScope
   has type_params: List of NamedParam
@@ -316,6 +318,7 @@ public function new_checker(world: World, module_id: Integer) returns Checker
     current_errors: nothing,
     literals: [],
     results: [],
+    typed: [],
     depth: 0,
     task: nothing,
     type_params: [],
@@ -464,6 +467,25 @@ function record(checker: Checker, target: Target, span: Span) returns Checker
     otherwise
       let reference be Reference(body: checker.owner, target: target, span: span)
       return checker with references: checker.references.append(reference)
+  end
+end
+
+function record_typed(checker: Checker, typed: List of SpanTy) returns Checker
+  purpose: The types noted for the body's expressions, as references, once each is settled (decision AU1, stage iii); none while checking `example:` lines.
+
+  match checker.owner
+    when NoBody then return checker
+    otherwise
+      let mutable noted: List of Reference be []
+      for each entry in typed
+        let ty be zonk(checker: checker, ty: entry.ty)
+        if not types.has_vars(ty) then
+          change noted to noted.append(
+            Reference(body: checker.owner, target: TypedTarget(ty: ty), span: entry.span)
+          )
+        end
+      end
+      return checker with references: checker.references.append_all(noted)
   end
 end
 
@@ -2090,6 +2112,9 @@ function finish_body(checker: Checker) returns Checker
       change updated to record(checker: updated, target: ResultTarget(ty: ty), span: noted.span)
     end
   end
+  let typed be updated.typed
+  change updated to updated with typed: []
+  change updated to record_typed(checker: updated, typed: typed)
   let deferred be updated.deferred
   change updated to updated with deferred: []
   for each item in deferred
@@ -3107,6 +3132,16 @@ function loop_items(checker: Checker, bindings: List of Name, source: Expr)
 end
 
 function infer(checker: Checker, expr: Expr, expected: maybe Ty) returns Done of Info
+  purpose: Infer an expression and note its type at its span for the emitter (decision AU1, stage iii).
+
+  let done be infer_inner(checker: checker, expr: expr, expected: expected)
+  let noted be SpanTy(span: expr_span(expr), ty: done.value.ty)
+  let after be done.checker
+  let updated be after with typed: after.typed.append(noted)
+  return done with checker: updated
+end
+
+function infer_inner(checker: Checker, expr: Expr, expected: maybe Ty) returns Done of Info
   purpose: Infer an expression; `expected` guides literals and generic results.
 
   match expr
