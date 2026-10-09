@@ -741,78 +741,98 @@ pub(crate) unsafe extern "C" fn rt_call_typed(
     out: *mut i64,
 ) -> i32 {
     let vm = vm!(vm);
-    vm.sync_pc(pc);
     let count = count as usize;
     let at = vm.stack.len().saturating_sub(count);
-    let typed = vm.typed_entry(function);
-    let answer = match typed {
-        Some(typed) => {
-            let args = &vm.stack.as_slice()[at..];
-            match typed {
-                crate::extension::Typed::Bool(answer) => {
-                    answer(args).map(|value| (value as i64, None))
-                }
-                crate::extension::Typed::Int(answer) => answer(args).map(|value| (value, None)),
-                crate::extension::Typed::Float(answer) => {
-                    answer(args).map(|value| (value.to_bits() as i64, None))
-                }
-                crate::extension::Typed::Value(answer) => {
-                    answer(args).map(|value| (0, Some(value)))
-                }
-            }
-        }
-        None => None,
-    };
-    match answer {
-        Some((scalar, value)) => {
-            // the arguments consumed: an owned one dropped, a borrowed one
-            // counted out without a drop
-            for index in 0..count {
-                if borrowed & (1 << index) == 0 {
-                    // SAFETY: the slot is counted out by `forget_from`
-                    // below, before anything reads it again.
-                    unsafe { std::ptr::drop_in_place(&mut vm.stack[at + index]) };
-                }
-            }
-            vm.stack.forget_from(at);
-            if let Err(error) = vm.memory_check() {
-                return interrupt(vm, error);
-            }
-            match value {
+    // the entry on the arguments where they lie; the pc is synced only
+    // where something can go wrong, the fast path never does
+    if let Some(typed) = vm.typed_entry(function) {
+        let args = &vm.stack.as_slice()[at..];
+        let answered = match typed {
+            crate::extension::Typed::Bool(answer) => match answer(args) {
                 Some(value) => {
-                    let failed = value.is_failure();
-                    vm.stack.push(value);
-                    if failed {
-                        FAILURE
-                    } else {
-                        CONTINUE
-                    }
-                }
-                None => {
                     // SAFETY: `out` is the generated code's own slot for an
                     // answer, eight bytes wide.
-                    unsafe { *out = scalar };
-                    CONTINUE
+                    unsafe { *out = value as i64 };
+                    true
                 }
+                None => false,
+            },
+            crate::extension::Typed::Int(answer) => match answer(args) {
+                Some(value) => {
+                    // SAFETY: as above.
+                    unsafe { *out = value };
+                    true
+                }
+                None => false,
+            },
+            crate::extension::Typed::Float(answer) => match answer(args) {
+                Some(value) => {
+                    // SAFETY: as above.
+                    unsafe { *out = value.to_bits() as i64 };
+                    true
+                }
+                None => false,
+            },
+            crate::extension::Typed::Value(answer) => match answer(args) {
+                Some(value) => {
+                    consume_arguments(vm, at, count, borrowed);
+                    let failed = value.is_failure();
+                    vm.stack.push(value);
+                    if let Err(error) = vm.memory_check() {
+                        vm.sync_pc(pc);
+                        return interrupt(vm, error);
+                    }
+                    return if failed { FAILURE } else { CONTINUE };
+                }
+                None => false,
+            },
+        };
+        if answered {
+            consume_arguments(vm, at, count, borrowed);
+            if let Err(error) = vm.memory_check() {
+                vm.sync_pc(pc);
+                return interrupt(vm, error);
             }
+            return CONTINUE;
         }
-        None => {
-            // the general path takes the arguments as its own: a borrowed
-            // one gets the reference it was pushed without
-            for index in 0..count {
-                if borrowed & (1 << index) != 0 {
-                    std::mem::forget(vm.stack[at + index].clone());
-                }
-            }
-            let result = vm.call_from_stack(function, count);
-            let status = status(vm, result);
-            if status == CONTINUE && vm.expects_scalar(function) {
-                BOXED
-            } else {
-                status
+    }
+    // the general path takes the arguments as its own: a borrowed one
+    // gets the reference it was pushed without
+    vm.sync_pc(pc);
+    for index in 0..count {
+        if borrowed & (1 << index) != 0 {
+            std::mem::forget(vm.stack[at + index].clone());
+        }
+    }
+    let result = vm.call_from_stack(function, count);
+    let status = status(vm, result);
+    if status == CONTINUE && vm.expects_scalar(function) {
+        BOXED
+    } else {
+        status
+    }
+}
+
+/// The `count` arguments of a typed call consumed after its entry
+/// answered: an owned one dropped, a borrowed one counted out without a
+/// drop; nothing to drop when every argument was borrowed, the common
+/// case.
+fn consume_arguments(vm: &mut Vm, at: usize, count: usize, borrowed: u32) {
+    let all = if count >= 32 {
+        u32::MAX
+    } else {
+        (1u32 << count) - 1
+    };
+    if borrowed & all != all {
+        for index in 0..count {
+            if borrowed & (1 << index) == 0 {
+                // SAFETY: the slot is counted out by `forget_from` below,
+                // before anything reads it again.
+                unsafe { std::ptr::drop_in_place(&mut vm.stack[at + index]) };
             }
         }
     }
+    vm.stack.forget_from(at);
 }
 
 pub(crate) unsafe extern "C" fn rt_call_ability(
@@ -1281,6 +1301,7 @@ impl Vm<'_> {
         for index in at..self.stack.len() {
             match self.stack[index].plain() {
                 Value::Text(part) => text.push_str(part),
+                Value::Integer(Int::Small(value)) => crate::integer::push_digits(&mut text, *value),
                 Value::Integer(value) => {
                     let _ = write!(text, "{value}");
                 }

@@ -3618,3 +3618,28 @@ effects of every op; `LoadMove` is not among them (its operand is the
 slot's reference, moved). Why the entry is looked up again at run time
 rather than its address placed in the code: AS1, the code holds no
 address, and a binary with other extensions may lack the entry. (user)
+
+**AU3. The small cuts the profile of AU2 named, in: `rt_call_typed`
+syncs the pc only where something can go wrong (the general path, an
+interrupt) and drops nothing when every argument was borrowed
+(`consume_arguments`); a machine-word Integer writes its digits into a
+text without `core::fmt` (`integer::push_digits`, `digits`; in `render`
+and `op_concat`, so in every `{...}` hole and every `to_text`); `append`,
+`append_all`, `set` and `add` on a list, a map or a set, and `without`,
+change the collection through `Rc::make_mut` and keep its allocation
+where `take_list` and `Value::list` had freed one and allocated another
+on every call.** Measured by AU1's rule against AU2's binary: the
+self-check's estimate on the JIT run 13.86 to 13.83 billion cycles
+(-0.15%), the interpreter 17.23 to 17.20 (-0.2%), the image 10.27 to
+10.22 (-0.4%): the cuts are the strings loop's, the self-check only
+holds; `bench/strings.ry` 94 to 84 ms best of seven, 87 by
+`tools/bench.py` against CPython's 79 on the same runs (0.9 of
+CPython's time), 77 as an image, which is past it; the first half of the
+program 39 to 30 ms. The profile of strings (callgrind): 733 to 669
+million instructions (563 a glyph); `rt_call_typed` 111 to 80 a call,
+an Integer written into a text 586 to 108 instructions, `append` 400 to
+50; the loop is now the iteration (`rt_iter_next` and `iterator_next`,
+82 a glyph; stage ii), the search (72, Rust's `memchr` on ten bytes for
+a one-byte needle), the typed call's helper (80), the generated code
+(56), the entry's own match on its two texts (20) and the loop
+variable's retain and release (about 40). (user)

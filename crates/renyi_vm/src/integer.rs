@@ -195,6 +195,35 @@ impl Hash for Int {
     }
 }
 
+/// The decimal digits of a machine-word Integer appended to the text,
+/// without `core::fmt` (decision AU2's profile: the formatter machinery
+/// was most of the cost of writing an Integer into a text).
+pub fn push_digits(text: &mut String, value: i64) {
+    let mut buffer = [0u8; 20];
+    let mut at = buffer.len();
+    let mut rest = value.unsigned_abs();
+    loop {
+        at -= 1;
+        buffer[at] = b'0' + (rest % 10) as u8;
+        rest /= 10;
+        if rest == 0 {
+            break;
+        }
+    }
+    if value < 0 {
+        text.push('-');
+    }
+    // the digits are ASCII
+    text.push_str(std::str::from_utf8(&buffer[at..]).expect("digits"));
+}
+
+/// The decimal digits of a machine-word Integer as a text.
+pub fn digits(value: i64) -> String {
+    let mut text = String::with_capacity(20);
+    push_digits(&mut text, value);
+    text
+}
+
 impl fmt::Display for Int {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

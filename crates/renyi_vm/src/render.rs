@@ -7,6 +7,7 @@
 
 use std::cmp::Ordering;
 
+use crate::integer::Int;
 use crate::natives::time::{civil_from_days, instant_text};
 use crate::types::TypeShape;
 use crate::value::{Native, Value};
@@ -44,6 +45,7 @@ impl Vm<'_> {
             Value::Nothing => "nothing".to_string(),
             Value::Boolean(true) => "true".to_string(),
             Value::Boolean(false) => "false".to_string(),
+            Value::Integer(Int::Small(value)) => crate::integer::digits(*value),
             Value::Integer(value) => value.to_string(),
             Value::Decimal(value) => value.to_string(),
             Value::Float(value) => float_text(*value),

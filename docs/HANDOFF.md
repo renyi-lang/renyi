@@ -1870,10 +1870,26 @@ stage in AU2: `rt_call_typed` itself 111 instructions a call, the
 iteration 82 a glyph, the loop variable's retain and release 54, the
 first half of the program a fifth of the whole (`core::fmt` for every
 Integer written into a text, `append` freeing and allocating its `Rc`
-each call). Next: the small cuts the profile names (the integer digits
-without `core::fmt` in `render` and `op_concat`, `append` through
-`Rc::make_mut`, the helper's fast path without `sync_pc` and without
-the consume loop when every argument is borrowed), then stage 2.
+each call).
+
+**Stage 1b is in (decision AU3, 2026-10-09)**: the small cuts the
+profile named. `rt_call_typed` syncs the pc only on the general path
+and the error paths and drops nothing when every argument was borrowed
+(`consume_arguments`); `integer::push_digits` and `digits` write a
+machine-word Integer without `core::fmt` (used by `render` and
+`op_concat`); `append`, `append_all`, `set`, `add` and `without` on
+lists, maps and sets go through `Rc::make_mut` and keep the allocation
+(`take_list` and `take_set` are gone from the prelude). Measured:
+strings 94 to 84 ms (87 by `tools/bench.py`, CPython 79; 77 as an
+image, past CPython), the self-check's estimate within half a percent
+on every tier (13.86 to 13.83 billion on the JIT run); the profile 733
+to 669 million instructions, 563 a glyph: the iteration 82, the search
+72, the typed call's helper 80, the generated code 56, the entry's match
+20, the loop variable's retain and release about 40, the rest the first
+half of the program. Next: stage 2 (the iteration inline), then the
+micro cuts left (the typed call's general path out of the fast function,
+a one-byte needle in a short text by a plain loop, the digits pushed as
+characters).
 
 ## The size of the generated code (decisions AT1 to AT7; session 9, 2026-10-08 and 09)
 

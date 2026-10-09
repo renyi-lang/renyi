@@ -17,7 +17,7 @@ use super::{
 use crate::decimal::Decimal;
 use crate::extension::{Native, Typed};
 use crate::integer::Int;
-use crate::value::{take_list, take_map, take_set, Value};
+use crate::value::{take_map, Value};
 use crate::vm::{finite_float, range_items, Interrupt, Vm};
 
 /// The natives of `std.prelude` (decision AK2): the declared function
@@ -588,10 +588,12 @@ fn list_slice(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
 fn list_append(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     let item = take(args, 1);
     match take(args, 0) {
-        Value::List(items) => {
-            let mut items = take_list(items);
-            items.push(item);
-            Ok(Value::list(items))
+        Value::List(mut items) => {
+            // in place when nothing else holds the list (decision O1), the
+            // allocation kept (AU2's profile: `take_list` then
+            // `Value::list` freed and allocated one per call)
+            Rc::make_mut(&mut items).push(item);
+            Ok(Value::List(items))
         }
         other => Err(crash(format!(
             "`append` needs a List, found {}",
@@ -604,10 +606,9 @@ fn list_append_all(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     let others = take(args, 1);
     let others = list(&others)?.clone();
     match take(args, 0) {
-        Value::List(items) => {
-            let mut items = take_list(items);
-            items.extend(others.iter().cloned());
-            Ok(Value::list(items))
+        Value::List(mut items) => {
+            Rc::make_mut(&mut items).extend(others.iter().cloned());
+            Ok(Value::List(items))
         }
         other => Err(crash(format!(
             "`append_all` needs a List, found {}",
@@ -758,10 +759,9 @@ fn map_set(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     let value = take(args, 2);
     let key = take(args, 1);
     match take(args, 0) {
-        Value::Map(entries) => {
-            let mut entries = take_map(entries);
-            entries.insert(key, value);
-            Ok(Value::Map(Rc::new(entries)))
+        Value::Map(mut entries) => {
+            Rc::make_mut(&mut entries).insert(key, value);
+            Ok(Value::Map(entries))
         }
         other => Err(crash(format!(
             "`set` needs a Map, found {}",
@@ -773,10 +773,9 @@ fn map_set(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
 fn map_without(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     let key = take(args, 1);
     match take(args, 0) {
-        Value::Map(entries) => {
-            let mut entries = take_map(entries);
-            entries.shift_remove(&key);
-            Ok(Value::Map(Rc::new(entries)))
+        Value::Map(mut entries) => {
+            Rc::make_mut(&mut entries).shift_remove(&key);
+            Ok(Value::Map(entries))
         }
         other => Err(crash(format!(
             "`without` needs a Map, found {}",
@@ -843,10 +842,9 @@ fn set_contains(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
 fn set_add(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     let item = take(args, 1);
     match take(args, 0) {
-        Value::Set(items) => {
-            let mut items = take_set(items);
-            items.insert(item);
-            Ok(Value::Set(Rc::new(items)))
+        Value::Set(mut items) => {
+            Rc::make_mut(&mut items).insert(item);
+            Ok(Value::Set(items))
         }
         other => Err(crash(format!(
             "`add` needs a Set, found {}",
@@ -858,10 +856,9 @@ fn set_add(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
 fn set_without(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     let item = take(args, 1);
     match take(args, 0) {
-        Value::Set(items) => {
-            let mut items = take_set(items);
-            items.shift_remove(&item);
-            Ok(Value::Set(Rc::new(items)))
+        Value::Set(mut items) => {
+            Rc::make_mut(&mut items).shift_remove(&item);
+            Ok(Value::Set(items))
         }
         other => Err(crash(format!(
             "`without` needs a Set, found {}",

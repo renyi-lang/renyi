@@ -766,4 +766,7 @@ first goal is `strings` past CPython, the second the self-check a
 quarter faster. Stage 1 (decision AU2: typed entries of the natives over
 borrowed arguments, the flat path for the pure primitives) cut the
 self-check's estimate on the JIT run 6.5 percent and `strings` from 134
-to 94 ms against CPython's 81.
+to 94 ms against CPython's 81; the small cuts after it (decision AU3:
+the digits of an Integer without `core::fmt`, the collections changed
+in place through `Rc::make_mut`, the typed call's helper trimmed) took
+`strings` to 84 ms (77 as an image, CPython 79).
