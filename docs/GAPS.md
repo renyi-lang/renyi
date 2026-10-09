@@ -746,3 +746,21 @@ closed the round on 2026-10-09 (decision AT7). Against CPython that
 day: `primes` 9.7, `records` 3.4 and `json_round_trip` 1.7 times
 faster, `hello` 6 against 18 ms, and `strings` behind at 128 against
 85 ms, the per-character loop the next round takes up.
+
+The next round (decision AU1, 2026-10-09) is the cure rather than a
+cut: the checker's static types brought to the code generator. The
+profile of `bench/strings.ry` on the JIT tier found the root cause in
+the design, not in one op: the bytecode and the VM are dynamically
+typed under a statically typed language, so the generated code is the
+interpreter unrolled, 966 instructions per glyph of which 43 percent
+cross the primitive boundary and 12 percent do the work. The order:
+the call to a primitive without the boundary (typed entries over
+borrowed arguments, a flat path for the pure primitives without one),
+the loop over a list in the generated code, the typed bytecode (format
+5: every expression's type recorded by both checkers, a type table per
+program), then what the types buy (static field indices, static ability
+dispatch, typed loop variables, the retains and releases elided where
+the consumer borrows); the representation in later rounds. Measured by
+AT1's rule with the four benchmarks against CPython beside it; the
+first goal is `strings` past CPython, the second the self-check a
+quarter faster.

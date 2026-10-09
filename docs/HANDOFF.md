@@ -20,9 +20,11 @@ AT1 to AT7 (the section "The size of the generated code" below): the
 cuts at no cost, the image's program in binary, the static stack
 height, the image's code section mapped from the file and the reference
 counts as calls, every stage of the owner's plan measured and in, the
-round closed by the owner on 2026-10-09 (AT7); the next round, the
-owner's choice, is the per-character loop of `bench/strings.ry`, the
-one benchmark behind CPython, opened by its profile on the JIT tier.
+round closed by the owner on 2026-10-09 (AT7); then the typed round,
+decision AU1, opened by the profile of `bench/strings.ry` on the JIT
+tier and the owner's choice of a cure over another cut: the checker's
+static types brought to the code generator (the section "The typed
+round" below), in progress.
 Session 8
 (stage 2 of the gap audit of
 `docs/GAPS.md`: the formal grammar `docs/grammar.ebnf` with decision V12;
@@ -1769,6 +1771,80 @@ and the commit of the site and the crates.io metadata.
   answer; `install.sh` under WSL installed and ran 0.1.0 from the
   release; the Windows archive's checksum and binary were verified
   by hand; `cargo install renyi` built the binary from crates.io.
+
+## The typed round (decision AU1; session 9, 2026-10-09), in progress
+
+The owner asked, after the size round closed, for a cure of the
+performance rather than another cut, and chose the route on
+2026-10-09 (decision AU1, with the reasons and the profile's numbers):
+the checker's static types brought to the code generator, as a typed
+bytecode (format 5) that both emitters write. The root cause the
+profile showed: the bytecode and the VM are dynamically typed under a
+statically typed language, the baseline JIT recovers only the three
+scalars, and the generated code is the interpreter unrolled (14% fewer
+instructions than the interpreter on the self-check, 7% faster in
+wall-clock; `primes` 9.7 times faster than CPython because it is all
+Integers, `strings` slower than CPython because it is all boxed).
+
+The profile that opened it (`valgrind --tool=callgrind` on the release
+binary, `renyi run bench/strings.ry`, the JIT tier; the inclusive and
+exclusive listings are in the decision): 1,149 million instructions,
+966 per glyph over 1,188,895 glyphs; 43% the primitive boundary
+(`rt_call`, `call_from_stack`, `call_primitive`, `run_primitive`,
+`status`, `guarded`, `effect_of`, the drops of the arguments, the
+scratch copy), 12% the search itself, 8% the iteration, 6% the retains
+and clones of the constant and the glyph, 7% the generated code, the
+rest the first half of the program (`rt_to_text` through `core::fmt`,
+`rt_concat`, `append` through the boundary). Wall-clock on this
+machine, best of five: the whole program 130 ms, its first half alone
+33 (of which about 10 ms is the process and the compile), CPython 84.
+The glyphs allocate nothing (the ASCII table of `Value::character`,
+AQ), so inline small texts would save only the reference counts here.
+
+The plan (AU1), each stage measured by AT1's rule with the benchmarks
+against CPython beside it, a stage kept when the self-check's estimate
+falls or a benchmark gains more than 5% without the self-check losing
+more than 1%:
+
+1. **The call to a primitive without the boundary.** A `Native` may
+   carry a typed entry from a fixed family (`fn(&[Value]) ->
+   Option<T>`, `T` one of `bool`, `i64`, `f64`, `Value`; `None` sends
+   the call down the general path), called by the generated code with
+   the arguments borrowed on the stack and the result in a register; a
+   pure primitive without one runs on a flat path (`memory_check`,
+   `plain_in_place`, the native, `guarded`, nothing else); an operand a
+   typed call borrows is neither retained nor released when a `Load` or
+   a `Const` pushed it. The interpreter takes the flat path too. The
+   registration API gains the entry (an addition to AK2; the guide
+   `docs/extensions.md`).
+2. **The loop over a list in the generated code**: the list iterator
+   in a fixed layout (`#[repr(C)]`: the items' address and count, the
+   position, the list that keeps them alive), read and advanced by the
+   generated code with a tag check and the helper as the fallback.
+3. **The typed bytecode, format 5.** Both checkers record the type of
+   every expression at its span (`Target::Typed`, the zonked type,
+   skipped when a variable remains), as `Target::Result` and
+   `Target::Number` already travel from `check.rs` and
+   `compiler/bodies.ry` to `compile/` and `compiler/emit.ry`; both
+   emitters write a type table per program (first use first) and per
+   code object the type of what each op pushes (`emit` looks the span
+   up, so no emission site changes); `file.rs`, `binary.rs`,
+   `compiler/bytecode.ry`; the judges hold the two emitters equal; the
+   VM checks the annotations against its inference of the three scalars
+   on the corpus, the conformance suite and `compiler/` before it uses
+   them.
+4. **What the types buy**: the field read at a static index, the
+   ability method chosen statically, the loop variable typed, the
+   retains and releases elided wherever the consumer borrows.
+5. **Later rounds**: the representation (small texts inline, `Int`
+   flattened, lists of unboxed Integers, values in registers across
+   ops).
+
+Safety does not rest on the types: the generated code reads a tag
+before every fast path and hands the frame to the interpreter when it
+does not match (AR1), so a type is the choice of the fast path, never a
+promise. The recordings, the replay, the narration and the `.ryc` as
+JSON stay as they are.
 
 ## The size of the generated code (decisions AT1 to AT7; session 9, 2026-10-08 and 09)
 

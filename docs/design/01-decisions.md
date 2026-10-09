@@ -3468,3 +3468,95 @@ copied and retained per iteration, a one-character text allocated per
 glyph, and a primitive call through the boundary per glyph; its measure
 and its cuts are its own opening decision, after the profile on the JIT
 tier. (user)
+
+## AU. Static types to the code generator (session 9)
+
+**AU1. The round that brings the checker's static types to the code
+generator, the cure the owner asked for in place of another cut, in
+this order, each stage measured and kept by the rule below: (i) the
+call to a primitive without the boundary: a native may carry a typed
+entry from a fixed family of signatures (`fn(&[Value]) -> Option<T>`
+for `T` one of `bool`, `i64`, `f64` and `Value`; `None` means the
+arguments are not the plain values the fast path takes and the general
+path runs), called by the generated code with its arguments borrowed
+where they lie on the stack and its result in a register; the
+registration API's `Native` gains the optional entry (an addition to
+AK2), the standard library's hottest primitives take one; a pure
+primitive without one (no `needs`) runs on a flat path that enters none
+of the boundary's checks, since none applies to it; an operand a typed
+call borrows is neither retained before nor released after, when the
+op that pushed it was a `Load` or a `Const`; (ii) the loop over a list
+in the generated code: the iterator in a fixed layout that the code
+reads and advances itself, as it does for a range (AG3); (iii) the
+typed bytecode, format 5: both checkers record the type of every
+expression of a body (`Target::Typed`, by span, as `Target::Result`
+already travels), both emitters write a table of the types a program
+uses and, per code object, the type of what each op pushes, and the VM
+checks the annotations against its own inference of the three scalars
+on the corpus before it trusts them; (iv) what the types buy: the field
+read at an index known statically, the ability method chosen
+statically, the loop variable typed, the retains and releases elided
+wherever the consumer borrows; (v) left to later rounds: the
+representation (small texts inline, `Int` flattened into `Value`, lists
+of unboxed Integers, values in registers across ops), which the types
+make worth doing. The measure: AT1's rule decides (the compiler's
+self-check by KCachegrind's estimate of the cycles on the JIT run, the
+interpreter and the image, `tools/measure_size.sh`), the four
+benchmarks against CPython in wall-clock confirm (`tools/bench.py`); a
+stage stays when the self-check's estimate on the JIT run falls, or
+when a benchmark gains more than 5% while the self-check loses no more
+than 1%. The round's first goal is `bench/strings.ry` past CPython, its
+second the self-check a quarter faster than AT7 left it.** The owner's
+four answers of 2026-10-09, asked after the profile of
+`bench/strings.ry` on the JIT tier; the owner chose the typed bytecode
+over the session's recommendation of an inference inside the VM
+(below), and folded the strings round AT7 had announced into this one.
+The root cause, as the profile shows it: Renyi is statically typed,
+but its bytecode and its VM are not; the checker's types die at the
+emitter, every value carries a tag, every op reads it, the baseline
+JIT recovers the three scalars by abstract interpretation (AR1) and
+boxes everything else on the VM's stack with a helper call per op, so
+the generated code is the interpreter unrolled: on the self-check it
+runs 14% fewer instructions than the interpreter (AT1) and 7% faster
+in wall-clock, and `bench/primes.ry` is 9.7 times faster than CPython
+because it is all Integers. The strings loop (`"0123456789".contains(glyph)`
+over 1,188,895 glyphs; 130 ms against CPython's 84 on this machine,
+the first half of the program 23 ms of it) runs 966 instructions per
+glyph on the JIT tier (callgrind, 1,149 million in all): 411 of them
+(43%) cross the primitive boundary (`rt_call` 23, `call_from_stack`
+101, `call_primitive` 87, `run_primitive` 48, `status` 40, `guarded`
+24, `effect_of` 22, the drop of the two arguments 41, the copy into
+the scratch buffer 25), 117 (12%) are the search itself
+(`is_contained_in` 72, `text_contains` 45), 80 (8%) the iteration
+(`rt_iter_next` 29, `iterator_next` 37, the item's clone), 55 (6%) the
+retain and the clone of the constant and the glyph, 67 (7%) the
+generated code, and the rest the first half of the program (the text
+built from a hundred thousand pieces: `rt_to_text` 59 million through
+`core::fmt`, `rt_concat` 48 million, `append` through the same
+boundary). The glyphs themselves allocate nothing since AQ (the ASCII
+table of `Value::character`). Why the typed bytecode rather than an
+inference in the VM from the signatures the bytecode already carries
+(`param_types`, `returns`, the field types of every shape): the owner's
+choice; the inference would have been a second checker inside the VM,
+sure only where the first was, and a call of a generic function or an
+empty list literal has its type at the call site alone; with the
+checker recording what it knows, the VM infers nothing and the two
+checkers are held equal on one more thing by the judge of W7, as they
+already are on `Target::Result` and `Target::Number`. Why the typed
+natives through a signature family and not per primitive: the
+generated code is address-free (AS1) and calls through tables; a
+family of four result kinds over borrowed arguments is one table and
+four helpers, and the natives stay ordinary Rust functions that an
+extension can write too. Why the typed call takes `Option`: the fast
+path sees plain values; a guarded argument, a big Integer or a failure
+returns `None` and the general path does what it always did, so a
+typed entry can never be less correct than the native it stands beside.
+Why stage (i) comes before the typed bytecode: it needs no type the
+bytecode lacks (the callee is known at every call site and its result
+type is in `returns`), it removes the largest item of the profile, and
+the typed bytecode's calls will target the same entries. What the types
+do not change: the generated code still reads the tag before it takes
+a fast path, since a value of Integer type may be big or guarded at run
+time (AR1), so a type is the choice of the fast path and never a
+promise the code relies on for its safety; the recordings, the replay,
+the narration and the `.ryc` as JSON (Z1) stay as they are. (user)
