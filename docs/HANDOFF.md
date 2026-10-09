@@ -1942,6 +1942,21 @@ chosen statically, the loop variable typed from the list's item type,
 the retains and releases elided where the consumer borrows, `Binary`
 comparisons first).
 
+**Stage 3b is in (decision AU7, 2026-10-09)**: the notes recorded
+cheaply. `compiler/bodies.ry`: `infer` keeps a body's typed notes in
+chunks of 64 (`typed`, `typed_chunks`, the binding `rotated`),
+`record_typed` appends to `typed_references`, one list per body, which
+`all_references` joins into the module's references once;
+`compile/mod.rs`: `type_index` through `Context::type_indices`, a map.
+Measured: the self-check's estimate on the JIT run 16.67 to 14.58
+billion (6.0% above AU5's 13.75: the Renyi checker's own remaining cost
+of the notes, see the decision), the interpreter 20.20 to 18.04, the
+image 12.75 to 10.66; the judges in 102 s (117 at AU6). Noted for a
+later round: `record with field: record.field.append(x)` copies the
+list on every call throughout the compiler; an emitter that recognised
+the update of a field of a uniquely held record would make the compiler
+faster by a large factor on its hottest paths.
+
 ## The size of the generated code (decisions AT1 to AT7; session 9, 2026-10-08 and 09)
 
 The owner's four answers of 2026-10-08 after `renyi build` closed

@@ -282,6 +282,8 @@ struct Context<'w> {
     /// program keeps count characters.
     characters: HashMap<ModuleId, Vec<usize>>,
     result_types: Vec<Ty>,
+    /// The index of every type in `result_types`, for the lookup per op.
+    type_indices: HashMap<Ty, u32>,
     refs: HashMap<(ModuleId, BodyLocation), Refs>,
     /// The `Op::Field` sites numbered so far.
     field_sites: u32,
@@ -448,6 +450,7 @@ pub fn compile_project(checked: &CheckedProject, files: &[SourceFile]) -> Progra
         sources: source_texts,
         characters,
         result_types: Vec::new(),
+        type_indices: HashMap::new(),
         refs,
         field_sites: 0,
     };
@@ -862,11 +865,13 @@ impl<'c, 'w> Compiler<'c, 'w> {
     /// The index of a type in the program's table of the types it names,
     /// added when new.
     fn type_index(&mut self, ty: Ty) -> u32 {
-        if let Some(index) = self.ctx.result_types.iter().position(|t| *t == ty) {
-            return index as u32;
+        if let Some(index) = self.ctx.type_indices.get(&ty) {
+            return *index;
         }
-        self.ctx.result_types.push(ty);
-        (self.ctx.result_types.len() - 1) as u32
+        let index = self.ctx.result_types.len() as u32;
+        self.ctx.result_types.push(ty.clone());
+        self.ctx.type_indices.insert(ty, index);
+        index
     }
 
     pub fn source_text(&self, span: Span) -> String {

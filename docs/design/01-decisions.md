@@ -3758,3 +3758,26 @@ says. What the test found on the way: the literal of a refined field
 (`Version(major: 1, ...)`) is typed with the refined subtype, which the
 inference now reads as the base; a `maybe Integer` binding the analysis
 proves always an Integer is compatible, not a disagreement. (user)
+
+**AU7. The typed notes recorded cheaply, after AU6's measurement: the
+checker written in Renyi keeps a body's notes in chunks of 64
+(`typed`, `typed_chunks`: a list held in a record is copied on every
+append, since the field read clones it and `append` finds it shared,
+so the copy is bounded), keeps the typed references of each body apart
+(`typed_references`, one list per body) and joins them into the module's
+references once (`all_references`); the Rust emitter finds a type's
+index in the table through a map (`type_indices`) instead of a scan.**
+Measured by AU1's rule against AU6's binary: the self-check's estimate
+on the JIT run 16.67 to 14.58 billion cycles (-12.5%; 6.0% above AU5's
+13.75, before the notes), the interpreter 20.20 to 18.04 (AU5 17.24),
+the image 12.75 to 10.66 (AU5 10.12); the judges of Z3 and W7 in 102 s
+(117 s at AU6). What is left of the notes' cost is the Renyi checker's
+own: a `SpanTy` record and two record copies of the checker per
+expression, the zonk of each note at the body's end, a reference record
+per note. What this showed about the language: the pattern `record with
+field: record.field.append(x)` copies the list on every call, in the
+compiler everywhere (`references`, `diagnostics`, `vars`, `scopes`); an
+emitter that recognised the update of a field of a uniquely held record
+and moved the field out and back in would make the compiler itself
+faster by a large factor on its hottest paths, a candidate for a later
+round. (user)

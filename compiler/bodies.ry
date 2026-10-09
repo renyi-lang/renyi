@@ -217,6 +217,8 @@ public type Checker
   has literals: List of SpanTy
   has results: List of SpanTy
   has typed: List of SpanTy
+  has typed_chunks: List of List of SpanTy
+  has typed_references: List of List of Reference
   has depth: Integer
   has task: maybe TaskScope
   has type_params: List of NamedParam
@@ -319,6 +321,8 @@ public function new_checker(world: World, module_id: Integer) returns Checker
     literals: [],
     results: [],
     typed: [],
+    typed_chunks: [],
+    typed_references: [],
     depth: 0,
     task: nothing,
     type_params: [],
@@ -471,7 +475,7 @@ function record(checker: Checker, target: Target, span: Span) returns Checker
 end
 
 function record_typed(checker: Checker, typed: List of SpanTy) returns Checker
-  purpose: The types noted for the body's expressions, as references, once each is settled (decision AU1, stage iii); none while checking `example:` lines.
+  purpose: The types noted for the body's expressions, as references, once each is settled (decision AU1, stage iii); none while checking `example:` lines. Kept per body and joined to the module's references once (`finish_module_references`).
 
   match checker.owner
     when NoBody then return checker
@@ -485,8 +489,14 @@ function record_typed(checker: Checker, typed: List of SpanTy) returns Checker
           )
         end
       end
-      return checker with references: checker.references.append_all(noted)
+      return checker with typed_references: checker.typed_references.append(noted)
   end
+end
+
+function all_references(checker: Checker) returns List of Reference
+  purpose: The module's references with the typed references of every body after them.
+
+  return checker.references.append_all(checker.typed_references.flattened())
 end
 
 function record_type_names(checker: Checker, ty: Type) returns Checker
@@ -2112,8 +2122,8 @@ function finish_body(checker: Checker) returns Checker
       change updated to record(checker: updated, target: ResultTarget(ty: ty), span: noted.span)
     end
   end
-  let typed be updated.typed
-  change updated to updated with typed: []
+  let typed be updated.typed_chunks.append(updated.typed).flattened()
+  change updated to updated with typed: [], typed_chunks: []
   change updated to record_typed(checker: updated, typed: typed)
   let deferred be updated.deferred
   change updated to updated with deferred: []
@@ -3137,6 +3147,11 @@ function infer(checker: Checker, expr: Expr, expected: maybe Ty) returns Done of
   let done be infer_inner(checker: checker, expr: expr, expected: expected)
   let noted be SpanTy(span: expr_span(expr), ty: done.value.ty)
   let after be done.checker
+  if after.typed.length() is at least 64 then
+    let chunks be after.typed_chunks.append(after.typed)
+    let rotated be after with typed_chunks: chunks, typed: [noted]
+    return done with checker: rotated
+  end
   let updated be after with typed: after.typed.append(noted)
   return done with checker: updated
 end
@@ -7699,7 +7714,7 @@ public function check_module(world: World, module_id: Integer) returns Checked
       fix: "add a `purpose:` clause under the `module` line"
     )
   end
-  return Checked(diagnostics: checker.diagnostics, references: checker.references)
+  return Checked(diagnostics: checker.diagnostics, references: all_references(checker))
 end
 
 function check_item(checker: Checker, index: Integer, item: Item, bodies: Map of Text to Integer)

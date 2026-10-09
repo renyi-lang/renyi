@@ -775,4 +775,7 @@ by `tools/bench.py`, at par with CPython, and cut the self-check's
 estimate another 1.3 percent. Stage 3 (decision AU6) is the typed
 bytecode itself, format 5: every op carries the type the checker noted
 for its expression, written by both emitters and held equal by the
-judges; stage 4, what the types buy in the generated code, is next.
+judges; stage 3b (decision AU7) recorded the notes cheaply in the Renyi
+checker and took the self-check's estimate back to 6 percent above
+stage 2b; stage 4, what the types buy in the generated code, is in
+progress.
