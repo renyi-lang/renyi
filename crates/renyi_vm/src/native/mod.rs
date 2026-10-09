@@ -24,6 +24,8 @@ pub mod infer;
 pub mod runtime;
 
 use std::io::{Read, Seek};
+use std::sync::mpsc;
+use std::thread::JoinHandle;
 
 use cranelift_codegen::isa::OwnedTargetIsa;
 use cranelift_codegen::settings::{self, Configurable};
@@ -59,8 +61,18 @@ pub const DEPTH_LIMIT: usize = 200;
 /// Decision AR5: a code object pays for its compilation (Cranelift's
 /// work, about a quarter of a million instructions per op) only after
 /// some ten thousand runs of each of its ops; 8000 is where the
-/// compiler's self-check measured lowest (2000 before AR5).
+/// compiler's self-check measured lowest (2000 before AR5). This is the
+/// factor when the JIT compiles on the interpreter's own thread: under
+/// `RENYI_NATIVE_SYNC`, with `RENYI_NATIVE_HOT=0`, or on a machine with
+/// one hardware thread.
 pub const HOT_FACTOR: u32 = 8000;
+
+/// The factor when a compile thread does the work (decision AU15): the
+/// interpreter pays nothing for a compilation but the handing over and
+/// the placing of the code, so a code object is handed over once it has
+/// run this many times its size in ops, and runs on the interpreter until
+/// its code comes back.
+pub const HOT_FACTOR_BACKGROUND: u32 = 100;
 
 /// Where the generated code hands a frame to the interpreter: what it
 /// kept in registers at that op, so that `rt_deopt` can box it.
@@ -79,6 +91,9 @@ pub struct DeoptPoint {
 enum State {
     /// Not compiled yet: the interpreter runs it.
     Cold,
+    /// Handed to the compile thread (decision AU15): the interpreter runs
+    /// it until the machine code comes back.
+    Queued,
     Skipped,
     /// Compiled: the trampoline the VM calls, the body a generated caller
     /// calls directly (decision AR3), and the loop headers the function
@@ -90,6 +105,85 @@ enum State {
     },
 }
 
+/// The thread that compiles hot code objects while the interpreter runs
+/// them (decision AU15): the JIT hands it a code object and runs on, and
+/// the machine code comes back through a channel, to be placed when that
+/// code object is asked for next. The thread has Cranelift's target and
+/// contexts of its own.
+struct Worker {
+    requests: Option<mpsc::Sender<CodeId>>,
+    results: mpsc::Receiver<(CodeId, Result<codegen::Compiled, codegen::Skipped>)>,
+    handle: Option<JoinHandle<()>>,
+}
+
+/// The program as the compile thread reads it.
+struct ProgramRef(*const Program);
+
+// SAFETY: the program is read and never written while the thread runs:
+// the VM and the JIT hold it by a shared reference and it holds nothing
+// with interior mutability. The thread is joined when the JIT is dropped,
+// and the JIT is a field of the VM that borrows the program, so the
+// thread never outlives the program. The thread reads the constants'
+// tags and payloads and never their reference counts, which a clone of
+// a constant on the interpreter's thread changes, so the two touch no
+// word in common.
+unsafe impl Send for ProgramRef {}
+
+impl Worker {
+    /// The thread started for the program, or `None` when the system
+    /// gives none.
+    fn start(program: &Program, opt_level: &str, calls: Vec<CallKind>) -> Option<Worker> {
+        let (requests, inbox) = mpsc::channel::<CodeId>();
+        let (outbox, results) = mpsc::channel();
+        let program = ProgramRef(program);
+        let level = opt_level.to_string();
+        let handle = std::thread::Builder::new()
+            .name("renyi-native".to_string())
+            .spawn(move || {
+                let Some(isa) = Jit::isa(&level) else {
+                    return;
+                };
+                let mut ctx = Context::new();
+                let mut fctx = FunctionBuilderContext::new();
+                // the wrapper moved whole, which is what is `Send`
+                let wrapper = program;
+                // SAFETY: `ProgramRef` says why the program is there to read.
+                let program: &Program = unsafe { &*wrapper.0 };
+                for code in inbox {
+                    let result =
+                        codegen::compile(program, code, &calls, &*isa, &mut ctx, &mut fctx);
+                    if outbox.send((code, result)).is_err() {
+                        break;
+                    }
+                }
+            })
+            .ok()?;
+        Some(Worker {
+            requests: Some(requests),
+            results,
+            handle: Some(handle),
+        })
+    }
+
+    /// Whether the code object was handed to the thread.
+    fn request(&self, code: CodeId) -> bool {
+        self.requests
+            .as_ref()
+            .is_some_and(|requests| requests.send(code).is_ok())
+    }
+}
+
+impl Drop for Worker {
+    fn drop(&mut self) {
+        // the requests closed, the thread's loop ends; a compilation
+        // under way finishes first
+        self.requests.take();
+        if let Some(handle) = self.handle.take() {
+            let _ = handle.join();
+        }
+    }
+}
+
 /// The JIT of one VM: Cranelift's target, the state of every code
 /// object, the tables the generated code reaches through the VM
 /// (decision AS1) and the executable memory the code is placed in.
@@ -99,6 +193,10 @@ pub struct Jit {
     fctx: FunctionBuilderContext,
     states: Vec<State>,
     hot_factor: u32,
+    /// Whether hot code objects are compiled on a thread of their own
+    /// (decision AU15), which starts at the first one.
+    background: bool,
+    worker: Option<Worker>,
     /// Per code object, whether an entry at a loop header found the frame
     /// not fit for the registers: no further entry there.
     resume_refused: Vec<bool>,
@@ -132,6 +230,8 @@ pub struct Jit {
     /// compiled, the compile time by phase.
     pub compiled: usize,
     pub skipped: usize,
+    /// How many code objects were handed to the compile thread.
+    pub queued: usize,
     pub ops: usize,
     pub stats: codegen::Stats,
     pub placing: std::time::Duration,
@@ -228,10 +328,22 @@ impl Jit {
             .or_else(|| std::env::var("RENYI_NATIVE_OPT").ok())
             .unwrap_or_else(|| "none".to_string());
         let isa = Jit::isa(&level)?;
-        let hot_factor = std::env::var("RENYI_NATIVE_HOT")
+        let asked: Option<u32> = std::env::var("RENYI_NATIVE_HOT")
             .ok()
-            .and_then(|text| text.parse().ok())
-            .unwrap_or(HOT_FACTOR);
+            .and_then(|text| text.parse().ok());
+        // a thread of its own for the compilations (decision AU15) unless
+        // `RENYI_NATIVE_SYNC` says otherwise, everything is compiled at
+        // its first call (`RENYI_NATIVE_HOT=0`, which the tests rely on
+        // to run the generated code), or the machine has one hardware
+        // thread, where the two would only take turns
+        let background = asked != Some(0)
+            && std::env::var_os("RENYI_NATIVE_SYNC").is_none()
+            && std::thread::available_parallelism().map_or(1, |n| n.get()) > 1;
+        let hot_factor = asked.unwrap_or(if background {
+            HOT_FACTOR_BACKGROUND
+        } else {
+            HOT_FACTOR
+        });
         // the helpers in the order the generated code indexes them
         let helpers: Box<[*const u8]> = codegen::SIGNATURES
             .iter()
@@ -254,6 +366,8 @@ impl Jit {
             fctx: FunctionBuilderContext::new(),
             states: program.codes.iter().map(|_| State::Cold).collect(),
             hot_factor,
+            background,
+            worker: None,
             resume_refused: vec![false; program.codes.len()],
             direct_table: vec![std::ptr::null(); program.codes.len()].into_boxed_slice(),
             helpers,
@@ -266,6 +380,7 @@ impl Jit {
             deopts: vec![Vec::new(); program.codes.len()],
             compiled: 0,
             skipped: 0,
+            queued: 0,
             ops: 0,
             stats: codegen::Stats::default(),
             placing: std::time::Duration::ZERO,
@@ -324,11 +439,13 @@ impl Jit {
         (0..program.codes.len())
             .map(|code| match self.compile_code(program, code) {
                 Ok(compiled) => {
+                    self.stats.add(&compiled.stats);
                     self.compiled += 1;
                     self.ops += program.codes[code].ops.len();
                     Some(compiled)
                 }
-                Err(_) => {
+                Err(reason) => {
+                    report_skipped(program, code, &reason);
                     self.skipped += 1;
                     None
                 }
@@ -427,6 +544,11 @@ impl Jit {
             .zip(hotness)
             .filter(|(state, ran)| matches!(state, State::Cold) && **ran > 0)
             .count();
+        let waiting = self
+            .states
+            .iter()
+            .filter(|state| matches!(state, State::Queued))
+            .count();
         let stats = &self.stats;
         let loaded = if self.loaded > 0 {
             format!(
@@ -442,7 +564,7 @@ impl Jit {
             String::new()
         };
         format!(
-            "native: {loaded}{} code objects compiled ({} ops, {} instructions in {} blocks) in {} ms (analysis {} ms, IR {} ms, cranelift {} ms, placing {} ms); {} left to the interpreter, {} called but cold",
+            "native: {loaded}{} code objects compiled ({} ops, {} instructions in {} blocks) in {} ms (analysis {} ms, IR {} ms, cranelift {} ms, placing {} ms){}; {} left to the interpreter, {} called but cold{}",
             self.compiled,
             self.ops,
             stats.instructions,
@@ -452,8 +574,18 @@ impl Jit {
             stats.ir.as_millis(),
             stats.cranelift.as_millis(),
             self.placing.as_millis(),
+            if self.background {
+                format!(" on the compile thread ({} handed over, factor {})", self.queued, self.hot_factor)
+            } else {
+                format!(" on this thread (factor {})", self.hot_factor)
+            },
             self.skipped,
-            cold
+            cold,
+            if waiting > 0 {
+                format!(", {waiting} still with the compile thread")
+            } else {
+                String::new()
+            }
         ) + &format!(
             "
 native: {} deopts; {} calls from generated code went to the interpreter; {} loops entered from the interpreter, {} refused
@@ -520,8 +652,13 @@ native: {} deopts; {} calls from generated code went to the interpreter; {} loop
                 if !self.is_hot(program.codes[code].ops.len(), hotness) {
                     return None;
                 }
-                self.compile(program, code);
+                if self.background {
+                    self.queue(program, code);
+                } else {
+                    self.compile(program, code);
+                }
             }
+            State::Queued => self.collect(program),
         }
         match &self.states[code] {
             State::Ready {
@@ -533,49 +670,82 @@ native: {} deopts; {} calls from generated code went to the interpreter; {} loop
         }
     }
 
-    /// The machine code of a code object, with its statistics counted;
-    /// the reason when it stays with the interpreter, reported under
-    /// `RENYI_NATIVE_REPORT`.
+    /// The machine code of a code object, compiled on this thread, or the
+    /// reason it stays with the interpreter.
     fn compile_code(
         &mut self,
         program: &Program,
         code: CodeId,
     ) -> Result<codegen::Compiled, codegen::Skipped> {
-        let compiled = codegen::compile(
+        codegen::compile(
             program,
             code,
             &self.calls,
             &*self.isa,
             &mut self.ctx,
             &mut self.fctx,
-        );
-        match compiled {
-            Ok(compiled) => {
-                self.stats.add(&compiled.stats);
-                Ok(compiled)
-            }
-            Err(reason) => {
-                if std::env::var_os("RENYI_NATIVE_REPORT").is_some() {
-                    eprintln!(
-                        "native: {} stays with the interpreter: {reason:?}",
-                        program.codes[code].name
-                    );
-                }
-                Err(reason)
-            }
+        )
+    }
+
+    /// Compile a code object here; its state becomes `Ready` or `Skipped`.
+    fn compile(&mut self, program: &Program, code: CodeId) {
+        let result = self.compile_code(program, code);
+        self.install(program, code, result);
+    }
+
+    /// The code object handed to the compile thread (decision AU15),
+    /// started at the first one; whatever the thread has finished is
+    /// placed on the way. Without a thread, compiled here.
+    fn queue(&mut self, program: &Program, code: CodeId) {
+        if self.worker.is_none() {
+            self.worker = Worker::start(program, &self.opt_level, self.calls.clone());
+        }
+        let handed = self
+            .worker
+            .as_ref()
+            .is_some_and(|worker| worker.request(code));
+        if handed {
+            self.states[code] = State::Queued;
+            self.queued += 1;
+            self.collect(program);
+        } else {
+            self.compile(program, code);
         }
     }
 
-    /// Compile a code object; its state becomes `Ready` or `Skipped`.
-    fn compile(&mut self, program: &Program, code: CodeId) {
-        let compiled = match self.compile_code(program, code) {
+    /// Every compilation the thread has finished, placed and made ready.
+    fn collect(&mut self, program: &Program) {
+        let Some(worker) = &self.worker else {
+            return;
+        };
+        let mut finished = Vec::new();
+        while let Ok(result) = worker.results.try_recv() {
+            finished.push(result);
+        }
+        for (code, result) in finished {
+            self.install(program, code, result);
+        }
+    }
+
+    /// A compilation's outcome taken in: the code placed and the state
+    /// `Ready`, or `Skipped` with the reason reported under
+    /// `RENYI_NATIVE_REPORT`.
+    fn install(
+        &mut self,
+        program: &Program,
+        code: CodeId,
+        result: Result<codegen::Compiled, codegen::Skipped>,
+    ) {
+        let compiled = match result {
             Ok(compiled) => compiled,
-            Err(_) => {
+            Err(reason) => {
+                report_skipped(program, code, &reason);
                 self.states[code] = State::Skipped;
                 self.skipped += 1;
                 return;
             }
         };
+        self.stats.add(&compiled.stats);
         let started = std::time::Instant::now();
         let placed = self.code.place(&compiled.body).and_then(|body| {
             self.code
@@ -603,5 +773,16 @@ native: {} deopts; {} calls from generated code went to the interpreter; {} loop
         };
         self.compiled += 1;
         self.ops += program.codes[code].ops.len();
+    }
+}
+
+/// The reason a code object stays with the interpreter, under
+/// `RENYI_NATIVE_REPORT`.
+fn report_skipped(program: &Program, code: CodeId, reason: &codegen::Skipped) {
+    if std::env::var_os("RENYI_NATIVE_REPORT").is_some() {
+        eprintln!(
+            "native: {} stays with the interpreter: {reason:?}",
+            program.codes[code].name
+        );
     }
 }

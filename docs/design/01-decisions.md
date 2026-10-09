@@ -4025,3 +4025,91 @@ runs of one binary): the self-check 2.57 to 2.42 s on the JIT run and
 alternating, `bench/json_round_trip.ry` 133 to 121 ms, the other
 benchmarks within the noise. The stage stays by the rule's first clause.
 (user)
+
+**AU14. The owner's answers of 2026-10-09 after AU13's measurement and
+the profile of the stage: (i) stage 8 of AU9, the parameters borrowed
+across direct calls, is skipped: the retains and the releases of the
+generated code are 2% each of the self-check and the parameters' share
+of them smaller, the implementation would touch every exit of a frame
+(the interpreter's return, the unwinding on a failure, the hand-back,
+the generated code's return) with a borrowed mask per frame, and the
+callee's own moves out of the slot (`WithSlot`, `TakeField`, `LoadMove`)
+would have to be excluded; it stays recorded here for a later profile
+that shows the parameters' retains to matter; (ii) the next stage is a
+faster compilation tier, so that more code runs compiled on the cold JIT
+run: the profile puts 45% of the run under `rt_call`, the calls that
+found no generated code and ran their callee on the interpreter, with 30
+code objects compiled under the hotness rule, and the image row, every
+code object compiled, runs 29% fewer instructions; the session's
+measurement of the compile cost followed, and the owner's third answer,
+after it, chose the most thorough route (AU15), asking whether the
+compile thread and a template tier combine, which the session answered:
+the thread first, the template tier decided by its measurement; (iii)
+the measure of that stage is the self-check's wall-clock, best of seven
+with the two binaries alternating on one machine, with the cachegrind
+rows reported beside it, since a compile thread's instructions count in
+cachegrind's total as much as the interpreter's.** The measurement of
+the compile cost that the second answer asked for, on the binary of
+AU13: under the hotness factor 8000 the self-check compiles 54 code
+objects (1,580 ops) in about 140 ms, two thirds of it register
+allocation, 42 microseconds an op (about 130 thousand instructions),
+with 29 Cranelift instructions and 2.1 blocks per op; compiling
+everything called (564 code objects, factor 0) takes 1.28 s and the run
+2.76 s against 1.76 s at 8000; the factors 2000, 500 and 100 are slower
+than 8000 by 13 to 27%; Cranelift's single-pass register allocator
+halves the compile time and the code it makes runs 10% slower. For more
+code to be compiled profitably on the interpreter's thread, the cost per
+op would have to fall five to ten times, which no knob of the current
+tier gives. (user)
+
+**AU15. Stage 8 of the typed round, in place of AU9's third item
+(skipped by AU14): the JIT's compilation on a thread of its own. A hot
+code object is handed to a compile thread, started at the first hot one,
+with Cranelift's target and contexts of its own; the interpreter runs
+the code object until its machine code comes back through a channel, and
+places it at the next ask for that code object (a call, or a loop
+header). The hotness factor on that path is `HOT_FACTOR_BACKGROUND`,
+100, where it was 8000 (AR5) when the interpreter's thread paid for
+every compilation: a code object is handed over once it has run a
+hundred times its size in ops. The interpreter's thread stays the
+compiler under `RENYI_NATIVE_SYNC`, under `RENYI_NATIVE_HOT=0`
+(everything compiled at its first call, which the tests rely on to run
+the generated code) and on a machine with one hardware thread, at the
+factor 8000 as before; `RENYI_NATIVE_HOT=N` sets the factor on either
+path. `renyi build` compiles on its own thread as before. The thread
+reads the program through a raw pointer (`ProgramRef`), sound because
+the program is never written while it runs and the thread is joined when
+the JIT is dropped, before the program the VM borrows; the constants'
+reference counts, which the interpreter changes, are read by nobody on
+the thread.** Why a thread and not a cheaper tier first: AU14's
+measurement; the thread removes the compile cost from the interpreter's
+path on every machine with a second hardware thread, where the template
+tier would have cut it on one. Why the factor 100: measured by this
+stage's rule (AU14: the self-check's wall-clock, best of seven with the
+binaries alternating on one machine), the self-check on the JIT run
+against AU13's binary (1,727 ms): on the interpreter's thread at 8000
+1,744 ms (+1%, the same code), on the compile thread at 8000 1,755 ms
+(+1.6%: 54 code objects, the handing over and the placing for nothing),
+at 2000 1,572 ms (-9.0%), at 500 1,557 ms (-9.9%), at 100 1,527 ms
+(-11.6%), at 20 1,578 ms (-8.6%); `bench/records.ry` 52 to 49 ms at 100
+(46 at 20), `primes` 41 to 37, `strings` 81 to 79, `json_round_trip`
+unchanged. Confirmed on the binary with the factor built in, against
+AU13's, alternating best of seven: the self-check 1,723 to 1,548 ms
+(-10.1%), `primes` 42 to 37 ms (-11%), `strings` 77 to 75,
+`json_round_trip` 91 to 92, `records` 49 to 51 (within the noise of a 50
+ms program), `hello` 8 to 7. The cachegrind rows beside it, as AU14's
+rule asks: the JIT run 9.95 to 13.22 billion instructions and 14.12 to
+18.29 billion estimated cycles, the compile thread's 3.3 billion
+instructions (about 210 code objects at the factor 100) counted in the
+total as much as the interpreter's, which is why the rule of AT1 would
+have refused this stage and AU14 changed the measure for it; the
+interpreter 12.72 billion instructions as before, the image 6.80 and the
+run from the cache 7.56, unchanged, since neither compiles at run time.
+What the thread does not change: the interpreter stays the reference and
+runs every code object whose code is not back yet; the recordings, the
+replay and the narration run on it alone; a run's result is the same on
+either path, since the generated code hands a frame back wherever its
+assumptions fail (AR1). What is left open: the pass table of
+`RENYI_NATIVE_REPORT` is the interpreter's thread's, empty when the
+thread compiled; a template tier (AU14's question) is decided by a
+profile of this stage on one and two hardware threads. (user)

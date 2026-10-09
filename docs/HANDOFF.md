@@ -1,16 +1,20 @@
 # Handoff
 
 Last updated: 2026-10-09, session 10, in the cloud environment, which
-did stages 6 and 7 of the typed round: decision AU11, the update of a
-uniquely held record in place (the ops `WithSlot` and `TakeField`,
+did stages 6, 7 and 8 of the typed round: decision AU11, the update of
+a uniquely held record in place (the ops `WithSlot` and `TakeField`,
 bytecode format 7, three emitter rules in both emitters, the judges
 equal), kept by AU1's rule with a small gain and a finding about why;
-the owner's answers after it (AU12); and decision AU13, the comparisons
-on borrowed operands in the generated code, -2.2% on the self-check's
-cold JIT run (the section "The typed round" below, "Stage 6 is in" and
-"Stage 7 is in"); and answered the owner's question on the execution
-model (the section "The execution model, as the owner asked on
-2026-10-09" below). Session 9, the first in the
+the owner's answers after it (AU12); decision AU13, the comparisons on
+borrowed operands in the generated code, -2.2% on the self-check's cold
+JIT run; the owner's answers after it (AU14: the borrowed parameters
+skipped, the compile cost measured, the compile thread chosen with
+wall-clock as its measure); and decision AU15, the JIT's compilation on
+a thread of its own with the hotness factor 100, -11.6% on the
+self-check's wall-clock (the section "The typed round" below, "Stage 6
+is in" to "Stage 8 is in"); and answered the owner's question on the
+execution model (the section "The execution model, as the owner asked
+on 2026-10-09" below). Session 9, the first in the
 cloud environment (claude.ai/code), finished the profile-guided round on
 strings and JSON that session 8 had paused: decision AQ, the first of the
 interspersed performance items the owner set after M5 (the section "The
@@ -2160,27 +2164,64 @@ and drops down; wall-clock noisy today, the self-check 2.57 to 2.42 s on
 the JIT run and 2.00 to 1.77 s as an image best of seven alternating.
 The stage stays by the rule's first clause.
 
-**What is next in this round, after AU12:**
+**The owner's answers after stage 7 (decision AU14, 2026-10-09)**: the
+parameters borrowed across direct calls (AU9's third item) are skipped
+(2% retains and 2% releases in the profile, the parameters a part of
+them; every exit of a frame would carry a borrowed mask); the next stage
+is a faster compilation tier, measured first: 42 microseconds an op, two
+thirds register allocation, no factor below 8000 pays on the
+interpreter's thread; the owner chose the most thorough route, the
+compile thread first (AU15) and a template tier decided by its
+measurement; the measure of that stage is the self-check's wall-clock,
+best of seven alternating, the cachegrind rows beside it.
 
-1. **Stage 8, the parameters borrowed across direct calls (AU14).** A
+**Stage 8 is in (decision AU15, 2026-10-09, session 10)**: the JIT's
+compilation on a thread of its own. `native/mod.rs`: `Worker` (the
+thread with its own ISA and contexts, a channel of requests and one of
+results, joined on drop), `ProgramRef` (the program as the thread reads
+it, with the safety argument), `State::Queued`, `Jit::queue` (the thread
+started at the first hot code object), `collect` (the finished
+compilations placed), `install` (what `compile` did after compiling),
+`report_skipped`; `HOT_FACTOR_BACKGROUND` (100) beside `HOT_FACTOR`
+(8000, the interpreter's thread); `Jit::new` decides the path:
+`RENYI_NATIVE_SYNC`, `RENYI_NATIVE_HOT=0` or one hardware thread keep
+the old one; the report line says which thread compiled, how many were
+handed over and how many were still with the thread at the end. The
+tests run as before (`RENYI_NATIVE_HOT=0` is synchronous); the corpus
+tests run with the thread. Measured by AU14's rule against AU13's
+binary: the self-check 1,727 to 1,527 ms (-11.6%) at the factor 100, the
+sweep in the decision; confirmed on the final binary 1,723 to 1,548 ms
+(-10.1%), `primes` -11%, the others within noise; cachegrind's JIT row
+9.95 to 13.22 billion instructions (the compile thread's work counted in
+the total; the interpreter, the image and the cached rows unchanged),
+the reason AU14 changed the measure for this stage.
+
+**What is next in this round, after AU15:**
+
+1. **The template tier, or not**: a profile of this stage on one and two
+   hardware threads decides (AU14's question); on a machine with one,
+   the old path runs and the cold code waits as before.
+2. **A new profile** (AU12): the stages that follow come from it, the
+   representation items of AU1's step v among them (small texts inline,
+   `Int` flattened into `Value`, lists of unboxed Integers, values in
+   registers across ops) and the liveness pass over the bytecode that
+   would make the checker's records held once at their updates (AU11's
+   finding); a fieldless variant built by `ConstructVariant` allocates on
+   every comparison (`kind is Public`: 11 sites in the checker program),
+   a candidate micro-cut; a borrowed `LoadField` operand (33 `LoadField
+   ... is` sites) needs the helper path to say whether it pushed a fresh
+   value (a guarded holder's field is wrapped anew), which stage 7 left
+   out.
+3. **Skipped, recorded in AU14**: the parameters borrowed across direct
+   calls (AU9's third item). A
    parameter the callee only reads (fields, borrowed calls, comparisons)
    and never stores, returns or passes on to a position that keeps it
    needs no retain at the call and no release at the return. The
    hazard: a frame handed back to the interpreter, which drops its
    locals at the return, so the flag must be honoured there too (or the
    hand-back retains the borrowed parameters first). The riskiest of
-   the three; 6 and 7 are measured (AU11, AU13).
-2. **A new profile after stage 8** (AU12): the stages that follow come
-   from it, the representation items of AU1's step v among them (small
-   texts inline, `Int` flattened into `Value`, lists of unboxed
-   Integers, values in registers across ops) and the liveness pass
-   over the bytecode that would make the checker's records held once
-   at their updates (AU11's finding); a fieldless variant built by
-   `ConstructVariant` allocates on every comparison (`kind is Public`:
-   11 sites in the checker program), a candidate micro-cut; a borrowed
-   `LoadField` operand (33 `LoadField ... is` sites) needs the helper
-   path to say whether it pushed a fresh value (a guarded holder's
-   field is wrapped anew), which this stage left out.
+   the three; it waits for a profile that shows the parameters' retains
+   to matter.
 
 Each stage is measured by AT1's rule (`tools/measure_size.sh` on the
 release binary, about fifteen minutes now with the fourth row; in a
@@ -3507,6 +3548,15 @@ holds between calls.
   fast paths were inlined by force; a lesson on the measurement: the
   simulated cache misses change between boots of the container, so a
   stage's two binaries are measured on one boot.
+- **Decision AU14**, the owner's answers after stage 7 (the borrowed
+  parameters skipped; the compile cost measured: 42 microseconds an op,
+  two thirds register allocation, no factor below 8000 pays on the
+  interpreter's thread; the compile thread chosen, measured by
+  wall-clock), and **decision AU15, stage 8**: the JIT's compilation on
+  a thread of its own (`Worker`, `State::Queued`, `HOT_FACTOR_BACKGROUND`
+  100, `RENYI_NATIVE_SYNC`; the tests synchronous under
+  `RENYI_NATIVE_HOT=0`), the self-check -11.6% in wall-clock against
+  AU13's binary, `primes` and `records` -8%.
 - **The owner's question on the execution model** answered with the
   numbers of this machine (the section "The execution model, as the
   owner asked on 2026-10-09").
