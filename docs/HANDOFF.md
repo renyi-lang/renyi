@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated: 2026-10-08, session 9, the first in the cloud environment
+Last updated: 2026-10-09, session 9, the first in the cloud environment
 (claude.ai/code), which finished the profile-guided round on strings and
 JSON that session 8 had paused: decision AQ, the first of the
 interspersed performance items the owner set after M5 (the section "The
@@ -16,11 +16,14 @@ JIT" below); then `renyi build`, the image of a program that runs
 without compiling, decisions AS1 to AS4 (the section "`renyi build` as
 it exists" below), `build --exe`, the self-contained executable,
 included; then the round on the size of the generated code, decisions
-AT1 to AT6 (the section "The size of the generated code" below): the
+AT1 to AT7 (the section "The size of the generated code" below): the
 cuts at no cost, the image's program in binary, the static stack
 height, the image's code section mapped from the file and the reference
-counts as calls, every stage of the owner's plan measured and in; the
-round is the owner's to close or to continue. Session 8
+counts as calls, every stage of the owner's plan measured and in, the
+round closed by the owner on 2026-10-09 (AT7); the next round, the
+owner's choice, is the per-character loop of `bench/strings.ry`, the
+one benchmark behind CPython, opened by its profile on the JIT tier.
+Session 8
 (stage 2 of the gap audit of
 `docs/GAPS.md`: the formal grammar `docs/grammar.ebnf` with decision V12;
 the language reference `docs/reference.md`, normative, held to the
@@ -1767,7 +1770,7 @@ and the commit of the site and the crates.io metadata.
   release; the Windows archive's checksum and binary were verified
   by hand; `cargo install renyi` built the binary from crates.io.
 
-## The size of the generated code (decisions AT1 to AT6; session 9, 2026-10-08)
+## The size of the generated code (decisions AT1 to AT7; session 9, 2026-10-08 and 09)
 
 The owner's four answers of 2026-10-08 after `renyi build` closed
 (decision AT1): the round's rule is KCachegrind's estimate of the
@@ -1956,11 +1959,11 @@ read reads.
   1351 as an image, the interpreter, records and primes level. `codegen.rs`: `retain` and `release` are
   the two calls, `rc_of` and the inline bodies are gone, the helpers
   `rt_retain_at` and `rt_drop_at` (`runtime.rs`), `CODE_FORMAT` 3.
-- **Where the round stands.** Every stage of the owner's plan is
-  measured and in: the cuts at no cost (AT2), the image's program in
-  binary (AT3), the static stack height (AT4), the image's load (AT5)
-  and the reference counts as calls (AT6). Against the binary the round
-  began from (71965aa): the compiler's machine code 8.26 to 5.62 MB
+- **The round's close (decision AT7).** The owner closed it on
+  2026-10-09 with every stage of the plan measured and in: the cuts at
+  no cost (AT2), the image's program in binary (AT3), the static stack
+  height (AT4), the image's load (AT5) and the reference counts as
+  calls (AT6). Against the binary the round began from (71965aa): the compiler's machine code 8.26 to 5.62 MB
   (-32%), its image 17.5 to 6.5 MB, the self-check's estimate 15.37 to
   14.83 billion cycles on the JIT run (-3.5%) and 12.63 to 11.18 as an
   image (-11.5%), the image's load 152 to 16 ms, the self-check in
@@ -3167,6 +3170,9 @@ by one, CI green on each (runs 52 to 55; 55 on 71965aa).
     `native/runtime.rs` (`rt_retain_at`, `rt_drop_at`'s role),
     `native/image.rs` (`CODE_FORMAT` 3); the decisions (AT6),
     `docs/GAPS.md`, this file.
+13. the round's close (decision AT7, the owner's answer of 2026-10-09,
+    with the benchmark table against CPython of that day): the
+    decisions, `docs/GAPS.md`, this file.
 
 ## Done in session 8 (stage 2: the grammar, the reference, the front end in Renyi)
 

@@ -3436,3 +3436,35 @@ binary of AT3, the best of five: the self-check 1886 to 1775 ms on the
 JIT run (-5.9%), 1369 to 1351 as an image, the interpreter and
 `bench/records.ry` and `bench/primes.ry` level. The stubs of AT1's plan
 turned out to be the helpers the VM already had. (user)
+
+**AT7. The round closed by the owner on 2026-10-09, every stage of
+AT1's plan measured and in (AT2 to AT6).** Against the binary the round
+began from (71965aa, the one AS4 left): the compiler's machine code
+8.26 to 5.62 MB (-32%, 179 to 122 bytes of body per op), its image
+17.5 to 6.5 MB, the self-check's estimated cycles 15.37 to 14.83
+billion on the JIT run (-3.5%) and 12.63 to 11.18 as an image (-11.5%),
+the image's load 152 to 16 ms where the run exits at once (most of the
+152 was the checker's own work on the standard library, which the
+profile of AT5 told apart), the self-check in wall-clock 1841 to 1775
+ms on the JIT run and 1511 to 1351 as an image, `hello` 10 to 6 ms as
+an image. What the round found beyond its plan: the two copies of a
+load were the largest item on this machine because fresh memory's
+first touch is dear (AT5); a static invariant the room check of AR4
+already rested on removed a load from every stack access (AT4); and
+the inline reference counts of AR4, the round's largest source of
+bytes, lost to the VM's own helpers (AT6), the finding the round
+opened on: a sequence inlined for speed can cost more in the cache than
+it saves in instructions, and only the measurement tells. What is left
+for a later round: `RELEASES_INLINE` (four calls against one
+`rt_truncate` on a return), the indirect call through the helper table
+(a tenth of the estimate in the model's charge; a direct call would
+need a relocation per site, against AS1), and `Int` flattened into
+`Value` for a one-compare clone and drop. The round the owner chose
+next is the one benchmark behind CPython, the per-character loop of
+`bench/strings.ry` (128 against 85 ms; `primes` 9.7, `records` 3.4 and
+`json_round_trip` 1.7 times faster than CPython, `hello` 6 ms against
+Python's 18): by its profile on the interpreter, a boxed constant
+copied and retained per iteration, a one-character text allocated per
+glyph, and a primitive call through the boundary per glyph; its measure
+and its cuts are its own opening decision, after the profile on the JIT
+tier. (user)

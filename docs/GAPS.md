@@ -741,5 +741,8 @@ more, to 5.6 MB, and the estimate of the JIT run 0.7 percent, the
 image's rising 0.3 percent on the model's charge for the calls. Over
 the round: the compiler's machine code 8.3 to 5.6 MB, its image 17.5
 to 6.5 MB, the self-check's estimate 3.5 percent lower on the JIT run
-and 11.5 percent as an image, the image's load 152 to 16 ms. The round
-is the owner's to close.
+and 11.5 percent as an image, the image's load 152 to 16 ms. The owner
+closed the round on 2026-10-09 (decision AT7). Against CPython that
+day: `primes` 9.7, `records` 3.4 and `json_round_trip` 1.7 times
+faster, `hello` 6 against 18 ms, and `strings` behind at 128 against
+85 ms, the per-character loop the next round takes up.
