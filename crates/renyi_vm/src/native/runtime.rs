@@ -744,60 +744,85 @@ pub(crate) unsafe extern "C" fn rt_call_typed(
     let count = count as usize;
     let at = vm.stack.len().saturating_sub(count);
     // the entry on the arguments where they lie; the pc is synced only
-    // where something can go wrong, the fast path never does
+    // where something can go wrong, which the fast path never does. The
+    // slower ways out live in their own functions, so that this one
+    // stays small (decision AU5).
     if let Some(typed) = vm.typed_entry(function) {
         let args = &vm.stack.as_slice()[at..];
-        let answered = match typed {
-            crate::extension::Typed::Bool(answer) => match answer(args) {
-                Some(value) => {
-                    // SAFETY: `out` is the generated code's own slot for an
-                    // answer, eight bytes wide.
-                    unsafe { *out = value as i64 };
-                    true
-                }
-                None => false,
-            },
-            crate::extension::Typed::Int(answer) => match answer(args) {
-                Some(value) => {
-                    // SAFETY: as above.
-                    unsafe { *out = value };
-                    true
-                }
-                None => false,
-            },
-            crate::extension::Typed::Float(answer) => match answer(args) {
-                Some(value) => {
-                    // SAFETY: as above.
-                    unsafe { *out = value.to_bits() as i64 };
-                    true
-                }
-                None => false,
-            },
-            crate::extension::Typed::Value(answer) => match answer(args) {
-                Some(value) => {
-                    consume_arguments(vm, at, count, borrowed);
-                    let failed = value.is_failure();
-                    vm.stack.push(value);
-                    if let Err(error) = vm.memory_check() {
-                        vm.sync_pc(pc);
-                        return interrupt(vm, error);
-                    }
-                    return if failed { FAILURE } else { CONTINUE };
-                }
-                None => false,
-            },
+        let answer = match typed {
+            crate::extension::Typed::Bool(answer) => answer(args).map(|value| value as i64),
+            crate::extension::Typed::Int(answer) => answer(args),
+            crate::extension::Typed::Float(answer) => {
+                answer(args).map(|value| value.to_bits() as i64)
+            }
+            crate::extension::Typed::Value(answer) => {
+                return match answer(args) {
+                    Some(value) => typed_value_answer(vm, at, count, borrowed, pc, value),
+                    None => typed_call_general(vm, function, at, count, borrowed, pc),
+                };
+            }
         };
-        if answered {
+        if let Some(scalar) = answer {
+            // SAFETY: `out` is the generated code's own slot for an answer,
+            // eight bytes wide.
+            unsafe { *out = scalar };
             consume_arguments(vm, at, count, borrowed);
-            if let Err(error) = vm.memory_check() {
-                vm.sync_pc(pc);
-                return interrupt(vm, error);
+            if vm.memory_is_over() {
+                return typed_over_memory(vm, pc);
             }
             return CONTINUE;
         }
     }
-    // the general path takes the arguments as its own: a borrowed one
-    // gets the reference it was pushed without
+    typed_call_general(vm, function, at, count, borrowed, pc)
+}
+
+/// A typed entry's value answer: the arguments consumed, the value in
+/// their place on the stack.
+#[inline(never)]
+fn typed_value_answer(
+    vm: &mut Vm,
+    at: usize,
+    count: usize,
+    borrowed: u32,
+    pc: u32,
+    value: Value,
+) -> i32 {
+    consume_arguments(vm, at, count, borrowed);
+    let failed = value.is_failure();
+    vm.stack.push(value);
+    if vm.memory_is_over() {
+        return typed_over_memory(vm, pc);
+    }
+    if failed {
+        FAILURE
+    } else {
+        CONTINUE
+    }
+}
+
+/// The memory budget found spent after a typed entry answered.
+#[inline(never)]
+fn typed_over_memory(vm: &mut Vm, pc: u32) -> i32 {
+    vm.sync_pc(pc);
+    match vm.memory_check() {
+        Err(error) => interrupt(vm, error),
+        Ok(()) => CONTINUE,
+    }
+}
+
+/// The general path of a typed call, when the entry declined or this
+/// build has none: a borrowed argument gets the reference it was pushed
+/// without, the native runs through the boundary, and its boxed answer
+/// comes back as `BOXED` where the generated code expects a scalar.
+#[inline(never)]
+fn typed_call_general(
+    vm: &mut Vm,
+    function: usize,
+    at: usize,
+    count: usize,
+    borrowed: u32,
+    pc: u32,
+) -> i32 {
     vm.sync_pc(pc);
     for index in 0..count {
         if borrowed & (1 << index) != 0 {

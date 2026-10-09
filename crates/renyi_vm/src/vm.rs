@@ -658,6 +658,13 @@ impl<'p> Vm<'p> {
         self.started = started;
     }
 
+    /// Whether the memory budget is spent: the test alone, for a fast
+    /// path that builds the interrupt elsewhere (decision AU5).
+    #[inline]
+    pub(crate) fn memory_is_over(&self) -> bool {
+        self.counting && memory::over()
+    }
+
     /// The memory budget at a safe point (decision AP1): exceeded since
     /// the run began, it stops the run.
     #[inline]

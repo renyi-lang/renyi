@@ -213,8 +213,7 @@ pub fn push_digits(text: &mut String, value: i64) {
     if value < 0 {
         text.push('-');
     }
-    // the digits are ASCII
-    text.push_str(std::str::from_utf8(&buffer[at..]).expect("digits"));
+    text.extend(buffer[at..].iter().map(|digit| *digit as char));
 }
 
 /// The decimal digits of a machine-word Integer as a text.

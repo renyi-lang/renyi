@@ -3678,3 +3678,28 @@ count), so a frame may change hands in the middle of a loop as it does
 for a range (AG3). Why the tag checks stay: the slot's kind is `Iter`
 for every loop whose source the analysis did not see as a range of
 small Integers, and such a source may be a Range value at run time. (user)
+
+**AU5. Three micro cuts after AU4, in: the typed call's general path and
+its value answer live in their own functions (`typed_call_general`,
+`typed_value_answer`, `typed_over_memory`), so that `rt_call_typed`
+itself is the fast path alone; `contains` on a text looks for a one-byte
+part in a text of at most 32 bytes by a plain loop (`text_has`), where
+Rust's search set up more than it searched; `push_digits` pushes the
+digits as characters instead of checking them as UTF-8.** Measured by
+AU1's rule against AU4's binary: the self-check's estimate on the JIT run
+13.66 to 13.75 billion cycles (+0.6%, the instructions +0.1% and the
+instruction misses 66 to 73 million: the code's layout moved, the work
+did not; within the rule's one percent), the interpreter 17.27 to 17.24
+(-0.2%), the image 10.08 to 10.12 (+0.4%); `bench/strings.ry` 83 to 78
+ms best of seven and 78 to 77 by `tools/bench.py`, CPython 79 to 82 on
+the same runs; the profile of strings 625 to 589 million instructions
+(-5.7%; 496 a glyph): `rt_call_typed` 80 to 72 a call, the entry with
+its search 92 to 70, the digits of an Integer unchanged (the characters
+cost what the UTF-8 check cost). The stage stays by the rule's second
+clause: a benchmark gained more than 5% and the self-check lost less
+than 1%. What the loop of strings is now, by the glyph: the generated
+code's own 77 instructions (the walk of the list, the push of the
+glyph, the store into its slot, the branch), the typed call's helper
+72, the entry's match and search 70, the release of the previous glyph
+and the retain of the next about 40, the rest the first half of the
+program and the list of glyphs built and dropped. (user)

@@ -1904,13 +1904,18 @@ tag and the native's, walks a list iterator in place and falls back to
 13.83 to 13.66 billion (-1.3%), the interpreter +0.4%, the image 10.22
 to 10.08 (-1.4%; the machine code 5.63 to 5.70 MB, 123 bytes of body per op, the inline walk's price); strings 87 to 78 ms by `tools/bench.py` against CPython's
 79 (at par; 76 as an image), 84 to 83 best of seven; the profile 669 to
-625 million instructions, 525 a glyph. Next: the micro cuts (the typed
-call's general path out of the fast function, a one-byte needle in a
-short text by a plain loop, the digits pushed as characters), then
-stage 3, the typed bytecode, whose patch is drafted
-(`stage3.py` in the session's scratchpad: `Target::Typed` in both
-checkers, `Code::types` and the type table in both emitters, format 5,
-binary 2, image 4).
+625 million instructions, 525 a glyph.
+
+**Stage 2b is in (decision AU5, 2026-10-09)**: `rt_call_typed` is the
+fast path alone (`typed_call_general`, `typed_value_answer`,
+`typed_over_memory` beside it; `Vm::memory_is_over`), `text_has` in the
+prelude (a one-byte part in a text of at most 32 bytes by a plain loop,
+for `contains` and its typed entry), `push_digits` pushes characters.
+Measured: strings 83 to 78 ms (77 by `tools/bench.py`, CPython 79 to
+82), the profile 625 to 589 million instructions; the self-check's
+estimate on the JIT run +0.6% (the code's layout: instruction misses up,
+instructions level), kept by the rule's second clause. Next: stage 3,
+the typed bytecode.
 
 ## The size of the generated code (decisions AT1 to AT7; session 9, 2026-10-08 and 09)
 

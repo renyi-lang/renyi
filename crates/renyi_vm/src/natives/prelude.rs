@@ -344,9 +344,23 @@ fn text_characters(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
 }
 
 fn text_contains(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
-    Ok(Value::Boolean(
-        text(arg(args, 0))?.contains(text(arg(args, 1))?),
-    ))
+    Ok(Value::Boolean(text_has(
+        text(arg(args, 0))?,
+        text(arg(args, 1))?,
+    )))
+}
+
+/// Whether the text holds the part: a one-byte part in a short text by a
+/// plain loop (what classifying a glyph against a few characters does,
+/// where the general search sets up more than it searches), else Rust's
+/// search.
+#[inline]
+fn text_has(value: &str, part: &str) -> bool {
+    if part.len() == 1 && value.len() <= 32 {
+        let wanted = part.as_bytes()[0];
+        return value.bytes().any(|byte| byte == wanted);
+    }
+    value.contains(part)
 }
 
 fn text_starts_with(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
@@ -1049,7 +1063,7 @@ fn text_characters_typed(args: &[Value]) -> Option<Value> {
 }
 
 fn text_contains_typed(args: &[Value]) -> Option<bool> {
-    Some(plain_text(&args[0])?.contains(plain_text(&args[1])?))
+    Some(text_has(plain_text(&args[0])?, plain_text(&args[1])?))
 }
 
 fn text_starts_with_typed(args: &[Value]) -> Option<bool> {
