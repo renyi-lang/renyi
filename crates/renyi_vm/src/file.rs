@@ -33,7 +33,7 @@ use crate::types::{FieldMeta, TypeMeta, TypeShape, Types, VariantMeta};
 use crate::value::Value;
 
 /// The version of the format, the first field of the file.
-pub const FORMAT: usize = 6;
+pub const FORMAT: usize = 7;
 
 /// The extension of a bytecode file.
 pub const EXTENSION: &str = "ryc";
@@ -503,6 +503,18 @@ fn op_json(op: &Op) -> Out {
             ],
         ),
         Op::With(fields) => variant("OpWith", vec![("fields", small(*fields))]),
+        Op::WithSlot { slot, fields } => variant(
+            "OpWithSlot",
+            vec![("slot", small(*slot)), ("fields", small(*fields))],
+        ),
+        Op::TakeField { slot, name, site } => variant(
+            "OpTakeField",
+            vec![
+                ("slot", small(*slot)),
+                ("name", wide(*name)),
+                ("site", wide(*site)),
+            ],
+        ),
         Op::Call { function, args } => variant(
             "OpCall",
             vec![("function_id", number(*function)), ("args", small(*args))],
@@ -1201,6 +1213,15 @@ fn read_op(json: &In, at: &str) -> Read<Op> {
             site: index("site")?,
         },
         "OpWith" => Op::With(slot("fields")?),
+        "OpWithSlot" => Op::WithSlot {
+            slot: slot("slot")?,
+            fields: slot("fields")?,
+        },
+        "OpTakeField" => Op::TakeField {
+            slot: slot("slot")?,
+            name: index("name")?,
+            site: index("site")?,
+        },
         "OpCall" => Op::Call {
             function: usize_at(fields, "function_id", at)?,
             args: slot("args")?,
@@ -1462,11 +1483,17 @@ pub(crate) fn check(program: &Program) -> Read<()> {
                     slot,
                     name: constant,
                     site,
+                }
+                | Op::TakeField {
+                    slot,
+                    name: constant,
+                    site,
                 } => {
                     place("slot", *slot as usize, locals)?;
                     place("constant", *constant as usize, constants)?;
                     place("field site", *site as usize, program.field_sites)?;
                 }
+                Op::WithSlot { slot, .. } => place("slot", *slot as usize, locals)?,
                 Op::Call { function, .. } => place("function", *function, functions)?,
                 Op::CallAbility { ability, .. } => {
                     place("ability", *ability, program.abilities.len())?

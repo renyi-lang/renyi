@@ -1,0 +1,77 @@
+module record_update
+  purpose: Records updated in place when held once (decision AU11), with the aliasing cases.
+
+import std.console
+
+type Bag
+  purpose: A record with a list and a counter.
+  has items: List of Integer
+  has total: Integer
+  has name: Text
+end
+
+function add(bag: Bag, item: Integer) returns Bag
+  purpose: The bag with the item appended and counted.
+
+  return bag with items: bag.items.append(item), total: bag.total + 1
+end
+
+function add_taken(bag: Bag, item: Integer) returns Bag
+  purpose: The bag with the item appended, the field taken out first.
+
+  return bag with items: bag.items.append(item)
+end
+
+function shown(items: List of Integer) returns Text
+  purpose: The items as a text.
+
+  let mutable out be ""
+  for each item in items
+    change out to "{out}{item},"
+  end
+  return out
+end
+
+function risky(item: Integer) returns Integer or fails with Text
+  purpose: Fails on odd items.
+
+  if item remainder 2 is 1 then fail with "odd" end
+  return item * 10
+end
+
+public function main() needs console
+  purpose: Runs every form and prints what each leaves.
+
+  let mutable bag be Bag(items: [], total: 0, name: "a")
+  for each item from 1 to 5
+    change bag to bag with items: bag.items.append(item)
+  end
+  console.print("takes: {shown(bag.items)} {bag.total}")
+  for each item from 1 to 5
+    change bag to add(bag: bag, item: item)
+  end
+  console.print("argument form: {shown(bag.items)} {bag.total}")
+  for each item from 1 to 3
+    change bag to add_taken(bag: bag, item: item)
+  end
+  console.print("taken in callee: {shown(bag.items)}")
+  let kept be bag
+  change bag to bag with items: bag.items.append(99), total: bag.total + 1
+  console.print("aliased: {kept.items.length()} {kept.total} / {bag.items.length()} {bag.total}")
+  change bag to bag with total: bag.total + 1, items: bag.items.append(bag.total)
+  console.print("move plan: {bag.items.last() otherwise 0} {bag.total}")
+  let mutable log be Bag(items: [], total: 0, name: "log")
+  for each item from 1 to 6
+    change log to log with items: (log.items.append(risky(item) otherwise continue))
+  end
+  console.print("escape: {shown(log.items)} {log.total}")
+  change log to log with items: log.items.append(1), items: log.items.append(2)
+  console.print("duplicate: {shown(log.items)}")
+  let other be log
+  change log to log with name: "renamed"
+  console.print("shared base: {other.name} {log.name}")
+  for each item from 1 to 3
+    change log to log with items: log.items.append(item * 100), name: "{log.name}!"
+  end
+  console.print("two takes: {shown(log.items)} {log.name}")
+end

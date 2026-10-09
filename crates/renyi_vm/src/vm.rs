@@ -1862,9 +1862,23 @@ impl<'p> Vm<'p> {
                     ));
                     self.stack.push(value);
                 }
+                Op::TakeField { slot, name, site } => {
+                    let value = try_op!(self.op_take_field(
+                        code_id,
+                        base + *slot as usize,
+                        *name as usize,
+                        *site as usize
+                    ));
+                    self.stack.push(value);
+                }
                 // a refined field is checked again: the copy may be a
                 // `Failure(ConstraintViolation)`, like a construction
                 Op::With(count) => settle!(try_op!(self.op_with(*count as usize))),
+                Op::WithSlot { slot, fields } => {
+                    settle!(try_op!(
+                        self.op_with_slot(base + *slot as usize, *fields as usize)
+                    ))
+                }
                 Op::Call { function, args } => call!(*function, *args as usize),
                 Op::CallAbility {
                     ability,
@@ -2257,21 +2271,34 @@ impl<'p> Vm<'p> {
     /// A record whose fields satisfy every refinement of the type, or the
     /// `Failure(ConstraintViolation)` of the first that does not.
     fn refined_record(&mut self, ty: TypeId, fields: Vec<Value>) -> Result<Value, Interrupt> {
+        if let Some(violation) = self.refinement_violation(ty, &fields)? {
+            return Ok(violation);
+        }
+        Ok(Value::record(ty, fields))
+    }
+
+    /// The `Failure(ConstraintViolation)` of the first refinement of the
+    /// type that the fields do not satisfy, when there is one.
+    fn refinement_violation(
+        &mut self,
+        ty: TypeId,
+        fields: &[Value],
+    ) -> Result<Option<Value>, Interrupt> {
         let meta = self.program.types.meta(ty);
         if let (false, TypeShape::Record(field_metas)) = (meta.refinements.is_empty(), &meta.shape)
         {
             for field_meta in field_metas {
                 if let Some(index) = field_meta.refinement {
                     let code = meta.refinements[index];
-                    if !self.holds(code, fields.clone())? {
-                        return Ok(self.violation(ty, code));
+                    if !self.holds(code, fields.to_vec())? {
+                        return Ok(Some(self.violation(ty, code)));
                     }
                 }
             }
         }
         // a `Date` also needs a day its month has (library sketch, section 4)
         if Some(ty) == self.program.date {
-            if let [year, month, day] = fields.as_slice() {
+            if let [year, month, day] = fields {
                 let parts = (
                     crate::natives::small(year),
                     crate::natives::small(month),
@@ -2280,18 +2307,18 @@ impl<'p> Vm<'p> {
                 if let (Ok(year), Ok(month), Ok(day)) = parts {
                     let length = crate::natives::time::days_in_month(year, month);
                     if (1..=12).contains(&month) && day > length {
-                        return Ok(Value::failure(Value::record(
+                        return Ok(Some(Value::failure(Value::record(
                             self.program.builtins.constraint_violation,
                             vec![
                                 Value::text("Date"),
                                 Value::text(format!("the month has {length} days")),
                             ],
-                        )));
+                        ))));
                     }
                 }
             }
         }
-        Ok(Value::record(ty, fields))
+        Ok(None)
     }
 
     pub fn construct_variant(
@@ -2422,6 +2449,36 @@ impl<'p> Vm<'p> {
         self.op_field(code, name, site, &holder)
     }
 
+    /// `Op::TakeField`: the field `name` of the record in the slot at `at`,
+    /// moved out when the record is held once, `Nothing` left in its place
+    /// until the `WithSlot` that follows fills it (decision AU11); read as
+    /// `op_load_field` reads it when the record is shared, or when the site
+    /// has not seen the holder's type yet.
+    pub(crate) fn op_take_field(
+        &mut self,
+        code: usize,
+        at: usize,
+        name: usize,
+        site: usize,
+    ) -> Result<Value, Interrupt> {
+        let cached = self.field_cache[site];
+        if let Value::Record(record) = &mut self.stack[at] {
+            if cached.ty == record.ty && cached.tag == usize::MAX {
+                let found = match Rc::get_mut(record) {
+                    Some(unique) => unique
+                        .fields
+                        .get_mut(cached.index)
+                        .map(|field| std::mem::replace(field, Value::Nothing)),
+                    None => record.fields.get(cached.index).cloned(),
+                };
+                if let Some(value) = found {
+                    return Ok(value);
+                }
+            }
+        }
+        self.op_load_field(code, at, name, site)
+    }
+
     /// A field by name of a pair or a native value (a record or a variant
     /// goes through `field_at`).
     fn field(&mut self, base: &Value, name: &str) -> Result<Value, Interrupt> {
@@ -2454,27 +2511,34 @@ impl<'p> Vm<'p> {
         base: Value,
         updates: Vec<(Value, Value)>,
     ) -> Result<Value, Interrupt> {
-        let Value::Record(record) = base else {
+        let Value::Record(mut record) = base else {
             return Err(Interrupt::crash(format!(
                 "`with` needs a record, found {}",
                 base.kind_name()
             )));
         };
-        let mut record = Rc::try_unwrap(record).unwrap_or_else(|shared| (*shared).clone());
-        for (name, value) in updates {
-            let name = name.as_text().unwrap_or("");
-            match self.program.types.field_index(record.ty, name) {
-                Some(index) => record.fields[index] = value,
-                None => {
-                    return Err(Interrupt::crash(format!(
-                        "`{}` has no field `{name}`",
-                        self.program.types.meta(record.ty).name
-                    )))
+        {
+            // in place when the record is held once (decision AU11), else
+            // in a copy; the allocation stays either way
+            let record = Rc::make_mut(&mut record);
+            for (name, value) in updates {
+                let name = name.as_text().unwrap_or("");
+                match self.program.types.field_index(record.ty, name) {
+                    Some(index) => record.fields[index] = value,
+                    None => {
+                        return Err(Interrupt::crash(format!(
+                            "`{}` has no field `{name}`",
+                            self.program.types.meta(record.ty).name
+                        )))
+                    }
                 }
             }
         }
         // the refinements hold for every value of the type, the copy included
-        self.refined_record(record.ty, record.fields.into())
+        if let Some(violation) = self.refinement_violation(record.ty, &record.fields)? {
+            return Ok(violation);
+        }
+        Ok(Value::Record(record))
     }
 
     pub(crate) fn unpack(&self, value: Value, count: usize) -> Result<Vec<Value>, Interrupt> {

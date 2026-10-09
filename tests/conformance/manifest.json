@@ -391,6 +391,13 @@
       "program": "tests/conformance/programs/json_paths.ry",
       "stdout": "tests/conformance/expected/json_paths.out",
       "exit_code": 0
+    },
+    {
+      "name": "a record held once is updated in place and its aliases keep their value",
+      "command": "run",
+      "program": "tests/conformance/programs/record_update.ry",
+      "stdout": "tests/conformance/expected/record_update.out",
+      "exit_code": 0
     }
   ]
 }

@@ -1,0 +1,9 @@
+takes: 1,2,3,4,5, 0
+argument form: 1,2,3,4,5,1,2,3,4,5, 5
+taken in callee: 1,2,3,4,5,1,2,3,4,5,1,2,3,
+aliased: 13 5 / 14 6
+move plan: 6 7
+escape: 20,40,60, 0
+duplicate: 20,40,60,1,
+shared base: log renamed
+two takes: 20,40,60,1,100,200,300, renamed!!!

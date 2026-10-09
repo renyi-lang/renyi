@@ -29,7 +29,7 @@ use crate::types::{FieldMeta, TypeMeta, TypeShape, Types, VariantMeta};
 use crate::value::Value;
 
 /// The version of the encoding, its first integer.
-pub const FORMAT: u64 = 3;
+pub const FORMAT: u64 = 4;
 
 type Read<T> = Result<T, String>;
 
@@ -376,10 +376,14 @@ fn write_op(out: &mut Writer, op: &Op) {
             out.usize(*name as usize);
             out.usize(*site as usize);
         }
-        Op::LoadField { slot, name, site } => {
+        Op::LoadField { slot, name, site } | Op::TakeField { slot, name, site } => {
             out.usize(*slot as usize);
             out.usize(*name as usize);
             out.usize(*site as usize);
+        }
+        Op::WithSlot { slot, fields } => {
+            out.usize(*slot as usize);
+            out.usize(*fields as usize);
         }
         Op::Call { function, args } => {
             out.usize(*function);
@@ -884,6 +888,15 @@ fn read_op(input: &mut Reader) -> Read<Op> {
         50 => Op::UnwindStack(input.u16()?),
         51 => Op::Check(input.u32()?),
         52 => Op::LoadField {
+            slot: input.u16()?,
+            name: input.u32()?,
+            site: input.u32()?,
+        },
+        53 => Op::WithSlot {
+            slot: input.u16()?,
+            fields: input.u16()?,
+        },
+        54 => Op::TakeField {
             slot: input.u16()?,
             name: input.u32()?,
             site: input.u32()?,

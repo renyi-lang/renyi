@@ -556,6 +556,21 @@ pub fn analyse(program: &Program, code: &Code) -> Result<Analysis, Rejection> {
                     stack.push(note(Abs::Boxed(None)));
                     may_fail!();
                 }
+                Op::WithSlot { slot, fields } => {
+                    if !matches!(slots[*slot as usize], SlotKind::Unset | SlotKind::Boxed(_)) {
+                        return Err(Rejection::SlotConflict(*slot));
+                    }
+                    pop_n!(2 * *fields);
+                    stack.push(note(Abs::Boxed(None)));
+                    may_fail!();
+                }
+                Op::TakeField { slot, name, .. } => {
+                    if !matches!(slots[*slot as usize], SlotKind::Unset | SlotKind::Boxed(_)) {
+                        return Err(Rejection::SlotConflict(*slot));
+                    }
+                    let name = code.constants[*name as usize].as_text().unwrap_or("");
+                    stack.push(note(abs_of_field_at(program, code, pc, name)));
+                }
                 Op::Call { function, args } => {
                     pop_n!(*args);
                     stack.push(note(abs_of_result(program, *function)));

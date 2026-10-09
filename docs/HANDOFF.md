@@ -1,8 +1,15 @@
 # Handoff
 
-Last updated: 2026-10-09, session 9, the first in the cloud environment
-(claude.ai/code), which finished the profile-guided round on strings and
-JSON that session 8 had paused: decision AQ, the first of the
+Last updated: 2026-10-09, session 10, in the cloud environment, which
+did stage 6 of the typed round, decision AU11: the update of a uniquely
+held record in place (the ops `WithSlot` and `TakeField`, bytecode
+format 7, three emitter rules in both emitters, the judges equal), kept
+by AU1's rule with a small gain and a finding about why (the section
+"The typed round" below, "Stage 6 is in"), and answered the owner's
+question on the execution model (the section "The execution model, as
+the owner asked on 2026-10-09" below). Session 9, the first in the
+cloud environment (claude.ai/code), finished the profile-guided round on
+strings and JSON that session 8 had paused: decision AQ, the first of the
 interspersed performance items the owner set after M5 (the section "The
 profile-guided round on strings and JSON as it exists" below), and did
 the baseline JIT, decision AR1, in its three stages: the fused op
@@ -87,15 +94,16 @@ which completes M5).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
-## Start here (session 10)
+## Start here (session 11)
 
 1. The work stopped in the typed round, whose plan the owner set in
    decisions AU1 and AU9: read the section "The typed round" below,
-   whose last paragraphs ("Stage 5 is in" and "What is next in this
-   round") say what exists and what comes next: stage 6, the update of
-   a uniquely held record in place (format 7), then stage 7, the
-   comparisons on borrowed operands, then stage 8, the parameters
-   borrowed across direct calls.
+   whose last paragraphs ("Stage 6 is in" and "What is next in this
+   round") say what exists and what comes next: a question for the
+   owner first (stage 6 served few of the checker's hot updates, since
+   their records are shared; two rules would unlock the rest, and the
+   owner orders them or not), then stage 7, the comparisons on borrowed
+   operands, then stage 8, the parameters borrowed across direct calls.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
@@ -207,13 +215,13 @@ revision>]`, `run [--manifest] [options] <file> [arguments]`, `record
 <file>...`, `compile [--to file] <file.ry>`, `add <name> [<version>]`,
 `update [--accept-effects]`, `audit`, `fetch`, `publish [--to
 <directory>]`, `bind <header.h> --module <name> --library <names>
-[--to <directory>]`, `tools [path]`, `mcp [path]`, `lsp`, `serve [--watch]`, `run --sandbox` and `version`; 317 tests,
+[--to <directory>]`, `tools [path]`, `mcp [path]`, `lsp`, `serve [--watch]`, `run --sandbox` and `version`; 333 tests,
 clippy and fmt clean with rustc 1.94.1 on Windows (the owner's machine)
 and on Linux (the cloud environment, where 1.94.1 is installed beside
 its 1.97.0 for the gates). CI (`.github/workflows/ci.yml`) runs the same gates,
 `renyi check compiler/*.ry`, the starter pack's workflows (check,
 format, test, the cheat sheet's copy) and the conformance suite
-(`tests/conformance/`, 54 cases, every `run` case a second time from
+(`tests/conformance/`, 55 cases, every `run` case a second time from
 its bytecode file;
 runners `tools/conformance.py` and `crates/renyi/tests/conformance.rs`)
 on a toolchain pinned to the owner's machine (rustc 1.94.1), so that CI
@@ -2056,35 +2064,79 @@ simulated data-cache misses, the binary's layout). Wall-clock with a
 cachegrind run beside it: 2.2 to 2.5 s cold, 1.6 to 1.8 s from the
 cache.
 
-**What is next in this round (the owner's order, AU9), with what the
-session that paused found while planning:**
+**Stage 6 is in (decision AU11, 2026-10-09, session 10)**: the update of
+a uniquely held record in place. `bytecode.rs`: `Op::WithSlot { slot,
+fields }` (the base is the record in the slot, moved out and updated in
+place when held once, `Rc::make_mut` in `Vm::with`, which keeps the
+allocation now in every case; the refinements checked by
+`refinement_violation`, shared with `refined_record`) and `Op::TakeField
+{ slot, name, site }` (the field moved out of a record held once,
+`Nothing` left until the `WithSlot` fills it, else cloned;
+`op_take_field` beside `op_load_field`, through the site's cache);
+`file.rs` (format 7), `binary.rs` (encoding 4), `image.rs` (image format
+6, code format 4: `rt_with_slot` and `rt_take_field` among the helpers),
+`native/codegen.rs` (both through their helper; a take typed as a field
+read, `unbox_top` after it), `native/infer.rs`; `compile/stmt.rs`:
+`with_in_slot` (`change x to x with U`, `return x with U`),
+`update_plan` (`Takes`: every update `f: x.f.method(args)`, the names
+distinct, no argument pinning `x`; `Move`: no update may leave the loop;
+`Copy`: as before), `taken_receiver`, `move_candidate` with the argument
+form (`change x to f(..., x, ...)`), `pins` (the old `mentions`, which
+now also counts a `break` or `continue` outcome: the fix of a latent
+hole in O1's move); `compile/expr.rs`: `member` emits `TakeField` for
+the `take_receiver`; `compiler/emit.ry`: the same rules (`with_in_slot`,
+`returned_value`, `update_plan`, `taken_receiver`, `field_method_call`,
+`move_candidate` with `moved_receiver` and `moved_argument`, `pins` and
+its family, `is_take_receiver`, the `take_receiver` field of `Emitter`;
+`format: 7`); `compiler/bytecode.ry`: `OpWithSlot`, `OpTakeField`;
+`tools/image_census.py` reads image format 6. Tests:
+`a_record_held_once_is_updated_in_place_and_its_aliases_keep_their_value`
+in `crates/renyi_vm/tests/native.rs` (the op counts of every form, both
+tiers against each other and against the expected text) and the
+conformance case `record_update`
+(`tests/conformance/programs/record_update.ry`, run from its bytecode
+file and under the JIT too); the judges hold both emitters equal with
+the rules (95 s). Measured by AU1's rule, both binaries on this machine:
+the cold JIT run 14.23 to 14.16 billion cycles (-0.5%; 10.27 to 10.26
+billion instructions), the interpreter 17.76 to 17.80 (+0.2%), the image
+10.31 to 10.23 (-0.7%), the run from the cache 11.23 to 11.16 (-0.7%);
+`tools/bench.py` best of seven alternating: `records` 53 to 52 ms, the
+self-check 1,763 to 1,774 ms on the JIT run and 1,364 to 1,313 as an
+image, noise. In the compiler's checker program 71 of 159 `with` sites
+are updates in the slot, 17 with the field taken, and 429 values move
+into calls where 180 did; counted on the self-check with the VM
+instrumented for the purpose (not committed), of 206,427 updates run
+70,922 are `WithSlot` and 23,848 find the record held once, and 2,305 of
+8,258 takes move the field: the hot updates of the checker find their
+record shared, by a `Done` record that carries the checker beside its
+value (`let after be done.checker`, then `done with checker: updated`)
+or by a binding still live after the statement, so the in-place path
+rarely runs. The profiles before and after (callgrind) agree: `op_with`
+and `refined_record` 209 to 161 million instructions (`with`,
+`refinement_violation`, `op_with`, `op_with_slot`), the list copies in
+`make_mut` 83 to 81 million, the drops of records unchanged.
 
-1. **Stage 6, the update of a uniquely held record in place (format 7,
-   decision AU11 to come).** The compiler writes `return checker with
-   diagnostics: checker.diagnostics.append(diagnostic)` and `change x to
-   x with field: x.field.append(item)` some thirty times (`bodies.ry`
-   11, `emit.ry` 11, `declare.ry` 7); each copies the list (the field
-   read clones it, so `append` finds it shared) and then the record (the
-   base is loaded with one more reference, so `with` finds it shared).
-   Three emitter rules, in both emitters, held equal by the judges: (a)
-   `change x to x with f: e` and `return x with f: e`, where `e` reads
-   `x.f` exactly once and reads `x` otherwise only through other fields,
-   take the field out of the record in the slot (a new op, say
-   `TakeField { slot, name }`: the field moved out when the record is
-   held once, `Rc::get_mut`, else cloned) and move the base into `With`
-   (`LoadMove`), so that both `append` and `with` find their operand
-   unique; (b) `change x to f(x, ...)`, where no other argument mentions
-   `x`, moves `x` into the call as `move_candidate` in
-   `compile/stmt.rs` already does for `change x to x.method(...)`,
-   without which the callee's parameter is held twice and (a) finds the
-   record shared; (c) the same for `let y be x with ...` when `x` is
-   dead after, only if the liveness is cheap to state in both emitters.
-   The interpreter, the generated code (a helper is enough), `file.rs`,
-   `binary.rs`, `bytecode.ry`, `emit.ry`, `tests/typed.rs`
-   (`pushes_its_expression`). Expected: the copies in `op_with`,
-   `make_mut`, `refined_record` and the allocator that the AU8 profile
-   shows (several percent of the self-check), more on programs that
-   build lists in records.
+**What is next in this round (the owner's order, AU9), with what
+session 10 found:**
+
+1. **A question for the owner before stage 7**: whether to add the two
+   rules that would let stage 6's path run on the checker's hot
+   updates, or to leave them: (a) the liveness rule, `let y be x with
+   ...` where `x` is dead after the statement (`x` declared in the same
+   block, or a parameter with the statement in the body's own block,
+   and no later statement of the block mentioning `x`; the sites
+   `fresh` and `infer` in `bodies.ry`, `fresh` being `let updated be
+   checker with vars: checker.vars.append(...)` and `infer` `let
+   updated be after with typed: after.typed.append(noted)`), which
+   needs a statement-level `mentions` in both emitters; (b) the field
+   taken out of a record that is updated with the result later (`let
+   after be done.checker ... return done with checker: updated`: a
+   `TakeField` for the `let` and the `WithSlot` at the return filling
+   the hole), which needs the same liveness and a rule across
+   statements. Without them the `Checker` record is shared at nearly
+   every update and the copies stay. The alternative the owner may
+   prefer: leave the copies to a later representation round and go to
+   stage 7 now.
 2. **Stage 7, the comparisons on borrowed operands (AU12).** `rt_binary`
    is 7% of the self-check inclusive (`binary_values`, `PartialEq`,
    the drops of both operands). A `Binary` comparison whose operands a
@@ -2103,10 +2155,43 @@ session that paused found while planning:**
    the three; measure 6 and 7 before starting it.
 
 Each stage is measured by AT1's rule (`tools/measure_size.sh` on the
-release binary, about fifteen minutes now with the fourth row) against
+release binary, about fifteen minutes now with the fourth row; in a
+fresh container measure the previous stage's binary too, built from its
+commit, since the simulated cache differs between machines) against
 the binary before it, with `tools/bench.py` beside it; the judges
-(`cargo test -p renyi --test selfhost`, about 90 s) after every change
-to an emitter.
+(`cargo test -p renyi --test selfhost`, about 95 s) after every change
+to an emitter. A lesson of session 10: never `git checkout <file>` to
+drop a temporary instrumentation from a file with uncommitted work; it
+reverted the whole file, which had to be rewritten from the session's
+own edit script.
+
+## The execution model, as the owner asked on 2026-10-09
+
+The owner asked in session 10 whether Renyi is compiled or interpreted,
+whether the toolchain written in Renyi is in use, and whether it could
+be. The answer given: the model is bytecode with a baseline JIT and an
+optional image (a source is checked and emitted to bytecode, the VM
+interprets it, a hot code object is compiled to machine code by
+Cranelift, `renyi build` compiles every code object ahead of time into
+an image, `--exe` a self-contained executable, and the image cache of
+AU10 gives every second run of a program the image). The default path
+is Rust end to end: the front end of `crates/renyi_syntax`,
+`renyi_check` and `renyi_vm/compile`, the VM, the JIT and the natives.
+The toolchain written in Renyi (`compiler/`: the lexer, the parser, the
+checker and the emitter) is complete and held byte-equal to the Rust
+one by the judges, and compiles itself, but no command of the binary
+runs it: it runs in the tests and by hand (`renyi run
+compiler/checker.ry <file>`). The front end could be switched (a
+decision, the dispatch of `check` and `compile` to the compiler's
+embedded image, the bootstrap chain exists); the runtime cannot, by
+H1 and W2. The cost, measured on this machine: checking
+`compiler/bodies.ry` (7,774 lines) takes 0.083 s with the Rust front
+end and 1.87 s with the Renyi checker on the cold JIT tier, 22 times
+more, which is what the typed round's second goal (the self-check a
+quarter faster, AU1) and the owner's stages 6 to 8 (AU9) address. The
+recommendation given: decide the switch after this round; the session
+offered to put it to the owner as a decision question at the round's
+end.
 
 ## The size of the generated code (decisions AT1 to AT7; session 9, 2026-10-08 and 09)
 
@@ -3366,6 +3451,28 @@ holds between calls.
   map as the base, with `--json` and against itself; `HEAD` as the base
   for the corpus and for one file; a bad base), the `diff` call in
   `tests/mcp.rs`, and a unit test of `own_text_hash`.
+
+## Done in session 10 (stage 6 of the typed round, in the cloud environment)
+
+- **Decision AU11, stage 6 of the typed round**: the ops `WithSlot` and
+  `TakeField`, bytecode format 7, binary encoding 4, image format 6,
+  code format 4; the three emitter rules in `compile/stmt.rs` and
+  `compiler/emit.ry` (the update in the slot with the takes or the move,
+  the argument form of O1's move, `pins` with the escapes), the VM's
+  `with` through `Rc::make_mut`; the native test and the conformance
+  case `record_update`; measured on this machine against AU10's binary
+  built from its commit: the cold JIT run -0.5% by the estimate, -0.1%
+  in instructions; the counts that explain the small gain (the
+  checker's records are shared at nearly every update) and the two
+  rules that would change that, put to the owner (the section "The
+  typed round", "What is next").
+- **The owner's question on the execution model** answered with the
+  numbers of this machine (the section "The execution model, as the
+  owner asked on 2026-10-09").
+- The gates with the 1.94.1 toolchain (fmt, clippy, test, the
+  conformance runner) and the judges; the environment set up again in
+  a fresh container (the 1.94.1 toolchain installed beside 1.97.0, a
+  `target-1.94.1/` for its gates).
 
 ## Done in session 9 (the profile-guided round on strings and JSON and the baseline JIT, in the cloud environment)
 

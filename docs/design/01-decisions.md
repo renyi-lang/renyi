@@ -3881,3 +3881,68 @@ binary's layout and not this stage. Wall-clock on this machine, with a
 cachegrind run on another core: the self-check 2.2 to 2.5 s cold, 1.6 to
 1.8 s from the cache; `hello` 8 ms either way; the first run with the
 cache 2.1 s, the image of 6.8 MB in the cache two seconds later. (user)
+
+**AU11. Stage 6 of the typed round: the update of a uniquely held record
+in place (bytecode format 7, binary encoding 4, image format 6, code
+format 4). Two ops: `WithSlot { slot, fields }`, whose base is the
+record in the slot, moved out (`Nothing` is left) and updated in place
+when it is held once (`Rc::make_mut`; the allocation stays either way,
+where `with` freed the record's and allocated another), the refinements
+of the type checked on the result as `with` checks them; and `TakeField
+{ slot, name, site }`, which pushes a field of the record in the slot,
+moved out when the record is held once (`Nothing` is left in the field
+until the `WithSlot` that follows puts the field's new value in) and
+cloned when the record is shared, through the site's cache as
+`LoadField` reads. Three rules, in both emitters, which the judge of Z3
+holds equal: (a) `change x to x with U` and `return x with U`, `x` a
+local: when every update is `f: x.f.method(args)` with the names
+distinct and no argument pinning `x`, each receiver `x.f` is a
+`TakeField` and the record is updated with `WithSlot` (the takes); else,
+when no update may leave the loop (`break`, `continue`), a `WithSlot`
+with the fields read as they are (the move); else the copy as before.
+(b) `change x to CALL`: `x` is moved into the call with `LoadMove` when
+it is the receiver (O1) or, new, when it is the one argument that is `x`
+itself, and nothing else in the call pins `x`. (c) `pins(expr, name)`,
+the predicate behind both: the expression reads the name anywhere, or
+holds a `break` or `continue` outcome; the second is new for O1's rule
+too, which moved the receiver out and let an argument leave the loop
+with the slot `Nothing`.** What makes the takes safe: a hole exists only
+in a record held once, which only the slot sees; the slot is dead
+(`return`) or stored into (`change`) right after the statement; a
+handled region is opened inside an expression only, never around a
+statement, so a failure during the updates leaves the frame; a `break`
+or `continue` inside an update is excluded by the rule; the taken field
+is read nowhere else, since no argument mentions `x` and the names are
+distinct; a record that is shared, or a holder that is not a record, is
+read as before. The `let y be x with ...` form (the plan's rule c) needs
+the liveness of `x` after the statement and is left out of this stage:
+the two hottest `with` sites of the Renyi checker (`fresh`, `infer`)
+have that form, so the next profile decides whether it is worth a
+liveness rule in both emitters. In the compiler's checker program: 71 of
+159 `with` sites are updates in the slot, 17 of them with their field
+taken, and 429 values are moved into calls where 180 were (`LoadMove`);
+the bytecode file 9,751,963 to 9,743,893 bytes. Counted on the
+self-check with the VM instrumented for the purpose: of the 206,427
+updates run, 70,922 are `WithSlot` and 23,848 find the record held once;
+of the 8,258 takes, 2,305 move the field; the rest find the record
+shared, by a `Done` record that carries the checker beside its value
+(`let after be done.checker`, then `done with checker: updated`) or by a
+binding still live after the statement. Measured by AU1's rule against
+AU10's binary (586f4b1), both binaries on the same machine: the
+self-check's estimate on the cold JIT run 14.23 to 14.16 billion cycles
+(-0.5%; 10.27 to 10.26 billion instructions), the interpreter 17.76 to
+17.80 (+0.2%; 12.73 to 12.72 billion instructions, the instruction
+misses up with the binary's layout, within the rule), the image 10.31 to
+10.23 (-0.7%; 7.19 to 7.18 billion instructions; the machine code 5.79
+MB, 125.2 bytes of body per op, 771 deopt points), the run from the
+cache 11.23 to 11.16 (-0.7%); in wall-clock by `tools/bench.py` on this
+machine `bench/records.ry` 53 to 52 ms and the self-check 1,763 to 1,774
+ms on the JIT run, 1,364 to 1,313 ms as an image, best of seven with the
+two binaries alternating, which is noise: no change in wall-clock. The
+stage stays by the rule's first clause, and the gain is small for the
+reason the counts give: the hot updates of the checker find their record
+shared, so the in-place path they were built for rarely runs; what would
+make it run is the move of the last read of a binding (a liveness rule)
+and the field taken out of a record that is updated with the result
+later, which the plan of AU1's stage iv did not foresee and which the
+owner is asked to order. (user)

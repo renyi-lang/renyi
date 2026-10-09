@@ -37,7 +37,7 @@ pub const MAGIC: &[u8; 4] = b"RYI\0";
 
 /// The layout of the file: bumped when it changes. 3: the code section
 /// (decision AT5).
-pub const IMAGE_FORMAT: u32 = 5;
+pub const IMAGE_FORMAT: u32 = 6;
 
 /// The alignment of the code section in the file: a multiple of every
 /// page size the toolchain runs on (16 KB on Apple silicon), so that the
@@ -54,8 +54,9 @@ const PART_ALIGN: usize = 16;
 /// when the version is the same (a development build). 2: decision AT2
 /// (the record's tag word, the callee's prologue writes its locals, no
 /// call counter in the state, `rt_direct_entry` gone from the helpers).
-/// 3: `rt_retain_at` among the helpers (decision AT6).
-pub const CODE_FORMAT: u32 = 3;
+/// 3: `rt_retain_at` among the helpers (decision AT6). 4: `rt_take_field`
+/// and `rt_with_slot` among the helpers (decision AU11).
+pub const CODE_FORMAT: u32 = 4;
 
 /// The extension of an image file.
 pub const EXTENSION: &str = "ryi";

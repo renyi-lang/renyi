@@ -1,6 +1,6 @@
 //! Statements and loops.
 
-use renyi_syntax::ast::{Block, Expr, ExprKind, Name, Ordering, Stmt, StmtKind};
+use renyi_syntax::ast::{Arg, Block, Expr, ExprKind, Name, Ordering, Stmt, StmtKind};
 use renyi_syntax::Span;
 
 use super::Compiler;
@@ -21,9 +21,14 @@ impl Compiler<'_, '_> {
                     self.unsupported(&format!("changing `{}`", name.text), span);
                     return;
                 };
-                self.move_receiver = move_candidate(name, value);
-                self.expr(value);
-                self.move_receiver = None;
+                // the slot is stored into right after: an update of the
+                // record in it is done in place (AU11), a call takes the
+                // value out of it (O1)
+                if !self.with_in_slot(name, value) {
+                    self.move_receiver = move_candidate(name, value);
+                    self.expr(value);
+                    self.move_receiver = None;
+                }
                 self.emit(Op::Store(slot), span);
             }
             StmtKind::If {
@@ -98,7 +103,18 @@ impl Compiler<'_, '_> {
             }
             StmtKind::Return(value) => match value {
                 Some(value) => {
-                    self.expr(value);
+                    // the frame's slots die with the return: `return x with
+                    // ...` updates the record in its slot (AU11)
+                    let holder = match &value.kind {
+                        ExprKind::With { base, .. } => match &base.kind {
+                            ExprKind::Name(holder) => Some(holder),
+                            _ => None,
+                        },
+                        _ => None,
+                    };
+                    if !holder.is_some_and(|holder| self.with_in_slot(holder, value)) {
+                        self.expr(value);
+                    }
                     self.emit(Op::Return, span);
                 }
                 None => {
@@ -229,6 +245,54 @@ impl Compiler<'_, '_> {
         self.pop_scope();
     }
 
+    /// `x with f: e, ...` where the slot of `x` is dead or stored into right
+    /// after the statement (decision AU11): the update done in the slot, so
+    /// that a record held once is changed in place, with each field whose
+    /// update is a call on it taken out of the record first, so that the
+    /// call finds it held once too; `false` when the value is not such an
+    /// update of `holder`, or when its updates may leave the loop with the
+    /// record moved out (`update_plan`), and nothing was emitted.
+    fn with_in_slot(&mut self, holder: &Name, value: &Expr) -> bool {
+        let ExprKind::With { base, updates } = &value.kind else {
+            return false;
+        };
+        let ExprKind::Name(receiver) = &base.kind else {
+            return false;
+        };
+        if receiver.text != holder.text {
+            return false;
+        }
+        let Some(slot) = self.lookup(&holder.text) else {
+            return false;
+        };
+        let plan = update_plan(holder, updates);
+        if plan == UpdatePlan::Copy {
+            return false;
+        }
+        for update in updates {
+            let name = update
+                .name
+                .as_ref()
+                .map(|n| n.text.clone())
+                .unwrap_or_default();
+            let index = self.name_constant(&name);
+            self.emit(Op::Const(index), update.span);
+            if plan == UpdatePlan::Takes {
+                self.take_receiver = taken_receiver(holder, update);
+            }
+            self.expr(&update.value);
+            self.take_receiver = None;
+        }
+        self.emit(
+            Op::WithSlot {
+                slot,
+                fields: updates.len() as u16,
+            },
+            value.span,
+        );
+        true
+    }
+
     /// Bind the item on top of the stack to the loop's names: one name takes
     /// the item, several take its parts.
     pub fn bind_item(&mut self, bindings: &[Name], span: Span) {
@@ -248,38 +312,126 @@ impl Compiler<'_, '_> {
     }
 }
 
-/// `change x to x.method(...)`: the span of the receiver's name token when the
-/// variable being set is the receiver and the arguments do not read it, so
-/// that the receiver can be moved out of its slot (decision O1).
+/// `change x to x.method(...)` and `change x to f(..., x, ...)`: the span of
+/// the name token of `x` that is moved out of its slot into the call
+/// (decision O1; the argument form since AU11): the receiver, or the one
+/// argument that is `x` itself, when nothing else in the call pins `x`.
 fn move_candidate(name: &Name, value: &Expr) -> Option<Span> {
     let ExprKind::Call { callee, args } = &value.kind else {
         return None;
     };
-    let ExprKind::Member { base, .. } = &callee.kind else {
-        return None;
+    let text = Some(name.text.as_str());
+    let receiver = match &callee.kind {
+        ExprKind::Member { base, .. } => match &base.kind {
+            ExprKind::Name(receiver) if receiver.text == name.text => Some(receiver.span),
+            _ => None,
+        },
+        _ => None,
     };
-    let ExprKind::Name(receiver) = &base.kind else {
-        return None;
-    };
-    if receiver.text != name.text || args.iter().any(|arg| mentions(&arg.value, &name.text)) {
+    if let Some(span) = receiver {
+        return (!args.iter().any(|arg| pins(&arg.value, text))).then_some(span);
+    }
+    if pins(callee, text) {
         return None;
     }
-    Some(receiver.span)
+    let mut moved = None;
+    for arg in args {
+        match &arg.value.kind {
+            ExprKind::Name(found) if found.text == name.text && moved.is_none() => {
+                moved = Some(found.span);
+            }
+            _ => {
+                if pins(&arg.value, text) {
+                    return None;
+                }
+            }
+        }
+    }
+    moved
 }
 
-/// Whether an expression reads a name anywhere inside it.
-fn mentions(expr: &Expr, name: &str) -> bool {
+/// How `x with f: e, ...` is emitted when the slot of `x` is dead or stored
+/// into right after (decision AU11).
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum UpdatePlan {
+    /// Every update is `f: x.f.method(args)` with the names distinct and no
+    /// argument pinning `x`: each field is taken out of the record
+    /// (`TakeField`) and the record updated in the slot (`WithSlot`).
+    Takes,
+    /// No update may leave the loop: the record updated in the slot, the
+    /// fields read as they are.
+    Move,
+    /// The updated copy, as `with` is elsewhere.
+    Copy,
+}
+
+fn update_plan(holder: &Name, updates: &[Arg]) -> UpdatePlan {
+    let names: Vec<&str> = updates
+        .iter()
+        .filter_map(|update| update.name.as_ref().map(|n| n.text.as_str()))
+        .collect();
+    let distinct = names.len() == updates.len()
+        && names
+            .iter()
+            .enumerate()
+            .all(|(index, name)| !names[..index].contains(name));
+    if distinct
+        && updates
+            .iter()
+            .all(|update| taken_receiver(holder, update).is_some())
+    {
+        return UpdatePlan::Takes;
+    }
+    if updates.iter().all(|update| !pins(&update.value, None)) {
+        return UpdatePlan::Move;
+    }
+    UpdatePlan::Copy
+}
+
+/// The name token of `x` in the update `f: x.f.method(args)`, when the update
+/// has that form and no argument pins `x`: the field is taken out of the
+/// record there.
+fn taken_receiver(holder: &Name, update: &Arg) -> Option<Span> {
+    let field = update.name.as_ref()?;
+    let ExprKind::Call { callee, args } = &update.value.kind else {
+        return None;
+    };
+    let ExprKind::Member { base: receiver, .. } = &callee.kind else {
+        return None;
+    };
+    let ExprKind::Member { base, name: read } = &receiver.kind else {
+        return None;
+    };
+    let ExprKind::Name(found) = &base.kind else {
+        return None;
+    };
+    if found.text != holder.text || read.text != field.text {
+        return None;
+    }
+    if args
+        .iter()
+        .any(|arg| pins(&arg.value, Some(holder.text.as_str())))
+    {
+        return None;
+    }
+    Some(found.span)
+}
+
+/// Whether an expression pins the slot of a name while it runs: it reads the
+/// name anywhere inside it, or it may leave the loop it is in (`break`,
+/// `continue`) with the slot's value moved out and the statement unfinished;
+/// with no name, the second alone. What keeps a value from being moved out of
+/// its slot into a call or an update (decisions O1 and AU11).
+fn pins(expr: &Expr, name: Option<&str>) -> bool {
     use renyi_syntax::ast::{Outcome, QueryTerminal, TextPiece};
-    let any = |items: &[Expr]| items.iter().any(|e| mentions(e, name));
+    let any = |items: &[Expr]| items.iter().any(|e| pins(e, name));
     let outcome = |outcome: &Outcome| match outcome {
-        Outcome::Value(e) | Outcome::Crash(e, _) => mentions(e, name),
-        Outcome::Fail(e, _) | Outcome::Return(e, _) => {
-            e.as_ref().is_some_and(|e| mentions(e, name))
-        }
-        Outcome::Break(_) | Outcome::Continue(_) => false,
+        Outcome::Value(e) | Outcome::Crash(e, _) => pins(e, name),
+        Outcome::Fail(e, _) | Outcome::Return(e, _) => e.as_ref().is_some_and(|e| pins(e, name)),
+        Outcome::Break(_) | Outcome::Continue(_) => true,
     };
     match &expr.kind {
-        ExprKind::Name(n) => n.text == name,
+        ExprKind::Name(n) => name == Some(n.text.as_str()),
         ExprKind::Integer(_)
         | ExprKind::Decimal(_)
         | ExprKind::RawText(_)
@@ -288,60 +440,51 @@ fn mentions(expr: &Expr, name: &str) -> bool {
         | ExprKind::SelfValue
         | ExprKind::TypeName(_) => false,
         ExprKind::Text { pieces, .. } => pieces.iter().any(|p| match p {
-            TextPiece::Hole(e) => mentions(e, name),
+            TextPiece::Hole(e) => pins(e, name),
             TextPiece::Text(_) => false,
         }),
-        ExprKind::Member { base, .. } => mentions(base, name),
+        ExprKind::Member { base, .. } => pins(base, name),
         ExprKind::Call { callee, args } => {
-            mentions(callee, name) || args.iter().any(|a| mentions(&a.value, name))
+            pins(callee, name) || args.iter().any(|a| pins(&a.value, name))
         }
-        ExprKind::Construct { args, .. } => args.iter().any(|a| mentions(&a.value, name)),
+        ExprKind::Construct { args, .. } => args.iter().any(|a| pins(&a.value, name)),
         ExprKind::List(items) => any(items),
-        ExprKind::Map(entries) => entries
-            .iter()
-            .any(|(k, v)| mentions(k, name) || mentions(v, name)),
+        ExprKind::Map(entries) => entries.iter().any(|(k, v)| pins(k, name) || pins(v, name)),
         ExprKind::Range { from, to, by } => {
-            mentions(from, name)
-                || mentions(to, name)
-                || by.as_ref().is_some_and(|b| mentions(b, name))
+            pins(from, name) || pins(to, name) || by.as_ref().is_some_and(|b| pins(b, name))
         }
-        ExprKind::Not(inner) | ExprKind::Paren(inner) => mentions(inner, name),
-        ExprKind::Binary { left, right, .. } => mentions(left, name) || mentions(right, name),
+        ExprKind::Not(inner) | ExprKind::Paren(inner) => pins(inner, name),
+        ExprKind::Binary { left, right, .. } => pins(left, name) || pins(right, name),
         ExprKind::With { base, updates } => {
-            mentions(base, name) || updates.iter().any(|a| mentions(&a.value, name))
+            pins(base, name) || updates.iter().any(|a| pins(&a.value, name))
         }
-        ExprKind::Otherwise { value, fallback } => mentions(value, name) || outcome(fallback),
+        ExprKind::Otherwise { value, fallback } => pins(value, name) || outcome(fallback),
         ExprKind::If {
             branches,
             otherwise,
-        } => {
-            branches
-                .iter()
-                .any(|(c, o)| mentions(c, name) || outcome(o))
-                || outcome(otherwise)
-        }
+        } => branches.iter().any(|(c, o)| pins(c, name) || outcome(o)) || outcome(otherwise),
         ExprKind::Match {
             subject,
             arms,
             otherwise,
         } => {
-            mentions(subject, name)
+            pins(subject, name)
                 || arms.iter().any(|arm| {
-                    arm.guard.as_ref().is_some_and(|g| mentions(g, name)) || outcome(&arm.body)
+                    arm.guard.as_ref().is_some_and(|g| pins(g, name)) || outcome(&arm.body)
                 })
                 || otherwise.as_ref().is_some_and(|o| outcome(o))
         }
         ExprKind::Query(query) => {
-            query.sources.iter().any(|s| mentions(&s.source, name))
-                || query.within.as_ref().is_some_and(|e| mentions(e, name))
-                || query.filter.as_ref().is_some_and(|e| mentions(e, name))
-                || query.order.as_ref().is_some_and(|o| mentions(&o.key, name))
-                || query.group_by.as_ref().is_some_and(|e| mentions(e, name))
+            query.sources.iter().any(|s| pins(&s.source, name))
+                || query.within.as_ref().is_some_and(|e| pins(e, name))
+                || query.filter.as_ref().is_some_and(|e| pins(e, name))
+                || query.order.as_ref().is_some_and(|o| pins(&o.key, name))
+                || query.group_by.as_ref().is_some_and(|e| pins(e, name))
                 || match &query.terminal {
                     QueryTerminal::Collect(e)
                     | QueryTerminal::Sum(e)
                     | QueryTerminal::Any(e)
-                    | QueryTerminal::All(e) => mentions(e, name),
+                    | QueryTerminal::All(e) => pins(e, name),
                     QueryTerminal::Count | QueryTerminal::First | QueryTerminal::None => false,
                 }
         }

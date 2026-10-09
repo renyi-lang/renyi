@@ -130,6 +130,7 @@ type Emitter
   has handler_depth: Integer
   has in_test: Boolean
   has move_receiver: maybe Span
+  has take_receiver: maybe Span
 end
 
 type Step of Value
@@ -191,10 +192,24 @@ type VariantFound
   has tag: maybe Integer
 end
 
-type MethodCall
-  purpose: A call on a named receiver: the receiver's name token and the arguments.
-  has receiver: Name
+type PlainCall
+  purpose: A call taken apart: the callee and the arguments.
+  has callee: Expr
   has args: List of Arg
+end
+
+type FieldCall
+  purpose: `x.f.method(args)` taken apart: the holder, the field and the arguments.
+  has holder: Name
+  has field: Name
+  has args: List of Arg
+end
+
+type UpdatePlan is one of
+  purpose: How `x with f: e, ...` is emitted when the slot of `x` is dead or stored into right after (decision AU11).
+  TakesPlan
+  MovePlan
+  CopyPlan
 end
 
 type Placed
@@ -303,7 +318,8 @@ function new_emitter(
     loops: [],
     handler_depth: 0,
     in_test: false,
-    move_receiver: nothing
+    move_receiver: nothing,
+    take_receiver: nothing
   )
 end
 
@@ -1188,11 +1204,15 @@ function emit_member(emitter: Emitter, base: Expr, name: Name, span: Span) retur
     when some(slot) then
       let named be name_constant(emitter: updated, name: name.text)
       let site be field_site(named.emitter)
-      return emit(
-        emitter: site.emitter,
-        op: OpLoadField(slot: slot, name: named.value, site: site.value),
-        span: span
-      )
+      let op be
+        if is_take_receiver(emitter: updated, base: base) then OpTakeField(
+          slot: slot,
+          name: named.value,
+          site: site.value
+        )
+        otherwise OpLoadField(slot: slot, name: named.value, site: site.value)
+        end
+      return emit(emitter: site.emitter, op: op, span: span)
     when nothing then change updated to updated
   end
   change updated to emit_expr(emitter: updated, expr: base)
@@ -1200,6 +1220,14 @@ function emit_member(emitter: Emitter, base: Expr, name: Name, span: Span) retur
   let site be field_site(named.emitter)
   change updated to site.emitter
   return emit(emitter: updated, op: OpField(name: named.value, site: site.value), span: span)
+end
+
+function is_take_receiver(emitter: Emitter, base: Expr) returns Boolean
+  purpose: Whether the base is the name token of `x` in the receiver `x.f` of an update done in the slot (decision AU11).
+
+  let receiver be emitter.take_receiver otherwise return false
+  let name be bare_name(base) otherwise return false
+  return receiver.start is name.span.start and receiver.stop is name.span.stop
 end
 
 function local_holder(emitter: Emitter, base: Expr) returns maybe Integer
@@ -1634,7 +1662,7 @@ function emit_leaving(emitter: Emitter, statement: Statement) returns Emitter
     when Return(value, span) then
       match value
         when some(result) then
-          let placed be emit_expr(emitter: emitter, expr: result)
+          let placed be returned_value(emitter: emitter, value: result)
           return emit(emitter: placed, op: OpReturn, span: span)
         when nothing then return emit(emitter: emitter, op: OpReturnNothing, span: span)
       end
@@ -1675,11 +1703,138 @@ function emit_change(emitter: Emitter, name: Name, value: Expr, span: Span) retu
       when some(found) then found
       when nothing then return unsupported(emitter: emitter, what: what, span: span)
     end
+  match with_in_slot(emitter: emitter, holder: name, value: value)
+    when some(done) then return emit(emitter: done, op: OpStore(slot: slot), span: span)
+    when nothing then change updated to updated
+  end
   let receiver be move_candidate(name: name, value: value)
   let primed be updated with move_receiver: receiver
   change updated to emit_expr(emitter: primed, expr: value)
   change updated to updated with move_receiver: nothing
   return emit(emitter: updated, op: OpStore(slot: slot), span: span)
+end
+
+function returned_value(emitter: Emitter, value: Expr) returns Emitter
+  purpose: The value of a `return`: `x with ...` done in the slot of `x`, which dies with the frame (decision AU11), else the expression as it is.
+
+  let holder be with_holder(value) otherwise return emit_expr(emitter: emitter, expr: value)
+  match with_in_slot(emitter: emitter, holder: holder, value: value)
+    when some(done) then return done
+    when nothing then return emit_expr(emitter: emitter, expr: value)
+  end
+end
+
+function with_in_slot(emitter: Emitter, holder: Name, value: Expr) returns maybe Emitter
+  purpose: `x with f: e, ...` where the slot of `x` is dead or stored into right after the statement (decision AU11): the update done in the slot, so that a record held once is changed in place, with each field whose update is a call on it taken out of the record first, so that the call finds it held once too; nothing when the value is not such an update of the holder, or when its updates may leave the loop with the record moved out (`update_plan`), and nothing was emitted.
+
+  let receiver be with_holder(value) otherwise return nothing
+  if receiver.text is not holder.text then return nothing end
+  let slot be lookup(emitter: emitter, name: holder.text) otherwise return nothing
+  let updates be with_updates(value)
+  let takes be
+    match update_plan(holder: holder, updates: updates)
+      when CopyPlan then return nothing
+      when TakesPlan then true
+      when MovePlan then false
+    end
+  let mutable updated be emitter
+  for each update in updates
+    let field_name be
+      match update.name
+        when some(name) then name.text
+        when nothing then ""
+      end
+    let named be name_constant(emitter: updated, name: field_name)
+    let op be OpConst(index: named.value)
+    change updated to emit(emitter: named.emitter, op: op, span: update.span)
+    let taken: maybe Span be
+      if takes then taken_receiver(holder: holder, update: update) otherwise nothing end
+    let primed be updated with take_receiver: taken
+    change updated to emit_expr(emitter: primed, expr: update.value)
+    change updated to updated with take_receiver: nothing
+  end
+  let op be OpWithSlot(slot: slot, fields: updates.length())
+  return emit(emitter: updated, op: op, span: bodies.expr_span(value))
+end
+
+function with_holder(value: Expr) returns maybe Name
+  purpose: The name `x` of `x with ...`, when the value is such an update.
+
+  match value
+    when With(base) then return bare_name(base)
+    otherwise return nothing
+  end
+end
+
+function with_updates(value: Expr) returns List of Arg
+  purpose: The updates of a `with`; none for any other expression.
+
+  match value
+    when With(updates) then return updates
+    otherwise return []
+  end
+end
+
+function update_plan(holder: Name, updates: List of Arg) returns UpdatePlan
+  purpose: Takes when every update is `f: x.f.method(args)` with the names distinct and no argument pinning `x`; a move when no update may leave the loop; else the copy, as `with` is elsewhere.
+
+  if distinct_names(updates) and all_taken(holder: holder, updates: updates) then
+    return TakesPlan
+  end
+  for each update in updates
+    if pins(expr: update.value, name: nothing) then return CopyPlan end
+  end
+  return MovePlan
+end
+
+function distinct_names(updates: List of Arg) returns Boolean
+  purpose: Whether every update names a field, and no field twice.
+
+  let mutable seen: List of Text be []
+  for each update in updates
+    let name be update.name otherwise return false
+    if seen.contains(name.text) then return false end
+    change seen to seen.append(name.text)
+  end
+  return true
+end
+
+function all_taken(holder: Name, updates: List of Arg) returns Boolean
+  purpose: Whether every update has the form a take serves.
+
+  for each update in updates
+    if taken_receiver(holder: holder, update: update) is nothing then return false end
+  end
+  return true
+end
+
+function taken_receiver(holder: Name, update: Arg) returns maybe Span
+  purpose: The name token of `x` in the update `f: x.f.method(args)`, when the update has that form and no argument pins `x`: the field is taken out of the record there.
+
+  let field be update.name otherwise return nothing
+  let call be field_method_call(update.value) otherwise return nothing
+  if call.holder.text is not holder.text then return nothing end
+  if call.field.text is not field.text then return nothing end
+  for each arg in call.args
+    if pins(expr: arg.value, name: holder.text) then return nothing end
+  end
+  return call.holder.span
+end
+
+function field_method_call(value: Expr) returns maybe FieldCall
+  purpose: `x.f.method(args)` taken apart, when the expression is one.
+
+  let call be plain_call(value) otherwise return nothing
+  match call.callee
+    when Member(base: receiver) then
+      match receiver
+        when Member(base, name: field) then
+          let holder be bare_name(base) otherwise return nothing
+          return FieldCall(holder: holder, field: field, args: call.args)
+        otherwise return nothing
+      end
+    otherwise return nothing
+  end
 end
 
 function emit_if(emitter: Emitter, branches: List of Branch, fallback: maybe Block) returns Emitter
@@ -1876,106 +2031,146 @@ function bind_item(emitter: Emitter, bindings: List of Name, span: Span) returns
 end
 
 function move_candidate(name: Name, value: Expr) returns maybe Span
-  purpose: `change x to x.method(...)`: the receiver's name token when the arguments do not read it.
+  purpose: `change x to x.method(...)` and `change x to f(..., x, ...)`: the name token of `x` that is moved out of its slot into the call (decision O1; the argument form since AU11): the receiver, or the one argument that is `x` itself, when nothing else in the call pins `x`.
 
-  let call be method_call(value) otherwise return nothing
-  if call.receiver.text is not name.text then return nothing end
-  for each arg in call.args
-    if mentions(expr: arg.value, name: name.text) then return nothing end
+  let call be plain_call(value) otherwise return nothing
+  match receiver_name(call.callee)
+    when some(receiver) where receiver.text is name.text then
+      return moved_receiver(receiver: receiver, args: call.args, name: name.text)
+    otherwise return moved_argument(callee: call.callee, args: call.args, name: name.text)
   end
-  return call.receiver.span
 end
 
-function method_call(value: Expr) returns maybe MethodCall
-  purpose: `receiver.method(...)`: the receiver's name token and the arguments, when it is one.
+function moved_receiver(receiver: Name, args: List of Arg, name: Text) returns maybe Span
+  purpose: The receiver's name token, when no argument pins the name.
+
+  for each arg in args
+    if pins(expr: arg.value, name: name) then return nothing end
+  end
+  return receiver.span
+end
+
+function moved_argument(callee: Expr, args: List of Arg, name: Text) returns maybe Span
+  purpose: The name token of the one argument that is the name itself, when nothing else in the call pins it.
+
+  if pins(expr: callee, name: name) then return nothing end
+  let mutable moved: maybe Span be nothing
+  for each arg in args
+    match bare_name(arg.value)
+      when some(found) where found.text is name and moved is nothing then change moved to found.span
+      otherwise if pins(expr: arg.value, name: name) then return nothing end
+    end
+  end
+  return moved
+end
+
+function plain_call(value: Expr) returns maybe PlainCall
+  purpose: The callee and the arguments, when the expression is a call.
 
   match value
-    when Call(callee, args) then
-      match callee
-        when Member(base) then
-          match base
-            when NameExpr(name: receiver) then return MethodCall(receiver: receiver, args: args)
-            otherwise return nothing
-          end
-        otherwise return nothing
-      end
+    when Call(callee, args) then return PlainCall(callee: callee, args: args)
     otherwise return nothing
   end
 end
 
-function mentions(expr: Expr, name: Text) returns Boolean
-  purpose: Whether an expression reads a name anywhere inside it.
+function receiver_name(callee: Expr) returns maybe Name
+  purpose: The name `x` of a callee `x.method`, when the callee is one.
+
+  match callee
+    when Member(base) then return bare_name(base)
+    otherwise return nothing
+  end
+end
+
+function bare_name(expr: Expr) returns maybe Name
+  purpose: The name, when the expression is a name alone.
 
   match expr
-    when NameExpr(name: found) then return found.text is name
+    when NameExpr(name) then return name
+    otherwise return nothing
+  end
+end
+
+function pins(expr: Expr, name: maybe Text) returns Boolean
+  purpose: Whether an expression pins the slot of a name while it runs: it reads the name anywhere inside it, or it may leave the loop it is in (`break`, `continue`) with the slot's value moved out and the statement unfinished; with no name, the second alone (decisions O1 and AU11).
+
+  match expr
+    when NameExpr(name: found) then return is_named(found: found, name: name)
     when TextLiteral(pieces) then
       for each piece in pieces
         match piece
-          when Hole(expression) then if mentions(expr: expression, name: name) then return true end
+          when Hole(expression) then if pins(expr: expression, name: name) then return true end
           when Literal then continue
         end
       end
       return false
-    when Member(base) then return mentions(expr: base, name: name)
+    when Member(base) then return pins(expr: base, name: name)
     when Call(callee, args) then
-      if mentions(expr: callee, name: name) then return true end
-      return mentions_args(args: args, name: name)
-    when Construct(args) then return mentions_args(args: args, name: name)
-    when ListLiteral(items) then return mentions_any(items: items, name: name)
+      if pins(expr: callee, name: name) then return true end
+      return pins_args(args: args, name: name)
+    when Construct(args) then return pins_args(args: args, name: name)
+    when ListLiteral(items) then return pins_any(items: items, name: name)
     when MapLiteral(entries) then
       for each entry in entries
-        if mentions(expr: entry.key, name: name) then return true end
-        if mentions(expr: entry.value, name: name) then return true end
+        if pins(expr: entry.key, name: name) then return true end
+        if pins(expr: entry.value, name: name) then return true end
       end
       return false
     when RangeLiteral(lower, upper, step) then
-      if mentions(expr: lower, name: name) then return true end
-      if mentions(expr: upper, name: name) then return true end
-      return mentions_maybe(expr: step, name: name)
-    when Not(value) then return mentions(expr: value, name: name)
-    when Paren(value) then return mentions(expr: value, name: name)
+      if pins(expr: lower, name: name) then return true end
+      if pins(expr: upper, name: name) then return true end
+      return pins_maybe(expr: step, name: name)
+    when Not(value) then return pins(expr: value, name: name)
+    when Paren(value) then return pins(expr: value, name: name)
     when Binary(left, right) then
-      if mentions(expr: left, name: name) then return true end
-      return mentions(expr: right, name: name)
+      if pins(expr: left, name: name) then return true end
+      return pins(expr: right, name: name)
     when With(base, updates) then
-      if mentions(expr: base, name: name) then return true end
-      return mentions_args(args: updates, name: name)
-    otherwise return mentions_branching(expr: expr, name: name)
+      if pins(expr: base, name: name) then return true end
+      return pins_args(args: updates, name: name)
+    otherwise return pins_branching(expr: expr, name: name)
   end
 end
 
-function mentions_branching(expr: Expr, name: Text) returns Boolean
-  purpose: Whether a branching expression or a query reads a name anywhere inside it.
+function is_named(found: Name, name: maybe Text) returns Boolean
+  purpose: Whether a name token is the name looked for, when one is.
+
+  let wanted be name otherwise return false
+  return found.text is wanted
+end
+
+function pins_branching(expr: Expr, name: maybe Text) returns Boolean
+  purpose: Whether a branching expression or a query pins the name's slot.
 
   match expr
     when Otherwise(value, fallback) then
-      if mentions(expr: value, name: name) then return true end
-      return mentions_outcome(outcome: fallback, name: name)
+      if pins(expr: value, name: name) then return true end
+      return pins_outcome(outcome: fallback, name: name)
     when IfExpr(branches, fallback) then
       for each branch in branches
-        if mentions(expr: branch.condition, name: name) then return true end
-        if mentions_outcome(outcome: branch.outcome, name: name) then return true end
+        if pins(expr: branch.condition, name: name) then return true end
+        if pins_outcome(outcome: branch.outcome, name: name) then return true end
       end
-      return mentions_outcome(outcome: fallback, name: name)
+      return pins_outcome(outcome: fallback, name: name)
     when MatchExpr(subject, arms, fallback) then
-      if mentions(expr: subject, name: name) then return true end
+      if pins(expr: subject, name: name) then return true end
       for each arm in arms
-        if mentions_maybe(expr: arm.guard, name: name) then return true end
-        if mentions_outcome(outcome: arm.body, name: name) then return true end
+        if pins_maybe(expr: arm.guard, name: name) then return true end
+        if pins_outcome(outcome: arm.body, name: name) then return true end
       end
       match fallback
-        when some(outcome) then return mentions_outcome(outcome: outcome, name: name)
+        when some(outcome) then return pins_outcome(outcome: outcome, name: name)
         when nothing then return false
       end
     when QueryExpr(sources, deadline, filter, order, group_by, terminal) then
       for each source in sources
-        if mentions(expr: source.source, name: name) then return true end
+        if pins(expr: source.source, name: name) then return true end
       end
-      if mentions_maybe(expr: deadline, name: name) then return true end
-      if mentions_maybe(expr: filter, name: name) then return true end
-      if mentions_maybe(expr: order_key(order), name: name) then return true end
-      if mentions_maybe(expr: group_by, name: name) then return true end
-      return mentions_terminal(terminal: terminal, name: name)
+      if pins_maybe(expr: deadline, name: name) then return true end
+      if pins_maybe(expr: filter, name: name) then return true end
+      if pins_maybe(expr: order_key(order), name: name) then return true end
+      if pins_maybe(expr: group_by, name: name) then return true end
+      return pins_terminal(terminal: terminal, name: name)
     otherwise return false
   end
 end
@@ -1987,51 +2182,51 @@ function order_key(order: maybe SortOrder) returns maybe Expr
   return ordering.key
 end
 
-function mentions_terminal(terminal: QueryTerminal, name: Text) returns Boolean
-  purpose: Whether a query's terminal reads a name.
+function pins_terminal(terminal: QueryTerminal, name: maybe Text) returns Boolean
+  purpose: Whether a query's terminal pins the name's slot.
 
   match terminal
-    when Collect(value) then return mentions(expr: value, name: name)
-    when Sum(value) then return mentions(expr: value, name: name)
-    when Any(condition) then return mentions(expr: condition, name: name)
-    when All(condition) then return mentions(expr: condition, name: name)
+    when Collect(value) then return pins(expr: value, name: name)
+    when Sum(value) then return pins(expr: value, name: name)
+    when Any(condition) then return pins(expr: condition, name: name)
+    when All(condition) then return pins(expr: condition, name: name)
     otherwise return false
   end
 end
 
-function mentions_outcome(outcome: Outcome, name: Text) returns Boolean
-  purpose: Whether an outcome reads a name.
+function pins_outcome(outcome: Outcome, name: maybe Text) returns Boolean
+  purpose: Whether an outcome pins the name's slot: it reads the name, or it leaves the loop.
 
   match outcome
-    when ValueOutcome(value) then return mentions(expr: value, name: name)
-    when CrashOutcome(message) then return mentions(expr: message, name: name)
-    when FailOutcome(value) then return mentions_maybe(expr: value, name: name)
-    when ReturnOutcome(value) then return mentions_maybe(expr: value, name: name)
-    otherwise return false
+    when ValueOutcome(value) then return pins(expr: value, name: name)
+    when CrashOutcome(message) then return pins(expr: message, name: name)
+    when FailOutcome(value) then return pins_maybe(expr: value, name: name)
+    when ReturnOutcome(value) then return pins_maybe(expr: value, name: name)
+    otherwise return true
   end
 end
 
-function mentions_maybe(expr: maybe Expr, name: Text) returns Boolean
-  purpose: Whether an optional expression reads a name.
+function pins_maybe(expr: maybe Expr, name: maybe Text) returns Boolean
+  purpose: Whether an optional expression pins the name's slot.
 
   let found be expr otherwise return false
-  return mentions(expr: found, name: name)
+  return pins(expr: found, name: name)
 end
 
-function mentions_any(items: List of Expr, name: Text) returns Boolean
-  purpose: Whether any of the expressions reads a name.
+function pins_any(items: List of Expr, name: maybe Text) returns Boolean
+  purpose: Whether any of the expressions pins the name's slot.
 
   for each item in items
-    if mentions(expr: item, name: name) then return true end
+    if pins(expr: item, name: name) then return true end
   end
   return false
 end
 
-function mentions_args(args: List of Arg, name: Text) returns Boolean
-  purpose: Whether any argument's value reads a name.
+function pins_args(args: List of Arg, name: maybe Text) returns Boolean
+  purpose: Whether any argument's value pins the name's slot.
 
   for each arg in args
-    if mentions(expr: arg.value, name: name) then return true end
+    if pins(expr: arg.value, name: name) then return true end
   end
   return false
 end
@@ -2919,7 +3114,7 @@ function assemble(context: Context, modules: List of CheckedModule) returns Prog
     for each declared in world.abilities
     collect AbilityMeta(name: declared.name, methods: method_names(declared.methods))
   return Program(
-    format: 6,
+    format: 7,
     modules: module_sources(world: world, modules: modules),
     builtins: builtin_ids(world.builtins),
     types: context.types,

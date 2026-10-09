@@ -14,6 +14,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use renyi_syntax::SourceFile;
+use renyi_vm::bytecode::Op;
 use renyi_vm::{compile_project, run_program, Options, Program, RunOutcome};
 
 fn compile(source: &str) -> Program {
@@ -259,6 +260,122 @@ end
     let (outcome, printed) = both_ways(source);
     assert_eq!(outcome, RunOutcome::Finished);
     assert_eq!(printed, "6 6 3 10 6 x1x2y1y2\n");
+}
+
+#[test]
+fn a_record_held_once_is_updated_in_place_and_its_aliases_keep_their_value() {
+    // decision AU11: `change x to x with f: x.f.append(item)` takes the
+    // field out of the record in the slot and puts the record back
+    // updated, `change x to f(x, ...)` moves `x` into the call; a record
+    // another binding holds is copied, an update that may leave the loop
+    // is the copy, and both tiers agree with each other on every case
+    let source = r#"module demo
+  purpose: Records updated in place when held once, with the aliasing cases.
+
+import std.console
+
+type Bag
+  purpose: A record with a list and a counter.
+  has items: List of Integer
+  has total: Integer
+  has name: Text
+end
+
+function add(bag: Bag, item: Integer) returns Bag
+  purpose: The bag with the item appended and counted.
+
+  return bag with items: bag.items.append(item), total: bag.total + 1
+end
+
+function add_taken(bag: Bag, item: Integer) returns Bag
+  purpose: The bag with the item appended, the field taken out first.
+
+  return bag with items: bag.items.append(item)
+end
+
+function shown(items: List of Integer) returns Text
+  purpose: The items as a text.
+
+  let mutable out be ""
+  for each item in items
+    change out to "{out}{item},"
+  end
+  return out
+end
+
+function risky(item: Integer) returns Integer or fails with Text
+  purpose: Fails on odd items.
+
+  if item remainder 2 is 1 then fail with "odd" end
+  return item * 10
+end
+
+public function main() needs console
+  purpose: Runs every form and prints what each leaves.
+
+  let mutable bag be Bag(items: [], total: 0, name: "a")
+  for each item from 1 to 5
+    change bag to bag with items: bag.items.append(item)
+  end
+  console.print("takes: {shown(bag.items)} {bag.total}")
+  for each item from 1 to 5
+    change bag to add(bag: bag, item: item)
+  end
+  console.print("argument form: {shown(bag.items)} {bag.total}")
+  for each item from 1 to 3
+    change bag to add_taken(bag: bag, item: item)
+  end
+  console.print("taken in callee: {shown(bag.items)}")
+  let kept be bag
+  change bag to bag with items: bag.items.append(99), total: bag.total + 1
+  console.print("aliased: {kept.items.length()} {kept.total} / {bag.items.length()} {bag.total}")
+  change bag to bag with total: bag.total + 1, items: bag.items.append(bag.total)
+  console.print("move plan: {bag.items.last() otherwise 0} {bag.total}")
+  let mutable log be Bag(items: [], total: 0, name: "log")
+  for each item from 1 to 6
+    change log to log with items: (log.items.append(risky(item) otherwise continue))
+  end
+  console.print("escape: {shown(log.items)} {log.total}")
+  change log to log with items: log.items.append(1), items: log.items.append(2)
+  console.print("duplicate: {shown(log.items)}")
+  let other be log
+  change log to log with name: "renamed"
+  console.print("shared base: {other.name} {log.name}")
+  for each item from 1 to 3
+    change log to log with items: log.items.append(item * 100), name: "{log.name}!"
+  end
+  console.print("two takes: {shown(log.items)} {log.name}")
+end
+"#;
+    // the forms are emitted as the decision says: two takes, eight
+    // updates in the slot, one copy, two moves into a call
+    let program = compile(source);
+    let count = |wanted: fn(&renyi_vm::bytecode::Op) -> bool| {
+        program
+            .codes
+            .iter()
+            .flat_map(|code| code.ops.iter())
+            .filter(|op| wanted(op))
+            .count()
+    };
+    assert_eq!(count(|op| matches!(op, Op::TakeField { .. })), 2);
+    assert_eq!(count(|op| matches!(op, Op::WithSlot { .. })), 8);
+    assert_eq!(count(|op| matches!(op, Op::With(_))), 1);
+    assert_eq!(count(|op| matches!(op, Op::LoadMove(_))), 2);
+    let (outcome, printed) = both_ways(source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(
+        printed,
+        "takes: 1,2,3,4,5, 0\n\
+         argument form: 1,2,3,4,5,1,2,3,4,5, 5\n\
+         taken in callee: 1,2,3,4,5,1,2,3,4,5,1,2,3,\n\
+         aliased: 13 5 / 14 6\n\
+         move plan: 6 7\n\
+         escape: 20,40,60, 0\n\
+         duplicate: 20,40,60,1,\n\
+         shared base: log renamed\n\
+         two takes: 20,40,60,1,100,200,300, renamed!!!\n"
+    );
 }
 
 #[test]

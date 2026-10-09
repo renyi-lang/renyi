@@ -176,6 +176,8 @@ pub const SIGNATURES: &[(&str, &str, char)] = &[
     ("rt_field", "pzwww", 'i'),
     ("rt_load_field", "pzwzwww", 'i'),
     ("rt_with", "pww", 'i'),
+    ("rt_with_slot", "pzwww", 'i'),
+    ("rt_take_field", "pzwzwww", 'i'),
     ("rt_not", "pw", 'i'),
     ("rt_binary", "puw", 'i'),
     ("rt_float_binary", "puffwp", 'i'),
@@ -2537,6 +2539,49 @@ impl Gen<'_, '_> {
                     .expect("a status");
                 self.push_boxed();
                 self.check_status(status, pc, true);
+            }
+            Op::WithSlot { slot, fields } => {
+                // the helper moves the record out of the slot in the VM's
+                // memory and updates it in place when it is held once
+                // (decision AU11)
+                let slot_value = self.u32(*slot as u32);
+                let count_value = self.u32(*fields as u32);
+                let status = self
+                    .helper_on_stack(
+                        "rt_with_slot",
+                        2 * *fields as usize,
+                        &[self.base, slot_value, count_value, pc_value],
+                    )
+                    .expect("a status");
+                self.push_boxed();
+                self.check_status(status, pc, true);
+            }
+            Op::TakeField { slot, name, site } => {
+                // the helper: the move out of a record held once happens
+                // where the reference count and the field cache are
+                // (decision AU11); what it pushes is typed as a field read
+                let field_name = self.code.constants[*name as usize]
+                    .as_text()
+                    .unwrap_or("")
+                    .to_string();
+                let slot_value = self.u32(*slot as u32);
+                let name_value = self.u32(*name);
+                let site_value = self.u32(*site);
+                let status = self
+                    .call(
+                        "rt_take_field",
+                        &[
+                            self.vm, self.base, slot_value, code_value, name_value, site_value,
+                            pc_value,
+                        ],
+                    )
+                    .expect("a status");
+                self.check_status(status, pc, false);
+                self.push_boxed();
+                let kind = abs_of_field_at(self.program, self.code, pc, &field_name);
+                if !kind.is_boxed() {
+                    self.unbox_top(kind, pc + 1);
+                }
             }
             Op::Call { function, args } => {
                 let count = *args as usize;

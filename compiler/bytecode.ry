@@ -280,6 +280,8 @@ public type Op is one of
   OpField(name: Integer, site: Integer)
   OpLoadField(slot: Integer, name: Integer, site: Integer)
   OpWith(fields: Integer)
+  OpWithSlot(slot: Integer, fields: Integer)
+  OpTakeField(slot: Integer, name: Integer, site: Integer)
   OpCall(function_id: Integer, args: Integer)
   OpCallAbility(ability_id: Integer, method: Integer, args: Integer)
   OpCallValue(args: Integer)

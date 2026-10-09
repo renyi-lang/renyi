@@ -768,9 +768,14 @@ pub(crate) struct Compiler<'c, 'w> {
     loops: Vec<LoopContext>,
     handler_depth: usize,
     pub in_test: bool,
-    /// `change x to x.method(...)`: the receiver's name token is loaded with
-    /// `LoadMove`, so the collection is updated in place.
+    /// `change x to x.method(...)` and `change x to f(x, ...)`: the name
+    /// token of `x` is loaded with `LoadMove`, so the collection is updated
+    /// in place (decision O1; the argument form since AU11).
     move_receiver: Option<Span>,
+    /// `x with f: x.f.method(...)` in the slot (decision AU11): the name
+    /// token of `x` in the update's receiver, whose field is taken out of the
+    /// record with `TakeField`.
+    take_receiver: Option<Span>,
 }
 
 impl<'c, 'w> Compiler<'c, 'w> {
@@ -787,6 +792,7 @@ impl<'c, 'w> Compiler<'c, 'w> {
             handler_depth: 0,
             in_test: false,
             move_receiver: None,
+            take_receiver: None,
         }
     }
 

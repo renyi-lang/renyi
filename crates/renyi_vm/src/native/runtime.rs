@@ -550,6 +550,38 @@ pub(crate) unsafe extern "C" fn rt_with(vm: VmPtr, count: u32, pc: u32) -> i32 {
     status(vm, result)
 }
 
+/// `Op::WithSlot` (decision AU11): the record moved out of the frame's slot
+/// and updated in place when it is held once.
+pub(crate) unsafe extern "C" fn rt_with_slot(
+    vm: VmPtr,
+    base: usize,
+    slot: u32,
+    count: u32,
+    pc: u32,
+) -> i32 {
+    let vm = vm!(vm);
+    vm.sync_pc(pc);
+    let result = vm.op_with_slot(base + slot as usize, count as usize);
+    status(vm, result)
+}
+
+/// `Op::TakeField` (decision AU11): the field moved out of the record in
+/// the frame's slot when the record is held once, else cloned.
+pub(crate) unsafe extern "C" fn rt_take_field(
+    vm: VmPtr,
+    base: usize,
+    slot: u32,
+    code: usize,
+    name: u32,
+    site: u32,
+    pc: u32,
+) -> i32 {
+    let vm = vm!(vm);
+    vm.sync_pc(pc);
+    let result = vm.op_take_field(code, base + slot as usize, name as usize, site as usize);
+    status(vm, result)
+}
+
 pub(crate) unsafe extern "C" fn rt_not(vm: VmPtr, pc: u32) -> i32 {
     let vm = vm!(vm);
     vm.sync_pc(pc);
@@ -1309,6 +1341,23 @@ impl Vm<'_> {
         Ok(self.with(holder.into_plain(), updates)?.guarded(origins))
     }
 
+    /// `Op::WithSlot`: the record in the slot at `at`, moved out (`Nothing`
+    /// is left), updated with the `count` pairs on the stack in place when
+    /// it is held once (decision AU11).
+    pub(crate) fn op_with_slot(&mut self, at: usize, count: usize) -> Result<Value, Interrupt> {
+        let mut updates = Vec::with_capacity(count);
+        let mut origins = 0;
+        for _ in 0..count {
+            let value = self.pop();
+            let name = self.pop();
+            origins |= value.origins();
+            updates.push((name, value.into_plain()));
+        }
+        let holder = std::mem::replace(&mut self.stack[at], Value::Nothing);
+        origins |= holder.origins();
+        Ok(self.with(holder.into_plain(), updates)?.guarded(origins))
+    }
+
     /// The pieces are joined where they lie on the stack, an Integer
     /// written straight into the text, and the stack cut below them after.
     pub(crate) fn op_concat(&mut self, count: usize) -> Result<Value, Interrupt> {
@@ -1611,6 +1660,8 @@ pub const HELPERS: &[(&str, *const u8)] = &[
     ("rt_field", rt_field as *const u8),
     ("rt_load_field", rt_load_field as *const u8),
     ("rt_with", rt_with as *const u8),
+    ("rt_with_slot", rt_with_slot as *const u8),
+    ("rt_take_field", rt_take_field as *const u8),
     ("rt_not", rt_not as *const u8),
     ("rt_binary", rt_binary as *const u8),
     ("rt_float_binary", rt_float_binary as *const u8),

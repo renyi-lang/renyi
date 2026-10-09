@@ -72,6 +72,24 @@ pub enum Op {
     },
     /// `base`, then `fields` pairs of (name constant, value): the updated copy.
     With(u16),
+    /// `fields` pairs of (name constant, value) on the stack; the base is
+    /// the record in the slot, moved out (`Nothing` is left) and updated
+    /// in place when it is held once, else copied (decision AU11): the
+    /// emitters write it where the slot is dead or stored into right
+    /// after.
+    WithSlot {
+        slot: u16,
+        fields: u16,
+    },
+    /// The field `name` of the record in the slot, moved out when the
+    /// record is held once (`Nothing` is left in the field until the
+    /// `WithSlot` that follows puts the field's new value in), else cloned
+    /// (decision AU11); `site` is the field cache's key, as `LoadField`.
+    TakeField {
+        slot: u16,
+        name: u32,
+        site: u32,
+    },
     Call {
         function: FunctionId,
         args: u16,
@@ -163,7 +181,7 @@ pub enum Op {
 
 impl Op {
     /// How many kinds `kind` tells apart.
-    pub const KINDS: usize = 53;
+    pub const KINDS: usize = 55;
 
     /// The operation's kind as a small number below `KINDS`, with its name:
     /// the profiler counts by it (decision X4).
@@ -222,6 +240,8 @@ impl Op {
             Op::UnwindStack(_) => (50, "UnwindStack"),
             Op::Check(_) => (51, "Check"),
             Op::LoadField { .. } => (52, "LoadField"),
+            Op::WithSlot { .. } => (53, "WithSlot"),
+            Op::TakeField { .. } => (54, "TakeField"),
         }
     }
 }
@@ -285,7 +305,9 @@ impl Op {
                 | Op::ConstructVariant { .. }
                 | Op::Field { .. }
                 | Op::LoadField { .. }
+                | Op::TakeField { .. }
                 | Op::With(_)
+                | Op::WithSlot { .. }
                 | Op::Call { .. }
                 | Op::CallAbility { .. }
                 | Op::CallValue(_)

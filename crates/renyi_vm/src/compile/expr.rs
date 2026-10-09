@@ -293,18 +293,25 @@ impl Compiler<'_, '_> {
         }
         // `x.field` on a local (`self` included): one op that reads the
         // field in the slot, so that the holder is neither cloned nor
-        // dropped; a receiver that is moved keeps its own load
-        let local = match &base.kind {
-            ExprKind::Name(local) if self.move_receiver != Some(local.span) => {
-                self.lookup(&local.text)
-            }
-            ExprKind::SelfValue => self.lookup("self"),
-            _ => None,
+        // dropped; a receiver that is moved keeps its own load; the
+        // receiver of an update in the slot takes the field out (AU11)
+        let (local, taken) = match &base.kind {
+            ExprKind::Name(local) if self.move_receiver != Some(local.span) => (
+                self.lookup(&local.text),
+                self.take_receiver == Some(local.span),
+            ),
+            ExprKind::SelfValue => (self.lookup("self"), false),
+            _ => (None, false),
         };
         if let Some(slot) = local {
             let name = self.name_constant(&name.text);
             let site = self.field_site();
-            self.emit(Op::LoadField { slot, name, site }, span);
+            let op = if taken {
+                Op::TakeField { slot, name, site }
+            } else {
+                Op::LoadField { slot, name, site }
+            };
+            self.emit(op, span);
             return;
         }
         self.expr(base);

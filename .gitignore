@@ -10,3 +10,4 @@ editors/vscode/out/
 .ccm/
 .claude/
 .secret
+target-*/
