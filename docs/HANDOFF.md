@@ -2247,10 +2247,11 @@ being that a moved load must stay borrowable (see above).
 
 1. **The template tier** (AU16): a first tier of machine-code templates
    per op without Cranelift, for the machine with one hardware thread and
-   to shorten the wait for the code everywhere; the design to write as a
-   decision first (x86-64 first; the templates call the helpers as the
-   generated code does and keep its frame protocol and hand-backs; the
-   hot code objects go on to Cranelift). Weeks of work.
+   to shorten the wait for the code everywhere; the design study is the
+   section "The template tier: the design study" below, with the four
+   questions put to the owner at the end of session 10 (their answers,
+   when given, become the decision entry AU18, and the code follows it).
+   Weeks of work.
 2. **After it, by a profile**: the representation items of AU1's step v
    (small texts inline, `Int` flattened into `Value`, lists of unboxed
    Integers, values in registers across ops); the micro-cuts (a
@@ -2284,6 +2285,141 @@ to an emitter. A lesson of session 10: never `git checkout <file>` to
 drop a temporary instrumentation from a file with uncommitted work; it
 reverted the whole file, which had to be rewritten from the session's
 own edit script.
+
+## The template tier: the design study (session 10)
+
+**What the owner ordered (AU16)**: a first tier of machine-code
+templates per op without Cranelift, which would serve the machine with
+one hardware thread (where the compile thread brings nothing) and
+shorten the wait for the code everywhere; the next large item; the
+design put to the owner before the code.
+
+**The gap it can close**, measured on the binary of AU17 (d8ee092)
+with `tools/bench.py --runs 5` (the `image` column is the program run
+with every code object compiled ahead of time by `renyi build`, which
+is where a tier that compiled everything at no cost would land; the
+JIT column is the cold run as a user gets it):
+
+| hardware threads | self-check, JIT / image | primes | records | strings | json_round_trip |
+|------------------|-------------------------|--------|---------|---------|-----------------|
+| one (`taskset -c 0`) | 1,647 / 1,213 ms (+36%) | 43 / 32 (+34%) | 54 / 43 (+26%) | 76 / 70 (+9%) | 92 / 85 (+8%) |
+| two | 1,473 / 1,221 (+21%) | 38 / 32 (+19%) | 51 / 47 (+9%) | 83 / 80 (+4%) | 95 / 86 (+10%) |
+| four | 1,467 / 1,214 (+21%) | 39 / 35 (+11%) | 48 / 42 (+14%) | 77 / 74 (+4%) | 97 / 92 (+5%) |
+
+On one thread the JIT compiles 54 code objects of the self-check
+(factor 8000, 90 ms of Cranelift) and 510 code objects that are called
+stay cold; 176,735 calls from generated code go to the interpreter. On
+four threads (factor 100 on the compile thread) 338 code objects are
+compiled, 1.2 s of the thread's time, and 57,803 calls from generated
+code go to the interpreter. Compiling everything at its first call on
+the interpreter's thread (`RENYI_NATIVE_HOT=0 RENYI_NATIVE_SYNC=1`)
+takes 2.8 to 3.4 s, 1.4 to 1.5 s of it Cranelift's, so the running
+part is about the cold run on four threads and a quarter of a second
+above the image row (the frames entered late, through `rt_call` and
+the trampolines, and the thread's share of the machine). The short
+programs of an agent are another matter: `examples/hello.ry` and four
+of the five starter workflows run in 7 to 25 ms, nearly all of it the
+front end (`renyi check` alone takes 8 to 10 ms), so no tier changes
+what a user sees there; the tier matters from about a tenth of a
+second of running upwards, and most on the machine with one thread,
+which an agent's sandbox often is.
+
+**What the tier can reach**: not the image row, since template code
+keeps every value boxed and calls the helpers for most ops (the
+Cranelift tier's small Integers, Booleans and Floats in registers are
+what make `primes` 25 times faster than the interpreter), but a good
+part of the gap on boxed code: in the interpreter's profile of the
+self-check, `run_frames` (the dispatch: the match on the op, the
+bounds check, the counting, and the inline ops) is 46% of the
+instructions and the helpers' work the rest; template code removes the
+dispatch and keeps the ops' work, so it should run at about two thirds
+of the interpreter's instructions on boxed code, which puts the
+self-check on one thread from 1,647 ms towards 1,350, and on four
+threads a smaller gain (the ops that run on the interpreter today while
+the compile thread works, and the cold code objects).
+
+**The design proposed to the owner:**
+
+1. *The code.* A code object the analysis of `infer.rs` settles gets
+   machine code emitted by a small x86-64 assembler of the VM's own
+   (`native/template/x64.rs`, the dozen instruction forms the sequences
+   need; `native/template/mod.rs`, the sequence per op), with every
+   operand boxed on the VM's stack in the interpreter's layout (the
+   locals, then the operands; the stack's length `base + locals +
+   depth` known statically from the analysis, as AT4 has it). Each op
+   is a fixed sequence: the trivial ops inline (`Const`, `Nothing`,
+   `Load`, `LoadMove`, `Store`, `Pop`, `Dup`, the jumps, the tag tests
+   `IsNothing`, `IsFailure`, `JumpIfAbsent`, `JumpIfFailure`, the
+   Boolean branches), every other op a call to the helper the Cranelift
+   tier calls for boxed operands (`rt_binary`, `rt_call`,
+   `rt_call_typed` with the mask of `borrowed_operands`, `rt_call_pure`,
+   `rt_load_field`, `rt_construct`, ...) followed by the status check:
+   `CONTINUE` falls through, `FAILURE` goes to the landing of the
+   innermost handled region (`rt_settle_handler`, then the target, as
+   the Cranelift tier's landings do; `rt_unhandled` without one), any
+   other status leaves the function with it. The code holds no address
+   (the helpers, the constants and the direct table are reached through
+   `NativeState`, as AS1 requires), keeps the VM, the frame's base and
+   the stack's pointer in callee-saved registers, reloads the pointer
+   after a helper that may grow the stack (the `STACK_SAFE` list), and
+   follows the platform's C convention: System V and Windows x64 differ
+   in the argument registers, the shadow space and the callee-saved
+   set, and both are needed, the owner's machine being Windows.
+2. *The entry and the exit.* The function has the `Entry` signature
+   (the VM, the base, the pc) to a status, as a trampoline does: `pc`
+   is 0 or a loop header, and since every op has a block, an entry at
+   a loop header fills no registers and refuses nothing; the exit
+   statuses are the Cranelift tier's (`RETURNED` with the value on the
+   caller's stack after `rt_return`, `INTERRUPT`); there is no
+   hand-back, a frame being in the interpreter's layout at every op,
+   and the depth limit of native frames applies as today.
+3. *The calls.* `Op::Call` goes through `rt_call` (the callee's frame
+   pushed by the VM, then its own code: template, Cranelift through its
+   trampoline, or the interpreter), the typed and the pure primitives
+   through `rt_call_typed` and `rt_call_pure` as the Cranelift tier
+   does; a later stage can give template functions direct calls among
+   themselves (a body in the direct table with every parameter boxed)
+   when the profile shows `rt_call`'s cost.
+4. *The tiers.* A code object is cold (the interpreter), then template
+   (at its first call, synchronously, microseconds), then Cranelift
+   (promoted). The template code counts the hotness as the interpreter
+   does, at its entry and at each loop header, and at its entry, when
+   the count is hot, asks for the promotion: on the compile thread
+   (factor 100) or, with one hardware thread, synchronously (factor
+   8000), as today; the Cranelift code replaces the template entry at
+   the next call. Narrated and profiled runs, `--interpret` and the
+   code objects the analysis rejects stay with the interpreter; images
+   and the cache stay the Cranelift tier's.
+5. *The tests.* Every native test and the conformance suite run on the
+   template tier too: `RENYI_NATIVE_TIER=template` forbids the
+   promotion, so that everything runs on templates (`RENYI_NATIVE_HOT=0`
+   keeps compiling everything with Cranelift at the first call).
+6. *The platforms.* x86-64 first (Linux, macOS, Windows); aarch64
+   (Apple silicon, the Linux arm64 release) keeps the interpreter and
+   the Cranelift tier until an aarch64 encoder follows, the sequences
+   being shared.
+7. *The measure.* AT1's rows (the cold JIT run decides) and the
+   wall-clock table above on one, two and four hardware threads; the
+   goal: the self-check on one thread within 15% of the image row.
+8. *The size.* The checker program has 46,238 ops; at 50 to 100 bytes
+   an op the template code of everything called is 2 to 4 MB, placed
+   in the code arena at the first call of each code object.
+
+**The alternatives weighed**: copy-and-patch (snippets per op compiled
+by Cranelift at build time and copied with their holes patched at run
+time) reaches the same code for more machinery (a build step, the
+relocations of the holes, a stencil per op and operand shape);
+Cranelift with every optimization off and the single-pass register
+allocator halves the cost at best (AU14), fifty times short of what
+compiling everything at the first call needs; a lower hotness factor
+brings nothing on one thread (AU14's sweep). The questions put to the
+owner at the end of session 10: the approach (the assembler, or
+copy-and-patch, or Cranelift stripped down), when a code object gets
+template code (at its first call, or after a few runs, or at load),
+the promotion (counted by the template code with today's factors, or
+only with the compile thread, or none), and the platforms (x86-64 in
+this round with aarch64 after, or both now, or Linux x86-64 only
+first).
 
 ## The execution model, as the owner asked on 2026-10-09
 
