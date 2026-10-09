@@ -1886,10 +1886,31 @@ on every tier (13.86 to 13.83 billion on the JIT run); the profile 733
 to 669 million instructions, 563 a glyph: the iteration 82, the search
 72, the typed call's helper 80, the generated code 56, the entry's match
 20, the loop variable's retain and release about 40, the rest the first
-half of the program. Next: stage 2 (the iteration inline), then the
-micro cuts left (the typed call's general path out of the fast function,
-a one-byte needle in a short text by a plain loop, the digits pushed as
-characters).
+half of the program.
+
+**Stage 2 is in (decision AU4, 2026-10-09)**: the loop over a list in
+the generated code. `value.rs`: `Native` is `repr(C, u8)`,
+`Native::Iterator(ListIter)` with `ListIter { items, len, position,
+list }` and `ListIter::next`; `layout::TAG_NATIVE`, `NATIVE_TAG`,
+`NATIVE_PAYLOAD`, `NATIVE_ITERATOR`, `ITER_ITEMS`, `ITER_LEN`,
+`ITER_POSITION`, held to the types by
+`a_list_iterator_lies_where_the_generated_code_reads_it`;
+`native/codegen.rs`: `Op::IterNext` on an `Iter` slot reads the slot's
+tag and the native's, walks a list iterator in place and falls back to
+`rt_iter_next` for anything else; `runtime.rs`: `iterator_of` and
+`iterator_next` through `ListIter`. Test:
+`loops_over_lists_texts_sets_and_ranges_agree_on_both_tiers` in
+`tests/native.rs`. Measured: the self-check's estimate on the JIT run
+13.83 to 13.66 billion (-1.3%), the interpreter +0.4%, the image 10.22
+to 10.08 (-1.4%; the machine code 5.63 to 5.70 MB, 123 bytes of body per op, the inline walk's price); strings 87 to 78 ms by `tools/bench.py` against CPython's
+79 (at par; 76 as an image), 84 to 83 best of seven; the profile 669 to
+625 million instructions, 525 a glyph. Next: the micro cuts (the typed
+call's general path out of the fast function, a one-byte needle in a
+short text by a plain loop, the digits pushed as characters), then
+stage 3, the typed bytecode, whose patch is drafted
+(`stage3.py` in the session's scratchpad: `Target::Typed` in both
+checkers, `Code::types` and the type table in both emitters, format 5,
+binary 2, image 4).
 
 ## The size of the generated code (decisions AT1 to AT7; session 9, 2026-10-08 and 09)
 

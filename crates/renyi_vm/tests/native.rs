@@ -210,6 +210,58 @@ end
 }
 
 #[test]
+fn loops_over_lists_texts_sets_and_ranges_agree_on_both_tiers() {
+    // decision AU1, stage ii: the generated code walks a list iterator in
+    // place; a range held in a variable and the snapshots of a text and a
+    // set go through the same slot kind, the first through the helper
+    let source = r#"module demo
+  purpose: Loops over every kind of source, with the list changed while it is walked.
+
+import std.console
+
+function walk(items: List of Integer, text: Text, limit: Integer) returns Text
+  purpose: Sum the items while appending to the same list, count the glyphs, walk a range from a variable and a set.
+
+  let mutable copy be items
+  let mutable total be 0
+  for each item in items
+    change total to total + item
+    change copy to copy.append(item * 10)
+  end
+  let mutable glyphs be 0
+  for each glyph in text
+    if glyph is not " " then change glyphs to glyphs + 1 end
+  end
+  let span be from 1 to limit
+  let mutable walked be 0
+  for each step in span
+    change walked to walked + step
+  end
+  let mutable distinct be 0
+  for each member in [3, 1, 3, 2].to_set()
+    change distinct to distinct + member
+  end
+  let mutable nested be ""
+  for each outer in ["x", "y"]
+    for each inner in [1, 2]
+      change nested to "{nested}{outer}{inner}"
+    end
+  end
+  return "{total} {copy.length()} {glyphs} {walked} {distinct} {nested}"
+end
+
+public function main() needs console
+  purpose: Print the walk.
+
+  console.print(walk(items: [1, 2, 3], text: "a b c", limit: 4))
+end
+"#;
+    let (outcome, printed) = both_ways(source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(printed, "6 6 3 10 6 x1x2y1y2\n");
+}
+
+#[test]
 fn a_guarded_integer_parameter_hands_the_frame_back_at_its_entry() {
     let dir = scratch("guarded");
     std::fs::write(format!("{dir}/count.txt"), "12345").expect("the data file");

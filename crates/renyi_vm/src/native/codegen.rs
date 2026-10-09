@@ -40,8 +40,9 @@ use crate::native::runtime::{
 };
 use crate::native::{DeoptPoint, DEPTH_LIMIT};
 use crate::value::layout::{
-    INT_PAYLOAD, INT_SMALL, INT_TAG, PAYLOAD, RC_VALUE, RECORD_FIELDS, RECORD_TAG, RECORD_TY, SIZE,
-    TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_INTEGER, TAG_NOTHING, TAG_RECORD,
+    INT_PAYLOAD, INT_SMALL, INT_TAG, ITER_ITEMS, ITER_LEN, ITER_POSITION, NATIVE_ITERATOR,
+    NATIVE_PAYLOAD, NATIVE_TAG, PAYLOAD, RC_VALUE, RECORD_FIELDS, RECORD_TAG, RECORD_TY, SIZE,
+    TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_INTEGER, TAG_NATIVE, TAG_NOTHING, TAG_RECORD,
 };
 use crate::value::Value;
 use crate::vm::{CallKind, FieldSite, Frame, NativeState, Vm};
@@ -2791,18 +2792,85 @@ impl Gen<'_, '_> {
                     let next = self.b.ins().iadd(current, step);
                     self.b.def_var(vars[0], next);
                 } else {
+                    // a list iterator read and advanced in place (decision
+                    // AU1, stage ii): the items' address, their count and
+                    // the position from the native's fixed layout, the item
+                    // copied with one more reference; anything else in the
+                    // slot (a range iterator, a value the analysis did not
+                    // type) goes through the helper
+                    let flags = MemFlagsData::trusted();
+                    let slot_address = self.address_at(index);
+                    let tag = self.tag_at(slot_address, 0);
+                    let is_native = self
+                        .b
+                        .ins()
+                        .icmp_imm_s(IntCC::Equal, tag, TAG_NATIVE as i64);
+                    let kind_block = self.b.create_block();
+                    let inline_block = self.b.create_block();
+                    let next_block = self.b.create_block();
+                    let slow = self.b.create_block();
+                    let found = self.b.create_block();
+                    let (exit_block, fill_exit) = self.edge_to(*exit as usize);
+                    self.b.ins().brif(is_native, kind_block, &[], slow, &[]);
+                    self.b.seal_block(kind_block);
+                    self.switch_to(kind_block);
+                    let rc = self
+                        .b
+                        .ins()
+                        .load(self.pointer, flags, slot_address, PAYLOAD);
+                    let kind = self
+                        .b
+                        .ins()
+                        .load(types::I8, flags, rc, RC_VALUE + NATIVE_TAG);
+                    let is_iterator =
+                        self.b
+                            .ins()
+                            .icmp_imm_s(IntCC::Equal, kind, NATIVE_ITERATOR as i64);
+                    self.b.ins().brif(is_iterator, inline_block, &[], slow, &[]);
+                    self.b.seal_block(inline_block);
+                    self.b.seal_block(slow);
+                    self.switch_to(inline_block);
+                    let iterator = RC_VALUE + NATIVE_PAYLOAD;
+                    let items = self
+                        .b
+                        .ins()
+                        .load(self.pointer, flags, rc, iterator + ITER_ITEMS);
+                    let len = self
+                        .b
+                        .ins()
+                        .load(types::I64, flags, rc, iterator + ITER_LEN);
+                    let position =
+                        self.b
+                            .ins()
+                            .load(types::I64, flags, rc, iterator + ITER_POSITION);
+                    let done = self
+                        .b
+                        .ins()
+                        .icmp(IntCC::UnsignedGreaterThanOrEqual, position, len);
+                    self.b.ins().brif(done, exit_block, &[], next_block, &[]);
+                    self.b.seal_block(next_block);
+                    self.switch_to(next_block);
+                    let offset = self.b.ins().imul_imm_s(position, SIZE as i64);
+                    let item = self.b.ins().iadd(items, offset);
+                    self.push_copy(item, true);
+                    let advanced = self.b.ins().iadd_imm_s(position, 1);
+                    self.b
+                        .ins()
+                        .store(flags, advanced, rc, iterator + ITER_POSITION);
+                    self.b.ins().jump(found, &[]);
+                    // the helper for anything else
+                    self.switch_to(slow);
                     let slot_value = self.u32(*slot as u32);
                     let has = self
                         .call("rt_iter_next", &[self.vm, self.base, slot_value])
                         .expect("an answer");
-                    let (exit_block, fill_exit) = self.edge_to(*exit as usize);
-                    let body = self.b.create_block();
-                    self.b.ins().brif(has, body, &[], exit_block, &[]);
+                    self.b.ins().brif(has, found, &[], exit_block, &[]);
+                    self.b.seal_block(found);
                     self.terminated = true;
                     if fill_exit {
                         self.fill_edge(exit_block, *exit as usize);
                     }
-                    self.switch_to(body);
+                    self.switch_to(found);
                     self.push_boxed();
                 }
             }

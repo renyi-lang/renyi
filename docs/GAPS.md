@@ -769,4 +769,7 @@ self-check's estimate on the JIT run 6.5 percent and `strings` from 134
 to 94 ms against CPython's 81; the small cuts after it (decision AU3:
 the digits of an Integer without `core::fmt`, the collections changed
 in place through `Rc::make_mut`, the typed call's helper trimmed) took
-`strings` to 84 ms (77 as an image, CPython 79).
+`strings` to 84 ms (77 as an image, CPython 79); stage 2 (decision
+AU4: the loop over a list walked by the generated code in place) to 78
+by `tools/bench.py`, at par with CPython, and cut the self-check's
+estimate another 1.3 percent.

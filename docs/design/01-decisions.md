@@ -3643,3 +3643,38 @@ an Integer written into a text 586 to 108 instructions, `append` 400 to
 a one-byte needle), the typed call's helper (80), the generated code
 (56), the entry's own match on its two texts (20) and the loop
 variable's retain and release (about 40). (user)
+
+**AU4. Stage (ii) of AU1 is in: the loop over a list in the generated
+code. The list iterator is `ListIter` (the items' address and count, the
+position, the list that keeps the items where they are), in a fixed
+layout inside a `Native` that is `repr(C, u8)` now (`layout::TAG_NATIVE`,
+`NATIVE_TAG`, `NATIVE_PAYLOAD`, `NATIVE_ITERATOR`, `ITER_ITEMS`,
+`ITER_LEN`, `ITER_POSITION`, held to the types by a test); at
+`IterNext` on a slot the analysis did not type as a range, the generated
+code reads the slot's tag and the native's, and for a list iterator
+compares the position with the count, copies the item onto the stack
+with one more reference and advances the position in place, leaving
+the loop at the exit otherwise; anything else in the slot (a range
+iterator made from a Range value, a value no analysis typed) goes
+through `rt_iter_next` as before. The interpreter's `iterator_next`
+reads the same struct (`ListIter::next`).** Measured by AU1's rule
+against AU3's binary: the self-check's estimate on the JIT run 13.83 to
+13.66 billion cycles (-1.3%; 9.78 to 9.74 billion instructions, the
+instruction misses 77 to 66 million), the interpreter 17.20 to 17.27
+(+0.4%, within the rule: the JIT run decides; `ListIter::next` branches
+where the old iterator did not), the image 10.22 to 10.08 (-1.4%; the machine code 5.63 to 5.70 MB, 123 bytes of body per op, the inline walk's price); `bench/strings.ry` 84 to 83 ms best of
+seven and 87 to 78 by `tools/bench.py`, CPython 79 on the same runs: at
+par, the round's first goal reached in wall-clock on this machine but
+not yet with a margin; 76 ms as an image. The profile of strings
+(callgrind): 669 to 625 million instructions, 525 a glyph; the
+iteration's 82 (`rt_iter_next`, `iterator_next`, the clone) became 20
+in the generated code and 21 in `rt_retain_at` for the item's reference.
+What a list iterator's items pointer rests on: a list another holder
+changes is copied first (`Rc::make_mut`, decision O1) and a list the
+iterator alone holds is changed by nobody, so the items never move
+while the loop runs; the interpreter and the generated code agree on
+the position's meaning (the index of the next item, never past the
+count), so a frame may change hands in the middle of a loop as it does
+for a range (AG3). Why the tag checks stay: the slot's kind is `Iter`
+for every loop whose source the analysis did not see as a range of
+small Integers, and such a source may be a Range value at run time. (user)

@@ -1353,7 +1353,7 @@ impl Vm<'_> {
             );
         }
         Ok(Value::Native(Rc::new(Native::Iterator(
-            std::cell::RefCell::new((items, 0)),
+            crate::value::ListIter::new(items),
         ))))
     }
 
@@ -1361,13 +1361,7 @@ impl Vm<'_> {
     pub(crate) fn iterator_next(&mut self, index: usize) -> Option<Value> {
         match &self.stack[index] {
             Value::Native(native) => match &**native {
-                Native::Iterator(state) => {
-                    let mut state = state.borrow_mut();
-                    let (items, position) = &mut *state;
-                    let item = items.get(*position).cloned();
-                    *position += 1;
-                    item
-                }
+                Native::Iterator(iterator) => iterator.next(),
                 Native::RangeIterator {
                     current,
                     to,
