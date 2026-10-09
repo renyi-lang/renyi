@@ -3322,3 +3322,117 @@ KB in place of 235 and 7 ms in place of 8 for the source, the image
 faster than the source now on the shortest program too; in wall-clock
 the self-check 1448 ms as an image against 1723 on the JIT run, the
 best of five each. (user)
+
+**AT4. Stage 3a of AT1, done and measured: the stack's height is static
+in the generated code and the frame pointer stays in a register. At
+every op the frame's part of the stack is its locals and the boxed
+operands of the abstract state (a typed operand is in a register), so
+the stack's length is the frame's base plus a constant the code
+generator knows; the generated code computes it instead of loading it
+from the VM and stores it where a helper or the interpreter reads it
+(`height`, `length_at`, `store_height`), and addresses every slot and
+operand from one register that holds the stack's pointer plus the
+base, read once at the entry and again after every call out of the
+generated code, which alone can move the stack (`frame_var`,
+`reload_frame`, `address_at`, `top_address`, `last_address`).** The
+owner's order of 2026-10-08 for the round's third stage: these two
+cuts first, then the shared stubs, each by the rule. Why they cost
+nothing: a load, a multiply and two additions per stack access become
+an addressing mode of the load or store that follows, and the one load
+of the pointer per op becomes one per helper call; the invariant they
+rest on, that the real stack and the abstract state agree at every op,
+is the one the room check of AR4 already rested on (the deepest operand
+stack of a body is read off the states). The one subtlety: after a
+result is popped from the state but left on the stack (a boxed return,
+`IsNothing`), the value lies at the state's height, not below it, and
+the generator says so where it reads it. Measured by AT1's rule against
+the binary of AT3: the self-check on the JIT run 15.15
+to 14.92 billion estimated cycles (-1.5%: 11.02 to 10.87 billion
+instructions, 108.8 to 102.2 million instruction misses), as an image
+11.37 to 11.15 (-2.0%: 8.13 to 7.99 billion instructions, 151.2 to
+142.6 million misses), the interpreter unchanged (17.90 billion); the
+compiler's machine code 7.83 to 7.91 MB (+1.0%: the frame pointer's
+reload after every helper call and its block parameters at the merges
+outweigh the address arithmetic folded away, while the instructions and
+the misses fell, which is what the rule weighs); in wall-clock, back to
+back on a busy machine, the self-check 1678 against 1780 ms on the JIT
+run (best of five). Kept. A flag per helper saying whether it can grow
+the stack would spare the reload after the ones that cannot (`rt_drop_at`
+above all, the free of every release) and take some of the bytes back:
+a step for a later stage, as is the shared stub of 3b. (user)
+
+**AT5. The image's code section is mapped executable from the file. The
+file lays every body and trampoline sixteen-aligned in one section at an
+offset that is a multiple of 16 KB (`SECTION_ALIGN`, every page size the
+toolchain runs on), the table before it says where each lies, and a run
+maps the section with read and execute permission straight from the
+file (`memmap2`), so that no machine code is copied and only the pages
+the program runs are faulted in; where the system refuses an executable
+mapping of the file (a `noexec` mount) the section is read and placed as
+compiled code is, and an image in memory (a test's) is placed the same
+way. `renyi build --exe` pads the executable to the same alignment
+before the image, so that the embedded image's section maps from the
+executable's own file. The image format is 3.** The owner's answer of
+2026-10-08 to the question the load's 69 ms raised: find the cost and
+fix the largest within the round. What the profile found: the system
+calls of a load take four milliseconds in all; the time went to the
+first touch of fresh memory, twice over, once for the 8.7 MB read of the
+file into a new buffer (44 ms under `strace`) and once for the copy of
+the 7.8 MB of machine code into the arena's new pages (49 ms by the
+JIT's own clock), a cost this machine (a Firecracker VM) makes heavy
+and every machine pays in proportion; a file-backed mapping pays none of
+it for the bytes it does not touch, and the page cache holds the rest.
+Why a section rather than mapping each body: one mapping, one
+alignment, one table. Why 16 KB: Apple silicon's page is that large,
+and an image built on one machine should map on another of the same
+target. Measured: the compiler's image loads in 16 ms where the run exits
+at once (`renyi run <image>` with no arguments: the checker prints its
+usage), against 27 ms with the section copied and the check as it was,
+105 ms for the source and 86 ms for the `.ryc`; with the standard
+library loaded by the checker before it fails on a missing file, 46 ms
+against 167 for the source; `hello` 6 ms as an image against 8 from the
+source; the load's instructions 62 to 32 million, the decode of the
+program about 10 million of them and the consistency check 1 million
+where it was 32, since it formatted a message for every op of the
+program before knowing whether the check failed (the message is built on
+failure now, the second cut of this decision); the image 8.8 MB (the
+alignment adds up to 16 KB), the compiler's executable 26.6 MB. The
+first measurements, under `strace` on a machine whose memory had not
+been touched, put the read at 44 ms and the placing at 49; warm, the
+placing cost 5 ms and the read a few; the mapping removes both whatever
+the machine's state, and the page cache holds the code. (user)
+
+**AT6. Stage 3b of AT1, measured: the reference counts stay in place.
+Two variants were built on AT4's binary and measured by the rule: the
+frame pointer no longer reloaded after a helper that cannot move the
+stack (`STACK_SAFE`: the free of a release, the grant of a frame, the
+growth of the frames, the typed takes and resumes, the tag tests), and,
+on top of it, `retain` and `release` as calls to the helpers
+(`rt_retain_at`, which keeps a clone's count, and `rt_drop_at`, which
+drops the value whatever the count) in place of AR4's inline sequences.
+The calls stay, and the frame pointer is
+not reloaded after a helper that cannot move the stack: `retain` and
+`release` are the two calls, the inline sequences of AR4 are gone, and
+the compiler's machine code is 5.6 MB where AR4 had made it 7.9.** The owner's order of 2026-10-08 ended with this
+stage, each variant by the rule. The numbers, against AT4's binary: the skipped reloads alone
+raised the JIT run's estimate 1.0% and the code 0.7% (the pointer, live
+across the call, saved and restored around it where the reload had
+left it dead); the calls on top of them cut the machine code 7.91 to
+5.62 MB (-29%; 122 bytes of body per op where the round began at 179),
+the JIT run's estimate 14.92 to 14.83 billion cycles (-0.7%: 10.87 to
+10.68 billion instructions, 102.2 to 86.4 million instruction misses,
+85.1 to 98.8 million indirect mispredicts, the model's charge for the
+calls through the table), the image's 11.15 to 11.18 (+0.3%: misses
+142.6 to 96.3 million, indirect mispredicts 38.9 to 67.9 million); the
+calls without the skipped reloads measured 14.85 and 11.21 billion, a
+fifth of a percent behind, so the list stays by the rule, each of its
+fifteen names a helper that grows nothing and runs no program code,
+and a helper not listed is reloaded after, which is always sound. Why
+the call beats the sequence: `Value::clone` and the drop are a match on
+the tag with one increment or decrement, where the generic sequence
+tested the tag's bit, the big-integer case and both payload words at
+every site, and the sites were thousands. In wall-clock against the
+binary of AT3, the best of five: the self-check 1886 to 1775 ms on the
+JIT run (-5.9%), 1369 to 1351 as an image, the interpreter and
+`bench/records.ry` and `bench/primes.ry` level. The stubs of AT1's plan
+turned out to be the helpers the VM already had. (user)

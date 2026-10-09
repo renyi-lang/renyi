@@ -725,7 +725,21 @@ direct call without the ask path, no call counter) cut the machine code
 binary encoding with its bytecode file's hash, the `.ryc` staying JSON)
 halved the compiler's image (17.0 to 8.7 MB) and its load (152 to 69
 ms, against 166 ms for compiling from source) and cut the image's
-estimate 8.4 percent. Stage 3 (shared stubs for the reference-count
-sequences, by the rule) is the owner's to start or to pass; the static
-height of the stack and its pointer kept across ops are two more cuts
-at no cost the measurements point at.
+estimate 8.4 percent. Stage 3a (decision AT4: the stack's height
+computed from the frame's base at every op, the frame pointer kept in a
+register between helper calls) cut the estimate of the JIT run 1.5
+percent and of the image 2.0 percent, for one percent more machine
+code. The image's load (decision AT5: the code section at a 16 KB
+alignment, mapped executable from the file where the system allows,
+copied where it does not; the consistency check's messages built on
+failure only) went from 27 to 16 ms for the compiler's image where the
+run exits at once, against 105 ms from the source. Stage 3b (decision
+AT6: `retain` and `release` as calls to the VM's helpers in place of
+the inline sequences of AR4, the frame pointer not reloaded after a
+helper that cannot move the stack) cut the machine code 29 percent
+more, to 5.6 MB, and the estimate of the JIT run 0.7 percent, the
+image's rising 0.3 percent on the model's charge for the calls. Over
+the round: the compiler's machine code 8.3 to 5.6 MB, its image 17.5
+to 6.5 MB, the self-check's estimate 3.5 percent lower on the JIT run
+and 11.5 percent as an image, the image's load 152 to 16 ms. The round
+is the owner's to close.

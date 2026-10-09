@@ -73,7 +73,7 @@ fn a_program_runs_records_and_reproduces_from_its_image() {
         .expect("the renyi binary runs");
     let report = text(&report.stderr);
     assert!(
-        report.contains("code objects loaded from the image; 0 code objects compiled"),
+        report.contains("code objects loaded from the image (the section mapped from the file); 0 code objects compiled"),
         "{report}"
     );
     // the manifest's code hash is the bytecode's, so a recording from the
@@ -228,7 +228,7 @@ fn a_self_contained_executable_runs_the_program_with_its_command_line() {
     assert_eq!(text(&report.stdout), "Hello, Renyi!\n");
     let report = text(&report.stderr);
     assert!(
-        report.contains("code objects loaded from the image; 0 code objects compiled"),
+        report.contains("code objects loaded from the image (the section mapped from the file); 0 code objects compiled"),
         "{report}"
     );
     // the executable is this binary with the image and a trailer after it
@@ -284,6 +284,14 @@ fn the_image_carries_the_program_in_binary_with_the_bytecode_hash() {
     );
     let program = renyi_vm::binary::decode(&image.program).expect("the image's program");
     assert_eq!(renyi_vm::file::render(&program), rendered);
+    // the code section lies at the alignment that maps from the file,
+    // and the file reads back as it was written
+    assert_eq!(
+        image.section_offset % renyi_vm::native::image::SECTION_ALIGN,
+        0
+    );
+    let bytes = std::fs::read(&image_file).expect("the image");
+    assert_eq!(image.write(), bytes);
     let recording = path(&directory.join("hello.recording.json"));
     let recorded = renyi(&["record", "--to", &recording, &bytecode, "Renyi"]);
     assert!(recorded.status.success(), "{}", text(&recorded.stderr));

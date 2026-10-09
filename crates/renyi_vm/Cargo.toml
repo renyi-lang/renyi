@@ -21,6 +21,8 @@ ureq = "3"
 rusqlite = { version = "0.40", features = ["bundled"] }
 # decision AF1: shared libraries loaded at run time for the foreign function interface
 libloading = "0.8"
+# decision AT5: the code section of an image mapped executable from its file
+memmap2 = "0.9"
 # decision AG1: machine code for the bytecode, generated inside the process
 cranelift-codegen = "0.134"
 cranelift-frontend = "0.134"

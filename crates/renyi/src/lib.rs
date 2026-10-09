@@ -233,7 +233,7 @@ pub fn main_with(extensions: Vec<Extension>) -> ExitCode {
 /// The image a self-contained executable carries (decision AS4), run as
 /// `renyi run <image> <arguments>` runs it: the whole command line is the
 /// program's arguments, and the executable's name stands for the path.
-fn run_embedded(bytes: Vec<u8>) -> ExitCode {
+fn run_embedded(embedded: (std::fs::File, u64, usize)) -> ExitCode {
     let name = std::env::current_exe()
         .ok()
         .and_then(|path| {
@@ -241,7 +241,11 @@ fn run_embedded(bytes: Vec<u8>) -> ExitCode {
                 .map(|name| name.to_string_lossy().to_string())
         })
         .unwrap_or_else(|| "program".to_string());
-    let (program, image) = match load_image_bytes(&bytes, &name) {
+    let (file, offset, length) = embedded;
+    let (program, image) = match Image::open_at(file, offset, length)
+        .map_err(|detail| format!("{name}: {detail}"))
+        .and_then(|loaded| check_image(loaded, &name))
+    {
         Ok(loaded) => loaded,
         Err(message) => {
             eprintln!("renyi: {message}");
@@ -597,13 +601,13 @@ fn grants(program: &renyi_vm::Program, kind: &str) -> bool {
 /// its machine code from; the error names the path and what is wrong, or
 /// why the image cannot run here with the fix (build again).
 fn load_image_file(path: &str) -> Result<(renyi_vm::Program, Image), String> {
-    let bytes = std::fs::read(path).map_err(|error| format!("cannot read {path}: {error}"))?;
-    load_image_bytes(&bytes, path)
+    let loaded = Image::open(path).map_err(|detail| format!("{path}: {detail}"))?;
+    check_image(loaded, path)
 }
 
-/// A program from an image's bytes, named `path` in the messages.
-fn load_image_bytes(bytes: &[u8], path: &str) -> Result<(renyi_vm::Program, Image), String> {
-    let loaded = Image::read(bytes).map_err(|detail| format!("{path}: {detail}"))?;
+/// An image checked against this machine and its program decoded, the
+/// image named `path` in the messages.
+fn check_image(loaded: Image, path: &str) -> Result<(renyi_vm::Program, Image), String> {
     let target = renyi_vm::native::Jit::host_target().ok_or_else(|| {
         format!("{path}: this machine generates no machine code; run the bytecode instead (`renyi compile`)")
     })?;

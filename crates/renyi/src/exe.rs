@@ -3,11 +3,15 @@
 //! appended and a trailer that says where the image lies. At startup the
 //! binary looks at its own end and, when the trailer is there, runs the
 //! embedded image with the whole command line as the program's
-//! arguments, as `renyi run <image> <arguments>` would.
+//! arguments, as `renyi run <image> <arguments>` would. The image begins
+//! at a multiple of the code section's alignment, so that its section
+//! maps executable from the executable's own file (decision AT5).
 
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
+
+use renyi_vm::native::image::SECTION_ALIGN;
 
 /// The last eight bytes of a self-contained executable.
 pub const TRAILER_MAGIC: &[u8; 8] = b"RENYIEXE";
@@ -15,9 +19,10 @@ pub const TRAILER_MAGIC: &[u8; 8] = b"RENYIEXE";
 /// The trailer: the image's offset and length, then the magic.
 pub const TRAILER_LEN: u64 = 24;
 
-/// The image this executable carries, when it carries one: a binary
-/// without a trailer costs one open and one read of its last bytes.
-pub fn embedded_image() -> Option<Vec<u8>> {
+/// The image this executable carries, when it carries one: the file,
+/// where the image begins in it and its length. A binary without a
+/// trailer costs one open and one read of its last bytes.
+pub fn embedded_image() -> Option<(File, u64, usize)> {
     let path = std::env::current_exe().ok()?;
     let mut file = File::open(&path).ok()?;
     let len = file.metadata().ok()?.len();
@@ -35,22 +40,21 @@ pub fn embedded_image() -> Option<Vec<u8>> {
     if offset.checked_add(length)? != len - TRAILER_LEN {
         return None;
     }
-    file.seek(SeekFrom::Start(offset)).ok()?;
-    let mut bytes = vec![0u8; usize::try_from(length).ok()?];
-    file.read_exact(&mut bytes).ok()?;
-    Some(bytes)
+    Some((file, offset, usize::try_from(length).ok()?))
 }
 
 /// The executable written: this binary's own bytes (a binary that
-/// carried an image would have run it instead of building), the image,
-/// the trailer; executable on Unix. The note, when there is one, is a
-/// step the system needs by hand before the file runs (the signature on
-/// macOS).
+/// carried an image would have run it instead of building), padding to
+/// the code section's alignment, the image, the trailer; executable on
+/// Unix. The note, when there is one, is a step the system needs by hand
+/// before the file runs (the signature on macOS).
 pub fn write(target: &Path, image: &[u8]) -> Result<Option<String>, String> {
     let own =
         std::env::current_exe().map_err(|error| format!("cannot find this binary: {error}"))?;
     let mut bytes =
         std::fs::read(&own).map_err(|error| format!("cannot read {}: {error}", own.display()))?;
+    let padded = bytes.len().div_ceil(SECTION_ALIGN) * SECTION_ALIGN;
+    bytes.resize(padded, 0);
     let offset = bytes.len() as u64;
     bytes.extend_from_slice(image);
     bytes.extend_from_slice(&offset.to_le_bytes());

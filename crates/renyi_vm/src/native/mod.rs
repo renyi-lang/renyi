@@ -23,6 +23,8 @@ pub mod image;
 pub mod infer;
 pub mod runtime;
 
+use std::io::{Read, Seek};
+
 use cranelift_codegen::isa::OwnedTargetIsa;
 use cranelift_codegen::settings::{self, Configurable};
 use cranelift_codegen::Context;
@@ -117,6 +119,9 @@ pub struct Jit {
     opt_level: String,
     /// How many code objects an image provided (decision AS1).
     pub loaded: usize,
+    /// Whether the image's code section was mapped from its file
+    /// (decision AT5) rather than copied.
+    pub mapped: bool,
     /// Per code object, its deopt points, numbered as the generated code
     /// names them.
     pub deopts: Vec<Vec<DeoptPoint>>,
@@ -145,42 +150,41 @@ pub struct Jit {
 /// and never written again.
 #[derive(Default)]
 pub struct CodeArena {
-    allocations: Vec<region::Allocation>,
+    pages: Vec<Pages>,
+}
+
+/// Executable pages the arena holds: ones it wrote, or an image's code
+/// section mapped from its file (decision AT5).
+enum Pages {
+    Owned(#[allow(dead_code)] region::Allocation),
+    Mapped(#[allow(dead_code)] memmap2::Mmap),
 }
 
 impl CodeArena {
-    /// Several functions placed in one allocation, each aligned to sixteen
-    /// bytes; their addresses in order.
-    pub fn place_many(&mut self, parts: &[&[u8]]) -> Result<Vec<*const u8>, String> {
-        let mut offsets = Vec::with_capacity(parts.len());
-        let mut total = 0usize;
-        for part in parts {
-            offsets.push(total);
-            total += part.len().div_ceil(16) * 16;
+    /// An image's code section mapped executable from its file, `len`
+    /// bytes at `offset` (a multiple of the page size); its address. The
+    /// system may refuse (a `noexec` mount), and the caller then reads
+    /// and places the section instead.
+    pub fn map_section(
+        &mut self,
+        file: &std::fs::File,
+        offset: u64,
+        len: usize,
+    ) -> Result<*const u8, String> {
+        // SAFETY: the mapping is private and read-only, of a file that is
+        // the image a run was asked for; the bytes are the machine code
+        // `renyi build` wrote, checked by the image's header to be this
+        // VM's.
+        let mapping = unsafe {
+            memmap2::MmapOptions::new()
+                .offset(offset)
+                .len(len.max(1))
+                .map_exec(file)
         }
-        let mut allocation = region::alloc(total.max(1), region::Protection::READ_WRITE)
-            .map_err(|error| error.to_string())?;
-        let pointer = allocation.as_mut_ptr::<u8>();
-        // SAFETY: as in `place`, over one allocation that holds every part.
-        unsafe {
-            for (part, offset) in parts.iter().zip(&offsets) {
-                std::ptr::copy_nonoverlapping(part.as_ptr(), pointer.add(*offset), part.len());
-            }
-            wasmtime_internal_jit_icache_coherence::clear_cache(
-                pointer as *const std::ffi::c_void,
-                total,
-            )
-            .map_err(|error| error.to_string())?;
-            region::protect(pointer, allocation.len(), region::Protection::READ_EXECUTE)
-                .map_err(|error| error.to_string())?;
-        }
-        wasmtime_internal_jit_icache_coherence::pipeline_flush_mt()
-            .map_err(|error| error.to_string())?;
-        self.allocations.push(allocation);
-        Ok(offsets
-            .into_iter()
-            .map(|offset| pointer.wrapping_add(offset) as *const u8)
-            .collect())
+        .map_err(|error| error.to_string())?;
+        let pointer = mapping.as_ptr();
+        self.pages.push(Pages::Mapped(mapping));
+        Ok(pointer)
     }
 
     /// The bytes placed, executable; the address they run at.
@@ -204,7 +208,7 @@ impl CodeArena {
         }
         wasmtime_internal_jit_icache_coherence::pipeline_flush_mt()
             .map_err(|error| error.to_string())?;
-        self.allocations.push(allocation);
+        self.pages.push(Pages::Owned(allocation));
         Ok(pointer as *const u8)
     }
 }
@@ -255,6 +259,7 @@ impl Jit {
             code: CodeArena::default(),
             opt_level: level,
             loaded: 0,
+            mapped: false,
             deopts: vec![Vec::new(); program.codes.len()],
             compiled: 0,
             skipped: 0,
@@ -312,18 +317,13 @@ impl Jit {
     /// Every code object compiled, for an image (decision AS1): the
     /// machine code of each, or `None` for one the analysis left to the
     /// interpreter. Nothing is placed in executable memory.
-    pub fn compile_everything(&mut self, program: &Program) -> Vec<Option<image::ImageCode>> {
+    pub fn compile_everything(&mut self, program: &Program) -> Vec<Option<codegen::Compiled>> {
         (0..program.codes.len())
             .map(|code| match self.compile_code(program, code) {
                 Ok(compiled) => {
                     self.compiled += 1;
                     self.ops += program.codes[code].ops.len();
-                    Some(image::ImageCode {
-                        body: compiled.body,
-                        trampoline: compiled.trampoline,
-                        headers: compiled.headers,
-                        deopts: compiled.deopts,
-                    })
+                    Some(compiled)
                 }
                 Err(_) => {
                     self.skipped += 1;
@@ -346,16 +346,38 @@ impl Jit {
                 self.states.len()
             ));
         }
-        let parts: Vec<&[u8]> = image
-            .codes
-            .iter()
-            .flatten()
-            .flat_map(|code| [code.body.as_slice(), code.trampoline.as_slice()])
-            .collect();
         let started = std::time::Instant::now();
-        let placed = self.code.place_many(&parts)?;
+        // the section mapped from the file (decision AT5), or placed as
+        // compiled code is when the image is in memory or the system
+        // refuses an executable mapping of the file
+        let mapped = match &image.mapped {
+            Some(mapped) => self
+                .code
+                .map_section(&mapped.file, mapped.offset, image.section_len)
+                .ok(),
+            None => None,
+        };
+        let base = match mapped {
+            Some(base) => {
+                self.mapped = true;
+                base
+            }
+            None if image.mapped.is_some() => {
+                let mapped = image
+                    .mapped
+                    .as_ref()
+                    .expect("a file to read the section from");
+                let mut section = vec![0u8; image.section_len];
+                let mut reader = &mapped.file;
+                reader
+                    .seek(std::io::SeekFrom::Start(mapped.offset))
+                    .and_then(|_| reader.read_exact(&mut section))
+                    .map_err(|error| format!("cannot read the code section: {error}"))?;
+                self.code.place(&section)?
+            }
+            None => self.code.place(&image.section)?,
+        };
         self.placing += started.elapsed();
-        let mut addresses = placed.into_iter();
         for (index, code) in image.codes.iter().enumerate() {
             match code {
                 None => {
@@ -363,8 +385,8 @@ impl Jit {
                     self.skipped += 1;
                 }
                 Some(code) => {
-                    let body = addresses.next().expect("a body was placed");
-                    let entry = addresses.next().expect("a trampoline was placed");
+                    let body = base.wrapping_add(code.body.offset as usize);
+                    let entry = base.wrapping_add(code.trampoline.offset as usize);
                     // SAFETY: the trampoline was compiled with
                     // `entry_signature`, which is the signature of `Entry`.
                     let entry: Entry = unsafe { std::mem::transmute::<*const u8, Entry>(entry) };
@@ -404,7 +426,15 @@ impl Jit {
             .count();
         let stats = &self.stats;
         let loaded = if self.loaded > 0 {
-            format!("{} code objects loaded from the image; ", self.loaded)
+            format!(
+                "{} code objects loaded from the image ({}); ",
+                self.loaded,
+                if self.mapped {
+                    "the section mapped from the file"
+                } else {
+                    "the section copied"
+                }
+            )
         } else {
             String::new()
         };

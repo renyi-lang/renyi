@@ -1352,30 +1352,34 @@ pub(crate) fn check(program: &Program) -> Read<()> {
         ));
     }
     for (index, code) in program.codes.iter().enumerate() {
-        let name = format!("code {index}");
+        // the message is built only when a check fails: one per op would
+        // be most of the cost of loading an image (decision AT5)
+        let place = |what: &str, value: usize, limit: usize| -> Read<()> {
+            if value < limit {
+                Ok(())
+            } else {
+                Err(format!(
+                    "the file is not consistent: code {index}'s {what} {value} is out of range (the limit is {limit})"
+                ))
+            }
+        };
         if code.spans.len() != code.ops.len() {
             return Err(format!(
-                "the file is not consistent: {name} has {} operations and {} spans",
+                "the file is not consistent: code {index} has {} operations and {} spans",
                 code.ops.len(),
                 code.spans.len()
             ));
         }
         if let Some(function) = code.function {
-            within(&format!("{name}'s function"), function, functions)?;
+            place("function", function, functions)?;
         }
         let ops = code.ops.len();
         let locals = code.locals as usize;
         let constants = code.constants.len();
         for op in &code.ops {
             match op {
-                Op::Const(i) | Op::Check(i) => {
-                    within(&format!("{name}'s constant"), *i as usize, constants)?
-                }
-                Op::Global(i) => within(
-                    &format!("{name}'s global"),
-                    *i as usize,
-                    program.constants.len(),
-                )?,
+                Op::Const(i) | Op::Check(i) => place("constant", *i as usize, constants)?,
+                Op::Global(i) => place("global", *i as usize, program.constants.len())?,
                 Op::Load(slot)
                 | Op::LoadMove(slot)
                 | Op::Store(slot)
@@ -1383,67 +1387,47 @@ pub(crate) fn check(program: &Program) -> Read<()> {
                 | Op::Deadline(slot)
                 | Op::CheckDeadline(slot)
                 | Op::MarkStack(slot)
-                | Op::UnwindStack(slot) => {
-                    within(&format!("{name}'s slot"), *slot as usize, locals)?
-                }
+                | Op::UnwindStack(slot) => place("slot", *slot as usize, locals)?,
                 Op::IterNext { slot, exit } => {
-                    within(&format!("{name}'s slot"), *slot as usize, locals)?;
-                    within(&format!("{name}'s jump"), *exit as usize, ops)?;
+                    place("slot", *slot as usize, locals)?;
+                    place("jump", *exit as usize, ops)?;
                 }
                 Op::Jump(target)
                 | Op::JumpIfFalse(target)
                 | Op::JumpIfTrue(target)
                 | Op::JumpIfAbsent(target)
                 | Op::JumpIfFailure(target)
-                | Op::PushHandler(target) => {
-                    within(&format!("{name}'s jump"), *target as usize, ops)?
-                }
+                | Op::PushHandler(target) => place("jump", *target as usize, ops)?,
                 Op::Construct { ty, .. } | Op::ConstructVariant { ty, .. } | Op::IsType(ty) => {
-                    within(&format!("{name}'s type"), *ty, types)?
+                    place("type", *ty, types)?
                 }
                 Op::Field {
                     name: constant,
                     site,
                 } => {
-                    within(&format!("{name}'s constant"), *constant as usize, constants)?;
-                    within(
-                        &format!("{name}'s field site"),
-                        *site as usize,
-                        program.field_sites,
-                    )?;
+                    place("constant", *constant as usize, constants)?;
+                    place("field site", *site as usize, program.field_sites)?;
                 }
                 Op::LoadField {
                     slot,
                     name: constant,
                     site,
                 } => {
-                    within(&format!("{name}'s slot"), *slot as usize, locals)?;
-                    within(&format!("{name}'s constant"), *constant as usize, constants)?;
-                    within(
-                        &format!("{name}'s field site"),
-                        *site as usize,
-                        program.field_sites,
-                    )?;
+                    place("slot", *slot as usize, locals)?;
+                    place("constant", *constant as usize, constants)?;
+                    place("field site", *site as usize, program.field_sites)?;
                 }
-                Op::Call { function, .. } => {
-                    within(&format!("{name}'s function"), *function, functions)?
+                Op::Call { function, .. } => place("function", *function, functions)?,
+                Op::CallAbility { ability, .. } => {
+                    place("ability", *ability, program.abilities.len())?
                 }
-                Op::CallAbility { ability, .. } => within(
-                    &format!("{name}'s ability"),
-                    *ability,
-                    program.abilities.len(),
-                )?,
-                Op::ResultType(i) => within(
-                    &format!("{name}'s result type"),
-                    *i as usize,
-                    program.result_types.len(),
-                )?,
+                Op::ResultType(i) => place("result type", *i as usize, program.result_types.len())?,
                 _ => {}
             }
         }
         for constant in &code.constants {
             if let Value::Function(function) = constant {
-                within(&format!("{name}'s function constant"), *function, functions)?;
+                place("function constant", *function, functions)?;
             }
         }
     }

@@ -16,10 +16,11 @@ JIT" below); then `renyi build`, the image of a program that runs
 without compiling, decisions AS1 to AS4 (the section "`renyi build` as
 it exists" below), `build --exe`, the self-contained executable,
 included; then the round on the size of the generated code, decisions
-AT1 to AT3 (the section "The size of the generated code" below): the
-cuts at no cost and the image's program in binary done, stage 3 (the
-shared reference-count stubs) the owner's to start or to pass.
-Session 8
+AT1 to AT6 (the section "The size of the generated code" below): the
+cuts at no cost, the image's program in binary, the static stack
+height, the image's code section mapped from the file and the reference
+counts as calls, every stage of the owner's plan measured and in; the
+round is the owner's to close or to continue. Session 8
 (stage 2 of the gap audit of
 `docs/GAPS.md`: the formal grammar `docs/grammar.ebnf` with decision V12;
 the language reference `docs/reference.md`, normative, held to the
@@ -1766,7 +1767,7 @@ and the commit of the site and the crates.io metadata.
   release; the Windows archive's checksum and binary were verified
   by hand; `cargo install renyi` built the binary from crates.io.
 
-## The size of the generated code (decisions AT1 to AT3; session 9, 2026-10-08)
+## The size of the generated code (decisions AT1 to AT6; session 9, 2026-10-08)
 
 The owner's four answers of 2026-10-08 after `renyi build` closed
 (decision AT1): the round's rule is KCachegrind's estimate of the
@@ -1796,7 +1797,11 @@ read reads.
   172 ms for compiling it from source (`renyi run <file> /nonexistent`,
   which fails before `main`), almost all of it the parse of the 9 MB of
   JSON (`renyi run selfcheck.ryc` costs 160 ms), which is why the binary
-  encoding of stage 2 belongs to the round; since AT3 the load is 69 ms.
+  encoding of stage 2 belongs to the round; since AT3 and AT5 the image
+  of the compiler loads in 16 ms, its code section mapped from the file
+  (most of the 69 ms measured after AT3 was the checker loading the
+  standard library before failing on the missing file, the program's
+  work).
 - **The baseline** (the binary of AS4, 71965aa):
 
   | run | instructions | I1 misses | D1 misses | LL misses | mispredicts (cond, ind) | estimated cycles |
@@ -1863,20 +1868,111 @@ read reads.
   8 ms from the source); the self-check in wall-clock 1448 ms as an
   image against 1723 on the JIT run (best of five). Kept: the stage
   targets the image, whose estimate fell.
-- **What the round has not done yet.** Stage 3 (shared stubs for
-  `retain` and `release`, measured by the rule) is the task that
-  follows, and the round's measurements point at two more cuts at no
-  cost: the stack's length is static at every op (`base + locals + the
-  boxed depth of the state`), yet every op loads it from the VM and
-  stores it back, and the stack's pointer is loaded again at every op
-  though only a helper call can move it; the reference-count sequence
-  itself (fourteen instructions: the tag's bit in `RC_TAGS`, the
-  big-integer case, two payload loads and a select) stays as AR4 made
-  it, a one-compare test needing `Int` flattened into `Value`, which the
-  owner did not pick for this round. The load of an image (69 ms for the
-  compiler's) is not yet profiled: the decode of 676 KB cannot be most
-  of it, so the placing of 7.8 MB of code (the pages, the cache flush,
-  the protection) or the VM's setup is.
+- **Stage 3a, the static stack height and the frame pointer (decision
+  AT4).** `codegen.rs`: `height()` is the frame's part of the stack by
+  the state (`locals + boxed_depth(state)`), `length_at(height)` and
+  `store_height(height)` compute and store the VM's length from `base`,
+  `frame_var` holds the stack's pointer plus `base24` (defined by
+  `reload_frame` once after the prologue's room check and after every
+  helper call in `Gen::call` and after the direct call's `call_indirect`),
+  and `address_at(height)`, `top_address()` and `last_address()` address
+  the slots and the operands from it; `stack_len`, `set_stack_len`,
+  `stack_ptr` and `slot_address` are gone, `item_address` remains for a
+  record's fields; `push_typed_value` and `push_nothing_at` take the
+  height (the state's for a push, `0` for a result left where the frame
+  was); the frame push computes the callee's base as `height - boxed`.
+  The one subtlety: after `box_top(1); state.pop()` the value lies at
+  `height()`, not `height() - 1`, which the boxed return, the typed
+  return of a boxed value and `IsNothing`/`IsFailure` say explicitly.
+  Measured: the rule on the self-check, JIT run:
+  10,867,362,765 instructions, 102,196,693 I1 misses, 74,887,436 D1
+  misses, 2,355,761 LL misses, 34,816,885 and 85,118,789 mispredicts,
+  14,924,324,785 estimated cycles (-1.5% against stage 2); the image:
+  7,994,955,436 instructions, 142,581,697 I1 misses, 11,145,328,756
+  estimated cycles (-2.0%); the interpreter 17,902,234,378 (unchanged);
+  the machine code 7,829,707 to 7,909,162 bytes (+1.0%: the frame
+  pointer's reloads and block parameters, against fewer instructions and
+  misses); the self-check 1678 against 1780 ms in wall-clock, back to
+  back on a busy machine. Kept by the rule. A step not taken: a flag per
+  helper for whether it can grow the stack (most can, through the user
+  code they run), so that `Gen::call` skips the reload after `rt_drop_at`
+  and the few others that cannot.
+- **The load (decision AT5).** The profile (`strace -T`, the JIT's own
+  `placing` clock, a Python experiment on fresh against touched buffers):
+  the system calls of a load take 4 ms; 44 ms went to reading the 8.7 MB
+  file into a fresh buffer and 49 ms to copying the 7.8 MB of code into
+  the arena's fresh pages, first-touch page faults that this Firecracker
+  VM makes heavy (about 6 µs a page) and every machine pays in
+  proportion. The fix: `image.rs` lays the bodies and trampolines
+  sixteen-aligned in one code section at an offset that is a multiple of
+  `SECTION_ALIGN` (16 KB), the table before it holding each
+  `Placement { offset, len }`; `Image::open` and `Image::open_at` map
+  the file read-only (`memmap2`), parse the table and the program from
+  the mapping, and leave the section in the file (`MappedSection { file,
+  offset }`) when its offset is a multiple of the page size, else copy
+  it; `CodeArena::map_section` maps it executable (`Pages::Mapped`
+  beside `Pages::Owned`), and `Jit::load_image` falls back to reading
+  and placing the section when the system refuses (a `noexec` mount);
+  `Image::read` (bytes in memory) copies the section as before, for the
+  tests and for a file that cannot be mapped. `exe.rs` pads the
+  executable to the alignment before the image, so that the embedded
+  image's section maps from the executable's own file; the report says
+  "the section mapped from the file" or "copied", which `tests/build.rs`
+  asserts for a `.ryi` run and for the executable. `IMAGE_FORMAT` 3;
+  `tools/image_census.py` reads the table and the section's offset.
+  Measured: a run that exits at once (`renyi run <image>`
+  without arguments) 16 ms with the image mapped, 27 with it copied and
+  the check as it was, 105 from the source, 86 from the `.ryc`; with the
+  library loaded 46 against 167 ms; `hello` 6 against 8 ms; the load's
+  instructions 62 to 32 million (`file::check` 32 to 1 million: it
+  formatted a message per op before knowing the check's outcome, built
+  on failure now; the decode about 10 million; `Vm::new` and the
+  registry under 2); the compiler's image 8.8 MB, its executable 26.6
+  MB. The profile's tool: `valgrind --tool=callgrind` on `renyi run
+  <image>` with no arguments, then `callgrind_annotate --inclusive=yes`;
+  with a file argument the checker loads the standard library first,
+  which is the program's work, not the load's. A note on the gates run
+  in a worktree under the scratchpad's long path: `a_run_is_narrated`
+  (`crates/renyi_vm/tests/recording.rs`) fails there because the
+  narration truncates long arguments, and passes from the main tree;
+  it is the path, not the code.
+- **Stage 3b, the reference counts as calls (decision AT6).** Three
+  variants on the binary of AT4, by the rule: (1) the frame pointer not
+  reloaded after a helper that cannot move the stack (`rt_drop_at`, the
+  grant, the frame growth, the typed takes and resumes, the tag tests):
+  the pointer then lives across those calls and Cranelift saves and
+  restores it around each, so the code grew 0.7% and the JIT run's
+  estimate 1.0%, rejected; (2) on top of it `retain` and `release` as
+  calls to `rt_retain_at` (a clone's count kept) and `rt_drop_at` (the
+  value dropped whatever its count) in place of the inline sequences of
+  AR4: the machine code 7.91 to 5.62 MB (-29%), the JIT run's estimate
+  -0.7% (instructions -1.7%, instruction misses -15%, indirect
+  mispredicts +16%), the image's +0.3% (misses -32%, indirect
+  mispredicts +75%, the model's charge for the calls); (3) the calls
+  without (1): the JIT run 14.85 billion and the
+  image 11.21, a fifth of a percent behind (2), which stays by the rule
+  (the code equal, 5.62 MB). In wall-clock against the binary of AT3,
+  best of five: the self-check 1886 to 1775 ms on the JIT run, 1369 to
+  1351 as an image, the interpreter, records and primes level. `codegen.rs`: `retain` and `release` are
+  the two calls, `rc_of` and the inline bodies are gone, the helpers
+  `rt_retain_at` and `rt_drop_at` (`runtime.rs`), `CODE_FORMAT` 3.
+- **Where the round stands.** Every stage of the owner's plan is
+  measured and in: the cuts at no cost (AT2), the image's program in
+  binary (AT3), the static stack height (AT4), the image's load (AT5)
+  and the reference counts as calls (AT6). Against the binary the round
+  began from (71965aa): the compiler's machine code 8.26 to 5.62 MB
+  (-32%), its image 17.5 to 6.5 MB, the self-check's estimate 15.37 to
+  14.83 billion cycles on the JIT run (-3.5%) and 12.63 to 11.18 as an
+  image (-11.5%), the image's load 152 to 16 ms, the self-check in
+  wall-clock 1841 to 1775 ms on the JIT run and 1511 to 1351 as an
+  image. What is left for a later round: `RELEASES_INLINE` (four calls
+  against one `rt_truncate` on a return) is unmeasured since the calls
+  replaced the sequences; the indirect call through the helper table is
+  what the model now charges most (99 million mispredicts on the JIT
+  run, a tenth of the estimate), which a direct `call` to a helper
+  would remove at the price of a relocation per site, against AS1's
+  address-free code; and `Int` flattened into `Value` would make a
+  clone or a drop one compare, which the owner did not pick.
 
 ## `renyi build` as it exists (decisions AS1 to AS4; session 9, 2026-10-08)
 
@@ -3052,6 +3148,25 @@ by one, CI green on each (runs 52 to 55; 55 on 71965aa).
    `tools/measure_size.sh` (the `.ryc` beside the image); the decisions
    (AT3), `docs/reference.md` (appendix B), `docs/GAPS.md`,
    `CLAUDE.md`, this file.
+10. the size round, stage 3a (decision AT4; the section "The size of the
+    generated code"): `crates/renyi_vm/src/native/codegen.rs` (the
+    static height, the frame pointer); the decisions (AT4),
+    `docs/GAPS.md`, this file.
+11. the image's load (decision AT5; the same section): `native/image.rs`
+    (the code section, `Placement`, `MappedSection`, `Image::open`,
+    `Image::open_at`, format 3), `native/mod.rs` (`Pages`,
+    `CodeArena::map_section`, `Jit::load_image` with the fall-back,
+    `Jit::mapped`, the report), `file.rs` (the check's messages on
+    failure only), `Cargo.toml` (`memmap2`); `crates/renyi/src/lib.rs`
+    (`check_image`, `Image::open`), `exe.rs` (the padding, the file
+    handed over), `tests/build.rs`; `tools/image_census.py`; the
+    decisions (AT5), `CLAUDE.md`, this file.
+12. the size round, stage 3b (decision AT6; the same section):
+    `crates/renyi_vm/src/native/codegen.rs` (`retain` and `release` as
+    calls, `rc_of` and the inline sequences gone, `STACK_SAFE`),
+    `native/runtime.rs` (`rt_retain_at`, `rt_drop_at`'s role),
+    `native/image.rs` (`CODE_FORMAT` 3); the decisions (AT6),
+    `docs/GAPS.md`, this file.
 
 ## Done in session 8 (stage 2: the grammar, the reference, the front end in Renyi)
 

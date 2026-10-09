@@ -12,7 +12,8 @@ import struct
 import sys
 from collections import Counter
 
-IMAGE_FORMAT = 2
+IMAGE_FORMAT = 3
+SECTION_ALIGN = 16384
 
 
 class Reader:
@@ -43,7 +44,7 @@ class Reader:
 def read_image(path):
     """The file's size, the size of the program's encoding and, per code
     object, None or (body bytes, trampoline bytes, loop headers, deopt
-    points)."""
+    points); the code section's offset is checked to be aligned."""
     reader = Reader(open(path, "rb").read())
     if reader.take(4) != b"RYI\0":
         raise SystemExit(f"{path}: not an image")
@@ -61,8 +62,10 @@ def read_image(path):
         if reader.u8() == 0:
             codes.append(None)
             continue
-        body = reader.block()
-        trampoline = reader.block()
+        reader.u32()  # the body's offset in the section
+        body = reader.u32()
+        reader.u32()  # the trampoline's offset
+        trampoline = reader.u32()
         headers = [reader.u32() for _ in range(reader.u32())]
         deopts = 0
         for _ in range(reader.u32()):
@@ -76,9 +79,13 @@ def read_image(path):
                 if reader.u8() == 1:
                     reader.u32()
             deopts += 1
-        codes.append((len(body), len(trampoline), headers, deopts))
-    if reader.at != len(reader.data):
-        raise SystemExit(f"{path}: {len(reader.data) - reader.at} bytes after the image")
+        codes.append((body, trampoline, headers, deopts))
+    section_offset = reader.u32()
+    section_len = reader.u32()
+    if section_offset % SECTION_ALIGN != 0 or section_offset < reader.at:
+        raise SystemExit(f"{path}: the code section is misplaced")
+    if section_offset + section_len != len(reader.data):
+        raise SystemExit(f"{path}: the image is truncated")
     return len(reader.data), program, codes
 
 

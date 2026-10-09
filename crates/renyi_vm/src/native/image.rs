@@ -9,10 +9,21 @@
 //!
 //! The file: the magic `RYI` and a zero byte, the image format, the
 //! header (the renyi version, the code format, the target, the
-//! optimisation level), the bytecode as the `.ryc` text, then per code
-//! object a presence byte and, when present, the body, the trampoline,
-//! the loop headers and the deopt points. Every number is little-endian;
-//! a text and a block of bytes carry their length first.
+//! optimisation level), the hash of the program's bytecode file, the
+//! program in the binary encoding of `binary.rs` (decision AT3), then
+//! per code object a presence byte and, when present, where its body and
+//! its trampoline lie in the code section, the loop headers and the
+//! deopt points; then the section's offset and length, padding to
+//! `SECTION_ALIGN`, and the section itself, every body and trampoline
+//! sixteen-aligned in it. The section is mapped executable straight from
+//! the file where the system allows it (decision AT5), so that a run
+//! copies no machine code and faults in only the pages it runs; where it
+//! does not (a `noexec` mount), the section is read and placed as the
+//! JIT places what it compiles. Every number is little-endian; a text and
+//! a block of bytes carry their length first.
+
+use std::fs::File;
+use std::io::{Read, Seek, SeekFrom};
 
 use cranelift_codegen::isa::TargetIsa;
 
@@ -23,8 +34,17 @@ use crate::compile::Program;
 /// The first four bytes of an image file.
 pub const MAGIC: &[u8; 4] = b"RYI\0";
 
-/// The layout of the file: bumped when it changes.
-pub const IMAGE_FORMAT: u32 = 2;
+/// The layout of the file: bumped when it changes. 3: the code section
+/// (decision AT5).
+pub const IMAGE_FORMAT: u32 = 3;
+
+/// The alignment of the code section in the file: a multiple of every
+/// page size the toolchain runs on (16 KB on Apple silicon), so that the
+/// section maps executable from the file at any of them.
+pub const SECTION_ALIGN: usize = 16384;
+
+/// The alignment of a body or a trampoline in the section.
+const PART_ALIGN: usize = 16;
 
 /// What the generated code assumes of the VM that runs it: the layout
 /// of a value, of the VM's native state and of a frame, the order of the
@@ -33,7 +53,8 @@ pub const IMAGE_FORMAT: u32 = 2;
 /// when the version is the same (a development build). 2: decision AT2
 /// (the record's tag word, the callee's prologue writes its locals, no
 /// call counter in the state, `rt_direct_entry` gone from the helpers).
-pub const CODE_FORMAT: u32 = 2;
+/// 3: `rt_retain_at` among the helpers (decision AT6).
+pub const CODE_FORMAT: u32 = 3;
 
 /// The extension of an image file.
 pub const EXTENSION: &str = "ryi";
@@ -71,7 +92,30 @@ pub fn target_of(isa: &dyn TargetIsa) -> String {
 pub fn build(program: &Program, opt_level: Option<&str>) -> Result<Image, String> {
     let mut jit = Jit::new(program, Some(opt_level.unwrap_or("speed")))
         .ok_or_else(|| "this machine generates no machine code".to_string())?;
-    let codes = jit.compile_everything(program);
+    let compiled = jit.compile_everything(program);
+    // the section: every body and trampoline in order, sixteen-aligned
+    let mut section = Vec::new();
+    let mut place = |bytes: &[u8]| -> Placement {
+        let offset = section.len().div_ceil(PART_ALIGN) * PART_ALIGN;
+        section.resize(offset, 0);
+        section.extend_from_slice(bytes);
+        Placement {
+            offset: offset as u32,
+            len: bytes.len() as u32,
+        }
+    };
+    let codes = compiled
+        .into_iter()
+        .map(|compiled| {
+            compiled.map(|compiled| ImageCode {
+                body: place(&compiled.body),
+                trampoline: place(&compiled.trampoline),
+                headers: compiled.headers,
+                deopts: compiled.deopts,
+            })
+        })
+        .collect();
+    let section_len = section.len();
     Ok(Image {
         header: Header {
             renyi: this_renyi().to_string(),
@@ -82,6 +126,10 @@ pub fn build(program: &Program, opt_level: Option<&str>) -> Result<Image, String
         code_hash: crate::recording::sha256_of(crate::file::render(program).as_bytes()),
         program: crate::binary::encode(program),
         codes,
+        section,
+        section_offset: 0,
+        section_len,
+        mapped: None,
     })
 }
 
@@ -116,29 +164,110 @@ impl Header {
     }
 }
 
-/// The machine code of one code object, with what the VM keeps beside it.
+/// Where a body or a trampoline lies in the code section.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Placement {
+    pub offset: u32,
+    pub len: u32,
+}
+
+/// The machine code of one code object: where its body and its
+/// trampoline lie in the section, with what the VM keeps beside them.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ImageCode {
-    pub body: Vec<u8>,
-    pub trampoline: Vec<u8>,
+    pub body: Placement,
+    pub trampoline: Placement,
     pub headers: Vec<u32>,
     pub deopts: Vec<DeoptPoint>,
+}
+
+/// The code section as it lies in the image's file (decision AT5): the
+/// file and the section's offset in it, a multiple of the page size, so
+/// that the JIT maps it executable without a copy.
+#[derive(Debug)]
+pub struct MappedSection {
+    pub file: File,
+    pub offset: u64,
 }
 
 /// An image: the header, the hash of the program's bytecode file (the
 /// code hash a run manifest names, so that a recording made from the
 /// `.ryc` or from the image reproduces against either), the program in
-/// the binary encoding of `binary.rs` (decision AT3), and per code object
-/// its machine code (`None` for one the analysis left to the interpreter).
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// the binary encoding of `binary.rs` (decision AT3), per code object
+/// its machine code's place in the section (`None` for one the analysis
+/// left to the interpreter), and the section: its bytes when the image
+/// was built or read into memory, else the file to map it from.
+#[derive(Debug)]
 pub struct Image {
     pub header: Header,
     pub code_hash: String,
     pub program: Vec<u8>,
     pub codes: Vec<Option<ImageCode>>,
+    /// The section's bytes; empty when `mapped` names the file instead.
+    pub section: Vec<u8>,
+    /// Where `write` puts the section in the file, a multiple of
+    /// `SECTION_ALIGN` (zero before the image is written).
+    pub section_offset: usize,
+    pub section_len: usize,
+    pub mapped: Option<MappedSection>,
 }
 
 impl Image {
+    /// The image in a file, its code section to be mapped from the file
+    /// where the page size allows (else read into memory); the error
+    /// says what is wrong with the file, not whether it matches this
+    /// machine (`Header::mismatch`).
+    pub fn open(path: &str) -> Result<Image, String> {
+        let file = File::open(path).map_err(|error| format!("cannot read {path}: {error}"))?;
+        let length = file
+            .metadata()
+            .map_err(|error| format!("cannot read {path}: {error}"))?
+            .len();
+        let length = usize::try_from(length).map_err(|_| "the image is too large".to_string())?;
+        Image::open_at(file, 0, length)
+    }
+
+    /// The image that lies at `offset` in a file (an executable's,
+    /// decision AS4), `length` bytes long.
+    pub fn open_at(file: File, offset: u64, length: usize) -> Result<Image, String> {
+        // SAFETY: the mapping is read-only and private, and the bytes are
+        // read as an image: a file changed underneath would be a corrupt
+        // image, which the checks on reading refuse or the program's own
+        // checks catch, as with any file read.
+        let mapping = unsafe {
+            memmap2::MmapOptions::new()
+                .offset(offset)
+                .len(length)
+                .map(&file)
+        };
+        match mapping {
+            Ok(mapping) => {
+                let mut image = Image::read_in(&mapping, false)?;
+                let section_at = offset + image.section_offset as u64;
+                if section_at.is_multiple_of(region::page::size() as u64) {
+                    image.mapped = Some(MappedSection {
+                        file,
+                        offset: section_at,
+                    });
+                } else {
+                    let section = &mapping[image.section_offset..][..image.section_len];
+                    image.section = section.to_vec();
+                }
+                Ok(image)
+            }
+            Err(_) => {
+                // a file that cannot be mapped is read whole
+                let mut bytes = vec![0u8; length];
+                let mut reader = &file;
+                reader
+                    .seek(SeekFrom::Start(offset))
+                    .and_then(|_| reader.read_exact(&mut bytes))
+                    .map_err(|error| format!("cannot read the image: {error}"))?;
+                Image::read(&bytes)
+            }
+        }
+    }
+
     /// The file's bytes.
     pub fn write(&self) -> Vec<u8> {
         let mut out = Writer::default();
@@ -156,8 +285,10 @@ impl Image {
                 None => out.u8(0),
                 Some(code) => {
                     out.u8(1);
-                    out.block(&code.body);
-                    out.block(&code.trampoline);
+                    out.u32(code.body.offset);
+                    out.u32(code.body.len);
+                    out.u32(code.trampoline.offset);
+                    out.u32(code.trampoline.len);
                     out.u32(code.headers.len() as u32);
                     for header in &code.headers {
                         out.u32(*header);
@@ -188,12 +319,24 @@ impl Image {
                 }
             }
         }
+        // the section, at the alignment that maps from the file
+        let offset = (out.bytes.len() + 8).div_ceil(SECTION_ALIGN) * SECTION_ALIGN;
+        out.u32(offset as u32);
+        out.u32(self.section.len() as u32);
+        out.bytes.resize(offset, 0);
+        out.bytes.extend_from_slice(&self.section);
         out.bytes
     }
 
-    /// An image from a file's bytes; the error says what is wrong with
-    /// the file (not whether it matches this machine: `Header::mismatch`).
+    /// An image from a file's bytes, its section read into memory; the
+    /// error says what is wrong with the file (not whether it matches
+    /// this machine: `Header::mismatch`).
     pub fn read(bytes: &[u8]) -> Result<Image, String> {
+        Image::read_in(bytes, true)
+    }
+
+    /// `read`, with the section's bytes copied or left to `open`.
+    fn read_in(bytes: &[u8], copy_section: bool) -> Result<Image, String> {
         let mut input = Reader { bytes, at: 0 };
         if input.take(4)? != MAGIC {
             return Err("not an image file (the magic is missing)".to_string());
@@ -219,8 +362,14 @@ impl Image {
                 codes.push(None);
                 continue;
             }
-            let body = input.block()?.to_vec();
-            let trampoline = input.block()?.to_vec();
+            let body = Placement {
+                offset: input.u32()?,
+                len: input.u32()?,
+            };
+            let trampoline = Placement {
+                offset: input.u32()?,
+                len: input.u32()?,
+            };
             let headers = (0..input.u32()?)
                 .map(|_| input.u32())
                 .collect::<Result<Vec<u32>, String>>()?;
@@ -265,14 +414,36 @@ impl Image {
                 deopts,
             }));
         }
-        if input.at != bytes.len() {
-            return Err("the image has bytes after its end".to_string());
+        let section_offset = input.u32()? as usize;
+        let section_len = input.u32()? as usize;
+        if !section_offset.is_multiple_of(SECTION_ALIGN) || section_offset < input.at {
+            return Err("the code section is misplaced".to_string());
         }
+        if section_offset.saturating_add(section_len) != bytes.len() {
+            return Err("the image is truncated".to_string());
+        }
+        for code in codes.iter().flatten() {
+            for part in [code.body, code.trampoline] {
+                let end = (part.offset as usize).saturating_add(part.len as usize);
+                if end > section_len {
+                    return Err("a code object lies outside the code section".to_string());
+                }
+            }
+        }
+        let section = if copy_section {
+            bytes[section_offset..].to_vec()
+        } else {
+            Vec::new()
+        };
         Ok(Image {
             header,
             code_hash,
             program,
             codes,
+            section,
+            section_offset,
+            section_len,
+            mapped: None,
         })
     }
 }
@@ -365,8 +536,8 @@ mod tests {
             codes: vec![
                 None,
                 Some(ImageCode {
-                    body: vec![0xc3],
-                    trampoline: vec![0x90, 0xc3],
+                    body: Placement { offset: 0, len: 1 },
+                    trampoline: Placement { offset: 16, len: 2 },
                     headers: vec![7],
                     deopts: vec![DeoptPoint {
                         pc: 3,
@@ -377,9 +548,26 @@ mod tests {
                     }],
                 }),
             ],
+            section: {
+                let mut section = vec![0xc3];
+                section.resize(16, 0);
+                section.extend_from_slice(&[0x90, 0xc3]);
+                section
+            },
+            section_offset: 0,
+            section_len: 18,
+            mapped: None,
         };
         let bytes = image.write();
-        assert_eq!(Image::read(&bytes).unwrap(), image);
+        let read = Image::read(&bytes).unwrap();
+        assert_eq!(read.header, image.header);
+        assert_eq!(read.code_hash, image.code_hash);
+        assert_eq!(read.program, image.program);
+        assert_eq!(read.codes, image.codes);
+        assert_eq!(read.section, image.section);
+        assert_eq!(read.section_offset, SECTION_ALIGN);
+        assert_eq!(read.section_len, 18);
+        assert_eq!(read.write(), bytes);
         assert!(Image::read(&bytes[..bytes.len() - 1]).is_err());
         assert!(Image::read(b"nope").is_err());
         let mismatch = image.header.mismatch("x86_64 [a=1]").unwrap();
