@@ -316,7 +316,8 @@ impl Sandbox {
             })
             .collect();
         Ok(Sandbox {
-            program: compiled.program,
+            // the last reads of the slots as moves (decision AU17)
+            program: renyi_vm::liveness::prepared(&compiled.program),
             module,
             grant,
             functions,

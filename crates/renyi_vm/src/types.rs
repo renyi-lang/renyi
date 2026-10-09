@@ -57,6 +57,7 @@ pub struct TypeMeta {
     pub refinements: Vec<usize>,
 }
 
+#[derive(Clone)]
 pub struct Types {
     pub metas: Vec<TypeMeta>,
     /// An explicit implementation of an ability for a type: the ability's

@@ -4113,3 +4113,93 @@ assumptions fail (AR1). What is left open: the pass table of
 `RENYI_NATIVE_REPORT` is the interpreter's thread's, empty when the
 thread compiled; a template tier (AU14's question) is decided by a
 profile of this stage on one and two hardware threads. (user)
+
+**AU16. The owner's answers of 2026-10-09 after AU15's measurement: (i)
+the template tier of AU14's question (a first tier of machine-code
+templates per op without Cranelift, which would serve the machine with
+one hardware thread, where the compile thread brings nothing, and
+shorten the wait for the code everywhere) is to be built, as the next
+large item after the stage below; (ii) the next stage now is the
+liveness analysis over the bytecode: the last read of a slot as a move,
+so that a value reaches its consumer held once and the updates in place
+of AU11 find it so, estimated at three to six percent of the self-check
+from the counts of AU11 (nine updates in ten found their record shared),
+chosen over the representation items of AU1's step v, the two micro-cuts
+(a fieldless variant as a constant, a borrowed `LoadField` operand) and
+the closing of the round.** The measurement that framed the questions:
+the self-check's wall-clock on the binary of AU15 against AU13's,
+alternating best of seven, on four hardware threads -10.1%, on two
+(`taskset`) -6.2%, on one +0.8% (the old path runs there); the profile
+of the image row (6.80 billion instructions, every code object
+compiled): the drops of values 10.9%, the clones 4.8%, the frames pushed
+4.9%, the copies of `with` about 3%, the comparisons 3.1%, the field
+reads through the cache 1.5%; the cold row's goal of AU1 (a quarter
+below AT7) stands at -4.8% and is out of reach of stages of one to three
+percent each. (user)
+
+**AU17. Stage 9 of the typed round: the last read of a slot as a move, a
+liveness pass in the VM (`renyi_vm/src/liveness.rs`). Before a program
+runs (`run_program`, `run_tests`, `reproduce`, the sandbox of AP1) and
+before its image is built (`renyi build`, the cache of AU10), the VM
+takes a copy of the program and replaces every `Load` of a slot that no
+path reads again before the slot is written or the frame ends by a
+`LoadMove`, so that the value reaches its consumer held once and an
+update in place (O1, AU11) finds it so. The liveness is the usual
+backward one over the ops: the successors of an op are the next op
+unless the op leaves the frame or jumps away, the target of a jump, the
+exit of an `IterNext`, and, for every op between a `PushHandler` and its
+target, that target, since a failure anywhere in the handled region
+lands there with the slots as they are; the reads are `Load`,
+`LoadMove`, `LoadField`, `TakeField`, `WithSlot`, `IterNext`,
+`CheckDeadline` and `UnwindStack`, the writes `Store`, `IterInit`,
+`Deadline` and `MarkStack`. The bytecode file, the image's program and
+the cache's key stay what the emitters wrote: the pass is the VM's own
+business, as the machine code is (AG1), so the two emitters and their
+judges are untouched. The generated code borrows a moved load for a
+typed call or a comparison as it borrows a plain one
+(`borrowed_operands` of `codegen.rs`): the entries read their arguments
+where they lie and update nothing in place, so the slot keeps its value,
+which nothing reads again, and the helper counts the copy out; moving
+such an operand out and releasing it after the call, as the first build
+did, cost `bench/strings.ry` 10%.** Why in the VM and not in the two
+emitters, which the owner's answer named: one analysis instead of two
+held equal by a judge, no change to the bytecode file, and the moves
+reach a program loaded from a bytecode file or an image too; the cost is
+a copy of the program per run: on the checker program (958 code objects,
+46,238 ops) the copy takes 0.9 ms and the pass 5.0 ms in all, 0.3% of
+the self-check. Why the handled regions are intervals in the op order:
+the emitters keep `PushHandler` and `PopHandler` balanced on every path
+(a `break` or `continue` pops the regions it leaves before its jump), so
+every op that can fail into a handler lies between the push and the
+target, and the ops in that interval that run with the handler already
+popped get an edge they do not need, which keeps a value live a little
+longer at worst. What the pass changes in the checker program: 6,261 of
+its 9,611 `Load`s become moves (the emitters wrote 429 `LoadMove`s;
+6,690 after); of the 24.6 million `Load`s the self-check runs, 13.0
+million are moves now; counted on the interpreter with the VM
+instrumented as for AU11: of the 206,427 updates run, 36,551 find the
+record held once where 23,848 did, and of the 8,266 takes 3,491 move the
+field where 2,305 did; the rest still find the record shared, by the
+`Done` record that carries the checker beside its value (the field taken
+out of a record that is updated with the result later, the item left for
+a later stage). Measured by AU1's rule against AU15's binary (30db0f3),
+both binaries on one boot of the machine: the self-check's estimate on
+the cold JIT run 18.29 to 17.89 billion cycles (-2.2%; 13.22 to 12.94
+billion instructions, the compile thread's work counted in), the
+interpreter 18.09 to 17.54 (-3.0%; 12.72 to 12.60 billion instructions),
+the image 10.04 to 9.71 (-3.3%; 6.80 to 6.69 billion instructions; the
+machine code 5.79 to 5.69 MB, 123.1 bytes of body per op, 771 deopt
+points), the run from the cache 11.02 to 10.68 (-3.2%); the first build,
+which moved the borrowed operands out, measured 18.15 on the cold run
+and 9.80 on the image. In wall-clock, best of fifteen with the two
+binaries alternating: the self-check 1,538 to 1,464 ms (-4.9%) on four
+hardware threads, 1,575 to 1,469 (-6.8%) on two (`taskset`), 1,772 to
+1,713 (-3.3%) on one; `bench/records.ry` -2.3%, `json_round_trip` -2.2%,
+`primes` -1.1%, `strings` within noise; on the interpreter
+(`--interpret`) the self-check 2,107 to 1,945 ms (-7.7%) and `strings`
+182 to 149 ms (-18%), more than the estimate says, as the clones it no
+longer makes touched the counts of values the simulated caches hold. The
+stage stays by the rule's first clause; the estimate of AU16 (three to
+six percent) is met on the interpreter and on the image and not on the
+cold JIT run, where the compile thread's work is a sixth of the total.
+(user)

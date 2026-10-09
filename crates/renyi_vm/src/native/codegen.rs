@@ -439,13 +439,17 @@ fn is_comparison(op: BinaryOp) -> bool {
 
 /// The operands a typed call or a comparison borrows (decisions AU1 and
 /// AU13): for a `Call` of a primitive with a typed entry, the arguments
-/// pushed by the `Load`s of boxed slots and the boxed `Const`s immediately
-/// before it, which are its last arguments in order, each pushed without
-/// a reference of its own; for a `Binary` comparison on boxed operands,
-/// the same two kinds of pushes and `Nothing` just before it; per op
-/// whether it pushes such an operand, and per call or comparison the bits
-/// of the operands so pushed (the first argument, or the left operand,
-/// bit 0).
+/// pushed by the `Load`s and `LoadMove`s of boxed slots and the boxed
+/// `Const`s immediately before it, which are its last arguments in order,
+/// each pushed without a reference of its own; for a `Binary` comparison
+/// on boxed operands, the same kinds of pushes and `Nothing` just before
+/// it; per op whether it pushes such an operand, and per call or
+/// comparison the bits of the operands so pushed (the first argument, or
+/// the left operand, bit 0). A moved load is borrowed like a plain one
+/// (decision AU17): the entries read their arguments where they lie and
+/// update nothing in place, so the slot keeps its value, which nothing
+/// reads again, and the helper counts the copy out; moving it would cost
+/// a release after the call where the plain load cost nothing.
 fn borrowed_operands(
     program: &Program,
     code: &Code,
@@ -489,7 +493,9 @@ fn borrowed_operands(
         for back in 1..=count.min(pc) {
             let at = pc - back;
             let simple = match &code.ops[at] {
-                Op::Load(slot) => matches!(analysis.slots[*slot as usize], SlotKind::Boxed(_)),
+                Op::Load(slot) | Op::LoadMove(slot) => {
+                    matches!(analysis.slots[*slot as usize], SlotKind::Boxed(_))
+                }
                 Op::Const(index) => abs_of_constant(&code.constants[*index as usize]).is_boxed(),
                 Op::Nothing => matches!(op, Op::Binary(_)),
                 _ => false,
@@ -2155,8 +2161,12 @@ impl Gen<'_, '_> {
                     }
                     _ => {
                         // the slot's value pushed in place: a copy with one
-                        // more reference, or the move that leaves `Nothing`
-                        let moving = matches!(self.code.ops[pc], Op::LoadMove(_));
+                        // more reference, the move that leaves `Nothing`, or,
+                        // for an operand a typed call or a comparison borrows
+                        // (a move or not), a copy without one, the slot
+                        // keeping its value
+                        let moving =
+                            matches!(self.code.ops[pc], Op::LoadMove(_)) && !self.borrowed[pc];
                         let from = self.address_at(index);
                         let to = self.top_address();
                         self.copy_value(from, to);

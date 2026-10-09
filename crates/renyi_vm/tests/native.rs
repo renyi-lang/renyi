@@ -676,3 +676,64 @@ end
     assert_eq!(outcome, RunOutcome::Finished);
     assert_eq!(printed, "3.0 0.75 2.75 true true\n22\n");
 }
+
+#[test]
+fn moved_loads_are_borrowed_by_typed_calls_and_comparisons() {
+    // decision AU17: the VM moves the last read of a slot before the
+    // program runs, and the generated code borrows a moved load for a
+    // typed call or a comparison as it borrows a plain one, the slot
+    // keeping its value; an alias of the moved value is unaffected, and
+    // both tiers print the same counts
+    let source = r#"module demo
+  purpose: Loop variables read for the last time by a comparison and by a typed call (decision AU17).
+
+import std.console
+
+function digits_in(text: Text, marker: Text) returns Text
+  purpose: Count the digits and the markers among the glyphs, and keep the last glyph through an alias.
+
+  let mutable found be 0
+  let mutable marked be 0
+  let mutable last be ""
+  for each glyph in text.characters()
+    let alias be glyph
+    let twin be glyph
+    if twin is marker then change marked to marked + 1 end
+    if "0123456789".contains(glyph) then change found to found + 1 end
+    change last to alias
+  end
+  return "{found} {marked} {last}"
+end
+
+public function main() needs console
+  purpose: Print the counts.
+
+  console.print(digits_in(text: "a1b22c333-", marker: "-"))
+end
+"#;
+    let prepared = renyi_vm::liveness::prepared(&compile(source));
+    let code = prepared
+        .codes
+        .iter()
+        .find(|code| code.name.ends_with("digits_in"))
+        .expect("the function's code");
+    let moved_into_call = code
+        .ops
+        .windows(2)
+        .any(|pair| matches!(pair, [Op::LoadMove(_), Op::Call { .. }]));
+    let moved_into_comparison = code.ops.windows(3).any(|three| {
+        matches!(
+            three,
+            [
+                Op::LoadMove(_),
+                Op::Load(_),
+                Op::Binary(renyi_syntax::ast::BinaryOp::Is)
+            ]
+        )
+    });
+    assert!(moved_into_call, "the glyph is moved into `contains`");
+    assert!(moved_into_comparison, "the twin is moved into `is`");
+    let (outcome, printed) = both_ways(source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(printed, "6 1 -\n");
+}

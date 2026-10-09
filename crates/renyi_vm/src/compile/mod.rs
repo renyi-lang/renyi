@@ -178,6 +178,7 @@ fn foreign_binding(
 }
 
 /// The compiled project.
+#[derive(Clone)]
 pub struct Program {
     pub codes: Vec<Code>,
     pub functions: HashMap<FunctionId, CodeId>,

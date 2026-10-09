@@ -98,9 +98,13 @@ pub fn build(
     registry: &Registry,
 ) -> Result<Image, String> {
     let calls = crate::vm::call_kinds(program, registry);
-    let mut jit = Jit::new(program, Some(opt_level.unwrap_or("speed")), calls)
+    // the machine code of the program as the VM runs it, with the last
+    // reads of the slots as moves (decision AU17); the image carries the
+    // program as the emitters wrote it
+    let prepared = crate::liveness::prepared(program);
+    let mut jit = Jit::new(&prepared, Some(opt_level.unwrap_or("speed")), calls)
         .ok_or_else(|| "this machine generates no machine code".to_string())?;
-    let compiled = jit.compile_everything(program);
+    let compiled = jit.compile_everything(&prepared);
     // the section: every body and trampoline in order, sixteen-aligned
     let mut section = Vec::new();
     let mut place = |bytes: &[u8]| -> Placement {

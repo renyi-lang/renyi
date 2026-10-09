@@ -1,7 +1,7 @@
 # Handoff
 
 Last updated: 2026-10-09, session 10, in the cloud environment, which
-did stages 6, 7 and 8 of the typed round: decision AU11, the update of
+did stages 6 to 9 of the typed round: decision AU11, the update of
 a uniquely held record in place (the ops `WithSlot` and `TakeField`,
 bytecode format 7, three emitter rules in both emitters, the judges
 equal), kept by AU1's rule with a small gain and a finding about why;
@@ -9,12 +9,16 @@ the owner's answers after it (AU12); decision AU13, the comparisons on
 borrowed operands in the generated code, -2.2% on the self-check's cold
 JIT run; the owner's answers after it (AU14: the borrowed parameters
 skipped, the compile cost measured, the compile thread chosen with
-wall-clock as its measure); and decision AU15, the JIT's compilation on
+wall-clock as its measure); decision AU15, the JIT's compilation on
 a thread of its own with the hotness factor 100, -11.6% on the
-self-check's wall-clock (the section "The typed round" below, "Stage 6
-is in" to "Stage 8 is in"); and answered the owner's question on the
-execution model (the section "The execution model, as the owner asked
-on 2026-10-09" below). Session 9, the first in the
+self-check's wall-clock; the owner's answers after it (AU16: the
+template tier ordered as the next large item, the liveness pass as the
+stage now); and decision AU17, the last read of a slot as a move, a
+liveness pass the VM applies to a copy of the program before it runs
+(the section "The typed round" below, "Stage 6 is in" to "Stage 9 is
+in"); and answered the owner's question on the execution model (the
+section "The execution model, as the owner asked on 2026-10-09" below).
+Session 9, the first in the
 cloud environment (claude.ai/code), finished the profile-guided round on
 strings and JSON that session 8 had paused: decision AQ, the first of the
 interspersed performance items the owner set after M5 (the section "The
@@ -104,13 +108,15 @@ and push there directly.
 ## Start here (session 11)
 
 1. The work stopped in the typed round, whose plan the owner set in
-   decisions AU1 and AU9: read the section "The typed round" below,
-   whose last paragraphs ("Stage 6 is in" and "What is next in this
-   round") say what exists and what comes next: a question for the
-   owner first (stage 6 served few of the checker's hot updates, since
-   their records are shared; two rules would unlock the rest, and the
-   owner orders them or not), then stage 7, the comparisons on borrowed
-   operands, then stage 8, the parameters borrowed across direct calls.
+   decisions AU1 and AU9 and reordered in AU12, AU14 and AU16: read the
+   section "The typed round" below, whose last paragraphs ("Stage 9 is
+   in" and "What is next in this round, after AU16") say what exists
+   and what comes next: the template tier, a first tier of machine-code
+   templates per op without Cranelift, ordered by the owner as the next
+   large item (AU16), whose design is to be written as a decision entry
+   first and put to the owner before the code; after it, by a profile,
+   the representation items of AU1's step v, the micro-cuts and the
+   field taken out of a record that is updated with the result later.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
@@ -222,7 +228,7 @@ revision>]`, `run [--manifest] [options] <file> [arguments]`, `record
 <file>...`, `compile [--to file] <file.ry>`, `add <name> [<version>]`,
 `update [--accept-effects]`, `audit`, `fetch`, `publish [--to
 <directory>]`, `bind <header.h> --module <name> --library <names>
-[--to <directory>]`, `tools [path]`, `mcp [path]`, `lsp`, `serve [--watch]`, `run --sandbox` and `version`; 333 tests,
+[--to <directory>]`, `tools [path]`, `mcp [path]`, `lsp`, `serve [--watch]`, `run --sandbox` and `version`; 340 tests,
 clippy and fmt clean with rustc 1.94.1 on Windows (the owner's machine)
 and on Linux (the cloud environment, where 1.94.1 is installed beside
 its 1.97.0 for the gates). CI (`.github/workflows/ci.yml`) runs the same gates,
@@ -2196,22 +2202,65 @@ sweep in the decision; confirmed on the final binary 1,723 to 1,548 ms
 the total; the interpreter, the image and the cached rows unchanged),
 the reason AU14 changed the measure for this stage.
 
-**What is next in this round, after AU15:**
+**The owner's answers after stage 8 (decision AU16, 2026-10-09)**: the
+template tier is to be built as the next large item (measured after the
+commit of AU15 with `taskset`, the self-check alternating best of seven:
+on one hardware thread the old path runs, 1,835 to 1,850 ms, noise; on
+two 1,831 to 1,718 ms, -6.2%; on four -10.1%); the stage now is the
+liveness pass over the bytecode.
 
-1. **The template tier, or not**: a profile of this stage on one and two
-   hardware threads decides (AU14's question); on a machine with one,
-   the old path runs and the cold code waits as before.
-2. **A new profile** (AU12): the stages that follow come from it, the
-   representation items of AU1's step v among them (small texts inline,
-   `Int` flattened into `Value`, lists of unboxed Integers, values in
-   registers across ops) and the liveness pass over the bytecode that
-   would make the checker's records held once at their updates (AU11's
-   finding); a fieldless variant built by `ConstructVariant` allocates on
-   every comparison (`kind is Public`: 11 sites in the checker program),
-   a candidate micro-cut; a borrowed `LoadField` operand (33 `LoadField
-   ... is` sites) needs the helper path to say whether it pushed a fresh
-   value (a guarded holder's field is wrapped anew), which stage 7 left
-   out.
+**Stage 9 is in (decision AU17, 2026-10-09, session 10)**: the last read
+of a slot as a move. `crates/renyi_vm/src/liveness.rs`: `prepared`
+(the program copied with the pass applied), `move_last_reads` (the
+backward liveness over the ops of one code object: the successors, the
+handler intervals, the reads and writes of slots, the fixed point over
+bitsets, the rewrite of `Load` to `LoadMove`), five unit tests;
+`Program` derives `Clone` (and `Types` with it); `runner.rs` applies it
+in `run_measured` (every run and reproduction) and `run_tests`,
+`native/image.rs` in `build` (the machine code of the prepared program,
+the image's own program as the emitters wrote it), `crates/renyi/src/sandbox.rs`
+at the sandbox's load. The generated code borrows a moved load for a
+typed call or a comparison as it borrows a plain one
+(`borrowed_operands` in `codegen.rs`: the slot keeps its value, which
+nothing reads again, and the helper counts the copy out), since the
+first build moved such operands out and released them after the call
+where the plain load had cost nothing, which cost `bench/strings.ry`
+10%; the native test `moved_loads_are_borrowed_by_typed_calls_and_comparisons`.
+The bytecode file, the judges, the cache's key and `tests/typed.rs`
+are untouched. Measured against AU15's binary on one boot, by
+`tools/measure_size.sh`: the cold JIT run 18.29 to 17.89 billion
+cycles by the estimate (-2.2%; -2.1% in instructions, the compile
+thread's work counted in), the interpreter -3.0%, the image -3.3%, the
+run from the cache -3.2%; in wall-clock, best of fifteen alternating,
+the self-check -4.9% on four hardware threads, -6.8% on two, -3.3% on
+one, `records` -2.3%, `json_round_trip` -2.2%, `primes` -1.1%,
+`strings` within noise, and on the interpreter the self-check -7.7%
+and `strings` -18%; the counts: 6,261 of the checker program's 9,611
+`Load`s become moves, 13.0 of the 24.6 million run; the updates that
+find their record held once 23,848 to 36,551 of 206,427, the takes
+that move the field 2,305 to 3,491 of 8,266; the pass costs 5 ms on
+the checker program (0.9 ms of it the copy). The first build moved
+the operands typed calls borrow and cost `strings` 10%, the lesson
+being that a moved load must stay borrowable (see above).
+
+**What is next in this round, after AU16:**
+
+1. **The template tier** (AU16): a first tier of machine-code templates
+   per op without Cranelift, for the machine with one hardware thread and
+   to shorten the wait for the code everywhere; the design to write as a
+   decision first (x86-64 first; the templates call the helpers as the
+   generated code does and keep its frame protocol and hand-backs; the
+   hot code objects go on to Cranelift). Weeks of work.
+2. **After it, by a profile**: the representation items of AU1's step v
+   (small texts inline, `Int` flattened into `Value`, lists of unboxed
+   Integers, values in registers across ops); the micro-cuts (a
+   fieldless variant built by `ConstructVariant` allocates on every
+   comparison, `kind is Public`, 11 sites in the checker program; a
+   borrowed `LoadField` operand, 33 `LoadField ... is` sites, needs the
+   helper path to say whether it pushed a fresh value); the field taken
+   out of a record that is updated with the result later (`let after be
+   done.checker ... done with checker: updated`), which the liveness
+   pass does not reach since the read is a field read.
 3. **Skipped, recorded in AU14**: the parameters borrowed across direct
    calls (AU9's third item). A
    parameter the callee only reads (fields, borrowed calls, comparisons)
@@ -3523,7 +3572,7 @@ holds between calls.
   for the corpus and for one file; a bad base), the `diff` call in
   `tests/mcp.rs`, and a unit test of `own_text_hash`.
 
-## Done in session 10 (stage 6 of the typed round, in the cloud environment)
+## Done in session 10 (stages 6 to 9 of the typed round, in the cloud environment)
 
 - **Decision AU11, stage 6 of the typed round**: the ops `WithSlot` and
   `TakeField`, bytecode format 7, binary encoding 4, image format 6,
@@ -3557,6 +3606,17 @@ holds between calls.
   100, `RENYI_NATIVE_SYNC`; the tests synchronous under
   `RENYI_NATIVE_HOT=0`), the self-check -11.6% in wall-clock against
   AU13's binary, `primes` and `records` -8%.
+- **Decision AU16**, the owner's answers after stage 8 (the template
+  tier to be built as the next large item; the liveness pass as the
+  stage now), and **decision AU17, stage 9**: the last read of a slot
+  as a move, a liveness pass in the VM (`crates/renyi_vm/src/liveness.rs`,
+  applied to a copy of the program by `runner.rs`, `native/image.rs`
+  and the sandbox; the bytecode file, the image's program, the cache's
+  key and the judges untouched), the moved loads borrowed by typed
+  calls and comparisons in the generated code; the cold JIT run -2.2%
+  by the estimate, the interpreter -3.0%, the image -3.3%, the
+  self-check -4.9% in wall-clock on four hardware threads and -3.3% on
+  one, the interpreter -7.7%.
 - **The owner's question on the execution model** answered with the
   numbers of this machine (the section "The execution model, as the
   owner asked on 2026-10-09").
