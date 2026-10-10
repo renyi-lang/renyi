@@ -4365,3 +4365,24 @@ Where the gain goes: every call from template code goes through
 on in its loop, and the self-check makes 5.4 million calls; the hot
 helpers (the field read, the retain, the release) stay calls; the
 follow-ups that address both are put to the owner. (user)
+
+**AU20. The owner's answers of 2026-10-10 after AU19's measurement: (i)
+the next steps of the round are both of the follow-ups put to the owner,
+in this order: first the template tier's own (direct calls between
+template functions, so that a call whose callee has machine code pushes
+the frame and enters it without `rt_call`, `call_from_stack`,
+`run_top_frame` and `Jit::entry`, and the field read through the site's
+cache in place, as the Cranelift tier reads it), then the representation
+items of AU1's step v (small texts inline, `Int` flattened into `Value`,
+lists of unboxed Integers, values in registers across ops); (ii) a
+Windows job in CI runs the VM's tests on every push, so that the Windows
+x64 convention of the template tier runs (`.github/workflows/ci.yml`,
+the job `windows`); (iii) the goal of AU18 stays the measure of the
+follow-ups: the self-check's JIT run on one hardware thread within 15%
+of its image; (iv) the template tier stays on by default, as measured.**
+The alternatives the owner declined: for (i), closing the round and
+deciding the self-hosted front end (AU12), or the aarch64 encoder; for
+(ii), verifying on the owner's machine alone, or the tier off on Windows
+until it had run; for (iii), the goal relaxed to 25% or AT1's rule
+alone; for (iv), the tier off until the follow-ups pay, or on only where
+there is no compile thread. (user)

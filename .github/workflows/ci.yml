@@ -93,3 +93,20 @@ jobs:
       # development build optimizes the VM, so they are indicative
       - name: Benchmarks (printed, not gated)
         run: python tools/bench.py target/debug/renyi --runs 1
+
+  # the template tier (decisions AU19 and AU20) writes machine code for the
+  # Windows x64 convention as well as for System V, and only a Windows
+  # machine runs the second: the VM's tests run there on every push,
+  # `tests/template.rs` and `tests/promotion.rs` with the tier forced
+  windows:
+    name: The VM on Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@1.94.1
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Test the VM
+        run: cargo test -p renyi_vm
