@@ -306,6 +306,53 @@ end
     assert!(!PathBuf::from(format!("{dir}/out/leak.txt")).exists());
 }
 
+/// A VM that ran without a guard skips the guard bookkeeping of its
+/// constructions (decision AU23); a later run of it under a guard follows
+/// the data again, into a record whose text form would otherwise leak.
+#[test]
+fn a_guard_after_a_run_without_one_follows_the_data_into_a_record() {
+    let dir = scratch("guards-later");
+    let source = format!(
+        r#"module later
+  purpose: A test without a guard, then one whose record holds the secret.
+
+import std.console
+import std.filesystem exposing Path
+
+type Note
+  has body: Text
+  can ToText
+end
+
+test "a note without a guard" needs console
+  let note be Note(body: "plain")
+  console.print(note.body)
+end
+
+test "a note of the secret may not be written" needs filesystem.read("{dir}/data") only to console, filesystem.write("{dir}/out")
+  let secret be filesystem.read_text(Path("{dir}/data/greeting.txt")) otherwise fail
+  let note be Note(body: secret)
+  filesystem.write_text(path: Path("{dir}/out/leak.txt"), content: "{{note}}") otherwise fail
+end
+"#
+    );
+    let program = compile("later.ry", &source);
+    let stdout = Capture::default();
+    let report = run_tests(&program, options(&stdout));
+    let outcomes: Vec<&TestOutcome> = report.results.iter().map(|r| &r.outcome).collect();
+    assert_eq!(outcomes[0], &TestOutcome::Passed, "{}", report.render());
+    assert_eq!(
+        outcomes[1],
+        &TestOutcome::Failed(format!(
+            "Guarded(origin: \"filesystem.read(\\\"{dir}/data\\\")\", sink: \"filesystem.write(\\\"{dir}/out/leak.txt\\\")\")"
+        )),
+        "{}",
+        report.render()
+    );
+    assert_eq!(stdout.text(), "plain\n");
+    assert!(!PathBuf::from(format!("{dir}/out/leak.txt")).exists());
+}
+
 #[test]
 fn a_server_does_not_send_a_guarded_response() {
     let dir = scratch("guards-server");

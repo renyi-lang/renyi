@@ -323,6 +323,11 @@ pub struct Vm<'p> {
     /// The guards of the run (decision P3); the position of a guard is the
     /// origin bit a value carries.
     guards: Vec<Guard>,
+    /// Whether a run of this VM has had a guard: set by `begin_run` and
+    /// never cleared, since a value tagged then may live on in a global.
+    /// While it is false no value carries origins, and the constructions
+    /// skip the guard bookkeeping (decision AU23).
+    pub(crate) guarding: bool,
     /// While a primitive runs: the origins of its arguments, which a
     /// function it calls back receives on its own arguments, and the
     /// origins of what the callbacks returned, which join the primitive's
@@ -536,6 +541,7 @@ impl<'p> Vm<'p> {
             expected: None,
             random_state: seed,
             guards: Vec::new(),
+            guarding: false,
             ambient: 0,
             gathered: 0,
             native,
@@ -569,6 +575,7 @@ impl<'p> Vm<'p> {
         if let Some(sandbox) = &self.narrowing.sandbox {
             self.guards.extend(grant::guards(sandbox));
         }
+        self.guarding |= !self.guards.is_empty();
         if self.guards.len() > 64 {
             return Err(format!(
                 "the grant carries {} guarded capabilities (`only to`); the VM tracks at most 64 (open item R6-5)",
@@ -975,7 +982,11 @@ impl<'p> Vm<'p> {
         let collected = self.gathered;
         self.ambient = ambient;
         self.gathered = gathered;
-        Ok(result?.guarded(origins | collected))
+        let origins = origins | collected;
+        if origins == 0 {
+            return result;
+        }
+        Ok(result?.guarded(origins))
     }
 
     /// The guard that stops a value with these origins from reaching the
@@ -1835,10 +1846,18 @@ impl<'p> Vm<'p> {
                     self.stack.push(top);
                 }
                 // every operation strips its operands' guard wrappers and tags
-                // its result with the union of their origins (decision P3)
+                // its result with the union of their origins (decision P3);
+                // without a guard in the VM's runs no operand carries any, and
+                // the constructions skip the bookkeeping (decision AU23)
                 Op::MakeList(count) => {
-                    let (origins, items) = plain_all(self.pop_n(*count as usize));
-                    self.stack.push(Value::list(items).guarded(origins));
+                    let items = self.pop_n(*count as usize);
+                    let list = if self.guarding {
+                        let (origins, items) = plain_all(items);
+                        Value::list(items).guarded(origins)
+                    } else {
+                        Value::list(items)
+                    };
+                    self.stack.push(list);
                 }
                 Op::MakeMap(count) => self.op_make_map(*count as usize),
                 Op::MakePair => {
@@ -1853,13 +1872,23 @@ impl<'p> Vm<'p> {
                     self.stack.push(value);
                 }
                 Op::Construct { ty, fields } => {
-                    let (origins, fields) = plain_all(self.pop_n(*fields as usize));
-                    settle!(try_op!(self.construct(*ty, fields)).guarded(origins));
+                    let fields = self.pop_n(*fields as usize);
+                    if self.guarding {
+                        let (origins, fields) = plain_all(fields);
+                        settle!(try_op!(self.construct(*ty, fields)).guarded(origins));
+                    } else {
+                        settle!(try_op!(self.construct(*ty, fields)));
+                    }
                 }
                 Op::ConstructVariant { ty, tag, fields } => {
-                    let (origins, fields) = plain_all(self.pop_n(*fields as usize));
-                    settle!(try_op!(self.construct_variant(*ty, *tag as usize, fields))
-                        .guarded(origins));
+                    let fields = self.pop_n(*fields as usize);
+                    if self.guarding {
+                        let (origins, fields) = plain_all(fields);
+                        settle!(try_op!(self.construct_variant(*ty, *tag as usize, fields))
+                            .guarded(origins));
+                    } else {
+                        settle!(try_op!(self.construct_variant(*ty, *tag as usize, fields)));
+                    }
                 }
                 Op::Field { name, site } => {
                     let holder = self.pop();

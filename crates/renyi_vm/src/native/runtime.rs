@@ -464,8 +464,16 @@ pub(crate) unsafe extern "C" fn rt_resume_range(
 
 pub(crate) unsafe extern "C" fn rt_make_list(vm: VmPtr, count: u32) {
     let vm = vm!(vm);
-    let (origins, items) = plain_all(vm.pop_n(count as usize));
-    vm.stack.push(Value::list(items).guarded(origins));
+    let items = vm.pop_n(count as usize);
+    // without a guard in the VM's runs no operand carries origins, and the
+    // bookkeeping is skipped (decision AU23)
+    let list = if vm.guarding {
+        let (origins, items) = plain_all(items);
+        Value::list(items).guarded(origins)
+    } else {
+        Value::list(items)
+    };
+    vm.stack.push(list);
 }
 
 pub(crate) unsafe extern "C" fn rt_make_map(vm: VmPtr, count: u32) {
@@ -492,8 +500,13 @@ pub(crate) unsafe extern "C" fn rt_make_range(vm: VmPtr, stepped: i8, pc: u32) -
 pub(crate) unsafe extern "C" fn rt_construct(vm: VmPtr, ty: usize, fields: u32, pc: u32) -> i32 {
     let vm = vm!(vm);
     vm.sync_pc(pc);
-    let (origins, fields) = plain_all(vm.pop_n(fields as usize));
-    let result = vm.construct(ty, fields).map(|value| value.guarded(origins));
+    let fields = vm.pop_n(fields as usize);
+    let result = if vm.guarding {
+        let (origins, fields) = plain_all(fields);
+        vm.construct(ty, fields).map(|value| value.guarded(origins))
+    } else {
+        vm.construct(ty, fields)
+    };
     status(vm, result)
 }
 
@@ -506,10 +519,14 @@ pub(crate) unsafe extern "C" fn rt_construct_variant(
 ) -> i32 {
     let vm = vm!(vm);
     vm.sync_pc(pc);
-    let (origins, fields) = plain_all(vm.pop_n(fields as usize));
-    let result = vm
-        .construct_variant(ty, tag as usize, fields)
-        .map(|value| value.guarded(origins));
+    let fields = vm.pop_n(fields as usize);
+    let result = if vm.guarding {
+        let (origins, fields) = plain_all(fields);
+        vm.construct_variant(ty, tag as usize, fields)
+            .map(|value| value.guarded(origins))
+    } else {
+        vm.construct_variant(ty, tag as usize, fields)
+    };
     status(vm, result)
 }
 

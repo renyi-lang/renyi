@@ -4479,3 +4479,44 @@ the texts and the records, or both items as AU1 listed them; for
 goal kept as stated with a round on the front end's speed after the
 representation items or in a round of its own, or AT1's rule alone.
 (user)
+
+**AU23. The first cut of AU22 as built: the guard bookkeeping skipped
+in a run whose grant guards nothing. The VM keeps `guarding`, set by
+`begin_run` when the grant (with a sandbox's) carries a guard and never
+cleared, so that a VM that runs examples and tests one after the other
+follows the data again from the first guarded one; while it is false no
+value carries origins (only `Value::guarded` with a guard's bit makes
+one), and the constructions of the interpreter and of the generated
+code's helpers (`MakeList`, `Construct` and `ConstructVariant`;
+`rt_make_list`, `rt_construct` and `rt_construct_variant`) take their
+operands as they are, without `plain_all` and without `guarded`; a
+primitive's result is wrapped only when there are origins to add
+(`run_native`).** The first build took another way: the slow paths of
+`guarded`, `into_plain` and `plain_all` moved out of line and their fast
+paths inlined everywhere. It ran fewer instructions on every program
+(the self-check's synchronous JIT run -2.0% by the estimate, `records`
+-3%) and was slower in wall-clock on `records` (+3% on the benchmark,
++4% on the same program with two million points), which a build with
+`guarded` kept out of line put back: the inlined moves of a 24-byte
+value cost what the count of instructions does not show (cachegrind
+models no store forwarding). Calling no wrapper at the call sites, as
+built, gained instead (the two-million-point program -10.8% on one
+hardware thread). The test: `tests/guards.rs`,
+`a_guard_after_a_run_without_one_follows_the_data_into_a_record` (a test
+without a guard, then one that writes the text of a record built from
+the secret; with the flag never set the record is not tagged and the
+text leaks, as the test was checked to show), beside the guard tests
+that run with the flag set. Measured on one boot against AU21's binary
+(fb15b1c). By AT1's estimate under cachegrind: the synchronous JIT run
+11.71 to 11.44 billion cycles (-2.4%; instructions -2.8%), the template
+code alone 12.18 to 11.91 (-2.2%), the image 9.67 to 9.35 (-3.3%), the
+interpreter 17.24 to 17.24 (instructions -0.8%, its branch misses up
+with the layout of its loop). In wall-clock, the two binaries
+alternating with the order swapped every turn, best and median: on one
+hardware thread the self-check -1.0% and -2.3%, `records` -7.0% and
+-5.9%, `strings` -1.0% and -1.5%, `primes` -1.0% and -0.3%,
+`json_round_trip` +0.4% and +1.4%; on two the self-check -2.0% and
++0.7%, `records` -9.6% and -12.0%, the others within 1.5%; on four the
+self-check -6.5% and -7.2%, `records` -11.7% and -10.6%, `strings` -2.6%
+and -5.0%, `json_round_trip` and `primes` within 2%. The stage stays by
+AU1's rule and by the owner's measure. (user)
