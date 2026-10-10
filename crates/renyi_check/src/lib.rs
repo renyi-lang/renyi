@@ -16,10 +16,10 @@ mod suggest;
 pub mod types;
 pub mod world;
 
-use renyi_syntax::{parse, parse_declarations, Diagnostic, SourceFile, Span};
+use renyi_syntax::{parse_declarations, Diagnostic, Parsed, SourceFile, Span};
 
 pub use check::{NumberKind, Reference, Target};
-pub use renyi_package::{resolve, tagged, Problem, Project, Resolved};
+pub use renyi_package::{parse_file, resolve, resolve_parsed, tagged, Problem, Project, Resolved};
 pub use types::{AbilityId, FunctionId, ModuleId, TypeId};
 pub use world::{BodyLocation, World};
 
@@ -145,17 +145,26 @@ pub fn check_project_in(
     files: &[SourceFile],
     problems: &[Problem],
 ) -> CheckedProject {
+    let trees = files.iter().map(parse_file).collect();
+    check_parsed_project_in(library, files, trees, problems)
+}
+
+/// `check_project_in` for files already parsed by `parse_file`, one tree
+/// per file in their order, as the resolver leaves them (decision AU36:
+/// every file is parsed once).
+pub fn check_parsed_project_in(
+    library: &Library,
+    files: &[SourceFile],
+    trees: Vec<Parsed>,
+    problems: &[Problem],
+) -> CheckedProject {
+    assert_eq!(files.len(), trees.len(), "one tree per file");
     let mut world = library.world();
     let mut modules = Vec::new();
-    for (index, file) in files.iter().enumerate() {
+    for (index, (file, parsed)) in files.iter().zip(trees).enumerate() {
         // a foreign module (decision AF1) or a Python module (decision AL1)
         // declares: no bodies
         let declares = file.foreign.is_some() || file.python.is_some();
-        let parsed = if declares {
-            parse_declarations(&file.text)
-        } else {
-            parse(&file.text)
-        };
         let mut diagnostics = parsed.diagnostics;
         let id = if diagnostics.iter().any(Diagnostic::is_error) {
             None
@@ -344,7 +353,17 @@ pub fn check_file(file: &SourceFile) -> Vec<Diagnostic> {
 
 /// `check_file` against the declaration files of a library.
 pub fn check_file_in(library: &Library, file: &SourceFile) -> Vec<Diagnostic> {
-    let resolved = resolve(file);
-    let checked = check_project_in(library, &resolved.files, &resolved.problems);
-    summarize(&checked, &resolved.files[1..])
+    check_resolved_in(library, resolve(file))
+}
+
+/// `check_file_in` for a program the resolver has read: the trees it
+/// parsed are declared and checked, not parsed again (decision AU36).
+pub fn check_resolved_in(library: &Library, resolved: Resolved) -> Vec<Diagnostic> {
+    let Resolved {
+        files,
+        problems,
+        trees,
+    } = resolved;
+    let checked = check_parsed_project_in(library, &files, trees, &problems);
+    summarize(&checked, &files[1..])
 }

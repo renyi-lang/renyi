@@ -2906,7 +2906,9 @@ the VM's measure (a copy of today's compiler kept under `bench/` would
 hold the measure fixed), and A0 and A1 make the ratio of AU35 (ii)
 larger without any change on the Renyi side.
 
-**The owner's answers (decision AU36)** and the stages they set:
+**The owner's answers (decision AU36)** and the stages they set
+(stage 1 is in, decision AU37: `check compiler/bodies.ry` -44% in
+instructions and -35% in time, the self-check's estimate -2.4%):
 1. A0, every file parsed once by the Rust front end: the resolver
    (`renyi_package::resolve`, which parses each file only to read its
    imports, `imports_of`) keeps the trees, `check_project_in` takes

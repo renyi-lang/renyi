@@ -334,15 +334,18 @@ fn load(path: &str) -> Result<SourceFile, ExitCode> {
 pub(crate) fn diagnose(file: &SourceFile) -> Vec<renyi_syntax::Diagnostic> {
     // a foreign module (decision AF1) or a Python module (decision AL1) of
     // the project declares: no bodies
-    let file = renyi_check::tagged(file.clone());
-    let parsed = if file.foreign.is_some() || file.python.is_some() {
-        parse_declarations(&file.text)
+    let project = renyi_check::Project::of(&file.name);
+    let file = if file.foreign.is_some() || file.python.is_some() {
+        file.clone()
     } else {
-        parse(&file.text)
+        project.tag(file.clone())
     };
-    let mut diagnostics = parsed.diagnostics;
+    let parsed = renyi_check::parse_file(&file);
+    let mut diagnostics = parsed.diagnostics.clone();
     if !diagnostics.iter().any(|diagnostic| diagnostic.is_error()) {
-        diagnostics.extend(renyi_check::check_file_in(&library(), &file));
+        // the resolver and the check take this parse (decision AU36)
+        let resolved = renyi_check::resolve_parsed(&project, file.clone(), parsed);
+        diagnostics.extend(renyi_check::check_resolved_in(&library(), resolved));
     }
     diagnostics.extend(check_layout(&file));
     diagnostics.sort_by_key(|diagnostic| diagnostic.span.start);
@@ -879,9 +882,13 @@ pub(crate) fn compile_sources(path: &str) -> Result<Compiled, CompileError> {
 /// `compile_sources` from a file already read, or a text in memory (the
 /// sandbox of decision AP1): its imports are resolved from its name.
 pub(crate) fn compile_file(file: SourceFile) -> Result<Compiled, CompileError> {
-    let resolved = renyi_check::resolve(&file);
-    let files = resolved.files;
-    let checked = renyi_check::check_project_in(&library(), &files, &resolved.problems);
+    let renyi_check::Resolved {
+        files,
+        problems,
+        trees,
+    } = renyi_check::resolve(&file);
+    // the check takes the trees the resolver parsed (decision AU36)
+    let checked = renyi_check::check_parsed_project_in(&library(), &files, trees, &problems);
     let mut failed = false;
     let mut diagnostics = String::new();
     for module in &checked.modules {

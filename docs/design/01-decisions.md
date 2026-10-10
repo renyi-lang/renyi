@@ -5065,3 +5065,42 @@ method, or no change to the compiler in Renyi in this round; for (iii),
 the same binary as AU35 (ii) states it, or no speed work on the Rust
 front end before the switch; for (iv), a measure that follows the
 compiler. (user)
+
+**AU37. Every file parsed once by the Rust front end (stage A0 of
+AU36).** The resolver (`renyi_package::resolve`) parses each file as the
+check takes it (`parse_file`: a bound module's declarations, any other
+file as a module) and keeps the trees beside the files
+(`Resolved::trees`); the check declares the modules from them
+(`check_parsed_project_in`; `check_project_in` parses and calls it);
+`renyi check` parses the main file once, reports its errors alone as
+before, and otherwise hands the tree to the resolver (`resolve_parsed`)
+and checks what it returns (`check_resolved_in`); `compile_file`, which
+every command that compiles calls, and the package commands' index check
+the resolver's trees. The resolver reads a bound module's imports from
+its declarations' parse, as the compiler in Renyi does (`project.ry`),
+where it parsed the text as a module before: the imports are the same,
+the mode changing the bodies only. The commands that check canonical
+texts (`index`, `tools`) and the resident world keep their own parses.
+The outputs are unchanged: the gates passed, the judges among them.
+Measured on one boot against AU34's binary, callgrind for the
+instructions and the best of nine alternating runs for the times:
+`renyi check compiler/bodies.ry` 437.3 to 243.5 million instructions
+(-44.3%), 72.1 to 47.3 ms (-34.5%); `check compiler/checker.ry` 561.0
+to 371.3 million (-33.8%), 91.8 to 69.8 ms (-24.0%); `compile
+compiler/checker.ry` 989.9 to 801.5 million (-19.0%), 155.2 to 132.6 ms
+(-14.6%); the thirty examples checked one at a time 208.3 to 198.1 ms
+summed (-4.9%); an empty program and `hello` within noise (-0.6% and
+-1.5% in instructions: the library's fixed cost, which is A4's).
+AT1's rows on the same boot (AU34's binary measured again first, equal
+to its rows of the boot before): the synchronous JIT run 6,752.9 to
+6,561.9 million instructions and 9,297.9 to 9,075.1 million estimated
+cycles (-2.40%), the templates alone -2.40%, the interpreter 15,834.5 to
+15,601.3 million (-1.47%), the image unchanged (7,025.9 and 7,026.1: it
+runs no front end). The ratio of AU35 (ii), as AU36 (iii) records it on
+`compiler/bodies.ry` (the Renyi compiler from images built by this
+binary): checking 786.9 ms against AU34's Rust front end's 76.4 (10.3
+times, the gate) and this binary's 48.9 (16.1 times); parsing 314.9
+against 68.9 (4.6) and 62.2 (5.1; `parse --json` itself is unchanged,
+282.4 million instructions on both binaries, the difference noise);
+compiling 1,107.9 against 104.7 (10.6) and 89.1 (12.4). The stage stays
+by AU1's rule.

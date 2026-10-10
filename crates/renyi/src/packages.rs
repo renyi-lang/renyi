@@ -664,12 +664,14 @@ fn relative_of(root: &str, name: &str) -> String {
 /// diagnostics of the own files that have errors, rendered.
 fn index_of(project: &Project, own: &[SourceFile]) -> Fallible<(Index, Vec<String>)> {
     let mut files: Vec<SourceFile> = Vec::new();
+    let mut trees = Vec::new();
     let mut problems = Vec::new();
     for file in own {
         let resolved = resolve_in(project, file);
-        for resolved_file in resolved.files {
+        for (resolved_file, tree) in resolved.files.into_iter().zip(resolved.trees) {
             if !files.iter().any(|known| known.name == resolved_file.name) {
                 files.push(resolved_file);
+                trees.push(tree);
             }
         }
         for problem in resolved.problems {
@@ -678,7 +680,8 @@ fn index_of(project: &Project, own: &[SourceFile]) -> Fallible<(Index, Vec<Strin
             }
         }
     }
-    let checked = renyi_check::check_project_in(&crate::library(), &files, &problems);
+    // the check takes the trees the resolver parsed (decision AU36)
+    let checked = renyi_check::check_parsed_project_in(&crate::library(), &files, trees, &problems);
     let mut errors = Vec::new();
     for module in &checked.modules {
         let file = &files[module.file];

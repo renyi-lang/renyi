@@ -20,7 +20,7 @@ use crate::lexer::{lex, pascal_case, snake_case};
 use crate::span::Span;
 use crate::token::{TextPart, Token, TokenKind, Word};
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Parsed {
     pub module: Module,
     pub diagnostics: Vec<Diagnostic>,

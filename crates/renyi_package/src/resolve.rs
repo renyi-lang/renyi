@@ -9,7 +9,11 @@
 
 use std::collections::HashSet;
 
-use renyi_syntax::{parse, Diagnostic, ForeignModule, Package, PythonBinding, SourceFile, Span};
+use renyi_syntax::ast::Module;
+use renyi_syntax::{
+    parse, parse_declarations, Diagnostic, ForeignModule, Package, Parsed, PythonBinding,
+    SourceFile, Span,
+};
 
 use crate::manifest::{Lock, Manifest, PackageFile, LOCK_FILE, MANIFEST_FILE, PACKAGE_FILE};
 use crate::registry::{hash_of, is_absolute, join, Registry};
@@ -55,6 +59,22 @@ pub struct Resolved {
     /// The main file first, then every import in the order found.
     pub files: Vec<SourceFile>,
     pub problems: Vec<Problem>,
+    /// The parse of each file, in the order of `files`, as the check
+    /// takes it (`parse_file`): the resolver reads a file's imports from
+    /// it, and the check declares the module from the same tree, so that
+    /// every file is parsed once (decision AU36).
+    pub trees: Vec<Parsed>,
+}
+
+/// The parse of a file as the check takes it: a foreign module (decision
+/// AF1) or a Python module (decision AL1) declares, without bodies; any
+/// other file is a module.
+pub fn parse_file(file: &SourceFile) -> Parsed {
+    if file.foreign.is_some() || file.python.is_some() {
+        parse_declarations(&file.text)
+    } else {
+        parse(&file.text)
+    }
 }
 
 /// The directory part of a path as text, empty for a bare name.
@@ -261,10 +281,9 @@ struct Pending {
     span: Span,
 }
 
-/// The imports of a parsed text, without those of the library.
-fn imports_of(text: &str) -> Vec<(Vec<String>, Span)> {
-    parse(text)
-        .module
+/// The imports of a parsed module, without those of the library.
+fn imports_of(module: &Module) -> Vec<(Vec<String>, Span)> {
+    module
         .imports
         .iter()
         .filter(|import| import.path.first().map(|n| n.text.as_str()) != Some("std"))
@@ -301,31 +320,40 @@ pub fn resolve(file: &SourceFile) -> Resolved {
 /// `resolve` in a project given: the commands read a package's own files
 /// from the registry as a project whose dependencies the lock names.
 pub fn resolve_in(project: &Project, file: &SourceFile) -> Resolved {
-    let mut resolved = Resolved::default();
     let main = if file.foreign.is_none() && file.python.is_none() {
         project.tag(file.clone())
     } else {
         file.clone()
     };
-    resolved.files.push(main);
+    let tree = parse_file(&main);
+    resolve_parsed(project, main, tree)
+}
+
+/// `resolve_in` for a main file already tagged by its project and parsed
+/// by `parse_file`: `renyi check` parses the file first and checks nothing
+/// more when it does not parse.
+pub fn resolve_parsed(project: &Project, main: SourceFile, tree: Parsed) -> Resolved {
+    let mut resolved = Resolved::default();
     for diagnostic in &project.problems {
         resolved.problems.push(Problem {
-            file: file.name.clone(),
+            file: main.name.clone(),
             diagnostic: diagnostic.clone(),
         });
     }
     let program_dependencies = project.dependencies();
     let mut seen: HashSet<String> = HashSet::new();
     let mut reported: HashSet<String> = HashSet::new();
-    let mut queue: Vec<Pending> = imports_of(&file.text)
+    let mut queue: Vec<Pending> = imports_of(&tree.module)
         .into_iter()
         .map(|(path, span)| Pending {
             path,
             origin: Origin::Program,
-            importer: file.name.clone(),
+            importer: main.name.clone(),
             span,
         })
         .collect();
+    resolved.files.push(main);
+    resolved.trees.push(tree);
     while let Some(pending) = queue.pop() {
         let Some(first) = pending.path.first() else {
             continue;
@@ -393,14 +421,6 @@ pub fn resolve_in(project: &Project, file: &SourceFile) -> Resolved {
         let Some((path, text)) = read_source(&base) else {
             continue;
         };
-        for (import_path, span) in imports_of(&text) {
-            queue.push(Pending {
-                path: import_path,
-                origin: origin.clone(),
-                importer: path.clone(),
-                span,
-            });
-        }
         let mut source = SourceFile::new(path, text);
         if let Some(package) = package {
             source = source.in_package(package);
@@ -409,7 +429,17 @@ pub fn resolve_in(project: &Project, file: &SourceFile) -> Resolved {
         } else if let Some(binding) = project.python_module(&qualified) {
             source = source.in_python(binding);
         }
+        let tree = parse_file(&source);
+        for (import_path, span) in imports_of(&tree.module) {
+            queue.push(Pending {
+                path: import_path,
+                origin: origin.clone(),
+                importer: source.name.clone(),
+                span,
+            });
+        }
         resolved.files.push(source);
+        resolved.trees.push(tree);
     }
     resolved
 }
