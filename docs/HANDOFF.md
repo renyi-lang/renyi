@@ -2946,7 +2946,11 @@ examples checked -11%, `hello`'s bytecode 231 to 125 KB):
    warnings printed again, `record`'s code hash kept in the entry; an
    entry holds the content hash of every file read and the places a
    manifest was looked for and not found; on by default under the
-   image cache's switch.
+   image cache's switch. What a hit loads (AU43): every run compiled
+   from its sources leaves the program (AT3's binary encoding) in the
+   cache keyed by the sources, a hit loads it in place of the front
+   end, and AU10's image, left only by a run that compiled machine
+   code, is then found by the program as before.
 5. The copy of the compiler under `bench/selfcheck/` (AU36 iv) is
    made (decision AU41: the thirteen files of `compiler/checker.ry` at
    commit f1ba01b), with `tools/bench.py`, `tools/measure_size.sh`,

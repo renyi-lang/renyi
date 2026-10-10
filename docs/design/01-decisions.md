@@ -5276,3 +5276,17 @@ as AU36 (iii) records it: checking 777.9 ms against AU34's Rust front
 end's 72.7 (10.7 times, the gate) and this binary's 35.9 (21.7); parsing
 313.2 against 66.7 (4.7) and 56.1 (5.6); compiling 1,073.8 against 100.1
 (10.7) and 75.7 (14.2).
+
+**AU43. The owner's answer of 2026-10-10 on what a hit of A2's cache
+loads: every run compiled from its sources leaves the compiled program
+in the cache, keyed by the sources, and a hit loads that program in
+place of the front end; a program whose run compiled machine code
+leaves its image as well (AU10, unchanged), which the hit then finds
+by the program as before.** The question followed from AU10's rule: an
+image is left only by a run that compiled machine code, so a short
+program such as `examples/hello.ry` has none, and a cache whose hits
+load images alone (AU40 ii as it stood) would have spared it nothing,
+where the front end is most of its time. The program is kept in the
+binary encoding of AT3, about half its bytecode file. The alternatives
+the owner declined: an image built in the background for every program
+run, or hits for the programs with an image only. (user)
