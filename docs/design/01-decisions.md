@@ -4814,3 +4814,73 @@ stricter measure (the median within 10%, or three boots); for (iii),
 the `JsonValue` nodes now, or every such native as one stage; for (iv),
 the cache keyed by the sources first, or the checker's hot spots
 directly. (user)
+
+**AU32. The first item of AU31 as built: AU29's sequence on the
+Cranelift tier, and the compile thread stopped at the end of a run.
+In the code Cranelift makes, `retain` and `release` test the tag's bit
+in `COUNTED_OR_INTEGER` (now one constant in `value::layout` for both
+tiers): a value with neither goes on; a counted block has its first
+word, the count, raised or lowered in place; an Integer goes to a cold
+block, where a small one holds no count, a big one's count is raised
+in place on a retain and the value goes to `rt_drop_at` on a release; a
+count lowered to zero goes to a cold block that raises it back to one
+for `rt_drop_at`, which frees the block, the one call a release has.
+`rt_retain_at` is gone from the helpers: code format 11. The JIT's
+compile thread, when the VM is dropped, stops after the compilation
+under way, where closing its channel alone let it compile every
+request still queued before the process could end.** Four builds were
+measured against AU30's binary (81aa432) on one boot, all four in AT1's
+rows. (a) A release with two calls, one for the last reference and one
+for a big Integer: the machine code of the self-check's image 5.73 to
+7.69 MB, the synchronous JIT run's instructions -0.2%, the image's
+-5.0%. (b) Every Integer through the helpers, no test of a small one in
+place: 7.43 MB, the image's estimate 1.0% behind (a). (c) As (a) with a
+big Integer's retain through `rt_retain_at`: 7.91 MB and more
+instructions than AU30 on the JIT run, since a call in a cold block
+costs the register allocation of the whole body. (d) As (a) with the
+release's two calls one: 7.65 MB (+33.6%; 5,976 to 7,986 bytes of body
+per code object) and 0.2% fewer instructions than (a); it is the stage.
+AT6 had kept the calls against AR4's sequence, which tested the big
+Integer and read both payload words at every site; this one tests one
+bit and skips. The compile thread's correction came from the
+measurement: with (d)'s code, larger by a third, the time from the end
+of `main` to the end of the process on two hardware threads rose from
+187 to 324 ms, the thread compiling its queue for code nothing would
+run; the comment on `Worker`'s drop had said that only the compilation
+under way finishes. The tests: in `tests/native.rs`,
+`counts_raised_and_lowered_in_place_free_the_last_and_spare_big_integers`
+(records with long texts and a weight past the machine word as a `maybe
+Integer`, boxed, so that its copies are counted in this tier's code,
+which keeps an Integer in a register and hands a big one to the
+interpreter; against the interpreter; with the counted block's raise
+taken out the test aborts, with the big Integer's it crashes, as it was
+checked to); the conformance suite and the judges on both tiers. By
+AT1's estimate under cachegrind, against AU30's binary: the image 7.89
+to 7.53 billion cycles (-4.6%; instructions -5.1%, the indirect
+branches missed -47%, the instruction misses +31%); the synchronous JIT
+run level within the layout's spread, which two builds each of (a) and
+(d), the generated code the same within each pair, put at -0.4% and
++0.1%, -0.3% and +0.4% (its instructions -0.2% and -0.4%; the template
+row, whose code did not change, moved +1.1% in the last); the
+interpreter level; `strings` -2.2% and `records` -3.8% on the JIT run. Cranelift's work on the 54 code objects of the synchronous
+run: 44.0 to 57.0 thousand instructions of IR (+30%) in 3.3 to 6.4
+thousand blocks, 76-90 to 84-93 ms. In wall-clock on the self-check,
+alternating fifteen times: the compile thread's correction alone level
+on one hardware thread, -6.3% and -5.3% (best and median) on two, -4.8%
+and -3.9% on four; the counts on top of it -2.7% and -3.7% on one,
+-5.4% and -8.1% on two, -10.8% and -9.5% on four, the run part of AU22
+-5.0%, -7.2% and -13.1% at the best. The stage against AU30's binary,
+alternating with the order swapped every turn, best and median: the
+self-check -9.3% and -3.0% on one hardware thread, -13.5% and -15.5% on
+two, -9.4% and -14.0% on four; `strings` between -13.1% and -16.0%,
+`records` between -3.8% and -6.9%, `json_round_trip` and `primes`
+within the noise (-3.7% to +5.1%). The run part of AU22 on one hardware
+thread, eleven alternations: the image 929.7 to 776.8 ms at the best
+(-16.4%), the JIT run 1,009.3 to 991.5 (-1.8%), so that the JIT run over
+the image went from +8.6% to +27.6% (+8.2% to +28.7% at the median):
+the image gains everywhere, the JIT run only where Cranelift's code
+runs, and its code is on templates for most of the run. AU18's goal
+moves away by a stage that makes both faster; AU31's measurement on
+another boot takes it as it is now. The stage stays by AU1's rule: a
+benchmark gains more than 5% (`strings` 13.1% to 16.0% in wall-clock)
+while the self-check's estimate moves within its spread. (user)

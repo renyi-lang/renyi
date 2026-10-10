@@ -64,8 +64,9 @@ const PART_ALIGN: usize = 16;
 /// `entries` (decision AU21). 8: the VM's variants without fields read in
 /// place (decision AU24). 9: the texts held in the value, compared in
 /// place (decision AU26). 10: a record's and a variant's fields in its
-/// counted block (decision AU27).
-pub const CODE_FORMAT: u32 = 10;
+/// counted block (decision AU27). 11: the counts raised and lowered in
+/// place, `rt_retain_at` gone from the helpers (decision AU32).
+pub const CODE_FORMAT: u32 = 11;
 
 /// The extension of an image file.
 pub const EXTENSION: &str = "ryi";

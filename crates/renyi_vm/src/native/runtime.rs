@@ -249,21 +249,13 @@ pub(crate) unsafe extern "C" fn rt_frame_grant(vm: VmPtr, code: usize) -> u32 {
 
 /// The release of the value at the address (decision AT6): dropped in
 /// place, which takes one reference from its allocation and frees the
-/// last; the slot is dead after.
+/// last; the slot is dead after. The generated code of both tiers lowers
+/// a count in place and calls this only for the last reference, the count
+/// raised back to one, and for a big Integer (decisions AU29 and AU32).
 pub(crate) unsafe extern "C" fn rt_drop_at(at: *mut Value) {
     // SAFETY: the generated code hands the address of a value on the
     // stack that it reads no more.
     unsafe { std::ptr::drop_in_place(at) };
-}
-
-/// One more reference to the value at the address (decision AT6): what a
-/// clone of it does to the count, the clone itself kept by the copy the
-/// generated code made.
-pub(crate) unsafe extern "C" fn rt_retain_at(at: *const Value) {
-    // SAFETY: the generated code hands the address of a value on the
-    // stack it has just copied; the clone's count is the copy's.
-    let value = unsafe { &*at };
-    std::mem::forget(value.clone());
 }
 
 pub(crate) unsafe extern "C" fn rt_pop(vm: VmPtr) {
@@ -1858,7 +1850,6 @@ pub const HELPERS: &[(&str, *const u8)] = &[
     ("rt_store_float", rt_store_float as *const u8),
     ("rt_pop", rt_pop as *const u8),
     ("rt_drop_at", rt_drop_at as *const u8),
-    ("rt_retain_at", rt_retain_at as *const u8),
     ("rt_room", rt_room as *const u8),
     ("rt_grow_frames", rt_grow_frames as *const u8),
     ("rt_frame_grant", rt_frame_grant as *const u8),

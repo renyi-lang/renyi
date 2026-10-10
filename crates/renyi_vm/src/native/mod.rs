@@ -25,7 +25,8 @@ pub mod runtime;
 pub mod template;
 
 use std::io::{Read, Seek};
-use std::sync::mpsc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{mpsc, Arc};
 use std::thread::JoinHandle;
 
 use cranelift_codegen::isa::OwnedTargetIsa;
@@ -120,6 +121,10 @@ struct Worker {
     requests: Option<mpsc::Sender<CodeId>>,
     results: mpsc::Receiver<(CodeId, Result<codegen::Compiled, codegen::Skipped>)>,
     handle: Option<JoinHandle<()>>,
+    /// Set when the JIT is dropped: the thread stops after the
+    /// compilation under way and leaves the requests still queued, whose
+    /// code nothing would run (decision AU32).
+    stop: Arc<AtomicBool>,
 }
 
 /// The program as the compile thread reads it.
@@ -143,6 +148,8 @@ impl Worker {
         let (outbox, results) = mpsc::channel();
         let program = ProgramRef(program);
         let level = opt_level.to_string();
+        let stop = Arc::new(AtomicBool::new(false));
+        let stopped = Arc::clone(&stop);
         let handle = std::thread::Builder::new()
             .name("renyi-native".to_string())
             .spawn(move || {
@@ -156,6 +163,9 @@ impl Worker {
                 // SAFETY: `ProgramRef` says why the program is there to read.
                 let program: &Program = unsafe { &*wrapper.0 };
                 for code in inbox {
+                    if stopped.load(Ordering::Relaxed) {
+                        break;
+                    }
                     let result =
                         codegen::compile(program, code, &calls, &*isa, &mut ctx, &mut fctx);
                     if outbox.send((code, result)).is_err() {
@@ -168,6 +178,7 @@ impl Worker {
             requests: Some(requests),
             results,
             handle: Some(handle),
+            stop,
         })
     }
 
@@ -181,8 +192,10 @@ impl Worker {
 
 impl Drop for Worker {
     fn drop(&mut self) {
-        // the requests closed, the thread's loop ends; a compilation
-        // under way finishes first
+        // the thread stops after the compilation under way: the requests
+        // still queued are left, where closing the channel alone let the
+        // loop compile every one of them before the process could end
+        self.stop.store(true, Ordering::Relaxed);
         self.requests.take();
         if let Some(handle) = self.handle.take() {
             let _ = handle.join();

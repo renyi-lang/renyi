@@ -1005,3 +1005,70 @@ end
     assert_eq!(outcome, RunOutcome::Finished);
     assert_eq!(output, "2000 3003 2000 33000 6000\n");
 }
+
+/// The retain and the release in place in the code Cranelift makes
+/// (decision AU32): records, long texts and lists counted in their blocks
+/// and freed when the last reference goes, small values with no count,
+/// and big Integers through the cold blocks; every count is the
+/// interpreter's. The weight is a `maybe Integer`, boxed, so that its
+/// copies are counted in this tier's code, which keeps an `Integer` in a
+/// register and hands a big one to the interpreter (with the big
+/// Integer's count not raised the run crashes, as it was checked to).
+#[test]
+fn counts_raised_and_lowered_in_place_free_the_last_and_spare_big_integers() {
+    let source = r#"module demo
+  purpose: Values counted in place by generated code: big Integers, long texts, records.
+
+import std.console
+
+type Box
+  purpose: A box around a long label and a weight that is big when present.
+  has label: Text
+  has weight: maybe Integer
+end
+
+function heavy(seed: Integer) returns Integer
+  purpose: An Integer past the machine word.
+
+  return seed * 10000000000 * 10000000000
+end
+
+function box_of(index: Integer) returns Box
+  purpose: A box whose label is long and whose weight is big.
+
+  return Box(label: "a label longer than sixteen bytes {index}", weight: heavy(index))
+end
+
+public function main() needs console
+  purpose: Make, keep, copy and drop counted values over and over.
+
+  let mutable kept: List of Box be []
+  let mutable weights: List of maybe Integer be []
+  let mutable total be 0
+  let mutable big: maybe Integer be nothing
+  for each index from 1 to 3000
+    let item be box_of(index)
+    change big to item.weight
+    let again be big
+    if index remainder 3 is 0 then
+      change kept to kept.append(item)
+      change weights to weights.append(again)
+    end
+    change total to total + item.label.length()
+  end
+  let mutable residues be 0
+  for each item in kept
+    change residues to residues + ((item.weight otherwise 0) remainder 7)
+  end
+  let mutable sevens be 0
+  for each weight in weights
+    change sevens to sevens + ((weight otherwise 0) remainder 7)
+  end
+  let last be big otherwise 0
+  console.print("{kept.length()} {total} {last remainder 1000003} {residues} {sevens}")
+end
+"#;
+    let (outcome, output) = both_ways(source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(output, "1000 112893 900027 3003 3003\n");
+}

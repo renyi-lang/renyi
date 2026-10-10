@@ -42,8 +42,9 @@ use crate::native::runtime::{
 };
 use crate::native::DEPTH_LIMIT;
 use crate::value::layout::{
-    INT_PAYLOAD, INT_SMALL, INT_TAG, PAYLOAD, RC_TAGS, RECORD_FIELDS, RECORD_TAG, RECORD_TY, SIZE,
-    TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_INTEGER, TAG_NOTHING, TAG_RECORD, TAG_SMALL_TEXT,
+    COUNTED_OR_INTEGER, INT_PAYLOAD, INT_SMALL, INT_TAG, PAYLOAD, RECORD_FIELDS, RECORD_TAG,
+    RECORD_TY, SIZE, TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_INTEGER, TAG_NOTHING, TAG_RECORD,
+    TAG_SMALL_TEXT,
 };
 use crate::vm::{unit_slot, CallKind};
 use x64::{host_abi, Abi, Asm, Cond, Label, Reg};
@@ -183,11 +184,10 @@ enum Cold {
 /// past this many, a helper does it.
 const CLEARS_INLINE: usize = 4;
 
-/// The tags whose payload points at a counted block (`RC_TAGS`) and the
-/// Integer's, whose payload holds one only when the Integer is big: the
-/// bits a retain or a release in place tests (decision AU29).
-const COUNTED_OR_INTEGER: u32 = (RC_TAGS | 1 << TAG_INTEGER) as u32;
-const _: () = assert!(RC_TAGS >> 32 == 0 && TAG_INTEGER < 32);
+/// The bits a retain or a release in place tests (decision AU29), as the
+/// 32-bit immediate the test takes them in.
+const COUNTED_OR_INTEGER_32: u32 = COUNTED_OR_INTEGER as u32;
+const _: () = assert!(COUNTED_OR_INTEGER >> 32 == 0);
 
 /// An argument of a helper call.
 #[derive(Clone, Copy)]
@@ -418,7 +418,7 @@ impl Gen<'_> {
         let done = self.asm.label();
         let integer = self.asm.label();
         self.asm.movzx_rm8(SCRATCH, at.0, at.1);
-        self.asm.mov_ri32(SCRATCH2, COUNTED_OR_INTEGER);
+        self.asm.mov_ri32(SCRATCH2, COUNTED_OR_INTEGER_32);
         self.asm.bt_rr32(SCRATCH2, SCRATCH);
         self.asm.jcc_short(Cond::Ae, done);
         self.asm.cmp_r32i(SCRATCH, TAG_INTEGER as i32);
@@ -447,7 +447,7 @@ impl Gen<'_> {
         let integer = self.asm.label();
         let last = self.asm.label();
         self.asm.movzx_rm8(SCRATCH, at.0, at.1);
-        self.asm.mov_ri32(SCRATCH2, COUNTED_OR_INTEGER);
+        self.asm.mov_ri32(SCRATCH2, COUNTED_OR_INTEGER_32);
         self.asm.bt_rr32(SCRATCH2, SCRATCH);
         self.asm.jcc_short(Cond::Ae, done);
         self.asm.cmp_r32i(SCRATCH, TAG_INTEGER as i32);

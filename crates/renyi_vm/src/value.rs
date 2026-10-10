@@ -474,6 +474,10 @@ pub mod layout {
         | (1 << 17)
         | (1 << 18)
         | (1 << 19);
+    /// The tags a retain or a release in place tests (decisions AU29 and
+    /// AU32): `RC_TAGS` and the Integer's, whose payload holds a counted
+    /// block only when the Integer is big.
+    pub const COUNTED_OR_INTEGER: u64 = RC_TAGS | 1 << TAG_INTEGER;
     /// Inside an `Integer`: the `Int` tag and its payload.
     pub const INT_TAG: i32 = 8;
     pub const INT_PAYLOAD: i32 = 16;

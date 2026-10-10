@@ -40,10 +40,10 @@ use crate::native::runtime::{
 };
 use crate::native::{DeoptPoint, DEPTH_LIMIT};
 use crate::value::layout::{
-    INT_PAYLOAD, INT_SMALL, INT_TAG, ITER_ITEMS, ITER_LEN, ITER_POSITION, NATIVE_ITERATOR,
-    NATIVE_PAYLOAD, NATIVE_TAG, PAYLOAD, RC_VALUE, RECORD_FIELDS, RECORD_TAG, RECORD_TY, SIZE,
-    TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_INTEGER, TAG_NATIVE, TAG_NOTHING, TAG_RECORD,
-    TAG_SMALL_TEXT,
+    COUNTED_OR_INTEGER, INT_PAYLOAD, INT_SMALL, INT_TAG, ITER_ITEMS, ITER_LEN, ITER_POSITION,
+    NATIVE_ITERATOR, NATIVE_PAYLOAD, NATIVE_TAG, PAYLOAD, RC_VALUE, RECORD_FIELDS, RECORD_TAG,
+    RECORD_TY, SIZE, TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_INTEGER, TAG_NATIVE, TAG_NOTHING,
+    TAG_RECORD, TAG_SMALL_TEXT,
 };
 use crate::value::Value;
 use crate::vm::{unit_slot, CallKind, FieldSite, Frame, NativeState, Vm};
@@ -103,7 +103,6 @@ const RELEASES_INLINE: usize = 4;
 pub(crate) const STACK_SAFE: &[&str] = &[
     "rt_clear_slots",
     "rt_drop_at",
-    "rt_retain_at",
     "rt_frame_grant",
     "rt_grow_frames",
     "rt_take_int",
@@ -162,7 +161,6 @@ pub const SIGNATURES: &[(&str, &str, char)] = &[
     ("rt_store_float", "pzwf", 'v'),
     ("rt_pop", "p", 'v'),
     ("rt_drop_at", "p", 'v'),
-    ("rt_retain_at", "p", 'v'),
     ("rt_room", "pz", 'v'),
     ("rt_grow_frames", "p", 'v'),
     ("rt_frame_grant", "pz", 'i'),
@@ -1617,20 +1615,124 @@ impl Gen<'_, '_> {
             .uload8(types::I32, MemFlagsData::trusted(), at, offset)
     }
 
-    /// One more reference to the value at the address: what `Value::clone`
-    /// does to the count, through the helper (decision AT6: the sequence
-    /// AR4 generated in place, the tag's bit in `RC_TAGS`, the big-integer
-    /// case, two payload loads and a select, measured larger and slower
-    /// than the call).
-    fn retain(&mut self, at: IrValue) {
-        self.call("rt_retain_at", &[at]);
+    /// The branch a retain and a release in place start with (decision
+    /// AU32, AU29's sequence on this tier): the tag's bit in
+    /// `COUNTED_OR_INTEGER`. A value with neither goes to `done`, an
+    /// Integer to `integer`, a cold block, and a counted block to
+    /// `counted`; the three are returned, `done` unsealed for the
+    /// caller's jumps.
+    fn branch_on_count(&mut self, at: IrValue) -> (Block, Block, Block) {
+        let tag = self.tag_at(at, 0);
+        let tag_wide = self.b.ins().uextend(types::I64, tag);
+        let mask = self.iconst(types::I64, COUNTED_OR_INTEGER as i64);
+        let shifted = self.b.ins().ushr(mask, tag_wide);
+        let bit = self.b.ins().band_imm_s(shifted, 1);
+        let check = self.b.create_block();
+        let counted = self.b.create_block();
+        let integer = self.b.create_block();
+        let done = self.b.create_block();
+        self.b.set_cold_block(integer);
+        self.b.ins().brif(bit, check, &[], done, &[]);
+        self.b.seal_block(check);
+        self.switch_to(check);
+        let is_integer = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::Equal, tag, TAG_INTEGER as i64);
+        self.b.ins().brif(is_integer, integer, &[], counted, &[]);
+        self.b.seal_block(counted);
+        self.b.seal_block(integer);
+        (counted, integer, done)
     }
 
-    /// One reference fewer to the value at the address: what dropping a
-    /// `Value` does, through the helper, which frees the last (decision
-    /// AT6). The slot is dead after.
+    /// The count in the first word of the block raised by one.
+    fn raise_count(&mut self, block: IrValue) {
+        let flags = MemFlagsData::trusted();
+        let count = self.b.ins().load(types::I64, flags, block, 0);
+        let more = self.b.ins().iadd_imm_s(count, 1);
+        self.b.ins().store(flags, more, block, 0);
+    }
+
+    /// From the cold block of an Integer: a small one holds no count and
+    /// goes to `done`; a big one goes on in the block returned, cold too.
+    fn big_integer(&mut self, at: IrValue, done: Block) -> Block {
+        let int_tag = self.tag_at(at, INT_TAG);
+        let is_small = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::Equal, int_tag, INT_SMALL as i64);
+        let big = self.b.create_block();
+        self.b.set_cold_block(big);
+        self.b.ins().brif(is_small, done, &[], big, &[]);
+        self.b.seal_block(big);
+        big
+    }
+
+    /// One more reference to the value at the address, in place (decision
+    /// AU32): a counted block has its count raised; an Integer goes out of
+    /// line, where a big one raises its block's count and a small one
+    /// holds none; any other value holds no count. AT6 had called a helper
+    /// here against AR4's sequence, which tested the big Integer and read
+    /// both payload words at every site; this one tests one bit and skips,
+    /// and calls nothing (a call in a cold block costs the register
+    /// allocation of the whole body: with one, the self-check's code was
+    /// 3% larger and ran more instructions).
+    fn retain(&mut self, at: IrValue) {
+        let flags = MemFlagsData::trusted();
+        let (counted, integer, done) = self.branch_on_count(at);
+        self.switch_to(counted);
+        let block = self.b.ins().load(self.pointer, flags, at, PAYLOAD);
+        self.raise_count(block);
+        self.b.ins().jump(done, &[]);
+        self.switch_to(integer);
+        let big = self.big_integer(at, done);
+        self.switch_to(big);
+        let block = self.b.ins().load(self.pointer, flags, at, INT_PAYLOAD);
+        self.raise_count(block);
+        self.b.ins().jump(done, &[]);
+        self.b.seal_block(done);
+        self.switch_to(done);
+    }
+
+    /// One reference fewer to the value at the address, which is dead
+    /// after, in place (decision AU32): a counted block has its count
+    /// lowered, and only the last reference goes out of line, the count
+    /// raised back to one for `rt_drop_at`, which drops the value as Rust
+    /// does and frees the block; a big Integer goes to the helper, a small
+    /// one nowhere. The two share one call: a call in a cold block costs
+    /// the register allocation of the whole body, and with one call per
+    /// release the self-check ran 0.2% fewer instructions than with two.
     fn release(&mut self, at: IrValue) {
+        let flags = MemFlagsData::trusted();
+        let (counted, integer, done) = self.branch_on_count(at);
+        self.switch_to(counted);
+        let block = self.b.ins().load(self.pointer, flags, at, PAYLOAD);
+        let count = self.b.ins().load(types::I64, flags, block, 0);
+        let fewer = self.b.ins().iadd_imm_s(count, -1);
+        self.b.ins().store(flags, fewer, block, 0);
+        let last = self.b.create_block();
+        let drop = self.b.create_block();
+        self.b.set_cold_block(last);
+        self.b.set_cold_block(drop);
+        self.b.ins().brif(fewer, done, &[], last, &[]);
+        self.b.seal_block(last);
+        self.switch_to(last);
+        let one = self.iconst(types::I64, 1);
+        self.b.ins().store(flags, one, block, 0);
+        self.b.ins().jump(drop, &[]);
+        self.switch_to(integer);
+        let int_tag = self.tag_at(at, INT_TAG);
+        let is_small = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::Equal, int_tag, INT_SMALL as i64);
+        self.b.ins().brif(is_small, done, &[], drop, &[]);
+        self.b.seal_block(drop);
+        self.switch_to(drop);
         self.call("rt_drop_at", &[at]);
+        self.b.ins().jump(done, &[]);
+        self.b.seal_block(done);
+        self.switch_to(done);
     }
 
     /// A value pushed on the stack from the address, one more reference to

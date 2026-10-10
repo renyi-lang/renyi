@@ -12,8 +12,13 @@ AU18's 15% on this boot), and decision AU30, the decoder's records
 built in their block (`json_round_trip` -3.9% in instructions, the
 self-check's instructions equal after two builds that moved them; the
 section "The typed round" below, "The owner's answers after AU27").
-CI passed on both jobs after every push. The next step is put to the
-owner (the end of that section).
+The owner answered the next questions (decision AU31: AU29's sequence
+on the Cranelift tier, then the hottest natives in place), and decision
+AU32 put the counts in place in Cranelift's code and stopped the
+compile thread at the end of a run (the self-check -9% to -15% in
+wall-clock on one to four hardware threads, `strings` -13% to -16%, the
+image's run part -16%). CI passed on both jobs after every push. The
+next stage is AU31's second, the hottest natives in place.
 Session 11, in the cloud environment, put the four questions of session
 10 to the owner (decision AU20: the
 template tier's follow-ups first, then the representation items of
@@ -153,11 +158,12 @@ and push there directly.
    the section "The typed round" below, whose last paragraphs ("The
    owner's answers after AU27" and "What is next in this round, after
    AU30") say what exists and what comes next. The owner answered the
-   questions there at the end of session 12 (decision AU31): AU29's
-   sequence on the Cranelift tier next, then the hottest natives in
-   place; AU18's goal confirmed on another boot before it is called
-   met; the other natives' vectors left alone; the front end's round to
-   start with a study.
+   questions there in session 12 (decision AU31): AU29's sequence on
+   the Cranelift tier, which is in (AU32), then the hottest natives in
+   place, the next stage; AU18's goal measured on another boot before
+   it is called met (AU32 moved it away: the image gained more than the
+   JIT run); the other natives' vectors left alone; the front end's
+   round to start with a study.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
@@ -178,7 +184,13 @@ and push there directly.
    interpreter's loop or a helper can change that code (AU30); after a
    change outside the generated code, compare `nm -C -S` of
    `Vm::run_frames`, `rt_construct` and the like with the binary before,
-   and prefer calling what is already out of line.
+   and prefer calling what is already out of line. The estimate itself
+   moves with the layout alone, by up to half a percent on a row and
+   once 1.1% on the template row whose code had not changed (AU32):
+   read the instructions beside it, and on two or more hardware threads
+   take the time after `main` apart from the run part (the last line of
+   `RENYI_NATIVE_REPORT` against the whole), which is how AU32 found the
+   compile thread draining its queue at the end of a run.
 3. The gates before a commit that touches `crates/` are CLAUDE.md's,
    with the owner's toolchain: `cargo +1.94.1 fmt --check`, `cargo
    +1.94.1 clippy --all-targets -- -D warnings`, `cargo +1.94.1 test`
@@ -2549,6 +2561,36 @@ are in, each measured on one boot against the binary before it:
   `decoded_records_are_built_in_their_block_and_keep_their_refinements`
   in `tests/semantics.rs` (no test had run the decoder's refined
   records before).
+- **AU31**, the owner's answers after AU30 (6836ee0): AU29's sequence
+  on the Cranelift tier next, then the hottest natives in place, each a
+  stage; AU18's goal called met only after a measurement on another
+  boot; the natives that build records from vectors left alone; the
+  front end's round to start with a study.
+- **AU32, the counts in place in Cranelift's code** (this session's last
+  code commit): `branch_on_count`, `big_integer`, `raise_count`,
+  `retain` and `release` in `codegen.rs`, `COUNTED_OR_INTEGER` in
+  `value::layout` for both tiers; a release has one call, shared by the
+  last reference and a big Integer; `rt_retain_at` gone, code format 11.
+  Four builds were measured (two calls per release; every Integer
+  through the helpers; a big Integer's retain through the helper, which
+  made the code larger and slower, since a call in a cold block costs
+  the register allocation of the whole body; one call per release,
+  kept). The machine code +33.6%; the image -4.6% by the estimate and
+  -16% in wall-clock; the JIT row's estimate level within the layout's
+  spread (two builds of the same code measured -0.3% and +0.4%); the
+  self-check -9% to -15% in wall-clock on one to four hardware threads,
+  `strings` -13% to -16%, `records` -4% to -7%. With it, `Worker`'s drop
+  stops the compile thread after the compilation under way: closing the
+  channel had let it compile its whole queue before the process ended
+  (187 to 324 ms after `main` on two hardware threads with AU32's
+  code). Test: the counts test in `tests/native.rs`, with a `maybe
+  Integer` weight so that big Integers are counted in this tier's code.
+
+AU32 moved the ratio of AU18's goal: on one hardware thread the image's
+run part fell 16.4% and the JIT run's 1.8%, so that the JIT run over the
+image went from +8.6% to +27.6% at the best. The JIT run's code is on
+templates for most of the run; what makes Cranelift's code faster
+widens the gap, which the template tier's own speed closes.
 
 The goal of AU18 on this boot, AU29's binary: the run part +9.7% and
 +9.1% at the best, +7.7% and +3.0% at the median, in two measurements
@@ -2558,9 +2600,9 @@ The spread between boots is wider than the margin (AU27's binary
 measured +19.0% and +16.1% in session 11), so a measurement on another
 boot confirms it before the goal is called met.
 
-**What is next in this round, after AU30** (the owner's plans of AU22
-and AU28 are done; the round goes on by the profile, AU12, or closes
-for the front end's round of AU28). The profile of the self-check's
+**What is next in this round, after AU32** (AU31 orders the hottest
+natives in place next; the list below is the one the owner answered,
+kept for its numbers). The profile of the self-check's
 synchronous JIT run on AU29's binary, which AU30 leaves as it is (7.07
 billion instructions): the front end that compiles the checker program
 716 million (10.1%: `check_project_in` 357 million, `compile_project`
@@ -2602,7 +2644,11 @@ allocator about 510 million (7.2%). The candidates:
    goal called met only after a measurement on another boot; the
    natives that build records from vectors left until a profile points
    at them; the front end's round (5) to start with a study, the cache
-   keyed by the sources' hash among its candidates.
+   keyed by the sources' hash among its candidates. Item 2 is AU32;
+   item 1 is the next stage, AU33: `List.at` with a small Integer
+   index, `Text.contains` and `List.contains` in the generated code of
+   both tiers, with the typed natives' path (about 7% of the
+   self-check's instructions) the measure of what it can take.
 
 Each stage is measured by AT1's rule (`tools/measure_size.sh` on the
 release binary, about fifteen minutes now with the fourth row; in a
@@ -4186,7 +4232,7 @@ holds between calls.
   for the corpus and for one file; a bad base), the `diff` call in
   `tests/mcp.rs`, and a unit test of `own_text_hash`.
 
-## Done in session 12 (the counts in place and the decoder's records, in the cloud environment)
+## Done in session 12 (the counts in place on both tiers and the decoder's records, in the cloud environment)
 
 - **Decision AU28**, the owner's answers to the three questions after
   AU27, every recommended option taken: the retain and the release in
@@ -4204,9 +4250,16 @@ holds between calls.
   `json_round_trip` -3.9% in instructions; a test of the decoder's
   refined records, which no test had run; the lesson of its first two
   builds on the inliner (the section "Start here", item 2).
-- The gates with the 1.94.1 toolchain before both commits, the
-  conformance suite and the judges on the template tier among them; CI
-  green on both jobs after every push.
+- **Decision AU31** (6836ee0), the owner's answers after AU30, every
+  recommended option taken.
+- **Decision AU32**: the counts raised and lowered in place in
+  Cranelift's code, four builds measured, code format 11; the compile
+  thread stopped after the compilation under way when the VM is
+  dropped; the self-check -9% to -15% in wall-clock, `strings` -13% to
+  -16%, the image's run part -16%.
+- The gates with the 1.94.1 toolchain before every commit that touched
+  `crates/`, the conformance suite and the judges on the template tier
+  among them; CI green on both jobs after every push.
 
 ## Done in session 11 (the template tier's direct calls, in the cloud environment)
 
