@@ -140,6 +140,24 @@ pub enum TokenKind {
     Error,
 }
 
+impl TokenKind {
+    /// Whether this is the kind given: a reserved word compares its word,
+    /// a kind that carries a text compares it all, any other kind its
+    /// variant alone; the same answer as `==`. The parser's test (decision
+    /// AU36, stage A1): the compiler inlines it, where the derived
+    /// comparison of a kind that carries texts is a call.
+    #[inline]
+    pub fn is(&self, kind: &TokenKind) -> bool {
+        match (self, kind) {
+            (TokenKind::Word(word), TokenKind::Word(other)) => word == other,
+            (_, TokenKind::Text { .. } | TokenKind::RawText(_) | TokenKind::ClauseText(_)) => {
+                self == kind
+            }
+            _ => std::mem::discriminant(self) == std::mem::discriminant(kind),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Token {
     pub kind: TokenKind,
@@ -157,7 +175,7 @@ impl Token {
     }
 
     pub fn is_word(&self, word: Word) -> bool {
-        self.kind == TokenKind::Word(word)
+        matches!(self.kind, TokenKind::Word(found) if found == word)
     }
 
     /// A short name for token dumps.

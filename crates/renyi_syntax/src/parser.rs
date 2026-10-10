@@ -50,7 +50,7 @@ pub fn parse_grant(source: &str) -> Result<Vec<Capability>, Vec<Diagnostic>> {
     let tokens: Vec<Token> = lexed
         .tokens
         .into_iter()
-        .filter(|token| token.kind != TokenKind::Comment)
+        .filter(|token| !matches!(token.kind, TokenKind::Comment))
         .collect();
     let mut parser = Parser {
         src: source,
@@ -85,7 +85,7 @@ fn parse_with(source: &str, declarations: bool) -> Parsed {
         .tokens
         .into_iter()
         .filter(|token| {
-            if token.kind == TokenKind::Comment {
+            if matches!(token.kind, TokenKind::Comment) {
                 comments.push(token.span);
                 false
             } else {
@@ -198,15 +198,16 @@ impl<'s> Parser<'s> {
     /// continuation word (decisions V2 and V12).
     fn peek(&mut self) -> &Token {
         loop {
-            if self.tokens[self.pos].kind != TokenKind::Newline {
+            if !matches!(self.tokens[self.pos].kind, TokenKind::Newline) {
                 return &self.tokens[self.pos];
             }
             let mut next = self.pos;
-            while self.tokens[next].kind == TokenKind::Newline {
+            while matches!(self.tokens[next].kind, TokenKind::Newline) {
                 next += 1;
             }
             let token = &self.tokens[next];
-            let after_comma = self.pos > 0 && self.tokens[self.pos - 1].kind == TokenKind::Comma;
+            let after_comma =
+                self.pos > 0 && matches!(self.tokens[self.pos - 1].kind, TokenKind::Comma);
             if self.nesting > 0 || after_comma || self.continues(token) {
                 self.pos = next;
             } else {
@@ -225,8 +226,8 @@ impl<'s> Parser<'s> {
     fn peek_second(&mut self) -> &Token {
         self.peek();
         let mut index = self.pos + 1;
-        if self.nesting > 0 || self.tokens[self.pos].kind == TokenKind::Comma {
-            while self.tokens[index].kind == TokenKind::Newline {
+        if self.nesting > 0 || matches!(self.tokens[self.pos].kind, TokenKind::Comma) {
+            while matches!(self.tokens[index].kind, TokenKind::Newline) {
                 index += 1;
             }
         }
@@ -234,25 +235,30 @@ impl<'s> Parser<'s> {
     }
 
     fn at(&mut self, kind: &TokenKind) -> bool {
-        &self.peek().kind == kind
+        self.peek().kind.is(kind)
     }
 
     fn at_word(&mut self, word: Word) -> bool {
-        self.peek().kind == TokenKind::Word(word)
+        matches!(self.peek().kind, TokenKind::Word(found) if found == word)
     }
 
+    /// The next significant token, consumed (the end of the file stays).
     fn advance(&mut self) -> Token {
-        self.peek();
-        let token = self.tokens[self.pos].clone();
-        if token.kind != TokenKind::Eof {
+        let token = self.peek().clone();
+        self.bump();
+        token
+    }
+
+    /// `advance` for a caller that drops the token: no copy of it.
+    fn bump(&mut self) {
+        if !matches!(self.peek().kind, TokenKind::Eof) {
             self.pos += 1;
         }
-        token
     }
 
     fn eat(&mut self, kind: &TokenKind) -> bool {
         if self.at(kind) {
-            self.advance();
+            self.bump();
             true
         } else {
             false
@@ -260,21 +266,36 @@ impl<'s> Parser<'s> {
     }
 
     fn eat_word(&mut self, word: Word) -> bool {
-        self.eat(&TokenKind::Word(word))
+        if self.at_word(word) {
+            self.bump();
+            true
+        } else {
+            false
+        }
     }
 
-    fn expect(&mut self, kind: &TokenKind, what: &str) -> ParseResult<Token> {
+    /// The span of the token expected, consumed, or `expected` reported.
+    fn expect(&mut self, kind: &TokenKind, what: &str) -> ParseResult<Span> {
+        let span = self.peek().span;
         if self.at(kind) {
-            Ok(self.advance())
+            self.bump();
+            Ok(span)
         } else {
-            let span = self.peek().span;
             self.expected(what, span, &format!("write {what}"));
             Err(())
         }
     }
 
-    fn expect_word(&mut self, word: Word) -> ParseResult<Token> {
-        self.expect(&TokenKind::Word(word), &format!("`{}`", word.spelling()))
+    fn expect_word(&mut self, word: Word) -> ParseResult<Span> {
+        let span = self.peek().span;
+        if self.at_word(word) {
+            self.bump();
+            Ok(span)
+        } else {
+            let what = format!("`{}`", word.spelling());
+            self.expected(&what, span, &format!("write {what}"));
+            Err(())
+        }
     }
 
     fn describe(&self, span: Span) -> String {
@@ -315,7 +336,7 @@ impl<'s> Parser<'s> {
     /// already reported the token with its own fix.
     fn expected(&mut self, what: &str, span: Span, fix: &str) {
         let token = self.token_at(span);
-        if token.kind == TokenKind::Error {
+        if matches!(token.kind, TokenKind::Error) {
             return;
         }
         let found = self.describe(span);
@@ -379,7 +400,7 @@ impl<'s> Parser<'s> {
 
     /// Consume line breaks at a point where statements may start.
     fn skip_newlines(&mut self) {
-        while self.raw().kind == TokenKind::Newline {
+        while matches!(self.raw().kind, TokenKind::Newline) {
             self.pos += 1;
         }
     }
@@ -410,8 +431,8 @@ impl<'s> Parser<'s> {
             _ => {
                 let span = self.raw().span;
                 // `end if`, `end function`: `end` closes every block by itself
-                let after_end =
-                    self.pos > 0 && self.tokens[self.pos - 1].kind == TokenKind::Word(Word::End);
+                let after_end = self.pos > 0
+                    && matches!(self.tokens[self.pos - 1].kind, TokenKind::Word(Word::End));
                 let fix = match &self.raw().kind {
                     _ if after_end => {
                         "`end` closes a block by itself; drop the word after it".to_string()
@@ -476,6 +497,11 @@ impl<'s> Parser<'s> {
         token.text(self.src).to_string()
     }
 
+    /// The source text a span covers.
+    fn text_at(&self, span: Span) -> String {
+        self.src[span.start..span.end].to_string()
+    }
+
     // ------------------------------------------------------------ module
 
     fn module(&mut self) -> Module {
@@ -490,7 +516,7 @@ impl<'s> Parser<'s> {
         };
         self.skip_newlines();
         if self.at_word(Word::Module) {
-            self.advance();
+            self.bump();
             if let Ok(path) = self.dotted_name() {
                 module.name = path;
             }
@@ -625,14 +651,14 @@ impl<'s> Parser<'s> {
                 TokenKind::Word(
                     word @ (Word::Purpose | Word::Tags | Word::SeeAlso | Word::Deprecated),
                 ) => {
-                    self.advance();
+                    self.bump();
                     if self.expect(&TokenKind::Colon, "`:`").is_err() {
                         self.recover();
                         continue;
                     }
                     let text = match self.raw().kind.clone() {
                         TokenKind::ClauseText(text) => {
-                            self.advance();
+                            self.bump();
                             text
                         }
                         _ => {
@@ -658,12 +684,12 @@ impl<'s> Parser<'s> {
                     let _ = self.end_of_line();
                 }
                 TokenKind::Word(Word::ExposeAsTool) => {
-                    self.advance();
+                    self.bump();
                     docs.expose_as_tool = true;
                     let _ = self.end_of_line();
                 }
                 TokenKind::Word(Word::Example) => {
-                    self.advance();
+                    self.bump();
                     let _ = self.expect(&TokenKind::Colon, "`:`");
                     match self.example(token.span.start) {
                         Ok(example) => docs.examples.push(example),
@@ -784,11 +810,16 @@ impl<'s> Parser<'s> {
     fn method_or_function_name(&mut self) -> ParseResult<Name> {
         let token = self.peek().clone();
         let is_method = matches!(token.kind, TokenKind::Word(word) if !word.is_phrase())
-            && self.tokens.get(self.pos + 1).map(|t| &t.kind) == Some(&TokenKind::LeftParen)
-            && self.tokens.get(self.pos + 2).map(|t| &t.kind)
-                == Some(&TokenKind::Word(Word::SelfValue));
+            && matches!(
+                self.tokens.get(self.pos + 1).map(|t| &t.kind),
+                Some(TokenKind::LeftParen)
+            )
+            && matches!(
+                self.tokens.get(self.pos + 2).map(|t| &t.kind),
+                Some(TokenKind::Word(Word::SelfValue))
+            );
         if is_method {
-            self.advance();
+            self.bump();
             return Ok(Name {
                 text: self.src[token.span.start..token.span.end].to_string(),
                 span: token.span,
@@ -805,7 +836,7 @@ impl<'s> Parser<'s> {
             let token = self.peek().clone();
             let param = match token.kind {
                 TokenKind::Word(Word::SelfValue) => {
-                    self.advance();
+                    self.bump();
                     let name = Name {
                         text: "self".into(),
                         span: token.span,
@@ -911,7 +942,7 @@ impl<'s> Parser<'s> {
             if !self.at(&TokenKind::Comma) || self.parameter_follows_comma() {
                 break;
             }
-            self.advance();
+            self.bump();
         }
         Ok(capabilities)
     }
@@ -921,19 +952,19 @@ impl<'s> Parser<'s> {
     fn parameter_follows_comma(&mut self) -> bool {
         self.peek();
         let mut index = self.pos + 1;
-        while self.tokens[index].kind == TokenKind::Newline {
+        while matches!(self.tokens[index].kind, TokenKind::Newline) {
             index += 1;
         }
-        if self.tokens[index].kind != TokenKind::Identifier {
+        if !matches!(self.tokens[index].kind, TokenKind::Identifier) {
             return false;
         }
         index += 1;
         if self.nesting > 0 {
-            while self.tokens[index].kind == TokenKind::Newline {
+            while matches!(self.tokens[index].kind, TokenKind::Newline) {
                 index += 1;
             }
         }
-        self.tokens[index].kind == TokenKind::Colon
+        matches!(self.tokens[index].kind, TokenKind::Colon)
     }
 
     /// `filesystem.read("data")`: a capability path with an optional scope.
@@ -965,9 +996,9 @@ impl<'s> Parser<'s> {
 
     /// `at most 60 per minute` (decision P2).
     fn budget(&mut self) -> ParseResult<Budget> {
-        let start = self.expect_word(Word::AtMost)?.span;
+        let start = self.expect_word(Word::AtMost)?;
         let count_token = self.advance();
-        if count_token.kind != TokenKind::Integer {
+        if !matches!(count_token.kind, TokenKind::Integer) {
             self.expected(
                 "a whole number after `at most`",
                 count_token.span,
@@ -1001,7 +1032,7 @@ impl<'s> Parser<'s> {
     }
 
     fn for_any(&mut self) -> ParseResult<ForAny> {
-        let start = self.expect_word(Word::ForAny)?.span;
+        let start = self.expect_word(Word::ForAny)?;
         let mut params = vec![self.type_name("a type parameter")?];
         while self.eat(&TokenKind::Comma) {
             params.push(self.type_name("a type parameter")?);
@@ -1107,7 +1138,7 @@ impl<'s> Parser<'s> {
             if self.at_word(Word::Can) {
                 derives.push(self.derive()?);
             } else if self.at_word(Word::Has) {
-                self.advance();
+                self.bump();
                 let field = self.field(true)?;
                 fields.push(field);
                 self.end_of_line()?;
@@ -1145,7 +1176,7 @@ impl<'s> Parser<'s> {
         };
         let mut external_name = None;
         if allow_external_name && self.at_word(Word::As) {
-            self.advance();
+            self.bump();
             let token = self.advance();
             match token.kind {
                 TokenKind::Text { parts, .. } => {
@@ -1200,7 +1231,7 @@ impl<'s> Parser<'s> {
     }
 
     fn derive(&mut self) -> ParseResult<Derive> {
-        let start = self.expect_word(Word::Can)?.span;
+        let start = self.expect_word(Word::Can)?;
         let ability = self.type_name("an ability name")?;
         let mut by = Vec::new();
         if self.eat_word(Word::By) {
@@ -1423,13 +1454,13 @@ impl<'s> Parser<'s> {
         let token = self.peek().clone();
         match token.kind {
             TokenKind::Word(Word::Maybe) => {
-                self.advance();
+                self.bump();
                 let inner = self.type_()?;
                 let span = token.span.join(inner.span());
                 Ok(Type::Maybe(Box::new(inner), span))
             }
             TokenKind::Word(Word::Function) => {
-                self.advance();
+                self.bump();
                 self.expect(&TokenKind::LeftParen, "`(`")?;
                 self.nesting += 1;
                 let mut params = Vec::new();
@@ -1478,7 +1509,7 @@ impl<'s> Parser<'s> {
                         args.push(self.type_()?);
                     } else {
                         while self.at(&TokenKind::Comma) && self.type_follows_comma() {
-                            self.advance();
+                            self.bump();
                             args.push(self.type_()?);
                         }
                     }
@@ -1521,70 +1552,74 @@ impl<'s> Parser<'s> {
     }
 
     fn identifier(&mut self, what: &str) -> ParseResult<Name> {
-        let token = self.peek().clone();
+        // the kind and the span only: no copy of the token (decision AU36)
+        let token = self.peek();
+        let span = token.span;
         match token.kind {
             TokenKind::Identifier => {
-                self.advance();
+                self.bump();
                 Ok(Name {
-                    text: self.text_of(&token),
-                    span: token.span,
+                    text: self.text_at(span),
+                    span,
                 })
             }
             TokenKind::Word(word) if !word.is_phrase() => {
-                self.advance();
+                self.bump();
                 let spelling = word.spelling();
                 self.diagnostics.push(
                     Diagnostic::error(
                         "reserved-word",
                         format!("`{spelling}` is a reserved word and cannot name {what}"),
-                        token.span,
+                        span,
                     )
                     .with_fix(format!("rename it, for example to `{}_value`", spelling)),
                 );
                 Ok(Name {
                     text: spelling.to_string(),
-                    span: token.span,
+                    span,
                 })
             }
             TokenKind::TypeName => {
-                let text = self.text_of(&token);
+                let text = self.text_at(span);
                 self.error(
                     "identifier-shape",
                     format!("`{text}` is PascalCase, but {what} is snake_case"),
-                    token.span,
+                    span,
                     format!("write `{}`", snake_case(&text)),
                 );
                 Err(())
             }
             _ => {
-                self.expected(what, token.span, &format!("write {what}: `total_count`"));
+                self.expected(what, span, &format!("write {what}: `total_count`"));
                 Err(())
             }
         }
     }
 
     fn type_name(&mut self, what: &str) -> ParseResult<TypeName> {
-        let token = self.peek().clone();
+        // the kind and the span only: no copy of the token (decision AU36)
+        let token = self.peek();
+        let span = token.span;
         match token.kind {
             TokenKind::TypeName => {
-                self.advance();
+                self.bump();
                 Ok(TypeName {
-                    text: self.text_of(&token),
-                    span: token.span,
+                    text: self.text_at(span),
+                    span,
                 })
             }
             TokenKind::Identifier => {
-                let text = self.text_of(&token);
+                let text = self.text_at(span);
                 self.error(
                     "type-name-shape",
                     format!("`{text}` is snake_case, but {what} is PascalCase"),
-                    token.span,
+                    span,
                     format!("write `{}`", pascal_case(&text)),
                 );
                 Err(())
             }
             _ => {
-                self.expected(what, token.span, &format!("write {what}: `OrderLine`"));
+                self.expected(what, span, &format!("write {what}: `OrderLine`"));
                 Err(())
             }
         }
@@ -1636,7 +1671,7 @@ impl<'s> Parser<'s> {
     fn statement_kind(&mut self, token: &Token) -> ParseResult<StmtKind> {
         match &token.kind {
             TokenKind::Word(Word::Let) => {
-                self.advance();
+                self.bump();
                 let mutable = self.eat_word(Word::Mutable);
                 let name = self.identifier("a name to bind")?;
                 let ty = if self.eat(&TokenKind::Colon) {
@@ -1655,7 +1690,7 @@ impl<'s> Parser<'s> {
                 })
             }
             TokenKind::Word(Word::Change) => {
-                self.advance();
+                self.bump();
                 let name = self.identifier("the name of a mutable binding")?;
                 self.expect_word(Word::To)?;
                 self.skip_newlines_before_value();
@@ -1666,7 +1701,7 @@ impl<'s> Parser<'s> {
             TokenKind::Word(Word::Match) => self.match_statement(),
             TokenKind::Word(Word::ForEach) => self.for_each(),
             TokenKind::Word(Word::RepeatUntil) => {
-                self.advance();
+                self.bump();
                 let condition = self.expr()?;
                 self.end_of_line()?;
                 let body = self.block(&[Word::End])?;
@@ -1674,7 +1709,7 @@ impl<'s> Parser<'s> {
                 Ok(StmtKind::RepeatUntil { condition, body })
             }
             TokenKind::Word(Word::RunConcurrently) => {
-                self.advance();
+                self.bump();
                 let within = if self.eat_word(Word::Within) {
                     Some(self.expr()?)
                 } else {
@@ -1686,7 +1721,7 @@ impl<'s> Parser<'s> {
                 Ok(StmtKind::RunConcurrently { within, body })
             }
             TokenKind::Word(Word::Return) => {
-                self.advance();
+                self.bump();
                 // `return` alone ends the line; a value shares the line with it
                 if self.statement_ends_here() {
                     return Ok(StmtKind::Return(None));
@@ -1694,7 +1729,7 @@ impl<'s> Parser<'s> {
                 Ok(StmtKind::Return(Some(self.expr()?)))
             }
             TokenKind::Word(Word::Fail) => {
-                self.advance();
+                self.bump();
                 if self.eat_word(Word::With) {
                     Ok(StmtKind::Fail(Some(self.expr()?)))
                 } else {
@@ -1702,24 +1737,24 @@ impl<'s> Parser<'s> {
                 }
             }
             TokenKind::Word(Word::Crash) => {
-                self.advance();
+                self.bump();
                 self.expect_word(Word::With)?;
                 Ok(StmtKind::Crash(self.expr()?))
             }
             TokenKind::Word(Word::Break) => {
-                self.advance();
+                self.bump();
                 Ok(StmtKind::Break)
             }
             TokenKind::Word(Word::Continue) => {
-                self.advance();
+                self.bump();
                 Ok(StmtKind::Continue)
             }
             TokenKind::Word(Word::Ignore) => {
-                self.advance();
+                self.bump();
                 Ok(StmtKind::Ignore(self.expr()?))
             }
             TokenKind::Word(Word::Check) => {
-                self.advance();
+                self.bump();
                 Ok(StmtKind::Check(self.expr()?))
             }
             TokenKind::Word(Word::Until) | TokenKind::Word(Word::Repeat) => {
@@ -1838,7 +1873,7 @@ impl<'s> Parser<'s> {
                 otherwise = Some(self.block(&[Word::End])?);
                 break;
             }
-            let start = self.expect_word(Word::When)?.span.start;
+            let start = self.expect_word(Word::When)?.start;
             let pattern = self.pattern()?;
             let guard = if self.eat_word(Word::Where) {
                 Some(self.expr()?)
@@ -1894,7 +1929,7 @@ impl<'s> Parser<'s> {
             let range = self.range()?;
             return Ok((bindings, range));
         }
-        let at_in = self.expect_word(Word::In)?.span;
+        let at_in = self.expect_word(Word::In)?;
         let from = self.peek().span;
         let source = self.or_expr()?;
         if matches!(source.kind, ExprKind::Range { .. }) {
@@ -1954,7 +1989,7 @@ impl<'s> Parser<'s> {
                         self.element_after_comma(comma, &TokenKind::RightParen, "a field")?;
                     }
                     self.nesting -= 1;
-                    end = self.expect(&TokenKind::RightParen, "`)`")?.span;
+                    end = self.expect(&TokenKind::RightParen, "`)`")?;
                 }
                 Ok(Pattern::Variant {
                     span: name.span.join(end),
@@ -1963,16 +1998,16 @@ impl<'s> Parser<'s> {
                 })
             }
             TokenKind::Word(Word::Nothing) => {
-                self.advance();
+                self.bump();
                 Ok(Pattern::Nothing(token.span))
             }
             TokenKind::Word(wrapper @ (Word::Some | Word::Success | Word::Failure)) => {
-                self.advance();
+                self.bump();
                 self.expect(&TokenKind::LeftParen, "`(`")?;
                 self.nesting += 1;
                 let inner = self.pattern()?;
                 self.nesting -= 1;
-                let end = self.expect(&TokenKind::RightParen, "`)`")?.span;
+                let end = self.expect(&TokenKind::RightParen, "`)`")?;
                 let span = token.span.join(end);
                 Ok(match wrapper {
                     Word::Some => Pattern::Some(Box::new(inner), span),
@@ -1990,7 +2025,7 @@ impl<'s> Parser<'s> {
                             | TokenKind::Word(Word::Function)
                     )
                 {
-                    self.advance();
+                    self.bump();
                     let ty = self.type_()?;
                     let span = name.span.join(ty.span());
                     return Ok(Pattern::Typed { name, ty, span });
@@ -2027,7 +2062,7 @@ impl<'s> Parser<'s> {
     fn expr(&mut self) -> ParseResult<Expr> {
         let mut value = self.or_expr()?;
         while self.at_word(Word::Otherwise) {
-            self.advance();
+            self.bump();
             let fallback = self.outcome()?;
             let span = value.span.join(fallback.span());
             value = Expr {
@@ -2046,7 +2081,7 @@ impl<'s> Parser<'s> {
         let token = self.peek().clone();
         match token.kind {
             TokenKind::Word(Word::Fail) => {
-                self.advance();
+                self.bump();
                 if self.eat_word(Word::With) {
                     let value = self.or_expr()?;
                     let span = token.span.join(value.span);
@@ -2056,7 +2091,7 @@ impl<'s> Parser<'s> {
                 }
             }
             TokenKind::Word(Word::Return) => {
-                self.advance();
+                self.bump();
                 if self.statement_ends_here() || self.at_word(Word::End) {
                     Ok(Outcome::Return(None, token.span))
                 } else {
@@ -2066,18 +2101,18 @@ impl<'s> Parser<'s> {
                 }
             }
             TokenKind::Word(Word::Crash) => {
-                self.advance();
+                self.bump();
                 self.expect_word(Word::With)?;
                 let value = self.or_expr()?;
                 let span = token.span.join(value.span);
                 Ok(Outcome::Crash(value, span))
             }
             TokenKind::Word(Word::Break) => {
-                self.advance();
+                self.bump();
                 Ok(Outcome::Break(token.span))
             }
             TokenKind::Word(Word::Continue) => {
-                self.advance();
+                self.bump();
                 Ok(Outcome::Continue(token.span))
             }
             _ => Ok(Outcome::Value(self.or_expr()?)),
@@ -2087,7 +2122,7 @@ impl<'s> Parser<'s> {
     fn or_expr(&mut self) -> ParseResult<Expr> {
         let mut left = self.and_expr()?;
         while self.at_word(Word::Or) {
-            self.advance();
+            self.bump();
             let right = self.and_expr()?;
             left = binary(BinaryOp::Or, left, right);
         }
@@ -2097,7 +2132,7 @@ impl<'s> Parser<'s> {
     fn and_expr(&mut self) -> ParseResult<Expr> {
         let mut left = self.not_expr()?;
         while self.at_word(Word::And) {
-            self.advance();
+            self.bump();
             let right = self.not_expr()?;
             left = binary(BinaryOp::And, left, right);
         }
@@ -2128,7 +2163,7 @@ impl<'s> Parser<'s> {
             TokenKind::Word(Word::IsAtLeast) => BinaryOp::IsAtLeast,
             _ => return Ok(left),
         };
-        self.advance();
+        self.bump();
         let right = self.with_expr()?;
         Ok(binary(op, left, right))
     }
@@ -2136,7 +2171,7 @@ impl<'s> Parser<'s> {
     fn with_expr(&mut self) -> ParseResult<Expr> {
         let base = self.additive()?;
         if self.at_word(Word::With) {
-            self.advance();
+            self.bump();
             let mut updates = Vec::new();
             loop {
                 let name = self.identifier("a field name")?;
@@ -2174,7 +2209,7 @@ impl<'s> Parser<'s> {
                 TokenKind::Minus => BinaryOp::Subtract,
                 _ => return Ok(left),
             };
-            self.advance();
+            self.bump();
             let right = self.multiplicative()?;
             left = binary(op, left, right);
         }
@@ -2189,7 +2224,7 @@ impl<'s> Parser<'s> {
                 TokenKind::Word(Word::Remainder) => BinaryOp::Remainder,
                 _ => return Ok(left),
             };
-            self.advance();
+            self.bump();
             let right = self.power()?;
             left = binary(op, left, right);
         }
@@ -2198,7 +2233,7 @@ impl<'s> Parser<'s> {
     fn power(&mut self) -> ParseResult<Expr> {
         let base = self.postfix()?;
         if self.at_word(Word::Power) {
-            self.advance();
+            self.bump();
             let exponent = self.power()?;
             return Ok(binary(BinaryOp::Power, base, exponent));
         }
@@ -2209,7 +2244,7 @@ impl<'s> Parser<'s> {
         let mut expr = self.primary()?;
         loop {
             if self.at(&TokenKind::Dot) {
-                self.advance();
+                self.bump();
                 let token = self.advance();
                 let name = match token.kind {
                     TokenKind::Member => Name {
@@ -2266,11 +2301,11 @@ impl<'s> Parser<'s> {
         self.nesting += 1;
         let mut args = Vec::new();
         while !self.at(&TokenKind::RightParen) {
-            let named =
-                self.at(&TokenKind::Identifier) && self.peek_second().kind == TokenKind::Colon;
+            let named = self.at(&TokenKind::Identifier)
+                && matches!(self.peek_second().kind, TokenKind::Colon);
             let name = if named {
                 let name = self.identifier("an argument name")?;
-                self.advance();
+                self.bump();
                 Some(name)
             } else {
                 None
@@ -2296,21 +2331,21 @@ impl<'s> Parser<'s> {
         let span = token.span;
         match token.kind {
             TokenKind::Integer => {
-                self.advance();
+                self.bump();
                 Ok(Expr {
                     kind: ExprKind::Integer(self.text_of(&token)),
                     span,
                 })
             }
             TokenKind::Decimal => {
-                self.advance();
+                self.bump();
                 Ok(Expr {
                     kind: ExprKind::Decimal(self.text_of(&token)),
                     span,
                 })
             }
             TokenKind::Minus => {
-                self.advance();
+                self.bump();
                 let number = self.advance();
                 match number.kind {
                     TokenKind::Integer => Ok(Expr {
@@ -2333,7 +2368,7 @@ impl<'s> Parser<'s> {
                 }
             }
             TokenKind::Text { parts, block } => {
-                self.advance();
+                self.bump();
                 let mut pieces = Vec::new();
                 for part in parts {
                     match part {
@@ -2350,14 +2385,14 @@ impl<'s> Parser<'s> {
                 })
             }
             TokenKind::RawText(text) => {
-                self.advance();
+                self.bump();
                 Ok(Expr {
                     kind: ExprKind::RawText(text),
                     span,
                 })
             }
             TokenKind::Word(Word::Raw) => {
-                self.advance();
+                self.bump();
                 let token = self.advance();
                 match token.kind {
                     TokenKind::RawText(text) => Ok(Expr {
@@ -2375,28 +2410,28 @@ impl<'s> Parser<'s> {
                 }
             }
             TokenKind::Word(Word::True) => {
-                self.advance();
+                self.bump();
                 Ok(Expr {
                     kind: ExprKind::Boolean(true),
                     span,
                 })
             }
             TokenKind::Word(Word::False) => {
-                self.advance();
+                self.bump();
                 Ok(Expr {
                     kind: ExprKind::Boolean(false),
                     span,
                 })
             }
             TokenKind::Word(Word::Nothing) => {
-                self.advance();
+                self.bump();
                 Ok(Expr {
                     kind: ExprKind::Nothing,
                     span,
                 })
             }
             TokenKind::Word(Word::SelfValue) => {
-                self.advance();
+                self.bump();
                 Ok(Expr {
                     kind: ExprKind::SelfValue,
                     span,
@@ -2425,18 +2460,18 @@ impl<'s> Parser<'s> {
                 })
             }
             TokenKind::LeftParen => {
-                self.advance();
+                self.bump();
                 self.nesting += 1;
                 let inner = self.expr()?;
                 self.nesting -= 1;
-                let end = self.expect(&TokenKind::RightParen, "`)`")?.span;
+                let end = self.expect(&TokenKind::RightParen, "`)`")?;
                 Ok(Expr {
                     kind: ExprKind::Paren(Box::new(inner)),
                     span: span.join(end),
                 })
             }
             TokenKind::LeftBracket => {
-                self.advance();
+                self.bump();
                 self.nesting += 1;
                 let mut items = Vec::new();
                 while !self.at(&TokenKind::RightBracket) {
@@ -2448,14 +2483,14 @@ impl<'s> Parser<'s> {
                     self.element_after_comma(comma, &TokenKind::RightBracket, "an item")?;
                 }
                 self.nesting -= 1;
-                let end = self.expect(&TokenKind::RightBracket, "`]`")?.span;
+                let end = self.expect(&TokenKind::RightBracket, "`]`")?;
                 Ok(Expr {
                     kind: ExprKind::List(items),
                     span: span.join(end),
                 })
             }
             TokenKind::LeftBrace => {
-                self.advance();
+                self.bump();
                 self.nesting += 1;
                 let mut entries = Vec::new();
                 while !self.at(&TokenKind::RightBrace) {
@@ -2470,7 +2505,7 @@ impl<'s> Parser<'s> {
                     self.element_after_comma(comma, &TokenKind::RightBrace, "an entry")?;
                 }
                 self.nesting -= 1;
-                let end = self.expect(&TokenKind::RightBrace, "`}`")?.span;
+                let end = self.expect(&TokenKind::RightBrace, "`}`")?;
                 Ok(Expr {
                     kind: ExprKind::Map(entries),
                     span: span.join(end),
@@ -2492,7 +2527,7 @@ impl<'s> Parser<'s> {
     }
 
     fn range(&mut self) -> ParseResult<Expr> {
-        let start = self.expect_word(Word::From)?.span;
+        let start = self.expect_word(Word::From)?;
         let from = self.additive()?;
         self.expect_word(Word::To)?;
         let to = self.additive()?;
@@ -2513,7 +2548,7 @@ impl<'s> Parser<'s> {
     }
 
     fn if_expr(&mut self) -> ParseResult<Expr> {
-        let start = self.expect_word(Word::If)?.span;
+        let start = self.expect_word(Word::If)?;
         let mut branches = Vec::new();
         loop {
             let condition = self.expr()?;
@@ -2529,7 +2564,7 @@ impl<'s> Parser<'s> {
             self.skip_newlines_in_expr();
             let otherwise = self.outcome()?;
             self.skip_newlines_in_expr();
-            let end = self.expect_word(Word::End)?.span;
+            let end = self.expect_word(Word::End)?;
             return Ok(Expr {
                 kind: ExprKind::If {
                     branches,
@@ -2547,7 +2582,7 @@ impl<'s> Parser<'s> {
     }
 
     fn match_expr(&mut self) -> ParseResult<Expr> {
-        let start = self.expect_word(Word::Match)?.span;
+        let start = self.expect_word(Word::Match)?;
         let subject = self.expr()?;
         let mut arms = Vec::new();
         let mut otherwise = None;
@@ -2571,7 +2606,7 @@ impl<'s> Parser<'s> {
                 }
                 break;
             }
-            let arm_start = self.expect_word(Word::When)?.span.start;
+            let arm_start = self.expect_word(Word::When)?.start;
             let pattern = self.pattern()?;
             let guard = if self.eat_word(Word::Where) {
                 Some(self.expr()?)
@@ -2590,7 +2625,7 @@ impl<'s> Parser<'s> {
                 span,
             });
         }
-        let end = self.expect_word(Word::End)?.span;
+        let end = self.expect_word(Word::End)?;
         Ok(Expr {
             kind: ExprKind::Match {
                 subject: Box::new(subject),
@@ -2602,7 +2637,7 @@ impl<'s> Parser<'s> {
     }
 
     fn query(&mut self) -> ParseResult<Expr> {
-        let start = self.expect_word(Word::ForEach)?.span;
+        let start = self.expect_word(Word::ForEach)?;
         let mut sources = Vec::new();
         loop {
             let (bindings, source) = self.loop_source()?;
@@ -2630,27 +2665,27 @@ impl<'s> Parser<'s> {
         };
         let terminal = match &self.peek().kind {
             TokenKind::Word(Word::Collect) => {
-                self.advance();
+                self.bump();
                 QueryTerminal::Collect(self.expr()?)
             }
             TokenKind::Word(Word::Sum) => {
-                self.advance();
+                self.bump();
                 QueryTerminal::Sum(self.expr()?)
             }
             TokenKind::Word(Word::Count) => {
-                self.advance();
+                self.bump();
                 QueryTerminal::Count
             }
             TokenKind::Word(Word::First) => {
-                self.advance();
+                self.bump();
                 QueryTerminal::First
             }
             TokenKind::Word(Word::Any) => {
-                self.advance();
+                self.bump();
                 QueryTerminal::Any(self.expr()?)
             }
             TokenKind::Word(Word::All) => {
-                self.advance();
+                self.bump();
                 QueryTerminal::All(self.expr()?)
             }
             _ if group_by.is_some() => QueryTerminal::None,

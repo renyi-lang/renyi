@@ -2908,7 +2908,8 @@ larger without any change on the Renyi side.
 
 **The owner's answers (decision AU36)** and the stages they set
 (stage 1 is in, decision AU37: `check compiler/bodies.ry` -44% in
-instructions and -35% in time, the self-check's estimate -2.4%):
+instructions and -35% in time, the self-check's estimate -2.4%; stage 2
+too, decision AU38: the same check -23% more, -57% since AU34):
 1. A0, every file parsed once by the Rust front end: the resolver
    (`renyi_package::resolve`, which parses each file only to read its
    imports, `imports_of`) keeps the trees, `check_project_in` takes

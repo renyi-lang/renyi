@@ -5104,3 +5104,40 @@ against 68.9 (4.6) and 62.2 (5.1; `parse --json` itself is unchanged,
 282.4 million instructions on both binaries, the difference noise);
 compiling 1,107.9 against 104.7 (10.6) and 89.1 (12.4). The stage stays
 by AU1's rule.
+
+**AU38. The Rust parser's token comparisons by variant (stage A1 of
+AU36).** A token kind carries texts in three of its variants, so its
+derived comparison is a function the compiler does not inline, and
+`peek` called it at every look for a line break: `TokenKind::eq` was 18%
+of `renyi check compiler/bodies.ry` on AU34's binary. The parser now
+tests a kind with `matches!` wherever the kind compared is known (`peek`,
+`peek_second`, `skip_newlines`, the line ends, the parameter test) and
+through `TokenKind::is` where it is given (`at`, `eat`, `expect`): an
+inlined comparison with the answer of `==` (a reserved word compares its
+word, a kind that carries a text compares it all, any other kind its
+variant alone); `at_word`, `eat_word` and `Token::is_word` match the word
+in place; `advance` keeps its clone of the token for the callers that
+use it, and the 74 that drop it call `bump`, which only moves the
+cursor; `expect` and `expect_word` answer the span, all their callers
+used, where they cloned the token; `identifier` and `type_name`, the most
+frequent, read the kind and the span where they lie. The lexer's two
+comparisons of a kind (the token pushed against `raw`, the dot before a
+member) are `matches!` too. Measured on one boot against A0's binary
+(AU37), callgrind and the best of nine alternating runs: `renyi check
+compiler/bodies.ry` 242.9 to 186.8 million instructions (-23.1%), 47.0
+to 40.5 ms (-13.8%); `check compiler/checker.ry` 371.3 to 286.7 million
+(-22.8%), 66.8 to 60.0 ms (-10.1%); `compile compiler/checker.ry` 801.6
+to 716.7 million (-10.6%), 129.7 to 126.4 ms (-2.5%); an empty program's
+check 11.2 to 8.6 million (-23.7%: the library's declaration files are
+parsed too), 6.9 to 6.5 ms; `run examples/hello.ry` 13.8 to 11.1
+million (-19.4%), 6.7 to 6.4 ms; the thirty examples checked one at a
+time 180.5 to 172.4 ms summed (-4.5%). AT1's rows: the synchronous JIT
+run 6,561.9 to 6,478.6 million instructions and 9,075.1 to 8,890.5
+million estimated cycles (-2.03%), the templates -0.96%, the interpreter
+-0.56%, the image 7,026.1 to 7,044.5 (+0.26%, the same instructions: the
+layout of the binary, which AU32 saw move a row by half a percent). Since
+AU34's binary, `check compiler/bodies.ry` -57% in instructions. The
+ratio as AU36 (iii) records it: checking 773.3 ms against AU34's Rust
+front end's 69.9 (11.1 times, the gate) and this binary's 41.3 (18.7);
+parsing 317.6 against 72.1 (4.4) and 59.5 (5.3); compiling 1,149.9
+against 99.5 (11.6) and 84.2 (13.7). The stage stays by AU1's rule.

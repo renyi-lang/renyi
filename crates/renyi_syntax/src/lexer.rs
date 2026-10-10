@@ -177,7 +177,7 @@ impl<'s> Lexer<'s> {
     // ----------------------------------------------------------- helpers
 
     fn push(&mut self, kind: TokenKind, start: usize, end: usize) {
-        self.raw_pending = kind == TokenKind::Word(Word::Raw);
+        self.raw_pending = matches!(kind, TokenKind::Word(Word::Raw));
         self.tokens.push(Token::new(kind, Span::new(start, end)));
     }
 
@@ -240,7 +240,7 @@ impl<'s> Lexer<'s> {
     }
 
     fn previous_is_adjacent_dot(&self, start: usize) -> bool {
-        matches!(self.tokens.last(), Some(token) if token.kind == TokenKind::Dot && token.span.end == start)
+        matches!(self.tokens.last(), Some(token) if matches!(token.kind, TokenKind::Dot) && token.span.end == start)
     }
 
     // ----------------------------------------------------------- words
