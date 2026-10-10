@@ -2336,7 +2336,7 @@ JIT run takes 1,897 ms, the image 1,335 (+42%, against the 15% asked).
    and go on in its loop, and the self-check makes 5.4 million calls;
    the hot helpers, the field read, the retain and the release, stay
    calls; the templates alone run 4% below the interpreter in
-   wall-clock and 15% below it by the estimate, which models no TLB):
+   wall-clock and 16% below it by the estimate, which models no TLB):
    sequences in place of the hottest helper calls (the field read
    through the site's cache, as the Cranelift tier reads it; the retain
    and the release of the common tags; a comparison of two small
@@ -3878,7 +3878,9 @@ holds between calls.
   format 7, the native test); the synchronous JIT run -6.2% by the estimate,
   the self-check -1.3% to -4.8% in wall-clock on one hardware thread,
   -3.1% on two, neutral on four; the goal of AU18 (within 15% of the
-  image on one thread) not reached, at +42%.
+  image on one thread) not reached, at +42%. Commit bbea69b, CI green
+  (run 76); the earlier commits of the session (aaa44f6, da926cc,
+  30db0f3, d8ee092, 42d7ed5) green too.
 - **The owner's question on the execution model** answered with the
   numbers of this machine (the section "The execution model, as the
   owner asked on 2026-10-09").
