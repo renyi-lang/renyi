@@ -4203,3 +4203,165 @@ stage stays by the rule's first clause; the estimate of AU16 (three to
 six percent) is met on the interpreter and on the image and not on the
 cold JIT run, where the compile thread's work is a sixth of the total.
 (user)
+
+**AU18. The owner's answers of 2026-10-09 on the design of the template
+tier (AU16): (i) the machine code is emitted by a small x86-64 assembler
+of the VM's own, each op a fixed sequence that keeps every value boxed
+on the VM's stack and calls the helpers of the Cranelift tier for
+everything but the trivial ops, over copy-and-patch stencils (the same
+code for a build step and relocations more) and over Cranelift stripped
+of its optimizations (half the cost at best, AU14, fifty times short of
+what compiling at the first call needs); (ii) a code object gets its
+template code at its first call, synchronously, on every machine alike
+(microseconds per code object), over a small factor on the interpreter
+and over the whole program at load; (iii) the template code counts the
+hotness itself, at its entry and at its loop headers, and asks for the
+promotion to the Cranelift tier with today's factors (100 on the compile
+thread, 8000 synchronously where there is none), the Cranelift code
+replacing the template entry at the next call, images and the cache
+staying the Cranelift tier's, over a promotion only beside a compile
+thread and over no promotion at run time; (iv) x86-64 in this round
+(Linux, macOS and Windows: the System V and the Windows x64 conventions
+both), aarch64 as a later stage with the sequences shared, the other
+targets keeping the interpreter and the Cranelift tier.** The design as
+put to the owner (the handoff's section "The template tier: the design
+study"): the analysis of `infer.rs` settles the code object (the static
+depth, the handled regions, the block starts; one it rejects stays with
+the interpreter); the frame is in the interpreter's layout at every op
+(the locals, then the operands, the stack's length `base + locals +
+depth` known statically as AT4 has it), so there is no hand-back and an
+entry at a loop header fills no registers and refuses nothing; the
+function has the `Entry` signature of a trampoline (the VM, the base,
+the pc; a status out: `RETURNED` with the value on the caller's stack,
+`INTERRUPT`); the trivial ops are inline (`Const`, `Nothing`, `Load`,
+`LoadMove`, `Store`, `Pop`, `Dup`, the jumps, the tag tests, the Boolean
+branches), every other op a call to the helper the Cranelift tier calls
+for boxed operands followed by the status check (`CONTINUE` falls
+through, `FAILURE` lands on the floor of the innermost handled region
+through `rt_settle_handler` or leaves through `rt_unhandled`, any other
+status leaves the function); calls go through `rt_call`, `rt_call_typed`
+(with the mask of `borrowed_operands`) and `rt_call_pure`; the code
+holds no address (the helpers, the constants and the direct table
+through `NativeState`, AS1), keeps the VM, the base and the stack's
+pointer in callee-saved registers and reloads the pointer after a helper
+that may grow the stack; every native test and the conformance suite run
+on the tier too (`RENYI_NATIVE_TIER=template` forbids the promotion);
+the measure is AT1's rows with the wall-clock of the self-check on one,
+two and four hardware threads beside them, the goal the self-check on
+one thread within 15% of the image row. The measurement that framed the
+questions, on AU17's binary: the cold JIT run against the image
+(`tools/bench.py`, best of five) on one hardware thread 1,647 to 1,213
+ms (+36%; `primes` +34%, `records` +26%), on two 1,473 to 1,221 (+21%),
+on four 1,467 to 1,214 (+21%); on one thread 54 code objects of the
+self-check are compiled (factor 8000) and 510 called ones stay cold,
+with 176,735 calls from generated code to the interpreter; the
+interpreter's dispatch (`run_frames` less the helpers) is 46% of its
+instructions, which is what the tier removes while it keeps the ops'
+work, so template code should run at about two thirds of the
+interpreter's instructions on boxed code; the short programs of an agent
+(7 to 25 ms, nearly all the front end) are not what the tier is for, the
+runs from a tenth of a second upwards on the machine with one thread
+are. (user)
+
+**AU19. The template tier as built (decisions AU16 and AU18; code format
+6, image format 7): `crates/renyi_vm/src/native/template/`. `x64.rs`, a
+small x86-64 assembler: the thirty-six instruction forms the sequences
+need, labels with relative jumps patched at the end, so that the code
+holds no address, and the two conventions (System V: the arguments in
+rdi, rsi, rdx, rcx, r8, r9; Windows x64: rcx, rdx, r8, r9, a shadow
+space of 32 bytes and the arguments past the fourth above it), with unit
+tests of the encodings and a dump of every form for `objdump`. `mod.rs`,
+the sequence per op: the frame in the interpreter's layout at every op,
+every value boxed on the VM's stack; the VM, the frame's base, the
+frame's address, the helpers' table, the base in bytes and the address
+of the code object's count in callee-saved registers; the trivial ops
+inline (`Const`, its three words copied from the code's table with a
+retain unless plain or borrowed; `Nothing`; `Load` and `LoadMove` with
+the borrowing of AU2, AU13 and AU17; `Store`, `Pop` and `Dup` with the
+release or the retain through the helpers, as AT6 has it; the jumps; the
+tag tests of `JumpIfAbsent` and `JumpIfFailure`; the Boolean branches
+with the interpreter's crash on another value), every other op a call to
+the helper the Cranelift tier calls for boxed operands; the stack's
+length written after every op that changes the depth. The statuses as
+the interpreter's arms treat them: a call, a construction, an update and
+an expired deadline settle a failure (the landing of the innermost
+handled region through `rt_settle_handler`, else `rt_unhandled`), while
+an operator, a field, a text, a global, a range and an iteration push a
+failure as a value and leave only on an interrupt (the Cranelift tier
+sends such a status to its exit as an interrupt, which no program has
+met). The tiers: `Jit::entry` gives the Cranelift code when it is ready,
+else the template code, made at the first call and packed into one
+executable chunk (`CodeArena::place_packed`: the pages a template lies
+on writable while it is written, executable again before anything runs);
+the template code counts the ops it runs as the interpreter counts them,
+a basic block's length added to the code object's count as the block
+starts, so that the same code objects are compiled at the same points as
+before; past the threshold (the size times 100 with the compile thread,
+8000 without) a back edge calls `rt_osr`, which asks for the Cranelift
+code (compiled on the spot, or handed to the compile thread) and enters
+it at the loop header when it is ready and has the entry, the frame
+being in the layout the interpreter hands over; when it does not, the
+count starts again. `RENYI_NATIVE_TIER=template` keeps everything on
+templates, `=cranelift` turns the tier off; other targets than x86-64
+keep the interpreter and the Cranelift tier. A defect of the Cranelift
+tier met in the review of the promotion: a frame handed back to the
+interpreter inside a handled region lost the region (the generated code
+keeps the regions static, the interpreter on `Vm::handlers`), so a
+failure after the hand-back crashed as unhandled where the interpreter
+lands on the fallback; a deopt point now carries the regions open at it,
+which `rt_deopt` pushes over the frame's floor (image format 7).** The
+tests: `tests/template.rs` (four programs on templates alone against the
+interpreter: every source of a loop, every kind of call, updates in
+place, a failure handled and passed on, a crash located, a recursion
+past the depth of native frames), `tests/promotion.rs` (the factor 1,
+synchronous, so that loops and calls are promoted at once: three code
+objects on templates, three compiled, two running loops handed over),
+`tests/native.rs` (the hand-back inside a handled region), the
+conformance suite and the judges with `RENYI_NATIVE_TIER=template`, and
+the self-check's output equal on templates. Not run: the Windows x64
+convention, since neither this container nor CI has a Windows machine;
+it was checked by reading (the argument registers, the shadow space, the
+arguments past the fourth, the alignment, the callee-saved registers the
+code uses and those it never touches), and its first run is `cargo test`
+on the owner's machine, where `tests/template.rs` forces the tier. No
+unwind tables are registered for template code, as for the Cranelift
+tier's, so a panic inside a helper called from either aborts the
+process. Two corrections came from the first measurement, both in the
+design above: the first build added the whole code object's size to its
+count at every entry, which made short functions that return early look
+hot (on one hardware thread 88 code objects compiled where AU17's binary
+compiled 54, 252 ms of Cranelift where it took 140, the self-check 6.6%
+slower; on four 9.7%); and it placed every template in fresh pages of
+its own, 564 mappings with every function at the same page offset, which
+cachegrind does not see (it models no TLB) and which made the self-check
+6.8% slower on one thread although the estimate fell 5.9%. Measured
+against AU17's binary (d8ee092), both on one boot of a machine slower
+than the one of AU17's entry by about 15%. By AT1's estimate under
+cachegrind: the synchronous JIT run (`RENYI_NATIVE_SYNC`, the path of
+one hardware thread, which the compile thread's timing does not make
+vary) 13.99 to 13.12 billion cycles (-6.2%; 9.87 to 9.45 billion
+instructions); the template code alone (`RENYI_NATIVE_TIER=template`)
+14.73 against the interpreter's 17.55 (-16%; 11.12 against 12.60 billion
+instructions); the interpreter unchanged (17.55 to 17.55); the image
+9.71 to 9.78 and the run from the cache 10.68 to 10.74 (+0.8% and +0.6%,
+the instruction misses up with the binary's layout, the machine code the
+same); the default JIT run, with the compile thread, is no longer a
+measure under cachegrind, whose serialized threads gave AU17's binary
+12.94, 14.40 and 16.70 billion instructions in three runs. In
+wall-clock, the two binaries alternating: on one hardware thread the
+self-check -1.3% (best of fifteen) and -4.8% (best of seven, 1,992 to
+1,897 ms), `strings` -3.0%, `json_round_trip` -1.9%, `primes` -0.6%,
+`records` +0.2%; on two -3.1%, the benchmarks within 2%; on four the
+median of twenty-five runs -1.1% and the best +1.9%, which is noise, the
+benchmarks within 2%. The stage stays by AU1's rule (the cold run's
+estimate falls) and by the owner's measure (no regression on any count
+of hardware threads); the goal of AU18 is not reached: on one hardware
+thread the JIT run takes 1,897 ms against the image's 1,335 (+42%, where
+AU18 asked for 15%), and the templates alone 2,248 against the
+interpreter's 2,347 (-4.2% in wall-clock where the estimate says -16%).
+Where the gain goes: every call from template code goes through
+`rt_call`, `call_from_stack`, `run_top_frame`, `Jit::entry` and
+`run_generated`, where the interpreter's own calls push a frame and go
+on in its loop, and the self-check makes 5.4 million calls; the hot
+helpers (the field read, the retain, the release) stay calls; the
+follow-ups that address both are put to the owner. (user)

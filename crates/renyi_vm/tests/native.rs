@@ -737,3 +737,45 @@ end
     assert_eq!(outcome, RunOutcome::Finished);
     assert_eq!(printed, "6 1 -\n");
 }
+
+#[test]
+fn a_hand_back_inside_a_handled_region_keeps_the_region() {
+    // decision AU18: the generated code keeps the handled regions static
+    // and the interpreter on `Vm::handlers`, so a frame handed back inside
+    // one (here at an overflow of the machine word) gets the open regions
+    // pushed by the hand-back; the call that fails after it lands on the
+    // fallback as on the interpreter, where it crashed as unhandled before
+    let source = r#"module demo
+  purpose: An overflow hands the frame back inside a handled region, then a failure in it.
+
+import std.console
+
+type Problem is one of
+  purpose: The failure of a step.
+  Bad
+end
+
+function risky(amount: Integer) returns Integer or fails with Problem
+  purpose: Fail on a positive amount.
+
+  if amount is greater than 0 then fail with Bad end
+  return amount
+end
+
+function guarded(big: Integer) returns Integer
+  purpose: The product overflows the machine word inside the region, then the call fails.
+
+  let value be risky(big * big) otherwise 7
+  return value
+end
+
+public function main() needs console
+  purpose: Print the fallback.
+
+  console.print("{guarded(4000000000)}")
+end
+"#;
+    let (outcome, printed) = both_ways(source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(printed, "7\n");
+}

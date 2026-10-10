@@ -13,7 +13,8 @@
 //! program in the binary encoding of `binary.rs` (decision AT3), then
 //! per code object a presence byte and, when present, where its body and
 //! its trampoline lie in the code section, the loop headers and the
-//! deopt points; then the section's offset and length, padding to
+//! deopt points (each with the handled regions open there, format 7);
+//! then the section's offset and length, padding to
 //! `SECTION_ALIGN`, and the section itself, every body and trampoline
 //! sixteen-aligned in it. The section is mapped executable straight from
 //! the file where the system allows it (decision AT5), so that a run
@@ -36,8 +37,9 @@ use crate::extension::Registry;
 pub const MAGIC: &[u8; 4] = b"RYI\0";
 
 /// The layout of the file: bumped when it changes. 3: the code section
-/// (decision AT5).
-pub const IMAGE_FORMAT: u32 = 6;
+/// (decision AT5); 7: the handled regions of a deopt point (decision
+/// AU18).
+pub const IMAGE_FORMAT: u32 = 7;
 
 /// The alignment of the code section in the file: a multiple of every
 /// page size the toolchain runs on (16 KB on Apple silicon), so that the
@@ -57,7 +59,7 @@ const PART_ALIGN: usize = 16;
 /// 3: `rt_retain_at` among the helpers (decision AT6). 4: `rt_take_field`
 /// and `rt_with_slot` among the helpers (decision AU11). 5: `rt_compare`
 /// among them (decision AU13).
-pub const CODE_FORMAT: u32 = 5;
+pub const CODE_FORMAT: u32 = 6;
 
 /// The extension of an image file.
 pub const EXTENSION: &str = "ryi";
@@ -327,6 +329,11 @@ impl Image {
                                 }
                             }
                         }
+                        out.u32(point.handlers.len() as u32);
+                        for (target, depth) in &point.handlers {
+                            out.u32(*target);
+                            out.u32(*depth as u32);
+                        }
                     }
                 }
             }
@@ -411,12 +418,16 @@ impl Image {
                         })
                     })
                     .collect::<Result<Vec<Option<usize>>, String>>()?;
+                let handlers = (0..input.u32()?)
+                    .map(|_| Ok((input.u32()?, input.u32()? as usize)))
+                    .collect::<Result<Vec<(u32, usize)>, String>>()?;
                 deopts.push(DeoptPoint {
                     pc,
                     locals,
                     stack,
                     slots,
                     marks,
+                    handlers,
                 });
             }
             codes.push(Some(ImageCode {
@@ -557,6 +568,7 @@ mod tests {
                         stack: vec![Abs::Int, Abs::Boxed(None)],
                         slots: vec![SlotKind::Mark, SlotKind::Boxed(None)],
                         marks: vec![Some(1), None],
+                        handlers: vec![(9, 1)],
                     }],
                 }),
             ],

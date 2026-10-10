@@ -1,0 +1,324 @@
+//! The template tier of decision AU18 against the interpreter: every
+//! code object runs on template code from its first call and nothing is
+//! promoted to the Cranelift tier (`RENYI_NATIVE_TIER=template`), so
+//! that every sequence per op is exercised; the programs cover the ops,
+//! the calls of every kind, the handlers, the crashes, the loops and the
+//! updates in place, and each prints what the interpreter prints.
+
+use std::cell::RefCell;
+use std::io::Write;
+use std::rc::Rc;
+
+use renyi_syntax::SourceFile;
+use renyi_vm::{compile_project, run_program, Options, Program, RunOutcome};
+
+fn compile(source: &str) -> Program {
+    let file = SourceFile::new("demo.ry", source);
+    let files = vec![file];
+    let checked = renyi_check::check_project(&files);
+    let errors: Vec<_> = checked.modules[0]
+        .diagnostics
+        .iter()
+        .filter(|d| d.is_error())
+        .collect();
+    assert!(errors.is_empty(), "{errors:?}");
+    compile_project(&checked, &files)
+}
+
+#[derive(Clone, Default)]
+struct Capture(Rc<RefCell<Vec<u8>>>);
+
+impl Write for Capture {
+    fn write(&mut self, buffer: &[u8]) -> std::io::Result<usize> {
+        self.0.borrow_mut().extend_from_slice(buffer);
+        Ok(buffer.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+impl Capture {
+    fn text(&self) -> String {
+        String::from_utf8(self.0.borrow().clone()).expect("utf-8")
+    }
+}
+
+/// Run `main` on the template tier alone, or on the interpreter.
+fn run(source: &str, interpret: bool) -> (RunOutcome, String, String) {
+    std::env::set_var("RENYI_NATIVE_TIER", "template");
+    let program = compile(source);
+    let stdout = Capture::default();
+    let stderr = Capture::default();
+    let outcome = run_program(
+        &program,
+        Options {
+            stdout: Box::new(stdout.clone()),
+            stderr: Box::new(stderr.clone()),
+            stdin: Box::new(std::io::Cursor::new(Vec::new())),
+            interpret,
+            ..Options::default()
+        },
+    )
+    .outcome;
+    (outcome, stdout.text(), stderr.text())
+}
+
+/// Both ways must agree; the template way's outcome and output are given
+/// back for closer checks.
+fn both_ways(source: &str) -> (RunOutcome, String, String) {
+    let templates = run(source, false);
+    let interpreted = run(source, true);
+    assert_eq!(
+        templates, interpreted,
+        "template code against the interpreter"
+    );
+    templates
+}
+
+#[test]
+fn loops_calls_and_updates_print_what_the_interpreter_prints() {
+    let source = r#"module demo
+  purpose: Loops over every source, calls of every kind, records updated in place, texts joined.
+
+import std.console
+
+type Point
+  purpose: A record updated in place.
+  has x_value: Integer
+  has y_value: Integer
+  has label: Text
+end
+
+type Shape is one of
+  purpose: Variants with and without fields.
+  Circle(radius: Integer)
+  Dot
+end
+
+function walk(items: List of Integer, text: Text, limit: Integer) returns Text
+  purpose: Sum the items while appending to the same list, count the glyphs, walk a range and a set.
+
+  let mutable copy be items
+  let mutable total be 0
+  for each item in items
+    change total to total + item
+    change copy to copy.append(item * 10)
+  end
+  let mutable glyphs be 0
+  for each glyph in text
+    if glyph is not " " then change glyphs to glyphs + 1 end
+  end
+  let span be from 1 to limit
+  let mutable walked be 0
+  for each step in span
+    change walked to walked + step
+  end
+  let mutable distinct be 0
+  for each member in [3, 1, 3, 2].to_set()
+    change distinct to distinct + member
+  end
+  let mutable nested be ""
+  for each outer in ["x", "y"]
+    for each inner in [1, 2]
+      change nested to "{nested}{outer}{inner}"
+    end
+  end
+  return "{total} {copy.length()} {glyphs} {walked} {distinct} {nested}"
+end
+
+function moved(point: Point, times: Integer) returns Point
+  purpose: The point moved in place, a count of times.
+
+  let mutable current be point
+  for each step from 1 to times
+    change current to current with x_value: current.x_value + step, y_value: current.y_value - 1
+  end
+  return current with label: current.label.to_upper()
+end
+
+function describe(shape: Shape) returns Text
+  purpose: A variant matched.
+
+  match shape
+    when Circle(radius) then return "circle of {radius}"
+    when Dot then return "dot"
+  end
+end
+
+type DivisionError is one of
+  purpose: Why a division failed.
+  ByZero
+end
+
+function divide(numerator: Integer, denominator: Integer) returns Integer or fails with DivisionError
+  purpose: A division that fails on zero.
+
+  if denominator is 0 then fail with ByZero end
+  return numerator.quotient(denominator)
+end
+
+public function main() needs console
+  purpose: Print every result.
+
+  console.print(walk(items: [1, 2, 3], text: "a b c", limit: 4))
+  let start be Point(x_value: 1, y_value: 10, label: "start")
+  let alias be start
+  let after be moved(point: start, times: 3)
+  console.print("{after.x_value} {after.y_value} {after.label} {alias.x_value} {alias.label}")
+  console.print("{describe(Circle(radius: 5))} {describe(Dot)}")
+  let answer be divide(numerator: 7, denominator: 2) otherwise -1
+  let fallen be divide(numerator: 7, denominator: 0) otherwise -1
+  console.print("{answer} {fallen}")
+  let mutable total be 0
+  let mutable turns be 0
+  repeat until turns is 5
+    change turns to turns + 1
+    if turns is 3 then continue end
+    change total to total + turns
+  end
+  console.print("{total} {turns}")
+  let words be ["pear", "fig", "apple"]
+  let lengths be for each word in words collect word.length()
+  let ordered be for each word in words sorted by word collect word
+  let lengths_shown be for each length in lengths collect length.to_text()
+  let comma be ","
+  let lengths_joined be lengths_shown.join(comma)
+  let ordered_joined be ordered.join(comma)
+  console.print("{lengths_joined} {ordered_joined}")
+  let found be for each word in words where word.contains("p") count
+  let shout be "abc".to_upper()
+  let summed be for each word in words sum word.length()
+  let measure be 3.5 + 1.25
+  console.print("{found} {shout} {summed} {measure}")
+end
+"#;
+    let (outcome, printed, _) = both_ways(source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(
+        printed,
+        "6 6 3 10 6 x1x2y1y2\n7 7 START 1 start\ncircle of 5 dot\n3 -1\n12 5\n4,3,5 apple,fig,pear\n2 ABC 12 4.75\n"
+    );
+}
+
+#[test]
+fn failures_land_on_their_handlers_or_leave_the_frame() {
+    let source = r#"module demo
+  purpose: Failures inside template code: handled where a handler is open, passed on where none is.
+
+import std.console
+
+type OddStep is one of
+  purpose: The failure of an odd step.
+  Odd(step: Integer)
+end
+
+function risky(step: Integer) returns Integer or fails with OddStep
+  purpose: Fail on an odd step.
+
+  if step remainder 2 is 1 then fail with Odd(step: step) end
+  return step * 2
+end
+
+function tally(limit: Integer) returns Text
+  purpose: Every step handled in place, the failures counted.
+
+  let mutable total be 0
+  let mutable failures be 0
+  for each step from 1 to limit
+    let value be risky(step) otherwise 0
+    if value is 0 then change failures to failures + 1 end
+    change total to total + value
+  end
+  return "{total} {failures}"
+end
+
+function pass_on(step: Integer) returns Integer or fails with OddStep
+  purpose: No handler here: the failure leaves the frame.
+
+  let doubled be risky(step) otherwise fail
+  return doubled + 1
+end
+
+function describe(step: Integer) returns Text
+  purpose: The failure of a step, matched by its variant.
+
+  let doubled be pass_on(step) otherwise return "odd {step}"
+  return "even {doubled}"
+end
+
+public function main() needs console
+  purpose: Print the tallies and the passed-on failures.
+
+  console.print(tally(6))
+  let passed be pass_on(4) otherwise -1
+  let failed be pass_on(5) otherwise -1
+  console.print("{passed} {failed}")
+  console.print("{describe(3)} {describe(4)}")
+end
+"#;
+    let (outcome, printed, _) = both_ways(source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(printed, "24 3\n9 -1\nodd 3 even 9\n");
+}
+
+#[test]
+fn a_crash_in_template_code_names_its_line() {
+    let source = r#"module demo
+  purpose: A crash deep in template code, located by its line.
+
+import std.console
+
+function depth(level: Integer) returns Integer
+  purpose: Divide by zero at the bottom.
+
+  if level is 0 then
+    let zero be 0
+    return 10.quotient(zero)
+  end
+  return depth(level - 1) + 1
+end
+
+public function main() needs console
+  purpose: Crash.
+
+  console.print("start")
+  console.print("{depth(3)}")
+end
+"#;
+    let (outcome, printed, _) = both_ways(source);
+    assert_eq!(printed, "start\n");
+    match outcome {
+        RunOutcome::Crashed { message, location } => {
+            assert_eq!(message, "division by zero");
+            assert_eq!(location.as_deref(), Some("demo.ry:11"));
+        }
+        other => panic!("expected a crash, got {other:?}"),
+    }
+}
+
+#[test]
+fn recursion_past_the_depth_of_native_frames_carries_on() {
+    let source = r#"module demo
+  purpose: A recursion deeper than the machine stack allows for native frames.
+
+import std.console
+
+function count_down(level: Integer) returns Integer
+  purpose: Recurse a thousand levels.
+
+  if level is 0 then return 0 end
+  return count_down(level - 1) + 1
+end
+
+public function main() needs console
+  purpose: Print the depth.
+
+  console.print("{count_down(1000)}")
+end
+"#;
+    let (outcome, printed, _) = both_ways(source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(printed, "1000\n");
+}

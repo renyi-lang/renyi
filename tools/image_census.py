@@ -12,7 +12,7 @@ import struct
 import sys
 from collections import Counter
 
-IMAGE_FORMAT = 6
+IMAGE_FORMAT = 7
 SECTION_ALIGN = 16384
 
 
@@ -78,6 +78,9 @@ def read_image(path):
             for _ in range(reader.u32()):
                 if reader.u8() == 1:
                     reader.u32()
+            for _ in range(reader.u32()):
+                reader.u32()  # a handled region's target
+                reader.u32()  # and the depth below it
             deopts += 1
         codes.append((body, trampoline, headers, deopts))
     section_offset = reader.u32()

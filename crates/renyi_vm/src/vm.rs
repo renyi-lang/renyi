@@ -194,6 +194,10 @@ pub(crate) struct NativeState {
     pub(crate) direct_table: *const *const u8,
     pub(crate) helpers: *const *const u8,
     pub(crate) constants: *const *const Value,
+    /// The VM's count of ops run per code object (`Vm::hotness`), which
+    /// the template tier's code adds to at its entries and its back
+    /// edges (decision AU18).
+    pub(crate) hotness: *mut u32,
 }
 
 impl Default for NativeState {
@@ -203,6 +207,7 @@ impl Default for NativeState {
             direct_table: std::ptr::null(),
             helpers: std::ptr::null(),
             constants: std::ptr::null(),
+            hotness: std::ptr::null_mut(),
         }
     }
 }
@@ -478,7 +483,7 @@ impl<'p> Vm<'p> {
             unit_base.push((units, count));
             units += count;
         }
-        Vm {
+        let mut vm = Vm {
             program,
             stack: Pinned::new(),
             frames: Pinned::new(),
@@ -536,7 +541,11 @@ impl<'p> Vm<'p> {
             listener: options.listener,
             memory: options.memory,
             counting: false,
-        }
+        };
+        // the template tier's code adds to the counts in place (decision
+        // AU18); the vector is never resized after this
+        vm.native_state.hotness = vm.hotness.as_mut_ptr();
+        vm
     }
 
     // ------------------------------------------------------ grant and record

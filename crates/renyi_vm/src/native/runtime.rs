@@ -1324,6 +1324,17 @@ pub(crate) unsafe extern "C" fn rt_deopt(
         };
         vm.stack.push(value);
     }
+    // the handled regions open at the point (decision AU18): the
+    // generated code keeps them static and never pushes them, while the
+    // interpreter finds a failure's handler on `Vm::handlers`; whatever
+    // lies there above the frame's own floor (an entry at a loop header
+    // leaves the interpreter's pushes behind) gives way to the regions
+    // open here, at the heights the boxed operand stack has now
+    let handler_base = vm.frames.last().map_or(0, |frame| frame.handler_base);
+    vm.handlers.truncate(handler_base);
+    for (target, depth) in &point.handlers {
+        vm.handlers.push((*target as usize, base + locals + depth));
+    }
     if let Some(frame) = vm.frames.last_mut() {
         frame.pc = point.pc as usize;
     }
@@ -1713,9 +1724,44 @@ pub(crate) unsafe extern "C" fn rt_top_is_failure(vm: VmPtr) -> i8 {
     matches!(vm!(vm).stack.last(), Some(Value::Failure(_))) as i8
 }
 
+// ------------------------------------------------------------ the template tier
+
+/// A loop of template code found its code object hot (decision AU18):
+/// the Cranelift code, compiled or asked for now, is entered at the loop
+/// header when it is ready and has the entry, and its status is given
+/// back (the frame returned, handed to the interpreter, or interrupted);
+/// `STAY` when the template code is to carry on with the frame as it is.
+pub(crate) unsafe extern "C" fn rt_osr(vm: VmPtr, base: usize, code: usize, pc: u32) -> i32 {
+    let vm = vm!(vm);
+    if vm.native_state.depth >= crate::native::DEPTH_LIMIT {
+        return STAY;
+    }
+    let program = vm.program;
+    let entry = vm
+        .native
+        .as_mut()
+        .and_then(|jit| jit.promoted_resume(program, code, pc));
+    let Some(entry) = entry else {
+        // not ready yet (the compile thread has it), or no entry here: the
+        // count starts again, so that the next ask comes a threshold later
+        // rather than at every turn
+        vm.hotness[code] = 0;
+        return STAY;
+    };
+    let status = vm.run_generated(entry, base, pc);
+    if status == STAY {
+        if let Some(jit) = vm.native.as_mut() {
+            jit.refuse_resume(code);
+        }
+        vm.hotness[code] = 0;
+    }
+    status
+}
+
 /// Every helper by name with its address, for the JIT's symbol table;
 /// `codegen::SIGNATURES` gives each its signature.
 pub const HELPERS: &[(&str, *const u8)] = &[
+    ("rt_osr", rt_osr as *const u8),
     ("rt_top_is_absent", rt_top_is_absent as *const u8),
     ("rt_top_is_failure", rt_top_is_failure as *const u8),
     ("rt_push_const", rt_push_const as *const u8),

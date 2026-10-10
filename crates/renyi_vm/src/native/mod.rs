@@ -22,6 +22,7 @@ pub mod codegen;
 pub mod image;
 pub mod infer;
 pub mod runtime;
+pub mod template;
 
 use std::io::{Read, Seek};
 use std::sync::mpsc;
@@ -86,6 +87,11 @@ pub struct DeoptPoint {
     pub slots: Vec<SlotKind>,
     /// Per mark slot, the depth it marks.
     pub marks: Vec<Option<usize>>,
+    /// The handled regions open at the point, innermost last: the
+    /// handler's target and the depth of the operand stack below the
+    /// region. The generated code keeps them static, the interpreter on
+    /// `Vm::handlers`, so the hand-back pushes them there (decision AU18).
+    pub handlers: Vec<(u32, usize)>,
 }
 
 enum State {
@@ -184,6 +190,13 @@ impl Drop for Worker {
     }
 }
 
+/// The template tier's code of a code object (decision AU18): the
+/// function the VM calls, which enters at the start or at any loop
+/// header, since the frame is in the interpreter's layout at every op.
+struct TemplateCode {
+    entry: Entry,
+}
+
 /// The JIT of one VM: Cranelift's target, the state of every code
 /// object, the tables the generated code reaches through the VM
 /// (decision AS1) and the executable memory the code is placed in.
@@ -193,6 +206,15 @@ pub struct Jit {
     fctx: FunctionBuilderContext,
     states: Vec<State>,
     hot_factor: u32,
+    /// The template tier (decision AU18): per code object its code, made
+    /// at its first call while the Cranelift code is not ready; whether
+    /// the tier is on (x86-64, unless `RENYI_NATIVE_TIER=cranelift`); and
+    /// whether a hot code object is promoted to the Cranelift tier
+    /// (not under `RENYI_NATIVE_TIER=template`, which keeps everything on
+    /// the templates).
+    templates: Vec<Option<TemplateCode>>,
+    template_tier: bool,
+    promotion: bool,
     /// Whether hot code objects are compiled on a thread of their own
     /// (decision AU15), which starts at the first one.
     background: bool,
@@ -244,16 +266,42 @@ pub struct Jit {
     /// such an entry was refused.
     pub resumes: usize,
     pub resumes_refused: usize,
+    /// The template tier's counts: code objects, ops, bytes, the time
+    /// making them took, and how often a loop of template code was
+    /// handed to the Cranelift code.
+    pub templated: usize,
+    pub template_ops: usize,
+    pub template_bytes: usize,
+    pub template_time: std::time::Duration,
+    pub promoted_loops: usize,
 }
 
 /// The executable memory the generated code is placed in (decision
 /// AS1), as `cranelift-jit` placed it: a function is written into fresh
 /// pages, flushed from the instruction cache and made executable once,
-/// and never written again.
+/// and never written again. The template tier's code (decision AU19)
+/// goes into one chunk instead, function after function, since a
+/// program makes hundreds of templates at their first calls and fresh
+/// pages for each spread them over as many mappings, every function at
+/// the same page offset, which cost the self-check's run more than the
+/// templates saved.
 #[derive(Default)]
 pub struct CodeArena {
     pages: Vec<Pages>,
+    packed: Option<Packed>,
 }
+
+/// The chunk the templates are packed into: executable, the pages a new
+/// template lies on made writable while it is written and executable
+/// again before anything runs it (the VM runs generated code on one
+/// thread, and none of it while it places code).
+struct Packed {
+    allocation: region::Allocation,
+    used: usize,
+}
+
+/// The size of a chunk of packed templates.
+const PACKED_CHUNK: usize = 4 << 20;
 
 /// Executable pages the arena holds: ones it wrote, or an image's code
 /// section mapped from its file (decision AT5).
@@ -313,6 +361,66 @@ impl CodeArena {
         self.pages.push(Pages::Owned(allocation));
         Ok(pointer as *const u8)
     }
+
+    /// The bytes placed after the templates before them, sixteen-aligned
+    /// in the current chunk (a new chunk when they do not fit), only the
+    /// pages they lie on writable while they are written; the address
+    /// they run at. No other thread runs generated code (tasks run one
+    /// after the other, decision S2), and this thread runs none while it
+    /// places, so a page that holds a template on the call stack may be
+    /// writable for the moment: it is executable again before the
+    /// helper that placed returns.
+    pub fn place_packed(&mut self, bytes: &[u8]) -> Result<*const u8, String> {
+        let len = bytes.len().max(1);
+        let fits = self
+            .packed
+            .as_ref()
+            .is_some_and(|chunk| chunk.used + len <= chunk.allocation.len());
+        if !fits {
+            let allocation = region::alloc(len.max(PACKED_CHUNK), region::Protection::READ_EXECUTE)
+                .map_err(|error| error.to_string())?;
+            if let Some(full) = self.packed.take() {
+                self.pages.push(Pages::Owned(full.allocation));
+            }
+            self.packed = Some(Packed {
+                allocation,
+                used: 0,
+            });
+        }
+        let chunk = self.packed.as_mut().expect("a chunk");
+        let base = chunk.allocation.as_mut_ptr::<u8>();
+        let at = chunk.used;
+        let page = region::page::size();
+        let first = at / page * page;
+        let last = (at + len).div_ceil(page) * page;
+        // SAFETY: the pages lie in the chunk, which outlives every use of
+        // the code; they are writable only between the two protections,
+        // while no code runs, and the bytes land in the part of the chunk
+        // no template holds yet.
+        unsafe {
+            region::protect(
+                base.add(first),
+                last - first,
+                region::Protection::READ_WRITE,
+            )
+            .map_err(|error| error.to_string())?;
+            std::ptr::copy_nonoverlapping(bytes.as_ptr(), base.add(at), bytes.len());
+            wasmtime_internal_jit_icache_coherence::clear_cache(
+                base.add(at) as *const std::ffi::c_void,
+                bytes.len(),
+            )
+            .map_err(|error| error.to_string())?;
+            region::protect(
+                base.add(first),
+                last - first,
+                region::Protection::READ_EXECUTE,
+            )
+            .map_err(|error| error.to_string())?;
+        }
+        chunk.used = (at + len).next_multiple_of(16);
+        // SAFETY: `at` lies within the chunk.
+        Ok(unsafe { base.add(at) } as *const u8)
+    }
 }
 
 impl Jit {
@@ -339,11 +447,18 @@ impl Jit {
         let background = asked != Some(0)
             && std::env::var_os("RENYI_NATIVE_SYNC").is_none()
             && std::thread::available_parallelism().map_or(1, |n| n.get()) > 1;
-        let hot_factor = asked.unwrap_or(if background {
-            HOT_FACTOR_BACKGROUND
+        let tier = std::env::var("RENYI_NATIVE_TIER").ok();
+        let template_tier = cfg!(target_arch = "x86_64") && tier.as_deref() != Some("cranelift");
+        let promotion = tier.as_deref() != Some("template");
+        let hot_factor = if !promotion {
+            u32::MAX
         } else {
-            HOT_FACTOR
-        });
+            asked.unwrap_or(if background {
+                HOT_FACTOR_BACKGROUND
+            } else {
+                HOT_FACTOR
+            })
+        };
         // the helpers in the order the generated code indexes them
         let helpers: Box<[*const u8]> = codegen::SIGNATURES
             .iter()
@@ -366,6 +481,9 @@ impl Jit {
             fctx: FunctionBuilderContext::new(),
             states: program.codes.iter().map(|_| State::Cold).collect(),
             hot_factor,
+            templates: program.codes.iter().map(|_| None).collect(),
+            template_tier,
+            promotion,
             background,
             worker: None,
             resume_refused: vec![false; program.codes.len()],
@@ -388,6 +506,11 @@ impl Jit {
             calls_cold: 0,
             resumes: 0,
             resumes_refused: 0,
+            templated: 0,
+            template_ops: 0,
+            template_bytes: 0,
+            template_time: std::time::Duration::ZERO,
+            promoted_loops: 0,
         })
     }
 
@@ -532,6 +655,7 @@ impl Jit {
             direct_table: self.direct_table.as_ptr(),
             helpers: self.helpers.as_ptr(),
             constants: self.constants.as_ptr(),
+            hotness: std::ptr::null_mut(),
         }
     }
 
@@ -589,22 +713,106 @@ impl Jit {
         ) + &format!(
             "
 native: {} deopts; {} calls from generated code went to the interpreter; {} loops entered from the interpreter, {} refused
+native: {} code objects on templates ({} ops, {} bytes) in {} ms{}; {} loops handed from template code to the Cranelift code
 {}",
             self.deopts_taken,
             self.calls_cold,
             self.resumes,
             self.resumes_refused,
+            self.templated,
+            self.template_ops,
+            self.template_bytes,
+            self.template_time.as_millis(),
+            if self.template_tier {
+                if self.promotion {
+                    ""
+                } else {
+                    ", nothing promoted"
+                }
+            } else {
+                ", the tier off"
+            },
+            self.promoted_loops,
             cranelift_codegen::timing::take_current()
         )
     }
 
     /// The generated function of a code object for one more call of it,
-    /// given how many of its ops the interpreter has run: compiled when
-    /// that makes it hot; `None` while it is cold and when it stays with
-    /// the interpreter.
+    /// given how many of its ops have run: the Cranelift code, compiled
+    /// when that makes it hot; else the template tier's code, made at
+    /// the first call (decision AU18); `None` when the code object stays
+    /// with the interpreter.
     pub fn entry(&mut self, program: &Program, code: CodeId, hotness: u32) -> Option<Entry> {
-        self.ready(program, code, hotness)
-            .map(|(entry, _, _)| entry)
+        if let Some((entry, _, _)) = self.ready(program, code, hotness) {
+            return Some(entry);
+        }
+        self.template_entry(program, code)
+    }
+
+    /// The template tier's code of a code object, made now when it has
+    /// none; `None` when the tier is off or the code object was refused.
+    fn template_entry(&mut self, program: &Program, code: CodeId) -> Option<Entry> {
+        if !self.template_tier {
+            return None;
+        }
+        if let Some(template) = &self.templates[code] {
+            return Some(template.entry);
+        }
+        if matches!(self.states[code], State::Skipped) {
+            return None;
+        }
+        let started = std::time::Instant::now();
+        let made = template::compile(program, code, &self.calls, self.hot_factor, self.promotion);
+        let template = match made {
+            Ok(template) => template,
+            Err(reason) => {
+                report_skipped(program, code, &reason);
+                self.states[code] = State::Skipped;
+                self.skipped += 1;
+                return None;
+            }
+        };
+        if let Some(dir) = std::env::var_os("RENYI_TEMPLATE_DUMP") {
+            // a development aid: the bytes of every template, for a look
+            // with `objdump -D -b binary -m i386:x86-64 -M intel`
+            let name = program.codes[code].name.replace(['/', ' '], "_");
+            let _ = std::fs::write(
+                std::path::Path::new(&dir).join(format!("{name}.bin")),
+                &template.body,
+            );
+        }
+        let Ok(address) = self.code.place_packed(&template.body) else {
+            self.states[code] = State::Skipped;
+            self.skipped += 1;
+            return None;
+        };
+        // SAFETY: the template was assembled with the signature of `Entry`.
+        let entry: Entry = unsafe { std::mem::transmute::<*const u8, Entry>(address) };
+        self.templated += 1;
+        self.template_ops += template.ops;
+        self.template_bytes += template.body.len();
+        self.template_time += started.elapsed();
+        self.templates[code] = Some(TemplateCode { entry });
+        Some(entry)
+    }
+
+    /// The Cranelift code of a code object whose template code found it
+    /// hot at the loop header `pc` (decision AU18): compiled or asked for
+    /// now, given back when it is ready, has the entry and no earlier
+    /// entry there was refused.
+    pub(crate) fn promoted_resume(
+        &mut self,
+        program: &Program,
+        code: CodeId,
+        pc: u32,
+    ) -> Option<Entry> {
+        if !self.promotion || self.resume_refused[code] {
+            return None;
+        }
+        let (entry, _, headers) = self.ready(program, code, u32::MAX)?;
+        let found = headers.contains(&pc);
+        self.promoted_loops += found as usize;
+        found.then_some(entry)
     }
 
     /// The generated function of a code object to enter at the loop

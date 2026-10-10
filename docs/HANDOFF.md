@@ -13,11 +13,18 @@ wall-clock as its measure); decision AU15, the JIT's compilation on
 a thread of its own with the hotness factor 100, -11.6% on the
 self-check's wall-clock; the owner's answers after it (AU16: the
 template tier ordered as the next large item, the liveness pass as the
-stage now); and decision AU17, the last read of a slot as a move, a
-liveness pass the VM applies to a copy of the program before it runs
-(the section "The typed round" below, "Stage 6 is in" to "Stage 9 is
-in"); and answered the owner's question on the execution model (the
-section "The execution model, as the owner asked on 2026-10-09" below).
+stage now); decision AU17, the last read of a slot as a move, a
+liveness pass the VM applies to a copy of the program before it runs;
+the owner's answers on the design of the template tier (AU18); and
+decision AU19, the template tier as built: a small x86-64 assembler and
+a fixed sequence per op, every code object on machine code from its
+first call and promoted to the Cranelift tier once hot, with a defect
+of the Cranelift tier's hand-back fixed on the way (the section "The
+typed round" below, "Stage 6 is in" to "The template tier is in"); and
+answered the owner's question on the execution model (the section "The
+execution model, as the owner asked on 2026-10-09" below). The session
+ended on the owner's word ("finish the current task, then pause and
+hand over to the next session") with the template tier committed.
 Session 9, the first in the
 cloud environment (claude.ai/code), finished the profile-guided round on
 strings and JSON that session 8 had paused: decision AQ, the first of the
@@ -108,22 +115,29 @@ and push there directly.
 ## Start here (session 11)
 
 1. The work stopped in the typed round, whose plan the owner set in
-   decisions AU1 and AU9 and reordered in AU12, AU14 and AU16: read the
-   section "The typed round" below, whose last paragraphs ("Stage 9 is
-   in" and "What is next in this round, after AU16") say what exists
-   and what comes next: the template tier, a first tier of machine-code
-   templates per op without Cranelift, ordered by the owner as the next
-   large item (AU16), whose design is to be written as a decision entry
-   first and put to the owner before the code; after it, by a profile,
-   the representation items of AU1's step v, the micro-cuts and the
-   field taken out of a record that is updated with the result later.
+   decisions AU1 and AU9 and reordered in AU12, AU14, AU16 and AU18,
+   right after the template tier (AU19): read the section "The typed
+   round" below, whose last paragraphs ("The template tier is in" and
+   "What is next in this round, after AU19") say what exists and what
+   comes next. The first thing is the owner's: run `cargo test` on the
+   Windows machine, since the tier's Windows x64 convention has never
+   run (no Windows machine in the cloud container, none in CI);
+   `tests/template.rs` forces the tier. Then put the next item to the
+   owner with the measurement of AU19 (the questions are listed under
+   "What is next").
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
    deterministic), the four benchmarks by `tools/bench.py` beside it; a
    stage stays when the self-check's estimate on the cold JIT run falls,
    or a benchmark gains more than 5% while the self-check loses at most
-   1% (AU1). The decision entry of each stage records the numbers.
+   1% (AU1). The decision entry of each stage records the numbers. Since
+   AU19 the default JIT row of `tools/measure_size.sh` varies from run
+   to run with the compile thread's timing under cachegrind (12.9 to
+   16.7 billion instructions for one binary): take the synchronous row
+   (`RENYI_NATIVE_SYNC=1`, the path of one hardware thread) for the
+   estimate, and wall-clock on one, two and four hardware threads
+   (`taskset`) beside it, both binaries alternating on one boot.
 3. The gates before a commit that touches `crates/` are CLAUDE.md's,
    with the owner's toolchain: `cargo +1.94.1 fmt --check`, `cargo
    +1.94.1 clippy --all-targets -- -D warnings`, `cargo +1.94.1 test`
@@ -228,7 +242,7 @@ revision>]`, `run [--manifest] [options] <file> [arguments]`, `record
 <file>...`, `compile [--to file] <file.ry>`, `add <name> [<version>]`,
 `update [--accept-effects]`, `audit`, `fetch`, `publish [--to
 <directory>]`, `bind <header.h> --module <name> --library <names>
-[--to <directory>]`, `tools [path]`, `mcp [path]`, `lsp`, `serve [--watch]`, `run --sandbox` and `version`; 340 tests,
+[--to <directory>]`, `tools [path]`, `mcp [path]`, `lsp`, `serve [--watch]`, `run --sandbox` and `version`; 351 tests,
 clippy and fmt clean with rustc 1.94.1 on Windows (the owner's machine)
 and on Linux (the cloud environment, where 1.94.1 is installed beside
 its 1.97.0 for the gates). CI (`.github/workflows/ci.yml`) runs the same gates,
@@ -2243,16 +2257,97 @@ the checker program (0.9 ms of it the copy). The first build moved
 the operands typed calls borrow and cost `strings` 10%, the lesson
 being that a moved load must stay borrowable (see above).
 
-**What is next in this round, after AU16:**
+**The owner's answers on the template tier (decision AU18,
+2026-10-09)**: every recommended option of the design study (the
+section "The template tier: the design study" below): a small x86-64
+assembler of the VM's own; template code at a code object's first
+call, synchronously, on every machine; the hotness counted by the
+template code with today's factors (100 with the compile thread, 8000
+without) and the promotion to the Cranelift tier at a call or at a loop
+header; x86-64 (Linux, macOS, Windows) in this round, aarch64 later.
 
-1. **The template tier** (AU16): a first tier of machine-code templates
-   per op without Cranelift, for the machine with one hardware thread and
-   to shorten the wait for the code everywhere; the design study is the
-   section "The template tier: the design study" below, with the four
-   questions put to the owner at the end of session 10 (their answers,
-   when given, become the decision entry AU18, and the code follows it).
-   Weeks of work.
-2. **After it, by a profile**: the representation items of AU1's step v
+**The template tier is in (decision AU19, 2026-10-09, session 10)**:
+`crates/renyi_vm/src/native/template/x64.rs` (the assembler: `Reg`,
+`Cond`, `Label`, `Asm` with thirty-six instruction forms, `Abi` with
+`SYSTEM_V` and `WINDOWS_X64`, `host_abi`; unit tests of the encodings
+and `every_form_dumped_on_request`, which writes every form to the file
+`RENYI_X64_DUMP` names, for `objdump -D -b binary -m i386:x86-64 -M
+intel`); `template/mod.rs` (`compile`, `Template`, the generator `Gen`:
+the registers it keeps (`VM` rbx, `BASE` r12, `FRAME` r13, `HELPERS`
+r14, `BASE24` r15, `COUNT` rbp, the address of the code object's count;
+scratch rax, r10, r11, never an argument register of either convention),
+`call` and `materialize` (a helper through `NativeState::helpers` by its
+index in `codegen::SIGNATURES`, the frame pointer read again unless the
+helper is in `STACK_SAFE`), `check` (a settled status: `FAILURE` to the
+landing of the innermost handled region), `pushes` and
+`leave_on_interrupt` (an unsettled one), `scalar_or_boxed` (the out slot
+of `rt_call_typed` and `rt_compare`), `prologue` (the six pushes, the
+frame of 40 or 88 bytes, the room check, the count's address, the entry
+by pc), `block_lengths` (the basic blocks whose lengths `body` adds to
+the count as each starts), `body`, `tail` (the landings, the back edges
+that check the count and call `rt_osr`, the Boolean crash, the leave,
+the epilogue), `op`, the sequence per op). `native/mod.rs`:
+`TemplateCode`, `Jit::templates`, `template_tier`, `promotion`,
+`template_entry` (made at the first call, packed into one executable
+chunk by `CodeArena::place_packed`, `RENYI_TEMPLATE_DUMP` writes every
+template's bytes), `entry` (the Cranelift code when ready, else the
+template), `promoted_resume`, the report's third line. `runtime.rs`:
+`rt_osr` (the last helper of `SIGNATURES`, code format 6), the
+hand-back's handled regions in `rt_deopt`. `vm.rs`:
+`NativeState::hotness` (the pointer to `Vm::hotness`, set once the VM is
+built). `codegen.rs`: `DeoptPoint`'s `handlers`, a few items made
+`pub(crate)` for the tier. `image.rs`: image format 7 (the regions of a
+deopt point), with `tools/image_census.py`. Tests: `tests/template.rs`,
+`tests/promotion.rs`, `tests/native.rs`'s
+`a_hand_back_inside_a_handled_region_keeps_the_region`; the conformance
+suite and the judges pass with `RENYI_NATIVE_TIER=template`. The defect
+fixed on the way: the Cranelift tier keeps the handled regions static,
+the interpreter on `Vm::handlers`, and a hand-back pushed none, so a
+failure after a hand-back inside a region crashed as unhandled
+(`guarded(4000000000)` in the test: the interpreter prints 7, the binary
+of AU17 crashed). Measured on one boot against AU17's binary: the
+synchronous JIT run (the path of one hardware thread) 13.99 to 13.12
+billion cycles by AT1's estimate (-6.2%), the template code alone 16%
+below the interpreter's estimate; in wall-clock the self-check -1.3% to
+-4.8% on one hardware thread, -3.1% on two, neutral on four (the median
+of twenty-five runs -1.1%, the best +1.9%), the benchmarks within 3%;
+the image and the cached rows +0.8% and +0.6% from the binary's layout.
+The default JIT row under cachegrind no longer measures anything (the
+compile thread's timing gave AU17's binary 12.94 to 16.70 billion
+instructions); judge by the synchronous row and by wall-clock. Two
+corrections came from the first measurement: the first build counted the
+whole code at every entry (88 code objects compiled on one thread
+instead of 54, the self-check +6.6%), and it placed every template in
+fresh pages of its own (564 mappings, every function at the same page
+offset: +6.8% in wall-clock on one thread while cachegrind, which models
+no TLB, said -5.9%); the count per basic block and the packed chunk
+fixed both. The goal of AU18 is not reached: on one hardware thread the
+JIT run takes 1,897 ms, the image 1,335 (+42%, against the 15% asked).
+
+**What is next in this round, after AU19:**
+
+1. **The owner's step**: `cargo test` on the Windows machine (the
+   tier's Windows x64 convention has only been checked by reading), and
+   the answers to the questions below.
+2. **The template tier's follow-ups, by its profile** (the measurement
+   says why the tier pays little: every call from template code goes
+   through `rt_call`, `call_from_stack`, `run_top_frame`, `Jit::entry`
+   and `run_generated`, where the interpreter's own calls push a frame
+   and go on in its loop, and the self-check makes 5.4 million calls;
+   the hot helpers, the field read, the retain and the release, stay
+   calls; the templates alone run 4% below the interpreter in
+   wall-clock and 15% below it by the estimate, which models no TLB):
+   sequences in place of the hottest helper calls (the field read
+   through the site's cache, as the Cranelift tier reads it; the retain
+   and the release of the common tags; a comparison of two small
+   Integers); direct calls between template functions (a call whose
+   callee has template code pushes the frame and calls the body itself,
+   as AR3 did for the Cranelift tier, instead of `rt_call`,
+   `call_from_stack`, `run_top_frame` and `run_generated`); the aarch64
+   encoder for the same sequences (Apple silicon, the Linux arm64
+   release); a Windows job in CI, so that the second convention runs on
+   every push.
+3. **After it, by a profile**: the representation items of AU1's step v
    (small texts inline, `Int` flattened into `Value`, lists of unboxed
    Integers, values in registers across ops); the micro-cuts (a
    fieldless variant built by `ConstructVariant` allocates on every
@@ -2262,7 +2357,7 @@ being that a moved load must stay borrowable (see above).
    out of a record that is updated with the result later (`let after be
    done.checker ... done with checker: updated`), which the liveness
    pass does not reach since the read is a field read.
-3. **Skipped, recorded in AU14**: the parameters borrowed across direct
+4. **Skipped, recorded in AU14**: the parameters borrowed across direct
    calls (AU9's third item). A
    parameter the callee only reads (fields, borrowed calls, comparisons)
    and never stores, returns or passes on to a position that keeps it
@@ -2272,6 +2367,21 @@ being that a moved load must stay borrowable (see above).
    hand-back retains the borrowed parameters first). The riskiest of
    the three; it waits for a profile that shows the parameters' retains
    to matter.
+5. **The questions for the owner** (one batch, the recommended option
+   first, as CLAUDE.md asks), to put at the start of session 11:
+   (a) the next step of the round: direct calls between templates and
+   the field read in place (recommended: the calls are where the tier
+   loses what it gains); the representation items of AU1's step v; the
+   round closed here and the self-hosted front end decided (AU12); the
+   aarch64 encoder. (b) The Windows convention: a Windows job in CI
+   that runs `cargo test -p renyi_vm` on every push (recommended); the
+   owner's machine only; the tier off on Windows until it has run.
+   (c) The goal of AU18 (the one-thread run within 15% of the image; it
+   stands at 42% above): kept for the follow-ups (recommended); relaxed
+   to 25%; the tier judged by AT1's rule alone. (d) The tier's default:
+   on, as measured (recommended: a small gain on one and two hardware
+   threads, neutral on four); off until the follow-ups pay; on only
+   where there is no compile thread.
 
 Each stage is measured by AT1's rule (`tools/measure_size.sh` on the
 release binary, about fifteen minutes now with the fourth row; in a
@@ -2287,6 +2397,11 @@ reverted the whole file, which had to be rewritten from the session's
 own edit script.
 
 ## The template tier: the design study (session 10)
+
+The owner took every recommended option of this study (decision AU18),
+and the tier as built is decision AU19 (the section "The typed round",
+"The template tier is in"); the study stays as the record of the
+reasons and of the gap measured before the code.
 
 **What the owner ordered (AU16)**: a first tier of machine-code
 templates per op without Cranelift, which would serve the machine with
@@ -3708,7 +3823,7 @@ holds between calls.
   for the corpus and for one file; a bad base), the `diff` call in
   `tests/mcp.rs`, and a unit test of `own_text_hash`.
 
-## Done in session 10 (stages 6 to 9 of the typed round, in the cloud environment)
+## Done in session 10 (stages 6 to 9 and the template tier of the typed round, in the cloud environment)
 
 - **Decision AU11, stage 6 of the typed round**: the ops `WithSlot` and
   `TakeField`, bytecode format 7, binary encoding 4, image format 6,
@@ -3753,6 +3868,17 @@ holds between calls.
   by the estimate, the interpreter -3.0%, the image -3.3%, the
   self-check -4.9% in wall-clock on four hardware threads and -3.3% on
   one, the interpreter -7.7%.
+- **Decision AU18**, the owner's answers on the template tier's design
+  (the design study written into this file first, the four questions
+  in one batch, every recommended option taken), and **decision AU19,
+  the template tier as built** (`native/template/`: the assembler and
+  the sequences per op; the tiers in `native/mod.rs`; `rt_osr`; the
+  tests `template.rs` and `promotion.rs`), with the defect of the
+  Cranelift tier's hand-back inside a handled region fixed (image
+  format 7, the native test); the synchronous JIT run -6.2% by the estimate,
+  the self-check -1.3% to -4.8% in wall-clock on one hardware thread,
+  -3.1% on two, neutral on four; the goal of AU18 (within 15% of the
+  image on one thread) not reached, at +42%.
 - **The owner's question on the execution model** answered with the
   numbers of this machine (the section "The execution model, as the
   owner asked on 2026-10-09").

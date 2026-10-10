@@ -49,7 +49,7 @@ use crate::vm::{CallKind, FieldSite, Frame, NativeState, Vm};
 
 /// Where the VM keeps its stack (decision AR4): the generated code reads
 /// the pinned vector's pointer, length and capacity there.
-fn stack_offset() -> i64 {
+pub(crate) fn stack_offset() -> i64 {
     std::mem::offset_of!(Vm<'static>, stack) as i64
 }
 
@@ -92,7 +92,7 @@ const RELEASES_INLINE: usize = 4;
 /// always sound). The list is kept short on purpose: a helper that runs
 /// program code, as most do, may grow the stack through the frames it
 /// pushes.
-const STACK_SAFE: &[&str] = &[
+pub(crate) const STACK_SAFE: &[&str] = &[
     "rt_drop_at",
     "rt_retain_at",
     "rt_frame_grant",
@@ -114,18 +114,19 @@ const STACK_SAFE: &[&str] = &[
 /// (decision AS1): the count of generated frames, the count of calls,
 /// the table of compiled bodies, the helpers and the constants. The code
 /// holds no address of its own, so an image of it loads anywhere.
-fn native_state_offset() -> i64 {
+pub(crate) fn native_state_offset() -> i64 {
     std::mem::offset_of!(Vm<'static>, native_state) as i64
 }
 
 const STATE_DEPTH: i32 = std::mem::offset_of!(NativeState, depth) as i32;
 const STATE_DIRECT: i32 = std::mem::offset_of!(NativeState, direct_table) as i32;
-const STATE_HELPERS: i32 = std::mem::offset_of!(NativeState, helpers) as i32;
-const STATE_CONSTANTS: i32 = std::mem::offset_of!(NativeState, constants) as i32;
+pub(crate) const STATE_HELPERS: i32 = std::mem::offset_of!(NativeState, helpers) as i32;
+pub(crate) const STATE_CONSTANTS: i32 = std::mem::offset_of!(NativeState, constants) as i32;
+pub(crate) const STATE_HOTNESS: i32 = std::mem::offset_of!(NativeState, hotness) as i32;
 
 /// The position of a helper in `SIGNATURES`, which is its index in the
 /// VM's table of helpers.
-fn helper_index(name: &str) -> usize {
+pub(crate) fn helper_index(name: &str) -> usize {
     SIGNATURES
         .iter()
         .position(|(known, _, _)| *known == name)
@@ -217,6 +218,7 @@ pub const SIGNATURES: &[(&str, &str, char)] = &[
     ("rt_deopt", "pzzwp", 'v'),
     ("rt_top_is_absent", "p", 'b'),
     ("rt_top_is_failure", "p", 'b'),
+    ("rt_osr", "pzzw", 'i'),
 ];
 
 /// The Cranelift signature of a helper.
@@ -417,7 +419,7 @@ struct Gen<'a, 'b> {
 /// Whether a typed entry's kind is the representation the declared result
 /// type gives a call's answer (decision AU1): the generated code trusts
 /// the entry only where the two agree.
-fn kind_agrees(kind: TypedKind, result: Abs) -> bool {
+pub(crate) fn kind_agrees(kind: TypedKind, result: Abs) -> bool {
     matches!(
         (kind, result),
         (TypedKind::Bool, Abs::Bool)
@@ -429,7 +431,7 @@ fn kind_agrees(kind: TypedKind, result: Abs) -> bool {
 
 /// Whether the operator is a comparison: its answer is a Boolean whatever
 /// the operands.
-fn is_comparison(op: BinaryOp) -> bool {
+pub(crate) fn is_comparison(op: BinaryOp) -> bool {
     use BinaryOp::*;
     matches!(
         op,
@@ -450,7 +452,7 @@ fn is_comparison(op: BinaryOp) -> bool {
 /// update nothing in place, so the slot keeps its value, which nothing
 /// reads again, and the helper counts the copy out; moving it would cost
 /// a release after the call where the plain load cost nothing.
-fn borrowed_operands(
+pub(crate) fn borrowed_operands(
     program: &Program,
     code: &Code,
     analysis: &Analysis,
@@ -1223,6 +1225,7 @@ impl Gen<'_, '_> {
             stack: self.state.clone(),
             slots: self.analysis.slots.clone(),
             marks: self.analysis.marks.clone(),
+            handlers: self.analysis.handlers.get(pc).cloned().unwrap_or_default(),
         };
         let index = self.deopts.len() as u32;
         self.deopts.push(point);
