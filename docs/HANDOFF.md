@@ -182,7 +182,12 @@ and push there directly.
    opens with the study of AU31 (iv) (the section "The front end's
    round" below); the binary keeps the Rust front end, and every entry
    that measures speed records the ratio of the Renyi compiler to it
-   (the switch when it is within 3 times).
+   (the switch when it is within 3 times). The study is written in that
+   section (the Rust front end parses every file two and three times;
+   the library is parsed and declared at every start; the Renyi lexer
+   is 56 times the Rust lexer, its parser 17 times), with the candidates
+   A0 to A4 and B1 to B5, and its questions went to the owner: the
+   stages follow the answers (decision AU36).
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
@@ -2724,22 +2729,22 @@ that skips the front end among the candidates (and, from AU35's report,
 the copies `append` makes of a shared list, 3.6% of the self-check in
 `memcpy`), then the owner orders the stages. The numbers it starts
 from, on AU34's binary: the front end that compiles the checker program
-before it runs is 10.1% of the self-check's synchronous JIT run (716
-million instructions: `check_project_in` 357 million, `compile_project`
-158 million, the parse and the loading the rest); `renyi check
-compiler/bodies.ry` takes 77 ms, `renyi parse --json` 78, `renyi
-compile` 103; `examples/hello.ry` runs in 9 ms on the JIT, 5 from its
-image. The ratio of AU35 (ii) on the same file: the Renyi checker 820
-ms from its image (10.6 times), the parser 348 (4.4), the compiler
-1,132 (11.0). A faster Rust front end makes that ratio larger: the
-study says what each candidate does to it.
+before it runs is 10.6% of the self-check's synchronous JIT run (716
+million instructions); `renyi check compiler/bodies.ry` takes 72 to 77
+ms, `renyi parse --json` 78, `renyi compile` 103; `examples/hello.ry`
+runs in 7 to 9 ms on the JIT, 5 from its image. The ratio of AU35 (ii)
+on the same file: the Renyi checker 820 to 850 ms from its image (10.6
+to 11.9 times), the parser 348 (4.4), the compiler 1,132 (11.0). A
+faster Rust front end makes that ratio larger: the study says what each
+candidate does to it.
 
 **Why the Renyi compiler is 11 times the Rust front end's time**, as
 measured for the owner on 2026-10-10 (callgrind on the same binary and
 file, the Renyi checker from its image so that nothing is compiled):
 the Rust checker runs 437 million instructions with 0.51 million
-allocations, 72% of them in the lexer and the parser of the 24
-thousand lines `bodies.ry` imports; the Renyi checker runs 4.99 billion
+allocations, 72% of the instructions in the parse of the 13,280 lines
+of `bodies.ry` and its eight imports, which it parses two and three
+times over (the study below); the Renyi checker runs 4.99 billion
 (11.4 times) with 5.0 million allocations and 36.5 million drops of a
 value. Its instructions: the program's own machine code 31% (1.54
 billion, 3.5 times the whole Rust run: a baseline JIT, no inlining
@@ -2753,13 +2758,149 @@ better: the lexer holds the source as a `List of Text`, one 24-byte text
 per character, calls `char_at` for every character, classifies a
 character with a search (`"abcdefghijklmnopqrstuvwxyz".contains(ch)`),
 calls a closure per character in `scan_while`, and returns a record of
-two lists per step; the VM's profiler (`run --profile`) puts the
-lexer's functions at about 26% of the top twenty and the parser's at
-14%. The levers the analysis names: a text method that answers a code
-point as an Integer (a library addition), with the lexer rewritten on
-it; interned names; a faster hash; and in the VM inlining of small
-functions, escape analysis, parameters read without a count (AU14's
-skipped item) and updates in place when held once.
+two lists per step. The levers the analysis names: a text method that
+answers a code point as an Integer (a library addition), with the lexer
+rewritten on it; interned names; a faster hash; and in the VM inlining
+of small functions, escape analysis, parameters read without a count
+(AU14's skipped item) and updates in place when held once.
+
+**The study** (2026-10-10, AU34's binary on one boot: callgrind for the
+instructions, the best of seven runs for the times; two study programs
+beside a copy of `compiler/` in the session's scratchpad, not
+committed: `phases.ry`, which runs the Renyi front end's phases up to a
+named one on the files given, and `scan.ry`, a lexer's scan in one loop
+over the characters held as texts and as Integer codes).
+
+*The Rust front end.* `renyi check compiler/bodies.ry` (nine files,
+13,280 lines, 442,656 characters) runs 437 million instructions in
+71.6 ms. The parse is 314 million of them, 72%, because every file is
+parsed twice and the main file three times: the resolver parses each
+file to read its imports (`renyi_package::resolve::imports_of`, 118.5
+million), the check parses each again (`check_project_in`, 118.8
+million), and `diagnose` parses the main file before both (70.9
+million); the library's fifteen declaration files take 5.9 million. One
+parse of the nine files is about 28 million instructions of lexing and
+91 million of parsing. The declarations (`World::resolve_all`) take 37.8
+million, the bodies 63.8 million, and three passes of the declarations
+clone a module's whole item list to walk it (`Vec<Item>::clone`, 23.8
+million, 5.4%). Inside the parse, `TokenKind::eq` alone is 80 million
+instructions, 18% of the run: 2.69 million calls of about 30
+instructions, half of them `peek`'s test for a line break, since the
+derived comparison of a kind that carries texts is a function the
+compiler does not inline; the comparisons' temporaries are dropped
+through `drop_glue<TokenKind>` (24 million), and `advance` clones the
+token it returns, which 75 of its 85 callers drop (0.36 million
+clones). In the self-check's run (`compiler/checker.ry`, 13 files and
+19,511 lines; 716 million instructions, 10.6% of the synchronous JIT
+run): the resolver's parse 188 million, the check's 184 million, the
+bodies 100 million, the declarations 58 million, the library 6 million,
+the bytecode 158 million, of which the function bodies are 68 million
+and the table of the checker's recorded targets (`HashMap<Span,
+Vec<Target>>` with the default SipHash, grown as it fills) about 38
+million.
+
+*The fixed cost of every program.* `renyi --version` takes 2.6 ms (a C
+program that returns at once, 1.0 ms in the same harness; 1.6 million
+instructions and the pages of an 18 MB binary). `renyi check` of an
+empty program takes 6.2 ms and 11.3 million instructions, half of them
+the standard library's: its fifteen declaration files (746 lines) are
+parsed (6.1 million) and declared (3.0 million, 1.3 million of them in
+the clones above) at every start. `renyi run examples/hello.ry` takes
+7.2 ms (13.9 million instructions, 65% of them the library's), 4.9 from
+its image, and 7.3 with the image cache, whose hit is decided after the
+front end has run (AU10): the cache saves a small program nothing.
+
+*The Renyi front end.* On the same nine files, from images: reading
+them 77 million instructions (19 ms with the start), the characters and
+the line starts 64 million more (9 ms), the lexer 1,555 million (203
+ms: 3,500 instructions a character, about 56 times the Rust lexer's),
+the parser 1,568 million (239 ms: 17,900 a token, about 17 times the
+Rust parser's), the declarations, the bodies, the layout check and the
+rendering 1,730 million (381 ms, about 15 times the Rust checker's
+part); 4.99 billion and 850 ms in all, 11.9 times the Rust check on this
+boot. The lexer's cost is its style more than the VM's: a scan in one
+loop over the same `List of Text` that classifies by `contains` and
+builds a record per token runs 255 million instructions, where the
+lexer as written calls `char_at` for every character (0.64 million
+calls), classifies by searches (`is_lower`, 0.39 million calls), returns
+a `Step` record with two lists for every blank and every token, scans
+through a closure call per character (`scan_while`) and looks every word
+up in the list of the 88 reserved words. The same scan over Integer
+codes ran 444 million, more than over texts: two Integers the generated
+code holds boxed (read from a list, a field, an `otherwise`) are
+compared through `rt_compare` (184 million of the 444, about 100
+instructions a comparison), since the inline comparison wants both in
+registers. The parser builds a `Peek` record at every look and a new
+cursor at every step, compares a keyword as a text (`token.kind is
+Word(spelling: spelling)` builds a variant and compares its text) and
+calls `token_at` and `token_under` 0.82 million times.
+
+*The candidates*, with what each does to the times and to the ratio of
+AU35 (ii), the Renyi compiler's time over the Rust front end's in the
+same binary (the Renyi compiler parses each file once already: its
+`Source` holds the parse):
+- A0, each file parsed once by the Rust front end: the resolver keeps
+  the trees it parses, the check takes them, `check` takes the main
+  file's from the same. `check` on `bodies.ry` from 437 to about 248
+  million instructions (-43%, about 42 ms), the self-check's front end
+  from 716 to about 528 million (-26%, -2.8% of the run). The ratio
+  from 12 to about 20.
+- A1, token kinds compared by their variant in the Rust parser
+  (`matches!`, and an inlined comparison that looks at a reserved
+  word's word), `advance` without the clone where the token is dropped:
+  about 30% of a parse; with A0, `check` about 210 million (-52% in
+  all, about 36 ms), the self-check's front end about 470 million. The
+  ratio about 24.
+- A2, a cache keyed by the sources, extending AU10's: an entry lists
+  every file a compile read with its hash, the image the run left and
+  the warnings the compile printed; a run whose files all hash as
+  listed loads the image and runs no front end. `hello` from 7.2 to
+  about 5 ms (-30%), the self-check about 100 ms less (-10%). The ratio
+  unchanged (it is measured without the cache). Its questions: what
+  else invalidates an entry (the binary is in the key; the manifest and
+  the lockfile are files read), `record`'s code hash (kept in the
+  entry), `test`.
+- A3, the Rust bytecode compiler's tables with a faster hash, sized
+  before they fill: about -25 million of the self-check's 158.
+- A4, the library's fixed cost: the prelude and the modules a program
+  imports declared, not all fifteen (the list of the modules kept for
+  the diagnostics that name one), the item lists shared rather than
+  cloned: `hello`'s 9 million to about 4 (about -1.5 ms of 7.2).
+  Another way, larger: the library's declarations built once into the
+  binary.
+- B1, the Renyi lexer rewritten for speed with the library as it is:
+  one loop, the tokens appended in place, characters classified by
+  `contains` on short texts, the reserved words in a `Set`: from 1,555
+  to an estimated 350 to 600 million (about -20% of the Renyi checker,
+  850 to about 670 ms). A text method answering code points as Integers
+  (`code_points()`, a library addition, not a change of the surface)
+  gains only after B5.
+- B2, the Renyi parser: keywords and symbols as variants without
+  fields, compared by their tag (such a variant is a cached value since
+  AG6), a cursor that builds no `Peek` per look: from 1,568 to an
+  estimated 800 million (about -15%).
+- B5, in the VM: a comparison of two boxed values the checker typed
+  Integer, inline in both tiers (both small Integers: the payloads
+  compared in place; else `rt_compare`), for every program that compares
+  Integers read from a list, a field or an `otherwise`; the self-check's
+  1.13 million `rt_compare` calls are about 2.6% of its instructions;
+  the condition for a lexer on code points.
+- B3, in the VM: inlining small functions on the Cranelift tier
+  (`char_at`, `token_at`, `is_symbol`, `is_lower`: 0.1 to 0.6 million
+  calls each), the largest lever after B1 and B2 on every program and
+  the largest work of the list; B4, interned names and a faster hash in
+  the Renyi checker's maps, for the checker's part.
+
+*The ratio's gate.* B1 and B2 bring the Renyi checker to about 500 to
+550 ms: 7 to 8 times today's Rust check, 14 to 15 times the Rust check
+after A0 and A1. The 3 times of AU35 (ii) needs about 215 ms against
+today's Rust front end and about 110 against it after A0 and A1: beyond
+B1 and B2 it needs the VM's own work (B3 and what follows it: values
+unboxed across calls, an optimizing tier). Two more effects to weigh:
+the self-check is the program AT1's measure runs, so B1 and B2 change
+the VM's measure (a copy of today's compiler kept under `bench/` would
+hold the measure fixed), and A0 and A1 make the ratio of AU35 (ii)
+larger without any change on the Renyi side.
 
 ## The representation items: the design study (session 11)
 
