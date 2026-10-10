@@ -110,6 +110,9 @@ pub fn describe_outcome(outcome: &RunOutcome) -> String {
 /// `main`, with the standard output hashed when the run is recorded or
 /// reproduced, so that the manifest can name the output.
 fn run_measured(program: &Program, mut options: Options) -> (Run, Option<(String, u64)>) {
+    // the run part of decision AU22: from the program loaded (compiled
+    // from its sources or read from a file) to the end of `main`
+    let started = std::time::Instant::now();
     let digest = (options.record || options.replay_output).then(|| {
         let digest: Measured = Rc::new(RefCell::new((Sha256::new(), 0)));
         let inner = std::mem::replace(&mut options.stdout, Box::new(std::io::sink()));
@@ -155,9 +158,15 @@ fn run_measured(program: &Program, mut options: Options) -> (Run, Option<(String
     };
     vm.report_profile();
     if std::env::var_os("RENYI_NATIVE_REPORT").is_some() {
+        let elapsed = started.elapsed();
         if let Some(jit) = &vm.native {
             let _ = writeln!(vm.stderr, "{}", jit.report(&vm.hotness));
         }
+        let _ = writeln!(
+            vm.stderr,
+            "run: {:.1} ms from the program loaded to the end of `main`",
+            elapsed.as_secs_f64() * 1000.0
+        );
     }
     let unused = vm.end_replay();
     let output = digest.as_ref().map(digest_text);

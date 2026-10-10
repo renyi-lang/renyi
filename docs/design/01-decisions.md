@@ -4441,3 +4441,41 @@ reached: on one hardware thread the JIT run, alternating with the
 image, takes 1,461.5 ms against the image's 1,162.9 (+25.7%, best of
 fifteen; +21% by the estimate, 11.71 against 9.67), where AU19 left it
 at +42%. (user)
+
+**AU22. The owner's answers of 2026-10-10 after the design study of the
+representation items (the handoff's section "The representation items:
+the design study"): (i) the order: small texts inline first (a text of
+at most 15 bytes held in the value itself, two of them compared by the
+generated code), then records and variants in one allocation (the
+fields in the counted block after the header), each a stage measured
+by AT1's rule; (ii) lists of unboxed Integers and `Int` flattened into
+`Value` are deferred until a numeric program calls for them; (iii) the
+three cuts the census found outside the list come first, each a stage
+of its own: the guard bookkeeping skipped in a run whose grant guards
+nothing, a fieldless variant read from the cache by the generated code,
+one shared empty list; (iv) the goal of AU18 is measured on the run
+part: the self-check's JIT run on one hardware thread, without the
+front end's compilation of the checker program, within 15% of its
+image; the front end's speed is an item of its own.** Why (ii): no
+program of the five makes a list of Integers worth unboxing (`primes`
+counts over ranges; the self-check makes 3,249 such lists of 741,923);
+the flattened `Int` alone estimates below 1% of the self-check, whose
+Integers live in registers on the Cranelift tier, and it pays mainly as
+the step to a 16-byte `Value`, which would cap the inline texts at 7
+bytes. Why (iv): of the gap the study measured (the JIT run 1,456 ms on
+one hardware thread, the image 1,212, +20%), the front end that
+compiles the checker program, 24,000 lines, takes 155 ms, about two
+thirds; a representation item makes the run and the image faster alike
+and so widens the ratio as stated, while an agent's script of a few
+hundred lines spends a few milliseconds in the front end and a repeated
+run loads its image from the cache (AU10). The run part is the time
+from the program loaded to the end of `main`, which `RENYI_NATIVE_REPORT`
+now prints after the JIT's report for the JIT run and for the image
+alike; by the study's numbers it stands about 7% above the image. The
+alternatives the owner declined: for (i), records first, the texts
+alone, values in registers first; for (ii), the flattened `Int` after
+the texts and the records, or both items as AU1 listed them; for
+(iii), the cuts after the representation items, or none; for (iv), the
+goal kept as stated with a round on the front end's speed after the
+representation items or in a round of its own, or AT1's rule alone.
+(user)

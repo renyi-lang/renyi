@@ -2406,21 +2406,15 @@ with the image, alternating in one series.
 **What is next in this round, after AU21:**
 
 1. **The representation items of AU1's step v**, the second part of
-   the owner's "1+2" (AU20): small texts inline, `Int` flattened into
-   `Value`, lists of unboxed Integers, values in registers across ops.
-   Before any code, a design study with counts, written into this file
-   as the template tier's was: on the self-check and the four
-   benchmarks, the allocations by kind (texts, records, variants,
-   lists, maps, big Integers) and by size; the lengths of the texts
-   made (how many fit beside the tag in the three words of a `Value`);
-   how often an Integer is a big one, and the share of the ops that
-   are Integer arithmetic and comparisons; the element kinds of the
-   lists (how many hold only Integers); what each item touches (the
-   layout of `Value` that AR4 pinned, which the Cranelift tier, the
-   template tier, the image's code format and the natives' typed
-   entries read in place) and its risk. Then the owner's questions in
-   one batch of four (which items, in which order, by which measure),
-   then the items one stage at a time by AT1's rule.
+   the owner's "1+2" (AU20): studied (the section "The representation
+   items: the design study" below) and ordered by the owner in AU22:
+   first the three cuts the census found outside the list, each a stage
+   of its own (the guard bookkeeping skipped in a run whose grant
+   guards nothing; a fieldless variant read from the cache by the
+   generated code; one shared empty list), then small texts inline,
+   then records and variants in one allocation, each measured by AT1's
+   rule; lists of unboxed Integers and the flattened `Int` deferred
+   until a numeric program calls for them.
 2. **The template tier's remaining follow-ups, by its profile** (not
    ordered by the owner; candidates when a profile after item 1 calls
    for them): the retain and the release of the common tags in place
@@ -2429,9 +2423,13 @@ with the image, alternating in one series.
    place (`rt_compare` today); the aarch64 encoder for the same
    sequences (Apple silicon, the Linux arm64 release).
 3. **The goal of AU18**, which AU20 kept as the measure of the
-   follow-ups (the self-check's JIT run on one hardware thread within
-   15% of its image): at +25.7% in wall-clock and +21% by the
-   estimate after AU21, from +42% after AU19.
+   follow-ups and AU22 measures on the run part (the self-check's JIT
+   run on one hardware thread, without the front end's compilation of
+   the checker program, within 15% of its image; `RENYI_NATIVE_REPORT`
+   prints the run part as its last line, "run: ... ms from the program
+   loaded to the end of `main`", for the JIT run and the image alike):
+   the whole run stood at +25.7% after AU21 and the run part at about
+   +7% by the study's numbers.
 4. **The micro-cuts, by a profile**: a fieldless variant built by
    `ConstructVariant` allocates on every comparison (`kind is Public`,
    11 sites in the checker program); a borrowed `LoadField` operand (33
@@ -2449,8 +2447,8 @@ with the image, alternating in one series.
    be honoured there too (or the hand-back retains the borrowed
    parameters first). It waits for a profile that shows the
    parameters' retains to matter.
-6. **No question is pending with the owner**: AU20 answered the four of
-   session 10; the next batch comes with the study of item 1.
+6. **No question is pending with the owner**: AU22 answered the four of
+   the study.
 
 Each stage is measured by AT1's rule (`tools/measure_size.sh` on the
 release binary, about fifteen minutes now with the fourth row; in a
@@ -2601,10 +2599,11 @@ variant read from the cache by the generated code instead of through
 as the ASCII table shares the one-character texts (435,470
 allocations, about 0.4%).
 
-**The questions for the owner** (one batch, the recommended option
+**The questions put to the owner** (one batch, the recommended option
 first): the order of the items; lists of unboxed Integers and the
 flattened `Int`; the cuts outside the list; AU18's goal, given the
-front end's share of the gap.
+front end's share of the gap. The owner took every recommended option
+(decision AU22).
 
 ## The template tier: the design study (session 10)
 
