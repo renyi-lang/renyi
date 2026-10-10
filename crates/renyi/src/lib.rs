@@ -168,9 +168,10 @@ options of run and record:
                                       time goes; the report on stderr when the run ends
   --interpret                         run on the interpreter alone, never on the machine code the VM
                                       generates (also `test`); a narrated or profiled run does so by itself
-  --no-cache                          neither load the program's machine code from the image cache nor
-                                      leave an image there (also `test`); a run that compiled machine code
-                                      otherwise builds the image in the background for the next run
+  --no-cache                          neither load the program from the cache nor leave it there (also
+                                      `test`); a run compiled from its sources otherwise leaves the program
+                                      for the next run of the same files, which runs no front end, and a
+                                      run that compiled machine code builds the image in the background
                                       (RENYI_CACHE_DIR names the cache's directory, RENYI_NO_CACHE turns
                                       it off)
   --replay <file.json>                run only: answer every effect from the recording; nothing is written or sent
@@ -315,9 +316,11 @@ fn dispatch() -> ExitCode {
     }
 }
 
-/// A source file; the error names the path.
+/// A source file; the error names the path. The read goes through
+/// `renyi_package::read_text`, so that the main file is among the reads
+/// the cache keyed by the sources notes (decision AU43).
 pub(crate) fn read_source(path: &str) -> Result<SourceFile, String> {
-    std::fs::read_to_string(path)
+    renyi_package::read_text(path)
         .map(|text| SourceFile::new(path, text))
         .map_err(|error| format!("cannot read {path}: {error}"))
 }
@@ -525,13 +528,6 @@ fn format_command(args: &[String]) -> ExitCode {
     }
 }
 
-/// Check a file with its imports and compile it, or load a bytecode file
-/// (`.ryc`, decision Z4); diagnostics go to stdout as `check` prints them,
-/// and an error stops here.
-fn compile(path: &str) -> Result<(renyi_vm::Program, Option<Image>), ExitCode> {
-    compile_with_sources(path).map(|(program, _, image)| (program, image))
-}
-
 /// What the manifest's code hash is computed from: the source files of a
 /// program compiled here, or the text of the bytecode file it was loaded
 /// from.
@@ -541,6 +537,10 @@ enum Hashed {
     /// The hash itself, as an image stores its bytecode file's (decision
     /// AT3).
     Given(String),
+    /// The hash and the dependencies as the cache keyed by the sources
+    /// kept them with the program, or as the run that stored it computed
+    /// them (decision AU40 ii).
+    Kept(cache::Kept),
 }
 
 /// `compile`, with what the manifest's code hash is computed from.
@@ -573,15 +573,107 @@ fn compile_with_sources(
             print!("{}", compiled.diagnostics);
             Ok((compiled.program, Hashed::Sources(compiled.sources), None))
         }
-        Err(CompileError::Read(message)) => {
-            eprintln!("renyi: {message}");
-            Err(ExitCode::FAILURE)
-        }
-        Err(CompileError::Diagnostics(text)) => {
-            print!("{text}");
-            Err(ExitCode::FAILURE)
+        Err(error) => Err(report_compile_error(error)),
+    }
+}
+
+/// A compile that failed, reported as `check` reports it: the message of
+/// a file that cannot be read on the standard error, the diagnostics on
+/// the standard output.
+fn report_compile_error(error: CompileError) -> ExitCode {
+    match error {
+        CompileError::Read(message) => eprintln!("renyi: {message}"),
+        CompileError::Diagnostics(text) => print!("{text}"),
+    }
+    ExitCode::FAILURE
+}
+
+/// A program as `run`, `record`, `test` and `build --cache` take it:
+/// loaded from an image or a bytecode file, or compiled from its sources
+/// through the cache keyed by them.
+struct Loaded {
+    program: renyi_vm::Program,
+    hashed: Hashed,
+    image: Option<Image>,
+    /// The program's binary encoding, when the cache keyed by the sources
+    /// held or computed it: the image cache's entry is named from it
+    /// without encoding the program again (decision AU43).
+    encoding: Option<Vec<u8>>,
+}
+
+/// `compile_with_sources` through the cache keyed by the sources
+/// (decisions AU40 and AU43): a program whose entry holds every file its
+/// compile read as it read then is loaded from the cache, its warnings
+/// printed again, and no front end runs; any other program is compiled
+/// with every file it reads noted, its warnings printed, and the program
+/// stored for the next run with the code hash and the dependencies when
+/// `manifest` asks for them. Neither for an image nor a bytecode file,
+/// nor under `--no-cache` or with the cache off.
+fn compile_cached(path: &str, no_cache: bool, manifest: bool) -> Result<Loaded, ExitCode> {
+    let eligible = !no_cache && !image::is_image(path) && !file::is_bytecode(path);
+    let Some(directory) = eligible.then(cache::directory).flatten() else {
+        let (program, hashed, image) = compile_with_sources(path)?;
+        return Ok(Loaded {
+            program,
+            hashed,
+            image,
+            encoding: None,
+        });
+    };
+    let entry = cache::SourceEntry::of(path, &library(), &directory);
+    if let Some(found) = entry.lookup(manifest) {
+        // an encoding this binary cannot read is a miss, never a failure:
+        // the program is compiled again below and the entry written over
+        if let Ok(program) = renyi_vm::binary::decode(&found.encoding) {
+            print!("{}", found.warnings);
+            if cache::reporting() {
+                eprintln!(
+                    "renyi: the program of {path} loaded from the cache keyed by the sources ({})",
+                    entry.path().display()
+                );
+            }
+            return Ok(Loaded {
+                program,
+                hashed: Hashed::Kept(found.manifest.unwrap_or_default()),
+                image: None,
+                encoding: Some(found.encoding),
+            });
         }
     }
+    let (compiled, reads) = renyi_package::noting(|| {
+        let compiled = compile_sources(path)?;
+        let kept = manifest.then(|| cache::Kept {
+            code: main_hash(&compiled.program, &compiled.sources),
+            dependencies: dependencies_of_files(path, &compiled.sources),
+        });
+        Ok((compiled, kept))
+    });
+    let (compiled, kept) = match compiled {
+        Ok(compiled) => compiled,
+        Err(error) => return Err(report_compile_error(error)),
+    };
+    print!("{}", compiled.diagnostics);
+    let sources = cache::Sources {
+        reads,
+        warnings: compiled.diagnostics,
+        manifest: kept.clone(),
+        encoding: renyi_vm::binary::encode(&compiled.program),
+    };
+    match entry.store(&sources) {
+        Ok(()) if cache::reporting() => eprintln!(
+            "renyi: the program of {path} stored in the cache keyed by the sources ({}, {} bytes)",
+            entry.path().display(),
+            sources.encoding.len()
+        ),
+        Err(message) if cache::reporting() => eprintln!("renyi: {message}"),
+        _ => {}
+    }
+    Ok(Loaded {
+        program: compiled.program,
+        hashed: Hashed::Kept(kept.unwrap_or_default()),
+        image: None,
+        encoding: Some(sources.encoding),
+    })
 }
 
 /// The modules of a program whose functions are bound outside Renyi, those
@@ -686,13 +778,18 @@ fn build_command(args: &[String]) -> ExitCode {
         eprintln!("renyi: `--cache` takes no `--exe`, `--to` or `--opt`: the cache's images are built at `speed`");
         return ExitCode::FAILURE;
     }
+    if cached {
+        // the build a run leaves in the background finds the program the
+        // run stored (decision AU43) and runs no front end either
+        return match compile_cached(path, false, false) {
+            Ok(loaded) => build_into_cache(path, &loaded.program, loaded.encoding),
+            Err(code) => code,
+        };
+    }
     let (program, _, _) = match compile_with_sources(path) {
         Ok(compiled) => compiled,
         Err(code) => return code,
     };
-    if cached {
-        return build_into_cache(path, &program);
-    }
     let built = match image::build(&program, opt.as_deref(), registry()) {
         Ok(built) => built,
         Err(message) => {
@@ -751,12 +848,21 @@ fn build_command(args: &[String]) -> ExitCode {
 /// `renyi build --cache <file>`: the image of the program into the image
 /// cache (decision AU10), as a run that compiled machine code leaves it
 /// in the background; the cache's directory and the entry are reported.
-fn build_into_cache(path: &str, program: &renyi_vm::Program) -> ExitCode {
+/// `encoding` is the program's binary encoding when the caller holds it.
+fn build_into_cache(
+    path: &str,
+    program: &renyi_vm::Program,
+    encoding: Option<Vec<u8>>,
+) -> ExitCode {
     let Some(directory) = cache::directory() else {
         eprintln!("renyi: the image cache is off: RENYI_NO_CACHE is set, or RENYI_CACHE_DIR is empty, or no cache directory is known (set RENYI_CACHE_DIR)");
         return ExitCode::FAILURE;
     };
-    let Some(entry) = cache::Entry::of(program, &directory) else {
+    let entry = match encoding {
+        Some(encoding) => cache::Entry::of_encoding(encoding, &directory),
+        None => cache::Entry::of(program, &directory),
+    };
+    let Some(entry) = entry else {
         eprintln!("renyi: this machine generates no machine code");
         return ExitCode::FAILURE;
     };
@@ -920,6 +1026,7 @@ fn code_hash(program: &renyi_vm::Program, hashed: &Hashed) -> Option<String> {
         Hashed::Sources(files) => main_hash(program, files),
         Hashed::File(text) => Some(renyi_vm::recording::sha256_of(text.as_bytes())),
         Hashed::Given(hash) => Some(hash.clone()),
+        Hashed::Kept(kept) => kept.code.clone(),
     }
 }
 
@@ -928,9 +1035,15 @@ fn code_hash(program: &renyi_vm::Program, hashed: &Hashed) -> Option<String> {
 /// AC1). A program loaded from a bytecode file has none to name: the
 /// file's hash covers them.
 fn dependencies_of(path: &str, hashed: &Hashed) -> Vec<Dependency> {
-    let Hashed::Sources(files) = hashed else {
-        return Vec::new();
-    };
+    match hashed {
+        Hashed::Sources(files) => dependencies_of_files(path, files),
+        Hashed::Kept(kept) => kept.dependencies.clone(),
+        Hashed::File(_) | Hashed::Given(_) => Vec::new(),
+    }
+}
+
+/// `dependencies_of` for the source files of a program.
+fn dependencies_of_files(path: &str, files: &[SourceFile]) -> Vec<Dependency> {
     let Some(lock) = renyi_package::Project::of(path).lock else {
         return Vec::new();
     };
@@ -1161,13 +1274,21 @@ fn run_command(args: &[String], record: bool) -> ExitCode {
         eprintln!("renyi: `--redact` is an option of `renyi record` and `renyi test --refresh`");
         return ExitCode::FAILURE;
     }
-    let (program, sources, image) = match compile_with_sources(path) {
-        Ok(compiled) => compiled,
+    let loaded = match compile_cached(path, flags.no_cache, record || flags.manifest) {
+        Ok(loaded) => loaded,
         Err(code) => return code,
     };
-    let (image, entry) = consult_cache(&program, image, &flags);
+    let (image, entry) = consult_cache(&loaded.program, loaded.image, loaded.encoding, &flags);
     run_loaded(
-        path, program, sources, image, entry, flags, memory, rest, record,
+        path,
+        loaded.program,
+        loaded.hashed,
+        image,
+        entry,
+        flags,
+        memory,
+        rest,
+        record,
     )
 }
 
@@ -1175,19 +1296,22 @@ fn run_command(args: &[String], record: bool) -> ExitCode {
 /// program's entry there when the run may leave an image for the next:
 /// neither for a program loaded from an image nor for a run on the
 /// interpreter (`--interpret`, `--explain`, `--profile`) or under
-/// `--no-cache`.
+/// `--no-cache`. `encoding` is the program's binary encoding when the
+/// caller holds it (decision AU43).
 fn consult_cache(
     program: &renyi_vm::Program,
     image: Option<Image>,
+    encoding: Option<Vec<u8>>,
     flags: &Flags,
 ) -> (Option<Image>, Option<cache::Entry>) {
     let interpreted = flags.interpret || flags.explain || flags.profile;
     if image.is_some() || interpreted || flags.no_cache {
         return (image, None);
     }
-    let Some(entry) =
-        cache::directory().and_then(|directory| cache::Entry::of(program, &directory))
-    else {
+    let Some(entry) = cache::directory().and_then(|directory| match encoding {
+        Some(encoding) => cache::Entry::of_encoding(encoding, &directory),
+        None => cache::Entry::of(program, &directory),
+    }) else {
         return (None, None);
     };
     match entry.lookup() {
@@ -1391,11 +1515,16 @@ fn test_command(args: &[String]) -> ExitCode {
     }
     let mut failed = false;
     for path in files {
-        let (program, image) = match compile(path) {
-            Ok(compiled) => compiled,
+        let Loaded {
+            program,
+            image,
+            encoding,
+            ..
+        } = match compile_cached(path, flags.no_cache, false) {
+            Ok(loaded) => loaded,
             Err(code) => return code,
         };
-        let (image, entry) = consult_cache(&program, image, &flags);
+        let (image, entry) = consult_cache(&program, image, encoding, &flags);
         let options = renyi_vm::Options {
             explain: flags.explain,
             interpret: flags.interpret,
@@ -1483,7 +1612,7 @@ fn reproduce_command(args: &[String]) -> ExitCode {
             describe_extensions(&extensions)
         );
     }
-    let (image, _) = consult_cache(&program, image, &Flags::default());
+    let (image, _) = consult_cache(&program, image, None, &Flags::default());
     let options = renyi_vm::Options {
         image,
         registry: registry().clone(),

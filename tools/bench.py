@@ -35,7 +35,8 @@ BENCHMARKS = [
 ]
 
 
-# the cold runs: no image from the cache of `renyi run` (decision AU10)
+# the cold runs: nothing from the caches of `renyi run` (decisions AU10 and
+# AU43): the front end runs and the hot code objects are compiled
 COLD = dict(os.environ, RENYI_NO_CACHE="1")
 
 

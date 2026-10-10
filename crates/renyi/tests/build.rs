@@ -406,3 +406,228 @@ fn a_run_that_compiled_machine_code_leaves_its_image_for_the_next() {
     assert!(!refused.status.success());
     assert!(text(&refused.stderr).contains("the image cache is off"));
 }
+
+/// The two files of a program with an own import, whose call to a
+/// deprecated function warns, written under `directory`.
+fn write_greeting_program(directory: &std::path::Path) {
+    std::fs::create_dir_all(directory).expect("the program's directory");
+    std::fs::write(
+        directory.join("main.ry"),
+        "module main
+  purpose: Greet through an own module; the call to a deprecated function warns.
+
+import std.console
+import words
+
+function main() needs console
+  purpose: Print the greeting, then the loud one.
+
+  console.print(words.greet(\"Renyi\"))
+  console.print(words.shout(\"hi\"))
+end
+",
+    )
+    .expect("main.ry written");
+    std::fs::write(directory.join("words.ry"), words_module("Hello")).expect("words.ry written");
+}
+
+fn words_module(greeting: &str) -> String {
+    format!(
+        "module words
+  purpose: Greetings.
+
+public function greet(name: Text) returns Text
+  purpose: The greeting for a name.
+
+  return \"{greeting}, {{name}}!\"
+end
+
+public function shout(text: Text) returns Text
+  purpose: The text, loudly.
+  deprecated: since 0.2, replaced by greet
+
+  return \"{{text}}!\"
+end
+"
+    )
+}
+
+#[test]
+fn a_run_leaves_its_program_keyed_by_the_sources_and_the_next_runs_no_front_end() {
+    let cache = scratch("sources");
+    let _ = std::fs::remove_dir_all(&cache);
+    let project = scratch("sources_project");
+    let _ = std::fs::remove_dir_all(&project);
+    let source = project.join("src");
+    write_greeting_program(&source);
+    let main = path(&source.join("main.ry"));
+    let report = [("RENYI_CACHE_REPORT", "1")];
+    let stored = "stored in the cache keyed by the sources";
+    let loaded = "loaded from the cache keyed by the sources";
+    // the first run compiles, prints the warning and leaves the program
+    let first = renyi_cached(&cache, &["run", &main], &report);
+    assert!(first.status.success(), "{}", text(&first.stderr));
+    let output = text(&first.stdout);
+    assert!(
+        output.contains("warning [deprecated]: `shout` is deprecated")
+            && output.ends_with("Hello, Renyi!\nhi!\n"),
+        "{output}"
+    );
+    assert!(
+        text(&first.stderr).contains(stored),
+        "{}",
+        text(&first.stderr)
+    );
+    assert_eq!(cached_files(&cache, "rys").len(), 1);
+    // the next run loads it, the warning printed again, no front end run
+    let second = renyi_cached(&cache, &["run", &main], &report);
+    assert!(second.status.success(), "{}", text(&second.stderr));
+    assert_eq!(text(&second.stdout), output);
+    assert!(
+        text(&second.stderr).contains(loaded),
+        "{}",
+        text(&second.stderr)
+    );
+    assert_eq!(cached_files(&cache, "rys").len(), 1);
+    // `test` and the image built in the background find it too
+    let tested = renyi_cached(&cache, &["test", &main], &report);
+    assert!(tested.status.success(), "{}", text(&tested.stderr));
+    assert!(
+        text(&tested.stderr).contains(loaded),
+        "{}",
+        text(&tested.stderr)
+    );
+    let built = renyi_cached(&cache, &["build", "--cache", &main], &report);
+    assert!(built.status.success(), "{}", text(&built.stderr));
+    assert!(
+        text(&built.stderr).contains(loaded),
+        "{}",
+        text(&built.stderr)
+    );
+    // an imported file changed is a miss, and the run shows the change
+    std::fs::write(source.join("words.ry"), words_module("Welcome")).expect("words.ry changed");
+    let changed = renyi_cached(&cache, &["run", &main], &report);
+    assert!(changed.status.success(), "{}", text(&changed.stderr));
+    assert!(
+        text(&changed.stdout).ends_with("Welcome, Renyi!\nhi!\n"),
+        "{}",
+        text(&changed.stdout)
+    );
+    assert!(
+        text(&changed.stderr).contains(stored),
+        "{}",
+        text(&changed.stderr)
+    );
+    let again = renyi_cached(&cache, &["run", &main], &report);
+    assert!(
+        text(&again.stderr).contains(loaded),
+        "{}",
+        text(&again.stderr)
+    );
+    // a manifest made in a directory above the program is a miss: the
+    // project's root moves there, and the import is read from it
+    std::fs::write(
+        project.join("renyi.json"),
+        "{\n  \"name\": \"main\",\n  \"version\": \"0.1.0\",\n  \"purpose\": \"A greeting.\"\n}\n",
+    )
+    .expect("the manifest written");
+    std::fs::write(project.join("words.ry"), words_module("Welcome")).expect("words.ry moved");
+    let with_manifest = renyi_cached(&cache, &["run", &main], &report);
+    assert!(
+        with_manifest.status.success(),
+        "{}",
+        text(&with_manifest.stderr)
+    );
+    assert_eq!(text(&with_manifest.stdout), text(&changed.stdout));
+    assert!(
+        text(&with_manifest.stderr).contains(stored),
+        "{}",
+        text(&with_manifest.stderr)
+    );
+    // `--no-cache` and `RENYI_NO_CACHE` leave the cache alone
+    for entry in cached_files(&cache, "rys") {
+        std::fs::remove_file(entry).expect("the entry removed");
+    }
+    let unused = renyi_cached(&cache, &["run", "--no-cache", &main], &report);
+    assert!(unused.status.success(), "{}", text(&unused.stderr));
+    assert_eq!(text(&unused.stdout), text(&changed.stdout));
+    assert!(!text(&unused.stderr).contains("cache keyed by the sources"));
+    let off = renyi_cached(
+        &cache,
+        &["run", &main],
+        &[("RENYI_CACHE_REPORT", "1"), ("RENYI_NO_CACHE", "1")],
+    );
+    assert!(off.status.success(), "{}", text(&off.stderr));
+    assert!(!text(&off.stderr).contains("cache keyed by the sources"));
+    assert!(cached_files(&cache, "rys").is_empty());
+}
+
+#[test]
+fn a_recording_from_the_cache_keyed_by_the_sources_carries_the_manifest_and_reproduces() {
+    let cache = scratch("sources_record");
+    let _ = std::fs::remove_dir_all(&cache);
+    let report = [("RENYI_CACHE_REPORT", "1")];
+    let stored = "stored in the cache keyed by the sources";
+    let loaded = "loaded from the cache keyed by the sources";
+    // a program with a dependency, whose manifest names the package
+    let program = "tests/conformance/packages/project/report.ry";
+    let plain = renyi_cached(&cache, &["run", program], &report);
+    assert!(plain.status.success(), "{}", text(&plain.stderr));
+    assert!(
+        text(&plain.stderr).contains(stored),
+        "{}",
+        text(&plain.stderr)
+    );
+    // `record` after a plain run misses once, since the entry kept no
+    // manifest, and then hits with the manifest kept
+    let recording = path(&cache.join("report.recording.json"));
+    let recorded = renyi_cached(&cache, &["record", "--to", &recording, program], &report);
+    assert!(recorded.status.success(), "{}", text(&recorded.stderr));
+    assert!(
+        text(&recorded.stderr).contains(stored),
+        "{}",
+        text(&recorded.stderr)
+    );
+    let from_cache = path(&cache.join("report_cached.recording.json"));
+    let recorded = renyi_cached(&cache, &["record", "--to", &from_cache, program], &report);
+    assert!(recorded.status.success(), "{}", text(&recorded.stderr));
+    assert!(
+        text(&recorded.stderr).contains(loaded),
+        "{}",
+        text(&recorded.stderr)
+    );
+    assert_eq!(cached_files(&cache, "rys").len(), 1);
+    // the manifest kept is the one a compile computes
+    let fresh = path(&cache.join("report_fresh.recording.json"));
+    let recorded = renyi_cached(
+        &cache,
+        &["record", "--no-cache", "--to", &fresh, program],
+        &report,
+    );
+    assert!(recorded.status.success(), "{}", text(&recorded.stderr));
+    let manifest = |file: &str| {
+        let text = std::fs::read_to_string(file).expect("the recording");
+        renyi_vm::Recording::parse(&text)
+            .expect("a recording")
+            .manifest
+    };
+    let kept = manifest(&from_cache);
+    let computed = manifest(&fresh);
+    assert!(kept.code.is_some());
+    assert_eq!(kept.code, computed.code);
+    assert_eq!(kept.dependencies, computed.dependencies);
+    assert_eq!(kept.dependencies.len(), 1);
+    assert_eq!(kept.dependencies[0].name, "greeting");
+    // `reproduce` accepts the recording, through the cache too
+    let reproduced = renyi_cached(&cache, &["reproduce", &from_cache], &report);
+    assert!(reproduced.status.success(), "{}", text(&reproduced.stderr));
+    // `--manifest` on a hit prints the same code hash
+    let printed = renyi_cached(&cache, &["run", "--manifest", program], &report);
+    assert!(printed.status.success(), "{}", text(&printed.stderr));
+    let message = text(&printed.stderr);
+    assert!(message.contains(loaded), "{message}");
+    assert!(
+        message.contains(kept.code.as_deref().unwrap_or("")),
+        "{message}"
+    );
+}

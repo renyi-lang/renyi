@@ -10,11 +10,12 @@
 #
 # then the census of the image (tools/image_census.py, with the bytecode
 # file for the ops): the bytes of machine code per code object and per op.
-# The first three rows run with the image cache off (decision AU10: the
-# cold JIT run is the row that decides); a fourth, `cached run`, is the
-# same command as the JIT run with the program's image in a cache of the
-# script's own, the second run of a program as a user sees it (a binary
-# without the cache prints `-`). Deterministic, so two binaries
+# The first three rows run with the caches off (decision AU10: the cold
+# JIT run is the row that decides); a fourth, `cached run`, is the same
+# command as the JIT run with the program's image (AU10) and, since
+# decision AU43, the program itself in a cache of the script's own, the
+# second run of a program as a user sees it (a binary without the cache
+# prints `-`). Deterministic, so two binaries
 # compare without repetition; about ten minutes a binary. The image is
 # built under valgrind too, since valgrind hides some CPU features and an
 # image built outside it is refused inside it.

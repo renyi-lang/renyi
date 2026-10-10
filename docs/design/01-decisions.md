@@ -5290,3 +5290,80 @@ where the front end is most of its time. The program is kept in the
 binary encoding of AT3, about half its bytecode file. The alternatives
 the owner declined: an image built in the background for every program
 run, or hits for the programs with an image only. (user)
+
+**AU44. Stage A2 of the front end's round as built: the cache keyed by
+the sources (AU40 ii to iv, AU43).** Every `run`, `record` or `test` of
+a program compiled from its sources, and the `build --cache` a run
+leaves in the background, goes through one path, `compile_cached` in
+`crates/renyi/src/lib.rs`: the entry, a `.rys` file in the cache's
+directory beside the images, is named by a hash of the binary (its
+version and its executable's path, size and modification time, so that a
+build with the same version and another front end misses, with the names
+and sizes of the library's declaration files, the extensions' among
+them), the working directory and the path as given, since a compiled
+program names its files as they are given; it holds a format line, one
+line of JSON (every file the compile read with the content hash of its
+text, or `null` for one looked for and not there, the manifests looked
+for in the directories above the program and the `.ry` looked for before
+a `.renyi` among them; the warnings the compile printed; the manifest's
+code hash and dependencies when the run wanted a manifest, else `null`)
+and then the program in the binary encoding of AT3. A hit is an entry
+whose files all read as they did (`renyi_package::unchanged`: each read
+again and hashed) and which holds a manifest when one is wanted: the
+warnings are printed again, the program is decoded, no front end runs,
+and the image cache's entry is named from the encoding held (AU10,
+unchanged, which a run that compiled machine code still fills). A miss
+compiles inside `renyi_package::noting`, every file read through
+`read_text` noted (the main file's read too), computes the code hash and
+the dependencies when a manifest is wanted, writes the entry to a
+`.part` file and renames it, and goes on; a compile with errors stores
+nothing. The entries of both caches count against the 256 MB together,
+the least recently used going first; `--no-cache` and `RENYI_NO_CACHE`
+turn both off; `RENYI_CACHE_REPORT=1` prints a line on a hit and on a
+store, for the tests. `serve`, `reproduce`, `check`, `compile`, `build`
+to a file and the MCP server keep the front end. The first build hashed
+the text of the library's declaration files for the key at every run:
+1.7 million instructions on this machine, which has no SHA extensions,
+more than the front end a hit of `hello` skips (the hit 6.33 million
+instructions against 6.72 with the cache off); the executable's identity
+covers the library compiled into it, so the key takes the modules' names
+and sizes, and the hit fell to 4.53 million (-32.7% against the cache
+off; a miss 7.91 million, +17.6%). Measured on one boot against the
+binary before the stage (d27fd5a), callgrind for the instructions and
+the best of seven alternating runs for the times: `run
+examples/hello.ry` 7.4 ms with the cache off on the binary before and
+7.6 on this one, 5.8 on a hit (-24%; 6.73 to 4.53 million instructions)
+and 7.6 on a miss (7.92 million instructions, the medians of seven 8.5
+against 9.7 ms), where the study had estimated about 5 ms for a hit; the
+self-check (`bench/selfcheck/checker.ry` on its `bodies.ry`): the cold
+JIT run 1,041 ms on the binary before and 1,006 on this one (the code it
+runs is unchanged), the second run as a user sees it 822 ms before (the
+front end, then the image from the image cache) and 762 now (both caches
+hit, -7.3%), 823 and 731 on one hardware thread (-11.2%), the medians of
+three 903 to 783 and 849 to 780; the cost of a miss, the files read
+again and hashed (600 KB), the program encoded (761 KB) and the entry
+written, 1,064 ms against the cold run's 1,006 for the self-check and
+nothing measurable for `hello` (the instructions +17.7%); the image's
+build in the background after the miss is as before. AT1's rows on the
+self-check, cachegrind on both binaries: the rows that run with the
+cache off are unmoved, the interpreter 11,613.9 to 11,613.4 million
+instructions and its estimate +0.02%, the image 4,992.4 million on both
+and its estimate -0.19%, the synchronous JIT run 6,460.0 to 6,460.5
+million instructions (+0.01%) with its estimate 9,097.0 to 9,030.3
+million (-0.73%, the layout: the simulated misses of the instruction
+cache fell), the default JIT row within the compile thread's variation
+(+1.0%); the `cached run` row, the second run of a program as a user
+sees it, which now hits both caches, 5,440.7 to 5,071.2 million
+instructions (-6.8%) and its estimate 7,782.6 to 7,251.4 million
+(-6.8%): what it pays above the row that runs the image given on the
+command line, the front end and the encoding hashed before, 448.2
+million instructions, is now 78.8 million, the files read again and
+hashed (sha256 in software here: about 55 instructions a byte over the
+self-check's 600 KB), the encoding hashed for the image cache's name and
+the program decoded. The ratio of AU36 (iii) is measured with the cache
+off and does not move with this stage, the Rust front end being AU42's:
+on this boot, nine alternating runs on a quiet machine, checking 795.9
+ms against the Rust front end's 38.3 on this binary (20.8 times) and
+38.7 on the binary before the stage (20.5), against AU34's 72.7 the 10.7
+of AU42; parsing 316.5 against 61.3 (5.2) and 59.2 (5.3); compiling
+1,039.2 against 81.2 (12.8) and 74.1 (14.0).

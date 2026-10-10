@@ -1,7 +1,9 @@
-# The image cache of `renyi run` (decision AU10) is off for every process
-# cargo starts, the tests among them: a test that runs a program twice
-# must run it the same way twice, and the conformance runner's runs with
-# every code object compiled must test the JIT, not an image a previous
-# run left. The cache's own test turns it on with a directory of its own.
+# The caches of `renyi run`, the image cache (decision AU10) and the cache
+# keyed by the sources (decision AU43), are off for every process cargo
+# starts, the tests among them: a test that runs a program twice must run
+# it the same way twice, and the conformance runner's runs with every
+# code object compiled must test the front end and the JIT, not what a
+# previous run left. The caches' own tests turn them on with a directory
+# of their own.
 [env]
 RENYI_NO_CACHE = "1"

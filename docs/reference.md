@@ -1627,18 +1627,29 @@ the hot code objects of a program as machine code it generates in the
 process (decision AG1), with the same results; `--interpret` (also an
 option of `test`) keeps everything on the interpreter, as `--explain`
 and `--profile` do by themselves. A run of `run`, `record` or `test`
-that compiled machine code leaves the program's image (decision AS1) in
-the image cache, built in the background once the run is over, and
-every later run of the same program by the same `renyi` on the same
-machine loads its code from there and compiles nothing (decision AU10);
-`reproduce` reads the cache too. An entry is a hit only when the image
-holds, byte for byte, the program the run compiled, so the cache never
-changes what runs. The cache lies in `renyi/images` under the system's
-cache directory (`$XDG_CACHE_HOME` or `~/.cache` on Linux,
-`~/Library/Caches` on macOS, `%LOCALAPPDATA%` on Windows) or where
-`RENYI_CACHE_DIR` says, holds at most 256 MB (the least recently used
-images go first), and is off under `--no-cache` (also an option of
-`test`), under `RENYI_NO_CACHE` and for a run on the interpreter.
+compiled from its sources leaves the program it compiled in a cache
+keyed by the sources (decisions AU40 and AU43): the entry holds every
+file the compile read with its content hash, and every place a manifest
+was looked for and not found, with the warnings the compile printed and,
+for `record` or `--manifest`, the code hash and the dependencies of the
+manifest; a later run of the same path from the same working directory
+by the same binary, whose files all read as they did, loads the program
+from there in place of running the front end and prints the warnings
+again, so that a changed source, a changed import or a manifest added
+above the program compiles again. A run that compiled machine code
+leaves the program's image (decision AS1) as well, in the image cache,
+built in the background once the run is over, and every later run of
+the same program by the same `renyi` on the same machine loads its code
+from there and compiles nothing (decision AU10); `reproduce` reads the
+image cache too. An image is a hit only when it holds, byte for byte,
+the program the run compiled, so the cache never changes what runs. The
+cache lies in `renyi/images` under the system's cache directory
+(`$XDG_CACHE_HOME` or `~/.cache` on Linux, `~/Library/Caches` on macOS,
+`%LOCALAPPDATA%` on Windows) or where `RENYI_CACHE_DIR` says, holds at
+most 256 MB over both kinds of entry (the least recently used go
+first), and is off under `--no-cache` (also an option of `test`) and
+under `RENYI_NO_CACHE`; the image cache also for a run on the
+interpreter.
 
 A bytecode file is the derived JSON of the types of `compiler/bytecode.ry`
 (decision Z1): `format` first, then the modules with their source paths
