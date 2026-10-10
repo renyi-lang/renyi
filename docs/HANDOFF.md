@@ -2734,6 +2734,33 @@ ms from its image (10.6 times), the parser 348 (4.4), the compiler
 1,132 (11.0). A faster Rust front end makes that ratio larger: the
 study says what each candidate does to it.
 
+**Why the Renyi compiler is 11 times the Rust front end's time**, as
+measured for the owner on 2026-10-10 (callgrind on the same binary and
+file, the Renyi checker from its image so that nothing is compiled):
+the Rust checker runs 437 million instructions with 0.51 million
+allocations, 72% of them in the lexer and the parser of the 24
+thousand lines `bodies.ry` imports; the Renyi checker runs 4.99 billion
+(11.4 times) with 5.0 million allocations and 36.5 million drops of a
+value. Its instructions: the program's own machine code 31% (1.54
+billion, 3.5 times the whole Rust run: a baseline JIT, no inlining
+across functions, no escape analysis, boxed values in memory), the
+counts 12.5%, the allocator 8.1%, copies 4.0% (immutable counted values,
+a shared list or map copied when changed), comparisons through
+`Value::eq` and `rt_compare` 7.2%, the list natives 7.2%, calls and
+frames 5.5%, the rest of the runtime 16% (`status`, `rt_truncate`,
+`Vm::with`). And the compiler's own style, which the library allows no
+better: the lexer holds the source as a `List of Text`, one 24-byte text
+per character, calls `char_at` for every character, classifies a
+character with a search (`"abcdefghijklmnopqrstuvwxyz".contains(ch)`),
+calls a closure per character in `scan_while`, and returns a record of
+two lists per step; the VM's profiler (`run --profile`) puts the
+lexer's functions at about 26% of the top twenty and the parser's at
+14%. The levers the analysis names: a text method that answers a code
+point as an Integer (a library addition), with the lexer rewritten on
+it; interned names; a faster hash; and in the VM inlining of small
+functions, escape analysis, parameters read without a count (AU14's
+skipped item) and updates in place when held once.
+
 ## The representation items: the design study (session 11)
 
 **What the owner ordered (AU20)**: after the template tier's follow-ups
