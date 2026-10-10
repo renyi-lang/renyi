@@ -4978,3 +4978,40 @@ the self-check (`List.last` 0.18 million, `List.join` 0.16, `List.length`
 0.07, the rest under 0.03 each), whose dispatch and value answers cost
 about 63 million instructions, 0.9% of the run: the most the stage of
 AU33 (iii) can take back. (user)
+
+**AU35. The owner's answers of 2026-10-10 after the progress report:
+(i) the typed round closes, its three goals met (`bench/strings.ry`
+past CPython, the self-check's estimate on the JIT run 37% under AT7's
+14.83 billion cycles where a quarter was asked, AU18's ratio met with
+AU30's binary on two boots, AU33); the general typed path of AU33 (iii)
+is not built, a candidate worth at most 0.9% of the self-check; the
+front end's round opens with the study of AU31 (iv); (ii) the binary
+keeps the Rust front end, the judges keep the compiler written in Renyi
+equal to it, and from now on every entry that measures speed records
+the ratio of the Renyi compiler's time to the Rust front end's on the
+same file with the same binary (checking, parsing and compiling
+`compiler/bodies.ry`); the switch is decided when the ratio is within
+3×, the threshold the question proposed.** The report the answers
+followed, measured on one boot, best of seven on four hardware threads:
+the self-check (the Renyi checker on `compiler/bodies.ry`) 1,854 ms on
+AU10's binary and 1,052 on AU34's (-43%), 1,415 and 834 from the image
+(-41%), 2,095 and 1,632 on the interpreter (-22%); session 12 alone,
+AU27's binary against AU34's, -13.0% on one hardware thread and -18.0%
+on four at the best; the benchmarks against CPython on the JIT run,
+`primes` 41 ms against 485 (11.8 times as fast), `records` 36 against
+152 (4.3), `json_round_trip` 93 against 151 (1.6), `strings` 68 against
+73 (1.1, where AU10's binary took 82, 0.9); the front ends on
+`compiler/bodies.ry` (7,774 lines and what it imports): checking 77 ms
+with the Rust front end, 820 with the Renyi checker from its image and
+1,101 on the JIT run (10.6 to 14.2 times), parsing 78 and 348 (4.4),
+compiling 103 and 1,132 (11.0), where session 10 had measured checking
+at 0.083 s and 1.87 s (22.5 times). What `renyi build` is, as the report
+stated it: ahead-of-time machine code for every function of a program
+in an image that runs in the Renyi runtime, the executable of
+`build --exe` that binary with the image appended, the image cache
+that makes every later run of a program load its code, the front end
+still run before a hit. The alternatives the owner declined: for (i),
+the append's copies first, or the general path as AU33 ordered; for
+(ii), an opt-in switch to an image of the Renyi compiler built into the
+binary, the switch for `compile` and `build` only, or the switch for
+every command now. (user)

@@ -21,9 +21,11 @@ image's run part -16%). After a study of the typed calls the owner decided AU33,
 AU34 put `List.at` in place in both tiers, with the list's layout
 probed at startup, and `Text.contains` and `List.contains` through lean
 helpers (the synchronous JIT run -4.7% by AT1's estimate, the image
--6.7%). CI passed on both jobs after every push. The next step goes to
-the owner first: the general typed path that AU33 (iii) ordered next
-now carries 0.9% of the self-check.
+-6.7%). CI passed on both jobs after every push. The owner then asked for a
+progress report and answered after it (decision AU35): the typed round
+closes with its three goals met, the front end's round opens with a
+study, and the binary keeps the Rust front end until the compiler
+written in Renyi comes within 3 times its time (11 to 14 times now).
 Session 11, in the cloud environment, put the four questions of session
 10 to the owner (decision AU20: the
 template tier's follow-ups first, then the representation items of
@@ -175,8 +177,12 @@ and push there directly.
    lean as the stage after it, and AU18's goal met with AU30's binary
    (two boots), its ratio only recorded from now on. AU34 left the
    general path 0.56 million calls and 0.9% of the self-check's
-   instructions, so the question at the end of "What is next in this
-   round" goes to the owner before that stage starts.
+   instructions, and after a progress report the owner closed the
+   round (decision AU35): the work now is the front end's round, which
+   opens with the study of AU31 (iv) (the section "The front end's
+   round" below); the binary keeps the Rust front end, and every entry
+   that measures speed records the ratio of the Renyi compiler to it
+   (the switch when it is within 3 times).
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
@@ -2605,8 +2611,7 @@ are in, each measured on one boot against the binary before it:
   search the bulk); `List.at` in place with the vector's layout probed,
   the two `contains` through lean helpers, the general path made lean
   after; AU18's goal met with AU30's binary, the ratio recorded only.
-- **AU34, `List.at` in place and the lean helpers** (this session's last
-  code commit): `layout::list_layout` (the probe: a vector of known
+- **AU34, `List.at` in place and the lean helpers** (44782aa): `layout::list_layout` (the probe: a vector of known
   address, length and capacity, its three words read through the `Rc`)
   and `NativeState::list_items` and `list_len`; `CallKind::Typed { kind,
   in_place }` with `InPlace` and `natives::prelude::in_place`;
@@ -2636,7 +2641,8 @@ The spread between boots is wider than the margin (AU27's binary
 measured +19.0% and +16.1% in session 11), so a measurement on another
 boot confirms it before the goal is called met.
 
-**What is next in this round, after AU34.** AU33 (iii) ordered the
+**The round closed after AU34 (decision AU35)**; what follows is what
+was put to the owner before the close. AU33 (iii) ordered the
 typed call's general path made lean next (the generated code releasing
 the arguments it does not borrow and pushing the answer itself, the
 entry called through a thin shim per kind of answer). After AU34 that
@@ -2708,6 +2714,25 @@ to an emitter. A lesson of session 10: never `git checkout <file>` to
 drop a temporary instrumentation from a file with uncommitted work; it
 reverted the whole file, which had to be rewritten from the session's
 own edit script.
+
+## The front end's round (decision AU35), the study first
+
+The owner opened the round on 2026-10-10 (AU35), with the study of
+AU31 (iv) first: the profile of the parse, the check and the compile on
+the self-check and the corpus, with a cache keyed by the sources' hash
+that skips the front end among the candidates (and, from AU35's report,
+the copies `append` makes of a shared list, 3.6% of the self-check in
+`memcpy`), then the owner orders the stages. The numbers it starts
+from, on AU34's binary: the front end that compiles the checker program
+before it runs is 10.1% of the self-check's synchronous JIT run (716
+million instructions: `check_project_in` 357 million, `compile_project`
+158 million, the parse and the loading the rest); `renyi check
+compiler/bodies.ry` takes 77 ms, `renyi parse --json` 78, `renyi
+compile` 103; `examples/hello.ry` runs in 9 ms on the JIT, 5 from its
+image. The ratio of AU35 (ii) on the same file: the Renyi checker 820
+ms from its image (10.6 times), the parser 348 (4.4), the compiler
+1,132 (11.0). A faster Rust front end makes that ratio larger: the
+study says what each candidate does to it.
 
 ## The representation items: the design study (session 11)
 
@@ -4305,9 +4330,13 @@ holds between calls.
   -16%, the image's run part -16%.
 - **Decision AU33** (4951fec), the owner's answers after the study of
   the typed calls; the run part measured on a second boot.
-- **Decision AU34**: `List.at` in place with the list's layout probed at
-  startup, `Text.contains` and `List.contains` through lean helpers,
-  code format 12; the synchronous JIT run -4.7% by the estimate.
+- **Decision AU34** (44782aa): `List.at` in place with the list's
+  layout probed at startup, `Text.contains` and `List.contains` through
+  lean helpers, code format 12; the synchronous JIT run -4.7% by the
+  estimate.
+- **The progress report and decision AU35**: the typed round closed,
+  the front end's round opened with a study, the Rust front end kept
+  until the Renyi compiler is within 3 times its time.
 - The gates with the 1.94.1 toolchain before every commit that touched
   `crates/`, the conformance suite and the judges on the template tier
   among them; CI green on both jobs after every push.
