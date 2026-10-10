@@ -4730,3 +4730,62 @@ measured +11.0% and +13.6%, +12.2% and +19.7% on the same boot: the
 goal of AU18 (within 15%) is reached on this boot at the best and the
 median, the JIT run part 1,071.9 to 1,035.3 ms at the best (-3.4%). The
 stage stays by AU1's rule and by the owner's measure. (user)
+
+**AU30. The second item of AU28 as built: the decoder of `std.json`
+builds a record in its block. The fields of a record or a variant are
+decoded onto the VM's stack in their order (`decode_fields`) and moved
+from there into the block (`Composite::from_top`), as the bytecode's
+constructions move theirs since AU27, with no vector between; a type
+with a refinement to check takes its fields off the stack into a vector
+and goes through `construct` or `construct_variant` as before, and so
+does a variant without fields, which stays shared (AG6). A field that
+does not decode, or an interrupt, cuts the stack back to the height it
+had, and `decode` asserts in a debug build that it leaves the stack as
+it found it. The natives that build a record from a vector of known
+length (the library's records and errors, the rows of `sqlite.query`,
+the nodes of a `JsonValue`) keep it: no measured program spends on
+them.** Before AU27 a decoded record kept the decoder's vector and put
+an `Rc` around it, two allocations; AU27 made them the vector and the
+block, with a copy between; the block is now the only one. The decoder
+calls `Composite::from_top` itself rather than `Vm::construct_from_top`,
+for a reason found by measurement. The first build called the VM's
+function, which LLVM had inlined into its two callers (the
+interpreter's loop and `rt_construct`, the generated code's helper)
+and kept out of line once the decoder made a third: the self-check's
+synchronous JIT run executed 47.6 million instructions more (0.7%), the
+calls the profile put on the two functions. The second build forced
+the inlining everywhere: the rows of the generated code came back
+level, but the interpreter's loop compiled otherwise and ran 1.2% more
+instructions with 43% more branch misses. The third leaves the VM's
+functions with their two callers, and the interpreter's loop and the
+helpers are the machine code of AU29, to the byte in size;
+`Composite::from_top`, `construct` and `construct_variant` were out of
+line in every build, so that a caller more changes nothing. The tests:
+in `tests/semantics.rs`,
+`decoded_records_are_built_in_their_block_and_keep_their_refinements`
+(a record and a variant with a refined field decoded where the field
+holds and where it does not, the variant refused after the record
+beside it was decoded, a field that does not decode in the middle of a
+record, the runs after each reading their values whole, interpreted and
+not; with the refinements skipped the test fails, as it was checked
+to); the assertion's power check (with the cut taken out of
+`decode_fields`, `json_paths` of the conformance suite aborts on it, as
+it was checked to); `json_paths` itself on both tiers; the judges. No
+test ran the refined records of the decoder before: the corpus's two
+programs that decode one (`config.ry`, `active_users.ry`) do it in
+functions no example or test calls. Measured on one
+boot against AU29's binary (8b642fd). By AT1's estimate under
+cachegrind on `json_round_trip`: the synchronous JIT run 1.067 to 1.033
+billion cycles (-3.2%; instructions 938.4 to 901.3 million, -3.9%), the
+template code alone -3.3%, the interpreter -3.1%; on the self-check
+every row with its instructions equal to a hundredth of a percent (the
+estimates 0.1% to 0.9% lower with the binary's layout). In wall-clock,
+alternating with the order swapped every turn, best and median:
+`json_round_trip` -2.0% and -1.9% on one hardware thread, -1.1% and
+-7.2% on two, -1.1% and -1.3% on four; the self-check, whose
+instructions are equal, within the noise (+1.1% and +0.4%, -0.4% and
++0.9%, +0.7% and -2.3%); the other benchmarks between -5.8% and +2.8%.
+The stage stays by AU28's measure: it takes back more than the 0.9% of
+instructions AU27 cost the benchmark. By AU1's rule alone it is level:
+the self-check's estimate falls only with the layout, and the
+benchmark's gain is below the 5% of the rule's second branch. (user)

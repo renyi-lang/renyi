@@ -4,7 +4,9 @@
 //! the target of a copy, SQLite refuses a path outside the scope with its
 //! own error, a declared `equals` decides `is`, a Float never overflows
 //! silently, and the text and list methods answer their edge cases; and
-//! a profiled run reports its counts (decision X4).
+//! a profiled run reports its counts (decision X4); and the decoder of
+//! `std.json` keeps the refinements of the records it builds in their
+//! blocks (decision AU30).
 
 use std::cell::RefCell;
 use std::io::Write;
@@ -544,4 +546,103 @@ end
     let (outcome, printed) = run(source, Options::default());
     assert_eq!(outcome, RunOutcome::Finished);
     assert_eq!(printed, "12 7\n");
+}
+
+/// The decoder of `std.json` builds a record in its block from the fields
+/// it leaves on the VM's stack (decision AU30): a record and a variant
+/// with a refined field fail with `Constraint` when the field does not
+/// hold, the variant's after the record beside it was decoded; a field
+/// that does not decode in the middle of a record fails with `Mismatch`;
+/// and the runs that follow read their values whole, interpreted or not.
+#[test]
+fn decoded_records_are_built_in_their_block_and_keep_their_refinements() {
+    let source = r#"module demo
+  purpose: Records decoded from JSON in their blocks, refined and plain.
+
+import std.console
+import std.json exposing JsonError
+
+type Limits
+  purpose: A record with a refined field.
+  has name: Text
+  has workers: Integer where workers is at least 1 and workers is at most 64
+  can FromJson
+end
+
+type Shape is one of
+  purpose: A variant with a refined field and one without fields.
+  Circle(radius: Integer where radius is at least 1)
+  Point
+  can FromJson
+end
+
+type Pair
+  purpose: A record of a record and a variant.
+  has limits: Limits
+  has shape: Shape
+  can FromJson
+end
+
+function decode_pairs(text: Text) returns List of Pair or fails with JsonError
+  purpose: Decode a list of pairs.
+
+  let pairs: List of Pair be json.parse(text) otherwise fail
+  return pairs
+end
+
+function outcome(text: Text) returns Text
+  purpose: A sum over the pairs, or why the text does not decode.
+
+  match decode_pairs(text)
+    when success(pairs) then
+      let mutable total be 0
+      for each pair in pairs
+        change total to total + pair.limits.workers + pair.limits.name.length()
+        match pair.shape
+          when Circle(radius) then change total to total + radius
+          when Point then change total to total + 100
+        end
+      end
+      return "ok {pairs.length()} {total}"
+    when failure(error) then return error.to_text()
+  end
+end
+
+public function main() needs console
+  purpose: Decode pairs that fit, and pairs that fail in the middle of a record.
+
+  let point be "\{\"kind\": \"Point\"}"
+  let circle be "\{\"kind\": \"Circle\", \"radius\": 5}"
+  let zero be "\{\"kind\": \"Circle\", \"radius\": 0}"
+  let plain_pair be "\{\"limits\": \{\"name\": \"a\", \"workers\": 4}, \"shape\": {point}}"
+  let round_pair be "\{\"limits\": \{\"name\": \"bb\", \"workers\": 8}, \"shape\": {circle}}"
+  let idle be "\{\"limits\": \{\"name\": \"c\", \"workers\": 0}, \"shape\": {point}}"
+  let flat be "\{\"limits\": \{\"name\": \"d\", \"workers\": 2}, \"shape\": {zero}}"
+  let wrong be "\{\"limits\": \{\"name\": \"e\", \"workers\": \"x\"}, \"shape\": {point}}"
+  let short be "\{\"limits\": \{\"name\": \"f\"}, \"shape\": {point}}"
+  console.print(outcome("[{plain_pair}, {round_pair}]"))
+  console.print(outcome("[{plain_pair}, {idle}]"))
+  console.print(outcome("[{round_pair}, {flat}]"))
+  console.print(outcome("[{plain_pair}, {wrong}]"))
+  console.print(outcome("[{round_pair}, {short}]"))
+  console.print(outcome("[{round_pair}, {plain_pair}, {round_pair}]"))
+end
+"#;
+    let expected = "ok 2 120\n\
+        Constraint(path: \"$[1].limits\", detail: \"workers is at least 1 and workers is at most 64\")\n\
+        Constraint(path: \"$[1].shape\", detail: \"radius is at least 1\")\n\
+        Mismatch(path: \"$[1].limits.workers\", expected: \"Integer\", found: \"a string\")\n\
+        Mismatch(path: \"$[1].limits.workers\", expected: \"a value\", found: \"null\")\n\
+        ok 3 135\n";
+    for interpret in [false, true] {
+        let (outcome, printed) = run(
+            source,
+            Options {
+                interpret,
+                ..Options::default()
+            },
+        );
+        assert_eq!(outcome, RunOutcome::Finished, "interpret: {interpret}");
+        assert_eq!(printed, expected, "interpret: {interpret}");
+    }
 }

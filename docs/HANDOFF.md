@@ -1,7 +1,21 @@
 # Handoff
 
-Last updated: 2026-10-10, session 11, in the cloud environment, which
-put the four questions of session 10 to the owner (decision AU20: the
+Last updated: 2026-10-10, session 12, in the cloud environment, which
+put the three questions after AU27 to the owner (decision AU28: the
+counts in place in template code next, then the natives building a
+record in its block, the decoder of `std.json` first, and the front
+end's speed a round of its own after this one) and did both stages:
+decision AU29, the retain and the release in place in template code
+(the template code alone -5.2% by AT1's estimate, the self-check -5.6%
+in wall-clock on one hardware thread; the run part of AU22 within
+AU18's 15% on this boot), and decision AU30, the decoder's records
+built in their block (`json_round_trip` -3.9% in instructions, the
+self-check's instructions equal after two builds that moved them; the
+section "The typed round" below, "The owner's answers after AU27").
+CI passed on both jobs after every push. The next step is put to the
+owner (the end of that section).
+Session 11, in the cloud environment, put the four questions of session
+10 to the owner (decision AU20: the
 template tier's follow-ups first, then the representation items of
 AU1's step v; a Windows job in CI; the goal of AU18 kept; the tier on
 by default) and did both parts: decision AU21, direct calls between
@@ -17,8 +31,8 @@ records and variants in one counted block. Over the session the
 self-check's JIT run on one hardware thread went from 1,592.8 to 1,164.4
 ms (-26.9%) and on four from 1,507.0 to 1,186.4 (-21.3%); `records`
 -20% (the section "The typed round" below, from "The template tier's
-direct calls are in" to "What is next in this round, after AU27"). The
-Windows job passed on every push. The next step is put to the owner.
+direct calls are in" to "Over the session, AU19's binary against
+AU27's"). The Windows job passed on every push.
 Session 10, in the cloud environment,
 did stages 6 to 9 of the typed round: decision AU11, the update of
 a uniquely held record in place (the ops `WithSlot` and `TakeField`,
@@ -131,16 +145,16 @@ which completes M5).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
-## Start here (session 12)
+## Start here (session 13)
 
 1. The work stopped in the typed round, whose plan the owner set in
-   decisions AU1 and AU9 and reordered in AU12, AU14, AU16, AU18, AU20
-   and AU22, right after the representation items (AU27): read the
-   section "The typed round" below, whose last paragraphs ("The
-   representation stages are in" and "What is next in this round, after
-   AU27") say what exists and what comes next. The questions of item 7
-   there go to the owner first, unless the owner answered them at the
-   end of session 11 (then the answers are the next decision entry).
+   decisions AU1 and AU9 and reordered in AU12, AU14, AU16, AU18, AU20,
+   AU22 and AU28, right after AU30, the last stage of AU28's plan: read
+   the section "The typed round" below, whose last paragraphs ("The
+   owner's answers after AU27" and "What is next in this round, after
+   AU30") say what exists and what comes next. The questions there go
+   to the owner first, unless the owner answered them at the end of
+   session 12 (then the answers are the next decision entry, AU31).
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
@@ -156,7 +170,12 @@ and push there directly.
    (`taskset`) beside it, both binaries alternating on one boot. The
    CPU features the container reports change between its boots, so an
    image built on one boot is refused on the next: build the image on
-   the boot that measures it.
+   the boot that measures it. The release build is one codegen unit
+   with fat LTO: a caller added to a function LLVM inlines into the
+   interpreter's loop or a helper can change that code (AU30); after a
+   change outside the generated code, compare `nm -C -S` of
+   `Vm::run_frames`, `rt_construct` and the like with the binary before,
+   and prefer calling what is already out of line.
 3. The gates before a commit that touches `crates/` are CLAUDE.md's,
    with the owner's toolchain: `cargo +1.94.1 fmt --check`, `cargo
    +1.94.1 clippy --all-targets -- -D warnings`, `cargo +1.94.1 test`
@@ -167,7 +186,10 @@ and push there directly.
    cargo runs (`.cargo/config.toml`); a test of the cache turns it on
    with its own directory. CI's Windows job runs `cargo test -p
    renyi_vm` on every push (AU20); look at it after a push that touches
-   the template tier.
+   the template tier. Stop a gate by its process ids: `pkill -f` on a
+   pattern its children's command lines carry kills the judges' runs
+   (and the shell that typed it), and the judges then fail with an
+   exit status of none, as one gate of session 12 did.
 4. In the cloud container the disk is a fixed allowance: a target
    directory grows to about 9 GB, so keep at most two (the repository's
    and one for the 1.94.1 gates) and delete the rest.
@@ -2465,8 +2487,8 @@ binary before it on one boot:
   every path; the clone is a plain increment now, as the generated code
   makes it. The synchronous JIT run -4.6%, the image -6.1%; the
   self-check -10.5%, -3.9% and -4.4% in wall-clock, `records` -10% to
-  -13%, `json_round_trip` within +2% (the decoder's vectors are copied
-  into the blocks, 0.9% more instructions). Tests: `value.rs` (the
+  -13%, `json_round_trip` within +2% (the decoder's vectors were copied
+  into the blocks, 0.9% more instructions, until AU30). Tests: `value.rs` (the
   layout, the copy before an update) and
   `records_in_one_block_are_built_read_copied_and_compared` on both
   tiers.
@@ -2483,50 +2505,100 @@ ms against the image's 934.4 at the best (+19.0%), 1,213.8 against
 the loading 116 ms of the JIT run's 1,228 and 14 ms of the image's 948.
 The goal (15%) is near and not reached.
 
-**What is next in this round, after AU27** (the owner's plan of AU22 is
-done; the round goes on by the profile, AU12). The profile of the
-self-check's synchronous JIT run on AU27's binary (7.19 billion
-instructions): the front end that compiles the checker program 716
-million (10.0%), Cranelift 425 million (5.9%; 54 code objects in 82 ms
-on one hardware thread), the templates 115 million (1.6%); the values'
-lifecycle about 800 million (`drop_glue<Value>` 494 million,
-`Value::clone` 310 million; `rt_retain_at` 15.9 million calls and
-`rt_drop_at` 14.7 million from both tiers' code); the typed natives'
-path about 510 million (`rt_call_typed` 181 million for 2.77 million
-calls, `typed_value_answer` 146 million, `status` 181 million: `at` 1.39
-million calls, `contains` 0.81 million, `append_all` 0.37 million);
-`memcpy` 251 million (the lists grown by `append`); `Value::eq` 168
-million; `leave_frame` 154 million; `rt_compare` 152 million (400 before
-AU26); the allocator about 315 million. The candidates:
+**The owner's answers after AU27 and their two stages (decisions AU28
+to AU30, session 12).** AU28: (i) the retain and the release in place
+in template code next; (ii) after it, as a small stage, the natives
+building a record in its block, the decoder of `std.json` first; (iii)
+the front end's speed a round of its own after this one. Both stages
+are in, each measured on one boot against the binary before it:
+- **AU29, the counts in place in template code** (8b642fd): `retain`
+  and `release` in `template/mod.rs` read the tag and test its bit in
+  `COUNTED_OR_INTEGER` (`RC_TAGS` and the Integer's) with `bt`; a value
+  with neither skips the rest with a short jump (`jcc_short`, the
+  one-byte offset that `finish` refuses past its reach; `x64.rs` has
+  forty-one forms now); a counted block has its first word raised or
+  lowered in place; an Integer goes to `Cold::Retain` or
+  `Cold::Release`, where a big one raises its block's count or goes to
+  `rt_drop_at`; a count lowered to zero is raised back to one and goes
+  to `rt_drop_at`, which frees. No image holds template code: the code
+  format stays 10. The self-check's template code +24.8% (2.79 to 3.48
+  MB, 91 to 114 bytes per op); by AT1's estimate the template code alone
+  -5.2%, the synchronous JIT run -1.9%; the self-check -5.6%, -0.8% and
+  -3.6% at the best in wall-clock on one, two and four hardware
+  threads. AT6 had kept calls on the Cranelift tier against AR4's
+  longer generic sequence; this sequence tests one bit and skips, and
+  the indirect branches the model counts as missed fell 39%. Test:
+  `counts_raised_and_lowered_in_place_free_the_last_and_spare_big_integers`
+  in `tests/template.rs`.
+- **AU30, the decoder's records in their block** (this session's last
+  code commit): `decode_fields` in `natives/json.rs` decodes the fields
+  onto the VM's stack and the decoder's own `construct_from_top` moves
+  them into the block with `Composite::from_top`; a refined type and a
+  variant without fields go through `construct` and
+  `construct_variant`; the stack is cut back on an error or an
+  interrupt, and `decode` asserts it in a debug build.
+  `json_round_trip` -3.9% in instructions, -1.1% to -2.0% at the best in
+  wall-clock; the self-check's instructions equal. The first build
+  called `Vm::construct_from_top`, which LLVM then stopped inlining into
+  the interpreter's loop and `rt_construct` (+0.7% on the self-check);
+  the second forced the inlining and the interpreter's loop compiled
+  otherwise (+1.2% on the interpreter row); the third calls what was
+  already out of line. Test:
+  `decoded_records_are_built_in_their_block_and_keep_their_refinements`
+  in `tests/semantics.rs` (no test had run the decoder's refined
+  records before).
+
+The goal of AU18 on this boot, AU29's binary: the run part +9.7% and
++9.1% at the best, +7.7% and +3.0% at the median, in two measurements
+of eleven alternations (`runpart.py`); AU27's binary on the same boot
++11.0% and +13.6%, +12.2% and +19.7%. The goal is reached on this boot.
+The spread between boots is wider than the margin (AU27's binary
+measured +19.0% and +16.1% in session 11), so a measurement on another
+boot confirms it before the goal is called met.
+
+**What is next in this round, after AU30** (the owner's plans of AU22
+and AU28 are done; the round goes on by the profile, AU12, or closes
+for the front end's round of AU28). The profile of the self-check's
+synchronous JIT run on AU29's binary, which AU30 leaves as it is (7.07
+billion instructions): the front end that compiles the checker program
+716 million (10.1%: `check_project_in` 357 million, `compile_project`
+158 million, the parse and the loading the rest); Cranelift about 367
+million (5.2%); the templates 121 million (1.7%); the machine code
+itself 1.41 billion (19.9%); the values' lifecycle about 690 million
+(`drop_glue<Value>` 335 and 136 million, `Value::clone` 218 million;
+`rt_retain_at` 48 million and `rt_drop_at` 42 million, now from the
+Cranelift tier's calls and the cold paths); the typed natives' path
+about 510 million (`rt_call_typed` 181 million, `typed_value_answer`
+146 million, `status` 181 million; `text_contains_typed` 71 million,
+`list_at_typed` 64 million, `list_contains_typed` 45 million);
+`memcpy` 253 million (the lists grown by `append`); `Value::eq` 168
+million; `leave_frame` 154 million; `rt_compare` 152 million; the
+allocator about 510 million (7.2%). The candidates:
 1. **The hottest natives in place in the generated code**: `List.at`
    with a small Integer index (the bounds, the copy, the count, the
-   `maybe` answer), `Text.contains` on small texts; both tiers and the
-   image gain alike, so the ratio of AU18's goal does not move.
-2. **The retain and the release in place in template code**: a tag test
-   and an increment, a decrement and a call only to free, where every
-   copy and every dead value calls a helper now; it helps the JIT run
-   alone and so moves AU18's ratio; the template code grows (2.76 MB
-   after AU21) and AT6 found calls cheaper than inline counts on the
-   Cranelift tier, so it is a stage for AT1's rule to judge.
-3. **The compile cost on one hardware thread** (82 ms of Cranelift and
-   about 25 of templates in a run part of 1,112 ms): Cranelift's
-   single-pass register allocator was tried (`RENYI_NATIVE_REGALLOC=
-   single_pass`): 47 ms of compilation, but the run part 11.6% slower,
-   so the code it makes is not an option; fewer code objects compiled,
-   or less IR per op, remain.
-4. **The decoder's records built in place**: the natives that build
-   records from vectors (`json` decoding first) copy the values into the
-   block (AU27; 0.9% more instructions on `json_round_trip`).
-5. **Deferred by AU22**: lists of unboxed Integers and the flattened
-   `Int`, until a numeric program calls for them; **an item of its
-   own**: the front end's speed.
-6. **Skipped, recorded in AU14**: the parameters borrowed across direct
-   calls. A parameter the callee only reads needs no retain at the call
-   and no release at the return; the hazard is a frame handed back to
-   the interpreter, which drops its locals at the return.
-7. **The questions for the owner**, in one batch: which of 1 to 3 next
-   (or the round closed and the self-hosted front end decided, AU12),
-   and whether 4 rides with it.
+   `maybe` answer), `Text.contains` and `List.contains` on small
+   values; both tiers and the image gain alike.
+2. **AU29's sequence on the Cranelift tier**: AT6 compared the calls
+   with AR4's generic sequence (the tag's bit, the big Integer, both
+   payload words at every site); AU29's tests one bit and skips. The
+   JIT run and the image would both gain; the code grows, so AT1's rule
+   judges it.
+3. **The compile cost on one hardware thread** (Cranelift and the
+   templates, about 7% of the instructions): Cranelift's single-pass
+   register allocator was tried and its code ran 11.6% slower; fewer
+   code objects compiled, or less IR per op, remain.
+4. **Deferred by AU22**: lists of unboxed Integers and the flattened
+   `Int`, until a numeric program calls for them. **Skipped in AU14**:
+   the parameters borrowed across direct calls (the hazard is a frame
+   handed back to the interpreter, which drops its locals at the
+   return).
+5. **The round closed and the front end's round opened** (AU28 iii):
+   the front end is the largest single share of the self-check's JIT
+   run left to a round of its own (10.1%), and every program pays it
+   on every run without the image cache.
+6. **The questions for the owner**, in one batch: which of 1 to 3 next,
+   or 5; and whether AU18's goal is called met on this boot's
+   measurement or after one on another boot.
 
 Each stage is measured by AT1's rule (`tools/measure_size.sh` on the
 release binary, about fifteen minutes now with the fourth row; in a
@@ -4109,6 +4181,28 @@ holds between calls.
   map as the base, with `--json` and against itself; `HEAD` as the base
   for the corpus and for one file; a bad base), the `diff` call in
   `tests/mcp.rs`, and a unit test of `own_text_hash`.
+
+## Done in session 12 (the counts in place and the decoder's records, in the cloud environment)
+
+- **Decision AU28**, the owner's answers to the three questions after
+  AU27, every recommended option taken: the retain and the release in
+  place in template code next; the natives building a record in its
+  block after it, as a small stage, the decoder of `std.json` first;
+  the front end's speed a round of its own after this one.
+- **Decision AU29** (8b642fd): the counts raised and lowered in place in
+  template code, a helper called only for an Integer or the last
+  reference; two assembler forms more (`bt`, the short conditional
+  jump); the template code alone -5.2% and the synchronous JIT run
+  -1.9% by AT1's estimate, the self-check -5.6% in wall-clock on one
+  hardware thread; the run part of AU22 within AU18's 15% on this boot.
+- **Decision AU30**: the decoder's fields on the VM's stack and its
+  records moved into their blocks with no vector between;
+  `json_round_trip` -3.9% in instructions; a test of the decoder's
+  refined records, which no test had run; the lesson of its first two
+  builds on the inliner (the section "Start here", item 2).
+- The gates with the 1.94.1 toolchain before both commits, the
+  conformance suite and the judges on the template tier among them; CI
+  green on both jobs after every push.
 
 ## Done in session 11 (the template tier's direct calls, in the cloud environment)
 

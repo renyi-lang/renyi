@@ -12,6 +12,7 @@ use std::rc::Rc;
 
 use indexmap::{IndexMap, IndexSet};
 use renyi_check::types::Ty;
+use renyi_check::TypeId;
 
 use super::{arg, base64_decode, base64_encode, crash, text};
 use crate::decimal::Decimal;
@@ -20,7 +21,7 @@ use crate::integer::Int;
 use crate::natives::time::{instant_text, parse_instant_text};
 use crate::render::float_text;
 use crate::types::{FieldMeta, TypeMeta, TypeShape};
-use crate::value::Value;
+use crate::value::{Composite, Value};
 use crate::vm::{Interrupt, Vm};
 
 /// The natives of `std.json` (decision AK2): the declared function
@@ -158,7 +159,14 @@ pub fn decode(
     path: &str,
     naming: Naming,
 ) -> Result<Decoded, Interrupt> {
-    decode_at(vm, json, ty, &Path::Root(path), naming)
+    let height = vm.stack.len();
+    let decoded = decode_at(vm, json, ty, &Path::Root(path), naming);
+    debug_assert_eq!(
+        vm.stack.len(),
+        height,
+        "the decoder leaves the stack as it found it"
+    );
+    decoded
 }
 
 fn decode_at(
@@ -320,27 +328,10 @@ fn decode_at(
             let Json::Object(entries) = json else {
                 return mismatch(vm, path, &meta.name, json);
             };
-            let mut values = Vec::with_capacity(fields.len());
-            for field in fields {
-                let key = naming.key(field);
-                let field_path = Path::Key(path, &key);
-                let found = entries
-                    .iter()
-                    .find(|(k, _)| k.as_str() == &*key)
-                    .map(|(_, v)| v);
-                match found {
-                    Some(item) => {
-                        let ty = field_type(&field.ty, meta, args);
-                        match decode_at(vm, item, &ty, &field_path, naming)? {
-                            Ok(value) => values.push(value),
-                            Err(error) => return Ok(Err(error)),
-                        }
-                    }
-                    None if field.optional => values.push(Value::Nothing),
-                    None => return mismatch(vm, &field_path, "a value", &Json::Null),
-                }
+            if let Some(error) = decode_fields(vm, entries, fields, (meta, args), path, naming)? {
+                return Ok(Err(error));
             }
-            let built = vm.construct(id, values)?;
+            let built = construct_from_top(vm, id, None, fields.len())?;
             constrained(vm, built, path)
         }
         TypeShape::Sum(variants) => {
@@ -355,30 +346,90 @@ fn decode_at(
             let Some(tag) = variants.iter().position(|v| v.name == *kind) else {
                 return mismatch(vm, &kind_path, &meta.name, &Json::Text(kind.clone()));
             };
-            let mut values = Vec::new();
-            for field in &variants[tag].fields {
-                let key = naming.key(field);
-                let field_path = Path::Key(path, &key);
-                let found = entries
-                    .iter()
-                    .find(|(k, _)| k.as_str() == &*key)
-                    .map(|(_, v)| v);
-                match found {
-                    Some(item) => {
-                        let ty = field_type(&field.ty, meta, args);
-                        match decode_at(vm, item, &ty, &field_path, naming)? {
-                            Ok(value) => values.push(value),
-                            Err(error) => return Ok(Err(error)),
-                        }
-                    }
-                    None if field.optional => values.push(Value::Nothing),
-                    None => return mismatch(vm, &field_path, "a value", &Json::Null),
-                }
+            let fields = &variants[tag].fields;
+            if let Some(error) = decode_fields(vm, entries, fields, (meta, args), path, naming)? {
+                return Ok(Err(error));
             }
-            let built = vm.construct_variant(id, tag, values)?;
+            let built = construct_from_top(vm, id, Some(tag), fields.len())?;
             constrained(vm, built, path)
         }
         TypeShape::Opaque => mismatch(vm, path, &meta.name, json),
+    }
+}
+
+/// The fields of a record or a variant decoded from the object's entries
+/// onto the VM's stack in their order, from where `construct_from_top` moves
+/// them into the block with no vector between (decision AU30). A field
+/// that does not decode gives its error, an interrupt goes on, and either
+/// way the stack is cut back to where it was.
+fn decode_fields(
+    vm: &mut Vm,
+    entries: &[(String, Json)],
+    fields: &[FieldMeta],
+    (meta, args): (&TypeMeta, &[Ty]),
+    path: &Path,
+    naming: Naming,
+) -> Result<Option<Value>, Interrupt> {
+    let height = vm.stack.len();
+    for field in fields {
+        let key = naming.key(field);
+        let field_path = Path::Key(path, &key);
+        let found = entries
+            .iter()
+            .find(|(k, _)| k.as_str() == &*key)
+            .map(|(_, v)| v);
+        let decoded = match found {
+            Some(item) => {
+                let ty = field_type(&field.ty, meta, args);
+                decode_at(vm, item, &ty, &field_path, naming)
+            }
+            None if field.optional => Ok(Ok(Value::Nothing)),
+            None => mismatch(vm, &field_path, "a value", &Json::Null),
+        };
+        match decoded {
+            Ok(Ok(value)) => vm.stack.push(value),
+            outcome => {
+                vm.stack.truncate(height);
+                return outcome.map(Result::err);
+            }
+        }
+    }
+    Ok(None)
+}
+
+/// A record (no tag) or a variant of the `count` fields on top of the
+/// stack: moved into its block when the type has no refinement to check,
+/// as the bytecode's constructions make one (decision AU27), else through
+/// `construct` or `construct_variant`, which keep a variant without fields
+/// shared. It calls `Composite::from_top` itself rather than
+/// `Vm::construct_from_top`, which LLVM inlines into its two callers, the
+/// interpreter's loop and the generated code's helper, only while they are
+/// two: with the decoder as a third the self-check ran 0.7% more
+/// instructions, and forced inline everywhere the interpreter 1.2% more
+/// (decision AU30).
+fn construct_from_top(
+    vm: &mut Vm,
+    ty: TypeId,
+    tag: Option<usize>,
+    count: usize,
+) -> Result<Value, Interrupt> {
+    let program = vm.program;
+    let plain = program.types.meta(ty).refinements.is_empty()
+        && match tag {
+            None => Some(ty) != program.date,
+            Some(_) => count > 0,
+        };
+    if plain {
+        let composite = Composite::from_top(&mut vm.stack, count, ty, tag.unwrap_or(usize::MAX));
+        return Ok(match tag {
+            None => Value::Record(composite),
+            Some(_) => Value::Variant(composite),
+        });
+    }
+    let fields = vm.pop_n(count);
+    match tag {
+        None => vm.construct(ty, fields),
+        Some(tag) => vm.construct_variant(ty, tag, fields),
     }
 }
 
