@@ -5141,3 +5141,43 @@ ratio as AU36 (iii) records it: checking 773.3 ms against AU34's Rust
 front end's 69.9 (11.1 times, the gate) and this binary's 41.3 (18.7);
 parsing 317.6 against 72.1 (4.4) and 59.5 (5.3); compiling 1,149.9
 against 99.5 (11.6) and 84.2 (13.7). The stage stays by AU1's rule.
+
+**AU39. The module trees shared, not copied, by the declarations (the
+first part of stage A4 of AU36).** Three passes of the declarations
+(`World::resolve_types`, `resolve_abilities`, `resolve_functions`) walk
+a module's items while they fill the world's tables, and each copied
+the module's whole item list first, bodies included, to free the world
+for writing: the library's fifteen modules at every start and every
+module of a project. A module's tree is now held by a count
+(`ModuleInfo::ast: Rc<ast::Module>`), and each pass holds the tree by
+another count while it walks it; every reader of the tree reads it as
+before. Measured on one boot against A1's binary (AU38), callgrind and
+the best of nine alternating runs: an empty program's check 8.56 to 6.73
+million instructions (-21.3%), 6.2 to 5.7 ms; `run examples/hello.ry`
+11.13 to 9.31 million (-16.4%), 6.5 to 5.9 ms; `renyi check
+compiler/bodies.ry` 186.8 to 155.1 million (-16.9%), 46.8 to 38.4 ms
+(-18.0%); `check compiler/checker.ry` 286.9 to 236.9 million (-17.4%),
+63.4 to 52.3 ms (-17.5%); `compile compiler/checker.ry` 716.6 to 667.2
+million (-6.9%), 132.3 to 116.5 ms (-11.9%); the thirty examples checked
+one at a time 168.1 to 155.4 ms summed (-7.5%). AT1's rows: the
+synchronous JIT run 6,478.6 to 6,429.4 million instructions and 8,890.5
+to 8,770.9 million estimated cycles (-1.35%), the templates -1.31%, the
+interpreter -0.49%, the image -0.34% (the same instructions). Since
+AU34's binary, `check compiler/bodies.ry` 437.3 to 155.1 million
+instructions (-64.5%). The ratio as AU36 (iii) records it: checking
+775.2 ms against AU34's Rust front end's 72.3 (10.7 times, the gate) and
+this binary's 35.0 (22.2); parsing 312.1 against 74.2 (4.2) and 58.5
+(5.3); compiling 1,125.6 against 104.8 (10.7) and 81.0 (13.9). The stage
+stays by AU1's rule. The second part of A4, the prelude and the modules
+a program imports declared instead of the fifteen, was measured with a
+binary built for the measure and not kept: an empty program's check a
+further -38% in instructions (5.78 to 5.01 ms), `run examples/hello.ry`
+-31% (6.51 to 5.55 ms), `check compiler/bodies.ry` -1.8%, and the
+bytecode file of `hello` from 230.9 to 115.4 KB, since a program
+carries the metadata of every function the world declares (200 of
+`hello`'s 201 are the library's). It changes every program's bytecode,
+which the compiler in Renyi must write the same (the judges), and the
+checker's fixes that name a library module not imported (`write
+\`import std.environment\``, `write \`import std.json exposing
+JsonValue\``) then need the names of every library module's types and
+abilities without declaring them: its question goes to the owner.

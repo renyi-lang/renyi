@@ -4,6 +4,7 @@
 //! by `check`.
 
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use renyi_syntax::ast::{self, Item, TypeKind};
 use renyi_syntax::{Diagnostic, ForeignModule, Package, PythonBinding, Span};
@@ -24,7 +25,10 @@ pub struct ModuleInfo {
     pub foreign: Option<ForeignModule>,
     /// The Python module the file declares (decision AL1).
     pub python: Option<PythonBinding>,
-    pub ast: ast::Module,
+    /// The module's tree, shared: the passes that walk its items while
+    /// they fill the tables hold the tree by a count, not by a copy
+    /// (decision AU36, stage A4).
+    pub ast: Rc<ast::Module>,
     pub types: HashMap<String, TypeId>,
     pub abilities: HashMap<String, AbilityId>,
     /// Functions by name; several methods may share a name on different
@@ -251,7 +255,7 @@ impl World {
             package: None,
             foreign: None,
             python: None,
-            ast: module,
+            ast: Rc::new(module),
             types: HashMap::new(),
             abilities: HashMap::new(),
             functions: HashMap::new(),
@@ -1280,8 +1284,9 @@ impl World {
     }
 
     fn resolve_types(&mut self, id: ModuleId) {
-        let items = self.modules[id].ast.items.clone();
-        for item in &items {
+        let ast = Rc::clone(&self.modules[id].ast);
+        let items = &ast.items;
+        for item in items {
             let Item::Type(def) = item else { continue };
             let type_id = self.modules[id].types[&def.name.text];
             if !matches!(self.types[type_id].kind, TypeKindInfo::Unresolved) {
@@ -1333,11 +1338,12 @@ impl World {
     }
 
     fn resolve_abilities(&mut self, id: ModuleId) {
-        let items = self.modules[id].ast.items.clone();
+        let ast = Rc::clone(&self.modules[id].ast);
+        let items = &ast.items;
         // every ability's parameters first, so that a requirement can count
         // the arguments of an ability declared later in the module
         let mut pending = Vec::new();
-        for item in &items {
+        for item in items {
             let Item::Ability(ability) = item else {
                 continue;
             };
@@ -1420,7 +1426,8 @@ impl World {
     }
 
     fn resolve_functions(&mut self, id: ModuleId) {
-        let items = self.modules[id].ast.items.clone();
+        let ast = Rc::clone(&self.modules[id].ast);
+        let items = &ast.items;
         let is_library = self.modules[id].is_library;
         for (index, item) in items.iter().enumerate() {
             match item {
