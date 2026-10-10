@@ -163,7 +163,12 @@ and push there directly.
    place, the next stage; AU18's goal measured on another boot before
    it is called met (AU32 moved it away: the image gained more than the
    JIT run); the other natives' vectors left alone; the front end's
-   round to start with a study.
+   round to start with a study. Then, after a study of the typed calls,
+   decision AU33: `List.at` in place with the vector's layout probed at
+   startup, a lean helper each for `Text.contains` and `List.contains`
+   (the stage AU34, next), the typed call's general path made lean as
+   the stage after it, and AU18's goal met with AU30's binary (two
+   boots), its ratio only recorded from now on.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
@@ -2566,10 +2571,10 @@ are in, each measured on one boot against the binary before it:
   stage; AU18's goal called met only after a measurement on another
   boot; the natives that build records from vectors left alone; the
   front end's round to start with a study.
-- **AU32, the counts in place in Cranelift's code** (this session's last
-  code commit): `branch_on_count`, `big_integer`, `raise_count`,
-  `retain` and `release` in `codegen.rs`, `COUNTED_OR_INTEGER` in
-  `value::layout` for both tiers; a release has one call, shared by the
+- **AU32, the counts in place in Cranelift's code** (7353f11):
+  `branch_on_count`, `big_integer`, `raise_count`, `retain` and
+  `release` in `codegen.rs`, `COUNTED_OR_INTEGER` in `value::layout`
+  for both tiers; a release has one call, shared by the
   last reference and a big Integer; `rt_retain_at` gone, code format 11.
   Four builds were measured (two calls per release; every Integer
   through the helpers; a big Integer's retain through the helper, which

@@ -4884,3 +4884,38 @@ moves away by a stage that makes both faster; AU31's measurement on
 another boot takes it as it is now. The stage stays by AU1's rule: a
 benchmark gains more than 5% (`strings` 13.1% to 16.0% in wall-clock)
 while the self-check's estimate moves within its spread. (user)
+
+**AU33. The owner's answers of 2026-10-10 after the study of the typed
+calls: (i) `List.at` in place in the generated code of both tiers reads
+the list's items through the layout of `Vec<Value>` probed when the VM
+starts: the offsets of the pointer and of the length within the vector
+are kept in the VM's native state and loaded by the code, which holds
+no assumption about the layout, so that neither the code nor an image
+depends on how the compiler laid the vector out, and a test holds the
+probe; (ii) `Text.contains` and `List.contains` each get a lean helper
+that the generated code calls directly with its operands' place and
+that answers a Boolean, with no typed entry's dispatch, no loop over
+the arguments and no memory check, the search staying in Rust; (iii)
+the general path of a typed call becomes lean as a stage of its own
+after this one: the generated code releases the arguments the call does
+not borrow (in place, AU29 and AU32) and pushes the answer itself, and
+the entry is called through a thin shim per kind of answer; (iv) AU18's
+goal is met with AU30's binary, whose run part measured within 15% of
+the image on two boots (+9.1% and +7.6% at the best); the ratio is
+recorded in every entry from now on and is no longer a goal, the JIT
+run measured by AT1's rule and wall-clock against the stage before.**
+The study, on AU32's binary: the self-check's synchronous JIT run made
+2.77 million typed calls, `List.at` 1.39 million of them (its own work
+46 instructions a call, the path around it about 150: the dispatch of
+`rt_call_typed` about 66, `typed_value_answer` about 83), `Text.contains`
+0.66 million (108 and 66), `List.contains` 0.16 million (290 and 66),
+the others 0.56 million; `List.at` in place would be 15 to 20
+instructions. On the boot after AU32's, the run part measured +25.2%
+for AU32's binary (its image 20% faster than AU30's, its JIT run 7%)
+and +7.6% for AU30's. The alternatives the owner declined: for (i), the
+offsets compiled into the code with the image's header recording them,
+or the list in a vector of fixed layout; for (ii), small texts and a
+one-byte needle in place, or the two left as they are; for (iii), the
+protocol within this stage, or not before a new profile; for (iv), the
+ratio kept as a goal, or a fixed reference (the run part within 15% of
+AU30's image). (user)
