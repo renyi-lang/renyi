@@ -26,6 +26,24 @@ progress report and answered after it (decision AU35): the typed round
 closes with its three goals met, the front end's round opens with a
 study, and the binary keeps the Rust front end until the compiler
 written in Renyi comes within 3 times its time (11 to 14 times now).
+The same session then made the front end's study (the section "The
+front end's round" below), explained to the owner why the compiler
+written in Renyi takes eleven times the Rust front end's time (per
+operation, in instructions: a call 96, a character read and compared
+135, the lexer's `is_lower` 370, the parser's step on a shared cursor
+1,340, where compiled Rust spends none to a few), and did the owner's
+order for the round (decisions AU36 and AU40): AU37, every file parsed
+once by the Rust front end; AU38, the parser's token comparisons
+inlined; AU39, the module trees shared rather than copied; AU41, the
+self-check frozen under `bench/selfcheck/` as AT1's program; AU42, a
+program declaring only the library modules it needs, in both front
+ends. `renyi check compiler/bodies.ry` went from 437 million
+instructions and 72 ms to 153 million and 34.5 ms, an empty program's
+check from 6.4 to 4.7 ms, `run examples/hello.ry` from 7.8 to 6.5 ms,
+every benchmark faster on the same boot. The owner then set what a hit
+of the cache keyed by the sources loads (AU43), and the session stopped
+in that stage, A2, with its first piece committed (the reads a compile
+makes, noted); the section "The front end's round" says what remains.
 Session 11, in the cloud environment, put the four questions of session
 10 to the owner (decision AU20: the
 template tier's follow-ups first, then the representation items of
@@ -191,7 +209,13 @@ and push there directly.
    and B3 on the compiler in Renyi and the VM; the gate of AU35 (ii)
    against AU34's Rust front end; a copy of today's compiler under
    `bench/` as AT1's program before `compiler/` changes. The section
-   "The front end's round" says where the stages stand.
+   "The front end's round" says where the stages stand: A0, A1 and A4
+   are in (AU37 to AU39 and AU42), the copy under `bench/selfcheck/`
+   is made (AU41), and A2, the cache keyed by the sources, is under
+   way: the owner set its design (AU40 ii to iv, AU43), its first piece
+   is committed (`renyi_package::reads`), and the paragraph "A2, the
+   stage under way" of that section is the plan for the rest, written
+   to be followed without this conversation. Then B5, B1, B2 and B3.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
@@ -218,7 +242,19 @@ and push there directly.
    read the instructions beside it, and on two or more hardware threads
    take the time after `main` apart from the run part (the last line of
    `RENYI_NATIVE_REPORT` against the whole), which is how AU32 found the
-   compile thread draining its queue at the end of a run.
+   compile thread draining its queue at the end of a run. Since AU41
+   the self-check of every measure is `bench/selfcheck/checker.ry` on
+   `bench/selfcheck/bodies.ry`, a frozen copy of the compiler, so that
+   the work on `compiler/` (B1, B2) does not move the VM's measure.
+   AU42 is the clearest case of the layout effect so far: its estimate
+   rose 1.25% on the synchronous row, all of it simulated misses of
+   the instruction cache, while the instructions fell on every row and
+   the self-check's wall-clock fell 1.9% to 3.5%; the entry records the
+   departure from the letter of AU1's rule. For a front end stage,
+   `tools/front_end_compare.py <A> <B>` times the front end's commands
+   and counts their instructions, and `tools/ratio.py <stage>
+   <reference>` takes the ratio AU36 (iii) asks every entry to record
+   (the reference is AU34's binary, built from commit 44782aa).
 3. The gates before a commit that touches `crates/` are CLAUDE.md's,
    with the owner's toolchain: `cargo +1.94.1 fmt --check`, `cargo
    +1.94.1 clippy --all-targets -- -D warnings`, `cargo +1.94.1 test`
@@ -2971,6 +3007,74 @@ Renyi compiler's time to the Rust front end's on `compiler/bodies.ry`
 (checking, parsing, compiling) against AU34's binary on the same boot
 and against the stage's own binary.
 
+**Where the stages stand** (end of session 12): A0 (AU37), A1 (AU38) and
+both parts of A4 (AU39, AU42) are in, the frozen self-check too (AU41);
+`renyi check compiler/bodies.ry` 437 million instructions and 72 ms on
+AU34's binary, 153 million and 34.5 ms now; the ratio of AU36 (iii) 10.7
+times against AU34's Rust front end (the Renyi side has not changed
+yet) and 21.7 times against the same binary's. CI green after every
+push.
+
+**A2, the stage under way** (AU40 ii to iv, AU43). Committed: the
+module `renyi_package::reads`. `noting(work)` runs a compile with every
+file read through `read_text` noted, each path once (the path as read,
+and the content hash of the text, or `None` when it could not be read:
+the manifests looked for in the directories above a program, the `.ry`
+looked for before a `.renyi`, the lockfile, a package's `package.json`
+and files); `unchanged(reads)` answers whether every one reads the same
+now; the resolver's four reads go through `read_text`. What remains:
+- The binary's own read of the main file (`read_source` in
+  `crates/renyi/src/lib.rs`) through `renyi_package::read_text`, so that
+  the main file is among the reads.
+- In `crates/renyi/src/cache.rs`, a `SourceEntry` beside `Entry`: named
+  by the hash of this binary (`image::this_renyi()`, which is only the
+  version, so also the executable's path, size and modification time
+  from `std::env::current_exe()`: a build with the same version and
+  another front end must miss), the library's declaration files
+  (`Library::modules()`, extensions included), the working directory
+  and the path as given (a compiled program names its files as they are
+  given); the file `<first 32 hex digits of the key>.rys` in the cache's
+  directory holds a first line `renyi sources 1`, a line of JSON
+  (`reads`: each path with its hash or null; `warnings`: the text the
+  compile printed; `manifest`: null, or the code hash and the
+  dependencies when a compile for `record` or `--manifest` computed
+  them) and then the program in AT3's binary encoding
+  (`renyi_vm::binary::encode` and `decode`); written to a `.part` file
+  and renamed; `lookup(manifest)` answers the program when
+  `unchanged(reads)` holds and, when a manifest is wanted, the entry has
+  one; a hit touches the file, and `prune` counts the `.rys` files with
+  the images under the 256 MB limit.
+- In `crates/renyi/src/lib.rs`, `compile_cached(path, flags, manifest)`
+  in place of `compile_with_sources` for `run` and `record` (`manifest`
+  is `record || flags.manifest`), `test` (no manifest) and `build
+  --cache` (the background build of AU10's image, which then skips the
+  front end too): neither for an image nor a bytecode file, nor under
+  `--no-cache` or with the cache off. A hit prints the entry's warnings
+  and gives the program with a new `Hashed::Kept { code, dependencies }`
+  that `code_hash` and `dependencies_of` answer from; a miss runs
+  `compile_sources` inside `renyi_package::noting`, prints the warnings,
+  computes the code hash (`main_hash`) and the dependencies when a
+  manifest is wanted, stores the entry and hands the encoding on, so
+  that `consult_cache` names AU10's entry from it (an `Entry::of_encoding`)
+  instead of encoding the program again. `RENYI_CACHE_REPORT=1`, a
+  development aid like `RENYI_NATIVE_REPORT`, prints a line on a hit and
+  on a store, for the tests.
+- Tests in `crates/renyi/tests/build.rs` beside AU10's (`renyi_cached`
+  turns the cache on in a directory of the test's own): a run leaves a
+  `.rys` file and the next run hits, with the same output and warnings;
+  an imported file changed is a miss and the run shows the change; a
+  `renyi.json` made in a directory above the program is a miss; `record`
+  after a plain run misses once and then hits with the manifest, and
+  `reproduce` accepts the recording; `--no-cache` and `RENYI_NO_CACHE`
+  leave the cache alone.
+- The measure: `run examples/hello.ry` with the cache on (the study
+  estimated about 5 ms against 6.5 now), the self-check's JIT run with
+  the cache on (about the front end's 100 ms less), the cost of a miss
+  (the encoding and the write), then the decision entry, AU44 unless
+  another comes first.
+After A2, AU36's plan goes on with B5, B1, B2 and B3 (stage 6 of the
+list above).
+
 ## The representation items: the design study (session 11)
 
 **What the owner ordered (AU20)**: after the template tier's follow-ups
@@ -4574,6 +4678,28 @@ holds between calls.
 - **The progress report and decision AU35**: the typed round closed,
   the front end's round opened with a study, the Rust front end kept
   until the Renyi compiler is within 3 times its time.
+- **The front end's study** (62ff0fe) and the owner's question why the
+  Renyi compiler is eleven times slower, answered with the cost of
+  each kind of operation; **decision AU36**, the owner's order.
+- **Decision AU37** (195798a): every file parsed once by the Rust front
+  end; `check compiler/bodies.ry` -44% in instructions, -35% in time.
+- **Decision AU38** (d79c6fc): the parser's token comparisons by
+  variant, `bump` for the dropped advances, `expect` answering a span;
+  the same check -23% more.
+- **Decision AU39** (f1ba01b): the module trees shared by a count in the
+  world, no copy of the item lists; the same check -17% more, an empty
+  program's check -21%.
+- **Decision AU40**, the owner's answers after the first part of A4;
+  **decision AU41** (57a9b7c), the self-check frozen under
+  `bench/selfcheck/`; **decision AU42** (c4b43bf), a program declaring
+  the prelude, `std.json` and the library modules it imports, in both
+  front ends and the resident world, the fixes that name a module not
+  imported reading the whole library on their error's path; an empty
+  program's check -35% in instructions, the thirty examples -11%,
+  `hello`'s bytecode 231 to 125 KB.
+- **Decision AU43**, what a hit of A2's cache loads; the first piece of
+  A2, the reads a compile makes noted (`renyi_package::reads`), with
+  `tools/ratio.py` and `tools/front_end_compare.py`.
 - The gates with the 1.94.1 toolchain before every commit that touched
   `crates/`, the conformance suite and the judges on the template tier
   among them; CI green on both jobs after every push.
