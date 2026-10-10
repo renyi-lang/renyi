@@ -5181,3 +5181,29 @@ checker's fixes that name a library module not imported (`write
 \`import std.environment\``, `write \`import std.json exposing
 JsonValue\``) then need the names of every library module's types and
 abilities without declaring them: its question goes to the owner.
+
+**AU40. The owner's answers of 2026-10-10 after the first part of A4:
+(i) the second part of A4 is done: a program declares the prelude, the
+library modules it imports and the library modules those import, not
+the fifteen; a fix that names a library module the program does not
+import (`write \`import std.environment\``, `write \`import std.json
+exposing JsonValue\``) reads the whole library then, on that error's
+path only, with no index kept beside the declaration files; the Rust
+front end and the compiler in Renyi change in one commit, and the
+bytecode of every program changes with them; (ii) A2's cache keyed by
+the sources serves `run`, `record` and `test`: on a hit the image the
+cache holds runs without the front end, the warnings the compile printed
+are printed again, and `record`'s code hash is kept in the entry; (iii)
+an entry holds the content hash of every file the compile read and the
+places where a manifest was looked for and not found, and a hit needs
+all of them as they were; (iv) the cache is on by default under the
+image cache's switch (`--no-cache`, `RENYI_NO_CACHE`,
+`RENYI_CACHE_DIR`).** The measures the questions gave: with a binary
+built for the measure, the second part of A4 took a further 38% of an
+empty program's check in instructions and `run examples/hello.ry` from
+6.51 to 5.55 ms, and halved `hello`'s bytecode file (AU39); the front
+end the cache skips is about a tenth of the self-check's JIT run. The
+alternatives the owner declined: for (i), keeping the fifteen modules,
+or deciding after A2; for (ii), the cache for `check` too, or for `run`
+alone; for (iii), the sizes and the modification times first, the
+hashes only when they changed; for (iv), off by default. (user)

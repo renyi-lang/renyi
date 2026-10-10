@@ -2912,7 +2912,8 @@ instructions and -35% in time, the self-check's estimate -2.4%; stage 2
 too, decision AU38: the same check -23% more, -57% since AU34; the
 first part of stage 3, decision AU39: the module trees shared, the same
 check -17% more, -64.5% since AU34, an empty program's check -21%; the
-second part measured and put to the owner):
+second part measured and put to the owner, who ordered it and set A2's
+design, decision AU40):
 1. A0, every file parsed once by the Rust front end: the resolver
    (`renyi_package::resolve`, which parses each file only to read its
    imports, `imports_of`) keeps the trees, `check_project_in` takes
@@ -2932,10 +2933,18 @@ second part measured and put to the owner):
    kept for the diagnostics that name one; the clones of a module's
    item list in `World::resolve_types`, `resolve_abilities` and
    `resolve_functions` replaced by a shared list.
+   The second part (AU40 i): a program declares the prelude, the
+   library modules it imports and those they import; a fix that names
+   a library module not imported reads the whole library on that
+   error's path only; both front ends in one commit, every program's
+   bytecode changes.
 4. A2, the cache keyed by the sources (an extension of AU10's image
-   cache): its design questions (what invalidates an entry beyond the
-   files read, `record`'s code hash, `test`) go to the owner when the
-   stage starts.
+   cache), as AU40 (ii) to (iv) set it: `run`, `record` and `test`; on
+   a hit the cached image runs without the front end, the compile's
+   warnings printed again, `record`'s code hash kept in the entry; an
+   entry holds the content hash of every file read and the places a
+   manifest was looked for and not found; on by default under the
+   image cache's switch.
 5. Before B1 changes `compiler/`: the copy of the compiler under
    `bench/` (AU36 iv), with `tools/bench.py`, `tools/measure_size.sh`,
    `tools/measure_native.sh` and CI's checks pointed at it; the ratio
