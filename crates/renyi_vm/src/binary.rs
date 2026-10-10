@@ -303,9 +303,9 @@ fn write_constant(out: &mut Writer, value: &Value) {
             out.u8(4);
             out.out.extend_from_slice(&value.to_bits().to_le_bytes());
         }
-        Value::Text(text) => {
+        Value::Text(_) | Value::SmallText(_) => {
             out.u8(5);
-            out.text(text);
+            out.text(value.as_text().expect("a text"));
         }
         Value::Function(id) => {
             out.u8(6);

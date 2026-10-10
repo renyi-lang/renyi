@@ -218,6 +218,19 @@ pub fn abs_of_type(program: &Program, ty: &Ty) -> Abs {
     }
 }
 
+/// Whether the checker noted the boxed operand as a Text: the generated
+/// code compares two texts held in the value itself in place (decision
+/// AU26).
+pub fn is_text(program: &Program, abs: Abs) -> bool {
+    let Abs::Boxed(Some(index)) = abs else {
+        return false;
+    };
+    matches!(
+        program.result_types.get(index as usize),
+        Some(Ty::App(id, args)) if *id == program.builtins.text && args.is_empty()
+    )
+}
+
 /// The representation of a declared parameter from the type as the
 /// checker spells it (`FunctionMeta::param_types`).
 pub fn abs_of_spelling(spelling: &str) -> Abs {

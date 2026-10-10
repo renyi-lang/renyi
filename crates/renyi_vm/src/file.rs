@@ -414,7 +414,10 @@ fn constant_json(value: &Value) -> Out {
             "FloatConstant",
             vec![("digits", string(&float_text(*value)))],
         ),
-        Value::Text(text) => variant("TextConstant", vec![("text", string(text))]),
+        Value::Text(_) | Value::SmallText(_) => {
+            let text = value.as_text().expect("a text");
+            variant("TextConstant", vec![("text", string(text))])
+        }
         Value::Function(id) => variant("FunctionConstant", vec![("function_id", number(*id))]),
         other => panic!(
             "a constant of kind {}, which the file cannot hold",

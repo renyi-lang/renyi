@@ -105,6 +105,7 @@ pub fn take(args: &mut [Value], index: usize) -> Value {
 pub fn plain_text(value: &Value) -> Option<&str> {
     match value {
         Value::Text(text) => Some(text),
+        Value::SmallText(text) => Some(text.as_str()),
         _ => None,
     }
 }

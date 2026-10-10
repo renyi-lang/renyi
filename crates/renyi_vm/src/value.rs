@@ -55,6 +55,99 @@ pub enum Value {
     /// `Nothing`, a `Boolean`, a function, a native value or a `Failure`,
     /// whose error carries the origins instead.
     Guarded(Rc<(u64, Value)>),
+    /// A text of at most `SMALL_TEXT` bytes, held in the value itself
+    /// (decision AU26); a longer one is a `Text`. Every text is made by
+    /// `Value::text` or `Value::character`, which choose by the length,
+    /// so that a text has one form for its characters.
+    SmallText(SmallText),
+}
+
+/// The longest text a value holds in itself (decision AU26): the sixteen
+/// bytes past the tag hold its length and its bytes.
+pub const SMALL_TEXT: usize = 15;
+
+/// A text of at most `SMALL_TEXT` bytes in place (decision AU26): the
+/// length, then the bytes, zero after them, so that two hold the same
+/// characters exactly when their sixteen bytes are equal, which the
+/// generated code compares as two words.
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(C)]
+pub struct SmallText {
+    len: u8,
+    bytes: [u8; SMALL_TEXT],
+}
+
+impl SmallText {
+    /// The text in place, when it is short enough.
+    #[inline]
+    pub fn new(text: &str) -> Option<SmallText> {
+        let len = text.len();
+        if len > SMALL_TEXT {
+            return None;
+        }
+        let mut bytes = [0; SMALL_TEXT];
+        copy_short(&mut bytes, text.as_bytes());
+        Some(SmallText {
+            len: len as u8,
+            bytes,
+        })
+    }
+
+    /// The text of one character.
+    #[inline]
+    pub fn character(c: char) -> SmallText {
+        let mut bytes = [0; SMALL_TEXT];
+        let len = c.encode_utf8(&mut bytes[..4]).len();
+        SmallText {
+            len: len as u8,
+            bytes,
+        }
+    }
+
+    #[inline]
+    pub fn as_str(&self) -> &str {
+        // SAFETY: the bytes up to the length were copied from a `str`
+        // (`new`), so they are UTF-8.
+        unsafe { std::str::from_utf8_unchecked(&self.bytes[..self.len as usize]) }
+    }
+}
+
+/// At most `SMALL_TEXT` bytes copied to the start of `to` without a call:
+/// two words, two halves or two quarters that overlap in the middle, as
+/// the length asks, so that nothing past either end is read or written.
+#[inline]
+fn copy_short(to: &mut [u8; SMALL_TEXT], from: &[u8]) {
+    let len = from.len();
+    debug_assert!(len <= SMALL_TEXT);
+    let (source, target) = (from.as_ptr(), to.as_mut_ptr());
+    // SAFETY: each read lies within `from` and each write within `to`,
+    // whose length is at least `len`; the reads and writes are unaligned.
+    unsafe {
+        if len >= 8 {
+            let head = (source as *const u64).read_unaligned();
+            let tail = (source.add(len - 8) as *const u64).read_unaligned();
+            (target as *mut u64).write_unaligned(head);
+            (target.add(len - 8) as *mut u64).write_unaligned(tail);
+        } else if len >= 4 {
+            let head = (source as *const u32).read_unaligned();
+            let tail = (source.add(len - 4) as *const u32).read_unaligned();
+            (target as *mut u32).write_unaligned(head);
+            (target.add(len - 4) as *mut u32).write_unaligned(tail);
+        } else if len >= 2 {
+            let head = (source as *const u16).read_unaligned();
+            let tail = (source.add(len - 2) as *const u16).read_unaligned();
+            (target as *mut u16).write_unaligned(head);
+            (target.add(len - 2) as *mut u16).write_unaligned(tail);
+        } else if len == 1 {
+            *target = *source;
+        }
+    }
+}
+
+impl std::fmt::Debug for SmallText {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.as_str().fmt(f)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -174,7 +267,11 @@ pub mod layout {
     pub const TAG_BOOLEAN: u8 = 1;
     pub const TAG_INTEGER: u8 = 2;
     pub const TAG_FLOAT: u8 = 4;
+    pub const TAG_TEXT: u8 = 5;
     pub const TAG_FAILURE: u8 = 18;
+    /// A text in the value itself (decision AU26): its length at
+    /// `PAYLOAD`, its bytes after it, zero to the end of the value.
+    pub const TAG_SMALL_TEXT: u8 = 20;
     /// One bit per tag whose payload is an `Rc` at `PAYLOAD`.
     pub const RC_TAGS: u64 = (1 << 3)
         | (1 << 5)
@@ -225,11 +322,6 @@ pub mod layout {
 }
 
 thread_local! {
-    /// The one-character texts of the ASCII range (`Value::character`).
-    static ASCII: [Rc<str>; 128] = std::array::from_fn(|code| {
-        let mut buffer = [0; 4];
-        Rc::from(&*(code as u8 as char).encode_utf8(&mut buffer))
-    });
     /// The empty list, which every list made without items shares
     /// (`Value::list`, decision AU25): a list that is appended to later is
     /// copied out of it first, as any list held twice is.
@@ -237,18 +329,21 @@ thread_local! {
 }
 
 impl Value {
+    /// A text: in the value itself when it is short (decision AU26),
+    /// counted otherwise.
+    #[inline]
     pub fn text(text: impl AsRef<str>) -> Value {
-        Value::Text(Rc::from(text.as_ref()))
+        let text = text.as_ref();
+        match SmallText::new(text) {
+            Some(small) => Value::SmallText(small),
+            None => Value::Text(Rc::from(text)),
+        }
     }
 
-    /// A text of one character. The ASCII ones come from a table kept per
-    /// thread, so that the characters of a text are listed without an
-    /// allocation each.
+    /// A text of one character, always in the value itself.
+    #[inline]
     pub fn character(c: char) -> Value {
-        if c.is_ascii() {
-            return ASCII.with(|table| Value::Text(table[c as usize].clone()));
-        }
-        Value::Text(Rc::from(&*c.encode_utf8(&mut [0; 4])))
+        Value::SmallText(SmallText::character(c))
     }
 
     pub fn integer(value: i64) -> Value {
@@ -301,6 +396,7 @@ impl Value {
     pub fn as_text(&self) -> Option<&str> {
         match self.plain() {
             Value::Text(text) => Some(text),
+            Value::SmallText(text) => Some(text.as_str()),
             _ => None,
         }
     }
@@ -410,7 +506,7 @@ impl Value {
             Value::Integer(_) => "Integer",
             Value::Decimal(_) => "Decimal",
             Value::Float(_) => "Float",
-            Value::Text(_) => "Text",
+            Value::Text(_) | Value::SmallText(_) => "Text",
             Value::Bytes(_) => "Bytes",
             Value::List(_) => "List",
             Value::Map(_) => "Map",
@@ -473,6 +569,10 @@ impl PartialEq for Value {
             (Value::Decimal(a), Value::Decimal(b)) => a == b,
             (Value::Float(a), Value::Float(b)) => a == b,
             (Value::Text(a), Value::Text(b)) => a == b,
+            (Value::SmallText(a), Value::SmallText(b)) => a == b,
+            (Value::Text(a), Value::SmallText(b)) | (Value::SmallText(b), Value::Text(a)) => {
+                **a == *b.as_str()
+            }
             (Value::Bytes(a), Value::Bytes(b)) => a == b,
             (Value::List(a), Value::List(b)) => a == b,
             (Value::Map(a), Value::Map(b)) => {
@@ -500,6 +600,12 @@ impl Eq for Value {}
 impl Hash for Value {
     fn hash<H: Hasher>(&self, state: &mut H) {
         let value = self.plain();
+        // a text hashes as its characters, in the value or counted
+        if let Some(text) = value.as_text() {
+            layout::TAG_TEXT.hash(state);
+            text.hash(state);
+            return;
+        }
         std::mem::discriminant(value).hash(state);
         match value {
             Value::Nothing => {}
@@ -510,7 +616,7 @@ impl Hash for Value {
                 let bits = if *value == 0.0 { 0.0f64 } else { *value };
                 bits.to_bits().hash(state)
             }
-            Value::Text(value) => value.hash(state),
+            Value::Text(_) | Value::SmallText(_) => unreachable!("a text hashed above"),
             Value::Bytes(value) => value.hash(state),
             Value::List(items) => items.hash(state),
             Value::Map(entries) => {
@@ -560,13 +666,13 @@ impl From<i64> for Value {
 
 impl From<String> for Value {
     fn from(value: String) -> Value {
-        Value::Text(Rc::from(value))
+        Value::text(value)
     }
 }
 
 impl From<&str> for Value {
     fn from(value: &str) -> Value {
-        Value::Text(Rc::from(value))
+        Value::text(value)
     }
 }
 
@@ -633,6 +739,36 @@ mod layout_tests {
     }
 
     #[test]
+    fn a_short_text_holds_its_bytes_and_zero_after_them_at_every_length() {
+        let source = "abcdefghijklmnop";
+        for len in 0..=SMALL_TEXT {
+            let small = SmallText::new(&source[..len]).expect("short enough");
+            assert_eq!(small.as_str(), &source[..len]);
+            assert!(small.bytes[len..].iter().all(|byte| *byte == 0), "{len}");
+        }
+        assert!(SmallText::new(source).is_none());
+        for c in ['a', 'é', '中', '😀'] {
+            let small = SmallText::character(c);
+            assert_eq!(small.as_str(), c.to_string());
+            assert!(small.bytes[c.len_utf8()..].iter().all(|byte| *byte == 0));
+        }
+        // a text has one form for its characters, and both forms compare
+        // and hash by them
+        assert_eq!(Value::text("ab"), Value::from("ab".to_string()));
+        assert_ne!(Value::text("ab"), Value::text("abc"));
+        assert_eq!(
+            Value::text("sixteen bytes!!!"),
+            Value::text(String::from("sixteen bytes!!!"))
+        );
+        let mut set = IndexSet::new();
+        set.insert(Value::text("ab"));
+        set.insert(Value::text("sixteen bytes!!!"));
+        assert!(!set.contains(&Value::character('a')));
+        assert!(set.contains(&Value::text("ab")));
+        assert!(set.contains(&Value::text("sixteen bytes!!!")));
+    }
+
+    #[test]
     fn the_constants_match_the_types() {
         assert_eq!(std::mem::size_of::<Value>(), SIZE);
         assert_eq!(std::mem::size_of::<Int>(), 16);
@@ -656,7 +792,7 @@ mod layout_tests {
         let big = Int::from_big(num_bigint::BigInt::from(i64::MAX) * 4);
         let values = [
             Value::decimal(Decimal::parse("1.5").unwrap()),
-            Value::text("t"),
+            Value::text("a text past sixteen bytes"),
             Value::Bytes(Rc::from(&b"b"[..])),
             Value::list(vec![]),
             Value::Map(Rc::new(IndexMap::new())),
@@ -686,9 +822,28 @@ mod layout_tests {
             Value::Duration(1),
             Value::Instant(1),
             Value::Function(0),
+            Value::text("t"),
         ] {
             assert_eq!((RC_TAGS >> tag(&plain)) & 1, 0, "{plain:?}");
         }
+        // a short text in the value (decision AU26): the tag, the length at
+        // the payload, the bytes after it and zero to the end
+        let small = Value::text("fifteen bytes!!");
+        assert_eq!(tag(&small), TAG_SMALL_TEXT);
+        assert_eq!(tag(&Value::text("sixteen bytes!!!")), TAG_TEXT);
+        assert_eq!(tag(&Value::character('é')), TAG_SMALL_TEXT);
+        // SAFETY: the value is 24 bytes wide.
+        let bytes =
+            unsafe { std::slice::from_raw_parts(&small as *const Value as *const u8, SIZE) };
+        assert_eq!(bytes[PAYLOAD as usize], 15);
+        assert_eq!(&bytes[PAYLOAD as usize + 1..], b"fifteen bytes!!");
+        let short = Value::text("ab");
+        // SAFETY: as above.
+        let bytes =
+            unsafe { std::slice::from_raw_parts(&short as *const Value as *const u8, SIZE) };
+        assert_eq!(bytes[PAYLOAD as usize], 2);
+        assert_eq!(&bytes[PAYLOAD as usize + 1..PAYLOAD as usize + 3], b"ab");
+        assert!(bytes[PAYLOAD as usize + 3..].iter().all(|byte| *byte == 0));
         // an `Rc` payload points at its allocation, whose first word is the
         // strong count (`Rc::as_ptr` points two words past it)
         let list = Rc::new(vec![Value::Nothing]);

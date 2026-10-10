@@ -407,3 +407,64 @@ end
     assert_eq!(outcome, RunOutcome::Finished);
     assert_eq!(output, "3000 1000 3000 Red Green 8001 666\n");
 }
+
+/// Texts compared on the template tier (decision AU26): two texts held in the
+/// value itself compared in place, a long one or a mix through the
+/// general path, an ordering always through it, and the characters of a
+/// line against a constant; every count is the interpreter's.
+#[test]
+fn texts_held_in_the_value_compare_in_place_and_others_as_before() {
+    let source = r#"module demo
+  purpose: Texts compared, short and long, equal and not, and characters against a constant.
+
+import std.console
+
+function same(left: Text, right: Text) returns Boolean
+  purpose: Whether the two texts are the same.
+
+  return left is right
+end
+
+function differ(left: Text, right: Text) returns Boolean
+  purpose: Whether the two texts differ.
+
+  return left is not right
+end
+
+public function main() needs console
+  purpose: Count the matches over short and long texts, then the spaces of a line.
+
+  let words be ["a", "ab", "abc", "fifteen bytes!!", "sixteen bytes!!!", "a much longer text than that", "é", "ab"]
+  let mutable equal be 0
+  let mutable unequal be 0
+  let mutable before be 0
+  let mutable rounds be 0
+  for each round from 1 to 200
+    change rounds to rounds + round
+    for each left in words
+      for each right in words
+        if same(left: left, right: right) then
+          change equal to equal + 1
+        end
+        if differ(left: left, right: right) then
+          change unequal to unequal + 1
+        end
+        if left is less than right then
+          change before to before + 1
+        end
+      end
+    end
+  end
+  let mutable spaces be 0
+  for each glyph in "a b  c   d".characters()
+    if glyph is " " then
+      change spaces to spaces + 1
+    end
+  end
+  console.print("{equal} {unequal} {before} {rounds} {spaces}")
+end
+"#;
+    let (outcome, output, _) = both_ways(source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(output, "2000 10800 5400 20100 6\n");
+}

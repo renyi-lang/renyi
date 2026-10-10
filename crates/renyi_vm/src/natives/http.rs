@@ -194,10 +194,11 @@ fn perform(
             let value = String::from_utf8_lossy(value.as_bytes()).into_owned();
             let key = Value::text(name.as_str());
             match headers_map.get_mut(&key) {
-                Some(Value::Text(existing)) => {
-                    *existing = Rc::from(format!("{existing}, {value}"));
+                Some(existing) => {
+                    let joined = format!("{}, {value}", existing.as_text().unwrap_or(""));
+                    *existing = Value::text(joined);
                 }
-                _ => {
+                None => {
                     headers_map.insert(key, Value::text(value));
                 }
             }

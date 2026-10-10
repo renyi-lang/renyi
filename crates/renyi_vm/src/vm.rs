@@ -2236,7 +2236,7 @@ impl<'p> Vm<'p> {
             Value::Decimal(_) => b.decimal,
             Value::Float(_) => b.float,
             Value::Boolean(_) => b.boolean,
-            Value::Text(_) => b.text,
+            Value::Text(_) | Value::SmallText(_) => b.text,
             Value::Bytes(_) => b.bytes,
             Value::List(_) => b.list,
             Value::Map(_) => b.map,
@@ -2644,6 +2644,7 @@ impl<'p> Vm<'p> {
             ),
             Value::Range(range) => Rc::new(range_items(&range)?),
             Value::Text(text) => Rc::new(natives::prelude::characters(&text)),
+            Value::SmallText(text) => Rc::new(natives::prelude::characters(text.as_str())),
             other => {
                 return Err(Interrupt::crash(format!(
                     "cannot loop over {}",

@@ -674,6 +674,11 @@ fn compare_in_place(vm: &Vm, op: BinaryOp, at: usize) -> Option<bool> {
             crate::vm::small_binary(op, *a, *b)
         }
         (Value::Text(a), Value::Text(b)) => crate::vm::text_binary(op, a, b),
+        (Value::SmallText(a), Value::SmallText(b)) => {
+            crate::vm::text_binary(op, a.as_str(), b.as_str())
+        }
+        (Value::Text(a), Value::SmallText(b)) => crate::vm::text_binary(op, a, b.as_str()),
+        (Value::SmallText(a), Value::Text(b)) => crate::vm::text_binary(op, a.as_str(), b),
         (Value::Boolean(a), Value::Boolean(b)) => crate::vm::boolean_binary(op, *a, *b),
         // `equal` asks the left operand's type for a declared `equals`:
         // `Nothing` on the left has none, and on the right the left's
@@ -1494,6 +1499,7 @@ impl Vm<'_> {
             origins |= piece.origins();
             length += match piece.plain() {
                 Value::Text(part) => part.len(),
+                Value::SmallText(part) => part.as_str().len(),
                 _ => 20,
             };
         }
@@ -1501,6 +1507,7 @@ impl Vm<'_> {
         for index in at..self.stack.len() {
             match self.stack[index].plain() {
                 Value::Text(part) => text.push_str(part),
+                Value::SmallText(part) => text.push_str(part.as_str()),
                 Value::Integer(Int::Small(value)) => crate::integer::push_digits(&mut text, *value),
                 Value::Integer(value) => {
                     let _ = write!(text, "{value}");
@@ -1711,6 +1718,11 @@ impl Vm<'_> {
                 crate::vm::small_binary(op, *a, *b)
             }
             (Value::Text(a), Value::Text(b)) => crate::vm::text_binary(op, a, b),
+            (Value::SmallText(a), Value::SmallText(b)) => {
+                crate::vm::text_binary(op, a.as_str(), b.as_str())
+            }
+            (Value::Text(a), Value::SmallText(b)) => crate::vm::text_binary(op, a, b.as_str()),
+            (Value::SmallText(a), Value::Text(b)) => crate::vm::text_binary(op, a.as_str(), b),
             (Value::Boolean(a), Value::Boolean(b)) => crate::vm::boolean_binary(op, *a, *b),
             _ => None,
         };

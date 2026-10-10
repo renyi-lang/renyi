@@ -111,6 +111,7 @@ fn parameters(vm: &Vm, value: &Value) -> Result<Vec<SqlValue>, Interrupt> {
             },
             ("DecimalValue", Value::Decimal(value)) => SqlValue::Text(value.to_string()),
             ("TextValue", Value::Text(value)) => SqlValue::Text(value.to_string()),
+            ("TextValue", Value::SmallText(value)) => SqlValue::Text(value.as_str().to_string()),
             ("BooleanValue", Value::Boolean(value)) => SqlValue::Integer(i64::from(value)),
             ("NullValue", _) => SqlValue::Null,
             (name, other) => {

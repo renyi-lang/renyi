@@ -26,6 +26,7 @@ impl Vm<'_> {
                     .into_plain()
                 {
                     Value::Text(text) => Ok(text.to_string()),
+                    Value::SmallText(text) => Ok(text.as_str().to_string()),
                     Value::Failure(error) => {
                         let shown = self.render(&error, false)?;
                         Err(Interrupt::crash(format!("`to_text` failed: {shown}")))
@@ -49,7 +50,8 @@ impl Vm<'_> {
             Value::Integer(value) => value.to_string(),
             Value::Decimal(value) => value.to_string(),
             Value::Float(value) => float_text(*value),
-            Value::Text(text) => {
+            Value::Text(_) | Value::SmallText(_) => {
+                let text = value.as_text().expect("a text");
                 if nested {
                     quoted(text)
                 } else {
@@ -201,7 +203,9 @@ impl Vm<'_> {
             (Value::Decimal(a), Value::Float(b)) => {
                 a.to_f64().partial_cmp(b).unwrap_or(Ordering::Equal)
             }
-            (Value::Text(a), Value::Text(b)) => a.cmp(b),
+            (Value::Text(_) | Value::SmallText(_), Value::Text(_) | Value::SmallText(_)) => {
+                left.as_text().cmp(&right.as_text())
+            }
             (Value::Boolean(a), Value::Boolean(b)) => a.cmp(b),
             (Value::Duration(a), Value::Duration(b)) | (Value::Instant(a), Value::Instant(b)) => {
                 a.cmp(b)

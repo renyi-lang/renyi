@@ -62,8 +62,9 @@ const PART_ALIGN: usize = 16;
 /// `hotness` (decision AU19). 7: `rt_finish_frame`, `rt_abandon_frame`,
 /// `rt_promote` and `rt_clear_slots` among them and the state's
 /// `entries` (decision AU21). 8: the VM's variants without fields read in
-/// place (decision AU24).
-pub const CODE_FORMAT: u32 = 8;
+/// place (decision AU24). 9: the texts held in the value, compared in
+/// place (decision AU26).
+pub const CODE_FORMAT: u32 = 9;
 
 /// The extension of an image file.
 pub const EXTENSION: &str = "ryi";

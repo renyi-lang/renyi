@@ -4570,3 +4570,46 @@ runs: the layout of the binary, which every change moves. The cut stays
 by AU1's rule (the estimate falls, if barely) as the smallest of the
 three; the census's estimate of 0.4% assumed lists that stay empty.
 (user)
+
+**AU26. The first representation item of AU22 as built: small texts
+held in the value. A text of at most 15 bytes is `Value::SmallText`, a
+tag of its own (20, appended so that no other tag moves) with the length
+at the payload and the bytes after it, zero to the end of the value; a
+longer one stays `Value::Text`. `Value::text` and `Value::character`
+choose by the length, so that a text has one form for its characters,
+and every reader takes either: `as_text`, `natives::text` and
+`plain_text`, the renderer and its ordering, the comparisons, the
+concatenation, the JSON, the bytecode file and the image's program
+(which write a text constant as before, so that the judges stay equal).
+Equality compares the characters, and a text hashes as its characters
+in either form. The ASCII table of `Value::character` goes: a character
+is a small text. In both tiers, `is` and `is not` on operands of which
+the checker noted one a Text compare two small texts in place (both
+tags read, the sixteen bytes past them compared as two words, the
+Boolean written, nothing to release); anything else takes `rt_compare`
+as before. Code format 9.** The first build copied a short text with
+`copy_from_slice`, which called `memcpy` and `memset` for every
+character made: `strings` ran 1.1% more instructions and lost 7% in
+wall-clock. The copy now reads and writes two overlapping words, halves
+or quarters as the length asks, without a call, and a character is
+encoded straight into the value. The tests: in `value.rs`, a short text
+at every length from 0 to 15 and the characters of one to four bytes,
+equality and hashing across the two forms, and the layout test with the
+new tag; in `tests/native.rs` and `tests/template.rs`,
+`texts_held_in_the_value_compare_in_place_and_others_as_before` (texts
+of 1 to 28 bytes and a two-byte character compared both ways and
+ordered, the characters of a line against a constant, against the
+interpreter; with the answer inverted in either tier the test fails, as
+it was checked to); the conformance suite and the judges on both tiers.
+Measured on one boot against AU25's binary (1c27240). By AT1's estimate
+under cachegrind: the synchronous JIT run 11.29 to 10.46 billion cycles
+(-7.4%; instructions -5.6%, the indirect branch misses 67.8 to 47.1
+million with the calls to `rt_compare` gone), the template code alone
+11.71 to 10.64 (-9.1%), the interpreter 17.17 to 16.15 (-5.9%), the
+image 9.21 to 8.38 (-9.0%). In wall-clock, alternating with the order
+swapped every turn, best and median: the self-check -7.8% and -5.3% on
+one hardware thread, -7.4% and -3.9% on two, -6.8% and -7.0% on four;
+the benchmarks within 3% either way (`strings` +2.8% and +1.1% on one
+thread with 6.9% fewer instructions, the layout again). The study had
+estimated 4 to 5%. The stage stays by AU1's rule and by the owner's
+measure. (user)

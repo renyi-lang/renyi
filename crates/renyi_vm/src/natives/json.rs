@@ -636,6 +636,10 @@ fn walk(vm: &mut Vm, value: &Value, naming: Naming, sink: &mut dyn Sink) -> Resu
             sink.text(text);
             Ok(())
         }
+        Value::SmallText(text) => {
+            sink.text(text.as_str());
+            Ok(())
+        }
         Value::Bytes(bytes) => {
             sink.text(&base64_encode(bytes));
             Ok(())

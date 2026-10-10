@@ -24,6 +24,8 @@ pub mod x64;
 
 use std::time::{Duration, Instant};
 
+use renyi_syntax::ast::BinaryOp;
+
 use crate::bytecode::{Code, Op};
 use crate::compile::Program;
 use crate::extension::TypedKind;
@@ -34,14 +36,14 @@ use crate::native::codegen::{
     SITE_INDEX, SITE_SIZE, SITE_TAG, SITE_TY, STACK_SAFE, STATE_CONSTANTS, STATE_DEPTH,
     STATE_ENTRIES, STATE_HELPERS, STATE_HOTNESS,
 };
-use crate::native::infer::{abs_of_constant, abs_of_result, analyse, Analysis};
+use crate::native::infer::{abs_of_constant, abs_of_result, analyse, is_text, Analysis};
 use crate::native::runtime::{
     binary_code, fold_code, BOXED, CONTINUE, FAILURE, INTERRUPT, LEFT, RETURNED, STAY,
 };
 use crate::native::DEPTH_LIMIT;
 use crate::value::layout::{
     INT_PAYLOAD, INT_SMALL, INT_TAG, PAYLOAD, RC_VALUE, RECORD_FIELDS, RECORD_TAG, RECORD_TY, SIZE,
-    TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_INTEGER, TAG_NOTHING, TAG_RECORD,
+    TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_INTEGER, TAG_NOTHING, TAG_RECORD, TAG_SMALL_TEXT,
 };
 use crate::vm::{unit_slot, CallKind};
 use x64::{host_abi, Abi, Asm, Cond, Label, Reg};
@@ -787,6 +789,54 @@ impl Gen<'_> {
         self.depth = self.depth - pops + pushes;
     }
 
+    /// Whether the checker noted one of a comparison's operands a Text,
+    /// which the code then compares in place when both are held in the
+    /// value itself (decision AU26).
+    fn texts_compared(&self, pc: usize) -> bool {
+        let Some(state) = &self.analysis.entry[pc] else {
+            return false;
+        };
+        let n = state.len();
+        n >= 2 && (is_text(self.program, state[n - 2]) || is_text(self.program, state[n - 1]))
+    }
+
+    /// `is` or `is not` on the two operands at `at` (decision AU26): when
+    /// both are texts held in the value itself, their sixteen bytes past
+    /// the tag are compared as two words, the Boolean written over the
+    /// left operand and the code goes on at `done` with nothing to
+    /// release; anything else falls through to the general comparison.
+    fn compare_small_texts(&mut self, op: BinaryOp, at: usize, done: Label) {
+        let general = self.asm.label();
+        let answer = self.asm.label();
+        let left = self.operand(at);
+        let right = self.operand(at + 1);
+        self.asm.cmp_m8i(left.0, left.1, TAG_SMALL_TEXT);
+        self.asm.jcc(Cond::Ne, general);
+        self.asm.cmp_m8i(right.0, right.1, TAG_SMALL_TEXT);
+        self.asm.jcc(Cond::Ne, general);
+        self.asm.mov_rm(SCRATCH, left.0, left.1 + PAYLOAD);
+        self.asm.mov_rm(SCRATCH2, right.0, right.1 + PAYLOAD);
+        self.asm.cmp_rr(SCRATCH, SCRATCH2);
+        self.asm.jcc(Cond::Ne, answer);
+        self.asm.mov_rm(SCRATCH, left.0, left.1 + PAYLOAD + 8);
+        self.asm.mov_rm(SCRATCH2, right.0, right.1 + PAYLOAD + 8);
+        self.asm.cmp_rr(SCRATCH, SCRATCH2);
+        self.asm.bind(answer);
+        let same = if op == BinaryOp::Is {
+            Cond::E
+        } else {
+            Cond::Ne
+        };
+        self.asm.setcc(same, SCRATCH);
+        self.asm.mov_m8i(left.0, left.1, TAG_BOOLEAN);
+        self.asm.mov_m8r(left.0, left.1 + PAYLOAD, SCRATCH);
+        self.depth = at + 1;
+        self.store_len();
+        self.asm.jmp(done);
+        self.asm.bind(general);
+        self.depth = at + 2;
+    }
+
     /// A call of a declared function (decision AU21): when the callee has
     /// machine code (the entry table names it) and the machine stack has
     /// room for one more native frame, the callee's frame is pushed in
@@ -1354,6 +1404,10 @@ impl Gen<'_> {
                 if is_comparison(*op) {
                     let mask = self.masks[pc];
                     let at = self.depth - 2;
+                    let done = self.asm.label();
+                    if matches!(op, BinaryOp::Is | BinaryOp::IsNot) && self.texts_compared(pc) {
+                        self.compare_small_texts(*op, at, done);
+                    }
                     self.call(
                         "rt_compare",
                         &[
@@ -1365,6 +1419,7 @@ impl Gen<'_> {
                         ],
                     );
                     self.scalar_or_boxed(TypedKind::Bool, at, at + 1, pc, false);
+                    self.asm.bind(done);
                 } else {
                     self.pushes(
                         "rt_binary",

@@ -32,7 +32,7 @@ use crate::extension::TypedKind;
 use crate::integer::Int;
 use crate::native::infer::{
     abs_of_binary, abs_of_constant, abs_of_field_at, abs_of_params, abs_of_result, abs_of_slot,
-    analyse, boxed_depth, static_field, Abs, Analysis, SlotKind,
+    analyse, boxed_depth, is_text, static_field, Abs, Analysis, SlotKind,
 };
 use crate::native::runtime::{
     binary_code, fold_code, CONTINUE, DEOPT, D_BOXED, D_DEOPT, D_FAILURE, D_INTERRUPT, D_RETURNED,
@@ -43,6 +43,7 @@ use crate::value::layout::{
     INT_PAYLOAD, INT_SMALL, INT_TAG, ITER_ITEMS, ITER_LEN, ITER_POSITION, NATIVE_ITERATOR,
     NATIVE_PAYLOAD, NATIVE_TAG, PAYLOAD, RC_VALUE, RECORD_FIELDS, RECORD_TAG, RECORD_TY, SIZE,
     TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_INTEGER, TAG_NATIVE, TAG_NOTHING, TAG_RECORD,
+    TAG_SMALL_TEXT,
 };
 use crate::value::Value;
 use crate::vm::{unit_slot, CallKind, FieldSite, Frame, NativeState, Vm};
@@ -3554,6 +3555,17 @@ impl Gen<'_, '_> {
     /// the operands need the general path, its boxed answer on the stack
     /// is taken into the register as a typed call's is.
     fn compare_boxed(&mut self, op: BinaryOp, pc: usize) {
+        let join = self.b.create_block();
+        let texts = matches!(op, BinaryOp::Is | BinaryOp::IsNot) && {
+            let n = self.state.len();
+            let (left, right) = (self.state[n - 2], self.state[n - 1]);
+            left.is_boxed()
+                && right.is_boxed()
+                && (is_text(self.program, left) || is_text(self.program, right))
+        };
+        if texts {
+            self.compare_small_texts(op, join);
+        }
         let op_value = self.u8(binary_code(op));
         let mask_value = self.u32(self.masks[pc]);
         let pc_value = self.u32(pc as u32);
@@ -3564,7 +3576,6 @@ impl Gen<'_, '_> {
         let depth = self.state.len();
         let fast = self.b.create_block();
         let other = self.b.create_block();
-        let join = self.b.create_block();
         let answered = self
             .b
             .ins()
@@ -3599,6 +3610,57 @@ impl Gen<'_, '_> {
         self.switch_to(join);
         self.state.truncate(depth);
         self.state.push(Abs::Bool);
+    }
+
+    /// `is` or `is not` on two operands of which the checker noted one a
+    /// Text (decision AU26): when both are held in the value itself, their
+    /// sixteen bytes past the tag are compared as two words, the answer
+    /// goes to `join` as the Boolean of the depth the comparison leaves,
+    /// and the operands are popped with nothing to release; anything else
+    /// carries on to the general comparison in a block of its own.
+    fn compare_small_texts(&mut self, op: BinaryOp, join: Block) {
+        let flags = MemFlagsData::trusted();
+        let height = self.height();
+        let left = self.address_at(height - 2);
+        let right = self.address_at(height - 1);
+        let left_tag = self.tag_at(left, 0);
+        let right_tag = self.tag_at(right, 0);
+        let left_small = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::Equal, left_tag, TAG_SMALL_TEXT as i64);
+        let right_small = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::Equal, right_tag, TAG_SMALL_TEXT as i64);
+        let both = self.b.ins().band(left_small, right_small);
+        let inline = self.b.create_block();
+        let general = self.b.create_block();
+        self.b.ins().brif(both, inline, &[], general, &[]);
+        self.b.seal_block(inline);
+        self.b.seal_block(general);
+        self.switch_to(inline);
+        let mut same = None;
+        for offset in [PAYLOAD, PAYLOAD + 8] {
+            let a = self.b.ins().load(types::I64, flags, left, offset);
+            let b = self.b.ins().load(types::I64, flags, right, offset);
+            let equal = self.b.ins().icmp(IntCC::Equal, a, b);
+            same = Some(match same {
+                Some(before) => self.b.ins().band(before, equal),
+                None => equal,
+            });
+        }
+        let same = same.expect("two words");
+        let answer = match op {
+            BinaryOp::Is => same,
+            _ => self.b.ins().bxor_imm_u(same, 1),
+        };
+        let depth = self.state.len() - 2;
+        self.store_height(height - 2);
+        let var = self.bool_var(depth);
+        self.b.def_var(var, answer);
+        self.b.ins().jump(join, &[]);
+        self.switch_to(general);
     }
 
     /// Two small Integers in registers; an overflow hands the op to the
