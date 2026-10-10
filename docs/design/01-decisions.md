@@ -5226,3 +5226,53 @@ measure, on `compiler/` itself, showed the self-check's instructions
 +0.2% to +0.4% and its estimate +0.5% to +1.5% from the two fields the
 change adds to the Renyi world; the copy was taken from the commit
 before that change, and the stage is measured on it.
+
+**AU42. A program declares the library modules it needs (the second
+part of stage A4, AU40 i).** The checker declares the prelude, `std.json`,
+every library module a file of the program imports and the library
+modules those import, transitively, in the library's order, instead of
+the fifteen (`Library::world_for`, with `Library::needed` for the
+closure); the resident world of AN1 declares the same, and the compiler
+written in Renyi the same (`project.ry`'s `library_world` and
+`needed_library`). `std.json` is always among them: the runtime decodes
+a recorded result and what a Python module returns through its decoder,
+whatever the program imports, and builds its `JsonError` when a value
+does not fit, which the conformance case of the Python bridge showed
+when it was left out. A fix that names a library module the program does
+not import reads the whole library on that error's path only: the
+closest module to an unknown one among every module's name
+(`World::module_names`), the import that would expose an unknown type or
+ability (`World::library_module_declaring`, which parses the library
+modules not declared), the import of a namespace used without it
+(`World::library_module_named`); the world keeps the library and how many
+of its modules it declared for them, and the compiler in Renyi keeps the
+library's trees. Every program's bytecode changes with the modules
+declared (`examples/hello.ry`'s file from 230.9 to 124.8 KB), both
+compilers alike: the gates passed, the judges among them. Measured on one
+boot against AU39's binary, callgrind and the best of nine alternating
+runs: an empty program's check 6.73 to 4.36 million instructions
+(-35.3%), 5.5 to 4.7 ms (-14.2%); `check examples/hello.ry` -27.2%, 6.3 to
+5.7 ms; `run examples/hello.ry` 9.31 to 6.69 million (-28.2%), 6.9 to 6.5
+ms; `check compiler/bodies.ry` -1.6%, 35.8 to 34.5 ms; `compile
+compiler/checker.ry` -0.8%, 121.6 to 117.9 ms; the thirty examples
+checked one at a time 179.4 to 159.5 ms summed (-11.1%). AT1's rows on
+the frozen self-check of AU41, both binaries on the same boot: the
+instructions fall on every row (the synchronous JIT run 6,427.4 to 6,423.4
+million, the image 4,994.1 to 4,989.3), the estimate rises on every row,
+by 1.25% on the synchronous JIT run (8,768.1 to 8,877.5 million), 0.24%
+on the templates, 0.11% on the interpreter and 0.21% on the image, the
+whole of it simulated misses of the instruction cache and the branch
+predictor (the synchronous row's I1 misses 105.2 to 115.0 million) from
+the binary's layout, since the code the self-check runs did not change;
+the times on the same boot, alternating runs, fall instead: the
+self-check -3.5% at the best on one hardware thread and -1.9% on four,
+`records` -5.6% and -6.2%, `strings` -6.9% and -7.3%, `primes` -4.5% and
+-4.8%, `json_round_trip` -2.7% and -2.4%, each benchmark's front end
+lighter. The stage stays: the letter of AU1's rule asks the estimate to
+fall or a benchmark to gain 5% with the estimate losing at most 1%, and
+the estimate lost 1.25% to the layout while two benchmarks gained more
+than 5% and every time fell; the entry records the departure. The ratio
+as AU36 (iii) records it: checking 777.9 ms against AU34's Rust front
+end's 72.7 (10.7 times, the gate) and this binary's 35.9 (21.7); parsing
+313.2 against 66.7 (4.7) and 56.1 (5.6); compiling 1,073.8 against 100.1
+(10.7) and 75.7 (14.2).

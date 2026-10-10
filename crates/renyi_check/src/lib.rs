@@ -16,7 +16,9 @@ mod suggest;
 pub mod types;
 pub mod world;
 
-use renyi_syntax::{parse_declarations, Diagnostic, Parsed, SourceFile, Span};
+use std::sync::Arc;
+
+use renyi_syntax::{ast, parse_declarations, Diagnostic, Parsed, SourceFile, Span};
 
 pub use check::{NumberKind, Reference, Target};
 pub use renyi_package::{parse_file, resolve, resolve_parsed, tagged, Problem, Project, Resolved};
@@ -54,7 +56,9 @@ pub const LIBRARY: &[(&str, &str)] = &[
 /// with (decision AJ1), in the order they are declared.
 #[derive(Clone, Debug, Default)]
 pub struct Library {
-    modules: Vec<(String, String)>,
+    /// Shared: every world declared from the library keeps it for the
+    /// fixes that name a module the program does not import.
+    modules: Arc<Vec<(String, String)>>,
 }
 
 impl Library {
@@ -75,7 +79,12 @@ impl Library {
 
     /// A declaration file after those already added.
     pub fn add(&mut self, name: &str, source: &str) {
-        self.modules.push((name.to_string(), source.to_string()));
+        Arc::make_mut(&mut self.modules).push((name.to_string(), source.to_string()));
+    }
+
+    /// Whether no declaration file was added.
+    pub fn is_empty(&self) -> bool {
+        self.modules.is_empty()
     }
 
     /// Each module's name and the text of its declaration file, in order.
@@ -90,18 +99,95 @@ impl Library {
     /// `Registry::verify` reports it before a binary starts), so it is a
     /// panic here.
     pub fn world(&self) -> World {
-        let mut world = World::new();
-        for (name, source) in self.modules() {
-            let parsed = parse_declarations(source);
-            assert!(
-                parsed.diagnostics.is_empty(),
-                "the library file {name} does not parse: {:?}",
-                parsed.diagnostics
-            );
-            world.add_module(parsed.module, true);
+        let trees = self
+            .modules()
+            .map(|(name, source)| Some(declarations_of(name, source)))
+            .collect();
+        self.declare(trees)
+    }
+
+    /// A world with the library modules a program needs declared (decision
+    /// AU40): the prelude, `std.json`, every library module one of the
+    /// files imports, and the library modules those import, transitively,
+    /// in the library's order (`needed`). The others are read only by the fixes that name a
+    /// module the program does not import (`World::library_module_declaring`).
+    pub fn world_for(&self, trees: &[Parsed]) -> World {
+        let mut parsed: Vec<Option<Parsed>> = vec![None; self.modules.len()];
+        let imports = trees.iter().flat_map(|tree| import_names(&tree.module));
+        self.needed(imports, |index| {
+            let (module, source) = &self.modules[index];
+            let tree = declarations_of(module, source);
+            let names = import_names(&tree.module).collect();
+            parsed[index] = Some(tree);
+            names
+        });
+        self.declare(parsed)
+    }
+
+    /// Which of the library's modules the imports given need (decision
+    /// AU40): the prelude, `std.json` (whose decoder the runtime uses on a
+    /// recorded result and on what a Python module returns, whatever the
+    /// program imports, and whose `JsonError` it builds when a value does
+    /// not fit), every library module named, and the library modules those
+    /// import, transitively; `imports_of` answers a library module's own
+    /// imports by its index, once per module.
+    pub fn needed(
+        &self,
+        imports: impl IntoIterator<Item = String>,
+        mut imports_of: impl FnMut(usize) -> Vec<String>,
+    ) -> Vec<bool> {
+        let mut needed = vec![false; self.modules.len()];
+        let mut queue = vec!["std.prelude".to_string(), "std.json".to_string()];
+        queue.extend(imports);
+        while let Some(name) = queue.pop() {
+            let Some(index) = self.modules.iter().position(|(module, _)| *module == name) else {
+                continue;
+            };
+            if needed[index] {
+                continue;
+            }
+            needed[index] = true;
+            queue.extend(imports_of(index));
         }
+        needed
+    }
+
+    /// The modules parsed, declared in the library's order, those left out
+    /// skipped.
+    fn declare(&self, trees: Vec<Option<Parsed>>) -> World {
+        let mut world = World::new();
+        for tree in trees.into_iter().flatten() {
+            world.add_module(tree.module, true);
+        }
+        world.library_declared = world.modules.len();
+        world.library = self.clone();
         world
     }
+}
+
+/// A library declaration file parsed. A file that does not parse is a bug
+/// of the build (the VM's `Registry::verify` reports it before a binary
+/// starts), so it is a panic here.
+fn declarations_of(name: &str, source: &str) -> Parsed {
+    let parsed = parse_declarations(source);
+    assert!(
+        parsed.diagnostics.is_empty(),
+        "the library file {name} does not parse: {:?}",
+        parsed.diagnostics
+    );
+    parsed
+}
+
+/// The dotted names a module imports.
+pub fn import_names(module: &ast::Module) -> impl Iterator<Item = String> + '_ {
+    module.imports.iter().map(|import| {
+        import
+            .path
+            .iter()
+            .map(|name| name.text.as_str())
+            .collect::<Vec<_>>()
+            .join(".")
+    })
 }
 
 /// A world with the standard library declared.
@@ -159,7 +245,7 @@ pub fn check_parsed_project_in(
     problems: &[Problem],
 ) -> CheckedProject {
     assert_eq!(files.len(), trees.len(), "one tree per file");
-    let mut world = library.world();
+    let mut world = library.world_for(&trees);
     let mut modules = Vec::new();
     for (index, (file, parsed)) in files.iter().zip(trees).enumerate() {
         // a foreign module (decision AF1) or a Python module (decision AL1)

@@ -21,8 +21,8 @@ use std::time::{Duration, SystemTime};
 
 use renyi_check::check::{check_item, module_purpose_diagnostic};
 use renyi_check::{
-    imported_files, module_name_mismatch, tagged, BodyLocation, CheckedModule, CheckedProject,
-    Library, ModuleId, Reference, World,
+    import_names, imported_files, module_name_mismatch, tagged, BodyLocation, CheckedModule,
+    CheckedProject, Library, ModuleId, Reference, World,
 };
 use renyi_index::{index_checked, Header, Index};
 use renyi_syntax::ast::{Function, Item, Module};
@@ -341,6 +341,9 @@ pub struct Workspace {
     /// The files as written rather than in canonical layout.
     as_written: bool,
     /// The library's declaration files, parsed once.
+    /// The library's declaration files, for the world's fixes, and their
+    /// trees.
+    library: Library,
     library_modules: Vec<Module>,
     /// The project's own files, in path order.
     own: Vec<String>,
@@ -381,6 +384,7 @@ impl Workspace {
         Workspace {
             root: root.into(),
             as_written: false,
+            library: library.clone(),
             library_modules,
             own: Vec::new(),
             dependencies: Vec::new(),
@@ -679,11 +683,26 @@ impl Workspace {
 
         // the world, declared again from the kept trees
         let full = first || declarations_changed;
+        let order: Vec<String> = self.order().cloned().collect();
+        // the library modules the files need, as `check_project` declares
+        // them (decision AU40)
+        let imports = order
+            .iter()
+            .flat_map(|name| import_names(&self.sources[name].module));
+        let needed = self.library.needed(imports, |index| {
+            import_names(&self.library_modules[index]).collect()
+        });
         let mut world = World::new();
-        for module in &self.library_modules {
+        for (module, _) in self
+            .library_modules
+            .iter()
+            .zip(&needed)
+            .filter(|(_, needed)| **needed)
+        {
             world.add_module(module.clone(), true);
         }
-        let order: Vec<String> = self.order().cloned().collect();
+        world.library_declared = world.modules.len();
+        world.library = self.library.clone();
         let mut ids = Vec::with_capacity(order.len());
         for name in &order {
             let source = &self.sources[name];

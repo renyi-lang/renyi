@@ -3986,13 +3986,9 @@ end
 function suggest_module_import(checker: Checker, name: Text) returns maybe Text
   purpose: `environment.arguments()` without `import std.environment`: name the import.
 
-  for each found in checker.world.modules
-    let last be found.name.split(".").last() otherwise ""
-    if found.is_library and last is name then
-      return "write `import {found.name}` at the top of the module"
-    end
-  end
-  return nothing
+  let named be declare.library_module_named(world: checker.world, name: name)
+  let found be named otherwise return nothing
+  return "write `import {found}` at the top of the module"
 end
 
 function require_public(checker: Checker, function_id: Integer, span: Span) returns Checker

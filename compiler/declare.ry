@@ -270,6 +270,8 @@ public type World
   has prelude: maybe Integer
   has method_index: Map of Text to List of Integer
   has diagnostics: List of ModuleDiagnostic
+  has library: List of Module
+  has library_declared: Integer
 end
 
 public type NamedParam
@@ -338,8 +340,79 @@ public function new_world() returns World
     builtins: builtins,
     prelude: nothing,
     method_index: {},
-    diagnostics: []
+    diagnostics: [],
+    library: [],
+    library_declared: 0
   )
+end
+
+public function module_names(world: World) returns List of Text
+  purpose: Every module's name: the library's, declared or not (AU40), then every other module's.
+
+  let mutable names be
+    if world.library.is_empty() then for each found in world.modules.take(world.library_declared)
+    collect found.name
+    otherwise for each tree in world.library
+    collect effects.names_of(tree.name).join(".")
+    end
+  for each found in world.modules.drop(world.library_declared)
+    change names to names.append(found.name)
+  end
+  return names
+end
+
+public function library_module_declaring(world: World, name: Text) returns maybe Text
+  purpose: The first library module, declared or not (AU40), then bound module declaring a type.
+
+  if world.library.is_empty() then
+    for each found in world.modules.take(world.library_declared)
+      let declares be found.types.contains_key(name) or found.abilities.contains_key(name)
+      if found.is_library and declares then return found.name end
+    end
+  otherwise
+    for each tree in world.library
+      if tree_declares(tree: tree, name: name) then return effects.names_of(tree.name).join(".") end
+    end
+  end
+  for each found in world.modules.drop(world.library_declared)
+    let declares be found.types.contains_key(name) or found.abilities.contains_key(name)
+    if found.is_library and declares then return found.name end
+  end
+  return nothing
+end
+
+function tree_declares(tree: Module, name: Text) returns Boolean
+  purpose: Whether a module's tree declares a type or an ability of that name.
+
+  for each item in tree.items
+    match item
+      when TypeItem(value: def) then if def.name.text is name then return true end
+      when AbilityItem(value: abil) then if abil.name.text is name then return true end
+      otherwise continue
+    end
+  end
+  return false
+end
+
+public function library_module_named(world: World, name: Text) returns maybe Text
+  purpose: The first library module, declared or not (AU40), then bound module, ending in `name`.
+
+  let library be
+    if world.library.is_empty() then for each found in world.modules.take(world.library_declared)
+    where found.is_library
+    collect found.name
+    otherwise for each tree in world.library
+    collect effects.names_of(tree.name).join(".")
+    end
+  for each module_name in library
+    let last be module_name.split(".").last() otherwise ""
+    if last is name then return module_name end
+  end
+  for each found in world.modules.drop(world.library_declared)
+    let last be found.name.split(".").last() otherwise ""
+    if found.is_library and last is name then return found.name end
+  end
+  return nothing
 end
 
 public function module_at(world: World, id: Integer) returns ModuleInfo
@@ -1014,10 +1087,10 @@ function resolve_import(world: World, id: Integer, entry: Import) returns World
   let importer be module_at(world: world, id: id)
   match imported_module(world: world, importer: importer, name: name)
     when nothing then
-      let module_names be for each found in world.modules collect found.name
+      let names be module_names(world)
       let file be name.replace(old: ".", new: "/")
       let fix be
-        match suggest.closest(name: name, candidates: module_names)
+        match suggest.closest(name: name, candidates: names)
           when some(close) then "did you mean `{close}`?"
           when nothing then "create `{file}.ry` with `module {name}` as its first line"
         end
@@ -1192,11 +1265,8 @@ public function suggest_import(world: World, owner: Integer, name: Text) returns
       return "add `{name}` to the `exposing` list of `import {other.name}`"
     end
   end
-  for each other in world.modules
-    let declares be other.types.contains_key(name) or other.abilities.contains_key(name)
-    if other.is_library and declares then return "write `import {other.name} exposing {name}`" end
-  end
-  return nothing
+  let other be library_module_declaring(world: world, name: name) otherwise return nothing
+  return "write `import {other} exposing {name}`"
 end
 
 public function suggest_type(world: World, owner: Integer, name: Text) returns Text

@@ -2532,11 +2532,10 @@ impl<'w> Checker<'w> {
 
     /// `environment.arguments()` without `import std.environment`: name the import.
     fn suggest_module_import(&self, name: &str) -> Option<String> {
+        // every library module, declared or not (decision AU40)
         self.world
-            .modules
-            .iter()
-            .find(|m| m.is_library && m.name.rsplit('.').next() == Some(name))
-            .map(|m| format!("write `import {}` at the top of the module", m.name))
+            .library_module_named(name)
+            .map(|module| format!("write `import {module}` at the top of the module"))
     }
 
     /// A definition of another module is reachable only when it is `public`

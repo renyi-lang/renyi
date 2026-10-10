@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use renyi_syntax::ast::{self, Item, TypeKind};
-use renyi_syntax::{Diagnostic, ForeignModule, Package, PythonBinding, Span};
+use renyi_syntax::{parse_declarations, Diagnostic, ForeignModule, Package, PythonBinding, Span};
 
 use crate::effects::Capability;
 use crate::suggest::{closest, foreign_type, quoted};
@@ -233,6 +233,13 @@ pub struct World {
     pub method_index: HashMap<(TypeId, String), Vec<FunctionId>>,
     /// Diagnostics raised while declaring, per module.
     pub diagnostics: Vec<(ModuleId, Diagnostic)>,
+    /// The library the world was declared from, every declaration file of
+    /// it whether declared here or not (decision AU40): the fixes that name
+    /// a library module the program does not import read it. Empty for a
+    /// world declared module by module.
+    pub library: crate::Library,
+    /// How many of `modules`, from the first, the library declared.
+    pub library_declared: usize,
 }
 
 impl World {
@@ -758,7 +765,7 @@ impl World {
             let path: Vec<&str> = import.path.iter().map(|n| n.text.as_str()).collect();
             let name = path.join(".");
             let Some(target) = self.imported_module(id, &name) else {
-                let fix = match closest(&name, self.modules.iter().map(|m| m.name.as_str())) {
+                let fix = match closest(&name, self.module_names().into_iter()) {
                     Some(close) => format!("did you mean `{close}`?"),
                     None => format!(
                         "create `{}.ry` with `module {name}` as its first line",
@@ -879,14 +886,90 @@ impl World {
                 ));
             }
         }
-        for other in &self.modules {
-            if other.is_library
-                && (other.types.contains_key(name) || other.abilities.contains_key(name))
-            {
-                return Some(format!("write `import {} exposing {name}`", other.name));
+        self.library_module_declaring(name)
+            .map(|other| format!("write `import {other} exposing {name}`"))
+    }
+
+    /// The name of every module, the library's in its order whether
+    /// declared or not (decision AU40), then every other module's: what
+    /// the world held when it declared the whole library.
+    pub fn module_names(&self) -> Vec<&str> {
+        let mut names: Vec<&str> = if self.library.is_empty() {
+            self.modules[..self.library_declared]
+                .iter()
+                .map(|m| m.name.as_str())
+                .collect()
+        } else {
+            self.library.modules().map(|(name, _)| name).collect()
+        };
+        names.extend(
+            self.modules[self.library_declared..]
+                .iter()
+                .map(|m| m.name.as_str()),
+        );
+        names
+    }
+
+    /// The first library module, in the library's order whether declared
+    /// or not, then the first module a project declares without bodies (a
+    /// foreign or a Python module), that declares a type or an ability of
+    /// that name. A library module the program does not import is parsed
+    /// here, on the path of the error this fix is for (decision AU40).
+    pub fn library_module_declaring(&self, name: &str) -> Option<String> {
+        let declares = |other: &ModuleInfo| {
+            other.types.contains_key(name) || other.abilities.contains_key(name)
+        };
+        if self.library.is_empty() {
+            let declared = &self.modules[..self.library_declared];
+            if let Some(other) = declared.iter().find(|m| m.is_library && declares(m)) {
+                return Some(other.name.clone());
+            }
+        } else {
+            for (module, source) in self.library.modules() {
+                let found = match self.module_id(module) {
+                    Some(id) if id < self.library_declared => declares(&self.modules[id]),
+                    _ => parse_declarations(source)
+                        .module
+                        .items
+                        .iter()
+                        .any(|item| match item {
+                            Item::Type(def) => def.name.text == name,
+                            Item::Ability(ability) => ability.name.text == name,
+                            _ => false,
+                        }),
+                };
+                if found {
+                    return Some(module.to_string());
+                }
             }
         }
-        None
+        self.modules[self.library_declared..]
+            .iter()
+            .find(|m| m.is_library && declares(m))
+            .map(|m| m.name.clone())
+    }
+
+    /// The first library module, in the library's order whether declared
+    /// or not (decision AU40), then the first module a project declares
+    /// without bodies, whose last segment is `name`.
+    pub fn library_module_named(&self, name: &str) -> Option<String> {
+        let last = |module: &str| module.rsplit('.').next() == Some(name);
+        let library: Vec<&str> = if self.library.is_empty() {
+            self.modules[..self.library_declared]
+                .iter()
+                .filter(|m| m.is_library)
+                .map(|m| m.name.as_str())
+                .collect()
+        } else {
+            self.library.modules().map(|(module, _)| module).collect()
+        };
+        if let Some(module) = library.into_iter().find(|module| last(module)) {
+            return Some(module.to_string());
+        }
+        self.modules[self.library_declared..]
+            .iter()
+            .find(|m| m.is_library && last(&m.name))
+            .map(|m| m.name.clone())
     }
 
     /// The fix for an unknown type: the Renyi name of a foreign one, an

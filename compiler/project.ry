@@ -344,7 +344,7 @@ end
 public function check_project(files: List of Source, library: List of Module) returns Project
   purpose: Declare and check every file together; a file that does not parse declares no module.
 
-  let mutable world be library_world(library)
+  let mutable world be library_world(library: library, files: files)
   let mutable modules: List of CheckedModule be []
   for each file in files
     match file.front
@@ -445,15 +445,56 @@ function finish_module(world: World, entry: CheckedModule) returns CheckedModule
   return entry with diagnostics: report.sorted_by_start(every), references: checked.references
 end
 
-function library_world(library: List of Module) returns World
-  purpose: A world with the standard library declared.
+function library_world(library: List of Module, files: List of Source) returns World
+  purpose: The library modules the files need declared, in the library's order (decision AU40).
 
+  let needed be needed_library(library: library, files: files)
   let mutable world be declare.new_world()
+  let mutable index be 0
   for each tree in library
-    let built be declare.add_module(world: world, tree: tree, is_library: true)
-    change world to built.world
+    if needed.contains(index) then
+      let built be declare.add_module(world: world, tree: tree, is_library: true)
+      change world to built.world
+    end
+    change index to index + 1
   end
-  return world
+  return world with library: library, library_declared: world.modules.length()
+end
+
+function needed_library(library: List of Module, files: List of Source) returns List of Integer
+  purpose: The prelude, `std.json` (the runtime's decoder), what the files import, transitively.
+
+  let names be for each tree in library collect effects.names_of(tree.name).join(".")
+  let mutable queue be ["std.prelude", "std.json"]
+  for each file in files
+    change queue to queue.append_all(import_names(tree_of(file.front)))
+  end
+  let mutable needed: List of Integer be []
+  repeat until queue.is_empty()
+    let name be queue.last() otherwise break
+    change queue to queue.without_last()
+    let index be names.index_of(name) otherwise continue
+    if needed.contains(index) then continue end
+    change needed to needed.append(index)
+    let tree be library.at(index) otherwise continue
+    change queue to queue.append_all(import_names(tree))
+  end
+  return needed
+end
+
+function tree_of(front: Front) returns Module
+  purpose: The tree of a file, partial when it does not parse.
+
+  match front
+    when Parsed(tree) then return tree
+    when Rejected(tree) then return tree
+  end
+end
+
+function import_names(tree: Module) returns List of Text
+  purpose: The dotted names a module imports.
+
+  return for each entry in tree.imports collect effects.names_of(entry.path).join(".")
 end
 
 function module_name_mismatch(file_name: Text, tree: Module) returns maybe Diagnostic

@@ -2913,7 +2913,9 @@ too, decision AU38: the same check -23% more, -57% since AU34; the
 first part of stage 3, decision AU39: the module trees shared, the same
 check -17% more, -64.5% since AU34, an empty program's check -21%; the
 second part measured and put to the owner, who ordered it and set A2's
-design, decision AU40):
+design, decision AU40; the second part is in, decision AU42: an empty
+program's check -35% in instructions and -14% in time, the thirty
+examples checked -11%, `hello`'s bytecode 231 to 125 KB):
 1. A0, every file parsed once by the Rust front end: the resolver
    (`renyi_package::resolve`, which parses each file only to read its
    imports, `imports_of`) keeps the trees, `check_project_in` takes
