@@ -4,14 +4,21 @@ Last updated: 2026-10-10, session 11, in the cloud environment, which
 put the four questions of session 10 to the owner (decision AU20: the
 template tier's follow-ups first, then the representation items of
 AU1's step v; a Windows job in CI; the goal of AU18 kept; the tier on
-by default) and did the first part: decision AU21, direct calls between
-template functions and the field read in place, the self-check -12.4%
-in wall-clock on one hardware thread against AU19's binary (the section
-"The typed round" below, "The template tier's direct calls are in" and
-"What is next in this round, after AU21"). The Windows job passed on
-its first push (CI run 78), so the template tier's Windows x64
-convention has run. The second part, the representation items, starts
-with a design study and the owner's questions in one batch.
+by default) and did both parts: decision AU21, direct calls between
+template functions and the field read in place; the design study of
+the representation items with a census build and callgrind, and the
+owner's answers to it (AU22: three cuts outside the list first, then
+small texts inline, then records and variants in one allocation; lists
+of unboxed Integers and the flattened `Int` deferred; AU18's goal
+measured on the run part); decisions AU23 to AU25, the three cuts (the
+guard bookkeeping skipped, a variant without fields read from its slot,
+one shared empty list); AU26, small texts held in the value; AU27,
+records and variants in one counted block. Over the session the
+self-check's JIT run on one hardware thread went from 1,592.8 to 1,164.4
+ms (-26.9%) and on four from 1,507.0 to 1,186.4 (-21.3%); `records`
+-20% (the section "The typed round" below, from "The template tier's
+direct calls are in" to "What is next in this round, after AU27"). The
+Windows job passed on every push. The next step is put to the owner.
 Session 10, in the cloud environment,
 did stages 6 to 9 of the typed round: decision AU11, the update of
 a uniquely held record in place (the ops `WithSlot` and `TakeField`,
@@ -127,14 +134,13 @@ and push there directly.
 ## Start here (session 12)
 
 1. The work stopped in the typed round, whose plan the owner set in
-   decisions AU1 and AU9 and reordered in AU12, AU14, AU16, AU18 and
-   AU20, right after the template tier's direct calls (AU21): read the
+   decisions AU1 and AU9 and reordered in AU12, AU14, AU16, AU18, AU20
+   and AU22, right after the representation items (AU27): read the
    section "The typed round" below, whose last paragraphs ("The
-   template tier's direct calls are in" and "What is next in this
-   round, after AU21") say what exists and what comes next. The next
-   item is the owner's second part of "1+2": the representation items
-   of AU1's step v, which start with a design study with counts and
-   the owner's questions in one batch, before any code.
+   representation stages are in" and "What is next in this round, after
+   AU27") say what exists and what comes next. The questions of item 7
+   there go to the owner first, unless the owner answered them at the
+   end of session 11 (then the answers are the next decision entry).
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
@@ -2403,52 +2409,124 @@ run, alternating with the image, takes 1,461.5 ms against 1,162.9
 1,476.5 in the next), so compare a stage's binaries, and the JIT run
 with the image, alternating in one series.
 
-**What is next in this round, after AU21:**
+**The representation stages are in (decisions AU23 to AU27, session
+11)**, in the order the owner set in AU22, each measured against the
+binary before it on one boot:
+- **AU23, the guard bookkeeping skipped** (2abc849): `Vm::guarding`,
+  set by `begin_run` when the grant carries a guard and never cleared;
+  while it is false the constructions (`MakeList`, `Construct`,
+  `ConstructVariant` and their helpers) take their operands as they
+  are, and `run_native` wraps a result only when there are origins.
+  The synchronous JIT run -2.4% by the estimate; the self-check -1.0%,
+  -2.0% and -6.5% in wall-clock on one, two and four hardware threads.
+  A first build inlined `guarded`'s fast path everywhere instead and
+  made `records` 3 to 4% slower in wall-clock with fewer instructions
+  (moves of a 24-byte value that cachegrind does not price): call no
+  wrapper at all rather than inline one. Test: `tests/guards.rs`,
+  `a_guard_after_a_run_without_one_follows_the_data_into_a_record`.
+- **AU24, a variant without fields read from its slot** (f26c1ca):
+  `Vm::unit_variants` is a pinned vector, `Nothing` until a slot's
+  variant is built, `vm::unit_slot` its index; both tiers copy a built
+  one in place and raise its count with an inline increment; the
+  helper builds it the first time. Code format 8. The synchronous JIT
+  run -1.3%. Tests: `variants_without_fields_are_copied_from_their_slot_and_counted`
+  in `tests/native.rs` and `tests/template.rs`.
+- **AU25, one shared empty list** (1c27240): `Value::list` of no items
+  shares a list per thread. Neutral (the estimate -0.03%): most of the
+  self-check's empty lists are appended to later, which copies them out
+  of the shared one. Kept by AU1's rule, if barely.
+- **AU26, small texts in the value** (5be5e60): `Value::SmallText`, tag
+  20, the length and up to 15 bytes in the payload, zero after them;
+  `Value::text` and `Value::character` choose by the length (a text has
+  one form), every reader takes either (`as_text`, `natives::text`,
+  `plain_text`, the renderer, the comparisons, `op_concat`, the JSON,
+  the file and the image's program, which write a text constant as
+  before); equality and hashing by the characters; `copy_short` copies
+  without a call (a first build's `copy_from_slice` called `memcpy` and
+  `memset` per character and cost `strings` 7%); `is` and `is not` on
+  operands noted as Text compare two small texts in place in both tiers
+  (`compare_small_texts`, `infer::is_text`). Code format 9. The
+  synchronous JIT run -7.4%, the image -9.0%; the self-check -7.8%,
+  -7.4% and -6.8% in wall-clock. Tests: `value.rs` (every length, both
+  forms) and `texts_held_in_the_value_compare_in_place_and_others_as_before`
+  on both tiers.
+- **AU27, records and variants in one allocation** (14ce593): `Composite`
+  in `value.rs`, a thin pointer to one block (the count at 0, the number
+  of fields at 8, the type at 16, the tag at 24, the fields from 32,
+  `layout::RECORD_*`), `Deref` to `Shape` (a type with a slice tail),
+  the count raised and lowered inline as an `Rc`'s, `Composite::free`
+  out of line, `make_mut` and `get_mut` for the updates in place;
+  `Vm::construct_from_top` and `construct_variant_from_top` move the
+  operands from the stack into the block when the type has no
+  refinement; the field reads of both tiers add the index to the block.
+  Code format 10. Two corrections from the first build's profile: the
+  drop was a call at every lowered count, and the clone's check against
+  `usize::MAX` called `abort`, which gave `Value::clone` a stack frame on
+  every path; the clone is a plain increment now, as the generated code
+  makes it. The synchronous JIT run -4.6%, the image -6.1%; the
+  self-check -10.5%, -3.9% and -4.4% in wall-clock, `records` -10% to
+  -13%, `json_round_trip` within +2% (the decoder's vectors are copied
+  into the blocks, 0.9% more instructions). Tests: `value.rs` (the
+  layout, the copy before an update) and
+  `records_in_one_block_are_built_read_copied_and_compared` on both
+  tiers.
 
-1. **The representation items of AU1's step v**, the second part of
-   the owner's "1+2" (AU20): studied (the section "The representation
-   items: the design study" below) and ordered by the owner in AU22:
-   first the three cuts the census found outside the list, each a stage
-   of its own (the guard bookkeeping skipped in a run whose grant
-   guards nothing; a fieldless variant read from the cache by the
-   generated code; one shared empty list), then small texts inline,
-   then records and variants in one allocation, each measured by AT1's
-   rule; lists of unboxed Integers and the flattened `Int` deferred
-   until a numeric program calls for them.
-2. **The template tier's remaining follow-ups, by its profile** (not
-   ordered by the owner; candidates when a profile after item 1 calls
-   for them): the retain and the release of the common tags in place
-   (every field read and every copy still calls `rt_retain_at`, every
-   dead value `rt_drop_at`); a comparison of two small Integers in
-   place (`rt_compare` today); the aarch64 encoder for the same
-   sequences (Apple silicon, the Linux arm64 release).
-3. **The goal of AU18**, which AU20 kept as the measure of the
-   follow-ups and AU22 measures on the run part (the self-check's JIT
-   run on one hardware thread, without the front end's compilation of
-   the checker program, within 15% of its image; `RENYI_NATIVE_REPORT`
-   prints the run part as its last line, "run: ... ms from the program
-   loaded to the end of `main`", for the JIT run and the image alike):
-   the whole run stood at +25.7% after AU21 and the run part at about
-   +7% by the study's numbers.
-4. **The micro-cuts, by a profile**: a fieldless variant built by
-   `ConstructVariant` allocates on every comparison (`kind is Public`,
-   11 sites in the checker program); a borrowed `LoadField` operand (33
-   `LoadField ... is` sites) needs the helper path to say whether it
-   pushed a fresh value; the field taken out of a record that is
-   updated with the result later (`let after be done.checker ... done
-   with checker: updated`), which the liveness pass does not reach
-   since the read is a field read.
-5. **Skipped, recorded in AU14**: the parameters borrowed across direct
-   calls (AU9's third item). A parameter the callee only reads (fields,
-   borrowed calls, comparisons) and never stores, returns or passes on
-   to a position that keeps it needs no retain at the call and no
-   release at the return. The hazard: a frame handed back to the
-   interpreter, which drops its locals at the return, so the flag must
-   be honoured there too (or the hand-back retains the borrowed
-   parameters first). It waits for a profile that shows the
-   parameters' retains to matter.
-6. **No question is pending with the owner**: AU22 answered the four of
-   the study.
+Over the session, AU19's binary against AU27's on one boot: the
+self-check 1,592.8 to 1,164.4 ms on one hardware thread (-26.9%, best
+of eleven) and 1,507.0 to 1,186.4 on four (-21.3%); `records` -20%,
+`primes` -6%, `json_round_trip` and `strings` level. The goal of AU18 as
+AU22 measures it, the run part on one hardware thread
+(`RENYI_NATIVE_REPORT`'s last line; `runpart.py` in the session's
+scratchpad alternated the JIT run and the image eleven times): 1,112.2
+ms against the image's 934.4 at the best (+19.0%), 1,213.8 against
+1,045.2 at the median (+16.1%); the whole run +29.6%, the front end and
+the loading 116 ms of the JIT run's 1,228 and 14 ms of the image's 948.
+The goal (15%) is near and not reached.
+
+**What is next in this round, after AU27** (the owner's plan of AU22 is
+done; the round goes on by the profile, AU12). The profile of the
+self-check's synchronous JIT run on AU27's binary (7.19 billion
+instructions): the front end that compiles the checker program 716
+million (10.0%), Cranelift 425 million (5.9%; 54 code objects in 82 ms
+on one hardware thread), the templates 115 million (1.6%); the values'
+lifecycle about 800 million (`drop_glue<Value>` 494 million,
+`Value::clone` 310 million; `rt_retain_at` 15.9 million calls and
+`rt_drop_at` 14.7 million from both tiers' code); the typed natives'
+path about 510 million (`rt_call_typed` 181 million for 2.77 million
+calls, `typed_value_answer` 146 million, `status` 181 million: `at` 1.39
+million calls, `contains` 0.81 million, `append_all` 0.37 million);
+`memcpy` 251 million (the lists grown by `append`); `Value::eq` 168
+million; `leave_frame` 154 million; `rt_compare` 152 million (400 before
+AU26); the allocator about 315 million. The candidates:
+1. **The hottest natives in place in the generated code**: `List.at`
+   with a small Integer index (the bounds, the copy, the count, the
+   `maybe` answer), `Text.contains` on small texts; both tiers and the
+   image gain alike, so the ratio of AU18's goal does not move.
+2. **The retain and the release in place in template code**: a tag test
+   and an increment, a decrement and a call only to free, where every
+   copy and every dead value calls a helper now; it helps the JIT run
+   alone and so moves AU18's ratio; the template code grows (2.76 MB
+   after AU21) and AT6 found calls cheaper than inline counts on the
+   Cranelift tier, so it is a stage for AT1's rule to judge.
+3. **The compile cost on one hardware thread** (82 ms of Cranelift and
+   about 25 of templates in a run part of 1,112 ms): Cranelift's
+   single-pass register allocator was tried (`RENYI_NATIVE_REGALLOC=
+   single_pass`): 47 ms of compilation, but the run part 11.6% slower,
+   so the code it makes is not an option; fewer code objects compiled,
+   or less IR per op, remain.
+4. **The decoder's records built in place**: the natives that build
+   records from vectors (`json` decoding first) copy the values into the
+   block (AU27; 0.9% more instructions on `json_round_trip`).
+5. **Deferred by AU22**: lists of unboxed Integers and the flattened
+   `Int`, until a numeric program calls for them; **an item of its
+   own**: the front end's speed.
+6. **Skipped, recorded in AU14**: the parameters borrowed across direct
+   calls. A parameter the callee only reads needs no retain at the call
+   and no release at the return; the hazard is a frame handed back to
+   the interpreter, which drops its locals at the return.
+7. **The questions for the owner**, in one batch: which of 1 to 3 next
+   (or the round closed and the self-hosted front end decided, AU12),
+   and whether 4 rides with it.
 
 Each stage is measured by AT1's rule (`tools/measure_size.sh` on the
 release binary, about fifteen minutes now with the fourth row; in a
@@ -4050,9 +4128,19 @@ holds between calls.
   on four against AU19's binary; by AT1's estimate the synchronous
   JIT run -9.0% and the template code alone -16.0%; the goal of AU18 at
   +25.7% (from +42%).
+- **The design study of the representation items** (4640d03): a
+  census build (never committed) and callgrind; the owner's answers,
+  **decision AU22** (a895c90), with `RENYI_NATIVE_REPORT`'s last line,
+  the run part of a run.
+- **Decisions AU23 to AU27**, each a stage measured on one boot against
+  the binary before it: the guard bookkeeping skipped (2abc849), a
+  variant without fields read from its slot (f26c1ca, code format 8),
+  one shared empty list (1c27240, neutral), small texts in the value
+  (5be5e60, code format 9), records and variants in one block (14ce593,
+  code format 10). Every push green on CI, the Windows job included.
 - The gates with the 1.94.1 toolchain (fmt, clippy, test, the
   conformance runner), the conformance suite and the judges on the
-  template tier.
+  template tier, before every commit that touched the generated code.
 
 ## Done in session 10 (stages 6 to 9 and the template tier of the typed round, in the cloud environment)
 
