@@ -1,5 +1,5 @@
 //! A small x86-64 assembler for the template tier (decisions AU18 and
-//! AU19): the thirty-nine instruction forms the sequences per op need, and
+//! AU19): the forty-one instruction forms the sequences per op need, and
 //! nothing else. The code it makes is position-independent (every jump is
 //! relative, every address comes from a register), so what the tier
 //! places holds no address of its own, as decision AS1 requires of the
@@ -74,6 +74,9 @@ pub struct Asm {
     /// The relative displacements to patch: where the four bytes lie and
     /// the label they reach for.
     fixups: Vec<(usize, Label)>,
+    /// The one-byte offsets of the short jumps (`jcc_short`), patched the
+    /// same way; a target out of their reach is an error of the generator.
+    short_fixups: Vec<(usize, Label)>,
 }
 
 /// The calling convention of the helpers: the registers the arguments go
@@ -148,6 +151,13 @@ impl Asm {
             let rel = target as i64 - (at as i64 + 4);
             let rel = i32::try_from(rel).map_err(|_| "a jump too far".to_string())?;
             self.bytes[at..at + 4].copy_from_slice(&rel.to_le_bytes());
+        }
+        for (at, label) in std::mem::take(&mut self.short_fixups) {
+            let target =
+                self.labels[label.0].ok_or_else(|| format!("label {} unbound", label.0))?;
+            let rel = target as i64 - (at as i64 + 1);
+            let rel = i8::try_from(rel).map_err(|_| "a short jump too far".to_string())?;
+            self.bytes[at] = rel as u8;
         }
         Ok(self.bytes)
     }
@@ -412,6 +422,15 @@ impl Asm {
         self.alu_mi(7, base, disp, imm, true);
     }
 
+    /// `bt a32, b32`: the carry flag set to the bit of `a` that the low
+    /// five bits of `b` number.
+    pub fn bt_rr32(&mut self, a: Reg, b: Reg) {
+        self.rex(false, b as u8, a);
+        self.byte(0x0F);
+        self.byte(0xA3);
+        self.reg(b as u8, a);
+    }
+
     /// `test a32, b32`.
     pub fn test_rr32(&mut self, a: Reg, b: Reg) {
         self.rex(false, b as u8, a);
@@ -460,6 +479,14 @@ impl Asm {
         self.byte(0x80 | cond as u8);
         self.fixups.push((self.bytes.len(), label));
         self.imm32(0);
+    }
+
+    /// `jcc rel8`: a conditional jump to a label within 127 bytes, which
+    /// the caller knows to be near (a sequence skipped over).
+    pub fn jcc_short(&mut self, cond: Cond, label: Label) {
+        self.byte(0x70 | cond as u8);
+        self.short_fixups.push((self.bytes.len(), label));
+        self.byte(0);
     }
 
     /// `jmp label` with a 32-bit displacement.
@@ -632,6 +659,26 @@ mod tests {
         assert_eq!(bytes(|a| a.test_rr32(Reg::Rax, Reg::Rax)), [0x85, 0xC0]);
         assert_eq!(bytes(|a| a.test_rr(Reg::R10, Reg::R10)), [0x4D, 0x85, 0xD2]);
         assert_eq!(
+            bytes(|a| a.bt_rr32(Reg::R10, Reg::Rax)),
+            [0x41, 0x0F, 0xA3, 0xC2]
+        );
+        // a short jump over two bytes, and one that does not reach
+        let mut a = Asm::new();
+        let over = a.label();
+        a.jcc_short(Cond::Ae, over);
+        a.ret();
+        a.ret();
+        a.bind(over);
+        assert_eq!(a.finish().expect("a near target"), [0x73, 0x02, 0xC3, 0xC3]);
+        let mut a = Asm::new();
+        let far = a.label();
+        a.jcc_short(Cond::E, far);
+        for _ in 0..200 {
+            a.ret();
+        }
+        a.bind(far);
+        assert!(a.finish().is_err());
+        assert_eq!(
             bytes(|a| a.add_m64i(Reg::Rbx, 0x20, 1)),
             [0x48, 0x83, 0x43, 0x20, 0x01]
         );
@@ -731,6 +778,7 @@ mod tests {
             a.cmp_m64i(Reg::Rbx, 16, 0);
             a.test_rr32(Reg::Rax, Reg::Rax);
             a.test_rr(Reg::R10, Reg::R10);
+            a.bt_rr32(Reg::R10, Reg::Rax);
             a.add_m64i(Reg::Rbx, 0x20, 1);
             a.sub_m64i(Reg::Rbx, 0x400, 1);
             a.zero(Reg::R10);

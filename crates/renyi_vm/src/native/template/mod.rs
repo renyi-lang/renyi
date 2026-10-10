@@ -42,7 +42,7 @@ use crate::native::runtime::{
 };
 use crate::native::DEPTH_LIMIT;
 use crate::value::layout::{
-    INT_PAYLOAD, INT_SMALL, INT_TAG, PAYLOAD, RECORD_FIELDS, RECORD_TAG, RECORD_TY, SIZE,
+    INT_PAYLOAD, INT_SMALL, INT_TAG, PAYLOAD, RC_TAGS, RECORD_FIELDS, RECORD_TAG, RECORD_TY, SIZE,
     TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_INTEGER, TAG_NOTHING, TAG_RECORD, TAG_SMALL_TEXT,
 };
 use crate::vm::{unit_slot, CallKind};
@@ -140,6 +140,23 @@ enum Cold {
     },
     /// A direct call whose callee left a failure.
     Failed { label: Label, pc: usize },
+    /// A value to retain whose tag is an Integer's (decision AU29): a big
+    /// one raises the count of its block, a small one holds none.
+    Retain {
+        label: Label,
+        done: Label,
+        at: (Reg, i32),
+    },
+    /// A value to release whose tag is an Integer's, through the helper
+    /// unless it is small; or a counted block whose count reached zero,
+    /// raised back to one for the helper's drop, which frees it (decision
+    /// AU29).
+    Release {
+        integer: Label,
+        last: Label,
+        done: Label,
+        at: (Reg, i32),
+    },
     /// A variant without fields not built yet: through
     /// `rt_construct_variant`, which builds it and keeps it (decision
     /// AU24).
@@ -165,6 +182,12 @@ enum Cold {
 /// How many fresh locals a direct call writes `Nothing` into in place;
 /// past this many, a helper does it.
 const CLEARS_INLINE: usize = 4;
+
+/// The tags whose payload points at a counted block (`RC_TAGS`) and the
+/// Integer's, whose payload holds one only when the Integer is big: the
+/// bits a retain or a release in place tests (decision AU29).
+const COUNTED_OR_INTEGER: u32 = (RC_TAGS | 1 << TAG_INTEGER) as u32;
+const _: () = assert!(RC_TAGS >> 32 == 0 && TAG_INTEGER < 32);
 
 /// An argument of a helper call.
 #[derive(Clone, Copy)]
@@ -382,15 +405,63 @@ impl Gen<'_> {
         }
     }
 
-    /// One more reference to the value at the address (decision AT6).
+    /// One more reference to the value at the address, in place (decision
+    /// AU29): a value whose tag says its payload points at a counted block
+    /// raises the block's first word, the count; an Integer goes out of
+    /// line, where a big one raises its own; any other value holds no
+    /// count.
     fn retain(&mut self, at: (Reg, i32)) {
-        self.call("rt_retain_at", &[Arg::Addr(at.0, at.1)]);
+        debug_assert!(
+            at.0 != SCRATCH && at.0 != SCRATCH2,
+            "a value off the scratch registers"
+        );
+        let done = self.asm.label();
+        let integer = self.asm.label();
+        self.asm.movzx_rm8(SCRATCH, at.0, at.1);
+        self.asm.mov_ri32(SCRATCH2, COUNTED_OR_INTEGER);
+        self.asm.bt_rr32(SCRATCH2, SCRATCH);
+        self.asm.jcc_short(Cond::Ae, done);
+        self.asm.cmp_r32i(SCRATCH, TAG_INTEGER as i32);
+        self.asm.jcc(Cond::E, integer);
+        self.asm.mov_rm(SCRATCH2, at.0, at.1 + PAYLOAD);
+        self.asm.add_m64i(SCRATCH2, 0, 1);
+        self.asm.bind(done);
+        self.cold.push(Cold::Retain {
+            label: integer,
+            done,
+            at,
+        });
     }
 
     /// One reference fewer to the value at the address, which is dead
-    /// after.
+    /// after, in place (decision AU29): the count of a counted block
+    /// lowered, and only the last reference, raised back, goes through
+    /// `rt_drop_at`, which frees what the value holds; an Integer goes out
+    /// of line, where a big one is dropped by the helper.
     fn release(&mut self, at: (Reg, i32)) {
-        self.call("rt_drop_at", &[Arg::Addr(at.0, at.1)]);
+        debug_assert!(
+            at.0 != SCRATCH && at.0 != SCRATCH2,
+            "a value off the scratch registers"
+        );
+        let done = self.asm.label();
+        let integer = self.asm.label();
+        let last = self.asm.label();
+        self.asm.movzx_rm8(SCRATCH, at.0, at.1);
+        self.asm.mov_ri32(SCRATCH2, COUNTED_OR_INTEGER);
+        self.asm.bt_rr32(SCRATCH2, SCRATCH);
+        self.asm.jcc_short(Cond::Ae, done);
+        self.asm.cmp_r32i(SCRATCH, TAG_INTEGER as i32);
+        self.asm.jcc(Cond::E, integer);
+        self.asm.mov_rm(SCRATCH2, at.0, at.1 + PAYLOAD);
+        self.asm.sub_m64i(SCRATCH2, 0, 1);
+        self.asm.jcc(Cond::E, last);
+        self.asm.bind(done);
+        self.cold.push(Cold::Release {
+            integer,
+            last,
+            done,
+            at,
+        });
     }
 
     // ------------------------------------------------------------ calls
@@ -1011,6 +1082,31 @@ impl Gen<'_> {
                 self.asm.bind(label);
                 self.asm.mov_ri32(Reg::Rax, FAILURE as u32);
                 self.check(pc);
+            }
+            Cold::Retain { label, done, at } => {
+                self.asm.bind(label);
+                self.asm.cmp_m8i(at.0, at.1 + INT_TAG, INT_SMALL);
+                self.asm.jcc(Cond::E, done);
+                self.asm.mov_rm(SCRATCH2, at.0, at.1 + INT_PAYLOAD);
+                self.asm.add_m64i(SCRATCH2, 0, 1);
+                self.asm.jmp(done);
+            }
+            Cold::Release {
+                integer,
+                last,
+                done,
+                at,
+            } => {
+                let helper = self.asm.label();
+                self.asm.bind(integer);
+                self.asm.cmp_m8i(at.0, at.1 + INT_TAG, INT_SMALL);
+                self.asm.jcc(Cond::E, done);
+                self.asm.jmp(helper);
+                self.asm.bind(last);
+                self.asm.add_m64i(SCRATCH2, 0, 1);
+                self.asm.bind(helper);
+                self.call("rt_drop_at", &[Arg::Addr(at.0, at.1)]);
+                self.asm.jmp(done);
             }
             Cold::Unit {
                 label,

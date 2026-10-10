@@ -4663,3 +4663,70 @@ one hardware thread, -3.9% and -2.0% on two, -4.4% and -6.6% on four;
 whose records come from the decoder's vectors and are copied into their
 blocks (0.9% more instructions); `strings` and `primes` within 2% at the
 best. The stage stays by AU1's rule and by the owner's measure. (user)
+
+**AU28. The owner's answers of 2026-10-10 after AU27: (i) the next
+stage is the retain and the release in place in template code: a tag
+test and a raised count where a copy of a value calls `rt_retain_at`
+today, a lowered count with a call only when it reaches zero where a
+dead value calls `rt_drop_at`, judged by AT1's rule (the template code
+grows, and AT6 found calls cheaper than counts in place on the
+Cranelift tier); (ii) after it, as a small stage, the natives build a
+record in its block directly (the decoder of `std.json` first), which
+takes back the 0.9% of instructions AU27 cost `json_round_trip`; (iii)
+the front end's speed is a round of its own after this one.** The
+alternatives the owner declined: for (i), the hottest natives in place
+(`List.at` on a small Integer, `Text.contains` on small texts), the
+compile cost on one hardware thread, or the round closed and the
+self-hosted front end decided (AU12); for (ii), before the next stage,
+or not at all; for (iii), within this round, or not planned. (user)
+
+**AU29. The first item of AU28 as built: the retain and the release in
+place in template code. Where a copy of a value called `rt_retain_at`,
+the code reads the tag and tests its bit in a mask of the tags whose
+payload points at a counted block (`RC_TAGS`, the composites of AU27
+among them) and of the Integer's: a value with neither holds no count
+and a short jump skips the rest; a counted block has its first word,
+the count, raised in place; an Integer goes out of line, where a big
+one raises its block's count and a small one nothing. Where a dead
+value called `rt_drop_at`, the same test lowers a counted block's count
+in place, and only a count that reaches zero goes out of line, where it
+is raised back to one and the helper drops the value, which frees the
+block and what it holds; a big Integer goes to the helper, a small one
+nowhere. The assembler has two forms more, `bt` of two 32-bit
+registers and the conditional jump with a one-byte offset, patched with
+the others when the code is finished and refused there when its target
+lies out of reach. An image holds no template code: the code format
+stays 10.** Why the template tier takes what AT6 refused the Cranelift
+tier: there the call replaced AR4's generic sequence, which tested the
+tag's bit, the big Integer and both payload words at every site; here
+the sequence tests one bit and skips, and the call it replaces went
+through the helpers' table, so that the indirect branches the model
+counts as missed fell from 47.3 to 28.9 million on the template code
+alone. The template code grew: the self-check's 564 code objects (30,602
+ops) took 2,789,448 bytes and take 3,480,698 (+24.8%; 91 to 114 bytes
+per op), and the instruction misses rose 70.3 to 84.5 million; AT1's
+estimate weighs both. The tests: in `x64.rs`, the encoding of `bt` and
+of a short jump over two bytes, and a short jump past its reach
+refused; in `tests/template.rs`,
+`counts_raised_and_lowered_in_place_free_the_last_and_spare_big_integers`
+(3,000 records with a text past sixteen bytes and an Integer past the
+machine word, a third kept in a list, the last Integer kept across the
+loop, against the interpreter; with the raise or the lowering taken out
+the test aborts, as it was checked to); the conformance suite and the
+judges on both tiers. Measured on one boot against AU27's binary
+(14ce593). By AT1's estimate under cachegrind: the template code alone
+10.18 to 9.65 billion cycles (-5.2%; instructions -4.1%), the
+synchronous JIT run 9.97 to 9.78 (-1.9%; instructions -1.7%), the
+interpreter 15.81 to 15.83 and the image 7.87 to 7.90 with their
+instructions equal to a hundredth of a percent (the binary's layout).
+In wall-clock, alternating with the order swapped every turn, best and
+median: the self-check -5.6% and -7.6% on one hardware thread, -0.8%
+and -1.8% on two, -3.6% and -6.0% on four; the benchmarks between
+-4.2% and +3.2%, faster in 18 of their 24 numbers (`json_round_trip`, which
+the next stage takes on, between -1.9% and +3.2%). The run part of AU22, the JIT run over the image on one
+hardware thread, alternated eleven times and measured twice: +9.7% and
++9.1% at the best, +7.7% and +3.0% at the median, where AU27's binary
+measured +11.0% and +13.6%, +12.2% and +19.7% on the same boot: the
+goal of AU18 (within 15%) is reached on this boot at the best and the
+median, the JIT run part 1,071.9 to 1,035.3 ms at the best (-3.4%). The
+stage stays by AU1's rule and by the owner's measure. (user)

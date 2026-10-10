@@ -548,3 +548,58 @@ end
     assert_eq!(outcome, RunOutcome::Finished);
     assert_eq!(output, "2000 3003 2000 33000 6000\n");
 }
+
+/// The retain and the release in place in template code (decision AU29):
+/// records, long texts and lists counted in their blocks and freed when
+/// the last reference goes, big Integers through the path out of line,
+/// small values with no count; every count is the interpreter's.
+#[test]
+fn counts_raised_and_lowered_in_place_free_the_last_and_spare_big_integers() {
+    let source = r#"module demo
+  purpose: Values counted in place by template code: big Integers, long texts, records.
+
+import std.console
+
+type Box
+  purpose: A box around a long label and a big weight.
+  has label: Text
+  has weight: Integer
+end
+
+function heavy(seed: Integer) returns Integer
+  purpose: An Integer past the machine word.
+
+  return seed * 10000000000 * 10000000000
+end
+
+function box_of(index: Integer) returns Box
+  purpose: A box whose label is long and whose weight is big.
+
+  return Box(label: "a label longer than sixteen bytes {index}", weight: heavy(index))
+end
+
+public function main() needs console
+  purpose: Make, keep and drop counted values over and over.
+
+  let mutable kept: List of Box be []
+  let mutable total be 0
+  let mutable big be heavy(1)
+  for each index from 1 to 3000
+    let item be box_of(index)
+    change big to item.weight
+    if index remainder 3 is 0 then
+      change kept to kept.append(item)
+    end
+    change total to total + item.label.length()
+  end
+  let mutable residues be 0
+  for each item in kept
+    change residues to residues + (item.weight remainder 7)
+  end
+  console.print("{kept.length()} {total} {big remainder 1000003} {residues}")
+end
+"#;
+    let (outcome, output, _) = both_ways(source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(output, "1000 112893 900027 3003\n");
+}
