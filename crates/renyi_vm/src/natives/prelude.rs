@@ -1066,6 +1066,36 @@ fn text_contains_typed(args: &[Value]) -> Option<bool> {
     Some(text_has(plain_text(&args[0])?, plain_text(&args[1])?))
 }
 
+/// The prelude's natives the generated code does in place of a typed
+/// call (decision AU34): `List.at`, and `Text.contains` and
+/// `List.contains` through helpers of their own. The prelude is the
+/// standard library's, which no other extension declares (decision AK2),
+/// so its functions' names say which natives they are.
+pub(crate) fn in_place(meta: &crate::compile::FunctionMeta) -> Option<crate::vm::InPlace> {
+    use crate::vm::InPlace;
+    if !meta.is_library || meta.module != "std.prelude" {
+        return None;
+    }
+    let receiver = meta.receiver.as_deref()?.split(' ').next()?;
+    match (meta.name.as_str(), receiver) {
+        ("at", "List") => Some(InPlace::ListAt),
+        ("contains", "Text") => Some(InPlace::TextContains),
+        ("contains", "List") => Some(InPlace::ListContains),
+        _ => None,
+    }
+}
+
+/// `Text.contains` for `rt_text_contains` (decision AU34): the answer of
+/// its typed entry, `None` when that declines.
+pub(crate) fn text_contains_in_place(args: &[Value]) -> Option<bool> {
+    text_contains_typed(args)
+}
+
+/// `List.contains` for `rt_list_contains`, as `text_contains_in_place`.
+pub(crate) fn list_contains_in_place(args: &[Value]) -> Option<bool> {
+    list_contains_typed(args)
+}
+
 fn text_starts_with_typed(args: &[Value]) -> Option<bool> {
     Some(plain_text(&args[0])?.starts_with(plain_text(&args[1])?))
 }

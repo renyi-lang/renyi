@@ -35,6 +35,10 @@ pub const LEFT: i32 = 3;
 /// From `rt_call_typed` alone: the typed entry declined and the general
 /// path answered, so the result is boxed on the stack, not in `out`.
 pub const BOXED: i32 = 4;
+/// From a lean helper (decision AU34), beside the answers 0 and 1: the
+/// operands are not what it takes, and lie as they were for the typed
+/// call's general path.
+pub const DECLINED: i32 = 2;
 
 /// What the generated function itself returns to the VM: the frame
 /// returned, the frame is the interpreter's at the pc `rt_deopt` set, an
@@ -918,6 +922,46 @@ pub(crate) unsafe extern "C" fn rt_call_typed(
         }
     }
     typed_call_general(vm, function, at, count, borrowed, pc)
+}
+
+/// `Text.contains` in place of its typed call (decision AU34): the two
+/// operands where they lie at `at`, the answer 0 or 1 with the operands
+/// the call does not borrow (`borrowed`, the receiver bit 0) released, or
+/// `DECLINED` with nothing touched when they are not two plain texts.
+pub(crate) unsafe extern "C" fn rt_text_contains(at: *mut Value, borrowed: u32) -> i32 {
+    // SAFETY: as `lean_answer` says.
+    unsafe { lean_answer(at, borrowed, natives::prelude::text_contains_in_place) }
+}
+
+/// `List.contains` in place of its typed call, as `rt_text_contains`.
+pub(crate) unsafe extern "C" fn rt_list_contains(at: *mut Value, borrowed: u32) -> i32 {
+    // SAFETY: as `lean_answer` says.
+    unsafe { lean_answer(at, borrowed, natives::prelude::list_contains_in_place) }
+}
+
+/// A lean helper's answer from a native's entry on two operands: no
+/// entry to look up, no loop over the arguments, no memory check (the
+/// entries allocate nothing).
+///
+/// # Safety
+///
+/// `at` is the address of the call's two operands on the stack, which
+/// the generated code counts out once they are answered.
+#[inline(always)]
+unsafe fn lean_answer(at: *mut Value, borrowed: u32, answer: fn(&[Value]) -> Option<bool>) -> i32 {
+    // SAFETY: the caller's.
+    let args = unsafe { std::slice::from_raw_parts_mut(at, 2) };
+    let Some(answer) = answer(args) else {
+        return DECLINED;
+    };
+    for (index, arg) in args.iter_mut().enumerate() {
+        if borrowed & (1 << index) == 0 {
+            // SAFETY: the operand holds a reference of its own, which the
+            // generated code reads no more.
+            unsafe { std::ptr::drop_in_place(arg) };
+        }
+    }
+    answer as i32
 }
 
 /// A typed entry's value answer: the arguments consumed, the value in
@@ -1892,6 +1936,8 @@ pub const HELPERS: &[(&str, *const u8)] = &[
     ("rt_call", rt_call as *const u8),
     ("rt_call_pure", rt_call_pure as *const u8),
     ("rt_call_typed", rt_call_typed as *const u8),
+    ("rt_text_contains", rt_text_contains as *const u8),
+    ("rt_list_contains", rt_list_contains as *const u8),
     ("rt_call_ability", rt_call_ability as *const u8),
     ("rt_call_value", rt_call_value as *const u8),
     ("rt_result_type", rt_result_type as *const u8),

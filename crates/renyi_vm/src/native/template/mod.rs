@@ -34,19 +34,19 @@ use crate::native::codegen::{
     is_comparison, kind_agrees, native_state_offset, stack_offset, unit_variants_offset, Skipped,
     FRAME_BASE, FRAME_CODE, FRAME_GRANT, FRAME_HANDLER_BASE, FRAME_PC, FRAME_SIZE, SIGNATURES,
     SITE_INDEX, SITE_SIZE, SITE_TAG, SITE_TY, STACK_SAFE, STATE_CONSTANTS, STATE_DEPTH,
-    STATE_ENTRIES, STATE_HELPERS, STATE_HOTNESS,
+    STATE_ENTRIES, STATE_HELPERS, STATE_HOTNESS, STATE_LIST_ITEMS, STATE_LIST_LEN,
 };
 use crate::native::infer::{abs_of_constant, abs_of_result, analyse, is_text, Analysis};
 use crate::native::runtime::{
-    binary_code, fold_code, BOXED, CONTINUE, FAILURE, INTERRUPT, LEFT, RETURNED, STAY,
+    binary_code, fold_code, BOXED, CONTINUE, DECLINED, FAILURE, INTERRUPT, LEFT, RETURNED, STAY,
 };
 use crate::native::DEPTH_LIMIT;
 use crate::value::layout::{
     COUNTED_OR_INTEGER, INT_PAYLOAD, INT_SMALL, INT_TAG, PAYLOAD, RECORD_FIELDS, RECORD_TAG,
-    RECORD_TY, SIZE, TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_INTEGER, TAG_NOTHING, TAG_RECORD,
-    TAG_SMALL_TEXT,
+    RECORD_TY, SIZE, TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_INTEGER, TAG_LIST, TAG_NOTHING,
+    TAG_RECORD, TAG_SMALL_TEXT,
 };
-use crate::vm::{unit_slot, CallKind};
+use crate::vm::{unit_slot, CallKind, InPlace};
 use x64::{host_abi, Abi, Asm, Cond, Label, Reg};
 
 /// The code of one code object: its bytes, which hold no address, the
@@ -582,6 +582,117 @@ impl Gen<'_> {
             }
             TypedKind::Value => unreachable!("a value is on the stack"),
         }
+    }
+
+    /// A call through `rt_call_typed` (decision AU1): the arguments the
+    /// mask names pushed borrowed, the answer boxed at the first one's
+    /// place.
+    fn call_typed(&mut self, function: usize, count: usize, kind: TypedKind, mask: u32, pc: usize) {
+        let at = self.depth - count;
+        self.call(
+            "rt_call_typed",
+            &[
+                Arg::Vm,
+                Arg::Imm(function as u64),
+                Arg::Imm(count as u64),
+                Arg::Imm(mask as u64),
+                Arg::Imm(pc as u64),
+                Arg::Out,
+            ],
+        );
+        self.scalar_or_boxed(kind, at, at + 1, pc, true);
+    }
+
+    /// `List.at` in place (decision AU34), as the Cranelift tier makes it:
+    /// on a list and a small Integer, the item read through the list's
+    /// block where the native state says its items' address and their
+    /// count lie, copied with one more reference, or `Nothing` past either
+    /// end; the list released unless the call borrows it, after the item
+    /// is copied (over the index's operand, a small Integer that needs no
+    /// release), since the release may free the list. Anything else takes
+    /// `rt_call_typed`, the operands untouched.
+    fn list_at_in_place(&mut self, function: usize, mask: u32, pc: usize) {
+        let at = self.depth - 2;
+        let list = self.operand(at);
+        let index = self.operand(at + 1);
+        let slow = self.asm.label();
+        let past = self.asm.label();
+        let done = self.asm.label();
+        self.asm.cmp_m8i(list.0, list.1, TAG_LIST);
+        self.asm.jcc(Cond::Ne, slow);
+        self.asm.cmp_m8i(index.0, index.1, TAG_INTEGER);
+        self.asm.jcc(Cond::Ne, slow);
+        self.asm.cmp_m8i(index.0, index.1 + INT_TAG, INT_SMALL);
+        self.asm.jcc(Cond::Ne, slow);
+        let state = native_state_offset() as i32;
+        // the count of the items against the index, unsigned
+        self.asm.mov_rm(SCRATCH2, list.0, list.1 + PAYLOAD);
+        self.asm.mov_rm(SCRATCH3, VM, state + STATE_LIST_LEN);
+        self.asm.add_rr(SCRATCH3, SCRATCH2);
+        self.asm.mov_rm(SCRATCH3, SCRATCH3, 0);
+        self.asm.mov_rm(SCRATCH, index.0, index.1 + INT_PAYLOAD);
+        self.asm.cmp_rr(SCRATCH, SCRATCH3);
+        self.asm.jcc(Cond::Ae, past);
+        // the item's address
+        self.asm.mov_rm(SCRATCH3, VM, state + STATE_LIST_ITEMS);
+        self.asm.add_rr(SCRATCH3, SCRATCH2);
+        self.asm.mov_rm(SCRATCH3, SCRATCH3, 0);
+        self.asm.imul_rri(SCRATCH, SCRATCH, SIZE as i32);
+        self.asm.add_rr(SCRATCH3, SCRATCH);
+        self.asm.cmp_m8i(SCRATCH3, 0, TAG_FAILURE);
+        self.asm.jcc(Cond::E, slow);
+        self.retain((SCRATCH3, 0));
+        if mask & 1 != 0 {
+            self.copy((SCRATCH3, 0), list);
+        } else {
+            self.copy((SCRATCH3, 0), index);
+            self.release(list);
+            self.copy(index, list);
+        }
+        self.asm.jmp(done);
+        self.asm.bind(past);
+        if mask & 1 == 0 {
+            self.release(list);
+        }
+        self.asm.mov_m8i(list.0, list.1, TAG_NOTHING);
+        self.asm.jmp(done);
+        self.asm.bind(slow);
+        self.call_typed(function, 2, TypedKind::Value, mask, pc);
+        self.asm.bind(done);
+        self.depth = at + 1;
+        self.store_len();
+    }
+
+    /// A call through a lean helper (decision AU34): the operands' place
+    /// and the mask of those the call borrows, the Boolean answer boxed
+    /// over the first; when the helper declines, `rt_call_typed` on the
+    /// operands it left as they were.
+    fn call_lean(
+        &mut self,
+        helper: &'static str,
+        function: usize,
+        kind: TypedKind,
+        mask: u32,
+        pc: usize,
+    ) {
+        let at = self.depth - 2;
+        let place = self.operand(at);
+        let general = self.asm.label();
+        let done = self.asm.label();
+        self.call(
+            helper,
+            &[Arg::Addr(place.0, place.1), Arg::Imm(mask as u64)],
+        );
+        self.asm.cmp_r32i(Reg::Rax, DECLINED);
+        self.asm.jcc(Cond::E, general);
+        self.asm.mov_m8i(place.0, place.1, TAG_BOOLEAN);
+        self.asm.mov_m8r(place.0, place.1 + PAYLOAD, Reg::Rax);
+        self.asm.jmp(done);
+        self.asm.bind(general);
+        self.call_typed(function, 2, kind, mask, pc);
+        self.asm.bind(done);
+        self.depth = at + 1;
+        self.store_len();
     }
 
     /// A helper that answers a scalar into the out slot with `CONTINUE`,
@@ -1411,21 +1522,20 @@ impl Gen<'_> {
                 let count = *args as usize;
                 let result = abs_of_result(self.program, *function);
                 match self.calls.get(*function).copied() {
-                    Some(CallKind::Typed(kind)) if kind_agrees(kind, result) => {
+                    Some(CallKind::Typed { kind, in_place }) if kind_agrees(kind, result) => {
                         let mask = self.masks[pc];
-                        let at = self.depth - count;
-                        self.call(
-                            "rt_call_typed",
-                            &[
-                                Arg::Vm,
-                                Arg::Imm(*function as u64),
-                                Arg::Imm(count as u64),
-                                Arg::Imm(mask as u64),
-                                pc_arg,
-                                Arg::Out,
-                            ],
-                        );
-                        self.scalar_or_boxed(kind, at, at + 1, pc, true);
+                        match in_place {
+                            Some(InPlace::ListAt) if count == 2 => {
+                                self.list_at_in_place(*function, mask, pc);
+                            }
+                            Some(InPlace::TextContains) if count == 2 => {
+                                self.call_lean("rt_text_contains", *function, kind, mask, pc);
+                            }
+                            Some(InPlace::ListContains) if count == 2 => {
+                                self.call_lean("rt_list_contains", *function, kind, mask, pc);
+                            }
+                            _ => self.call_typed(*function, count, kind, mask, pc),
+                        }
                     }
                     Some(CallKind::Pure) => self.helper(
                         "rt_call_pure",

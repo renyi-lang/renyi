@@ -485,6 +485,9 @@ pub mod layout {
     pub const INT_BIG: u8 = 1;
     pub const TAG_RECORD: u8 = 12;
     pub const TAG_VARIANT: u8 = 13;
+    /// A list's tag: its payload an `Rc<Vec<Value>>`, whose vector's
+    /// fields Rust lays out as it chooses (`list_layout`, decision AU34).
+    pub const TAG_LIST: u8 = 7;
     /// Inside an `Rc` allocation: the value, after the two counts.
     pub const RC_VALUE: i32 = 16;
     /// Inside the block of a record or a variant (`Composite`, decision
@@ -507,6 +510,34 @@ pub mod layout {
     pub const ITER_ITEMS: i32 = std::mem::offset_of!(super::ListIter, items) as i32;
     pub const ITER_LEN: i32 = std::mem::offset_of!(super::ListIter, len) as i32;
     pub const ITER_POSITION: i32 = std::mem::offset_of!(super::ListIter, position) as i32;
+
+    /// Where a list's block keeps the address of its items and their
+    /// count, from the start of the `Rc`'s allocation that a list's
+    /// payload points at (decision AU34). Rust fixes neither within a
+    /// `Vec`, so they are found on a vector of known address, length and
+    /// capacity, each a word of its own; the generated code loads them
+    /// from the VM's native state, and so holds no assumption of its own.
+    /// `None` when the vector is not three such words, and then nothing
+    /// reads a list in place.
+    pub fn list_layout() -> Option<(i32, i32)> {
+        if std::mem::size_of::<Vec<super::Value>>() != 3 * std::mem::size_of::<usize>() {
+            return None;
+        }
+        let mut items: Vec<super::Value> = Vec::with_capacity(3);
+        items.push(super::Value::Nothing);
+        let address = items.as_ptr() as usize;
+        let list = std::rc::Rc::new(items);
+        // SAFETY: the vector is three words, read where the `Rc` keeps it.
+        let words: [usize; 3] =
+            unsafe { std::ptr::read(std::rc::Rc::as_ptr(&list) as *const [usize; 3]) };
+        let at = |wanted: usize| words.iter().position(|word| *word == wanted);
+        let (items, len, capacity) = (at(address)?, at(1)?, at(3)?);
+        if items == len || items == capacity || len == capacity {
+            return None;
+        }
+        let word = |index: usize| RC_VALUE + (index * std::mem::size_of::<usize>()) as i32;
+        Some((word(items), word(len)))
+    }
 }
 
 thread_local! {
@@ -949,6 +980,30 @@ mod layout_tests {
     }
 
     #[test]
+    fn a_list_s_items_and_length_lie_where_the_probe_finds_them() {
+        let (items_at, len_at) = list_layout().expect("a vector of three words");
+        for length in [0usize, 1, 5, 40] {
+            let items: Vec<Value> = (0..length as i64).map(Value::integer).collect();
+            let list = Value::list(items);
+            let Value::List(rc) = &list else {
+                panic!("a list")
+            };
+            let block = payload_word(&list, PAYLOAD as usize) as *const u8;
+            // SAFETY: the probe's offsets lie within the `Rc`'s allocation.
+            let (items, len) = unsafe {
+                (
+                    *(block.add(items_at as usize) as *const usize),
+                    *(block.add(len_at as usize) as *const usize),
+                )
+            };
+            assert_eq!(len, rc.len());
+            if length > 0 {
+                assert_eq!(items, rc.as_ptr() as usize);
+            }
+        }
+    }
+
+    #[test]
     fn the_constants_match_the_types() {
         assert_eq!(std::mem::size_of::<Value>(), SIZE);
         assert_eq!(std::mem::size_of::<Int>(), 16);
@@ -957,6 +1012,7 @@ mod layout_tests {
         assert_eq!(tag(&Value::integer(5)), TAG_INTEGER);
         assert_eq!(tag(&Value::Float(1.5)), TAG_FLOAT);
         assert_eq!(tag(&Value::failure(Value::Nothing)), TAG_FAILURE);
+        assert_eq!(tag(&Value::list(vec![Value::Nothing])), TAG_LIST);
         assert_eq!(
             payload_word(&Value::Boolean(true), PAYLOAD as usize) as u8,
             1

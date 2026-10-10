@@ -4919,3 +4919,62 @@ one-byte needle in place, or the two left as they are; for (iii), the
 protocol within this stage, or not before a new profile; for (iv), the
 ratio kept as a goal, or a fixed reference (the run part within 15% of
 AU30's image). (user)
+
+**AU34. The stage of AU33 (i) and (ii) as built: `List.at` in place,
+`Text.contains` and `List.contains` through lean helpers.
+`layout::list_layout` finds, on a vector of known address, length and
+capacity, where a list's block keeps the address of its items and their
+count, counted from the start of the `Rc`'s allocation, and the VM keeps
+both offsets in its native state (`list_items`, `list_len`); a build
+whose vector is not three such words has no `List.at` in place. A typed
+call carries the native it may do in place (`CallKind::Typed { kind,
+in_place }`, `InPlace`), named by the prelude's functions
+(`natives::prelude::in_place`), which no other extension declares. In
+both tiers, `List.at` on a list and a small Integer loads the two
+offsets, compares the index with the count unsigned, copies the item
+with one more reference (the sequences of AU29 and AU32) or writes
+`Nothing`, and releases the list after the copy unless the call borrows
+it, since the release may free it (the template code, which has no
+register to hold the item across the release, copies it over the
+index's operand first); a guarded or big operand, or a failure among
+the items, takes the general path with the operands untouched.
+`rt_text_contains` and `rt_list_contains` take the operands' place and
+the mask of those the call borrows, and answer 0 or 1 from the typed
+entry with the others released, or `DECLINED` (2) with nothing touched,
+when the general path follows. Code format 12.** After the stage the
+self-check's synchronous JIT run makes 0.56 million calls through
+`rt_call_typed` where it made 2.77 million, and 0.37 million through
+`typed_value_answer` where 1.76; a lean helper's own work is 20
+instructions a call where the dispatch was about 66. The tests: in
+`value.rs`, `a_list_s_items_and_length_lie_where_the_probe_finds_them`
+(lists of 0 to 40 items read through the offsets); in `tests/native.rs`
+and `tests/template.rs`,
+`list_items_read_in_place_and_contains_through_lean_helpers` (items of
+every kind at every position and past both ends, lists held by slots
+and lists made for the call, an index past the machine word on the
+general path in a function of its own, against the interpreter; with
+the item's retain taken out the test aborts on both tiers, with the
+helpers' answer forced false it fails on both, as it was checked to);
+the conformance suite and the judges on both tiers. The first test
+program held the index past the machine word in `main`, whose frame the
+Cranelift tier then handed to the interpreter for the whole loop, so
+that its check passed without the retain; the index moved to a function
+of its own. Measured on the boot after AU32's, against AU32's binary
+(7353f11) measured again on it (its rows within 0.01% of the earlier
+boot's). By AT1's estimate under cachegrind: the synchronous JIT run
+9.76 to 9.30 billion cycles (-4.7%; instructions -4.2%), the template
+code alone 9.67 to 9.16 (-5.3%), the image 7.53 to 7.03 (-6.7%;
+instructions -5.8%), the interpreter level. The machine code of the
+self-check's image +0.7%, its template code +0.6%. In wall-clock,
+alternating with the order swapped every turn, best and median: the
+self-check -6.4% and -0.3% on one hardware thread, -2.1% and -4.8% on
+two, -5.2% and -6.4% on four; the four benchmarks, which call the three
+natives little, within the noise (-2.7% to +4.8%). The run part of AU22
+on one hardware thread: the JIT run 1,008.0 to 927.4 ms at the best
+(-8.0%), the image 789.2 to 773.6 (-2.0%); the ratio, recorded as AU33
+says, +19.9% at the best and +23.4% at the median. The stage stays by
+AU1's rule. What the general path still carries: 0.56 million calls of
+the self-check (`List.last` 0.18 million, `List.join` 0.16, `List.length`
+0.07, the rest under 0.03 each), whose dispatch and value answers cost
+about 63 million instructions, 0.9% of the run: the most the stage of
+AU33 (iii) can take back. (user)

@@ -677,6 +677,7 @@ impl Jit {
             constants: self.constants.as_ptr(),
             hotness: std::ptr::null_mut(),
             entries: self.entries.as_ptr(),
+            ..crate::vm::NativeState::default()
         }
     }
 

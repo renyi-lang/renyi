@@ -42,11 +42,11 @@ use crate::native::{DeoptPoint, DEPTH_LIMIT};
 use crate::value::layout::{
     COUNTED_OR_INTEGER, INT_PAYLOAD, INT_SMALL, INT_TAG, ITER_ITEMS, ITER_LEN, ITER_POSITION,
     NATIVE_ITERATOR, NATIVE_PAYLOAD, NATIVE_TAG, PAYLOAD, RC_VALUE, RECORD_FIELDS, RECORD_TAG,
-    RECORD_TY, SIZE, TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_INTEGER, TAG_NATIVE, TAG_NOTHING,
-    TAG_RECORD, TAG_SMALL_TEXT,
+    RECORD_TY, SIZE, TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_INTEGER, TAG_LIST, TAG_NATIVE,
+    TAG_NOTHING, TAG_RECORD, TAG_SMALL_TEXT,
 };
 use crate::value::Value;
-use crate::vm::{unit_slot, CallKind, FieldSite, Frame, NativeState, Vm};
+use crate::vm::{unit_slot, CallKind, FieldSite, Frame, InPlace, NativeState, Vm};
 
 /// Where the VM keeps its stack (decision AR4): the generated code reads
 /// the pinned vector's pointer, length and capacity there.
@@ -116,6 +116,8 @@ pub(crate) const STACK_SAFE: &[&str] = &[
     "rt_is_failure",
     "rt_top_is_absent",
     "rt_top_is_failure",
+    "rt_text_contains",
+    "rt_list_contains",
 ];
 
 /// Where the VM keeps what the generated code reaches by pointer
@@ -132,6 +134,8 @@ pub(crate) const STATE_HELPERS: i32 = std::mem::offset_of!(NativeState, helpers)
 pub(crate) const STATE_CONSTANTS: i32 = std::mem::offset_of!(NativeState, constants) as i32;
 pub(crate) const STATE_HOTNESS: i32 = std::mem::offset_of!(NativeState, hotness) as i32;
 pub(crate) const STATE_ENTRIES: i32 = std::mem::offset_of!(NativeState, entries) as i32;
+pub(crate) const STATE_LIST_ITEMS: i32 = std::mem::offset_of!(NativeState, list_items) as i32;
+pub(crate) const STATE_LIST_LEN: i32 = std::mem::offset_of!(NativeState, list_len) as i32;
 
 /// The position of a helper in `SIGNATURES`, which is its index in the
 /// VM's table of helpers.
@@ -203,6 +207,8 @@ pub const SIGNATURES: &[(&str, &str, char)] = &[
     ("rt_call", "pzww", 'i'),
     ("rt_call_pure", "pzww", 'i'),
     ("rt_call_typed", "pzwwwp", 'i'),
+    ("rt_text_contains", "pw", 'i'),
+    ("rt_list_contains", "pw", 'i'),
     ("rt_call_ability", "pzwww", 'i'),
     ("rt_call_value", "pww", 'i'),
     ("rt_result_type", "pw", 'v'),
@@ -478,7 +484,7 @@ pub(crate) fn borrowed_operands(
                 let count = *args as usize;
                 let typed = matches!(
                     calls.get(*function),
-                    Some(CallKind::Typed(kind))
+                    Some(CallKind::Typed { kind, .. })
                         if kind_agrees(*kind, abs_of_result(program, *function))
                 );
                 if count == 0 || count > 32 || !typed {
@@ -2805,9 +2811,22 @@ impl Gen<'_, '_> {
                         self.call_direct(callee, *function, &kinds, result_kind, pc);
                     }
                     _ => match self.calls.get(*function).copied() {
-                        Some(CallKind::Typed(kind)) if kind_agrees(kind, result_kind) => {
+                        Some(CallKind::Typed { kind, in_place })
+                            if kind_agrees(kind, result_kind) =>
+                        {
                             let mask = self.masks[pc];
-                            self.call_typed(*function, count, kind, mask, pc);
+                            match in_place {
+                                Some(InPlace::ListAt) if count == 2 => {
+                                    self.list_at_in_place(*function, mask, pc);
+                                }
+                                Some(InPlace::TextContains) if count == 2 => {
+                                    self.call_lean("rt_text_contains", *function, kind, mask, pc);
+                                }
+                                Some(InPlace::ListContains) if count == 2 => {
+                                    self.call_lean("rt_list_contains", *function, kind, mask, pc);
+                                }
+                                _ => self.call_typed(*function, count, kind, mask, pc),
+                            }
                         }
                         Some(CallKind::Pure) => self.call_through_helper(
                             "rt_call_pure",
@@ -3352,6 +3371,166 @@ impl Gen<'_, '_> {
         if !result_kind.is_boxed() {
             self.unbox_top(result_kind, pc + 1);
         }
+    }
+
+    /// `List.at` in place (decision AU34): on a list and a small Integer,
+    /// the item read through the list's block (its items' address and
+    /// their count where `layout::list_layout` found them, loaded from the
+    /// native state), copied with one more reference, or `Nothing` past
+    /// either end; the list released unless the call borrows it, after the
+    /// item is copied, since the release may free the list. Anything else
+    /// (a guarded or a big operand, a failure among the items) takes the
+    /// typed call's general path, the operands untouched.
+    fn list_at_in_place(&mut self, function: usize, mask: u32, pc: usize) {
+        let flags = MemFlagsData::trusted();
+        let pointer = self.pointer;
+        let depth = self.state.len();
+        let index_reg = (self.state[depth - 1] == Abs::Int).then(|| {
+            let var = self.int_var(depth - 1);
+            self.b.use_var(var)
+        });
+        // both operands on the stack, so that the general path finds them
+        // as it always does
+        self.box_top(2);
+        let height = self.height();
+        let list_at = self.address_at(height - 2);
+        let index_at = self.address_at(height - 1);
+        let slow = self.b.create_block();
+        self.b.set_cold_block(slow);
+        let join = self.b.create_block();
+        let tag = self.tag_at(list_at, 0);
+        let is_list = self.b.ins().icmp_imm_s(IntCC::Equal, tag, TAG_LIST as i64);
+        let listed = self.b.create_block();
+        self.b.ins().brif(is_list, listed, &[], slow, &[]);
+        self.b.seal_block(listed);
+        self.switch_to(listed);
+        let index = match index_reg {
+            Some(index) => index,
+            None => {
+                let index_tag = self.tag_at(index_at, 0);
+                let is_integer =
+                    self.b
+                        .ins()
+                        .icmp_imm_s(IntCC::Equal, index_tag, TAG_INTEGER as i64);
+                let integer = self.b.create_block();
+                self.b.ins().brif(is_integer, integer, &[], slow, &[]);
+                self.b.seal_block(integer);
+                self.switch_to(integer);
+                let int_tag = self.tag_at(index_at, INT_TAG);
+                let is_small = self
+                    .b
+                    .ins()
+                    .icmp_imm_s(IntCC::Equal, int_tag, INT_SMALL as i64);
+                let small = self.b.create_block();
+                self.b.ins().brif(is_small, small, &[], slow, &[]);
+                self.b.seal_block(small);
+                self.switch_to(small);
+                self.b.ins().load(types::I64, flags, index_at, INT_PAYLOAD)
+            }
+        };
+        let block = self.b.ins().load(pointer, flags, list_at, PAYLOAD);
+        let state = self.native_state();
+        let len_offset = self.b.ins().load(types::I64, flags, state, STATE_LIST_LEN);
+        let len_at = self.b.ins().iadd(block, len_offset);
+        let len = self.b.ins().load(types::I64, flags, len_at, 0);
+        let inside = self.b.ins().icmp(IntCC::UnsignedLessThan, index, len);
+        let found = self.b.create_block();
+        let past = self.b.create_block();
+        self.b.ins().brif(inside, found, &[], past, &[]);
+        self.b.seal_block(found);
+        self.b.seal_block(past);
+        // the item: copied over the list's operand, with a reference of
+        // its own, the list released after
+        self.switch_to(found);
+        let items_offset = self
+            .b
+            .ins()
+            .load(types::I64, flags, state, STATE_LIST_ITEMS);
+        let items_at = self.b.ins().iadd(block, items_offset);
+        let items = self.b.ins().load(pointer, flags, items_at, 0);
+        let offset = self.b.ins().imul_imm_s(index, SIZE as i64);
+        let item = self.b.ins().iadd(items, offset);
+        let item_tag = self.tag_at(item, 0);
+        let is_failure = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::Equal, item_tag, TAG_FAILURE as i64);
+        let copy = self.b.create_block();
+        self.b.ins().brif(is_failure, slow, &[], copy, &[]);
+        self.b.seal_block(copy);
+        self.switch_to(copy);
+        self.retain(item);
+        let words: Vec<IrValue> = [0, 8, 16]
+            .iter()
+            .map(|offset| self.b.ins().load(types::I64, flags, item, *offset))
+            .collect();
+        if mask & 1 == 0 {
+            self.release(list_at);
+        }
+        for (word, offset) in words.into_iter().zip([0, 8, 16]) {
+            self.b.ins().store(flags, word, list_at, offset);
+        }
+        self.store_height(height - 1);
+        self.b.ins().jump(join, &[]);
+        // past either end: `Nothing`
+        self.switch_to(past);
+        if mask & 1 == 0 {
+            self.release(list_at);
+        }
+        let nothing = self.iconst(types::I32, TAG_NOTHING as i64);
+        self.b.ins().istore8(flags, nothing, list_at, 0);
+        self.store_height(height - 1);
+        self.b.ins().jump(join, &[]);
+        // the general path: it pops the operands and pushes the answer
+        self.b.seal_block(slow);
+        self.switch_to(slow);
+        self.call_typed(function, 2, TypedKind::Value, mask, pc);
+        self.b.ins().jump(join, &[]);
+        self.b.seal_block(join);
+        self.switch_to(join);
+    }
+
+    /// A call through a lean helper (decision AU34): the operands' place
+    /// and the mask of those the call borrows, the Boolean answer in its
+    /// register; when the helper declines, the typed call's general path
+    /// on the operands it left as they were.
+    fn call_lean(
+        &mut self,
+        helper: &'static str,
+        function: usize,
+        kind: TypedKind,
+        mask: u32,
+        pc: usize,
+    ) {
+        self.box_top(2);
+        let depth = self.state.len() - 2;
+        let height = self.height();
+        let at = self.address_at(height - 2);
+        let mask_value = self.u32(mask);
+        let answer = self.call(helper, &[at, mask_value]).expect("an answer");
+        let answered = self.b.ins().icmp_imm_s(
+            IntCC::UnsignedLessThan,
+            answer,
+            crate::native::runtime::DECLINED as i64,
+        );
+        let yes = self.b.create_block();
+        let general = self.b.create_block();
+        self.b.set_cold_block(general);
+        let join = self.b.create_block();
+        self.b.ins().brif(answered, yes, &[], general, &[]);
+        self.b.seal_block(yes);
+        self.b.seal_block(general);
+        self.switch_to(yes);
+        let value = self.b.ins().ireduce(types::I8, answer);
+        let var = self.bool_var(depth);
+        self.b.def_var(var, value);
+        self.store_height(height - 2);
+        self.b.ins().jump(join, &[]);
+        self.switch_to(general);
+        self.call_typed(function, 2, kind, mask, pc);
+        self.b.ins().jump(join, &[]);
+        self.b.seal_block(join);
+        self.switch_to(join);
     }
 
     /// A call to a primitive with a typed entry (decision AU1): the

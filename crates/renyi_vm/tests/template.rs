@@ -603,3 +603,80 @@ end
     assert_eq!(outcome, RunOutcome::Finished);
     assert_eq!(output, "1000 112893 900027 3003\n");
 }
+
+/// `List.at` in place and the lean helpers of `Text.contains` and
+/// `List.contains` in template code (decision AU34): items of every kind read
+/// at every position and past both ends, from lists that slots hold and
+/// from lists made for the call, released after their item is copied; an
+/// index past the machine word taking the general path (in a function of
+/// its own, whose frame the interpreter takes at the overflow, so that
+/// `main` stays in generated code); answers that the interpreter gives.
+#[test]
+fn list_items_read_in_place_and_contains_through_lean_helpers() {
+    let source = r#"module demo
+  purpose: List.at in place and the lean contains, on every kind of item and index.
+
+import std.console
+
+type Point
+  purpose: A record to keep in a list.
+  has label: Text
+  has weight: Integer
+end
+
+function fresh(seed: Integer) returns List of Text
+  purpose: A list no slot holds, made anew at every call.
+
+  return ["a label past sixteen bytes {seed}", "short {seed}", "x"]
+end
+
+function past_the_word(numbers: List of Integer) returns Integer
+  purpose: The item at an index past the machine word, which is never there.
+
+  let huge be 10000000000 * 10000000000
+  return numbers.at(huge) otherwise 5
+end
+
+public function main() needs console
+  purpose: Read items in place, past both ends, from lists held and not.
+
+  let numbers be [10, 20, 30, 40]
+  let texts be ["one", "a text longer than sixteen bytes", "three"]
+  let points be [
+    Point(label: "origin", weight: 0),
+    Point(label: "a point label past sixteen", weight: 7)
+  ]
+  let nested be [[1, 2], [3]]
+  let empty: List of Integer be []
+  let mutable total be 0
+  let mutable found be 0
+  let mutable kept: List of Text be []
+  for each index from 0 to 5
+    let position be index - 1
+    change total to total + (numbers.at(position) otherwise 0)
+    let text be texts.at(position) otherwise "none"
+    change kept to kept.append(text)
+    let point be points.at(position) otherwise Point(label: "none", weight: 100)
+    change total to total + point.weight + point.label.length()
+    change total to total + (empty.at(position) otherwise 1000)
+    let inner be nested.at(position) otherwise [7]
+    change total to total + (inner.at(0) otherwise 0)
+    let made be fresh(index).at(position) otherwise "gone"
+    change kept to kept.append(made)
+    change total to total + past_the_word(numbers)
+    if texts.contains("three") then change found to found + 1 end
+    if made.contains("label") then change found to found + 10 end
+    if numbers.contains(position * 10) then change found to found + 100 end
+    if fresh(index).contains(made) then change found to found + 1000 end
+  end
+  let comma be ","
+  console.print("{total} {found} {kept.length()} {kept.join(comma)}")
+end
+"#;
+    let (outcome, output, _) = both_ways(source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(
+        output,
+        "6617 3416 12 none,gone,one,a label past sixteen bytes 1,a text longer than sixteen bytes,short 2,three,x,none,gone,none,gone\n"
+    );
+}

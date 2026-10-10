@@ -17,8 +17,13 @@ on the Cranelift tier, then the hottest natives in place), and decision
 AU32 put the counts in place in Cranelift's code and stopped the
 compile thread at the end of a run (the self-check -9% to -15% in
 wall-clock on one to four hardware threads, `strings` -13% to -16%, the
-image's run part -16%). CI passed on both jobs after every push. The
-next stage is AU31's second, the hottest natives in place.
+image's run part -16%). After a study of the typed calls the owner decided AU33, and decision
+AU34 put `List.at` in place in both tiers, with the list's layout
+probed at startup, and `Text.contains` and `List.contains` through lean
+helpers (the synchronous JIT run -4.7% by AT1's estimate, the image
+-6.7%). CI passed on both jobs after every push. The next step goes to
+the owner first: the general typed path that AU33 (iii) ordered next
+now carries 0.9% of the self-check.
 Session 11, in the cloud environment, put the four questions of session
 10 to the owner (decision AU20: the
 template tier's follow-ups first, then the representation items of
@@ -166,9 +171,12 @@ and push there directly.
    round to start with a study. Then, after a study of the typed calls,
    decision AU33: `List.at` in place with the vector's layout probed at
    startup, a lean helper each for `Text.contains` and `List.contains`
-   (the stage AU34, next), the typed call's general path made lean as
-   the stage after it, and AU18's goal met with AU30's binary (two
-   boots), its ratio only recorded from now on.
+   (the stage AU34, which is in), the typed call's general path made
+   lean as the stage after it, and AU18's goal met with AU30's binary
+   (two boots), its ratio only recorded from now on. AU34 left the
+   general path 0.56 million calls and 0.9% of the self-check's
+   instructions, so the question at the end of "What is next in this
+   round" goes to the owner before that stage starts.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
@@ -2590,6 +2598,29 @@ are in, each measured on one boot against the binary before it:
   (187 to 324 ms after `main` on two hardware threads with AU32's
   code). Test: the counts test in `tests/native.rs`, with a `maybe
   Integer` weight so that big Integers are counted in this tier's code.
+- **AU33**, the owner's answers after the study of the typed calls
+  (4951fec): of 2.77 million typed calls in the self-check, `List.at`
+  1.39 million (its own work 46 instructions, the path around it about
+  150), `Text.contains` 0.66 million and `List.contains` 0.16 (their
+  search the bulk); `List.at` in place with the vector's layout probed,
+  the two `contains` through lean helpers, the general path made lean
+  after; AU18's goal met with AU30's binary, the ratio recorded only.
+- **AU34, `List.at` in place and the lean helpers** (this session's last
+  code commit): `layout::list_layout` (the probe: a vector of known
+  address, length and capacity, its three words read through the `Rc`)
+  and `NativeState::list_items` and `list_len`; `CallKind::Typed { kind,
+  in_place }` with `InPlace` and `natives::prelude::in_place`;
+  `list_at_in_place` and `call_lean` in `codegen.rs` and in
+  `template/mod.rs`; `rt_text_contains` and `rt_list_contains` with
+  `DECLINED` in `runtime.rs`; code format 12. The synchronous JIT run
+  -4.7% by the estimate (instructions -4.2%), the image -6.7%, the
+  self-check -2% to -6% in wall-clock. Tests: the probe in `value.rs`;
+  `list_items_read_in_place_and_contains_through_lean_helpers` in
+  `tests/native.rs` and `tests/template.rs`. A lesson for tests of the
+  Cranelift tier: a big Integer in a slot of the function under test
+  hands its frame to the interpreter for good (the loop's entry is
+  refused), so the code under test never runs; put it in a function of
+  its own and look at `RENYI_NATIVE_REPORT`'s deopts and refusals.
 
 AU32 moved the ratio of AU18's goal: on one hardware thread the image's
 run part fell 16.4% and the JIT run's 1.8%, so that the JIT run over the
@@ -2605,9 +2636,19 @@ The spread between boots is wider than the margin (AU27's binary
 measured +19.0% and +16.1% in session 11), so a measurement on another
 boot confirms it before the goal is called met.
 
-**What is next in this round, after AU32** (AU31 orders the hottest
-natives in place next; the list below is the one the owner answered,
-kept for its numbers). The profile of the self-check's
+**What is next in this round, after AU34.** AU33 (iii) ordered the
+typed call's general path made lean next (the generated code releasing
+the arguments it does not borrow and pushing the answer itself, the
+entry called through a thin shim per kind of answer). After AU34 that
+path carries 0.56 million calls of the self-check (`List.last` 0.18
+million, `List.join` 0.16, `List.length` 0.07, the rest under 0.03
+each) and about 63 million instructions of dispatch and value answers,
+0.9% of the run, the most the stage can take back; so the owner is asked
+first, in one batch: the stage as ordered; or `List.last`,
+`List.length` and `List.is_empty` in place by AU34's means (a load or
+two each); or the round closed and the front end's study opened (the
+front end is 10.1% of the self-check's JIT run). The list below is the
+one the owner answered after AU30, kept for its numbers. The profile of the self-check's
 synchronous JIT run on AU29's binary, which AU30 leaves as it is (7.07
 billion instructions): the front end that compiles the checker program
 716 million (10.1%: `check_project_in` 357 million, `compile_project`
@@ -4262,6 +4303,11 @@ holds between calls.
   thread stopped after the compilation under way when the VM is
   dropped; the self-check -9% to -15% in wall-clock, `strings` -13% to
   -16%, the image's run part -16%.
+- **Decision AU33** (4951fec), the owner's answers after the study of
+  the typed calls; the run part measured on a second boot.
+- **Decision AU34**: `List.at` in place with the list's layout probed at
+  startup, `Text.contains` and `List.contains` through lean helpers,
+  code format 12; the synchronous JIT run -4.7% by the estimate.
 - The gates with the 1.94.1 toolchain before every commit that touched
   `crates/`, the conformance suite and the judges on the template tier
   among them; CI green on both jobs after every push.

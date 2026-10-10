@@ -202,10 +202,17 @@ pub(crate) struct NativeState {
     /// enters (decision AU21): the Cranelift tier's trampoline once it is
     /// ready, else the template, else null.
     pub(crate) entries: *const *const u8,
+    /// Where a list's block keeps the address of its items and their
+    /// count (`layout::list_layout`), which the generated code loads to
+    /// read `List.at` in place (decision AU34); zero when the vector's
+    /// layout was not found, and then no code reads them.
+    pub(crate) list_items: i64,
+    pub(crate) list_len: i64,
 }
 
 impl Default for NativeState {
     fn default() -> NativeState {
+        let (list_items, list_len) = crate::value::layout::list_layout().unwrap_or((0, 0));
         NativeState {
             depth: 0,
             direct_table: std::ptr::null(),
@@ -213,6 +220,8 @@ impl Default for NativeState {
             constants: std::ptr::null(),
             hotness: std::ptr::null_mut(),
             entries: std::ptr::null(),
+            list_items: list_items as i64,
+            list_len: list_len as i64,
         }
     }
 }
@@ -370,12 +379,32 @@ impl Drop for Vm<'_> {
 /// function or a primitive through `rt_call`; a pure primitive (no
 /// `needs`, a native of this build) through the flat path; one with a
 /// typed entry through `rt_call_typed`, its arguments borrowed and its
-/// result in a register.
+/// result in a register, or in place when the generated code knows the
+/// native (decision AU34).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CallKind {
     General,
     Pure,
-    Typed(TypedKind),
+    Typed {
+        kind: TypedKind,
+        in_place: Option<InPlace>,
+    },
+}
+
+/// A native the generated code does in place of a typed call (decision
+/// AU34), the general path kept for what it does not take: the prelude's
+/// natives, which no other extension can declare (decision AK2).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum InPlace {
+    /// `List.at` on a list and a small Integer: the item copied with one
+    /// more reference, or `Nothing` past either end; read through the
+    /// list's layout as `layout::list_layout` found it.
+    ListAt,
+    /// `Text.contains` through `rt_text_contains`, which answers a
+    /// Boolean from the operands where they lie.
+    TextContains,
+    /// `List.contains` through `rt_list_contains`, as `TextContains`.
+    ListContains,
 }
 
 /// Per function, the native of this build and its typed entry.
@@ -405,11 +434,17 @@ fn pure_of(program: &Program, natives: &[Option<NativeFn>]) -> Vec<bool> {
         .collect()
 }
 
-fn kinds_of(pure: &[bool], typed: &[Option<Typed>]) -> Vec<CallKind> {
+fn kinds_of(program: &Program, pure: &[bool], typed: &[Option<Typed>]) -> Vec<CallKind> {
+    let list_layout = crate::value::layout::list_layout().is_some();
     pure.iter()
         .zip(typed)
-        .map(|(pure, typed)| match (pure, typed) {
-            (true, Some(typed)) => CallKind::Typed(typed.kind()),
+        .zip(&program.function_metas)
+        .map(|((pure, typed), meta)| match (pure, typed) {
+            (true, Some(typed)) => CallKind::Typed {
+                kind: typed.kind(),
+                in_place: natives::prelude::in_place(meta)
+                    .filter(|op| *op != InPlace::ListAt || list_layout),
+            },
             (true, None) => CallKind::Pure,
             (false, _) => CallKind::General,
         })
@@ -436,7 +471,7 @@ pub fn call_kinds(program: &Program, registry: &Registry) -> Vec<CallKind> {
             }
         })
         .collect();
-    kinds_of(&pure, &typed)
+    kinds_of(program, &pure, &typed)
 }
 
 /// How many variants a type has: those of a sum type, none for another.
@@ -489,7 +524,7 @@ impl<'p> Vm<'p> {
                 }
             })
             .collect();
-        let calls = kinds_of(&pure, &typed);
+        let calls = kinds_of(program, &pure, &typed);
         let seed = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_nanos() as u64)
