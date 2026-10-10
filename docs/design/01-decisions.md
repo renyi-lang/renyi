@@ -5015,3 +5015,53 @@ the append's copies first, or the general path as AU33 ordered; for
 (ii), an opt-in switch to an image of the Renyi compiler built into the
 binary, the switch for `compile` and `build` only, or the switch for
 every command now. (user)
+
+**AU36. The owner's answers of 2026-10-10 after the front end's study:
+(i) the Rust front end first, in the order A0 (every file parsed once:
+the resolver's trees handed to the check, and `check` without a parse
+of its own of the main file), A1 (the parser's token comparisons by
+variant, inlined, and `advance` without the clone where the token is
+dropped), A4 (the library's fixed cost: the prelude and the modules a
+program imports declared, the item lists shared rather than cloned),
+then A2 (a cache keyed by the sources, which skips the front end when
+every file a compile read hashes as it did); (ii) then the compiler
+written in Renyi and the VM under it: B5 (a comparison of two boxed
+values the checker typed Integer, inline in both tiers), B1 (the lexer
+rewritten for speed with the library as it is), B2 (the parser's
+keywords and symbols compared by tag, no record built per look) and B3
+(small functions inlined on the Cranelift tier), the library unchanged;
+(iii) the gate of AU35 (ii) is measured against the Rust front end of
+AU34's binary (commit 44782aa) on the same boot, a fixed reference,
+with the ratio against the same binary recorded beside it; (iv) before
+the compiler's sources change, a copy of today's compiler goes under
+`bench/` as the program of AT1's measure, which stays fixed while
+`compiler/` improves; the ratio of (iii) is taken on `compiler/`.** The
+study the answers followed is the handoff's section "The front end's
+round", on AU34's binary: `renyi check compiler/bodies.ry` (nine files,
+13,280 lines) runs 437 million instructions, 314 million of them in the
+parse, which parses every file twice and the main file three times
+(the resolver for the imports, the check, and `diagnose`); the token
+comparisons are calls (`TokenKind::eq`, 18% of the run); the library's
+fifteen declaration files are parsed and declared at every start, half
+of an empty program's check; the Renyi checker runs 4.99 billion
+instructions on the same files, its lexer 56 times the Rust lexer's,
+its parser 17 times, the rest 15 times, and a scan in one loop over the
+same characters costs a sixth of the lexer as written. One operation of
+each kind the compiler does, in instructions from an image: a call 96,
+a character read from a list and compared 135, the lexer's `is_lower`
+370, a record of three fields made and read 440, the parser's step on a
+shared cursor 1,340, its test for a keyword 870, an append to a list
+held once 370, where compiled Rust spends from none to a few. The
+estimates: A0 and A1 together `check` -52% and the self-check's front
+end -34%; A2 `hello` from 7.2 to about 5 ms; B1 and B2 the Renyi
+checker from 850 to about 500 to 550 ms; the gate of (iii) about 215 ms
+on that file. The owner chose, for (ii), the option "the same, plus
+B3" after an option that added a text method answering code points;
+the entry reads it as B5, B1 and B2 with B3 and without the method,
+which B1's measure can bring back as a question. The alternatives the
+owner declined: for (i), the cache first or the compiler in Renyi
+first; for (ii), the three stages without B3, with the code point
+method, or no change to the compiler in Renyi in this round; for (iii),
+the same binary as AU35 (ii) states it, or no speed work on the Rust
+front end before the switch; for (iv), a measure that follows the
+compiler. (user)

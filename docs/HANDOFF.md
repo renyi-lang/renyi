@@ -186,8 +186,12 @@ and push there directly.
    section (the Rust front end parses every file two and three times;
    the library is parsed and declared at every start; the Renyi lexer
    is 56 times the Rust lexer, its parser 17 times), with the candidates
-   A0 to A4 and B1 to B5, and its questions went to the owner: the
-   stages follow the answers (decision AU36).
+   A0 to A4 and B1 to B5, and the owner ordered the stages (decision
+   AU36): A0, A1, A4, then A2 on the Rust front end; then B5, B1, B2
+   and B3 on the compiler in Renyi and the VM; the gate of AU35 (ii)
+   against AU34's Rust front end; a copy of today's compiler under
+   `bench/` as AT1's program before `compiler/` changes. The section
+   "The front end's round" says where the stages stand.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
@@ -2901,6 +2905,47 @@ the self-check is the program AT1's measure runs, so B1 and B2 change
 the VM's measure (a copy of today's compiler kept under `bench/` would
 hold the measure fixed), and A0 and A1 make the ratio of AU35 (ii)
 larger without any change on the Renyi side.
+
+**The owner's answers (decision AU36)** and the stages they set:
+1. A0, every file parsed once by the Rust front end: the resolver
+   (`renyi_package::resolve`, which parses each file only to read its
+   imports, `imports_of`) keeps the trees, `check_project_in` takes
+   them instead of parsing again, and `renyi check` (`diagnose` in
+   `crates/renyi/src/lib.rs`) takes the main file's parse from the
+   same instead of parsing it first; the outputs byte for byte as they
+   are (the judges and the conformance suite hold them). The compiler
+   in Renyi already works this way (`project.ry`'s `Source` holds the
+   parse).
+2. A1, the Rust parser's token comparisons by variant: `peek`'s test
+   for a line break and every `== TokenKind::X` by `matches!`, `at` and
+   `at_word` through a comparison the compiler inlines (a reserved
+   word's word, else the variant alone), and `advance` without its
+   clone where the caller drops the token.
+3. A4, the library's fixed cost: the prelude and the modules a program
+   imports declared, not all fifteen, with the list of the modules
+   kept for the diagnostics that name one; the clones of a module's
+   item list in `World::resolve_types`, `resolve_abilities` and
+   `resolve_functions` replaced by a shared list.
+4. A2, the cache keyed by the sources (an extension of AU10's image
+   cache): its design questions (what invalidates an entry beyond the
+   files read, `record`'s code hash, `test`) go to the owner when the
+   stage starts.
+5. Before B1 changes `compiler/`: the copy of the compiler under
+   `bench/` (AU36 iv), with `tools/bench.py`, `tools/measure_size.sh`,
+   `tools/measure_native.sh` and CI's checks pointed at it; the ratio
+   of AU35 (ii) is still taken on `compiler/`.
+6. B5, the comparison of two boxed values the checker typed Integer,
+   inline in both tiers; B1, the lexer in one loop (tokens appended in
+   place, classification by `contains` on short texts, the reserved
+   words in a `Set`); B2, the parser's keywords and symbols as
+   variants without fields compared by tag, a cursor that builds no
+   `Peek` per look; B3, small functions inlined on the Cranelift tier.
+   B1 and B2 keep the judges equal; B3 is held to the interpreter by
+   the hand-back tests like every change to the generated code.
+Each stage records, as AU35 (ii) and AU36 (iii) ask, the ratio of the
+Renyi compiler's time to the Rust front end's on `compiler/bodies.ry`
+(checking, parsing, compiling) against AU34's binary on the same boot
+and against the stage's own binary.
 
 ## The representation items: the design study (session 11)
 
