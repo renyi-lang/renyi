@@ -16,6 +16,7 @@ use renyi_syntax::{
 };
 
 use crate::manifest::{Lock, Manifest, PackageFile, LOCK_FILE, MANIFEST_FILE, PACKAGE_FILE};
+use crate::reads::read_text;
 use crate::registry::{hash_of, is_absolute, join, Registry};
 use crate::version::Version;
 
@@ -115,7 +116,7 @@ impl Project {
         let mut directory = own.clone();
         loop {
             let manifest_path = join(&directory, MANIFEST_FILE);
-            if let Ok(text) = std::fs::read_to_string(&manifest_path) {
+            if let Ok(text) = read_text(&manifest_path) {
                 return Project::at(directory, &manifest_path, &text);
             }
             if directory.is_empty() {
@@ -146,7 +147,7 @@ impl Project {
             }
         };
         let lock_path = join(&root, LOCK_FILE);
-        let lock = match std::fs::read_to_string(&lock_path) {
+        let lock = match read_text(&lock_path) {
             Ok(text) => match Lock::read(&text) {
                 Ok(lock) => Some(lock),
                 Err(detail) => {
@@ -300,7 +301,7 @@ fn imports_of(module: &Module) -> Vec<(Vec<String>, Span)> {
 fn read_source(base: &str) -> Option<(String, String)> {
     for extension in ["ry", "renyi"] {
         let path = format!("{base}.{extension}");
-        if let Ok(text) = std::fs::read_to_string(&path) {
+        if let Ok(text) = read_text(&path) {
             return Some((path, text));
         }
     }
@@ -486,7 +487,7 @@ fn locate_package(
         return None;
     };
     let package_path = join(&root, PACKAGE_FILE);
-    let Ok(text) = std::fs::read_to_string(&package_path) else {
+    let Ok(text) = read_text(&package_path) else {
         report(
             Diagnostic::error(
                 "package-missing",

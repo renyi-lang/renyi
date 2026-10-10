@@ -5,9 +5,12 @@
 //! dependencies, which the checker and the toolchain share. The commands
 //! that write the files (`renyi add`, `update`, `fetch`, `publish`, `audit`)
 //! are in the binary; the front end written in Renyi resolves the same way
-//! in `compiler/project.ry`.
+//! in `compiler/project.ry`. Every file the resolution reads goes through
+//! `reads::read_text`, so that the cache keyed by the sources knows what a
+//! compile depended on (decision AU43).
 
 pub mod manifest;
+pub mod reads;
 pub mod registry;
 pub mod resolve;
 pub mod select;
@@ -18,6 +21,7 @@ pub use manifest::{
     Budgets, Effect, Lock, Locked, Manifest, PackageFile, PythonSection, Versions, LOCK_FILE,
     MANIFEST_FILE, PACKAGE_FILE, VERSIONS_FILE,
 };
+pub use reads::{noting, read_text, unchanged, Read};
 pub use registry::{hash_of, is_absolute, join, Registry, STORE};
 pub use resolve::{directory_of, parse_file, resolve_in, resolve_parsed};
 pub use resolve::{resolve, tagged, Problem, Project, Resolved};
