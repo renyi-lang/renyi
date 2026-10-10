@@ -500,12 +500,12 @@ pub(crate) unsafe extern "C" fn rt_make_range(vm: VmPtr, stepped: i8, pc: u32) -
 pub(crate) unsafe extern "C" fn rt_construct(vm: VmPtr, ty: usize, fields: u32, pc: u32) -> i32 {
     let vm = vm!(vm);
     vm.sync_pc(pc);
-    let fields = vm.pop_n(fields as usize);
     let result = if vm.guarding {
+        let fields = vm.pop_n(fields as usize);
         let (origins, fields) = plain_all(fields);
         vm.construct(ty, fields).map(|value| value.guarded(origins))
     } else {
-        vm.construct(ty, fields)
+        vm.construct_from_top(ty, fields as usize)
     };
     status(vm, result)
 }
@@ -519,13 +519,13 @@ pub(crate) unsafe extern "C" fn rt_construct_variant(
 ) -> i32 {
     let vm = vm!(vm);
     vm.sync_pc(pc);
-    let fields = vm.pop_n(fields as usize);
     let result = if vm.guarding {
+        let fields = vm.pop_n(fields as usize);
         let (origins, fields) = plain_all(fields);
         vm.construct_variant(ty, tag as usize, fields)
             .map(|value| value.guarded(origins))
     } else {
-        vm.construct_variant(ty, tag as usize, fields)
+        vm.construct_variant_from_top(ty, tag as usize, fields as usize)
     };
     status(vm, result)
 }

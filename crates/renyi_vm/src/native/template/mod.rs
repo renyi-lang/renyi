@@ -42,7 +42,7 @@ use crate::native::runtime::{
 };
 use crate::native::DEPTH_LIMIT;
 use crate::value::layout::{
-    INT_PAYLOAD, INT_SMALL, INT_TAG, PAYLOAD, RC_VALUE, RECORD_FIELDS, RECORD_TAG, RECORD_TY, SIZE,
+    INT_PAYLOAD, INT_SMALL, INT_TAG, PAYLOAD, RECORD_FIELDS, RECORD_TAG, RECORD_TY, SIZE,
     TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_INTEGER, TAG_NOTHING, TAG_RECORD, TAG_SMALL_TEXT,
 };
 use crate::vm::{unit_slot, CallKind};
@@ -1240,11 +1240,11 @@ impl Gen<'_> {
                 self.asm.jcc(Cond::A, slow);
                 self.asm.mov_rm(SCRATCH2, holder.0, holder.1 + PAYLOAD);
                 self.asm.mov_rm(SCRATCH3, VM, field_cache_offset() as i32);
-                self.asm.mov_rm(SCRATCH, SCRATCH2, RC_VALUE + RECORD_TY);
+                self.asm.mov_rm(SCRATCH, SCRATCH2, RECORD_TY);
                 self.asm.mov_rm(Reg::Rcx, SCRATCH3, entry + SITE_TY);
                 self.asm.cmp_rr(SCRATCH, Reg::Rcx);
                 self.asm.jcc(Cond::Ne, slow);
-                self.asm.mov_rm(SCRATCH, SCRATCH2, RC_VALUE + RECORD_TAG);
+                self.asm.mov_rm(SCRATCH, SCRATCH2, RECORD_TAG);
                 self.asm.mov_rm(Reg::Rcx, SCRATCH3, entry + SITE_TAG);
                 self.asm.cmp_rr(SCRATCH, Reg::Rcx);
                 self.asm.jcc(Cond::Ne, slow);
@@ -1252,7 +1252,7 @@ impl Gen<'_> {
                 // holder of the same type and tag, which has as many fields
                 self.asm.mov_rm(Reg::Rcx, SCRATCH3, entry + SITE_INDEX);
                 self.asm.imul_rri(Reg::Rcx, Reg::Rcx, SIZE as i32);
-                self.asm.mov_rm(SCRATCH, SCRATCH2, RC_VALUE + RECORD_FIELDS);
+                self.asm.lea(SCRATCH, SCRATCH2, RECORD_FIELDS);
                 self.asm.add_rr(Reg::Rcx, SCRATCH);
                 let top = self.top();
                 self.copy((Reg::Rcx, 0), top);

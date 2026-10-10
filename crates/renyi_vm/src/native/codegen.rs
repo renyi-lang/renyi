@@ -2453,17 +2453,11 @@ impl Gen<'_, '_> {
                     self.b.ins().brif(is_holder, holder, &[], slow, &[]);
                     self.switch_to(holder);
                     let rc = self.b.ins().load(pointer, flags, at, PAYLOAD);
-                    let ty = self
-                        .b
-                        .ins()
-                        .load(types::I64, flags, rc, RC_VALUE + RECORD_TY);
+                    let ty = self.b.ins().load(types::I64, flags, rc, RECORD_TY);
                     let same_ty = self.b.ins().icmp_imm_s(IntCC::Equal, ty, ty_id as i64);
                     self.b.ins().brif(same_ty, hit, &[], slow, &[]);
                     self.switch_to(hit);
-                    let fields_ptr =
-                        self.b
-                            .ins()
-                            .load(pointer, flags, rc, RC_VALUE + RECORD_FIELDS);
+                    let fields_ptr = self.b.ins().iadd_imm_s(rc, RECORD_FIELDS as i64);
                     let field = self.b.ins().iadd_imm_s(fields_ptr, (index * SIZE) as i64);
                     let words: Vec<IrValue> = [0, 8, 16]
                         .into_iter()
@@ -2529,17 +2523,11 @@ impl Gen<'_, '_> {
                     self.b.ins().brif(is_holder, holder, &[], slow, &[]);
                     self.switch_to(holder);
                     let rc = self.b.ins().load(pointer, flags, at, PAYLOAD);
-                    let ty = self
-                        .b
-                        .ins()
-                        .load(types::I64, flags, rc, RC_VALUE + RECORD_TY);
+                    let ty = self.b.ins().load(types::I64, flags, rc, RECORD_TY);
                     let same_ty = self.b.ins().icmp_imm_s(IntCC::Equal, ty, ty_id as i64);
                     self.b.ins().brif(same_ty, hit, &[], slow, &[]);
                     self.switch_to(hit);
-                    let fields_ptr =
-                        self.b
-                            .ins()
-                            .load(pointer, flags, rc, RC_VALUE + RECORD_FIELDS);
+                    let fields_ptr = self.b.ins().iadd_imm_s(rc, RECORD_FIELDS as i64);
                     let field = self.b.ins().iadd_imm_s(fields_ptr, (index * SIZE) as i64);
                     self.push_copy(field, true);
                     self.b.ins().jump(join, &[]);
@@ -2594,18 +2582,9 @@ impl Gen<'_, '_> {
                     self.b.ins().brif(is_holder, holder, &[], slow, &[]);
                     self.switch_to(holder);
                     let rc = self.b.ins().load(pointer, flags, at, PAYLOAD);
-                    let ty = self
-                        .b
-                        .ins()
-                        .load(types::I64, flags, rc, RC_VALUE + RECORD_TY);
-                    let holder_tag =
-                        self.b
-                            .ins()
-                            .load(types::I64, flags, rc, RC_VALUE + RECORD_TAG);
-                    let fields_ptr =
-                        self.b
-                            .ins()
-                            .load(pointer, flags, rc, RC_VALUE + RECORD_FIELDS);
+                    let ty = self.b.ins().load(types::I64, flags, rc, RECORD_TY);
+                    let holder_tag = self.b.ins().load(types::I64, flags, rc, RECORD_TAG);
+                    let fields_ptr = self.b.ins().iadd_imm_s(rc, RECORD_FIELDS as i64);
                     let same_ty = self.b.ins().icmp(IntCC::Equal, ty, cached_ty);
                     let same_tag = self.b.ins().icmp(IntCC::Equal, holder_tag, cached_tag);
                     // a hit needs no range check: the index was cached from a

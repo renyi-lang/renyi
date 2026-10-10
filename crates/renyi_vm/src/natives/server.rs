@@ -112,7 +112,7 @@ fn with_header(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     };
     let name = text(arg(args, 1))?.to_string();
     let value = text(arg(args, 2))?.to_string();
-    let mut record = (**record).clone();
+    let mut record = record.clone();
     let Some(index) = vm.program.types.field_index(record.ty, "headers") else {
         return Err(crash("a Response has no headers field"));
     };
@@ -121,8 +121,8 @@ fn with_header(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
         _ => IndexMap::new(),
     };
     headers.insert(Value::text(name), Value::text(value));
-    record.fields[index] = Value::Map(Rc::new(headers));
-    Ok(Value::Record(Rc::new(record)))
+    record.make_mut().fields[index] = Value::Map(Rc::new(headers));
+    Ok(Value::Record(record))
 }
 
 /// What one connection sent.

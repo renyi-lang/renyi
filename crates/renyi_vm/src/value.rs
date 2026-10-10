@@ -8,8 +8,10 @@
 //! so that a container holds plain items and carries the union of their
 //! origins, and every operation strips its operands and tags its result.
 
-use std::cell::RefCell;
+use std::alloc::Layout;
+use std::cell::{Cell, RefCell};
 use std::hash::{Hash, Hasher};
+use std::ptr::NonNull;
 use std::rc::Rc;
 
 use indexmap::{IndexMap, IndexSet};
@@ -40,8 +42,8 @@ pub enum Value {
     Set(Rc<IndexSet<Value>>),
     Range(Rc<RangeValue>),
     Pair(Rc<(Value, Value)>),
-    Record(Rc<Record>),
-    Variant(Rc<Variant>),
+    Record(Composite),
+    Variant(Composite),
     /// Milliseconds.
     Duration(i64),
     /// Milliseconds since the Unix epoch, UTC.
@@ -157,25 +159,211 @@ pub struct RangeValue {
     pub by: Int,
 }
 
-/// A record: its type and its fields. `tag` is always `usize::MAX`, so
-/// that a record and a variant hold their type, their tag and their
-/// fields at the same offsets and the generated code reads a field of
-/// either on one path (decision AT2; the field cache has `usize::MAX` as
-/// a record's tag).
-#[derive(Clone, Debug)]
-#[repr(C)]
-pub struct Record {
-    pub ty: TypeId,
-    pub tag: usize,
-    pub fields: Pinned<Value>,
+/// A record or a variant in one counted block (decision AU27): the
+/// count, the number of fields, the type, the tag and the fields
+/// themselves, so that making one is one allocation and the generated
+/// code reads a field at `layout::RECORD_FIELDS` past the block's start.
+/// A record's tag is `usize::MAX`, so that a record and a variant read
+/// alike (decision AT2; the field cache has `usize::MAX` as a record's
+/// tag). `Deref` gives the `Shape`; a clone shares the block, as an `Rc`
+/// does, and `make_mut` copies it before an update unless it is held once.
+pub struct Composite {
+    block: NonNull<Head>,
 }
 
-#[derive(Clone, Debug)]
+/// The two words of a composite's block before its shape.
 #[repr(C)]
-pub struct Variant {
+struct Head {
+    count: Cell<usize>,
+    len: usize,
+}
+
+/// What a composite holds past its head: the type, the tag and the
+/// fields, a slice of the length the head keeps.
+#[repr(C)]
+pub struct Shape {
     pub ty: TypeId,
     pub tag: usize,
-    pub fields: Pinned<Value>,
+    pub fields: [Value],
+}
+
+impl Composite {
+    /// The layout of a block of `len` fields.
+    fn layout(len: usize) -> Layout {
+        let size = layout::RECORD_FIELDS as usize + len * std::mem::size_of::<Value>();
+        Layout::from_size_align(size, std::mem::align_of::<Value>().max(8))
+            .expect("the layout of a record")
+    }
+
+    /// A block held once with the type and the tag written, its `len`
+    /// fields for the caller to write.
+    fn allocate(ty: TypeId, tag: usize, len: usize) -> NonNull<Head> {
+        let layout = Composite::layout(len);
+        // SAFETY: the layout is never empty: the head, the type and the
+        // tag take 32 bytes.
+        let raw = unsafe { std::alloc::alloc(layout) };
+        let Some(block) = NonNull::new(raw as *mut Head) else {
+            std::alloc::handle_alloc_error(layout)
+        };
+        // SAFETY: the block is fresh and holds the head, then the type and
+        // the tag at the offsets `Shape` has them (`layout::RECORD_TY`).
+        unsafe {
+            block.as_ptr().write(Head {
+                count: Cell::new(1),
+                len,
+            });
+            (raw.add(layout::RECORD_TY as usize) as *mut TypeId).write(ty);
+            (raw.add(layout::RECORD_TAG as usize) as *mut usize).write(tag);
+        }
+        block
+    }
+
+    /// Where a block's fields begin.
+    fn fields_of(block: NonNull<Head>) -> *mut Value {
+        // SAFETY: the fields lie within the block, `RECORD_FIELDS` past
+        // its start.
+        unsafe { (block.as_ptr() as *mut u8).add(layout::RECORD_FIELDS as usize) as *mut Value }
+    }
+
+    /// A composite of the fields, moved in.
+    pub fn new(ty: TypeId, tag: usize, mut fields: Vec<Value>) -> Composite {
+        let len = fields.len();
+        let block = Composite::allocate(ty, tag, len);
+        // SAFETY: the block has room for `len` fields; the values move
+        // there and the vector forgets them before it frees its buffer.
+        unsafe {
+            std::ptr::copy_nonoverlapping(fields.as_ptr(), Composite::fields_of(block), len);
+            fields.set_len(0);
+        }
+        Composite { block }
+    }
+
+    /// A composite of the top `len` values of a stack, moved in and the
+    /// stack cut below them: a construction with no vector between.
+    pub fn from_top(stack: &mut Pinned<Value>, len: usize, ty: TypeId, tag: usize) -> Composite {
+        let at = stack.len() - len;
+        let block = Composite::allocate(ty, tag, len);
+        // SAFETY: the values move into the block's room for `len` fields,
+        // and the stack forgets them.
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                stack.as_slice().as_ptr().add(at),
+                Composite::fields_of(block),
+                len,
+            );
+        }
+        stack.forget_from(at);
+        Composite { block }
+    }
+
+    fn head(&self) -> &Head {
+        // SAFETY: the block lives while a composite points at it.
+        unsafe { self.block.as_ref() }
+    }
+
+    /// The shape as a pointer with the length of its fields.
+    fn shape(&self) -> *mut Shape {
+        let len = self.head().len;
+        // SAFETY: the shape lies two words into the block.
+        let data = unsafe { (self.block.as_ptr() as *mut u8).add(std::mem::size_of::<Head>()) };
+        std::ptr::slice_from_raw_parts_mut(data, len) as *mut Shape
+    }
+
+    /// The shape to update in place when the block is held once.
+    pub fn get_mut(&mut self) -> Option<&mut Shape> {
+        if self.head().count.get() != 1 {
+            return None;
+        }
+        // SAFETY: held once, so nothing else reads the block.
+        Some(unsafe { &mut *self.shape() })
+    }
+
+    /// The shape to update in place, the block copied first when another
+    /// value holds it too.
+    pub fn make_mut(&mut self) -> &mut Shape {
+        if self.head().count.get() != 1 {
+            let len = self.fields.len();
+            let block = Composite::allocate(self.ty, self.tag, len);
+            let fields = Composite::fields_of(block);
+            for (index, field) in self.fields.iter().enumerate() {
+                // SAFETY: the copy has room for `len` fields.
+                unsafe { fields.add(index).write(field.clone()) };
+            }
+            *self = Composite { block };
+        }
+        // SAFETY: held once now.
+        unsafe { &mut *self.shape() }
+    }
+
+    /// How many values hold the block.
+    pub fn count(&self) -> usize {
+        self.head().count.get()
+    }
+}
+
+impl Clone for Composite {
+    /// One holder more, as the generated code counts one in place (decision
+    /// AU24): without the check `Rc` makes on a count past `usize::MAX`,
+    /// which no run reaches (every holder is a value of 24 bytes or a
+    /// reference the VM releases) and whose call to `abort` would cost
+    /// every clone of every value a frame of its own.
+    #[inline(always)]
+    fn clone(&self) -> Composite {
+        let count = self.head().count.get();
+        debug_assert!(count < usize::MAX, "the count of a record");
+        self.head().count.set(count.wrapping_add(1));
+        Composite { block: self.block }
+    }
+}
+
+impl Drop for Composite {
+    /// One holder fewer, in place; the last frees the block out of line,
+    /// as an `Rc` does.
+    #[inline(always)]
+    fn drop(&mut self) {
+        let count = self.head().count.get() - 1;
+        self.head().count.set(count);
+        if count == 0 {
+            self.free();
+        }
+    }
+}
+
+impl Composite {
+    /// The last holder's drop: the fields dropped and the block freed with
+    /// the layout it was made with.
+    #[inline(never)]
+    fn free(&mut self) {
+        let len = self.head().len;
+        // SAFETY: nothing holds the block any more.
+        unsafe {
+            std::ptr::drop_in_place(std::ptr::slice_from_raw_parts_mut(
+                Composite::fields_of(self.block),
+                len,
+            ));
+            std::alloc::dealloc(self.block.as_ptr() as *mut u8, Composite::layout(len));
+        }
+    }
+}
+
+impl std::ops::Deref for Composite {
+    type Target = Shape;
+
+    #[inline]
+    fn deref(&self) -> &Shape {
+        // SAFETY: the shape lives while the block does.
+        unsafe { &*self.shape() }
+    }
+}
+
+impl std::fmt::Debug for Composite {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Composite")
+            .field("ty", &self.ty)
+            .field("tag", &self.tag)
+            .field("fields", &&self.fields)
+            .finish()
+    }
 }
 
 /// Values of the library that carry more than their declared fields. The
@@ -295,19 +483,15 @@ pub mod layout {
     pub const TAG_VARIANT: u8 = 13;
     /// Inside an `Rc` allocation: the value, after the two counts.
     pub const RC_VALUE: i32 = 16;
-    /// Inside a `Record` and a `Variant`: the type, the tag and the
-    /// fields (a pinned vector: pointer, length, capacity).
-    pub const RECORD_TY: i32 = std::mem::offset_of!(super::Record, ty) as i32;
-    pub const RECORD_TAG: i32 = std::mem::offset_of!(super::Record, tag) as i32;
-    pub const RECORD_FIELDS: i32 = std::mem::offset_of!(super::Record, fields) as i32;
-    pub const VARIANT_TY: i32 = std::mem::offset_of!(super::Variant, ty) as i32;
-    pub const VARIANT_TAG: i32 = std::mem::offset_of!(super::Variant, tag) as i32;
-    pub const VARIANT_FIELDS: i32 = std::mem::offset_of!(super::Variant, fields) as i32;
-    // a record and a variant share the prefix the generated code reads
-    // (decision AT2)
-    const _: () = assert!(RECORD_TY == VARIANT_TY);
-    const _: () = assert!(RECORD_TAG == VARIANT_TAG);
-    const _: () = assert!(RECORD_FIELDS == VARIANT_FIELDS);
+    /// Inside the block of a record or a variant (`Composite`, decision
+    /// AU27), from its start: the count, the number of fields, the type,
+    /// the tag and the fields themselves. The type and the tag lie where
+    /// an `Rc` of the former layout held them, so that a field read
+    /// changes only in where the fields are.
+    pub const RECORD_LEN: i32 = 8;
+    pub const RECORD_TY: i32 = 16;
+    pub const RECORD_TAG: i32 = 24;
+    pub const RECORD_FIELDS: i32 = 32;
     /// A `Native` value's tag, and inside a `Native` (`repr(C, u8)`) its
     /// own tag and its payload (decision AU1, stage ii).
     pub const TAG_NATIVE: u8 = 17;
@@ -366,19 +550,11 @@ impl Value {
     }
 
     pub fn record(ty: TypeId, fields: Vec<Value>) -> Value {
-        Value::Record(Rc::new(Record {
-            ty,
-            tag: usize::MAX,
-            fields: fields.into(),
-        }))
+        Value::Record(Composite::new(ty, usize::MAX, fields))
     }
 
     pub fn variant(ty: TypeId, tag: usize, fields: Vec<Value>) -> Value {
-        Value::Variant(Rc::new(Variant {
-            ty,
-            tag,
-            fields: fields.into(),
-        }))
+        Value::Variant(Composite::new(ty, tag, fields))
     }
 
     pub fn failure(error: Value) -> Value {
@@ -868,34 +1044,59 @@ mod layout_tests {
             let allocation = payload_word(&value, INT_PAYLOAD as usize);
             assert_eq!(allocation + 16, Rc::as_ptr(rc) as usize);
         }
-        // a record's and a variant's type, tag and fields inside the
-        // allocation
+        // a record's and a variant's count, length, type, tag and fields
+        // in their one block (decision AU27)
         let word = |address: usize| unsafe { *(address as *const usize) };
         let record = Value::record(3, vec![Value::integer(1), Value::text("a")]);
-        let Value::Record(rc) = &record else {
+        let Value::Record(composite) = &record else {
             unreachable!()
         };
-        let allocation = payload_word(&record, PAYLOAD as usize);
-        let inner = allocation + RC_VALUE as usize;
-        assert_eq!(inner, Rc::as_ptr(rc) as usize);
-        assert_eq!(word(inner + RECORD_TY as usize), 3);
+        let block = payload_word(&record, PAYLOAD as usize);
+        assert_eq!(word(block), 1);
+        assert_eq!(word(block + RECORD_LEN as usize), 2);
+        assert_eq!(word(block + RECORD_TY as usize), 3);
+        assert_eq!(word(block + RECORD_TAG as usize), usize::MAX);
         assert_eq!(
-            word(inner + RECORD_FIELDS as usize),
-            rc.fields.as_ptr() as usize
+            block + RECORD_FIELDS as usize,
+            composite.fields.as_ptr() as usize
         );
-        assert_eq!(word(inner + RECORD_FIELDS as usize + 8), 2);
+        assert_eq!(composite.fields, [Value::integer(1), Value::text("a")][..]);
+        let copy = record.clone();
+        assert_eq!(word(block), 2);
+        drop(copy);
+        assert_eq!(word(block), 1);
         let variant = Value::variant(4, 2, vec![Value::Nothing]);
-        let Value::Variant(rc) = &variant else {
-            unreachable!()
-        };
-        let inner = payload_word(&variant, PAYLOAD as usize) + RC_VALUE as usize;
-        assert_eq!(inner, Rc::as_ptr(rc) as usize);
-        assert_eq!(word(inner + VARIANT_TY as usize), 4);
-        assert_eq!(word(inner + VARIANT_TAG as usize), 2);
-        assert_eq!(
-            word(inner + VARIANT_FIELDS as usize),
-            rc.fields.as_ptr() as usize
-        );
-        assert_eq!(word(inner + VARIANT_FIELDS as usize + 8), 1);
+        let block = payload_word(&variant, PAYLOAD as usize);
+        assert_eq!(word(block + RECORD_LEN as usize), 1);
+        assert_eq!(word(block + RECORD_TY as usize), 4);
+        assert_eq!(word(block + RECORD_TAG as usize), 2);
+        assert_eq!(word(block + RECORD_FIELDS as usize) as u8, TAG_NOTHING);
+    }
+
+    #[test]
+    fn a_composite_is_copied_before_an_update_unless_it_is_held_once() {
+        let mut record = Composite::new(7, usize::MAX, vec![Value::integer(1), Value::text("a")]);
+        let shared = record.clone();
+        assert_eq!(record.count(), 2);
+        assert!(record.get_mut().is_none());
+        record.make_mut().fields[0] = Value::integer(2);
+        assert_eq!(record.count(), 1);
+        assert_eq!(shared.count(), 1);
+        assert_eq!(shared.fields[0], Value::integer(1));
+        assert_eq!(record.fields[0], Value::integer(2));
+        assert_eq!(record.ty, 7);
+        assert_eq!(record.tag, usize::MAX);
+        let unique = record.get_mut().expect("held once");
+        unique.fields[1] = Value::text("a text past sixteen bytes");
+        assert_eq!(record.fields[1], Value::text("a text past sixteen bytes"));
+        // from the top of a stack, moved: the stack forgets the values
+        let mut stack: Pinned<Value> =
+            vec![Value::Nothing, Value::integer(5), Value::text("b")].into();
+        let moved = Composite::from_top(&mut stack, 2, 9, 1);
+        assert_eq!(stack.len(), 1);
+        assert_eq!(moved.fields, [Value::integer(5), Value::text("b")][..]);
+        assert_eq!((moved.ty, moved.tag), (9, 1));
+        let empty = Composite::new(1, 0, Vec::new());
+        assert!(empty.fields.is_empty());
     }
 }

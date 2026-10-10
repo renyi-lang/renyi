@@ -468,3 +468,83 @@ end
     assert_eq!(outcome, RunOutcome::Finished);
     assert_eq!(output, "2000 10800 5400 20100 6\n");
 }
+
+/// Records and variants in one counted block each (decision AU27), on
+/// the template tier: built from the top of the stack, kept in a list, read in
+/// place, copied before an update while shared, compared and matched;
+/// every count is the interpreter's.
+#[test]
+fn records_in_one_block_are_built_read_copied_and_compared() {
+    let source = r#"module demo
+  purpose: Records built over and over in one block each, kept, copied, updated and compared.
+
+import std.console
+
+type Point
+  purpose: A point with a label.
+  has east: Integer
+  has north: Integer
+  has label: Text
+end
+
+type Segment
+  purpose: Two points.
+  has start: Point
+  has finish: Point
+end
+
+type Mark is one of
+  purpose: A mark on a point or none.
+  Blank
+  Pin(spot: Point, note: Text)
+end
+
+function moved(point: Point, step: Integer) returns Point
+  purpose: The point moved east.
+
+  return point with east: point.east + step
+end
+
+function mark_of(index: Integer, point: Point) returns Mark
+  purpose: A pin for every other index.
+
+  if index remainder 2 is 0 then
+    return Pin(spot: point, note: "a note longer than sixteen bytes")
+  end
+  return Blank
+end
+
+public function main() needs console
+  purpose: Build segments and marks, keep them, move copies, count what matches.
+
+  let mutable segments: List of Segment be []
+  let mutable pins be 0
+  let mutable same be 0
+  let mutable total be 0
+  for each index from 1 to 2000
+    let start be Point(east: index, north: index remainder 7, label: "p")
+    let finish be moved(point: start, step: 3)
+    let segment be Segment(start: start, finish: finish)
+    change segments to segments.append(segment)
+    match mark_of(index: index, point: finish)
+      when Blank then change total to total + 1
+      when Pin(spot, note) then
+        change pins to pins + spot.north
+        change total to total + note.length()
+    end
+    let shifted be segment.start with east: segment.start.east + 3
+    if shifted is segment.finish then
+      change same to same + 1
+    end
+  end
+  let mutable east be 0
+  for each segment in segments
+    change east to east + segment.finish.east - segment.start.east
+  end
+  console.print("{segments.length()} {pins} {same} {total} {east}")
+end
+"#;
+    let (outcome, output, _) = both_ways(source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(output, "2000 3003 2000 33000 6000\n");
+}

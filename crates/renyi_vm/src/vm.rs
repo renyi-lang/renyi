@@ -36,7 +36,7 @@ use crate::pinned::Pinned;
 use crate::profile::Profile;
 use crate::recording::{clip, redact, Call, Manifest, Outcome, Recording, Replay};
 use crate::types::TypeShape;
-use crate::value::{plain_all, plain_in_place, take_list, Native, RangeValue, Value};
+use crate::value::{plain_all, plain_in_place, take_list, Composite, Native, RangeValue, Value};
 
 /// Why execution stopped before the program said so.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1895,22 +1895,26 @@ impl<'p> Vm<'p> {
                     self.stack.push(value);
                 }
                 Op::Construct { ty, fields } => {
-                    let fields = self.pop_n(*fields as usize);
                     if self.guarding {
+                        let fields = self.pop_n(*fields as usize);
                         let (origins, fields) = plain_all(fields);
                         settle!(try_op!(self.construct(*ty, fields)).guarded(origins));
                     } else {
-                        settle!(try_op!(self.construct(*ty, fields)));
+                        settle!(try_op!(self.construct_from_top(*ty, *fields as usize)));
                     }
                 }
                 Op::ConstructVariant { ty, tag, fields } => {
-                    let fields = self.pop_n(*fields as usize);
                     if self.guarding {
+                        let fields = self.pop_n(*fields as usize);
                         let (origins, fields) = plain_all(fields);
                         settle!(try_op!(self.construct_variant(*ty, *tag as usize, fields))
                             .guarded(origins));
                     } else {
-                        settle!(try_op!(self.construct_variant(*ty, *tag as usize, fields)));
+                        settle!(try_op!(self.construct_variant_from_top(
+                            *ty,
+                            *tag as usize,
+                            *fields as usize
+                        )));
                     }
                 }
                 Op::Field { name, site } => {
@@ -2334,6 +2338,43 @@ impl<'p> Vm<'p> {
         }
     }
 
+    /// `Construct` of a type whose `count` fields lie on top of the stack:
+    /// a record without a refinement to check is made of them in place,
+    /// moved into its block with no vector between (decision AU27);
+    /// anything else as `construct` makes it.
+    pub(crate) fn construct_from_top(
+        &mut self,
+        ty: TypeId,
+        count: usize,
+    ) -> Result<Value, Interrupt> {
+        let meta = self.program.types.meta(ty);
+        if matches!(meta.shape, TypeShape::Record(_))
+            && meta.refinements.is_empty()
+            && Some(ty) != self.program.date
+        {
+            let record = Composite::from_top(&mut self.stack, count, ty, usize::MAX);
+            return Ok(Value::Record(record));
+        }
+        let fields = self.pop_n(count);
+        self.construct(ty, fields)
+    }
+
+    /// `ConstructVariant` whose `count` fields lie on top of the stack, as
+    /// `construct_from_top` makes a record (decision AU27).
+    pub(crate) fn construct_variant_from_top(
+        &mut self,
+        ty: TypeId,
+        tag: usize,
+        count: usize,
+    ) -> Result<Value, Interrupt> {
+        if count > 0 && self.program.types.meta(ty).refinements.is_empty() {
+            let variant = Composite::from_top(&mut self.stack, count, ty, tag);
+            return Ok(Value::Variant(variant));
+        }
+        let fields = self.pop_n(count);
+        self.construct_variant(ty, tag, fields)
+    }
+
     /// A record whose fields satisfy every refinement of the type, or the
     /// `Failure(ConstraintViolation)` of the first that does not.
     fn refined_record(&mut self, ty: TypeId, fields: Vec<Value>) -> Result<Value, Interrupt> {
@@ -2531,7 +2572,7 @@ impl<'p> Vm<'p> {
         let cached = self.field_cache[site];
         if let Value::Record(record) = &mut self.stack[at] {
             if cached.ty == record.ty && cached.tag == usize::MAX {
-                let found = match Rc::get_mut(record) {
+                let found = match record.get_mut() {
                     Some(unique) => unique
                         .fields
                         .get_mut(cached.index)
@@ -2587,7 +2628,7 @@ impl<'p> Vm<'p> {
         {
             // in place when the record is held once (decision AU11), else
             // in a copy; the allocation stays either way
-            let record = Rc::make_mut(&mut record);
+            let record = record.make_mut();
             for (name, value) in updates {
                 let name = name.as_text().unwrap_or("");
                 match self.program.types.field_index(record.ty, name) {

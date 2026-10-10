@@ -4613,3 +4613,53 @@ the benchmarks within 3% either way (`strings` +2.8% and +1.1% on one
 thread with 6.9% fewer instructions, the layout again). The study had
 estimated 4 to 5%. The stage stays by AU1's rule and by the owner's
 measure. (user)
+
+**AU27. The second representation item of AU22 as built: records and
+variants in one allocation. A record or a variant is a `Composite`, a
+thin pointer to one counted block that holds the count, the number of
+fields, the type, the tag (a record's `usize::MAX`) and the fields
+themselves; `Deref` gives its `Shape` (the type, the tag and the fields
+as a slice: a type with a slice tail), so that the code that read
+`record.ty` and `record.fields` reads them as before. A clone raises the
+count in place, a drop lowers it and the last holder frees the block out
+of line, as an `Rc` does; `make_mut` copies the block before an update
+unless it is held once, `get_mut` gives it when it is. The type and the
+tag lie where the former `Rc` held them (16 and 24 bytes from the
+block's start) and the fields start at 32, so that a field read in
+either tier adds the index to the block's address where it first loaded
+a pointer to the fields. `Construct` and `ConstructVariant` of a type
+without a refinement make the composite from the operands on top of the
+stack, moved into the block with no vector between
+(`Vm::construct_from_top` and `construct_variant_from_top`); the guarded
+path, the refined types and the natives build from a vector as before,
+its values moved into the block. Code format 10.** Two corrections came
+from the profile of the first build, which ran no fewer instructions
+than AU26's (+0.1%) though the allocations fell: the composite's drop
+was a call at every lowered count where `Rc` lowers it in place and
+calls only to free (the fast path is now inline, `Composite::free` out of
+line), and its clone checked the count against `usize::MAX` with a call
+to `abort`, which gave every clone of every value a frame of its own
+(the clone is now a plain increment, as the generated code raises a
+count, with a debug assertion in its place). The tests: in `value.rs`,
+the block's layout (the count, the length, the type, the tag and the
+fields where the generated code reads them; the count raised and
+lowered by a clone and its drop) and
+`a_composite_is_copied_before_an_update_unless_it_is_held_once`
+(`make_mut` on a shared and on a unique block, `get_mut`, `from_top`, an
+empty composite); in `tests/native.rs` and `tests/template.rs`,
+`records_in_one_block_are_built_read_copied_and_compared` (2,000
+segments of two points with texts long and short kept in a list, a
+point copied by `with` while shared and compared, variants with fields
+matched, against the interpreter; with the clone's count not raised the
+test aborts, as it was checked to); the conformance suite and the judges
+on both tiers. Measured on one boot against AU26's binary (5be5e60). By
+AT1's estimate under cachegrind: the synchronous JIT run 10.46 to 9.97
+billion cycles (-4.6%; instructions -3.8%), the template code alone
+10.64 to 10.18 (-4.4%), the interpreter 16.15 to 15.81 (-2.1%), the
+image 8.38 to 7.87 (-6.1%). In wall-clock, alternating with the order
+swapped every turn, best and median: the self-check -10.5% and -8.3% on
+one hardware thread, -3.9% and -2.0% on two, -4.4% and -6.6% on four;
+`records` -10.5% to -12.9%; `json_round_trip` between -0.7% and +4.6%,
+whose records come from the decoder's vectors and are copied into their
+blocks (0.9% more instructions); `strings` and `primes` within 2% at the
+best. The stage stays by AU1's rule and by the owner's measure. (user)

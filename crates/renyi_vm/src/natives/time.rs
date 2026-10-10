@@ -176,7 +176,7 @@ impl Vm<'_> {
 
     pub fn date_parts(&self, value: &Value) -> Result<(i64, i64, i64), Interrupt> {
         if let Value::Record(record) = value {
-            if let [year, month, day] = record.fields.as_slice() {
+            if let [year, month, day] = &record.fields {
                 return Ok((small(year)?, small(month)?, small(day)?));
             }
         }
