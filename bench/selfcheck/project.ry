@@ -1,0 +1,1555 @@
+module project
+  purpose: A project as the commands load it: its files, the front end, the library, the world.
+
+import std.console
+import std.environment
+import std.filesystem exposing Path
+import std.json exposing JsonValue, JsonError
+import ast exposing Module, Span
+import lexer
+import parser
+import report exposing Diagnostic
+import declare exposing World, PackageTag, ForeignModule, SymbolRename, PythonModule
+import bodies exposing Reference
+import effects
+
+public type Front is one of
+  purpose: What the front end made of a text: its tree, or a partial tree with the syntax errors.
+  Parsed(tree: Module)
+  Rejected(tree: Module, diagnostics: List of Diagnostic)
+end
+
+public type Source
+  purpose: A file by the name the command line gave, its text, its tree, and its package if any.
+  has name: Text
+  has text: Text
+  has chars: List of Text
+  has starts: List of Integer
+  has front: Front
+  has package: maybe PackageTag
+  has foreign: maybe ForeignModule
+  has python: maybe PythonModule
+end
+
+public type CheckedModule
+  purpose: One file after the check: its module when it declared one, its path, its diagnostics.
+  has id: maybe Integer
+  has path: Text
+  has diagnostics: List of Diagnostic
+  has references: List of Reference
+end
+
+public type Project
+  purpose: A project checked as a whole: the world with every module declared, one entry per file.
+  has world: World
+  has modules: List of CheckedModule
+end
+
+public type Problem
+  purpose: What the resolver found wrong for one file: its manifest, its lockfile or a dependency.
+  has file: Text
+  has diagnostic: Diagnostic
+end
+
+public type Resolved
+  purpose: The files of a program with its imports, the main file first, and the problems found.
+  has files: List of Source
+  has problems: List of Problem
+end
+
+type Manifest
+  purpose: `renyi.json` (decision AC1); the resolver reads its dependencies and its registry.
+  has name: Text
+  has version: Text
+  has described: maybe Text
+  has dependencies: List of Text
+  has registry: maybe Text
+  has foreign: List of ForeignEntry
+  has interpreter: maybe Text
+  has python: List of PythonEntry
+end
+
+type ForeignEntry
+  purpose: One entry of the manifest's `foreign` section (decision AF1): a module and its binding.
+  has name: Text
+  has binding: ForeignModule
+end
+
+type PythonEntry
+  purpose: One module of the manifest's `python` section (decision AL1): its package, its symbols.
+  has name: Text
+  has package: Text
+  has symbols: List of SymbolRename
+end
+
+type PythonSection
+  purpose: The manifest's `python` section (decision AL1): the interpreter, if any, and the modules.
+  has interpreter: maybe Text
+  has modules: List of PythonEntry
+end
+
+type Locked
+  purpose: One entry of the lockfile: the package, its version and the hash of its package file.
+  has name: Text
+  has version: Text
+  has hash: Text
+end
+
+type Registry is one of
+  purpose: Where packages come from: a directory read in place, or a URL fetched into the store.
+  Directory(path: Text)
+  Url(base: Text)
+end
+
+type Root
+  purpose: The project a file belongs to: its directory, its manifest, its lockfile, its registry.
+  has directory: Text
+  has manifest: maybe Manifest
+  has locked: List of Locked
+  has registry: maybe Registry
+  has problems: List of Diagnostic
+end
+
+type PackageFile
+  purpose: The registry's `package.json`; the resolver reads its version and its dependencies.
+  has name: Text
+  has version: Text
+  has described: maybe Text
+  has dependencies: List of Text
+  has toolchain: Text
+end
+
+type Refused
+  purpose: Why a manifest, a lockfile or a package file is not read, in the Rust reader's words.
+  has detail: Text
+  can ToText
+end
+
+type Reading of Value
+  purpose: What reading a manifest-like file gives: the value, or the diagnostic that refuses it.
+  has value: maybe Value
+  has problem: maybe Diagnostic
+end
+
+type Origin
+  purpose: Where an import is read from: the program, or a package, with its root and dependencies.
+  has package: maybe PackageTag
+  has root: Text
+  has dependencies: List of Text
+end
+
+type Pending
+  purpose: An import to resolve, with the file it stands in and its span, for a problem.
+  has path: List of Text
+  has origin: Origin
+  has importer: Text
+  has span: Span
+end
+
+type Step
+  purpose: One import placed: the module's qualified name, the file's base path, origin and tag.
+  has qualified: Text
+  has base: Text
+  has origin: Origin
+  has package: maybe PackageTag
+end
+
+type Placed
+  purpose: An import placed, if it could be, with the problems found and the packages reported.
+  has step: maybe Step
+  has problems: List of Problem
+  has reported: List of Text
+end
+
+type Located
+  purpose: A locked dependency found: its root, its package file and its tag.
+  has root: Text
+  has package_file: PackageFile
+  has package: PackageTag
+end
+
+type Location
+  purpose: The outcome of locating a package: what was found, the problems, the packages reported.
+  has found: maybe Located
+  has problems: List of Problem
+  has reported: List of Text
+end
+
+let library_modules: List of Text be [
+  "prelude",
+  "console",
+  "environment",
+  "time",
+  "random",
+  "filesystem",
+  "json",
+  "http",
+  "server",
+  "csv",
+  "sqlite",
+  "regex",
+  "process",
+  "foreign",
+  "python"
+]
+
+let manifest_file: Text be "renyi.json"
+
+let lock_file: Text be "renyi.lock.json"
+
+let package_file_name: Text be "package.json"
+
+let store: Text be ".renyi/packages"
+
+let manifest_fields: List of Text be [
+  "name",
+  "version",
+  "purpose",
+  "dependencies",
+  "registry",
+  "budgets",
+  "foreign",
+  "python"
+]
+
+let budget_names: List of Text be [
+  "public_per_module",
+  "effect_paths_per_module",
+  "fan_out_per_definition"
+]
+
+let locked_keys: List of Text be ["name", "version", "hash"]
+
+let package_fields: List of Text be [
+  "name",
+  "version",
+  "purpose",
+  "dependencies",
+  "toolchain",
+  "files",
+  "effects"
+]
+
+let file_keys: List of Text be ["path", "hash"]
+
+let effect_keys: List of Text be ["function", "needs", "fails"]
+
+let digits: Text be "0123456789"
+
+let lower_letters: Text be "abcdefghijklmnopqrstuvwxyz"
+
+public function read_file(path: Text) returns Text needs console, environment, filesystem.read
+  purpose: The text of a file named on the command line; a file that cannot be read ends the run.
+
+  match filesystem.read_text(Path(path))
+    when success(text) then return text
+    when failure(error) then
+      console.print_error("renyi: cannot read {path}: {error}")
+      environment.exit(1)
+      return ""
+  end
+end
+
+public function source_of(name: Text, text: Text) returns Source needs filesystem.read
+  purpose: A file as the commands hold it, tagged as a foreign module when its manifest names it.
+
+  let root be root_of(name)
+  let binding be foreign_of_file(root: root, file_name: name)
+  let python be python_unless_foreign(root: root, file_name: name, binding: binding)
+  return file_source(name: name, text: text, package: nothing, binding: binding, python: python)
+end
+
+function python_unless_foreign(root: Root, file_name: Text, binding: maybe ForeignModule)
+  returns maybe PythonModule
+  purpose: The Python binding of a file that is not a foreign module; the `foreign` section wins.
+
+  if binding is not nothing then return nothing end
+  return python_of_file(root: root, file_name: file_name)
+end
+
+function file_source(
+  name: Text,
+  text: Text,
+  package: maybe PackageTag,
+  binding: maybe ForeignModule,
+  python: maybe PythonModule
+)
+  returns Source
+  purpose: A file as the commands hold it, tagged with its package or as a bound module (AF1, AL1).
+
+  let chars be text.characters()
+  let starts be report.line_starts(chars)
+  let declares be binding is not nothing or python is not nothing
+  let front be front_end(text: text, chars: chars, declarations: declares)
+  return Source(
+    name: name,
+    text: text,
+    chars: chars,
+    starts: starts,
+    front: front,
+    package: package,
+    foreign: binding,
+    python: python
+  )
+end
+
+public function print_block(rendered: Text) needs console
+  purpose: Print a rendering that ends with a line break, or nothing when it is empty.
+
+  if rendered.is_empty() then return end
+  console.print(rendered.take(rendered.length() - 1))
+end
+
+public function has_error(diagnostics: List of Diagnostic) returns Boolean
+  purpose: Whether any diagnostic is an error.
+
+  for each diagnostic in diagnostics
+    if diagnostic.is_error then return true end
+  end
+  return false
+end
+
+public function front_end(text: Text, chars: List of Text, declarations: Boolean) returns Front
+  purpose: Lex and parse a text; a syntax error rejects it, with every diagnostic found.
+
+  let lexed be lexer.lex(text)
+  let parsed be parser.parse(lexed: lexed, chars: chars, declarations: declarations)
+  if has_error(parsed.diagnostics) then
+    return Rejected(tree: parsed.tree, diagnostics: parsed.diagnostics)
+  end
+  return Parsed(tree: parsed.tree)
+end
+
+public function library_trees(directory: Text) returns List of Module needs filesystem.read
+  purpose: The standard library's declaration files, parsed in the order the Rust checker uses.
+
+  return for each name in library_modules collect library_tree(directory: directory, name: name)
+end
+
+function library_tree(directory: Text, name: Text) returns Module needs filesystem.read
+  purpose: One library declaration file; a file that is missing or does not parse is a crash.
+
+  let path be "{directory}/{name}.ry"
+  let text be filesystem.read_text(
+    Path(path)
+  ) otherwise crash with "cannot read the library file {path}"
+  match front_end(text: text, chars: text.characters(), declarations: true)
+    when Parsed(tree) then return tree
+    when Rejected(diagnostics) then
+      let head be diagnostics.first() otherwise crash with "the library file {path} does not parse"
+      crash with "the library file {path} does not parse: {head.message}"
+  end
+end
+
+public function check_project(files: List of Source, library: List of Module) returns Project
+  purpose: Declare and check every file together; a file that does not parse declares no module.
+
+  let mutable world be library_world(library)
+  let mutable modules: List of CheckedModule be []
+  for each file in files
+    match file.front
+      when Rejected(diagnostics) then
+        change modules to modules.append(
+          CheckedModule(id: nothing, path: file.name, diagnostics: diagnostics, references: [])
+        )
+      when Parsed(tree) then
+        let mutable diagnostics: List of Diagnostic be []
+        match module_name_mismatch(file_name: file.name, tree: tree)
+          when some(diagnostic) then change diagnostics to [diagnostic]
+          when nothing then change diagnostics to diagnostics
+        end
+        let built be declare.add_module(
+          world: world,
+          tree: tree,
+          is_library: file.foreign is not nothing or file.python is not nothing
+        )
+        change world to declare.set_source_lines(
+          world: built.world,
+          id: built.value,
+          chars: file.chars,
+          starts: file.starts
+        )
+        change world to tagged(world: world, id: built.value, package: file.package)
+        change world to foreign_tagged(world: world, id: built.value, binding: file.foreign)
+        change world to python_tagged(world: world, id: built.value, binding: file.python)
+        change modules to modules.append(
+          CheckedModule(id: built.value, path: file.name, diagnostics: diagnostics, references: [])
+        )
+    end
+  end
+  change world to declare.resolve_all(world)
+  let finished be for each entry in modules collect finish_module(world: world, entry: entry)
+  return Project(world: world, modules: finished)
+end
+
+function tagged(world: World, id: Integer, package: maybe PackageTag) returns World
+  purpose: The module tagged with its package (decision AC1), when it belongs to one.
+
+  let found be package otherwise return world
+  return declare.set_package(world: world, id: id, package: found)
+end
+
+function foreign_tagged(world: World, id: Integer, binding: maybe ForeignModule) returns World
+  purpose: The module tagged as a foreign module (decision AF1), when the manifest names it.
+
+  let found be binding otherwise return world
+  return declare.set_foreign(world: world, id: id, foreign: found)
+end
+
+function python_tagged(world: World, id: Integer, binding: maybe PythonModule) returns World
+  purpose: The module tagged as a Python module (decision AL1), when the manifest names it.
+
+  let found be binding otherwise return world
+  return declare.set_python(world: world, id: id, python: found)
+end
+
+public function check_project_with_problems(
+  files: List of Source,
+  problems: List of Problem,
+  library: List of Module
+)
+  returns Project
+  purpose: `check_project`, with the resolver's problems added to the files they belong to.
+
+  let checked be check_project(files: files, library: library)
+  let mutable modules be checked.modules
+  for each problem in problems
+    change modules to with_problem(modules: modules, problem: problem)
+  end
+  return checked with modules: modules
+end
+
+function with_problem(modules: List of CheckedModule, problem: Problem)
+  returns List of CheckedModule
+  purpose: The problem added to the diagnostics of the first module of its file, kept in order.
+
+  let mutable index be 0
+  for each entry in modules
+    if entry.path is problem.file then
+      let diagnostics be report.sorted_by_start(entry.diagnostics.append(problem.diagnostic))
+      let changed be entry with diagnostics: diagnostics
+      return modules.take(index).append(changed).append_all(modules.drop(index + 1))
+    end
+    change index to index + 1
+  end
+  return modules
+end
+
+function finish_module(world: World, entry: CheckedModule) returns CheckedModule
+  purpose: A declared module's diagnostics, the parser's, the declarations', the bodies', in order.
+
+  let id be entry.id otherwise return entry
+  let declared be declare.module_diagnostics(world: world, owner: id)
+  let checked be bodies.check_module(world: world, module_id: id)
+  let every be entry.diagnostics.append_all(declared).append_all(checked.diagnostics)
+  return entry with diagnostics: report.sorted_by_start(every), references: checked.references
+end
+
+function library_world(library: List of Module) returns World
+  purpose: A world with the standard library declared.
+
+  let mutable world be declare.new_world()
+  for each tree in library
+    let built be declare.add_module(world: world, tree: tree, is_library: true)
+    change world to built.world
+  end
+  return world
+end
+
+function module_name_mismatch(file_name: Text, tree: Module) returns maybe Diagnostic
+  purpose: Decision G3: the module name equals the path, the last segment being the file's stem.
+
+  let segments be effects.names_of(tree.name)
+  let components be path_components(file_name)
+  let last be components.last() otherwise ""
+  let parent_components be components.without_last()
+  let stem be without_extension(last)
+  let name be segments.last() otherwise return nothing
+  let parents be segments.without_last()
+  let fits be parent_components.length() is at least parents.length()
+  if stem is name and fits and tail_matches(parents: parents, components: parent_components) then
+    return nothing
+  end
+  let head be tree.name.first() otherwise crash with "a module name"
+  let tail be tree.name.last() otherwise crash with "a module name"
+  let dotted be segments.join(".")
+  let slashed be segments.join("/")
+  let expected be "{slashed}.ry"
+  let named be "the module is named `{dotted}`, but its file is `{last}`"
+  return report.error(
+    code: "module-name",
+    message: "{named}; the module name equals the path",
+    span: Span(start: head.span.start, stop: tail.span.stop),
+    fix: "rename the module after the file, or the file to `{expected}` (decision G3)"
+  )
+end
+
+function tail_matches(parents: List of Text, components: List of Text) returns Boolean
+  purpose: Whether the module's parent segments equal the path's last directories, from the end.
+
+  let mutable index be 0
+  let parent_count be parents.length()
+  let component_count be components.length()
+  repeat until index is parent_count
+    let parent be parents.at(parent_count - 1 - index) otherwise crash with "a parent segment"
+    let component be components.at(component_count - 1 - index) otherwise return false
+    if parent is not component then return false end
+    change index to index + 1
+  end
+  return true
+end
+
+function path_components(file_name: Text) returns List of Text
+  purpose: The non-empty components of a path, split at either separator.
+
+  let components be
+    for each component in file_name.replace(old: "\\", new: "/").split("/")
+    where component is not ""
+    collect component
+  return components
+end
+
+function without_extension(last: Text) returns Text
+  purpose: The stem of a file name: `.ry` or `.renyi` taken off.
+
+  if last.ends_with(".ry") then return last.take(last.length() - 3) end
+  if last.ends_with(".renyi") then return last.take(last.length() - 6) end
+  return last
+end
+
+public function resolve(program: Source) returns Resolved needs filesystem.read
+  purpose: A program's imports, transitively: own files from the project root, dependencies (AC1).
+
+  let root be root_of(program.name)
+  let mutable files be [program]
+  let mutable problems be
+    for each diagnostic in root.problems
+    collect Problem(file: program.name, diagnostic: diagnostic)
+  let origin be Origin(
+    package: nothing,
+    root: root.directory,
+    dependencies: manifest_dependencies(root.manifest)
+  )
+  let mutable seen: List of Text be []
+  let mutable reported: List of Text be []
+  let mutable queue be pending_imports(front: program.front, origin: origin, importer: program.name)
+  repeat until queue.is_empty()
+    let pending be queue.last() otherwise break
+    change queue to queue.without_last()
+    let head be pending.path.first() otherwise continue
+    let placed be place(root: root, pending: pending, head: head, reported: reported)
+    change problems to problems.append_all(placed.problems)
+    change reported to placed.reported
+    let step be placed.step otherwise continue
+    if seen.contains(step.qualified) then continue end
+    change seen to seen.append(step.qualified)
+    let binding be step_binding(root: root, step: step)
+    let python be step_python(root: root, step: step, binding: binding)
+    let found be read_source(
+      base: step.base,
+      package: step.package,
+      binding: binding,
+      python: python
+    ) otherwise continue
+    let imports be pending_imports(front: found.front, origin: step.origin, importer: found.name)
+    change queue to queue.append_all(imports)
+    change files to files.append(found)
+  end
+  return Resolved(files: files, problems: problems)
+end
+
+function manifest_dependencies(manifest: maybe Manifest) returns List of Text
+  purpose: The names of the manifest's dependencies; none without a manifest.
+
+  let found be manifest otherwise return []
+  return found.dependencies
+end
+
+function pending_imports(front: Front, origin: Origin, importer: Text) returns List of Pending
+  purpose: The imports of a file, without the library's; a rejected file's partial tree counts too.
+
+  let tree be
+    match front
+      when Parsed(tree) then tree
+      when Rejected(tree) then tree
+    end
+  let pending be
+    for each imported in tree.imports
+    where not is_library_import(effects.names_of(imported.path))
+    collect Pending(
+      path: effects.names_of(imported.path),
+      origin: origin,
+      importer: importer,
+      span: imported.span
+    )
+  return pending
+end
+
+function is_library_import(path: List of Text) returns Boolean
+  purpose: Whether an import names the standard library.
+
+  let head be path.first() otherwise return false
+  return head is "std"
+end
+
+function place(root: Root, pending: Pending, head: Text, reported: List of Text)
+  returns Placed
+  needs filesystem.read
+  purpose: An import placed: a dependency from the registry or the store, else an own file.
+
+  if not pending.origin.dependencies.contains(head) then
+    return Placed(step: own_step(pending), problems: [], reported: reported)
+  end
+  let location be locate_package(root: root, name: head, pending: pending, reported: reported)
+  match location.found
+    when some(located) then
+      let step be package_step(located: located, pending: pending, name: head)
+      return Placed(step: step, problems: location.problems, reported: location.reported)
+    when nothing then
+      return Placed(step: nothing, problems: location.problems, reported: location.reported)
+  end
+end
+
+function own_step(pending: Pending) returns Step
+  purpose: An own file of the program or of the package from its root, named after the package.
+
+  let dotted be pending.path.join(".")
+  let qualified be
+    match pending.origin.package
+      when some(package) then
+        if dotted is package.name then dotted otherwise "{package.name}.{dotted}" end
+      when nothing then dotted
+    end
+  let base be join_path(base: pending.origin.root, relative: pending.path.join("/"))
+  return Step(
+    qualified: qualified,
+    base: base,
+    origin: pending.origin,
+    package: pending.origin.package
+  )
+end
+
+function package_step(located: Located, pending: Pending, name: Text) returns Step
+  purpose: A dependency's file from the package's root; the root module for a bare import.
+
+  let rest be pending.path.drop(1)
+  let relative be if rest.is_empty() then name otherwise rest.join("/") end
+  let origin be Origin(
+    package: located.package,
+    root: located.root,
+    dependencies: located.package_file.dependencies
+  )
+  return Step(
+    qualified: pending.path.join("."),
+    base: join_path(base: located.root, relative: relative),
+    origin: origin,
+    package: located.package
+  )
+end
+
+function read_source(
+  base: Text,
+  package: maybe PackageTag,
+  binding: maybe ForeignModule,
+  python: maybe PythonModule
+)
+  returns maybe Source
+  needs filesystem.read
+  purpose: An imported file with the `.ry` or the `.renyi` extension (decision G3), parsed.
+
+  for each extension in ["ry", "renyi"]
+    let path be "{base}.{extension}"
+    let text be filesystem.read_text(Path(path)) otherwise continue
+    return file_source(name: path, text: text, package: package, binding: binding, python: python)
+  end
+  return nothing
+end
+
+function step_binding(root: Root, step: Step) returns maybe ForeignModule
+  purpose: The foreign binding of an own file of the program (decision AF1); a dependency has none.
+
+  if step.package is not nothing then return nothing end
+  return foreign_of_module(root: root, name: step.qualified)
+end
+
+function step_python(root: Root, step: Step, binding: maybe ForeignModule)
+  returns maybe PythonModule
+  purpose: The Python binding of an own file that is not a foreign module; a dependency has none.
+
+  if step.package is not nothing or binding is not nothing then return nothing end
+  return python_of_module(root: root, name: step.qualified)
+end
+
+function python_of_module(root: Root, name: Text) returns maybe PythonModule
+  purpose: The binding of a Python module of the project (decision AL1), by its qualified name.
+
+  let manifest be root.manifest otherwise return nothing
+  let entry be python_named(modules: manifest.python, name: name) otherwise return nothing
+  return PythonModule(
+    package: entry.package,
+    symbols: entry.symbols,
+    interpreter: manifest.interpreter,
+    root: root.directory
+  )
+end
+
+function python_of_file(root: Root, file_name: Text) returns maybe PythonModule
+  purpose: The binding of a file that declares a Python module: its path from the root is its name.
+
+  let name be module_of_file(root: root, file_name: file_name) otherwise return nothing
+  return python_of_module(root: root, name: name)
+end
+
+function python_named(modules: List of PythonEntry, name: Text) returns maybe PythonEntry
+  purpose: The entry of the `python` section for a module name, if there is one.
+
+  for each entry in modules
+    if entry.name is name then return entry end
+  end
+  return nothing
+end
+
+function foreign_of_module(root: Root, name: Text) returns maybe ForeignModule
+  purpose: The binding of a foreign module of the project (decision AF1), by its qualified name.
+
+  let manifest be root.manifest otherwise return nothing
+  let entry be foreign_named(modules: manifest.foreign, name: name) otherwise return nothing
+  return entry.binding
+end
+
+function foreign_of_file(root: Root, file_name: Text) returns maybe ForeignModule
+  purpose: The binding of a file that declares a foreign module: its path from the root is its name.
+
+  let name be module_of_file(root: root, file_name: file_name) otherwise return nothing
+  return foreign_of_module(root: root, name: name)
+end
+
+function module_of_file(root: Root, file_name: Text) returns maybe Text
+  purpose: The module a file declares by its path from the project root, without the extension.
+
+  let mutable relative be file_name
+  if not root.directory.is_empty() then
+    if not file_name.starts_with(root.directory) then return nothing end
+    change relative to file_name.drop(root.directory.length())
+  end
+  let components be path_components(relative)
+  let last be components.last() otherwise return nothing
+  if not (last.ends_with(".ry") or last.ends_with(".renyi")) then return nothing end
+  let segments be components.without_last().append(without_extension(last))
+  return segments.join(".")
+end
+
+function foreign_named(modules: List of ForeignEntry, name: Text) returns maybe ForeignEntry
+  purpose: The entry of the `foreign` section for a module name, if there is one.
+
+  for each entry in modules
+    if entry.name is name then return entry end
+  end
+  return nothing
+end
+
+function locate_package(root: Root, name: Text, pending: Pending, reported: List of Text)
+  returns Location
+  needs filesystem.read
+  purpose: A locked dependency's root, package file and tag, verified against the lockfile.
+
+  match find_locked(packages: root.locked, name: name)
+    when some(locked) then
+      return locate_locked(root: root, locked: locked, pending: pending, reported: reported)
+    when nothing then
+      let message be "`{name}` is a dependency of {manifest_file} but not in {lock_file}"
+      let fix be "run `renyi add {name}`"
+      return missing(pending: pending, reported: reported, name: name, message: message, fix: fix)
+  end
+end
+
+function locate_locked(root: Root, locked: Locked, pending: Pending, reported: List of Text)
+  returns Location
+  needs filesystem.read
+  purpose: The locked package from the registry or the store; without a registry it is missing.
+
+  let name be locked.name
+  match root_of_package(root: root, name: name, version: locked.version)
+    when some(package_root) then
+      return locate_at(root: package_root, locked: locked, pending: pending, reported: reported)
+    when nothing then
+      let message be "{manifest_file} names no `registry` to read `{name}` from"
+      let fix be "add `\"registry\"` to the manifest: a directory or a URL"
+      return missing(pending: pending, reported: reported, name: name, message: message, fix: fix)
+  end
+end
+
+function locate_at(root: Text, locked: Locked, pending: Pending, reported: List of Text)
+  returns Location
+  needs filesystem.read
+  purpose: The package file at the package's root, read and verified; missing when not there.
+
+  let name be locked.name
+  let package_path be join_path(base: root, relative: package_file_name)
+  match filesystem.read_text(Path(package_path))
+    when success(text) then
+      return verify_package(
+        root: root,
+        path: package_path,
+        text: text,
+        locked: locked,
+        pending: pending,
+        reported: reported
+      )
+    otherwise
+      let message be "`{name}` {locked.version} is locked but not at {root}"
+      let fix be "run `renyi fetch` to get the locked packages"
+      return missing(pending: pending, reported: reported, name: name, message: message, fix: fix)
+  end
+end
+
+function verify_package(
+  root: Text,
+  path: Text,
+  text: Text,
+  locked: Locked,
+  pending: Pending,
+  reported: List of Text
+)
+  returns Location
+  purpose: The package file read and held to the lockfile's hash; a mismatch is reported, and read.
+
+  let name be locked.name
+  let package_file be
+    match read_package_file(text)
+      when success(found) then found
+      when failure(Refused(detail)) then
+        return unreadable(
+          path: path,
+          detail: detail,
+          pending: pending,
+          reported: reported,
+          name: name
+        )
+    end
+  let located be Located(
+    root: root,
+    package_file: package_file,
+    package: PackageTag(name: name, version: locked.version)
+  )
+  if hash_of(text) is locked.hash then
+    return Location(found: located, problems: [], reported: reported)
+  end
+  let message be "`{name}` {locked.version} is not the package {lock_file} names: its hash differs"
+  let fix be "run `renyi fetch` to get the locked package, or `renyi update` to take this one"
+  let diagnostic be report.error(
+    code: "package-mismatch",
+    message: message,
+    span: pending.span,
+    fix: fix
+  )
+  let noted be note(reported: reported, name: name, file: pending.importer, diagnostic: diagnostic)
+  return noted with found: located
+end
+
+function unreadable(path: Text, detail: Text, pending: Pending, reported: List of Text, name: Text)
+  returns Location
+  purpose: A package file that cannot be read: `manifest-invalid` on the import.
+
+  let diagnostic be manifest_invalid(file: path, detail: detail, span: pending.span)
+  return note(reported: reported, name: name, file: pending.importer, diagnostic: diagnostic)
+end
+
+function missing(pending: Pending, reported: List of Text, name: Text, message: Text, fix: Text)
+  returns Location
+  purpose: A package that cannot be read: `package-missing` on the import, once per package.
+
+  let diagnostic be report.error(
+    code: "package-missing",
+    message: message,
+    span: pending.span,
+    fix: fix
+  )
+  return note(reported: reported, name: name, file: pending.importer, diagnostic: diagnostic)
+end
+
+function note(reported: List of Text, name: Text, file: Text, diagnostic: Diagnostic)
+  returns Location
+  purpose: The problem noted for the file, unless the package was reported already; nothing found.
+
+  if reported.contains(name) then
+    return Location(found: nothing, problems: [], reported: reported)
+  end
+  let problem be Problem(file: file, diagnostic: diagnostic)
+  return Location(found: nothing, problems: [problem], reported: reported.append(name))
+end
+
+function find_locked(packages: List of Locked, name: Text) returns maybe Locked
+  purpose: The lockfile's entry of a package.
+
+  for each locked in packages
+    if locked.name is name then return locked end
+  end
+  return nothing
+end
+
+function root_of_package(root: Root, name: Text, version: Text) returns maybe Text
+  purpose: Where a locked package's files are: the registry itself for a directory, else the store.
+
+  match root.registry
+    when some(Directory(path)) then return join_path(base: path, relative: "{name}/{version}")
+    when some(Url) then return join_path(base: root.directory, relative: "{store}/{name}/{version}")
+    when nothing then return nothing
+  end
+end
+
+function manifest_invalid(file: Text, detail: Text, span: Span) returns Diagnostic
+  purpose: A manifest, a lockfile or a package file that cannot be read.
+
+  return report.error(
+    code: "manifest-invalid",
+    message: "{file}: {detail}",
+    span: span,
+    fix: "fix the file, or write it again with `renyi add`"
+  )
+end
+
+function root_of(file_name: Text) returns Root needs filesystem.read
+  purpose: The project of a file: its directories walked up, textually, to the nearest `renyi.json`.
+
+  let own be directory_of(file_name)
+  return root_above(directory: own, own: own)
+end
+
+function root_above(directory: Text, own: Text) returns Root needs filesystem.read
+  purpose: The nearest `renyi.json` at or above the directory, else the file's directory (J17).
+
+  let manifest_path be join_path(base: directory, relative: manifest_file)
+  match filesystem.read_text(Path(manifest_path))
+    when success(text) then
+      return root_at(directory: directory, manifest_path: manifest_path, text: text)
+    otherwise
+      let parent be directory_of(directory)
+      if directory.is_empty() or (parent.is_empty() and is_absolute(directory)) then
+        return Root(directory: own, manifest: nothing, locked: [], registry: nothing, problems: [])
+      end
+      return root_above(directory: parent, own: own)
+  end
+end
+
+function root_at(directory: Text, manifest_path: Text, text: Text)
+  returns Root
+  needs filesystem.read
+  purpose: A project with its manifest, its lockfile when there is one, and its registry.
+
+  let manifest be manifest_reading(path: manifest_path, text: text)
+  let lock be lock_reading(join_path(base: directory, relative: lock_file))
+  return Root(
+    directory: directory,
+    manifest: manifest.value,
+    locked: lock.value otherwise [],
+    registry: registry_of(manifest: manifest.value, directory: directory),
+    problems: present([manifest.problem, lock.problem])
+  )
+end
+
+function manifest_reading(path: Text, text: Text) returns Reading of Manifest
+  purpose: `renyi.json` read, or the diagnostic that refuses it, without a position.
+
+  let none: maybe Manifest be nothing
+  match read_manifest(text)
+    when success(manifest) then return Reading(value: manifest, problem: nothing)
+    when failure(Refused(detail)) then
+      let problem be manifest_invalid(file: path, detail: detail, span: Span(start: 0, stop: 0))
+      return Reading(value: none, problem: problem)
+  end
+end
+
+function lock_reading(path: Text) returns Reading of List of Locked needs filesystem.read
+  purpose: `renyi.lock.json` read when there is one, or the diagnostic that refuses it.
+
+  let none: maybe List of Locked be nothing
+  let absent be Reading(value: none, problem: nothing)
+  let text be filesystem.read_text(Path(path)) otherwise return absent
+  match read_lock(text)
+    when success(packages) then return Reading(value: packages, problem: nothing)
+    when failure(Refused(detail)) then
+      let problem be manifest_invalid(file: path, detail: detail, span: Span(start: 0, stop: 0))
+      return Reading(value: none, problem: problem)
+  end
+end
+
+function present(problems: List of maybe Diagnostic) returns List of Diagnostic
+  purpose: The diagnostics that are there, in order.
+
+  let mutable found: List of Diagnostic be []
+  for each problem in problems
+    let diagnostic be problem otherwise continue
+    change found to found.append(diagnostic)
+  end
+  return found
+end
+
+function registry_of(manifest: maybe Manifest, directory: Text) returns maybe Registry
+  purpose: The manifest's registry, read from the project root.
+
+  let found be manifest otherwise return nothing
+  let spec be found.registry otherwise return nothing
+  return parse_registry(spec: spec, root: directory)
+end
+
+function parse_registry(spec: Text, root: Text) returns Registry
+  purpose: An `http://` or `https://` base without its trailing `/`, or a directory from the root.
+
+  if spec.starts_with("http://") or spec.starts_with("https://") then
+    let mutable base be spec
+    repeat until not base.ends_with("/")
+      change base to base.take(base.length() - 1)
+    end
+    return Url(base: base)
+  end
+  if is_absolute(spec) then return Directory(path: join_path(base: "", relative: spec)) end
+  return Directory(path: join_path(base: root, relative: spec))
+end
+
+function hash_of(text: Text) returns Text
+  purpose: `sha256:` and the hex digest, as the index spells content hashes.
+
+  let digest be text.to_bytes().sha256()
+  return "sha256:{digest}"
+end
+
+function parse_json(text: Text) returns JsonValue or fails with JsonError
+  purpose: A JSON document as a value, or why it is not one.
+
+  let value: JsonValue be json.parse(text) otherwise fail
+  return value
+end
+
+function document(text: Text, what: Text) returns Map of Text to JsonValue or fails with Refused
+  purpose: The fields of a JSON object, or why the text is not one, in the Rust reader's words.
+
+  match parse_json(text)
+    when success(JsonObject(fields)) then return fields
+    when failure(Malformed(detail, line)) then
+      fail with Refused(detail: "{what} is not JSON: {detail} (line {line})")
+    otherwise fail with Refused(detail: "{what} is not a JSON object")
+  end
+end
+
+function keys_known(fields: Map of Text to JsonValue, allowed: List of Text, what: Text)
+  or fails with Refused
+  purpose: Every key is one the format has; the first that is not refuses the file.
+
+  for each key in fields.keys()
+    if not allowed.contains(key) then
+      fail with Refused(detail: "`{key}` is not a field of {what}")
+    end
+  end
+end
+
+function required_text(fields: Map of Text to JsonValue, name: Text, what: Text)
+  returns Text
+  or fails with Refused
+  purpose: A string field the format requires.
+
+  match fields.get(name)
+    when some(JsonText(value)) then return value
+    when nothing then fail with Refused(detail: "{what} has no `{name}`")
+    otherwise fail with Refused(detail: "`{name}` of {what} is not a string")
+  end
+end
+
+function optional_text(fields: Map of Text to JsonValue, name: Text, what: Text)
+  returns maybe Text
+  or fails with Refused
+  purpose: A string field that may be absent or null.
+
+  match fields.get(name)
+    when some(JsonText(value)) then return value
+    when some(JsonNull) then return nothing
+    when nothing then return nothing
+    otherwise fail with Refused(detail: "`{name}` of {what} is not a string")
+  end
+end
+
+function package_name(fields: Map of Text to JsonValue, what: Text)
+  returns Text
+  or fails with Refused
+  purpose: The `name` field, a package name.
+
+  let name be required_text(fields: fields, name: "name", what: what) otherwise fail
+  if not is_package_name(name) then
+    let advice be "write lower-case letters, digits and `_`, starting with a letter"
+    fail with Refused(detail: "`{name}` is not a package name; {advice}")
+  end
+  return name
+end
+
+function version_text(fields: Map of Text to JsonValue, name: Text, what: Text)
+  returns Text
+  or fails with Refused
+  purpose: A field holding a version, `major.minor.patch`.
+
+  let spelled be required_text(fields: fields, name: name, what: what) otherwise fail
+  if not is_version(spelled) then
+    fail with Refused(detail: "{what}: `{spelled}` is not a version; write `major.minor.patch`")
+  end
+  return spelled
+end
+
+function dependency_names(fields: Map of Text to JsonValue, what: Text)
+  returns List of Text
+  or fails with Refused
+  purpose: The names of the `dependencies` object, each with a version required.
+
+  let entries be
+    match fields.get("dependencies")
+      when some(JsonObject(fields: inner)) then inner
+      when some(JsonNull) then return []
+      when nothing then return []
+      otherwise fail with Refused(detail: "`dependencies` of {what} is not an object")
+    end
+  let mutable names: List of Text be []
+  for each key, requirement in entries
+    if not is_package_name(key) then
+      fail with Refused(detail: "`{key}` in the dependencies of {what} is not a package name")
+    end
+    let spelled be
+      match requirement
+        when JsonText(value) then value
+        otherwise fail with Refused(detail: "the version of `{key}` in {what} is not a string")
+      end
+    if not is_version(spelled) then
+      fail with Refused(detail: "{what}: `{spelled}` is not a version; write `major.minor.patch`")
+    end
+    change names to names.append(key)
+  end
+  return names
+end
+
+function budgets_checked(fields: Map of Text to JsonValue, what: Text) or fails with Refused
+  purpose: `budgets` refused as the Rust reader refuses it; the numbers themselves are not needed.
+
+  let inner be
+    match fields.get("budgets")
+      when some(JsonObject(fields: found)) then found
+      when some(JsonNull) then return
+      when nothing then return
+      otherwise fail with Refused(detail: "`budgets` of {what} is not an object")
+    end
+  keys_known(fields: inner, allowed: budget_names, what: "`budgets`") otherwise fail
+  for each name in budget_names
+    match inner.get(name)
+      when some(JsonNumber(value)) then
+        if not is_whole(value) then
+          fail with Refused(detail: "`{name}` of `budgets` is not a whole number")
+        end
+      when some(JsonNull) then continue
+      when nothing then continue
+      otherwise fail with Refused(detail: "`{name}` of `budgets` is not a number")
+    end
+  end
+end
+
+function read_manifest(text: Text) returns Manifest or fails with Refused
+  purpose: `renyi.json`, read as strictly as the Rust resolver reads it, in the same order.
+
+  let what be "the manifest"
+  let fields be document(text: text, what: what) otherwise fail
+  keys_known(fields: fields, allowed: manifest_fields, what: what) otherwise fail
+  budgets_checked(fields: fields, what: what) otherwise fail
+  let name be package_name(fields: fields, what: what) otherwise fail
+  let version be version_text(fields: fields, name: "version", what: what) otherwise fail
+  let described be optional_text(fields: fields, name: "purpose", what: what) otherwise fail
+  let dependencies be dependency_names(fields: fields, what: what) otherwise fail
+  let registry be optional_text(fields: fields, name: "registry", what: what) otherwise fail
+  let bindings be foreign_modules(fields: fields, what: what) otherwise fail
+  let section be python_section(fields: fields, what: what) otherwise fail
+  return Manifest(
+    name: name,
+    version: version,
+    described: described,
+    dependencies: dependencies,
+    registry: registry,
+    foreign: bindings,
+    interpreter: section.interpreter,
+    python: section.modules
+  )
+end
+
+function python_section(fields: Map of Text to JsonValue, what: Text)
+  returns PythonSection
+  or fails with Refused
+  purpose: The `python` section (decision AL1): the interpreter, each module's package and symbols.
+
+  let none: maybe Text be nothing
+  let section be
+    match fields.get("python")
+      when some(JsonObject(fields: inner)) then inner
+      when some(JsonNull) then return PythonSection(interpreter: none, modules: [])
+      when nothing then return PythonSection(interpreter: none, modules: [])
+      otherwise fail with Refused(detail: "`python` of {what} is not an object")
+    end
+  let section_what be "`python` of {what}"
+  keys_known(
+    fields: section,
+    allowed: ["interpreter", "modules"],
+    what: section_what
+  ) otherwise fail
+  let interpreter be optional_text(
+    fields: section,
+    name: "interpreter",
+    what: section_what
+  ) otherwise fail
+  let modules be python_modules(
+    section: section,
+    what: what,
+    section_what: section_what
+  ) otherwise fail
+  return PythonSection(interpreter: interpreter, modules: modules)
+end
+
+function python_modules(section: Map of Text to JsonValue, what: Text, section_what: Text)
+  returns List of PythonEntry
+  or fails with Refused
+  purpose: The `modules` object of the `python` section: each module's package and renamed symbols.
+
+  let entries be
+    match section.get("modules")
+      when some(JsonObject(fields: inner)) then inner
+      when some(JsonNull) then return []
+      when nothing then return []
+      otherwise fail with Refused(detail: "`modules` of {section_what} is not an object")
+    end
+  let mutable modules: List of PythonEntry be []
+  for each name, value in entries
+    if not is_module_name(name) then
+      fail with Refused(detail: "`{name}` in the Python modules of {what} is not a module name")
+    end
+    if python_named(modules: modules, name: name) is not nothing then
+      fail with Refused(detail: "`{name}` is given twice in the Python modules of {what}")
+    end
+    let entry_what be "the Python module `{name}` of {what}"
+    let entry be python_entry(name: name, value: value, what: entry_what) otherwise fail
+    change modules to modules.append(entry)
+  end
+  return modules
+end
+
+function python_entry(name: Text, value: JsonValue, what: Text)
+  returns PythonEntry
+  or fails with Refused
+  purpose: One Python module of the manifest: its `package` (its own name when left out), `symbols`.
+
+  let entry be
+    match value
+      when JsonObject(fields: found) then found
+      otherwise fail with Refused(detail: "{what} is not an object")
+    end
+  keys_known(fields: entry, allowed: ["package", "symbols"], what: what) otherwise fail
+  let package be optional_text(fields: entry, name: "package", what: what) otherwise fail
+  let import_name be package otherwise name
+  if import_name.is_empty() then fail with Refused(detail: "`package` of {what} is empty") end
+  let symbols be symbol_renames(entry: entry, what: what) otherwise fail
+  return PythonEntry(name: name, package: import_name, symbols: symbols)
+end
+
+function foreign_modules(fields: Map of Text to JsonValue, what: Text)
+  returns List of ForeignEntry
+  or fails with Refused
+  purpose: The `foreign` section (decision AF1): each module's libraries and its renamed symbols.
+
+  let entries be
+    match fields.get("foreign")
+      when some(JsonObject(fields: inner)) then inner
+      when some(JsonNull) then return []
+      when nothing then return []
+      otherwise fail with Refused(detail: "`foreign` of {what} is not an object")
+    end
+  let mutable modules: List of ForeignEntry be []
+  for each name, value in entries
+    if not is_module_name(name) then
+      fail with Refused(detail: "`{name}` in the foreign modules of {what} is not a module name")
+    end
+    if foreign_named(modules: modules, name: name) is not nothing then
+      fail with Refused(detail: "`{name}` is given twice in the foreign modules of {what}")
+    end
+    let entry_what be "the foreign module `{name}` of {what}"
+    let binding be foreign_entry(value: value, what: entry_what) otherwise fail
+    change modules to modules.append(ForeignEntry(name: name, binding: binding))
+  end
+  return modules
+end
+
+function foreign_entry(value: JsonValue, what: Text) returns ForeignModule or fails with Refused
+  purpose: One foreign module of the manifest: its `library` list, in order, and its `symbols`.
+
+  let entry be
+    match value
+      when JsonObject(fields: found) then found
+      otherwise fail with Refused(detail: "{what} is not an object")
+    end
+  keys_known(fields: entry, allowed: ["library", "symbols"], what: what) otherwise fail
+  let library_json be
+    match entry.get("library")
+      when some(found) then found
+      when nothing then fail with Refused(detail: "{what} has no `library`")
+    end
+  let libraries be text_list(value: library_json, what: "`library` of {what}") otherwise fail
+  if libraries.is_empty() then fail with Refused(detail: "`library` of {what} is empty") end
+  let symbols be symbol_renames(entry: entry, what: what) otherwise fail
+  return ForeignModule(libraries: libraries, symbols: symbols)
+end
+
+function text_list(value: JsonValue, what: Text) returns List of Text or fails with Refused
+  purpose: A JSON list of strings, refused in the Rust reader's words.
+
+  let items be
+    match value
+      when JsonArray(items: found) then found
+      otherwise fail with Refused(detail: "{what} is not a list")
+    end
+  let mutable texts: List of Text be []
+  for each item in items
+    match item
+      when JsonText(value: text) then change texts to texts.append(text)
+      otherwise fail with Refused(detail: "{what} holds something that is not a string")
+    end
+  end
+  return texts
+end
+
+function symbol_renames(entry: Map of Text to JsonValue, what: Text)
+  returns List of SymbolRename
+  or fails with Refused
+  purpose: The `symbols` object of a foreign module: Renyi name to C symbol, in the order given.
+
+  let inner be
+    match entry.get("symbols")
+      when some(JsonObject(fields: found)) then found
+      when some(JsonNull) then return []
+      when nothing then return []
+      otherwise fail with Refused(detail: "`symbols` of {what} is not an object")
+    end
+  let mutable renames: List of SymbolRename be []
+  for each name, value in inner
+    let symbol be
+      match value
+        when JsonText(value: spelled) then spelled
+        otherwise fail with Refused(detail: "`{name}` in the symbols of {what} is not a string")
+      end
+    change renames to renames.append(SymbolRename(name: name, symbol: symbol))
+  end
+  return renames
+end
+
+function is_module_name(name: Text) returns Boolean
+  purpose: A module name: package-name segments separated by dots.
+
+  for each segment in name.split(".")
+    if not is_package_name(segment) then return false end
+  end
+  return true
+end
+
+function read_lock(text: Text) returns List of Locked or fails with Refused
+  purpose: `renyi.lock.json`, read as strictly as the Rust resolver reads it, in the same order.
+
+  let what be "the lockfile"
+  let fields be document(text: text, what: what) otherwise fail
+  keys_known(fields: fields, allowed: ["packages"], what: what) otherwise fail
+  let items be
+    match fields.get("packages")
+      when some(JsonArray(items: found)) then found
+      when nothing then fail with Refused(detail: "{what} has no `packages`")
+      otherwise fail with Refused(detail: "`packages` of {what} is not a list")
+    end
+  let not_object be "`packages` of {what} holds something that is not an object"
+  let entry_what be "a package of the lockfile"
+  let mutable packages: List of Locked be []
+  for each item in items
+    let entry be
+      match item
+        when JsonObject(fields: found) then found
+        otherwise fail with Refused(detail: not_object)
+      end
+    keys_known(fields: entry, allowed: locked_keys, what: entry_what) otherwise fail
+    let name be package_name(fields: entry, what: entry_what) otherwise fail
+    if find_locked(packages: packages, name: name) is not nothing then
+      fail with Refused(detail: "`{name}` is locked twice")
+    end
+    let version be version_text(fields: entry, name: "version", what: entry_what) otherwise fail
+    let hash be required_text(fields: entry, name: "hash", what: entry_what) otherwise fail
+    change packages to packages.append(Locked(name: name, version: version, hash: hash))
+  end
+  return packages
+end
+
+function read_package_file(text: Text) returns PackageFile or fails with Refused
+  purpose: The registry's `package.json`, read as strictly as the Rust resolver reads it.
+
+  let what be "the package file"
+  let fields be document(text: text, what: what) otherwise fail
+  keys_known(fields: fields, allowed: package_fields, what: what) otherwise fail
+  entries_checked(fields: fields, name: "files", keys: file_keys, what: what) otherwise fail
+  entries_checked(fields: fields, name: "effects", keys: effect_keys, what: what) otherwise fail
+  let name be package_name(fields: fields, what: what) otherwise fail
+  let version be version_text(fields: fields, name: "version", what: what) otherwise fail
+  let described be optional_text(fields: fields, name: "purpose", what: what) otherwise fail
+  let dependencies be dependency_names(fields: fields, what: what) otherwise fail
+  let toolchain be required_text(fields: fields, name: "toolchain", what: what) otherwise fail
+  return PackageFile(
+    name: name,
+    version: version,
+    described: described,
+    dependencies: dependencies,
+    toolchain: toolchain
+  )
+end
+
+function entries_checked(
+  fields: Map of Text to JsonValue,
+  name: Text,
+  keys: List of Text,
+  what: Text
+)
+  or fails with Refused
+  purpose: A list of objects (`files`, `effects`) refused as the Rust reader refuses it.
+
+  let items be
+    match fields.get(name)
+      when some(JsonArray(items: found)) then found
+      when nothing then fail with Refused(detail: "{what} has no `{name}`")
+      otherwise fail with Refused(detail: "`{name}` of {what} is not a list")
+    end
+  let not_object be "`{name}` of {what} holds something that is not an object"
+  let file_entry be "a file of the package file"
+  let effect_entry be "an effect of the package file"
+  let entry_what be if name is "files" then file_entry otherwise effect_entry end
+  for each item in items
+    let entry be
+      match item
+        when JsonObject(fields: found) then found
+        otherwise fail with Refused(detail: not_object)
+      end
+    keys_known(fields: entry, allowed: keys, what: entry_what) otherwise fail
+    for each key in keys
+      entry_checked(entry: entry, key: key, what: entry_what) otherwise fail
+    end
+  end
+end
+
+function entry_checked(entry: Map of Text to JsonValue, key: Text, what: Text) or fails with Refused
+  purpose: One field of a file or an effect entry: `needs` and `fails` are lists of strings.
+
+  if key is "needs" or key is "fails" then
+    let items be
+      match entry.get(key)
+        when some(JsonArray(items: found)) then found
+        when nothing then fail with Refused(detail: "{what} has no `{key}`")
+        otherwise fail with Refused(detail: "`{key}` of {what} is not a list")
+      end
+    let not_string be "`{key}` of {what} holds something that is not a string"
+    for each item in items
+      match item
+        when JsonText then continue
+        otherwise fail with Refused(detail: not_string)
+      end
+    end
+    return
+  end
+  match entry.get(key)
+    when some(JsonText) then return
+    when nothing then fail with Refused(detail: "{what} has no `{key}`")
+    otherwise fail with Refused(detail: "`{key}` of {what} is not a string")
+  end
+end
+
+function is_whole(value: Decimal) returns Boolean
+  purpose: Whether a number is a whole number of zero or more.
+
+  let whole be value.truncated()
+  return whole.to_decimal() is value and whole is at least 0
+end
+
+function is_version(text: Text) returns Boolean
+  purpose: `major.minor.patch`: three numbers without leading zeros.
+
+  let parts be text.split(".")
+  if parts.length() is not 3 then return false end
+  for each part in parts
+    if part.is_empty() then return false end
+    if part.length() is greater than 1 and part.starts_with("0") then return false end
+    for each ch in part.characters()
+      if not digits.contains(ch) then return false end
+    end
+  end
+  return true
+end
+
+function is_package_name(name: Text) returns Boolean
+  purpose: Lower-case letters, digits and `_`, starting with a letter.
+
+  let chars be name.characters()
+  let head be chars.first() otherwise return false
+  if not lower_letters.contains(head) then return false end
+  for each ch in chars
+    let allowed be lower_letters.contains(ch) or digits.contains(ch) or ch is "_"
+    if not allowed then return false end
+  end
+  return true
+end
+
+public function directory_of(file_name: Text) returns Text
+  purpose: The part of a path before its last separator; empty for a bare file name.
+
+  let mutable last_separator: maybe Integer be nothing
+  let mutable index be 0
+  for each ch in file_name.characters()
+    if ch is "/" or ch is "\\" then change last_separator to index end
+    change index to index + 1
+  end
+  let cut be last_separator otherwise return ""
+  return file_name.take(cut)
+end
+
+function is_absolute(path: Text) returns Boolean
+  purpose: A path that does not depend on the working directory: from the root, or from a drive.
+
+  if path.starts_with("/") or path.starts_with("\\") then return true end
+  let second be path.characters().at(1) otherwise return false
+  return second is ":"
+end
+
+public function join_path(base: Text, relative: Text) returns Text
+  purpose: `base/relative` with `/` as the separator and `.` and `..` folded, textually (AC1).
+
+  let parts be if is_absolute(relative) then [relative] otherwise [base, relative] end
+  let mutable segments: List of Text be []
+  let mutable rooted be false
+  for each part in parts
+    if part.is_empty() then continue end
+    let slashed be part.replace(old: "\\", new: "/")
+    if slashed.starts_with("/") and segments.is_empty() then change rooted to true end
+    for each segment in slashed.split("/")
+      if segment is "" or segment is "." then continue end
+      if segment is ".." then
+        change segments to folded(segments: segments, rooted: rooted)
+        continue
+      end
+      change segments to segments.append(segment)
+    end
+  end
+  let joined be segments.join("/")
+  if rooted then return "/{joined}" end
+  return joined
+end
+
+function folded(segments: List of Text, rooted: Boolean) returns List of Text
+  purpose: The segments after `..`: the last taken off, kept on a root or a drive, else `..` added.
+
+  let head be segments.first() otherwise ""
+  let drive be segments.length() is 1 and head.ends_with(":")
+  let last be segments.last() otherwise ""
+  if not segments.is_empty() and last is not ".." and not drive then
+    return segments.without_last()
+  end
+  if rooted or drive then return segments end
+  return segments.append("..")
+end

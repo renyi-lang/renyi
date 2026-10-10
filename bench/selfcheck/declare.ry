@@ -1,0 +1,3920 @@
+module declare
+  purpose: Every module's declarations resolved into the checker's tables (the Rust `world.rs`).
+
+import ast exposing Module,
+  Import,
+  Item,
+  Function,
+  Param,
+  TypeDefinition,
+  TypeKind,
+  Field,
+  Variant,
+  Derive,
+  Ability,
+  Implementation,
+  Constant,
+  Type,
+  TypeName,
+  Name,
+  Span,
+  ForAny,
+  Constraint,
+  Capability,
+  Expr,
+  Docs
+import lists
+import report exposing Diagnostic
+import effects exposing Grant
+import suggest
+import types exposing Ty, FunctionSignature, Substitution
+
+public type PackageTag
+  purpose: A dependency a module belongs to (decision AC1): its name and its version.
+  has name: Text
+  has version: Text
+end
+
+public type ForeignModule
+  purpose: A foreign module (decision AF1): its libraries, tried in order, and its renamed symbols.
+  has libraries: List of Text
+  has symbols: List of SymbolRename
+end
+
+public type SymbolRename
+  purpose: A function of a foreign module whose C symbol differs from its Renyi name.
+  has name: Text
+  has symbol: Text
+end
+
+public type PythonModule
+  purpose: A Python module of the project (AL1): import name, symbols, interpreter and root.
+  has package: Text
+  has symbols: List of SymbolRename
+  has interpreter: maybe Text
+  has root: Text
+end
+
+type Width
+  purpose: A width type of `std.foreign` with its spelling in the bytecode file.
+  has name: Text
+  has spelling: Text
+end
+
+let widths: List of Width be [
+  Width(name: "Int8", spelling: "i8"),
+  Width(name: "UInt8", spelling: "u8"),
+  Width(name: "Int16", spelling: "i16"),
+  Width(name: "UInt16", spelling: "u16"),
+  Width(name: "Int32", spelling: "i32"),
+  Width(name: "UInt32", spelling: "u32"),
+  Width(name: "Int64", spelling: "i64"),
+  Width(name: "UInt64", spelling: "u64"),
+  Width(name: "Size", spelling: "size")
+]
+
+let width_names: Text be "Int8, UInt8, Int16, UInt16, Int32, UInt32, Int64, UInt64 or Size"
+
+let parameter_types: Text be "{width_names} of `std.foreign`, Float, Boolean, Text or Bytes"
+
+let results: Text be "a type of `std.foreign`, Float, Boolean, Text or `maybe Text`, or nothing"
+
+let python_parameter_types: Text be "a type `std.json` renders, one that can ToJson"
+
+let python_result_types: Text be "a type `std.json` parses, one that can FromJson, or nothing"
+
+let max_words: Integer be 6
+
+public type ModuleInfo
+  purpose: One module's names and tables; library and user modules go through the same pass.
+  has name: Text
+  has is_library: Boolean
+  has tree: Module
+  has types: Map of Text to Integer
+  has abilities: Map of Text to Integer
+  has functions: Map of Text to List of Integer
+  has constants: Map of Text to ConstantInfo
+  has imports: Map of Text to Integer
+  has exposed_types: Map of Text to Integer
+  has exposed_abilities: Map of Text to Integer
+  has line_starts: List of Integer
+  has source_chars: List of Text
+  has package: maybe PackageTag
+  has foreign: maybe ForeignModule
+  has python: maybe PythonModule
+end
+
+public type ConstantInfo
+  purpose: A top-level constant as declared.
+  has ty: Ty
+  has is_public: Boolean
+  has item_index: Integer
+  has deprecation: maybe Text
+  has span: Span
+end
+
+public type TypeInfo
+  purpose: A declared type: its parameters, its shape, its derived abilities.
+  has name: Text
+  has owner: Integer
+  has params: List of Integer
+  has kind: TypeKindInfo
+  has derives: List of Integer
+  has is_public: Boolean
+  has deprecation: maybe Text
+  has span: Span
+end
+
+public type TypeKindInfo is one of
+  purpose: The shape of a declared type; `Opaque` is a base type of the prelude.
+  Opaque
+  RecordKind(fields: List of FieldInfo)
+  SumKind(variants: List of VariantInfo)
+  SubtypeKind(base: Ty, refinement: maybe Expr)
+  Unresolved
+end
+
+public type FieldInfo
+  purpose: A field of a record or a variant, with its refinement and its external name (J14).
+  has name: Text
+  has ty: Ty
+  has refinement: maybe Expr
+  has external_name: maybe Text
+  has span: Span
+end
+
+public type VariantInfo
+  purpose: A variant of a sum type with its fields.
+  has name: Text
+  has fields: List of FieldInfo
+  has span: Span
+end
+
+public type NamedTy
+  purpose: A parameter or a field as a name and a type.
+  has name: Text
+  has ty: Ty
+end
+
+public type BodyLocation is one of
+  purpose: Where a body lives: an item, a method of an implementation, an example or a condition.
+  NoBody
+  ItemBody(item: Integer)
+  ImplementationBody(item: Integer, method: Integer)
+  ExampleBody(item: Integer, method: maybe Integer, sample: Integer)
+  ConditionBody(item: Integer, variant: maybe Integer, field: maybe Integer)
+end
+
+public type FunctionInfo
+  purpose: A declared function or method with its resolved signature.
+  has name: Text
+  has owner: Integer
+  has is_public: Boolean
+  has params: List of NamedTy
+  has is_method: Boolean
+  has type_params: List of Integer
+  has result: maybe Ty
+  has failures: List of Ty
+  has capabilities: List of Grant
+  has is_library: Boolean
+  has body: BodyLocation
+  has has_examples: Boolean
+  has deprecation: maybe Text
+  has expose_as_tool: Boolean
+  has span: Span
+end
+
+public type AbilityInfo
+  purpose: A declared ability: its parameters, its requirements and its method heads.
+  has name: Text
+  has owner: Integer
+  has is_public: Boolean
+  has params: List of Integer
+  has requirements: List of AbilityRef
+  has methods: List of AbilityMethod
+  has span: Span
+  has resolved: Boolean
+end
+
+public type AbilityMethod
+  purpose: A method head of an ability; the parameters after `self`.
+  has name: Text
+  has params: List of NamedTy
+  has result: maybe Ty
+  has failures: List of Ty
+end
+
+public type ImplInfo
+  purpose: An implementation of an ability for a type.
+  has ability_id: Integer
+  has target: Ty
+  has ability_args: List of Ty
+  has type_params: List of Integer
+  has owner: Integer
+  has functions: List of Integer
+  has span: Span
+end
+
+public type AbilityRef
+  purpose: An ability with its type arguments, as a constraint or a requirement names one (AB1).
+  has ability_id: Integer
+  has args: List of Ty
+end
+
+public type ParamInfo
+  purpose: A type parameter and the abilities it must have, with their arguments.
+  has name: Text
+  has constraints: List of AbilityRef
+end
+
+public type Builtins
+  purpose: The ids of the prelude's types and abilities, looked up once.
+  has integer: Integer
+  has decimal: Integer
+  has float: Integer
+  has boolean: Integer
+  has text: Integer
+  has bytes: Integer
+  has list: Integer
+  has map: Integer
+  has set_type: Integer
+  has range: Integer
+  has pair: Integer
+  has duration: Integer
+  has ordering: Integer
+  has timed_out: Integer
+  has constraint_violation: Integer
+  has guarded: Integer
+  has equal: Integer
+  has compare: Integer
+  has hash: Integer
+  has to_text: Integer
+  has iterable: Integer
+end
+
+public type ModuleDiagnostic
+  purpose: A diagnostic raised while declaring, with the module it belongs to.
+  has owner: Integer
+  has diagnostic: Diagnostic
+end
+
+public type World
+  purpose: Every module's tables, the prelude's ids and the diagnostics raised while declaring.
+  has modules: List of ModuleInfo
+  has types: List of TypeInfo
+  has functions: List of FunctionInfo
+  has abilities: List of AbilityInfo
+  has impls: List of ImplInfo
+  has params: List of ParamInfo
+  has builtins: Builtins
+  has prelude: maybe Integer
+  has method_index: Map of Text to List of Integer
+  has diagnostics: List of ModuleDiagnostic
+end
+
+public type NamedParam
+  purpose: A type parameter in scope, by name.
+  has name: Text
+  has id: Integer
+end
+
+public type VariantRef
+  purpose: A variant as a type and a position.
+  has type_id: Integer
+  has index: Integer
+end
+
+public type Built of Value
+  purpose: A value computed while declaring, and the world after it.
+  has value: Value
+  has world: World
+end
+
+public type OptionalResolved
+  purpose: An optional type resolved, and the world after it.
+  has value: maybe Ty
+  has world: World
+end
+
+type DeclaredParams
+  purpose: The parameters of a function as declared, and the world after them.
+  has params: List of NamedTy
+  has world: World
+end
+
+public function new_world() returns World
+  purpose: A world with nothing declared.
+
+  let builtins be Builtins(
+    integer: 0,
+    decimal: 0,
+    float: 0,
+    boolean: 0,
+    text: 0,
+    bytes: 0,
+    list: 0,
+    map: 0,
+    set_type: 0,
+    range: 0,
+    pair: 0,
+    duration: 0,
+    ordering: 0,
+    timed_out: 0,
+    constraint_violation: 0,
+    guarded: 0,
+    equal: 0,
+    compare: 0,
+    hash: 0,
+    to_text: 0,
+    iterable: 0
+  )
+  return World(
+    modules: [],
+    types: [],
+    functions: [],
+    abilities: [],
+    impls: [],
+    params: [],
+    builtins: builtins,
+    prelude: nothing,
+    method_index: {},
+    diagnostics: []
+  )
+end
+
+public function module_at(world: World, id: Integer) returns ModuleInfo
+  purpose: A module by its id.
+
+  return world.modules.at(id) otherwise crash with "a declared module"
+end
+
+public function type_at(world: World, id: Integer) returns TypeInfo
+  purpose: A type by its id.
+
+  return world.types.at(id) otherwise crash with "a declared type"
+end
+
+public function function_at(world: World, id: Integer) returns FunctionInfo
+  purpose: A function by its id.
+
+  return world.functions.at(id) otherwise crash with "a declared function"
+end
+
+public function ability_at(world: World, id: Integer) returns AbilityInfo
+  purpose: An ability by its id.
+
+  return world.abilities.at(id) otherwise crash with "a declared ability"
+end
+
+public function param_at(world: World, id: Integer) returns ParamInfo
+  purpose: A type parameter by its id.
+
+  return world.params.at(id) otherwise crash with "a declared type parameter"
+end
+
+function update_module(world: World, id: Integer, info: ModuleInfo) returns World
+  purpose: The world with one module's record replaced.
+
+  return world with modules: lists.replace_at(items: world.modules, index: id, item: info)
+end
+
+function update_type(world: World, id: Integer, info: TypeInfo) returns World
+  purpose: The world with one type's record replaced.
+
+  return world with types: lists.replace_at(items: world.types, index: id, item: info)
+end
+
+function update_function(world: World, id: Integer, info: FunctionInfo) returns World
+  purpose: The world with one function's record replaced.
+
+  return world with functions: lists.replace_at(items: world.functions, index: id, item: info)
+end
+
+function update_ability(world: World, id: Integer, info: AbilityInfo) returns World
+  purpose: The world with one ability's record replaced.
+
+  return world with abilities: lists.replace_at(items: world.abilities, index: id, item: info)
+end
+
+public function push_error(
+  world: World,
+  owner: Integer,
+  code: Text,
+  message: Text,
+  span: Span,
+  fix: Text
+)
+  returns World
+  purpose: The world with an error of a module added.
+
+  let diagnostic be report.error(code: code, message: message, span: span, fix: fix)
+  return push_diagnostic(world: world, owner: owner, diagnostic: diagnostic)
+end
+
+function push_warning(
+  world: World,
+  owner: Integer,
+  code: Text,
+  message: Text,
+  span: Span,
+  fix: Text
+)
+  returns World
+  purpose: The world with a warning of a module added.
+
+  let diagnostic be report.warning(code: code, message: message, span: span, fix: fix)
+  return push_diagnostic(world: world, owner: owner, diagnostic: diagnostic)
+end
+
+function push_diagnostic(world: World, owner: Integer, diagnostic: Diagnostic) returns World
+  purpose: The world with a diagnostic of a module added.
+
+  let entry be ModuleDiagnostic(owner: owner, diagnostic: diagnostic)
+  return world with diagnostics: world.diagnostics.append(entry)
+end
+
+public function module_diagnostics(world: World, owner: Integer) returns List of Diagnostic
+  purpose: The diagnostics raised while declaring one module, in order.
+
+  return for each entry in world.diagnostics where entry.owner is owner collect entry.diagnostic
+end
+
+type ModuleState
+  purpose: A module being registered, and the world so far.
+  has info: ModuleInfo
+  has world: World
+end
+
+public function add_module(world: World, tree: Module, is_library: Boolean) returns Built of Integer
+  purpose: Register a module's names; `resolve_all` fills in the details once every module is in.
+
+  let id be world.modules.length()
+  let name be effects.names_of(tree.name).join(".")
+  let info be ModuleInfo(
+    name: name,
+    is_library: is_library,
+    tree: tree,
+    types: {},
+    abilities: {},
+    functions: {},
+    constants: {},
+    imports: {},
+    exposed_types: {},
+    exposed_abilities: {},
+    line_starts: [],
+    source_chars: [],
+    package: nothing,
+    foreign: nothing,
+    python: nothing
+  )
+  let mutable state be ModuleState(info: info, world: world)
+  if name is "std.prelude" then
+    let with_prelude be state.world with prelude: id
+    change state to state with world: with_prelude
+  end
+  for each item in tree.items
+    match item
+      when TypeItem(value: def) then change state to add_type(state: state, id: id, def: def)
+      when AbilityItem(value: abil) then
+        change state to add_ability(state: state, id: id, abil: abil)
+      otherwise continue
+    end
+  end
+  let updated be state.world with modules: state.world.modules.append(state.info)
+  return Built(value: id, world: updated)
+end
+
+function add_type(state: ModuleState, id: Integer, def: TypeDefinition) returns ModuleState
+  purpose: Register a type's name, so that signatures can mention it.
+
+  let world be state.world
+  let type_id be world.types.length()
+  let info be TypeInfo(
+    name: def.name.text,
+    owner: id,
+    params: [],
+    kind: Unresolved,
+    derives: [],
+    is_public: def.is_public,
+    deprecation: def.docs.deprecation,
+    span: def.span
+  )
+  let mutable updated be world with types: world.types.append(info)
+  if state.info.types.contains_key(def.name.text) then
+    let message be "the type `{def.name.text}` is declared twice"
+    let diagnostic be report.bare_error(
+      code: "duplicate-name",
+      message: message,
+      span: def.name.span
+    )
+    change updated to push_diagnostic(world: updated, owner: id, diagnostic: diagnostic)
+  end
+  let names be state.info.types.set(key: def.name.text, value: type_id)
+  let module_info be state.info with types: names
+  return ModuleState(info: module_info, world: updated)
+end
+
+function add_ability(state: ModuleState, id: Integer, abil: Ability) returns ModuleState
+  purpose: Register an ability's name.
+
+  let world be state.world
+  let ability_id be world.abilities.length()
+  let info be AbilityInfo(
+    name: abil.name.text,
+    owner: id,
+    is_public: abil.is_public,
+    params: [],
+    requirements: [],
+    methods: [],
+    span: abil.span,
+    resolved: false
+  )
+  let mutable updated be world with abilities: world.abilities.append(info)
+  if state.info.abilities.contains_key(abil.name.text) then
+    let message be "the ability `{abil.name.text}` is declared twice"
+    let diagnostic be report.bare_error(
+      code: "duplicate-name",
+      message: message,
+      span: abil.name.span
+    )
+    change updated to push_diagnostic(world: updated, owner: id, diagnostic: diagnostic)
+  end
+  let names be state.info.abilities.set(key: abil.name.text, value: ability_id)
+  let module_info be state.info with abilities: names
+  return ModuleState(info: module_info, world: updated)
+end
+
+public function module_id(world: World, name: Text) returns maybe Integer
+  purpose: The id of the module with a dotted name.
+
+  let mutable index be 0
+  for each info in world.modules
+    if info.name is name then return index end
+    change index to index + 1
+  end
+  return nothing
+end
+
+public function set_package(world: World, id: Integer, package: PackageTag) returns World
+  purpose: Tag a module as a dependency's (AC1) and name it as the program imports it.
+
+  let info be module_at(world: world, id: id)
+  let qualified be
+    if info.name is package.name then info.name otherwise "{package.name}.{info.name}" end
+  return update_module(world: world, id: id, info: info with name: qualified, package: package)
+end
+
+public function set_foreign(world: World, id: Integer, foreign: ForeignModule) returns World
+  purpose: Tag a module as a foreign module of the project (decision AF1).
+
+  let info be module_at(world: world, id: id)
+  return update_module(world: world, id: id, info: info with foreign: foreign)
+end
+
+public function set_python(world: World, id: Integer, python: PythonModule) returns World
+  purpose: Tag a module as a Python module of the project (decision AL1).
+
+  let info be module_at(world: world, id: id)
+  return update_module(world: world, id: id, info: info with python: python)
+end
+
+function imported_module(world: World, importer: ModuleInfo, name: Text) returns maybe Integer
+  purpose: The module an import names: inside a dependency an own module first, then as written.
+
+  let package be importer.package otherwise return module_id(world: world, name: name)
+  match module_id(world: world, name: "{package.name}.{name}")
+    when some(found) then return found
+    when nothing then return module_id(world: world, name: name)
+  end
+end
+
+public function set_source_lines(
+  world: World,
+  id: Integer,
+  chars: List of Text,
+  starts: List of Integer
+)
+  returns World
+  purpose: Remember a module's source and its line starts, so that the body checker can count lines.
+
+  let info be module_at(world: world, id: id)
+  return update_module(
+    world: world,
+    id: id,
+    info: info with line_starts: starts, source_chars: chars
+  )
+end
+
+public function resolve_all(world: World) returns World
+  purpose: Resolve the imports, types, abilities, implementations, functions and constants.
+
+  let mutable updated be world
+  if updated.builtins.integer is 0 and updated.prelude is not nothing then
+    change updated to find_builtins(updated)
+  end
+  let total be updated.modules.length()
+  let mutable id be 0
+  repeat until id is at least total
+    change updated to resolve_imports(world: updated, id: id)
+    change id to id + 1
+  end
+  change id to 0
+  repeat until id is at least total
+    change updated to resolve_type_items(world: updated, id: id)
+    change id to id + 1
+  end
+  change id to 0
+  repeat until id is at least total
+    change updated to resolve_ability_items(world: updated, id: id)
+    change id to id + 1
+  end
+  change id to 0
+  repeat until id is at least total
+    change updated to resolve_function_items(world: updated, id: id)
+    change id to id + 1
+  end
+  change updated to check_requirements(updated)
+  change id to 0
+  repeat until id is at least total
+    change updated to check_see_also(world: updated, id: id)
+    change id to id + 1
+  end
+  return updated
+end
+
+function check_requirements(world: World) returns World
+  purpose: `ability X where self can Y`: every implementation's type has `Y` (sketch section 5).
+
+  let mutable updated be world
+  for each implementation in world.impls
+    let abil be ability_at(world: world, id: implementation.ability_id)
+    for each required in abil.requirements
+      # the requirement's arguments, with the ability's parameters read as
+      # this implementation's arguments (decision AB1)
+      let bindings be pair_params(params: abil.params, args: implementation.ability_args)
+      let expected be types.substitute_all(tys: required.args, bindings: bindings)
+      let found be implemented_args(
+        world: world,
+        ty: implementation.target,
+        ability_id: required.ability_id
+      )
+      if found is not expected then
+        let target be show(world: world, ty: implementation.target)
+        let required_name be show_ability(
+          world: world,
+          ability_id: required.ability_id,
+          args: expected
+        )
+        let lacks be "`{target}` lacks `{required_name}`"
+        let message be "{lacks}, which `{abil.name}` requires of its implementations"
+        let derive be "add `can {required_name}` to `{target}`"
+        let fix be
+          if expected.is_empty() then "{derive}, or implement `{required_name}` for it"
+          otherwise "implement `{required_name}` for `{target}`"
+          end
+        change updated to push_error(
+          world: updated,
+          owner: implementation.owner,
+          code: "missing-ability",
+          message: message,
+          span: implementation.span,
+          fix: fix
+        )
+      end
+    end
+  end
+  return updated
+end
+
+public function type_has(world: World, ty: Ty, ability_id: Integer) returns Boolean
+  purpose: Whether a type has an ability: derived, implemented, or inherited from a subtype's base.
+
+  if ability_id is world.builtins.equal then
+    match ty
+      when FunctionTy then return false
+      otherwise return true
+    end
+  end
+  match ty
+    when App(id) then
+      let info be type_at(world: world, id: id)
+      if info.derives.contains(ability_id) then return true end
+      if implemented_for(world: world, ability_id: ability_id, head: id) then return true end
+      match info.kind
+        when SubtypeKind(base) then return type_has(world: world, ty: base, ability_id: ability_id)
+        otherwise return false
+      end
+    when Param(id) then return has_constraint(world: world, param: id, ability_id: ability_id)
+    otherwise return false
+  end
+end
+
+function has_constraint(world: World, param: Integer, ability_id: Integer) returns Boolean
+  purpose: Whether a type parameter's constraints name the ability.
+
+  for each constraint in param_at(world: world, id: param).constraints
+    if constraint.ability_id is ability_id then return true end
+  end
+  return false
+end
+
+public function implemented_args(world: World, ty: Ty, ability_id: Integer) returns maybe List of Ty
+  purpose: The type arguments a type has an ability with (decision AB1); nothing when it lacks it.
+
+  if ability_id is world.builtins.equal then
+    match ty
+      when FunctionTy then return nothing
+      otherwise return []
+    end
+  end
+  match ty
+    when App(id, args) then
+      let info be type_at(world: world, id: id)
+      if info.derives.contains(ability_id) then return [] end
+      match implementation_for(world: world, ability_id: ability_id, head: id)
+        when some(implementation) then
+          let bound be bind_target_params(target: implementation.target, args: args)
+          return types.substitute_all(tys: implementation.ability_args, bindings: bound)
+        when nothing then
+          match info.kind
+            when SubtypeKind(base) then
+              return implemented_args(world: world, ty: base, ability_id: ability_id)
+            otherwise return nothing
+          end
+      end
+    when Param(id) then return param_args(world: world, param: id, ability_id: ability_id)
+    otherwise return nothing
+  end
+end
+
+function param_args(world: World, param: Integer, ability_id: Integer) returns maybe List of Ty
+  purpose: A parameter's arguments for an ability: a constraint's, or what a constraint requires.
+
+  for each constraint in param_at(world: world, id: param).constraints
+    if constraint.ability_id is ability_id then return constraint.args end
+    let through be ability_at(world: world, id: constraint.ability_id)
+    for each requirement in through.requirements
+      if requirement.ability_id is ability_id then
+        let bindings be pair_params(params: through.params, args: constraint.args)
+        return types.substitute_all(tys: requirement.args, bindings: bindings)
+      end
+    end
+  end
+  return nothing
+end
+
+function implementation_for(world: World, ability_id: Integer, head: Integer) returns maybe ImplInfo
+  purpose: The implementation of the ability for the type, when one exists.
+
+  for each implementation in world.impls
+    let same_head be types.head_type(implementation.target) is head
+    if implementation.ability_id is ability_id and same_head then return implementation end
+  end
+  return nothing
+end
+
+public function bind_target_params(target: Ty, args: List of Ty) returns List of Substitution
+  purpose: The implementation's parameters bound to the type's actual arguments, by position.
+
+  match target
+    when App(args: declared) then
+      let mutable bound: List of Substitution be []
+      let mutable index be 0
+      for each declared_arg in declared
+        let actual be args.at(index) otherwise break
+        match declared_arg
+          when Param(id) then change bound to bound.append(Substitution(param: id, ty: actual))
+          otherwise change index to index
+        end
+        change index to index + 1
+      end
+      return bound
+    otherwise return []
+  end
+end
+
+public function show_ability(world: World, ability_id: Integer, args: List of Ty) returns Text
+  purpose: An ability with its type arguments, as a message shows it: `Iterable of Integer`.
+
+  let name be ability_at(world: world, id: ability_id).name
+  if args.is_empty() then return name end
+  let shown be for each arg in args collect show(world: world, ty: arg)
+  let joined be shown.join(", ")
+  return "{name} of {joined}"
+end
+
+public function implemented_for(world: World, ability_id: Integer, head: Integer) returns Boolean
+  purpose: Whether an implementation of the ability exists for the type.
+
+  for each implementation in world.impls
+    let same_head be types.head_type(implementation.target) is head
+    if implementation.ability_id is ability_id and same_head then return true end
+  end
+  return false
+end
+
+function check_see_also(world: World, id: Integer) returns World
+  purpose: `see also:` names definitions (C8b): this module's, an import's, or `Type.method`.
+
+  let info be module_at(world: world, id: id)
+  if info.is_library then return world end
+  let mutable updated be world
+  for each item in info.tree.items
+    match item
+      when FunctionItem(value: func) then
+        change updated to note_see_also(
+          world: updated,
+          id: id,
+          docs: func.docs,
+          span: func.name.span
+        )
+      when ImplementationItem(value: implementation) then
+        for each func in implementation.functions
+          change updated to note_see_also(
+            world: updated,
+            id: id,
+            docs: func.docs,
+            span: func.name.span
+          )
+        end
+      when TypeItem(value: def) then
+        change updated to note_see_also(world: updated, id: id, docs: def.docs, span: def.name.span)
+      when AbilityItem(value: abil) then
+        change updated to note_see_also(
+          world: updated,
+          id: id,
+          docs: abil.docs,
+          span: abil.name.span
+        )
+      when ConstantItem(value: constant) then
+        change updated to note_see_also(
+          world: updated,
+          id: id,
+          docs: constant.docs,
+          span: constant.name.span
+        )
+      otherwise continue
+    end
+  end
+  return updated
+end
+
+function note_see_also(world: World, id: Integer, docs: Docs, span: Span) returns World
+  purpose: An error for every `see also:` name that names nothing in scope.
+
+  let fix_head be "name a function, type, constant or ability of this module"
+  let mutable updated be world
+  for each name in docs.see_also
+    if not reference_exists(world: world, owner: id, name: name) then
+      change updated to push_error(
+        world: updated,
+        owner: id,
+        code: "unknown-reference",
+        message: "`see also: {name}` names nothing in scope",
+        span: span,
+        fix: "{fix_head}, `module.name` of an import, or `Type.method`"
+      )
+    end
+  end
+  return updated
+end
+
+function reference_exists(world: World, owner: Integer, name: Text) returns Boolean
+  purpose: Whether a `see also:` name is a definition in scope.
+
+  let info be module_at(world: world, id: owner)
+  match name.index_of(".")
+    when some(dot) then
+      let head be name.take(dot)
+      let rest be name.drop(dot + 1)
+      if starts_uppercase(head) then
+        match lookup_type(world: world, owner: owner, name: head)
+          when some(type_id) then
+            return not methods_of(world: world, type_id: type_id, name: rest).is_empty()
+          when nothing then return false
+        end
+      end
+      let target be info.imports.get(head) otherwise return false
+      let other be module_at(world: world, id: target)
+      return other.functions.contains_key(rest)
+        or other.types.contains_key(rest)
+        or other.constants.contains_key(rest)
+        or other.abilities.contains_key(rest)
+    when nothing then
+      if info.functions.contains_key(name) or info.types.contains_key(name) then return true end
+      if info.constants.contains_key(name) or info.abilities.contains_key(name) then return true end
+      if info.exposed_types.contains_key(name) or info.exposed_abilities.contains_key(name) then
+        return true
+      end
+      return prelude_names(world).contains(name)
+  end
+end
+
+function starts_uppercase(text: Text) returns Boolean
+  purpose: Whether a text starts with an ASCII capital.
+
+  let head be text.characters().first() otherwise return false
+  return "ABCDEFGHIJKLMNOPQRSTUVWXYZ".contains(head)
+end
+
+function prelude_info(world: World) returns maybe ModuleInfo
+  purpose: The prelude's module, once declared.
+
+  let prelude be world.prelude otherwise return nothing
+  return module_at(world: world, id: prelude)
+end
+
+function prelude_names(world: World) returns List of Text
+  purpose: The prelude's function and type names, for `see also:`.
+
+  let prelude be prelude_info(world) otherwise return []
+  return prelude.functions.keys().append_all(prelude.types.keys())
+end
+
+function prelude_type_names(world: World) returns List of Text
+  purpose: The prelude's type names.
+
+  let prelude be prelude_info(world) otherwise return []
+  return prelude.types.keys()
+end
+
+function prelude_ability_names(world: World) returns List of Text
+  purpose: The prelude's ability names.
+
+  let prelude be prelude_info(world) otherwise return []
+  return prelude.abilities.keys()
+end
+
+function prelude_type_ids(world: World) returns List of Integer
+  purpose: The prelude's type ids.
+
+  let prelude be prelude_info(world) otherwise return []
+  return prelude.types.values()
+end
+
+function find_builtins(world: World) returns World
+  purpose: Look the prelude's types and abilities up once.
+
+  let prelude be prelude_info(world) otherwise crash with "the prelude"
+  let builtins be Builtins(
+    integer: prelude_type(prelude: prelude, name: "Integer"),
+    decimal: prelude_type(prelude: prelude, name: "Decimal"),
+    float: prelude_type(prelude: prelude, name: "Float"),
+    boolean: prelude_type(prelude: prelude, name: "Boolean"),
+    text: prelude_type(prelude: prelude, name: "Text"),
+    bytes: prelude_type(prelude: prelude, name: "Bytes"),
+    list: prelude_type(prelude: prelude, name: "List"),
+    map: prelude_type(prelude: prelude, name: "Map"),
+    set_type: prelude_type(prelude: prelude, name: "Set"),
+    range: prelude_type(prelude: prelude, name: "Range"),
+    pair: prelude_type(prelude: prelude, name: "Pair"),
+    duration: prelude_type(prelude: prelude, name: "Duration"),
+    ordering: prelude_type(prelude: prelude, name: "Ordering"),
+    timed_out: prelude_type(prelude: prelude, name: "TimedOut"),
+    constraint_violation: prelude_type(prelude: prelude, name: "ConstraintViolation"),
+    guarded: prelude_type(prelude: prelude, name: "Guarded"),
+    equal: prelude_ability(prelude: prelude, name: "Equal"),
+    compare: prelude_ability(prelude: prelude, name: "Compare"),
+    hash: prelude_ability(prelude: prelude, name: "Hash"),
+    to_text: prelude_ability(prelude: prelude, name: "ToText"),
+    iterable: prelude_ability(prelude: prelude, name: "Iterable")
+  )
+  return world with builtins: builtins
+end
+
+function prelude_type(prelude: ModuleInfo, name: Text) returns Integer
+  purpose: The id of a prelude type that must exist.
+
+  return prelude.types.get(name) otherwise crash with "prelude type {name}"
+end
+
+function prelude_ability(prelude: ModuleInfo, name: Text) returns Integer
+  purpose: The id of a prelude ability that must exist.
+
+  return prelude.abilities.get(name) otherwise crash with "prelude ability {name}"
+end
+
+function resolve_imports(world: World, id: Integer) returns World
+  purpose: Resolve a module's imports into namespaces and exposed names.
+
+  let info be module_at(world: world, id: id)
+  if not info.imports.is_empty() then return world end
+  let mutable updated be world
+  for each entry in info.tree.imports
+    change updated to resolve_import(world: updated, id: id, entry: entry)
+  end
+  return updated
+end
+
+function resolve_import(world: World, id: Integer, entry: Import) returns World
+  purpose: One import: the target module, its namespace, and the names it exposes.
+
+  let path be effects.names_of(entry.path)
+  let name be path.join(".")
+  let importer be module_at(world: world, id: id)
+  match imported_module(world: world, importer: importer, name: name)
+    when nothing then
+      let module_names be for each found in world.modules collect found.name
+      let file be name.replace(old: ".", new: "/")
+      let fix be
+        match suggest.closest(name: name, candidates: module_names)
+          when some(close) then "did you mean `{close}`?"
+          when nothing then "create `{file}.ry` with `module {name}` as its first line"
+        end
+      return push_error(
+        world: world,
+        owner: id,
+        code: "unknown-module",
+        message: "no module named `{name}`",
+        span: entry.span,
+        fix: fix
+      )
+    when some(target) then
+      let last_segment be path.last() otherwise crash with "a path"
+      let namespace be
+        match entry.alias
+          when some(alias) then alias.text
+          when nothing then last_segment
+        end
+      let mutable updated be world
+      let info be module_at(world: updated, id: id)
+      if info.imports.contains_key(namespace) then
+        change updated to push_error(
+          world: updated,
+          owner: id,
+          code: "duplicate-name",
+          message: "the namespace `{namespace}` is imported twice",
+          span: entry.span,
+          fix: "rename one import with `as`"
+        )
+      end
+      let imports be info.imports.set(key: namespace, value: target)
+      change updated to update_module(world: updated, id: id, info: info with imports: imports)
+      for each exposed in entry.exposed
+        change updated to resolve_exposed(
+          world: updated,
+          id: id,
+          target: target,
+          module_name: name,
+          exposed: exposed
+        )
+      end
+      return updated
+  end
+end
+
+function resolve_exposed(
+  world: World,
+  id: Integer,
+  target: Integer,
+  module_name: Text,
+  exposed: TypeName
+)
+  returns World
+  purpose: One name of an `exposing` list: a public type or ability of the target.
+
+  let text be exposed.text
+  let target_info be module_at(world: world, id: target)
+  match target_info.types.get(text)
+    when some(type_id) then
+      let mutable updated be world
+      if not type_at(world: updated, id: type_id).is_public then
+        change updated to private_name(
+          world: updated,
+          id: id,
+          text: text,
+          module_name: module_name,
+          span: exposed.span
+        )
+      end
+      let info be module_at(world: updated, id: id)
+      let names be info.exposed_types.set(key: text, value: type_id)
+      return update_module(world: updated, id: id, info: info with exposed_types: names)
+    when nothing then
+      match target_info.abilities.get(text)
+        when some(ability_id) then
+          let mutable updated be world
+          if not ability_at(world: updated, id: ability_id).is_public then
+            change updated to private_name(
+              world: updated,
+              id: id,
+              text: text,
+              module_name: module_name,
+              span: exposed.span
+            )
+          end
+          let info be module_at(world: updated, id: id)
+          let names be info.exposed_abilities.set(key: text, value: ability_id)
+          return update_module(world: updated, id: id, info: info with exposed_abilities: names)
+        when nothing then
+          return expose_unknown(
+            world: world,
+            id: id,
+            target_info: target_info,
+            module_name: module_name,
+            exposed: exposed
+          )
+      end
+  end
+end
+
+function private_name(world: World, id: Integer, text: Text, module_name: Text, span: Span)
+  returns World
+  purpose: The error for exposing a private name.
+
+  return push_error(
+    world: world,
+    owner: id,
+    code: "private-name",
+    message: "`{text}` is not public in `{module_name}`",
+    span: span,
+    fix: "add `public` to its declaration in `{module_name}`"
+  )
+end
+
+function expose_unknown(
+  world: World,
+  id: Integer,
+  target_info: ModuleInfo,
+  module_name: Text,
+  exposed: TypeName
+)
+  returns World
+  purpose: The error for exposing a name the target does not declare.
+
+  let candidates be target_info.types.keys().append_all(target_info.abilities.keys())
+  let fix be
+    match suggest.closest(name: exposed.text, candidates: candidates)
+      when some(close) then "did you mean `{close}`?"
+      when nothing then "expose a type or ability that `{module_name}` declares"
+    end
+  return push_error(
+    world: world,
+    owner: id,
+    code: "unknown-name",
+    message: "`{module_name}` has no type or ability named `{exposed.text}`",
+    span: exposed.span,
+    fix: fix
+  )
+end
+
+public function lookup_type(world: World, owner: Integer, name: Text) returns maybe Integer
+  purpose: A type by name: the module's own, an exposed one, or the prelude's.
+
+  let info be module_at(world: world, id: owner)
+  let own be info.types.get(name)
+  if own is not nothing then return own end
+  let exposed be info.exposed_types.get(name)
+  if exposed is not nothing then return exposed end
+  let prelude be prelude_info(world) otherwise return nothing
+  return prelude.types.get(name)
+end
+
+public function lookup_ability(world: World, owner: Integer, name: Text) returns maybe Integer
+  purpose: An ability by name: the module's own, an exposed one, or the prelude's.
+
+  let info be module_at(world: world, id: owner)
+  let own be info.abilities.get(name)
+  if own is not nothing then return own end
+  let exposed be info.exposed_abilities.get(name)
+  if exposed is not nothing then return exposed end
+  let prelude be prelude_info(world) otherwise return nothing
+  return prelude.abilities.get(name)
+end
+
+public function suggest_import(world: World, owner: Integer, name: Text) returns maybe Text
+  purpose: Where a type or ability of that name could come from: a fix for an unknown name.
+
+  let info be module_at(world: world, id: owner)
+  for each target in info.imports.values()
+    let other be module_at(world: world, id: target)
+    if other.types.contains_key(name) or other.abilities.contains_key(name) then
+      return "add `{name}` to the `exposing` list of `import {other.name}`"
+    end
+  end
+  for each other in world.modules
+    let declares be other.types.contains_key(name) or other.abilities.contains_key(name)
+    if other.is_library and declares then return "write `import {other.name} exposing {name}`" end
+  end
+  return nothing
+end
+
+public function suggest_type(world: World, owner: Integer, name: Text) returns Text
+  purpose: The fix for an unknown type: a foreign name's spelling, an import, the closest name.
+
+  let foreign be suggest.foreign_type(name)
+  if foreign is not nothing then return foreign otherwise "" end
+  let imported be suggest_import(world: world, owner: owner, name: name)
+  if imported is not nothing then return imported otherwise "" end
+  let info be module_at(world: world, id: owner)
+  let names be info.types.keys().append_all(info.exposed_types.keys()).append_all(
+    prelude_type_names(world)
+  )
+  match suggest.closest(name: name, candidates: names)
+    when some(close) then return "did you mean `{close}`?"
+    when nothing then return "declare `type {name}`, or import the module that declares it"
+  end
+end
+
+public function suggest_ability(world: World, owner: Integer, name: Text) returns Text
+  purpose: The fix for an unknown ability: an import, the closest name in scope, or a declaration.
+
+  let imported be suggest_import(world: world, owner: owner, name: name)
+  if imported is not nothing then return imported otherwise "" end
+  let info be module_at(world: world, id: owner)
+  let names be info.abilities.keys().append_all(info.exposed_abilities.keys()).append_all(
+    prelude_ability_names(world)
+  )
+  match suggest.closest(name: name, candidates: names)
+    when some(close) then return "did you mean `{close}`?"
+    when nothing then return "declare `ability {name}`, or import the module that declares it"
+  end
+end
+
+public function lookup_variant(world: World, owner: Integer, name: Text) returns List of VariantRef
+  purpose: The sum types in scope that have a variant of this name, by type id.
+
+  let info be module_at(world: world, id: owner)
+  let candidates be info.types.values().append_all(info.exposed_types.values()).append_all(
+    prelude_type_ids(world)
+  )
+  let mutable found: List of VariantRef be []
+  for each type_id in candidates.distinct().sorted()
+    match type_at(world: world, id: type_id).kind
+      when SumKind(variants) then
+        match variant_index(variants: variants, name: name)
+          when some(index) then
+            change found to found.append(VariantRef(type_id: type_id, index: index))
+          when nothing then continue
+        end
+      otherwise continue
+    end
+  end
+  return found
+end
+
+public function variant_index(variants: List of VariantInfo, name: Text) returns maybe Integer
+  purpose: The position of a variant by name.
+
+  let mutable index be 0
+  for each variant in variants
+    if variant.name is name then return index end
+    change index to index + 1
+  end
+  return nothing
+end
+
+public function lookup_function(world: World, owner: Integer, name: Text) returns maybe Integer
+  purpose: The module's own function of that name that is not a method.
+
+  let info be module_at(world: world, id: owner)
+  let ids be info.functions.get(name) otherwise return nothing
+  for each id in ids
+    if not function_at(world: world, id: id).is_method then return id end
+  end
+  return nothing
+end
+
+public function function_purpose(world: World, id: Integer) returns maybe Text
+  purpose: The `purpose:` clause of a declared function, read from its item.
+
+  let info be function_at(world: world, id: id)
+  let items be module_at(world: world, id: info.owner).tree.items
+  match info.body
+    when ItemBody(item) then
+      match items.at(item)
+        when some(FunctionItem(value: func)) then return func.docs.summary
+        otherwise return nothing
+      end
+    when ImplementationBody(item, method) then
+      match items.at(item)
+        when some(ImplementationItem(value: implementation)) then
+          let func be implementation.functions.at(method) otherwise return nothing
+          return func.docs.summary
+        otherwise return nothing
+      end
+    otherwise return nothing
+  end
+end
+
+public function methods_of(world: World, type_id: Integer, name: Text) returns List of Integer
+  purpose: The methods of a name declared on a type.
+
+  return world.method_index.get("{type_id}:{name}") otherwise []
+end
+
+function index_method(world: World, head: Integer, name: Text, function_id: Integer) returns World
+  purpose: The world with a method listed under its type and name.
+
+  let key be "{head}:{name}"
+  let existing be world.method_index.get(key) otherwise []
+  let listed be world.method_index.set(key: key, value: existing.append(function_id))
+  return world with method_index: listed
+end
+
+public function type_name(world: World, id: Integer) returns Text
+  purpose: A type's name.
+
+  return type_at(world: world, id: id).name
+end
+
+public function param_name(world: World, id: Integer) returns Text
+  purpose: A type parameter's name.
+
+  return param_at(world: world, id: id).name
+end
+
+public function show(world: World, ty: Ty) returns Text
+  purpose: How a type is spelled in diagnostics.
+
+  match ty
+    when App(id, args) then
+      let name be type_name(world: world, id: id)
+      if args.is_empty() then return name end
+      if name is "Map" and args.length() is 2 then
+        let key be args.at(0) otherwise crash with "a key type"
+        let value be args.at(1) otherwise crash with "a value type"
+        let key_shown be show(world: world, ty: key)
+        let value_shown be show(world: world, ty: value)
+        return "Map of {key_shown} to {value_shown}"
+      end
+      let shown be show_all(world: world, tys: args).join(", ")
+      return "{name} of {shown}"
+    when MaybeTy(inner) then
+      let shown be show(world: world, ty: inner)
+      return "maybe {shown}"
+    when FunctionTy(signature) then return show_signature(world: world, signature: signature)
+    when Param(id) then return param_name(world: world, id: id)
+    when Var then return "_"
+    when SelfTy then return "Self"
+    when Union(members) then return show_all(world: world, tys: members).join(" or ")
+    when Unit then return "nothing"
+    when Never then return "a way out"
+    when ErrorTy then return "?"
+  end
+end
+
+public function show_all(world: World, tys: List of Ty) returns List of Text
+  purpose: Every type spelled.
+
+  return for each ty in tys collect show(world: world, ty: ty)
+end
+
+function show_signature(world: World, signature: FunctionSignature) returns Text
+  purpose: A function type spelled: `function(A, B) returns C or fails with D needs console`.
+
+  let params be show_all(world: world, tys: signature.params).join(", ")
+  let result be result_clause(world: world, result: signature.result)
+  let failures be failures_clause(world: world, failures: signature.failures)
+  let needs_text be needs_clause(signature.capabilities)
+  return "function({params}){result}{failures}{needs_text}"
+end
+
+function result_clause(world: World, result: maybe Ty) returns Text
+  purpose: ` returns T`, or nothing.
+
+  match result
+    when some(ty) then
+      let shown be show(world: world, ty: ty)
+      return " returns {shown}"
+    when nothing then return ""
+  end
+end
+
+function failures_clause(world: World, failures: List of Ty) returns Text
+  purpose: ` or fails with A or B`, or nothing.
+
+  if failures.is_empty() then return "" end
+  let shown be show_all(world: world, tys: failures).join(" or ")
+  return " or fails with {shown}"
+end
+
+function needs_clause(capabilities: List of Grant) returns Text
+  purpose: ` needs a, b`, or nothing.
+
+  if capabilities.is_empty() then return "" end
+  let shown be effects.spellings(capabilities).join(", ")
+  return " needs {shown}"
+end
+
+public function constraints(world: World, param: Integer) returns List of AbilityRef
+  purpose: The abilities a type parameter must have, with their arguments.
+
+  return param_at(world: world, id: param).constraints
+end
+
+public function lookup_named_param(params: List of NamedParam, name: Text) returns maybe Integer
+  purpose: A type parameter in scope, by name.
+
+  for each param in params
+    if param.name is name then return param.id end
+  end
+  return nothing
+end
+
+public function resolve_type(world: World, owner: Integer, params: List of NamedParam, ty: Type)
+  returns Built of Ty
+  purpose: A syntactic type as a `Ty`, in the scope of a module and of the type parameters given.
+
+  match ty
+    when MaybeType(inner) then
+      let built be resolve_type(world: world, owner: owner, params: params, ty: inner)
+      return Built(value: MaybeTy(inner: built.value), world: built.world)
+    when FunctionType(params: param_types, result, failures, capabilities) then
+      let built_params be resolve_type_list(
+        world: world,
+        owner: owner,
+        params: params,
+        tys: param_types
+      )
+      let built_result be resolve_optional_type(
+        world: built_params.world,
+        owner: owner,
+        params: params,
+        ty: result
+      )
+      let built_failures be resolve_type_list(
+        world: built_result.world,
+        owner: owner,
+        params: params,
+        tys: failures
+      )
+      let grants be for each capability in capabilities collect effects.from_ast(capability)
+      let signature be FunctionSignature(
+        params: built_params.value,
+        result: built_result.value,
+        failures: built_failures.value,
+        capabilities: grants
+      )
+      return Built(value: FunctionTy(signature: signature), world: built_failures.world)
+    when NamedType(name, args, span) then
+      return resolve_named(
+        world: world,
+        owner: owner,
+        params: params,
+        name: name,
+        args: args,
+        span: span
+      )
+  end
+end
+
+function resolve_named(
+  world: World,
+  owner: Integer,
+  params: List of NamedParam,
+  name: TypeName,
+  args: List of Type,
+  span: Span
+)
+  returns Built of Ty
+  purpose: A named type: `Self`, a type parameter in scope, or a declared type with its arguments.
+
+  if name.text is "Self" then return Built(value: SelfTy, world: world) end
+  let param be lookup_named_param(params: params, name: name.text)
+  if param is not nothing then
+    let id be param otherwise crash with "a type parameter"
+    if args.is_empty() then return Built(value: Param(id: id), world: world) end
+    let updated be push_error(
+      world: world,
+      owner: owner,
+      code: "type-arity",
+      message: "`{name.text}` is a type parameter and takes no arguments",
+      span: span,
+      fix: "drop the arguments"
+    )
+    return Built(value: Param(id: id), world: updated)
+  end
+  match lookup_type(world: world, owner: owner, name: name.text)
+    when nothing then
+      let fix be suggest_type(world: world, owner: owner, name: name.text)
+      let message be "unknown type `{name.text}`"
+      let updated be push_error(
+        world: world,
+        owner: owner,
+        code: "unknown-type",
+        message: message,
+        span: name.span,
+        fix: fix
+      )
+      return Built(value: ErrorTy, world: updated)
+    when some(type_id) then
+      let expected be type_at(world: world, id: type_id).params.length()
+      if expected is not args.length() then
+        return arity_error(
+          world: world,
+          owner: owner,
+          name: name,
+          span: span,
+          type_id: type_id,
+          found: args.length()
+        )
+      end
+      let built be resolve_type_list(world: world, owner: owner, params: params, tys: args)
+      return Built(value: App(id: type_id, args: built.value), world: built.world)
+  end
+end
+
+function arity_error(
+  world: World,
+  owner: Integer,
+  name: TypeName,
+  span: Span,
+  type_id: Integer,
+  found: Integer
+)
+  returns Built of Ty
+  purpose: The error for a type applied to the wrong number of arguments.
+
+  let param_ids be type_at(world: world, id: type_id).params
+  let expected be param_ids.length()
+  let plural be if expected is 1 then "" otherwise "s" end
+  let message be
+    if expected is 0 then "`{name.text}` takes no type arguments"
+    otherwise "`{name.text}` takes {expected} type argument{plural}, found {found}"
+    end
+  let names be for each id in param_ids collect param_name(world: world, id: id)
+  let joined be if names.length() is 2 then names.join(" to ") otherwise names.join(", ") end
+  let fix be
+    if expected is 0 then "drop the type arguments" otherwise "write `{name.text} of {joined}`" end
+  let updated be push_error(
+    world: world,
+    owner: owner,
+    code: "type-arity",
+    message: message,
+    span: span,
+    fix: fix
+  )
+  return Built(value: ErrorTy, world: updated)
+end
+
+public function resolve_type_list(
+  world: World,
+  owner: Integer,
+  params: List of NamedParam,
+  tys: List of Type
+)
+  returns Built of List of Ty
+  purpose: Every type of a list resolved, in order.
+
+  let mutable out: List of Ty be []
+  let mutable updated be world
+  for each ty in tys
+    let built be resolve_type(world: updated, owner: owner, params: params, ty: ty)
+    change out to out.append(built.value)
+    change updated to built.world
+  end
+  return Built(value: out, world: updated)
+end
+
+public function resolve_optional_type(
+  world: World,
+  owner: Integer,
+  params: List of NamedParam,
+  ty: maybe Type
+)
+  returns OptionalResolved
+  purpose: An optional type resolved, or nothing.
+
+  match ty
+    when some(inner) then
+      let built be resolve_type(world: world, owner: owner, params: params, ty: inner)
+      return OptionalResolved(value: built.value, world: built.world)
+    when nothing then return OptionalResolved(value: nothing, world: world)
+  end
+end
+
+function new_params(world: World, names: List of TypeName) returns Built of List of NamedParam
+  purpose: Fresh type parameters for the names.
+
+  let mutable out: List of NamedParam be []
+  let mutable updated be world
+  for each name in names
+    let id be updated.params.length()
+    let info be ParamInfo(name: name.text, constraints: [])
+    change updated to updated with params: updated.params.append(info)
+    change out to out.append(NamedParam(name: name.text, id: id))
+  end
+  return Built(value: out, world: updated)
+end
+
+function for_any_params(world: World, owner: Integer, for_any: ForAny)
+  returns Built of List of NamedParam
+  purpose: Type parameters of a `for any` clause with their constraints.
+
+  let built be new_params(world: world, names: for_any.params)
+  let mutable updated be built.world
+  for each constraint in for_any.constraints
+    change updated to add_constraint(
+      world: updated,
+      owner: owner,
+      params: built.value,
+      constraint: constraint
+    )
+  end
+  return Built(value: built.value, world: updated)
+end
+
+function add_constraint(
+  world: World,
+  owner: Integer,
+  params: List of NamedParam,
+  constraint: Constraint
+)
+  returns World
+  purpose: One `T can Ability` of a `for any` clause.
+
+  match lookup_named_param(params: params, name: constraint.param.text)
+    when nothing then
+      let declared be for each param in params collect param.name
+      let names be suggest.quoted(declared)
+      return push_error(
+        world: world,
+        owner: owner,
+        code: "unknown-type",
+        message: "`{constraint.param.text}` is not one of the type parameters",
+        span: constraint.param.span,
+        fix: "name one of {names}"
+      )
+    when some(param_id) then
+      let name be named(constraint.requirement) otherwise return world
+      match lookup_ability(world: world, owner: owner, name: name.text)
+        when some(ability_id) then
+          return add_resolved_constraint(
+            world: world,
+            owner: owner,
+            params: params,
+            param_id: param_id,
+            ability_id: ability_id,
+            requirement: constraint.requirement,
+            before: "{constraint.param.text} can "
+          )
+        when nothing then
+          let message be "unknown ability `{name.text}`"
+          let fix be suggest_ability(world: world, owner: owner, name: name.text)
+          return push_error(
+            world: world,
+            owner: owner,
+            code: "unknown-ability",
+            message: message,
+            span: name.span,
+            fix: fix
+          )
+      end
+  end
+end
+
+function add_resolved_constraint(
+  world: World,
+  owner: Integer,
+  params: List of NamedParam,
+  param_id: Integer,
+  ability_id: Integer,
+  requirement: Type,
+  before: Text
+)
+  returns World
+  purpose: A constraint's arguments resolved and counted, then the constraint recorded (AB1).
+
+  let span be
+    match requirement
+      when NamedType(span: place) then place
+      otherwise return world
+    end
+  let built be ability_type_args(world: world, id: owner, params: params, ability_type: requirement)
+  let checked be check_ability_arity(
+    world: built.world,
+    owner: owner,
+    ability_id: ability_id,
+    found: built.value.length(),
+    span: span,
+    before: before,
+    after: ""
+  )
+  let expected be ability_at(world: checked.world, id: ability_id).params.length()
+  let args be
+    if checked.value then built.value otherwise padded(args: built.value, expected: expected) end
+  let info be param_at(world: checked.world, id: param_id)
+  let listed be info
+    with constraints: info.constraints.append(AbilityRef(ability_id: ability_id, args: args))
+  return checked.world
+    with params: lists.replace_at(items: checked.world.params, index: param_id, item: listed)
+end
+
+function check_ability_arity(
+  world: World,
+  owner: Integer,
+  ability_id: Integer,
+  found: Integer,
+  span: Span,
+  before: Text,
+  after: Text
+)
+  returns Built of Boolean
+  purpose: `type-arity` when an ability is named with the wrong number of type arguments.
+
+  let abil be ability_at(world: world, id: ability_id)
+  let expected be abil.params.length()
+  if found is expected then return Built(value: true, world: world) end
+  let names be for each param_id in abil.params collect param_name(world: world, id: param_id)
+  let joined be names.join(", ")
+  let fix be
+    if expected is 0 then "write `{before}{abil.name}{after}`"
+    otherwise "write `{before}{abil.name} of {joined}{after}`"
+    end
+  let plural be if expected is 1 then "" otherwise "s" end
+  let updated be push_error(
+    world: world,
+    owner: owner,
+    code: "type-arity",
+    message: "`{abil.name}` takes {expected} type argument{plural}, found {found}",
+    span: span,
+    fix: fix
+  )
+  return Built(value: false, world: updated)
+end
+
+function padded(args: List of Ty, expected: Integer) returns List of Ty
+  purpose: The arguments cut or filled with the error type to the ability's arity, after an error.
+
+  let mutable out be args.take(expected)
+  repeat until out.length() is at least expected
+    change out to out.append(ErrorTy)
+  end
+  return out
+end
+
+function resolve_fields(
+  world: World,
+  owner: Integer,
+  params: List of NamedParam,
+  fields: List of Field
+)
+  returns Built of List of FieldInfo
+  purpose: The fields of a record or a variant with their types resolved.
+
+  let mutable out: List of FieldInfo be []
+  let mutable updated be world
+  for each field in fields
+    let built be resolve_type(world: updated, owner: owner, params: params, ty: field.annotation)
+    let info be FieldInfo(
+      name: field.name.text,
+      ty: built.value,
+      refinement: field.refinement,
+      external_name: field.external_name,
+      span: field.span
+    )
+    change out to out.append(info)
+    change updated to built.world
+  end
+  return Built(value: out, world: updated)
+end
+
+function resolve_derives(world: World, owner: Integer, derives: List of Derive, type_id: Integer)
+  returns Built of List of Integer
+  purpose: The abilities a type derives with `can`, each checked.
+
+  let mutable out: List of Integer be []
+  let mutable updated be world
+  for each derive in derives
+    match lookup_ability(world: updated, owner: owner, name: derive.ability_name.text)
+      when some(ability_id) then
+        change out to out.append(ability_id)
+        change updated to check_derive(
+          world: updated,
+          owner: owner,
+          derive: derive,
+          type_id: type_id,
+          ability_id: ability_id
+        )
+      when nothing then
+        let message be "unknown ability `{derive.ability_name.text}`"
+        let fix be suggest_ability(world: updated, owner: owner, name: derive.ability_name.text)
+        change updated to push_error(
+          world: updated,
+          owner: owner,
+          code: "unknown-ability",
+          message: message,
+          span: derive.ability_name.span,
+          fix: fix
+        )
+    end
+  end
+  return Built(value: out, world: updated)
+end
+
+function check_derive(
+  world: World,
+  owner: Integer,
+  derive: Derive,
+  type_id: Integer,
+  ability_id: Integer
+)
+  returns World
+  purpose: Decision K10 for the JSON abilities, and the fields of `can Compare by`.
+
+  let mutable updated be world
+  let ability_name be ability_at(world: world, id: ability_id).name
+  if ability_name is "ToJson" or ability_name is "FromJson" then
+    change updated to check_kind_fields(world: updated, owner: owner, type_id: type_id)
+  end
+  if derive.fields.is_empty() then return updated end
+  match type_at(world: world, id: type_id).kind
+    when RecordKind(fields) then
+      let field_names be for each field in fields collect field.name
+      let type_text be type_at(world: world, id: type_id).name
+      for each name in derive.fields
+        if not field_names.contains(name.text) then
+          let fix be
+            match suggest.closest(name: name.text, candidates: field_names)
+              when some(close) then "did you mean `{close}`?"
+              when nothing then "name one of {suggest.quoted(field_names)}"
+            end
+          change updated to push_error(
+            world: updated,
+            owner: owner,
+            code: "unknown-field",
+            message: "`{type_text}` has no field named `{name.text}`",
+            span: name.span,
+            fix: fix
+          )
+        end
+      end
+      return updated
+    otherwise return updated
+  end
+end
+
+function check_kind_fields(world: World, owner: Integer, type_id: Integer) returns World
+  purpose: Decision K10: JSON spells the variant's name under `kind`, so no field is named so.
+
+  let mutable updated be world
+  match type_at(world: world, id: type_id).kind
+    when SumKind(variants) then
+      for each variant in variants
+        for each field in variant.fields
+          if field.name is "kind" then
+            let has_kind be "the variant `{variant.name}` has a field named `kind`"
+            change updated to push_error(
+              world: updated,
+              owner: owner,
+              code: "kind-field",
+              message: "{has_kind}, the key JSON uses for the variant's name (decision K10)",
+              span: field.span,
+              fix: "rename the field"
+            )
+          end
+        end
+      end
+      return updated
+    otherwise return updated
+  end
+end
+
+function resolve_type_items(world: World, id: Integer) returns World
+  purpose: Resolve every type definition of a module.
+
+  let info be module_at(world: world, id: id)
+  let mutable updated be world
+  for each item in info.tree.items
+    match item
+      when TypeItem(value: def) then
+        change updated to resolve_type_item(world: updated, id: id, def: def)
+      otherwise continue
+    end
+  end
+  return updated
+end
+
+function resolve_type_item(world: World, id: Integer, def: TypeDefinition) returns World
+  purpose: One type definition: its parameters, its shape, its derives, its purpose.
+
+  let type_id be module_at(world: world, id: id).types.get(
+    def.name.text
+  ) otherwise crash with "a registered type"
+  if type_at(world: world, id: type_id).kind is not Unresolved then return world end
+  let built be new_params(world: world, names: def.type_params)
+  let params be built.value
+  let param_ids be for each param in params collect param.id
+  let with_params be type_at(world: built.world, id: type_id) with params: param_ids
+  let mutable updated be update_type(world: built.world, id: type_id, info: with_params)
+  let is_library be module_at(world: updated, id: id).is_library
+  let kind_built be resolve_kind(
+    world: updated,
+    id: id,
+    params: params,
+    definition: def.definition,
+    is_library: is_library
+  )
+  let with_kind be type_at(world: kind_built.world, id: type_id) with kind: kind_built.value
+  change updated to update_type(world: kind_built.world, id: type_id, info: with_kind)
+  let derives_built be resolve_definition_derives(
+    world: updated,
+    id: id,
+    definition: def.definition,
+    type_id: type_id
+  )
+  let with_derives be type_at(world: derives_built.world, id: type_id)
+    with derives: derives_built.value
+  change updated to update_type(world: derives_built.world, id: type_id, info: with_derives)
+  if def.is_public and def.docs.summary is nothing and not is_library then
+    change updated to push_error(
+      world: updated,
+      owner: id,
+      code: "purpose-missing",
+      message: "the public type `{def.name.text}` has no purpose",
+      span: def.name.span,
+      fix: "add a `purpose:` clause after the head line"
+    )
+  end
+  return updated
+end
+
+function resolve_kind(
+  world: World,
+  id: Integer,
+  params: List of NamedParam,
+  definition: TypeKind,
+  is_library: Boolean
+)
+  returns Built of TypeKindInfo
+  purpose: The shape of a type definition with its field types resolved.
+
+  match definition
+    when RecordDefinition(fields) then
+      if fields.is_empty() and is_library then return Built(value: Opaque, world: world) end
+      let built be resolve_fields(world: world, owner: id, params: params, fields: fields)
+      return Built(value: RecordKind(fields: built.value), world: built.world)
+    when SumDefinition(variants) then
+      let mutable out: List of VariantInfo be []
+      let mutable updated be world
+      for each variant in variants
+        let built be resolve_fields(
+          world: updated,
+          owner: id,
+          params: params,
+          fields: variant.fields
+        )
+        change out to out.append(
+          VariantInfo(name: variant.name.text, fields: built.value, span: variant.span)
+        )
+        change updated to built.world
+      end
+      return Built(value: SumKind(variants: out), world: updated)
+    when SubtypeDefinition(base, refinement) then
+      let built be resolve_type(world: world, owner: id, params: params, ty: base)
+      return Built(
+        value: SubtypeKind(base: built.value, refinement: refinement),
+        world: built.world
+      )
+  end
+end
+
+function resolve_definition_derives(
+  world: World,
+  id: Integer,
+  definition: TypeKind,
+  type_id: Integer
+)
+  returns Built of List of Integer
+  purpose: The derives of a record or a sum; a subtype has none.
+
+  match definition
+    when RecordDefinition(derives) then
+      return resolve_derives(world: world, owner: id, derives: derives, type_id: type_id)
+    when SumDefinition(derives) then
+      return resolve_derives(world: world, owner: id, derives: derives, type_id: type_id)
+    when SubtypeDefinition then return Built(value: [], world: world)
+  end
+end
+
+function resolve_ability_items(world: World, id: Integer) returns World
+  purpose: Resolve every ability declaration of a module: the parameters of all, then the rest.
+
+  let info be module_at(world: world, id: id)
+  let mutable updated be world
+  let mutable pending: List of PendingAbility be []
+  for each item in info.tree.items
+    match item
+      when AbilityItem(value: abil) then
+        let registered be register_ability_params(world: updated, id: id, abil: abil)
+        change updated to registered.world
+        change pending to pending.append_all(registered.value)
+      otherwise continue
+    end
+  end
+  for each waiting in pending
+    change updated to resolve_ability_item(world: updated, id: id, pending: waiting)
+  end
+  return updated
+end
+
+type PendingAbility
+  purpose: An ability whose parameters are registered and whose requirements and methods wait.
+  has abil: Ability
+  has ability_id: Integer
+  has params: List of NamedParam
+end
+
+function register_ability_params(world: World, id: Integer, abil: Ability)
+  returns Built of List of PendingAbility
+  purpose: An ability's parameters first, so that a requirement can count a later ability's.
+
+  let ability_id be module_at(world: world, id: id).abilities.get(
+    abil.name.text
+  ) otherwise crash with "a registered ability"
+  let base be ability_at(world: world, id: ability_id)
+  if not base.methods.is_empty() or base.resolved then return Built(value: [], world: world) end
+  let built be new_params(world: world, names: abil.type_params)
+  let param_ids be for each param in built.value collect param.id
+  let info be base with params: param_ids, resolved: true
+  let updated be update_ability(world: built.world, id: ability_id, info: info)
+  let waiting be PendingAbility(abil: abil, ability_id: ability_id, params: built.value)
+  return Built(value: [waiting], world: updated)
+end
+
+function resolve_ability_item(world: World, id: Integer, pending: PendingAbility) returns World
+  purpose: One ability: its requirements, its method heads, its purpose.
+
+  let abil be pending.abil
+  let ability_id be pending.ability_id
+  let params be pending.params
+  let requirements_built be ability_requirements(
+    world: world,
+    id: id,
+    params: params,
+    requirements: abil.requirements
+  )
+  let mutable updated be requirements_built.world
+  let methods_built be ability_methods(
+    world: updated,
+    id: id,
+    params: params,
+    functions: abil.functions
+  )
+  change updated to methods_built.world
+  let required be requirements_built.value
+  let methods be methods_built.value
+  let base be ability_at(world: updated, id: ability_id)
+  let info be base with requirements: required, methods: methods
+  change updated to update_ability(world: updated, id: ability_id, info: info)
+  if abil.is_public
+    and abil.docs.summary is nothing
+    and not module_at(world: updated, id: id).is_library then
+    change updated to push_error(
+      world: updated,
+      owner: id,
+      code: "purpose-missing",
+      message: "the public ability `{abil.name.text}` has no purpose",
+      span: abil.name.span,
+      fix: "add a `purpose:` clause after the head line"
+    )
+  end
+  return updated
+end
+
+function ability_requirements(
+  world: World,
+  id: Integer,
+  params: List of NamedParam,
+  requirements: List of Type
+)
+  returns Built of List of AbilityRef
+  purpose: `ability X where self can Y`: what every implementing type must have, with arguments.
+
+  let mutable out: List of AbilityRef be []
+  let mutable updated be world
+  for each requirement in requirements
+    let name be named(requirement) otherwise continue
+    match lookup_ability(world: updated, owner: id, name: name.text)
+      when some(required) then
+        let built be resolved_requirement(
+          world: updated,
+          id: id,
+          params: params,
+          required: required,
+          requirement: requirement
+        )
+        change updated to built.world
+        change out to out.append(built.value)
+      when nothing then
+        let message be "unknown ability `{name.text}`"
+        let fix be suggest_ability(world: updated, owner: id, name: name.text)
+        change updated to push_error(
+          world: updated,
+          owner: id,
+          code: "unknown-ability",
+          message: message,
+          span: name.span,
+          fix: fix
+        )
+    end
+  end
+  return Built(value: out, world: updated)
+end
+
+function resolved_requirement(
+  world: World,
+  id: Integer,
+  params: List of NamedParam,
+  required: Integer,
+  requirement: Type
+)
+  returns Built of AbilityRef
+  purpose: One requirement's arguments, which may name the ability's own parameters, counted.
+
+  let span be
+    match requirement
+      when NamedType(span: place) then place
+      otherwise crash with "a named requirement"
+    end
+  let built be ability_type_args(world: world, id: id, params: params, ability_type: requirement)
+  let checked be check_ability_arity(
+    world: built.world,
+    owner: id,
+    ability_id: required,
+    found: built.value.length(),
+    span: span,
+    before: "self can ",
+    after: ""
+  )
+  let expected be ability_at(world: checked.world, id: required).params.length()
+  let args be
+    if checked.value then built.value otherwise padded(args: built.value, expected: expected) end
+  return Built(value: AbilityRef(ability_id: required, args: args), world: checked.world)
+end
+
+function ability_methods(
+  world: World,
+  id: Integer,
+  params: List of NamedParam,
+  functions: List of Function
+)
+  returns Built of List of AbilityMethod
+  purpose: The method heads of an ability with their types resolved; `self` is left out.
+
+  let mutable out: List of AbilityMethod be []
+  let mutable updated be world
+  for each func in functions
+    let mutable method_params: List of NamedTy be []
+    let mutable index be 0
+    for each param in func.params
+      if index is 0 and param.name.text is "self" then
+        change index to index + 1
+        continue
+      end
+      let built be ability_param_type(world: updated, id: id, params: params, param: param)
+      change method_params to method_params.append(NamedTy(name: param.name.text, ty: built.value))
+      change updated to built.world
+      change index to index + 1
+    end
+    let result_built be resolve_optional_type(
+      world: updated,
+      owner: id,
+      params: params,
+      ty: func.result
+    )
+    let failures_built be resolve_type_list(
+      world: result_built.world,
+      owner: id,
+      params: params,
+      tys: func.failures
+    )
+    change updated to failures_built.world
+    let method be AbilityMethod(
+      name: func.name.text,
+      params: method_params,
+      result: result_built.value,
+      failures: failures_built.value
+    )
+    change out to out.append(method)
+  end
+  return Built(value: out, world: updated)
+end
+
+function ability_param_type(world: World, id: Integer, params: List of NamedParam, param: Param)
+  returns Built of Ty
+  purpose: The type of an ability method's parameter; unknown without an annotation.
+
+  match param.annotation
+    when some(ty) then return resolve_type(world: world, owner: id, params: params, ty: ty)
+    when nothing then return Built(value: ErrorTy, world: world)
+  end
+end
+
+function resolve_function_items(world: World, id: Integer) returns World
+  purpose: Declare every function, implementation and constant of a module.
+
+  let info be module_at(world: world, id: id)
+  let mutable updated be world
+  let mutable index be 0
+  for each item in info.tree.items
+    change updated to resolve_item(
+      world: updated,
+      id: id,
+      index: index,
+      item: item,
+      is_library: info.is_library
+    )
+    change index to index + 1
+  end
+  return updated
+end
+
+function resolve_item(world: World, id: Integer, index: Integer, item: Item, is_library: Boolean)
+  returns World
+  purpose: One item of a module in the function pass.
+
+  match item
+    when FunctionItem(value: func) then
+      if function_registered(world: world, owner: id, func: func) then return world end
+      let built be declare_function(
+        world: world,
+        owner: id,
+        func: func,
+        outer_params: [],
+        body: ItemBody(item: index),
+        is_library: is_library
+      )
+      return built.world
+    when ImplementationItem(value: implementation) then
+      return resolve_implementation(
+        world: world,
+        id: id,
+        index: index,
+        implementation: implementation,
+        is_library: is_library
+      )
+    when ConstantItem(value: constant) then
+      return resolve_constant(
+        world: world,
+        id: id,
+        index: index,
+        constant: constant,
+        is_library: is_library
+      )
+    otherwise return world
+  end
+end
+
+type ImplementationHead
+  purpose: An implementation's head resolved: ability, parameters, target and arguments.
+  has ability_id: Integer
+  has params: List of NamedParam
+  has target: Ty
+  has ability_args: List of Ty
+  has world: World
+end
+
+function resolve_implementation(
+  world: World,
+  id: Integer,
+  index: Integer,
+  implementation: Implementation,
+  is_library: Boolean
+)
+  returns World
+  purpose: `ability Name of Args for Target`: its methods declared and checked against the ability.
+
+  let ability_name be named(implementation.ability_type) otherwise return world
+  let found be lookup_ability(world: world, owner: id, name: ability_name.text)
+  if found is nothing then
+    let message be "unknown ability `{ability_name.text}`"
+    let fix be suggest_ability(world: world, owner: id, name: ability_name.text)
+    return push_error(
+      world: world,
+      owner: id,
+      code: "unknown-ability",
+      message: message,
+      span: ability_name.span,
+      fix: fix
+    )
+  end
+  let ability_id be found otherwise crash with "an ability"
+  if already_implemented(world: world, owner: id, span: implementation.span) then return world end
+  let head be implementation_head(
+    world: world,
+    id: id,
+    implementation: implementation,
+    ability_id: ability_id,
+    ability_name: ability_name
+  )
+  let methods be declare_methods(
+    world: head.world,
+    id: id,
+    index: index,
+    implementation: implementation,
+    head: head,
+    is_library: is_library
+  )
+  let updated be check_implementation_complete(
+    world: methods.world,
+    id: id,
+    implementation: implementation,
+    ability_id: ability_id,
+    ability_name: ability_name
+  )
+  let type_params be for each param in head.params collect param.id
+  let info be ImplInfo(
+    ability_id: ability_id,
+    target: head.target,
+    ability_args: head.ability_args,
+    type_params: type_params,
+    owner: id,
+    functions: methods.value,
+    span: implementation.span
+  )
+  return updated with impls: updated.impls.append(info)
+end
+
+function declare_methods(
+  world: World,
+  id: Integer,
+  index: Integer,
+  implementation: Implementation,
+  head: ImplementationHead,
+  is_library: Boolean
+)
+  returns Built of List of Integer
+  purpose: The methods of an implementation declared and adopted, in order.
+
+  let mutable updated be world
+  let mutable functions: List of Integer be []
+  let mutable function_index be 0
+  for each func in implementation.functions
+    let declared be declare_function(
+      world: updated,
+      owner: id,
+      func: func,
+      outer_params: head.params,
+      body: ImplementationBody(item: index, method: function_index),
+      is_library: is_library
+    )
+    change updated to adopt_method(
+      world: declared.world,
+      id: id,
+      head: head,
+      function_id: declared.value,
+      func: func
+    )
+    change functions to functions.append(declared.value)
+    change function_index to function_index + 1
+  end
+  return Built(value: functions, world: updated)
+end
+
+function already_implemented(world: World, owner: Integer, span: Span) returns Boolean
+  purpose: Whether an implementation at this span was declared before.
+
+  for each implementation in world.impls
+    if implementation.owner is owner and implementation.span is span then return true end
+  end
+  return false
+end
+
+function implementation_params(world: World, id: Integer, type_params: maybe ForAny)
+  returns Built of List of NamedParam
+  purpose: The `for any` parameters of an implementation, or none.
+
+  match type_params
+    when some(for_any) then return for_any_params(world: world, owner: id, for_any: for_any)
+    when nothing then return Built(value: [], world: world)
+  end
+end
+
+function implementation_head(
+  world: World,
+  id: Integer,
+  implementation: Implementation,
+  ability_id: Integer,
+  ability_name: TypeName
+)
+  returns ImplementationHead
+  purpose: The parameters, target and ability arguments of an implementation, arity checked.
+
+  let params_built be implementation_params(
+    world: world,
+    id: id,
+    type_params: implementation.type_params
+  )
+  let params be params_built.value
+  let target_built be resolve_type(
+    world: params_built.world,
+    owner: id,
+    params: params,
+    ty: implementation.target
+  )
+  let args_built be ability_type_args(
+    world: target_built.world,
+    id: id,
+    params: params,
+    ability_type: implementation.ability_type
+  )
+  let checked be check_ability_arity(
+    world: args_built.world,
+    owner: id,
+    ability_id: ability_id,
+    found: args_built.value.length(),
+    span: ability_name.span,
+    before: "ability ",
+    after: " for ..."
+  )
+  let updated be note_duplicate_implementation(
+    world: checked.world,
+    id: id,
+    implementation: implementation,
+    ability_id: ability_id,
+    ability_name: ability_name,
+    target: target_built.value
+  )
+  return ImplementationHead(
+    ability_id: ability_id,
+    params: params,
+    target: target_built.value,
+    ability_args: args_built.value,
+    world: updated
+  )
+end
+
+function note_duplicate_implementation(
+  world: World,
+  id: Integer,
+  implementation: Implementation,
+  ability_id: Integer,
+  ability_name: TypeName,
+  target: Ty
+)
+  returns World
+  purpose: One implementation of an ability per type, whatever the arguments (decision AB1).
+
+  let head be types.head_type(target) otherwise return world
+  let twice be implemented_elsewhere(
+    world: world,
+    ability_id: ability_id,
+    head: head,
+    owner: id,
+    span: implementation.span
+  )
+  if not twice then return world end
+  let target_name be type_at(world: world, id: head).name
+  return push_error(
+    world: world,
+    owner: id,
+    code: "duplicate-implementation",
+    message: "`{target_name}` already implements `{ability_name.text}`",
+    span: ability_name.span,
+    fix: "keep one implementation of `{ability_name.text}` for `{target_name}`"
+  )
+end
+
+function implemented_elsewhere(
+  world: World,
+  ability_id: Integer,
+  head: Integer,
+  owner: Integer,
+  span: Span
+)
+  returns Boolean
+  purpose: Whether an implementation of the ability for the type exists at another place.
+
+  for each implementation in world.impls
+    let same_head be types.head_type(implementation.target) is head
+    let same_place be implementation.owner is owner and implementation.span is span
+    if implementation.ability_id is ability_id and same_head and not same_place then return true end
+  end
+  return false
+end
+
+function ability_type_args(
+  world: World,
+  id: Integer,
+  params: List of NamedParam,
+  ability_type: Type
+)
+  returns Built of List of Ty
+  purpose: The type arguments written after the ability's name, resolved.
+
+  match ability_type
+    when NamedType(args) then
+      return resolve_type_list(world: world, owner: id, params: params, tys: args)
+    otherwise return Built(value: [], world: world)
+  end
+end
+
+function adopt_method(
+  world: World,
+  id: Integer,
+  head: ImplementationHead,
+  function_id: Integer,
+  func: Function
+)
+  returns World
+  purpose: A method of an implementation: `self` is the target, indexed under it, signature checked.
+
+  let info be function_at(world: world, id: function_id)
+  let params be
+    match info.params.first()
+      when some(first_param) where first_param.name is "self" then
+        lists.replace_at(items: info.params, index: 0, item: first_param with ty: head.target)
+      otherwise info.params
+    end
+  # the ability's visibility covers its methods (reference section 5)
+  let is_public be ability_at(world: world, id: head.ability_id).is_public
+  let mutable updated be update_function(
+    world: world,
+    id: function_id,
+    info: info with params: params, is_method: true, is_public: is_public
+  )
+  change updated to index_under(
+    world: updated,
+    target: head.target,
+    name: func.name.text,
+    function_id: function_id
+  )
+  return check_method_signature(
+    world: updated,
+    owner: id,
+    head: head,
+    function_id: function_id,
+    func: func
+  )
+end
+
+function index_under(world: World, target: Ty, name: Text, function_id: Integer) returns World
+  purpose: A method listed under the head of its target type, when it has one.
+
+  match types.head_type(target)
+    when some(head) then
+      return index_method(world: world, head: head, name: name, function_id: function_id)
+    when nothing then return world
+  end
+end
+
+function check_implementation_complete(
+  world: World,
+  id: Integer,
+  implementation: Implementation,
+  ability_id: Integer,
+  ability_name: TypeName
+)
+  returns World
+  purpose: Every method of the ability must be implemented, and nothing else.
+
+  let expected be
+    for each method in ability_at(world: world, id: ability_id).methods
+    collect method.name
+  let written be for each func in implementation.functions collect func.name.text
+  let mutable updated be world
+  for each name in expected
+    if not written.contains(name) then
+      change updated to push_error(
+        world: updated,
+        owner: id,
+        code: "missing-method",
+        message: "the implementation of `{ability_name.text}` lacks `{name}`",
+        span: implementation.span,
+        fix: "add `function {name}(self, ...)` to the implementation"
+      )
+    end
+  end
+  for each func in implementation.functions
+    if not expected.contains(func.name.text) then
+      change updated to push_error(
+        world: updated,
+        owner: id,
+        code: "unknown-method",
+        message: "`{func.name.text}` is not a method of `{ability_name.text}`",
+        span: func.name.span,
+        fix: "remove it, or declare it in the ability"
+      )
+    end
+  end
+  return updated
+end
+
+function resolve_constant(
+  world: World,
+  id: Integer,
+  index: Integer,
+  constant: Constant,
+  is_library: Boolean
+)
+  returns World
+  purpose: A top-level constant: its type resolved, its purpose required when public.
+
+  let info be module_at(world: world, id: id)
+  if info.constants.contains_key(constant.name.text) then return world end
+  let built be resolve_type(world: world, owner: id, params: [], ty: constant.annotation)
+  let mutable updated be built.world
+  if constant.is_public and constant.docs.summary is nothing and not is_library then
+    change updated to push_error(
+      world: updated,
+      owner: id,
+      code: "purpose-missing",
+      message: "the public constant `{constant.name.text}` has no purpose",
+      span: constant.name.span,
+      fix: "add a `purpose:` clause"
+    )
+  end
+  let constant_info be ConstantInfo(
+    ty: built.value,
+    is_public: constant.is_public,
+    item_index: index,
+    deprecation: constant.docs.deprecation,
+    span: constant.span
+  )
+  let current be module_at(world: updated, id: id)
+  let constants be current.constants.set(key: constant.name.text, value: constant_info)
+  return update_module(world: updated, id: id, info: current with constants: constants)
+end
+
+function function_registered(world: World, owner: Integer, func: Function) returns Boolean
+  purpose: Whether a function at this span was declared before.
+
+  let ids be module_at(world: world, id: owner).functions.get(func.name.text) otherwise return false
+  for each id in ids
+    if function_at(world: world, id: id).span is func.span then return true end
+  end
+  return false
+end
+
+function function_type_params(
+  world: World,
+  owner: Integer,
+  outer_params: List of NamedParam,
+  type_params: maybe ForAny
+)
+  returns Built of List of NamedParam
+  purpose: The type parameters in scope for a function: the implementation's and its own `for any`.
+
+  match type_params
+    when some(for_any) then
+      let built be for_any_params(world: world, owner: owner, for_any: for_any)
+      return Built(value: outer_params.append_all(built.value), world: built.world)
+    when nothing then return Built(value: outer_params, world: world)
+  end
+end
+
+type DeclaredSignature
+  purpose: A function's signature resolved: parameters, type parameters, result, failures, grants.
+  has params: List of NamedTy
+  has type_params: List of Integer
+  has result: maybe Ty
+  has failures: List of Ty
+  has grants: List of Grant
+  has world: World
+end
+
+function resolve_signature(
+  world: World,
+  owner: Integer,
+  func: Function,
+  outer_params: List of NamedParam
+)
+  returns DeclaredSignature
+  purpose: The signature of a function resolved in the scope of its type parameters.
+
+  let params_built be function_type_params(
+    world: world,
+    owner: owner,
+    outer_params: outer_params,
+    type_params: func.type_params
+  )
+  let params be params_built.value
+  let declared be declare_params(
+    world: params_built.world,
+    owner: owner,
+    params: params,
+    func: func
+  )
+  let result_built be resolve_optional_type(
+    world: declared.world,
+    owner: owner,
+    params: params,
+    ty: func.result
+  )
+  let failures_built be resolve_type_list(
+    world: result_built.world,
+    owner: owner,
+    params: params,
+    tys: func.failures
+  )
+  let grants be for each capability in func.capabilities collect effects.from_ast(capability)
+  let type_params be for each param in params collect param.id
+  return DeclaredSignature(
+    params: declared.params,
+    type_params: type_params,
+    result: result_built.value,
+    failures: failures_built.value,
+    grants: grants,
+    world: failures_built.world
+  )
+end
+
+public function declare_function(
+  world: World,
+  owner: Integer,
+  func: Function,
+  outer_params: List of NamedParam,
+  body: BodyLocation,
+  is_library: Boolean
+)
+  returns Built of Integer
+  purpose: Declare a function or method: its signature resolved and checked, its id handed back.
+
+  let signature be resolve_signature(
+    world: world,
+    owner: owner,
+    func: func,
+    outer_params: outer_params
+  )
+  let mutable updated be check_capabilities(
+    world: signature.world,
+    owner: owner,
+    func: func,
+    grants: signature.grants
+  )
+  change updated to check_bound_signature(
+    world: updated,
+    owner: owner,
+    func: func,
+    signature: signature
+  )
+  change updated to check_function_docs(
+    world: updated,
+    owner: owner,
+    func: func,
+    grants: signature.grants,
+    is_library: is_library,
+    body: body
+  )
+  let is_method be first_is_self(func)
+  let id be updated.functions.length()
+  let info be FunctionInfo(
+    name: func.name.text,
+    owner: owner,
+    is_public: func.is_public,
+    params: signature.params,
+    is_method: is_method,
+    type_params: signature.type_params,
+    result: signature.result,
+    failures: signature.failures,
+    capabilities: signature.grants,
+    is_library: is_library,
+    body: body,
+    has_examples: not func.docs.examples.is_empty(),
+    deprecation: func.docs.deprecation,
+    expose_as_tool: func.docs.expose_as_tool,
+    span: func.span
+  )
+  change updated to updated with functions: updated.functions.append(info)
+  change updated to register_function(
+    world: updated,
+    owner: owner,
+    func: func,
+    id: id,
+    is_method: is_method,
+    body: body
+  )
+  return Built(value: id, world: updated)
+end
+
+function first_is_self(func: Function) returns Boolean
+  purpose: Whether the first parameter is `self`: a method, called after a dot.
+
+  match func.params.first()
+    when some(param) then return param.name.text is "self"
+    when nothing then return false
+  end
+end
+
+function declare_params(world: World, owner: Integer, params: List of NamedParam, func: Function)
+  returns DeclaredParams
+  purpose: A function's parameters with their types; duplicates and a misplaced `self` reported.
+
+  let mutable out: List of NamedTy be []
+  let mutable names: List of Text be []
+  let mutable updated be world
+  let mutable index be 0
+  for each param in func.params
+    if names.contains(param.name.text) then
+      change updated to push_error(
+        world: updated,
+        owner: owner,
+        code: "duplicate-name",
+        message: "the parameter `{param.name.text}` is declared twice",
+        span: param.name.span,
+        fix: "rename one of them"
+      )
+    end
+    change names to names.append(param.name.text)
+    let built be param_type(
+      world: updated,
+      owner: owner,
+      params: params,
+      param: param,
+      index: index
+    )
+    change updated to built.world
+    if index is greater than 0 and param.name.text is "self" then
+      change updated to push_error(
+        world: updated,
+        owner: owner,
+        code: "self-position",
+        message: "`self` must be the first parameter",
+        span: param.name.span,
+        fix: "move `self` before the other parameters"
+      )
+    end
+    change out to out.append(NamedTy(name: param.name.text, ty: built.value))
+    change index to index + 1
+  end
+  return DeclaredParams(params: out, world: updated)
+end
+
+function param_type(
+  world: World,
+  owner: Integer,
+  params: List of NamedParam,
+  param: Param,
+  index: Integer
+)
+  returns Built of Ty
+  purpose: The type of a parameter: its annotation, `Self` for a bare first `self`, else unknown.
+
+  match param.annotation
+    when some(ty) then return resolve_type(world: world, owner: owner, params: params, ty: ty)
+    when nothing then
+      if index is 0 and param.name.text is "self" then return Built(value: SelfTy, world: world) end
+      return Built(value: ErrorTy, world: world)
+  end
+end
+
+function check_capabilities(world: World, owner: Integer, func: Function, grants: List of Grant)
+  returns World
+  purpose: Every capability of a `needs` clause checked against the tree and the grant rules.
+
+  let mutable updated be world
+  let mutable index be 0
+  for each grant in grants
+    let syntax be func.capabilities.at(index) otherwise crash with "a capability clause"
+    change updated to check_capability(
+      world: updated,
+      owner: owner,
+      func: func,
+      grants: grants,
+      grant: grant,
+      syntax: syntax
+    )
+    change index to index + 1
+  end
+  return updated
+end
+
+function check_capability(
+  world: World,
+  owner: Integer,
+  func: Function,
+  grants: List of Grant,
+  grant: Grant,
+  syntax: Capability
+)
+  returns World
+  purpose: One capability of a `needs` clause.
+
+  let mutable updated be world
+  if effects.has_grant_clauses(grant) and func.name.text is not "main" then
+    change updated to push_error(
+      world: updated,
+      owner: owner,
+      code: "grant-clause",
+      message: "a budget (`at most`) or a guard (`only to`) belongs to the program's grant",
+      span: syntax.span,
+      fix: "move it to the `needs` of `main` or of a `test`"
+    )
+  end
+  change updated to check_sinks(world: updated, owner: owner, grant: grant, span: syntax.span)
+  change updated to check_budget(world: updated, owner: owner, grant: grant, span: syntax.span)
+  if not grant.only_to.is_empty() and func.name.text is "main" then
+    change updated to check_guard_reachable(
+      world: updated,
+      owner: owner,
+      grants: grants,
+      grant: grant,
+      span: syntax.span
+    )
+  end
+  let path be grant.path.join(".")
+  if not effects.is_known(grant) then
+    change updated to push_error(
+      world: updated,
+      owner: owner,
+      code: "unknown-capability",
+      message: "unknown capability `{path}`",
+      span: syntax.span,
+      fix: "one of {effects.tree_spelling()}"
+    )
+  otherwise if grant.scope is not nothing and not effects.takes_scope(grant.path) then
+    change updated to push_error(
+      world: updated,
+      owner: owner,
+      code: "capability-scope",
+      message: "`{path}` takes no scope argument",
+      span: syntax.span,
+      fix: "drop the scope argument"
+    )
+  end
+  return updated
+end
+
+function check_sinks(world: World, owner: Integer, grant: Grant, span: Span) returns World
+  purpose: Every sink after `only to` names a capability of the tree.
+
+  let mutable updated be world
+  for each sink in grant.only_to
+    let plain be effects.plain(path: sink.path, scope: nothing)
+    if not effects.is_known(plain) then
+      let joined be sink.path.join(".")
+      change updated to push_error(
+        world: updated,
+        owner: owner,
+        code: "unknown-capability",
+        message: "unknown capability `{joined}` after `only to`",
+        span: span,
+        fix: "one of {effects.tree_spelling()}"
+      )
+    end
+  end
+  return updated
+end
+
+function check_budget(world: World, owner: Integer, grant: Grant, span: Span) returns World
+  purpose: A budget applies to network, process and filesystem only.
+
+  if grant.budget is nothing then return world end
+  let head be grant.path.first() otherwise ""
+  if ["network", "process", "filesystem"].contains(head) then return world end
+  let joined be grant.path.join(".")
+  return push_error(
+    world: world,
+    owner: owner,
+    code: "grant-clause",
+    message: "`{joined}` takes no budget; budgets apply to network, process and filesystem",
+    span: span,
+    fix: "drop the `at most` clause"
+  )
+end
+
+function check_guard_reachable(
+  world: World,
+  owner: Integer,
+  grants: List of Grant,
+  grant: Grant,
+  span: Span
+)
+  returns World
+  purpose: A guard whose sinks the grant never allows keeps the data from ever leaving (06, 3.3).
+
+  let mutable reachable be false
+  for each sink in grant.only_to
+    let wanted be effects.plain(path: sink.path, scope: sink.scope)
+    for each granted in grants
+      if effects.covers(granted: granted, needed: wanted, runtime_scoped: true) then
+        change reachable to true
+      end
+      if effects.covers(granted: wanted, needed: granted, runtime_scoped: true) then
+        change reachable to true
+      end
+    end
+  end
+  if reachable then return world end
+  let spelling be effects.spelling(grant)
+  let no_sink be "no sink after `only to` is in the grant"
+  return push_warning(
+    world: world,
+    owner: owner,
+    code: "guard-no-sink",
+    message: "{no_sink}, so what enters through `{spelling}` can never leave",
+    span: span,
+    fix: "add the sink to `needs`, or drop `only to` if nothing should leave"
+  )
+end
+
+function check_function_docs(
+  world: World,
+  owner: Integer,
+  func: Function,
+  grants: List of Grant,
+  is_library: Boolean,
+  body: BodyLocation
+)
+  returns World
+  purpose: A public function has a purpose; examples run only on pure functions.
+
+  let mutable updated be world
+  if func.is_public and func.docs.summary is nothing and not is_library and is_item_body(body) then
+    change updated to push_error(
+      world: updated,
+      owner: owner,
+      code: "purpose-missing",
+      message: "the public function `{func.name.text}` has no purpose",
+      span: func.name.span,
+      fix: "add a `purpose:` clause after the signature"
+    )
+  end
+  if not func.docs.examples.is_empty() and not grants.is_empty() then
+    let spelled be effects.spellings(grants).join(", ")
+    let has_examples be "`{func.name.text}` has `example:` lines but needs {spelled}"
+    change updated to push_error(
+      world: updated,
+      owner: owner,
+      code: "example-effects",
+      message: "{has_examples}; examples run only on pure functions",
+      span: func.name.span,
+      fix: "move the checks into a `test` block that declares its `needs`"
+    )
+  end
+  return updated
+end
+
+function is_item_body(body: BodyLocation) returns Boolean
+  purpose: Whether a body is a plain item of its module.
+
+  match body
+    when ItemBody then return true
+    otherwise return false
+  end
+end
+
+function register_function(
+  world: World,
+  owner: Integer,
+  func: Function,
+  id: Integer,
+  is_method: Boolean,
+  body: BodyLocation
+)
+  returns World
+  purpose: A method is indexed under its type (K1); a plain function may not be declared twice.
+
+  let mutable updated be world
+  if is_method then
+    change updated to register_method(world: updated, owner: owner, func: func, id: id, body: body)
+  otherwise
+    change updated to check_duplicate(world: updated, owner: owner, func: func)
+  end
+  let info be module_at(world: updated, id: owner)
+  let existing be info.functions.get(func.name.text) otherwise []
+  let functions be info.functions.set(key: func.name.text, value: existing.append(id))
+  return update_module(world: updated, id: owner, info: info with functions: functions)
+end
+
+function check_duplicate(world: World, owner: Integer, func: Function) returns World
+  purpose: A plain function declared twice in its module.
+
+  if lookup_function(world: world, owner: owner, name: func.name.text) is nothing then
+    return world
+  end
+  return push_error(
+    world: world,
+    owner: owner,
+    code: "duplicate-name",
+    message: "the function `{func.name.text}` is declared twice",
+    span: func.name.span,
+    fix: "rename one of them"
+  )
+end
+
+function register_method(
+  world: World,
+  owner: Integer,
+  func: Function,
+  id: Integer,
+  body: BodyLocation
+)
+  returns World
+  purpose: A method under the head type of its `self`; in its type's module unless of an ability.
+
+  let info be function_at(world: world, id: id)
+  let self_param be info.params.first() otherwise return world
+  let head be types.head_type(self_param.ty) otherwise return world
+  let mutable updated be world
+  let type_info be type_at(world: world, id: head)
+  if is_item_body(body) and type_info.owner is not owner then
+    let owner_name be module_at(world: world, id: type_info.owner).name
+    let lower be type_info.name.to_lower()
+    let first_param be func.params.first() otherwise crash with "a self parameter"
+    let is_method_of be "`{func.name.text}` is a method of `{type_info.name}`"
+    let method_of be "{is_method_of}, which `{owner_name}` declares"
+    change updated to push_error(
+      world: updated,
+      owner: owner,
+      code: "method-module",
+      message: "{method_of}; a method is declared in the module of its type",
+      span: first_param.span,
+      fix: "make it a function whose first parameter is `{lower}: {type_info.name}`"
+    )
+  end
+  return index_method(world: updated, head: head, name: func.name.text, function_id: id)
+end
+
+type MethodShape
+  purpose: A method's parameters after `self`, its result and its failures, declared or expected.
+  has params: List of NamedTy
+  has result: maybe Ty
+  has failures: List of Ty
+end
+
+function check_method_signature(
+  world: World,
+  owner: Integer,
+  head: ImplementationHead,
+  function_id: Integer,
+  func: Function
+)
+  returns World
+  purpose: A method of an implementation carries the ability's signature, `Self` read as the target.
+
+  let abil be ability_at(world: world, id: head.ability_id)
+  let method be ability_method_named(
+    methods: abil.methods,
+    name: func.name.text
+  ) otherwise return world
+  let subst be pair_params(params: abil.params, args: head.ability_args)
+  let expected be expected_shape(method: method, target: head.target, subst: subst)
+  let info be function_at(world: world, id: function_id)
+  let skip be if first_is_self(func) then 1 otherwise 0 end
+  let actual be actual_shape(info: info, skip: skip, target: head.target)
+  let mutable problems be signature_problems(world: world, expected: expected, actual: actual)
+  if not info.capabilities.is_empty() then
+    change problems to problems.append("it declares `needs`; an ability's method has no effects")
+  end
+  if problems.is_empty() then return world end
+  let signature be spell_signature(world: world, name: func.name.text, expected: expected)
+  let joined be problems.join("; ")
+  return push_error(
+    world: world,
+    owner: owner,
+    code: "method-signature",
+    message: "`{func.name.text}` does not match `{abil.name}.{func.name.text}`: {joined}",
+    span: func.name.span,
+    fix: "declare it as `{signature}`"
+  )
+end
+
+function expected_shape(method: AbilityMethod, target: Ty, subst: List of Substitution)
+  returns MethodShape
+  purpose: The ability's method head, `Self` read as the target and the ability's parameters bound.
+
+  let mutable params: List of NamedTy be []
+  for each param in method.params
+    let own be types.with_self(ty: param.ty, self_type: target)
+    change params to params.append(
+      NamedTy(name: param.name, ty: types.substitute(ty: own, bindings: subst))
+    )
+  end
+  let result_own be types.with_self_maybe(ty: method.result, self_type: target)
+  let failures_own be types.with_self_all(tys: method.failures, self_type: target)
+  return MethodShape(
+    params: params,
+    result: substitute_optional(ty: result_own, bindings: subst),
+    failures: types.substitute_all(tys: failures_own, bindings: subst)
+  )
+end
+
+function actual_shape(info: FunctionInfo, skip: Integer, target: Ty) returns MethodShape
+  purpose: The method as declared, after `self`, with `Self` read as the target.
+
+  let mutable params: List of NamedTy be []
+  for each param in info.params.drop(skip)
+    change params to params.append(
+      NamedTy(name: param.name, ty: types.with_self(ty: param.ty, self_type: target))
+    )
+  end
+  return MethodShape(
+    params: params,
+    result: types.with_self_maybe(ty: info.result, self_type: target),
+    failures: types.with_self_all(tys: info.failures, self_type: target)
+  )
+end
+
+function ability_method_named(methods: List of AbilityMethod, name: Text)
+  returns maybe AbilityMethod
+  purpose: The method head of an ability by name.
+
+  for each method in methods
+    if method.name is name then return method end
+  end
+  return nothing
+end
+
+public function pair_params(params: List of Integer, args: List of Ty) returns List of Substitution
+  purpose: The ability's own type parameters bound to the implementation's arguments, by position.
+
+  let mutable out: List of Substitution be []
+  let mutable index be 0
+  for each param in params
+    match args.at(index)
+      when some(arg) then change out to out.append(Substitution(param: param, ty: arg))
+      when nothing then break
+    end
+    change index to index + 1
+  end
+  return out
+end
+
+function substitute_optional(ty: maybe Ty, bindings: List of Substitution) returns maybe Ty
+  purpose: An optional type with the bound parameters replaced.
+
+  match ty
+    when some(inner) then return types.substitute(ty: inner, bindings: bindings)
+    when nothing then return nothing
+  end
+end
+
+function signature_problems(world: World, expected: MethodShape, actual: MethodShape)
+  returns List of Text
+  purpose: How a method's signature departs from the ability's.
+
+  let mutable problems: List of Text be []
+  if actual.params.length() is not expected.params.length() then
+    let plural be if actual.params.length() is 1 then "" otherwise "s" end
+    let found be actual.params.length()
+    let wanted be expected.params.length()
+    change problems to problems.append(
+      "it takes {found} parameter{plural} after `self`; the ability declares {wanted}"
+    )
+  otherwise
+    let mutable index be 0
+    for each found in actual.params
+      let wanted be expected.params.at(index) otherwise crash with "a parameter"
+      if found.name is not wanted.name or not conforms(expected: wanted.ty, actual: found.ty) then
+        let shown be show(world: world, ty: found.ty)
+        let wanted_shown be show(world: world, ty: wanted.ty)
+        change problems to problems.append(
+          "its parameter `{found.name}: {shown}` should be `{wanted.name}: {wanted_shown}`"
+        )
+      end
+      change index to index + 1
+    end
+  end
+  if not results_conform(expected: expected.result, actual: actual.result) then
+    let shown be spell_result(world: world, ty: actual.result)
+    let wanted be spell_result(world: world, ty: expected.result)
+    change problems to problems.append("it returns {shown}; the ability declares {wanted}")
+  end
+  if not failures_conform(expected: expected.failures, actual: actual.failures) then
+    let shown be spell_fails(world: world, failures: actual.failures)
+    let wanted be spell_fails(world: world, failures: expected.failures)
+    change problems to problems.append("it fails with {shown}; the ability declares {wanted}")
+  end
+  return problems
+end
+
+function results_conform(expected: maybe Ty, actual: maybe Ty) returns Boolean
+  purpose: Both results present and conforming, or both absent.
+
+  match expected
+    when some(wanted) then
+      let found be actual otherwise return false
+      return conforms(expected: wanted, actual: found)
+    when nothing then return actual is nothing
+  end
+end
+
+function failures_conform(expected: List of Ty, actual: List of Ty) returns Boolean
+  purpose: The same number of failures, each actual one matching an expected one.
+
+  if actual.length() is not expected.length() then return false end
+  for each found in actual
+    if not (for each wanted in expected
+    any conforms(expected: wanted, actual: found)) then
+      return false
+    end
+  end
+  return true
+end
+
+function spell_signature(world: World, name: Text, expected: MethodShape) returns Text
+  purpose: The method head the ability expects, as the fix spells it.
+
+  let mutable signature be "{name}(self"
+  for each param in expected.params
+    let shown be show(world: world, ty: param.ty)
+    change signature to "{signature}, {param.name}: {shown}"
+  end
+  change signature to "{signature})"
+  let result be result_clause(world: world, result: expected.result)
+  let failures be failures_clause(world: world, failures: expected.failures)
+  return "{signature}{result}{failures}"
+end
+
+function spell_result(world: World, ty: maybe Ty) returns Text
+  purpose: A result as a message spells it: the type in backticks, or `nothing`.
+
+  match ty
+    when some(found) then
+      let shown be show(world: world, ty: found)
+      return "`{shown}`"
+    when nothing then return "nothing"
+  end
+end
+
+function spell_fails(world: World, failures: List of Ty) returns Text
+  purpose: Failures as a message spells them, or `nothing`.
+
+  if failures.is_empty() then return "nothing" end
+  let shown be for each failing in failures collect "`{show(world: world, ty: failing)}`"
+  return shown.join(" or ")
+end
+
+public function conforms(expected: Ty, actual: Ty) returns Boolean
+  purpose: Whether an implementation's type carries the ability's; a parameter stands for anything.
+
+  match expected
+    when Param then return true
+    when ErrorTy then return true
+    otherwise return continue_conforms(expected: expected, actual: actual)
+  end
+end
+
+function continue_conforms(expected: Ty, actual: Ty) returns Boolean
+  purpose: The shapes compared once a parameter or an error on the expected side is ruled out.
+
+  match actual
+    when Param then return true
+    when ErrorTy then return true
+    when App(id: actual_id, args: actual_args) then
+      match expected
+        when App(id, args) then
+          return id is actual_id and all_conform(expected: args, actual: actual_args)
+        otherwise return false
+      end
+    when MaybeTy(inner: actual_inner) then
+      match expected
+        when MaybeTy(inner) then return conforms(expected: inner, actual: actual_inner)
+        otherwise return false
+      end
+    when FunctionTy(signature: actual_signature) then
+      match expected
+        when FunctionTy(signature) then
+          return signatures_conform(expected: signature, actual: actual_signature)
+        otherwise return false
+      end
+    when Union(members: actual_members) then
+      match expected
+        when Union(members) then return unions_conform(expected: members, actual: actual_members)
+        otherwise return false
+      end
+    otherwise return expected is actual
+  end
+end
+
+function all_conform(expected: List of Ty, actual: List of Ty) returns Boolean
+  purpose: Two lists of the same length, conforming pairwise.
+
+  if expected.length() is not actual.length() then return false end
+  let mutable index be 0
+  for each wanted in expected
+    let found be actual.at(index) otherwise crash with "a type"
+    if not conforms(expected: wanted, actual: found) then return false end
+    change index to index + 1
+  end
+  return true
+end
+
+function signatures_conform(expected: FunctionSignature, actual: FunctionSignature) returns Boolean
+  purpose: Function types conforming parameter by parameter, in result and in failures.
+
+  if not all_conform(expected: expected.params, actual: actual.params) then return false end
+  if not results_conform(expected: expected.result, actual: actual.result) then return false end
+  if expected.failures.length() is not actual.failures.length() then return false end
+  for each wanted in expected.failures
+    if not (for each found in actual.failures
+    any conforms(expected: wanted, actual: found)) then
+      return false
+    end
+  end
+  return true
+end
+
+function unions_conform(expected: List of Ty, actual: List of Ty) returns Boolean
+  purpose: Error unions of the same size whose members match.
+
+  if expected.length() is not actual.length() then return false end
+  for each wanted in expected
+    if not (for each found in actual
+    any conforms(expected: wanted, actual: found)) then
+      return false
+    end
+  end
+  return true
+end
+
+public function named(ty: Type) returns maybe TypeName
+  purpose: The name of a named type, when it is one.
+
+  match ty
+    when NamedType(name) then return name
+    otherwise return nothing
+  end
+end
+
+function check_bound_signature(
+  world: World,
+  owner: Integer,
+  func: Function,
+  signature: DeclaredSignature
+)
+  returns World
+  purpose: The rules of a foreign module (AF1) or of a Python module (AL1), when the owner is one.
+
+  let info be module_at(world: world, id: owner)
+  if info.foreign is not nothing then
+    return check_foreign_signature(world: world, owner: owner, func: func, signature: signature)
+  end
+  if info.python is not nothing then
+    return check_python_signature(world: world, owner: owner, func: func, signature: signature)
+  end
+  return world
+end
+
+function check_foreign_signature(
+  world: World,
+  owner: Integer,
+  func: Function,
+  signature: DeclaredSignature
+)
+  returns World
+  purpose: Decision AF1: a foreign module's function is a C function, within the boundary's rules.
+
+  let mutable updated be check_foreign_clauses(
+    world: world,
+    owner: owner,
+    func: func,
+    signature: signature
+  )
+  let counted be check_foreign_params(
+    world: updated,
+    owner: owner,
+    func: func,
+    params: signature.params
+  )
+  change updated to check_foreign_result(
+    world: counted.world,
+    owner: owner,
+    func: func,
+    result: signature.result
+  )
+  if counted.value is greater than max_words then
+    let limit be "the limit is six (`Bytes` counts two)"
+    change updated to push_error(
+      world: updated,
+      owner: owner,
+      code: "foreign-arity",
+      message: "`{func.name.text}` takes {counted.value} words across the boundary; {limit}",
+      span: func.name.span,
+      fix: "pass fewer arguments"
+    )
+  end
+  return updated
+end
+
+function check_foreign_clauses(
+  world: World,
+  owner: Integer,
+  func: Function,
+  signature: DeclaredSignature
+)
+  returns World
+  purpose: A C function needs `foreign` alone, declares no failures and takes no type parameters.
+
+  let head be "`{func.name.text}` is declared in a foreign module"
+  let mutable updated be world
+  if not only_foreign(signature.grants) then
+    change updated to push_error(
+      world: updated,
+      owner: owner,
+      code: "foreign-signature",
+      message: "{head}; it needs `foreign` and nothing else",
+      span: func.name.span,
+      fix: "write `needs foreign`"
+    )
+  end
+  if not signature.failures.is_empty() then
+    change updated to push_error(
+      world: updated,
+      owner: owner,
+      code: "foreign-signature",
+      message: "{head}; a C function declares no failures",
+      span: func.name.span,
+      fix: "drop `or fails with`"
+    )
+  end
+  if func.type_params is not nothing then
+    change updated to push_error(
+      world: updated,
+      owner: owner,
+      code: "foreign-signature",
+      message: "{head}; a C function takes no type parameters",
+      span: func.name.span,
+      fix: "drop `for any`"
+    )
+  end
+  return updated
+end
+
+function only_foreign(grants: List of Grant) returns Boolean
+  purpose: Whether a `needs` clause is `foreign` alone: one grant, no scope, no budget, no sinks.
+
+  let grant be grants.first() otherwise return false
+  let head be grant.path.first() otherwise return false
+  if grants.length() is not 1 or grant.path.length() is not 1 or head is not "foreign" then
+    return false
+  end
+  return grant.scope is nothing and not effects.has_grant_clauses(grant)
+end
+
+function check_foreign_params(world: World, owner: Integer, func: Function, params: List of NamedTy)
+  returns Built of Integer
+  purpose: Every parameter a type of the boundary; the words they take, `Bytes` counting two.
+
+  let mutable updated be world
+  let mutable words be 0
+  let mutable index be 0
+  for each param in params
+    match c_type_of(world: updated, ty: param.ty)
+      when some(spelling) then change words to words + c_words(spelling)
+      when nothing then
+        change updated to foreign_param_error(
+          world: updated,
+          owner: owner,
+          func: func,
+          param: param,
+          index: index
+        )
+    end
+    change index to index + 1
+  end
+  return Built(value: words, world: updated)
+end
+
+function foreign_param_error(
+  world: World,
+  owner: Integer,
+  func: Function,
+  param: NamedTy,
+  index: Integer
+)
+  returns World
+  purpose: The error for a parameter whose type does not cross the boundary.
+
+  let span be
+    match func.params.at(index)
+      when some(declared) then declared.name.span
+      when nothing then func.name.span
+    end
+  let shown be show(world: world, ty: param.ty)
+  let head be "the parameter `{param.name}` of `{func.name.text}` has type `{shown}`"
+  return push_error(
+    world: world,
+    owner: owner,
+    code: "foreign-type",
+    message: "{head}; across the boundary a parameter is {parameter_types}",
+    span: span,
+    fix: "declare it with a type of `std.foreign`"
+  )
+end
+
+function check_foreign_result(world: World, owner: Integer, func: Function, result: maybe Ty)
+  returns World
+  purpose: The result a type of the boundary, `maybe Text` for a nullable `char *`, or nothing.
+
+  if c_result_of(world: world, result: result) is not nothing then return world end
+  let name be func.name.text
+  let shown be
+    match result
+      when some(ty) then show(world: world, ty: ty)
+      when nothing then ""
+    end
+  let span be
+    match func.result
+      when some(ty) then result_span(ty)
+      when nothing then func.name.span
+    end
+  return push_error(
+    world: world,
+    owner: owner,
+    code: "foreign-type",
+    message: "`{name}` returns `{shown}`; across the boundary a result is {results}",
+    span: span,
+    fix: "declare it with a type of `std.foreign`, or drop `returns`"
+  )
+end
+
+function result_span(ty: Type) returns Span
+  purpose: The span of a result type annotation.
+
+  match ty
+    when NamedType(span) then return span
+    when MaybeType(span) then return span
+    when FunctionType(span) then return span
+  end
+end
+
+public function c_type_of(world: World, ty: Ty) returns maybe Text
+  purpose: The C type a parameter crosses the boundary as (decision AF1), spelled for the bytecode.
+
+  match ty
+    when App(id, args) where args.is_empty() then
+      let info be type_at(world: world, id: id)
+      let owner_name be module_at(world: world, id: info.owner).name
+      if owner_name is "std.foreign" then return width_spelling(info.name) end
+      if owner_name is "std.prelude" then return prelude_spelling(info.name) end
+      return nothing
+    otherwise return nothing
+  end
+end
+
+function width_spelling(name: Text) returns maybe Text
+  purpose: The bytecode's spelling of a width type of `std.foreign`.
+
+  for each width in widths
+    if width.name is name then return width.spelling end
+  end
+  return nothing
+end
+
+function prelude_spelling(name: Text) returns maybe Text
+  purpose: The bytecode's spelling of a prelude type that crosses the boundary.
+
+  if name is "Float" then return "f64" end
+  if name is "Boolean" then return "bool" end
+  if name is "Text" then return "text" end
+  if name is "Bytes" then return "bytes" end
+  return nothing
+end
+
+public function c_result_of(world: World, result: maybe Ty) returns maybe Text
+  purpose: The C result of a declared result: `void`, a type other than `Bytes`, or `text_or_null`.
+
+  match result
+    when nothing then return "void"
+    when some(MaybeTy(inner)) then
+      let inner_spelling be c_type_of(world: world, ty: inner) otherwise return nothing
+      if inner_spelling is "text" then return "text_or_null" end
+      return nothing
+    when some(ty) then
+      let own_spelling be c_type_of(world: world, ty: ty) otherwise return nothing
+      if own_spelling is "bytes" then return nothing end
+      return own_spelling
+  end
+end
+
+function c_words(spelling: Text) returns Integer
+  purpose: The words of the calling convention a C type takes: `Bytes` is a pointer and a length.
+
+  if spelling is "bytes" then return 2 end
+  return 1
+end
+
+function check_python_signature(
+  world: World,
+  owner: Integer,
+  func: Function,
+  signature: DeclaredSignature
+)
+  returns World
+  purpose: Decision AL1: a Python module's function is called through the bridge, within its rules.
+
+  let mutable updated be check_python_clauses(
+    world: world,
+    owner: owner,
+    func: func,
+    signature: signature
+  )
+  change updated to check_python_params(
+    world: updated,
+    owner: owner,
+    func: func,
+    params: signature.params
+  )
+  return check_python_result(world: updated, owner: owner, func: func, result: signature.result)
+end
+
+function check_python_clauses(
+  world: World,
+  owner: Integer,
+  func: Function,
+  signature: DeclaredSignature
+)
+  returns World
+  purpose: Needs `python` of its package alone, fails with `PythonError` alone, no `for any`.
+
+  let head be "`{func.name.text}` is declared in a Python module"
+  let package be python_package(world: world, owner: owner)
+  let mutable updated be world
+  if not only_python(grants: signature.grants, package: package) then
+    change updated to push_error(
+      world: updated,
+      owner: owner,
+      code: "python-signature",
+      message: "{head}; it needs `python(\"{package}\")` and nothing else",
+      span: func.name.span,
+      fix: "write `needs python(\"{package}\")`"
+    )
+  end
+  if not only_python_error(world: world, failures: signature.failures) then
+    change updated to push_error(
+      world: updated,
+      owner: owner,
+      code: "python-signature",
+      message: "{head}; it fails with `PythonError` and nothing else",
+      span: func.name.span,
+      fix: "write `or fails with PythonError`, imported from `std.python`"
+    )
+  end
+  if func.type_params is not nothing then
+    change updated to push_error(
+      world: updated,
+      owner: owner,
+      code: "python-signature",
+      message: "{head}; a Python function takes no type parameters",
+      span: func.name.span,
+      fix: "drop `for any`"
+    )
+  end
+  return updated
+end
+
+function python_package(world: World, owner: Integer) returns Text
+  purpose: The package the module is bound to; empty for a module that is not a Python module.
+
+  let binding be module_at(world: world, id: owner).python otherwise return ""
+  return binding.package
+end
+
+function only_python(grants: List of Grant, package: Text) returns Boolean
+  purpose: Whether `needs` is one grant, `python("<package>")` with that scope, no clauses.
+
+  let grant be grants.first() otherwise return false
+  let head be grant.path.first() otherwise return false
+  if grants.length() is not 1 or grant.path.length() is not 1 or head is not "python" then
+    return false
+  end
+  let scope be grant.scope otherwise return false
+  return scope is package and not effects.has_grant_clauses(grant)
+end
+
+function only_python_error(world: World, failures: List of Ty) returns Boolean
+  purpose: Whether the failures are `PythonError` alone; an unknown type is reported elsewhere.
+
+  let first_failure be failures.first() otherwise return false
+  if failures.length() is not 1 then return false end
+  match first_failure
+    when ErrorTy then return true
+    when App(id, args) then
+      if not args.is_empty() then return false end
+      let info be type_at(world: world, id: id)
+      let owner_name be module_at(world: world, id: info.owner).name
+      return info.name is "PythonError" and owner_name is "std.python"
+    otherwise return false
+  end
+end
+
+function check_python_params(world: World, owner: Integer, func: Function, params: List of NamedTy)
+  returns World
+  purpose: Every parameter a type that can ToJson.
+
+  let to_json be json_ability(world: world, name: "ToJson")
+  let mutable updated be world
+  let mutable index be 0
+  for each param in params
+    if not carried_by(world: updated, ty: param.ty, candidate: to_json) then
+      change updated to python_param_error(
+        world: updated,
+        owner: owner,
+        func: func,
+        param: param,
+        index: index
+      )
+    end
+    change index to index + 1
+  end
+  return updated
+end
+
+function carried_by(world: World, ty: Ty, candidate: maybe Integer) returns Boolean
+  purpose: Whether the type crosses the bridge by the ability, when the prelude declares it.
+
+  let ability_id be candidate otherwise return false
+  return carried(world: world, ty: ty, ability_id: ability_id)
+end
+
+function python_param_error(
+  world: World,
+  owner: Integer,
+  func: Function,
+  param: NamedTy,
+  index: Integer
+)
+  returns World
+  purpose: The error for a parameter whose type does not cross the bridge.
+
+  let span be
+    match func.params.at(index)
+      when some(declared) then declared.name.span
+      when nothing then func.name.span
+    end
+  let shown be show(world: world, ty: param.ty)
+  let head be "the parameter `{param.name}` of `{func.name.text}` has type `{shown}`"
+  return push_error(
+    world: world,
+    owner: owner,
+    code: "python-type",
+    message: "{head}; across the bridge a parameter is {python_parameter_types}",
+    span: span,
+    fix: "declare it with a type that can ToJson"
+  )
+end
+
+function check_python_result(world: World, owner: Integer, func: Function, result: maybe Ty)
+  returns World
+  purpose: The result a type that can FromJson, or nothing.
+
+  let ty be result otherwise return world
+  let from_json be json_ability(world: world, name: "FromJson")
+  if carried_by(world: world, ty: ty, candidate: from_json) then return world end
+  let name be func.name.text
+  let shown be show(world: world, ty: ty)
+  let span be
+    match func.result
+      when some(declared) then result_span(declared)
+      when nothing then func.name.span
+    end
+  return push_error(
+    world: world,
+    owner: owner,
+    code: "python-type",
+    message: "`{name}` returns `{shown}`; across the bridge a result is {python_result_types}",
+    span: span,
+    fix: "declare it with a type that can FromJson, or drop `returns`"
+  )
+end
+
+public function json_ability(world: World, name: Text) returns maybe Integer
+  purpose: The prelude's `ToJson` or `FromJson`.
+
+  let prelude be prelude_info(world) otherwise return nothing
+  return prelude.abilities.get(name)
+end
+
+public function carried(world: World, ty: Ty, ability_id: Integer) returns Boolean
+  purpose: Whether a declared type crosses the bridge by a JSON ability: the structural rule.
+
+  match ty
+    when MaybeTy(inner) then return carried(world: world, ty: inner, ability_id: ability_id)
+    when App(id, args) then
+      let info be type_at(world: world, id: id)
+      if info.derives.contains(ability_id) then return true end
+      if implemented_for(world: world, ability_id: ability_id, head: id) then return true end
+      match info.kind
+        when SubtypeKind(base) then return carried(world: world, ty: base, ability_id: ability_id)
+        otherwise return carried_shape(world: world, id: id, args: args, ability_id: ability_id)
+      end
+    otherwise return false
+  end
+end
+
+function carried_shape(world: World, id: Integer, args: List of Ty, ability_id: Integer)
+  returns Boolean
+  purpose: A list or a set of carried items, a map with Text keys and carried values, or a scalar.
+
+  let builtins be world.builtins
+  if id is builtins.list or id is builtins.set_type then
+    let item be args.first() otherwise return false
+    return carried(world: world, ty: item, ability_id: ability_id)
+  end
+  if id is builtins.map then
+    if args.length() is not 2 then return false end
+    let key be args.at(0) otherwise return false
+    let value be args.at(1) otherwise return false
+    if not is_text_type(world: world, ty: key) then return false end
+    return carried(world: world, ty: value, ability_id: ability_id)
+  end
+  return id is builtins.integer
+    or id is builtins.decimal
+    or id is builtins.float
+    or id is builtins.text
+    or id is builtins.boolean
+    or id is builtins.bytes
+end
+
+function is_text_type(world: World, ty: Ty) returns Boolean
+  purpose: Whether the type is the prelude's `Text` itself.
+
+  match ty
+    when App(id) then return id is world.builtins.text
+    otherwise return false
+  end
+end

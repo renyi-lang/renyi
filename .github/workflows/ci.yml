@@ -57,7 +57,7 @@ jobs:
       # the benchmark programs (decision AG4) are held to the same
       # standard as the front end
       - name: Benchmark programs
-        run: cargo run -q -- check bench/*.ry bench/micro/*.ry && cargo run -q -- format --check bench/*.ry bench/micro/*.ry
+        run: cargo run -q -- check bench/*.ry bench/micro/*.ry bench/selfcheck/*.ry && cargo run -q -- format --check bench/*.ry bench/micro/*.ry bench/selfcheck/*.ry
 
       # the starter pack for agents (decision AI3): the five workflows
       # check clean, are in canonical layout and pass their tests from

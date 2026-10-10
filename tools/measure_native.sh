@@ -19,8 +19,8 @@ irefs() {
 }
 echo "== $bin: instructions"
 for mode in "" "--interpret"; do
-  n=$(irefs "$bin" run $mode compiler/checker.ry compiler/bodies.ry)
-  printf '%-40s %-12s %16s\n' "compiler/checker.ry compiler/bodies.ry" "${mode:-native}" "$n"
+  n=$(irefs "$bin" run $mode bench/selfcheck/checker.ry bench/selfcheck/bodies.ry)
+  printf '%-40s %-12s %16s\n' "bench/selfcheck/checker.ry bench/selfcheck/bodies.ry" "${mode:-native}" "$n"
 done
 for mode in "" "--interpret"; do
   n=$(irefs "$bin" run $mode bench/records.ry)

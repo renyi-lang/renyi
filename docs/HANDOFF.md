@@ -2945,10 +2945,13 @@ design, decision AU40):
    entry holds the content hash of every file read and the places a
    manifest was looked for and not found; on by default under the
    image cache's switch.
-5. Before B1 changes `compiler/`: the copy of the compiler under
-   `bench/` (AU36 iv), with `tools/bench.py`, `tools/measure_size.sh`,
+5. The copy of the compiler under `bench/selfcheck/` (AU36 iv) is
+   made (decision AU41: the thirteen files of `compiler/checker.ry` at
+   commit f1ba01b), with `tools/bench.py`, `tools/measure_size.sh`,
    `tools/measure_native.sh` and CI's checks pointed at it; the ratio
-   of AU35 (ii) is still taken on `compiler/`.
+   of AU35 (ii) is still taken on `compiler/`. Every measure of AT1's
+   rule from AU41 on runs `bench/selfcheck/checker.ry` on
+   `bench/selfcheck/bodies.ry`.
 6. B5, the comparison of two boxed values the checker typed Integer,
    inline in both tiers; B1, the lexer in one loop (tokens appended in
    place, classification by `contains` on short texts, the reserved

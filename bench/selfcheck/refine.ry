@@ -1,0 +1,370 @@
+module refine
+  purpose: Refinement conditions on literals, decided at compile time (sketch section 4).
+
+import std.regex
+import ast exposing Expr, TextPiece, BinaryOp, Arg
+
+public type Literal is one of
+  purpose: A literal the evaluator understands; a decimal is digits and a scale: 19.99 is (1999, 2).
+  IntegerValue(value: Integer)
+  DecimalValue(mantissa: Integer, scale: Integer)
+  TextValue(text: Text)
+  BooleanValue(value: Boolean)
+end
+
+public type Verdict is one of
+  purpose: The outcome of a compile-time check; `Unknown` leaves the construction to run time.
+  Holds
+  Fails
+  Unknown
+end
+
+public function literal_of(expr: Expr) returns maybe Literal
+  purpose: The literal value of an expression, when it is one; a text with holes is none.
+
+  match expr
+    when IntegerLiteral(text) then
+      let value be text.replace(old: "_", new: "").to_integer() otherwise return nothing
+      return IntegerValue(value: value)
+    when DecimalLiteral(text) then return parse_decimal(text.replace(old: "_", new: ""))
+    when TextLiteral(pieces) then return text_of_pieces(pieces)
+    when RawTextLiteral(text) then return TextValue(text: text)
+    when BooleanLiteral(value) then return BooleanValue(value: value)
+    when Paren(value) then return literal_of(value)
+    otherwise return nothing
+  end
+end
+
+function text_of_pieces(pieces: List of TextPiece) returns maybe Literal
+  purpose: The text of a literal without holes.
+
+  let mutable out be ""
+  for each piece in pieces
+    match piece
+      when Literal(text) then change out to "{out}{text}"
+      when Hole then return nothing
+    end
+  end
+  return TextValue(text: out)
+end
+
+function parse_decimal(text: Text) returns maybe Literal
+  purpose: A decimal literal as digits and a scale.
+
+  let negative be text.starts_with("-")
+  let digits be if negative then text.drop(1) otherwise text end
+  let parts be digits.split(".")
+  let whole be parts.at(0) otherwise return nothing
+  let fraction be parts.at(1) otherwise ""
+  let mantissa be "{whole}{fraction}".to_integer() otherwise return nothing
+  let signed be if negative then 0 - mantissa otherwise mantissa end
+  return DecimalValue(mantissa: signed, scale: fraction.length())
+end
+
+public function evaluate(condition: Expr, name: Text, value: Literal) returns Verdict
+  purpose: Evaluate a refinement condition with the name bound to the value.
+
+  match eval(expr: condition, name: name, value: value)
+    when some(BooleanValue(value: true)) then return Holds
+    when some(BooleanValue(value: false)) then return Fails
+    otherwise return Unknown
+  end
+end
+
+function eval(expr: Expr, name: Text, value: Literal) returns maybe Literal
+  purpose: The literal an expression evaluates to, or nothing when the evaluator cannot run it.
+
+  match expr
+    when NameExpr(name: found) then
+      if found.text is name then return value end
+      return nothing
+    when Paren(value: inner) then return eval(expr: inner, name: name, value: value)
+    when Not(value: inner) then
+      let operand be eval(expr: inner, name: name, value: value) otherwise return nothing
+      let truth be as_boolean(operand) otherwise return nothing
+      return BooleanValue(value: not truth)
+    when Binary(operator, left, right) then
+      let left_value be eval(expr: left, name: name, value: value) otherwise return nothing
+      let right_value be eval(expr: right, name: name, value: value) otherwise return nothing
+      return binary(operator: operator, left: left_value, right: right_value)
+    when Call(callee, args) then
+      match callee
+        when Member(base, name: method) then
+          let receiver be eval(expr: base, name: name, value: value) otherwise return nothing
+          let arguments be eval_args(args: args, name: name, value: value) otherwise return nothing
+          return method_call(receiver: receiver, method: method.text, args: arguments)
+        otherwise return nothing
+      end
+    otherwise return literal_of(expr)
+  end
+end
+
+function eval_args(args: List of Arg, name: Text, value: Literal) returns maybe List of Literal
+  purpose: Every argument evaluated, or nothing when one cannot be.
+
+  let mutable out: List of Literal be []
+  for each arg in args
+    let literal be eval(expr: arg.value, name: name, value: value) otherwise return nothing
+    change out to out.append(literal)
+  end
+  return out
+end
+
+function as_boolean(literal: Literal) returns maybe Boolean
+  purpose: The Boolean a literal holds.
+
+  match literal
+    when BooleanValue(value) then return value
+    otherwise return nothing
+  end
+end
+
+function as_integer(literal: Literal) returns maybe Integer
+  purpose: The Integer a literal holds.
+
+  match literal
+    when IntegerValue(value) then return value
+    otherwise return nothing
+  end
+end
+
+type Scaled
+  purpose: A number as digits and a scale, for comparisons across Integer and Decimal.
+  has mantissa: Integer
+  has scale: Integer
+end
+
+function as_scaled(literal: Literal) returns maybe Scaled
+  purpose: A number literal as digits and a scale.
+
+  match literal
+    when IntegerValue(value) then return Scaled(mantissa: value, scale: 0)
+    when DecimalValue(mantissa, scale) then return Scaled(mantissa: mantissa, scale: scale)
+    otherwise return nothing
+  end
+end
+
+function binary(operator: BinaryOp, left: Literal, right: Literal) returns maybe Literal
+  purpose: A binary operator on two literals, when the evaluator knows it.
+
+  match operator
+    when And then
+      let first_truth be as_boolean(left) otherwise return nothing
+      let second_truth be as_boolean(right) otherwise return nothing
+      return BooleanValue(value: first_truth and second_truth)
+    when Or then
+      let first_truth be as_boolean(left) otherwise return nothing
+      let second_truth be as_boolean(right) otherwise return nothing
+      return BooleanValue(value: first_truth or second_truth)
+    when Is then
+      let same be equal(left: left, right: right) otherwise return nothing
+      return BooleanValue(value: same)
+    when IsNot then
+      let same be equal(left: left, right: right) otherwise return nothing
+      return BooleanValue(value: not same)
+    when IsLessThan then
+      let order be compare(left: left, right: right) otherwise return nothing
+      return BooleanValue(value: order is less than 0)
+    when IsAtMost then
+      let order be compare(left: left, right: right) otherwise return nothing
+      return BooleanValue(value: order is at most 0)
+    when IsGreaterThan then
+      let order be compare(left: left, right: right) otherwise return nothing
+      return BooleanValue(value: order is greater than 0)
+    when IsAtLeast then
+      let order be compare(left: left, right: right) otherwise return nothing
+      return BooleanValue(value: order is at least 0)
+    otherwise return arithmetic(operator: operator, left: left, right: right)
+  end
+end
+
+function arithmetic(operator: BinaryOp, left: Literal, right: Literal) returns maybe Literal
+  purpose: Integer arithmetic on two literals.
+
+  let left_number be as_integer(left) otherwise return nothing
+  let right_number be as_integer(right) otherwise return nothing
+  match operator
+    when Add then return IntegerValue(value: left_number + right_number)
+    when Subtract then return IntegerValue(value: left_number - right_number)
+    when Multiply then return IntegerValue(value: left_number * right_number)
+    when Remainder then
+      if right_number is 0 then return nothing end
+      return IntegerValue(value: left_number remainder right_number)
+    otherwise return nothing
+  end
+end
+
+function equal(left: Literal, right: Literal) returns maybe Boolean
+  purpose: Whether two literals are equal, when they can be compared.
+
+  match left
+    when TextValue(text: left_text) then
+      match right
+        when TextValue(text: right_text) then return left_text is right_text
+        otherwise return nothing
+      end
+    when BooleanValue(value: left_truth) then
+      match right
+        when BooleanValue(value: right_truth) then return left_truth is right_truth
+        otherwise return nothing
+      end
+    otherwise
+      let order be compare(left: left, right: right) otherwise return nothing
+      return order is 0
+  end
+end
+
+function compare(left: Literal, right: Literal) returns maybe Integer
+  purpose: The order of two literals as -1, 0 or 1, when they can be compared.
+
+  match left
+    when TextValue(text: left_text) then
+      match right
+        when TextValue(text: right_text) then
+          return order_of_texts(left: left_text, right: right_text)
+        otherwise return nothing
+      end
+    otherwise
+      let left_scaled be as_scaled(left) otherwise return nothing
+      let right_scaled be as_scaled(right) otherwise return nothing
+      let scale be left_scaled.scale.at_least(right_scaled.scale)
+      let left_number be left_scaled.mantissa * power_of_ten(scale - left_scaled.scale)
+      let right_number be right_scaled.mantissa * power_of_ten(scale - right_scaled.scale)
+      return order_of_integers(left: left_number, right: right_number)
+  end
+end
+
+function order_of_texts(left: Text, right: Text) returns Integer
+  purpose: -1, 0 or 1 by the order of two texts.
+
+  if left is right then return 0 end
+  if left is less than right then return -1 end
+  return 1
+end
+
+function order_of_integers(left: Integer, right: Integer) returns Integer
+  purpose: -1, 0 or 1 by the order of two integers.
+
+  if left is right then return 0 end
+  if left is less than right then return -1 end
+  return 1
+end
+
+function power_of_ten(exponent: Integer) returns Integer
+  purpose: Ten to a non-negative power.
+
+  let mutable result be 1
+  let mutable remaining be exponent
+  repeat until remaining is at most 0
+    change result to result * 10
+    change remaining to remaining - 1
+  end
+  return result
+end
+
+function method_call(receiver: Literal, method: Text, args: List of Literal) returns maybe Literal
+  purpose: A method the evaluator knows, on a literal receiver.
+
+  match receiver
+    when TextValue(text) then return text_method(text: text, method: method, args: args)
+    when IntegerValue(value) then
+      if method is "absolute" and args.is_empty() then
+        return IntegerValue(value: value.absolute())
+      end
+      return nothing
+    otherwise return nothing
+  end
+end
+
+function text_method(text: Text, method: Text, args: List of Literal) returns maybe Literal
+  purpose: The text methods the evaluator knows.
+
+  if args.is_empty() then
+    if method is "length" then return IntegerValue(value: text.length()) end
+    if method is "is_empty" then return BooleanValue(value: text.is_empty()) end
+    if method is "trim" then return TextValue(text: text.trim()) end
+    if method is "to_upper" then return TextValue(text: text.to_upper()) end
+    if method is "to_lower" then return TextValue(text: text.to_lower()) end
+    return nothing
+  end
+  let argument be single_text(args) otherwise return nothing
+  if method is "starts_with" then return BooleanValue(value: text.starts_with(argument)) end
+  if method is "ends_with" then return BooleanValue(value: text.ends_with(argument)) end
+  if method is "contains" then return BooleanValue(value: text.contains(argument)) end
+  if method is "matches" then
+    if regex_error(argument) is not nothing then return nothing end
+    return BooleanValue(value: text.matches(argument))
+  end
+  return nothing
+end
+
+function single_text(args: List of Literal) returns maybe Text
+  purpose: The one text argument of a call, when that is what it has.
+
+  if args.length() is not 1 then return nothing end
+  match args.first()
+    when some(TextValue(text)) then return text
+    otherwise return nothing
+  end
+end
+
+public function regex_error(pattern: Text) returns maybe Text
+  purpose: What the engine refuses in a regular expression literal, or nothing when it compiles.
+
+  return regex.problem(pattern)
+end
+
+public function is_url(text: Text) returns Boolean
+  purpose: Whether a literal is an absolute URL (decision N2): a scheme, `://` and a host.
+
+  let index be text.index_of("://") otherwise return false
+  let scheme be text.take(index)
+  let rest be text.drop(index + 3)
+  let scheme_chars be scheme.characters()
+  let head be scheme_chars.first() otherwise return false
+  if not is_ascii_letter(head) then return false end
+  for each ch in scheme_chars
+    if not (is_ascii_letter(ch) or is_ascii_digit(ch) or "+-.".contains(ch)) then return false end
+  end
+  let host be host_of(rest)
+  if host.is_empty() then return false end
+  for each ch in host.characters()
+    if ch.trim() is "" then return false end
+  end
+  return true
+end
+
+function host_of(rest: Text) returns Text
+  purpose: The text before the first `/`, `?` or `#`.
+
+  let mutable host be ""
+  for each ch in rest.characters()
+    if ch is "/" or ch is "?" or ch is "#" then break end
+    change host to "{host}{ch}"
+  end
+  return host
+end
+
+function is_ascii_letter(ch: Text) returns Boolean
+  purpose: Whether a character is an ASCII letter.
+
+  return "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".contains(ch)
+end
+
+function is_ascii_digit(ch: Text) returns Boolean
+  purpose: Whether a character is an ASCII digit.
+
+  return "0123456789".contains(ch)
+end
+
+public function days_in_month(year: Integer, month: Integer) returns Integer
+  purpose: The days of a month in the proleptic Gregorian calendar.
+
+  if [1, 3, 5, 7, 8, 10, 12].contains(month) then return 31 end
+  if [4, 6, 9, 11].contains(month) then return 30 end
+  let fourth be (year remainder 4) is 0
+  let hundredth be (year remainder 100) is 0
+  let four_hundredth be (year remainder 400) is 0
+  if (fourth and not hundredth) or four_hundredth then return 29 end
+  return 28
+end

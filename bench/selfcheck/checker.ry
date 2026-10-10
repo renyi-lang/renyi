@@ -1,0 +1,234 @@
+module checker
+  purpose: The self-hosted checker's command line: what `renyi check` prints, computed in Renyi.
+
+import std.console
+import std.environment
+import ast exposing Module, Span
+import report exposing Diagnostic
+import project exposing Source, Project
+
+type Options
+  purpose: What the command line asked for: the output format, strictness, the library, the files.
+  has json: Boolean
+  has strict: Boolean
+  has library: Text
+  has files: List of Text
+end
+
+type UsageError
+  purpose: A command line the checker cannot act on.
+  has message: Text
+  can ToText
+end
+
+let max_columns: Integer be 100
+
+public function main() needs console, environment, filesystem.read
+  purpose: Check every file named; `--json` prints JSON, `--strict` makes a deprecation an error.
+
+  match read_options(environment.arguments())
+    when success(options) then check_files(options)
+    when failure(UsageError(message)) then
+      console.print_error("renyi: {message}")
+      console.print_error(usage())
+      environment.exit(1)
+  end
+end
+
+function usage() returns Text
+  purpose: The command line as the checker reads it.
+
+  return "usage: renyi run compiler/checker.ry [--json] [--strict] [--library <dir>] <file>..."
+end
+
+function read_options(arguments: List of Text) returns Options or fails with UsageError
+  purpose: The options and the files from the arguments; `--library` names the declaration files.
+
+  let mutable options be Options(json: false, strict: false, library: "library/std", files: [])
+  let mutable library_next be false
+  for each argument in arguments
+    if library_next then
+      change options to options with library: argument
+      change library_next to false
+      continue
+    end
+    if argument is "--json" then
+      change options to options with json: true
+    otherwise if argument is "--strict" then
+      change options to options with strict: true
+    otherwise if argument is "--library" then
+      change library_next to true
+    otherwise if argument.starts_with("--") then
+      fail with UsageError(message: "unknown option `{argument}`")
+    otherwise
+      change options to options with files: options.files.append(argument)
+    end
+  end
+  if library_next then fail with UsageError(message: "`--library` needs a directory") end
+  if options.files.is_empty() then fail with UsageError(message: "no file to check") end
+  return options
+end
+
+function check_files(options: Options) needs console, environment, filesystem.read
+  purpose: Check the files one after the other and print their diagnostics; exit 1 on any error.
+
+  let library be project.library_trees(options.library)
+  let mutable failed be false
+  for each path in options.files
+    let text be project.read_file(path)
+    let source be project.source_of(name: path, text: text)
+    let found be diagnose(source: source, library: library, strict: options.strict)
+    if project.has_error(found) then change failed to true end
+    let starts be source.starts
+    let length be source.chars.length()
+    let rendered be
+      if options.json then report.render_json(
+        file_name: path,
+        starts: starts,
+        length: length,
+        diagnostics: found
+      )
+      otherwise report.render_text(
+        file_name: path,
+        starts: starts,
+        length: length,
+        diagnostics: found
+      )
+      end
+    project.print_block(rendered)
+  end
+  if failed then environment.exit(1) end
+end
+
+function diagnose(source: Source, library: List of Module, strict: Boolean)
+  returns List of Diagnostic
+  needs filesystem.read
+  purpose: Every diagnostic of a file: the parser's, the checker's if it parses, the layout's.
+
+  let mutable diagnostics be
+    match source.front
+      when Parsed then check_file(source: source, library: library)
+      when Rejected(diagnostics) then diagnostics
+    end
+  change diagnostics to diagnostics.append_all(check_layout(source.chars))
+  change diagnostics to report.sorted_by_start(diagnostics)
+  if not strict then return diagnostics end
+  return for each diagnostic in diagnostics collect as_strict(diagnostic)
+end
+
+function as_strict(diagnostic: Diagnostic) returns Diagnostic
+  purpose: Decision C8c, tier 2: a call to a deprecated definition is an error under `--strict`.
+
+  if diagnostic.code is "deprecated" then return diagnostic with is_error: true end
+  return diagnostic
+end
+
+function check_file(source: Source, library: List of Module)
+  returns List of Diagnostic
+  needs filesystem.read
+  purpose: A file checked with its imports and dependencies; the resolver's problems are its own.
+
+  let resolved be project.resolve(source)
+  let checked be project.check_project_with_problems(
+    files: resolved.files,
+    problems: resolved.problems,
+    library: library
+  )
+  return summarize(checked: checked, imports: resolved.files.drop(1))
+end
+
+function summarize(checked: Project, imports: List of Source) returns List of Diagnostic
+  purpose: The main file's diagnostics; an import with errors is summarized as one diagnostic.
+
+  let modules be checked.modules
+  let main_module be modules.first() otherwise crash with "the main module"
+  if main_module.id is nothing then return main_module.diagnostics end
+  let mutable diagnostics be main_module.diagnostics
+  let mutable index be 1
+  for each imported in imports
+    let entry be modules.at(index) otherwise crash with "a checked import"
+    change index to index + 1
+    if entry.id is nothing then continue end
+    let errors be error_count(entry.diagnostics)
+    if errors is 0 then continue end
+    let plural be if errors is 1 then "" otherwise "s" end
+    change diagnostics to diagnostics.append(
+      report.error(
+        code: "import-errors",
+        message: "the imported module `{imported.name}` has {errors} error{plural}",
+        span: Span(start: 0, stop: 0),
+        fix: "run `renyi check` on `{imported.name}` and fix them first"
+      )
+    )
+  end
+  return report.sorted_by_start(diagnostics)
+end
+
+function error_count(diagnostics: List of Diagnostic) returns Integer
+  purpose: How many of the diagnostics are errors.
+
+  let mutable errors be 0
+  for each diagnostic in diagnostics
+    if diagnostic.is_error then change errors to errors + 1 end
+  end
+  return errors
+end
+
+function check_layout(chars: List of Text) returns List of Diagnostic
+  purpose: Layout checks the formatter would fix: line width and trailing whitespace, line by line.
+
+  let mutable diagnostics: List of Diagnostic be []
+  let mutable line_start be 0
+  let mutable width be 0
+  let mutable trailing be 0
+  let mutable index be 0
+  for each ch in chars
+    if ch is "\n" then
+      let finished be line_layout(start: line_start, width: width, trailing: trailing)
+      change diagnostics to diagnostics.append_all(finished)
+      change line_start to index + 1
+      change width to 0
+      change trailing to 0
+    otherwise
+      change width to width + 1
+      if ch is " " or ch is "\t" then
+        change trailing to trailing + 1
+      otherwise
+        change trailing to 0
+      end
+    end
+    change index to index + 1
+  end
+  if width is greater than 0 then
+    let finished be line_layout(start: line_start, width: width, trailing: trailing)
+    change diagnostics to diagnostics.append_all(finished)
+  end
+  return diagnostics
+end
+
+function line_layout(start: Integer, width: Integer, trailing: Integer) returns List of Diagnostic
+  purpose: The layout warnings of one line: too wide, and ending in spaces or tabs.
+
+  let mutable diagnostics: List of Diagnostic be []
+  if width is greater than max_columns then
+    change diagnostics to diagnostics.append(
+      report.warning(
+        code: "line-width",
+        message: "line is {width} columns; the limit is {max_columns}",
+        span: Span(start: start, stop: start + width),
+        fix: "run `renyi format`, or break inside parentheses or before `where`, `and` or `or`"
+      )
+    )
+  end
+  if trailing is greater than 0 then
+    change diagnostics to diagnostics.append(
+      report.warning(
+        code: "trailing-whitespace",
+        message: "trailing whitespace",
+        span: Span(start: start + width - trailing, stop: start + width),
+        fix: "run `renyi format`"
+      )
+    )
+  end
+  return diagnostics
+end

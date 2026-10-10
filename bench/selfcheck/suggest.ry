@@ -1,0 +1,177 @@
+module suggest
+  purpose: Suggested fixes (decision D3): the closest name, the Renyi spelling of a foreign name.
+
+public function closest(name: Text, candidates: List of Text) returns maybe Text
+  purpose: The first candidate within two edits of the name and closer than every earlier one.
+
+  let mutable best_distance be 3
+  let mutable best: maybe Text be nothing
+  for each candidate in candidates
+    let distance be edit_distance(left: name, right: candidate)
+    if distance is at most 2 and distance is less than best_distance then
+      change best_distance to distance
+      change best to candidate
+    end
+  end
+  return best
+end
+
+function edit_distance(left: Text, right: Text) returns Integer
+  purpose: The Levenshtein distance of two texts, by characters.
+
+  let left_chars be left.characters()
+  let right_chars be right.characters()
+  let mutable previous: List of Integer be []
+  let mutable column be 0
+  repeat until column is greater than right_chars.length()
+    change previous to previous.append(column)
+    change column to column + 1
+  end
+  let mutable row be 0
+  for each left_char in left_chars
+    let mutable current be [row + 1]
+    let mutable index be 0
+    for each right_char in right_chars
+      let cost be if left_char is right_char then 0 otherwise 1 end
+      let above_left be previous.at(index) otherwise crash with "a distance"
+      let above be previous.at(index + 1) otherwise crash with "a distance"
+      let before be current.at(index) otherwise crash with "a distance"
+      change current to current.append((above_left + cost).at_most(above + 1).at_most(before + 1))
+      change index to index + 1
+    end
+    change previous to current
+    change row to row + 1
+  end
+  return previous.at(right_chars.length()) otherwise crash with "a distance"
+end
+
+public function quoted(names: List of Text) returns Text
+  purpose: `` `a`, `b` and `c` ``.
+
+  let quoted_names be for each name in names collect "`{name}`"
+  match quoted_names.length()
+    when 0 then return ""
+    when 1 then return quoted_names.first() otherwise crash with "one name"
+    otherwise
+      let head be quoted_names.without_last().join(", ")
+      let tail be quoted_names.last() otherwise crash with "a name"
+      return "{head} and {tail}"
+  end
+end
+
+public function foreign_value(name: Text) returns maybe Text
+  purpose: The Renyi spelling of a value name of another language.
+
+  if ["null", "nil", "undefined", "None", "Null", "Nil"].contains(name) then
+    return "write `nothing`"
+  end
+  if name is "True" then return "write `true`" end
+  if name is "False" then return "write `false`" end
+  if name is "this" then return "write `self`" end
+  return nothing
+end
+
+public function foreign_function(name: Text) returns maybe Text
+  purpose: The Renyi form of a function name of another language.
+
+  if ["print", "println", "printf", "puts", "echo", "log", "console_log"].contains(name) then
+    return "write `console.print(text)`, with `import std.console`"
+  end
+  if ["len", "length", "size"].contains(name) then return "write `value.length()`" end
+  if ["str", "to_string", "string"].contains(name) then return "write `value.to_text()`" end
+  if ["int", "parse_int"].contains(name) then
+    return "write `text.to_integer()`, with `otherwise`"
+  end
+  if ["float", "parse_float"].contains(name) then
+    return "write `text.to_float()`, with `otherwise`"
+  end
+  if ["input", "readline", "gets"].contains(name) then
+    return "write `console.read_line()`, with `import std.console`"
+  end
+  if name is "assert" then
+    return "write `check condition` in a test, or `if not condition then fail with ... end`"
+  end
+  if name is "range" then return "write `from 1 to 9`" end
+  return nothing
+end
+
+let integer_names: List of Text be [
+  "Int",
+  "int",
+  "Int32",
+  "Int64",
+  "Integer64",
+  "i32",
+  "i64",
+  "Long",
+  "long",
+  "Short",
+  "Byte"
+]
+
+let float_names: List of Text be [
+  "Double",
+  "double",
+  "Float32",
+  "Float64",
+  "f32",
+  "f64",
+  "Number",
+  "number"
+]
+
+let list_names: List of Text be [
+  "Array",
+  "array",
+  "Vec",
+  "Vector",
+  "ArrayList",
+  "list",
+  "Seq",
+  "Sequence"
+]
+
+public function foreign_type(name: Text) returns maybe Text
+  purpose: The Renyi spelling of a type name of another language.
+
+  if integer_names.contains(name) then return "write `Integer`" end
+  if ["String", "Str", "str", "string", "Char", "char"].contains(name) then
+    return "write `Text`"
+  end
+  if name is "Bool" or name is "bool" then return "write `Boolean`" end
+  if float_names.contains(name) then return "write `Float`, or `Decimal` for exact arithmetic" end
+  if list_names.contains(name) then return "write `List of Item`" end
+  if ["Dict", "dict", "HashMap", "Hash", "Object", "map"].contains(name) then
+    return "write `Map of Key to Value`"
+  end
+  if ["Option", "Optional", "Nullable", "Maybe"].contains(name) then return "write `maybe Type`" end
+  if ["Void", "void", "Unit", "None", "Nothing"].contains(name) then
+    return "drop the `returns` clause; a function without one returns nothing"
+  end
+  if name is "Tuple" or name is "Pair" then return "write a record type with named fields" end
+  return nothing
+end
+
+public function conversion_fix(actual: Text, expected: Text) returns Text
+  purpose: A conversion from the shown type to the expected one, when the prelude declares it.
+
+  let number_like be ["Integer", "Decimal", "Float", "Boolean"].contains(actual)
+  if number_like and expected is "Text" then return "write `.to_text()` after the value" end
+  if (actual is "Integer" or actual is "Float") and expected is "Decimal" then
+    return "write `.to_decimal()` after the value"
+  end
+  if (actual is "Integer" or actual is "Decimal") and expected is "Float" then
+    return "write `.to_float()` after the value"
+  end
+  if actual is "Text" and expected is "Integer" then
+    return "write `.to_integer()` after the value, with `otherwise`"
+  end
+  if actual is "Text" and expected is "Decimal" then
+    return "write `.to_decimal()` after the value, with `otherwise`"
+  end
+  if actual is "Text" and expected is "Float" then
+    return "write `.to_float()` after the value, with `otherwise`"
+  end
+  if actual is "maybe {expected}" then return "write `otherwise default` after the value" end
+  return "give it a `{expected}`, or change the declared type to `{actual}`"
+end

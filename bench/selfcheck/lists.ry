@@ -1,0 +1,11 @@
+module lists
+  purpose: A list helper the checker's tables need: replacing one item by its index.
+
+public function replace_at(items: List of Item, index: Integer, item: Item)
+  returns List of Item
+  for any Item
+  purpose: The list with the item at the index replaced; unchanged when the index is out of range.
+
+  if index is less than 0 or index is at least items.length() then return items end
+  return items.take(index).append(item).append_all(items.drop(index + 1))
+end

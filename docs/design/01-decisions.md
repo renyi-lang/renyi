@@ -5207,3 +5207,22 @@ alternatives the owner declined: for (i), keeping the fifteen modules,
 or deciding after A2; for (ii), the cache for `check` too, or for `run`
 alone; for (iii), the sizes and the modification times first, the
 hashes only when they changed; for (iv), off by default. (user)
+
+**AU41. The self-check frozen under `bench/selfcheck/` (AU36 iv).** The
+program of AT1's measure, the compiler written in Renyi checking its own
+`bodies.ry`, is now a copy of the thirteen files `compiler/checker.ry`
+reaches, as they stood at decision AU39 (commit f1ba01b), under
+`bench/selfcheck/`; `tools/bench.py`, `tools/measure_size.sh` and
+`tools/measure_native.sh` run `bench/selfcheck/checker.ry` on
+`bench/selfcheck/bodies.ry`, and CI checks the copy and holds it in
+canonical layout with the other benchmark programs. `compiler/` goes on
+changing (the second part of A4 is the first change), the judges hold
+it equal to the Rust front end, and the ratio of AU35 (ii) and AU36 (iii)
+is taken on `compiler/`; the copy changes only when the language or the
+library leaves it unable to check, and then as little as it needs. AU36
+(iv) placed the copy before the compiler's sources change: the second
+part of A4 changed them before the copy was made, and its first
+measure, on `compiler/` itself, showed the self-check's instructions
++0.2% to +0.4% and its estimate +0.5% to +1.5% from the two fields the
+change adds to the Renyi world; the copy was taken from the commit
+before that change, and the stage is measured on it.

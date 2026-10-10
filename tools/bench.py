@@ -28,7 +28,9 @@ BENCHMARKS = [
     ("strings", ["bench/strings.ry"], "bench/strings.py"),
     ("records", ["bench/records.ry"], "bench/records.py"),
     ("json_round_trip", ["bench/json_round_trip.ry"], "bench/json_round_trip.py"),
-    ("checker on bodies.ry", ["compiler/checker.ry", "compiler/bodies.ry"], None),
+    # the self-check: the compiler written in Renyi as it stood at decision
+    # AU39, frozen under bench/selfcheck/ (decision AU36 iv), checking itself
+    ("checker on bodies.ry", ["bench/selfcheck/checker.ry", "bench/selfcheck/bodies.ry"], None),
     ("hello", ["examples/hello.ry", "Renyi"], None),
 ]
 

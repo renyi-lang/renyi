@@ -40,19 +40,19 @@ counts() {
         printf "Ir %d I1m %d D1m %d LLm %d Bm %d Bi %d CEst %d\n", ir, i1, d1, ll, bm, bi, est
       }'
 }
-echo "== $bin: the self-check (compiler/checker.ry on compiler/bodies.ry), cachegrind"
-printf '%-14s %s\n' "JIT run" "$(counts "$bin" run compiler/checker.ry compiler/bodies.ry)"
-printf '%-14s %s\n' "interpreter" "$(counts "$bin" run --interpret compiler/checker.ry compiler/bodies.ry)"
-valgrind --tool=none "$bin" build --to "$work/selfcheck.ryi" compiler/checker.ry 2>/dev/null
-printf '%-14s %s\n' "image (speed)" "$(counts "$bin" run "$work/selfcheck.ryi" compiler/bodies.ry)"
+echo "== $bin: the self-check (bench/selfcheck/checker.ry on bench/selfcheck/bodies.ry), cachegrind"
+printf '%-14s %s\n' "JIT run" "$(counts "$bin" run bench/selfcheck/checker.ry bench/selfcheck/bodies.ry)"
+printf '%-14s %s\n' "interpreter" "$(counts "$bin" run --interpret bench/selfcheck/checker.ry bench/selfcheck/bodies.ry)"
+valgrind --tool=none "$bin" build --to "$work/selfcheck.ryi" bench/selfcheck/checker.ry 2>/dev/null
+printf '%-14s %s\n' "image (speed)" "$(counts "$bin" run "$work/selfcheck.ryi" bench/selfcheck/bodies.ry)"
 # the cache filled under valgrind too, for the same reason as the image
 cached=$(unset RENYI_NO_CACHE; export RENYI_CACHE_DIR="$work/cache"
-  if valgrind --tool=none "$bin" build --cache compiler/checker.ry >/dev/null 2>&1; then
-    counts "$bin" run compiler/checker.ry compiler/bodies.ry
+  if valgrind --tool=none "$bin" build --cache bench/selfcheck/checker.ry >/dev/null 2>&1; then
+    counts "$bin" run bench/selfcheck/checker.ry bench/selfcheck/bodies.ry
   else
     echo "-"
   fi)
 printf '%-14s %s\n' "cached run" "$cached"
 echo "== the image's census"
-"$bin" compile --to "$work/selfcheck.ryc" compiler/checker.ry 2>/dev/null
+"$bin" compile --to "$work/selfcheck.ryc" bench/selfcheck/checker.ry 2>/dev/null
 python3 "$(dirname "$0")/image_census.py" "$work/selfcheck.ryi" "$work/selfcheck.ryc" --summary
