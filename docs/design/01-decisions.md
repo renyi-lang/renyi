@@ -4548,3 +4548,25 @@ the benchmarks within 1% but `records` (-0.8% and -2.8%) and `strings`
 benchmarks within 1.2%; on four the self-check +0.0% and +0.9%, the
 benchmarks within noise (`records` +2.3% and -0.8%, `strings` -0.6% and
 +3.0%). The stage stays by AU1's rule and by the owner's measure. (user)
+
+**AU25. The third cut of AU22 as built: one shared empty list.
+`Value::list` of no items gives a list that every such list shares, kept
+per thread as the ASCII table keeps the one-character texts; a list
+appended to later is copied out of it first, as any list held twice is
+(`Rc::make_mut`).** No test is new: the corpus, the conformance suite
+and every test that builds a list from `[]` and appends to it run the
+copy. Measured on one boot against AU24's binary (f26c1ca), the cut is
+neutral. By AT1's estimate under cachegrind: the synchronous JIT run
+11.292 to 11.289 billion cycles (-0.03%; instructions -0.3%, the branch
+misses up 1.8 million, of the copies the shared list costs where a list
+made empty is appended to, which most of the self-check's are: the
+saving is the lists that stay empty), the template code alone level
+(+0.04%), the image level (-0.04%), the interpreter -0.3%. In
+wall-clock the self-check moved between -3.6% and +1.0% (best of
+fifteen and of twenty-one) on one hardware thread, +0.2% on two and
+-2.7% on four, and `strings`, which makes no empty list and runs the
+same instructions on both binaries, +3.3% on one thread over sixty-one
+runs: the layout of the binary, which every change moves. The cut stays
+by AU1's rule (the estimate falls, if barely) as the smallest of the
+three; the census's estimate of 0.4% assumed lists that stay empty.
+(user)

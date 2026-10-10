@@ -230,6 +230,10 @@ thread_local! {
         let mut buffer = [0; 4];
         Rc::from(&*(code as u8 as char).encode_utf8(&mut buffer))
     });
+    /// The empty list, which every list made without items shares
+    /// (`Value::list`, decision AU25): a list that is appended to later is
+    /// copied out of it first, as any list held twice is.
+    static EMPTY_LIST: Rc<Vec<Value>> = Rc::new(Vec::new());
 }
 
 impl Value {
@@ -256,6 +260,9 @@ impl Value {
     }
 
     pub fn list(items: Vec<Value>) -> Value {
+        if items.is_empty() {
+            return EMPTY_LIST.with(|empty| Value::List(empty.clone()));
+        }
         Value::List(Rc::new(items))
     }
 
