@@ -56,31 +56,31 @@ pub(crate) fn stack_offset() -> i64 {
 /// Where the VM keeps its frames and its handlers, and the layout of a
 /// frame record (decision AR4): a direct call pushes the callee's frame
 /// in place and a return pops it.
-fn frames_offset() -> i64 {
+pub(crate) fn frames_offset() -> i64 {
     std::mem::offset_of!(Vm<'static>, frames) as i64
 }
 
-fn handlers_offset() -> i64 {
+pub(crate) fn handlers_offset() -> i64 {
     std::mem::offset_of!(Vm<'static>, handlers) as i64
 }
 
-const FRAME_SIZE: usize = std::mem::size_of::<Frame>();
-const FRAME_CODE: i32 = std::mem::offset_of!(Frame, code) as i32;
-const FRAME_PC: i32 = std::mem::offset_of!(Frame, pc) as i32;
-const FRAME_BASE: i32 = std::mem::offset_of!(Frame, base) as i32;
-const FRAME_HANDLER_BASE: i32 = std::mem::offset_of!(Frame, handler_base) as i32;
-const FRAME_GRANT: i32 = std::mem::offset_of!(Frame, grant) as i32;
+pub(crate) const FRAME_SIZE: usize = std::mem::size_of::<Frame>();
+pub(crate) const FRAME_CODE: i32 = std::mem::offset_of!(Frame, code) as i32;
+pub(crate) const FRAME_PC: i32 = std::mem::offset_of!(Frame, pc) as i32;
+pub(crate) const FRAME_BASE: i32 = std::mem::offset_of!(Frame, base) as i32;
+pub(crate) const FRAME_HANDLER_BASE: i32 = std::mem::offset_of!(Frame, handler_base) as i32;
+pub(crate) const FRAME_GRANT: i32 = std::mem::offset_of!(Frame, grant) as i32;
 
 /// Where the VM keeps the cache of the field sites, and an entry's layout
 /// (decision AR4): a field load reads the entry and the holder in place.
-fn field_cache_offset() -> i64 {
+pub(crate) fn field_cache_offset() -> i64 {
     std::mem::offset_of!(Vm<'static>, field_cache) as i64
 }
 
-const SITE_SIZE: usize = std::mem::size_of::<FieldSite>();
-const SITE_TY: i32 = std::mem::offset_of!(FieldSite, ty) as i32;
-const SITE_TAG: i32 = std::mem::offset_of!(FieldSite, tag) as i32;
-const SITE_INDEX: i32 = std::mem::offset_of!(FieldSite, index) as i32;
+pub(crate) const SITE_SIZE: usize = std::mem::size_of::<FieldSite>();
+pub(crate) const SITE_TY: i32 = std::mem::offset_of!(FieldSite, ty) as i32;
+pub(crate) const SITE_TAG: i32 = std::mem::offset_of!(FieldSite, tag) as i32;
+pub(crate) const SITE_INDEX: i32 = std::mem::offset_of!(FieldSite, index) as i32;
 
 /// How many values a return releases one by one before it calls the
 /// helper that cuts the stack instead.
@@ -93,6 +93,7 @@ const RELEASES_INLINE: usize = 4;
 /// program code, as most do, may grow the stack through the frames it
 /// pushes.
 pub(crate) const STACK_SAFE: &[&str] = &[
+    "rt_clear_slots",
     "rt_drop_at",
     "rt_retain_at",
     "rt_frame_grant",
@@ -118,11 +119,12 @@ pub(crate) fn native_state_offset() -> i64 {
     std::mem::offset_of!(Vm<'static>, native_state) as i64
 }
 
-const STATE_DEPTH: i32 = std::mem::offset_of!(NativeState, depth) as i32;
+pub(crate) const STATE_DEPTH: i32 = std::mem::offset_of!(NativeState, depth) as i32;
 const STATE_DIRECT: i32 = std::mem::offset_of!(NativeState, direct_table) as i32;
 pub(crate) const STATE_HELPERS: i32 = std::mem::offset_of!(NativeState, helpers) as i32;
 pub(crate) const STATE_CONSTANTS: i32 = std::mem::offset_of!(NativeState, constants) as i32;
 pub(crate) const STATE_HOTNESS: i32 = std::mem::offset_of!(NativeState, hotness) as i32;
+pub(crate) const STATE_ENTRIES: i32 = std::mem::offset_of!(NativeState, entries) as i32;
 
 /// The position of a helper in `SIGNATURES`, which is its index in the
 /// VM's table of helpers.
@@ -219,6 +221,10 @@ pub const SIGNATURES: &[(&str, &str, char)] = &[
     ("rt_top_is_absent", "p", 'b'),
     ("rt_top_is_failure", "p", 'b'),
     ("rt_osr", "pzzw", 'i'),
+    ("rt_finish_frame", "p", 'i'),
+    ("rt_abandon_frame", "p", 'i'),
+    ("rt_promote", "pz", 'v'),
+    ("rt_clear_slots", "pz", 'v'),
 ];
 
 /// The Cranelift signature of a helper.

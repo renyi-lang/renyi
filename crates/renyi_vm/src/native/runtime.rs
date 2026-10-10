@@ -1758,10 +1758,60 @@ pub(crate) unsafe extern "C" fn rt_osr(vm: VmPtr, base: usize, code: usize, pc: 
     status
 }
 
+/// A direct call from template code whose callee handed its frame to the
+/// interpreter (decision AU21): the interpreter runs that frame, on top,
+/// to its end; the status as `rt_call` gives it, the result on the stack.
+pub(crate) unsafe extern "C" fn rt_finish_frame(vm: VmPtr) -> i32 {
+    let vm = vm!(vm);
+    let entry = vm.frames.len();
+    let result = vm.execute(entry);
+    status(vm, result)
+}
+
+/// A direct call from template code whose callee was interrupted
+/// (decision AU21): the callee's frame, on top, is abandoned as
+/// `run_top_frame` abandons it, and the interrupt, located, stays
+/// pending.
+pub(crate) unsafe extern "C" fn rt_abandon_frame(vm: VmPtr) -> i32 {
+    let vm = vm!(vm);
+    let entry = vm.frames.len();
+    let pending = vm.take_pending();
+    let located = vm.abandon(entry, pending);
+    interrupt(vm, located)
+}
+
+/// A template function found its code object hot at its entry (decision
+/// AU21): the Cranelift code is asked for (compiled here, or handed to
+/// the compile thread), and the entry table names it once it is ready;
+/// the count starts again, so that the next ask comes a threshold later.
+pub(crate) unsafe extern "C" fn rt_promote(vm: VmPtr, code: usize) {
+    let vm = vm!(vm);
+    let program = vm.program;
+    if let Some(jit) = vm.native.as_mut() {
+        jit.promote(program, code);
+    }
+    vm.hotness[code] = 0;
+}
+
+/// The fresh locals of a frame a direct call from template code pushes
+/// (decision AU21), `count` slots from `at`, written `Nothing` without a
+/// drop: they lie past the stack's old length and hold nothing yet.
+pub(crate) unsafe extern "C" fn rt_clear_slots(at: *mut Value, count: usize) {
+    for index in 0..count {
+        // SAFETY: the slots lie within the stack's capacity, which the
+        // call made room for, and hold no value to drop.
+        unsafe { std::ptr::write(at.add(index), Value::Nothing) };
+    }
+}
+
 /// Every helper by name with its address, for the JIT's symbol table;
 /// `codegen::SIGNATURES` gives each its signature.
 pub const HELPERS: &[(&str, *const u8)] = &[
+    ("rt_clear_slots", rt_clear_slots as *const u8),
     ("rt_osr", rt_osr as *const u8),
+    ("rt_finish_frame", rt_finish_frame as *const u8),
+    ("rt_abandon_frame", rt_abandon_frame as *const u8),
+    ("rt_promote", rt_promote as *const u8),
     ("rt_top_is_absent", rt_top_is_absent as *const u8),
     ("rt_top_is_failure", rt_top_is_failure as *const u8),
     ("rt_push_const", rt_push_const as *const u8),

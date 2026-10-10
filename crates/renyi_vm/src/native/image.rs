@@ -58,8 +58,11 @@ const PART_ALIGN: usize = 16;
 /// call counter in the state, `rt_direct_entry` gone from the helpers).
 /// 3: `rt_retain_at` among the helpers (decision AT6). 4: `rt_take_field`
 /// and `rt_with_slot` among the helpers (decision AU11). 5: `rt_compare`
-/// among them (decision AU13).
-pub const CODE_FORMAT: u32 = 6;
+/// among them (decision AU13). 6: `rt_osr` among them and the state's
+/// `hotness` (decision AU19). 7: `rt_finish_frame`, `rt_abandon_frame`,
+/// `rt_promote` and `rt_clear_slots` among them and the state's
+/// `entries` (decision AU21).
+pub const CODE_FORMAT: u32 = 7;
 
 /// The extension of an image file.
 pub const EXTENSION: &str = "ryi";

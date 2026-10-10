@@ -28,16 +28,20 @@ use crate::bytecode::{Code, Op};
 use crate::compile::Program;
 use crate::extension::TypedKind;
 use crate::native::codegen::{
-    borrowed_operands, helper_index, is_comparison, kind_agrees, native_state_offset, stack_offset,
-    Skipped, SIGNATURES, STACK_SAFE, STATE_CONSTANTS, STATE_HELPERS, STATE_HOTNESS,
+    borrowed_operands, field_cache_offset, frames_offset, handlers_offset, helper_index,
+    is_comparison, kind_agrees, native_state_offset, stack_offset, Skipped, FRAME_BASE, FRAME_CODE,
+    FRAME_GRANT, FRAME_HANDLER_BASE, FRAME_PC, FRAME_SIZE, SIGNATURES, SITE_INDEX, SITE_SIZE,
+    SITE_TAG, SITE_TY, STACK_SAFE, STATE_CONSTANTS, STATE_DEPTH, STATE_ENTRIES, STATE_HELPERS,
+    STATE_HOTNESS,
 };
 use crate::native::infer::{abs_of_constant, abs_of_result, analyse, Analysis};
 use crate::native::runtime::{
     binary_code, fold_code, BOXED, CONTINUE, FAILURE, INTERRUPT, LEFT, RETURNED, STAY,
 };
+use crate::native::DEPTH_LIMIT;
 use crate::value::layout::{
-    INT_PAYLOAD, INT_SMALL, INT_TAG, PAYLOAD, SIZE, TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT,
-    TAG_INTEGER, TAG_NOTHING,
+    INT_PAYLOAD, INT_SMALL, INT_TAG, PAYLOAD, RC_VALUE, RECORD_FIELDS, RECORD_TAG, RECORD_TY, SIZE,
+    TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_INTEGER, TAG_NOTHING, TAG_RECORD,
 };
 use crate::vm::CallKind;
 use x64::{host_abi, Abi, Asm, Cond, Label, Reg};
@@ -84,6 +88,9 @@ struct Layout {
     out: i32,
     pc: i32,
     stack_args: i32,
+    /// Where a direct call keeps its callee's entry across the helpers
+    /// that push the frame.
+    spare: i32,
 }
 
 fn layout(abi: &Abi) -> Layout {
@@ -97,6 +104,7 @@ fn layout(abi: &Abi) -> Layout {
             out: 8,
             pc: 16,
             stack_args: 0,
+            spare: 24,
         }
     } else {
         Layout {
@@ -104,9 +112,47 @@ fn layout(abi: &Abi) -> Layout {
             out: 56,
             pc: 64,
             stack_args: 32,
+            spare: 72,
         }
     }
 }
+
+/// A path the code rarely takes, emitted after the body so that the
+/// paths it takes lie together (decision AU21).
+enum Cold {
+    /// A direct call without the callee's machine code, or at the depth
+    /// limit: through `rt_call`.
+    Call {
+        label: Label,
+        done: Label,
+        function: usize,
+        count: usize,
+        pc: usize,
+    },
+    /// A direct call whose callee handed its frame to the interpreter or
+    /// was interrupted, the status in `eax`.
+    Handed {
+        label: Label,
+        done: Label,
+        pc: usize,
+    },
+    /// A direct call whose callee left a failure.
+    Failed { label: Label, pc: usize },
+    /// A field read the site's cache did not answer: through
+    /// `rt_load_field`, which fills the cache.
+    Field {
+        label: Label,
+        done: Label,
+        slot: u16,
+        name: u32,
+        site: u32,
+        pc: usize,
+    },
+}
+
+/// How many fresh locals a direct call writes `Nothing` into in place;
+/// past this many, a helper does it.
+const CLEARS_INLINE: usize = 4;
 
 /// An argument of a helper call.
 #[derive(Clone, Copy)]
@@ -174,6 +220,7 @@ pub fn compile(
         edges: Vec::new(),
         threshold,
         counts,
+        cold: Vec::new(),
     };
     let headers = gen.headers();
     gen.prologue(&headers);
@@ -224,6 +271,8 @@ struct Gen<'a> {
     /// Per op that starts a basic block, the block's length in ops, which
     /// the code adds to the count as the block starts.
     counts: Vec<Option<u32>>,
+    /// The paths emitted after the body.
+    cold: Vec<Cold>,
 }
 
 /// Per op, the length of the basic block it starts: a block starts at
@@ -557,10 +606,24 @@ impl Gen<'_> {
                 .mov_rm(COUNT, VM, native_state_offset() as i32 + STATE_HOTNESS);
             self.asm.add_ri(COUNT, (self.code_id * 4) as i32);
         }
-        // the entry: the start, or a loop header
+        // the entry: the start, where a code object found hot asks for its
+        // Cranelift code (a direct call does not go through `Jit::entry`,
+        // decision AU21), or a loop header
         self.asm.mov_rm32(SCRATCH2, Reg::Rsp, self.layout.pc);
         self.asm.test_rr32(SCRATCH2, SCRATCH2);
-        self.asm.jcc(Cond::E, self.labels[0]);
+        match self.threshold {
+            Some(threshold) => {
+                let elsewhere = self.asm.label();
+                self.asm.jcc(Cond::Ne, elsewhere);
+                self.asm.cmp_m32i(COUNT, 0, threshold as i32);
+                self.asm.jcc(Cond::B, self.labels[0]);
+                self.call("rt_promote", &[Arg::Vm, Arg::Imm(self.code_id as u64)]);
+                self.asm.jmp(self.labels[0]);
+                self.asm.bind(elsewhere);
+                self.asm.mov_rm32(SCRATCH2, Reg::Rsp, self.layout.pc);
+            }
+            None => self.asm.jcc(Cond::E, self.labels[0]),
+        }
         for header in headers {
             self.asm.cmp_r32i(SCRATCH2, *header as i32);
             self.asm.jcc(Cond::E, self.labels[*header as usize]);
@@ -602,6 +665,9 @@ impl Gen<'_> {
     /// The shared blocks after the body: the landings, the counting back
     /// edges, the leave, the Boolean crash and the epilogue.
     fn tail(&mut self) {
+        for cold in std::mem::take(&mut self.cold) {
+            self.emit_cold(cold);
+        }
         let landings = std::mem::take(&mut self.landings);
         for (handler, label) in landings {
             self.asm.bind(label);
@@ -709,6 +775,208 @@ impl Gen<'_> {
     fn plain(&mut self, name: &'static str, args: &[Arg], pops: usize, pushes: usize) {
         self.call(name, args);
         self.depth = self.depth - pops + pushes;
+    }
+
+    /// A call of a declared function (decision AU21): when the callee has
+    /// machine code (the entry table names it) and the machine stack has
+    /// room for one more native frame, the callee's frame is pushed in
+    /// place, as `Vm::push_frame_in_place` pushes it (the arguments where
+    /// they lie as its first slots, every other local `Nothing`, the
+    /// record with the grant of decision Q1), and its code is entered; it
+    /// leaves with a trampoline's status: the result where the arguments
+    /// were (a failure lands on the handler, as the interpreter settles
+    /// it), the frame handed to the interpreter (which runs it to its
+    /// end), or an interrupt (the frame abandoned). Anything else goes
+    /// through `rt_call`, which makes the callee's template on its way.
+    fn call_direct(&mut self, function: usize, callee: usize, count: usize, pc: usize) {
+        let program = self.program;
+        let meta = &program.codes[callee];
+        let callee_locals = meta.locals as usize;
+        let narrows = meta
+            .function
+            .is_some_and(|function| !program.function_metas[function].needs.is_empty());
+        let state = native_state_offset() as i32;
+        let stack = stack_offset() as i32;
+        let frames = frames_offset() as i32;
+        let handlers = handlers_offset() as i32;
+        let at = self.depth - count;
+        // the callee's base and the height its locals reach, as offsets
+        // from this frame's base
+        let base_disp = (self.code.locals as usize + at) as i32;
+        let needed_disp = base_disp + callee_locals as i32;
+        let slow = self.asm.label();
+        let done = self.asm.label();
+        // the callee's entry, and room for one more native frame
+        self.asm.mov_rm(SCRATCH2, VM, state + STATE_ENTRIES);
+        self.asm.mov_rm(SCRATCH2, SCRATCH2, (callee * 8) as i32);
+        self.asm.test_rr(SCRATCH2, SCRATCH2);
+        self.asm.jcc(Cond::E, slow);
+        self.asm
+            .cmp_m64i(VM, state + STATE_DEPTH, DEPTH_LIMIT as i32);
+        self.asm.jcc(Cond::Ae, slow);
+        self.asm.mov_mr(Reg::Rsp, self.layout.spare, SCRATCH2);
+        // room on the stack for the callee's locals
+        self.asm.mov_rm(SCRATCH, VM, stack + 16);
+        self.asm.lea(SCRATCH2, BASE, needed_disp);
+        self.asm.cmp_rr(SCRATCH, SCRATCH2);
+        let roomy = self.asm.label();
+        self.asm.jcc(Cond::Ae, roomy);
+        self.call("rt_room", &[Arg::Vm, Arg::Addr(BASE, needed_disp)]);
+        self.asm.bind(roomy);
+        // room for one more frame record
+        self.asm.mov_rm(SCRATCH, VM, frames + 8);
+        self.asm.mov_rm(SCRATCH2, VM, frames + 16);
+        self.asm.cmp_rr(SCRATCH, SCRATCH2);
+        let spacious = self.asm.label();
+        self.asm.jcc(Cond::B, spacious);
+        self.call("rt_grow_frames", &[Arg::Vm]);
+        self.asm.bind(spacious);
+        // the stack's length takes in the callee's locals, every one past
+        // the arguments `Nothing` (a callee handed to the interpreter at
+        // its start drops them as values)
+        self.asm.lea(SCRATCH, BASE, needed_disp);
+        self.asm.mov_mr(VM, stack + 8, SCRATCH);
+        let fresh = callee_locals.saturating_sub(count);
+        if fresh <= CLEARS_INLINE {
+            for slot in count..callee_locals {
+                let disp = ((base_disp as usize + slot) * SIZE) as i32;
+                self.asm.mov_m8i(FRAME, disp, TAG_NOTHING);
+            }
+        } else {
+            let first = ((base_disp as usize + count) * SIZE) as i32;
+            self.call(
+                "rt_clear_slots",
+                &[Arg::Addr(FRAME, first), Arg::Imm(fresh as u64)],
+            );
+        }
+        // the grant: the caller's, on top, unless the callee narrows it
+        if narrows {
+            self.call("rt_frame_grant", &[Arg::Vm, Arg::Imm(callee as u64)]);
+            self.asm.mov_rr(SCRATCH3, Reg::Rax);
+        } else {
+            self.asm.mov_rm(SCRATCH, VM, frames + 8);
+            self.asm.imul_rri(SCRATCH, SCRATCH, FRAME_SIZE as i32);
+            self.asm.mov_rm(SCRATCH2, VM, frames);
+            self.asm.add_rr(SCRATCH2, SCRATCH);
+            self.asm
+                .mov_rm32(SCRATCH3, SCRATCH2, FRAME_GRANT - FRAME_SIZE as i32);
+        }
+        // the record, in the registers no convention keeps
+        self.asm.mov_rm(SCRATCH, VM, frames + 8);
+        self.asm.imul_rri(Reg::R8, SCRATCH, FRAME_SIZE as i32);
+        self.asm.mov_rm(Reg::R9, VM, frames);
+        self.asm.add_rr(Reg::R8, Reg::R9);
+        self.asm.mov_m64i(Reg::R8, FRAME_CODE, callee as i32);
+        self.asm.mov_m64i(Reg::R8, FRAME_PC, 0);
+        self.asm.lea(Reg::R9, BASE, base_disp);
+        self.asm.mov_mr(Reg::R8, FRAME_BASE, Reg::R9);
+        self.asm.mov_rm(Reg::R9, VM, handlers + 8);
+        self.asm.mov_mr(Reg::R8, FRAME_HANDLER_BASE, Reg::R9);
+        self.asm.mov_mr32(Reg::R8, FRAME_GRANT, SCRATCH3);
+        self.asm.add_ri(SCRATCH, 1);
+        self.asm.mov_mr(VM, frames + 8, SCRATCH);
+        // the call, one native frame deeper, as `Vm::run_generated` makes it
+        self.asm.add_m64i(VM, state + STATE_DEPTH, 1);
+        let args = self.abi.args;
+        self.asm.mov_rr(args[0], VM);
+        self.asm.lea(args[1], BASE, base_disp);
+        self.asm.zero(args[2]);
+        self.asm.call_m(Reg::Rsp, self.layout.spare);
+        self.asm.sub_m64i(VM, state + STATE_DEPTH, 1);
+        self.reload_frame();
+        self.depth = at + 1;
+        // the frame handed to the interpreter or interrupted, out of line
+        let handed = self.asm.label();
+        self.asm.test_rr32(Reg::Rax, Reg::Rax);
+        self.asm.jcc(Cond::Ne, handed);
+        self.cold.push(Cold::Handed {
+            label: handed,
+            done,
+            pc,
+        });
+        // the result where the arguments were; a failure lands
+        let place = self.operand(at);
+        let failed = self.asm.label();
+        self.asm.cmp_m8i(place.0, place.1, TAG_FAILURE);
+        self.asm.jcc(Cond::E, failed);
+        self.cold.push(Cold::Failed { label: failed, pc });
+        self.asm.bind(done);
+        // without machine code, or at the depth limit, out of line
+        self.cold.push(Cold::Call {
+            label: slow,
+            done,
+            function,
+            count,
+            pc,
+        });
+    }
+
+    /// A path the body jumps to rarely, after the body.
+    fn emit_cold(&mut self, cold: Cold) {
+        match cold {
+            Cold::Call {
+                label,
+                done,
+                function,
+                count,
+                pc,
+            } => {
+                self.asm.bind(label);
+                self.call(
+                    "rt_call",
+                    &[
+                        Arg::Vm,
+                        Arg::Imm(function as u64),
+                        Arg::Imm(count as u64),
+                        Arg::Imm(pc as u64),
+                    ],
+                );
+                self.check(pc);
+                self.asm.jmp(done);
+            }
+            Cold::Handed { label, done, pc } => {
+                self.asm.bind(label);
+                let interrupted = self.asm.label();
+                self.asm.cmp_r32i(Reg::Rax, INTERRUPT);
+                self.asm.jcc(Cond::E, interrupted);
+                // the interpreter runs the frame to its end
+                self.call("rt_finish_frame", &[Arg::Vm]);
+                self.check(pc);
+                self.asm.jmp(done);
+                self.asm.bind(interrupted);
+                self.call("rt_abandon_frame", &[Arg::Vm]);
+                self.asm.jmp(self.leave);
+            }
+            Cold::Failed { label, pc } => {
+                self.asm.bind(label);
+                self.asm.mov_ri32(Reg::Rax, FAILURE as u32);
+                self.check(pc);
+            }
+            Cold::Field {
+                label,
+                done,
+                slot,
+                name,
+                site,
+                pc,
+            } => {
+                self.asm.bind(label);
+                self.call(
+                    "rt_load_field",
+                    &[
+                        Arg::Vm,
+                        Arg::Base,
+                        Arg::Imm(slot as u64),
+                        Arg::Imm(self.code_id as u64),
+                        Arg::Imm(name as u64),
+                        Arg::Imm(site as u64),
+                        Arg::Imm(pc as u64),
+                    ],
+                );
+                self.leave_on_interrupt();
+                self.asm.jmp(done);
+            }
+        }
     }
 
     // ------------------------------------------------------------ the ops
@@ -843,20 +1111,52 @@ impl Gen<'_> {
                 );
             }
             Op::LoadField { slot, name, site } => {
-                self.pushes(
-                    "rt_load_field",
-                    &[
-                        Arg::Vm,
-                        Arg::Base,
-                        Arg::Imm(*slot as u64),
-                        Arg::Imm(code_id),
-                        Arg::Imm(*name as u64),
-                        Arg::Imm(*site as u64),
-                        pc_arg,
-                    ],
-                    0,
-                    1,
-                );
+                // the site's cache entry and the holder read in place
+                // (decision AU21, as the Cranelift tier reads them, AR4): a
+                // record or a variant of the cached type with the cached tag
+                // gives its field with one more reference; anything else
+                // goes through the helper, which fills the cache. A record
+                // and a variant hold their type, their tag (a record's is
+                // `usize::MAX`, as the cache has it) and their fields at the
+                // same offsets (AT2)
+                let holder = self.slot(*slot as usize);
+                let entry = (*site as usize * SITE_SIZE) as i32;
+                let slow = self.asm.label();
+                let done = self.asm.label();
+                self.asm.movzx_rm8(SCRATCH, holder.0, holder.1);
+                self.asm.sub_ri(SCRATCH, TAG_RECORD as i32);
+                self.asm.cmp_r32i(SCRATCH, 1);
+                self.asm.jcc(Cond::A, slow);
+                self.asm.mov_rm(SCRATCH2, holder.0, holder.1 + PAYLOAD);
+                self.asm.mov_rm(SCRATCH3, VM, field_cache_offset() as i32);
+                self.asm.mov_rm(SCRATCH, SCRATCH2, RC_VALUE + RECORD_TY);
+                self.asm.mov_rm(Reg::Rcx, SCRATCH3, entry + SITE_TY);
+                self.asm.cmp_rr(SCRATCH, Reg::Rcx);
+                self.asm.jcc(Cond::Ne, slow);
+                self.asm.mov_rm(SCRATCH, SCRATCH2, RC_VALUE + RECORD_TAG);
+                self.asm.mov_rm(Reg::Rcx, SCRATCH3, entry + SITE_TAG);
+                self.asm.cmp_rr(SCRATCH, Reg::Rcx);
+                self.asm.jcc(Cond::Ne, slow);
+                // a hit needs no range check: the index was cached from a
+                // holder of the same type and tag, which has as many fields
+                self.asm.mov_rm(Reg::Rcx, SCRATCH3, entry + SITE_INDEX);
+                self.asm.imul_rri(Reg::Rcx, Reg::Rcx, SIZE as i32);
+                self.asm.mov_rm(SCRATCH, SCRATCH2, RC_VALUE + RECORD_FIELDS);
+                self.asm.add_rr(Reg::Rcx, SCRATCH);
+                let top = self.top();
+                self.copy((Reg::Rcx, 0), top);
+                self.retain(top);
+                self.asm.bind(done);
+                self.cold.push(Cold::Field {
+                    label: slow,
+                    done,
+                    slot: *slot,
+                    name: *name,
+                    site: *site,
+                    pc,
+                });
+                self.depth += 1;
+                self.store_len();
             }
             Op::With(count) => {
                 let n = *count as usize;
@@ -932,6 +1232,17 @@ impl Gen<'_> {
                         1,
                         pc,
                     ),
+                    _ if self
+                        .program
+                        .function_codes
+                        .get(*function)
+                        .copied()
+                        .flatten()
+                        .is_some() =>
+                    {
+                        let callee = self.program.function_codes[*function].expect("a code object");
+                        self.call_direct(*function, callee, count, pc);
+                    }
                     _ => self.helper(
                         "rt_call",
                         &[

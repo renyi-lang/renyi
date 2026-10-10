@@ -1,5 +1,5 @@
 //! A small x86-64 assembler for the template tier (decisions AU18 and
-//! AU19): the thirty-six instruction forms the sequences per op need, and
+//! AU19): the thirty-nine instruction forms the sequences per op need, and
 //! nothing else. The code it makes is position-independent (every jump is
 //! relative, every address comes from a register), so what the tier
 //! places holds no address of its own, as decision AS1 requires of the
@@ -367,6 +367,16 @@ impl Asm {
         self.alu_mi(0, base, disp, imm, false);
     }
 
+    /// `add qword [base + disp], imm32` sign-extended.
+    pub fn add_m64i(&mut self, base: Reg, disp: i32, imm: i32) {
+        self.alu_mi(0, base, disp, imm, true);
+    }
+
+    /// `sub qword [base + disp], imm32` sign-extended.
+    pub fn sub_m64i(&mut self, base: Reg, disp: i32, imm: i32) {
+        self.alu_mi(5, base, disp, imm, true);
+    }
+
     /// `cmp a, imm` (64 bits).
     pub fn cmp_ri(&mut self, a: Reg, imm: i32) {
         self.alu_ri(7, a, imm, true);
@@ -405,6 +415,13 @@ impl Asm {
     /// `test a32, b32`.
     pub fn test_rr32(&mut self, a: Reg, b: Reg) {
         self.rex(false, b as u8, a);
+        self.byte(0x85);
+        self.reg(b as u8, a);
+    }
+
+    /// `test a, b` (64 bits).
+    pub fn test_rr(&mut self, a: Reg, b: Reg) {
+        self.rex(true, b as u8, a);
         self.byte(0x85);
         self.reg(b as u8, a);
     }
@@ -613,6 +630,15 @@ mod tests {
             [0x48, 0x83, 0x7B, 0x10, 0x00]
         );
         assert_eq!(bytes(|a| a.test_rr32(Reg::Rax, Reg::Rax)), [0x85, 0xC0]);
+        assert_eq!(bytes(|a| a.test_rr(Reg::R10, Reg::R10)), [0x4D, 0x85, 0xD2]);
+        assert_eq!(
+            bytes(|a| a.add_m64i(Reg::Rbx, 0x20, 1)),
+            [0x48, 0x83, 0x43, 0x20, 0x01]
+        );
+        assert_eq!(
+            bytes(|a| a.sub_m64i(Reg::Rbx, 0x20, 1)),
+            [0x48, 0x83, 0x6B, 0x20, 0x01]
+        );
         assert_eq!(bytes(|a| a.zero(Reg::Rax)), [0x31, 0xC0]);
         assert_eq!(bytes(|a| a.zero(Reg::R10)), [0x45, 0x31, 0xD2]);
         assert_eq!(
@@ -704,6 +730,9 @@ mod tests {
             a.cmp_m32i(Reg::Rax, 4, 0x10000);
             a.cmp_m64i(Reg::Rbx, 16, 0);
             a.test_rr32(Reg::Rax, Reg::Rax);
+            a.test_rr(Reg::R10, Reg::R10);
+            a.add_m64i(Reg::Rbx, 0x20, 1);
+            a.sub_m64i(Reg::Rbx, 0x400, 1);
             a.zero(Reg::R10);
             a.imul_rri(Reg::R15, Reg::R12, 24);
             a.setcc(Cond::E, Reg::Rax);

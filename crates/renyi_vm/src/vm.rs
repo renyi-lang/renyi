@@ -195,9 +195,13 @@ pub(crate) struct NativeState {
     pub(crate) helpers: *const *const u8,
     pub(crate) constants: *const *const Value,
     /// The VM's count of ops run per code object (`Vm::hotness`), which
-    /// the template tier's code adds to at its entries and its back
-    /// edges (decision AU18).
+    /// the template tier's code adds to as its basic blocks run
+    /// (decision AU19).
     pub(crate) hotness: *mut u32,
+    /// Per code object, the machine code a direct call from template code
+    /// enters (decision AU21): the Cranelift tier's trampoline once it is
+    /// ready, else the template, else null.
+    pub(crate) entries: *const *const u8,
 }
 
 impl Default for NativeState {
@@ -208,6 +212,7 @@ impl Default for NativeState {
             helpers: std::ptr::null(),
             constants: std::ptr::null(),
             hotness: std::ptr::null_mut(),
+            entries: std::ptr::null(),
         }
     }
 }

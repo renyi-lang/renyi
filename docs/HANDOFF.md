@@ -1,6 +1,18 @@
 # Handoff
 
-Last updated: 2026-10-09, session 10, in the cloud environment, which
+Last updated: 2026-10-10, session 11, in the cloud environment, which
+put the four questions of session 10 to the owner (decision AU20: the
+template tier's follow-ups first, then the representation items of
+AU1's step v; a Windows job in CI; the goal of AU18 kept; the tier on
+by default) and did the first part: decision AU21, direct calls between
+template functions and the field read in place, the self-check -12.4%
+in wall-clock on one hardware thread against AU19's binary (the section
+"The typed round" below, "The template tier's direct calls are in" and
+"What is next in this round, after AU21"). The Windows job passed on
+its first push (CI run 78), so the template tier's Windows x64
+convention has run. The second part, the representation items, starts
+with a design study and the owner's questions in one batch.
+Session 10, in the cloud environment,
 did stages 6 to 9 of the typed round: decision AU11, the update of
 a uniquely held record in place (the ops `WithSlot` and `TakeField`,
 bytecode format 7, three emitter rules in both emitters, the judges
@@ -112,19 +124,17 @@ which completes M5).
 Branch: `main` is the only branch (owner's decision, 2026-10-05); commit
 and push there directly.
 
-## Start here (session 11)
+## Start here (session 12)
 
 1. The work stopped in the typed round, whose plan the owner set in
-   decisions AU1 and AU9 and reordered in AU12, AU14, AU16 and AU18,
-   right after the template tier (AU19): read the section "The typed
-   round" below, whose last paragraphs ("The template tier is in" and
-   "What is next in this round, after AU19") say what exists and what
-   comes next. The first thing is the owner's: run `cargo test` on the
-   Windows machine, since the tier's Windows x64 convention has never
-   run (no Windows machine in the cloud container, none in CI);
-   `tests/template.rs` forces the tier. Then put the next item to the
-   owner with the measurement of AU19 (the questions are listed under
-   "What is next").
+   decisions AU1 and AU9 and reordered in AU12, AU14, AU16, AU18 and
+   AU20, right after the template tier's direct calls (AU21): read the
+   section "The typed round" below, whose last paragraphs ("The
+   template tier's direct calls are in" and "What is next in this
+   round, after AU21") say what exists and what comes next. The next
+   item is the owner's second part of "1+2": the representation items
+   of AU1's step v, which start with a design study with counts and
+   the owner's questions in one batch, before any code.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
@@ -137,14 +147,21 @@ and push there directly.
    16.7 billion instructions for one binary): take the synchronous row
    (`RENYI_NATIVE_SYNC=1`, the path of one hardware thread) for the
    estimate, and wall-clock on one, two and four hardware threads
-   (`taskset`) beside it, both binaries alternating on one boot.
+   (`taskset`) beside it, both binaries alternating on one boot. The
+   CPU features the container reports change between its boots, so an
+   image built on one boot is refused on the next: build the image on
+   the boot that measures it.
 3. The gates before a commit that touches `crates/` are CLAUDE.md's,
    with the owner's toolchain: `cargo +1.94.1 fmt --check`, `cargo
    +1.94.1 clippy --all-targets -- -D warnings`, `cargo +1.94.1 test`
    (the judges of `selfhost.rs` among them, about 90 s), and
-   `tools/conformance.py` against the debug binary. The image cache is
-   off for everything cargo runs (`.cargo/config.toml`); a test of the
-   cache turns it on with its own directory.
+   `tools/conformance.py` against the debug binary. After a change to
+   the template tier, also the conformance suite and the judges with
+   `RENYI_NATIVE_TIER=template`. The image cache is off for everything
+   cargo runs (`.cargo/config.toml`); a test of the cache turns it on
+   with its own directory. CI's Windows job runs `cargo test -p
+   renyi_vm` on every push (AU20); look at it after a push that touches
+   the template tier.
 4. In the cloud container the disk is a fixed allowance: a target
    directory grows to about 9 GB, so keep at most two (the repository's
    and one for the 1.94.1 gates) and delete the rest.
@@ -2324,64 +2341,116 @@ no TLB, said -5.9%); the count per basic block and the packed chunk
 fixed both. The goal of AU18 is not reached: on one hardware thread the
 JIT run takes 1,897 ms, the image 1,335 (+42%, against the 15% asked).
 
-**What is next in this round, after AU19:**
+**The template tier's direct calls are in (decision AU21, 2026-10-10,
+session 11)**, the first part of the owner's "1+2" (AU20):
+`template/mod.rs`: `call_direct`, the sequence of `Op::Call` of a
+declared function (the callee's entry from `NativeState::entries`, null
+or at `DEPTH_LIMIT` native frames to the slow path; the entry kept in the
+frame's spare slot; room on the stack for the callee's locals and in
+`Vm::frames` for its record, `rt_room` and `rt_grow_frames` when short;
+the stack's length set past the callee's locals; its fresh locals written
+`Nothing` in place up to `CLEARS_INLINE` (4) and by `rt_clear_slots` past
+that, since a Cranelift callee may hand its frame to the interpreter at
+its trampoline's start, before its own prologue clears them, and the
+interpreter drops them as values; the grant, the caller's read from its
+record or `rt_frame_grant` when the callee narrows it; the record written
+through `r8` and `r9`; `depth` up by one around the call through the
+spare slot; then the status: 0 with the result where the arguments were,
+a failure tag there landing as `check` lands it; anything else to the
+cold `Handed`); the `Cold` enum, the rare paths emitted after the body
+(`Call`: through `rt_call`, which makes the callee's template on its way;
+`Handed`: `rt_finish_frame` for a frame handed to the interpreter,
+`rt_abandon_frame` and the leave for an interrupt; `Failed`; `Field`:
+`rt_load_field`, which fills the cache); the promotion at the start
+(`rt_promote` when the count is past the threshold, since a direct call
+no longer passes `Jit::entry`); `Op::LoadField` read in place (the
+holder's tag record or variant, its type and tag against the site's
+entry in `Vm::field_cache`, the field copied and `rt_retain_at`; no range
+check, the index having been cached from a holder of the same type and
+tag). `x64.rs`: three more forms (`add_m64i`, `sub_m64i`, `test_rr`;
+thirty-nine). `runtime.rs`: `rt_finish_frame` (`Vm::execute` from the
+frame's entry), `rt_abandon_frame` (as `run_top_frame` abandons on an
+interrupt), `rt_promote` (`Jit::promote`, the count reset),
+`rt_clear_slots`, the last four of `SIGNATURES`. `native/mod.rs`:
+`Jit::entries`, set when a template is placed, when the Cranelift code
+is installed (from the compile thread or synchronously) and when an
+image is loaded; `Jit::promote`. `vm.rs`: `NativeState::entries`.
+`codegen.rs`: the frame and site layout constants, `frames_offset`,
+`handlers_offset`, `field_cache_offset`, `STATE_DEPTH` and the new
+`STATE_ENTRIES` made `pub(crate)`; `rt_clear_slots` in `STACK_SAFE`.
+`image.rs`: code format 7 (the four helpers and the state's `entries`).
+Tests: `tests/direct.rs` (synchronous at the default factor: a short
+callee promoted while its caller stays on template code, then called
+with an Integer past the machine word, which deopts at the trampoline's
+start with the fresh locals cleared by the caller; a callee that narrows
+the grant and one that does not). Measured on one boot against AU19's
+binary (bbea69b): in wall-clock, the two binaries alternating, best of
+eleven, on one hardware thread the self-check 1,595.9 to 1,398.8 ms
+(-12.4%), `primes` -3.2%, `records` -1.2%, `json_round_trip` -0.7%,
+`strings` +0.5%; on two the self-check -2.6%, the benchmarks -0.2% to
+-4.7%; on four -1.3%, the benchmarks -1.0% to -2.1%. By AT1's estimate
+under cachegrind: the synchronous JIT run 12.87 to 11.71 billion cycles
+(-9.0%; instructions -12.0%, the instruction misses +10% with the
+larger code), the template code alone 14.50 to 12.18 (-16.0%; 29% below
+the interpreter's 17.24, where AU19's was 16% below), the interpreter
+and the image untouched (17.24 and 9.67 on this boot). The template code of the self-check's run grows from 1.58 to 2.76 MB
+(the call's sequence and the field read in place, with their rare paths
+after the body). The goal of AU18 is nearer, not reached: on one hardware thread the JIT
+run, alternating with the image, takes 1,461.5 ms against 1,162.9
+(+25.7%, best of fifteen; +21% by the estimate), where AU19 left it at
++42%; the goal is 15%. The run-to-run spread of this machine is wide
+(the same binary's best of eleven was 1,398.8 ms in one series and
+1,476.5 in the next), so compare a stage's binaries, and the JIT run
+with the image, alternating in one series.
 
-1. **The owner's step**: `cargo test` on the Windows machine (the
-   tier's Windows x64 convention has only been checked by reading), and
-   the answers to the questions below.
-2. **The template tier's follow-ups, by its profile** (the measurement
-   says why the tier pays little: every call from template code goes
-   through `rt_call`, `call_from_stack`, `run_top_frame`, `Jit::entry`
-   and `run_generated`, where the interpreter's own calls push a frame
-   and go on in its loop, and the self-check makes 5.4 million calls;
-   the hot helpers, the field read, the retain and the release, stay
-   calls; the templates alone run 4% below the interpreter in
-   wall-clock and 16% below it by the estimate, which models no TLB):
-   sequences in place of the hottest helper calls (the field read
-   through the site's cache, as the Cranelift tier reads it; the retain
-   and the release of the common tags; a comparison of two small
-   Integers); direct calls between template functions (a call whose
-   callee has template code pushes the frame and calls the body itself,
-   as AR3 did for the Cranelift tier, instead of `rt_call`,
-   `call_from_stack`, `run_top_frame` and `run_generated`); the aarch64
-   encoder for the same sequences (Apple silicon, the Linux arm64
-   release); a Windows job in CI, so that the second convention runs on
-   every push.
-3. **After it, by a profile**: the representation items of AU1's step v
-   (small texts inline, `Int` flattened into `Value`, lists of unboxed
-   Integers, values in registers across ops); the micro-cuts (a
-   fieldless variant built by `ConstructVariant` allocates on every
-   comparison, `kind is Public`, 11 sites in the checker program; a
-   borrowed `LoadField` operand, 33 `LoadField ... is` sites, needs the
-   helper path to say whether it pushed a fresh value); the field taken
-   out of a record that is updated with the result later (`let after be
-   done.checker ... done with checker: updated`), which the liveness
-   pass does not reach since the read is a field read.
-4. **Skipped, recorded in AU14**: the parameters borrowed across direct
-   calls (AU9's third item). A
-   parameter the callee only reads (fields, borrowed calls, comparisons)
-   and never stores, returns or passes on to a position that keeps it
-   needs no retain at the call and no release at the return. The
-   hazard: a frame handed back to the interpreter, which drops its
-   locals at the return, so the flag must be honoured there too (or the
-   hand-back retains the borrowed parameters first). The riskiest of
-   the three; it waits for a profile that shows the parameters' retains
-   to matter.
-5. **The questions for the owner** (one batch, the recommended option
-   first, as CLAUDE.md asks), to put at the start of session 11:
-   (a) the next step of the round: direct calls between templates and
-   the field read in place (recommended: the calls are where the tier
-   loses what it gains); the representation items of AU1's step v; the
-   round closed here and the self-hosted front end decided (AU12); the
-   aarch64 encoder. (b) The Windows convention: a Windows job in CI
-   that runs `cargo test -p renyi_vm` on every push (recommended); the
-   owner's machine only; the tier off on Windows until it has run.
-   (c) The goal of AU18 (the one-thread run within 15% of the image; it
-   stands at 42% above): kept for the follow-ups (recommended); relaxed
-   to 25%; the tier judged by AT1's rule alone. (d) The tier's default:
-   on, as measured (recommended: a small gain on one and two hardware
-   threads, neutral on four); off until the follow-ups pay; on only
-   where there is no compile thread.
+**What is next in this round, after AU21:**
+
+1. **The representation items of AU1's step v**, the second part of
+   the owner's "1+2" (AU20): small texts inline, `Int` flattened into
+   `Value`, lists of unboxed Integers, values in registers across ops.
+   Before any code, a design study with counts, written into this file
+   as the template tier's was: on the self-check and the four
+   benchmarks, the allocations by kind (texts, records, variants,
+   lists, maps, big Integers) and by size; the lengths of the texts
+   made (how many fit beside the tag in the three words of a `Value`);
+   how often an Integer is a big one, and the share of the ops that
+   are Integer arithmetic and comparisons; the element kinds of the
+   lists (how many hold only Integers); what each item touches (the
+   layout of `Value` that AR4 pinned, which the Cranelift tier, the
+   template tier, the image's code format and the natives' typed
+   entries read in place) and its risk. Then the owner's questions in
+   one batch of four (which items, in which order, by which measure),
+   then the items one stage at a time by AT1's rule.
+2. **The template tier's remaining follow-ups, by its profile** (not
+   ordered by the owner; candidates when a profile after item 1 calls
+   for them): the retain and the release of the common tags in place
+   (every field read and every copy still calls `rt_retain_at`, every
+   dead value `rt_drop_at`); a comparison of two small Integers in
+   place (`rt_compare` today); the aarch64 encoder for the same
+   sequences (Apple silicon, the Linux arm64 release).
+3. **The goal of AU18**, which AU20 kept as the measure of the
+   follow-ups (the self-check's JIT run on one hardware thread within
+   15% of its image): at +25.7% in wall-clock and +21% by the
+   estimate after AU21, from +42% after AU19.
+4. **The micro-cuts, by a profile**: a fieldless variant built by
+   `ConstructVariant` allocates on every comparison (`kind is Public`,
+   11 sites in the checker program); a borrowed `LoadField` operand (33
+   `LoadField ... is` sites) needs the helper path to say whether it
+   pushed a fresh value; the field taken out of a record that is
+   updated with the result later (`let after be done.checker ... done
+   with checker: updated`), which the liveness pass does not reach
+   since the read is a field read.
+5. **Skipped, recorded in AU14**: the parameters borrowed across direct
+   calls (AU9's third item). A parameter the callee only reads (fields,
+   borrowed calls, comparisons) and never stores, returns or passes on
+   to a position that keeps it needs no retain at the call and no
+   release at the return. The hazard: a frame handed back to the
+   interpreter, which drops its locals at the return, so the flag must
+   be honoured there too (or the hand-back retains the borrowed
+   parameters first). It waits for a profile that shows the
+   parameters' retains to matter.
+6. **No question is pending with the owner**: AU20 answered the four of
+   session 10; the next batch comes with the study of item 1.
 
 Each stage is measured by AT1's rule (`tools/measure_size.sh` on the
 release binary, about fifteen minutes now with the fourth row; in a
@@ -3822,6 +3891,28 @@ holds between calls.
   map as the base, with `--json` and against itself; `HEAD` as the base
   for the corpus and for one file; a bad base), the `diff` call in
   `tests/mcp.rs`, and a unit test of `own_text_hash`.
+
+## Done in session 11 (the template tier's direct calls, in the cloud environment)
+
+- **Decision AU20**, the owner's answers to the four questions of
+  session 10, every recommended option taken but the first, where the
+  owner chose both follow-ups in order ("1+2"): the template tier's
+  follow-ups, then the representation items of AU1's step v; a Windows
+  job in CI (`.github/workflows/ci.yml`, the job `windows`, `cargo test
+  -p renyi_vm` on `windows-latest`), which passed on its first push (CI
+  run 78, commit d2dec3a); the goal of AU18 kept; the tier on by
+  default.
+- **Decision AU21**, the first part: direct calls between template
+  functions through the entry table, the field read through the site's
+  cache in place, the rare paths after the body, the promotion at a
+  template's start, code format 7; `tests/direct.rs`; the self-check
+  -12.4% in wall-clock on one hardware thread, -2.6% on two and -1.3%
+  on four against AU19's binary; by AT1's estimate the synchronous
+  JIT run -9.0% and the template code alone -16.0%; the goal of AU18 at
+  +25.7% (from +42%).
+- The gates with the 1.94.1 toolchain (fmt, clippy, test, the
+  conformance runner), the conformance suite and the judges on the
+  template tier.
 
 ## Done in session 10 (stages 6 to 9 and the template tier of the typed round, in the cloud environment)
 

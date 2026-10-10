@@ -4386,3 +4386,58 @@ deciding the self-hosted front end (AU12), or the aarch64 encoder; for
 until it had run; for (iii), the goal relaxed to 25% or AT1's rule
 alone; for (iv), the tier off until the follow-ups pay, or on only where
 there is no compile thread. (user)
+
+**AU21. The template tier's follow-ups as built (decision AU20, its
+first part): direct calls between template functions and the field read
+in place. The entry table (`Jit::entries`, reached through
+`NativeState::entries`) names per code object the machine code a call
+enters: the Cranelift tier's trampoline once it is ready, else the
+template, else nothing. `Op::Call` of a declared function in template
+code checks the callee's entry and the depth of native frames, pushes
+the callee's frame in place as `Vm::push_frame_in_place` pushes it (room
+on the stack and for the record, the stack's length to the callee's
+locals, its fresh locals `Nothing`, written in place up to four and by
+`rt_clear_slots` past that, since a Cranelift callee may hand its frame
+to the interpreter at its start, before its own prologue clears them;
+the grant of Q1; the record), and calls the entry with a trampoline's
+signature; the status decides the rest: the result where the arguments
+were, a failure landing on the handler as the interpreter settles it;
+the frame handed to the interpreter, which `rt_finish_frame` runs to its
+end; an interrupt, after which `rt_abandon_frame` abandons the frame as
+`run_top_frame` does. A callee without machine code, or a call at the
+depth limit, goes through `rt_call`, which makes the callee's template
+on its way; these rare paths lie after the body. Since a direct call no
+longer passes `Jit::entry`, a template whose count is past the threshold
+at its start asks `rt_promote` for its Cranelift code, and the entry
+table names the trampoline once it is placed. `LoadField` in template
+code reads the holder's type and tag against the site's cache entry and
+copies the field with a retain, as the Cranelift tier reads it (AR4); a
+miss calls `rt_load_field`, which fills the cache.** The tests:
+`tests/direct.rs` (the default factor, synchronous: a short callee
+promoted while its caller stays on template code, then called with an
+Integer past the machine word, which hands its frame back at the
+trampoline's start; a callee that narrows the grant and one that does
+not), with the template, promotion and native tests and the conformance
+suite and the judges on the template tier. The Windows job of AU20
+passed on its first push (CI run 78), `tests/template.rs` among its
+tests, so the Windows x64 convention has run. The template code of the
+self-check's run grows from 1.58 to 2.76 MB. Code format 7 (the four
+helpers and the state's `entries`). Measured on one boot against AU19's
+binary (bbea69b). By AT1's estimate under cachegrind: the synchronous
+JIT run 12.87 to 11.71 billion cycles (-9.0%; 9.45 to 8.32 billion
+instructions, -12.0%, the instruction misses up from 92 to 101 million
+with the larger template code); the template code alone 14.50 to 12.18
+(-16.0%; 11.12 to 8.79 billion instructions, -21.0%), now 29% below the
+interpreter's 17.24 where AU19's was 16% below it; the interpreter and
+the image, whose code the stage does not touch, 17.24 and 9.67 on this
+boot. In wall-clock, the two binaries alternating, best of eleven: on
+one hardware thread the self-check 1,595.9 to 1,398.8 ms (-12.4%),
+`primes` -3.2%, `records` -1.2%, `json_round_trip` -0.7%, `strings`
++0.5%; on two the self-check -2.6%, the benchmarks -0.2% to -4.7%; on
+four the self-check -1.3%, the benchmarks -1.0% to -2.1%. The stage
+stays by AU1's rule (the estimate falls) and by the owner's measure (no
+count of hardware threads loses). The goal of AU18 is nearer and not
+reached: on one hardware thread the JIT run, alternating with the
+image, takes 1,461.5 ms against the image's 1,162.9 (+25.7%, best of
+fifteen; +21% by the estimate, 11.71 against 9.67), where AU19 left it
+at +42%. (user)

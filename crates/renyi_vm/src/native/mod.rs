@@ -229,6 +229,11 @@ pub struct Jit {
     /// The helpers in the order of `codegen::SIGNATURES`, which the
     /// generated code calls through `NativeState::helpers`.
     helpers: Box<[*const u8]>,
+    /// Per code object, the machine code a direct call from template code
+    /// enters (decision AU21), through `NativeState::entries`: the
+    /// trampoline once the Cranelift code is ready, else the template,
+    /// else null (the call goes through `rt_call`).
+    entries: Box<[*const u8]>,
     /// Per code object, its constants, which the generated code reads
     /// through `NativeState::constants`.
     constants: Box<[*const Value]>,
@@ -489,6 +494,7 @@ impl Jit {
             resume_refused: vec![false; program.codes.len()],
             direct_table: vec![std::ptr::null(); program.codes.len()].into_boxed_slice(),
             helpers,
+            entries: vec![std::ptr::null(); program.codes.len()].into_boxed_slice(),
             constants,
             code: CodeArena::default(),
             calls,
@@ -634,6 +640,7 @@ impl Jit {
                     // `entry_signature`, which is the signature of `Entry`.
                     let entry: Entry = unsafe { std::mem::transmute::<*const u8, Entry>(entry) };
                     self.direct_table[index] = body;
+                    self.entries[index] = entry as *const u8;
                     self.deopts[index] = code.deopts.clone();
                     self.states[index] = State::Ready {
                         entry,
@@ -656,6 +663,7 @@ impl Jit {
             helpers: self.helpers.as_ptr(),
             constants: self.constants.as_ptr(),
             hotness: std::ptr::null_mut(),
+            entries: self.entries.as_ptr(),
         }
     }
 
@@ -793,7 +801,15 @@ native: {} code objects on templates ({} ops, {} bytes) in {} ms{}; {} loops han
         self.template_bytes += template.body.len();
         self.template_time += started.elapsed();
         self.templates[code] = Some(TemplateCode { entry });
+        self.entries[code] = entry as *const u8;
         Some(entry)
+    }
+
+    /// The Cranelift code of a code object whose template code found it
+    /// hot at its entry (decision AU21): compiled here or handed to the
+    /// compile thread; the entry table names the trampoline once placed.
+    pub(crate) fn promote(&mut self, program: &Program, code: CodeId) {
+        let _ = self.ready(program, code, u32::MAX);
     }
 
     /// The Cranelift code of a code object whose template code found it
@@ -973,6 +989,7 @@ native: {} code objects on templates ({} ops, {} bytes) in {} ms{}; {} loops han
         // is the signature of `Entry`.
         let entry: Entry = unsafe { std::mem::transmute::<*const u8, Entry>(entry) };
         self.direct_table[code] = body;
+        self.entries[code] = entry as *const u8;
         self.deopts[code] = compiled.deopts;
         self.states[code] = State::Ready {
             entry,
