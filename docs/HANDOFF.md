@@ -2465,6 +2465,147 @@ drop a temporary instrumentation from a file with uncommitted work; it
 reverted the whole file, which had to be rewritten from the session's
 own edit script.
 
+## The representation items: the design study (session 11)
+
+**What the owner ordered (AU20)**: after the template tier's follow-ups
+(AU21), the representation items of AU1's step v (small texts inline,
+`Int` flattened into `Value`, lists of unboxed Integers, values in
+registers across ops); the study with counts first, then the owner's
+questions in one batch.
+
+**How it was measured**: a census build, never committed (counters at
+the constructors of `value.rs`, in `binary_values`, `iterator_of` and
+`op_list_push`, a clone of every value by its tag, the allocator by
+size; printed at the end of a run under `RENYI_CENSUS`; the session's
+scratchpad held the script that applied it to a worktree of fb15b1c),
+run on the self-check and the four benchmarks on the interpreter (the
+program's own work) and on the JIT; callgrind on the self-check's
+synchronous JIT run of AU21's release binary (8.31 billion
+instructions); `renyi run --profile` for the mix of ops (99 million ops,
+5.4 million calls, 3.5 million primitive calls).
+
+**The self-check, by the census** (interpreter):
+- Texts: 281,224 made (2.3 MB), 78% of them at most 7 bytes, 92.6% at
+  most 15, 95.2% at most 22; 947,627 one-character texts more from the
+  ASCII table without an allocation; 9.5 million clones of a text (4.0
+  million on the JIT run); 2.76 million `is` and `is not` on two texts
+  (the lexer's `ch is " "`), against 0.98 million comparisons of two
+  Integers.
+- Records: 1,256,474 made (72% with two fields); variants 532,673 (80%
+  with one field); each is two allocations (the `Rc` with the type, the
+  tag and the `Pinned` header, and the buffer of the fields): 3.6
+  million of the run's 7.18 million allocations. 745,769
+  `ConstructVariant` of a fieldless variant clone the cached value
+  (AG6) through `rt_construct_variant`, no allocation but about 120
+  instructions each.
+- Lists: 741,923 made, 435,470 of them empty (the lexer's `Step(tokens:
+  [], diagnostics: [], next: ...)` for every blank), each an `Rc<Vec>`
+  allocation; 3,249 hold only small Integers, 4.4% of the items
+  iterated.
+- Integers: 2 big ones made; 1.91 million `+`, 0.09 million `-`, 0.98
+  million comparisons.
+- The run allocates 7.18 million blocks (614 MB) on the interpreter,
+  7.94 million (1.1 GB) on the JIT, Cranelift's work the difference.
+
+**The benchmarks**: `records` makes 200,000 records of two fields
+(400,000 of its 430,000 allocations); `json_round_trip` 304,000 texts
+(all at most 15 bytes but 50) and 102,000 records of three or four
+fields; `strings` 200,000 texts of 2 to 15 bytes and 2.58 million text
+clones; `primes` no list at all (ranges and Integers, in registers on
+the JIT). No program of the five makes lists of Integers worth
+unboxing.
+
+**The self-check's synchronous JIT run, by callgrind**:
+- the front end that compiles the checker program
+  (`compile_with_sources`: parse, check, bytecode) 717 million
+  instructions (8.6%); the Cranelift compilation 419 million (5.0%);
+  the templates 114 million (1.4%); the program's run the rest;
+- the values' lifecycle: `drop_glue<Value>` 614 million (7.4%),
+  `Value::clone` 316 million (3.8%, 57% of it under `rt_retain_at`'s
+  15.9 million calls), `rt_retain_at` 95 million, `rt_drop_at` 59
+  million (14.7 million calls);
+- the allocator: `mi_malloc_aligned` and its paths about 370 million
+  (7.45 million calls), `mi_free` 167 million (7.6 million calls), the
+  copies of `realloc` 151 million (140,000 calls, lists grown by
+  `append`): 8.3% together;
+- the comparisons: `rt_compare` 400 million (4.8%; 4.1 million calls at
+  97 instructions, plus the drops of the operands it consumes),
+  `Value::eq` 182 million;
+- the constructions: `rt_construct`, `Vm::construct`,
+  `rt_construct_variant`, `construct_variant`, `plain_all`,
+  `Value::guarded` and `refinement_violation` 660 million (7.9%), of
+  which `plain_all` and `guarded`, the guard bookkeeping of decision P3
+  in a run whose grant guards nothing, 202 million (2.4%);
+- the typed natives' path: `rt_call_typed` 181 million and
+  `typed_value_answer` 146 million (3.9%); `status` 207 million (2.5%,
+  6.1 million calls).
+
+**The gap of AU18's goal**: in wall-clock on one hardware thread (best
+of seven), the front end alone on the checker program (`renyi compile`)
+takes 155 ms, the JIT run 1,456 ms, the image 1,212 (+20%): the front
+end is about two thirds of the gap, Cranelift and the templates the
+rest; without the front end the JIT run would stand about 7% above the
+image. A representation item makes the run and the image faster alike
+and leaves the front end as it is, so it widens the ratio; the goal as
+stated needs a faster front end. The run from the bytecode file is no
+shortcut: loading the checker program's JSON `.ryc` (9.7 MB) takes 865
+million instructions, more than compiling the sources.
+
+**The items, with what the counts estimate** (in instructions of the
+self-check's JIT run, and the benchmarks they move):
+1. **Small texts inline**: a text of at most 15 bytes held in the value
+   itself (a tag of its own, appended so that no other tag moves; the
+   length and the bytes in the 16 bytes past the tag, zero-padded, so
+   that two such values are equal exactly when their words are); a
+   longer text as today. Buys: no allocation for 92.6% of the texts
+   made; no count on their clones and drops (4 million each on the JIT
+   run); `is` on two small texts compared in the generated code in a
+   few instructions where `rt_compare` costs about 110 with its drops
+   (2.7 million of its 4.1 million calls). Estimate: 4 to 5% of the
+   self-check, the most of any item; `strings` and `json_round_trip`
+   by the texts they build. Touches: `Value` (the variant, the
+   accessors `as_text`, `natives::text` and `plain_text`, the 27
+   places that name `Value::Text`), equality and hashing (by content), the
+   recordings, the generated code's comparison and text paths, the
+   image's code format. Risk: moderate; the text accessors are few.
+2. **Records and variants in one allocation**: the fields after the
+   header in the counted block (a thin pointer, a count-and-copy of its
+   own for the update in place), the field read one load shorter. Buys:
+   1.95 million allocations and frees fewer (of 7.45 million), the copy
+   from the operand stack into a separate buffer gone. Estimate: 2 to
+   3% of the self-check, `records` the most (half its allocations).
+   Touches: `Record`, `Variant`, the 48 field accesses, `with` and
+   `WithSlot`, the field reads of both tiers (`RECORD_FIELDS`), the
+   natives that build records, the code format. Risk: moderate (an
+   unsized allocation by hand).
+3. **`Int` flattened into `Value`** (the small Integer at the payload, a
+   big one under its own tag): one comparison and branch fewer at every
+   Integer read of the interpreter, the helpers and the generated code;
+   below 1% of the self-check by the counts, whose Integers live in
+   registers on the Cranelift tier; the step a 16-byte `Value` would
+   need (with thin texts), which would cap item 1 at 7 bytes. Risk:
+   moderate (77 sites name `Int::Small` or `Int::Big`).
+4. **Lists of unboxed Integers**: no program of the five makes them; no
+   measure to judge them by.
+5. **Values in registers across ops**: the scalars already live in
+   registers on the Cranelift tier (AR1); boxed values in registers
+   with their counts elided where the consumer borrows is AU14's
+   skipped item generalized; on the template tier, a cache of the
+   stack's top. Not estimated; the largest and riskiest.
+
+**Cuts the counts found outside the list** (small and local, each a
+stage by AT1's rule): the guard bookkeeping skipped in a run whose
+grant guards nothing (`plain_all` and `guarded`, 2.4%); a fieldless
+variant read from the cache by the generated code instead of through
+`rt_construct_variant` (745,769 calls, about 1%); one shared empty list,
+as the ASCII table shares the one-character texts (435,470
+allocations, about 0.4%).
+
+**The questions for the owner** (one batch, the recommended option
+first): the order of the items; lists of unboxed Integers and the
+flattened `Int`; the cuts outside the list; AU18's goal, given the
+front end's share of the gap.
+
 ## The template tier: the design study (session 10)
 
 The owner took every recommended option of this study (decision AU18),
