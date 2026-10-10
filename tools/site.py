@@ -40,6 +40,7 @@ NAVIGATION = [
     ("Python", "docs/python.md"),
     ("Embedding", "docs/embedding.md"),
     ("Positioning", "docs/design/08-positioning.md"),
+    ("Roadmap", "docs/ROADMAP.md"),
     ("Decisions", "docs/design/01-decisions.md"),
 ]
 

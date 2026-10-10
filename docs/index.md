@@ -90,6 +90,8 @@ renyi run program.ry        # main, under the grant it declares
   tooling](design/05-agent-tooling.md), [the runtime
   guarantees](design/06-runtime-guarantees.md) and [the system
   design](design/07-system-design.md).
+- [The roadmap](ROADMAP.md): every stage of the project in order, with
+  its decisions and its status, grouped by track, and what is next.
 - [The repository](https://github.com/renyi-lang/renyi): the Rust
   toolchain, the compiler written in Renyi, the conformance suite and
   the release procedure. Apache-2.0.

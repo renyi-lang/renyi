@@ -91,7 +91,9 @@ compiler.
 - `main` is the only branch (owner's decision, 2026-10-05). Commit and push
   there directly; do not create other branches, local or remote.
 - Before ending a session, rewrite `docs/HANDOFF.md` so the next session can
-  start without this conversation.
+  start without this conversation, and update `docs/ROADMAP.md` when a stage
+  closed or opened (the owner's request of 2026-10-10: the stages numbered,
+  grouped by track).
 
 ## Where things are
 
@@ -109,6 +111,7 @@ compiler.
 | `docs/index.md`, `tools/site.py`, `.github/workflows/pages.yml` | the documentation site (decision AI2): the front page (the positioning's paragraph, install, the links), the script that renders every document under `docs/` but the handoff, the grammar, the corpus index with each example's source and the starter pack's README as pages with one header (`pip install markdown`; `python tools/site.py [_site]`), and the workflow that builds the site on every push to `main` and deploys it to GitHub Pages from a public repository |
 | `docs/grammar.ebnf` | the formal grammar of the syntax level: W3C EBNF over the lexer's tokens, the token classes and the line rules in its preamble; `crates/renyi_syntax/tests/grammar.rs` interprets it and checks that it accepts exactly what the parser accepts |
 | `docs/reference.md` | the language reference, normative: one section per construct with the grammar excerpt, the meaning, the static rules with their diagnostic codes and the run-time behaviour; appendix A every diagnostic code with its severity, appendix B the commands and exit statuses; `crates/renyi_syntax/tests/reference.rs` holds it to the grammar file and the crates |
+| `docs/ROADMAP.md` | the map of the project: every stage from the first design document to today, numbered in order with its decisions, what it built, its measure and its status; the same stages grouped by track (the design, the Rust toolchain, the compiler in Renyi, the VM, packages and foreign code, the agent tooling, release, readability); what is next |
 | `docs/GAPS.md` | the gap audit of 2026-10-06: what the design promises and the implementation does not deliver, with the proposed order of work |
 | `docs/RELEASE.md` | the release procedure (decisions AI1 to AI4): what a tag automates, the owner's steps for release 0.1 (the organisation, the visibility, Pages, crates.io, the marketplace), every release after it |
 | `docs/extensions.md` | the guide to extensions (decisions AJ1, AK1 to AK4): the declaration file, the natives, the `Extension` value, the binary of a few lines, what the boundary does for a native |
