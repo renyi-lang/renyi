@@ -152,9 +152,12 @@ and push there directly.
    AU22 and AU28, right after AU30, the last stage of AU28's plan: read
    the section "The typed round" below, whose last paragraphs ("The
    owner's answers after AU27" and "What is next in this round, after
-   AU30") say what exists and what comes next. The questions there go
-   to the owner first, unless the owner answered them at the end of
-   session 12 (then the answers are the next decision entry, AU31).
+   AU30") say what exists and what comes next. The owner answered the
+   questions there at the end of session 12 (decision AU31): AU29's
+   sequence on the Cranelift tier next, then the hottest natives in
+   place; AU18's goal confirmed on another boot before it is called
+   met; the other natives' vectors left alone; the front end's round to
+   start with a study.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
@@ -2530,8 +2533,7 @@ are in, each measured on one boot against the binary before it:
   the indirect branches the model counts as missed fell 39%. Test:
   `counts_raised_and_lowered_in_place_free_the_last_and_spare_big_integers`
   in `tests/template.rs`.
-- **AU30, the decoder's records in their block** (this session's last
-  code commit): `decode_fields` in `natives/json.rs` decodes the fields
+- **AU30, the decoder's records in their block** (81aa432): `decode_fields` in `natives/json.rs` decodes the fields
   onto the VM's stack and the decoder's own `construct_from_top` moves
   them into the block with `Composite::from_top`; a refined type and a
   variant without fields go through `construct` and
@@ -2596,9 +2598,11 @@ allocator about 510 million (7.2%). The candidates:
    the front end is the largest single share of the self-check's JIT
    run left to a round of its own (10.1%), and every program pays it
    on every run without the image cache.
-6. **The questions for the owner**, in one batch: which of 1 to 3 next,
-   or 5; and whether AU18's goal is called met on this boot's
-   measurement or after one on another boot.
+6. **The owner's answers (AU31)**: 2, then 1, each a stage; AU18's
+   goal called met only after a measurement on another boot; the
+   natives that build records from vectors left until a profile points
+   at them; the front end's round (5) to start with a study, the cache
+   keyed by the sources' hash among its candidates.
 
 Each stage is measured by AT1's rule (`tools/measure_size.sh` on the
 release binary, about fifteen minutes now with the fourth row; in a

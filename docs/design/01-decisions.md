@@ -4789,3 +4789,28 @@ The stage stays by AU28's measure: it takes back more than the 0.9% of
 instructions AU27 cost the benchmark. By AU1's rule alone it is level:
 the self-check's estimate falls only with the layout, and the
 benchmark's gain is below the 5% of the rule's second branch. (user)
+
+**AU31. The owner's answers of 2026-10-10 after AU30: (i) the next
+stage is AU29's sequence on the Cranelift tier, the retain and the
+release in place in the code Cranelift makes where AT6 kept the calls
+to `rt_retain_at` and `rt_drop_at` (AT6 had measured them against AR4's
+longer generic sequence), judged by AT1's rule; then the hottest
+natives in place in the generated code of both tiers (`List.at` with a
+small Integer index, `Text.contains`, `List.contains`), a stage of its
+own; (ii) the goal of AU18 is called met only when a measurement on
+another boot of the container (a later session, after a restart) finds
+the run part within 15% again; (iii) the natives that build a record
+from a vector (the rows of `sqlite.query`, the library's records and
+errors, the nodes of a `JsonValue`, which also look their type up by
+name for every node) stay as they are until a profile points at them;
+(iv) the front end's round, when it opens, starts with a study: the
+profile of the parse, the check and the compile on the self-check and
+the corpus, with a cache keyed by the sources' hash that skips the
+front end among the candidates, and the owner orders the stages from
+it.** The alternatives the owner declined: for (i), the hottest natives
+first, the compile cost first, or the round closed for the front end's;
+for (ii), the goal called met on this boot's two measurements, or a
+stricter measure (the median within 10%, or three boots); for (iii),
+the `JsonValue` nodes now, or every such native as one stage; for (iv),
+the cache keyed by the sources first, or the checker's hot spots
+directly. (user)
