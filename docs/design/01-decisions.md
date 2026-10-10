@@ -4520,3 +4520,31 @@ hardware thread the self-check -1.0% and -2.3%, `records` -7.0% and
 self-check -6.5% and -7.2%, `records` -11.7% and -10.6%, `strings` -2.6%
 and -5.0%, `json_round_trip` and `primes` within 2%. The stage stays by
 AU1's rule and by the owner's measure. (user)
+
+**AU24. The second cut of AU22 as built: a variant without fields read
+from the cache in place by the generated code. The VM keeps the
+variants without fields it has built (decision AG6) in a vector with a
+fixed layout, `Vm::unit_variants`, `Nothing` in a slot until its
+variant is built; `vm::unit_slot` gives a variant's slot from the
+program's types as the VM lays them out. `ConstructVariant` of a variant
+without fields reads the slot's tag in both tiers: once built, the value
+is copied onto the stack and the count of its block, the block's first
+word, raised by one in place; the first time, `rt_construct_variant`
+builds and keeps it, on a path after the body in template code. Code
+format 8.** The tests: `tests/native.rs` and `tests/template.rs`,
+`variants_without_fields_are_copied_from_their_slot_and_counted` (3,000
+lights cycled and kept in a list, compared and matched, and 2,000
+shapes with and without fields, against the interpreter; without the
+raised count the template test crashes, as it was checked to), with the
+conformance suite and the judges on the template tier. Measured on one
+boot against AU23's binary (2abc849). By AT1's estimate under
+cachegrind: the synchronous JIT run 11.44 to 11.29 billion cycles
+(-1.3%; instructions -1.7%), the template code alone 11.91 to 11.71
+(-1.7%), the image 9.35 to 9.21 (-1.5%), the interpreter 17.24 to 17.21
+(-0.2%). In wall-clock, alternating with the order swapped every turn,
+best and median: on one hardware thread the self-check -3.9% and -2.3%,
+the benchmarks within 1% but `records` (-0.8% and -2.8%) and `strings`
+(+0.0% and -5.1%); on two the self-check -1.0% and -0.5%, the
+benchmarks within 1.2%; on four the self-check +0.0% and +0.9%, the
+benchmarks within noise (`records` +2.3% and -0.8%, `strings` -0.6% and
++3.0%). The stage stays by AU1's rule and by the owner's measure. (user)

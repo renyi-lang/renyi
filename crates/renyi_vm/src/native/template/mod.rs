@@ -29,10 +29,10 @@ use crate::compile::Program;
 use crate::extension::TypedKind;
 use crate::native::codegen::{
     borrowed_operands, field_cache_offset, frames_offset, handlers_offset, helper_index,
-    is_comparison, kind_agrees, native_state_offset, stack_offset, Skipped, FRAME_BASE, FRAME_CODE,
-    FRAME_GRANT, FRAME_HANDLER_BASE, FRAME_PC, FRAME_SIZE, SIGNATURES, SITE_INDEX, SITE_SIZE,
-    SITE_TAG, SITE_TY, STACK_SAFE, STATE_CONSTANTS, STATE_DEPTH, STATE_ENTRIES, STATE_HELPERS,
-    STATE_HOTNESS,
+    is_comparison, kind_agrees, native_state_offset, stack_offset, unit_variants_offset, Skipped,
+    FRAME_BASE, FRAME_CODE, FRAME_GRANT, FRAME_HANDLER_BASE, FRAME_PC, FRAME_SIZE, SIGNATURES,
+    SITE_INDEX, SITE_SIZE, SITE_TAG, SITE_TY, STACK_SAFE, STATE_CONSTANTS, STATE_DEPTH,
+    STATE_ENTRIES, STATE_HELPERS, STATE_HOTNESS,
 };
 use crate::native::infer::{abs_of_constant, abs_of_result, analyse, Analysis};
 use crate::native::runtime::{
@@ -43,7 +43,7 @@ use crate::value::layout::{
     INT_PAYLOAD, INT_SMALL, INT_TAG, PAYLOAD, RC_VALUE, RECORD_FIELDS, RECORD_TAG, RECORD_TY, SIZE,
     TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_INTEGER, TAG_NOTHING, TAG_RECORD,
 };
-use crate::vm::CallKind;
+use crate::vm::{unit_slot, CallKind};
 use x64::{host_abi, Abi, Asm, Cond, Label, Reg};
 
 /// The code of one code object: its bytes, which hold no address, the
@@ -138,6 +138,16 @@ enum Cold {
     },
     /// A direct call whose callee left a failure.
     Failed { label: Label, pc: usize },
+    /// A variant without fields not built yet: through
+    /// `rt_construct_variant`, which builds it and keeps it (decision
+    /// AU24).
+    Unit {
+        label: Label,
+        done: Label,
+        ty: usize,
+        tag: u16,
+        pc: usize,
+    },
     /// A field read the site's cache did not answer: through
     /// `rt_load_field`, which fills the cache.
     Field {
@@ -952,6 +962,27 @@ impl Gen<'_> {
                 self.asm.mov_ri32(Reg::Rax, FAILURE as u32);
                 self.check(pc);
             }
+            Cold::Unit {
+                label,
+                done,
+                ty,
+                tag,
+                pc,
+            } => {
+                self.asm.bind(label);
+                self.call(
+                    "rt_construct_variant",
+                    &[
+                        Arg::Vm,
+                        Arg::Imm(ty as u64),
+                        Arg::Imm(tag as u64),
+                        Arg::Imm(0),
+                        Arg::Imm(pc as u64),
+                    ],
+                );
+                self.leave_on_interrupt();
+                self.asm.jmp(done);
+            }
             Cold::Field {
                 label,
                 done,
@@ -1080,6 +1111,36 @@ impl Gen<'_> {
                     1,
                     pc,
                 );
+            }
+            Op::ConstructVariant { ty, tag, fields: 0 }
+                if unit_slot(self.program, *ty, *tag as usize).is_some() =>
+            {
+                // a variant without fields is the same value every time
+                // (decision AG6): once built it is copied from its slot in
+                // place, with one more reference counted on its block, the
+                // first word of which is the count (decision AU24); the
+                // helper builds it the first time, and cannot fail
+                let slot = unit_slot(self.program, *ty, *tag as usize).expect("a slot");
+                let unit = (slot * SIZE) as i32;
+                let slow = self.asm.label();
+                let done = self.asm.label();
+                self.asm.mov_rm(SCRATCH2, VM, unit_variants_offset() as i32);
+                self.asm.cmp_m8i(SCRATCH2, unit, TAG_NOTHING);
+                self.asm.jcc(Cond::E, slow);
+                let top = self.top();
+                self.copy((SCRATCH2, unit), top);
+                self.asm.mov_rm(SCRATCH2, top.0, top.1 + PAYLOAD);
+                self.asm.add_m64i(SCRATCH2, 0, 1);
+                self.asm.bind(done);
+                self.cold.push(Cold::Unit {
+                    label: slow,
+                    done,
+                    ty: *ty,
+                    tag: *tag,
+                    pc,
+                });
+                self.depth += 1;
+                self.store_len();
             }
             Op::ConstructVariant { ty, tag, fields } => {
                 self.helper(

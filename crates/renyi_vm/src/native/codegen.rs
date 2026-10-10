@@ -45,7 +45,7 @@ use crate::value::layout::{
     TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_INTEGER, TAG_NATIVE, TAG_NOTHING, TAG_RECORD,
 };
 use crate::value::Value;
-use crate::vm::{CallKind, FieldSite, Frame, NativeState, Vm};
+use crate::vm::{unit_slot, CallKind, FieldSite, Frame, NativeState, Vm};
 
 /// Where the VM keeps its stack (decision AR4): the generated code reads
 /// the pinned vector's pointer, length and capacity there.
@@ -75,6 +75,13 @@ pub(crate) const FRAME_GRANT: i32 = std::mem::offset_of!(Frame, grant) as i32;
 /// (decision AR4): a field load reads the entry and the holder in place.
 pub(crate) fn field_cache_offset() -> i64 {
     std::mem::offset_of!(Vm<'static>, field_cache) as i64
+}
+
+/// Where the VM keeps the variants without fields once built: a vector
+/// with a fixed layout, whose pointer the generated code reads to copy
+/// one in place (decision AU24).
+pub(crate) fn unit_variants_offset() -> i64 {
+    std::mem::offset_of!(Vm<'static>, unit_variants) as i64
 }
 
 pub(crate) const SITE_SIZE: usize = std::mem::size_of::<FieldSite>();
@@ -2346,6 +2353,58 @@ impl Gen<'_, '_> {
                     .expect("a status");
                 self.push_boxed();
                 self.check_status(status, pc, true);
+            }
+            Op::ConstructVariant { ty, tag, fields: 0 }
+                if unit_slot(self.program, *ty, *tag as usize).is_some() =>
+            {
+                // a variant without fields is the same value every time
+                // (decision AG6): once built it is copied from its slot in
+                // place, with one more reference counted on its block, the
+                // first word of which is the count (decision AU24); the
+                // helper builds it the first time, and cannot fail
+                let slot = unit_slot(self.program, *ty, *tag as usize).expect("a slot");
+                let flags = MemFlagsData::trusted();
+                let pointer = self.pointer;
+                let units = self.b.ins().iadd_imm_s(self.vm, unit_variants_offset());
+                let units_ptr = self.b.ins().load(pointer, flags, units, 0);
+                let unit = self.b.ins().iadd_imm_s(units_ptr, (slot * SIZE) as i64);
+                let tag_value = self.tag_at(unit, 0);
+                let built = self.b.create_block();
+                let slow = self.b.create_block();
+                let join = self.b.create_block();
+                let is_built =
+                    self.b
+                        .ins()
+                        .icmp_imm_s(IntCC::NotEqual, tag_value, TAG_NOTHING as i64);
+                self.b.ins().brif(is_built, built, &[], slow, &[]);
+                self.b.seal_block(built);
+                self.b.seal_block(slow);
+                self.switch_to(built);
+                let to = self.top_address();
+                self.copy_value(unit, to);
+                let rc = self.b.ins().load(pointer, flags, to, PAYLOAD);
+                let count = self.b.ins().load(types::I64, flags, rc, 0);
+                let count = self.b.ins().iadd_imm_s(count, 1);
+                self.b.ins().store(flags, count, rc, 0);
+                let height = self.height() + 1;
+                self.store_height(height);
+                self.b.ins().jump(join, &[]);
+                self.switch_to(slow);
+                let ty_value = self.usize(*ty);
+                let tag_value = self.u32(*tag as u32);
+                let fields_value = self.u32(0);
+                let status = self
+                    .helper_on_stack(
+                        "rt_construct_variant",
+                        0,
+                        &[ty_value, tag_value, fields_value, pc_value],
+                    )
+                    .expect("a status");
+                self.check_status(status, pc, false);
+                self.b.ins().jump(join, &[]);
+                self.b.seal_block(join);
+                self.switch_to(join);
+                self.push_boxed();
             }
             Op::ConstructVariant { ty, tag, fields } => {
                 let ty_value = self.usize(*ty);

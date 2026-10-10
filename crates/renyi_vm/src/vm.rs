@@ -296,11 +296,12 @@ pub struct Vm<'p> {
     /// narrow the grant; the other code objects run under their caller's.
     narrows: Vec<bool>,
     /// Per type, the first slot of its variants in `unit_variants` and
-    /// how many it has.
+    /// how many it has (`unit_layout`).
     unit_base: Vec<(usize, usize)>,
     /// A variant without fields, once built: the same value every time
-    /// (decision AG6).
-    unit_variants: Vec<Option<Value>>,
+    /// (decision AG6); `Nothing` until then. The generated code reads it
+    /// in place at its slot (`unit_slot`, decision AU24).
+    pub(crate) unit_variants: Pinned<Value>,
     narrowing: Narrowing,
     counters: Vec<Counter>,
     /// Whether `begin_run` starts a recording.
@@ -438,6 +439,37 @@ pub fn call_kinds(program: &Program, registry: &Registry) -> Vec<CallKind> {
     kinds_of(&pure, &typed)
 }
 
+/// How many variants a type has: those of a sum type, none for another.
+fn variant_count(meta: &crate::types::TypeMeta) -> usize {
+    match &meta.shape {
+        TypeShape::Sum(variants) => variants.len(),
+        _ => 0,
+    }
+}
+
+/// Where the variants without fields of a program are kept once built
+/// (`Vm::unit_variants`): per type, the first slot of its variants and how
+/// many it has, then how many slots there are.
+fn unit_layout(program: &Program) -> (Vec<(usize, usize)>, usize) {
+    let mut bases = Vec::with_capacity(program.types.metas.len());
+    let mut units = 0;
+    for meta in &program.types.metas {
+        let count = variant_count(meta);
+        bases.push((units, count));
+        units += count;
+    }
+    (bases, units)
+}
+
+/// The slot of a variant in `Vm::unit_variants`, as `unit_layout` lays
+/// them out, for the generated code that reads a variant without fields
+/// in place (decision AU24); `None` when the type has no such variant.
+pub(crate) fn unit_slot(program: &Program, ty: TypeId, tag: usize) -> Option<usize> {
+    let meta = program.types.metas.get(ty)?;
+    let base: usize = program.types.metas[..ty].iter().map(variant_count).sum();
+    (tag < variant_count(meta)).then_some(base + tag)
+}
+
 impl<'p> Vm<'p> {
     pub fn new(program: &'p Program, mut options: Options) -> Vm<'p> {
         let entries = entries_of(program, &options.registry);
@@ -483,16 +515,7 @@ impl<'p> Vm<'p> {
             .as_ref()
             .map(|jit| jit.state_pointers())
             .unwrap_or_default();
-        let mut unit_base = Vec::with_capacity(program.types.metas.len());
-        let mut units = 0;
-        for meta in &program.types.metas {
-            let count = match &meta.shape {
-                TypeShape::Sum(variants) => variants.len(),
-                _ => 0,
-            };
-            unit_base.push((units, count));
-            units += count;
-        }
+        let (unit_base, units) = unit_layout(program);
         let mut vm = Vm {
             program,
             stack: Pinned::new(),
@@ -524,7 +547,7 @@ impl<'p> Vm<'p> {
                 })
                 .collect(),
             unit_base,
-            unit_variants: vec![None; units],
+            unit_variants: vec![Value::Nothing; units].into(),
             narrowing: options.narrowing,
             counters: Vec::new(),
             record: options.record,
@@ -2375,11 +2398,12 @@ impl<'p> Vm<'p> {
         if fields.is_empty() {
             let (base, count) = self.unit_base[ty];
             if tag < count {
-                if let Some(value) = &self.unit_variants[base + tag] {
-                    return Ok(value.clone());
+                let unit = &self.unit_variants[base + tag];
+                if !unit.is_nothing() {
+                    return Ok(unit.clone());
                 }
                 let value = Value::variant(ty, tag, fields);
-                self.unit_variants[base + tag] = Some(value.clone());
+                self.unit_variants[base + tag] = value.clone();
                 return Ok(value);
             }
         }

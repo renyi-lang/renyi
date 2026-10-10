@@ -322,3 +322,88 @@ end
     assert_eq!(outcome, RunOutcome::Finished);
     assert_eq!(printed, "1000\n");
 }
+
+/// A variant without fields built over and over (decision AU24): the
+/// first construction builds it through the helper, the others copy it
+/// from its slot in place with one more reference, on the template tier; the values
+/// kept in a list, compared and matched print what the interpreter prints.
+#[test]
+fn variants_without_fields_are_copied_from_their_slot_and_counted() {
+    let source = r#"module demo
+  purpose: Variants without fields built over and over, kept, compared and matched.
+
+import std.console
+
+type Light is one of
+  purpose: A colour of the light.
+  Red
+  Green
+  Yellow
+  can ToText
+end
+
+type Shape is one of
+  purpose: A shape with or without a side.
+  Dot
+  Square(side: Integer)
+end
+
+function next(light: Light) returns Light
+  purpose: The colour after this one.
+
+  match light
+    when Red then return Green
+    when Green then return Yellow
+    when Yellow then return Red
+  end
+end
+
+function shape_of(index: Integer) returns Shape
+  purpose: A dot for every third index, a square otherwise.
+
+  if index remainder 3 is 0 then
+    return Dot
+  end
+  return Square(side: index remainder 5)
+end
+
+function area(shape: Shape) returns Integer
+  purpose: The area of the shape, nothing for a dot.
+
+  match shape
+    when Dot then return 0
+    when Square(side) then return side * side
+  end
+end
+
+public function main() needs console
+  purpose: Cycle the lights and keep them, count the reds, sum the areas.
+
+  let mutable light be Red
+  let mutable kept: List of Light be []
+  let mutable reds be 0
+  let mutable steps be 0
+  for each index from 1 to 3000
+    change steps to index
+    change light to next(light)
+    change kept to kept.append(light)
+    if light is Red then
+      change reds to reds + 1
+    end
+  end
+  let mutable total be 0
+  let mutable dots be 0
+  for each index from 1 to 2000
+    let shape be shape_of(index)
+    change total to total + area(shape)
+    if shape is Dot then
+      change dots to dots + 1
+    end
+  end
+  console.print("{steps} {reds} {kept.length()} {light} {kept.first() otherwise Red} {total} {dots}")
+end
+"#;
+    let (outcome, output, _) = both_ways(source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(output, "3000 1000 3000 Red Green 8001 666\n");
+}
