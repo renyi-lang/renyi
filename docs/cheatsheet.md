@@ -149,7 +149,7 @@ end
 ```
 A `T` is accepted where `maybe T` or a success is expected. Reading out always
 names the other case, and `otherwise` is allowed only there. It takes a default
-value or a way out: `fail`, `fail with E(...)`, `return value`, `break`,
+or a way out: `fail`, `fail with E(...)`, `return value`, `break`,
 `continue`, `crash with "text"`.
 `type X is Base` is a subtype: an `X` passes as a `Base`, never the reverse.
 
@@ -186,8 +186,8 @@ repeat until attempts is at least 3
   if done then break end
 end
 ```
-Matching is exhaustive. A variant with fields matches by its bare name when
-no field is needed: `when Circle then`. `if` and `match` are also expressions
+Matching is exhaustive. A variant with fields matches by its bare name
+alone: `when Circle then`. `if` and `match` are also expressions
 when every branch is one expression: `let label be if done then "yes"
 otherwise "no" end`.
 Loop headers take `where` and `sorted by`.
