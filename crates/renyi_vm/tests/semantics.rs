@@ -646,3 +646,34 @@ end
         assert_eq!(printed, expected, "interpret: {interpret}");
     }
 }
+
+#[test]
+fn a_run_of_members_and_a_run_until_a_stop_clamp_their_bounds() {
+    // the two scans of decision AU52: the end of a run of members from a
+    // start, the first stop from a start, both below a stop that is
+    // clamped to the list, an empty run answering the start itself
+    let source = r#"module demo
+  purpose: Scan runs of characters with the list primitives.
+
+import std.console
+
+public function main() needs console
+  purpose: Print the ends of some runs.
+
+  let chars be "ab_12 x".characters()
+  let word be "ab_12".characters().to_set()
+  let blank be [" "].to_set()
+  let whole be chars.run_of(members: word, start: 0, stop: chars.length())
+  let bounded be chars.run_of(members: word, start: 0, stop: 3)
+  let none be chars.run_of(members: word, start: 5, stop: chars.length())
+  let past be chars.run_of(members: word, start: 9, stop: 20)
+  let space be chars.run_until(stops: blank, start: 0, stop: chars.length())
+  let missing be chars.run_until(stops: blank, start: 6, stop: chars.length())
+  let backwards be chars.run_until(stops: blank, start: 4, stop: 2)
+  console.print("{whole} {bounded} {none} {past} {space} {missing} {backwards}")
+end
+"#;
+    let (outcome, printed) = run(source, Options::default());
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(printed, "5 3 5 7 5 7 4\n");
+}

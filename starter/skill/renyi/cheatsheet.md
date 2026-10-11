@@ -1,8 +1,8 @@
 # Renyi Cheat Sheet
 
-Renyi is a statically typed language whose syntax is regular English. Every
-concept has one spelling. Blocks end with `end`. Indentation is never meaning.
-There is no `=`, no `==`, no `null`, no exceptions, no anonymous functions.
+Renyi is statically typed; its syntax is regular English. Every concept has
+one spelling. Blocks end with `end`; indentation never means anything. No `=`,
+`==`, `null`, exceptions or anonymous functions.
 
 ## Module
 ```
@@ -13,7 +13,7 @@ import std.json                              # use as json.parse(...)
 import std.http as web                       # renamed namespace
 import accounts.models exposing User, UserId # types and abilities only
 ```
-Imported functions are called qualified, own-module ones bare. Definitions are private unless `public`.
+Imported functions are called qualified, own ones bare; definitions are private unless `public`.
 
 ## Function
 ```
@@ -55,7 +55,7 @@ change count to count + 1            # the only mutation
 ignore connection.execute(sql)       # discard the result of a call with effects
 ```
 A name is bound once per scope; shadowing is an error. Every binding must be
-used, and an unused result is an error (`change items to items.append(item)`),
+used and every result too (`change items to items.append(item)`),
 as is `ignore` of a pure call's result.
 
 ## Types
@@ -88,7 +88,7 @@ public type Pair of Left, Right
 end
 ```
 Construct: `User(name: "Ann", age: 30, email: nothing)`, `Circle(radius: 2.5)`
-(fields always named), `Point`, `UserId(7)` (a subtype wraps one value).
+(fields always named), `Point`, `UserId(7)` (a subtype wraps a value).
 Update: `user with age: 31`. Refined construction or update can fail:
 `Email(input) otherwise fail with BadInput`. A literal the checker can
 evaluate needs no `otherwise` (`Port(8080)`); a variable needs one even
@@ -112,9 +112,9 @@ end
 ```
 Derivable: `Equal`, `Compare by`, `Hash`, `ToText` (a variant prints as its
 bare name, `Green`; a record in constructor form), `ToJson`, `FromJson`.
-`Iterable of Item` is implemented (`to_list(self) returns List of Item`) and
-`for each` walks the type; collections, ranges and texts have it too, so
-`for any Bag, Item where Bag can Iterable of Item` walks any.
+`Iterable of Item` (`to_list(self) returns List of Item`) lets `for each` walk
+the type; collections, ranges and texts have it, so `for any Bag, Item where
+Bag can Iterable of Item` walks any.
 Generic: `ability Sized for Stack of Item` then `for any Item`.
 
 ## Expressions
@@ -190,7 +190,7 @@ Matching is exhaustive. A variant with fields matches by its bare name when
 no field is needed: `when Circle then`. `if` and `match` are also expressions
 when every branch is one expression: `let label be if done then "yes"
 otherwise "no" end`.
-Loop headers accept `where` and `sorted by`.
+Loop headers take `where` and `sorted by`.
 
 ## Queries (instead of lambdas)
 ```
@@ -262,8 +262,8 @@ Text: length() is_empty() trim() trim_start() trim_end() to_lower() to_upper()
 List: length() is_empty() at(index) first() last() rest() without_last()
   without_index(index) take(length) drop(length) slice(start, stop) append(item)
   append_all(others) reversed() sorted() distinct() contains(item)
-  index_of(item) largest() smallest() with_index() to_set() flattened()
-  join(separator) sum()
+  index_of(item) run_of(members, start, stop) run_until(stops, start, stop)
+  largest() smallest() with_index() to_set() flattened() join(separator) sum()
 Map: length() is_empty() get(key) set(key, value) without(key)
   contains_key(key) keys() values() entries() merged(other)
 Set: length() is_empty() contains(item) add(item) without(item) union(other)

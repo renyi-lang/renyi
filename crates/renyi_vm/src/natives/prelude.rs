@@ -125,7 +125,11 @@ pub(crate) const NATIVES: &[Native] = &[
     Native::method("std.prelude", "distinct", "List", list_distinct),
     Native::method("std.prelude", "contains", "List", list_contains)
         .with_typed(Typed::Bool(list_contains_typed)),
-    Native::method("std.prelude", "index_of", "List", list_index_of)
+    Native::method("std.prelude", "index_of", "List", list_index_of),
+    Native::method("std.prelude", "run_of", "List", list_run_of)
+        .with_typed(Typed::Int(list_run_of_typed)),
+    Native::method("std.prelude", "run_until", "List", list_run_until)
+        .with_typed(Typed::Int(list_run_until_typed))
         .with_typed(Typed::Value(list_index_of_typed)),
     Native::method("std.prelude", "largest", "List", list_largest),
     Native::method("std.prelude", "smallest", "List", list_smallest),
@@ -651,6 +655,40 @@ fn list_distinct(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
 fn list_contains(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     let items = list(arg(args, 0))?;
     Ok(Value::Boolean(items.contains(arg(args, 1))))
+}
+
+/// The bounds of a run: `start` and `stop` clamped to the list, `stop` at
+/// least `start`.
+fn run_bounds(len: usize, start: &Value, stop: &Value) -> Result<(usize, usize), Interrupt> {
+    let start = count(start)?.min(len);
+    let stop = count(stop)?.min(len).max(start);
+    Ok((start, stop))
+}
+
+/// The end of the run of members of the set from `start`, below `stop`
+/// (decision AU52): a lexer's scan over a character class in one call.
+fn list_run_of(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let items = list(arg(args, 0))?;
+    let members = set(arg(args, 1))?;
+    let (start, stop) = run_bounds(items.len(), arg(args, 2), arg(args, 3))?;
+    let end = items[start..stop]
+        .iter()
+        .position(|item| !members.contains(item))
+        .map_or(stop, |offset| start + offset);
+    Ok(Value::integer(end as i64))
+}
+
+/// The index of the first item of the set from `start`, below `stop`, or
+/// `stop` (decision AU52).
+fn list_run_until(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let items = list(arg(args, 0))?;
+    let stops = set(arg(args, 1))?;
+    let (start, stop) = run_bounds(items.len(), arg(args, 2), arg(args, 3))?;
+    let end = items[start..stop]
+        .iter()
+        .position(|item| stops.contains(item))
+        .map_or(stop, |offset| start + offset);
+    Ok(Value::integer(end as i64))
 }
 
 fn list_index_of(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
@@ -1246,6 +1284,37 @@ fn set_length_typed(args: &[Value]) -> Option<i64> {
 
 fn set_is_empty_typed(args: &[Value]) -> Option<bool> {
     Some(plain_set(&args[0])?.is_empty())
+}
+
+fn run_bounds_typed(len: usize, start: &Value, stop: &Value) -> Option<(usize, usize)> {
+    let start = usize::try_from(plain_small(start)?).ok()?.min(len);
+    let stop = usize::try_from(plain_small(stop)?)
+        .ok()?
+        .min(len)
+        .max(start);
+    Some((start, stop))
+}
+
+fn list_run_of_typed(args: &[Value]) -> Option<i64> {
+    let items = plain_list(&args[0])?;
+    let members = plain_set(&args[1])?;
+    let (start, stop) = run_bounds_typed(items.len(), &args[2], &args[3])?;
+    let end = items[start..stop]
+        .iter()
+        .position(|item| !members.contains(item))
+        .map_or(stop, |offset| start + offset);
+    Some(end as i64)
+}
+
+fn list_run_until_typed(args: &[Value]) -> Option<i64> {
+    let items = plain_list(&args[0])?;
+    let stops = plain_set(&args[1])?;
+    let (start, stop) = run_bounds_typed(items.len(), &args[2], &args[3])?;
+    let end = items[start..stop]
+        .iter()
+        .position(|item| stops.contains(item))
+        .map_or(stop, |offset| start + offset);
+    Some(end as i64)
 }
 
 fn set_contains_typed(args: &[Value]) -> Option<bool> {

@@ -172,6 +172,10 @@ function distinct(self: List of Item) returns List of Item for any Item where It
   purpose: First occurrences only, order kept.
 function contains(self: List of Item, item: Item) returns Boolean for any Item
 function index_of(self: List of Item, item: Item) returns maybe Integer for any Item
+function run_of(self: List of Item, members: Set of Item, start: Integer, stop: Integer) returns Integer for any Item where Item can Hash
+  purpose: The index after the longest run of items in the set from start, below stop; start itself when the item there is not in the set. The bounds are clamped to the list.
+function run_until(self: List of Item, stops: Set of Item, start: Integer, stop: Integer) returns Integer for any Item where Item can Hash
+  purpose: The index of the first item in the set from start, below stop, or stop when none is; the bounds are clamped to the list.
 function largest(self: List of Item) returns maybe Item for any Item where Item can Compare
 function smallest(self: List of Item) returns maybe Item for any Item where Item can Compare
 function with_index(self: List of Item) returns List of Pair of Item, Integer for any Item

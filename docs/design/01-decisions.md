@@ -5818,3 +5818,50 @@ checker's copy (`scan_word` 15%, `lex_range` 12%). The rule for each:
 AU1's measure on the self-check does not apply (the frozen self-check is
 `bench/selfcheck/`, which these cuts do not touch); a cut stays when its
 driver's instructions fall and the judges pass.
+
+**AU52. B4's first cuts: the checker over lines, the parser's look in
+the cursor, the lexer's scans as two list primitives.** The stage AU51
+opened, its cuts (i), (ii) and (iv), each judged byte-equal by the four
+judges and the binary's tests. (i) `report.line_starts` takes the text
+and measures the pieces of `Text.split("\n")` instead of walking every
+character, and `checker.check_layout` walks the lines from those starts,
+reading only each line's trailing run of spaces and tabs (`tokens.ry`
+drops its own copy of the loop): the Renyi checker on
+`compiler/bodies.ry` 4,898.3 to 4,802.1 million instructions (-2.0%; the
+profiler's 11% was the interpreter's weight, the compiled loops being
+cheaper). (ii) The parser's `Cursor` carries `look`, the index of the
+next significant token past the line breaks the layout rules skip,
+computed once wherever a cursor is built at a new position or nesting
+(`at_position`, `with_nesting`, from `look_from`, the former `peek_at`;
+the two constructors and the 47 sites that moved a cursor go through
+them), and every test reads the field: the parser alone 799.4 to 792.9
+million instructions per parse (-0.8%: the look was computed a few times
+per position, not many). (iv) Two primitives on `List of Item` where
+`Item can Hash` (a library addition, not a surface change:
+`docs/design/04-stdlib-sketch.md`, `library/std/prelude.ry` and the
+checker's copy, the natives with typed entries, the cheat sheet and its
+two copies, three sentences of which were tightened to keep its budget,
+2,999 of 3,000 tokens): `run_of(members: Set of Item, start, stop)`, the
+index after the longest run of members of the set from `start` below
+`stop`, `start` itself when the item there is not in the set, and
+`run_until(stops, start, stop)`, the index of the first item of the set
+from `start` below `stop`, or `stop`; the bounds are clamped to the list
+as `slice`'s are; a test in `tests/semantics.rs`. The lexer's seven
+scans (`scan_word`, `scan_name_tail`, `scan_alphanumeric`,
+`scan_digits`, `scan_spaces`, `scan_operator_tail`, `line_end`), loops
+of one character per turn with one to three `contains` tests each, are
+one call each over a character class kept as a set beside the texts it
+comes from (`word_set`, `name_tail_set`, `alphanumeric_set`,
+`digit_set`, `digit_or_underscore_set`, `space_set`,
+`operator_tail_set`, `line_break_set`): the lexer alone
+(`compiler/lex_only.ry` on `bodies.ry`, three turns less one) LEX_BEFORE
+to LEX_AFTER million instructions per lex (LEX_PCT); the Renyi checker
+on `bodies.ry` 4,750.9 million (-1.1% against (i)'s 4,802.1, -3.0% for
+the three cuts). The ratio of AU36 (iii) after the three cuts: checking
+590.5 ms against the reference's 78.5 (7.5 times, the gate) and this
+binary's 38.7 (15.3), parsing 207.9 against 65.6 (3.2) and 62.2 (3.3),
+compiling 888.9 against 102.1 (8.7) and 81.8 (10.9): the ratio stays at
+7.5, the three cuts' 3% in instructions under the wall-clock's noise.
+What stays for the stage: (iii), the keywords and symbols as variants
+without fields (`rt_compare` 6.6% of the three-turn parse), and whatever
+the profile shows next.

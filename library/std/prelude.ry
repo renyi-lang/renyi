@@ -264,6 +264,10 @@ public function distinct(self: List of Item) returns List of Item for any Item w
   purpose: First occurrences only, order kept.
 public function contains(self: List of Item, item: Item) returns Boolean for any Item
 public function index_of(self: List of Item, item: Item) returns maybe Integer for any Item
+public function run_of(self: List of Item, members: Set of Item, start: Integer, stop: Integer) returns Integer for any Item where Item can Hash
+  purpose: The index after the longest run of items in the set from start, below stop; start itself when the item there is not in the set. The bounds are clamped to the list.
+public function run_until(self: List of Item, stops: Set of Item, start: Integer, stop: Integer) returns Integer for any Item where Item can Hash
+  purpose: The index of the first item in the set from start, below stop, or stop when none is; the bounds are clamped to the list.
 public function largest(self: List of Item) returns maybe Item for any Item where Item can Compare
 public function smallest(self: List of Item) returns maybe Item for any Item where Item can Compare
 public function with_index(self: List of Item) returns List of Pair of Item, Integer for any Item

@@ -198,6 +198,8 @@ let operator_symbols: List of Text be ["!", "&", "|", "%", "^", "~", "?", "@", "
 
 let operator_tail: List of Text be ["=", "<", ">", "!", "&", "|"]
 
+let operator_tail_set: Set of Text be operator_tail.to_set()
+
 let carriage_return_base64: Text be "DQ=="
 
 let reserved_set: Set of Text be reserved_words.to_set()
@@ -213,6 +215,20 @@ let lower_letters: Text be "abcdefghijklmnopqrstuvwxyz"
 let upper_letters: Text be "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 let digits: Text be "0123456789"
+
+let word_set: Set of Text be "{lower_letters}_{digits}".characters().to_set()
+
+let name_tail_set: Set of Text be "{lower_letters}{upper_letters}_{digits}".characters().to_set()
+
+let alphanumeric_set: Set of Text be "{lower_letters}{upper_letters}{digits}".characters().to_set()
+
+let digit_set: Set of Text be digits.characters().to_set()
+
+let digit_or_underscore_set: Set of Text be "{digits}_".characters().to_set()
+
+let space_set: Set of Text be [" "].to_set()
+
+let line_break_set: Set of Text be ["\n"].to_set()
 
 public function lex(source: Text) returns Lexed
   purpose: The tokens of a whole source text, ending with EndOfFile, and every problem met.
@@ -438,100 +454,45 @@ end
 function scan_word(chars: List of Text, start: Integer, limit: Integer) returns Integer
   purpose: The end of the run of lowercase letters, digits and underscores from start.
 
-  let mutable position be start
-  let mutable scanning be position is less than limit
-  repeat until not scanning
-    let ch be chars.at(position) otherwise ""
-    if lower_letters.contains(ch) or ch is "_" or digits.contains(ch) then
-      change position to position + 1
-      change scanning to position is less than limit
-    otherwise
-      change scanning to false
-    end
-  end
-  return position
+  return chars.run_of(members: word_set, start: start, stop: limit)
 end
 
 function scan_name_tail(chars: List of Text, start: Integer, limit: Integer) returns Integer
   purpose: The end of the run of letters of either case, digits or underscores from start.
 
-  let mutable position be start
-  let mutable scanning be position is less than limit
-  repeat until not scanning
-    let ch be chars.at(position) otherwise ""
-    let letter be lower_letters.contains(ch) or upper_letters.contains(ch)
-    if letter or ch is "_" or digits.contains(ch) then
-      change position to position + 1
-      change scanning to position is less than limit
-    otherwise
-      change scanning to false
-    end
-  end
-  return position
+  return chars.run_of(members: name_tail_set, start: start, stop: limit)
 end
 
 function scan_alphanumeric(chars: List of Text, start: Integer, limit: Integer) returns Integer
   purpose: The end of the run of letters of either case and digits from start.
 
-  let mutable position be start
-  let mutable scanning be position is less than limit
-  repeat until not scanning
-    let ch be chars.at(position) otherwise ""
-    if lower_letters.contains(ch) or upper_letters.contains(ch) or digits.contains(ch) then
-      change position to position + 1
-      change scanning to position is less than limit
-    otherwise
-      change scanning to false
-    end
-  end
-  return position
+  return chars.run_of(members: alphanumeric_set, start: start, stop: limit)
 end
 
 function scan_digits(chars: List of Text, start: Integer, limit: Integer, underscores: Boolean)
   returns Integer
   purpose: The end of the run of digits from start, underscores among them when asked.
 
-  let mutable position be start
-  let mutable scanning be position is less than limit
-  repeat until not scanning
-    let ch be chars.at(position) otherwise ""
-    if digits.contains(ch) or (underscores and ch is "_") then
-      change position to position + 1
-      change scanning to position is less than limit
-    otherwise
-      change scanning to false
-    end
+  if underscores then
+    return chars.run_of(members: digit_or_underscore_set, start: start, stop: limit)
   end
-  return position
+  return chars.run_of(members: digit_set, start: start, stop: limit)
 end
 
 function scan_spaces(chars: List of Text, start: Integer, limit: Integer) returns Integer
   purpose: The end of the run of blanks from start.
 
-  let mutable position be start
-  repeat until position is at least limit or (chars.at(position) otherwise "") is not " "
-    change position to position + 1
-  end
-  return position
+  return chars.run_of(members: space_set, start: start, stop: limit)
 end
 
 function scan_operator_tail(chars: List of Text, start: Integer, limit: Integer) returns Integer
   purpose: The end of the run of operator characters from start, for an error token.
 
-  let mutable position be start
-  repeat until position is at least limit
-    or not operator_tail.contains(chars.at(position) otherwise "")
-    change position to position + 1
-  end
-  return position
+  return chars.run_of(members: operator_tail_set, start: start, stop: limit)
 end
 
 function line_end(chars: List of Text, position: Integer, limit: Integer) returns Integer
-  let mutable stop be position
-  repeat until stop is at least limit or (chars.at(stop) otherwise "") is "\n"
-    change stop to stop + 1
-  end
-  return stop
+  return chars.run_until(stops: line_break_set, start: position, stop: limit)
 end
 
 function at_line_start(chars: List of Text, offset: Integer) returns Boolean

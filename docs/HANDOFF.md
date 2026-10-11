@@ -274,13 +274,14 @@ and push there directly.
    finished and the gate is not met (the ratio 7.4 against 3); the owner
    evaluated (decision AU51): the gate stays at 3, the next lever is the
    compiler's own code, the expansion stays off, the site is final. The
-   work now is B4, stage 28: the paragraph "B4, the stage under way" of
-   that section lists its four cuts in order (the checker's line starts
-   and layout check over lines, the parser's look kept in the cursor,
-   the keywords as variants without fields, the lexer's scan as a
-   library primitive), each judged, measured by its driver and the
-   ratio, and recorded in its own entry; the paragraph "After B3: the
-   evaluation" above it has the profile they come from.
+   work now is B4, stage 28: three of its four cuts are in (AU52: the
+   checker's line starts and layout check over lines, the parser's look
+   kept in the cursor, the lexer's scans as two list primitives; -3.0%
+   on the checker's run, the lexer alone -1.4%, the parser alone -0.8%),
+   the paragraph "B4 as built so far" of that section has them with the
+   lesson of the lexer's cut (the hash per character is the cost, not
+   the loop) and what stays: the keywords and symbols as variants
+   without fields, then whatever the profile shows.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
@@ -3461,28 +3462,43 @@ code stays, off; the site's fourth round is final. The stage this opens
 is B4 (stage 28 of the roadmap), the paragraph "B4, the stage under way"
 below.
 
-**B4, the stage under way** (decision AU51; stage 28 of the roadmap):
-the compiler's own code, the cuts in the order of their expected gain
-per effort, each judged byte-equal by the four judges, measured by the
-drivers under callgrind (`compiler/lex_only.ry`, `parse_only.ry` and
-`checker.ry` on `compiler/bodies.ry`, three turns less one or the
-checker's one run, `RENYI_NATIVE_SYNC=1`) and by `tools/ratio.py <stage>
-target/renyi-au34`, and recorded in an entry of its own: (i) the
-checker's line starts and layout check over lines instead of characters
-(`report.line_starts` and `checker.check_layout` walk every character of
-every file; `Text.split("\n")` gives the pieces, whose lengths give the
-starts, and a line's width and trailing run come from its start and
-end); (ii) the parser's look computed once per move of the cursor and
-kept in it, every test reading it, instead of `peek_at` per test (the
-sites that build a cursor with a new position or nesting compute it; the
-judges hold the layout rules); (iii) the keywords and symbols as
-variants without fields compared by tag (AU48's deferred cut;
-`tokens.ry` keeps printing the same names); (iv) the lexer's scan over a
-character class as a library primitive (a library addition:
-`docs/design/04-stdlib-sketch.md`, `library/std/prelude.ry` and the
-checker's copy, the natives with a typed entry, the lint's list). The
-rule: a cut stays when its driver's instructions fall and the judges
-pass; AU1's self-check does not move, being the frozen copy.
+**B4 as built so far** (decision AU51; stage 28 of the roadmap; decision
+AU52 for the first three cuts, commits 4d8cccc and the next). The
+compiler's own code, cut by cut, each judged byte-equal by the four
+judges and the binary's tests, measured by its driver under callgrind
+(`compiler/lex_only.ry`, `parse_only.ry` and `checker.ry` on
+`compiler/bodies.ry`, three turns less one or the checker's one run,
+`RENYI_NATIVE_SYNC=1`): (i) `report.line_starts(text)` measures the
+pieces of `Text.split("\n")` and `checker.check_layout(chars, starts)`
+walks the lines from the starts, reading only each line's trailing run
+(the checker 4,898.3 to 4,802.1 million instructions, -2.0%); (ii) the
+parser's `Cursor` carries `look`, computed once by `at_position` and
+`with_nesting` (from `look_from`, the former `peek_at`) wherever a
+cursor is built at a new position or nesting, and read by every test
+(the parser alone 799.4 to 792.9 million per parse, -0.8%); (iv) two
+list primitives, `run_of(members, start, stop)` and `run_until(stops,
+start, stop)` (the sketch, `library/std/prelude.ry` and the checker's
+copy, the natives with typed entries in `natives/prelude.rs`, the cheat
+sheet and its copies within the budget, a test in
+`crates/renyi_vm/tests/semantics.rs`), and the lexer's seven scans as
+one call each over a character class kept as a set (the lexer alone
+513.9 to 506.6 million per lex, -1.4%; the checker 4,750.9, -3.0% for
+the three cuts). The lesson of (iv): the loop was a small part of a
+scan; the hash of each one-character text against the set is the rest,
+and the primitive keeps it; a class table built once per set (an ASCII
+table beside the set, or natives for the classes themselves) would spare
+it, the next cut of the lexer if the profile still points there. What
+stays of the plan: (iii), the keywords and symbols as variants without
+fields compared by tag (`rt_compare` 6.6% of the three-turn parse;
+`tokens.ry` keeps printing the same names), and whatever the profile
+shows next (`memcpy` 4.4% and `Rc::make_mut` 1.6% of the checker's run
+are the copies of shared lists and records, `drop_glue` 5.7% the frees).
+The ratio after the three cuts (`tools/ratio.py target/renyi-b4iv
+target/renyi-au34`): checking 590.5 ms against the reference's 78.5 (7.5
+times, the gate) and this binary's 38.7 (15.3), parsing 207.9 against
+65.6 (3.2) and 62.2 (3.3), compiling 888.9 against 102.1 (8.7) and 81.8
+(10.9): the ratio stays at 7.5, the three cuts' 3% in instructions under
+the wall-clock's noise.
 
 ## The representation items: the design study (session 11)
 
