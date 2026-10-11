@@ -209,6 +209,29 @@ impl<T> From<Vec<T>> for Pinned<T> {
     }
 }
 
+impl Pinned<crate::value::Value> {
+    /// `truncate` for the VM's stack (decision AU56): a value whose tag
+    /// says it holds no counted block (`Nothing`, a Boolean, a small
+    /// Integer, a Float, a text held in the value) needs no drop, and a
+    /// frame's slots are mostly such values, so only the others go to
+    /// `drop_in_place`.
+    pub fn truncate_values(&mut self, len: usize) {
+        use crate::value::layout::COUNTED_OR_INTEGER;
+        while self.len > len {
+            self.len -= 1;
+            // SAFETY: the item was in use and is counted out first; its
+            // first byte is its tag, as `layout` lays a value out.
+            unsafe {
+                let at = self.ptr.add(self.len);
+                let tag = *(at as *const u8);
+                if (COUNTED_OR_INTEGER >> tag) & 1 == 1 {
+                    std::ptr::drop_in_place(at);
+                }
+            }
+        }
+    }
+}
+
 impl<T> Drop for Pinned<T> {
     fn drop(&mut self) {
         drop(self.take());

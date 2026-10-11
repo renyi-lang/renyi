@@ -233,10 +233,11 @@ where one decided, the status. The dates are those of the decisions.
     shared list appended with one copy (the checker -3.1% more), the
     last read of a local moved by both emitters with a taken field read
     in place on both tiers and the checker's code reshaped where it
-    defeated the rule (the checker -1.6% more). The measure: the
-    ratio against AU34's binary, 7.4 at the stage's start, 7.2 and 8.1
-    on two runs (7.5 before the cut, within the wall-clock's noise)
-    after the four cuts.
+    defeated the rule (the checker -1.6% more), the frame leave dropping
+    only the slots that hold a counted block (the checker -0.8%
+    more). The measure: the ratio against AU34's binary, 7.4 at the
+    stage's start, 7.2 and 8.1 on two runs (7.5 before the cut, within
+    the wall-clock's noise) after the four cuts.
 
 ## 3. The tracks
 

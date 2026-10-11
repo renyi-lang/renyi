@@ -1830,7 +1830,7 @@ impl<'p> Vm<'p> {
                 self.hotness[code_id] = self.hotness[code_id].saturating_add(ran);
                 ran = 0;
                 let left = self.frames.pop().expect("a frame");
-                self.stack.truncate(left.base);
+                self.stack.truncate_values(left.base);
                 self.handlers.truncate(left.handler_base);
                 if self.explain {
                     self.narrate_exit(left.code, &value);

@@ -6044,3 +6044,27 @@ Renyi checker at 589.8 and 606.6) and this binary's 38.4 (14.5), parsing
 first of the stage's cuts to move outside the wall-clock's noise, and
 the compile row pays the analysis written in Renyi. CLAUDE.md's rows for
 `compile/`, the tiers and `compiler/` say what is there now.
+
+**AU56. B4's seventh cut: the frame leave drops only the slots that hold
+a counted block.** After AU55 the largest VM cost of the checker's run
+was the return: `rt_return` 399 million instructions inclusive (8.9%),
+of which `leave_frame`'s truncation of the frame's slots called the drop
+glue of `Value` on every slot, 10.6 million times per run, most of them
+on plain values (`Nothing`, a Boolean, a small Integer, a Float, a text
+held in the value) with nothing to drop.
+`Pinned<Value>::truncate_values` reads each slot's tag and drops only a
+value whose tag is in `COUNTED_OR_INTEGER` (the mask the generated code
+tests before a retain or a release, decisions AU29 and AU32); the frame
+leave of the generated code (`runtime::leave_frame`), the interpreter's
+`leave!` and `rt_truncate` use it. The measure (callgrind,
+`RENYI_NATIVE_SYNC=1`, against AU55): the checker's run 4,470.1 to
+4,432.9 million (-0.8%), the parser alone 767.9 to 763.4 million per
+parse (-0.6%), the lexer alone 498.1 to 493.7 million per lex (-0.9%);
+AT1's measure on the self-check the synchronous row 6,260.7 to 6,223.8
+million instructions (-0.6%) and 8,792.5 to 8,771.4 million by the
+estimate (-0.2%), the image row 4,775.0 to 4,726.6 million (-1.0%) and
+6,884.4 to 6,811.1 million by the estimate (-1.1%), the interpreter
+unchanged. Also in the stage's record: the cheat sheet stood at 3,001
+tokens by the gate's tokenizer after AU52 (the byte estimate this
+environment can take said 2,999), which kept CI red from d172887 to
+fa27d73; two phrases a word shorter (81c5ef9).

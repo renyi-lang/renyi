@@ -276,7 +276,7 @@ pub(crate) unsafe extern "C" fn rt_dup(vm: VmPtr) {
 pub(crate) unsafe extern "C" fn rt_truncate(vm: VmPtr, base: usize, locals: u32, boxed: u32) {
     vm!(vm)
         .stack
-        .truncate(base + locals as usize + boxed as usize);
+        .truncate_values(base + locals as usize + boxed as usize);
 }
 
 /// Take a small plain Integer off the top into `out`; anything else stays
@@ -1660,7 +1660,7 @@ impl Vm<'_> {
     /// interpreter's `leave!` without the settling, which the caller does).
     pub(crate) fn leave_frame(&mut self, value: Value) {
         let left = self.frames.pop().expect("a frame");
-        self.stack.truncate(left.base);
+        self.stack.truncate_values(left.base);
         self.handlers.truncate(left.handler_base);
         self.stack.push(value);
     }

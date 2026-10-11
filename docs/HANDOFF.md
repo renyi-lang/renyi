@@ -285,12 +285,14 @@ and push there directly.
    copy, the checker's run -3.1% more; AU55: the last read of a local
    moves it, in both emitters, with a taken field read in place on both
    tiers and the checker's code reshaped where it defeated the rule, the
-   checker's run -1.6% more), the paragraph "B4 as built so far" of
-   that section has them with the lexer's lesson (the hash per character
-   is the cost, not the loop) and what stays: the loops' iterators and
-   the frame leave's drops, then the same reshaping of `emit.ry` and
-   `declare.ry`, with the ratio 7.2 and 8.1 on two runs after AU53 (7.5
-   before it, within the wall-clock's noise) against the gate of 3.
+   checker's run -1.6% more; AU56: the frame leave drops only the slots
+   that hold a counted block, -0.8% more), the paragraph "B4 as
+   built so far" of that section has them with the lexer's lesson (the
+   hash per character is the cost, not the loop) and what stays: the
+   loops' iterators, then the same reshaping of `emit.ry` and
+   `declare.ry` and the analysis's sets as bits, with the ratio 7.2 and
+   8.1 on two runs after AU53 (7.5 before it, within the wall-clock's
+   noise) against the gate of 3.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
@@ -3094,8 +3096,7 @@ instructions and 72 ms on AU34's binary, 153 million and 34.5 ms now;
 the ratio of AU36 (iii) 10.7 times against AU34's Rust front end (the
 Renyi side has not changed yet) and 21.7 times against the same
 binary's at AU42, 20.8 on AU44's boot, unmoved by A2, whose cache is
-off where the ratio is taken. CI green after every push but e91cec0
-(AU52's natives table, `tests/extension.rs`; fixed by the next commit).
+off where the ratio is taken. CI green after every push but e91cec0 (AU52's natives table, `tests/extension.rs`; fixed by the next commit) and d172887 to fa27d73 (the cheat sheet at 3,001 tokens by the gate's tokenizer; fixed in 81c5ef9).
 
 **A2 as built** (AU40 ii to iv, AU43; decision AU44). The module
 `renyi_package::reads` notes every file a compile reads (`noting`,
@@ -3542,21 +3543,26 @@ by the compile judge), with a taken field read in place on both tiers
 (the helper had cost more than the moves saved) and the checker's code
 reshaped by a script where it defeated the rule (27 stale reads of the
 `checker` parameter now read the derived value, 113 `Done` values bound
-before their checkers); the checker's run 4,470.1 million (-1.6%),
-the parser alone 767.9 million per parse (+0.4%), the lexer alone
-498.1 million per lex (+1.4%), the Rust front end's compile of the
-checker +4.7% for the analysis. What stays: `for each` without an
-iterator allocated per loop (263,438 per run), `leave_frame`'s drop of
-every slot (10.6 million per run, most of them plain values),
-`lists.replace_at` (three lists per call), and the same reshaping of
-`emit.ry` and `declare.ry` for the compile row; the Cranelift compile is
-9% of the checker's one run under `RENYI_NATIVE_SYNC=1`, which the ratio
-pays on the compile thread instead. The ratio after the three cuts
-(`tools/ratio.py target/renyi-b4iv target/renyi-au34`): checking 590.5
-ms against the reference's 78.5 (7.5 times, the gate) and this binary's
-38.7 (15.3), parsing 207.9 against 65.6 (3.2) and 62.2 (3.3), compiling
-888.9 against 102.1 (8.7) and 81.8 (10.9): the ratio stays at 7.5, the
-three cuts' 3% in instructions under the wall-clock's noise.
+before their checkers); the checker's run 4,470.1 million (-1.6%), the
+parser alone 767.9 million per parse (+0.4%), the lexer alone 498.1
+million per lex (+1.4%), the Rust front end's compile of the checker
++4.7% for the analysis. The seventh cut (AU56): the frame leave drops
+only the slots whose tag says they hold a counted block
+(`Pinned::truncate_values`, used by the generated code's `leave_frame`,
+the interpreter's leave and `rt_truncate`; the checker's run -0.8%,
+the parser alone -0.6%, the lexer alone -0.9%). What stays: `for
+each` without an iterator allocated per loop (263,438 per run,
+`rt_iter_init` 79 million inclusive), `lists.replace_at` (three lists
+per call), the same reshaping of `emit.ry` and `declare.ry` for the
+compile row, and the analysis's name sets as bits for the Rust front
+end's 4.7%; the Cranelift compile is 9% of the checker's one run under
+`RENYI_NATIVE_SYNC=1`, which the ratio pays on the compile thread
+instead. The ratio after the three cuts (`tools/ratio.py
+target/renyi-b4iv target/renyi-au34`): checking 590.5 ms against the
+reference's 78.5 (7.5 times, the gate) and this binary's 38.7 (15.3),
+parsing 207.9 against 65.6 (3.2) and 62.2 (3.3), compiling 888.9 against
+102.1 (8.7) and 81.8 (10.9): the ratio stays at 7.5, the three cuts' 3%
+in instructions under the wall-clock's noise.
 
 ## The representation items: the design study (session 11)
 
@@ -5276,6 +5282,13 @@ holds between calls.
   and +0.5% by the estimate (the frozen compiler keeps the old shape);
   the ratio 6.9 (the Renyi checker 557.9 ms, from 589.8 and 606.6 after
   AU53).
+- **Decision AU56**: the seventh cut of B4, the frame leave dropping
+  only the slots whose tag says they hold a counted block
+  (`Pinned::truncate_values`); the checker's run -0.8%, the parser alone
+  -0.6%, the lexer alone -0.9% against AU55; AT1's synchronous row -0.6%
+  in instructions and -0.2% by the estimate, the image row -1.0% and
+  -1.1%. The cheat sheet's gate (3,001 tokens by the tokenizer CI runs)
+  kept CI red from d172887 to fa27d73; fixed in 81c5ef9.
 - **The README's opening** at the owner's request (68c5cd2): the design
   philosophy as the selling points, five points a reviewer can check,
   the comparison with Python, TypeScript, Rust and shell for the one
