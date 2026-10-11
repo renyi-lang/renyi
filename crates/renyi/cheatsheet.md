@@ -1,7 +1,7 @@
 # Renyi Cheat Sheet
 
 Renyi is statically typed; its syntax is regular English. Every concept has
-one spelling. Blocks end with `end`; indentation never means anything. No `=`,
+one spelling. Blocks end with `end`; indentation means nothing. No `=`,
 `==`, `null`, exceptions or anonymous functions.
 
 ## Module
@@ -35,8 +35,8 @@ A function whose first parameter is `self: Text` is a method: `text.trim()`.
 Clause order: `returns`, `or fails with`, `needs`, `for any`, `purpose:`,
 `tags:`, `see also:`, `deprecated:`, `expose as tool`, `example:` lines, blank
 line, body. Omit `returns` when nothing is returned. The `module` line and
-every `public` function, type and constant must carry a `purpose:` line; the
-checker rejects one without it.
+every `public` function, type and constant must carry a `purpose:` line, or
+the checker rejects it.
 
 ## Calls
 ```
@@ -148,7 +148,7 @@ match action()                                      # when the error is needed
 end
 ```
 A `T` is accepted where `maybe T` or a success is expected. Reading out always
-names the other case, and `otherwise` is allowed only there. It takes a default
+names the other case; `otherwise` is allowed only there. It takes a default
 or a way out: `fail`, `fail with E(...)`, `return value`, `break`,
 `continue`, `crash with "text"`.
 `type X is Base` is a subtype: an `X` passes as a `Base`, never the reverse.
@@ -186,8 +186,8 @@ repeat until attempts is at least 3
   if done then break end
 end
 ```
-Matching is exhaustive. A variant with fields matches by its bare name
-alone: `when Circle then`. `if` and `match` are also expressions
+Matching is exhaustive. A variant with fields matches by its bare name:
+`when Circle then`. `if` and `match` are also expressions
 when every branch is one expression: `let label be if done then "yes"
 otherwise "no" end`.
 Loop headers take `where` and `sorted by`.
@@ -260,8 +260,8 @@ Text: length() is_empty() trim() trim_start() trim_end() to_lower() to_upper()
   pad_right(width) repeat(times) take(length) drop(length) reversed()
   matches(pattern) to_integer() to_decimal() to_float() to_bytes()
 List: length() is_empty() at(index) first() last() rest() without_last()
-  without_index(index) take(length) drop(length) slice(start, stop) append(item)
-  append_all(others) reversed() sorted() distinct() contains(item)
+  without_index(index) with_at(index, item) take(length) drop(length) slice(start, stop)
+  append(item) append_all(others) reversed() sorted() distinct() contains(item)
   index_of(item) run_of(members, start, stop) run_until(stops, start, stop)
   largest() smallest() with_index() to_set() flattened() join(separator) sum()
 Map: length() is_empty() get(key) set(key, value) without(key)

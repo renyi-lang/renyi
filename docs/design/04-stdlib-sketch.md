@@ -160,6 +160,8 @@ function rest(self: List of Item) returns List of Item for any Item
   purpose: Everything after the first item; empty for an empty list.
 function without_last(self: List of Item) returns List of Item for any Item
 function without_index(self: List of Item, index: Integer) returns List of Item for any Item
+function with_at(self: List of Item, index: Integer, item: Item) returns List of Item for any Item
+  purpose: The list with the item at the index replaced, in place when nothing else holds the list; unchanged when the index is out of range (decision AU57).
 function take(self: List of Item, length: Integer) returns List of Item for any Item
 function drop(self: List of Item, length: Integer) returns List of Item for any Item
 function slice(self: List of Item, start: Integer, stop: Integer) returns List of Item for any Item

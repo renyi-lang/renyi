@@ -115,6 +115,7 @@ pub(crate) const NATIVES: &[Native] = &[
     Native::method("std.prelude", "rest", "List", list_rest),
     Native::method("std.prelude", "without_last", "List", list_without_last),
     Native::method("std.prelude", "without_index", "List", list_without_index),
+    Native::method("std.prelude", "with_at", "List", list_with_at),
     Native::method("std.prelude", "take", "List", list_take),
     Native::method("std.prelude", "drop", "List", list_drop),
     Native::method("std.prelude", "slice", "List", list_slice),
@@ -580,6 +581,33 @@ fn list_without_index(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt
         out.remove(i);
     }
     Ok(Value::list(out))
+}
+
+/// `with_at(index, item)` (decision AU57): the list with the item at
+/// the index replaced, in place when nothing else holds the list, else
+/// one copy; unchanged when the index is out of range.
+fn list_with_at(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let item = take(args, 2);
+    let index = small(arg(args, 1))?;
+    match take(args, 0) {
+        Value::List(mut items) => {
+            if let Some(i) = index_in(items.len(), index) {
+                match Rc::get_mut(&mut items) {
+                    Some(list) => list[i] = item,
+                    None => {
+                        let mut copy: Vec<Value> = (*items).clone();
+                        copy[i] = item;
+                        items = Rc::new(copy);
+                    }
+                }
+            }
+            Ok(Value::List(items))
+        }
+        other => Err(crash(format!(
+            "`with_at` needs a List, found {}",
+            other.kind_name()
+        ))),
+    }
 }
 
 fn list_take(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {

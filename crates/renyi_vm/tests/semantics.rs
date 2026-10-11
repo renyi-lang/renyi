@@ -648,6 +648,44 @@ end
 }
 
 #[test]
+fn with_at_replaces_in_range_and_leaves_the_rest_as_it_was() {
+    // decision AU57: the item at the index replaced, out of range
+    // unchanged, a shared list left as it was
+    let source = r#"module demo
+  purpose: Replace items of a list by index.
+
+import std.console
+
+function show(items: List of Integer) returns Text
+  let mutable parts: List of Text be []
+  for each item in items
+    change parts to parts.append(item.to_text())
+  end
+  let separator be ", "
+  return "[{parts.join(separator)}]"
+end
+
+public function main() needs console
+  purpose: Print the lists.
+
+  let items be [1, 2, 3]
+  let changed be items.with_at(index: 1, item: 20)
+  let past be items.with_at(index: 3, item: 9)
+  let negative be items.with_at(index: 0 - 1, item: 9)
+  let mutable own be [4, 5, 6]
+  change own to own.with_at(index: 0, item: 40)
+  console.print("{show(items)} {show(changed)} {show(past)} {show(negative)} {show(own)}")
+end
+"#;
+    let (outcome, printed) = run(source, Options::default());
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(
+        printed,
+        "[1, 2, 3] [1, 20, 3] [1, 2, 3] [1, 2, 3] [40, 5, 6]\n"
+    );
+}
+
+#[test]
 fn a_run_of_members_and_a_run_until_a_stop_clamp_their_bounds() {
     // the two scans of decision AU52: the end of a run of members from a
     // start, the first stop from a start, both below a stop that is

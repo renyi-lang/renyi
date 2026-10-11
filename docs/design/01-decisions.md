@@ -6068,3 +6068,86 @@ unchanged. Also in the stage's record: the cheat sheet stood at 3,001
 tokens by the gate's tokenizer after AU52 (the byte estimate this
 environment can take said 2,999), which kept CI red from d172887 to
 fa27d73; two phrases a word shorter (81c5ef9).
+
+**AU57. B4's eighth cut: `List.with_at`, a replacement by index in
+place; the hash of a small text by its two words, measured slower and
+left out.** `lists.replace_at(items, index, item)`, by which the
+compiler written in Renyi updates a list by position (twenty call
+sites: the checker's variables and scopes in `bodies.ry`, the world's
+modules, types, functions, abilities and parameters in `declare.ry`,
+the emitter's ops, codes, types and fields in `emit.ry`), built three
+lists per call: `take(index)`, `append(item)` and `append_all` of
+`drop(index + 1)`. The prelude gains `with_at(self: List of Item,
+index: Integer, item: Item) returns List of Item for any Item`, a
+library addition (the sketch, `library/std/prelude.ry` and the
+checker's copy, the native `list_with_at` in `natives/prelude.rs`, the
+cheat sheet and its two copies, a test in
+`crates/renyi_vm/tests/semantics.rs`): the list with the item at the
+index replaced, in place when nothing else holds the list and with one
+copy otherwise, the list as it was when the index is out of range,
+which is what `replace_at` answered; `replace_at` is now that one call.
+The cut's other half hashed a text held in the value (`SmallText`, at
+most 15 bytes, which `Value::text` always uses for a text that short)
+as its two words in place of its bytes, to spare the loop over them;
+but the VM's maps and sets hash with the standard library's SipHash,
+for which sixteen bytes cost more than the one to three bytes of a
+typical token and the terminator (`Hasher::write` 26.1 to 50.3 million
+instructions per lex), and with both halves the lexer alone went from
+493.7 to 517.5 million instructions per lex (+4.8%), the parser alone
+763.4 to 764.7 million per parse (+0.2%) and the checker's run 4,432.9
+to 4,438.4 million (+0.1%), so the hash stays as it was. What the
+profile names instead is a hasher of the VM's own for its maps and sets
+(a multiplicative hash over the words, keyed per run, since SipHash's
+keys are what defends a map against keys chosen to collide), a decision
+of its own. The measure of `with_at` alone (callgrind,
+`RENYI_NATIVE_SYNC=1`, against AU56): the checker's run 4,432.9 to
+4,391.6 million (-0.9%), the parser alone 763.4 to 763.3 million per
+parse and the lexer alone 493.7 to 493.6 million per lex (both
+unchanged: neither calls it); the four judges byte-equal. The stage's
+total: the checker's run 4,898.3 to 4,391.6 million (-10.3%). The cheat
+sheet: the gate's two tokenizers, which the container's proxy keeps
+tiktoken from fetching, are in the `tiktoken-rs` crate on crates.io
+(the handoff says how to count with them offline); with `with_at`
+listed and two phrases a word shorter it stands at 2,997 tokens by
+o200k_base and 2,992 by cl100k_base, where the byte estimate says
+2,992.
+
+**AU58. The owner's answers after B4: a new backend for the VM, its
+design study first.** Asked at the end of the session of 2026-10-11
+(four questions, every recommended answer taken), with AU56's numbers
+and AU57 under measure. The question set out the distance to the gate
+of AU35 (ii) and what could cover it: cuts of one to three percent
+each will not (B4's eight came to 10.3% of the checker's run), and a
+new backend could (values unboxed, counts elided where ownership is
+static, arguments in registers, records laid out as structures, and
+the checker's data structures rewritten to suit them), months of work
+by the question's estimate. The answers: (1) the new backend, its
+design study first: the instructions of the checker's run attributed
+by category, the backend's design, its stages with an estimate each,
+then the stages one by one in the sessions after; the gate stays at 3
+times, the road to it acknowledged as months long; (2) AU57's two cuts
+recorded and pushed as usual (its second half was measured slower and
+is left out, as AU57 records); (3) the measure stays the checker's run
+on `compiler/bodies.ry` under callgrind and the ratio of AU36 (iii),
+with a table by category beside them in each entry (the generated
+code, the counts and the frames, the helpers, the allocation, the
+hashing); (4) the first stage, which the study is to examine again:
+the calling convention, scalar arguments and results in registers and
+a parameter that is only read passed without a count, on both tiers,
+with a flag per parameter in the bytecode (the return's helper was
+8.9% of the checker's run before AU56, its largest single item). A
+correction to the question's figures, made the same day: it put the
+distance at seven times in instructions, comparing the Renyi checker
+with this binary's own Rust front end (about 3,230 million by the
+profile's shares against 153 million, 21 times), but the gate's
+measure by AU36 (iii) is AU34's binary. Measured (callgrind, the image
+cache off): the Renyi checker run from its image, as `tools/ratio.py`
+runs it, 3,080.0 million instructions on today's `compiler/bodies.ry`;
+AU34's `renyi check` of the same file 442.8 million (7.0 times, beside
+the wall-clock's 6.9); this binary's `renyi check` 179.4 million (17.2
+times). The gate asks the checker's image run to fall to 1,328.3
+million, 2.3 times fewer instructions, as the wall-clock says (the
+Renyi checker 557.9 ms against three times the reference's 81.4, 244);
+the study takes the gate's measure. The session ended at the owner's
+word, to save the progress and prepare the handoff, before the study
+began.

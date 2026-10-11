@@ -22,7 +22,7 @@ branches of the repository.
 | M4 | the library and the package manager: packages, `std.process`, the foreign function interface | done (stage 15) |
 | M5 | the integration: the registration API, the Python bridge and binder, the resident world, the language server, `serve --watch`, the embedding API | done (stages 18 and 19) |
 | M6 | ahead-of-time code: machine code for the bytecode, the baseline JIT, the template tier, `renyi build` images and self-contained executables | the machine code exists (stages 16, 21, 22, 24, 26); no WASM or C API target |
-| Self-hosting | the compiler written in Renyi (lexer, parser, checker, emitter) held equal to the Rust toolchain by the judges; the binary switches to it when it is within 3 times the Rust front end's time (decision AU35 ii) | the compiler exists and is judged (stages 11, 12, 14, 15); the speed round is under way (stages 25 to 27) |
+| Self-hosting | the compiler written in Renyi (lexer, parser, checker, emitter) held equal to the Rust toolchain by the judges; the binary switches to it when it is within 3 times the Rust front end's time (decision AU35 ii) | the compiler exists and is judged (stages 11, 12, 14, 15); the speed round is under way (stages 25 to 28; stage 29, a new backend for the VM, opens with its study) |
 
 ## 2. The stages, in order
 
@@ -218,8 +218,8 @@ where one decided, the status. The dates are those of the decisions.
     of AU36 is finished short of the gate; the owner's evaluation (AU51)
     keeps the gate and opens stage 28.
 
-28. **The compiler's own code** (session 13, 2026-10-11, under way;
-    decisions AU51 to AU53, B4). The lever the owner chose after B3, cut
+28. **The compiler's own code** (session 13, 2026-10-11, closed;
+    decisions AU51 to AU57, B4). The lever the owner chose after B3, cut
     by cut, each judged byte-equal, measured by its driver under
     callgrind and recorded: the checker's line starts and layout check
     over lines (the checker -2.0%), the parser's look computed once per
@@ -235,9 +235,29 @@ where one decided, the status. The dates are those of the decisions.
     in place on both tiers and the checker's code reshaped where it
     defeated the rule (the checker -1.6% more), the frame leave dropping
     only the slots that hold a counted block (the checker -0.8%
-    more). The measure: the ratio against AU34's binary, 7.4 at the
-    stage's start, 7.2 and 8.1 on two runs (7.5 before the cut, within
-    the wall-clock's noise) after the four cuts.
+    more), `List.with_at`, a replacement by index in place, under the
+    compiler's `replace_at` (the checker -0.9% more; its other half, a
+    small text hashed as two words, measured slower under SipHash and
+    left out). The measure: the checker's run 4,898.3 to 4,391.6
+    million instructions (-10.3%), the ratio against AU34's binary 7.4
+    at the stage's start and 6.9 after AU55. Closed by the owner's
+    answers after it (AU58), which open stage 29.
+
+29. **A new backend for the VM, its design study first** (session 13,
+    2026-10-11, opened; decision AU58). The owner's answers after B4:
+    the gate of AU35 (ii) stays at 3 times, 2.3 times away by its own
+    measure (the checker's run from its image 3,080.0 million
+    instructions against three times AU34's `renyi check` of the same
+    file, 442.8 million), which cuts of one to three percent will not
+    cover; the way is a new backend (the calling convention with
+    scalars in registers and a parameter only read passed without a
+    count, the first stage; values unboxed across ops; records laid out
+    as structures; the counts that static ownership elides) with the
+    checker's data structures reshaped to suit it, months of work,
+    planned by a design study before any code: the instructions
+    attributed by category, the design, the stages with an estimate
+    each. Measured as stage 28 was, with a table by category beside.
+    Not begun.
 
 ## 3. The tracks
 
@@ -245,47 +265,52 @@ The same stages grouped by the line of work they belong to, with the
 state of each line.
 
 - **A. The design and the normative texts**: stages 1, 2, 9 (the
-  freeze), 11 (the grammar and the reference), 17 (the positioning). The
-  surface is frozen (V11): a change is a new decision entry first, then
-  the reference, the grammar, the cheat sheet, the formatter and the
-  conformance suite in one commit. Open: R3-1 (`Iterable`), section 6 of
-  `docs/GAPS.md`. - **B. The toolchain in Rust**: stages 3, 4, 5, 7, 10,
-  13, 14, 22, 25. Complete for the language as designed; the Rust front
-  end is the binary's until the switch of track C. - **C. The compiler
-  written in Renyi (self-hosting)**: stages 11, 12, 14, 15 (AD1), 27.
-  The lexer, the parser, the checker and the emitter exist and are
-  judged byte-equal; the speed round's list (AU36) is done: the lexer's
-  rewrite (AU46), the parser's (AU47, AU48), the variant test in place
-  (AU49) and the expansion of small callees (AU50, off by its measure);
-  the ratio is 7.4 against the gate of 3, which the owner kept (AU51);
-  stage 28, the compiler's own code, is under way. - **D. The VM and its
-  speed**: stages 7, 13, 16, 20, 21, 23, 24, 26, 27 (B3). Measured by
-  AT1's rule on the frozen self-check and by the four benchmarks; every
-  stage's numbers are in its decision entry. - **E. Packages, the FFI
-  and Python**: stages 15, 18. Done; candidates not decided: record
-  types from dataclasses in the binder, a deadline per Python call, one
-  worker across a test run. - **F. The agent tooling and the
-  integrations**: stages 5, 7 (the MCP server), 19 (the resident world,
-  the language server, the watch, the embedding API). Done; candidates
-  not decided: completion, references and rename in the language server,
-  the C API of decision A5. - **G. Release and the ecosystem**: stage
-  17. Release 0.1.0 is out; every release after it follows
-  `docs/RELEASE.md`; the announcement and the three measurements of the
-  positioning's section 5 are the owner's pending actions. - **H.
-  Readability**: stages 2, 6, 8. Four rounds exist under
+  freeze), 11 (the grammar and the reference), 17 (the positioning).
+  The surface is frozen (V11): a change is a new decision entry first,
+  then the reference, the grammar, the cheat sheet, the formatter and
+  the conformance suite in one commit. Open: R3-1 (`Iterable`), section
+  6 of `docs/GAPS.md`.
+- **B. The toolchain in Rust**: stages 3, 4, 5, 7, 10, 13, 14, 22, 25.
+  Complete for the language as designed; the Rust front end is the
+  binary's until the switch of track C.
+- **C. The compiler written in Renyi (self-hosting)**: stages 11, 12,
+  14, 15 (AD1), 27, 28. The lexer, the parser, the checker and the
+  emitter exist and are judged byte-equal; the speed round's list
+  (AU36) is done: the lexer's rewrite (AU46), the parser's (AU47,
+  AU48), the variant test in place (AU49) and the expansion of small
+  callees (AU50, off by its measure); stage 28, the compiler's own
+  code, closed at the ratio 6.9 against the gate of 3, which the owner
+  kept (AU51, AU58); the gate now waits on stage 29 of track D.
+- **D. The VM and its speed**: stages 7, 13, 16, 20, 21, 23, 24, 26,
+  27 (B3), 29. Measured by AT1's rule on the frozen self-check and by
+  the four benchmarks; every stage's numbers are in its decision entry.
+  Stage 29, a new backend, opens with its design study (AU58).
+- **E. Packages, the FFI and Python**: stages 15, 18. Done; candidates
+  not decided: record types from dataclasses in the binder, a deadline
+  per Python call, one worker across a test run.
+- **F. The agent tooling and the integrations**: stages 5, 7 (the MCP
+  server), 19 (the resident world, the language server, the watch, the
+  embedding API). Done; candidates not decided: completion, references
+  and rename in the language server, the C API of decision A5.
+- **G. Release and the ecosystem**: stage 17. Release 0.1.0 is out;
+  every release after it follows `docs/RELEASE.md`; the announcement
+  and the three measurements of the positioning's section 5 are the
+  owner's pending actions.
+- **H. Readability**: stages 2, 6, 8. Four rounds exist under
   `tests/readability/`; they run only on request (V1).
 
 ## 4. What is next
 
-Stage 28 (decision AU51): the compiler's own code, cut by cut, each
-judged and measured, toward the gate of AU35 (ii), which the owner kept
-at 3 times the Rust front end's time (the ratio 7.4 at the stage's
-start, 6.9 after seven cuts, AU52 to AU56, the checker's run -9.5%; the
-gate is out of reach for cuts of this size, so the owner's evaluation of
-the levers the handoff lists comes next); then, when the ratio is within
-3, the switch of the binary's front end to the compiler written in
-Renyi. Candidates after it, none decided: the expansion of AU50 refined
-(the borrowing of a region's arguments, the admission of the hot sites,
-the compile cost), values unboxed across calls, interned names and a
-faster hash in the Renyi checker, the C API, the language server's
+Stage 29 (decision AU58): the new backend for the VM, its design study
+first (the instructions of the checker's run attributed by category,
+the design, the stages with an estimate each, put to the owner), then
+its stages one by one, the calling convention first unless the study
+finds otherwise, each judged byte-equal and measured by the checker's
+run under callgrind, the ratio of AU36 (iii) and a table by category,
+toward the gate of AU35 (ii) at 3 times (2.3 times away after stage
+28); then, when the ratio is within 3, the switch of the binary's
+front end to the compiler written in Renyi. Candidates beside it, none
+decided: a hasher of the VM's own for its maps and sets (AU57), the
+loop iterator in two slots, the Rust front end's name sets as bits,
+the expansion of AU50 refined, the C API, the language server's
 completion, the showcase application, the WASM target of M6.

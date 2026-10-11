@@ -1,13 +1,15 @@
 # Handoff
 
 Last updated: 2026-10-11, session 13, in the cloud environment, whose
-last work is stage 28 (B4, the compiler's own code) through its first
-seven cuts, decisions AU52 to AU56 (the section "The front end's round"
-below, "B4 as built so far"): the Renyi checker's run on
-`compiler/bodies.ry` 4,898.3 to 4,432.9 million instructions (-9.5%),
-the ratio of AU36 (iii) 7.4 to 6.9 against the gate of 3, which cuts of
-this size will not reach, so the next session starts with the owner's
-evaluation (the start-here item 1). Earlier in the session it
+last work is stage 28 (B4, the compiler's own code), closed after eight
+cuts, decisions AU52 to AU57 (the section "The front end's round"
+below, "B4 as built"): the Renyi checker's run on `compiler/bodies.ry`
+4,898.3 to 4,391.6 million instructions (-10.3%), the ratio of AU36
+(iii) 7.4 to 6.9 against the gate of 3; then the owner's answers after
+it (decision AU58): the gate stays, and the way to it is a new backend
+for the VM, its design study first, which the next session writes (the
+start-here item 1). The session ended at the owner's word, to save the
+progress and hand over. Earlier in the session it
 finished stage A2 of the front end's round, the cache keyed by the
 sources (decision AU44: every `run`, `record` or `test` compiled from
 its sources leaves the program it compiled in the cache with every file
@@ -235,73 +237,40 @@ and push there directly.
 
 ## Start here (session 14)
 
-1. The work stopped in the typed round, whose plan the owner set in
-   decisions AU1 and AU9 and reordered in AU12, AU14, AU16, AU18, AU20,
-   AU22 and AU28, right after AU30, the last stage of AU28's plan: read
-   the section "The typed round" below, whose last paragraphs ("The
-   owner's answers after AU27" and "What is next in this round, after
-   AU30") say what exists and what comes next. The owner answered the
-   questions there in session 12 (decision AU31): AU29's sequence on the
-   Cranelift tier, which is in (AU32), then the hottest natives in
-   place, the next stage; AU18's goal measured on another boot before it
-   is called met (AU32 moved it away: the image gained more than the JIT
-   run); the other natives' vectors left alone; the front end's round to
-   start with a study. Then, after a study of the typed calls, decision
-   AU33: `List.at` in place with the vector's layout probed at startup,
-   a lean helper each for `Text.contains` and `List.contains` (the stage
-   AU34, which is in), the typed call's general path made lean as the
-   stage after it, and AU18's goal met with AU30's binary (two boots),
-   its ratio only recorded from now on. AU34 left the general path 0.56
-   million calls and 0.9% of the self-check's instructions, and after a
-   progress report the owner closed the round (decision AU35): the work
-   now is the front end's round, which opens with the study of AU31 (iv)
-   (the section "The front end's round" below); the binary keeps the
-   Rust front end, and every entry that measures speed records the ratio
-   of the Renyi compiler to it (the switch when it is within 3 times).
-   The study is written in that section (the Rust front end parses every
-   file two and three times; the library is parsed and declared at every
-   start; the Renyi lexer is 56 times the Rust lexer, its parser 17
-   times), with the candidates A0 to A4 and B1 to B5, and the owner
-   ordered the stages (decision AU36): A0, A1, A4, then A2 on the Rust
-   front end; then B5, B1, B2 and B3 on the compiler in Renyi and the
-   VM; the gate of AU35 (ii) against AU34's Rust front end; a copy of
-   today's compiler under `bench/` as AT1's program before `compiler/`
-   changes. The section "The front end's round" says where the stages
-   stand: A0, A1, A4 and A2 are in (AU37 to AU39, AU42 and AU44), the
-   copy under `bench/selfcheck/` is made (AU41), the Rust front end's
-   part of the plan is done, B5, the comparison of two boxed Integers
-   inline in both tiers, is in (AU45), B1, the Renyi lexer rewritten for
-   speed, is in (AU46), B2, the Renyi parser, is in (AU47 and AU48, the
-   parser alone -32% for the stage; the keywords as variants without
-   fields deferred), the variant test in place on both tiers is in
-   (AU49), and B3, small callees expanded into their callers on the
-   Cranelift tier, is built, tested and measured (AU50): the expanded
-   code is no faster than the calls it replaces and the compile costs
-   more, so it is off unless `RENYI_NATIVE_INLINE=1`. AU36's list is
-   finished and the gate is not met (the ratio 7.4 against 3); the owner
-   evaluated (decision AU51): the gate stays at 3, the next lever is the
-   compiler's own code, the expansion stays off, the site is final. The
-   work now is B4, stage 28: its four cuts are in (AU52: the checker's
-   line starts and layout check over lines, the parser's look kept in
-   the cursor, the lexer's scans as two list primitives; AU53: the
-   reserved words and symbols as Integer codes the parser compares in
-   place, with the VM's part, a module constant read in place on both
-   tiers; the lexer alone -2.4%, the parser alone -3.5%, the checker's
-   run -1.2%, all against the stage's start; AU54: two lookups by index,
-   the lexer's last append in place and a shared list appended with one
-   copy, the checker's run -3.1% more; AU55: the last read of a local
-   moves it, in both emitters, with a taken field read in place on both
-   tiers and the checker's code reshaped where it defeated the rule, the
-   checker's run -1.6% more; AU56: the frame leave drops only the slots
-   that hold a counted block, -0.8% more), the paragraph "B4 as built so
-   far" of that section has them with the lexer's lesson (the hash per
-   character is the cost, not the loop) and what stays: the loops'
-   iterators, then the same reshaping of `emit.ry` and `declare.ry` and
-   the analysis's sets as bits, with the ratio 6.9 after AU55 (7.4 at
-   the stage's start; the Renyi checker 557.9 ms, the reference 81.4)
-   against the gate of 3, which cuts of one to three percent will not
-   reach: the next session starts by putting the levers that could (the
-   paragraph's last sentences) to the owner.
+1. The work now is stage 29 of the roadmap, the new backend for the
+   VM, and it starts with its design study (decision AU58), which this
+   session did not begin: the section "The front end's round" below,
+   its last paragraph ("Stage 29, the new backend: its design study
+   first"), says what the study holds, and the paragraph before it ("B4
+   as built") what B4 did and left. The road there: the typed round
+   (AU1 to AU34, the section "The typed round") closed with its goals
+   met (AU35); the front end's round (from AU35, the section "The front
+   end's round") did the owner's list of AU36 (A0, A1, A4 and A2 on the
+   Rust front end, AU37 to AU44; B5, B1, B2 and B3 on the compiler in
+   Renyi and the VM, AU45 to AU50, the expansion of small callees off by
+   its measure) and left the ratio of AU36 (iii) at 7.4 against the
+   gate of AU35 (ii) (the compiler written in Renyi within 3 times
+   AU34's Rust front end on `compiler/bodies.ry`, then the binary's
+   front end switches to it); the owner kept the gate (AU51), and B4,
+   the compiler's own code, made eight cuts (AU52 to AU57: the checker's
+   run -10.3%, the ratio 6.9). AU58 records the owner's four answers: a
+   new backend, its study first, the gate at 3, the road months long;
+   AU57 pushed; the measure kept (the checker's run under callgrind with
+   `RENYI_NATIVE_SYNC=1`, the ratio of `tools/ratio.py`), with a table
+   by category in each entry; the first stage the calling convention
+   (scalar arguments and results in registers, a parameter only read
+   passed without a count), which the study examines again. The
+   distance by the gate's measure is 2.3 times: the checker's image run
+   3,080.0 million instructions against three times the reference's
+   `renyi check` of the same file, 442.8 million, and the wall-clock
+   says the same (557.9 ms against three times 81.4). The question to
+   the owner had said seven, comparing with this binary's own front
+   end; AU58 corrects it. The binaries the measures need are not in a
+   new container: build the reference from commit 44782aa (AU34's
+   binary; `git worktree add`, `cargo build --release` there, the
+   binary copied to `target/renyi-au34`) and the base from this
+   session's last commit, and keep a copy of the base before changing
+   the code.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
@@ -363,6 +332,28 @@ and push there directly.
 4. In the cloud container the disk is a fixed allowance: a target
    directory grows to about 9 GB, so keep at most two (the repository's
    and one for the 1.94.1 gates) and delete the rest.
+5. Two checks that need a detour in the container. The cheat
+   sheet's gate (`tools/count_tokens.py`, CI) counts with tiktoken's
+   o200k_base and cl100k_base, which the proxy keeps tiktoken from
+   fetching, and the byte estimate the script falls back to is not the
+   gate (AU56: 2,999 by the estimate was 3,001, and CI was red). Both
+   vocabularies ship in the `tiktoken-rs` crate on crates.io, which is
+   reachable: download
+   `https://static.crates.io/crates/tiktoken-rs/tiktoken-rs-0.6.0.crate`
+   into an empty directory of the scratchpad, extract
+   `tiktoken-rs-0.6.0/assets/o200k_base.tiktoken` and
+   `cl100k_base.tiktoken`, check their SHA-256 against tiktoken's own
+   (`446a9538cb6c348e3516120d7c08b09f57c36495e2acfffe59a5bf8b0cfb1a2d`
+   and
+   `223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7`),
+   copy each into a cache directory under the SHA-1 of its URL
+   (`https://openaipublic.blob.core.windows.net/encodings/<name>.tiktoken`),
+   and run `TIKTOKEN_CACHE_DIR=<that directory> python3
+   tools/count_tokens.py`. After AU57 the sheet stands at 2,997 and
+   2,992 of 3,000: a library addition needs a trim beside it. And
+   valgrind hides AVX-512, so an image built outside valgrind is
+   refused inside it: build the image to measure under `valgrind
+   --tool=none`, as `tools/measure_size.sh` does.
 
 ## Where the project stands
 
@@ -3481,11 +3472,10 @@ candidate. The owner answered on 2026-10-11 (decision AU51, every
 recommended option): the gate stays at 3 and the work goes on finding
 levers; the next lever is the compiler's own code (a); the expansion's
 code stays, off; the site's fourth round is final. The stage this opens
-is B4 (stage 28 of the roadmap), the paragraph "B4, the stage under way"
-below.
+is B4 (stage 28 of the roadmap), the paragraph "B4 as built" below.
 
-**B4 as built so far** (decision AU51; stage 28 of the roadmap;
-decisions AU52 and AU53, commits 4d8cccc, e91cec0 and the next). The
+**B4 as built** (decision AU51; stage 28 of the roadmap, closed;
+decisions AU52 to AU57, commits 4d8cccc, e91cec0 and the next). The
 compiler's own code, cut by cut, each judged byte-equal by the four
 judges and the binary's tests, measured by its driver under callgrind
 (`compiler/lex_only.ry`, `parse_only.ry` and `checker.ry` on
@@ -3559,24 +3549,75 @@ million per lex (+1.4%), the Rust front end's compile of the checker
 only the slots whose tag says they hold a counted block
 (`Pinned::truncate_values`, used by the generated code's `leave_frame`,
 the interpreter's leave and `rt_truncate`; the checker's run -0.8%, the
-parser alone -0.6%, the lexer alone -0.9%). What stays: `for each`
-without an iterator allocated per loop (263,438 per run, `rt_iter_init`
-79 million inclusive), `lists.replace_at` (three lists per call), the
-same reshaping of `emit.ry` and `declare.ry` for the compile row, and
-the analysis's name sets as bits for the Rust front end's 4.7%. The
-stage so far: the checker's run 4,898.3 to 4,432.9 million instructions
-(-9.5%), the ratio 7.4 to 6.9, each cut one to three percent; the gate
-of 3 asks for the Renyi checker 2.3 times faster still, which cuts of
-this size will not give. The levers that could, for the owner to weigh
-(AskUserQuestion, four at once, the recommended option first): a checker
-that carries its inference result in the checker record instead of a
-`Done` record per expression (657,000 record constructions per run,
-`rt_construct` 57 million and their frees as much), with the same
-reshaping of `emit.ry` and `declare.ry`; an optimizing tier with values
-unboxed across calls (the study of session 11); the loop iterator kept
-in two slots instead of an allocation per loop (a bytecode change in
-both emitters); or the gate moved, with the switch of the binary's front
-end left for a later round.
+parser alone -0.6%, the lexer alone -0.9%). The eighth cut (AU57):
+`List.with_at(index, item)`, a library addition, the item at the index
+replaced in place when nothing else holds the list, on which
+`lists.replace_at` is one call where it built three lists (twenty call
+sites in the checker, the declarations and the emitter; the checker's
+run -0.9%); its other half, a text held in the value hashed as its two
+words, measured slower under SipHash (the lexer alone +4.8%: sixteen
+bytes cost more than a token's two or three) and is left out. The stage
+closed there: the checker's run 4,898.3 to 4,391.6 million instructions
+(-10.3%), the ratio 7.4 to 6.9, each cut one to three percent; the gate
+of 3 asks for the checker 2.3 times faster still (AU58's measure: its
+image run 3,080.0 million instructions against three times AU34's
+`renyi check` of the same file, 442.8 million), which cuts of this size
+will not give. The owner, asked with four options (a new backend, its
+design study first; the gate moved to 5 and the front end switched
+then; the backend's first stage at once, without a study; the speed
+work paused for the roadmap's other candidates), chose the first
+(AU58, the next paragraph). What B4 left, for the study to place: `for
+each` without an iterator allocated per loop (263,438 per run,
+`rt_iter_init` 79 million inclusive), a `Done` record per expression in
+the checker (about 657,000 constructions per run, `rt_construct` 57
+million and their frees as much), the same reshaping of `emit.ry` and
+`declare.ry` for the compile row, a hasher of the VM's own for its maps
+and sets (AU57), and the analysis's name sets as bits for the Rust
+front end's 4.7% (AU55).
+
+**Stage 29, the new backend: its design study first** (decision AU58;
+stage 29 of the roadmap). Not begun: the session ended at the owner's
+word before it. The study is a section of this file, written before
+any code, then put to the owner (AskUserQuestion, four at a time, the
+recommended option first), whose answers make an entry. Its parts, as
+AU58 sets them:
+(a) the attribution: the checker's run from its image, the gate's form
+(`valgrind --tool=none renyi build --to <image> compiler/checker.ry`,
+then callgrind on `renyi run <image> compiler/bodies.ry` with
+`RENYI_NO_CACHE=1`; the image is built under valgrind because valgrind
+hides AVX-512 and an image is refused on a CPU whose features differ;
+3,080.0 million instructions on this session's last binary), split by
+category: the generated code of each tier, the counts (in place and
+through the helpers), the frames (`rt_call`, `rt_return`,
+`leave_frame`, the push in place), the field reads and the constructs
+(`rt_construct`, `rt_take_field`, the field cache), the iterators
+(`rt_iter_init`, `rt_iter_next`), the natives by name, the allocator,
+and the hashing and equality of maps and sets (`hash_one`,
+`Hasher::write`, `get_index_of`, `PartialEq`); the same table for the
+parse and the compile rows of the ratio;
+(b) the design: the calling convention first (AU58 (4): which
+parameters are only read, settled by an analysis in both emitters and
+carried as a flag per parameter in the bytecode, both emitters equal
+under the compile judge; scalars passed and returned in registers on
+the Cranelift tier, where AR3's direct calls already pass register
+arguments; what the template tier does with the flag; the hand-back
+and the frames it rebuilds; the image format), then the values unboxed
+across ops on the Cranelift tier by the checker's types (AU1's
+annotations, `native/infer.rs`), the records laid out as structures
+with their fields unboxed by type, and the counts that static ownership
+elides (AU55's moves, the borrowed parameters), each with what it costs
+the interpreter, the template tier and the images;
+(c) the checker's own shape, which no backend fixes: the `Done` record
+per expression, the scopes as lists searched by index, the hash of
+each character in the lexer, with the share each costs and the rewrite
+each needs (the judges hold the output, not the shape);
+(d) the stages in order, each with its estimate against the gate (the
+checker's image run at 1,328 million instructions, 2.3 times fewer)
+and its measure (the checker's run under callgrind, the ratio, the
+table by category, AT1's rows for the VM's part), with the levers
+outside the backend placed among them (the VM's own hasher, the
+iterator in two slots, the Rust front end's name sets).
+Then the first stage the owner confirms.
 
 ## The representation items: the design study (session 11)
 
@@ -5147,7 +5188,7 @@ holds between calls.
   for the corpus and for one file; a bad base), the `diff` call in
   `tests/mcp.rs`, and a unit test of `own_text_hash`.
 
-## Done in session 13 (A2, the cache keyed by the sources, in the cloud environment)
+## Done in session 13 (A2, B5, B1 to B4, and the owner's choice of a new backend, in the cloud environment)
 
 - **Decision AU44** (b765636): the cache keyed by the sources as built, the rest
   of A2 after session 12's first piece: `cache::SourceEntry` and the
@@ -5303,6 +5344,24 @@ holds between calls.
   in instructions and -0.2% by the estimate, the image row -1.0% and
   -1.1%. The cheat sheet's gate (3,001 tokens by the tokenizer CI runs)
   kept CI red from d172887 to fa27d73; fixed in 81c5ef9.
+- **Decision AU57**: the eighth cut of B4, `List.with_at(index, item)`,
+  a library addition (the sketch, the library and the checker's copy,
+  the native, the cheat sheet, a test), on which `lists.replace_at`
+  is one call where it built three lists; the checker's run -0.9%
+  against AU56 (4,391.6 million), the stage -10.3%. Its other half, a
+  small text hashed as two words, measured slower under SipHash (the
+  lexer alone +4.8%) and is left out; a hasher of the VM's own is the
+  lever it names. The cheat sheet counted with the gate's real
+  tokenizers, offline (start-here item 5): 2,997 and 2,992.
+- **Decision AU58**: the owner's four answers after B4, every
+  recommended option: a new backend for the VM, its design study
+  first, the gate kept at 3; AU57 pushed; the measure kept, a table by
+  category added; the first stage the calling convention. The entry
+  corrects the question's distance (seven times, against this binary's
+  own front end) to the gate's: the checker's image run 3,080.0 million
+  instructions against three times AU34's `renyi check` of the same
+  file (442.8 million), 2.3 times. Stage 28 closed, stage 29 opened in
+  the roadmap; the session ended at the owner's word before the study.
 - **The README's opening** at the owner's request (68c5cd2): the design
   philosophy as the selling points, five points a reviewer can check,
   the comparison with Python, TypeScript, Rust and shell for the one
