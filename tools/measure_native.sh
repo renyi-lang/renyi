@@ -10,8 +10,11 @@
 #   RENYI_NATIVE_HOT=4000 tools/measure_native.sh <binary>   (a tiering)
 set -u
 if [ $# -ne 1 ]; then echo "usage: tools/measure_native.sh <renyi binary>" >&2; exit 2; fi
-# the cold runs: no image from the cache (decision AU10)
+# the cold runs: no image from the cache (decision AU10); the compile
+# thread's share varies from run to run under valgrind, so every function
+# compiles on the thread that runs it (decision AU49's measure)
 export RENYI_NO_CACHE=1
+export RENYI_NATIVE_SYNC=1
 bin=$1
 irefs() {
   valgrind --tool=cachegrind --cache-sim=no --cachegrind-out-file=/dev/null "$@" 2>&1 >/dev/null \

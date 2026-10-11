@@ -43,6 +43,10 @@ counts() {
 }
 echo "== $bin: the self-check (bench/selfcheck/checker.ry on bench/selfcheck/bodies.ry), cachegrind"
 printf '%-14s %s\n' "JIT run" "$(counts "$bin" run bench/selfcheck/checker.ry bench/selfcheck/bodies.ry)"
+# the same with every function compiled on the thread that runs it: the
+# compile thread's share varies under valgrind, so this row is the one two
+# binaries compare on (decision AU49's measure)
+printf '%-14s %s\n' "JIT run, sync" "$(RENYI_NATIVE_SYNC=1 counts "$bin" run bench/selfcheck/checker.ry bench/selfcheck/bodies.ry)"
 printf '%-14s %s\n' "interpreter" "$(counts "$bin" run --interpret bench/selfcheck/checker.ry bench/selfcheck/bodies.ry)"
 valgrind --tool=none "$bin" build --to "$work/selfcheck.ryi" bench/selfcheck/checker.ry 2>/dev/null
 printf '%-14s %s\n' "image (speed)" "$(counts "$bin" run "$work/selfcheck.ryi" bench/selfcheck/bodies.ry)"

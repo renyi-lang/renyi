@@ -39,12 +39,18 @@ then the rest of B2 (decision AU48: a look as an index with no
 record per look, the expression levels as one loop; the parser alone
 1,039 to 810 million instructions per parse of `bodies.ry`, -22%; the
 Renyi checker 630 to 579 ms; the section "The front end's round"
-below, "B2 as built", and the next cut planned after it, the variant
-test in place in both tiers). The same day the owner asked for the README's opening as the
-design philosophy and the selling points (68c5cd2) and for the site
+below, "B2 as built"); then the variant test in place on both tiers
+(decision AU49: `Op::IsVariant` without its helper, a guarded value
+through it as the cold path; the self-check's synchronous run -0.9%,
+the ratio's check 546 ms, 7.5 times the reference; the section's
+"The variant test in place, as built", and B3 planned after it). The
+same day the owner asked for the README's opening as the design
+philosophy and the selling points (68c5cd2) and for the site
 redesigned by an Opus subagent, minimal, modern and premium, then a
-second round with the words cut and the visuals strengthened (the
-record of the session below, c2a082a and af8bee4); both are in.
+second round with the words cut and the visuals strengthened, then a
+third with the other pages' layout, four concept diagrams and a
+terminal demo (the record of the session below, c2a082a, af8bee4 and
+84b3390); all are in.
 Session 12, in the cloud environment,
 put the three questions after AU27 to the owner (decision AU28: the
 counts in place in template code next, then the natives building a
@@ -3245,37 +3251,88 @@ into the call (`move_candidate` in `compile/stmt.rs` looks for a `Call`,
 and the value is an `Otherwise`), so the callee's `with` on it copies;
 only 8 such sites exist in `compiler/`, so the rule stays.
 
-**The next cut, planned: the variant test in place in both tiers.**
+**The variant test in place, as built** (decision AU49, commit d6b686e).
 `Op::IsVariant(tag)`, the test every `match` arm on a variant pattern
-and every `when Variant` of every program runs (`compile/pattern.rs`:
-`Load(slot)`, `IsVariant(tag)`, `JumpIfFalse`), is a helper call on both
-native tiers (`rt_is_variant` in `native/runtime.rs`: the value popped,
-`plain()` through any `Guarded` wrapper, the tag compared;
-`native/codegen.rs` and `native/template/mod.rs` call it through
-`helper_on_stack` and `call`), so an arm costs a clone of the subject,
-the call, and the drop inside it; the parser's three-turn run spends
-2.2% in the helper itself and more in the clones and drops around it,
-and the checker matches on the tree and the types everywhere. The plan:
-on the Cranelift tier, the sequence `IsNothing` has (the top's tag read
-at `tag_at(at, 0)`, a typed top answers false without a read,
-`release(at)`, `store_height`, `push_bool`), extended by one load: a
-`TAG_VARIANT` top reads its block's tag at `RECORD_TAG` from the `Rc` at
-`PAYLOAD` and compares it with the op's; a `Guarded` top (tag 19, the
-wrapper `plain()` unwraps) goes to the helper, as the cold path; on the
-template tier the same over the `release` sequence of AU29
-(`template/mod.rs`, `fn release`), the answer boxed as a Boolean where
-`rt_is_variant`'s was. Then, since the subject is loaded only to be
-tested, a borrowed form of the test (the tag read from the slot, no
-clone, no release) is the follow-up, which changes the emitters
-(`compile/pattern.rs` and `compiler/emit.ry` in one commit, the bytecode
-changing). The measures: `tools/measure_size.sh` on the self-check
-(AT1's rule), the parser alone, the Renyi checker on `bodies.ry`, the
-ratio; the judges `cargo test -p renyi_vm --test native`, `--test
-template`, the template-tier conformance run
-(`RENYI_NATIVE_TIER=template`) and the full gates. Code format bumps if
-the generated code's shape changes what an image holds (it does not for
-a sequence change alone: AU45 bumped it to 13 for the comparison in
-place; do the same).
+runs (`Load(slot)`, `IsVariant(tag)`, `JumpIfFalse`, from both
+emitters), is in place on both native tiers: the value's tag read at its
+address, a variant's block tag at `RECORD_TAG` through the `Rc` at
+`PAYLOAD` compared with the op's, the value released where it lies, the
+answer a Boolean (a register on the Cranelift tier, boxed where the
+value lay on the template tier); a typed top is false without a read; a
+`Guarded` value (tag 19, `TAG_GUARDED` in `value::layout`, pinned by the
+layout test) takes the helper `rt_is_variant` as the cold path
+(Cranelift's cold block with the stack's length stored for the pop; the
+template tier's `Cold::Guarded`). Code format 14. The tests:
+`tests/native.rs` and `tests/template.rs` each match fieldless variants,
+variants with fields and a guarded JSON document (a file read through
+`only to`, parsed by `json.parse`, whose result carries the origins
+since `run_native` wraps it) in loops, against the interpreter. The
+gates: fmt, clippy, the full tests, the conformance suite on both tiers,
+the four judges with `RENYI_NATIVE_TIER=template`. The measures (the
+scripts' logs in the session's scratchpad): the self-check's synchronous
+JIT run 6,424.9 to 6,370.0 million instructions (-0.9%), the estimate
+-0.5%; the image's run -1.1% (-1.4% by the estimate), the cached run the
+same; the image +1.7% (166.7 to 169.9 bytes of body per op); the micro
+benchmarks unchanged; the parser alone 809.6 to 798.0 million per parse
+(-1.4%); the ratio: checking 546.0 ms against the reference's 72.7 (7.5,
+the gate; AU48's run had the reference at 90.2 ms and the Renyi checker
+at 578.6, a noisier run), parsing 226.3 (3.8), compiling 849.6 (8.3).
+The measure's lesson is in the scripts now: `tools/measure_size.sh`
+prints a `JIT run, sync` row (the comparable one) and
+`tools/measure_native.sh` exports `RENYI_NATIVE_SYNC=1`; without it the
+micro benchmarks of two binaries differed by up to 15% between runs.
+What stays, a candidate for after B3: a test that borrows the slot
+(`TestVariant { slot, tag }`), sparing the clone and the release per
+arm, a new op through both emitters, the bytecode file, the binary
+encoding, the interpreter and both tiers.
+
+**B3, the stage next** (AU36, the last of the list; the largest lever on
+every program and the largest work): small functions inlined on the
+Cranelift tier. What the parser's three-turn run spends on calls, by
+callgrind (AU48): `leave_frame` 5.5%, `rt_call_typed` 3.6%,
+`rt_call_pure` 2.5%, `push_frame_in_place` 0.6%, `rt_return` 0.5%,
+`status` 2.9%, and the callees themselves are a few ops (`token_at`,
+`moved`, `is_symbol`, `is_word`, `previous`, `end_token`, `continues`,
+`level_of`, `expr_span` in the parser; `char_at`, `is_lower` and their
+kin in the lexer; `find_binding` and the small helpers of `bodies.ry` in
+the checker). The shape to study first, with counts, before writing: (i)
+which code objects are small (ops, no loop, no handler, no `with` of a
+shared record), called directly (`Op::Call` to a declared function,
+AU21's direct call) from hot code, and how many calls of the self-check
+they take (the profiler's call counts per function, `renyi run
+--profile`, give the candidates; the micro program `call_integer` of AR1
+is the measure of one call); (ii) how the Cranelift tier would inline:
+at a direct call site whose callee is small and already analysed
+(`native/infer.rs` on the callee's ops), translate the callee's ops into
+the caller's function with the arguments as the callee's first slots
+mapped onto the caller's operand positions (the operands are where
+`push_frame_in_place` would put them: the callee's frame starts at the
+arguments), the callee's other locals as fresh positions above the
+caller's height, a `Return` as a jump to the join with the result where
+the arguments were, a failure or a crash inside the callee as the
+caller's (the handler search by pc must then know the inlined region:
+either forbid inlining a callee that can fail, or map its pcs; the first
+is the stage's first cut), and the line of a crash as the callee's
+(deopt points, `DeoptPoint`); the interpreter and the template tier
+unchanged; a hand-back to the interpreter inside an inlined region is
+the hard case (the interpreter has no frame for the callee): forbid it
+by inlining only callees whose ops the analysis proves never hand back,
+else deoptimise at the call site by re-entering the callee through
+`rt_call` (the state before the call is recoverable at the site). (iii)
+The size rule of AT1: inlining grows the code; a budget per caller and
+the `JIT run, sync` row, the image row and the census decide. (iv) The
+order of work: the study and its counts, then the owner's questions in
+one batch (the budget, the failing callees, the hand-back), as AU20's
+round did. The judges and gates as for AU49; `tests/direct.rs` (AU21) is
+the model for a test of the inlined calls against the interpreter.
+Beside B3, two cheap cuts the checker's profile shows (`renyi run
+--profile compiler/checker.ry compiler/bodies.ry`):
+`checker.check_layout` 6.5% and `report.line_starts` 4.8% of the
+interpreter's samples are loops over every character of every file (`ch
+is "\n"` per character); a library primitive (`Text.lines` or a
+line-start method, a library addition, not a surface change) would make
+both a call; they are B4's territory (the checker's part) and worth
+their small size.
 
 ## The representation items: the design study (session 11)
 
@@ -4899,6 +4956,16 @@ holds between calls.
   that time). The keywords as variants without fields not done,
   bounded by `rt_compare`'s 6.6%; the variant test in place planned
   as the next cut.
+- **Decision AU49**: the variant test in place on both tiers
+  (`Op::IsVariant` reads the tags where the value lies, releases it and
+  answers a Boolean; a guarded value takes `rt_is_variant` as the cold
+  path; `TAG_GUARDED`; code format 14; a test per tier with a guarded
+  JSON document); the self-check's synchronous run -0.9%, the image's
+  run -1.1%, the image +1.7%, the parser alone -1.4%; the ratio's
+  check 546 ms, 7.5 times AU34's binary; `measure_size.sh` with a
+  `JIT run, sync` row and `measure_native.sh` synchronous (the
+  compile thread's share varies under valgrind). The handoff's "The
+  front end's round" has it as built and B3 planned.
 - **The README's opening** at the owner's request (68c5cd2): the design
   philosophy as the selling points, five points a reviewer can check,
   the comparison with Python, TypeScript, Rust and shell for the one
@@ -4938,6 +5005,29 @@ holds between calls.
   a little smaller, the column gap 2rem and the four columns from
   1200px, every title on one line; the five CSS lines over 100
   characters rewrapped.
+  Round three the same day ("the other pages too: visuals, less text;
+  animation, embeds, SVG"), 84b3390, after three answers in one batch
+  (the site layer only, the documents unchanged; four inline SVG
+  concept diagrams; a terminal demo as a CSS-animated SVG with subtle
+  motion): the navigation in four groups (Learn, Reference, Extend,
+  Project; a row with hairlines from 1200px, a Menu disclosure below
+  it, the groups in the footer), a lead per page (`LEADS` in
+  `tools/site.py`), a table of contents from the headings for every
+  page with four sections or more (sticky beside the text from
+  1100px, a disclosure below), the decisions page's lettered sections
+  as `details` with the last open, the four diagrams small beside the
+  front page's points and in full on the new `docs/how-it-works.md`
+  with a paragraph each, and a real session (`renyi check` refusing a
+  program that reads a file its `main` does not declare, the fix,
+  `check` clean, `record`, `run --replay --explain` with the input
+  deleted, run with `target/renyi-au49`; `SESSION` in `tools/site.py`
+  holds the transcript) rendered as an SVG whose lines appear in turn
+  by CSS keyframes, on the front page beside the gap's two lines and
+  on the new page; the signature lines highlight in turn; every
+  animation off under `prefers-reduced-motion`; no script, no request.
+  Reviewed against the reference's appendix B, the recording's header
+  (`recording.rs`, decision Q2's manifest) and the package commands
+  before the commit; screenshots at 390 and 1440 in both schemes.
 - **`docs/ROADMAP.md`** at the owner's request ("a complete roadmap
   file, numbered, grouped by track"): the milestones, the 26 stages in
   order with their decisions and status, the eight tracks, what is

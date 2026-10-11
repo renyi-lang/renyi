@@ -208,13 +208,15 @@ where one decided, the status. The dates are those of the decisions.
     -13%), then a look as an index with no record per look and the
     eight expression levels as one loop (AU48, 1,039 to 810 million
     instructions per parse, -22%; the keywords as variants without
-    fields left for the measure after the VM's cuts); next the variant
-    test in place in both tiers, then B3, small functions inlined on
-    the Cranelift tier (AU36, stage 6). The gate: the compiler written
-    in Renyi within 3 times the Rust front end's time on
-    `compiler/bodies.ry` (10.0 times at AU45, 8.6 at AU47 against
-    AU34's binary; the Renyi checker 579 ms at AU48), then the binary
-    switches to it (AU35 ii).
+    fields left for the measure after the VM's cuts); the variant test
+    in place on both tiers (AU49, every `match` arm's test without its
+    helper: the self-check's synchronous run -0.9%, the parser alone
+    -1.4%); next B3, small functions inlined on the Cranelift tier
+    (AU36, stage 6). The gate: the compiler written in Renyi within 3
+    times the Rust front end's time on `compiler/bodies.ry` (10.0
+    times at AU45, 8.6 at AU47 against AU34's binary; 7.5 at AU49,
+    the Renyi checker 546 ms), then the binary switches to it (AU35
+    ii).
 
 ## 3. The tracks
 
@@ -255,12 +257,12 @@ state of each line.
 
 ## 4. What is next
 
-In the order the owner set (AU36): the rest of stage 27 (the variant
-test in place, then B3), each measured by AT1's rule and recording the
-ratio of the compiler written in Renyi to the Rust front end (AU36 iii);
-then, when the ratio is within 3, the switch of the binary's front end
-to the compiler written in Renyi (AU35 ii). Candidates after it, none
-decided: the levers the study named beyond B3 (values unboxed across
-calls, an optimizing tier, interned names and a faster hash in the Renyi
-checker), the C API, the language server's completion, the showcase
-application, the WASM target of M6.
+In the order the owner set (AU36): the rest of stage 27 (B3), each
+measured by AT1's rule and recording the ratio of the compiler written
+in Renyi to the Rust front end (AU36 iii); then, when the ratio is
+within 3, the switch of the binary's front end to the compiler written
+in Renyi (AU35 ii). Candidates after it, none decided: the levers the
+study named beyond B3 (values unboxed across calls, an optimizing tier,
+interned names and a faster hash in the Renyi checker), the C API, the
+language server's completion, the showcase application, the WASM target
+of M6.

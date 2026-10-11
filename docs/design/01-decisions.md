@@ -5576,3 +5576,54 @@ cut AU36 named, would turn the keyword tests' text comparisons into tag
 tests: bounded by `rt_compare`'s share, it waits for the measure after
 the VM's own cuts. The variant test in place in both tiers, which every
 `match` of every program pays a helper call for, is the next cut.
+
+**AU49. A variant test in place on both tiers.** `Op::IsVariant(tag)`,
+the test every `match` arm on a variant pattern runs (both emitters put
+`Load(slot)`, `IsVariant(tag)` and `JumpIfFalse` before an arm's body:
+`compile/pattern.rs` and `compiler/emit.ry`), was a helper call on both
+native tiers: `rt_is_variant` popped the value, unwrapped a guarded one,
+compared the tag and wrote the answer for the generated code to read
+back, so an arm cost the clone of the subject, the call and the drop
+inside it; the parser's three-turn run spent 2.2% in the helper (AU48),
+and the checker matches on the tree and the types everywhere. Both tiers
+now test in place: the value's tag at its address; for `TAG_VARIANT`,
+its block's tag at `RECORD_TAG` through the `Rc` at `PAYLOAD` (the
+layout of AU27), compared with the op's; the value released where it
+lies (AU29's sequence on the template tier, AU32's on the Cranelift
+tier) and the answer a Boolean, in a register on the Cranelift tier and
+boxed where the value lay on the template tier; a typed top (an Integer,
+a Boolean or a Float in a register) answers false without a read; a
+`Guarded` value (tag 19, `TAG_GUARDED` in `value::layout`, the wrapper
+of decision P3 that `plain()` unwraps) takes the helper, the Cranelift
+tier's cold block with the stack's length stored for the pop and the
+template tier's out-of-line sequence (`Cold::Guarded`). Code format 14.
+Tests: one per tier matches fieldless variants, variants with fields and
+a guarded JSON document (read through a capability with `only to` and
+parsed by `json.parse`, whose result carries the origins) in loops,
+against the interpreter; the layout test pins `TAG_VARIANT` and
+`TAG_GUARDED`; the conformance suite and the four judges pass on the
+template tier too. Measured by AT1's rule: the self-check's synchronous
+JIT run 6,424.9 to 6,370.0 million instructions (-0.9%), 8,961.2 to
+8,918.3 million cycles by the estimate (-0.5%); the image's run 4,984.6
+to 4,927.3 million instructions (-1.1%), 7,185.8 to 7,088.5 by the
+estimate (-1.4%), the cached run the same (-1.1%, -1.3%); the
+interpreter unchanged; the image 8,678,512 to 8,824,368 bytes (+1.7%,
+166.7 to 169.9 bytes of body per op: the sequence is longer than a
+call); the micro benchmarks of AR1 unchanged, none of them matching a
+variant; the parser alone 809.6 to 798.0 million instructions per parse
+of `compiler/bodies.ry` (-1.4%). The ratio of AU36 (iii): checking 546.0
+ms (578.6 on AU48's run, a noisier one: the reference binary took 90.2
+ms then and 72.7 now) against AU34's Rust front end's 72.7 (7.5 times,
+the gate) and this binary's 36.4 (15.0); parsing 226.3 against 59.9
+(3.8) and 62.2 (3.6); compiling 849.6 against 102.4 (8.3) and 77.0
+(11.0). The measure's lesson, now in the scripts: the compile thread's
+share varies from run to run under valgrind, so `tools/measure_size.sh`
+prints a `JIT run, sync` row beside the JIT run, the row two binaries
+compare on, and `tools/measure_native.sh` exports `RENYI_NATIVE_SYNC=1`
+(the micro benchmarks of two binaries differed by up to 15% without it
+and are equal with it). What stays: the clone of the subject before the
+test and its release after; a test that borrows the slot (`TestVariant {
+slot, tag }`, the answer alone pushed) would spare both at the price of
+a new op through both emitters, the bytecode file, the binary encoding,
+the interpreter and both tiers, held equal by Z3's judge; a candidate
+for the measure after B3, not a stage of its own.
