@@ -1,35 +1,36 @@
 # Renyi
 
-Renyi is the scripting language of AI agents: the language an agent
-writes and a person reviews at a glance. A Renyi program declares what it
-may do (`needs filesystem.read("data"), network.http("api.example")`),
-the compiler refuses what is not declared, and the runtime admits only
-that, for the program's dependencies too. Every run can be recorded,
-replayed and narrated; the project map and the semantic diff are
-commands; every error carries a fix. The syntax is regular English with
-one spelling per concept, so that a reviewer reads a program in one
-pass: effects in the type system, no exceptions, no null, no anonymous
-functions, and documentation that is part of the grammar so that code
-can be retrieved by meaning. It is a general-purpose language whose
-first users are people who run automation with Claude Code or Codex and
-will not run an agent's Python blind (`docs/design/08-positioning.md`,
-decisions AH1 to AH4).
+**Renyi is the scripting language of AI agents: the agent writes it, you
+review it at a glance, and the program can only do what it declares.**
 
-What Renyi leads with:
+## Why Renyi
 
-- **Effects are capabilities.** Every function declares what it needs,
-  scoped to a path or a host, budgeted (`at most 60 per minute`) and guarded
-  (`only to`); `main`'s declaration is the program's grant, and the VM's
-  one boundary enforces it, dependencies included.
-- **Runs are recorded, replayed and narrated.** `renyi record`, `run
-  --replay`, `reproduce` under the run manifest, `--explain` through
-  the program's own `purpose:` clauses.
-- **The tooling an agent needs.** `renyi index` (the project map and the
-  semantic diff with the version bump it forces), `renyi mcp` (the
-  toolchain as MCP tools), `purpose:` as syntax, a fix on every error.
-- **Package effects are computed, never widened silently.** `renyi add`,
-  `update`, `audit`: a dependency's effects come from its sources, and a
-  version that would let the program do more is refused.
+Agents now write most of the code that runs on your behalf. The code they
+write in today's languages has to be read line by line, or run blind.
+Renyi is designed around that division of labour: the agent writes, the
+person reviews, and the language makes the review a glance.
+
+1. **What a program may do is in its signature.** Every function declares
+   its effects (`needs filesystem.read("data"), network.http("api.example")`),
+   scoped to a path or a host, budgeted (`at most 60 per minute`) and
+   guarded (`only to`). The compiler refuses what is not declared; the
+   runtime admits only that, for the program's dependencies too. The
+   signature of `main` is the whole program's grant.
+2. **Every run is evidence.** A run can be recorded, replayed offline and
+   reproduced under its manifest (toolchain, code hash, dependencies,
+   grant, arguments, outcome); `--explain` narrates it in the words the
+   program's author wrote. You know what a run did, as data.
+3. **Dependencies cannot widen what you allowed.** A package's effects are
+   computed from its sources, never written by hand; an update that would
+   let the program do more is refused, not noticed later.
+4. **The tooling an agent needs is built in.** The project map and the
+   semantic diff are commands (`renyi index`, `--diff`), the toolchain is an
+   MCP server (`renyi mcp`), documentation is syntax (`purpose:`), and every
+   error carries a fix, so the agent's next attempt is right.
+5. **Read in one pass, by anyone.** Regular English with one spelling per
+   concept, one canonical layout, no exceptions, no null, no anonymous
+   functions, no operator overloading. A reviewer who has never seen Renyi
+   reads what a program touches from its signature.
 
 ```
 public function active_adult_emails(path: Path)
@@ -48,6 +49,44 @@ public function active_adult_emails(path: Path)
   return emails
 end
 ```
+
+Renyi is a general-purpose language; its first users are people who run
+automation with Claude Code, Codex and their like, and will not run an
+agent's Python blind. The design record is
+`docs/design/08-positioning.md` (decisions AH1 to AH4).
+
+## Against the alternatives
+
+Each row is a claim the implementation keeps and the conformance suite
+tests. The other languages were built for other jobs and do them well;
+the comparison is for one job, a program an agent wrote and a person
+must trust.
+
+| For a program an agent wrote | Renyi | Python | TypeScript / Deno | Rust | Shell |
+|---|---|---|---|---|---|
+| What it may do, visible before it runs | in every signature, scoped and budgeted, checked by the compiler | not declared; a sandbox limits the whole process | `--allow-*` flags for the whole process | not declared; the type system is about memory, not effects | not declared |
+| Its dependencies' effects | computed from their sources, locked, refused when they widen | not declared | not declared | not declared | not declared |
+| What a run did | recorded, replayed, reproduced by the runtime | external tooling | external tooling | external tooling | `set -x` |
+| What an error means | a fix on every diagnostic, by rule | a traceback | a message | a good message, for a programmer | an exit code |
+| Reviewable without training | regular English, one spelling per concept | familiar to programmers | familiar to programmers | expert reading | terse |
+| Speed on integer loops | machine code in the process | CPython | V8 | native, the fastest | n/a |
+
+Python and TypeScript are the languages agents write best today, and
+nothing in them says what a script will touch before it runs. Rust gives
+guarantees about memory and data races at a cost in time and expertise
+that a script does not repay, and says nothing about effects. Shell is
+what agents reach for first, and it is the hardest to review of all.
+
+## The gap
+
+Between "the agent wrote it" and "I ran it" there is a review that nobody
+has time for. Sandboxes bound the process from outside and tell you
+nothing about the program; type systems check shapes, not effects;
+recordings and audit trails are bolted on afterwards, if at all. Renyi
+closes that gap inside the language: the effects are types, the grant is
+a signature, the run is data, and the syntax exists so that a person can
+check all three in the time it takes to read a function header. That is
+the whole design; everything else follows from it.
 
 Source files use the `.renyi` or `.ry` extension; the two are equivalent.
 
@@ -214,9 +253,14 @@ cargo test
 
 Release 0.1.0 is out (2026-10-07; decisions AI1 to AI5, the
 procedure in `docs/RELEASE.md`); after it came the registration API for
-Rust natives (decisions AJ1 and AK1 to AK4; `docs/extensions.md`) and
-the Python bridge (decisions AJ2, AJ3 and AL1 to AL4; `docs/python.md`).
-Next: M5.
+Rust natives (decisions AJ1 and AK1 to AK4; `docs/extensions.md`), the
+Python bridge (decisions AJ2, AJ3 and AL1 to AL4; `docs/python.md`), the
+resident world, the language server, the watch of `serve` and the
+embedding API (M5, decisions AN1 to AP2), and the rounds on the VM's
+speed and the front end's (decisions AQ to AU47). `docs/ROADMAP.md` is
+the map of every stage, numbered and grouped by track, with what comes
+next: the compiler written in Renyi brought within three times the Rust
+front end's time, when the binary switches to it.
 
 ## Working on this repository
 
