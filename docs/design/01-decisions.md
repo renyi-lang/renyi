@@ -5481,3 +5481,30 @@ What remains in the lexer by the profiler: the scan of a word (28%, the
 answering code points is the lever B5 was the condition for, a library
 addition for the owner to decide), the loop itself (21%), the word's
 lookups (9%).
+
+**AU47. Stage B2 of the front end's round, the first cuts: the Renyi
+parser's keyword and symbol tests and its token reads.** `is_word` and
+`is_symbol` in `compiler/parser.ry`, the funnels of every keyword and
+symbol test, built a variant to compare the token's kind with
+(`token.kind is Word(spelling: spelling)`); they match the kind and
+compare the texts; `token_at` answers `cursor.tokens.at(index) otherwise
+end_token(cursor)` in place of a match with a crash arm, and `peek`
+reads the token under the cursor itself in place of two nested calls.
+The judges hold the parser byte-equal as before. `compiler/parse_only.ry
+<file> [turns]`, the driver of the measure (the file lexed once, parsed
+`turns` times), gives the parser alone as the difference between three
+turns and one under callgrind: 1,197.1 to 1,113.7 million instructions
+per parse of `compiler/bodies.ry` after the first cut and 1,039.2 after
+the second (-13.2%); 118.7 ms a parse in the steady state after them;
+the ratio of AU36 (iii), seven alternating runs, the Rust side
+unchanged: checking 630.3 ms against AU34's Rust front end's 73.3 (8.6
+times, the gate, from 8.9 after B1 and 10.0 at AU45) and this binary's
+38.8 (16.3); parsing 263.7 against 62.1 (4.2) and 65.9 (4.0); compiling
+909.8 against 97.8 (9.3) and 77.9 (11.7). What the profiler leaves, and
+the rest of B2 as AU36 set it: `peek` 16% (a `Peek` record per look, 54
+call sites), `binary_chain` 6%, `token_at` and `after_breaks` 9%
+together, `is_symbol` and `is_word` 7%, the cursor copied by `with
+position:` at 34 sites: the cursor that builds no `Peek` per look and
+the keywords and symbols as variants without fields compared by tag
+(AU36), which the handoff's plan for B2 lays out, are the stage's
+remaining cuts.

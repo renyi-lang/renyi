@@ -1,0 +1,25 @@
+module parse_only
+  purpose: Lex the file named by the first argument once and parse it as often as asked: the parser alone.
+
+import std.console
+import std.environment
+import std.filesystem exposing Path
+import lexer
+import parser
+
+public function main() needs console, environment, filesystem
+  purpose: Parse the file as many times as the second argument says, then print a count.
+
+  let arguments be environment.arguments()
+  let path be arguments.first() otherwise crash with "usage: parse_only.ry <file> [turns]"
+  let turns be (arguments.at(1) otherwise "1").to_integer() otherwise 1
+  let source be filesystem.read_text(Path(path)) otherwise crash with "cannot read {path}"
+  let chars be source.characters()
+  let lexed be lexer.lex(source)
+  let mutable total be 0
+  for each turn from 1 to turns
+    let parsed be parser.parse(lexed: lexed, chars: chars, declarations: false)
+    change total to parsed.diagnostics.length() + turn
+  end
+  console.print("{total}")
+end

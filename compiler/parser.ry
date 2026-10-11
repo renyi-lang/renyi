@@ -239,10 +239,13 @@ function text_of(cursor: Cursor, span: Span) returns Text
 end
 
 function token_at(cursor: Cursor, index: Integer) returns Token
-  match cursor.tokens.at(index)
-    when some(token) then return token
-    otherwise return cursor.tokens.last() otherwise crash with "the token list is empty"
-  end
+  return cursor.tokens.at(index) otherwise end_token(cursor)
+end
+
+function end_token(cursor: Cursor) returns Token
+  purpose: The token past the end, which is the last one, EndOfFile.
+
+  return cursor.tokens.last() otherwise crash with "the token list is empty"
 end
 
 function token_under(cursor: Cursor) returns Token
@@ -354,11 +357,17 @@ function span_from(start: Integer, cursor: Cursor) returns Span
 end
 
 function is_word(token: Token, spelling: Text) returns Boolean
-  return token.kind is Word(spelling: spelling)
+  match token.kind
+    when Word(spelling: found) then return found is spelling
+    otherwise return false
+  end
 end
 
 function is_symbol(token: Token, text: Text) returns Boolean
-  return token.kind is Symbol(text: text)
+  match token.kind
+    when Symbol(text: found) then return found is text
+    otherwise return false
+  end
 end
 
 function is_plain_word(token: Token) returns Boolean
@@ -384,7 +393,7 @@ function after_breaks(cursor: Cursor, index: Integer) returns Integer
 end
 
 function peek(cursor: Cursor) returns Peek
-  let token be token_under(cursor)
+  let token be cursor.tokens.at(cursor.position) otherwise end_token(cursor)
   if token.kind is not LineBreak then return Peek(token: token, cursor: cursor) end
   let next be after_breaks(cursor: cursor, index: cursor.position)
   let candidate be token_at(cursor: cursor, index: next)
