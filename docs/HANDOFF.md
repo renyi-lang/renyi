@@ -1,6 +1,13 @@
 # Handoff
 
-Last updated: 2026-10-11, session 13, in the cloud environment, which
+Last updated: 2026-10-11, session 13, in the cloud environment, whose
+last work is stage 28 (B4, the compiler's own code) through its first
+seven cuts, decisions AU52 to AU56 (the section "The front end's round"
+below, "B4 as built so far"): the Renyi checker's run on
+`compiler/bodies.ry` 4,898.3 to 4,432.9 million instructions (-9.5%),
+the ratio of AU36 (iii) 7.4 to 6.9 against the gate of 3, which cuts of
+this size will not reach, so the next session starts with the owner's
+evaluation (the start-here item 1). Earlier in the session it
 finished stage A2 of the front end's round, the cache keyed by the
 sources (decision AU44: every `run`, `record` or `test` compiled from
 its sources leaves the program it compiled in the cache with every file
@@ -286,13 +293,15 @@ and push there directly.
    moves it, in both emitters, with a taken field read in place on both
    tiers and the checker's code reshaped where it defeated the rule, the
    checker's run -1.6% more; AU56: the frame leave drops only the slots
-   that hold a counted block, -0.8% more), the paragraph "B4 as
-   built so far" of that section has them with the lexer's lesson (the
-   hash per character is the cost, not the loop) and what stays: the
-   loops' iterators, then the same reshaping of `emit.ry` and
-   `declare.ry` and the analysis's sets as bits, with the ratio 7.2 and
-   8.1 on two runs after AU53 (7.5 before it, within the wall-clock's
-   noise) against the gate of 3.
+   that hold a counted block, -0.8% more), the paragraph "B4 as built so
+   far" of that section has them with the lexer's lesson (the hash per
+   character is the cost, not the loop) and what stays: the loops'
+   iterators, then the same reshaping of `emit.ry` and `declare.ry` and
+   the analysis's sets as bits, with the ratio 6.9 after AU55 (7.4 at
+   the stage's start; the Renyi checker 557.9 ms, the reference 81.4)
+   against the gate of 3, which cuts of one to three percent will not
+   reach: the next session starts by putting the levers that could (the
+   paragraph's last sentences) to the owner.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
@@ -3549,20 +3558,25 @@ million per lex (+1.4%), the Rust front end's compile of the checker
 +4.7% for the analysis. The seventh cut (AU56): the frame leave drops
 only the slots whose tag says they hold a counted block
 (`Pinned::truncate_values`, used by the generated code's `leave_frame`,
-the interpreter's leave and `rt_truncate`; the checker's run -0.8%,
-the parser alone -0.6%, the lexer alone -0.9%). What stays: `for
-each` without an iterator allocated per loop (263,438 per run,
-`rt_iter_init` 79 million inclusive), `lists.replace_at` (three lists
-per call), the same reshaping of `emit.ry` and `declare.ry` for the
-compile row, and the analysis's name sets as bits for the Rust front
-end's 4.7%; the Cranelift compile is 9% of the checker's one run under
-`RENYI_NATIVE_SYNC=1`, which the ratio pays on the compile thread
-instead. The ratio after the three cuts (`tools/ratio.py
-target/renyi-b4iv target/renyi-au34`): checking 590.5 ms against the
-reference's 78.5 (7.5 times, the gate) and this binary's 38.7 (15.3),
-parsing 207.9 against 65.6 (3.2) and 62.2 (3.3), compiling 888.9 against
-102.1 (8.7) and 81.8 (10.9): the ratio stays at 7.5, the three cuts' 3%
-in instructions under the wall-clock's noise.
+the interpreter's leave and `rt_truncate`; the checker's run -0.8%, the
+parser alone -0.6%, the lexer alone -0.9%). What stays: `for each`
+without an iterator allocated per loop (263,438 per run, `rt_iter_init`
+79 million inclusive), `lists.replace_at` (three lists per call), the
+same reshaping of `emit.ry` and `declare.ry` for the compile row, and
+the analysis's name sets as bits for the Rust front end's 4.7%. The
+stage so far: the checker's run 4,898.3 to 4,432.9 million instructions
+(-9.5%), the ratio 7.4 to 6.9, each cut one to three percent; the gate
+of 3 asks for the Renyi checker 2.3 times faster still, which cuts of
+this size will not give. The levers that could, for the owner to weigh
+(AskUserQuestion, four at once, the recommended option first): a checker
+that carries its inference result in the checker record instead of a
+`Done` record per expression (657,000 record constructions per run,
+`rt_construct` 57 million and their frees as much), with the same
+reshaping of `emit.ry` and `declare.ry`; an optimizing tier with values
+unboxed across calls (the study of session 11); the loop iterator kept
+in two slots instead of an allocation per loop (a bytecode change in
+both emitters); or the gate moved, with the switch of the binary's front
+end left for a later round.
 
 ## The representation items: the design study (session 11)
 
