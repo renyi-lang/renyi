@@ -280,10 +280,12 @@ state of each line.
 Stage 28 (decision AU51): the compiler's own code, cut by cut, each
 judged and measured, toward the gate of AU35 (ii), which the owner kept
 at 3 times the Rust front end's time (the ratio 7.4 at the stage's
-start); then, when the ratio is within 3, the switch of the binary's
-front end to the compiler written in Renyi. Candidates after it, none
-decided: the expansion of AU50 refined (the borrowing of a region's
-arguments, the admission of the hot sites, the compile cost), values
-unboxed across calls, interned names and a faster hash in the Renyi
-checker, the C API, the language server's completion, the showcase
-application, the WASM target of M6.
+start, 6.9 after seven cuts, AU52 to AU56, the checker's run -9.5%; the
+gate is out of reach for cuts of this size, so the owner's evaluation of
+the levers the handoff lists comes next); then, when the ratio is within
+3, the switch of the binary's front end to the compiler written in
+Renyi. Candidates after it, none decided: the expansion of AU50 refined
+(the borrowing of a region's arguments, the admission of the hot sites,
+the compile cost), values unboxed across calls, interned names and a
+faster hash in the Renyi checker, the C API, the language server's
+completion, the showcase application, the WASM target of M6.
