@@ -5508,3 +5508,71 @@ position:` at 34 sites: the cursor that builds no `Peek` per look and
 the keywords and symbols as variants without fields compared by tag
 (AU36), which the handoff's plan for B2 lays out, are the stage's
 remaining cuts.
+
+**AU48. B2, the rest: a look as an index with no record per look, and
+the expression levels as one loop.** `compiler/parser.ry` looked at the
+next significant token through `peek`, which built a `Peek` record (the
+token and the cursor after the look) per look at 54 sites, and every
+consumer read both back; the expression parser went through eight levels
+(`or`, `and`, `not`, a comparison, `with`, the additive, the
+multiplicative and `power`), each a function that peeked once, tested
+its own operators and built a `Parsed` record on the way back, so that
+one operand cost eight looks and eight records, and a statement's end
+eight evaluations of the line-break rule. Two cuts. (i)
+`peek_at(cursor)` answers the index of the next significant token (the
+position, or past the line breaks the layout rules skip), `token_at`
+reads the token at it and `moved(cursor, look)` is the cursor there (the
+cursor itself when the look did not move, else `with position:`), so a
+look builds nothing; the sites that consume what they looked at advance
+with `cursor with position: look + 1`, in place when the cursor is held
+once; `second_token` takes the look's index; `bump`, `past_word` and
+`past_symbol` are `advance`, `expect_word` and `expect_symbol` for the
+callers that drop the token (13, 32 and 11 sites), and the three keep
+their `Peek` for the callers that keep the token's span, `expect_word`
+and `expect_symbol` reading it back as `previous(after)`; `expression`'s
+`otherwise`, `not`, `with` and `power` test their word inline; `peek`
+stays at the 11 sites of rare paths (a hole, the module header, an item,
+a loop source, a match fallback). (ii) `binary(cursor, lowest)` parses
+an expression of the operators from the level `lowest` up in one loop:
+the head is a `not` with its operand (when `lowest` allows it) or a
+postfix expression; then while the next token is a binary operator whose
+level lies between `lowest` and a ceiling, it is consumed and its right
+operand parsed from the next level (from the same for `power`, which
+associates to the right); a comparison lowers the ceiling below itself
+(one comparison per operand, as the levels had it), `with` takes its
+update list and lowers the ceiling below itself, and a `not` head lowers
+it below the comparison; `binary_operator` maps a token to its
+`BinaryOp` in one match, `level_of` gives an operator's level;
+`or_expression` and `additive` are the entries at their levels. The same
+tree, byte for byte: the quick judge on the 117 programs of the corpus,
+the conformance suite, `compiler/`, `bench/`, the starter pack and the
+library's declarations, the four judges of
+`crates/renyi/tests/selfhost.rs`, and 24 probes of the levels' edges (a
+`not` before a comparison, `with` on either side of a comparison,
+chained `power`, a second `with` or a second comparison refused,
+operators without operands, a `(` left open) through both parsers. The
+parser alone (`compiler/parse_only.ry`, the difference between three
+turns and one under callgrind with `RENYI_NATIVE_SYNC=1`, AU47's
+measure; the compile thread's share varies from run to run under
+valgrind, so the default mode does not measure): 1,039.2 to 998.6
+million instructions per parse of `compiler/bodies.ry` after (i) (-3.9%:
+a look's record was a smaller part of its cost than its calls) and 809.6
+after (ii) (-18.9%; -22.1% in all, against the 800 the stage estimated);
+96 ms a parse in the steady state (twenty turns less ten, by
+wall-clock), from 118.7 at AU47. The ratio of AU36 (iii), seven
+alternating runs, this binary AU45's (the VM unchanged): checking 578.6
+ms (from 630.3) against AU34's Rust front end's 90.2 on this run (6.4
+times; 7.9 against the 73.3 the reference took at AU47's run) and this
+binary's 40.6 (14.3); parsing 231.7 (from 263.7) against 62.7 (3.7) and
+60.7 (3.8); compiling 873.0 (from 909.8) against 122.1 (7.2) and 83.3
+(10.5). What callgrind attributes on the three-turn run beside the
+generated code: the frees of values 11%, `rt_compare` 6.6% inclusive
+(the keyword and symbol tests among them, and the lexer's one-character
+comparisons), `leave_frame` 5.5%, `rt_construct` 4.5%, the `with` copies
+3.5%, `rt_is_variant` 2.2% (a helper call per `match` arm on a variant,
+the subject cloned for it and dropped after), the reads of module
+constants 0.5%. The keywords and symbols as variants without fields, the
+cut AU36 named, would turn the keyword tests' text comparisons into tag
+tests: bounded by `rt_compare`'s share, it waits for the measure after
+the VM's own cuts. The variant test in place in both tiers, which every
+`match` of every program pays a helper call for, is the next cut.

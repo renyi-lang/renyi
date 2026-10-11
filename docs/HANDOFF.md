@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated: 2026-10-10, session 13, in the cloud environment, which
+Last updated: 2026-10-11, session 13, in the cloud environment, which
 finished stage A2 of the front end's round, the cache keyed by the
 sources (decision AU44: every `run`, `record` or `test` compiled from
 its sources leaves the program it compiled in the cache with every file
@@ -35,8 +35,12 @@ and symbol tests without a variant built per test and its token reads
 without nested calls (decision AU47: the parser alone 1,197 to 1,039
 million instructions per parse of `bodies.ry`, -13%; the Renyi checker
 649 to 630 ms, the gate ratio 8.9 to 8.6),
-the rest of B2 planned in the same section ("B2, the stage under
-way"). The same day the owner asked for the README's opening as the
+then the rest of B2 (decision AU48: a look as an index with no
+record per look, the expression levels as one loop; the parser alone
+1,039 to 810 million instructions per parse of `bodies.ry`, -22%; the
+Renyi checker 630 to 579 ms; the section "The front end's round"
+below, "B2 as built", and the next cut planned after it, the variant
+test in place in both tiers). The same day the owner asked for the README's opening as the
 design philosophy and the selling points (68c5cd2) and for the site
 redesigned by an Opus subagent, minimal, modern and premium, then a
 second round with the words cut and the visuals strengthened (the
@@ -3179,62 +3183,99 @@ lex of `bodies.ry` (983 to 514 million instructions), the token dump
 gate ratio 10.0 to 8.9 (checking), the parse row 5.3 to 4.2, the
 compile row 10.5 to 9.1, all against AU34's binary on this boot.
 
-**B2, the stage under way** (AU36, stage 6 of the list above): the
-Renyi parser, `compiler/parser.ry` (3,460 lines), with the judges
-keeping it byte-equal to `renyi parse --json` on every program,
-rejected ones included (AD1). The study measured the parser at 1,568
-million instructions on `bodies.ry` (17,900 a token, 17 times the
-Rust parser) and estimated 800 million after B2; the driver
-`compiler/parse_only.ry <file> [turns]` (the file lexed once, parsed
-`turns` times) measures it alone at 1,197 million in the steady state
-before the first cuts and 1,039 after them (AU47: `is_word` and
-`is_symbol` match the kind instead of building a variant to compare
-with, `token_at` is an `otherwise` and `peek` reads its token
-itself). The quick judge of the session for the tree, `renyi parse
---json <file>` against `renyi run compiler/parse.ry <file>` on every
-program and the library's files with `--declarations` (a script in
-the scratchpad; the real judges are `cargo test -p renyi --test
-selfhost`), ran after each cut. Where the cost is now, by `renyi run
---profile compiler/parse_only.ry compiler/bodies.ry 3`: `peek` 16%
-(a `Peek` record built per look, 54 call sites), `binary_chain` 6%,
-`token_at` and `after_breaks` 9% together, `is_symbol` and `is_word`
-7% (a call each, the text compared), the `Cursor` record (tokens,
-position, nesting, declarations, diagnostics, chars) rebuilt by
-`cursor with position: ...` at 34 sites, a copy whenever the cursor is
-shared (AU11 updates it in place only when held once); `TokenKind`
-carries the spelling in `Word(spelling)` and the text in
-`Symbol(text)`, so a keyword test compares texts. The rest of the plan,
-as AU36 set it: (i) keywords and symbols as
-variants without fields, compared by tag: a `TokenKind` with one
-variant per reserved word and phrase and per symbol is a change to
-`compiler/lexer.ry`'s `TokenKind` and to everything that reads
-`Word(spelling)` and `Symbol(text)` (the lexer's `lex_reserved`,
-`tokens.ry`'s `kind_name`, the parser's `is_word`, `is_symbol`,
-`is_plain_word`, `describe` and the `foreign_spelling` fix); a variant
-without fields is a cached value since AG6, read from its slot in
-place since AU24, and `is` on two of them is `compare_in_place`'s fast
-path, so `is_word(token, Each)` costs a field read and a tag compare;
-the JSON the tree is printed as (`ast.ry`, decision W1) must not
-change, so the spelling stays reachable (a function `spelling_of(kind)`
-for the messages and the JSON). (ii) A cursor that builds no `Peek`
-per look: `peek` answering the token alone where the caller moves the
-cursor itself, or the position as an Integer beside the token in the
-common path (`look.cursor` is the cursor given when no line break was
-skipped), and `cursor with position:` kept to the places where a
-record must change (AU11 updates a uniquely held record in place, so
-the copies that remain are the ones where the cursor is shared). (iii)
-`token_at` without the match: `cursor.tokens.at(index) otherwise
-last_token` with the last token kept in the cursor, since the list ends
-with `EndOfFile`. Measure each cut with a driver like
-`compiler/lex_only.ry` for the parser (`parse_only.ry`: lex once,
-parse `turns` times, print a count) under callgrind, run the quick
-judge of B1 extended to `renyi parse --json` (the real judges after
-each cut: `cargo test -p renyi --test selfhost`), keep `renyi check
-compiler/*.ry` clean and the files canonical, and record the ratio
-(`tools/ratio.py`, the parse row is the lexer's and the parser's; the
-check row is the gate, 10.0 at AU45). After B2: B3 (small functions
-inlined on the Cranelift tier), the largest lever of the list on every
-program.
+**B2 as built** (AU36, stage 6 of the list above; decisions AU47 and
+AU48). `compiler/parser.ry`: the keyword and symbol tests match the kind
+and compare the texts instead of building a variant per test, `token_at`
+is an `otherwise` and `peek` reads its token itself (AU47); a look is an
+index, `peek_at(cursor)` (the position, or past the line breaks the
+layout rules skip: inside brackets, after a comma, before a continuation
+word, the rule of the Rust parser's `peek`), `token_at` reads the token
+at it and `moved(cursor, look)` is the cursor there (the cursor itself
+when the look did not move), so nothing is built per look; a consumer
+advances with `cursor with position: look + 1` (in place when held once,
+decision AU11); `second_token(cursor, look)` looks past the look;
+`bump`, `past_word` and `past_symbol` serve the callers that drop the
+token, `advance`, `expect_word` and `expect_symbol` the ones that keep
+its span (the last two read it back as `previous(after)`);
+`expression`'s `otherwise`, `not`, `with` and `power` test their word
+inline; `peek` and its `Peek` stay at 11 sites of rare paths (AU48 i).
+The expression parser is one loop, `binary(cursor, lowest)`: a `not`
+head with its operand when `lowest` allows, else a postfix expression;
+then while the next token is a binary operator whose level lies between
+`lowest` and a ceiling (`binary_operator` maps the token to its
+`BinaryOp` in one match, `level_of` gives the level: `or` 1, `and` 2,
+`not` 3, a comparison 4, `with` 5, additive 6, multiplicative 7, `power`
+8, module constants), the operator is consumed and the right operand
+parsed from the next level (from the same for `power`); a comparison
+lowers the ceiling to 3 (one per operand), `with` takes its update list
+and lowers it to 4, a `not` head lowers it to 2; `or_expression` and
+`additive` enter at their levels (AU48 ii). The judges: the quick judge
+of the session (`renyi parse --json` against `renyi run
+compiler/parse.ry` on every program of the corpus, the conformance
+suite, `compiler/`, `bench/`, the starter pack and the library with
+`--declarations`, 117 files; `parse_judge.sh` in the session's
+scratchpad), the four judges of `cargo test -p renyi --test selfhost`,
+and 24 probes of the levels' edges written for the loop (valid and
+malformed expressions through both parsers). What it gave: the parser
+alone (`compiler/parse_only.ry <file> [turns]`, three turns less one
+under callgrind with `RENYI_NATIVE_SYNC=1`; the default mode's compile
+thread varies under valgrind and does not measure) 1,197 million
+instructions per parse of `bodies.ry` at the stage's start, 1,039 after
+AU47, 998.6 after the look as an index (-3.9%: the record was a small
+part of a look's cost beside its calls), 809.6 after the loop (-18.9%;
+-22% in the session, -32% for the stage, against the 800 the study
+estimated); 96 ms a parse in the steady state, from 118.7 at AU47; the
+ratio (`tools/ratio.py target/renyi-b5v2 target/renyi-au34`): checking
+578.6 ms (from 630.3), parsing 231.7 (from 263.7), compiling 873.0 (from
+909.8), the gate 6.4 times on a run where the reference binary took 90.2
+ms (7.9 by the 73.3 it took at AU47's run: the Rust side's time moves
+between runs, so a session compares its own runs). What callgrind leaves
+on the three-turn run beside the generated code: the frees of values
+11%, `rt_compare` 6.6% inclusive (the keyword tests, the lexer's
+one-character comparisons), `leave_frame` 5.5%, `rt_construct` 4.5%, the
+`with` copies 3.5%, `rt_is_variant` 2.2%, the reads of module constants
+0.5%; the profiler (`--profile`, the interpreter) `peek_at` 10%,
+`token_at` 7%, `parse` 6% (its two queries over the tokens), `binary`
+4%, `bracketed` 3%, `postfix` 3%, `is_symbol` 3%, `moved` 3%,
+`after_breaks` 3%. Not done: the keywords and symbols as variants
+without fields (AU36's other cut for B2), bounded by `rt_compare`'s
+share; it waits for the measure after the VM's cuts. A VM-side lesson
+from this stage: `change x to f(x) otherwise fail` does not move `x`
+into the call (`move_candidate` in `compile/stmt.rs` looks for a `Call`,
+and the value is an `Otherwise`), so the callee's `with` on it copies;
+only 8 such sites exist in `compiler/`, so the rule stays.
+
+**The next cut, planned: the variant test in place in both tiers.**
+`Op::IsVariant(tag)`, the test every `match` arm on a variant pattern
+and every `when Variant` of every program runs (`compile/pattern.rs`:
+`Load(slot)`, `IsVariant(tag)`, `JumpIfFalse`), is a helper call on both
+native tiers (`rt_is_variant` in `native/runtime.rs`: the value popped,
+`plain()` through any `Guarded` wrapper, the tag compared;
+`native/codegen.rs` and `native/template/mod.rs` call it through
+`helper_on_stack` and `call`), so an arm costs a clone of the subject,
+the call, and the drop inside it; the parser's three-turn run spends
+2.2% in the helper itself and more in the clones and drops around it,
+and the checker matches on the tree and the types everywhere. The plan:
+on the Cranelift tier, the sequence `IsNothing` has (the top's tag read
+at `tag_at(at, 0)`, a typed top answers false without a read,
+`release(at)`, `store_height`, `push_bool`), extended by one load: a
+`TAG_VARIANT` top reads its block's tag at `RECORD_TAG` from the `Rc` at
+`PAYLOAD` and compares it with the op's; a `Guarded` top (tag 19, the
+wrapper `plain()` unwraps) goes to the helper, as the cold path; on the
+template tier the same over the `release` sequence of AU29
+(`template/mod.rs`, `fn release`), the answer boxed as a Boolean where
+`rt_is_variant`'s was. Then, since the subject is loaded only to be
+tested, a borrowed form of the test (the tag read from the slot, no
+clone, no release) is the follow-up, which changes the emitters
+(`compile/pattern.rs` and `compiler/emit.ry` in one commit, the bytecode
+changing). The measures: `tools/measure_size.sh` on the self-check
+(AT1's rule), the parser alone, the Renyi checker on `bodies.ry`, the
+ratio; the judges `cargo test -p renyi_vm --test native`, `--test
+template`, the template-tier conformance run
+(`RENYI_NATIVE_TIER=template`) and the full gates. Code format bumps if
+the generated code's shape changes what an image holds (it does not for
+a sequence change alone: AU45 bumped it to 13 for the comparison in
+place; do the same).
 
 ## The representation items: the design study (session 11)
 
@@ -4844,6 +4885,20 @@ holds between calls.
   (-13%), byte-equal by the judges; `compiler/parse_only.ry`, the
   driver; CLAUDE.md. The measure: the Renyi checker 649 to 630 ms on
   `bodies.ry`, the gate ratio 8.9 to 8.6 against AU34's binary.
+- **Decision AU48**: the rest of B2, a look as an index with no record
+  per look (`peek_at`, `moved`, `bump`, `past_word`, `past_symbol`,
+  `second_token`; `peek` left at 11 rare sites) and the eight
+  expression levels as one loop over their levels (`binary`,
+  `binary_operator`, `level_of`, a ceiling for the one comparison, the
+  one `with` and the `not` head); the parser alone 1,039 to 998.6 to
+  809.6 million instructions per parse of `bodies.ry` (-22%),
+  byte-equal by the quick judge, the four judges and 24 probes of the
+  levels' edges. The measure: the Renyi checker 630 to 579 ms, parsing
+  264 to 232, compiling 910 to 873; the gate 6.4 on this run (the
+  reference binary took 90 ms where it took 73 at AU47's run; 7.9 by
+  that time). The keywords as variants without fields not done,
+  bounded by `rt_compare`'s 6.6%; the variant test in place planned
+  as the next cut.
 - **The README's opening** at the owner's request (68c5cd2): the design
   philosophy as the selling points, five points a reviewer can check,
   the comparison with Python, TypeScript, Rust and shell for the one
