@@ -5627,3 +5627,161 @@ slot, tag }`, the answer alone pushed) would spare both at the price of
 a new op through both emitters, the bytecode file, the binary encoding,
 the interpreter and both tiers, held equal by Z3's judge; a candidate
 for the measure after B3, not a stage of its own.
+
+**AU50. Small callees expanded into their callers on the Cranelift tier:
+built, measured, off.** B3, the last stage of AU36's list, in the shape
+the owner chose on 2026-10-11 (four questions, every recommended answer
+taken): (1) a rewrite of the bytecode the Cranelift tier sees, not of
+the program, so that the analysis, the translation of every op, the
+interpreter, the template tier, the bytecode file and Z3's judge stay as
+they are; (2) a hand-back to the interpreter from inside an expanded
+callee rebuilds the frames the interpreter would have had, the caller's
+stopped after the call and one per expanded callee around the point; (3)
+the callees admitted: at most 20 ops, no loop, no `needs`, not
+recursive, a handler, a crash and nested calls allowed (a callee's own
+small callees once more), a caller growing by at most half its size,
+measured by AT1's rule; (4) the gate of AU35 (ii) reconsidered after the
+stage. As built (`native/inline.rs`, commit fb0cc2d): before
+`codegen::compile` sees a code object, `expand` scans its ops for a
+`Call` to a declared function with code that fits (`CodeKind::Function`,
+as many parameters as arguments, at most `CALLEE_LIMIT` ops, no
+capability since its frame would narrow the grant, no backward jump,
+none of `IterInit`, `IterNext`, `ListPush`, `GroupInsert`, `GroupFold`,
+`SortByKey`, `Deadline`, `CheckDeadline`, `MarkStack`, `UnwindStack`,
+`Check` and `Fail`, the last because `rt_fail` leaves the frame, which
+would be the caller's; not the caller nor a callee the expansion lies
+in; an analysis that settles with every reachable `Return` leaving
+exactly its result and no handled region of the callee's own open) and
+replaces it by a `Jump` into a region appended after the caller's own
+ops: the stores of the arguments into the region's slots (fresh slots
+past the caller's locals and every earlier region's), the callee's ops
+with their slots, constants (appended to the caller's pool) and jump
+targets moved, every `Return` a jump to the region's exit, which
+releases the region's slots as leaving the callee's frame would
+(`LoadMove`, `Pop` per slot) and jumps to the op after the call with the
+result on top, a reachable `ReturnNothing` a jump to a tail that pushes
+`Nothing` first; a caller's candidates are admitted smallest first while
+the budget lasts (the ops a region takes: the arguments, the callee's
+ops, two per local, one or three for the tails), then the calls inside
+the new regions once more (`NESTING_LIMIT` 2). The caller's own ops keep
+their pcs, so a loop header, the template tier's promotion and the deopt
+points of the caller's ops are as before; the generated code's prologue
+stores the expanded height, since the frame the caller pushed has the
+code object's own locals and the first helper that pushes would
+otherwise push into a region's slot; an entry at a loop header moves the
+operands up past the regions' slots and writes `Nothing` into them
+(`make_room_for_expansion`), and the frame leave releases the code
+object's own locals alone, the regions' holding `Nothing` at a return
+(commit 2cc361c: counted as holders, they took every caller with a
+region over the inline limit of four releases and through `rt_truncate`,
+whose drops cost the parser's steady state 1.5%). Around it: the JIT
+keeps the regions per code object and a constant pool per expanded one
+(`Jit::pools`, the caller's constants followed by every expanded
+callee's, which `NativeState::constants` points at and `Vm::constant_at`
+reads for the helpers); the image carries the regions (image format 8;
+`tools/image_census.py` reads it); a crash inside a region is located at
+the callee's line (`inline::location`, `Jit::inlined_location`, from
+`Vm::abandon`); a hand-back at a pc past the caller's ops
+(`rebuild_inlined_frames` in `runtime.rs`) takes the expanded frame
+apart into the caller's frame (its locals, then its operands below the
+call, its marks recomputed) stopped after the call, or at the call when
+the point lies in a region's prologue (the arguments already stored go
+back onto the operands and the interpreter makes the call), and a frame
+per expanded callee around the point, with its slots, the operand depth
+its own analysis gives at that op, the handled regions open at the point
+under the frames that own them and the frames' floors; a direct call
+site that gets the hand-back runs the callee's frame to its end under
+the frames built above it (`Jit::rebuilt_frames`, read by
+`rt_direct_after`); a hand-back at a caller's own op drops the regions'
+slots first. `RENYI_NATIVE_INLINE=1` turns the expansion on,
+`RENYI_NATIVE_INLINE_BUDGET` sets the ops a caller may gain and
+`RENYI_NATIVE_INLINE_LIMIT` the largest callee (for the measure of
+another rule, and for small programs whose callers would expand nothing
+under the half rule, which the tests set), `RENYI_NATIVE_INLINE_DUMP`
+prints every expansion, why a call was not expanded, the regions' slot
+kinds and every rebuilt frame, `RENYI_NATIVE_IR=<name>` a code object's
+Cranelift IR. Tests (`tests/inline.rs`, against the interpreter): the
+doors of an expanded callee (a return, a nothing, a failure caught by
+the caller, one caught by the callee's own handler, a crash located at
+the callee's line, nested one level, in loops) and the hand-backs (an
+overflow inside the callee's body, nested one level, the loop's mark and
+the caller's state rebuilt; a big Integer stored into an Integer
+parameter before the body began, the call then made by the interpreter);
+the whole suite, the conformance suite on both tiers and the four judges
+pass with the expansion on. Two bugs the probes found, for the record:
+the stack's length at entry (the first helper pushed into a region's
+slot and a moved argument read back as a stale value), and the direct
+call's entry frame after a hand-back that built frames (the innermost
+frame's result was taken as the callee's). What the rule admits on the
+compiler written in Renyi (the dump): the parser's three-turn run
+expands 24 callees into 10 of its 34 compiled code objects, the
+checker's run 12 into 8 of 47; the budget refuses 27 calls (`token_at`
+seven times, `is_symbol` three, `moved` two), the size limit 32
+(`peek_at` itself is 56 ops, `bump` 22, `second_token` 28, `level_of`
+53), a loop 7, the recursion 2, a `fail` 1 (`past_word`, `past_symbol`);
+`peek_at`, 56 ops with a budget of 28, takes `end_token` (15) and
+refuses its four `token_at` sites (19 each). Measured by AT1's rule on
+this binary, the expansion on against off, since the binary with it off
+is AU49's to the fourth digit on the image and the cached rows (the
+synchronous JIT run differs by the layout alone: 6,390.6 against 6,369.7
+million instructions, +0.3%, and 9,040.6 against 8,918.3 by the
+estimate, +1.4%, all of it simulated misses of the instruction cache, as
+AU42 saw): the synchronous JIT run 6,390.6 to 6,430.5 million
+instructions (+0.6%), 9,040.6 to 9,033.8 by the estimate (-0.1%); the
+image's run 4,926.2 to 4,960.9 (+0.7%), 7,088.2 to 7,180.1 by the
+estimate (+1.3%); the cached run 5,008.0 to 5,039.1 (+0.6%), 7,174.4 to
+7,260.9 (+1.2%); the interpreter unchanged; the image 8,824,368 to
+9,786,304 bytes (+10.9%, 169.9 to 190.0 bytes of body per op, 771 to
+1,049 deopt points). The rules loosened for the question's sake (callees
+up to 60 ops, a budget of 1,000 ops a caller): the synchronous JIT run
+6,973.8 (+9.1%), 9,817.7 by the estimate (+8.6%); the image's run
+5,228.2 (+6.1%), 7,852.3 (+10.8%, the misses of the instruction cache
+110.6 to 144.1 million); the image 19,516,672 bytes (+121%, 395.7 bytes
+per op). The parser alone (three turns less one of
+`compiler/parse_only.ry` on `compiler/bodies.ry` under callgrind,
+`RENYI_NATIVE_SYNC=1`): 799.6 million instructions per parse off (798.0
+at AU49), 845.6 on (+5.8%; 853.6 before 2cc361c), 1,344.7 loosened
+(+68%); the difference is the compile: the three-turn run's
+`codegen::compile` 606 to 705 million inclusive, 50 of the 54 million a
+parse, the same 34 code objects and 1,731 ops giving 15% more Cranelift
+instructions (67,446 to 77,702 in 7,705 to 8,799 blocks) and 65% more
+compile time (181 to 298 ms), the register allocation being superlinear
+in a function's size. The steady state (every code object compiled at
+its first call, `RENYI_NATIVE_HOT=0`, three turns less one): 572.6
+million per parse off, 574.5 on (+0.3%; 583.2 before 2cc361c), 635.6
+loosened (+11.0%). The micro benchmarks of AR1 (instructions a turn): a
+typed Integer call 595 to 562 (-33), a call with a record argument 727
+to 626 (-101), a field read and a record built unchanged: an expanded
+call does save, but AU21's direct call was already lean, and what a
+region adds (a retain at the caller's load and a release at the exit per
+boxed argument where the typed call borrows, the stores and the tails)
+takes most of it back, while the hot sites stay calls under the budget
+and the bigger functions miss the instruction cache more. The ratio of
+AU36 (iii), `tools/ratio.py target/renyi-au50 target/renyi-au34`:
+checking 577.1 ms against the reference's 68.7 (8.4 times, the gate) and
+this binary's 36.1 (16.0), parsing 215.9 against 60.8 (3.6) and 58.7
+(3.7), compiling 882.4 against 106.3 (8.3) and 80.2 (11.0); the
+expansion off checking 583.0 against 78.8 (7.4) and 38.5 (15.2), parsing
+213.2 against 66.9 (3.2) and 64.5 (3.3), compiling 821.1 against 101.0
+(8.1) and 79.4 (10.3), on a machine loaded by the site's build, where
+the reference binary itself took 68.7, 78.8 and 75.4 ms in the three
+tables, so the tables compare within themselves and the expansion's cost
+is the Renyi checker's 577 against 583 on a reference 13% apart;
+loosened checking 679.1 against 75.4 (9.0) and 37.4 (18.1), parsing
+250.4 against 62.3 (4.0) and 59.0 (4.2), compiling 988.0 against 108.9
+(9.1) and 78.1 (12.6). The rule of AU1 decides: the cold run does not
+fall and no benchmark of the four gains, so the expansion is off unless
+`RENYI_NATIVE_INLINE=1`; the mechanism, the tests and the hand-back stay
+for the owner's evaluation, which AU36's answer (4) placed here. The
+levers that remain, for that evaluation: the compile cost (a cheaper
+allocation for a big function, or expansion only into small callers,
+where the hot calls are not); the borrowing of a region's boxed
+arguments (a parameter the callee only reads could be aliased without a
+retain, sparing some 30 instructions a call); the admission of the hot
+sites (a snapshot of the hotness in the compile request, the callee
+called most first, or one region shared by a callee's sites with a
+return dispatch); a smaller protocol for the call itself instead of its
+removal; and the compiler's own code (`peek_at`'s four `token_at` sites
+as one, the keywords as fieldless variants deferred at AU48, the lexer's
+`contains` per character and the checker's loops over every character
+for the line starts as library primitives).

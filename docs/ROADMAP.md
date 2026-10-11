@@ -198,25 +198,31 @@ where one decided, the status. The dates are those of the decisions.
     lexer over code points compares at every character;
     `bench/micro/scan_codes.ry`, -48% in instructions a turn; the
     Renyi checker 806 to 756 ms on `compiler/bodies.ry`. Done.
-27. **The front end's round, the Renyi side** (session 13, 2026-10-11,
-    under way). B1, the Renyi lexer rewritten for speed with the
-    library as it is: one loop, scans without a call per character,
-    the word lists as sets, a step's product a sum; the lexer alone on
-    `compiler/bodies.ry` 983 to 514 million instructions (-48%),
-    byte-equal by the judges (AU46); B2, the parser: its keyword and
-    symbol tests and token reads cut first (AU47, the parser alone
-    -13%), then a look as an index with no record per look and the
-    eight expression levels as one loop (AU48, 1,039 to 810 million
+27. **The front end's round, the Renyi side** (session 13, 2026-10-11;
+    the list done, the gate not met). B1, the Renyi lexer rewritten for
+    speed with the library as it is: one loop, scans without a call per
+    character, the word lists as sets, a step's product a sum; the lexer
+    alone on `compiler/bodies.ry` 983 to 514 million instructions
+    (-48%), byte-equal by the judges (AU46); B2, the parser: its keyword
+    and symbol tests and token reads cut first (AU47, the parser alone
+    -13%), then a look as an index with no record per look and the eight
+    expression levels as one loop (AU48, 1,039 to 810 million
     instructions per parse, -22%; the keywords as variants without
     fields left for the measure after the VM's cuts); the variant test
     in place on both tiers (AU49, every `match` arm's test without its
     helper: the self-check's synchronous run -0.9%, the parser alone
-    -1.4%); next B3, small functions inlined on the Cranelift tier
-    (AU36, stage 6). The gate: the compiler written in Renyi within 3
-    times the Rust front end's time on `compiler/bodies.ry` (10.0
-    times at AU45, 8.6 at AU47 against AU34's binary; 7.5 at AU49,
-    the Renyi checker 546 ms), then the binary switches to it (AU35
-    ii).
+    -1.4%); B3, small callees expanded into their callers on the
+    Cranelift tier (AU50: a rewrite of the bytecode the tier sees, the
+    frames rebuilt at a hand-back, built and tested; measured, the
+    expanded code is level with the calls it replaces in the steady
+    state and the compile costs 6% of a parse, so it is off unless
+    `RENYI_NATIVE_INLINE=1`). The gate: the compiler written in Renyi
+    within 3 times the Rust front end's time on `compiler/bodies.ry`
+    (10.0 times at AU45, 8.6 at AU47 against AU34's binary; 7.5 at AU49
+    and 7.4 at AU50 with the expansion off, 8.4 with it on, the Renyi
+    checker 583 ms), then the binary switches to it (AU35 ii). The list
+    of AU36 is finished short of the gate; the owner's evaluation
+    (AU36's answer 4) is next.
 
 ## 3. The tracks
 
@@ -234,10 +240,11 @@ state of each line.
   binary's until the switch of track C.
 - **C. The compiler written in Renyi (self-hosting)**: stages 11, 12,
   14, 15 (AD1), 27. The lexer, the parser, the checker and the emitter
-  exist and are judged byte-equal; the speed round is what remains
-  before the switch (10 times the Rust front end's time at AU45; 3 is
-  the gate); the lexer's rewrite is in (AU46), the parser's is under
-  way (AU47).
+  exist and are judged byte-equal; the speed round's list (AU36) is
+  done: the lexer's rewrite (AU46), the parser's (AU47, AU48), the
+  variant test in place (AU49) and the expansion of small callees (AU50,
+  off by its measure); the ratio is 7.4 against the gate of 3, and the
+  owner's evaluation is next.
 - **D. The VM and its speed**: stages 7, 13, 16, 20, 21, 23, 24, 26,
   27 (B3). Measured by AT1's rule on the frozen self-check and by the
   four benchmarks; every stage's numbers are in its decision entry.
@@ -257,12 +264,13 @@ state of each line.
 
 ## 4. What is next
 
-In the order the owner set (AU36): the rest of stage 27 (B3), each
-measured by AT1's rule and recording the ratio of the compiler written
-in Renyi to the Rust front end (AU36 iii); then, when the ratio is
-within 3, the switch of the binary's front end to the compiler written
-in Renyi (AU35 ii). Candidates after it, none decided: the levers the
-study named beyond B3 (values unboxed across calls, an optimizing tier,
-interned names and a faster hash in the Renyi checker), the C API, the
-language server's completion, the showcase application, the WASM target
-of M6.
+The list the owner set (AU36) is finished with stage 27 short of its
+gate (the ratio 7.4 against 3), and the owner's evaluation is next
+(AU36's answer 4, 2026-10-11): whether the gate changes, which of the
+levers the handoff's "After B3: the evaluation" names is tried next (the
+compiler's own code, the borrowing and the admission of the expansion,
+the compile cost of the Cranelift tier, values unboxed across calls,
+interned names and a faster hash in the Renyi checker), or whether the
+binary switches to the compiler written in Renyi at a ratio above 3
+(AU35 ii). Candidates after it, none decided: the C API, the language
+server's completion, the showcase application, the WASM target of M6.
