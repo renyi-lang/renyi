@@ -42,8 +42,8 @@ use crate::native::{DeoptPoint, DEPTH_LIMIT};
 use crate::value::layout::{
     COUNTED_OR_INTEGER, INT_PAYLOAD, INT_SMALL, INT_TAG, ITER_ITEMS, ITER_LEN, ITER_POSITION,
     NATIVE_ITERATOR, NATIVE_PAYLOAD, NATIVE_TAG, PAYLOAD, RC_VALUE, RECORD_FIELDS, RECORD_TAG,
-    RECORD_TY, SIZE, TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_INTEGER, TAG_LIST, TAG_NATIVE,
-    TAG_NOTHING, TAG_RECORD, TAG_SMALL_TEXT,
+    RECORD_TY, SIZE, TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_GUARDED, TAG_INTEGER, TAG_LIST,
+    TAG_NATIVE, TAG_NOTHING, TAG_RECORD, TAG_SMALL_TEXT, TAG_VARIANT,
 };
 use crate::value::Value;
 use crate::vm::{unit_slot, CallKind, FieldSite, Frame, InPlace, NativeState, Vm};
@@ -3088,11 +3088,72 @@ impl Gen<'_, '_> {
                 self.exit_with(status);
             }
             Op::IsVariant(tag) => {
+                // the top's tags read in place (decision AU49): a typed top
+                // is no variant; a variant's block holds its tag at
+                // `RECORD_TAG`; a guarded value, which the helper unwraps,
+                // takes the helper as the cold path; the top is released
+                if matches!(self.state.last(), Some(Abs::Int | Abs::Bool | Abs::Float)) {
+                    self.state.pop();
+                    let no = self.u8(0);
+                    self.push_bool(no);
+                    return;
+                }
+                self.box_top(1);
+                self.state.pop();
+                // the value lies above the state's height
+                let height = self.height();
+                let at = self.address_at(height);
+                let flags = MemFlagsData::trusted();
+                let kind = self.tag_at(at, 0);
+                let variant = self.b.create_block();
+                let other = self.b.create_block();
+                let guarded = self.b.create_block();
+                let answer = self.b.create_block();
+                self.b.append_block_param(answer, types::I8);
+                let join = self.b.create_block();
+                self.b.append_block_param(join, types::I8);
+                self.b.set_cold_block(guarded);
+                let is_variant = self
+                    .b
+                    .ins()
+                    .icmp_imm_s(IntCC::Equal, kind, TAG_VARIANT as i64);
+                self.b.ins().brif(is_variant, variant, &[], other, &[]);
+                self.b.seal_block(variant);
+                self.b.seal_block(other);
+                self.switch_to(variant);
+                let rc = self.b.ins().load(self.pointer, flags, at, PAYLOAD);
+                let held = self.b.ins().load(types::I64, flags, rc, RECORD_TAG);
+                let fits = self.b.ins().icmp_imm_s(IntCC::Equal, held, *tag as i64);
+                self.b.ins().jump(answer, &[fits.into()]);
+                self.switch_to(other);
+                let is_guarded = self
+                    .b
+                    .ins()
+                    .icmp_imm_s(IntCC::Equal, kind, TAG_GUARDED as i64);
+                let no = self.u8(0);
+                self.b
+                    .ins()
+                    .brif(is_guarded, guarded, &[], answer, &[no.into()]);
+                self.b.seal_block(guarded);
+                self.b.seal_block(answer);
+                self.switch_to(answer);
+                let fits = self.b.block_params(answer)[0];
+                self.release(at);
+                self.b.ins().jump(join, &[fits.into()]);
+                // the helper pops the value: the stack's length includes it
+                self.switch_to(guarded);
+                self.store_height(height + 1);
                 let out = self.out_address();
                 let tag_value = self.u32(*tag as u32);
-                self.helper_on_stack("rt_is_variant", 1, &[tag_value, out]);
-                let value = self.out_read(types::I8);
-                self.push_bool(value);
+                let vm = self.vm;
+                self.call("rt_is_variant", &[vm, tag_value, out]);
+                let unwrapped = self.out_read(types::I8);
+                self.b.ins().jump(join, &[unwrapped.into()]);
+                self.b.seal_block(join);
+                self.switch_to(join);
+                let fits = self.b.block_params(join)[0];
+                self.store_height(height);
+                self.push_bool(fits);
             }
             Op::IsNothing | Op::IsFailure => {
                 // the top's tag read, the top dropped; a typed top is

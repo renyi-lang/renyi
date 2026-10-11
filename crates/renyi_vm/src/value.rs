@@ -485,6 +485,9 @@ pub mod layout {
     pub const INT_BIG: u8 = 1;
     pub const TAG_RECORD: u8 = 12;
     pub const TAG_VARIANT: u8 = 13;
+    /// A value with origins (decision P3), the wrapper `plain()` unwraps:
+    /// a variant test in place sends it to the helper (decision AU49).
+    pub const TAG_GUARDED: u8 = 19;
     /// A list's tag: its payload an `Rc<Vec<Value>>`, whose vector's
     /// fields Rust lays out as it chooses (`list_layout`, decision AU34).
     pub const TAG_LIST: u8 = 7;
@@ -1013,6 +1016,11 @@ mod layout_tests {
         assert_eq!(tag(&Value::Float(1.5)), TAG_FLOAT);
         assert_eq!(tag(&Value::failure(Value::Nothing)), TAG_FAILURE);
         assert_eq!(tag(&Value::list(vec![Value::Nothing])), TAG_LIST);
+        assert_eq!(tag(&Value::variant(4, 2, vec![])), TAG_VARIANT);
+        assert_eq!(
+            tag(&Value::Guarded(Rc::new((1, Value::Nothing)))),
+            TAG_GUARDED
+        );
         assert_eq!(
             payload_word(&Value::Boolean(true), PAYLOAD as usize) as u8,
             1

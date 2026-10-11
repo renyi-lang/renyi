@@ -45,8 +45,8 @@ use crate::native::runtime::{
 use crate::native::DEPTH_LIMIT;
 use crate::value::layout::{
     COUNTED_OR_INTEGER, INT_PAYLOAD, INT_SMALL, INT_TAG, PAYLOAD, RECORD_FIELDS, RECORD_TAG,
-    RECORD_TY, SIZE, TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_INTEGER, TAG_LIST, TAG_NOTHING,
-    TAG_RECORD, TAG_SMALL_TEXT,
+    RECORD_TY, SIZE, TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_GUARDED, TAG_INTEGER, TAG_LIST,
+    TAG_NOTHING, TAG_RECORD, TAG_SMALL_TEXT, TAG_VARIANT,
 };
 use crate::vm::{unit_slot, CallKind, InPlace};
 use x64::{host_abi, Abi, Asm, Cond, Label, Reg};
@@ -134,6 +134,9 @@ enum Cold {
         count: usize,
         pc: usize,
     },
+    /// A variant test on a guarded value: through `rt_is_variant`, which
+    /// unwraps it (decision AU49).
+    Guarded { label: Label, done: Label, tag: u16 },
     /// A direct call whose callee handed its frame to the interpreter or
     /// was interrupted, the status in `eax`.
     Handed {
@@ -1246,6 +1249,11 @@ impl Gen<'_> {
                 self.asm.mov_ri32(Reg::Rax, FAILURE as u32);
                 self.check(pc);
             }
+            Cold::Guarded { label, done, tag } => {
+                self.asm.bind(label);
+                self.call("rt_is_variant", &[Arg::Vm, Arg::Imm(tag as u64), Arg::Out]);
+                self.asm.jmp(done);
+            }
             Cold::Retain { label, done, at } => {
                 self.asm.bind(label);
                 self.asm.cmp_m8i(at.0, at.1 + INT_TAG, INT_SMALL);
@@ -1736,10 +1744,37 @@ impl Gen<'_> {
                 self.terminated = true;
             }
             Op::IsVariant(tag) => {
-                self.call("rt_is_variant", &[Arg::Vm, Arg::Imm(*tag as u64), Arg::Out]);
+                // in place (decision AU49): the kind read, a variant's block
+                // tag compared with the op's, the answer kept in the out
+                // slot while the value is released, then boxed where the
+                // value lay; a guarded value takes the helper out of line
                 let at = self.operand(self.depth - 1);
+                let other = self.asm.label();
+                let answer = self.asm.label();
+                let helper = self.asm.label();
+                let done = self.asm.label();
+                self.asm.cmp_m8i(at.0, at.1, TAG_VARIANT);
+                self.asm.jcc(Cond::Ne, other);
+                self.asm.mov_rm(SCRATCH2, at.0, at.1 + PAYLOAD);
+                self.asm.mov_rm(SCRATCH, SCRATCH2, RECORD_TAG);
+                self.asm.cmp_ri(SCRATCH, *tag as i32);
+                self.asm.setcc(Cond::E, SCRATCH);
+                self.asm.jmp(answer);
+                self.asm.bind(other);
+                self.asm.cmp_m8i(at.0, at.1, TAG_GUARDED);
+                self.asm.jcc(Cond::E, helper);
+                self.asm.zero(SCRATCH);
+                self.asm.bind(answer);
+                self.asm.mov_m8r(Reg::Rsp, self.layout.out, SCRATCH);
+                self.release(at);
+                self.asm.bind(done);
                 self.box_out(TypedKind::Bool, at);
                 self.store_len();
+                self.cold.push(Cold::Guarded {
+                    label: helper,
+                    done,
+                    tag: *tag,
+                });
             }
             Op::IsNothing | Op::IsFailure => {
                 let name = if matches!(self.code.ops[pc], Op::IsNothing) {

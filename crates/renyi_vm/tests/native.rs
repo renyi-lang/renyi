@@ -1217,3 +1217,96 @@ end
     assert_eq!(outcome, RunOutcome::Finished);
     assert_eq!(printed, "5412023\n");
 }
+
+#[test]
+fn variant_tests_in_place_on_fieldless_and_fielded_variants_and_guarded_values() {
+    // a `match` arm tests a variant's tag in place (decision AU49):
+    // fieldless variants, variants with fields, and a guarded value, which
+    // takes the helper; both tiers print what the interpreter prints
+    let dir = scratch("variant-tests");
+    std::fs::create_dir_all(format!("{dir}/data")).expect("the data directory");
+    std::fs::create_dir_all(format!("{dir}/out")).expect("the out directory");
+    std::fs::write(
+        format!("{dir}/data/value.json"),
+        r#"{"kind": "box", "items": [1, 2]}"#,
+    )
+    .expect("the data");
+    let source = format!(
+        r#"module demo
+  purpose: Variants tested in loops, fieldless and with fields, and a guarded JSON value through the helper (decision AU49).
+
+import std.console
+import std.filesystem exposing Path, FileError
+import std.json exposing JsonValue, JsonError
+
+type Shape is one of
+  purpose: A few shapes.
+  Dot
+  Line(length: Integer)
+  Box(width: Integer, height: Integer)
+  Blank
+end
+
+function weight(shape: Shape) returns Integer
+  purpose: A number per kind of shape.
+
+  match shape
+    when Dot then return 1
+    when Line(length) then return length
+    when Box(width, height) then return width * height
+    when Blank then return 0
+  end
+end
+
+function kind_number(value: JsonValue) returns Integer
+  purpose: A number per kind of JSON value: a decision on the data, nothing of it.
+
+  match value
+    when JsonObject then return 1
+    when JsonArray then return 2
+    when JsonText then return 3
+    when JsonNumber then return 4
+    when JsonBoolean then return 5
+    when JsonNull then return 6
+  end
+end
+
+function weigh(shapes: List of Shape, turns: Integer) returns Integer
+  purpose: The shapes weighed this many times, the turn added each time.
+
+  let mutable total be 0
+  for each turn from 1 to turns
+    for each shape in shapes
+      change total to total + weight(shape)
+    end
+    change total to total + turn
+  end
+  return total
+end
+
+function classify(document: JsonValue, turns: Integer) returns Integer
+  purpose: The document classified this many times, the turn added each time.
+
+  let mutable kinds be 0
+  for each turn from 1 to turns
+    change kinds to kinds + kind_number(document) + turn
+  end
+  return kinds
+end
+
+public function main() or fails with FileError or JsonError needs console, filesystem.read("{dir}/data") only to filesystem.write("{dir}/out"), filesystem.write("{dir}/out")
+  purpose: Weigh the shapes and classify the guarded document, many times each, and print both counts.
+
+  let shapes be [Dot, Line(length: 3), Box(width: 2, height: 5), Blank, Line(length: 4)]
+  let text be filesystem.read_text(Path("{dir}/data/value.json")) otherwise fail
+  let document: JsonValue be json.parse(text) otherwise fail
+  console.print("{{weigh(shapes: shapes, turns: 200)}} {{classify(document: document, turns: 200)}}")
+end
+"#
+    );
+    let (outcome, printed) = both_ways(&source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    // 200 turns over the five shapes (18 a turn) plus the turns, and 200
+    // classifications of an object (1 each) plus the turns
+    assert_eq!(printed, "23700 20300\n");
+}
