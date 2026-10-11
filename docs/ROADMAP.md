@@ -203,10 +203,11 @@ where one decided, the status. The dates are those of the decisions.
     library as it is: one loop, scans without a call per character,
     the word lists as sets, a step's product a sum; the lexer alone on
     `compiler/bodies.ry` 983 to 514 million instructions (-48%),
-    byte-equal by the judges (AU46). Next: B2, the parser's keywords
-    as variants without fields and a cursor that builds no record per
-    look; B3, small functions inlined on the Cranelift tier (AU36,
-    stage 6). The gate:
+    byte-equal by the judges (AU46); B2, the parser, under way: its
+    keyword and symbol tests and token reads cut first (AU47, the
+    parser alone -13%), a cursor that builds no record per look and
+    the keywords as variants without fields next; then B3, small
+    functions inlined on the Cranelift tier (AU36, stage 6). The gate:
     the compiler written in Renyi within 3 times the Rust front end's
     time on `compiler/bodies.ry` (10.0 times at AU45 against AU34's
     binary), then the binary switches to it (AU35 ii).
@@ -229,7 +230,8 @@ state of each line.
   14, 15 (AD1), 27. The lexer, the parser, the checker and the emitter
   exist and are judged byte-equal; the speed round is what remains
   before the switch (10 times the Rust front end's time at AU45; 3 is
-  the gate); the lexer's rewrite is in (AU46), the parser's is next.
+  the gate); the lexer's rewrite is in (AU46), the parser's is under
+  way (AU47).
 - **D. The VM and its speed**: stages 7, 13, 16, 20, 21, 23, 24, 26,
   27 (B3). Measured by AT1's rule on the frozen self-check and by the
   four benchmarks; every stage's numbers are in its decision entry.

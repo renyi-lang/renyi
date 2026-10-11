@@ -30,8 +30,16 @@ product a sum; the lexer alone on `compiler/bodies.ry` 983 to 514
 million instructions, -48%, byte-equal by the judges; the Renyi checker
 756 to 649 ms on `compiler/bodies.ry`, the gate ratio 10.0 to 8.9
 against AU34's binary, the parse row 313 to 258 ms; the same section,
-"B1 as built"), with B2 planned there ("B2, the
-stage next").
+"B1 as built"); then the first cuts of B2, the Renyi parser's keyword
+and symbol tests without a variant built per test and its token reads
+without nested calls (decision AU47: the parser alone 1,197 to 1,039
+million instructions per parse of `bodies.ry`, -13%; the Renyi checker
+649 to 630 ms, the gate ratio 8.9 to 8.6),
+the rest of B2 planned in the same section ("B2, the stage under
+way"). The same day the owner asked for the README's opening as the
+design philosophy and the selling points (68c5cd2) and for the site
+redesigned by an Opus subagent, minimal, modern and premium (the
+record of the session below); both are in.
 Session 12, in the cloud environment,
 put the three questions after AU27 to the owner (decision AU28: the
 counts in place in template code next, then the natives building a
@@ -246,11 +254,12 @@ and push there directly.
    `bench/selfcheck/` is made (AU41), the Rust front end's part of
    the plan is done, B5, the comparison of two boxed Integers inline
    in both tiers, is in (AU45), and B1, the Renyi lexer rewritten for
-   speed, is in (AU46). The work now is B2, the Renyi parser: its
-   keywords and symbols as variants without fields compared by tag, a
-   cursor that builds no `Peek` per look; the paragraph "B2, the stage
-   next" of that section is the plan, written to be followed without
-   this conversation. Then B3.
+   speed, is in (AU46), and B2, the Renyi parser, is under way: its
+   first cuts are in (AU47) and the rest, a cursor that builds no
+   `Peek` per look and the keywords and symbols as variants without
+   fields compared by tag, is the work now; the paragraph "B2, the
+   stage under way" of that section is the plan, written to be
+   followed without this conversation. Then B3.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
@@ -3049,7 +3058,7 @@ and against the stage's own binary.
 
 **Where the stages stand** (end of session 13): A0 (AU37), A1 (AU38),
 both parts of A4 (AU39, AU42), A2 (AU44), B5 (AU45) and B1 (AU46) are
-in, the frozen self-check too (AU41); `renyi check compiler/bodies.ry` 437 million
+in, the frozen self-check too (AU41), and B2's first cuts (AU47); `renyi check compiler/bodies.ry` 437 million
 instructions and 72 ms on AU34's binary, 153 million and 34.5 ms now;
 the ratio of AU36 (iii) 10.7 times against AU34's Rust front end (the
 Renyi side has not changed yet) and 21.7 times against the same
@@ -3169,23 +3178,32 @@ lex of `bodies.ry` (983 to 514 million instructions), the token dump
 gate ratio 10.0 to 8.9 (checking), the parse row 5.3 to 4.2, the
 compile row 10.5 to 9.1, all against AU34's binary on this boot.
 
-**B2, the stage next** (AU36, stage 6 of the list above): the Renyi
-parser, `compiler/parser.ry` (3,452 lines), with the judges keeping it
-byte-equal to `renyi parse --json` on every program, rejected ones
-included (AD1). The study measured the parser at 1,568 million
-instructions on `bodies.ry` (17,900 a token, 17 times the Rust parser)
-and estimated 800 million after B2. Where the cost is, in the file as
-it stands: the `Cursor` record (tokens, position, nesting,
-declarations, diagnostics, chars) is rebuilt by `cursor with position:
-...` at every step (34 sites) and `peek` builds a `Peek` record
-(token, cursor) at every look (54 call sites), after reading the token
-through `token_at` (`cursor.tokens.at(index)`, a match with a crash
-arm) and `token_under`; a keyword is tested by `is_word(token,
-spelling)`, which is `token.kind is Word(spelling: spelling)`: it builds
-a `Word` variant and compares it structurally, and `is_symbol` does
-the same with `Symbol(text: text)`; `TokenKind` carries the spelling
-in `Word(spelling)` and the text in `Symbol(text)`, so the tag alone
-decides nothing. The plan, as AU36 set it: (i) keywords and symbols as
+**B2, the stage under way** (AU36, stage 6 of the list above): the
+Renyi parser, `compiler/parser.ry` (3,460 lines), with the judges
+keeping it byte-equal to `renyi parse --json` on every program,
+rejected ones included (AD1). The study measured the parser at 1,568
+million instructions on `bodies.ry` (17,900 a token, 17 times the
+Rust parser) and estimated 800 million after B2; the driver
+`compiler/parse_only.ry <file> [turns]` (the file lexed once, parsed
+`turns` times) measures it alone at 1,197 million in the steady state
+before the first cuts and 1,039 after them (AU47: `is_word` and
+`is_symbol` match the kind instead of building a variant to compare
+with, `token_at` is an `otherwise` and `peek` reads its token
+itself). The quick judge of the session for the tree, `renyi parse
+--json <file>` against `renyi run compiler/parse.ry <file>` on every
+program and the library's files with `--declarations` (a script in
+the scratchpad; the real judges are `cargo test -p renyi --test
+selfhost`), ran after each cut. Where the cost is now, by `renyi run
+--profile compiler/parse_only.ry compiler/bodies.ry 3`: `peek` 16%
+(a `Peek` record built per look, 54 call sites), `binary_chain` 6%,
+`token_at` and `after_breaks` 9% together, `is_symbol` and `is_word`
+7% (a call each, the text compared), the `Cursor` record (tokens,
+position, nesting, declarations, diagnostics, chars) rebuilt by
+`cursor with position: ...` at 34 sites, a copy whenever the cursor is
+shared (AU11 updates it in place only when held once); `TokenKind`
+carries the spelling in `Word(spelling)` and the text in
+`Symbol(text)`, so a keyword test compares texts. The rest of the plan,
+as AU36 set it: (i) keywords and symbols as
 variants without fields, compared by tag: a `TokenKind` with one
 variant per reserved word and phrase and per symbol is a change to
 `compiler/lexer.ry`'s `TokenKind` and to everything that reads
@@ -4815,7 +4833,42 @@ holds between calls.
   word lists as sets, the plain runs of text literals sliced; the
   lexer alone 983 to 514 million instructions per lex of `bodies.ry`
   (-48%), byte-equal by the judges; `compiler/lex_only.ry`, the
-  measuring driver; CLAUDE.md. The measure: the Renyi checker 756 to 649 ms on `compiler/bodies.ry`, the gate ratio 10.0 to 8.9 against AU34's binary, the parse row 313 to 258 ms.
+  measuring driver; CLAUDE.md. The measure: the Renyi checker 756 to
+  649 ms on `compiler/bodies.ry`, the gate ratio 10.0 to 8.9 against
+  AU34's binary, the parse row 313 to 258 ms.
+- **Decision AU47**: B2's first cuts, the parser's keyword and symbol
+  tests without a variant built per test, `token_at` as an
+  `otherwise`, `peek` reading its token itself; the parser alone
+  1,197 to 1,039 million instructions per parse of `bodies.ry`
+  (-13%), byte-equal by the judges; `compiler/parse_only.ry`, the
+  driver; CLAUDE.md. The measure: the Renyi checker 649 to 630 ms on
+  `bodies.ry`, the gate ratio 8.9 to 8.6 against AU34's binary.
+- **The README's opening** at the owner's request (68c5cd2): the design
+  philosophy as the selling points, five points a reviewer can check,
+  the comparison with Python, TypeScript, Rust and shell for the one
+  job of a program an agent wrote and a person must trust, and the gap
+  the language closes; all of it derived from `08-positioning.md`,
+  nothing claimed beyond what the implementation keeps; the status
+  paragraph points at the roadmap.
+- **The site redesigned** at the owner's request ("minimal, modern,
+  premium; few short pages"), by an Opus subagent at medium effort
+  under a brief that held it to the positioning's wording and the
+  README's, with the build unchanged (`python tools/site.py`, the
+  `markdown` package alone, every page at its path, 50 pages): a new
+  stylesheet in `tools/site.py` (the system font stack, one accent, a
+  44rem measure for the documents, light and dark through
+  `prefers-color-scheme`, every table in its own scroll container,
+  heading links, a sticky header with the navigation and the
+  repository, a footer with the licence) and a new front page,
+  `docs/index.md`, written as HTML blocks: the one line as the
+  heading, the three sentences, the code sample beside "what a program
+  may do is in its signature", the four points as a grid, the gap, the
+  install one-liners, six links. Reviewed with screenshots from the
+  container's Chromium through `playwright-core` installed in the
+  scratchpad (phone, tablet, laptop, desktop, dark): no page wider than
+  its viewport; two fixes after the review, the desktop navigation
+  (one row, scrolling inside itself when it does not fit, with its
+  first entry visible) and the sample's long `purpose:` line wrapped.
 - **`docs/ROADMAP.md`** at the owner's request ("a complete roadmap
   file, numbered, grouped by track"): the milestones, the 26 stages in
   order with their decisions and status, the eight tracks, what is
@@ -6186,6 +6239,14 @@ on a fresh clone).
   has rustc 1.97.0; the CI toolchain 1.94.1 is installed beside it
   (`rustup toolchain install 1.94.1 -c clippy -c rustfmt`) for the
   gates, with a target directory of its own.
+- On 2026-10-11 the owner asked, after a progress list and two
+  explanations (what the front end and the VM are, why the VM stays in
+  Rust and why there is one), for the design philosophy on the README
+  as the selling points, with the comparison to Python and Rust and
+  the gap filled, and for the site rewritten by an Opus subagent at
+  medium effort, "minimal, modern, premium, few short pages"; and to
+  go on stage by stage, pushing each. A roadmap file numbered and
+  grouped by track was asked for the same day (`docs/ROADMAP.md`).
 - The pay-per-token API keys are not spent by default (ruled 2026-10-06):
   subscription quota first (Claude Code subagents, the Codex CLI), the
   keys only when the owner says so in the same request, with the volume
