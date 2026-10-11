@@ -268,9 +268,9 @@ and push there directly.
    end; AU58 corrects it. The binaries the measures need are not in a
    new container: build the reference from commit 44782aa (AU34's
    binary; `git worktree add`, `cargo build --release` there, the
-   binary copied to `target/renyi-au34`) and the base from this
-   session's last commit, and keep a copy of the base before changing
-   the code.
+   binary copied to `target/renyi-au34`, then the worktree and its
+   target directory deleted, item 4) and the base from this session's
+   last commit, and keep a copy of the base before changing the code.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
