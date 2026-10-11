@@ -38,8 +38,9 @@ million instructions per parse of `bodies.ry`, -13%; the Renyi checker
 the rest of B2 planned in the same section ("B2, the stage under
 way"). The same day the owner asked for the README's opening as the
 design philosophy and the selling points (68c5cd2) and for the site
-redesigned by an Opus subagent, minimal, modern and premium (the
-record of the session below); both are in.
+redesigned by an Opus subagent, minimal, modern and premium, then a
+second round with the words cut and the visuals strengthened (the
+record of the session below, c2a082a and af8bee4); both are in.
 Session 12, in the cloud environment,
 put the three questions after AU27 to the owner (decision AU28: the
 counts in place in template code next, then the natives building a
@@ -4869,6 +4870,19 @@ holds between calls.
   its viewport; two fixes after the review, the desktop navigation
   (one row, scrolling inside itself when it does not fit, with its
   first entry visible) and the sample's long `purpose:` line wrapped.
+  Round two the same day at the owner's request ("cut the words,
+  strengthen the visuals; Opus again, you review"), af8bee4: the lead
+  paragraph gone, the four points a title of a few words and one
+  sentence each, the gap two lines, the install three labelled
+  commands, the links labels alone; the heading larger, the code
+  sample the page's picture with its signature lines tinted and ruled
+  in the accent (`.sig`, `.sig.needs`, the tint a variable per
+  scheme), large muted numerals, more space between the sections. The
+  review measured the point titles with Playwright (the third wrapped
+  to two lines in the four columns at every desktop width): the titles
+  a little smaller, the column gap 2rem and the four columns from
+  1200px, every title on one line; the five CSS lines over 100
+  characters rewrapped.
 - **`docs/ROADMAP.md`** at the owner's request ("a complete roadmap
   file, numbered, grouped by track"): the milestones, the 26 stages in
   order with their decisions and status, the eight tracks, what is
