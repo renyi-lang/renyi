@@ -41,11 +41,10 @@ public type Lexed
   has diagnostics: List of Diagnostic
 end
 
-type Step
-  purpose: What one step of the lexer produced and where the next step starts.
-  has tokens: List of Token
-  has diagnostics: List of Diagnostic
-  has next: Integer
+type Step is one of
+  purpose: One step's product: a token, or tokens and diagnostics with where the next step starts.
+  Single(token: Token)
+  Several(tokens: List of Token, diagnostics: List of Diagnostic, next: Integer)
 end
 
 type Phrase
@@ -201,6 +200,20 @@ let operator_tail: List of Text be ["=", "<", ">", "!", "&", "|"]
 
 let carriage_return_base64: Text be "DQ=="
 
+let reserved_set: Set of Text be reserved_words.to_set()
+
+let phrase_set: Set of Text be phrases.to_set()
+
+let phrase_starter_set: Set of Text be phrase_starters.to_set()
+
+let symbol_set: Set of Text be symbols.to_set()
+
+let lower_letters: Text be "abcdefghijklmnopqrstuvwxyz"
+
+let upper_letters: Text be "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+let digits: Text be "0123456789"
+
 public function lex(source: Text) returns Lexed
   purpose: The tokens of a whole source text, ending with EndOfFile, and every problem met.
 
@@ -212,38 +225,79 @@ public function lex(source: Text) returns Lexed
 end
 
 function lex_range(chars: List of Text, start: Integer, limit: Integer) returns Lexed
+  purpose: One loop over the characters: a blank skipped and a line break taken here, else a step.
+
   let mutable tokens: List of Token be []
   let mutable diagnostics: List of Diagnostic be []
+  let mutable previous: maybe Token be nothing
   let mutable position be start
   repeat until position is at least limit
-    let step be next_step(chars: chars, position: position, limit: limit, previous: tokens.last())
-    change tokens to tokens.append_all(step.tokens)
-    change diagnostics to diagnostics.append_all(step.diagnostics)
-    change position to step.next
+    let ch be chars.at(position) otherwise ""
+    if ch is " " then
+      change position to position + 1
+    otherwise if ch is "\n" then
+      let span be Span(start: position, stop: position + 1)
+      let token be Token(kind: LineBreak, text: "\n", span: span)
+      change tokens to tokens.append(token)
+      change previous to token
+      change position to position + 1
+    otherwise
+      let step be next_step(
+        chars: chars,
+        position: position,
+        limit: limit,
+        previous: previous,
+        ch: ch
+      )
+      match step
+        when Single(token: token) then
+          change tokens to tokens.append(token)
+          change previous to token
+          change position to token.span.stop
+        when Several(tokens: more, diagnostics: found, next: next) then
+          change tokens to tokens.append_all(more)
+          change diagnostics to diagnostics.append_all(found)
+          change previous to last_of(tokens: more, fallback: previous)
+          change position to next
+      end
+    end
   end
   return Lexed(tokens: tokens, diagnostics: diagnostics)
 end
 
-function next_step(chars: List of Text, position: Integer, limit: Integer, previous: maybe Token)
-  returns Step
+function last_of(tokens: List of Token, fallback: maybe Token) returns maybe Token
+  purpose: The last of the tokens, or the fallback when there is none.
 
-  let ch be char_at(chars: chars, index: position)
-  if ch is " " then return Step(tokens: [], diagnostics: [], next: position + 1) end
-  if ch is "\n" then
-    return single(kind: LineBreak, chars: chars, start: position, stop: position + 1)
+  match tokens.last()
+    when some(token) then return token
+    when nothing then return fallback
   end
-  if ch is "#" then return lex_comment(chars: chars, position: position, limit: limit) end
+end
+
+function next_step(
+  chars: List of Text,
+  position: Integer,
+  limit: Integer,
+  previous: maybe Token,
+  ch: Text
+)
+  returns Step
+  purpose: The step at a character that is neither a blank nor a line break, the likeliest first.
+
+  if lower_letters.contains(ch) then
+    return lex_word(chars: chars, position: position, limit: limit, previous: previous)
+  end
+  if symbol_set.contains(ch) then
+    return single(kind: Symbol(text: ch), chars: chars, start: position, stop: position + 1)
+  end
   if ch is "\"" then
     return lex_text(chars: chars, position: position, limit: limit, previous: previous)
   end
-  if is_digit(ch) then return lex_number(chars: chars, position: position, limit: limit) end
-  if is_lower(ch) then
-    return lex_word(chars: chars, position: position, limit: limit, previous: previous)
+  if upper_letters.contains(ch) then
+    return lex_type_name(chars: chars, position: position, limit: limit)
   end
-  if is_upper(ch) then return lex_type_name(chars: chars, position: position, limit: limit) end
-  if symbols.contains(ch) then
-    return single(kind: Symbol(text: ch), chars: chars, start: position, stop: position + 1)
-  end
+  if digits.contains(ch) then return lex_number(chars: chars, position: position, limit: limit) end
+  if ch is "#" then return lex_comment(chars: chars, position: position, limit: limit) end
   return other_step(chars: chars, position: position, limit: limit, ch: ch)
 end
 
@@ -258,7 +312,7 @@ function other_step(chars: List of Text, position: Integer, limit: Integer, ch: 
       span: span,
       fix: "replace the tab with spaces"
     )
-    return Step(tokens: [], diagnostics: [diagnostic], next: position + 1)
+    return Several(tokens: [], diagnostics: [diagnostic], next: position + 1)
   end
   if ch.to_bytes().to_base64() is carriage_return_base64 then
     let diagnostic be report.bare_error(
@@ -266,13 +320,13 @@ function other_step(chars: List of Text, position: Integer, limit: Integer, ch: 
       message: "carriage return; Renyi files use LF line endings",
       span: span
     )
-    return Step(tokens: [], diagnostics: [diagnostic], next: position + 1)
+    return Several(tokens: [], diagnostics: [diagnostic], next: position + 1)
   end
   if ch is "=" or ch is "<" or ch is ">" or ch is ";" or operator_symbols.contains(ch) then
     return symbol_error(chars: chars, position: position, limit: limit, ch: ch)
   end
   if ch is "_" then
-    let stop be scan_while(chars: chars, start: position, limit: limit, keep: is_word_char)
+    let stop be scan_word(chars: chars, start: position, limit: limit)
     let diagnostic be report.error(
       code: "identifier-shape",
       message: "a name cannot start with an underscore",
@@ -293,7 +347,7 @@ end
 function symbol_error(chars: List of Text, position: Integer, limit: Integer, ch: Text) returns Step
   purpose: A symbol of another language, with the following operator characters as one error token.
 
-  let stop be scan_while(chars: chars, start: position + 1, limit: limit, keep: is_operator_tail)
+  let stop be scan_operator_tail(chars: chars, start: position + 1, limit: limit)
   let found be slice(chars: chars, start: position, stop: stop)
   let single_message be
     if ch is "<" or ch is ">" then "`<` and `>` are not Renyi" otherwise "`{ch}` is not Renyi" end
@@ -336,7 +390,7 @@ function error_token(chars: List of Text, start: Integer, stop: Integer, diagnos
     text: slice(chars: chars, start: start, stop: stop),
     span: Span(start: start, stop: stop)
   )
-  return Step(tokens: [token], diagnostics: [diagnostic], next: stop)
+  return Several(tokens: [token], diagnostics: [diagnostic], next: stop)
 end
 
 function single(kind: TokenKind, chars: List of Text, start: Integer, stop: Integer) returns Step
@@ -345,13 +399,18 @@ function single(kind: TokenKind, chars: List of Text, start: Integer, stop: Inte
     text: slice(chars: chars, start: start, stop: stop),
     span: Span(start: start, stop: stop)
   )
-  return Step(tokens: [token], diagnostics: [], next: stop)
+  return Single(token: token)
 end
 
 function flagged(step: Step, diagnostic: Diagnostic) returns Step
   purpose: A step with a diagnostic about the token it produced all the same.
 
-  return step with diagnostics: step.diagnostics.append(diagnostic)
+  match step
+    when Single(token: token) then
+      return Several(tokens: [token], diagnostics: [diagnostic], next: token.span.stop)
+    when Several(tokens: more, diagnostics: found, next: next) then
+      return Several(tokens: more, diagnostics: found.append(diagnostic), next: next)
+  end
 end
 
 function char_at(chars: List of Text, index: Integer) returns Text
@@ -365,51 +424,103 @@ function slice(chars: List of Text, start: Integer, stop: Integer) returns Text
 end
 
 function is_lower(ch: Text) returns Boolean
-  return ch is not "" and "abcdefghijklmnopqrstuvwxyz".contains(ch)
+  return ch is not "" and lower_letters.contains(ch)
 end
 
 function is_upper(ch: Text) returns Boolean
-  return ch is not "" and "ABCDEFGHIJKLMNOPQRSTUVWXYZ".contains(ch)
+  return ch is not "" and upper_letters.contains(ch)
 end
 
 function is_digit(ch: Text) returns Boolean
-  return ch is not "" and "0123456789".contains(ch)
+  return ch is not "" and digits.contains(ch)
 end
 
-function is_word_char(ch: Text) returns Boolean
-  return is_lower(ch) or is_digit(ch) or ch is "_"
-end
-
-function is_alphanumeric(ch: Text) returns Boolean
-  return is_lower(ch) or is_upper(ch) or is_digit(ch)
-end
-
-function is_alphanumeric_or_underscore(ch: Text) returns Boolean
-  return is_alphanumeric(ch) or ch is "_"
-end
-
-function is_digit_or_underscore(ch: Text) returns Boolean
-  return is_digit(ch) or ch is "_"
-end
-
-function is_space(ch: Text) returns Boolean
-  return ch is " "
-end
-
-function is_operator_tail(ch: Text) returns Boolean
-  return ch is not "" and operator_tail.contains(ch)
-end
-
-function scan_while(
-  chars: List of Text,
-  start: Integer,
-  limit: Integer,
-  keep: function(Text) returns Boolean
-)
-  returns Integer
+function scan_word(chars: List of Text, start: Integer, limit: Integer) returns Integer
+  purpose: The end of the run of lowercase letters, digits and underscores from start.
 
   let mutable position be start
-  repeat until position is at least limit or not keep(char_at(chars: chars, index: position))
+  let mutable scanning be position is less than limit
+  repeat until not scanning
+    let ch be chars.at(position) otherwise ""
+    if lower_letters.contains(ch) or ch is "_" or digits.contains(ch) then
+      change position to position + 1
+      change scanning to position is less than limit
+    otherwise
+      change scanning to false
+    end
+  end
+  return position
+end
+
+function scan_name_tail(chars: List of Text, start: Integer, limit: Integer) returns Integer
+  purpose: The end of the run of letters of either case, digits or underscores from start.
+
+  let mutable position be start
+  let mutable scanning be position is less than limit
+  repeat until not scanning
+    let ch be chars.at(position) otherwise ""
+    let letter be lower_letters.contains(ch) or upper_letters.contains(ch)
+    if letter or ch is "_" or digits.contains(ch) then
+      change position to position + 1
+      change scanning to position is less than limit
+    otherwise
+      change scanning to false
+    end
+  end
+  return position
+end
+
+function scan_alphanumeric(chars: List of Text, start: Integer, limit: Integer) returns Integer
+  purpose: The end of the run of letters of either case and digits from start.
+
+  let mutable position be start
+  let mutable scanning be position is less than limit
+  repeat until not scanning
+    let ch be chars.at(position) otherwise ""
+    if lower_letters.contains(ch) or upper_letters.contains(ch) or digits.contains(ch) then
+      change position to position + 1
+      change scanning to position is less than limit
+    otherwise
+      change scanning to false
+    end
+  end
+  return position
+end
+
+function scan_digits(chars: List of Text, start: Integer, limit: Integer, underscores: Boolean)
+  returns Integer
+  purpose: The end of the run of digits from start, underscores among them when asked.
+
+  let mutable position be start
+  let mutable scanning be position is less than limit
+  repeat until not scanning
+    let ch be chars.at(position) otherwise ""
+    if digits.contains(ch) or (underscores and ch is "_") then
+      change position to position + 1
+      change scanning to position is less than limit
+    otherwise
+      change scanning to false
+    end
+  end
+  return position
+end
+
+function scan_spaces(chars: List of Text, start: Integer, limit: Integer) returns Integer
+  purpose: The end of the run of blanks from start.
+
+  let mutable position be start
+  repeat until position is at least limit or (chars.at(position) otherwise "") is not " "
+    change position to position + 1
+  end
+  return position
+end
+
+function scan_operator_tail(chars: List of Text, start: Integer, limit: Integer) returns Integer
+  purpose: The end of the run of operator characters from start, for an error token.
+
+  let mutable position be start
+  repeat until position is at least limit
+    or not operator_tail.contains(chars.at(position) otherwise "")
     change position to position + 1
   end
   return position
@@ -417,7 +528,7 @@ end
 
 function line_end(chars: List of Text, position: Integer, limit: Integer) returns Integer
   let mutable stop be position
-  repeat until stop is at least limit or char_at(chars: chars, index: stop) is "\n"
+  repeat until stop is at least limit or (chars.at(stop) otherwise "") is "\n"
     change stop to stop + 1
   end
   return stop
@@ -425,16 +536,21 @@ end
 
 function at_line_start(chars: List of Text, offset: Integer) returns Boolean
   let mutable index be offset
-  repeat until index is 0 or char_at(chars: chars, index: index - 1) is not " "
+  repeat until index is 0 or (chars.at(index - 1) otherwise "") is not " "
     change index to index - 1
   end
-  return index is 0 or char_at(chars: chars, index: index - 1) is "\n"
+  return index is 0 or (chars.at(index - 1) otherwise "") is "\n"
 end
 
 function previous_is_adjacent_dot(previous: maybe Token, start: Integer) returns Boolean
   match previous
     when nothing then return false
-    when some(token) then return token.kind is Symbol(text: ".") and token.span.stop is start
+    when some(token) then
+      if token.span.stop is not start then return false end
+      match token.kind
+        when Symbol(text: text) then return text is "."
+        otherwise return false
+      end
   end
 end
 
@@ -478,28 +594,18 @@ function lex_comment(chars: List of Text, position: Integer, limit: Integer) ret
 end
 
 function lex_number(chars: List of Text, position: Integer, limit: Integer) returns Step
-  let mutable stop be scan_while(
-    chars: chars,
-    start: position,
-    limit: limit,
-    keep: is_digit_or_underscore
-  )
+  let mutable stop be scan_digits(chars: chars, start: position, limit: limit, underscores: true)
   let mutable kind be IntegerToken
   if stop + 1 is less than limit
     and char_at(chars: chars, index: stop) is "."
     and is_digit(char_at(chars: chars, index: stop + 1)) then
-    change stop to scan_while(chars: chars, start: stop + 1, limit: limit, keep: is_digit)
+    change stop to scan_digits(chars: chars, start: stop + 1, limit: limit, underscores: false)
     change kind to DecimalToken
   end
   let next_char be char_at(chars: chars, index: stop)
   let runs_on be is_lower(next_char) or is_upper(next_char) or next_char is "_"
   if stop is less than limit and runs_on then
-    let bad_stop be scan_while(
-      chars: chars,
-      start: stop,
-      limit: limit,
-      keep: is_alphanumeric_or_underscore
-    )
+    let bad_stop be scan_name_tail(chars: chars, start: stop, limit: limit)
     let diagnostic be report.error(
       code: "number-shape",
       message: "a number cannot run into letters",
@@ -521,14 +627,9 @@ function lex_number(chars: List of Text, position: Integer, limit: Integer) retu
 end
 
 function lex_type_name(chars: List of Text, position: Integer, limit: Integer) returns Step
-  let stop be scan_while(chars: chars, start: position, limit: limit, keep: is_alphanumeric)
+  let stop be scan_alphanumeric(chars: chars, start: position, limit: limit)
   if stop is less than limit and char_at(chars: chars, index: stop) is "_" then
-    let full_stop be scan_while(
-      chars: chars,
-      start: stop,
-      limit: limit,
-      keep: is_alphanumeric_or_underscore
-    )
+    let full_stop be scan_name_tail(chars: chars, start: stop, limit: limit)
     let diagnostic be report.error(
       code: "type-name-shape",
       message: "type, ability and variant names are PascalCase without underscores",
@@ -543,9 +644,9 @@ end
 function lex_word(chars: List of Text, position: Integer, limit: Integer, previous: maybe Token)
   returns Step
 
-  let stop be scan_while(chars: chars, start: position, limit: limit, keep: is_word_char)
+  let stop be scan_word(chars: chars, start: position, limit: limit)
   let text be slice(chars: chars, start: position, stop: stop)
-  if stop is less than limit and is_upper(char_at(chars: chars, index: stop)) then
+  if stop is less than limit and upper_letters.contains(chars.at(stop) otherwise "") then
     return camel_case_word(
       chars: chars,
       position: position,
@@ -554,14 +655,14 @@ function lex_word(chars: List of Text, position: Integer, limit: Integer, previo
       previous: previous
     )
   end
+  let span be Span(start: position, stop: stop)
   if previous_is_adjacent_dot(previous: previous, start: position) then
-    return single(kind: MemberName, chars: chars, start: position, stop: stop)
+    return Single(token: Token(kind: MemberName, text: text, span: span))
   end
-  if reserved_words.contains(text) then
+  if reserved_set.contains(text) then
     return lex_reserved(chars: chars, position: position, stop: stop, limit: limit)
   end
-  let step be single(kind: Identifier, chars: chars, start: position, stop: stop)
-  let span be Span(start: position, stop: stop)
+  let step be Single(token: Token(kind: Identifier, text: text, span: span))
   if text.length() is 1 then
     let diagnostic be report.error(
       code: "single-letter-identifier",
@@ -593,12 +694,7 @@ function camel_case_word(
   returns Step
   purpose: `userName`: one name in another language's casing (decision C5), kept as one token.
 
-  let full_stop be scan_while(
-    chars: chars,
-    start: stop,
-    limit: limit,
-    keep: is_alphanumeric_or_underscore
-  )
+  let full_stop be scan_name_tail(chars: chars, start: stop, limit: limit)
   let full be slice(chars: chars, start: position, stop: full_stop)
   let kind be
     if previous_is_adjacent_dot(previous: previous, start: position) then MemberName
@@ -619,7 +715,7 @@ function lex_reserved(chars: List of Text, position: Integer, stop: Integer, lim
 
   let first_word be slice(chars: chars, start: position, stop: stop)
   let phrase be
-    if phrase_starters.contains(first_word) then longest_phrase(
+    if phrase_starter_set.contains(first_word) then longest_phrase(
       chars: chars,
       first_word: first_word,
       stop: stop,
@@ -627,11 +723,10 @@ function lex_reserved(chars: List of Text, position: Integer, stop: Integer, lim
     )
     otherwise Phrase(spelling: first_word, stop: stop)
     end
-  let word be single(
+  let word be Token(
     kind: Word(spelling: phrase.spelling),
-    chars: chars,
-    start: position,
-    stop: phrase.stop
+    text: slice(chars: chars, start: position, stop: phrase.stop),
+    span: Span(start: position, stop: phrase.stop)
   )
   let colon be phrase.stop
   if clause_words.contains(phrase.spelling)
@@ -643,7 +738,7 @@ function lex_reserved(chars: List of Text, position: Integer, stop: Integer, lim
       text: ":",
       span: Span(start: colon, stop: colon + 1)
     )
-    let text_start be scan_while(chars: chars, start: colon + 1, limit: limit, keep: is_space)
+    let text_start be scan_spaces(chars: chars, start: colon + 1, limit: limit)
     let text_stop be line_end(chars: chars, position: text_start, limit: limit)
     let clause be slice(chars: chars, start: text_start, stop: text_stop)
     let clause_token be Token(
@@ -651,10 +746,9 @@ function lex_reserved(chars: List of Text, position: Integer, stop: Integer, lim
       text: clause,
       span: Span(start: text_start, stop: text_stop)
     )
-    let tokens be word.tokens.append(colon_token).append(clause_token)
-    return Step(tokens: tokens, diagnostics: [], next: text_stop)
+    return Several(tokens: [word, colon_token, clause_token], diagnostics: [], next: text_stop)
   end
-  return word
+  return Single(token: word)
 end
 
 function longest_phrase(chars: List of Text, first_word: Text, stop: Integer, limit: Integer)
@@ -669,16 +763,11 @@ function longest_phrase(chars: List of Text, first_word: Text, stop: Integer, li
     if position + 1 is less than limit
       and char_at(chars: chars, index: position) is " "
       and is_lower(char_at(chars: chars, index: position + 1)) then
-      let word_stop be scan_while(
-        chars: chars,
-        start: position + 1,
-        limit: limit,
-        keep: is_word_char
-      )
+      let word_stop be scan_word(chars: chars, start: position + 1, limit: limit)
       let word be slice(chars: chars, start: position + 1, stop: word_stop)
       change spelling to "{spelling} {word}"
       change position to word_stop
-      if phrases.contains(spelling) then
+      if phrase_set.contains(spelling) then
         change best to Phrase(spelling: spelling, stop: word_stop)
       end
     otherwise
@@ -696,7 +785,11 @@ function lex_text(chars: List of Text, position: Integer, limit: Integer, previo
   end
   let raw_pending be
     match previous
-      when some(token) then token.kind is Word(spelling: "raw")
+      when some(token) then
+        match token.kind
+          when Word(spelling: spelling) then spelling is "raw"
+          otherwise false
+        end
       otherwise false
     end
   if raw_pending then return lex_raw_text(chars: chars, position: position, limit: limit) end
@@ -706,8 +799,8 @@ end
 function lex_raw_text(chars: List of Text, position: Integer, limit: Integer) returns Step
   let mutable stop be position + 1
   repeat until stop is at least limit
-    or char_at(chars: chars, index: stop) is "\""
-    or char_at(chars: chars, index: stop) is "\n"
+    or (chars.at(stop) otherwise "") is "\""
+    or (chars.at(stop) otherwise "") is "\n"
     change stop to stop + 1
   end
   if stop is at least limit or char_at(chars: chars, index: stop) is not "\"" then
@@ -726,7 +819,7 @@ function simple_text_end(chars: List of Text, position: Integer, limit: Integer)
   let mutable stop be position + 1
   let mutable done be false
   repeat until done or stop is at least limit
-    let ch be char_at(chars: chars, index: stop)
+    let ch be chars.at(stop) otherwise ""
     if ch is "\"" or ch is "\n" then
       change done to true
     otherwise if ch is "\\" then
@@ -743,7 +836,7 @@ end
 function hole_close(chars: List of Text, position: Integer, limit: Integer) returns Integer
   let stop be line_end(chars: chars, position: position, limit: limit)
   let mutable index be position
-  repeat until index is at least stop or char_at(chars: chars, index: index) is "}"
+  repeat until index is at least stop or (chars.at(index) otherwise "") is "}"
     change index to index + 1
   end
   if index is at least stop then return position + 1 end
@@ -768,7 +861,8 @@ function lex_simple_text(chars: List of Text, position: Integer, limit: Integer)
     text: slice(chars: chars, start: position, stop: stop + 1),
     span: Span(start: position, stop: stop + 1)
   )
-  return Step(tokens: [token], diagnostics: segment.diagnostics, next: stop + 1)
+  if segment.diagnostics.is_empty() then return Single(token: token) end
+  return Several(tokens: [token], diagnostics: segment.diagnostics, next: stop + 1)
 end
 
 function lex_block_text(chars: List of Text, position: Integer, limit: Integer) returns Step
@@ -811,7 +905,7 @@ function lex_block_text(chars: List of Text, position: Integer, limit: Integer) 
     text: slice(chars: chars, start: position, stop: block.closing.stop),
     span: Span(start: position, stop: block.closing.stop)
   )
-  return Step(tokens: [token], diagnostics: diagnostics, next: block.closing.stop)
+  return Several(tokens: [token], diagnostics: diagnostics, next: block.closing.stop)
 end
 
 function unterminated_block(
@@ -828,8 +922,12 @@ function unterminated_block(
     message: "block text without closing `\"\"\"` on its own line",
     span: Span(start: position, stop: limit)
   )
-  let step be error_token(chars: chars, start: position, stop: limit, diagnostic: unterminated)
-  return step with diagnostics: diagnostics.append(unterminated)
+  let token be Token(
+    kind: ErrorToken,
+    text: slice(chars: chars, start: position, stop: limit),
+    span: Span(start: position, stop: limit)
+  )
+  return Several(tokens: [token], diagnostics: diagnostics.append(unterminated), next: limit)
 end
 
 function block_lines(chars: List of Text, cursor: Integer, limit: Integer) returns maybe BlockLines
@@ -855,7 +953,7 @@ function common_indent(chars: List of Text, lines: List of Span) returns Integer
   let mutable indent: maybe Integer be nothing
   for each line in lines
     where slice(chars: chars, start: line.start, stop: line.stop).trim() is not ""
-    let content be scan_while(chars: chars, start: line.start, limit: line.stop, keep: is_space)
+    let content be scan_spaces(chars: chars, start: line.start, limit: line.stop)
     let spaces be content - line.start
     change indent to
       match indent
@@ -883,7 +981,7 @@ function scan_segment(chars: List of Text, start: Integer, stop: Integer, parts:
   let mutable buffer be ""
   let mutable position be start
   repeat until position is at least stop
-    let ch be char_at(chars: chars, index: position)
+    let ch be chars.at(position) otherwise ""
     if ch is "\\" then
       let piece be escape(chars: chars, position: position, stop: stop)
       change buffer to "{buffer}{piece.text}"
@@ -911,12 +1009,30 @@ function scan_segment(chars: List of Text, start: Integer, stop: Integer, parts:
         change position to hole_stop + 1
       end
     otherwise
-      change buffer to "{buffer}{ch}"
-      change position to position + 1
+      let run_stop be plain_run_end(chars: chars, start: position + 1, stop: stop)
+      change buffer to "{buffer}{slice(chars: chars, start: position, stop: run_stop)}"
+      change position to run_stop
     end
   end
   if buffer is not "" then change out to push_text(parts: out, text: buffer) end
   return Segment(parts: out, diagnostics: diagnostics)
+end
+
+function plain_run_end(chars: List of Text, start: Integer, stop: Integer) returns Integer
+  purpose: The end of the run of characters from start that are neither an escape nor a hole.
+
+  let mutable position be start
+  let mutable scanning be position is less than stop
+  repeat until not scanning
+    let ch be chars.at(position) otherwise ""
+    if ch is "\\" or ch is "\{" then
+      change scanning to false
+    otherwise
+      change position to position + 1
+      change scanning to position is less than stop
+    end
+  end
+  return position
 end
 
 type Hole
@@ -957,7 +1073,7 @@ end
 
 function hole_end(chars: List of Text, start: Integer, stop: Integer) returns Integer
   let mutable index be start
-  repeat until index is at least stop or char_at(chars: chars, index: index) is "}"
+  repeat until index is at least stop or (chars.at(index) otherwise "") is "}"
     change index to index + 1
   end
   return index

@@ -1,0 +1,22 @@
+module lex_only
+  purpose: Lex the file named by the first argument and print a count: the lexer alone, measured.
+
+import std.console
+import std.environment
+import std.filesystem exposing Path
+import lexer
+
+public function main() needs console, environment, filesystem
+  purpose: Lex the file as many times as the second argument says, then print a count.
+
+  let arguments be environment.arguments()
+  let path be arguments.first() otherwise crash with "usage: lex_only.ry <file> [turns]"
+  let turns be (arguments.at(1) otherwise "1").to_integer() otherwise 1
+  let source be filesystem.read_text(Path(path)) otherwise crash with "cannot read {path}"
+  let mutable total be 0
+  for each turn from 1 to turns
+    let lexed be lexer.lex(source)
+    change total to lexed.tokens.length() + turn - 1
+  end
+  console.print("{total}")
+end

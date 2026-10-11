@@ -5430,3 +5430,54 @@ front end's 75.8 (10.0 times, the gate; 10.7 at AU42) and this binary's
 1,035.2 against 99.0 (10.5) and 80.4 (12.9); the Renyi checker's time
 fell from 806 ms at AU44 to 756, the stage's gain on the program the
 round is for.
+
+**AU46. Stage B1 of the front end's round as built (AU36, stage 6): the
+Renyi lexer rewritten for speed with the library as it is.**
+`compiler/lexer.ry` keeps its tokens, its diagnostics (codes, messages,
+fixes, spans and recovery, AD1) and its public functions, and the judges
+hold it byte-equal to the Rust lexer as before; what changed is how it
+runs. `lex_range` is one loop over the characters that skips a blank and
+takes a line break itself and calls `next_step` for the rest, with the
+previous token kept in a binding rather than read from the list at every
+step; a step's product is a sum, `Single(token)` on the common path,
+else `Several(tokens, diagnostics, next)`, so that a token costs its own
+record and one variant, not a record, a list and a copy; the scans are
+loops of their own without the closure and the call per character that
+`scan_while` and `char_at` made (`scan_word`, `scan_name_tail`,
+`scan_alphanumeric`, `scan_digits`, `scan_spaces`, `scan_operator_tail`,
+`plain_run_end`), each reading `chars.at(position) otherwise ""` in
+place (AU34) and classifying by `contains` on the three short texts of
+the character classes, the likeliest class tested first; the reserved
+words, the phrases, the phrase starters and the symbols are `Set`s built
+once from their lists (`to_set`, a constant evaluated on first use); a
+word's text is sliced once and its token built from it; a comparison
+with a variant (`token.kind is Symbol(text: ".")`, which built the
+variant) is a match on the kind, the position compared first; a plain
+run of a text literal is copied by one slice, not a concatenation per
+character. Three ways to classify a character were measured first, per
+character on the JIT tier: a search in a short text 341 instructions, a
+`Set` lookup 649, two ordering comparisons 305; the search stays, as
+AU36 said, for its reading. `compiler/lex_only.ry`, a driver that lexes
+a file as many times as asked and prints a count, measures the lexer
+alone (the token dump's printing is 40% of `tokens.ry`). Measured on
+AU45's binary, callgrind synchronous, per lex of `compiler/bodies.ry` in
+the steady state (three runs against one): 982.9 to 514.5 million
+instructions (-47.7%), in four cuts of 634.5 (the scans and the sets),
+576.7 (the step as a sum, the previous token kept), 542.1 (the word's
+token built once, the dot's position first) and 514.5 (the plain runs
+sliced); `renyi run compiler/tokens.ry compiler/bodies.ry` 2,197.8 to
+1,740.4 million instructions (-20.8%, the dump's printing unchanged in
+it) and 388.1 to 335.3 ms; the lexer alone 112.4 to 64.8 ms a lex in the
+steady state (-42%). The ratio of AU36 (iii), the Rust side unchanged,
+seven alternating runs on a quiet machine: checking 649.2 ms against
+AU34's Rust front end's 73.3 (8.9 times, the gate, from 10.0 at AU45)
+and this binary's 36.5 (17.8); parsing 258.0 against 62.0 (4.2, from
+5.3) and 58.1 (4.4); compiling 953.0 against 105.3 (9.1, from 10.5) and
+78.6 (12.1); the Renyi checker on `compiler/bodies.ry` 756 to 649 ms,
+since every front end's command runs the lexer first. The judges and the
+conformance suite passed; the frozen self-check of AU41 does not move.
+What remains in the lexer by the profiler: the scan of a word (28%, the
+`contains` per character its floor with the library as it is: a method
+answering code points is the lever B5 was the condition for, a library
+addition for the owner to decide), the loop itself (21%), the word's
+lookups (9%).
