@@ -14,7 +14,16 @@ ms, AT1's `cached run` row -6.8%, its cold rows unmoved; the section
 the gates passed and the next stage, B5, planned in the same section
 ("B5, the stage next"); and wrote `docs/ROADMAP.md` at the owner's
 request, the map of every stage numbered and grouped by track, which
-CLAUDE.md now asks each session to update when a stage closes.
+CLAUDE.md now asks each session to update when a stage closes; and,
+the owner having asked to go on stage by stage, did B5, the first
+stage on the VM side of the round (decision AU45: two Integers of
+which at least one is boxed, the checker typing it so, compared in
+place in both tiers when both are small, code format 13; `scan_codes` -48% in instructions a turn and -55% in time, the
+self-check's synchronous row -0.55% in instructions and -0.77% by the
+estimate, its time -2% to -6%, the Renyi checker 806 to 756 ms, the
+gate ratio 10.0 against AU34's binary; the section "The front end's
+round" below, "B5 as built"), with B1 planned in the same section
+("B1, the stage next").
 Session 12, in the cloud environment,
 put the three questions after AU27 to the owner (decision AU28: the
 counts in place in template code next, then the natives building a
@@ -226,12 +235,12 @@ and push there directly.
    `bench/` as AT1's program before `compiler/` changes. The section
    "The front end's round" says where the stages stand: A0, A1, A4
    and A2 are in (AU37 to AU39, AU42 and AU44), the copy under
-   `bench/selfcheck/` is made (AU41), and the Rust front end's part of
-   the plan is done. The work now is B5, the first stage on the
-   compiler in Renyi and the VM: the comparison of two boxed values the
-   checker typed Integer, inline in both tiers; the paragraph "B5, the
-   stage next" of that section is the plan, written to be followed
-   without this conversation. Then B1, B2 and B3.
+   `bench/selfcheck/` is made (AU41), the Rust front end's part of
+   the plan is done, and B5, the comparison of two boxed Integers
+   inline in both tiers, is in (AU45). The work now is B1, the Renyi
+   lexer rewritten for speed with the library as it is; the paragraph
+   "B1, the stage next" of that section is the plan, written to be
+   followed without this conversation. Then B2 and B3.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
@@ -3029,8 +3038,8 @@ Renyi compiler's time to the Rust front end's on `compiler/bodies.ry`
 and against the stage's own binary.
 
 **Where the stages stand** (end of session 13): A0 (AU37), A1 (AU38),
-both parts of A4 (AU39, AU42) and A2 (AU44) are in, the frozen
-self-check too (AU41); `renyi check compiler/bodies.ry` 437 million
+both parts of A4 (AU39, AU42), A2 (AU44) and B5 (AU45) are in, the
+frozen self-check too (AU41); `renyi check compiler/bodies.ry` 437 million
 instructions and 72 ms on AU34's binary, 153 million and 34.5 ms now;
 the ratio of AU36 (iii) 10.7 times against AU34's Rust front end (the
 Renyi side has not changed yet) and 21.7 times against the same
@@ -3074,35 +3083,97 @@ metas) and the VM's start. The lesson of its first build: hashing the
 library's text for the key cost more than the front end skipped
 (decision AU44); a key must be cheaper than what it saves.
 
-**B5, the stage next** (AU36, stage 6 of the list above): in the VM, a
-comparison of two boxed values the checker typed Integer, inline in
-both tiers. Today a comparison on boxed operands calls `rt_compare`
-(`crates/renyi_vm/src/native/runtime.rs`), which compares the operands
-where they lie (`compare_in_place`: two `Int::Small` through
-`small_binary`, texts, Booleans, `Nothing`) and answers into the out
-slot, the operands a `Load`, a `Const` or `Nothing` pushed borrowed per
-`masks[pc]` (AU13); two small texts are already compared inline before
-the call when either operand is typed Text (`compare_small_texts` in
-`native/codegen.rs`, with `is_text(program, state)` reading
-`Code::types`; the same in `template/mod.rs`, `Op::Binary` with
-`texts_compared(pc)`). The stage follows that model for Integers: an
-`is_integer` beside `is_text`; when both operands are typed Integer,
-the generated code tests both boxed values' tags for a small Integer
-(the pinned layout of AR4, `value::layout`), compares the payloads
-with the op's condition in a register, writes the Boolean and consumes
-the operands (an Integer has no count to release), and falls to
-`rt_compare` otherwise (a big Integer, or a `Float` where the checker
-typed `Number`); the template tier emits the same sequence from its
-assembler. Held to the interpreter by the hand-back tests
-(`tests/native.rs`, `tests/template.rs`), the judges with
-`RENYI_NATIVE_TIER=template` too. The measure: AT1's rule on the
-self-check (its 1.13 million `rt_compare` calls are about 2.6% of its
-instructions), the study's `scan.ry` over Integer codes (444 million
-instructions against 255 over texts, `rt_compare` 184 of the 444: the
-condition for a lexer on code points, which B1 wants), and the four
-benchmarks. After B5: B1 (the Renyi lexer in one loop), B2 (the parser's
-keywords and symbols as variants without fields, a cursor that builds
-no `Peek`), B3 (small functions inlined on the Cranelift tier).
+**B5 as built** (AU36, stage 6 of the list above; decision AU45). A
+comparison on boxed operands calls `rt_compare`
+(`crates/renyi_vm/src/native/runtime.rs`; `compare_in_place` answers
+two `Int::Small`, texts, Booleans and `Nothing` where they lie, the
+operands a `Load`, a `Const` or `Nothing` pushed borrowed per
+`masks[pc]`, AU13). Before that call, when the checker's type of both
+operands is `Integer` (`is_integer` in `native/infer.rs`, beside
+`is_text`, from `Code::types`) or the analysis holds one as a small
+Integer in a register (`Abs::Int`, a literal bound), the generated
+code tests the value's tag and the Int's tag of the boxed ones
+(`TAG_INTEGER`, `INT_SMALL`), compares the payloads at `INT_PAYLOAD`,
+or the register's value, with the op's condition (`comparison_cc`,
+shared with the register path) and takes the Boolean into its register
+(`compare_small_integers` in `native/codegen.rs`, after
+`compare_small_texts`), or writes it over the left operand on the
+template tier (`template/mod.rs`, `integers_compared` and
+`compare_small_integers`, where a `Const` lies boxed in its slot), the
+boxed operands dropped without a release; a big Integer or another
+type falls through to the helper. Code format 13. The lesson of its
+first build: with two boxed operands required, the common shape, an
+Integer from a list against a literal, never took the path and the
+scan's count per turn did not move; check the shape a stage serves
+under callgrind before measuring the rest. The tests: one on each
+tier (`tests/native.rs`, `tests/template.rs`: every op, Integers from a
+list, a field and a `maybe`, two big Integers among the values), the
+judges and the conformance suite on the template tier. The
+micro-benchmark `bench/micro/scan_codes.ry` (a lexer's classification
+of forty codes read from a list, the shape B1 wants) is in
+`tools/measure_native.sh`'s list. What it gave (AU45): `scan_codes`
+33,793 to 17,525 instructions a turn on the Cranelift tier and 33,384
+to 16,877 on the template tier, 55 to 26 ms in time; the self-check's
+`rt_compare` 152 to 123 million instructions, its synchronous row
+-0.55%, its time -2.2% on four hardware threads and -6.3% on one; the
+Renyi checker on `compiler/bodies.ry` 806 to 756 ms, so the gate ratio
+10.7 to 10.0 against AU34's binary (built again from 44782aa into
+`target/renyi-au34` on this boot; build it again on the next).
+
+**B1, the stage next** (AU36, stage 6 of the list above): the Renyi
+lexer, `compiler/lexer.ry` (990 lines), rewritten for speed with the
+library as it is, the judges keeping it byte-equal to the Rust lexer on
+every program of the corpus, the conformance suite, `compiler/` and
+the library (`crates/renyi/tests/selfhost.rs`, the parse judge, whose
+tokens the tree reflects; `renyi run compiler/tokens.ry <file>` against
+`renyi tokens` is the direct check). What the study measured
+(2026-10-10, AU35's section above): the lexer takes 1,555 million
+instructions on `compiler/bodies.ry` and its imports, about 3,500 a
+character, 56 times the Rust lexer, and a scan in one loop over the
+same `List of Text` that classifies by `contains` and builds a record
+per token ran 255 million; the estimate for B1 is 350 to 600 million
+(-20% of the Renyi checker's time). Where the cost is, in the file as
+it stands: `lex_range` calls `next_step` per step, which returns a
+`Step` record of two lists (`tokens`, `diagnostics`) and the next
+position for every blank and every token, and `append_all`s them (a
+record and two lists allocated per character of whitespace);
+`char_at` is a call per character (`chars.at(index) otherwise ""`),
+`scan_while` a closure call per character (`keep(char_at(...))`),
+`is_lower`, `is_upper`, `is_digit` a search in a text per call
+(`"abcdefghijklmnopqrstuvwxyz".contains(ch)`, 0.39 million calls of
+`is_lower`); `lex_word` looks every word up in `reserved_words`, a
+list of 88 texts, with `contains` (a linear search), then
+`phrase_starters` and `clause_words`; `slice` joins a `List of Text`
+slice per token. The plan: (i) one loop in `lex_range` with `tokens`
+and `diagnostics` mutable lists appended in place (a uniquely held
+list, AU11's rule), the step functions taking the lists and the
+position and answering the next position (a record of one Integer
+field, or the position with the lists threaded as parameters and
+returned), so that no `Step` is built per step; (ii) the blanks and
+line breaks skipped in the loop itself without a call; (iii) the
+character classes decided by `contains` on short texts still (the
+library has no `code_point`), but through one call per character at
+most, the closure of `scan_while` replaced by scans written out per
+class (`scan_word`, `scan_digits`, `scan_spaces`), the result of
+`char_at` bound once per step; (iv) `reserved_words`, `phrase_starters`
+and `clause_words` as `Set of Text` (`Set.contains`, a hash lookup,
+`library/std/prelude.ry` has `Set`) built once at module level; (v)
+the token's text taken by `slice` as now (linear, X2), measured
+whether `chars.slice(...).join("")` dominates after the rest; and the
+same loop shape in `scan_segment` and `block_lines`. Keep the
+diagnostics, their codes, messages, fixes and spans exactly (AD1): the
+judges fail on the first byte that differs; run `cargo test -p renyi
+--test selfhost` after each function rewritten, and `renyi check
+compiler/lexer.ry`, `renyi format compiler/lexer.ry` (canonical
+layout, a test checks it), with the size limits of the checker (V5:
+`body-length`, `nesting-depth`). The measure: `tools/ratio.py <stage>
+<AU34's binary>` (the parse row is the lexer's and the parser's; the
+check row is the gate), `renyi run compiler/tokens.ry
+compiler/bodies.ry` under callgrind before and after (the lexer alone),
+and AT1's rule on the frozen self-check, which does not change with
+`compiler/` (AU41). After B1: B2 (the parser's keywords and symbols as
+variants without fields compared by tag, a cursor that builds no
+`Peek` per look), B3 (small functions inlined on the Cranelift tier).
 
 ## The representation items: the design study (session 11)
 
@@ -4688,6 +4759,15 @@ holds between calls.
   modules' names and sizes instead. The measure: a hit of `hello` 7.6
   to 5.8 ms (-24%, -33% in instructions), the self-check's second run
   822 to 762 ms, AT1's `cached run` row -6.8%, its cold rows unmoved.
+- **Decision AU45**: B5, two boxed values the checker typed Integer
+  compared in place in both tiers when both are small, a literal bound
+  in a register beside a boxed one included (`is_integer`,
+  `compare_small_integers` on each tier, `comparison_cc`), code format
+  13; a test on each tier; `bench/micro/scan_codes.ry` and its row in
+  `tools/measure_native.sh`; CLAUDE.md. The measure: `scan_codes` -48% in instructions a turn and -55% in time, the
+  self-check's synchronous row -0.55% in instructions and -0.77% by the
+  estimate, its time -2% to -6%, the Renyi checker 806 to 756 ms, the
+  gate ratio 10.0 against AU34's binary.
 - **`docs/ROADMAP.md`** at the owner's request ("a complete roadmap
   file, numbered, grouped by track"): the milestones, the 26 stages in
   order with their decisions and status, the eight tracks, what is

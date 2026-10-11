@@ -21,8 +21,8 @@ branches of the repository.
 | M3 | the VM: `run`, `record`, `run --replay`, `reproduce`, `--explain`, `--profile`, `test` with `replays`, budgets, the grant stack, the run manifest, every library module | done (stage 7) |
 | M4 | the library and the package manager: packages, `std.process`, the foreign function interface | done (stage 15) |
 | M5 | the integration: the registration API, the Python bridge and binder, the resident world, the language server, `serve --watch`, the embedding API | done (stages 18 and 19) |
-| M6 | ahead-of-time code: machine code for the bytecode, the baseline JIT, the template tier, `renyi build` images and self-contained executables | the machine code exists (stages 16, 21, 22, 24); no WASM or C API target |
-| Self-hosting | the compiler written in Renyi (lexer, parser, checker, emitter) held equal to the Rust toolchain by the judges; the binary switches to it when it is within 3 times the Rust front end's time (decision AU35 ii) | the compiler exists and is judged (stages 11, 12, 14, 15); the speed round is under way (stages 25 and 26) |
+| M6 | ahead-of-time code: machine code for the bytecode, the baseline JIT, the template tier, `renyi build` images and self-contained executables | the machine code exists (stages 16, 21, 22, 24, 26); no WASM or C API target |
+| Self-hosting | the compiler written in Renyi (lexer, parser, checker, emitter) held equal to the Rust toolchain by the judges; the binary switches to it when it is within 3 times the Rust front end's time (decision AU35 ii) | the compiler exists and is judged (stages 11, 12, 14, 15); the speed round is under way (stages 25 to 27) |
 
 ## 2. The stages, in order
 
@@ -190,15 +190,21 @@ where one decided, the status. The dates are those of the decisions.
     (AU40, AU43, AU44). `renyi check compiler/bodies.ry` from 437
     million instructions and 72 ms to 153 million and 34.5 ms; a hit
     of `hello` -33% in instructions. Done.
-26. **The front end's round, the Renyi side and the VM** (next). B5, the
-    comparison of two boxed Integers inline in both tiers; B1, the
-    Renyi lexer in one loop; B2, the parser's keywords as variants
-    without fields and a cursor that builds no record per look; B3,
-    small functions inlined on the Cranelift tier (AU36, stage 6). The
-    gate: the compiler written in Renyi within 3 times the Rust front
-    end's time on `compiler/bodies.ry` (10.7 times at AU44 against
-    AU34's binary, 21.7 against today's), then the binary switches to
-    it (AU35 ii).
+26. **The front end's round, the VM side: B5** (session 13, 2026-10-11).
+    Two Integers of which at least one is boxed and the checker typed
+    so compared in place in both tiers when both are small, the helper
+    kept for the rest (AU45): the case of an Integer read from a list,
+    a field or a `maybe` against another such or a literal, which a
+    lexer over code points compares at every character;
+    `bench/micro/scan_codes.ry`, -48% in instructions a turn; the
+    Renyi checker 806 to 756 ms on `compiler/bodies.ry`. Done.
+27. **The front end's round, the Renyi side** (next). B1, the Renyi
+    lexer in one loop; B2, the parser's keywords as variants without
+    fields and a cursor that builds no record per look; B3, small
+    functions inlined on the Cranelift tier (AU36, stage 6). The gate:
+    the compiler written in Renyi within 3 times the Rust front end's
+    time on `compiler/bodies.ry` (10.0 times at AU45 against AU34's
+    binary), then the binary switches to it (AU35 ii).
 
 ## 3. The tracks
 
@@ -215,12 +221,12 @@ state of each line.
   Complete for the language as designed; the Rust front end is the
   binary's until the switch of track C.
 - **C. The compiler written in Renyi (self-hosting)**: stages 11, 12,
-  14, 15 (AD1), 26. The lexer, the parser, the checker and the emitter
+  14, 15 (AD1), 27. The lexer, the parser, the checker and the emitter
   exist and are judged byte-equal; the speed round is what remains
   before the switch (11 times the Rust front end's time; 3 is the
   gate).
-- **D. The VM and its speed**: stages 7, 13, 16, 20, 21, 23, 24, 26
-  (B5, B3). Measured by AT1's rule on the frozen self-check and by the
+- **D. The VM and its speed**: stages 7, 13, 16, 20, 21, 23, 24, 26,
+  27 (B3). Measured by AT1's rule on the frozen self-check and by the
   four benchmarks; every stage's numbers are in its decision entry.
 - **E. Packages, the FFI and Python**: stages 15, 18. Done; candidates
   not decided: record types from dataclasses in the binder, a deadline
@@ -238,7 +244,7 @@ state of each line.
 
 ## 4. What is next
 
-In the order the owner set (AU36): stage 26 (B5, B1, B2, B3), each
+In the order the owner set (AU36): stage 27 (B1, B2, B3), each
 measured by AT1's rule and recording the ratio of the compiler written
 in Renyi to the Rust front end (AU36 iii); then, when the ratio is
 within 3, the switch of the binary's front end to the compiler written
