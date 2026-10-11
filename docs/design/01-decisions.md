@@ -5785,3 +5785,36 @@ removal; and the compiler's own code (`peek_at`'s four `token_at` sites
 as one, the keywords as fieldless variants deferred at AU48, the lexer's
 `contains` per character and the checker's loops over every character
 for the line starts as library primitives).
+
+**AU51. The owner's answers after B3, and the next stage.** Asked at the
+end of the session of 2026-10-11, with AU50's numbers (four questions,
+every recommended answer taken): (1) the gate of AU35 (ii) stays at 3
+times the Rust front end's time on `compiler/bodies.ry`, and the work
+goes on finding levers, the binary keeping the Rust front end meanwhile;
+(2) the next lever is the compiler's own code, where the profile is
+known: `peek_at`'s four `token_at` sites as one, the keywords and
+symbols as variants without fields (AU48's deferred cut), the lexer's
+`contains` per character and the checker's loops over every character
+for the line starts and the layout check as library primitives or as
+loops over lines; (3) the expansion of AU50 stays in the tree, off
+unless `RENYI_NATIVE_INLINE=1`, with its tests and its hand-back, for a
+later refinement or measure; (4) the site's fourth round is final as it
+stands. The stage this opens, B4 in the handoff's naming (stage 28 of
+the roadmap): the cuts in the order of their expected gain per effort,
+each judged byte-equal by the four judges, measured by the drivers
+(`compiler/lex_only.ry`, `parse_only.ry`, `checker.ry` under callgrind
+with `RENYI_NATIVE_SYNC=1`) and by the ratio of AU36 (iii), and recorded
+in its own entry: (i) the checker's line starts and layout check over
+lines instead of characters (`report.line_starts`,
+`checker.check_layout`: 4.8% and 6.5% of the checker's interpreter
+samples); (ii) the parser's look computed once per move of the cursor
+and read from it by every test, instead of `peek_at` per test (`peek_at`
+7%, `token_at` 3.7%, `after_breaks` 2.2% of the parse's samples); (iii)
+the keywords and symbols as variants without fields compared by tag, in
+place since AU49 (`rt_compare` 6.6% of the three-turn parse); (iv) the
+lexer's scan over a character class as a library primitive, a library
+addition through the sketch, the declarations, the natives and the
+checker's copy (`scan_word` 15%, `lex_range` 12%). The rule for each:
+AU1's measure on the self-check does not apply (the frozen self-check is
+`bench/selfcheck/`, which these cuts do not touch); a cut stays when its
+driver's instructions fall and the judges pass.

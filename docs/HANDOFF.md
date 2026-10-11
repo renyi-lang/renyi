@@ -234,49 +234,53 @@ and push there directly.
    the section "The typed round" below, whose last paragraphs ("The
    owner's answers after AU27" and "What is next in this round, after
    AU30") say what exists and what comes next. The owner answered the
-   questions there in session 12 (decision AU31): AU29's sequence on
-   the Cranelift tier, which is in (AU32), then the hottest natives in
-   place, the next stage; AU18's goal measured on another boot before
-   it is called met (AU32 moved it away: the image gained more than the
-   JIT run); the other natives' vectors left alone; the front end's
-   round to start with a study. Then, after a study of the typed calls,
-   decision AU33: `List.at` in place with the vector's layout probed at
-   startup, a lean helper each for `Text.contains` and `List.contains`
-   (the stage AU34, which is in), the typed call's general path made
-   lean as the stage after it, and AU18's goal met with AU30's binary
-   (two boots), its ratio only recorded from now on. AU34 left the
-   general path 0.56 million calls and 0.9% of the self-check's
-   instructions, and after a progress report the owner closed the
-   round (decision AU35): the work now is the front end's round, which
-   opens with the study of AU31 (iv) (the section "The front end's
-   round" below); the binary keeps the Rust front end, and every entry
-   that measures speed records the ratio of the Renyi compiler to it
-   (the switch when it is within 3 times). The study is written in that
-   section (the Rust front end parses every file two and three times;
-   the library is parsed and declared at every start; the Renyi lexer
-   is 56 times the Rust lexer, its parser 17 times), with the candidates
-   A0 to A4 and B1 to B5, and the owner ordered the stages (decision
-   AU36): A0, A1, A4, then A2 on the Rust front end; then B5, B1, B2
-   and B3 on the compiler in Renyi and the VM; the gate of AU35 (ii)
-   against AU34's Rust front end; a copy of today's compiler under
-   `bench/` as AT1's program before `compiler/` changes. The section
-   "The front end's round" says where the stages stand: A0, A1, A4
-   and A2 are in (AU37 to AU39, AU42 and AU44), the copy under
-   `bench/selfcheck/` is made (AU41), the Rust front end's part of
-   the plan is done, B5, the comparison of two boxed Integers inline in
-   both tiers, is in (AU45), B1, the Renyi lexer rewritten for speed, is
-   in (AU46), B2, the Renyi parser, is in (AU47 and AU48, the parser
-   alone -32% for the stage; the keywords as variants without fields
-   deferred), the variant test in place on both tiers is in (AU49), and
-   B3, small callees expanded into their callers on the Cranelift tier,
-   is built, tested and measured (AU50): the expanded code is no faster
-   than the calls it replaces and the compile costs more, so it is off
-   unless `RENYI_NATIVE_INLINE=1`. AU36's list is finished and the gate
-   is not met (the ratio 7.4 against 3); the owner's answer (4) of
-   2026-10-11 placed the evaluation here: the paragraph "After B3: the
-   evaluation" of that section has the distance to the gate, the levers
-   that remain and the questions put to the owner, whose answers decide
-   the next stage.
+   questions there in session 12 (decision AU31): AU29's sequence on the
+   Cranelift tier, which is in (AU32), then the hottest natives in
+   place, the next stage; AU18's goal measured on another boot before it
+   is called met (AU32 moved it away: the image gained more than the JIT
+   run); the other natives' vectors left alone; the front end's round to
+   start with a study. Then, after a study of the typed calls, decision
+   AU33: `List.at` in place with the vector's layout probed at startup,
+   a lean helper each for `Text.contains` and `List.contains` (the stage
+   AU34, which is in), the typed call's general path made lean as the
+   stage after it, and AU18's goal met with AU30's binary (two boots),
+   its ratio only recorded from now on. AU34 left the general path 0.56
+   million calls and 0.9% of the self-check's instructions, and after a
+   progress report the owner closed the round (decision AU35): the work
+   now is the front end's round, which opens with the study of AU31 (iv)
+   (the section "The front end's round" below); the binary keeps the
+   Rust front end, and every entry that measures speed records the ratio
+   of the Renyi compiler to it (the switch when it is within 3 times).
+   The study is written in that section (the Rust front end parses every
+   file two and three times; the library is parsed and declared at every
+   start; the Renyi lexer is 56 times the Rust lexer, its parser 17
+   times), with the candidates A0 to A4 and B1 to B5, and the owner
+   ordered the stages (decision AU36): A0, A1, A4, then A2 on the Rust
+   front end; then B5, B1, B2 and B3 on the compiler in Renyi and the
+   VM; the gate of AU35 (ii) against AU34's Rust front end; a copy of
+   today's compiler under `bench/` as AT1's program before `compiler/`
+   changes. The section "The front end's round" says where the stages
+   stand: A0, A1, A4 and A2 are in (AU37 to AU39, AU42 and AU44), the
+   copy under `bench/selfcheck/` is made (AU41), the Rust front end's
+   part of the plan is done, B5, the comparison of two boxed Integers
+   inline in both tiers, is in (AU45), B1, the Renyi lexer rewritten for
+   speed, is in (AU46), B2, the Renyi parser, is in (AU47 and AU48, the
+   parser alone -32% for the stage; the keywords as variants without
+   fields deferred), the variant test in place on both tiers is in
+   (AU49), and B3, small callees expanded into their callers on the
+   Cranelift tier, is built, tested and measured (AU50): the expanded
+   code is no faster than the calls it replaces and the compile costs
+   more, so it is off unless `RENYI_NATIVE_INLINE=1`. AU36's list is
+   finished and the gate is not met (the ratio 7.4 against 3); the owner
+   evaluated (decision AU51): the gate stays at 3, the next lever is the
+   compiler's own code, the expansion stays off, the site is final. The
+   work now is B4, stage 28: the paragraph "B4, the stage under way" of
+   that section lists its four cuts in order (the checker's line starts
+   and layout check over lines, the parser's look kept in the cursor,
+   the keywords as variants without fields, the lexer's scan as a
+   library primitive), each judged, measured by its driver and the
+   ratio, and recorded in its own entry; the paragraph "After B3: the
+   evaluation" above it has the profile they come from.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
@@ -3450,9 +3454,35 @@ lever is the compiler's own code (a), the expansion's refinement (b) or
 the VM's deeper items (c); whether the expansion's code stays (off, for
 the evaluation) or goes; and whether the keywords as fieldless variants,
 the cut deferred at AU48, is taken first as the cheapest measured
-candidate. The next session starts from the owner's answers; without
-them, the compiler's own code (a) is the cheapest lever with a known
-profile.
+candidate. The owner answered on 2026-10-11 (decision AU51, every
+recommended option): the gate stays at 3 and the work goes on finding
+levers; the next lever is the compiler's own code (a); the expansion's
+code stays, off; the site's fourth round is final. The stage this opens
+is B4 (stage 28 of the roadmap), the paragraph "B4, the stage under way"
+below.
+
+**B4, the stage under way** (decision AU51; stage 28 of the roadmap):
+the compiler's own code, the cuts in the order of their expected gain
+per effort, each judged byte-equal by the four judges, measured by the
+drivers under callgrind (`compiler/lex_only.ry`, `parse_only.ry` and
+`checker.ry` on `compiler/bodies.ry`, three turns less one or the
+checker's one run, `RENYI_NATIVE_SYNC=1`) and by `tools/ratio.py <stage>
+target/renyi-au34`, and recorded in an entry of its own: (i) the
+checker's line starts and layout check over lines instead of characters
+(`report.line_starts` and `checker.check_layout` walk every character of
+every file; `Text.split("\n")` gives the pieces, whose lengths give the
+starts, and a line's width and trailing run come from its start and
+end); (ii) the parser's look computed once per move of the cursor and
+kept in it, every test reading it, instead of `peek_at` per test (the
+sites that build a cursor with a new position or nesting compute it; the
+judges hold the layout rules); (iii) the keywords and symbols as
+variants without fields compared by tag (AU48's deferred cut;
+`tokens.ry` keeps printing the same names); (iv) the lexer's scan over a
+character class as a library primitive (a library addition:
+`docs/design/04-stdlib-sketch.md`, `library/std/prelude.ry` and the
+checker's copy, the natives with a typed entry, the lint's list). The
+rule: a cut stays when its driver's instructions fall and the judges
+pass; AU1's self-check does not move, being the frozen copy.
 
 ## The representation items: the design study (session 11)
 
