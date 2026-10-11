@@ -5105,6 +5105,28 @@ holds between calls.
   ms in the two tables. The handoff's "The front end's round" has it as
   built and the evaluation the owner asked for after B3; the roadmap
   closes AU36's list short of the gate.
+- **The site's fourth round** at the owner's request ("polish the whole
+  appearance, beautify the visual effects"), by a fresh Opus subagent
+  under a brief that held it to the site layer (`tools/site.py`,
+  `docs/index.md`, `docs/how-it-works.md`), to the positioning's and the
+  README's wording, to no external request and no dependency beyond the
+  `markdown` package, every page whole without JavaScript; reviewed
+  against screenshots of the site before and after at 1440 and 390
+  px in both colour schemes (the comparison images in the session's
+  scratchpad, `site_cmp/`): one palette with a single accent in light
+  and dark and a theme switch, every code block highlighted at build
+  time (Renyi by the token classes of reference section 1 and the
+  reserved words of its section 17, the grammar as EBNF, the other
+  languages by a lexicon each), the front page's headline beside the
+  signature card with the four promises as cards and the terminal as
+  real text played once in view, the How it works page's diagrams
+  redrawn as one family with section chips, the document pages with a
+  group label, a contents column that follows the reading, previous
+  and next links, copy buttons, the corpus index as cards and the
+  example pages with line numbers; contrast at WCAG AA in both modes,
+  no horizontal scroll at 390 px, no console errors, the 134 code
+  blocks byte-identical to before. The project map's row for the site
+  says what it is now.
 - **The README's opening** at the owner's request (68c5cd2): the design
   philosophy as the selling points, five points a reviewer can check,
   the comparison with Python, TypeScript, Rust and shell for the one
