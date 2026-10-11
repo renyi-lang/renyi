@@ -58,6 +58,7 @@ type Cursor
   purpose: The next token's index, the open brackets, the mode, the diagnostics so far, the source.
   has tokens: List of Token
   has position: Integer
+  has look: Integer
   has nesting: Integer
   has declarations: Boolean
   has diagnostics: List of Diagnostic
@@ -156,15 +157,16 @@ public function parse(lexed: Lexed, chars: List of Text, declarations: Boolean) 
     for each token in tokens
     where token.kind is CommentToken
     collect Comment(text: token.text.trim_end(), span: token.span)
-  let cursor be Cursor(
+  let opened be Cursor(
     tokens: significant,
     position: 0,
+    look: 0,
     nesting: 0,
     declarations: declarations,
     diagnostics: lexed.diagnostics,
     chars: chars
   )
-  let parsed be parse_module(cursor)
+  let parsed be parse_module(at_position(cursor: opened, position: 0))
   return ParsedModule(
     tree: (parsed.node with comments: comments),
     diagnostics: parsed.cursor.diagnostics
@@ -180,14 +182,16 @@ function parse_hole(cursor: Cursor, tokens: List of Token) returns Parsed of Exp
       when nothing then Span(start: 0, stop: 0)
     end
   let eof be Token(kind: EndOfFile, text: "", span: Span(start: span.stop, stop: span.stop))
-  let inner be Cursor(
+  let opened be Cursor(
     tokens: tokens.append(eof),
     position: 0,
+    look: 0,
     nesting: 1,
     declarations: false,
     diagnostics: [],
     chars: cursor.chars
   )
+  let inner be at_position(cursor: opened, position: 0)
   let parsed be
     match expression(inner)
       when success(found) then found
@@ -392,30 +396,43 @@ function after_breaks(cursor: Cursor, index: Integer) returns Integer
   return next
 end
 
-function peek_at(cursor: Cursor) returns Integer
-  purpose: The index of the next significant token, past the line breaks the layout rules skip.
+function look_from(cursor: Cursor, position: Integer) returns Integer
+  purpose: The index of the next significant token from a position, past the line breaks the layout rules skip.
 
-  let token be cursor.tokens.at(cursor.position) otherwise end_token(cursor)
-  if token.kind is not LineBreak then return cursor.position end
-  let next be after_breaks(cursor: cursor, index: cursor.position)
+  let token be cursor.tokens.at(position) otherwise end_token(cursor)
+  if token.kind is not LineBreak then return position end
+  let next be after_breaks(cursor: cursor, index: position)
   let candidate be token_at(cursor: cursor, index: next)
-  let after_comma be cursor.position is greater than 0
-    and is_symbol(token: previous(cursor), text: ",")
+  let after_comma be position is greater than 0
+    and is_symbol(token: token_at(cursor: cursor, index: position - 1), text: ",")
   if cursor.nesting is greater than 0 or after_comma or continues(candidate) then return next end
-  return cursor.position
+  return position
+end
+
+function at_position(cursor: Cursor, position: Integer) returns Cursor
+  purpose: The cursor moved to a position, its look computed once there: every test reads `look`.
+
+  return cursor with position: position, look: look_from(cursor: cursor, position: position)
+end
+
+function with_nesting(cursor: Cursor, nesting: Integer) returns Cursor
+  purpose: The cursor with its open brackets changed, its look computed again: a line break may now be skipped or kept.
+
+  let changed be cursor with nesting: nesting
+  return changed with look: look_from(cursor: changed, position: changed.position)
 end
 
 function moved(cursor: Cursor, look: Integer) returns Cursor
   purpose: The cursor at a looked-at token: the cursor itself when the look did not move.
 
   if look is cursor.position then return cursor end
-  return cursor with position: look
+  return at_position(cursor: cursor, position: look)
 end
 
 function peek(cursor: Cursor) returns Peek
   purpose: The next significant token and the cursor at it, for a caller that keeps both.
 
-  let look be peek_at(cursor)
+  let look be cursor.look
   return Peek(
     token: token_at(cursor: cursor, index: look),
     cursor: moved(cursor: cursor, look: look)
@@ -436,36 +453,36 @@ end
 function advance(cursor: Cursor) returns Peek
   purpose: The next significant token, consumed, and the cursor after it; the end of the file stays.
 
-  let look be peek_at(cursor)
+  let look be cursor.look
   let token be token_at(cursor: cursor, index: look)
   if token.kind is EndOfFile then
     return Peek(token: token, cursor: moved(cursor: cursor, look: look))
   end
-  return Peek(token: token, cursor: cursor with position: look + 1)
+  return Peek(token: token, cursor: at_position(cursor: cursor, position: look + 1))
 end
 
 function bump(cursor: Cursor) returns Cursor
   purpose: `advance` for a caller that drops the token.
 
-  let look be peek_at(cursor)
+  let look be cursor.look
   if token_at(cursor: cursor, index: look).kind is EndOfFile then
     return moved(cursor: cursor, look: look)
   end
-  return cursor with position: look + 1
+  return at_position(cursor: cursor, position: look + 1)
 end
 
 function eat_word(cursor: Cursor, spelling: Text) returns Eaten
-  let look be peek_at(cursor)
+  let look be cursor.look
   if is_word(token: token_at(cursor: cursor, index: look), spelling: spelling) then
-    return Eaten(found: true, cursor: cursor with position: look + 1)
+    return Eaten(found: true, cursor: at_position(cursor: cursor, position: look + 1))
   end
   return Eaten(found: false, cursor: moved(cursor: cursor, look: look))
 end
 
 function eat_symbol(cursor: Cursor, text: Text) returns Eaten
-  let look be peek_at(cursor)
+  let look be cursor.look
   if is_symbol(token: token_at(cursor: cursor, index: look), text: text) then
-    return Eaten(found: true, cursor: cursor with position: look + 1)
+    return Eaten(found: true, cursor: at_position(cursor: cursor, position: look + 1))
   end
   return Eaten(found: false, cursor: moved(cursor: cursor, look: look))
 end
@@ -473,9 +490,11 @@ end
 function past_word(cursor: Cursor, spelling: Text) returns Cursor or fails with Halt
   purpose: The cursor past a reserved word that must be there.
 
-  let look be peek_at(cursor)
+  let look be cursor.look
   let token be token_at(cursor: cursor, index: look)
-  if is_word(token: token, spelling: spelling) then return cursor with position: look + 1 end
+  if is_word(token: token, spelling: spelling) then
+    return at_position(cursor: cursor, position: look + 1)
+  end
   let what be "`{spelling}`"
   let flagged be expected(
     cursor: moved(cursor: cursor, look: look),
@@ -496,9 +515,11 @@ end
 function past_symbol(cursor: Cursor, text: Text, what: Text) returns Cursor or fails with Halt
   purpose: The cursor past a symbol that must be there, described by `what` in the message.
 
-  let look be peek_at(cursor)
+  let look be cursor.look
   let token be token_at(cursor: cursor, index: look)
-  if is_symbol(token: token, text: text) then return cursor with position: look + 1 end
+  if is_symbol(token: token, text: text) then
+    return at_position(cursor: cursor, position: look + 1)
+  end
   let flagged be expected(
     cursor: moved(cursor: cursor, look: look),
     what: what,
@@ -516,7 +537,7 @@ function expect_symbol(cursor: Cursor, text: Text, what: Text) returns Peek or f
 end
 
 function skip_newlines(cursor: Cursor) returns Cursor
-  return cursor with position: after_breaks(cursor: cursor, index: cursor.position)
+  return at_position(cursor: cursor, position: after_breaks(cursor: cursor, index: cursor.position))
 end
 
 function recover(cursor: Cursor) returns Cursor
@@ -527,7 +548,7 @@ function recover(cursor: Cursor) returns Cursor
     or token_at(cursor: cursor, index: position).kind is EndOfFile
     change position to position + 1
   end
-  return cursor with position: position, nesting: 0
+  return at_position(cursor: with_nesting(cursor: cursor, nesting: 0), position: position)
 end
 
 function recovered(halted: Halt) returns Cursor
@@ -622,7 +643,7 @@ function element_after_comma(cursor: Cursor, comma: Span, close: Text, what: Tex
   or fails with Halt
   purpose: After a comma the next element follows; a comma before the closing bracket is an error.
 
-  let look be peek_at(cursor)
+  let look be cursor.look
   let token be token_at(cursor: cursor, index: look)
   if is_symbol(token: token, text: close) then
     let found be describe(cursor: moved(cursor: cursor, look: look), token: token, span: token.span)
@@ -650,11 +671,11 @@ function bracketed(
   for any Item
 
   let opened be past_symbol(cursor: cursor, text: open, what: "`{open}`") otherwise fail
-  let mutable current be opened with nesting: opened.nesting + 1
+  let mutable current be with_nesting(cursor: opened, nesting: opened.nesting + 1)
   let mutable items: List of Item be []
   let mutable done be false
   repeat until done
-    let look be peek_at(current)
+    let look be current.look
     let token be token_at(cursor: current, index: look)
     change current to moved(cursor: current, look: look)
     if is_symbol(token: token, text: close) then
@@ -669,10 +690,10 @@ function bracketed(
       let item be element(current) otherwise fail
       change items to items.append(item.node)
       change current to item.cursor
-      let comma_look be peek_at(current)
+      let comma_look be current.look
       let comma be token_at(cursor: current, index: comma_look)
       if is_symbol(token: comma, text: ",") then
-        change current to current with position: comma_look + 1
+        change current to at_position(cursor: current, position: comma_look + 1)
         change current to element_after_comma(
           cursor: current,
           comma: comma.span,
@@ -685,7 +706,7 @@ function bracketed(
       end
     end
   end
-  change current to current with nesting: current.nesting - 1
+  change current to with_nesting(cursor: current, nesting: current.nesting - 1)
   let closed be past_symbol(cursor: current, text: close, what: "`{close}`") otherwise fail
   return Parsed(node: items, cursor: closed)
 end
@@ -750,7 +771,7 @@ function module_header(cursor: Cursor) returns Header
     change current to diagnose(cursor: current, diagnostic: diagnostic)
     return Header(name: [], docs: empty_docs(), cursor: current)
   end
-  change current to current with position: current.position + 1
+  change current to at_position(cursor: current, position: current.position + 1)
   let mutable name: List of Name be []
   match dotted_name(current)
     when success(path) then
@@ -774,7 +795,7 @@ function parse_module(cursor: Cursor) returns Parsed of Module
   let mutable done be false
   repeat until done
     change current to skip_newlines(current)
-    let look be peek_at(current)
+    let look be current.look
     let token be token_at(cursor: current, index: look)
     change current to moved(cursor: current, look: look)
     if token.kind is EndOfFile then
@@ -915,11 +936,11 @@ function doc_clauses(cursor: Cursor) returns Parsed of Docs
         change docs to with_clause(docs: docs, word: spelling, text: clause.text)
         change current to clause.cursor
       when Word(spelling: "expose as tool") then
-        let after be current with position: current.position + 1
+        let after be at_position(cursor: current, position: current.position + 1)
         change docs to docs with expose_as_tool: true
         change current to lenient_end_of_line(after)
       when Word(spelling: "example") then
-        let after be current with position: current.position + 1
+        let after be at_position(cursor: current, position: current.position + 1)
         let colon be lenient_symbol(cursor: after, text: ":")
         match parse_example(cursor: colon, start: token.span.start)
           when success(sample) then
@@ -946,7 +967,7 @@ end
 function clause_text(cursor: Cursor, word: Text) returns Clause
   purpose: The clause word, the colon and the text; a missing piece is reported, the line skipped.
 
-  let after_word be cursor with position: cursor.position + 1
+  let after_word be at_position(cursor: cursor, position: cursor.position + 1)
   let colon be
     match expect_symbol(cursor: after_word, text: ":", what: "`:`")
       when success(found) then found.cursor
@@ -955,7 +976,7 @@ function clause_text(cursor: Cursor, word: Text) returns Clause
   let token be token_under(colon)
   match token.kind
     when ClauseToken(text) then
-      let consumed be colon with position: colon.position + 1
+      let consumed be at_position(cursor: colon, position: colon.position + 1)
       return Clause(text: text, cursor: lenient_end_of_line(consumed))
     otherwise
       let flagged be expected(
@@ -1107,7 +1128,7 @@ function parse_function(cursor: Cursor, is_public: Boolean, start: Integer, with
 end
 
 function method_or_function_name(cursor: Cursor) returns Parsed of Name or fails with Halt
-  let look be peek_at(cursor)
+  let look be cursor.look
   let token be token_at(cursor: cursor, index: look)
   let after_name be token_at(cursor: cursor, index: look + 1)
   let after_paren be token_at(cursor: cursor, index: look + 2)
@@ -1116,7 +1137,7 @@ function method_or_function_name(cursor: Cursor) returns Parsed of Name or fails
     and is_word(token: after_paren, spelling: "self")
   if is_method then
     let name be Name(text: token.text, span: token.span)
-    return Parsed(node: name, cursor: cursor with position: look + 1)
+    return Parsed(node: name, cursor: at_position(cursor: cursor, position: look + 1))
   end
   return identifier(
     cursor: moved(cursor: cursor, look: look),
@@ -1136,10 +1157,10 @@ function parameters(cursor: Cursor) returns Parsed of List of Param or fails wit
 end
 
 function parameter(cursor: Cursor) returns Parsed of Param or fails with Halt
-  let look be peek_at(cursor)
+  let look be cursor.look
   let token be token_at(cursor: cursor, index: look)
   if is_word(token: token, spelling: "self") then
-    let mutable current be cursor with position: look + 1
+    let mutable current be at_position(cursor: cursor, position: look + 1)
     let mutable annotation: maybe Type be nothing
     let colon be eat_symbol(cursor: current, text: ":")
     change current to colon.cursor
@@ -1198,7 +1219,7 @@ end
 
 function signature_clauses(cursor: Cursor) returns Signature or fails with Halt
   let clauses be result_clauses(cursor) otherwise fail
-  let look be peek_at(clauses.cursor)
+  let look be clauses.cursor.look
   let token be token_at(cursor: clauses.cursor, index: look)
   if not is_word(token: token, spelling: "for any") then
     return clauses with cursor: moved(cursor: clauses.cursor, look: look)
@@ -1234,13 +1255,13 @@ function parse_capabilities(cursor: Cursor) returns Parsed of List of Capability
   repeat until done
     let capability be parse_capability(current) otherwise fail
     change capabilities to capabilities.append(capability.node)
-    let look be peek_at(capability.cursor)
+    let look be capability.cursor.look
     let token be token_at(cursor: capability.cursor, index: look)
     change current to moved(cursor: capability.cursor, look: look)
     if not is_symbol(token: token, text: ",") or parameter_follows_comma(current) then
       change done to true
     otherwise
-      change current to current with position: current.position + 1
+      change current to at_position(cursor: current, position: current.position + 1)
     end
   end
   return Parsed(node: capabilities, cursor: current)
@@ -1251,7 +1272,7 @@ function parse_capability(cursor: Cursor) returns Parsed of Capability or fails 
   let path be capability_path(cursor) otherwise fail
   let mutable current be path.cursor
   let mutable budget: maybe Budget be nothing
-  let look be peek_at(current)
+  let look be current.look
   let token be token_at(cursor: current, index: look)
   change current to moved(cursor: current, look: look)
   if is_word(token: token, spelling: "at most") then
@@ -1309,7 +1330,7 @@ function capability_path(cursor: Cursor) returns CapabilityPath or fails with Ha
   if not open.found then
     return CapabilityPath(path: path.node, scope: nothing, cursor: open.cursor)
   end
-  let inside be open.cursor with nesting: open.cursor.nesting + 1
+  let inside be with_nesting(cursor: open.cursor, nesting: open.cursor.nesting + 1)
   let token be advance(inside)
   match token.token.kind
     when TextToken(parts) then
@@ -1319,7 +1340,7 @@ function capability_path(cursor: Cursor) returns CapabilityPath or fails with Ha
         span: token.token.span,
         what: "a capability scope"
       ) otherwise fail
-      let outside be token.cursor with nesting: token.cursor.nesting - 1
+      let outside be with_nesting(cursor: token.cursor, nesting: token.cursor.nesting - 1)
       let close be past_symbol(cursor: outside, text: ")", what: "`)`") otherwise fail
       return CapabilityPath(path: path.node, scope: scope, cursor: close)
     otherwise
@@ -1510,7 +1531,7 @@ function sum_definition(cursor: Cursor, head: TypeHead)
   let mutable done be false
   repeat until done
     change current to skip_newlines(current)
-    let look be peek_at(current)
+    let look be current.look
     let token be token_at(cursor: current, index: look)
     change current to moved(cursor: current, look: look)
     if is_word(token: token, spelling: "end") then
@@ -1541,7 +1562,7 @@ function parse_variant(cursor: Cursor) returns Parsed of Variant or fails with H
   let name be type_name(cursor: cursor, what: "a variant name") otherwise fail
   let mutable current be name.cursor
   let mutable fields: List of Field be []
-  let look be peek_at(current)
+  let look be current.look
   let token be token_at(cursor: current, index: look)
   change current to moved(cursor: current, look: look)
   if is_symbol(token: token, text: "(") then
@@ -1587,11 +1608,13 @@ function parse_field(cursor: Cursor, allow_external_name: Boolean)
   let mutable current be refinement.cursor
   let mutable external_name: maybe Text be nothing
   if allow_external_name then
-    let look be peek_at(current)
+    let look be current.look
     let token be token_at(cursor: current, index: look)
     change current to moved(cursor: current, look: look)
     if is_word(token: token, spelling: "as") then
-      let parsed be external_name_text(current with position: look + 1) otherwise fail
+      let parsed be external_name_text(
+        at_position(cursor: current, position: look + 1)
+      ) otherwise fail
       change external_name to parsed.node
       change current to parsed.cursor
     end
@@ -1695,7 +1718,7 @@ function record_definition(cursor: Cursor, head: TypeHead)
   let mutable done be false
   repeat until done
     change current to skip_newlines(current)
-    let look be peek_at(current)
+    let look be current.look
     let token be token_at(cursor: current, index: look)
     change current to moved(cursor: current, look: look)
     if is_word(token: token, spelling: "end") then
@@ -1705,7 +1728,7 @@ function record_definition(cursor: Cursor, head: TypeHead)
       change derives to derives.append(derived.node)
       change current to derived.cursor
     otherwise if is_word(token: token, spelling: "has") then
-      let field be record_field(current with position: look + 1) otherwise fail
+      let field be record_field(at_position(cursor: current, position: look + 1)) otherwise fail
       change fields to fields.append(field.node)
       change current to end_of_line(field.cursor) otherwise fail
     otherwise
@@ -1824,7 +1847,7 @@ function implementation(
   let end_of_head be previous(target.cursor).span
   let mutable current be target.cursor
   let mutable for_any: maybe ForAny be nothing
-  let look be peek_at(current)
+  let look be current.look
   let token be token_at(cursor: current, index: look)
   change current to moved(cursor: current, look: look)
   if is_word(token: token, spelling: "for any") then
@@ -1918,7 +1941,7 @@ function ability_functions(cursor: Cursor, with_bodies: Boolean)
   let mutable done be false
   repeat until done
     change current to skip_newlines(current)
-    let look be peek_at(current)
+    let look be current.look
     let token be token_at(cursor: current, index: look)
     change current to moved(cursor: current, look: look)
     if is_word(token: token, spelling: "end") or token.kind is EndOfFile then
@@ -2030,11 +2053,11 @@ function test_item(cursor: Cursor, start: Integer) returns Parsed of Test or fai
 end
 
 function parse_type(cursor: Cursor) returns Parsed of Type or fails with Halt
-  let look be peek_at(cursor)
+  let look be cursor.look
   let token be token_at(cursor: cursor, index: look)
   match token.kind
     when Word(spelling: "maybe") then
-      let inner be parse_type(cursor with position: look + 1) otherwise fail
+      let inner be parse_type(at_position(cursor: cursor, position: look + 1)) otherwise fail
       let span be join(left: token.span, right: type_span(inner.node))
       return Parsed(node: MaybeType(inner: inner.node, span: span), cursor: inner.cursor)
     when Word(spelling: "function") then
@@ -2108,11 +2131,11 @@ function type_arguments(cursor: Cursor) returns Parsed of List of Type or fails 
   end
   let mutable done be false
   repeat until done
-    let look be peek_at(current)
+    let look be current.look
     let token be token_at(cursor: current, index: look)
     change current to moved(cursor: current, look: look)
     if is_symbol(token: token, text: ",") and type_follows_comma(current) then
-      let next be parse_type(current with position: look + 1) otherwise fail
+      let next be parse_type(at_position(cursor: current, position: look + 1)) otherwise fail
       change args to args.append(next.node)
       change current to next.cursor
     otherwise
@@ -2129,15 +2152,15 @@ function starts_type(token: Token) returns Boolean
 end
 
 function type_follows_comma(cursor: Cursor) returns Boolean
-  return starts_type(second_token(cursor: cursor, look: peek_at(cursor)))
+  return starts_type(second_token(cursor: cursor, look: cursor.look))
 end
 
 function identifier(cursor: Cursor, what: Text) returns Parsed of Name or fails with Halt
   purpose: A snake_case name; a reserved word is taken, with an error, so that parsing goes on.
 
-  let look be peek_at(cursor)
+  let look be cursor.look
   let token be token_at(cursor: cursor, index: look)
-  let after be cursor with position: look + 1
+  let after be at_position(cursor: cursor, position: look + 1)
   match token.kind
     when Identifier then
       return Parsed(node: Name(text: token.text, span: token.span), cursor: after)
@@ -2171,12 +2194,12 @@ function identifier(cursor: Cursor, what: Text) returns Parsed of Name or fails 
 end
 
 function type_name(cursor: Cursor, what: Text) returns Parsed of TypeName or fails with Halt
-  let look be peek_at(cursor)
+  let look be cursor.look
   let token be token_at(cursor: cursor, index: look)
   match token.kind
     when TypeIdentifier then
       let name be TypeName(text: token.text, span: token.span)
-      return Parsed(node: name, cursor: cursor with position: look + 1)
+      return Parsed(node: name, cursor: at_position(cursor: cursor, position: look + 1))
     when Identifier then
       let text be token.text
       let diagnostic be report.error(
@@ -2217,7 +2240,7 @@ function parse_block(cursor: Cursor, terminators: List of Text)
   or fails with Halt
   purpose: Statements up to a terminator word; a bad statement is reported and its line skipped.
 
-  let look be peek_at(cursor)
+  let look be cursor.look
   let start be token_at(cursor: cursor, index: look).span.start
   let mutable current be moved(cursor: cursor, look: look)
   let mutable statements: List of Statement be []
@@ -2253,7 +2276,7 @@ function parse_block(cursor: Cursor, terminators: List of Text)
 end
 
 function parse_statement(cursor: Cursor) returns Parsed of Statement or fails with Halt
-  let look be peek_at(cursor)
+  let look be cursor.look
   let token be token_at(cursor: cursor, index: look)
   let parsed be statement_kind(
     cursor: moved(cursor: cursor, look: look),
@@ -2450,13 +2473,13 @@ function match_statement(cursor: Cursor, start: Integer)
   let mutable done be false
   repeat until done
     change current to skip_newlines(current)
-    let look be peek_at(current)
+    let look be current.look
     let token be token_at(cursor: current, index: look)
     change current to moved(cursor: current, look: look)
     if is_word(token: token, spelling: "end") then
       change done to true
     otherwise if is_word(token: token, spelling: "otherwise") then
-      let after_word be current with position: look + 1
+      let after_word be at_position(cursor: current, position: look + 1)
       let rest be parse_block(cursor: after_word, terminators: ["end"]) otherwise fail
       change fallback to rest.node
       change current to rest.cursor
@@ -2678,9 +2701,9 @@ function is_call_or_otherwise(expr: Expr) returns Boolean
 end
 
 function parse_pattern(cursor: Cursor) returns Parsed of Pattern or fails with Halt
-  let look be peek_at(cursor)
+  let look be cursor.look
   let token be token_at(cursor: cursor, index: look)
-  let after be cursor with position: look + 1
+  let after be at_position(cursor: cursor, position: look + 1)
   match token.kind
     when TypeIdentifier then
       return variant_pattern(moved(cursor: cursor, look: look)) otherwise fail
@@ -2771,9 +2794,9 @@ end
 function wrapped_pattern(cursor: Cursor, wrapper: Text) returns Parsed of Pattern or fails with Halt
   let keyword be advance(cursor)
   let open be past_symbol(cursor: keyword.cursor, text: "(", what: "`(`") otherwise fail
-  let inside be open with nesting: open.nesting + 1
+  let inside be with_nesting(cursor: open, nesting: open.nesting + 1)
   let inner be parse_pattern(inside) otherwise fail
-  let outside be inner.cursor with nesting: inner.cursor.nesting - 1
+  let outside be with_nesting(cursor: inner.cursor, nesting: inner.cursor.nesting - 1)
   let close be expect_symbol(cursor: outside, text: ")", what: "`)`") otherwise fail
   let span be join(left: keyword.token.span, right: close.token.span)
   let node be
@@ -2786,7 +2809,7 @@ end
 
 function binding_pattern(cursor: Cursor) returns Parsed of Pattern or fails with Halt
   let name be identifier(cursor: cursor, what: "a name") otherwise fail
-  let look be peek_at(name.cursor)
+  let look be name.cursor.look
   let token be token_at(cursor: name.cursor, index: look)
   let following be second_token(cursor: name.cursor, look: look)
   let typed be is_symbol(token: token, text: ":") and starts_type(following)
@@ -2794,7 +2817,7 @@ function binding_pattern(cursor: Cursor) returns Parsed of Pattern or fails with
     let bare be BindingPattern(name: name.node, span: name.node.span)
     return Parsed(node: bare, cursor: moved(cursor: name.cursor, look: look))
   end
-  let annotation be parse_type(name.cursor with position: look + 1) otherwise fail
+  let annotation be parse_type(at_position(cursor: name.cursor, position: look + 1)) otherwise fail
   let span be join(left: name.node.span, right: type_span(annotation.node))
   let node be TypedPattern(name: name.node, annotation: annotation.node, span: span)
   return Parsed(node: node, cursor: annotation.cursor)
@@ -2827,9 +2850,9 @@ function expression(cursor: Cursor) returns Parsed of Expr or fails with Halt
   let mutable current be first_value.cursor
   let mutable done be false
   repeat until done
-    let look be peek_at(current)
+    let look be current.look
     if is_word(token: token_at(cursor: current, index: look), spelling: "otherwise") then
-      change current to current with position: look + 1
+      change current to at_position(cursor: current, position: look + 1)
       let fallback be parse_outcome(current) otherwise fail
       let span be join(left: expr_span(value), right: outcome_span(fallback.node))
       change value to Otherwise(value: value, fallback: fallback.node, span: span)
@@ -2843,9 +2866,9 @@ function expression(cursor: Cursor) returns Parsed of Expr or fails with Halt
 end
 
 function parse_outcome(cursor: Cursor) returns Parsed of Outcome or fails with Halt
-  let look be peek_at(cursor)
+  let look be cursor.look
   let token be token_at(cursor: cursor, index: look)
-  let after be cursor with position: look + 1
+  let after be at_position(cursor: cursor, position: look + 1)
   match token.kind
     when Word(spelling: "fail") then
       return fail_outcome(cursor: after, start: token.span) otherwise fail
@@ -2881,7 +2904,7 @@ function return_outcome(cursor: Cursor, start: Span) returns Parsed of Outcome o
   if statement_ends_here(cursor) then
     return Parsed(node: ReturnOutcome(value: nothing, span: start), cursor: cursor)
   end
-  let look be peek_at(cursor)
+  let look be cursor.look
   let token be token_at(cursor: cursor, index: look)
   if is_word(token: token, spelling: "end") then
     return Parsed(
@@ -2954,10 +2977,10 @@ function binary(cursor: Cursor, lowest: Integer) returns Parsed of Expr or fails
   # a comparison and `with` take one operand each, `not` a `not` or a comparison: the
   # ceiling closes the levels an operator leaves
   let mutable ceiling be power_level
-  let head_look be peek_at(current)
+  let head_look be current.look
   let head_token be token_at(cursor: current, index: head_look)
   if lowest is at most not_level and is_word(token: head_token, spelling: "not") then
-    change current to current with position: head_look + 1
+    change current to at_position(cursor: current, position: head_look + 1)
     let inner be binary(cursor: current, lowest: not_level) otherwise fail
     let not_span be join(left: head_token.span, right: expr_span(inner.node))
     change value to Not(value: inner.node, span: not_span)
@@ -2970,7 +2993,7 @@ function binary(cursor: Cursor, lowest: Integer) returns Parsed of Expr or fails
   end
   let mutable done be false
   repeat until done
-    let look be peek_at(current)
+    let look be current.look
     let token be token_at(cursor: current, index: look)
     match binary_operator(token)
       when some(operator) then
@@ -2980,7 +3003,7 @@ function binary(cursor: Cursor, lowest: Integer) returns Parsed of Expr or fails
           change done to true
         otherwise
           let right_lowest be if level is power_level then level otherwise level + 1 end
-          change current to current with position: look + 1
+          change current to at_position(cursor: current, position: look + 1)
           let right be binary(cursor: current, lowest: right_lowest) otherwise fail
           change value to binary_expression(operator: operator, left: value, right: right.node)
           change current to right.cursor
@@ -2989,7 +3012,9 @@ function binary(cursor: Cursor, lowest: Integer) returns Parsed of Expr or fails
       otherwise
         let with_fits be with_level is at least lowest and with_level is at most ceiling
         if with_fits and is_word(token: token, spelling: "with") then
-          let updates be update_list(current with position: look + 1) otherwise fail
+          let updates be update_list(
+            at_position(cursor: current, position: look + 1)
+          ) otherwise fail
           let last_update be updates.node.last() otherwise crash with "an update list is not empty"
           let with_span be join(left: expr_span(value), right: last_update.span)
           change value to With(base: value, updates: updates.node, span: with_span)
@@ -3037,11 +3062,11 @@ function postfix(cursor: Cursor) returns Parsed of Expr or fails with Halt
   let mutable current be head.cursor
   let mutable done be false
   repeat until done
-    let look be peek_at(current)
+    let look be current.look
     let token be token_at(cursor: current, index: look)
     change current to moved(cursor: current, look: look)
     if is_symbol(token: token, text: ".") then
-      let after_dot be current with position: look + 1
+      let after_dot be at_position(cursor: current, position: look + 1)
       let member be member_access(cursor: after_dot, base: value) otherwise fail
       change value to member.node
       change current to member.cursor
@@ -3103,7 +3128,7 @@ function arguments(cursor: Cursor) returns Parsed of List of Arg or fails with H
 end
 
 function argument(cursor: Cursor) returns Parsed of Arg or fails with Halt
-  let look be peek_at(cursor)
+  let look be cursor.look
   let token be token_at(cursor: cursor, index: look)
   let following be second_token(cursor: cursor, look: look)
   let named be token.kind is Identifier and is_symbol(token: following, text: ":")
@@ -3123,9 +3148,9 @@ function argument(cursor: Cursor) returns Parsed of Arg or fails with Halt
 end
 
 function primary(cursor: Cursor) returns Parsed of Expr or fails with Halt
-  let look be peek_at(cursor)
+  let look be cursor.look
   let token be token_at(cursor: cursor, index: look)
-  let after be cursor with position: look + 1
+  let after be at_position(cursor: cursor, position: look + 1)
   let span be token.span
   match token.kind
     when IntegerToken then
@@ -3170,9 +3195,9 @@ function expression_expected(cursor: Cursor, token: Token) returns Cursor
 end
 
 function word_primary(cursor: Cursor) returns Parsed of Expr or fails with Halt
-  let look be peek_at(cursor)
+  let look be cursor.look
   let token be token_at(cursor: cursor, index: look)
-  let after be cursor with position: look + 1
+  let after be at_position(cursor: cursor, position: look + 1)
   let span be token.span
   match token.kind
     when Word(spelling: "raw") then return raw_text(cursor: after, start: span) otherwise fail
@@ -3254,7 +3279,7 @@ end
 
 function type_primary(cursor: Cursor) returns Parsed of Expr or fails with Halt
   let name be type_name(cursor: cursor, what: "a type") otherwise fail
-  let look be peek_at(name.cursor)
+  let look be name.cursor.look
   let token be token_at(cursor: name.cursor, index: look)
   if not is_symbol(token: token, text: "(") then
     let bare be TypeNameExpr(name: name.node, span: name.node.span)
@@ -3267,16 +3292,16 @@ end
 
 function paren_primary(cursor: Cursor) returns Parsed of Expr or fails with Halt
   let open be advance(cursor)
-  let inside be open.cursor with nesting: open.cursor.nesting + 1
+  let inside be with_nesting(cursor: open.cursor, nesting: open.cursor.nesting + 1)
   let inner be expression(inside) otherwise fail
-  let outside be inner.cursor with nesting: inner.cursor.nesting - 1
+  let outside be with_nesting(cursor: inner.cursor, nesting: inner.cursor.nesting - 1)
   let close be expect_symbol(cursor: outside, text: ")", what: "`)`") otherwise fail
   let span be join(left: open.token.span, right: close.token.span)
   return Parsed(node: Paren(value: inner.node, span: span), cursor: close.cursor)
 end
 
 function list_literal(cursor: Cursor) returns Parsed of Expr or fails with Halt
-  let look be peek_at(cursor)
+  let look be cursor.look
   let token be token_at(cursor: cursor, index: look)
   let items be bracketed(
     cursor: moved(cursor: cursor, look: look),
@@ -3291,7 +3316,7 @@ function list_literal(cursor: Cursor) returns Parsed of Expr or fails with Halt
 end
 
 function map_literal(cursor: Cursor) returns Parsed of Expr or fails with Halt
-  let look be peek_at(cursor)
+  let look be cursor.look
   let token be token_at(cursor: cursor, index: look)
   let entries be bracketed(
     cursor: moved(cursor: cursor, look: look),
@@ -3381,13 +3406,13 @@ function match_expression(cursor: Cursor) returns Parsed of Expr or fails with H
   let mutable done be false
   repeat until done
     change current to skip_newlines(current)
-    let look be peek_at(current)
+    let look be current.look
     let token be token_at(cursor: current, index: look)
     change current to moved(cursor: current, look: look)
     if is_word(token: token, spelling: "end") then
       change done to true
     otherwise if is_word(token: token, spelling: "otherwise") then
-      let rest be match_fallback(current with position: look + 1) otherwise fail
+      let rest be match_fallback(at_position(cursor: current, position: look + 1)) otherwise fail
       change fallback to rest.node
       change current to rest.cursor
       change done to true
@@ -3486,9 +3511,9 @@ function query_terminal(cursor: Cursor, grouped: Boolean)
   returns Parsed of QueryTerminal
   or fails with Halt
 
-  let look be peek_at(cursor)
+  let look be cursor.look
   let token be token_at(cursor: cursor, index: look)
-  let after be cursor with position: look + 1
+  let after be at_position(cursor: cursor, position: look + 1)
   match token.kind
     when Word(spelling: "collect") then
       let value be expression(after) otherwise fail

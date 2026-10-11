@@ -278,7 +278,7 @@ function file_source(
   purpose: A file as the commands hold it, tagged with its package or as a bound module (AF1, AL1).
 
   let chars be text.characters()
-  let starts be report.line_starts(chars)
+  let starts be report.line_starts(text)
   let declares be binding is not nothing or python is not nothing
   let front be front_end(text: text, chars: chars, declarations: declares)
   return Source(

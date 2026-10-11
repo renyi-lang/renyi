@@ -36,14 +36,15 @@ public function bare_error(code: Text, message: Text, span: Span) returns Diagno
   return Diagnostic(is_error: true, code: code, message: message, span: span, fix: nothing)
 end
 
-public function line_starts(chars: List of Text) returns List of Integer
-  purpose: The character offset of every line start of a text.
+public function line_starts(text: Text) returns List of Integer
+  purpose: The character offset of every line start: the pieces between the line breaks, measured.
 
+  let pieces be text.split("\n")
   let mutable starts be [0]
-  let mutable index be 0
-  for each ch in chars
-    if ch is "\n" then change starts to starts.append(index + 1) end
-    change index to index + 1
+  let mutable start be 0
+  for each piece in pieces.slice(start: 0, stop: pieces.length() - 1)
+    change start to start + piece.length() + 1
+    change starts to starts.append(start)
   end
   return starts
 end

@@ -110,7 +110,9 @@ function diagnose(source: Source, library: List of Module, strict: Boolean)
       when Parsed then check_file(source: source, library: library)
       when Rejected(diagnostics) then diagnostics
     end
-  change diagnostics to diagnostics.append_all(check_layout(source.chars))
+  change diagnostics to diagnostics.append_all(
+    check_layout(chars: source.chars, starts: source.starts)
+  )
   change diagnostics to report.sorted_by_start(diagnostics)
   if not strict then return diagnostics end
   return for each diagnostic in diagnostics collect as_strict(diagnostic)
@@ -174,36 +176,34 @@ function error_count(diagnostics: List of Diagnostic) returns Integer
   return errors
 end
 
-function check_layout(chars: List of Text) returns List of Diagnostic
-  purpose: Layout checks the formatter would fix: line width and trailing whitespace, line by line.
+function check_layout(chars: List of Text, starts: List of Integer) returns List of Diagnostic
+  purpose: The layout checks, line by line from the line starts: the width and trailing whitespace.
 
   let mutable diagnostics: List of Diagnostic be []
-  let mutable line_start be 0
-  let mutable width be 0
-  let mutable trailing be 0
-  let mutable index be 0
-  for each ch in chars
-    if ch is "\n" then
-      let finished be line_layout(start: line_start, width: width, trailing: trailing)
-      change diagnostics to diagnostics.append_all(finished)
-      change line_start to index + 1
-      change width to 0
-      change trailing to 0
-    otherwise
-      change width to width + 1
-      if ch is " " or ch is "\t" then
+  let line_count be starts.length()
+  let total be chars.length()
+  for each line from 0 to line_count - 1
+    let start be starts.at(line) otherwise 0
+    let stop be
+      if line + 1 is line_count then total otherwise (starts.at(line + 1) otherwise total) - 1 end
+    let width be stop - start
+    if width is greater than 0 then
+      let mutable trailing be 0
+      repeat until trailing is at least width
+        or not is_blank(chars.at(stop - 1 - trailing) otherwise "")
         change trailing to trailing + 1
-      otherwise
-        change trailing to 0
       end
+      let finished be line_layout(start: start, width: width, trailing: trailing)
+      change diagnostics to diagnostics.append_all(finished)
     end
-    change index to index + 1
-  end
-  if width is greater than 0 then
-    let finished be line_layout(start: line_start, width: width, trailing: trailing)
-    change diagnostics to diagnostics.append_all(finished)
   end
   return diagnostics
+end
+
+function is_blank(ch: Text) returns Boolean
+  purpose: Whether the character is a space or a tab, what counts as trailing whitespace.
+
+  return ch is " " or ch is "\t"
 end
 
 function line_layout(start: Integer, width: Integer, trailing: Integer) returns List of Diagnostic

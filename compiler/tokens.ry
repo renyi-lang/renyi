@@ -18,7 +18,7 @@ public function main() needs console, environment, filesystem
   let chars be source.characters()
   let rendered be report.render_text(
     file_name: path,
-    starts: report.line_starts(chars),
+    starts: report.line_starts(source),
     length: chars.length(),
     diagnostics: lexed.diagnostics
   )
@@ -34,7 +34,7 @@ function has_error(diagnostics: List of Diagnostic) returns Boolean
 end
 
 function print_all(tokens: List of Token, source: Text) needs console
-  let starts be line_starts(source)
+  let starts be report.line_starts(source)
   let mutable line be 0
   for each token in tokens
     repeat until line + 1 is at least starts.length()
@@ -47,16 +47,6 @@ function print_all(tokens: List of Token, source: Text) needs console
     let kind be kind_name(token.kind).pad_right(22)
     console.print("{line_text}:{column_text} {kind} {shown(token)}")
   end
-end
-
-function line_starts(source: Text) returns List of Integer
-  let mutable starts be [0]
-  let mutable index be 0
-  for each ch in source.characters()
-    change index to index + 1
-    if ch is "\n" then change starts to starts.append(index) end
-  end
-  return starts
 end
 
 function kind_name(kind: TokenKind) returns Text

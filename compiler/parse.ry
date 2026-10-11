@@ -28,7 +28,7 @@ public function main() or fails with FileError needs console, environment, files
   if not parsed.diagnostics.is_empty() then
     let rendered be report.render_json(
       file_name: path,
-      starts: report.line_starts(chars),
+      starts: report.line_starts(source),
       length: chars.length(),
       diagnostics: parsed.diagnostics
     )
