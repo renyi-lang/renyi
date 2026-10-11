@@ -279,12 +279,16 @@ and push there directly.
    the cursor, the lexer's scans as two list primitives; AU53: the
    reserved words and symbols as Integer codes the parser compares in
    place, with the VM's part, a module constant read in place on both
-   tiers; the lexer alone -2.4%, the parser alone -3.5%, the
-   checker's run -1.2%, all against the stage's start), the paragraph
-   "B4 as built so far" of that section has them with the lexer's lesson
-   (the hash per character is the cost, not the loop) and what stays:
-   whatever the profile shows next, with the ratio 7.2 and 8.1 on two runs (7.5 before the cut, within the wall-clock's noise) against
-   the gate of 3.
+   tiers; the lexer alone -2.4%, the parser alone -3.5%, the checker's
+   run -1.2%, all against the stage's start; AU54: two lookups by index,
+   the lexer's last append in place and a shared list appended with one
+   copy, the checker's run -3.1% more), the paragraph "B4 as
+   built so far" of that section has them with the lexer's lesson (the
+   hash per character is the cost, not the loop) and what stays: the
+   liveness rule AU11 deferred (a last read of a local moves it, in both
+   emitters), then the loops' iterators and the frame leave's drops,
+   with the ratio 7.2 and 8.1 on two runs after AU53 (7.5 before it,
+   within the wall-clock's noise) against the gate of 3.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
@@ -3522,12 +3526,28 @@ three cuts with the reference at 78.5) and this binary's 37.6 and 36.4
 (15.7 and 16.7), parsing 221.4 and 229.4 against 61.9 and 67.4 (3.6 and
 3.4), compiling 899.3 and 825.9 against 122.9 and 111.3 (7.3 and 7.4):
 unchanged within the wall-clock's noise, which is wider than the cut's
-1.2% in instructions. What stays: whatever the profile shows next
-(`memcpy` 4.4% and `Rc::make_mut` 1.6% of the checker's run are the
-copies of shared lists and records, `drop_glue` 5.7% the frees; the
+1.2% in instructions. The fifth cut (AU54): `find_binding` and the
+emitter's `lookup` walk their scopes by index (no reversed copy per
+lookup), the lexer's end-of-file append in AU11's form, and the natives
+`append` and `append_all` copying a shared list once with room (the
+exact-length clone plus the reallocation on the push was the `memcpy`
+under `realloc`); the checker's run 4,558.4 million with the VM's part
+alone (-2.8%), 4,544.4 million with the two Renyi parts
+(-3.1%), the lexer alone 491.4 million per lex (-0.6%). What
+stays: the copies that remain are the checker's own shape (a function
+takes `checker: Checker` and updates a mutable copy while the parameter
+slot still holds the record: every `with` copies the record and every
+taken field is cloned; a census build counted 60,108 appends on shared
+lists copying 4.9 million items per run, 84% in `bodies.record`), so the
+next cut is the liveness rule AU11 deferred, in both emitters: a `let`
+or a `return` that reads a local for the last time moves it (`LoadMove`,
+and the field of a dead record taken), judged by the compile judge;
+after it, `for each` without an iterator allocated per loop (263,438 per
+run), `leave_frame`'s drop of every slot (10.6 million per run, most of
+them plain values) and `lists.replace_at` (three lists per call); the
 Cranelift compile is 9% of the checker's one run under
 `RENYI_NATIVE_SYNC=1`, which the ratio pays on the compile thread
-instead). The ratio after the three cuts (`tools/ratio.py
+instead. The ratio after the three cuts (`tools/ratio.py
 target/renyi-b4iv target/renyi-au34`): checking 590.5 ms against the
 reference's 78.5 (7.5 times, the gate) and this binary's 38.7 (15.3),
 parsing 207.9 against 65.6 (3.2) and 62.2 (3.3), compiling 888.9 against
@@ -5233,6 +5253,13 @@ holds between calls.
   parser alone -3.5%, the checker's run -1.2% against the
   numbers before the cut; AT1's synchronous row -0.2% in instructions and -0.5% by the estimate, the image row -0.6%; the ratio
   7.2 and 8.1 on two runs (7.5 before the cut, within the wall-clock's noise). CLAUDE.md's rows for `compiler/` and the VM.
+- **Decision AU54**: the fifth cut of B4, `find_binding` and the
+  emitter's `lookup` by index, the lexer's end-of-file append in AU11's
+  form, and the natives `append` and `append_all` copying a shared list
+  once with room (the census build that named the sites is described in
+  the entry); the checker's run -2.8% for the VM's part alone and -3.1%
+  with the Renyi parts, the lexer alone -0.6%; AT1's synchronous row
+  -2.2% in instructions and -2.3% by the estimate, the image row -2.9%.
 - **The README's opening** at the owner's request (68c5cd2): the design
   philosophy as the selling points, five points a reviewer can check,
   the comparison with Python, TypeScript, Rust and shell for the one

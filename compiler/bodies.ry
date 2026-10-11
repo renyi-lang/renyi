@@ -1477,12 +1477,15 @@ function count_fix(checker: Checker, source: Span) returns Text
 end
 
 function find_binding(checker: Checker, name: Text) returns maybe Binding
-  purpose: The innermost binding of a name.
+  purpose: The innermost binding of a name, the scopes walked from the innermost by index.
 
-  for each scope in checker.scopes.reversed()
+  let mutable scope_index be checker.scopes.length() - 1
+  repeat until scope_index is less than 0
+    let scope be checker.scopes.at(scope_index) otherwise crash with "a scope"
     for each binding in scope.bindings
       if binding.name is name then return binding end
     end
+    change scope_index to scope_index - 1
   end
   return nothing
 end

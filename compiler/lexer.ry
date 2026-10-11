@@ -120,9 +120,10 @@ public function lex(source: Text) returns Lexed
 
   let chars be source.characters()
   let limit be chars.length()
-  let lexed be lex_range(chars: chars, start: 0, limit: limit)
+  let mutable lexed be lex_range(chars: chars, start: 0, limit: limit)
   let eof be Token(kind: EndOfFile, text: "", span: Span(start: limit, stop: limit), code: 0)
-  return Lexed(tokens: lexed.tokens.append(eof), diagnostics: lexed.diagnostics)
+  change lexed to lexed with tokens: lexed.tokens.append(eof)
+  return lexed
 end
 
 function lex_range(chars: List of Text, start: Integer, limit: Integer) returns Lexed

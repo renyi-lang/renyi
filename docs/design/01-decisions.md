@@ -5942,3 +5942,43 @@ than the cut's 1.2% in instructions. Also in this commit: AU52's natives
 table gave `index_of`'s typed entry to `run_until` and none to
 `index_of`, which `tests/extension.rs` refused (CI red on e91cec0);
 fixed.
+
+**AU54. B4's fifth cut: two lookups by index, the lexer's last append in
+place, and a shared list appended with one copy.** The profile of the
+checker's run after AU53 (callgrind's callers and a census build that
+named the Renyi site of every `append` that found its list shared):
+`Rc::make_mut` in `list_append` cloned 4.9 million list items per run,
+60,108 appends on shared lists, 84% of the items in `bodies.record` (the
+body's references, a copy of the whole list per reference, since the
+checker record arrives shared), then `infer`, `declare_function` and the
+lexer's end-of-file append (24 copies of a file's tokens); and every
+clone was at the list's exact length, so the push that followed moved it
+again through `realloc` (`memcpy` 4.5% of the run, 143 million of it
+under `realloc`). Beside it, `find_binding` built a reversed copy of the
+scopes for each of its 62,285 lookups, and the emitter's `lookup` did
+the same twice per name. The cut: (i) `bodies.find_binding` and
+`emit.lookup` walk their scopes by index from the innermost, as
+`update_binding` did; (ii) `lexer.lex` appends the end-of-file token
+with `change lexed to lexed with tokens: lexed.tokens.append(eof)`,
+AU11's form, so the field is taken and the list appended in place; (iii)
+the natives `append` and `append_all` copy a shared list once, with room
+for what is appended (`Rc::get_mut` for the list held once, else
+`Vec::with_capacity` and one `extend`), where `make_mut` cloned it at
+its length and the push moved it again. Judged byte-equal by the quick
+judges on 118 files and the four judges. The measure (callgrind,
+`RENYI_NATIVE_SYNC=1`): the VM's part alone, on the committed sources,
+the checker's run 4,691.7 to 4,558.4 million instructions (-2.8%); with
+the two Renyi parts, 4,544.4 million (-3.1%); the lexer alone 494.4 to
+491.4 million per lex (-0.6%); AT1's measure of the VM's part on the
+self-check (the synchronous row, AU53's binary against this one):
+6,376.4 to 6,235.9 million instructions (-2.2%) and 8,955.4 to 8,746.6
+million by the estimate (-2.3%); the image row 4,918.3 to 4,775.6
+million (-2.9%) and 7,039.8 to 6,851.8 million by the estimate (-2.7%),
+the interpreter -1.2%, the image unchanged in size. What the profile
+leaves: the copies that remain are the checker's own shape, a function
+that takes `checker: Checker` and updates a mutable copy of it while the
+parameter slot still holds the record, so every `with` copies the record
+and every taken field is cloned (AU11 counted 47,000 of its 71,000
+updates in the slot finding the record shared); the liveness rule AU11
+left to the next profile (a `let` or a `return` that reads a local for
+the last time moves it) is the next cut.

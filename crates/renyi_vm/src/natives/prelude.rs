@@ -609,8 +609,19 @@ fn list_append(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
         Value::List(mut items) => {
             // in place when nothing else holds the list (decision O1), the
             // allocation kept (AU2's profile: `take_list` then
-            // `Value::list` freed and allocated one per call)
-            Rc::make_mut(&mut items).push(item);
+            // `Value::list` freed and allocated one per call); a shared
+            // list is copied once with room for the item (decision AU54:
+            // `make_mut` cloned it at its exact length and the push moved
+            // it again)
+            match Rc::get_mut(&mut items) {
+                Some(list) => list.push(item),
+                None => {
+                    let mut copy = Vec::with_capacity(items.len() + 1);
+                    copy.extend(items.iter().cloned());
+                    copy.push(item);
+                    items = Rc::new(copy);
+                }
+            }
             Ok(Value::List(items))
         }
         other => Err(crash(format!(
@@ -625,7 +636,16 @@ fn list_append_all(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     let others = list(&others)?.clone();
     match take(args, 0) {
         Value::List(mut items) => {
-            Rc::make_mut(&mut items).extend(others.iter().cloned());
+            // as `append`: in place when held once, else one copy with room
+            match Rc::get_mut(&mut items) {
+                Some(list) => list.extend(others.iter().cloned()),
+                None => {
+                    let mut copy = Vec::with_capacity(items.len() + others.len());
+                    copy.extend(items.iter().cloned());
+                    copy.extend(others.iter().cloned());
+                    items = Rc::new(copy);
+                }
+            }
             Ok(Value::List(items))
         }
         other => Err(crash(format!(

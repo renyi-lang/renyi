@@ -386,12 +386,18 @@ function alias(emitter: Emitter, name: Text, slot: Integer) returns Emitter
 end
 
 function lookup(emitter: Emitter, name: Text) returns maybe Integer
-  purpose: The slot of a name in scope, the innermost binding first.
+  purpose: The slot of a name in scope, the innermost binding first, both walked by index.
 
-  for each scope in emitter.scopes.reversed()
-    for each local in scope.reversed()
+  let mutable scope_index be emitter.scopes.length() - 1
+  repeat until scope_index is less than 0
+    let scope be emitter.scopes.at(scope_index) otherwise crash with "a scope"
+    let mutable local_index be scope.length() - 1
+    repeat until local_index is less than 0
+      let local be scope.at(local_index) otherwise crash with "a local"
       if local.name is name then return local.slot end
+      change local_index to local_index - 1
     end
+    change scope_index to scope_index - 1
   end
   return nothing
 end
