@@ -32,7 +32,7 @@ for mode in "" "--interpret"; do
   b=$(irefs "$bin" run $mode bench/micro/call_integer_200000.ry)
   printf '%-40s %-12s %16s\n' "call_integer (literal bound)" "${mode:-native}" $(( (a - b) / 800000 ))
 done
-for prog in call_integer field_read call_record record_build; do
+for prog in call_integer field_read call_record record_build scan_codes; do
   for mode in "" "--interpret"; do
     a=$(irefs "$bin" run $mode bench/micro/$prog.ry 1000000)
     b=$(irefs "$bin" run $mode bench/micro/$prog.ry 200000)

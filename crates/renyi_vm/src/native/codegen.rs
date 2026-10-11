@@ -32,7 +32,7 @@ use crate::extension::TypedKind;
 use crate::integer::Int;
 use crate::native::infer::{
     abs_of_binary, abs_of_constant, abs_of_field_at, abs_of_params, abs_of_result, abs_of_slot,
-    analyse, boxed_depth, is_text, static_field, Abs, Analysis, SlotKind,
+    analyse, boxed_depth, is_integer, is_text, static_field, Abs, Analysis, SlotKind,
 };
 use crate::native::runtime::{
     binary_code, fold_code, CONTINUE, DEOPT, D_BOXED, D_DEOPT, D_FAILURE, D_INTERRUPT, D_RETURNED,
@@ -455,6 +455,19 @@ pub(crate) fn is_comparison(op: BinaryOp) -> bool {
         op,
         Is | IsNot | IsLessThan | IsAtMost | IsGreaterThan | IsAtLeast
     )
+}
+
+/// The condition of a comparison on two signed integers.
+fn comparison_cc(op: BinaryOp) -> IntCC {
+    use BinaryOp::*;
+    match op {
+        Is => IntCC::Equal,
+        IsNot => IntCC::NotEqual,
+        IsLessThan => IntCC::SignedLessThan,
+        IsAtMost => IntCC::SignedLessThanOrEqual,
+        IsGreaterThan => IntCC::SignedGreaterThan,
+        _ => IntCC::SignedGreaterThanOrEqual,
+    }
 }
 
 /// The operands a typed call or a comparison borrows (decisions AU1 and
@@ -3826,6 +3839,17 @@ impl Gen<'_, '_> {
         if texts {
             self.compare_small_texts(op, join);
         }
+        // two Integers of which at least one is boxed (decision AU45): a
+        // small Integer in a register beside it, as a literal bound is
+        let integers = {
+            let n = self.state.len();
+            let (left, right) = (self.state[n - 2], self.state[n - 1]);
+            let typed = |abs: Abs| matches!(abs, Abs::Int) || is_integer(self.program, abs);
+            (left.is_boxed() || right.is_boxed()) && typed(left) && typed(right)
+        };
+        if integers {
+            self.compare_small_integers(op, join);
+        }
         let op_value = self.u8(binary_code(op));
         let mask_value = self.u32(self.masks[pc]);
         let pc_value = self.u32(pc as u32);
@@ -3923,6 +3947,65 @@ impl Gen<'_, '_> {
         self.switch_to(general);
     }
 
+    /// A comparison of two Integers of which at least one is boxed and
+    /// the checker typed Integer, the other boxed too or a small Integer
+    /// in a register (decision AU45): when the boxed ones are small, the
+    /// payloads are compared in place with the op's condition, the Boolean
+    /// goes to its register and the boxed operands are dropped, since a
+    /// small Integer holds no count; a big Integer falls through to the
+    /// helper, which has the big Integers.
+    fn compare_small_integers(&mut self, op: BinaryOp, join: Block) {
+        let flags = MemFlagsData::trusted();
+        let n = self.state.len();
+        let (left, right) = (self.state[n - 2], self.state[n - 1]);
+        let height = self.height();
+        // the right operand is the top slot when boxed, the left the slot
+        // below it, or the top slot when the right is in a register
+        let right_at = right.is_boxed().then(|| self.address_at(height - 1));
+        let left_at = left
+            .is_boxed()
+            .then(|| self.address_at(height - 1 - usize::from(right.is_boxed())));
+        let mut small = None;
+        for at in [left_at, right_at].into_iter().flatten() {
+            for (offset, tag) in [(0, TAG_INTEGER), (INT_TAG, INT_SMALL)] {
+                let found = self.tag_at(at, offset);
+                let fits = self.b.ins().icmp_imm_s(IntCC::Equal, found, tag as i64);
+                small = Some(match small {
+                    Some(before) => self.b.ins().band(before, fits),
+                    None => fits,
+                });
+            }
+        }
+        let small = small.expect("a boxed operand");
+        let inline = self.b.create_block();
+        let general = self.b.create_block();
+        self.b.ins().brif(small, inline, &[], general, &[]);
+        self.b.seal_block(inline);
+        self.b.seal_block(general);
+        self.switch_to(inline);
+        let a = match left_at {
+            Some(at) => self.b.ins().load(types::I64, flags, at, INT_PAYLOAD),
+            None => {
+                let var = self.int_var(n - 2);
+                self.b.use_var(var)
+            }
+        };
+        let b = match right_at {
+            Some(at) => self.b.ins().load(types::I64, flags, at, INT_PAYLOAD),
+            None => {
+                let var = self.int_var(n - 1);
+                self.b.use_var(var)
+            }
+        };
+        let answer = self.b.ins().icmp(comparison_cc(op), a, b);
+        let dropped = usize::from(left.is_boxed()) + usize::from(right.is_boxed());
+        self.store_height(height - dropped);
+        let var = self.bool_var(n - 2);
+        self.b.def_var(var, answer);
+        self.b.ins().jump(join, &[]);
+        self.switch_to(general);
+    }
+
     /// Two small Integers in registers; an overflow hands the op to the
     /// interpreter, which has the big Integers.
     fn int_binary(&mut self, op: BinaryOp, a: IrValue, b: IrValue, pc: usize) {
@@ -4012,15 +4095,7 @@ impl Gen<'_, '_> {
                 self.push_int(a);
             }
             Is | IsNot | IsLessThan | IsAtMost | IsGreaterThan | IsAtLeast => {
-                let cc = match op {
-                    Is => IntCC::Equal,
-                    IsNot => IntCC::NotEqual,
-                    IsLessThan => IntCC::SignedLessThan,
-                    IsAtMost => IntCC::SignedLessThanOrEqual,
-                    IsGreaterThan => IntCC::SignedGreaterThan,
-                    _ => IntCC::SignedGreaterThanOrEqual,
-                };
-                let value = self.b.ins().icmp(cc, a, b);
+                let value = self.b.ins().icmp(comparison_cc(op), a, b);
                 self.push_bool(value);
             }
             And | Or => unreachable!("boxed by the analysis"),

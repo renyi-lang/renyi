@@ -36,7 +36,9 @@ use crate::native::codegen::{
     SITE_INDEX, SITE_SIZE, SITE_TAG, SITE_TY, STACK_SAFE, STATE_CONSTANTS, STATE_DEPTH,
     STATE_ENTRIES, STATE_HELPERS, STATE_HOTNESS, STATE_LIST_ITEMS, STATE_LIST_LEN,
 };
-use crate::native::infer::{abs_of_constant, abs_of_result, analyse, is_text, Analysis};
+use crate::native::infer::{
+    abs_of_constant, abs_of_result, analyse, is_integer, is_text, Abs, Analysis,
+};
 use crate::native::runtime::{
     binary_code, fold_code, BOXED, CONTINUE, DECLINED, FAILURE, INTERRUPT, LEFT, RETURNED, STAY,
 };
@@ -1019,6 +1021,56 @@ impl Gen<'_> {
         self.depth = at + 2;
     }
 
+    /// Whether both operands of the comparison at `pc` are Integers by
+    /// the checker's types, or small ones the analysis knows as such
+    /// (decision AU45); on this tier every value lies boxed in its slot,
+    /// and the sequence tests the tags before it compares.
+    fn integers_compared(&self, pc: usize) -> bool {
+        let Some(state) = &self.analysis.entry[pc] else {
+            return false;
+        };
+        let n = state.len();
+        let typed = |abs: Abs| matches!(abs, Abs::Int) || is_integer(self.program, abs);
+        n >= 2 && typed(state[n - 2]) && typed(state[n - 1])
+    }
+
+    /// A comparison of the two operands at `at`, both typed Integer
+    /// (decision AU45): when both are small, their payloads are compared
+    /// with the op's condition, the Boolean written over the left operand
+    /// and the code goes on at `done` with nothing to release, since a
+    /// small Integer holds no count; a big Integer on either side falls
+    /// through to the general comparison, which has the big Integers.
+    fn compare_small_integers(&mut self, op: BinaryOp, at: usize, done: Label) {
+        let general = self.asm.label();
+        let left = self.operand(at);
+        let right = self.operand(at + 1);
+        for (base, disp) in [left, right] {
+            self.asm.cmp_m8i(base, disp, TAG_INTEGER);
+            self.asm.jcc(Cond::Ne, general);
+            self.asm.cmp_m8i(base, disp + INT_TAG, INT_SMALL);
+            self.asm.jcc(Cond::Ne, general);
+        }
+        self.asm.mov_rm(SCRATCH, left.0, left.1 + INT_PAYLOAD);
+        self.asm.mov_rm(SCRATCH2, right.0, right.1 + INT_PAYLOAD);
+        self.asm.cmp_rr(SCRATCH, SCRATCH2);
+        let holds = match op {
+            BinaryOp::Is => Cond::E,
+            BinaryOp::IsNot => Cond::Ne,
+            BinaryOp::IsLessThan => Cond::L,
+            BinaryOp::IsAtMost => Cond::Le,
+            BinaryOp::IsGreaterThan => Cond::G,
+            _ => Cond::Ge,
+        };
+        self.asm.setcc(holds, SCRATCH);
+        self.asm.mov_m8i(left.0, left.1, TAG_BOOLEAN);
+        self.asm.mov_m8r(left.0, left.1 + PAYLOAD, SCRATCH);
+        self.depth = at + 1;
+        self.store_len();
+        self.asm.jmp(done);
+        self.asm.bind(general);
+        self.depth = at + 2;
+    }
+
     /// A call of a declared function (decision AU21): when the callee has
     /// machine code (the entry table names it) and the machine stack has
     /// room for one more native frame, the callee's frame is pushed in
@@ -1613,6 +1665,9 @@ impl Gen<'_> {
                     let done = self.asm.label();
                     if matches!(op, BinaryOp::Is | BinaryOp::IsNot) && self.texts_compared(pc) {
                         self.compare_small_texts(*op, at, done);
+                    }
+                    if self.integers_compared(pc) {
+                        self.compare_small_integers(*op, at, done);
                     }
                     self.call(
                         "rt_compare",

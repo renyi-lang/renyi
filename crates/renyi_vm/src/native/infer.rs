@@ -231,6 +231,18 @@ pub fn is_text(program: &Program, abs: Abs) -> bool {
     )
 }
 
+/// Whether the checker noted the boxed operand as an Integer: the
+/// generated code compares two small Integers in place (decision AU45).
+pub fn is_integer(program: &Program, abs: Abs) -> bool {
+    let Abs::Boxed(Some(index)) = abs else {
+        return false;
+    };
+    matches!(
+        program.result_types.get(index as usize),
+        Some(Ty::App(id, args)) if *id == program.builtins.integer && args.is_empty()
+    )
+}
+
 /// The representation of a declared parameter from the type as the
 /// checker spells it (`FunctionMeta::param_types`).
 pub fn abs_of_spelling(spelling: &str) -> Abs {

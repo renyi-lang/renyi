@@ -68,8 +68,9 @@ const PART_ALIGN: usize = 16;
 /// place, `rt_retain_at` gone from the helpers (decision AU32). 12:
 /// `List.at` in place through the list's layout in the native state, and
 /// `rt_text_contains` and `rt_list_contains` among the helpers (decision
-/// AU34).
-pub const CODE_FORMAT: u32 = 12;
+/// AU34). 13: two boxed values the checker typed Integer compared in
+/// place when both are small (decision AU45).
+pub const CODE_FORMAT: u32 = 13;
 
 /// The extension of an image file.
 pub const EXTENSION: &str = "ryi";

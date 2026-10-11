@@ -5367,3 +5367,66 @@ ms against the Rust front end's 38.3 on this binary (20.8 times) and
 38.7 on the binary before the stage (20.5), against AU34's 72.7 the 10.7
 of AU42; parsing 316.5 against 61.3 (5.2) and 59.2 (5.3); compiling
 1,039.2 against 81.2 (12.8) and 74.1 (14.0).
+
+**AU45. Stage B5 of the front end's round as built (AU36, stage 6): a
+comparison of two Integers of which at least one is boxed, inline in
+both tiers.** Before a comparison on boxed operands calls `rt_compare`
+(AU13), the generated code of both tiers now tests, when both operands
+are Integers by the checker's type (`is_integer` in `native/infer.rs`,
+beside `is_text`, from the type the bytecode notes for what an op
+pushes, AU1 stage iv) or by the analysis (a small Integer in a register,
+`Abs::Int`, as a literal bound is), that the boxed ones are small (the
+value's tag and the Int's tag), compares the payloads with the op's
+condition (`is`, `is not`, `is less than`, `is at most`, `is greater
+than`, `is at least`), a register operand read from its register, and
+takes the Boolean into its register on the Cranelift tier
+(`compare_small_integers` in `native/codegen.rs`, after
+`compare_small_texts`) or writes it over the left operand on the
+template tier (`template/mod.rs`, where every value lies boxed in its
+slot and the tags are tested alike); the boxed operands are dropped
+without a release, since a small Integer holds no count; a big Integer
+on either side, or a value the checker typed otherwise (`Number`, a
+`maybe`), falls through to the helper as before. Code format 13. The
+case it serves: an Integer read from a list, a field, a `maybe` or an
+`otherwise`, which the abstract interpretation cannot hold in a
+register, compared with another such or with a literal, as a lexer over
+code points compares at every character; `bench/micro/ scan_codes.ry` is
+that scan, a lexer's classification of forty codes read from a list
+against literal bounds, measured per turn by `tools/measure_native.sh`.
+Held to the interpreter by a test on each tier (every op, Integers from
+a list, a field and a `maybe`, against each other and against literals,
+two big Integers among the values), the judges and the conformance suite
+on the template tier too. The first build took only two boxed operands
+and left a boxed Integer beside a literal, the common shape, to the
+helper: the scan's instructions per turn did not move; the build
+measured here takes both shapes. Measured on one boot against AU44's
+binary, cachegrind and callgrind for the instructions, the best of five
+alternating runs for the times: `scan_codes` 33,793 instructions a turn
+on the Cranelift tier and 33,384 on the template tier before, 17,525 and
+16,877 now (-48% and -49%; the interpreter's 65,489 unchanged); AT1's
+rows on the self-check: the synchronous JIT run 6,460.5 to 6,424.9
+million instructions (-0.55%) and its estimate 9,030.3 to 8,961.2
+million (-0.77%), the image 4,992.4 to 4,984.6 million (-0.16%; its
+estimate +0.19%, the layout), the interpreter unchanged (11,613.4 to
+11,613.1 million), the `cached run` row 5,071.2 to 5,063.3 million
+(-0.16%); the self-check's `rt_compare` 152.2 to 123.3 million
+instructions inclusive (2.36% to 1.92% of the synchronous run; what
+remains compares texts not held in the value, records, variants and
+Integers the checker did not type); the four benchmarks, synchronous,
+`primes` 294.5 to 290.3 million instructions (-1.4%) and the other three
+unchanged, none of them comparing a boxed Integer in its loop; in
+wall-clock, `scan_codes` 54.7 to 24.0 ms on four hardware threads and
+57.7 to 26.1 on one (-56% and -55%), the self-check 976.7 to 954.8 ms on
+four (-2.2%) and 1,016.6 to 952.2 on one (-6.3%), `primes` 40 to 36 ms,
+the other benchmarks within the run-to-run noise of their 5 ms. The
+default JIT row and the benchmarks counted with the compile thread on
+vary with its timing under cachegrind (`records` read 307 to 357 million
+that way and 241.2 million on both binaries synchronously): the
+synchronous counts are the ones to compare, as item 2 of the handoff's
+"Start here" says. The ratio of AU36 (iii), with AU34's binary built
+again from 44782aa on this boot: checking 755.9 ms against AU34's Rust
+front end's 75.8 (10.0 times, the gate; 10.7 at AU42) and this binary's
+38.2 (19.8); parsing 313.0 against 58.7 (5.3) and 63.3 (4.9); compiling
+1,035.2 against 99.0 (10.5) and 80.4 (12.9); the Renyi checker's time
+fell from 806 ms at AU44 to 756, the stage's gain on the program the
+round is for.

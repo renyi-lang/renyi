@@ -1149,3 +1149,71 @@ end
         "6617 3416 12 none,gone,one,a label past sixteen bytes 1,a text longer than sixteen bytes,short 2,three,x,none,gone,none,gone\n"
     );
 }
+
+#[test]
+fn boxed_integers_compare_in_place_and_big_ones_take_the_helper() {
+    // decision AU45: an Integer the checker typed, read from a list, a
+    // field or a maybe, is compared in place with another such or with a
+    // small Integer in a register (a literal bound) when both are small,
+    // with every comparison op; a big Integer on either side takes the
+    // helper; both tiers print what the interpreter prints
+    let source = r#"module demo
+  purpose: Integers read from a list, a field and a maybe, compared with every op (decision AU45), with a big one among them.
+
+import std.console
+
+type Reading
+  purpose: A record holding an Integer.
+  has value: Integer
+end
+
+function pick(flag: Boolean) returns maybe Integer
+  purpose: An Integer in a maybe, or nothing.
+
+  if flag then return 7 end
+  return nothing
+end
+
+function tally(numbers: List of Integer, limit: Integer) returns Text
+  purpose: Every comparison of Integers read from a list, against each other and a literal, in loops.
+
+  let mutable hits be 0
+  let seven be pick(true)
+  let none be pick(false)
+  let reading be Reading(value: 7)
+  for each left in numbers
+    for each right in numbers
+      if left is right then change hits to hits + 1 end
+      if left is not right then change hits to hits + 10 end
+      if left is less than right then change hits to hits + 100 end
+      if left is at most right then change hits to hits + 1000 end
+      if left is greater than right then change hits to hits + 10000 end
+      if left is at least right then change hits to hits + 100000 end
+    end
+    if reading.value is left then change hits to hits + 1000000 end
+    if reading.value is less than left then change hits to hits + 1000000 end
+    if seven is left then change hits to hits + 3 end
+    if none is not left then change hits to hits + 7 end
+    if left is at least 3 then change hits to hits + 20 end
+    if 7 is less than left then change hits to hits + 200 end
+    if left is not 7 then change hits to hits + 2000 end
+    if left is at most 0 - 5 then change hits to hits + 20000 end
+  end
+  for each step from 1 to limit
+    if (numbers.at(0) otherwise 0) is at most step then change hits to hits + 1 end
+  end
+  return "{hits}"
+end
+
+public function main() needs console
+  purpose: Print the tally over small Integers and two big ones.
+
+  let huge be 9223372036854775807 + 1
+  let negative be 0 - huge
+  console.print(tally(numbers: [3, 7, 7, huge, negative, 0 - 5], limit: 9))
+end
+"#;
+    let (outcome, printed) = both_ways(source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(printed, "5412023\n");
+}

@@ -1,0 +1,39 @@
+module scan_codes
+  purpose: A lexer's scan over characters held as Integer codes read from a list (decision AU45).
+
+import std.console
+import std.environment
+
+function classify(codes: List of Integer) returns Integer
+  purpose: Count the letters, the digits and the spaces among the codes.
+
+  let mutable letters be 0
+  let mutable digits be 0
+  let mutable spaces be 0
+  for each code in codes
+    if code is at least 97 and code is at most 122 then
+      change letters to letters + 1
+    otherwise if code is at least 48 and code is at most 57 then
+      change digits to digits + 1
+    otherwise if code is 32 then
+      change spaces to spaces + 1
+    end
+  end
+  return letters * 1000000 + digits * 1000 + spaces
+end
+
+public function main() needs console, environment
+  purpose: Scan a line of codes as many times as the first argument says, then print the total.
+
+  let arguments be environment.arguments()
+  let turns be (arguments.first() otherwise "1000").to_integer() otherwise 1000
+  let mutable codes be []
+  for each step from 1 to 40
+    change codes to codes.append(32 + (step * 37) remainder 91)
+  end
+  let mutable total be 0
+  for each turn from 1 to turns
+    change total to total + classify(codes) + turn
+  end
+  console.print("{total}")
+end
