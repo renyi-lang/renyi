@@ -53,7 +53,7 @@ STYLE = """
   color-scheme: light dark;
   --text: #16171a; --muted: #62656d; --faint: #8b8e95;
   --bg: #ffffff; --surface: #f6f6f4; --line: #e6e6e3; --line-strong: #d4d4d0;
-  --accent: #2f4fd8;
+  --accent: #2f4fd8; --tint: 9%; --tint-strong: 16%;
   --sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
           Roboto, "Helvetica Neue", Arial, sans-serif;
   --mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Menlo,
@@ -64,7 +64,7 @@ STYLE = """
   :root {
     --text: #ebebe8; --muted: #a2a4aa; --faint: #74777e;
     --bg: #0e0f11; --surface: #16171a; --line: #24262a; --line-strong: #34363b;
-    --accent: #93a6ff;
+    --accent: #93a6ff; --tint: 14%; --tint-strong: 24%;
   }
 }
 @media (min-width: 640px) { :root { --gutter: 28px; } }
@@ -157,60 +157,94 @@ footer { max-width: calc(var(--wide) + 2 * var(--gutter)); margin: 0 auto;
          display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; justify-content: space-between; }
 footer a { color: inherit; }
 
-/* The front page. */
-main.home { max-width: calc(var(--wide) + 2 * var(--gutter)); padding-top: 0; }
-.home section { padding: 4.5rem 0; border-top: 1px solid var(--line); scroll-margin-top: 2rem; }
-.home section:first-child { border-top: 0; padding: 5.5rem 0 4rem; }
-.home h1 { font-size: clamp(2.4rem, 1.5rem + 4.2vw, 4.4rem); line-height: 1.04;
-           letter-spacing: -0.045em; font-weight: 700; max-width: 13ch; margin: 0 0 1.5rem;
+/* The front page: one idea per section, the code as its picture. */
+main.home { max-width: calc(var(--wide) + 2 * var(--gutter)); padding-top: 0;
+            padding-bottom: 2rem; }
+.home section { padding: 5rem 0; border-top: 1px solid var(--line); scroll-margin-top: 3rem; }
+.home h1 { font-size: clamp(2.9rem, 1.1rem + 6.6vw, 6.75rem); line-height: 0.98;
+           letter-spacing: -0.055em; font-weight: 720; max-width: 11ch; margin: 0 0 2rem;
            text-wrap: balance; }
-.home h2 { border: 0; padding: 0; margin: 0 0 1.75rem; font-size: 0.8125rem; font-weight: 600;
-           letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
-.home h3 { margin: 0 0 0.5rem; font-size: 1.0625rem; letter-spacing: -0.01em; }
-.tagline { font-size: clamp(1.2rem, 1rem + 0.9vw, 1.6rem); line-height: 1.4;
-           letter-spacing: -0.02em; font-weight: 500; max-width: 32ch; margin: 0 0 1.25rem; }
-.lead { color: var(--muted); max-width: 38rem; margin: 0 0 2.25rem; }
+.home h2 { border: 0; padding: 0; margin: 0 0 2.5rem;
+           font-size: clamp(1.9rem, 1.2rem + 2.6vw, 3.25rem); line-height: 1.06;
+           letter-spacing: -0.04em; font-weight: 700; max-width: 18ch; text-wrap: balance; }
+.home h3 { margin: 0 0 0.5rem; font-size: 1.125rem; font-weight: 660; letter-spacing: -0.02em; }
+.home .hero { border-top: 0; padding: 4.5rem 0 4.5rem; }
+.tagline { font-size: clamp(1.2rem, 0.95rem + 1.2vw, 1.85rem); line-height: 1.35;
+           letter-spacing: -0.025em; font-weight: 450; color: var(--muted); max-width: 30ch;
+           margin: 0 0 2.75rem; text-wrap: balance; }
 .actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 0; }
-.button { display: inline-block; padding: 0.6rem 1.15rem; border-radius: 999px;
-          font-size: 0.9375rem; font-weight: 550; text-decoration: none;
+.button { display: inline-block; padding: 0.7rem 1.35rem; border-radius: 999px;
+          font-size: 0.9375rem; font-weight: 560; text-decoration: none;
           border: 1px solid var(--line-strong); color: var(--text); }
 .button:hover { border-color: var(--text); }
 .button.primary { background: var(--text); border-color: var(--text); color: var(--bg); }
 .button.primary:hover { opacity: 0.88; }
-.sample, .points, .install, .links { grid-template-columns: minmax(0, 1fr); }
-.sample { display: grid; gap: 1.5rem 3.5rem; align-items: start; }
-.sample p { color: var(--muted); max-width: 30rem; }
-.sample .statement { color: var(--text); font-size: 1.35rem; line-height: 1.35;
-                     letter-spacing: -0.02em; font-weight: 600; }
-.sample pre { margin: 0; padding: 1.4rem 1.5rem; border-radius: 14px; }
-.sample pre code { font-size: 0.8125rem; line-height: 1.7; white-space: pre-wrap; }
-.k { color: var(--accent); }
-.c { color: var(--muted); }
-.points { display: grid; gap: 2.5rem 3rem; }
-.points p { margin: 0; color: var(--muted); font-size: 0.96875rem; }
-.points .n { display: block; margin-bottom: 0.9rem; font: 500 0.8125rem var(--mono);
-             color: var(--faint); }
-.gap p { font-size: clamp(1.25rem, 1rem + 1vw, 1.75rem); line-height: 1.4;
-         letter-spacing: -0.02em; font-weight: 500; max-width: 36ch; margin: 0 0 1rem; }
-.gap p + p { color: var(--muted); }
-.install { display: grid; gap: 1.5rem 3.5rem; }
-.install pre { margin: 0 0 1rem; }
-.install .label { margin: 0 0 0.4rem; font-size: 0.8125rem; color: var(--muted); }
-.install .note { color: var(--muted); font-size: 0.9375rem; }
+
+/* The sample: the signature lines carry the accent, the body stays quiet. */
+.sample pre { margin: 0; max-width: 54rem; padding: 1.5rem 1.25rem; border-radius: 16px;
+              --pad: 1.25rem; padding-inline: var(--pad); overflow-x: hidden; }
+.sample pre code { display: block; font-size: 0.8125rem; line-height: 1.75;
+                   white-space: pre-wrap; overflow-wrap: anywhere; }
+.sample .k { color: var(--text); font-weight: 600; }
+.sample .c { color: var(--muted); }
+.sample .sig { display: block; margin: 0 calc(-1 * var(--pad)); padding: 0 var(--pad);
+               background: color-mix(in srgb, var(--accent) var(--tint), transparent);
+               box-shadow: inset 3px 0 0 var(--accent); }
+.sample .sig .k { color: var(--accent); }
+.sample .sig.needs { background: color-mix(in srgb, var(--accent) var(--tint-strong),
+                                            transparent); }
+
+/* The four points: large muted numerals, strong titles, one line each; the
+   titles stay on one line in the four columns from 1200px. */
+.points { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 2rem; margin: 0; }
+.points > div { padding: 1.75rem 0 2rem; border-top: 1px solid var(--line-strong); }
+.points .n { display: block; margin: 0 0 1.5rem; font-size: clamp(2.5rem, 2rem + 1.5vw, 3.5rem);
+             line-height: 1; font-weight: 300; letter-spacing: -0.04em; color: var(--faint);
+             font-variant-numeric: tabular-nums; }
+.points p { margin: 0; color: var(--muted); font-size: 0.96875rem; line-height: 1.6; }
+
+/* The gap: two lines, nothing else. */
+.gap p { font-size: clamp(1.6rem, 1rem + 2.4vw, 3rem); line-height: 1.12; letter-spacing: -0.04em;
+         font-weight: 650; max-width: 22ch; margin: 0; text-wrap: balance; }
+.gap p + p { margin-top: 1.25rem; color: var(--muted); font-weight: 500; }
+
+/* Install: three commands, a label each. */
+.install dl { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.6rem 2rem;
+              margin: 0; }
+.install dt { margin: 0.9rem 0 0; font-size: 0.8125rem; color: var(--muted); }
+.install dd { margin: 0; }
+.install pre { margin: 0; }
+.install pre code { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* The links: labels alone, large, between hairlines. */
 .links { list-style: none; padding: 0; margin: 0; display: grid;
-         border-top: 1px solid var(--line); }
-.links li { margin: 0; border-bottom: 1px solid var(--line); }
-.links a { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.25rem 1rem;
-           padding: 1.05rem 0; color: var(--text); text-decoration: none; }
-.links a span { color: var(--muted); font-size: 0.9375rem; }
-.links a:hover span { color: var(--text); }
-@media (min-width: 760px) {
+         grid-template-columns: minmax(0, 1fr); column-gap: 3rem; }
+.links li { margin: 0; border-top: 1px solid var(--line); }
+.links a { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;
+           padding: 1.1rem 0; color: var(--text); text-decoration: none;
+           font-size: clamp(1.15rem, 1rem + 0.6vw, 1.4rem); font-weight: 600;
+           letter-spacing: -0.02em; }
+.links a::after { content: "\\2192"; color: var(--faint);
+                  font-weight: 400; }
+.links a:hover::after { color: var(--accent); }
+
+@media (min-width: 640px) {
+  .home section { padding: 7rem 0; }
+  .home .hero { padding: 7.5rem 0 7rem; }
+  .sample pre { --pad: 2rem; padding-block: 2rem; }
+  .sample pre code { font-size: 0.9375rem; }
   .points { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .install { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); }
-  .links { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 3.5rem; }
+  .install dl { grid-template-columns: 10rem minmax(0, 1fr); align-items: center; }
+  .install dt { margin: 0; }
+  .links { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@media (min-width: 1000px) {
-  .sample { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); }
+@media (min-width: 1100px) {
+  .home section { padding: 8.5rem 0; }
+  .home .hero { padding: 9.5rem 0 8.5rem; }
+  .sample pre code { font-size: 1.0625rem; }
+  .links { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 1200px) {
   .points { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 """
@@ -311,7 +345,8 @@ def render(source: str, text: str, known: dict[str, str]) -> str:
             body = re.sub(r"<code>([a-z_]+\.ry)</code>", linked, body)
         return body
     name = Path(source).name
-    return f"<h1><code>{html.escape(name)}</code></h1>\n<pre><code>{html.escape(text)}</code></pre>\n"
+    return (f"<h1><code>{html.escape(name)}</code></h1>\n"
+            f"<pre><code>{html.escape(text)}</code></pre>\n")
 
 
 DESCRIPTION = (
