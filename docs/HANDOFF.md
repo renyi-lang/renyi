@@ -18,12 +18,20 @@ CLAUDE.md now asks each session to update when a stage closes; and,
 the owner having asked to go on stage by stage, did B5, the first
 stage on the VM side of the round (decision AU45: two Integers of
 which at least one is boxed, the checker typing it so, compared in
-place in both tiers when both are small, code format 13; `scan_codes` -48% in instructions a turn and -55% in time, the
+place in both tiers when both are small, code format 13;
+`scan_codes` -48% in instructions a turn and -55% in time, the
 self-check's synchronous row -0.55% in instructions and -0.77% by the
 estimate, its time -2% to -6%, the Renyi checker 806 to 756 ms, the
 gate ratio 10.0 against AU34's binary; the section "The front end's
-round" below, "B5 as built"), with B1 planned in the same section
-("B1, the stage next").
+round" below, "B5 as built"); then B1, the Renyi lexer rewritten for
+speed with the library as it is (decision AU46: one loop, scans
+without a call per character, the word lists as sets, a step's
+product a sum; the lexer alone on `compiler/bodies.ry` 983 to 514
+million instructions, -48%, byte-equal by the judges; the Renyi checker
+756 to 649 ms on `compiler/bodies.ry`, the gate ratio 10.0 to 8.9
+against AU34's binary, the parse row 313 to 258 ms; the same section,
+"B1 as built"), with B2 planned there ("B2, the
+stage next").
 Session 12, in the cloud environment,
 put the three questions after AU27 to the owner (decision AU28: the
 counts in place in template code next, then the natives building a
@@ -236,11 +244,13 @@ and push there directly.
    "The front end's round" says where the stages stand: A0, A1, A4
    and A2 are in (AU37 to AU39, AU42 and AU44), the copy under
    `bench/selfcheck/` is made (AU41), the Rust front end's part of
-   the plan is done, and B5, the comparison of two boxed Integers
-   inline in both tiers, is in (AU45). The work now is B1, the Renyi
-   lexer rewritten for speed with the library as it is; the paragraph
-   "B1, the stage next" of that section is the plan, written to be
-   followed without this conversation. Then B2 and B3.
+   the plan is done, B5, the comparison of two boxed Integers inline
+   in both tiers, is in (AU45), and B1, the Renyi lexer rewritten for
+   speed, is in (AU46). The work now is B2, the Renyi parser: its
+   keywords and symbols as variants without fields compared by tag, a
+   cursor that builds no `Peek` per look; the paragraph "B2, the stage
+   next" of that section is the plan, written to be followed without
+   this conversation. Then B3.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
@@ -3038,8 +3048,8 @@ Renyi compiler's time to the Rust front end's on `compiler/bodies.ry`
 and against the stage's own binary.
 
 **Where the stages stand** (end of session 13): A0 (AU37), A1 (AU38),
-both parts of A4 (AU39, AU42), A2 (AU44) and B5 (AU45) are in, the
-frozen self-check too (AU41); `renyi check compiler/bodies.ry` 437 million
+both parts of A4 (AU39, AU42), A2 (AU44), B5 (AU45) and B1 (AU46) are
+in, the frozen self-check too (AU41); `renyi check compiler/bodies.ry` 437 million
 instructions and 72 ms on AU34's binary, 153 million and 34.5 ms now;
 the ratio of AU36 (iii) 10.7 times against AU34's Rust front end (the
 Renyi side has not changed yet) and 21.7 times against the same
@@ -3120,60 +3130,92 @@ Renyi checker on `compiler/bodies.ry` 806 to 756 ms, so the gate ratio
 10.7 to 10.0 against AU34's binary (built again from 44782aa into
 `target/renyi-au34` on this boot; build it again on the next).
 
-**B1, the stage next** (AU36, stage 6 of the list above): the Renyi
-lexer, `compiler/lexer.ry` (990 lines), rewritten for speed with the
-library as it is, the judges keeping it byte-equal to the Rust lexer on
-every program of the corpus, the conformance suite, `compiler/` and
-the library (`crates/renyi/tests/selfhost.rs`, the parse judge, whose
-tokens the tree reflects; `renyi run compiler/tokens.ry <file>` against
-`renyi tokens` is the direct check). What the study measured
-(2026-10-10, AU35's section above): the lexer takes 1,555 million
-instructions on `compiler/bodies.ry` and its imports, about 3,500 a
-character, 56 times the Rust lexer, and a scan in one loop over the
-same `List of Text` that classifies by `contains` and builds a record
-per token ran 255 million; the estimate for B1 is 350 to 600 million
-(-20% of the Renyi checker's time). Where the cost is, in the file as
-it stands: `lex_range` calls `next_step` per step, which returns a
-`Step` record of two lists (`tokens`, `diagnostics`) and the next
-position for every blank and every token, and `append_all`s them (a
-record and two lists allocated per character of whitespace);
-`char_at` is a call per character (`chars.at(index) otherwise ""`),
-`scan_while` a closure call per character (`keep(char_at(...))`),
-`is_lower`, `is_upper`, `is_digit` a search in a text per call
-(`"abcdefghijklmnopqrstuvwxyz".contains(ch)`, 0.39 million calls of
-`is_lower`); `lex_word` looks every word up in `reserved_words`, a
-list of 88 texts, with `contains` (a linear search), then
-`phrase_starters` and `clause_words`; `slice` joins a `List of Text`
-slice per token. The plan: (i) one loop in `lex_range` with `tokens`
-and `diagnostics` mutable lists appended in place (a uniquely held
-list, AU11's rule), the step functions taking the lists and the
-position and answering the next position (a record of one Integer
-field, or the position with the lists threaded as parameters and
-returned), so that no `Step` is built per step; (ii) the blanks and
-line breaks skipped in the loop itself without a call; (iii) the
-character classes decided by `contains` on short texts still (the
-library has no `code_point`), but through one call per character at
-most, the closure of `scan_while` replaced by scans written out per
-class (`scan_word`, `scan_digits`, `scan_spaces`), the result of
-`char_at` bound once per step; (iv) `reserved_words`, `phrase_starters`
-and `clause_words` as `Set of Text` (`Set.contains`, a hash lookup,
-`library/std/prelude.ry` has `Set`) built once at module level; (v)
-the token's text taken by `slice` as now (linear, X2), measured
-whether `chars.slice(...).join("")` dominates after the rest; and the
-same loop shape in `scan_segment` and `block_lines`. Keep the
-diagnostics, their codes, messages, fixes and spans exactly (AD1): the
-judges fail on the first byte that differs; run `cargo test -p renyi
---test selfhost` after each function rewritten, and `renyi check
-compiler/lexer.ry`, `renyi format compiler/lexer.ry` (canonical
-layout, a test checks it), with the size limits of the checker (V5:
-`body-length`, `nesting-depth`). The measure: `tools/ratio.py <stage>
-<AU34's binary>` (the parse row is the lexer's and the parser's; the
-check row is the gate), `renyi run compiler/tokens.ry
-compiler/bodies.ry` under callgrind before and after (the lexer alone),
-and AT1's rule on the frozen self-check, which does not change with
-`compiler/` (AU41). After B1: B2 (the parser's keywords and symbols as
-variants without fields compared by tag, a cursor that builds no
-`Peek` per look), B3 (small functions inlined on the Cranelift tier).
+**B1 as built** (AU36, stage 6 of the list above; decision AU46).
+`compiler/lexer.ry`: `lex_range` is one loop (a blank skipped, a line
+break taken, else `next_step` with the character already read and
+the previous token kept in a binding); `Step` is a sum, `Single(token)`
+or `Several(tokens, diagnostics, next)`, matched in the loop
+(`last_of` keeps the previous token right after a `Several`); the
+scans `scan_word`, `scan_name_tail`, `scan_alphanumeric`,
+`scan_digits(underscores)`, `scan_spaces`, `scan_operator_tail` and
+`plain_run_end` replace `scan_while` and its closures, each a loop
+reading `chars.at(position) otherwise ""` and classifying by
+`contains` on `lower_letters`, `upper_letters` and `digits` (module
+constants), the likeliest first; `reserved_set`, `phrase_set`,
+`phrase_starter_set` and `symbol_set` are `to_set()` constants beside
+the lists they come from (the lists stay: the sets are built from them
+on first use); `lex_word` builds its token from the text it sliced;
+`previous_is_adjacent_dot` and the raw-text test match the kind
+instead of building a variant to compare with, and test the position
+first; `scan_segment` copies a plain run by one `slice`. The
+measuring driver `compiler/lex_only.ry <file> [turns]` lexes a file
+`turns` times and prints a count: the lexer alone is the difference
+between three turns and one under callgrind (`RENYI_NATIVE_SYNC=1`),
+983 to 514 million instructions per lex of `bodies.ry` over the
+session's four cuts (AU46 records each). Three classifications were
+measured before writing (a search in a short text 341 instructions a
+character, a `Set` lookup 649, two orderings 305: the search stays).
+The quick judge of the session, `renyi tokens <file>` against `renyi
+run compiler/tokens.ry <file>` on every program of the corpus, the
+conformance suite, `compiler/`, `bench/` and the starter pack, ran
+after every cut (a script in the session's scratchpad; the real judges
+are `cargo test -p renyi --test selfhost`). What the profiler
+(`renyi run --profile compiler/lex_only.ry compiler/bodies.ry 3`)
+leaves: `scan_word` 28% (the `contains` per character is the floor
+with the library as it is), `lex_range` 21%, `lex_word` 9%, the rest
+under 4% each. What it gave (AU46): the lexer alone 112 to 65 ms a
+lex of `bodies.ry` (983 to 514 million instructions), the token dump
+388 to 335 ms, the Renyi checker on `bodies.ry` 756 to 649 ms, the
+gate ratio 10.0 to 8.9 (checking), the parse row 5.3 to 4.2, the
+compile row 10.5 to 9.1, all against AU34's binary on this boot.
+
+**B2, the stage next** (AU36, stage 6 of the list above): the Renyi
+parser, `compiler/parser.ry` (3,452 lines), with the judges keeping it
+byte-equal to `renyi parse --json` on every program, rejected ones
+included (AD1). The study measured the parser at 1,568 million
+instructions on `bodies.ry` (17,900 a token, 17 times the Rust parser)
+and estimated 800 million after B2. Where the cost is, in the file as
+it stands: the `Cursor` record (tokens, position, nesting,
+declarations, diagnostics, chars) is rebuilt by `cursor with position:
+...` at every step (34 sites) and `peek` builds a `Peek` record
+(token, cursor) at every look (54 call sites), after reading the token
+through `token_at` (`cursor.tokens.at(index)`, a match with a crash
+arm) and `token_under`; a keyword is tested by `is_word(token,
+spelling)`, which is `token.kind is Word(spelling: spelling)`: it builds
+a `Word` variant and compares it structurally, and `is_symbol` does
+the same with `Symbol(text: text)`; `TokenKind` carries the spelling
+in `Word(spelling)` and the text in `Symbol(text)`, so the tag alone
+decides nothing. The plan, as AU36 set it: (i) keywords and symbols as
+variants without fields, compared by tag: a `TokenKind` with one
+variant per reserved word and phrase and per symbol is a change to
+`compiler/lexer.ry`'s `TokenKind` and to everything that reads
+`Word(spelling)` and `Symbol(text)` (the lexer's `lex_reserved`,
+`tokens.ry`'s `kind_name`, the parser's `is_word`, `is_symbol`,
+`is_plain_word`, `describe` and the `foreign_spelling` fix); a variant
+without fields is a cached value since AG6, read from its slot in
+place since AU24, and `is` on two of them is `compare_in_place`'s fast
+path, so `is_word(token, Each)` costs a field read and a tag compare;
+the JSON the tree is printed as (`ast.ry`, decision W1) must not
+change, so the spelling stays reachable (a function `spelling_of(kind)`
+for the messages and the JSON). (ii) A cursor that builds no `Peek`
+per look: `peek` answering the token alone where the caller moves the
+cursor itself, or the position as an Integer beside the token in the
+common path (`look.cursor` is the cursor given when no line break was
+skipped), and `cursor with position:` kept to the places where a
+record must change (AU11 updates a uniquely held record in place, so
+the copies that remain are the ones where the cursor is shared). (iii)
+`token_at` without the match: `cursor.tokens.at(index) otherwise
+last_token` with the last token kept in the cursor, since the list ends
+with `EndOfFile`. Measure each cut with a driver like
+`compiler/lex_only.ry` for the parser (`parse_only.ry`: lex once,
+parse `turns` times, print a count) under callgrind, run the quick
+judge of B1 extended to `renyi parse --json` (the real judges after
+each cut: `cargo test -p renyi --test selfhost`), keep `renyi check
+compiler/*.ry` clean and the files canonical, and record the ratio
+(`tools/ratio.py`, the parse row is the lexer's and the parser's; the
+check row is the gate, 10.0 at AU45). After B2: B3 (small functions
+inlined on the Cranelift tier), the largest lever of the list on every
+program.
 
 ## The representation items: the design study (session 11)
 
@@ -4768,6 +4810,12 @@ holds between calls.
   self-check's synchronous row -0.55% in instructions and -0.77% by the
   estimate, its time -2% to -6%, the Renyi checker 806 to 756 ms, the
   gate ratio 10.0 against AU34's binary.
+- **Decision AU46**: B1, the Renyi lexer rewritten for speed: one
+  loop, the step as a sum, scans without a call per character, the
+  word lists as sets, the plain runs of text literals sliced; the
+  lexer alone 983 to 514 million instructions per lex of `bodies.ry`
+  (-48%), byte-equal by the judges; `compiler/lex_only.ry`, the
+  measuring driver; CLAUDE.md. The measure: the Renyi checker 756 to 649 ms on `compiler/bodies.ry`, the gate ratio 10.0 to 8.9 against AU34's binary, the parse row 313 to 258 ms.
 - **`docs/ROADMAP.md`** at the owner's request ("a complete roadmap
   file, numbered, grouped by track"): the milestones, the 26 stages in
   order with their decisions and status, the eight tracks, what is
