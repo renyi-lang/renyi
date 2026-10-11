@@ -1,19 +1,21 @@
 # Handoff
 
-Last updated: 2026-10-11, session 13, in the cloud environment, whose
-last work is stage 28 (B4, the compiler's own code), closed after eight
-cuts, decisions AU52 to AU57 (the section "The front end's round"
-below, "B4 as built"): the Renyi checker's run on `compiler/bodies.ry`
-4,898.3 to 4,391.6 million instructions (-10.3%), the ratio of AU36
-(iii) 7.4 to 6.9 against the gate of 3; then the owner's answers after
-it (decision AU58): the gate stays, and the way to it is a new backend
-for the VM, its design study first, which the next session writes (the
-start-here item 1). After that handover the owner asked for a new icon,
-since the R on the accent tile read as the R language's: decision AV1,
-a war hammer on the accent tile and the name signed in Ms Madi, held by
-`tools/brand.py` and used in the site's header and tab, the README, the
-VS Code extension and the social preview (the section "Done in session
-13" below). Earlier in the session it
+Last updated: 2026-10-11, session 13, in the cloud environment. Its
+last work is the icon and the wordmark, at the owner's request after the
+handover below (decision AV1: a war hammer on the accent tile and the
+name signed in Ms Madi, held by `tools/brand.py` and used in the site's
+header and tab, the README, the VS Code extension and the social
+preview, which waits on the owner's upload; the section "Done in
+session 13" below). Before it, stage 28 (B4, the compiler's own code)
+closed after eight cuts, decisions AU52 to AU57 (the section "The front
+end's round" below, "B4 as built"): the Renyi checker's run on
+`compiler/bodies.ry` 4,898.3 to 4,391.6 million instructions (-10.3%),
+the ratio of AU36 (iii) 7.4 to 6.9 against the gate of 3; and the
+owner's answers after it (decision AU58): the gate stays, and the way
+to it is a new backend for the VM, its design study first, which the
+next session writes (the start-here item 1). The session ended at the
+owner's word, to save the progress and hand over. Earlier in the
+session it
 finished stage A2 of the front end's round, the cache keyed by the
 sources (decision AU44: every `run`, `record` or `test` compiled from
 its sources leaves the program it compiled in the cache with every file
@@ -358,6 +360,11 @@ and push there directly.
    valgrind hides AVX-512, so an image built outside valgrind is
    refused inside it: build the image to measure under `valgrind
    --tool=none`, as `tools/measure_size.sh` does.
+   The brand's PNG files (decision AV1) take a headless Chromium:
+   `python tools/brand.py --png
+   /opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell`;
+   a new signature takes the font from npm and `uharfbuzz` with
+   `fontTools`, as the session record of AV1 says.
 
 ## Where the project stands
 
@@ -5192,7 +5199,7 @@ holds between calls.
   for the corpus and for one file; a bad base), the `diff` call in
   `tests/mcp.rs`, and a unit test of `own_text_hash`.
 
-## Done in session 13 (A2, B5, B1 to B4, and the owner's choice of a new backend, in the cloud environment)
+## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 
 - **Decision AU44** (b765636): the cache keyed by the sources as built, the rest
   of A2 after session 12's first piece: `cache::SourceEntry` and the
