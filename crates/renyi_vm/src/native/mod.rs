@@ -21,6 +21,7 @@
 pub mod codegen;
 pub mod image;
 pub mod infer;
+pub mod inline;
 pub mod runtime;
 pub mod template;
 
@@ -143,7 +144,12 @@ unsafe impl Send for ProgramRef {}
 impl Worker {
     /// The thread started for the program, or `None` when the system
     /// gives none.
-    fn start(program: &Program, opt_level: &str, calls: Vec<CallKind>) -> Option<Worker> {
+    fn start(
+        program: &Program,
+        opt_level: &str,
+        calls: Vec<CallKind>,
+        inline: bool,
+    ) -> Option<Worker> {
         let (requests, inbox) = mpsc::channel::<CodeId>();
         let (outbox, results) = mpsc::channel();
         let program = ProgramRef(program);
@@ -166,8 +172,9 @@ impl Worker {
                     if stopped.load(Ordering::Relaxed) {
                         break;
                     }
-                    let result =
-                        codegen::compile(program, code, &calls, &*isa, &mut ctx, &mut fctx);
+                    let result = compile_with_inlining(
+                        program, code, &calls, &*isa, &mut ctx, &mut fctx, inline,
+                    );
                     if outbox.send((code, result)).is_err() {
                         break;
                     }
@@ -239,6 +246,19 @@ pub struct Jit {
     /// what a direct call site loads first (decision AR3), through
     /// `NativeState::direct_table`.
     direct_table: Box<[*const u8]>,
+    /// Per code object, the callees expanded into it (decision AU50): what
+    /// a hand-back inside one and the location of a crash there consult.
+    regions: Vec<Vec<inline::Region>>,
+    /// Per code object with callees expanded into it, its constants
+    /// followed by every expanded callee's, in the regions' order: what
+    /// its generated code indexes (`NativeState::constants` points here),
+    /// since the expansion gave the callees' constants indexes past the
+    /// code object's own.
+    pools: Vec<Option<Vec<Value>>>,
+    /// Whether small callees are expanded before a compilation (decision
+    /// AU50): off unless `RENYI_NATIVE_INLINE=1`, since the measure found
+    /// the expanded code slower than the calls it replaces.
+    inline: bool,
     /// The helpers in the order of `codegen::SIGNATURES`, which the
     /// generated code calls through `NativeState::helpers`.
     helpers: Box<[*const u8]>,
@@ -279,6 +299,15 @@ pub struct Jit {
     /// how many calls from generated code found no generated code to
     /// call and went through the interpreter.
     pub deopts_taken: usize,
+    /// How many callees were expanded into the code objects compiled or
+    /// loaded (decision AU50), and into how many of them.
+    pub expansions: usize,
+    pub expanded_into: usize,
+    /// The frames the last hand-back built above the frame it handed back
+    /// (decision AU50): a frame per callee expanded around the point. A
+    /// direct call site that gets the hand-back runs the callee's frame to
+    /// its end, which lies that many frames below the top.
+    pub rebuilt_frames: usize,
     pub calls_cold: usize,
     /// How often a loop was entered from the interpreter, and how often
     /// such an entry was refused.
@@ -506,6 +535,9 @@ impl Jit {
             worker: None,
             resume_refused: vec![false; program.codes.len()],
             direct_table: vec![std::ptr::null(); program.codes.len()].into_boxed_slice(),
+            regions: vec![Vec::new(); program.codes.len()],
+            pools: vec![None; program.codes.len()],
+            inline: std::env::var("RENYI_NATIVE_INLINE").is_ok_and(|text| text == "1"),
             helpers,
             entries: vec![std::ptr::null(); program.codes.len()].into_boxed_slice(),
             constants,
@@ -522,6 +554,9 @@ impl Jit {
             stats: codegen::Stats::default(),
             placing: std::time::Duration::ZERO,
             deopts_taken: 0,
+            expansions: 0,
+            expanded_into: 0,
+            rebuilt_frames: 0,
             calls_cold: 0,
             resumes: 0,
             resumes_refused: 0,
@@ -600,7 +635,7 @@ impl Jit {
     /// call, the others stay with the interpreter. The image must have
     /// been built for this machine (`Header::mismatch`) from the same
     /// program.
-    pub fn load_image(&mut self, image: &image::Image) -> Result<(), String> {
+    pub fn load_image(&mut self, program: &Program, image: &image::Image) -> Result<(), String> {
         if image.codes.len() != self.states.len() {
             return Err(format!(
                 "the image holds {} code objects, the program {}",
@@ -655,6 +690,12 @@ impl Jit {
                     self.direct_table[index] = body;
                     self.entries[index] = entry as *const u8;
                     self.deopts[index] = code.deopts.clone();
+                    if !code.regions.is_empty() {
+                        self.expansions += code.regions.len();
+                        self.expanded_into += 1;
+                    }
+                    self.regions[index] = code.regions.clone();
+                    self.set_pool(program, index);
                     self.states[index] = State::Ready {
                         entry,
                         direct: body,
@@ -735,12 +776,15 @@ impl Jit {
         ) + &format!(
             "
 native: {} deopts; {} calls from generated code went to the interpreter; {} loops entered from the interpreter, {} refused
+native: {} callees expanded into {} code objects
 native: {} code objects on templates ({} ops, {} bytes) in {} ms{}; {} loops handed from template code to the Cranelift code
 {}",
             self.deopts_taken,
             self.calls_cold,
             self.resumes,
             self.resumes_refused,
+            self.expansions,
+            self.expanded_into,
             self.templated,
             self.template_ops,
             self.template_bytes,
@@ -915,14 +959,53 @@ native: {} code objects on templates ({} ops, {} bytes) in {} ms{}; {} loops han
         program: &Program,
         code: CodeId,
     ) -> Result<codegen::Compiled, codegen::Skipped> {
-        codegen::compile(
+        compile_with_inlining(
             program,
             code,
             &self.calls,
             &*self.isa,
             &mut self.ctx,
             &mut self.fctx,
+            self.inline,
         )
+    }
+
+    /// The regions of callees expanded into a code object (decision AU50).
+    pub(crate) fn regions_of(&self, code: CodeId) -> &[inline::Region] {
+        &self.regions[code]
+    }
+
+    /// The constants a code object's generated code indexes, once callees
+    /// are expanded into it: its own, then each expanded callee's in the
+    /// regions' order, as `inline::expand` numbered them.
+    fn set_pool(&mut self, program: &Program, code: CodeId) {
+        if self.regions[code].is_empty() {
+            return;
+        }
+        let mut pool = program.codes[code].constants.clone();
+        for region in &self.regions[code] {
+            let callee = &program.codes[region.callee as usize];
+            pool.extend(callee.constants.iter().cloned());
+        }
+        self.constants[code] = pool.as_ptr();
+        self.pools[code] = Some(pool);
+    }
+
+    /// A constant of a code object by the index its generated code uses:
+    /// from the pool when callees were expanded into it.
+    pub(crate) fn constant(&self, code: CodeId, index: usize) -> Option<&Value> {
+        self.pools[code].as_ref().map(|pool| &pool[index])
+    }
+
+    /// The module and the span of an op at a pc past the code object's
+    /// own ops: inside an expanded callee (decision AU50).
+    pub(crate) fn inlined_location(
+        &self,
+        program: &Program,
+        code: CodeId,
+        pc: usize,
+    ) -> Option<(usize, renyi_syntax::Span)> {
+        inline::location(program, code, &self.regions[code], pc)
     }
 
     /// Compile a code object here; its state becomes `Ready` or `Skipped`.
@@ -936,7 +1019,7 @@ native: {} code objects on templates ({} ops, {} bytes) in {} ms{}; {} loops han
     /// placed on the way. Without a thread, compiled here.
     fn queue(&mut self, program: &Program, code: CodeId) {
         if self.worker.is_none() {
-            self.worker = Worker::start(program, &self.opt_level, self.calls.clone());
+            self.worker = Worker::start(program, &self.opt_level, self.calls.clone(), self.inline);
         }
         let handed = self
             .worker
@@ -1005,6 +1088,12 @@ native: {} code objects on templates ({} ops, {} bytes) in {} ms{}; {} loops han
         self.direct_table[code] = body;
         self.entries[code] = entry as *const u8;
         self.deopts[code] = compiled.deopts;
+        if !compiled.regions.is_empty() {
+            self.expansions += compiled.regions.len();
+            self.expanded_into += 1;
+        }
+        self.regions[code] = compiled.regions;
+        self.set_pool(program, code);
         self.states[code] = State::Ready {
             entry,
             direct: body,
@@ -1013,6 +1102,47 @@ native: {} code objects on templates ({} ops, {} bytes) in {} ms{}; {} loops han
         self.compiled += 1;
         self.ops += program.codes[code].ops.len();
     }
+}
+
+/// A code object compiled with its small callees expanded into it first
+/// (decision AU50), unless the expansion is off or finds nothing.
+pub(crate) fn compile_with_inlining(
+    program: &Program,
+    code: CodeId,
+    calls: &[CallKind],
+    isa: &dyn cranelift_codegen::isa::TargetIsa,
+    ctx: &mut Context,
+    fctx: &mut FunctionBuilderContext,
+    inline: bool,
+) -> Result<codegen::Compiled, codegen::Skipped> {
+    let expansion = if inline {
+        inline::expand(program, code)
+    } else {
+        None
+    };
+    let (body, regions) = match &expansion {
+        Some(expansion) => (&expansion.code, expansion.regions.clone()),
+        None => (&program.codes[code], Vec::new()),
+    };
+    let mut compiled = codegen::compile(program, code, body, calls, isa, ctx, fctx)?;
+    if !regions.is_empty() && std::env::var_os("RENYI_NATIVE_INLINE_DUMP").is_some() {
+        // the kinds the analysis settled on for the regions' slots, a
+        // development aid: an argument that arrives boxed keeps the
+        // callee's body on the boxed paths
+        if let Ok(analysis) = infer::analyse(program, body) {
+            let kinds: Vec<String> = analysis.slots[program.codes[code].locals as usize..]
+                .iter()
+                .map(|kind| format!("{kind:?}"))
+                .collect();
+            eprintln!(
+                "  region slots of {}: {}",
+                program.codes[code].name,
+                kinds.join(" ")
+            );
+        }
+    }
+    compiled.regions = regions;
+    Ok(compiled)
 }
 
 /// The reason a code object stays with the interpreter, under

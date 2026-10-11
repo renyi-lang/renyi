@@ -148,7 +148,7 @@ fn interrupt(vm: &mut Vm, interrupt: Interrupt) -> i32 {
 
 pub(crate) unsafe extern "C" fn rt_push_const(vm: VmPtr, code: usize, index: u32) {
     let vm = vm!(vm);
-    let value = vm.program.codes[code].constants[index as usize].clone();
+    let value = vm.constant_at(code, index as usize).clone();
     vm.stack.push(value);
 }
 
@@ -1096,7 +1096,13 @@ pub(crate) unsafe extern "C" fn rt_direct_after(vm: VmPtr, status: i32) -> i32 {
         D_BOXED => CONTINUE,
         D_FAILURE => FAILURE,
         D_DEOPT => {
-            let entry = vm.frames.len();
+            // the callee's frame is the entry, under the frames a hand-back
+            // inside an expanded callee built above it (decision AU50)
+            let rebuilt = vm
+                .native
+                .as_mut()
+                .map_or(0, |jit| std::mem::take(&mut jit.rebuilt_frames));
+            let entry = vm.frames.len() - rebuilt;
             let result = vm.execute(entry);
             self::status(vm, result)
         }
@@ -1172,7 +1178,8 @@ pub(crate) unsafe extern "C" fn rt_crash_text(vm: VmPtr, which: u32, pc: u32) ->
 /// `check` in a test found its condition false: the test fails.
 pub(crate) unsafe extern "C" fn rt_check_failed(vm: VmPtr, code: usize, message: u32) -> i32 {
     let vm = vm!(vm);
-    let text = vm.program.codes[code].constants[message as usize]
+    let text = vm
+        .constant_at(code, message as usize)
         .as_text()
         .unwrap_or("")
         .to_string();
@@ -1331,7 +1338,8 @@ pub(crate) unsafe extern "C" fn rt_deopt(
         .as_mut()
         .expect("the generated code runs under a JIT");
     jit.deopts_taken += 1;
-    let point: &DeoptPoint = &jit.deopts[code][point as usize];
+    let point: DeoptPoint = jit.deopts[code][point as usize].clone();
+    let point = &point;
     let locals = point.locals as usize;
     let mut next = 0usize;
     let mut word = || {
@@ -1388,6 +1396,36 @@ pub(crate) unsafe extern "C" fn rt_deopt(
     // lies there above the frame's own floor (an entry at a loop header
     // leaves the interpreter's pushes behind) gives way to the regions
     // open here, at the heights the boxed operand stack has now
+    // a point past the code object's own ops lies in a callee expanded
+    // into it (decision AU50): the frames of the real call are built
+    let original = &vm.program.codes[code];
+    let frames = vm.frames.len();
+    if point.pc as usize >= original.ops.len() {
+        rebuild_inlined_frames(vm, base, code, point);
+        let rebuilt = vm.frames.len() - frames;
+        if let Some(jit) = vm.native.as_mut() {
+            jit.rebuilt_frames = rebuilt;
+        }
+        return;
+    }
+    if let Some(jit) = vm.native.as_mut() {
+        jit.rebuilt_frames = 0;
+    }
+    // at the code object's own op, the slots of its expanded callees
+    // (`Nothing` outside the regions) go, so that the interpreter finds the
+    // frame as it lays frames out
+    let locals = original.locals as usize;
+    if point.locals as usize > locals {
+        let operands = vm.stack.split_off(base + point.locals as usize);
+        vm.stack.truncate(base + locals);
+        vm.stack.extend(operands);
+        for (slot, kind) in point.slots.iter().enumerate().take(locals) {
+            if let SlotKind::Mark = kind {
+                let depth = point.marks.get(slot).copied().flatten().unwrap_or(0);
+                vm.stack[base + slot] = Value::integer((base + locals + depth) as i64);
+            }
+        }
+    }
     let handler_base = vm.frames.last().map_or(0, |frame| frame.handler_base);
     vm.handlers.truncate(handler_base);
     for (target, depth) in &point.handlers {
@@ -1398,7 +1436,217 @@ pub(crate) unsafe extern "C" fn rt_deopt(
     }
 }
 
+/// The frames a hand-back inside an expanded callee needs (decision
+/// AU50): the expanded frame, its values boxed by `rt_deopt` where the
+/// expansion laid them (the caller's locals, then every region's slots,
+/// then the operands of the caller and of each expanded callee in turn),
+/// is taken apart into the caller's frame, stopped after the call, and a
+/// frame per expanded callee around the point, the innermost stopped at
+/// the op that handed back; a hand-back at a store of an argument, before
+/// the callee began, puts the arguments back and stops the caller at the
+/// call, which the interpreter then makes.
+fn rebuild_inlined_frames(vm: &mut Vm, base: usize, code: usize, point: &DeoptPoint) {
+    use crate::bytecode::Op;
+    use crate::native::infer::analyse;
+    use crate::native::inline::chain_at;
+    use crate::vm::Frame;
+
+    let program = vm.program;
+    let regions: Vec<crate::native::inline::Region> = vm
+        .native
+        .as_ref()
+        .map(|jit| jit.regions_of(code).to_vec())
+        .unwrap_or_default();
+    let pc = point.pc as usize;
+    let chain = chain_at(&regions, pc);
+    assert!(
+        !chain.is_empty(),
+        "a hand-back past the ops lies in a region"
+    );
+    let inner = &regions[chain[chain.len() - 1]];
+    let inner_code = &program.codes[inner.callee as usize];
+    // in the prologue, `stored` arguments are in the region's slots, the
+    // rest still on the operand stack
+    let stored = (pc < inner.body as usize).then(|| pc - inner.start as usize);
+    // the values of the expanded frame
+    let operands: Vec<Value> = vm.stack.split_off(base + point.locals as usize);
+    let mut slots: Vec<Value> = vm.stack.split_off(base);
+    let mut take = |slot: usize| std::mem::replace(&mut slots[slot], Value::Nothing);
+    // how many operands each frame but the innermost holds: the callee's
+    // depth at its own call, the arguments of that call taken out
+    let mut depths: Vec<usize> = Vec::new();
+    for k in 0..chain.len() - 1 {
+        let region = &regions[chain[k]];
+        let next = &regions[chain[k + 1]];
+        let callee = &program.codes[region.callee as usize];
+        let call_pc = next.call_pc as usize - region.body as usize;
+        let args = match callee.ops[call_pc] {
+            Op::Call { args, .. } => args as usize,
+            _ => unreachable!("a region replaces a call"),
+        };
+        let depth = analyse(program, callee)
+            .ok()
+            .and_then(|analysis| analysis.entry[call_pc].clone())
+            .map_or(0, |state| state.len());
+        // the frame whose call is being made again keeps the arguments
+        // not yet stored
+        let taken = if k + 2 == chain.len() {
+            stored.unwrap_or(args)
+        } else {
+            args
+        };
+        depths.push(depth - taken);
+    }
+    let inner_depth = match stored {
+        Some(_) => 0,
+        None => analyse(program, inner_code)
+            .ok()
+            .and_then(|analysis| analysis.entry[pc - inner.body as usize].clone())
+            .map_or(0, |state| state.len()),
+    };
+    let caller_locals = program.codes[code].locals as usize;
+    // the caller's frame: its locals, then its operands; a mark's height
+    // is where its operands now lie
+    for slot in 0..caller_locals {
+        let value = take(slot);
+        vm.stack.push(value);
+    }
+    for (slot, kind) in point.slots.iter().enumerate().take(caller_locals) {
+        if let SlotKind::Mark = kind {
+            let depth = point.marks.get(slot).copied().flatten().unwrap_or(0);
+            vm.stack[base + slot] = Value::integer((base + caller_locals + depth) as i64);
+        }
+    }
+    let outer_depth = operands.len() - depths.iter().sum::<usize>() - inner_depth;
+    let mut operands = operands.into_iter();
+    for _ in 0..outer_depth {
+        vm.stack.push(operands.next().expect("an operand"));
+    }
+    let first = &regions[chain[0]];
+    let at_call = chain.len() == 1 && stored.is_some();
+    if let Some(frame) = vm.frames.last_mut() {
+        frame.pc = first.call_pc as usize + usize::from(!at_call);
+    }
+    let caller_handler_base = vm.frames.last().map_or(0, |frame| frame.handler_base);
+    vm.handlers.truncate(caller_handler_base);
+    // a frame per expanded callee around the point
+    let mut bases: Vec<(usize, usize)> = vec![(base, caller_locals)];
+    for (k, &index) in chain.iter().enumerate() {
+        let region = &regions[index];
+        let callee = &program.codes[region.callee as usize];
+        if k + 1 == chain.len() {
+            if let Some(stored) = stored {
+                // the arguments already stored go back, in order, onto the
+                // operands of the frame that makes the call
+                let args = callee.params as usize;
+                for slot in (args - stored)..args {
+                    let value = take(region.slot_base as usize + slot);
+                    vm.stack.push(value);
+                }
+                break;
+            }
+        }
+        let grant = vm.frame_grant(region.callee as usize);
+        let frame_base = vm.stack.len();
+        for slot in 0..callee.locals as usize {
+            let value = take(region.slot_base as usize + slot);
+            vm.stack.push(value);
+        }
+        let last = k + 1 == chain.len();
+        let depth = if last { inner_depth } else { depths[k] };
+        for _ in 0..depth {
+            vm.stack.push(operands.next().expect("an operand"));
+        }
+        let frame_pc = if last {
+            pc - region.body as usize
+        } else {
+            let next = &regions[chain[k + 1]];
+            let call_pc = next.call_pc as usize - region.body as usize;
+            // the next frame is made again at its call when the point is
+            // in that frame's prologue
+            call_pc + usize::from(!(k + 2 == chain.len() && stored.is_some()))
+        };
+        vm.frames.push(Frame {
+            code: region.callee as usize,
+            pc: frame_pc,
+            base: frame_base,
+            handler_base: vm.handlers.len(),
+            grant,
+        });
+        bases.push((frame_base, callee.locals as usize));
+    }
+    // the handled regions open at the point, each under the frame whose
+    // ops hold its handler, at the height its operands now have
+    let frame_count = bases.len();
+    for (target, depth) in &point.handlers {
+        let target = *target as usize;
+        let owner = chain_at(&regions, target).len().min(frame_count - 1);
+        let below: usize = depths.iter().take(owner).sum();
+        let (frame_base, frame_locals) = bases[owner];
+        let local_target = if owner == 0 {
+            target
+        } else {
+            target - regions[chain[owner - 1]].body as usize
+        };
+        let height = frame_base + frame_locals + depth.saturating_sub(below);
+        vm.handlers.push((local_target, height));
+    }
+    // the frames' floors: each frame's handlers come after its callers'
+    let mut floor = caller_handler_base;
+    let frames = vm.frames.len();
+    for (k, frame_index) in (frames - frame_count..frames).enumerate() {
+        if k > 0 {
+            vm.frames[frame_index].handler_base = floor;
+        }
+        let owned = point
+            .handlers
+            .iter()
+            .filter(|(target, _)| {
+                chain_at(&regions, *target as usize)
+                    .len()
+                    .min(frame_count - 1)
+                    == k
+            })
+            .count();
+        floor += owned;
+    }
+    if std::env::var_os("RENYI_NATIVE_INLINE_DUMP").is_some() {
+        eprintln!(
+            "hand-back in {} at op {} (locals {}, stack {:?}, slots {:?}, stored {:?}, depths {:?}, inner depth {})",
+            program.codes[code].name, pc, point.locals, point.stack, point.slots, stored, depths, inner_depth
+        );
+        for frame in &vm.frames[frames - frame_count..] {
+            let name = &program.codes[frame.code].name;
+            eprintln!(
+                "  frame {name} pc {} base {} handler base {}",
+                frame.pc, frame.base, frame.handler_base
+            );
+        }
+        for (index, value) in vm.stack.iter().enumerate().skip(base) {
+            match value.as_i64() {
+                Some(number) => eprintln!("  stack[{index}] = Integer {number}"),
+                None => eprintln!("  stack[{index}] = {}", value.kind_name()),
+            }
+        }
+        eprintln!("  handlers {:?}", &vm.handlers[..]);
+    }
+}
+
 impl Vm<'_> {
+    /// A constant of a code object by the index its generated code uses:
+    /// past the code object's own constants lie those of the callees
+    /// expanded into it (decision AU50), which the JIT keeps.
+    pub(crate) fn constant_at(&self, code: usize, index: usize) -> &Value {
+        if let Some(value) = self
+            .native
+            .as_ref()
+            .and_then(|jit| jit.constant(code, index))
+        {
+            return value;
+        }
+        &self.program.codes[code].constants[index]
+    }
+
     /// The frame's pc as the interpreter would have it while the op at
     /// `pc` runs: one past it, which is what locates a crash.
     #[inline]
@@ -1486,9 +1734,8 @@ impl Vm<'_> {
         site: usize,
         holder: &Value,
     ) -> Result<Value, Interrupt> {
-        let name = self.program.codes[code].constants[name]
-            .as_text()
-            .unwrap_or("");
+        let name = self.constant_at(code, name).clone();
+        let name = name.as_text().unwrap_or("");
         Ok(self
             .field_at(site, holder.plain(), name)?
             .guarded(holder.origins()))

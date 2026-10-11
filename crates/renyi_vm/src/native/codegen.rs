@@ -334,6 +334,9 @@ pub struct Compiled {
     pub trampoline: Vec<u8>,
     pub deopts: Vec<DeoptPoint>,
     pub headers: Vec<u32>,
+    /// The callees expanded into the body (decision AU50), filled in by
+    /// `compile_with_inlining`.
+    pub regions: Vec<crate::native::inline::Region>,
     pub stats: Stats,
 }
 
@@ -371,6 +374,10 @@ enum SlotVars {
 struct Gen<'a, 'b> {
     program: &'a Program,
     code_id: usize,
+    /// The code object's own locals: the slots past them belong to the
+    /// callees expanded into it (decision AU50), which a frame the
+    /// interpreter hands over does not have.
+    original_locals: usize,
     code: &'a Code,
     analysis: &'a Analysis,
     /// Per function, how a call to it is made (decision AU1).
@@ -547,22 +554,29 @@ pub(crate) fn borrowed_operands(
 /// Compile one code object (decision AS1): its body and its trampoline
 /// as machine code that holds no address, with the deopt points and the
 /// loop headers the VM keeps beside them.
+/// The machine code of a code object: `body` is its ops as the tier sees
+/// them, the code object itself or its expansion with small callees
+/// inlined (decision AU50), whose first ops are the code object's own, as
+/// many as the program's code object has, where the loop headers are
+/// looked for.
 pub fn compile(
     program: &Program,
     code_id: usize,
+    body: &Code,
     calls: &[CallKind],
     isa: &dyn TargetIsa,
     ctx: &mut Context,
     fctx: &mut FunctionBuilderContext,
 ) -> Result<Compiled, Skipped> {
-    let code = &program.codes[code_id];
+    let code = body;
+    let original_len = program.codes[code_id].ops.len();
     let mut stats = Stats::default();
     let started = Instant::now();
     let analysis = analyse(program, code).map_err(Skipped::Analysis)?;
     let (borrowed, masks) = borrowed_operands(program, code, &analysis, calls);
     stats.analysis = started.elapsed();
     let mut headers: Vec<usize> = Vec::new();
-    for (pc, op) in code.ops.iter().enumerate() {
+    for (pc, op) in code.ops.iter().enumerate().take(original_len) {
         if let Op::Jump(target) = op {
             let target = *target as usize;
             let fits = matches!(
@@ -632,6 +646,7 @@ pub fn compile(
         let mut gen = Gen {
             program,
             code_id,
+            original_locals: program.codes[code_id].locals as usize,
             code,
             analysis: &analysis,
             calls,
@@ -678,6 +693,10 @@ pub fn compile(
     stats.instructions = ctx.func.dfg.num_insts();
     stats.blocks = ctx.func.layout.blocks().count();
     let started = Instant::now();
+    // the IR of a code object named by `RENYI_NATIVE_IR`, a development aid
+    if std::env::var("RENYI_NATIVE_IR").is_ok_and(|name| name == code.name) {
+        eprintln!("{}", ctx.func.display());
+    }
     let body = machine_code(ctx, isa)?;
     let trampoline = trampoline(isa, ctx, fctx, code_id, &kinds)?;
     stats.cranelift = started.elapsed();
@@ -687,6 +706,7 @@ pub fn compile(
         trampoline,
         deopts,
         headers,
+        regions: Vec::new(),
         stats,
     })
 }
@@ -2018,6 +2038,15 @@ impl Gen<'_, '_> {
         self.b.ins().jump(cont, &[]);
         self.switch_to(cont);
         self.reload_frame();
+        // the stack's length is `base` plus the code object's own locals
+        // as the caller left it; the expanded code's locals go on past
+        // them (decision AU50), and the length follows before the first
+        // helper pushes at it, in the entries at the loop headers through
+        // `make_room_for_expansion`, here through the height alone
+        if self.code.locals as usize != self.original_locals {
+            let locals = self.code.locals as usize;
+            self.store_height(locals);
+        }
         // the entries at the loop headers are tried first: `pc` names one
         // when the interpreter hands a frame over in a loop
         let headers = self.headers.clone();
@@ -2064,8 +2093,35 @@ impl Gen<'_, '_> {
         self.jump_to(0);
         for (header, block) in resumes {
             self.switch_to(block);
+            self.make_room_for_expansion(header);
             self.resume_at(header);
         }
+    }
+
+    /// A frame the interpreter hands over at a loop header has the code
+    /// object's own locals and its operands right above them; the
+    /// expanded code keeps the slots of its expanded callees between the
+    /// two (decision AU50), so the operands move up past them, which hold
+    /// `Nothing` outside the regions, and the stack's length follows.
+    fn make_room_for_expansion(&mut self, header: usize) {
+        let original = self.original_locals;
+        let expanded = self.code.locals as usize;
+        if expanded == original {
+            return;
+        }
+        let depth = self.analysis.entry[header].as_ref().map_or(0, Vec::len);
+        let flags = MemFlagsData::trusted();
+        for index in (0..depth).rev() {
+            let from = self.address_at(original + index);
+            let to = self.address_at(expanded + index);
+            self.copy_value(from, to);
+        }
+        let nothing = self.iconst(types::I32, TAG_NOTHING as i64);
+        for slot in original..expanded {
+            let at = self.address_at(slot);
+            self.b.ins().istore8(flags, nothing, at, 0);
+        }
+        self.store_height(expanded + depth);
     }
 
     /// Continue when `ok` (an `i8`), else leave the body with the status
@@ -2089,7 +2145,9 @@ impl Gen<'_, '_> {
     fn resume_at(&mut self, header: usize) {
         let out = self.out_address();
         let analysis = self.analysis;
-        for (slot, &kind) in analysis.slots.iter().enumerate() {
+        // the slots of expanded callees hold `Nothing` at a loop header of
+        // the caller (decision AU50): nothing to take from them
+        for (slot, &kind) in analysis.slots.iter().enumerate().take(self.original_locals) {
             let slot_value = self.u32(slot as u32);
             match kind {
                 SlotKind::Int | SlotKind::Bool | SlotKind::Float => {

@@ -12,7 +12,7 @@ import struct
 import sys
 from collections import Counter
 
-IMAGE_FORMAT = 7
+IMAGE_FORMAT = 8
 SECTION_ALIGN = 16384
 
 
@@ -82,6 +82,14 @@ def read_image(path):
                 reader.u32()  # a handled region's target
                 reader.u32()  # and the depth below it
             deopts += 1
+        # the callees expanded into the code object (decision AU50,
+        # format 8): the callee, the call's pc, the region's start, its
+        # body and its end, its first slot and its parent region
+        for _ in range(reader.u32()):
+            for _ in range(5):
+                reader.u32()
+            reader.u16()
+            reader.u32()
         codes.append((body, trampoline, headers, deopts))
     section_offset = reader.u32()
     section_len = reader.u32()

@@ -29,6 +29,7 @@ use std::io::{Read, Seek, SeekFrom};
 use cranelift_codegen::isa::TargetIsa;
 
 use super::infer::{Abs, SlotKind};
+use super::inline::Region;
 use super::{DeoptPoint, Jit};
 use crate::compile::Program;
 use crate::extension::Registry;
@@ -38,8 +39,8 @@ pub const MAGIC: &[u8; 4] = b"RYI\0";
 
 /// The layout of the file: bumped when it changes. 3: the code section
 /// (decision AT5); 7: the handled regions of a deopt point (decision
-/// AU18).
-pub const IMAGE_FORMAT: u32 = 7;
+/// AU18); 8: the callees expanded into a code object (decision AU50).
+pub const IMAGE_FORMAT: u32 = 8;
 
 /// The alignment of the code section in the file: a multiple of every
 /// page size the toolchain runs on (16 KB on Apple silicon), so that the
@@ -138,6 +139,7 @@ pub fn build(
                 trampoline: place(&compiled.trampoline),
                 headers: compiled.headers,
                 deopts: compiled.deopts,
+                regions: compiled.regions,
             })
         })
         .collect();
@@ -205,6 +207,8 @@ pub struct ImageCode {
     pub trampoline: Placement,
     pub headers: Vec<u32>,
     pub deopts: Vec<DeoptPoint>,
+    /// The callees expanded into the body (decision AU50).
+    pub regions: Vec<Region>,
 }
 
 /// The code section as it lies in the image's file (decision AT5): the
@@ -347,6 +351,19 @@ impl Image {
                             out.u32(*depth as u32);
                         }
                     }
+                    out.u32(code.regions.len() as u32);
+                    for region in &code.regions {
+                        out.u32(region.callee);
+                        out.u32(region.call_pc);
+                        out.u32(region.start);
+                        out.u32(region.body);
+                        out.u32(region.end);
+                        out.u16(region.slot_base);
+                        match region.parent {
+                            None => out.u32(u32::MAX),
+                            Some(parent) => out.u32(parent),
+                        }
+                    }
                 }
             }
         }
@@ -442,11 +459,35 @@ impl Image {
                     handlers,
                 });
             }
+            let regions = (0..input.u32()?)
+                .map(|_| {
+                    let callee = input.u32()?;
+                    let call_pc = input.u32()?;
+                    let start = input.u32()?;
+                    let body = input.u32()?;
+                    let end = input.u32()?;
+                    let slot_base = input.u16()?;
+                    let parent = match input.u32()? {
+                        u32::MAX => None,
+                        parent => Some(parent),
+                    };
+                    Ok(Region {
+                        callee,
+                        call_pc,
+                        start,
+                        body,
+                        end,
+                        slot_base,
+                        parent,
+                    })
+                })
+                .collect::<Result<Vec<Region>, String>>()?;
             codes.push(Some(ImageCode {
                 body,
                 trampoline,
                 headers,
                 deopts,
+                regions,
             }));
         }
         let section_offset = input.u32()? as usize;
@@ -582,6 +623,26 @@ mod tests {
                         marks: vec![Some(1), None],
                         handlers: vec![(9, 1)],
                     }],
+                    regions: vec![
+                        Region {
+                            callee: 2,
+                            call_pc: 4,
+                            start: 12,
+                            body: 14,
+                            end: 24,
+                            slot_base: 2,
+                            parent: None,
+                        },
+                        Region {
+                            callee: 5,
+                            call_pc: 16,
+                            start: 24,
+                            body: 25,
+                            end: 31,
+                            slot_base: 4,
+                            parent: Some(0),
+                        },
+                    ],
                 }),
             ],
             section: {

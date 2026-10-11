@@ -542,7 +542,7 @@ impl<'p> Vm<'p> {
             Jit::new(program, None, calls).map(Box::new)
         };
         if let (Some(jit), Some(image)) = (native.as_mut(), options.image.as_ref()) {
-            if let Err(message) = jit.load_image(image) {
+            if let Err(message) = jit.load_image(program, image) {
                 let _ = writeln!(options.stderr, "renyi: the image was not loaded: {message}");
             }
         }
@@ -1554,8 +1554,18 @@ impl<'p> Vm<'p> {
             } => {
                 let location = self.frames.last().and_then(|frame| {
                     let code = &self.program.codes[frame.code];
-                    let span = code.spans.get(frame.pc.saturating_sub(1))?;
-                    Some(self.program.location(code.module, *span))
+                    let pc = frame.pc.saturating_sub(1);
+                    // a pc past the code object's ops lies in a callee the
+                    // generated code expanded into it (decision AU50)
+                    let (module, span) = match code.spans.get(pc) {
+                        Some(span) => (code.module, *span),
+                        None => {
+                            self.native
+                                .as_ref()?
+                                .inlined_location(self.program, frame.code, pc)?
+                        }
+                    };
+                    Some(self.program.location(module, span))
                 });
                 Interrupt::Crash { message, location }
             }
