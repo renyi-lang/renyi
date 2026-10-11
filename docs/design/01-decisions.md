@@ -5855,7 +5855,7 @@ comes from (`word_set`, `name_tail_set`, `alphanumeric_set`,
 `digit_set`, `digit_or_underscore_set`, `space_set`,
 `operator_tail_set`, `line_break_set`): the lexer alone
 (`compiler/lex_only.ry` on `bodies.ry`, three turns less one) LEX_BEFORE
-to LEX_AFTER million instructions per lex (LEX_PCT); the Renyi checker
+to LEX_AFTER million instructions per lex (-2.4%); the Renyi checker
 on `bodies.ry` 4,750.9 million (-1.1% against (i)'s 4,802.1, -3.0% for
 the three cuts). The ratio of AU36 (iii) after the three cuts: checking
 590.5 ms against the reference's 78.5 (7.5 times, the gate) and this
@@ -5865,3 +5865,80 @@ compiling 888.9 against 102.1 (8.7) and 81.8 (10.9): the ratio stays at
 What stays for the stage: (iii), the keywords and symbols as variants
 without fields (`rt_compare` 6.6% of the three-turn parse), and whatever
 the profile shows next.
+
+**AU53. B4's cut (iii): the reserved words, phrases and symbols as
+Integer codes.** AU48 deferred the keywords as variants without fields,
+bounded by `rt_compare`'s share (6.6% of the three-turn parse: every
+`is_word(token, "function")` and `is_symbol(token, ",")` compared two
+texts through the helper, and `binary_operator` tested up to fourteen
+literal patterns per call). The cut takes a cheaper shape than variants:
+a new module `compiler/words.ry` holds the reserved words, the phrases
+and the symbols (moved from the lexer, which imports them back), gives
+each a code (`word_codes`, `symbol_codes`, built once from the lists;
+the words from 1 in list order, the symbols from 1000) and a public
+constant per spelling (`word_function`, `word_is_at_least`,
+`symbol_comma`, 116 of them, each with its purpose line), with
+`word_code`, `symbol_code` and `spelling_of` for the few sites that hold
+a text. The lexer's `Token` carries `code` (a `Word`'s spelling or a
+`Symbol`'s text looked up once at lex time, 0 for every other kind; at
+first through `make_token` and `code_of`, then as the third step below
+says); the parser's `is_word`, `is_symbol`, `eat_*`, `past_*` and
+`expect_*` take a code and compare `token.code is code`, an Integer
+compare in place since AU2, and `binary_operator` is a chain of such
+compares on the token's code; 153 call sites were rewritten mechanically
+(a scanner over each call's argument list, the literal to its constant;
+a variable text goes through `word_code` or `symbol_code`), the `match`
+arms with literal field patterns stay as they were (`when Word(spelling:
+"let")`, some twenty, off the hot paths but the statement and item
+dispatch). The token dump, the tree and every diagnostic are unchanged:
+the tokens judge and the parse judge on 118 files, the four judges and
+the binary's tests pass. Measured in three steps, each by its driver
+under callgrind (`RENYI_NATIVE_SYNC=1`; the parser alone three turns
+less one of `compiler/parse_only.ry` on `bodies.ry`, the lexer alone
+likewise with `lex_only.ry`, the checker one run of `checker.ry`).
+First, the cut alone: the parser 792.7 to 806.1 million instructions per
+parse (+1.7%), because a read of a module constant is `Op::Global`,
+which both tiers compiled as a call to `rt_global` (the VM's table of
+built constants behind a status check), and the parser now reads one at
+every test where it compared a literal before; the lexer 506.6 to 562.0
+million per lex (+10.9%), because every token went through `make_token`
+and `code_of`, three calls and a map lookup; the checker's run 4,750.9
+to 4,903.0 million (+3.2%). Second, the VM's part, a module constant
+read in place: the VM notes every constant it builds in a table the JIT
+owns (`Jit::note_global` from `Vm::global`; `GlobalSlot`, the value with
+one reference of its own behind a flag, reached through
+`NativeState::globals`); both tiers copy the value from the table in
+place once the flag is set and retain it there, and call `rt_global`
+only until then (the template's `Op::Global`, and the Cranelift tier's
+with the helper on a cold block); a compilation on the Cranelift tier
+also takes a snapshot of the constants built to a small Integer
+(`small_globals`, handed to the compile thread with its request) and
+reads such a constant as the literal, an Int operand in a register
+(`infer::analyse` takes the slice; `codegen`); code format 15; a test
+per tier, `module_constants_are_copied_in_place_once_built`. Third, the
+lexer's part: the one lookup that gives the code stands where the set
+test stood (`words.word_codes.get(text) otherwise 0` in `lex_word`,
+`symbol_codes.get(ch)` in `next_step`; a phrase looks its own code up
+once more), the hot tokens are built in place with `code: 0`, and
+`make_token` serves the cold sites and the parser's end-of-file token.
+After the three: the lexer alone 494.4 million per lex (-2.4% against
+506.6), the parser alone 764.6 million per parse (-3.5% against 792.7),
+the checker's run 4,691.7 million (-1.2% against 4,750.9; the cold phase
+keeps part of the parser's gain, the compile and the first parse on
+templates); AT1's measure of the VM's part on the self-check
+(`tools/measure_size.sh`, the synchronous row, the binary before the
+VM's part against this one): 6,389.0 to 6,376.4 million instructions
+(-0.2%) and 9,002.1 to 8,955.4 million by the estimate (-0.5%); the
+image row 4,930.2 to 4,918.3 million (-0.2%) and 7,084.1 to 7,039.8
+million by the estimate (-0.6%), the image 14 KB larger (8,838,240
+bytes) for the sequence per read. The ratio of AU36 (iii) after the four
+cuts (`tools/ratio.py`): checking 589.8 and 606.6 ms on two runs of this
+boot against the reference's 82.5 and 74.9 (7.2 and 8.1 times, the gate;
+7.5 after the three cuts with the reference at 78.5) and this binary's
+37.6 and 36.4 (15.7 and 16.7), parsing 221.4 and 229.4 against 61.9 and
+67.4 (3.6 and 3.4), compiling 899.3 and 825.9 against 122.9 and 111.3
+(7.3 and 7.4): unchanged within the wall-clock's noise, which is wider
+than the cut's 1.2% in instructions. Also in this commit: AU52's natives
+table gave `index_of`'s typed entry to `run_until` and none to
+`index_of`, which `tests/extension.rs` refused (CI red on e91cec0);
+fixed.

@@ -37,7 +37,7 @@ use cranelift_frontend::FunctionBuilderContext;
 
 use crate::compile::{CodeId, Program};
 use crate::value::Value;
-use crate::vm::{CallKind, Vm};
+use crate::vm::{CallKind, GlobalSlot, Vm};
 use infer::{Abs, SlotKind};
 
 /// The generated function of a code object: the VM, the frame's base and
@@ -119,7 +119,7 @@ enum State {
 /// code object is asked for next. The thread has Cranelift's target and
 /// contexts of its own.
 struct Worker {
-    requests: Option<mpsc::Sender<CodeId>>,
+    requests: Option<mpsc::Sender<(CodeId, Vec<Option<i64>>)>>,
     results: mpsc::Receiver<(CodeId, Result<codegen::Compiled, codegen::Skipped>)>,
     handle: Option<JoinHandle<()>>,
     /// Set when the JIT is dropped: the thread stops after the
@@ -150,7 +150,7 @@ impl Worker {
         calls: Vec<CallKind>,
         inline: bool,
     ) -> Option<Worker> {
-        let (requests, inbox) = mpsc::channel::<CodeId>();
+        let (requests, inbox) = mpsc::channel::<(CodeId, Vec<Option<i64>>)>();
         let (outbox, results) = mpsc::channel();
         let program = ProgramRef(program);
         let level = opt_level.to_string();
@@ -168,12 +168,12 @@ impl Worker {
                 let wrapper = program;
                 // SAFETY: `ProgramRef` says why the program is there to read.
                 let program: &Program = unsafe { &*wrapper.0 };
-                for code in inbox {
+                for (code, globals) in inbox {
                     if stopped.load(Ordering::Relaxed) {
                         break;
                     }
                     let result = compile_with_inlining(
-                        program, code, &calls, &*isa, &mut ctx, &mut fctx, inline,
+                        program, code, &calls, &globals, &*isa, &mut ctx, &mut fctx, inline,
                     );
                     if outbox.send((code, result)).is_err() {
                         break;
@@ -189,11 +189,12 @@ impl Worker {
         })
     }
 
-    /// Whether the code object was handed to the thread.
-    fn request(&self, code: CodeId) -> bool {
+    /// Whether the code object was handed to the thread, with the module
+    /// constants evaluated so far (decision AU53).
+    fn request(&self, code: CodeId, globals: Vec<Option<i64>>) -> bool {
         self.requests
             .as_ref()
-            .is_some_and(|requests| requests.send(code).is_ok())
+            .is_some_and(|requests| requests.send((code, globals)).is_ok())
     }
 }
 
@@ -259,6 +260,11 @@ pub struct Jit {
     /// AU50): off unless `RENYI_NATIVE_INLINE=1`, since the measure found
     /// the expanded code slower than the calls it replaces.
     inline: bool,
+    /// Per module constant, its value once the VM has built it (decision
+    /// AU53), which the generated code copies in place through
+    /// `NativeState::globals`; a compilation reads one built to a small
+    /// Integer as a literal. The VM notes each as it is built.
+    globals: Box<[GlobalSlot]>,
     /// The helpers in the order of `codegen::SIGNATURES`, which the
     /// generated code calls through `NativeState::helpers`.
     helpers: Box<[*const u8]>,
@@ -557,6 +563,14 @@ impl Jit {
             expansions: 0,
             expanded_into: 0,
             rebuilt_frames: 0,
+            globals: program
+                .constants
+                .iter()
+                .map(|_| GlobalSlot {
+                    ready: 0,
+                    value: Value::Nothing,
+                })
+                .collect(),
             calls_cold: 0,
             resumes: 0,
             resumes_refused: 0,
@@ -718,6 +732,7 @@ impl Jit {
             constants: self.constants.as_ptr(),
             hotness: std::ptr::null_mut(),
             entries: self.entries.as_ptr(),
+            globals: self.globals.as_ptr(),
             ..crate::vm::NativeState::default()
         }
     }
@@ -959,15 +974,39 @@ native: {} code objects on templates ({} ops, {} bytes) in {} ms{}; {} loops han
         program: &Program,
         code: CodeId,
     ) -> Result<codegen::Compiled, codegen::Skipped> {
+        let globals = self.small_globals();
         compile_with_inlining(
             program,
             code,
             &self.calls,
+            &globals,
             &*self.isa,
             &mut self.ctx,
             &mut self.fctx,
             self.inline,
         )
+    }
+
+    /// A module constant the VM has just built (decision AU53): its value
+    /// goes into the table the generated code reads, with one reference of
+    /// its own.
+    pub(crate) fn note_global(&mut self, index: usize, value: &Value) {
+        if let Some(slot) = self.globals.get_mut(index) {
+            slot.value = value.clone();
+            slot.ready = 1;
+        }
+    }
+
+    /// Per module constant, its value when built to a small Integer
+    /// (decision AU53): what a compilation reads as a literal.
+    fn small_globals(&self) -> Vec<Option<i64>> {
+        self.globals
+            .iter()
+            .map(|slot| match (&slot.value, slot.ready) {
+                (Value::Integer(crate::integer::Int::Small(small)), 1..) => Some(*small),
+                _ => None,
+            })
+            .collect()
     }
 
     /// The regions of callees expanded into a code object (decision AU50).
@@ -1024,7 +1063,7 @@ native: {} code objects on templates ({} ops, {} bytes) in {} ms{}; {} loops han
         let handed = self
             .worker
             .as_ref()
-            .is_some_and(|worker| worker.request(code));
+            .is_some_and(|worker| worker.request(code, self.small_globals()));
         if handed {
             self.states[code] = State::Queued;
             self.queued += 1;
@@ -1106,10 +1145,12 @@ native: {} code objects on templates ({} ops, {} bytes) in {} ms{}; {} loops han
 
 /// A code object compiled with its small callees expanded into it first
 /// (decision AU50), unless the expansion is off or finds nothing.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn compile_with_inlining(
     program: &Program,
     code: CodeId,
     calls: &[CallKind],
+    globals: &[Option<i64>],
     isa: &dyn cranelift_codegen::isa::TargetIsa,
     ctx: &mut Context,
     fctx: &mut FunctionBuilderContext,
@@ -1124,12 +1165,12 @@ pub(crate) fn compile_with_inlining(
         Some(expansion) => (&expansion.code, expansion.regions.clone()),
         None => (&program.codes[code], Vec::new()),
     };
-    let mut compiled = codegen::compile(program, code, body, calls, isa, ctx, fctx)?;
+    let mut compiled = codegen::compile(program, code, body, calls, globals, isa, ctx, fctx)?;
     if !regions.is_empty() && std::env::var_os("RENYI_NATIVE_INLINE_DUMP").is_some() {
         // the kinds the analysis settled on for the regions' slots, a
         // development aid: an argument that arrives boxed keeps the
         // callee's body on the boxed paths
-        if let Ok(analysis) = infer::analyse(program, body) {
+        if let Ok(analysis) = infer::analyse(program, body, &[]) {
             let kinds: Vec<String> = analysis.slots[program.codes[code].locals as usize..]
                 .iter()
                 .map(|kind| format!("{kind:?}"))

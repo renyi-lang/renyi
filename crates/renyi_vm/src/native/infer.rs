@@ -396,7 +396,15 @@ pub enum Rejection {
 type Edge = (usize, Vec<Abs>, Vec<(u32, usize)>);
 
 /// Analyse a code object: `Err` when its stack cannot be settled.
-pub fn analyse(program: &Program, code: &Code) -> Result<Analysis, Rejection> {
+/// `globals` says which module constants are already evaluated to a
+/// small Integer, by index (decision AU53): such a constant is an Int
+/// operand, which the generated code pushes as a literal; an empty
+/// slice says none is known.
+pub fn analyse(
+    program: &Program,
+    code: &Code,
+    globals: &[Option<i64>],
+) -> Result<Analysis, Rejection> {
     let count = code.ops.len();
     let mut slots = vec![SlotKind::Unset; code.locals as usize];
     // a parameter starts as its declared type says (`abs_of_params`, the
@@ -506,7 +514,11 @@ pub fn analyse(program: &Program, code: &Code) -> Result<Analysis, Rejection> {
                 Op::Const(index) => {
                     stack.push(note(abs_of_constant(&code.constants[*index as usize])))
                 }
-                Op::Nothing | Op::Global(_) => stack.push(note(Abs::Boxed(None))),
+                Op::Nothing => stack.push(note(Abs::Boxed(None))),
+                Op::Global(index) => match globals.get(*index as usize) {
+                    Some(Some(_)) => stack.push(Abs::Int),
+                    _ => stack.push(note(Abs::Boxed(None))),
+                },
                 Op::Load(slot) | Op::LoadMove(slot) => {
                     let kind = slots[*slot as usize];
                     if !matches!(

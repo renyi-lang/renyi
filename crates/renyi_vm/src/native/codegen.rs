@@ -46,7 +46,7 @@ use crate::value::layout::{
     TAG_NATIVE, TAG_NOTHING, TAG_RECORD, TAG_SMALL_TEXT, TAG_VARIANT,
 };
 use crate::value::Value;
-use crate::vm::{unit_slot, CallKind, FieldSite, Frame, InPlace, NativeState, Vm};
+use crate::vm::{unit_slot, CallKind, FieldSite, Frame, GlobalSlot, InPlace, NativeState, Vm};
 
 /// Where the VM keeps its stack (decision AR4): the generated code reads
 /// the pinned vector's pointer, length and capacity there.
@@ -136,6 +136,12 @@ pub(crate) const STATE_HOTNESS: i32 = std::mem::offset_of!(NativeState, hotness)
 pub(crate) const STATE_ENTRIES: i32 = std::mem::offset_of!(NativeState, entries) as i32;
 pub(crate) const STATE_LIST_ITEMS: i32 = std::mem::offset_of!(NativeState, list_items) as i32;
 pub(crate) const STATE_LIST_LEN: i32 = std::mem::offset_of!(NativeState, list_len) as i32;
+pub(crate) const STATE_GLOBALS: i32 = std::mem::offset_of!(NativeState, globals) as i32;
+/// A module constant's slot in the JIT's table (decision AU53): its size,
+/// the flag that says the VM has built it and the value.
+pub(crate) const GLOBAL_SIZE: usize = std::mem::size_of::<GlobalSlot>();
+pub(crate) const GLOBAL_READY: i32 = std::mem::offset_of!(GlobalSlot, ready) as i32;
+pub(crate) const GLOBAL_VALUE: i32 = std::mem::offset_of!(GlobalSlot, value) as i32;
 
 /// The position of a helper in `SIGNATURES`, which is its index in the
 /// VM's table of helpers.
@@ -374,6 +380,10 @@ enum SlotVars {
 struct Gen<'a, 'b> {
     program: &'a Program,
     code_id: usize,
+    /// The module constants evaluated to a small Integer when the
+    /// compilation was asked for (decision AU53): a read of one is the
+    /// literal, since a constant never changes once built.
+    globals: &'a [Option<i64>],
     /// The code object's own locals: the slots past them belong to the
     /// callees expanded into it (decision AU50), which a frame the
     /// interpreter hands over does not have.
@@ -559,11 +569,13 @@ pub(crate) fn borrowed_operands(
 /// inlined (decision AU50), whose first ops are the code object's own, as
 /// many as the program's code object has, where the loop headers are
 /// looked for.
+#[allow(clippy::too_many_arguments)]
 pub fn compile(
     program: &Program,
     code_id: usize,
     body: &Code,
     calls: &[CallKind],
+    globals: &[Option<i64>],
     isa: &dyn TargetIsa,
     ctx: &mut Context,
     fctx: &mut FunctionBuilderContext,
@@ -572,7 +584,7 @@ pub fn compile(
     let original_len = program.codes[code_id].ops.len();
     let mut stats = Stats::default();
     let started = Instant::now();
-    let analysis = analyse(program, code).map_err(Skipped::Analysis)?;
+    let analysis = analyse(program, code, globals).map_err(Skipped::Analysis)?;
     let (borrowed, masks) = borrowed_operands(program, code, &analysis, calls);
     stats.analysis = started.elapsed();
     let mut headers: Vec<usize> = Vec::new();
@@ -647,6 +659,7 @@ pub fn compile(
             program,
             code_id,
             original_locals: program.codes[code_id].locals as usize,
+            globals,
             code,
             analysis: &analysis,
             calls,
@@ -2334,12 +2347,45 @@ impl Gen<'_, '_> {
                 self.push_boxed();
             }
             Op::Global(index) => {
-                let index = self.u32(*index);
-                let status = self
-                    .call("rt_global", &[self.vm, index, pc_value])
-                    .expect("a status");
-                self.push_boxed();
-                self.check_status(status, pc, false);
+                if let Some(Some(value)) = self.globals.get(*index as usize) {
+                    // evaluated to a small Integer already: the literal
+                    // (decision AU53)
+                    let value = self.iconst(types::I64, *value);
+                    self.push_int(value);
+                } else {
+                    // the constant copied from the JIT's table once the
+                    // VM has built it, with one more reference (decision
+                    // AU53); until then built through the helper
+                    let flags = MemFlagsData::trusted();
+                    let state = self.native_state();
+                    let table = self.b.ins().load(self.pointer, flags, state, STATE_GLOBALS);
+                    let slot = self
+                        .b
+                        .ins()
+                        .iadd_imm_s(table, (*index as usize * GLOBAL_SIZE) as i64);
+                    let ready = self.b.ins().load(types::I64, flags, slot, GLOBAL_READY);
+                    let built = self.b.create_block();
+                    let unbuilt = self.b.create_block();
+                    let done = self.b.create_block();
+                    self.b.set_cold_block(unbuilt);
+                    self.b.ins().brif(ready, built, &[], unbuilt, &[]);
+                    self.b.seal_block(built);
+                    self.b.seal_block(unbuilt);
+                    self.switch_to(built);
+                    let from = self.b.ins().iadd_imm_s(slot, GLOBAL_VALUE as i64);
+                    self.push_copy(from, true);
+                    self.b.ins().jump(done, &[]);
+                    self.switch_to(unbuilt);
+                    let index = self.u32(*index);
+                    let status = self
+                        .call("rt_global", &[self.vm, index, pc_value])
+                        .expect("a status");
+                    self.check_status(status, pc, false);
+                    self.b.ins().jump(done, &[]);
+                    self.b.seal_block(done);
+                    self.switch_to(done);
+                    self.push_boxed();
+                }
             }
             Op::Load(slot) | Op::LoadMove(slot) => {
                 let index = *slot as usize;

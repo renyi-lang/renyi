@@ -274,14 +274,17 @@ and push there directly.
    finished and the gate is not met (the ratio 7.4 against 3); the owner
    evaluated (decision AU51): the gate stays at 3, the next lever is the
    compiler's own code, the expansion stays off, the site is final. The
-   work now is B4, stage 28: three of its four cuts are in (AU52: the
-   checker's line starts and layout check over lines, the parser's look
-   kept in the cursor, the lexer's scans as two list primitives; -3.0%
-   on the checker's run, the lexer alone -1.4%, the parser alone -0.8%),
-   the paragraph "B4 as built so far" of that section has them with the
-   lesson of the lexer's cut (the hash per character is the cost, not
-   the loop) and what stays: the keywords and symbols as variants
-   without fields, then whatever the profile shows.
+   work now is B4, stage 28: its four cuts are in (AU52: the checker's
+   line starts and layout check over lines, the parser's look kept in
+   the cursor, the lexer's scans as two list primitives; AU53: the
+   reserved words and symbols as Integer codes the parser compares in
+   place, with the VM's part, a module constant read in place on both
+   tiers; the lexer alone -2.4%, the parser alone -3.5%, the
+   checker's run -1.2%, all against the stage's start), the paragraph
+   "B4 as built so far" of that section has them with the lexer's lesson
+   (the hash per character is the cost, not the loop) and what stays:
+   whatever the profile shows next, with the ratio 7.2 and 8.1 on two runs (7.5 before the cut, within the wall-clock's noise) against
+   the gate of 3.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
@@ -3085,7 +3088,8 @@ instructions and 72 ms on AU34's binary, 153 million and 34.5 ms now;
 the ratio of AU36 (iii) 10.7 times against AU34's Rust front end (the
 Renyi side has not changed yet) and 21.7 times against the same
 binary's at AU42, 20.8 on AU44's boot, unmoved by A2, whose cache is
-off where the ratio is taken. CI green after every push.
+off where the ratio is taken. CI green after every push but e91cec0
+(AU52's natives table, `tests/extension.rs`; fixed by the next commit).
 
 **A2 as built** (AU40 ii to iv, AU43; decision AU44). The module
 `renyi_package::reads` notes every file a compile reads (`noting`,
@@ -3172,10 +3176,12 @@ scans `scan_word`, `scan_name_tail`, `scan_alphanumeric`,
 `plain_run_end` replace `scan_while` and its closures, each a loop
 reading `chars.at(position) otherwise ""` and classifying by
 `contains` on `lower_letters`, `upper_letters` and `digits` (module
-constants), the likeliest first; `reserved_set`, `phrase_set`,
-`phrase_starter_set` and `symbol_set` are `to_set()` constants beside
-the lists they come from (the lists stay: the sets are built from them
-on first use); `lex_word` builds its token from the text it sliced;
+constants), the likeliest first; `phrase_set` and `phrase_starter_set`
+are `to_set()` constants beside the lists they come from (the lists
+stay in `words.ry` since AU53: the sets are built from them on first
+use), and a reserved word or a symbol is known by the one lookup that
+gives its code (`words.word_codes`, `words.symbol_codes`); `lex_word`
+builds its token from the text it sliced;
 `previous_is_adjacent_dot` and the raw-text test match the kind
 instead of building a variant to compare with, and test the position
 first; `scan_segment` copies a plain run by one `slice`. The
@@ -3462,8 +3468,8 @@ code stays, off; the site's fourth round is final. The stage this opens
 is B4 (stage 28 of the roadmap), the paragraph "B4, the stage under way"
 below.
 
-**B4 as built so far** (decision AU51; stage 28 of the roadmap; decision
-AU52 for the first three cuts, commits 4d8cccc and the next). The
+**B4 as built so far** (decision AU51; stage 28 of the roadmap;
+decisions AU52 and AU53, commits 4d8cccc, e91cec0 and the next). The
 compiler's own code, cut by cut, each judged byte-equal by the four
 judges and the binary's tests, measured by its driver under callgrind
 (`compiler/lex_only.ry`, `parse_only.ry` and `checker.ry` on
@@ -3487,18 +3493,46 @@ the three cuts). The lesson of (iv): the loop was a small part of a
 scan; the hash of each one-character text against the set is the rest,
 and the primitive keeps it; a class table built once per set (an ASCII
 table beside the set, or natives for the classes themselves) would spare
-it, the next cut of the lexer if the profile still points there. What
-stays of the plan: (iii), the keywords and symbols as variants without
-fields compared by tag (`rt_compare` 6.6% of the three-turn parse;
-`tokens.ry` keeps printing the same names), and whatever the profile
-shows next (`memcpy` 4.4% and `Rc::make_mut` 1.6% of the checker's run
-are the copies of shared lists and records, `drop_glue` 5.7% the frees).
-The ratio after the three cuts (`tools/ratio.py target/renyi-b4iv
-target/renyi-au34`): checking 590.5 ms against the reference's 78.5 (7.5
-times, the gate) and this binary's 38.7 (15.3), parsing 207.9 against
-65.6 (3.2) and 62.2 (3.3), compiling 888.9 against 102.1 (8.7) and 81.8
-(10.9): the ratio stays at 7.5, the three cuts' 3% in instructions under
-the wall-clock's noise.
+it, the next cut of the lexer if the profile still points there. (iii)
+The reserved words, phrases and symbols as Integer codes (AU53):
+`compiler/words.ry` holds the lists (the lexer imports them back), the
+codes and a public constant per spelling; the lexer's `Token` carries
+`code`, which the one lookup that replaced the set test gives it
+(`words.word_codes.get(text) otherwise 0`, `symbol_codes.get(ch)`); the
+parser's tests take a code and compare it in place, `binary_operator` by
+a chain of such compares; 153 call sites rewritten by a scanner, the
+`match` arms with literal field patterns left. The cut alone was slower
+(the parser +1.7%, the lexer +10.9% through `make_token`, the checker's
+run +3.2%): a module constant read was a call to `rt_global` on both
+tiers, so the VM's part of the cut reads one in place (the table of
+built constants the JIT owns, `GlobalSlot` behind
+`NativeState::globals`, copied and retained in place by both tiers once
+the VM has built the constant, the helper until then; a constant built
+to a small Integer a literal in the Cranelift code, from the snapshot
+the compile request carries; code format 15; a test per tier). After the
+three steps: the lexer alone 494.4 million per lex (-2.4%), the parser
+alone 764.6 million per parse (-3.5%), the checker's run 4,691.7 million
+(-1.2%), all against the numbers before the cut; AT1's synchronous row
+on the self-check 6,389.0 to 6,376.4 million instructions (-0.2%) and
+9,002.1 to 8,955.4 million by the estimate (-0.5%). The ratio after the
+four cuts (`tools/ratio.py target/renyi-b4v target/renyi-au34`):
+checking 589.8 and 606.6 ms on two runs of this boot against the
+reference's 82.5 and 74.9 (7.2 and 8.1 times, the gate; 7.5 after the
+three cuts with the reference at 78.5) and this binary's 37.6 and 36.4
+(15.7 and 16.7), parsing 221.4 and 229.4 against 61.9 and 67.4 (3.6 and
+3.4), compiling 899.3 and 825.9 against 122.9 and 111.3 (7.3 and 7.4):
+unchanged within the wall-clock's noise, which is wider than the cut's
+1.2% in instructions. What stays: whatever the profile shows next
+(`memcpy` 4.4% and `Rc::make_mut` 1.6% of the checker's run are the
+copies of shared lists and records, `drop_glue` 5.7% the frees; the
+Cranelift compile is 9% of the checker's one run under
+`RENYI_NATIVE_SYNC=1`, which the ratio pays on the compile thread
+instead). The ratio after the three cuts (`tools/ratio.py
+target/renyi-b4iv target/renyi-au34`): checking 590.5 ms against the
+reference's 78.5 (7.5 times, the gate) and this binary's 38.7 (15.3),
+parsing 207.9 against 65.6 (3.2) and 62.2 (3.3), compiling 888.9 against
+102.1 (8.7) and 81.8 (10.9): the ratio stays at 7.5, the three cuts' 3%
+in instructions under the wall-clock's noise.
 
 ## The representation items: the design study (session 11)
 
@@ -5173,6 +5207,32 @@ holds between calls.
   no horizontal scroll at 390 px, no console errors, the 134 code
   blocks byte-identical to before. The project map's row for the site
   says what it is now.
+- **Decision AU51** (404233c): the owner's four answers after B3, every
+  recommended option: the gate stays at 3, the next lever is the
+  compiler's own code, the expansion of AU50 stays off by default, the
+  site is final; stage 28 opened in the roadmap, B4.
+- **Decision AU52** (4d8cccc, e91cec0): B4's cuts (i), (ii) and (iv),
+  the checker's line starts and layout check over lines (the checker's
+  run -2.0%), the parser's look kept in the cursor (the parser alone
+  -0.8%), the lexer's seven scans as two list primitives, `run_of` and
+  `run_until` (the sketch, the library and the checker's copy, the
+  natives with typed entries, the cheat sheet within its budget, a test
+  of the edges; the lexer alone -1.4%, the checker's run -3.0% for the
+  three); the ratio 7.5, unchanged within the noise. The natives table
+  of e91cec0 gave `index_of`'s typed entry to `run_until`, which
+  `tests/extension.rs` refused on CI; fixed with AU53.
+- **Decision AU53**: B4's cut (iii), the reserved words, phrases and
+  symbols as Integer codes (`compiler/words.ry`, the lexer's `Token`
+  with `code`, the parser's tests on the code in place, 153 sites
+  rewritten by a scanner), with the VM's part, a module constant read in
+  place on both tiers from the table of built constants the JIT owns
+  (`GlobalSlot`, `NativeState::globals`, `Jit::note_global`; a small
+  Integer a literal in the Cranelift code from the compile request's
+  snapshot; code format 15; a test per tier), and the lexer's one lookup
+  where the set test stood. The measure: the lexer alone -2.4%, the
+  parser alone -3.5%, the checker's run -1.2% against the
+  numbers before the cut; AT1's synchronous row -0.2% in instructions and -0.5% by the estimate, the image row -0.6%; the ratio
+  7.2 and 8.1 on two runs (7.5 before the cut, within the wall-clock's noise). CLAUDE.md's rows for `compiler/` and the VM.
 - **The README's opening** at the owner's request (68c5cd2): the design
   philosophy as the selling points, five points a reviewer can check,
   the comparison with Python, TypeScript, Rust and shell for the one

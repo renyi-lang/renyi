@@ -72,7 +72,7 @@ const PART_ALIGN: usize = 16;
 /// AU34). 13: two boxed values the checker typed Integer compared in
 /// place when both are small (decision AU45). 14: a variant test in place
 /// (decision AU49).
-pub const CODE_FORMAT: u32 = 14;
+pub const CODE_FORMAT: u32 = 15;
 
 /// The extension of an image file.
 pub const EXTENSION: &str = "ryi";

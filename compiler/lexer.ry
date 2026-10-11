@@ -3,6 +3,7 @@ module lexer
 
 import ast exposing Span
 import report exposing Diagnostic
+import words
 
 public type TokenKind is one of
   purpose: What a token is; a phrase such as `is at least` is one Word.
@@ -29,10 +30,11 @@ public type Part is one of
 end
 
 public type Token
-  purpose: A token with the source text it covers.
+  purpose: A token with the text it covers and its code: a reserved word, phrase or symbol, else 0.
   has kind: TokenKind
   has text: Text
   has span: Span
+  has code: Integer
 end
 
 public type Lexed
@@ -65,117 +67,6 @@ type Segment
   has diagnostics: List of Diagnostic
 end
 
-let reserved_words: List of Text be [
-  "ability",
-  "all",
-  "also",
-  "and",
-  "any",
-  "as",
-  "at",
-  "be",
-  "break",
-  "by",
-  "can",
-  "change",
-  "check",
-  "collect",
-  "concurrently",
-  "continue",
-  "count",
-  "crash",
-  "deprecated",
-  "descending",
-  "each",
-  "end",
-  "example",
-  "expose",
-  "exposing",
-  "fail",
-  "fails",
-  "failure",
-  "false",
-  "first",
-  "for",
-  "from",
-  "function",
-  "greater",
-  "group",
-  "has",
-  "if",
-  "ignore",
-  "import",
-  "in",
-  "is",
-  "lazy",
-  "least",
-  "less",
-  "let",
-  "match",
-  "maybe",
-  "module",
-  "most",
-  "mutable",
-  "needs",
-  "not",
-  "nothing",
-  "of",
-  "one",
-  "only",
-  "or",
-  "otherwise",
-  "per",
-  "power",
-  "public",
-  "purpose",
-  "raw",
-  "remainder",
-  "repeat",
-  "replays",
-  "return",
-  "returns",
-  "run",
-  "see",
-  "self",
-  "some",
-  "sorted",
-  "success",
-  "sum",
-  "tags",
-  "test",
-  "than",
-  "then",
-  "to",
-  "tool",
-  "true",
-  "type",
-  "until",
-  "when",
-  "where",
-  "with",
-  "within"
-]
-
-let phrases: List of Text be [
-  "is not",
-  "is less than",
-  "is at most",
-  "is greater than",
-  "is at least",
-  "or fails with",
-  "is one of",
-  "for each",
-  "for any",
-  "run concurrently",
-  "sorted by",
-  "group by",
-  "see also",
-  "expose as tool",
-  "repeat until",
-  "at most",
-  "only to"
-]
-
 let phrase_starters: List of Text be [
   "is",
   "or",
@@ -192,8 +83,6 @@ let phrase_starters: List of Text be [
 
 let clause_words: List of Text be ["purpose", "tags", "see also", "deprecated"]
 
-let symbols: List of Text be ["(", ")", "[", "]", "\{", "}", ",", ":", ".", "+", "-", "*", "/"]
-
 let operator_symbols: List of Text be ["!", "&", "|", "%", "^", "~", "?", "@", "$", "`", "\\", "'"]
 
 let operator_tail: List of Text be ["=", "<", ">", "!", "&", "|"]
@@ -202,13 +91,9 @@ let operator_tail_set: Set of Text be operator_tail.to_set()
 
 let carriage_return_base64: Text be "DQ=="
 
-let reserved_set: Set of Text be reserved_words.to_set()
-
-let phrase_set: Set of Text be phrases.to_set()
+let phrase_set: Set of Text be words.phrases.to_set()
 
 let phrase_starter_set: Set of Text be phrase_starters.to_set()
-
-let symbol_set: Set of Text be symbols.to_set()
 
 let lower_letters: Text be "abcdefghijklmnopqrstuvwxyz"
 
@@ -236,7 +121,7 @@ public function lex(source: Text) returns Lexed
   let chars be source.characters()
   let limit be chars.length()
   let lexed be lex_range(chars: chars, start: 0, limit: limit)
-  let eof be Token(kind: EndOfFile, text: "", span: Span(start: limit, stop: limit))
+  let eof be Token(kind: EndOfFile, text: "", span: Span(start: limit, stop: limit), code: 0)
   return Lexed(tokens: lexed.tokens.append(eof), diagnostics: lexed.diagnostics)
 end
 
@@ -253,7 +138,7 @@ function lex_range(chars: List of Text, start: Integer, limit: Integer) returns 
       change position to position + 1
     otherwise if ch is "\n" then
       let span be Span(start: position, stop: position + 1)
-      let token be Token(kind: LineBreak, text: "\n", span: span)
+      let token be Token(kind: LineBreak, text: "\n", span: span, code: 0)
       change tokens to tokens.append(token)
       change previous to token
       change position to position + 1
@@ -303,8 +188,10 @@ function next_step(
   if lower_letters.contains(ch) then
     return lex_word(chars: chars, position: position, limit: limit, previous: previous)
   end
-  if symbol_set.contains(ch) then
-    return single(kind: Symbol(text: ch), chars: chars, start: position, stop: position + 1)
+  let symbol be words.symbol_codes.get(ch) otherwise 0
+  if symbol is not 0 then
+    let span be Span(start: position, stop: position + 1)
+    return Single(token: Token(kind: Symbol(text: ch), text: ch, span: span, code: symbol))
   end
   if ch is "\"" then
     return lex_text(chars: chars, position: position, limit: limit, previous: previous)
@@ -401,7 +288,7 @@ function error_token(chars: List of Text, start: Integer, stop: Integer, diagnos
   returns Step
   purpose: An error token over the characters a diagnostic is about, as the Rust lexer pushes one.
 
-  let token be Token(
+  let token be make_token(
     kind: ErrorToken,
     text: slice(chars: chars, start: start, stop: stop),
     span: Span(start: start, stop: stop)
@@ -409,11 +296,30 @@ function error_token(chars: List of Text, start: Integer, stop: Integer, diagnos
   return Several(tokens: [token], diagnostics: [diagnostic], next: stop)
 end
 
+public function make_token(kind: TokenKind, text: Text, span: Span) returns Token
+  purpose: A token with the code its kind gives it (decision AU53).
+
+  return Token(kind: kind, text: text, span: span, code: code_of(kind))
+end
+
+function code_of(kind: TokenKind) returns Integer
+  purpose: The code of a reserved word, a phrase or a symbol, 0 for any other kind.
+
+  match kind
+    when Word(spelling) then return words.word_code(spelling)
+    when Symbol(text) then return words.symbol_code(text)
+    otherwise return 0
+  end
+end
+
 function single(kind: TokenKind, chars: List of Text, start: Integer, stop: Integer) returns Step
+  purpose: One token of a kind without a code over the characters.
+
   let token be Token(
     kind: kind,
     text: slice(chars: chars, start: start, stop: stop),
-    span: Span(start: start, stop: stop)
+    span: Span(start: start, stop: stop),
+    code: 0
   )
   return Single(token: token)
 end
@@ -618,12 +524,13 @@ function lex_word(chars: List of Text, position: Integer, limit: Integer, previo
   end
   let span be Span(start: position, stop: stop)
   if previous_is_adjacent_dot(previous: previous, start: position) then
-    return Single(token: Token(kind: MemberName, text: text, span: span))
+    return Single(token: Token(kind: MemberName, text: text, span: span, code: 0))
   end
-  if reserved_set.contains(text) then
-    return lex_reserved(chars: chars, position: position, stop: stop, limit: limit)
+  let code be words.word_codes.get(text) otherwise 0
+  if code is not 0 then
+    return lex_reserved(chars: chars, position: position, stop: stop, limit: limit, code: code)
   end
-  let step be Single(token: Token(kind: Identifier, text: text, span: span))
+  let step be Single(token: Token(kind: Identifier, text: text, span: span, code: 0))
   if text.length() is 1 then
     let diagnostic be report.error(
       code: "single-letter-identifier",
@@ -671,8 +578,15 @@ function camel_case_word(
   return flagged(step: step, diagnostic: diagnostic)
 end
 
-function lex_reserved(chars: List of Text, position: Integer, stop: Integer, limit: Integer)
+function lex_reserved(
+  chars: List of Text,
+  position: Integer,
+  stop: Integer,
+  limit: Integer,
+  code: Integer
+)
   returns Step
+  purpose: A reserved word with its code, or the longest phrase it starts, with the phrase's.
 
   let first_word be slice(chars: chars, start: position, stop: stop)
   let phrase be
@@ -684,17 +598,22 @@ function lex_reserved(chars: List of Text, position: Integer, stop: Integer, lim
     )
     otherwise Phrase(spelling: first_word, stop: stop)
     end
+  let mutable spelling_code be code
+  if phrase.stop is not stop then
+    change spelling_code to words.word_codes.get(phrase.spelling) otherwise 0
+  end
   let word be Token(
     kind: Word(spelling: phrase.spelling),
     text: slice(chars: chars, start: position, stop: phrase.stop),
-    span: Span(start: position, stop: phrase.stop)
+    span: Span(start: position, stop: phrase.stop),
+    code: spelling_code
   )
   let colon be phrase.stop
   if clause_words.contains(phrase.spelling)
     and at_line_start(chars: chars, offset: position)
     and colon is less than limit
     and char_at(chars: chars, index: colon) is ":" then
-    let colon_token be Token(
+    let colon_token be make_token(
       kind: Symbol(text: ":"),
       text: ":",
       span: Span(start: colon, stop: colon + 1)
@@ -702,7 +621,7 @@ function lex_reserved(chars: List of Text, position: Integer, stop: Integer, lim
     let text_start be scan_spaces(chars: chars, start: colon + 1, limit: limit)
     let text_stop be line_end(chars: chars, position: text_start, limit: limit)
     let clause be slice(chars: chars, start: text_start, stop: text_stop)
-    let clause_token be Token(
+    let clause_token be make_token(
       kind: ClauseToken(text: clause.trim_end()),
       text: clause,
       span: Span(start: text_start, stop: text_stop)
@@ -820,7 +739,8 @@ function lex_simple_text(chars: List of Text, position: Integer, limit: Integer)
   let token be Token(
     kind: TextToken(parts: segment.parts, is_block: false),
     text: slice(chars: chars, start: position, stop: stop + 1),
-    span: Span(start: position, stop: stop + 1)
+    span: Span(start: position, stop: stop + 1),
+    code: 0
   )
   if segment.diagnostics.is_empty() then return Single(token: token) end
   return Several(tokens: [token], diagnostics: segment.diagnostics, next: stop + 1)
@@ -861,7 +781,7 @@ function lex_block_text(chars: List of Text, position: Integer, limit: Integer) 
     change parts to segment.parts
     change diagnostics to diagnostics.append_all(segment.diagnostics)
   end
-  let token be Token(
+  let token be make_token(
     kind: TextToken(parts: parts, is_block: true),
     text: slice(chars: chars, start: position, stop: block.closing.stop),
     span: Span(start: position, stop: block.closing.stop)
@@ -883,7 +803,7 @@ function unterminated_block(
     message: "block text without closing `\"\"\"` on its own line",
     span: Span(start: position, stop: limit)
   )
-  let token be Token(
+  let token be make_token(
     kind: ErrorToken,
     text: slice(chars: chars, start: position, stop: limit),
     span: Span(start: position, stop: limit)

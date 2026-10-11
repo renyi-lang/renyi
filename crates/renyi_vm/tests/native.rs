@@ -1310,3 +1310,58 @@ end
     // classifications of an object (1 each) plus the turns
     assert_eq!(printed, "23700 20300\n");
 }
+
+#[test]
+fn module_constants_are_copied_in_place_once_built() {
+    // decision AU53: a module constant is built by the VM at its first
+    // read and copied from the JIT's table in place after, with one more
+    // reference, whatever its shape (a text, a small Integer, a list, a
+    // set, a big Integer, a maybe holding nothing); compiled before the
+    // first read, the code takes the helper once and the copy after; the
+    // Cranelift tier prints what the interpreter prints
+    let source = r#"module demo
+  purpose: Module constants of every shape read in loops (AU53): built once, then copied in place.
+
+import std.console
+
+let digits: Text be "0123456789"
+
+let limit: Integer be 40
+
+let primes: List of Integer be [2, 3, 5, 7, 11]
+
+let names: Set of Text be ["ab", "cd"].to_set()
+
+let huge: Integer be 9223372036854775807 + 1
+
+let absent: maybe Integer be nothing
+
+function tally(turns: Integer) returns Integer
+  purpose: Every constant read once per turn of a loop, the hits weighted by the constant.
+
+  let mutable hits be 0
+  for each step from 0 to turns
+    let digit be step remainder 10
+    if digits.contains("{digit}") then change hits to hits + 1 end
+    if step is less than limit then change hits to hits + 10 end
+    if primes.contains(step) then change hits to hits + 100 end
+    if names.contains("ab") then change hits to hits + 1000 end
+    if huge is greater than step then change hits to hits + 10000 end
+    match absent
+      when some(value) then change hits to hits + value
+      otherwise change hits to hits + 100000
+    end
+  end
+  return hits
+end
+
+public function main() needs console
+  purpose: Print the tally over fifty turns.
+
+  console.print("{tally(50)}")
+end
+"#;
+    let (outcome, printed) = both_ways(source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(printed, "5661951\n");
+}

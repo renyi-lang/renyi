@@ -1,0 +1,525 @@
+module words
+  purpose: The reserved words, phrases and symbols, each with the code its token carries (AU53).
+
+public let reserved_words: List of Text be [
+  "ability",
+  "all",
+  "also",
+  "and",
+  "any",
+  "as",
+  "at",
+  "be",
+  "break",
+  "by",
+  "can",
+  "change",
+  "check",
+  "collect",
+  "concurrently",
+  "continue",
+  "count",
+  "crash",
+  "deprecated",
+  "descending",
+  "each",
+  "end",
+  "example",
+  "expose",
+  "exposing",
+  "fail",
+  "fails",
+  "failure",
+  "false",
+  "first",
+  "for",
+  "from",
+  "function",
+  "greater",
+  "group",
+  "has",
+  "if",
+  "ignore",
+  "import",
+  "in",
+  "is",
+  "lazy",
+  "least",
+  "less",
+  "let",
+  "match",
+  "maybe",
+  "module",
+  "most",
+  "mutable",
+  "needs",
+  "not",
+  "nothing",
+  "of",
+  "one",
+  "only",
+  "or",
+  "otherwise",
+  "per",
+  "power",
+  "public",
+  "purpose",
+  "raw",
+  "remainder",
+  "repeat",
+  "replays",
+  "return",
+  "returns",
+  "run",
+  "see",
+  "self",
+  "some",
+  "sorted",
+  "success",
+  "sum",
+  "tags",
+  "test",
+  "than",
+  "then",
+  "to",
+  "tool",
+  "true",
+  "type",
+  "until",
+  "when",
+  "where",
+  "with",
+  "within"
+]
+  purpose: Every reserved word, in the order that gives its code.
+
+public let phrases: List of Text be [
+  "is not",
+  "is less than",
+  "is at most",
+  "is greater than",
+  "is at least",
+  "or fails with",
+  "is one of",
+  "for each",
+  "for any",
+  "run concurrently",
+  "sorted by",
+  "group by",
+  "see also",
+  "expose as tool",
+  "repeat until",
+  "at most",
+  "only to"
+]
+  purpose: Every reserved phrase, one Word token each, after the words in code order.
+
+public let symbols: List of Text be [
+  "(",
+  ")",
+  "[",
+  "]",
+  "\{",
+  "}",
+  ",",
+  ":",
+  ".",
+  "+",
+  "-",
+  "*",
+  "/"
+]
+  purpose: Every symbol token, in the order that gives its code, from 1000.
+
+public let all_words: List of Text be reserved_words.append_all(phrases)
+  purpose: The words and the phrases together: the code of each is its index here plus one.
+
+public let word_codes: Map of Text to Integer be codes_of(items: all_words, first_code: 1)
+  purpose: The code of every reserved word and phrase, by its spelling.
+
+public let symbol_codes: Map of Text to Integer be codes_of(items: symbols, first_code: 1000)
+  purpose: The code of every symbol, by its text.
+
+function codes_of(items: List of Text, first_code: Integer) returns Map of Text to Integer
+  purpose: Each item mapped to its code: the first item gets `first_code`, the next one more.
+
+  let mutable codes: Map of Text to Integer be {}
+  let mutable code be first_code
+  for each item in items
+    change codes to codes.set(key: item, value: code)
+    change code to code + 1
+  end
+  return codes
+end
+
+public function word_code(spelling: Text) returns Integer
+  purpose: The code of a reserved word or phrase, 0 for any other text.
+
+  return word_codes.get(spelling) otherwise 0
+end
+
+public function symbol_code(text: Text) returns Integer
+  purpose: The code of a symbol, 0 for any other text.
+
+  return symbol_codes.get(text) otherwise 0
+end
+
+public function spelling_of(code: Integer) returns Text
+  purpose: The spelling of a word or phrase by its code, for a message.
+
+  return all_words.at(code - 1) otherwise ""
+end
+
+public let word_ability: Integer be word_code("ability")
+  purpose: The code of `ability`.
+
+public let word_all: Integer be word_code("all")
+  purpose: The code of `all`.
+
+public let word_also: Integer be word_code("also")
+  purpose: The code of `also`.
+
+public let word_and: Integer be word_code("and")
+  purpose: The code of `and`.
+
+public let word_any: Integer be word_code("any")
+  purpose: The code of `any`.
+
+public let word_as: Integer be word_code("as")
+  purpose: The code of `as`.
+
+public let word_at: Integer be word_code("at")
+  purpose: The code of `at`.
+
+public let word_be: Integer be word_code("be")
+  purpose: The code of `be`.
+
+public let word_break: Integer be word_code("break")
+  purpose: The code of `break`.
+
+public let word_by: Integer be word_code("by")
+  purpose: The code of `by`.
+
+public let word_can: Integer be word_code("can")
+  purpose: The code of `can`.
+
+public let word_change: Integer be word_code("change")
+  purpose: The code of `change`.
+
+public let word_check: Integer be word_code("check")
+  purpose: The code of `check`.
+
+public let word_collect: Integer be word_code("collect")
+  purpose: The code of `collect`.
+
+public let word_concurrently: Integer be word_code("concurrently")
+  purpose: The code of `concurrently`.
+
+public let word_continue: Integer be word_code("continue")
+  purpose: The code of `continue`.
+
+public let word_count: Integer be word_code("count")
+  purpose: The code of `count`.
+
+public let word_crash: Integer be word_code("crash")
+  purpose: The code of `crash`.
+
+public let word_deprecated: Integer be word_code("deprecated")
+  purpose: The code of `deprecated`.
+
+public let word_descending: Integer be word_code("descending")
+  purpose: The code of `descending`.
+
+public let word_each: Integer be word_code("each")
+  purpose: The code of `each`.
+
+public let word_end: Integer be word_code("end")
+  purpose: The code of `end`.
+
+public let word_example: Integer be word_code("example")
+  purpose: The code of `example`.
+
+public let word_expose: Integer be word_code("expose")
+  purpose: The code of `expose`.
+
+public let word_exposing: Integer be word_code("exposing")
+  purpose: The code of `exposing`.
+
+public let word_fail: Integer be word_code("fail")
+  purpose: The code of `fail`.
+
+public let word_fails: Integer be word_code("fails")
+  purpose: The code of `fails`.
+
+public let word_failure: Integer be word_code("failure")
+  purpose: The code of `failure`.
+
+public let word_false: Integer be word_code("false")
+  purpose: The code of `false`.
+
+public let word_first: Integer be word_code("first")
+  purpose: The code of `first`.
+
+public let word_for: Integer be word_code("for")
+  purpose: The code of `for`.
+
+public let word_from: Integer be word_code("from")
+  purpose: The code of `from`.
+
+public let word_function: Integer be word_code("function")
+  purpose: The code of `function`.
+
+public let word_greater: Integer be word_code("greater")
+  purpose: The code of `greater`.
+
+public let word_group: Integer be word_code("group")
+  purpose: The code of `group`.
+
+public let word_has: Integer be word_code("has")
+  purpose: The code of `has`.
+
+public let word_if: Integer be word_code("if")
+  purpose: The code of `if`.
+
+public let word_ignore: Integer be word_code("ignore")
+  purpose: The code of `ignore`.
+
+public let word_import: Integer be word_code("import")
+  purpose: The code of `import`.
+
+public let word_in: Integer be word_code("in")
+  purpose: The code of `in`.
+
+public let word_is: Integer be word_code("is")
+  purpose: The code of `is`.
+
+public let word_lazy: Integer be word_code("lazy")
+  purpose: The code of `lazy`.
+
+public let word_least: Integer be word_code("least")
+  purpose: The code of `least`.
+
+public let word_less: Integer be word_code("less")
+  purpose: The code of `less`.
+
+public let word_let: Integer be word_code("let")
+  purpose: The code of `let`.
+
+public let word_match: Integer be word_code("match")
+  purpose: The code of `match`.
+
+public let word_maybe: Integer be word_code("maybe")
+  purpose: The code of `maybe`.
+
+public let word_module: Integer be word_code("module")
+  purpose: The code of `module`.
+
+public let word_most: Integer be word_code("most")
+  purpose: The code of `most`.
+
+public let word_mutable: Integer be word_code("mutable")
+  purpose: The code of `mutable`.
+
+public let word_needs: Integer be word_code("needs")
+  purpose: The code of `needs`.
+
+public let word_not: Integer be word_code("not")
+  purpose: The code of `not`.
+
+public let word_nothing: Integer be word_code("nothing")
+  purpose: The code of `nothing`.
+
+public let word_of: Integer be word_code("of")
+  purpose: The code of `of`.
+
+public let word_one: Integer be word_code("one")
+  purpose: The code of `one`.
+
+public let word_only: Integer be word_code("only")
+  purpose: The code of `only`.
+
+public let word_or: Integer be word_code("or")
+  purpose: The code of `or`.
+
+public let word_otherwise: Integer be word_code("otherwise")
+  purpose: The code of `otherwise`.
+
+public let word_per: Integer be word_code("per")
+  purpose: The code of `per`.
+
+public let word_power: Integer be word_code("power")
+  purpose: The code of `power`.
+
+public let word_public: Integer be word_code("public")
+  purpose: The code of `public`.
+
+public let word_purpose: Integer be word_code("purpose")
+  purpose: The code of `purpose`.
+
+public let word_raw: Integer be word_code("raw")
+  purpose: The code of `raw`.
+
+public let word_remainder: Integer be word_code("remainder")
+  purpose: The code of `remainder`.
+
+public let word_repeat: Integer be word_code("repeat")
+  purpose: The code of `repeat`.
+
+public let word_replays: Integer be word_code("replays")
+  purpose: The code of `replays`.
+
+public let word_return: Integer be word_code("return")
+  purpose: The code of `return`.
+
+public let word_returns: Integer be word_code("returns")
+  purpose: The code of `returns`.
+
+public let word_run: Integer be word_code("run")
+  purpose: The code of `run`.
+
+public let word_see: Integer be word_code("see")
+  purpose: The code of `see`.
+
+public let word_self: Integer be word_code("self")
+  purpose: The code of `self`.
+
+public let word_some: Integer be word_code("some")
+  purpose: The code of `some`.
+
+public let word_sorted: Integer be word_code("sorted")
+  purpose: The code of `sorted`.
+
+public let word_success: Integer be word_code("success")
+  purpose: The code of `success`.
+
+public let word_sum: Integer be word_code("sum")
+  purpose: The code of `sum`.
+
+public let word_tags: Integer be word_code("tags")
+  purpose: The code of `tags`.
+
+public let word_test: Integer be word_code("test")
+  purpose: The code of `test`.
+
+public let word_than: Integer be word_code("than")
+  purpose: The code of `than`.
+
+public let word_then: Integer be word_code("then")
+  purpose: The code of `then`.
+
+public let word_to: Integer be word_code("to")
+  purpose: The code of `to`.
+
+public let word_tool: Integer be word_code("tool")
+  purpose: The code of `tool`.
+
+public let word_true: Integer be word_code("true")
+  purpose: The code of `true`.
+
+public let word_type: Integer be word_code("type")
+  purpose: The code of `type`.
+
+public let word_until: Integer be word_code("until")
+  purpose: The code of `until`.
+
+public let word_when: Integer be word_code("when")
+  purpose: The code of `when`.
+
+public let word_where: Integer be word_code("where")
+  purpose: The code of `where`.
+
+public let word_with: Integer be word_code("with")
+  purpose: The code of `with`.
+
+public let word_within: Integer be word_code("within")
+  purpose: The code of `within`.
+
+public let word_is_not: Integer be word_code("is not")
+  purpose: The code of `is not`.
+
+public let word_is_less_than: Integer be word_code("is less than")
+  purpose: The code of `is less than`.
+
+public let word_is_at_most: Integer be word_code("is at most")
+  purpose: The code of `is at most`.
+
+public let word_is_greater_than: Integer be word_code("is greater than")
+  purpose: The code of `is greater than`.
+
+public let word_is_at_least: Integer be word_code("is at least")
+  purpose: The code of `is at least`.
+
+public let word_or_fails_with: Integer be word_code("or fails with")
+  purpose: The code of `or fails with`.
+
+public let word_is_one_of: Integer be word_code("is one of")
+  purpose: The code of `is one of`.
+
+public let word_for_each: Integer be word_code("for each")
+  purpose: The code of `for each`.
+
+public let word_for_any: Integer be word_code("for any")
+  purpose: The code of `for any`.
+
+public let word_run_concurrently: Integer be word_code("run concurrently")
+  purpose: The code of `run concurrently`.
+
+public let word_sorted_by: Integer be word_code("sorted by")
+  purpose: The code of `sorted by`.
+
+public let word_group_by: Integer be word_code("group by")
+  purpose: The code of `group by`.
+
+public let word_see_also: Integer be word_code("see also")
+  purpose: The code of `see also`.
+
+public let word_expose_as_tool: Integer be word_code("expose as tool")
+  purpose: The code of `expose as tool`.
+
+public let word_repeat_until: Integer be word_code("repeat until")
+  purpose: The code of `repeat until`.
+
+public let word_at_most: Integer be word_code("at most")
+  purpose: The code of `at most`.
+
+public let word_only_to: Integer be word_code("only to")
+  purpose: The code of `only to`.
+
+public let symbol_open_paren: Integer be symbol_code("(")
+  purpose: The code of `(`.
+
+public let symbol_close_paren: Integer be symbol_code(")")
+  purpose: The code of `)`.
+
+public let symbol_open_bracket: Integer be symbol_code("[")
+  purpose: The code of `[`.
+
+public let symbol_close_bracket: Integer be symbol_code("]")
+  purpose: The code of `]`.
+
+public let symbol_open_brace: Integer be symbol_code("\{")
+  purpose: The code of `\{`.
+
+public let symbol_close_brace: Integer be symbol_code("}")
+  purpose: The code of `}`.
+
+public let symbol_comma: Integer be symbol_code(",")
+  purpose: The code of `,`.
+
+public let symbol_colon: Integer be symbol_code(":")
+  purpose: The code of `:`.
+
+public let symbol_dot: Integer be symbol_code(".")
+  purpose: The code of `.`.
+
+public let symbol_plus: Integer be symbol_code("+")
+  purpose: The code of `+`.
+
+public let symbol_minus: Integer be symbol_code("-")
+  purpose: The code of `-`.
+
+public let symbol_star: Integer be symbol_code("*")
+  purpose: The code of `*`.
+
+public let symbol_slash: Integer be symbol_code("/")
+  purpose: The code of `/`.

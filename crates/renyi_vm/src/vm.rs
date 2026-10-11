@@ -208,6 +208,19 @@ pub(crate) struct NativeState {
     /// layout was not found, and then no code reads them.
     pub(crate) list_items: i64,
     pub(crate) list_len: i64,
+    /// Per module constant, its value once the VM has built it
+    /// (decision AU53), which the generated code copies in place instead
+    /// of asking `rt_global`; the JIT owns the table.
+    pub(crate) globals: *const GlobalSlot,
+}
+
+/// A module constant as the generated code reads it (decision AU53): the
+/// value once the VM has built it, holding one reference of its own,
+/// behind a flag that is zero until then.
+#[repr(C)]
+pub(crate) struct GlobalSlot {
+    pub(crate) ready: u64,
+    pub(crate) value: Value,
 }
 
 impl Default for NativeState {
@@ -222,6 +235,7 @@ impl Default for NativeState {
             entries: std::ptr::null(),
             list_items: list_items as i64,
             list_len: list_len as i64,
+            globals: std::ptr::null(),
         }
     }
 }
@@ -2357,6 +2371,9 @@ impl<'p> Vm<'p> {
                 "the constant `{}` could not be built: {shown}",
                 meta.name
             )));
+        }
+        if let Some(jit) = self.native.as_mut() {
+            jit.note_global(index, &value);
         }
         self.globals[index] = Some(value.clone());
         Ok(value)

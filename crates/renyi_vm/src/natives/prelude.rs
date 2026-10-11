@@ -125,12 +125,12 @@ pub(crate) const NATIVES: &[Native] = &[
     Native::method("std.prelude", "distinct", "List", list_distinct),
     Native::method("std.prelude", "contains", "List", list_contains)
         .with_typed(Typed::Bool(list_contains_typed)),
-    Native::method("std.prelude", "index_of", "List", list_index_of),
+    Native::method("std.prelude", "index_of", "List", list_index_of)
+        .with_typed(Typed::Value(list_index_of_typed)),
     Native::method("std.prelude", "run_of", "List", list_run_of)
         .with_typed(Typed::Int(list_run_of_typed)),
     Native::method("std.prelude", "run_until", "List", list_run_until)
-        .with_typed(Typed::Int(list_run_until_typed))
-        .with_typed(Typed::Value(list_index_of_typed)),
+        .with_typed(Typed::Int(list_run_until_typed)),
     Native::method("std.prelude", "largest", "List", list_largest),
     Native::method("std.prelude", "smallest", "List", list_smallest),
     Native::method("std.prelude", "with_index", "List", list_with_index),

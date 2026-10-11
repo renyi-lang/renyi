@@ -219,16 +219,19 @@ where one decided, the status. The dates are those of the decisions.
     keeps the gate and opens stage 28.
 
 28. **The compiler's own code** (session 13, 2026-10-11, under way;
-    decisions AU51 and AU52, B4). The lever the owner chose after B3,
-    cut by cut, each judged byte-equal, measured by its driver under
+    decisions AU51 to AU53, B4). The lever the owner chose after B3, cut
+    by cut, each judged byte-equal, measured by its driver under
     callgrind and recorded: the checker's line starts and layout check
     over lines (the checker -2.0%), the parser's look computed once per
     move of the cursor (the parser alone -0.8%), the lexer's scans as
     two list primitives, `run_of` and `run_until` (the lexer alone
-    -1.4%; the checker -3.0% for the three); next the keywords and
-    symbols as variants without fields. The measure: the ratio against
-    AU34's binary, 7.4 at the stage's start, 7.5 (checking 590.5 ms
-    against 78.5) after the three cuts.
+    -1.4%; the checker -3.0% for the three), the reserved words, phrases
+    and symbols as Integer codes compared in place, with the VM reading
+    a built module constant in place on both tiers (the parser alone
+    -3.5%, the lexer alone -2.4%, the checker -1.2% against the stage's
+    start). The measure: the ratio against AU34's binary, 7.4 at the
+    stage's start, 7.2 and 8.1 on two runs (7.5 before the cut, within
+    the wall-clock's noise) after the four cuts.
 
 ## 3. The tracks
 

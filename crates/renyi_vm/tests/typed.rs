@@ -64,7 +64,7 @@ fn compatible(program: &Program, noted: &Ty, abs: Abs) -> bool {
 fn disagreements(program: &Program) -> Vec<String> {
     let mut found = Vec::new();
     for code in &program.codes {
-        let Ok(analysis) = analyse(program, code) else {
+        let Ok(analysis) = analyse(program, code, &[]) else {
             continue;
         };
         assert_eq!(code.types.len(), code.ops.len(), "{}", code.name);

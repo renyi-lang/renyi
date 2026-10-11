@@ -1484,7 +1484,7 @@ fn rebuild_inlined_frames(vm: &mut Vm, base: usize, code: usize, point: &DeoptPo
             Op::Call { args, .. } => args as usize,
             _ => unreachable!("a region replaces a call"),
         };
-        let depth = analyse(program, callee)
+        let depth = analyse(program, callee, &[])
             .ok()
             .and_then(|analysis| analysis.entry[call_pc].clone())
             .map_or(0, |state| state.len());
@@ -1499,7 +1499,7 @@ fn rebuild_inlined_frames(vm: &mut Vm, base: usize, code: usize, point: &DeoptPo
     }
     let inner_depth = match stored {
         Some(_) => 0,
-        None => analyse(program, inner_code)
+        None => analyse(program, inner_code, &[])
             .ok()
             .and_then(|analysis| analysis.entry[pc - inner.body as usize].clone())
             .map_or(0, |state| state.len()),

@@ -32,9 +32,10 @@ use crate::extension::TypedKind;
 use crate::native::codegen::{
     borrowed_operands, field_cache_offset, frames_offset, handlers_offset, helper_index,
     is_comparison, kind_agrees, native_state_offset, stack_offset, unit_variants_offset, Skipped,
-    FRAME_BASE, FRAME_CODE, FRAME_GRANT, FRAME_HANDLER_BASE, FRAME_PC, FRAME_SIZE, SIGNATURES,
-    SITE_INDEX, SITE_SIZE, SITE_TAG, SITE_TY, STACK_SAFE, STATE_CONSTANTS, STATE_DEPTH,
-    STATE_ENTRIES, STATE_HELPERS, STATE_HOTNESS, STATE_LIST_ITEMS, STATE_LIST_LEN,
+    FRAME_BASE, FRAME_CODE, FRAME_GRANT, FRAME_HANDLER_BASE, FRAME_PC, FRAME_SIZE, GLOBAL_READY,
+    GLOBAL_SIZE, GLOBAL_VALUE, SIGNATURES, SITE_INDEX, SITE_SIZE, SITE_TAG, SITE_TY, STACK_SAFE,
+    STATE_CONSTANTS, STATE_DEPTH, STATE_ENTRIES, STATE_GLOBALS, STATE_HELPERS, STATE_HOTNESS,
+    STATE_LIST_ITEMS, STATE_LIST_LEN,
 };
 use crate::native::infer::{
     abs_of_constant, abs_of_result, analyse, is_integer, is_text, Abs, Analysis,
@@ -220,7 +221,7 @@ pub fn compile(
 ) -> Result<Template, Skipped> {
     let started = Instant::now();
     let code = &program.codes[code_id];
-    let analysis = analyse(program, code).map_err(Skipped::Analysis)?;
+    let analysis = analyse(program, code, &[]).map_err(Skipped::Analysis)?;
     let (borrowed, masks) = borrowed_operands(program, code, &analysis, calls);
     let abi = host_abi();
     let mut asm = Asm::new();
@@ -1355,12 +1356,26 @@ impl Gen<'_> {
                 self.store_len();
             }
             Op::Global(index) => {
-                self.pushes(
-                    "rt_global",
-                    &[Arg::Vm, Arg::Imm(*index as u64), pc_arg],
-                    0,
-                    1,
-                );
+                // the constant copied from the JIT's table once the VM has
+                // built it, with one more reference (decision AU53); until
+                // then built through the helper
+                let unbuilt = self.asm.label();
+                let done = self.asm.label();
+                let top = self.top();
+                let at = (*index as usize * GLOBAL_SIZE) as i32;
+                self.asm
+                    .mov_rm(SCRATCH2, VM, native_state_offset() as i32 + STATE_GLOBALS);
+                self.asm.cmp_m64i(SCRATCH2, at + GLOBAL_READY, 0);
+                self.asm.jcc(Cond::E, unbuilt);
+                self.copy((SCRATCH2, at + GLOBAL_VALUE), top);
+                self.retain(top);
+                self.asm.jmp(done);
+                self.asm.bind(unbuilt);
+                self.call("rt_global", &[Arg::Vm, Arg::Imm(*index as u64), pc_arg]);
+                self.leave_on_interrupt();
+                self.asm.bind(done);
+                self.depth += 1;
+                self.store_len();
             }
             Op::Load(slot) | Op::LoadMove(slot) => {
                 let from = self.slot(*slot as usize);
