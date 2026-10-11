@@ -2875,13 +2875,73 @@ impl Gen<'_, '_> {
                 self.check_status(status, pc, true);
             }
             Op::TakeField { slot, name, site } => {
-                // the helper: the move out of a record held once happens
-                // where the reference count and the field cache are
-                // (decision AU11); what it pushes is typed as a field read
+                // as `LoadField` through the site's cache in place (decision
+                // AU55): a record of the cached type held once gives up its
+                // field, `Nothing` left in its place, as the interpreter's
+                // `op_take_field` does; a shared one gives a copy with one
+                // more reference; anything else, a variant among them, goes
+                // through the helper, which fills the cache; what is pushed
+                // is typed as a field read
                 let field_name = self.code.constants[*name as usize]
                     .as_text()
                     .unwrap_or("")
                     .to_string();
+                let flags = MemFlagsData::trusted();
+                let pointer = self.pointer;
+                let at = self.address_at(*slot as usize);
+                let tag = self.tag_at(at, 0);
+                let cache = self.b.ins().iadd_imm_s(self.vm, field_cache_offset());
+                let cache_ptr = self.b.ins().load(pointer, flags, cache, 0);
+                let entry = self
+                    .b
+                    .ins()
+                    .iadd_imm_s(cache_ptr, (*site as usize * SITE_SIZE) as i64);
+                let cached_ty = self.b.ins().load(types::I64, flags, entry, SITE_TY);
+                let cached_tag = self.b.ins().load(types::I64, flags, entry, SITE_TAG);
+                let cached_index = self.b.ins().load(types::I64, flags, entry, SITE_INDEX);
+                let holder = self.b.create_block();
+                let hit = self.b.create_block();
+                self.b.append_block_param(hit, pointer);
+                self.b.append_block_param(hit, pointer);
+                let moved = self.b.create_block();
+                let shared = self.b.create_block();
+                let slow = self.b.create_block();
+                let join = self.b.create_block();
+                let is_record = self
+                    .b
+                    .ins()
+                    .icmp_imm_s(IntCC::Equal, tag, TAG_RECORD as i64);
+                self.b.ins().brif(is_record, holder, &[], slow, &[]);
+                self.switch_to(holder);
+                let rc = self.b.ins().load(pointer, flags, at, PAYLOAD);
+                let ty = self.b.ins().load(types::I64, flags, rc, RECORD_TY);
+                let holder_tag = self.b.ins().load(types::I64, flags, rc, RECORD_TAG);
+                let fields_ptr = self.b.ins().iadd_imm_s(rc, RECORD_FIELDS as i64);
+                let same_ty = self.b.ins().icmp(IntCC::Equal, ty, cached_ty);
+                let same_tag = self.b.ins().icmp(IntCC::Equal, holder_tag, cached_tag);
+                let ok = self.b.ins().band(same_ty, same_tag);
+                let field = self.item_address(fields_ptr, cached_index);
+                self.b
+                    .ins()
+                    .brif(ok, hit, &[field.into(), rc.into()], slow, &[]);
+                self.switch_to(hit);
+                let from = self.b.block_params(hit)[0];
+                let block = self.b.block_params(hit)[1];
+                let count = self.b.ins().load(types::I64, flags, block, 0);
+                let once = self.b.ins().icmp_imm_s(IntCC::Equal, count, 1);
+                self.b.ins().brif(once, moved, &[], shared, &[]);
+                // held once: the field moved out, `Nothing` left in the record
+                self.switch_to(moved);
+                self.push_copy(from, false);
+                let nothing = self.iconst(types::I32, TAG_NOTHING as i64);
+                self.b.ins().istore8(flags, nothing, from, 0);
+                self.b.ins().jump(join, &[]);
+                // shared: the field copied, with one more reference
+                self.switch_to(shared);
+                self.push_copy(from, true);
+                self.b.ins().jump(join, &[]);
+                // the helper: by name, filling the cache
+                self.switch_to(slow);
                 let slot_value = self.u32(*slot as u32);
                 let name_value = self.u32(*name);
                 let site_value = self.u32(*site);
@@ -2895,6 +2955,8 @@ impl Gen<'_, '_> {
                     )
                     .expect("a status");
                 self.check_status(status, pc, false);
+                self.b.ins().jump(join, &[]);
+                self.switch_to(join);
                 self.push_boxed();
                 let kind = abs_of_field_at(self.program, self.code, pc, &field_name);
                 if !kind.is_boxed() {

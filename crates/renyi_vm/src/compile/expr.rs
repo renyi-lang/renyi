@@ -197,7 +197,11 @@ impl Compiler<'_, '_> {
 
     fn name(&mut self, name: &Name) {
         if let Some(slot) = self.lookup(&name.text) {
-            let op = if self.move_receiver == Some(name.span) {
+            // moved out of the slot as the receiver of a call that stores
+            // into it (O1) or as the last read of the local (AU55)
+            let moving =
+                self.move_receiver == Some(name.span) || self.last_uses.contains(&name.span.start);
+            let op = if moving {
                 Op::LoadMove(slot)
             } else {
                 Op::Load(slot)
@@ -294,11 +298,13 @@ impl Compiler<'_, '_> {
         // `x.field` on a local (`self` included): one op that reads the
         // field in the slot, so that the holder is neither cloned nor
         // dropped; a receiver that is moved keeps its own load; the
-        // receiver of an update in the slot takes the field out (AU11)
+        // receiver of an update in the slot takes the field out (AU11), as
+        // does the last read of the local (AU55)
         let (local, taken) = match &base.kind {
             ExprKind::Name(local) if self.move_receiver != Some(local.span) => (
                 self.lookup(&local.text),
-                self.take_receiver == Some(local.span),
+                self.take_receiver == Some(local.span)
+                    || self.last_uses.contains(&local.span.start),
             ),
             ExprKind::SelfValue => (self.lookup("self"), false),
             _ => (None, false),

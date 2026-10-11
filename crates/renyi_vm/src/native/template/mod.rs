@@ -175,7 +175,8 @@ enum Cold {
         pc: usize,
     },
     /// A field read the site's cache did not answer: through
-    /// `rt_load_field`, which fills the cache.
+    /// `rt_load_field`, or `rt_take_field` for a field taken (decision
+    /// AU55), which fill the cache.
     Field {
         label: Label,
         done: Label,
@@ -183,6 +184,7 @@ enum Cold {
         name: u32,
         site: u32,
         pc: usize,
+        take: bool,
     },
 }
 
@@ -1308,10 +1310,15 @@ impl Gen<'_> {
                 name,
                 site,
                 pc,
+                take,
             } => {
                 self.asm.bind(label);
                 self.call(
-                    "rt_load_field",
+                    if take {
+                        "rt_take_field"
+                    } else {
+                        "rt_load_field"
+                    },
                     &[
                         Arg::Vm,
                         Arg::Base,
@@ -1547,6 +1554,7 @@ impl Gen<'_> {
                     name: *name,
                     site: *site,
                     pc,
+                    take: false,
                 });
                 self.depth += 1;
                 self.store_len();
@@ -1578,20 +1586,53 @@ impl Gen<'_> {
                 );
             }
             Op::TakeField { slot, name, site } => {
-                self.pushes(
-                    "rt_take_field",
-                    &[
-                        Arg::Vm,
-                        Arg::Base,
-                        Arg::Imm(*slot as u64),
-                        Arg::Imm(code_id),
-                        Arg::Imm(*name as u64),
-                        Arg::Imm(*site as u64),
-                        pc_arg,
-                    ],
-                    0,
-                    1,
-                );
+                // as `LoadField`, through the site's cache in place (decision
+                // AU55): a record of the cached type held once gives up its
+                // field, `Nothing` left in its place, as the interpreter's
+                // `op_take_field` does; a shared one gives a copy with one
+                // more reference; anything else, a variant among them, goes
+                // through `rt_take_field`, which fills the cache
+                let holder = self.slot(*slot as usize);
+                let entry = (*site as usize * SITE_SIZE) as i32;
+                let slow = self.asm.label();
+                let done = self.asm.label();
+                let shared = self.asm.label();
+                self.asm.cmp_m8i(holder.0, holder.1, TAG_RECORD);
+                self.asm.jcc(Cond::Ne, slow);
+                self.asm.mov_rm(SCRATCH2, holder.0, holder.1 + PAYLOAD);
+                self.asm.mov_rm(SCRATCH3, VM, field_cache_offset() as i32);
+                self.asm.mov_rm(SCRATCH, SCRATCH2, RECORD_TY);
+                self.asm.mov_rm(Reg::Rcx, SCRATCH3, entry + SITE_TY);
+                self.asm.cmp_rr(SCRATCH, Reg::Rcx);
+                self.asm.jcc(Cond::Ne, slow);
+                self.asm.mov_rm(SCRATCH, SCRATCH2, RECORD_TAG);
+                self.asm.mov_rm(Reg::Rcx, SCRATCH3, entry + SITE_TAG);
+                self.asm.cmp_rr(SCRATCH, Reg::Rcx);
+                self.asm.jcc(Cond::Ne, slow);
+                self.asm.mov_rm(Reg::Rcx, SCRATCH3, entry + SITE_INDEX);
+                self.asm.imul_rri(Reg::Rcx, Reg::Rcx, SIZE as i32);
+                self.asm.lea(SCRATCH, SCRATCH2, RECORD_FIELDS);
+                self.asm.add_rr(Reg::Rcx, SCRATCH);
+                let top = self.top();
+                self.copy((Reg::Rcx, 0), top);
+                self.asm.cmp_m64i(SCRATCH2, 0, 1);
+                self.asm.jcc(Cond::Ne, shared);
+                self.asm.mov_m8i(Reg::Rcx, 0, TAG_NOTHING);
+                self.asm.jmp(done);
+                self.asm.bind(shared);
+                self.retain(top);
+                self.asm.bind(done);
+                self.cold.push(Cold::Field {
+                    label: slow,
+                    done,
+                    slot: *slot,
+                    name: *name,
+                    site: *site,
+                    pc,
+                    take: true,
+                });
+                self.depth += 1;
+                self.store_len();
             }
             Op::Call { function, args } => {
                 let count = *args as usize;

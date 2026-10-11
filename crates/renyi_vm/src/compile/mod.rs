@@ -8,11 +8,12 @@
 //! compiled in process.
 
 mod expr;
+mod liveness;
 mod pattern;
 mod query;
 mod stmt;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use renyi_check::effects::Capability;
 use renyi_check::types::Ty;
@@ -573,6 +574,7 @@ fn compile_function(
         compiler.declare(&param.name.text);
     }
     compiler.code.params = function.params.len() as u16;
+    compiler.last_uses = liveness::last_uses(block);
     compiler.block(block);
     compiler.emit(Op::ReturnNothing, function.span);
     let code = compiler.finish();
@@ -777,6 +779,10 @@ pub(crate) struct Compiler<'c, 'w> {
     /// token of `x` in the update's receiver, whose field is taken out of the
     /// record with `TakeField`.
     take_receiver: Option<Span>,
+    /// The starts of the name tokens that read a local for the last time
+    /// (decision AU55, `liveness::last_uses`): the value is moved out of
+    /// its slot, a field taken out of the record in it.
+    last_uses: HashSet<usize>,
 }
 
 impl<'c, 'w> Compiler<'c, 'w> {
@@ -794,6 +800,7 @@ impl<'c, 'w> Compiler<'c, 'w> {
             in_test: false,
             move_receiver: None,
             take_receiver: None,
+            last_uses: HashSet::new(),
         }
     }
 

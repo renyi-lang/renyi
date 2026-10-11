@@ -348,7 +348,9 @@ public function main() needs console
 end
 "#;
     // the forms are emitted as the decision says: two takes, eight
-    // updates in the slot, one copy, two moves into a call
+    // updates in the slot, one copy, two moves into a call; and since
+    // decision AU55 the last read of a local moves it too (`other.name`
+    // takes the field, seven more loads move)
     let program = compile(source);
     let count = |wanted: fn(&renyi_vm::bytecode::Op) -> bool| {
         program
@@ -358,10 +360,10 @@ end
             .filter(|op| wanted(op))
             .count()
     };
-    assert_eq!(count(|op| matches!(op, Op::TakeField { .. })), 2);
+    assert_eq!(count(|op| matches!(op, Op::TakeField { .. })), 3);
     assert_eq!(count(|op| matches!(op, Op::WithSlot { .. })), 8);
     assert_eq!(count(|op| matches!(op, Op::With(_))), 1);
-    assert_eq!(count(|op| matches!(op, Op::LoadMove(_))), 2);
+    assert_eq!(count(|op| matches!(op, Op::LoadMove(_))), 9);
     let (outcome, printed) = both_ways(source);
     assert_eq!(outcome, RunOutcome::Finished);
     assert_eq!(

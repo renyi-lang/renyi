@@ -131,6 +131,7 @@ type Emitter
   has in_test: Boolean
   has move_receiver: maybe Span
   has take_receiver: maybe Span
+  has last_uses: Set of Integer
 end
 
 type Step of Value
@@ -319,7 +320,8 @@ function new_emitter(
     handler_depth: 0,
     in_test: false,
     move_receiver: nothing,
-    take_receiver: nothing
+    take_receiver: nothing,
+    last_uses: [].to_set()
   )
 end
 
@@ -1106,6 +1108,7 @@ function emit_name(emitter: Emitter, name: Name) returns Emitter
   match lookup(emitter: emitter, name: name.text)
     when some(slot) then
       let moving be is_move_receiver(emitter: emitter, span: name.span)
+        or emitter.last_uses.contains(name.span.start)
       let op be if moving then OpLoadMove(slot: slot) otherwise OpLoad(slot: slot) end
       return emit(emitter: emitter, op: op, span: name.span)
     when nothing then change updated to updated
@@ -1210,12 +1213,10 @@ function emit_member(emitter: Emitter, base: Expr, name: Name, span: Span) retur
     when some(slot) then
       let named be name_constant(emitter: updated, name: name.text)
       let site be field_site(named.emitter)
+      let taken be is_take_receiver(emitter: updated, base: base)
+        or is_last_read_of(emitter: updated, base: base)
       let op be
-        if is_take_receiver(emitter: updated, base: base) then OpTakeField(
-          slot: slot,
-          name: named.value,
-          site: site.value
-        )
+        if taken then OpTakeField(slot: slot, name: named.value, site: site.value)
         otherwise OpLoadField(slot: slot, name: named.value, site: site.value)
         end
       return emit(emitter: site.emitter, op: op, span: span)
@@ -1234,6 +1235,13 @@ function is_take_receiver(emitter: Emitter, base: Expr) returns Boolean
   let receiver be emitter.take_receiver otherwise return false
   let name be bare_name(base) otherwise return false
   return receiver.start is name.span.start and receiver.stop is name.span.stop
+end
+
+function is_last_read_of(emitter: Emitter, base: Expr) returns Boolean
+  purpose: Whether the base is the name token of a local read for the last time (decision AU55), whose field is taken out of the record.
+
+  let name be bare_name(base) otherwise return false
+  return emitter.last_uses.contains(name.span.start)
 end
 
 function local_holder(emitter: Emitter, base: Expr) returns maybe Integer
@@ -2237,6 +2245,602 @@ function pins_args(args: List of Arg, name: maybe Text) returns Boolean
   return false
 end
 
+type Frame
+  purpose: A block around the one being walked (decision AU55): the names mentioned after the statement that holds it, and, for a loop, the names its repeating part binds anew on every turn.
+  has later: Set of Text
+  has bound_by_loop: maybe Set of Text
+end
+
+type Mention
+  purpose: A read of a name at a statement's own level: the token's start and whether it is a candidate (outside any query and any part that runs more than once).
+  has name: Text
+  has start: Integer
+  has candidate: Boolean
+end
+
+type Walked
+  purpose: What walking a block gives: the last reads found so far, and every name the block mentions (read or bound) at any depth.
+  has found: Set of Integer
+  has names: Set of Text
+end
+
+function last_uses(body: Block) returns Set of Integer
+  purpose: The starts of the name tokens whose read is the last of their local (decision AU55): the only mention of the local in its statement, with the local mentioned nowhere after that statement in its block or in the blocks around it, and bound anew by every loop around it.
+
+  let found: Set of Integer be [].to_set()
+  return walk_block(block: body, frames: [], found: found).found
+end
+
+function walk_block(block: Block, frames: List of Frame, found: Set of Integer) returns Walked
+  purpose: The last reads in a block, walked from its last statement so that the names mentioned after each statement are known, with every name the block mentions.
+
+  let empty: Set of Text be [].to_set()
+  let mutable after be empty
+  let mutable out be found
+  let mutable index be block.statements.length() - 1
+  repeat until index is less than 0
+    let statement be block.statements.at(index) otherwise crash with "a statement"
+    let own be own_mentions(statement: statement, out: [])
+    let bound be own_bound(statement: statement, out: empty)
+    let nested be walk_nested(statement: statement, after: after, frames: frames, found: out)
+    change out to nested.found
+    for each mention in own
+      if is_last_read(
+        mention: mention,
+        own: own,
+        nested: nested.names,
+        after: after,
+        frames: frames
+      ) then
+        change out to out.add(mention.start)
+      end
+    end
+    for each mention in own
+      change after to after.add(mention.name)
+    end
+    change after to after.union(bound).union(nested.names)
+    change index to index - 1
+  end
+  return Walked(found: out, names: after)
+end
+
+function is_last_read(
+  mention: Mention,
+  own: List of Mention,
+  nested: Set of Text,
+  after: Set of Text,
+  frames: List of Frame
+)
+  returns Boolean
+  purpose: Whether a mention is the last read of its local.
+
+  if not mention.candidate then return false end
+  if count_named(mentions: own, name: mention.name) is not 1 then return false end
+  if nested.contains(mention.name) or after.contains(mention.name) then return false end
+  return frames_allow(frames: frames, name: mention.name)
+end
+
+function count_named(mentions: List of Mention, name: Text) returns Integer
+  purpose: How many of the mentions are of the name.
+
+  let mutable total be 0
+  for each mention in mentions
+    if mention.name is name then change total to total + 1 end
+  end
+  return total
+end
+
+function frames_allow(frames: List of Frame, name: Text) returns Boolean
+  purpose: Whether no block around mentions the name after its statement, and every loop around binds it anew.
+
+  for each frame in frames
+    if frame.later.contains(name) then return false end
+    match frame.bound_by_loop
+      when some(bound) then if not bound.contains(name) then return false end
+      when nothing then continue
+    end
+  end
+  return true
+end
+
+function walk_nested(
+  statement: Statement,
+  after: Set of Text,
+  frames: List of Frame,
+  found: Set of Integer
+)
+  returns Walked
+  purpose: The blocks nested in a statement, each walked with the statement's frame around it; the names they mention come back.
+
+  let empty: Set of Text be [].to_set()
+  let fresh be Walked(found: found, names: empty)
+  match statement
+    when If(branches, fallback) then
+      let around be frames.append(Frame(later: after, bound_by_loop: nothing))
+      let mutable walked be fresh
+      for each branch in branches
+        change walked to walk_more(block: branch.body, frames: around, walked: walked)
+      end
+      return walk_fallback(fallback: fallback, frames: around, walked: walked)
+    when Match(arms, fallback) then
+      let around be frames.append(Frame(later: after, bound_by_loop: nothing))
+      let mutable walked be fresh
+      for each arm in arms
+        change walked to walk_more(block: arm.body, frames: around, walked: walked)
+      end
+      return walk_fallback(fallback: fallback, frames: around, walked: walked)
+    when RunConcurrently(body) then
+      let around be frames.append(Frame(later: after, bound_by_loop: nothing))
+      return walk_more(block: body, frames: around, walked: fresh)
+    when ForEach(bindings, body) then
+      let mutable bound be empty
+      for each binding in bindings
+        change bound to bound.add(binding.text)
+      end
+      change bound to block_bound(block: body, out: bound)
+      let around be frames.append(Frame(later: after, bound_by_loop: bound))
+      return walk_more(block: body, frames: around, walked: fresh)
+    when RepeatUntil(body) then
+      let bound be block_bound(block: body, out: empty)
+      let around be frames.append(Frame(later: after, bound_by_loop: bound))
+      return walk_more(block: body, frames: around, walked: fresh)
+    otherwise return fresh
+  end
+end
+
+function walk_more(block: Block, frames: List of Frame, walked: Walked) returns Walked
+  purpose: One more nested block walked, with no frame at all when it never falls through, its names joined to those found so far.
+
+  let around be if leaves(block) then [] otherwise frames end
+  let inner be walk_block(block: block, frames: around, found: walked.found)
+  return Walked(found: inner.found, names: walked.names.union(inner.names))
+end
+
+function leaves(block: Block) returns Boolean
+  purpose: Whether a block never falls through: its last statement leaves the function (`return`, `fail`) or the program (`crash`), so that nothing after the statement that holds the block, and no next turn of a loop around it, can read what the block moved out.
+
+  let last be block.statements.last() otherwise return false
+  match last
+    when Return then return true
+    when Fail then return true
+    when Crash then return true
+    otherwise return false
+  end
+end
+
+function walk_fallback(fallback: maybe Block, frames: List of Frame, walked: Walked) returns Walked
+  purpose: An `otherwise` block walked, when there is one.
+
+  let block be fallback otherwise return walked
+  return walk_more(block: block, frames: frames, walked: walked)
+end
+
+function own_mentions(statement: Statement, out: List of Mention) returns List of Mention
+  purpose: The reads at a statement's own level, its nested blocks left out, candidates outside a part that runs more than once; a write is no mention, since a read after it sees what it stored.
+
+  match statement
+    when Let(value) then return expr_mentions(expr: value, own: true, out: out)
+    when Change(value) then return expr_mentions(expr: value, own: true, out: out)
+    when If(branches) then
+      let mutable noted be out
+      for each branch in branches
+        change noted to expr_mentions(expr: branch.condition, own: true, out: noted)
+      end
+      return noted
+    when Match(subject, arms) then
+      let mutable noted be expr_mentions(expr: subject, own: true, out: out)
+      for each arm in arms
+        change noted to maybe_mentions(expr: arm.guard, own: true, out: noted)
+      end
+      return noted
+    when ForEach(source, filter, order) then
+      let mutable noted be expr_mentions(expr: source, own: true, out: out)
+      change noted to maybe_mentions(expr: filter, own: false, out: noted)
+      return maybe_mentions(expr: order_key(order), own: false, out: noted)
+    when RepeatUntil(condition) then return expr_mentions(expr: condition, own: false, out: out)
+    when RunConcurrently(deadline) then return maybe_mentions(expr: deadline, own: true, out: out)
+    when Return(value) then return maybe_mentions(expr: value, own: true, out: out)
+    when Fail(value) then return maybe_mentions(expr: value, own: true, out: out)
+    when Crash(message) then return expr_mentions(expr: message, own: true, out: out)
+    when Ignore(value) then return expr_mentions(expr: value, own: true, out: out)
+    when Check(value) then return expr_mentions(expr: value, own: true, out: out)
+    when Expression(value) then return expr_mentions(expr: value, own: true, out: out)
+    otherwise return out
+  end
+end
+
+function maybe_mentions(expr: maybe Expr, own: Boolean, out: List of Mention)
+  returns List of Mention
+  purpose: The mentions in an optional expression.
+
+  let found be expr otherwise return out
+  return expr_mentions(expr: found, own: own, out: out)
+end
+
+function expr_mentions(expr: Expr, own: Boolean, out: List of Mention) returns List of Mention
+  purpose: The mentions of names in an expression, candidates when `own`; a query's are never candidates.
+
+  match expr
+    when NameExpr(name) then
+      return out.append(Mention(name: name.text, start: name.span.start, candidate: own))
+    when TextLiteral(pieces) then
+      let mutable noted be out
+      for each piece in pieces
+        match piece
+          when Hole(expression) then
+            change noted to expr_mentions(expr: expression, own: own, out: noted)
+          when Literal then continue
+        end
+      end
+      return noted
+    when Member(base) then return expr_mentions(expr: base, own: own, out: out)
+    when Call(callee, args) then
+      let noted be expr_mentions(expr: callee, own: own, out: out)
+      return args_mentions(args: args, own: own, out: noted)
+    when Construct(args) then return args_mentions(args: args, own: own, out: out)
+    when ListLiteral(items) then return items_mentions(items: items, own: own, out: out)
+    when MapLiteral(entries) then
+      let mutable noted be out
+      for each entry in entries
+        change noted to expr_mentions(expr: entry.key, own: own, out: noted)
+        change noted to expr_mentions(expr: entry.value, own: own, out: noted)
+      end
+      return noted
+    when RangeLiteral(lower, upper, step) then
+      let mutable noted be expr_mentions(expr: lower, own: own, out: out)
+      change noted to expr_mentions(expr: upper, own: own, out: noted)
+      return maybe_mentions(expr: step, own: own, out: noted)
+    when Not(value) then return expr_mentions(expr: value, own: own, out: out)
+    when Paren(value) then return expr_mentions(expr: value, own: own, out: out)
+    when Binary(left, right) then
+      let noted be expr_mentions(expr: left, own: own, out: out)
+      return expr_mentions(expr: right, own: own, out: noted)
+    when With(base, updates) then
+      let noted be expr_mentions(expr: base, own: own, out: out)
+      return args_mentions(args: updates, own: own, out: noted)
+    otherwise return branching_mentions(expr: expr, own: own, out: out)
+  end
+end
+
+function branching_mentions(expr: Expr, own: Boolean, out: List of Mention) returns List of Mention
+  purpose: The mentions in a branching expression or a query.
+
+  match expr
+    when Otherwise(value, fallback) then
+      let noted be expr_mentions(expr: value, own: own, out: out)
+      return outcome_mentions(outcome: fallback, own: own, out: noted)
+    when IfExpr(branches, fallback) then
+      let mutable noted be out
+      for each branch in branches
+        change noted to expr_mentions(expr: branch.condition, own: own, out: noted)
+        change noted to outcome_mentions(outcome: branch.outcome, own: own, out: noted)
+      end
+      return outcome_mentions(outcome: fallback, own: own, out: noted)
+    when MatchExpr(subject, arms, fallback) then
+      let mutable noted be expr_mentions(expr: subject, own: own, out: out)
+      for each arm in arms
+        change noted to maybe_mentions(expr: arm.guard, own: own, out: noted)
+        change noted to outcome_mentions(outcome: arm.body, own: own, out: noted)
+      end
+      match fallback
+        when some(outcome) then return outcome_mentions(outcome: outcome, own: own, out: noted)
+        when nothing then return noted
+      end
+    when QueryExpr(sources, deadline, filter, order, group_by, terminal) then
+      let mutable noted be out
+      for each source in sources
+        change noted to expr_mentions(expr: source.source, own: false, out: noted)
+      end
+      change noted to maybe_mentions(expr: deadline, own: false, out: noted)
+      change noted to maybe_mentions(expr: filter, own: false, out: noted)
+      change noted to maybe_mentions(expr: order_key(order), own: false, out: noted)
+      change noted to maybe_mentions(expr: group_by, own: false, out: noted)
+      return terminal_mentions(terminal: terminal, out: noted)
+    otherwise return out
+  end
+end
+
+function terminal_mentions(terminal: QueryTerminal, out: List of Mention) returns List of Mention
+  purpose: The mentions in a query's terminal, none of them candidates.
+
+  match terminal
+    when Collect(value) then return expr_mentions(expr: value, own: false, out: out)
+    when Sum(value) then return expr_mentions(expr: value, own: false, out: out)
+    when Any(condition) then return expr_mentions(expr: condition, own: false, out: out)
+    when All(condition) then return expr_mentions(expr: condition, own: false, out: out)
+    otherwise return out
+  end
+end
+
+function outcome_mentions(outcome: Outcome, own: Boolean, out: List of Mention)
+  returns List of Mention
+  purpose: The mentions in an outcome.
+
+  match outcome
+    when ValueOutcome(value) then return expr_mentions(expr: value, own: own, out: out)
+    when CrashOutcome(message) then return expr_mentions(expr: message, own: own, out: out)
+    when FailOutcome(value) then return maybe_mentions(expr: value, own: own, out: out)
+    when ReturnOutcome(value) then return maybe_mentions(expr: value, own: own, out: out)
+    otherwise return out
+  end
+end
+
+function items_mentions(items: List of Expr, own: Boolean, out: List of Mention)
+  returns List of Mention
+  purpose: The mentions in each of the expressions.
+
+  let mutable noted be out
+  for each item in items
+    change noted to expr_mentions(expr: item, own: own, out: noted)
+  end
+  return noted
+end
+
+function args_mentions(args: List of Arg, own: Boolean, out: List of Mention)
+  returns List of Mention
+  purpose: The mentions in each argument's value.
+
+  let mutable noted be out
+  for each arg in args
+    change noted to expr_mentions(expr: arg.value, own: own, out: noted)
+  end
+  return noted
+end
+
+function own_bound(statement: Statement, out: Set of Text) returns Set of Text
+  purpose: The names bound at a statement's own level, its nested blocks left out: its own binding, a loop's, a pattern's, a query's.
+
+  match statement
+    when Let(name, value) then return expr_bound(expr: value, out: out.add(name.text))
+    when Change(value) then return expr_bound(expr: value, out: out)
+    when If(branches) then
+      let mutable names be out
+      for each branch in branches
+        change names to expr_bound(expr: branch.condition, out: names)
+      end
+      return names
+    when Match(subject, arms) then
+      let mutable names be expr_bound(expr: subject, out: out)
+      for each arm in arms
+        change names to pattern_bound(pattern: arm.pattern, out: names)
+        change names to maybe_bound(expr: arm.guard, out: names)
+      end
+      return names
+    when ForEach(bindings, source, filter, order) then
+      let mutable names be out
+      for each binding in bindings
+        change names to names.add(binding.text)
+      end
+      change names to expr_bound(expr: source, out: names)
+      change names to maybe_bound(expr: filter, out: names)
+      return maybe_bound(expr: order_key(order), out: names)
+    when RepeatUntil(condition) then return expr_bound(expr: condition, out: out)
+    when RunConcurrently(deadline) then return maybe_bound(expr: deadline, out: out)
+    when Return(value) then return maybe_bound(expr: value, out: out)
+    when Fail(value) then return maybe_bound(expr: value, out: out)
+    when Crash(message) then return expr_bound(expr: message, out: out)
+    when Ignore(value) then return expr_bound(expr: value, out: out)
+    when Check(value) then return expr_bound(expr: value, out: out)
+    when Expression(value) then return expr_bound(expr: value, out: out)
+    otherwise return out
+  end
+end
+
+function block_bound(block: Block, out: Set of Text) returns Set of Text
+  purpose: Every name a block binds, at any depth, added to the set.
+
+  let mutable names be out
+  for each statement in block.statements
+    change names to statement_bound(statement: statement, out: names)
+  end
+  return names
+end
+
+function statement_bound(statement: Statement, out: Set of Text) returns Set of Text
+  purpose: Every name a statement binds, at any depth, added to the set.
+
+  match statement
+    when Let(name, value) then return expr_bound(expr: value, out: out.add(name.text))
+    when Change(value) then return expr_bound(expr: value, out: out)
+    when If(branches, fallback) then
+      let mutable names be out
+      for each branch in branches
+        change names to expr_bound(expr: branch.condition, out: names)
+        change names to block_bound(block: branch.body, out: names)
+      end
+      return fallback_bound(fallback: fallback, out: names)
+    when Match(subject, arms, fallback) then
+      let mutable names be expr_bound(expr: subject, out: out)
+      for each arm in arms
+        change names to pattern_bound(pattern: arm.pattern, out: names)
+        change names to maybe_bound(expr: arm.guard, out: names)
+        change names to block_bound(block: arm.body, out: names)
+      end
+      return fallback_bound(fallback: fallback, out: names)
+    when ForEach(bindings, source, filter, order, body) then
+      let mutable names be out
+      for each binding in bindings
+        change names to names.add(binding.text)
+      end
+      change names to expr_bound(expr: source, out: names)
+      change names to maybe_bound(expr: filter, out: names)
+      change names to maybe_bound(expr: order_key(order), out: names)
+      return block_bound(block: body, out: names)
+    when RepeatUntil(condition, body) then
+      let names be expr_bound(expr: condition, out: out)
+      return block_bound(block: body, out: names)
+    when RunConcurrently(deadline, body) then
+      let names be maybe_bound(expr: deadline, out: out)
+      return block_bound(block: body, out: names)
+    when Return(value) then return maybe_bound(expr: value, out: out)
+    when Fail(value) then return maybe_bound(expr: value, out: out)
+    when Crash(message) then return expr_bound(expr: message, out: out)
+    when Ignore(value) then return expr_bound(expr: value, out: out)
+    when Check(value) then return expr_bound(expr: value, out: out)
+    when Expression(value) then return expr_bound(expr: value, out: out)
+    otherwise return out
+  end
+end
+
+function fallback_bound(fallback: maybe Block, out: Set of Text) returns Set of Text
+  purpose: Every name an `otherwise` block binds, when there is one.
+
+  let block be fallback otherwise return out
+  return block_bound(block: block, out: out)
+end
+
+function maybe_bound(expr: maybe Expr, out: Set of Text) returns Set of Text
+  purpose: Every name an optional expression binds.
+
+  let found be expr otherwise return out
+  return expr_bound(expr: found, out: out)
+end
+
+function expr_bound(expr: Expr, out: Set of Text) returns Set of Text
+  purpose: Every name an expression binds: a match arm's pattern, a query's bindings, at any depth.
+
+  match expr
+    when TextLiteral(pieces) then
+      let mutable names be out
+      for each piece in pieces
+        match piece
+          when Hole(expression) then change names to expr_bound(expr: expression, out: names)
+          when Literal then continue
+        end
+      end
+      return names
+    when Member(base) then return expr_bound(expr: base, out: out)
+    when Call(callee, args) then
+      let names be expr_bound(expr: callee, out: out)
+      return args_bound(args: args, out: names)
+    when Construct(args) then return args_bound(args: args, out: out)
+    when ListLiteral(items) then
+      let mutable names be out
+      for each item in items
+        change names to expr_bound(expr: item, out: names)
+      end
+      return names
+    when MapLiteral(entries) then
+      let mutable names be out
+      for each entry in entries
+        change names to expr_bound(expr: entry.key, out: names)
+        change names to expr_bound(expr: entry.value, out: names)
+      end
+      return names
+    when RangeLiteral(lower, upper, step) then
+      let mutable names be expr_bound(expr: lower, out: out)
+      change names to expr_bound(expr: upper, out: names)
+      return maybe_bound(expr: step, out: names)
+    when Not(value) then return expr_bound(expr: value, out: out)
+    when Paren(value) then return expr_bound(expr: value, out: out)
+    when Binary(left, right) then
+      let names be expr_bound(expr: left, out: out)
+      return expr_bound(expr: right, out: names)
+    when With(base, updates) then
+      let names be expr_bound(expr: base, out: out)
+      return args_bound(args: updates, out: names)
+    otherwise return branching_bound(expr: expr, out: out)
+  end
+end
+
+function branching_bound(expr: Expr, out: Set of Text) returns Set of Text
+  purpose: Every name a branching expression or a query binds.
+
+  match expr
+    when Otherwise(value, fallback) then
+      let names be expr_bound(expr: value, out: out)
+      return outcome_bound(outcome: fallback, out: names)
+    when IfExpr(branches, fallback) then
+      let mutable names be out
+      for each branch in branches
+        change names to expr_bound(expr: branch.condition, out: names)
+        change names to outcome_bound(outcome: branch.outcome, out: names)
+      end
+      return outcome_bound(outcome: fallback, out: names)
+    when MatchExpr(subject, arms, fallback) then
+      let mutable names be expr_bound(expr: subject, out: out)
+      for each arm in arms
+        change names to pattern_bound(pattern: arm.pattern, out: names)
+        change names to maybe_bound(expr: arm.guard, out: names)
+        change names to outcome_bound(outcome: arm.body, out: names)
+      end
+      match fallback
+        when some(outcome) then return outcome_bound(outcome: outcome, out: names)
+        when nothing then return names
+      end
+    when QueryExpr(sources, deadline, filter, order, group_by, terminal) then
+      let mutable names be out
+      for each source in sources
+        for each binding in source.bindings
+          change names to names.add(binding.text)
+        end
+        change names to expr_bound(expr: source.source, out: names)
+      end
+      change names to maybe_bound(expr: deadline, out: names)
+      change names to maybe_bound(expr: filter, out: names)
+      change names to maybe_bound(expr: order_key(order), out: names)
+      change names to maybe_bound(expr: group_by, out: names)
+      return terminal_bound(terminal: terminal, out: names)
+    otherwise return out
+  end
+end
+
+function terminal_bound(terminal: QueryTerminal, out: Set of Text) returns Set of Text
+  purpose: Every name a query's terminal binds.
+
+  match terminal
+    when Collect(value) then return expr_bound(expr: value, out: out)
+    when Sum(value) then return expr_bound(expr: value, out: out)
+    when Any(condition) then return expr_bound(expr: condition, out: out)
+    when All(condition) then return expr_bound(expr: condition, out: out)
+    otherwise return out
+  end
+end
+
+function outcome_bound(outcome: Outcome, out: Set of Text) returns Set of Text
+  purpose: Every name an outcome binds.
+
+  match outcome
+    when ValueOutcome(value) then return expr_bound(expr: value, out: out)
+    when CrashOutcome(message) then return expr_bound(expr: message, out: out)
+    when FailOutcome(value) then return maybe_bound(expr: value, out: out)
+    when ReturnOutcome(value) then return maybe_bound(expr: value, out: out)
+    otherwise return out
+  end
+end
+
+function args_bound(args: List of Arg, out: Set of Text) returns Set of Text
+  purpose: Every name the arguments' values bind.
+
+  let mutable names be out
+  for each arg in args
+    change names to expr_bound(expr: arg.value, out: names)
+  end
+  return names
+end
+
+function pattern_bound(pattern: Pattern, out: Set of Text) returns Set of Text
+  purpose: Every name a pattern binds.
+
+  match pattern
+    when BindingPattern(name) then return out.add(name.text)
+    when TypedPattern(name) then return out.add(name.text)
+    when SomePattern(inner) then return pattern_bound(pattern: inner, out: out)
+    when SuccessPattern(inner) then return pattern_bound(pattern: inner, out: out)
+    when FailurePattern(inner) then return pattern_bound(pattern: inner, out: out)
+    when VariantPattern(fields) then
+      let mutable names be out
+      for each field in fields
+        match field.pattern
+          when some(inner) then change names to pattern_bound(pattern: inner, out: names)
+          when nothing then change names to names.add(field.field.text)
+        end
+      end
+      return names
+    otherwise return out
+  end
+end
+
 function emit_pattern(emitter: Emitter, pattern: Pattern, slot: Integer)
   returns Step of List of Integer
   purpose: A pattern tested against the slot; the jumps taken when it does not fit.
@@ -2600,6 +3204,7 @@ function compile_function(
     change emitter to declare_local(emitter: emitter, name: param.name.text).emitter
   end
   change emitter to emitter with params: func.params.length()
+  change emitter to emitter with last_uses: last_uses(block)
   change emitter to emit_block(emitter: emitter, block: block)
   change emitter to emit(emitter: emitter, op: OpReturnNothing, span: func.span)
   let placed be push_code(context: emitter.context, code: finish(emitter))

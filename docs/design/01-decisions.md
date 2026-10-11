@@ -5982,3 +5982,65 @@ and every taken field is cloned (AU11 counted 47,000 of its 71,000
 updates in the slot finding the record shared); the liveness rule AU11
 left to the next profile (a `let` or a `return` that reads a local for
 the last time moves it) is the next cut.
+
+**AU55. B4's sixth cut: the last read of a local moves it (the liveness
+rule AU11 deferred), a taken field read in place on both tiers, and the
+checker's values read before its checkers.** AU54 left the copies that
+remain to the checker's own shape: a function takes `checker: Checker`
+and derives a mutable copy while the parameter slot still holds the
+record, so the record is shared wherever it is updated. The rule, in
+both emitters (`crates/renyi_vm/src/compile/liveness.rs`, the same in
+`compiler/emit.ry`, held equal by the compile judge): a read of a local
+is its last when it is the only read of that local at its statement's
+own level, the local is read nowhere in the statement's nested blocks
+nor after the statement in its block or in the blocks around it, and
+every loop around the statement binds the local anew on each turn (a
+read inside a query, or inside a loop's filter, key or condition, runs
+more than once and is never last); a write is no mention, since a read
+after it sees what it stored; a nested block whose last statement is
+`return`, `fail` or `crash` never falls through, so its reads need no
+later-statement and no loop check. Such a read is a `LoadMove`, and
+`x.f` on such a local a `TakeField` (AU11's op), so a record or a
+collection held once stays held once into the call, the construct or the
+update that follows. The analysis walks each block from its last
+statement, the names mentioned after it kept as a set, a frame per
+enclosing block (the names mentioned after its statement, and the names
+a loop binds), two traversals per node. `TakeField` went through
+`rt_take_field` on both tiers while `LoadField` read in place through
+the site's cache (AU21), and the rule turns 816 field reads of the
+checker into takes, so the first measure came out worse (the checker's
+run 4,544.4 to 4,659.6 million); both tiers now take a field in place as
+they read one: a record of the cached type held once gives up the field,
+`Nothing` left in its place, a shared one gives a copy with one more
+reference, a variant or a miss goes through the helper. The checker's
+code (`compiler/bodies.ry`) read against the rule in two ways, both
+rewritten by a script and judged byte-equal by the checker judge: 27
+reads of the parameter `checker` after the derived value existed (a
+stale read, where the Rust checker's `&mut self` reads the latest state)
+now read the derived value; and 113 `Done` results read their `.value`
+after their `.checker`, keeping the record alive at the take, so each
+binds its value first (`let done_value be done.value`) and the two `done
+with checker:` updates construct a fresh `Done`, which makes the
+`.checker` read the last read of `done`. In the checker's bytecode 4,914
+loads become moves and 816 field reads takes. The measure (callgrind,
+`RENYI_NATIVE_SYNC=1`, against AU54): the checker's run 4,544.4 to
+4,470.1 million (-1.6%), the parser alone 764.6 to 767.9 million per
+parse (+0.4%), the lexer alone 491.4 to 498.1 million per lex (+1.4%:
+its code is bound by the hash of each character against a set, and a
+take in place tests the count where a read did not); the Rust front
+end's compile of the checker 723.9 to 758.2 million for the analysis
+(+4.7%, the hashing of the names in its sets; interning them to bits is
+the fix left); AT1's measure of the tiers' part on the self-check
+6,235.9 to 6,260.7 million instructions (+0.4%) and 8,746.6 to 8,792.5
+million by the estimate (+0.5%); the image row 4,775.6 to 4,775.0
+million in instructions and 6,851.8 to 6,884.4 million by the estimate
+(+0.5%), the code 1.4% larger (the frozen compiler of AU39 keeps the
+shape the rule does not reach, and pays the take's count test and the
+larger code); the ratio of AU36 (iii) checking 557.9 ms against the
+reference's 81.4 (6.9 times, the gate; 7.2 and 8.1 after AU53, with the
+Renyi checker at 589.8 and 606.6) and this binary's 38.4 (14.5), parsing
+215.6 against 75.3 (2.9) and 64.0 (3.4), compiling 922.5 against 143.3
+(6.4) and 90.6 (10.2), the best of five runs: the checker's time is the
+first of the stage's cuts to move outside the wall-clock's noise, and
+the compile row pays the analysis written in Renyi. CLAUDE.md's rows for
+`compile/`, the tiers and `compiler/` say what is there now.

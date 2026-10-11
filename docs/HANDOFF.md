@@ -282,13 +282,15 @@ and push there directly.
    tiers; the lexer alone -2.4%, the parser alone -3.5%, the checker's
    run -1.2%, all against the stage's start; AU54: two lookups by index,
    the lexer's last append in place and a shared list appended with one
-   copy, the checker's run -3.1% more), the paragraph "B4 as
-   built so far" of that section has them with the lexer's lesson (the
-   hash per character is the cost, not the loop) and what stays: the
-   liveness rule AU11 deferred (a last read of a local moves it, in both
-   emitters), then the loops' iterators and the frame leave's drops,
-   with the ratio 7.2 and 8.1 on two runs after AU53 (7.5 before it,
-   within the wall-clock's noise) against the gate of 3.
+   copy, the checker's run -3.1% more; AU55: the last read of a local
+   moves it, in both emitters, with a taken field read in place on both
+   tiers and the checker's code reshaped where it defeated the rule, the
+   checker's run -1.6% more), the paragraph "B4 as built so far" of
+   that section has them with the lexer's lesson (the hash per character
+   is the cost, not the loop) and what stays: the loops' iterators and
+   the frame leave's drops, then the same reshaping of `emit.ry` and
+   `declare.ry`, with the ratio 7.2 and 8.1 on two runs after AU53 (7.5
+   before it, within the wall-clock's noise) against the gate of 3.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
@@ -3532,27 +3534,29 @@ lookup), the lexer's end-of-file append in AU11's form, and the natives
 `append` and `append_all` copying a shared list once with room (the
 exact-length clone plus the reallocation on the push was the `memcpy`
 under `realloc`); the checker's run 4,558.4 million with the VM's part
-alone (-2.8%), 4,544.4 million with the two Renyi parts
-(-3.1%), the lexer alone 491.4 million per lex (-0.6%). What
-stays: the copies that remain are the checker's own shape (a function
-takes `checker: Checker` and updates a mutable copy while the parameter
-slot still holds the record: every `with` copies the record and every
-taken field is cloned; a census build counted 60,108 appends on shared
-lists copying 4.9 million items per run, 84% in `bodies.record`), so the
-next cut is the liveness rule AU11 deferred, in both emitters: a `let`
-or a `return` that reads a local for the last time moves it (`LoadMove`,
-and the field of a dead record taken), judged by the compile judge;
-after it, `for each` without an iterator allocated per loop (263,438 per
-run), `leave_frame`'s drop of every slot (10.6 million per run, most of
-them plain values) and `lists.replace_at` (three lists per call); the
-Cranelift compile is 9% of the checker's one run under
-`RENYI_NATIVE_SYNC=1`, which the ratio pays on the compile thread
-instead. The ratio after the three cuts (`tools/ratio.py
-target/renyi-b4iv target/renyi-au34`): checking 590.5 ms against the
-reference's 78.5 (7.5 times, the gate) and this binary's 38.7 (15.3),
-parsing 207.9 against 65.6 (3.2) and 62.2 (3.3), compiling 888.9 against
-102.1 (8.7) and 81.8 (10.9): the ratio stays at 7.5, the three cuts' 3%
-in instructions under the wall-clock's noise.
+alone (-2.8%), 4,544.4 million with the two Renyi parts (-3.1%), the
+lexer alone 491.4 million per lex (-0.6%). The sixth cut (AU55): the
+last read of a local moves it (`LoadMove`, or `TakeField` for `x.f`), in
+both emitters (`compile/liveness.rs`, the same in `emit.ry`, held equal
+by the compile judge), with a taken field read in place on both tiers
+(the helper had cost more than the moves saved) and the checker's code
+reshaped by a script where it defeated the rule (27 stale reads of the
+`checker` parameter now read the derived value, 113 `Done` values bound
+before their checkers); the checker's run 4,470.1 million (-1.6%),
+the parser alone 767.9 million per parse (+0.4%), the lexer alone
+498.1 million per lex (+1.4%), the Rust front end's compile of the
+checker +4.7% for the analysis. What stays: `for each` without an
+iterator allocated per loop (263,438 per run), `leave_frame`'s drop of
+every slot (10.6 million per run, most of them plain values),
+`lists.replace_at` (three lists per call), and the same reshaping of
+`emit.ry` and `declare.ry` for the compile row; the Cranelift compile is
+9% of the checker's one run under `RENYI_NATIVE_SYNC=1`, which the ratio
+pays on the compile thread instead. The ratio after the three cuts
+(`tools/ratio.py target/renyi-b4iv target/renyi-au34`): checking 590.5
+ms against the reference's 78.5 (7.5 times, the gate) and this binary's
+38.7 (15.3), parsing 207.9 against 65.6 (3.2) and 62.2 (3.3), compiling
+888.9 against 102.1 (8.7) and 81.8 (10.9): the ratio stays at 7.5, the
+three cuts' 3% in instructions under the wall-clock's noise.
 
 ## The representation items: the design study (session 11)
 
@@ -5260,6 +5264,18 @@ holds between calls.
   the entry); the checker's run -2.8% for the VM's part alone and -3.1%
   with the Renyi parts, the lexer alone -0.6%; AT1's synchronous row
   -2.2% in instructions and -2.3% by the estimate, the image row -2.9%.
+- **Decision AU55**: the sixth cut of B4, the liveness rule AU11
+  deferred: the last read of a local moves it (`LoadMove`, `TakeField`
+  for a field) in both emitters, `compile/liveness.rs` and its mirror in
+  `emit.ry` (a write is no mention; a block ending in `return`, `fail`
+  or `crash` never falls through); a taken field read in place on both
+  tiers; the checker's code reshaped by a script where it defeated the
+  rule (stale reads of the parameter, `Done` values read after their
+  checkers); the checker's run -1.6%, the parser alone +0.4%, the lexer
+  alone +1.4% against AU54; AT1's synchronous row +0.4% in instructions
+  and +0.5% by the estimate (the frozen compiler keeps the old shape);
+  the ratio 6.9 (the Renyi checker 557.9 ms, from 589.8 and 606.6 after
+  AU53).
 - **The README's opening** at the owner's request (68c5cd2): the design
   philosophy as the selling points, five points a reviewer can check,
   the comparison with Python, TypeScript, Rust and shell for the one

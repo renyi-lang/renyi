@@ -230,10 +230,13 @@ where one decided, the status. The dates are those of the decisions.
     a built module constant in place on both tiers (the parser alone
     -3.5%, the lexer alone -2.4%, the checker -1.2% against the stage's
     start), two lookups by index, the lexer's last append in place and a
-    shared list appended with one copy (the checker -3.1% more).
-    The measure: the ratio against AU34's binary, 7.4 at the stage's
-    start, 7.2 and 8.1 on two runs (7.5 before the cut, within the
-    wall-clock's noise) after the four cuts.
+    shared list appended with one copy (the checker -3.1% more), the
+    last read of a local moved by both emitters with a taken field read
+    in place on both tiers and the checker's code reshaped where it
+    defeated the rule (the checker -1.6% more). The measure: the
+    ratio against AU34's binary, 7.4 at the stage's start, 7.2 and 8.1
+    on two runs (7.5 before the cut, within the wall-clock's noise)
+    after the four cuts.
 
 ## 3. The tracks
 
