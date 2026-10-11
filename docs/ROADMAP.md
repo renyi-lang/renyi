@@ -259,6 +259,18 @@ where one decided, the status. The dates are those of the decisions.
     each. Measured as stage 28 was, with a table by category beside.
     Not begun.
 
+30. **The icon and the wordmark** (session 13, 2026-10-11, done;
+    decision AV1). The owner asked for an icon that does not read as the
+    R language's, as the R on the accent tile did, and chose over five
+    rounds of rendered options (the character 人, six divergent
+    directions, the name as a signature in forty-five script fonts, R and
+    Ry built from objects, Ry on grids and five objects): a war hammer on
+    the accent tile and the name signed in Ms Madi. `tools/brand.py`
+    holds both and writes the README's logo, the VS Code extension's
+    icons and the social preview; the site's header shows the mark and
+    the signature. The social preview waits on the owner's upload in the
+    repository's settings.
+
 ## 3. The tracks
 
 The same stages grouped by the line of work they belong to, with the
@@ -292,10 +304,11 @@ state of each line.
   server), 19 (the resident world, the language server, the watch, the
   embedding API). Done; candidates not decided: completion, references
   and rename in the language server, the C API of decision A5.
-- **G. Release and the ecosystem**: stage 17. Release 0.1.0 is out;
-  every release after it follows `docs/RELEASE.md`; the announcement
-  and the three measurements of the positioning's section 5 are the
-  owner's pending actions.
+- **G. Release and the ecosystem**: stages 17, 30. Release 0.1.0 is
+  out; every release after it follows `docs/RELEASE.md`; the icon and
+  the wordmark (AV1) are in the site, the README and the extension; the
+  announcement, the three measurements of the positioning's section 5
+  and the upload of the social preview are the owner's pending actions.
 - **H. Readability**: stages 2, 6, 8. Four rounds exist under
   `tests/readability/`; they run only on request (V1).
 

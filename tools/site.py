@@ -47,6 +47,8 @@ from urllib.parse import quote
 
 import markdown
 
+import brand  # tools/brand.py: the mark and the wordmark (decision AV1)
+
 ROOT = Path(__file__).resolve().parent.parent
 
 # The session handoff is the state of the work, not documentation.
@@ -241,18 +243,17 @@ SESSION = [
 # a pause, one line after another, and the next command after a longer one.
 COMMAND_PAUSE, LINE_PAUSE, TURN_PAUSE = 0.55, 0.12, 0.65
 
-# The mark: an R on the accent, drawn on a grid of 24. The tab's icon is the
-# same drawing with the light theme's colours written in.
-MARK_PATH = "M8.5 17.5V6.5h4.25a3.25 3.25 0 0 1 0 6.5H8.5M12.4 13l3.6 4.5"
-MARK = (
-    '<svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" '
-    f'rx="6.5"/><path d="{MARK_PATH}"/></svg>'
-)
-ICON = "data:image/svg+xml," + quote(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" '
-    f'rx="6.5" fill="{LIGHT["accent"]}"/><path d="{MARK_PATH}" fill="none" stroke="#fff" '
-    'stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-)
+# The mark, the tab's icon and the wordmark (decision AV1, tools/brand.py): the
+# war hammer on the accent in its plain drawing, which holds at these sizes,
+# coloured by the page's theme; the tab's icon in the light theme's colours;
+# the name signed, in the text's colour. Their colours are the site's own.
+assert brand.LIGHT == {"tile": LIGHT["accent"], "ink": LIGHT["on-accent"], "text": LIGHT["text"],
+                       "muted": LIGHT["text-2"], "bg": LIGHT["bg"]}, "tools/brand.py's colours"
+assert brand.DARK == {"tile": DARK["accent"], "ink": DARK["on-accent"], "text": DARK["text"],
+                      "muted": DARK["text-2"], "bg": DARK["bg"]}, "tools/brand.py's colours"
+MARK = brand.mark_inline()
+ICON = "data:image/svg+xml," + quote(brand.mark(False, brand.LIGHT))
+WORDMARK = brand.wordmark(30, css_class="name")
 
 # The theme switch; the script shows it and names what it does.
 THEME_BUTTON = (
@@ -445,9 +446,9 @@ h1, h2, h3, h4, h5, h6 { color: var(--text); font-family: var(--display); }
 .brand { display: inline-flex; flex: none; align-items: center; gap: .6rem; color: var(--text);
          font: 650 1.0625rem/1 var(--display); letter-spacing: -0.02em; text-decoration: none; }
 .mark { flex: none; width: 1.625rem; height: 1.625rem; }
-.mark rect { fill: var(--accent); }
-.mark path { fill: none; stroke: var(--on-accent); stroke-width: 2.1; stroke-linecap: round;
-             stroke-linejoin: round; }
+.mark .tile { fill: var(--accent); }
+.mark .ink { color: var(--on-accent); }
+.brand .name { flex: none; transform: translateY(17%); }
 .row { display: none; }
 .tools { display: flex; align-items: center; gap: .25rem; margin-left: auto; }
 .icon { display: inline-grid; place-items: center; width: 2.25rem; height: 2.25rem; padding: 0;
@@ -1563,7 +1564,8 @@ def groups(page: str, known: dict[str, str]) -> str:
 def brand(page: str, known: dict[str, str]) -> str:
     home = known[HOME]
     current = ' aria-current="page"' if home == page else ""
-    return f'<a class="brand" href="{relative(page, home)}"{current}>{MARK}<span>Renyi</span></a>'
+    return (f'<a class="brand" href="{relative(page, home)}"{current}>{MARK}{WORDMARK}'
+            '<span class="sr">Renyi</span></a>')
 
 
 def header(page: str, known: dict[str, str]) -> str:

@@ -1,4 +1,9 @@
-# Renyi
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/renyi-logo-dark.svg">
+    <img alt="Renyi" src="docs/assets/renyi-logo-light.svg">
+  </picture>
+</h1>
 
 **Renyi is the scripting language of AI agents: the agent writes it, you
 review it at a glance, and the program can only do what it declares.**

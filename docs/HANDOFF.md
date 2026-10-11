@@ -8,8 +8,12 @@ below, "B4 as built"): the Renyi checker's run on `compiler/bodies.ry`
 (iii) 7.4 to 6.9 against the gate of 3; then the owner's answers after
 it (decision AU58): the gate stays, and the way to it is a new backend
 for the VM, its design study first, which the next session writes (the
-start-here item 1). The session ended at the owner's word, to save the
-progress and hand over. Earlier in the session it
+start-here item 1). After that handover the owner asked for a new icon,
+since the R on the accent tile read as the R language's: decision AV1,
+a war hammer on the accent tile and the name signed in Ms Madi, held by
+`tools/brand.py` and used in the site's header and tab, the README, the
+VS Code extension and the social preview (the section "Done in session
+13" below). Earlier in the session it
 finished stage A2 of the front end's round, the cache keyed by the
 sources (decision AU44: every `run`, `record` or `test` compiled from
 its sources leaves the program it compiled in the cache with every file
@@ -5362,6 +5366,30 @@ holds between calls.
   instructions against three times AU34's `renyi check` of the same
   file (442.8 million), 2.3 times. Stage 28 closed, stage 29 opened in
   the roadmap; the session ended at the owner's word before the study.
+- **Decision AV1, the icon and the wordmark**, at the owner's request
+  after AU58 (the R on the accent tile read as the R language's):
+  five rounds of rendered sheets sent to the owner and put as
+  AskUserQuestion (the character 人; six divergent directions with
+  eight dropped; the name in forty-five script fonts, eight shown with
+  four companion marks; R and Ry built from a nib and other objects;
+  Ry on grids and five objects). The owner chose a war hammer on the
+  accent tile and the name signed in Ms Madi (OFL 1.1). `tools/brand.py`
+  holds both (the mark's full and plain drawings, the signature as one
+  path, the colours, which `tools/site.py` checks against its own) and
+  writes `docs/assets/` (the mark, the README's light and dark logos,
+  the social preview, 1,280 by 640) and `editors/vscode/images/` (the
+  extension's 128-pixel icon, the `.ry` file's icon in both themes;
+  `package.json` names them, and `vsce package` was run on it to check).
+  The site's header shows the mark and the signature in both themes
+  (screenshots at 1,440 and 390 pixels, no console error), its tab the
+  plain mark; the README opens with the logo in a `picture` element.
+  How the PNG files are made: `python tools/brand.py --png
+  /opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell`
+  in this container (Inter is installed here for the preview's text).
+  The fonts were fetched from npm (`@fontsource/<name>`, reachable
+  through the proxy), shaped with `uharfbuzz` and drawn with
+  `fontTools` (`pip install uharfbuzz fonttools brotli`), which only a
+  change of the signature needs again.
 - **The README's opening** at the owner's request (68c5cd2): the design
   philosophy as the selling points, five points a reviewer can check,
   the comparison with Python, TypeScript, Rust and shell for the one
@@ -6354,6 +6382,11 @@ on a fresh clone).
 
 ## Owner actions pending
 
+- **The social preview** (decision AV1): upload
+  `docs/assets/social-preview.png` in the repository's settings
+  (Settings, General, Social preview); GitHub offers no other way to set
+  it. The VS Code Marketplace, if the extension is published there,
+  takes its icon from `editors/vscode/package.json` already.
 - **Release 0.1.0 is out** (2026-10-07). Left to the owner: the
   announcement with the texts of `08-positioning.md` section 6; the
   VS Code Marketplace publisher `renyi-lang` and `vsce publish` from

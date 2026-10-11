@@ -6151,3 +6151,54 @@ Renyi checker 557.9 ms against three times the reference's 81.4, 244);
 the study takes the gate's measure. The session ended at the owner's
 word, to save the progress and prepare the handoff, before the study
 began.
+
+## AV. The icon and the wordmark (session 13)
+
+**AV1. The mark is a war hammer on the accent tile; the wordmark is the
+name signed in Ms Madi.** The owner asked on 2026-10-11 for an icon that
+does not read as the R language's, as the R on the accent tile did, and
+chose over five rounds of rendered options (AskUserQuestion, each sheet
+with the candidates in both themes, at 16 to 128 pixels, in the site's
+header and in a browser tab): (1) the character 人 three ways and a dot
+in brackets, which the owner set aside ("nothing to do with Chinese
+characters; diverge"); (2) six directions (a kite, brackets as a kite, a
+dot between angle brackets, a spark in brackets, glasses, a signature)
+with eight dropped and why (an aperture read as a camera, a seal as a
+gear, a grid of grants as an app launcher, a colon as a list, a tethered
+dot as a pin, a spark on a line as a wand, a glass box as a package, a
+kite-shaped icon too small in a square slot), after which the owner asked
+for the name as a signature; (3) the name in forty-five script fonts, the
+eight most like a signature shown with four marks to go beside it (a nib,
+the signature's initial, a cross on a line, a wax seal): the owner took
+Ms Madi, and the signature in the site's header, and asked for an R or Ry
+made of a nib or other objects; (4) six such marks (a nib as the R's leg,
+an R signed in one stroke with the nib at its end, Ry in the wordmark's
+hand, an R cut out of a nib, a lens as the bowl, a ribbon's swallowtail
+as the leg), after which the owner asked for Ry on a finer grid, or an
+object such as an axe or a war hammer; (5) Ry on three grids (lit cells
+of nine, a finer grid of sixteen, graph paper) and five objects (a gavel,
+recommended for its meaning, the war hammer, an axe, a stamp, an anvil):
+the owner took the war hammer. The colours were the owner's to leave
+open, so they are the site's: the accent tile with the hammer in the
+colour on the accent, in both themes. What is built: `tools/brand.py`
+holds the mark (a square hammer with a flared face, a curved beak and a
+top spike on a long haft, drawn upright on a grid of 24 and turned 40
+degrees; the full drawing, with a grip band and a pommel, from 48 pixels
+up, the plain one, a thicker haft, below) and the wordmark (the name in
+Ms Madi, Robert Leuschke's script under the SIL Open Font License 1.1,
+shaped by HarfBuzz and kept as one path, so that no page loads a font),
+and writes the files made from them: `docs/assets/renyi-mark.svg`, the
+README's logo in a light and a dark version (`renyi-logo-light.svg`,
+`renyi-logo-dark.svg`, chosen by a `picture` element), the VS Code
+extension's icon (`editors/vscode/images/icon.png`, 128 pixels) and the
+icon of a `.ry` file in light and dark themes (`file-light.svg`,
+`file-dark.svg`, the plain drawing), and the repository's social preview
+(`docs/assets/social-preview.png`, 1,280 by 640: the mark, the
+signature, the README's first sentence in Inter, the site's address),
+the PNG files as screenshots by a headless Chromium. `tools/site.py`
+takes the mark, the tab's icon and the wordmark from it and checks that
+its colours are the site's; the header shows the mark and the signature,
+the name kept for screen readers. The social preview reaches GitHub
+through the repository's settings (Settings, General, Social preview),
+an upload only the owner can make. The site's design stays as AU51 (4)
+left it but for the header's brand. (user)
