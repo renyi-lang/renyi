@@ -1946,7 +1946,11 @@ impl Gen<'_, '_> {
         let flags = MemFlagsData::trusted();
         let pointer = self.pointer;
         let locals = self.code.locals as usize;
-        let holders: Vec<usize> = (0..locals)
+        // the slots of the expanded callees hold `Nothing` at a return of
+        // the code object's own (every region leaves by its exit, which
+        // moves them out; decision AU50): only its own locals may hold a
+        // reference
+        let holders: Vec<usize> = (0..self.original_locals)
             .filter(|slot| {
                 !matches!(
                     self.analysis.slots[*slot],
