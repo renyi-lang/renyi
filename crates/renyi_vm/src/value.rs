@@ -345,25 +345,102 @@ impl Drop for Composite {
         let count = self.head().count.get() - 1;
         self.head().count.set(count);
         if count == 0 {
-            self.free();
+            // SAFETY: nothing holds the block any more.
+            unsafe { Composite::free_block(self.block) };
         }
     }
 }
 
 impl Composite {
-    /// The last holder's drop: the fields dropped and the block freed with
-    /// the layout it was made with.
+    /// The last holder's drop (decision AW10): every field released in
+    /// place (`release_in_place`: a plain field costs a tag test, a shared
+    /// block a count lowered, and only the last holder of a nested value
+    /// goes further), then the block freed with the layout it was made
+    /// with.
+    ///
+    /// # Safety
+    /// Nothing holds the block any more, and nothing reads it after.
     #[inline(never)]
-    fn free(&mut self) {
-        let len = self.head().len;
-        // SAFETY: nothing holds the block any more.
-        unsafe {
-            std::ptr::drop_in_place(std::ptr::slice_from_raw_parts_mut(
-                Composite::fields_of(self.block),
-                len,
-            ));
-            std::alloc::dealloc(self.block.as_ptr() as *mut u8, Composite::layout(len));
+    unsafe fn free_block(block: NonNull<Head>) {
+        let len = (*block.as_ptr()).len;
+        let fields = Composite::fields_of(block);
+        for index in 0..len {
+            release_in_place(fields.add(index));
         }
+        std::alloc::dealloc(block.as_ptr() as *mut u8, Composite::layout(len));
+    }
+}
+
+/// The release of the value at the address, which is dead after
+/// (decision AW10): what the generated code's release does in place
+/// (decision AU32), for the VM's own drops. A value whose tag says it
+/// holds no counted block (`Nothing`, a Boolean, a small Integer, a
+/// Float, a text held in the value) costs a tag test; a counted block
+/// with another holder has its count lowered; only the last holder, and
+/// a big Integer, go out of line (`release_last`): the last holder of a
+/// record or a variant frees the block with its fields released the same
+/// way (`Composite::free_block`), the last holder of a list releases its
+/// elements the same way before the vector goes, and the last holder of
+/// anything else, and a big Integer, go the general way
+/// (`drop_in_place`). Rust's drop glue did the same through a call per
+/// field or element, most of them on plain values; this is inlined at
+/// every site, so that a plain value costs no call (the first build of
+/// the stage had one function out of line for every value, and its
+/// prologue cost the check row 3.4% more than the glue).
+///
+/// # Safety
+/// `at` points at a value the caller reads no more. The first word of an
+/// `Rc` allocation is its strong count, which `layout` relies on for the
+/// generated code too, and the VM takes no weak references.
+#[inline(always)]
+pub unsafe fn release_in_place(at: *mut Value) {
+    use layout::{COUNTED_OR_INTEGER, INT_SMALL, INT_TAG, PAYLOAD, TAG_INTEGER};
+    let tag = *(at as *const u8);
+    if (COUNTED_OR_INTEGER >> tag) & 1 == 0 {
+        return;
+    }
+    if tag == TAG_INTEGER {
+        if *(at as *const u8).add(INT_TAG as usize) == INT_SMALL {
+            return;
+        }
+    } else {
+        let block = *((at as *const u8).add(PAYLOAD as usize) as *const *mut usize);
+        let count = *block;
+        if count > 1 {
+            *block = count - 1;
+            return;
+        }
+    }
+    release_last(at, tag);
+}
+
+/// The last holder's release of the value at the address, or a big
+/// Integer's (`release_in_place`, decision AW10), out of line.
+///
+/// # Safety
+/// As `release_in_place`: the value is dead after, and its block, when
+/// it has one, has one holder.
+#[inline(never)]
+unsafe fn release_last(at: *mut Value, tag: u8) {
+    use layout::{PAYLOAD, TAG_LIST, TAG_RECORD, TAG_VARIANT};
+    match tag {
+        TAG_RECORD | TAG_VARIANT => {
+            let block = *((at as *const u8).add(PAYLOAD as usize) as *const *mut Head);
+            Composite::free_block(NonNull::new_unchecked(block));
+        }
+        TAG_LIST => {
+            let Value::List(items) = &mut *at else {
+                unreachable!("the tag is a list's");
+            };
+            let vector = Rc::get_mut(items).expect("the one holder of the list");
+            let elements = vector.as_mut_ptr();
+            for index in 0..vector.len() {
+                release_in_place(elements.add(index));
+            }
+            vector.set_len(0);
+            std::ptr::drop_in_place(at);
+        }
+        _ => std::ptr::drop_in_place(at),
     }
 }
 

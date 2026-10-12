@@ -39,11 +39,18 @@ ratio 5.72 to 5.37), and stage 2b built and measured (decision AW9: a
 record of two fields returned as a pair of cells to a direct caller,
 kept in a pair slot and taken apart in place, past the test of an
 `otherwise` that only a failure reaches; the check row 2,370.7 to
-2,301.9, -2.9%, the ratio 5.37 to 5.21); on the way, a
-Windows defect since AT5 fixed (a2c4685: every run of an image there
-copied its code section, the mapping refused for want of execute access
-on the file's handle). Next is stage 2c (the start-here item 1). The
-session's record is "Done in session 14" below.
+2,301.9, -2.9%, the ratio 5.37 to 5.21), and stage 2c built and
+measured (decision AW10: the frees in place, a value released by its
+tag in the VM's Rust, the last holder of a record or a list releasing
+its fields or its elements the same way; by instructions nearly what
+the glue cost, the check row 2,301.9 to 2,296.2, -0.2%, but the
+glue's indirect branch per field gone, AT1's estimate -1.3%,
+kept by AT1's rule; the ratio 5.21 to 5.20), which completes
+stage 2; on the way, a Windows defect since AT5 fixed (a2c4685: every
+run of an image there copied its code section, the mapping refused for
+want of execute access on the file's handle). Next is stage 3, the
+natives' entry and the glue (the start-here item 1). The session's
+record is "Done in session 14" below.
 Session 13, in the cloud environment, had as its last work the icon
 and the wordmark, at the owner's request after the
 handover below (decision AV1: a war hammer on the accent tile and the
@@ -335,9 +342,16 @@ and push there directly.
    "Stage 2b as built": a record of two fields returned as a pair of
    cells to a direct caller, kept in a pair slot and taken apart in
    place, past the test of an `otherwise` that only a failure reaches;
-   the check row to 2,301.9, -2.9%, the ratio to 5.21).
-   Next is stage 2c (the frees in place), the natives' entry and
-   the glue, stage 4, the checker's own cuts between the stages, stages
+   the check row to 2,301.9, -2.9%, the ratio to 5.21); and stage 2c
+   (decision AW10, "Stage 2c as built": the frees in place, a value
+   released by its tag in the VM's Rust, the last holder of a record or
+   a list releasing its fields or its elements the same way; by
+   instructions nearly what the glue cost, the check row to 2,296.2,
+   -0.2%, but the glue's indirect branch per field gone, AT1's
+   estimate -1.3%; the ratio to 5.20), which
+   completes stage 2 (the check row 2,527.2 to 2,296.2).
+   Next is stage 3 (the natives' entry and the glue), stage 4, the
+   checker's own cuts between the stages, stages
    5 and 6 last. Each stage: the code, the gates of item 3, the measure
    (AU58's: the checker's image run under callgrind with the study's
    table by category beside it, AT1's rows, the benchmarks by
@@ -365,8 +379,10 @@ and push there directly.
    cache and the hasher), `renyi_stage2a_helper` (stage 2a's part A,
    the helper by index on both tiers), `renyi_stage2a` (1ad4399, stage
    2a's commit), `renyi_stage2b_plain` (stage 2b's part A, the pair at
-   the call alone) and `renyi_stage2b` (stage 2b's commit, the base of
-   the next measure), each with its `study/` directory. The
+   the call alone), `renyi_stage2b` (e87f3e1, stage 2b's commit),
+   `renyi_stage2c_v1` (stage 2c's first build, the release out of line
+   for every value, rejected) and `renyi_stage2c` (stage 2c's commit,
+   the base of the next measure), each with its `study/` directory. The
    road is months long (AU58); the gate is decided on the measure at
    the end.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
@@ -4533,6 +4549,51 @@ order: stage 2c (the frees in place: the last release of a record walks
 its fields in the generated code, `rt_drop_at` only for a nested
 collection), then the natives' entry and the glue.
 
+**Stage 2c as built (decision AW10, 2026-10-12).** The study's item
+(2c). `release_in_place` in `value.rs` releases a value by its tag, as
+the generated code's release in place does (decision AU32), inlined at
+every site: a plain value costs a tag test, a shared block has its
+count lowered in place, and only the last holder goes out of line
+(`release_last`): of a record or a variant to `Composite::free_block`,
+which releases the fields the same way and frees the block; of a list
+to its elements released the same way and the vector freed empty; of
+anything else, and a big Integer, to `drop_in_place`. `rt_drop_at` and
+`Pinned::truncate_values` go through it (the generated code of both
+tiers, every frame's leave); the interpreter's other drops and the
+natives' stay Rust's drop glue, whose remaining calls are stage 3's.
+The walk is in the VM's Rust rather than in the generated code, as the
+study had it: one loop for every site, no code grown, the same cost per
+value. The study's numbers came from the checker's run on `bodies.ry`
+instrumented for the day (the classes of the fields and the elements
+the frees drop; in AW10). No test is added: every program frees its
+values, and the corpus, the conformance suite on both tiers, the
+sandbox's memory budget and the four judges hold the change. The
+measure, and what it found: by instructions the walk costs nearly what
+the glue cost, the check row 2,301.9 to 2,296.2 (-0.2%; the
+study's estimate 3.2%), the glue of `Value` 11,647,789 to
+6,030,437 calls but the counts and drops with the VM's own
+307.9 to 302.1 (-1.9%): the frees' cost is
+the inspection of every field and element and the deallocation, not
+the glue's dispatch, which the study had taken for it; what the walk
+removes is the glue's indirect branch per field, the synchronous row's
+indirect branches 17.3 to 13.3 million on the
+self-check and AT1's estimate 8,299.5 to 8,192.5 (-1.3%),
+which keeps the stage by AT1's rule and by the owner's rule for a
+marginal one. The parse row -0.2%, the compile row
+-0.7%, the image row -0.4%; the ratios by instructions
+5.20, 3.30 and 10.42. Since stage 0 the
+check row 2,889.9 to 2,296.2, -20.5%; stage 2 in all 2,527.2 to
+2,296.2. The table is in AW10. A first build, one function out of
+line for every value, cost the check row 3.4% more (its prologue on
+every plain field) and is kept in the lane as `renyi_stage2c_v1`. Next
+in AW1's order: stage 3, the natives' entry and the glue (a second
+entry per native answering in place through AK1's registration API,
+the standard library's hot natives first; `status` and `into_plain` off
+the path; the glue's 6,030,437 remaining calls, from `rt_compare`,
+`call_pure_from_stack`, `Vm::binary`, `rt_iter_init`, `rt_call_typed`
+and the lists Rust's drops still free, each dropping its operands
+through Rust).
+
 ## The representation items: the design study (session 11)
 
 **What the owner ordered (AU20)**: after the template tier's follow-ups
@@ -6181,6 +6242,10 @@ holds between calls.
   `native/runtime.rs` (code format 19; `tools/image_census.py` reads
   the pair kinds' type); the two tests; the measure in AW9 and in
   "Stage 2b as built".
+- Stage 2c (decision AW10, the commit after e87f3e1): `release_in_place`,
+  `release_last` and `Composite::free_block` in `value.rs`, `rt_drop_at`
+  in `native/runtime.rs` and `Pinned::truncate_values` in `pinned.rs`
+  through them; the measure in AW10 and in "Stage 2c as built".
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

@@ -7120,3 +7120,110 @@ A candidate seen on the way, not decided: `rt_resume_range` refuses a
 finished range iterator, so a function with two loops in sequence is
 never entered at the second header from the interpreter. Next in AW1's
 order: stage 2c, the frees in place.
+
+**AW10. Stage 2c of the new backend: the frees in place.** The third
+item of stage 2 in AW1's order (the study's item (2c)), on 2026-10-12,
+measured as AW1 prescribes against stage 2b's binary (e87f3e1). The
+last holder of a record freed its block through Rust's drop glue:
+`Composite::free` dropped the fields as a slice, a call of the glue of
+`Value` per field, which matched the tag through a jump table and, for
+most fields, did nothing; a list's last holder did the same for its
+elements through the drop of `Rc<Vec<Value>>`; `rt_drop_at`, which the
+generated code calls for the last reference it releases in place, and
+the stack's truncate went through the glue for the value itself. The
+glue was called 11,647,789 times on the check row, 123.5 million
+instructions self, from `Rc<Vec<Value>>`'s drop (3,805,425 of the
+calls), `Composite::free` (2,272,022), `rt_compare` (1,225,584),
+`call_pure_from_stack` (795,618), `Vm::binary` (559,604), `rt_drop_at`
+(529,303), `rt_iter_init` (477,068), `rt_call_typed` (423,641) and the
+rest. The checker's run on `bodies.ry`, instrumented for the day: of
+the 3,203,871 fields the records' frees dropped, 708,069 were plain
+values and 907,772 small Integers (a tag test's worth each), 1,151,018
+counted blocks with another holder (a count to lower: 625,807 lists,
+316,473 records, 199,026 variants) and 437,012 the last holder's
+(202,092 records, 159,088 variants, 70,614 lists, 4,199 texts); of the
+3,393,831 elements of the 82,713 lists the VM's own sites freed,
+990,692 were plain, 2,197,214 shared blocks (2,189,471 of them records:
+the checker's lists of bindings, copied when appended) and 192,294 the
+last holder's. The study had the walk in the generated code; it is in
+the VM's Rust, `release_in_place` in `value.rs`, one loop for every
+site and no code grown, with the generated code's cost per value (its
+release in place, decision AU32): a tag test for a plain value, the
+count lowered in place for a shared block, and only the last holder
+going further: of a record or a variant to `Composite::free_block`,
+which releases the fields the same way and frees the block; of a list
+to its elements released the same way and the vector freed empty; of
+anything else, and a big Integer, to `drop_in_place`, the general way.
+The first word of an `Rc` allocation is its strong count, which the
+generated code's release relies on already, and the VM takes no weak
+references. Built twice: the first build had one function out of line
+for every value, and its prologue, paid by every plain field and
+element, cost the check row 3.4% more than the glue (2,380.7 million);
+the second inlines the fast path at every site (`#[inline(always)]`:
+the tag test, the small Integer, the count lowered) and keeps the last
+holder's work out of line (`release_last`), as the generated code's
+release does. `rt_drop_at` and `Pinned::truncate_values` go through it,
+so the generated code of both tiers and every frame's leave do; the
+interpreter's other drops and the natives' stay Rust's, the glue's
+remaining calls being stage 3's (the natives' entry and the glue). No
+test is added: every program frees its values, and the corpus, the
+conformance suite on both tiers, the sandbox's memory budget (the frees
+go through the counting allocator as before) and the four judges hold
+the change. What the measure found: by instructions the walk costs
+nearly what the glue cost. The check row 2,301.9 to 2,296.2 million
+(-0.2%) against the study's estimate of 3.2%: the glue's calls
+11,647,789 to 6,030,437, but the counts and drops category 279.3 to
+219.1 while the VM's own, where the table puts `value.rs`, 28.6 to
+83.0, the two together 307.9 to 302.1 (-1.9%, the row's whole fall);
+`rt_drop_at` 529,303 calls, 152.9 million inclusive to 148.4. The
+frees' cost is the inspection of every field and element and the
+deallocation, which no walk removes, not the glue's dispatch, which the
+study had taken for it. What the walk does remove is the glue's
+indirect branch per field: on the frozen self-check the synchronous JIT
+row's indirect branches 17.3 million to 13.3 (-23.4%), its
+mispredictions 32.5 to 32.4, and the row's estimate 8,299.5 to 8,192.5
+million (-1.3%) on -0.4% by instructions; the stage stays by AT1's rule
+(the estimate falls) and by the owner's rule for a marginal stage (the
+check row within 0.5%, the estimate down). The measure in full
+(callgrind under WSL on the release build for Linux, the images built
+under `valgrind --tool=none`, against stage 2b's binary measured the
+same way in AW9, the reference AU34's 44782aa): the check row 2,301.9
+to 2,296.2 million instructions (-0.2%), the parse row 941.6 to 939.5
+(-0.2%), the compile row 3,834.3 to 3,809.2 (-0.7%); the ratios by
+instructions against the reference's rows (441.6, 284.7 and 365.6)
+5.20, 3.30 and 10.42 against the gate's 3 (5.21, 3.31 and 10.49 after
+AW9); the Rust front end's own rows within 0.2% of stage 2b's (`check`
+173.5, `parse --json` 246.7, `compile` 446.2). The functions on the
+check row: the glue of `Value` 11,647,789 to 6,030,437 calls (123.5 to
+62.6 million self), `release_last` 928,387 calls,
+`Composite::free_block` 650,434 (153.6 million inclusive, against
+`Composite::free`'s 650,434 calls before), `Rc<Vec<Value>>`'s drop
+201,340 calls as before but calling the glue 3,805,425 to 886,989 times
+(the vector empty when its last holder released it in place),
+`rt_drop_at` 529,303 calls (148.4 million inclusive), `mi_malloc`
+1,978,953 to 1,978,953, `mi_free` 1,777,179 to 1,777,179. The check row
+by category, AW9's table against this one, in millions: the counts and
+drops 279.3 to 219.1 and the VM's own 28.6 to 83.0, the records 57.6 to
+57.6, the generated code 982.2 to 982.2, the helpers' glue 85.3 to
+85.3, mimalloc 121.1 to 121.1, the texts and copies 109.0 to 109.0, the
+natives 365.0 to 365.0, the hashing 55.6 to 55.6, the calls through the
+VM's path 6.9 to 6.9, the comparisons 123.8 to 123.8, the load 46.5 to
+46.5, the iterators 40.3 to 40.3. AT1's rows on the frozen self-check
+(`tools/measure_size.sh` under WSL, stage 2b's binary against this
+one): the synchronous JIT row 5,775.8 to 5,750.6 million instructions
+(-0.4%) and 8,299.5 to 8,192.5 by the estimate (-1.3%), its indirect
+branches 17.3 to 13.3 million (-23.4%) and its mispredictions 32.5 to
+32.4, the image row 3,989.5 to 3,972.3 (-0.4%) and 5,846.3 to 5,773.1
+by the estimate (-1.3%), the cached run 4,069.4 to 4,052.1 (-0.4%), the
+interpreter 11,229.7 to 11,181.9 (-0.4%); the image 9,554,000 to
+9,554,000 bytes (unchanged: no generated code changed). The four
+benchmarks and hello by user-space instructions (`perf stat`, the JIT
+synchronous, in millions): `primes` 265.0 to 265.0 (unchanged),
+`strings` 432.5 to 431.9 (-0.1%), `records` 207.0 to 204.2 (-1.4%),
+`json_round_trip` 839.7 to 841.6 (+0.2%), `hello` 5.43 to 5.43
+(unchanged). The four judges byte-equal, the conformance suite 55 of 55
+on both tiers, the template tier's own tests with the tier forced, 398
+tests. Since stage 0 the check row 2,889.9 to 2,296.2 (-20.5%), since
+the study's binary 3,085.3 (-25.6%); stage 2 in all, 2,527.2 to
+2,296.2. Next in AW1's order: stage 3, the natives' entry and the glue,
+where the glue's remaining 6,030,437 calls are.

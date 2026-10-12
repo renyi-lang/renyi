@@ -252,15 +252,18 @@ pub(crate) unsafe extern "C" fn rt_frame_grant(vm: VmPtr, code: usize) -> u32 {
     vm!(vm).frame_grant(code)
 }
 
-/// The release of the value at the address (decision AT6): dropped in
-/// place, which takes one reference from its allocation and frees the
-/// last; the slot is dead after. The generated code of both tiers lowers
-/// a count in place and calls this only for the last reference, the count
-/// raised back to one, and for a big Integer (decisions AU29 and AU32).
+/// The release of the value at the address (decision AT6): released in
+/// place (`release_in_place`, decision AW10: the last holder of a record
+/// or a list releases its fields or its elements by their tags before the
+/// block goes), which takes one reference from its allocation and frees
+/// the last; the slot is dead after. The generated code of both tiers
+/// lowers a count in place and calls this only for the last reference,
+/// the count raised back to one, and for a big Integer (decisions AU29
+/// and AU32).
 pub(crate) unsafe extern "C" fn rt_drop_at(at: *mut Value) {
     // SAFETY: the generated code hands the address of a value on the
     // stack that it reads no more.
-    unsafe { std::ptr::drop_in_place(at) };
+    unsafe { crate::value::release_in_place(at) };
 }
 
 pub(crate) unsafe extern "C" fn rt_pop(vm: VmPtr) {
