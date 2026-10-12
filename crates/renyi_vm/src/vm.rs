@@ -592,6 +592,25 @@ pub(crate) fn unit_slot(program: &Program, ty: TypeId, tag: usize) -> Option<usi
     (tag < variant_count(meta)).then_some(base + tag)
 }
 
+/// Whether a `Construct` of the type makes a plain record in place: a
+/// record type without a refinement to check, and not the date, whose
+/// construction validates (decision AU27). Such a construction cannot
+/// fail, which the generated code relies on to call a helper without a
+/// status (decision AW12).
+pub(crate) fn plain_record_type(program: &Program, ty: TypeId) -> bool {
+    let meta = program.types.meta(ty);
+    matches!(meta.shape, TypeShape::Record(_))
+        && meta.refinements.is_empty()
+        && Some(ty) != program.date
+}
+
+/// Whether a `ConstructVariant` with fields of the type makes the variant
+/// in place, as `plain_record_type` says for a record: no refinement to
+/// check, so it cannot fail (decisions AU27 and AW12).
+pub(crate) fn plain_variant_type(program: &Program, ty: TypeId) -> bool {
+    program.types.meta(ty).refinements.is_empty()
+}
+
 impl<'p> Vm<'p> {
     pub fn new(program: &'p Program, mut options: Options) -> Vm<'p> {
         let tables = tables_of(program, &options.registry);
@@ -2535,11 +2554,7 @@ impl<'p> Vm<'p> {
         ty: TypeId,
         count: usize,
     ) -> Result<Value, Interrupt> {
-        let meta = self.program.types.meta(ty);
-        if matches!(meta.shape, TypeShape::Record(_))
-            && meta.refinements.is_empty()
-            && Some(ty) != self.program.date
-        {
+        if plain_record_type(self.program, ty) {
             let record = Composite::from_top(&mut self.stack, count, ty, usize::MAX);
             return Ok(Value::Record(record));
         }
@@ -2555,7 +2570,7 @@ impl<'p> Vm<'p> {
         tag: usize,
         count: usize,
     ) -> Result<Value, Interrupt> {
-        if count > 0 && self.program.types.meta(ty).refinements.is_empty() {
+        if count > 0 && plain_variant_type(self.program, ty) {
             let variant = Composite::from_top(&mut self.stack, count, ty, tag);
             return Ok(Value::Variant(variant));
         }

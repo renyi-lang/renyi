@@ -544,6 +544,44 @@ pub(crate) unsafe extern "C" fn rt_construct_variant(
     status(vm, result)
 }
 
+/// `Construct` of a plain record type (`plain_record_type`): the record
+/// made in place of its fields, which cannot fail, so there is no
+/// `Result`, no status and no pc (decision AW12); under a provenance
+/// guard the fields' origins come off onto the record, as `rt_construct`
+/// lifts them.
+pub(crate) unsafe extern "C" fn rt_construct_plain(vm: VmPtr, ty: usize, fields: u32) {
+    let vm = vm!(vm);
+    if vm.guarding {
+        let fields = vm.pop_n(fields as usize);
+        let (origins, fields) = plain_all(fields);
+        let record = Value::record(ty, fields).guarded(origins);
+        vm.stack.push(record);
+        return;
+    }
+    let record = Composite::from_top(&mut vm.stack, fields as usize, ty, usize::MAX);
+    vm.stack.push(Value::Record(record));
+}
+
+/// `ConstructVariant` with fields of a type without refinements
+/// (`plain_variant_type`), as `rt_construct_plain` makes a record.
+pub(crate) unsafe extern "C" fn rt_construct_variant_plain(
+    vm: VmPtr,
+    ty: usize,
+    tag: u32,
+    fields: u32,
+) {
+    let vm = vm!(vm);
+    if vm.guarding {
+        let fields = vm.pop_n(fields as usize);
+        let (origins, fields) = plain_all(fields);
+        let variant = Value::variant(ty, tag as usize, fields).guarded(origins);
+        vm.stack.push(variant);
+        return;
+    }
+    let variant = Composite::from_top(&mut vm.stack, fields as usize, ty, tag as usize);
+    vm.stack.push(Value::Variant(variant));
+}
+
 pub(crate) unsafe extern "C" fn rt_field(
     vm: VmPtr,
     code: usize,
@@ -805,12 +843,19 @@ pub(crate) unsafe extern "C" fn rt_compare(
     }
     let right = vm.pop();
     let left = vm.pop();
-    let result = vm.binary_values(op, left, right);
-    let status = status(vm, result);
-    if status == CONTINUE {
-        BOXED
-    } else {
-        status
+    match vm.binary_values(op, left, right) {
+        Ok(value) => {
+            // the boxed answer pushed here, no `status` between (decision
+            // AW12): `BOXED`, or `FAILURE` for a failure value
+            let failed = value.is_failure();
+            vm.stack.push(value);
+            if failed {
+                FAILURE
+            } else {
+                BOXED
+            }
+        }
+        Err(error) => interrupt(vm, error),
     }
 }
 
@@ -1378,8 +1423,21 @@ pub(crate) unsafe extern "C" fn rt_iter_next(vm: VmPtr, base: usize, slot: u32) 
     }
 }
 
+/// `ListPush`: a plain item pushed onto a plain list where the list lies,
+/// with no unwrapping, no origins and no `Result` between (decision
+/// AW12); a guarded value, or a holder that is no list, goes through
+/// `op_list_push` as before.
 pub(crate) unsafe extern "C" fn rt_list_push(vm: VmPtr, pc: u32) -> i32 {
     let vm = vm!(vm);
+    let item = vm.pop();
+    if !item.is_guarded() {
+        let at = vm.stack.len() - 1;
+        if let Value::List(list) = &mut vm.stack[at] {
+            Rc::make_mut(list).push(item);
+            return CONTINUE;
+        }
+    }
+    vm.stack.push(item);
     vm.sync_pc(pc);
     let result = vm.op_list_push();
     status(vm, result)
@@ -2013,6 +2071,16 @@ impl Vm<'_> {
     /// The loop iterator over a collection value (the interpreter's
     /// `IterInit`).
     pub(crate) fn iterator_of(&mut self, source: Value) -> Result<Value, Interrupt> {
+        // a plain list iterates as it is: no origins, no unwrapping, no
+        // special, no listing (decision AW12)
+        let source = match source {
+            Value::List(items) => {
+                return Ok(Value::Native(Rc::new(Native::Iterator(
+                    crate::value::ListIter::new(items),
+                ))));
+            }
+            other => other,
+        };
         let program = self.program;
         let origins = source.origins();
         let plain = source.into_plain();
@@ -2367,6 +2435,11 @@ pub const HELPERS: &[(&str, *const u8)] = &[
     ("rt_make_pair", rt_make_pair as *const u8),
     ("rt_make_range", rt_make_range as *const u8),
     ("rt_construct", rt_construct as *const u8),
+    ("rt_construct_plain", rt_construct_plain as *const u8),
+    (
+        "rt_construct_variant_plain",
+        rt_construct_variant_plain as *const u8,
+    ),
     ("rt_construct_variant", rt_construct_variant as *const u8),
     ("rt_field", rt_field as *const u8),
     ("rt_load_field", rt_load_field as *const u8),

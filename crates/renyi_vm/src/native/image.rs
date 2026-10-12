@@ -88,8 +88,9 @@ const PART_ALIGN: usize = 16;
 /// with their type in a hand-back point (decision AW9). 20: a native's
 /// in-place entry called through `NativeState::in_place`, and the lean
 /// helpers `rt_text_contains` and `rt_list_contains` gone (decision
-/// AW11).
-pub const CODE_FORMAT: u32 = 20;
+/// AW11). 21: `rt_construct_plain` and `rt_construct_variant_plain`
+/// among the helpers, without a status (decision AW12).
+pub const CODE_FORMAT: u32 = 21;
 
 /// The extension of an image file.
 pub const EXTENSION: &str = "ryi";

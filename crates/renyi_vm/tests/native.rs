@@ -544,6 +544,68 @@ end
 }
 
 #[test]
+fn plain_builders_lift_the_origins_of_guarded_fields_as_the_general_helpers_do() {
+    // a plain record or variant is built through a helper without a status
+    // (decision AW12), a plain item pushed onto a plain list where it lies
+    // and a loop takes a plain list as it is; under a provenance guard the
+    // fields' origins come off onto the value as before, a guarded item
+    // takes the general push and a guarded list the general iterator, and
+    // the sink alone may print them: machine code prints what the
+    // interpreter prints
+    let dir = scratch("plain-builders");
+    std::fs::write(format!("{dir}/greeting.txt"), "hello").expect("the data file");
+    let source = format!(
+        r#"module demo
+  purpose: Records, variants and collected lists of guarded data on machine code (decision AW12).
+
+import std.console
+import std.filesystem exposing FileError, Path
+
+type Note
+  purpose: A text with a count.
+  has body: Text
+  has times: Integer
+end
+
+type Shape is one of
+  purpose: A few shapes.
+  Dot
+  Line(length: Integer)
+end
+
+function measure(shape: Shape) returns Integer
+  purpose: The length of a line, nothing for a dot.
+
+  match shape
+    when Dot then return 0
+    when Line(length) then return length
+  end
+end
+
+public function main() or fails with FileError needs console, filesystem.read("{dir}") only to console
+  purpose: Build notes and lines from the secret and print what they add up to through the sink.
+
+  let secret be filesystem.read_text(Path("{dir}/greeting.txt")) otherwise fail
+  let turns be [1, 2, 3]
+  let notes be for each turn in turns collect Note(body: secret, times: turn)
+  let lines be for each note in notes collect Line(length: note.body.length() + note.times)
+  let plain be for each turn in turns collect Note(body: "plain", times: turn)
+  let mutable total be 0
+  for each line in lines
+    change total to total + measure(line)
+  end
+  let secret_times be for each note in notes sum note.times
+  let plain_times be for each note in plain sum note.times
+  console.print("{{notes.length()}} {{total}} {{secret_times}} {{plain_times}}")
+end
+"#
+    );
+    let (outcome, printed) = both_ways(&source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(printed, "3 21 6 6\n");
+}
+
+#[test]
 fn recursion_past_the_depth_of_native_frames_carries_on_in_the_interpreter() {
     let source = r#"module demo
   purpose: A thousand nested calls, more than the machine stack takes natively.

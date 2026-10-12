@@ -55,8 +55,14 @@ receiver's place with the arguments consumed, no scratch vector, no
 2,203.9, -4.0%; the ratio 5.20 to 4.99); on the way, a
 Windows defect since AT5 fixed (a2c4685: every run of an image there
 copied its code section, the mapping refused for want of execute access
-on the file's handle). Next is stage 3b, `status` and `into_plain` off
-the path (the start-here item 1). The session's record is "Done in
+on the file's handle); and stage 3b built and measured (decision
+AW12: `status` and `into_plain` off the path, a plain record or
+variant built through a helper without a status on both tiers, a
+plain item pushed onto a plain list where it lies, the guard tests in
+place; the check row 2,203.9 to 2,099.1, -4.8%; the ratio 4.99
+to 4.75), which completes stage 3. Next is stage 4, field-less
+variants compared in place, `match` by a table and the iterator in two
+slots (the start-here item 1). The session's record is "Done in
 session 14" below.
 Session 13, in the cloud environment, had as its last work the icon
 and the wordmark, at the owner's request after the
@@ -360,10 +366,13 @@ and push there directly.
    (decision AW11, "Stage 3a as built": the natives' in-place entry, a
    second entry per native the generated code of both tiers calls
    directly through the VM's table, answering in the receiver's place;
-   the check row to 2,203.9, -4.0%; the ratio to 4.99).
-   Next is stage 3b (`status` and `into_plain` off the path, the
-   study's item (3d)), stage 4, the checker's own cuts between the
-   stages, stages
+   the check row to 2,203.9, -4.0%; the ratio to 4.99); and stage 3b
+   (decision AW12, "Stage 3b as built": `status` and `into_plain` off
+   the path; the check row to 2,099.1, -4.8%; the ratio to
+   4.75), which completes stage 3.
+   Next is stage 4 (two values of a field-less variant type compared
+   in place, `match` by a table, the iterator in two slots), the
+   checker's own cuts between the stages, stages
    5 and 6 last. Each stage: the code, the gates of item 3, the measure
    (AU58's: the checker's image run under callgrind with the study's
    table by category beside it, AT1's rows, the benchmarks by
@@ -394,8 +403,9 @@ and push there directly.
    the call alone), `renyi_stage2b` (e87f3e1, stage 2b's commit),
    `renyi_stage2c_v1` (stage 2c's first build, the release out of line
    for every value, rejected), `renyi_stage2c` (f48282f, stage 2c's
-   commit) and `renyi_stage3a` (stage 3a's commit, the base of the next
-   measure), each with its `study/` directory. The
+   commit), `renyi_stage3a` (9828e2e, stage 3a's commit) and
+   `renyi_stage3b` (stage 3b's commit, the base of the next measure),
+   each with its `study/` directory. The
    road is months long (AU58); the gate is decided on the measure at
    the end.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
@@ -4678,6 +4688,37 @@ and `into_plain` inlined with its fast path a tag test,
 816,882 calls from `op_list_push`, `iterate` and
 `iterator_of`), then stage 4.
 
+**Stage 3b as built (decision AW12, 2026-10-12).** The last item of
+stage 3 in AW1's order: `status` and `into_plain` off the path. In
+`value.rs`, `into_plain` and `guarded` test in place (`#[inline]`) and
+keep the unwrapping and the wrapping out of line (`unguarded`,
+`with_origins`); `origins` and `plain` are inlined. In `vm.rs`,
+`plain_record_type` (a record type without refinements, not the date)
+and `plain_variant_type` (no refinements), which `construct_from_top`
+and `construct_variant_from_top` use too. In `native/runtime.rs`,
+`rt_construct_plain` and `rt_construct_variant_plain` (the value built
+in place of its fields and pushed, no `Result`, no status, no pc; the
+origins lifted under a guard as the general helpers lift them),
+`rt_list_push` pushing a plain item onto a plain list where it lies
+(one tag test each, `op_list_push` for the rest), `rt_compare`'s
+general path pushing its boxed answer itself, and `iterator_of` taking
+a plain list as it is; the two helpers in `HELPERS`. In
+`native/codegen.rs`, the two helpers in `SIGNATURES` (no result) and
+`STACK_SAFE`, and `Op::Construct` and `Op::ConstructVariant` (with
+fields) calling them without a status test when the type is plain; the
+same in `native/template/mod.rs` through `plain`. Code format 21. The
+corpus, the conformance suite on both tiers, the four judges,
+`tests/guards.rs` and a new test in `tests/native.rs`, `plain_builders_lift_the_origins_of_guarded_fields_as_the_general_helpers_do`, which runs a guarded program (records and variants with fields built from the secret, collected lists, loops over a guarded list and a plain one) on machine code against the interpreter hold the paths. The measure:
+the check row 2,203.9 to 2,099.1 (-4.8%), the ratios by
+instructions 4.75, 3.09 and 9.66; `status`
+1,236,928 to 108,008 calls, `into_plain`
+816,882 to 0; the helper glue category
+74.0 to 3.7 million; AT1's synchronous estimate 8,019.3 to
+7,800.2 (-2.7%). The table is in AW12. Next in AW1's
+order: stage 4 (two values of a field-less variant type compared in
+place, `match` by a table, the iterator in two slots), then the
+checker's own cuts, stages 5 and 6.
+
 ## The representation items: the design study (session 11)
 
 **What the owner ordered (AU20)**: after the template tier's follow-ups
@@ -6341,6 +6382,13 @@ holds between calls.
   `natives/prelude.rs`, `take_or_clone` in `natives/mod.rs`, code format
   20, the test in `tests/extension.rs`, the section of
   `docs/extensions.md`; the measure in AW11 and in "Stage 3a as built".
+- Stage 3b (decision AW12, the commit after 9828e2e): `into_plain`,
+  `guarded`, `unguarded` and `with_origins` in `value.rs`,
+  `plain_record_type` and `plain_variant_type` in `vm.rs`,
+  `rt_construct_plain`, `rt_construct_variant_plain`, `rt_list_push`,
+  `rt_compare` and `iterator_of` in `native/runtime.rs`, the helpers
+  and the two ops in `native/codegen.rs` and `native/template/mod.rs`,
+  code format 21; the measure in AW12 and in "Stage 3b as built".
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

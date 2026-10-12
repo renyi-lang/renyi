@@ -7378,3 +7378,105 @@ with the tier forced, 399 tests. Since stage 0 the check row 2,889.9 to
 2,203.9 (-23.7%), since the study's binary 3,085.3 (-28.6%). Next in
 AW1's order: stage 3b, `status` and `into_plain` off the path (the
 study's item (3d)), then stage 4.
+
+**AW12. Stage 3b of the new backend: `status` and `into_plain` off the
+path.** The last item of stage 3 in AW1's order, on 2026-10-12,
+measured as AW1 prescribes against stage 3a's binary (9828e2e). Every
+helper that answered a value went through `status`: a `Result` built
+and matched, the value pushed and tested for a failure, 1,236,928 calls
+on the check row after AW11 (42.1 million instructions self), from
+`rt_construct` (410,681 calls, 34.1 million self),
+`rt_construct_variant` (280,398, 23.3), `rt_compare`'s general path
+(279,802 calls through `status`, of the helper's 521,364),
+`rt_list_push` (158,109, with `op_list_push` 15.6 million) and the
+rest. And every value that might carry a guard went through
+`into_plain` out of line, 816,882 calls (27.0 million), from
+`op_list_push` (twice per push), `iterate` and `iterator_of` (once each
+per loop), and through `guarded` (263,285 calls, 5.0 million), where
+nearly every value is plain and nearly every origin is none: a call, a
+match and a move each, for a test of one byte. The stage takes the glue
+off the path where the answer cannot fail or the value is plain. (1)
+`Value::into_plain` and `Value::guarded` test in place and keep the
+unwrapping and the wrapping out of line (`unguarded`, `with_origins`),
+and `origins` and `plain` are inlined. (2) A `Construct` of a plain
+record type (a record without a refinement to check, not the date,
+whose construction validates: `plain_record_type`) and a
+`ConstructVariant` with fields of a type without refinements
+(`plain_variant_type`) cannot fail, so both tiers call
+`rt_construct_plain` and `rt_construct_variant_plain`, which build the
+value in place of its fields and push it, with no `Result`, no status
+to test and no pc; under a provenance guard they lift the fields'
+origins onto the value as the general helpers do; the interpreter's own
+path and the general helpers are unchanged. (3) `rt_list_push` pushes a
+plain item onto a plain list where the list lies, one tag test each,
+with no unwrapping, no origins and no `Result` between; a guarded value
+or a holder that is no list goes through `op_list_push` as before. (4)
+`rt_compare`'s general path pushes its boxed answer itself. (5)
+`iterator_of` takes a plain list as it is, with no origins, no
+unwrapping, no special and no listing. Code format 21 (two helpers
+more). The tests: the corpus, the conformance suite on both tiers, the
+four judges and `tests/guards.rs` (the guarded paths of the helpers)
+hold the stage, with a new test in `tests/native.rs`,
+`plain_builders_lift_the_origins_of_guarded_fields_as_the_general_helpers_do`,
+which runs a guarded program (records and variants with fields built
+from the secret, collected lists, loops over a guarded list and a plain
+one) on machine code against the interpreter. What the measure found:
+the check row 2,203.9 to 2,099.1 million (-4.8%); `status` 1,236,928 to
+108,008 calls (42.1 to 3.7 million self), `into_plain` 816,882 to 0
+(27.0 to 0.0), `guarded` 263,285 to 0, `rt_construct` 410,681 to 28
+with `rt_construct_plain` 410,653 (26.7 million self against
+`rt_construct`'s 34.1 before), `rt_construct_variant` 280,398 to 42
+with `rt_construct_variant_plain` 280,356 (19.1 against 23.3),
+`rt_list_push` 3.2 to 8.3 million self with `op_list_push` 158,109 to 0
+calls, `iterator_of` 19.1 to 11.2 million with `iterate` 238,534 to 0
+calls; the helper glue category 74.0 to 3.7 million, the records 57.6
+to 46.0, the iterators 40.3 to 25.3, the comparisons 123.8 to 131.6,
+the generated code 986.4 to 981.3. The measure in full (callgrind under
+WSL on the release build for Linux, the images built under `valgrind
+--tool=none`, against stage 3a's binary measured the same way in AW11,
+the reference AU34's 44782aa): the check row 2,203.9 to 2,099.1 million
+instructions (-4.8%), the parse row 905.1 to 878.7 (-2.9%), the compile
+row 3,672.4 to 3,531.7 (-3.8%); the ratios by instructions against the
+reference's rows (441.6, 284.7 and 365.6) 4.75, 3.09 and 9.66 against
+the gate's 3 (4.99, 3.18 and 10.04 after AW11); the Rust front end's
+own rows within 0.1% of stage 3a's (`check` 173.4, `parse --json`
+246.7, `compile` 446.2). The functions on the check row: `status`
+1,236,928 to 108,008 calls (42.1 to 3.7 million self), `into_plain`
+816,882 to 0 (27.0 to 0.0; `unguarded` 0 calls), `guarded` 263,285 to 0
+(5.0 to 0.0; `with_origins` 0), `rt_construct` 410,681 to 28 (71.8 to
+0.0 million inclusive) and `rt_construct_plain` 410,653 (50.4
+inclusive, 26.7 self), `rt_construct_variant` 280,398 to 42 (46.5 to
+0.0) and `rt_construct_variant_plain` 280,356 (32.8 inclusive, 19.1
+self), `rt_list_push` 158,109 to 158,109 (51.0 to 20.9 inclusive) with
+`op_list_push` 158,109 to 0, `rt_compare` 521,364 to 521,364 (127.5 to
+125.8 inclusive), `rt_iter_init` 74.1 to 43.3 inclusive with `iterate`
+238,534 to 0 calls, the shims 1,050,545 calls (133.2 million self), the
+glue of `Value` 3,933,657 to 3,775,548 (33.3 to 32.5), `mi_malloc`
+1,978,955 to 1,978,955, `mi_free` 1,777,181 to 1,777,181. The check row
+by category, AW11's table against this one, in millions: the natives
+307.3 to 297.2, the helpers' glue 74.0 to 3.7, the counts and drops
+190.2 to 189.4, the VM's own 89.6 to 90.0, the records 57.6 to 46.0,
+the generated code 986.4 to 981.3, mimalloc 121.0 to 121.1, the texts
+and copies 103.8 to 103.8, the hashing 55.8 to 55.7, the calls through
+the VM's path 6.9 to 6.9, the comparisons 123.8 to 131.6, the load 46.4
+to 46.4, the iterators 40.3 to 25.3. AT1's rows on the frozen
+self-check (`tools/measure_size.sh` under WSL, stage 3a's binary
+against this one): the synchronous JIT row 5,613.6 to 5,456.5 million
+instructions (-2.8%) and 8,019.3 to 7,800.2 by the estimate (-2.7%),
+its indirect branches 12.7 to 11.9 million (-6.6%) and its
+mispredictions 31.9 to 31.9, the image row 3,828.9 to 3,694.0 (-3.5%)
+and 5,617.0 to 5,486.6 by the estimate (-2.3%), the cached run 3,908.7
+to 3,774.1 (-3.4%), the interpreter 11,098.7 to 11,204.0 (+0.9%, the interpreter's own
+paths with the tests inlined, not measured further: the tiers' rows
+are AT1's measure); the
+image 9,601,808 to 9,567,648 bytes (-0.4%). The four benchmarks and
+hello by user-space instructions (`perf stat`, the JIT synchronous, in
+millions): `primes` 265.2 to 265.2 (unchanged), `strings` 453.7 to
+450.7 (-0.7%), `records` 168.7 to 157.1 (-6.9%), `json_round_trip`
+841.2 to 841.1 (within 0.05%), `hello` 5.44 to 5.44 (unchanged). The
+four judges byte-equal, the conformance suite 55 of 55 on both tiers,
+the template tier's own tests with the tier forced, 400 tests. Since
+stage 0 the check row 2,889.9 to 2,099.1 (-27.4%), since the study's
+binary 3,085.3 (-32.0%); stage 3 in all, 2,296.2 to 2,099.1. Next in
+AW1's order: stage 4, two values of a field-less variant type compared
+in place, `match` by a table, the iterator in two slots.

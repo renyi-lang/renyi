@@ -22,7 +22,7 @@ branches of the repository.
 | M4 | the library and the package manager: packages, `std.process`, the foreign function interface | done (stage 15) |
 | M5 | the integration: the registration API, the Python bridge and binder, the resident world, the language server, `serve --watch`, the embedding API | done (stages 18 and 19) |
 | M6 | ahead-of-time code: machine code for the bytecode, the baseline JIT, the template tier, `renyi build` images and self-contained executables | the machine code exists (stages 16, 21, 22, 24, 26); no WASM or C API target |
-| Self-hosting | the compiler written in Renyi (lexer, parser, checker, emitter) held equal to the Rust toolchain by the judges; the binary switches to it when it is within 3 times the Rust front end's time (decision AU35 ii) | the compiler exists and is judged (stages 11, 12, 14, 15); the speed round is under way (stages 25 to 28; stage 29, a new backend for the VM, has its study, its stages 0 and 1, the character tables with the hasher, stage 2 and stage 3a, AW1 to AW11) |
+| Self-hosting | the compiler written in Renyi (lexer, parser, checker, emitter) held equal to the Rust toolchain by the judges; the binary switches to it when it is within 3 times the Rust front end's time (decision AU35 ii) | the compiler exists and is judged (stages 11, 12, 14, 15); the speed round is under way (stages 25 to 28; stage 29, a new backend for the VM, has its study, its stages 0 and 1, the character tables with the hasher, stages 2 and 3, AW1 to AW12) |
 
 ## 2. The stages, in order
 
@@ -356,8 +356,15 @@ where one decided, the status. The dates are those of the decisions.
     vector, no `Result`, no status and no push on the way, the
     standard library's 26 hot natives first; the check row 2,296.2 to
     2,203.9 million (-4.0%); the ratio by instructions 5.20 to
-    4.99. Stage 3b, `status` and `into_plain` off the path,
-    is next.
+    4.99. Stage 3b done (session 14, 2026-10-12, decision AW12):
+    `status` and `into_plain` off the path, a plain record or variant
+    built through a helper without a status on both tiers, a plain
+    item pushed onto a plain list where it lies, the guard tests in
+    place with the wrapping out of line, a plain list iterated as it
+    is; the check row 2,203.9 to 2,099.1 million (-4.8%); the
+    ratio by instructions 4.99 to 4.75. Stage 3 is done.
+    Stage 4, field-less variants compared in place, `match` by a
+    table, the iterator in two slots, is next.
 
 30. **The icon and the wordmark** (session 13, 2026-10-11, done;
     decision AV1). The owner asked for an icon that does not read as the
@@ -398,7 +405,7 @@ state of each line.
   the four benchmarks; every stage's numbers are in its decision entry.
   Stage 29, a new backend, has its design study (AU58, AW1) and its
   stages 0 and 1, the character tables with the hasher, stage 2 and
-  stage 3a (AW2 to AW11); stage 3b, the glue off the path, is next.
+  stage 3 (AW2 to AW12); stage 4 is next.
 - **E. Packages, the FFI and Python**: stages 15, 18. Done; candidates
   not decided: record types from dataclasses in the binder, a deadline
   per Python call, one worker across a test run.
@@ -439,13 +446,15 @@ to 5.21), and stage 2c is done (AW10, 2026-10-12: the frees in place,
 the check row to 2,296.2, -0.2%, AT1's estimate -1.3%,
 the ratio to 5.20), and stage 3a is done (AW11, 2026-10-12: the
 natives' in-place entry, the check row to 2,203.9, -4.0%, the
-ratio to 4.99), then the glue off the path (3b), stage 4, the
+ratio to 4.99), and stage 3b is done (AW12, 2026-10-12: `status` and
+`into_plain` off the path, the check row to 2,099.1, -4.8%, the
+ratio to 4.75), then stage 4, the
 checker's own cuts between the stages, stages 5 and
 6 last; each measured by the checker's run under callgrind with the
 table by category, the ratio of AU36 (iii), AT1's rows where the tiers
 change, the four judges and the conformance suite on both tiers, kept
 by AT1's rule, toward the gate of AU35 (ii) at 3 times on the check
-row (4.99 by instructions after stage 3a); then, when the ratio is
+row (4.75 by instructions after stage 3b); then, when the ratio is
 within 3, the switch of the binary's front end to the compiler written
 in Renyi. Candidates beside it, none decided: the emitter's own round
 for the compile row, the Rust front end's name sets as bits, the C

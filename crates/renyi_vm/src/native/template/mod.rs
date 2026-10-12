@@ -49,7 +49,7 @@ use crate::value::layout::{
     RECORD_TY, SIZE, TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_GUARDED, TAG_INTEGER, TAG_LIST,
     TAG_NOTHING, TAG_RECORD, TAG_SMALL_TEXT, TAG_VARIANT,
 };
-use crate::vm::{unit_slot, CallKind, Entry, ReadInPlace};
+use crate::vm::{plain_record_type, plain_variant_type, unit_slot, CallKind, Entry, ReadInPlace};
 use x64::{host_abi, Abi, Asm, Cond, Label, Reg};
 
 /// The code of one code object: its bytes, which hold no address, the
@@ -1474,6 +1474,17 @@ impl Gen<'_> {
                 );
             }
             Op::Construct { ty, fields } => {
+                if plain_record_type(self.program, *ty) {
+                    // a plain record made in place cannot fail: no status
+                    // to test and no pc (decision AW12)
+                    self.plain(
+                        "rt_construct_plain",
+                        &[Arg::Vm, Arg::Imm(*ty as u64), Arg::Imm(*fields as u64)],
+                        *fields as usize,
+                        1,
+                    );
+                    return;
+                }
                 self.helper(
                     "rt_construct",
                     &[
@@ -1518,6 +1529,23 @@ impl Gen<'_> {
                 self.store_len();
             }
             Op::ConstructVariant { ty, tag, fields } => {
+                if *fields > 0 && plain_variant_type(self.program, *ty) {
+                    // a variant with fields of a type without refinements,
+                    // made in place, cannot fail: no status to test and no
+                    // pc (decision AW12)
+                    self.plain(
+                        "rt_construct_variant_plain",
+                        &[
+                            Arg::Vm,
+                            Arg::Imm(*ty as u64),
+                            Arg::Imm(*tag as u64),
+                            Arg::Imm(*fields as u64),
+                        ],
+                        *fields as usize,
+                        1,
+                    );
+                    return;
+                }
                 self.helper(
                     "rt_construct_variant",
                     &[

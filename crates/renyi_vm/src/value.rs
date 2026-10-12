@@ -759,6 +759,7 @@ impl Value {
 
     /// The guarded capabilities the value came through (decision P3), one
     /// bit each; `0` for a plain value. A `Failure` answers for its error.
+    #[inline]
     pub fn origins(&self) -> u64 {
         match self {
             Value::Guarded(guarded) => guarded.0 | guarded.1.origins(),
@@ -768,6 +769,7 @@ impl Value {
     }
 
     /// The value under its guard wrappers.
+    #[inline]
     pub fn plain(&self) -> &Value {
         let mut value = self;
         while let Value::Guarded(guarded) = value {
@@ -776,7 +778,20 @@ impl Value {
         value
     }
 
+    /// The value out of its guard wrappers: a plain value, which is nearly
+    /// every value, is itself after one tag test in place, and the
+    /// unwrapping stays out of line (decision AW12).
+    #[inline]
     pub fn into_plain(self) -> Value {
+        if self.is_guarded() {
+            self.unguarded()
+        } else {
+            self
+        }
+    }
+
+    #[inline(never)]
+    fn unguarded(self) -> Value {
         let mut value = self;
         while let Value::Guarded(guarded) = value {
             value = match Rc::try_unwrap(guarded) {
@@ -787,14 +802,23 @@ impl Value {
         value
     }
 
-    /// The value with the origins added. Nothing, a Boolean, a function and
-    /// a native value carry none: a decision taken on guarded data is an
-    /// implicit flow, which guards do not track (`06-runtime-guarantees.md`
-    /// section 3.4). A `Failure` stays outermost and tags its error.
+    /// The value with the origins added: itself when there are none, one
+    /// test in place, the wrapping out of line (decision AW12). Nothing, a
+    /// Boolean, a function and a native value carry none: a decision taken
+    /// on guarded data is an implicit flow, which guards do not track
+    /// (`06-runtime-guarantees.md` section 3.4). A `Failure` stays
+    /// outermost and tags its error.
+    #[inline]
     pub fn guarded(self, origins: u64) -> Value {
         if origins == 0 {
-            return self;
+            self
+        } else {
+            self.with_origins(origins)
         }
+    }
+
+    #[inline(never)]
+    fn with_origins(self, origins: u64) -> Value {
         match self {
             Value::Nothing | Value::Boolean(_) | Value::Function(_) | Value::Native(_) => self,
             Value::Failure(error) => {

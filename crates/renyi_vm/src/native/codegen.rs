@@ -48,7 +48,8 @@ use crate::value::layout::{
 };
 use crate::value::Value;
 use crate::vm::{
-    unit_slot, CallKind, Entry, FieldSite, Frame, GlobalSlot, NativeState, ReadInPlace, Vm,
+    plain_record_type, plain_variant_type, unit_slot, CallKind, Entry, FieldSite, Frame,
+    GlobalSlot, NativeState, ReadInPlace, Vm,
 };
 
 /// Where the VM keeps its stack (decision AR4): the generated code reads
@@ -111,6 +112,8 @@ const RELEASES_INLINE: usize = 8;
 /// program code, as most do, may grow the stack through the frames it
 /// pushes.
 pub(crate) const STACK_SAFE: &[&str] = &[
+    "rt_construct_plain",
+    "rt_construct_variant_plain",
     "rt_clear_slots",
     "rt_record_copy",
     "rt_pair_fits",
@@ -205,6 +208,8 @@ pub const SIGNATURES: &[(&str, &str, char)] = &[
     ("rt_make_range", "pbw", 'i'),
     ("rt_construct", "pzww", 'i'),
     ("rt_construct_variant", "pzwww", 'i'),
+    ("rt_construct_plain", "pzw", 'v'),
+    ("rt_construct_variant_plain", "pzww", 'v'),
     ("rt_field", "pzwww", 'i'),
     ("rt_load_field", "pzwzwww", 'i'),
     ("rt_with", "pww", 'i'),
@@ -3131,6 +3136,17 @@ impl Gen<'_, '_> {
                 }
                 let ty_value = self.usize(*ty);
                 let fields_value = self.u32(*fields as u32);
+                if plain_record_type(self.program, *ty) {
+                    // a plain record made in place cannot fail: no status
+                    // to test and no pc (decision AW12)
+                    self.helper_on_stack(
+                        "rt_construct_plain",
+                        *fields as usize,
+                        &[ty_value, fields_value],
+                    );
+                    self.push_boxed();
+                    return;
+                }
                 let status = self
                     .helper_on_stack(
                         "rt_construct",
@@ -3197,6 +3213,18 @@ impl Gen<'_, '_> {
                 let ty_value = self.usize(*ty);
                 let tag_value = self.u32(*tag as u32);
                 let fields_value = self.u32(*fields as u32);
+                if *fields > 0 && plain_variant_type(self.program, *ty) {
+                    // a variant with fields of a type without refinements,
+                    // made in place, cannot fail: no status to test and no
+                    // pc (decision AW12)
+                    self.helper_on_stack(
+                        "rt_construct_variant_plain",
+                        *fields as usize,
+                        &[ty_value, tag_value, fields_value],
+                    );
+                    self.push_boxed();
+                    return;
+                }
                 let status = self
                     .helper_on_stack(
                         "rt_construct_variant",
