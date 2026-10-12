@@ -22,7 +22,7 @@ branches of the repository.
 | M4 | the library and the package manager: packages, `std.process`, the foreign function interface | done (stage 15) |
 | M5 | the integration: the registration API, the Python bridge and binder, the resident world, the language server, `serve --watch`, the embedding API | done (stages 18 and 19) |
 | M6 | ahead-of-time code: machine code for the bytecode, the baseline JIT, the template tier, `renyi build` images and self-contained executables | the machine code exists (stages 16, 21, 22, 24, 26); no WASM or C API target |
-| Self-hosting | the compiler written in Renyi (lexer, parser, checker, emitter) held equal to the Rust toolchain by the judges; the binary switches to it when it is within 3 times the Rust front end's time (decision AU35 ii) | the compiler exists and is judged (stages 11, 12, 14, 15); the speed round is under way (stages 25 to 28; stage 29, a new backend for the VM, opens with its study) |
+| Self-hosting | the compiler written in Renyi (lexer, parser, checker, emitter) held equal to the Rust toolchain by the judges; the binary switches to it when it is within 3 times the Rust front end's time (decision AU35 ii) | the compiler exists and is judged (stages 11, 12, 14, 15); the speed round is under way (stages 25 to 28; stage 29, a new backend for the VM, has its study and its first stages under way, AW1) |
 
 ## 2. The stages, in order
 
@@ -243,21 +243,39 @@ where one decided, the status. The dates are those of the decisions.
     at the stage's start and 6.9 after AU55. Closed by the owner's
     answers after it (AU58), which open stage 29.
 
-29. **A new backend for the VM, its design study first** (session 13,
-    2026-10-11, opened; decision AU58). The owner's answers after B4:
-    the gate of AU35 (ii) stays at 3 times, 2.3 times away by its own
-    measure (the checker's run from its image 3,080.0 million
-    instructions against three times AU34's `renyi check` of the same
-    file, 442.8 million), which cuts of one to three percent will not
-    cover; the way is a new backend (the calling convention with
-    scalars in registers and a parameter only read passed without a
-    count, the first stage; values unboxed across ops; records laid out
-    as structures; the counts that static ownership elides) with the
-    checker's data structures reshaped to suit it, months of work,
-    planned by a design study before any code: the instructions
-    attributed by category, the design, the stages with an estimate
-    each. Measured as stage 28 was, with a table by category beside.
-    Not begun.
+29. **A new backend for the VM, its design study first** (sessions 13
+    and 14, 2026-10-11, in progress; decisions AU58 and AW1). The
+    owner's answers after B4: the gate of AU35 (ii) stays at 3 times,
+    2.3 times away by its own measure (the checker's run from its image
+    3,085.3 million instructions on session 14's binary against three
+    times AU34's `renyi check` of the same file, 441.6 million), which
+    cuts of one to three percent will not cover; the way is a new
+    backend planned by a design study before any code. The study
+    (session 14, the handoff's section "Stage 29, the new backend: the
+    design study"): the instructions attributed by category (the
+    generated code 32.8%, the counts and drops 14.5%, the natives with
+    their glue 11.6%, mimalloc 8.4%, the hashing 7.1%, the records
+    6.7%), eleven findings (a call costs about 130 instructions besides
+    its body; a third of the frames leave through `rt_truncate` at 329
+    each; one call in nine enters through the VM's path; a record
+    update costs 1,070 and a free 232; the lexer's character classes
+    are three quarters of the hashing), and the road the owner chose
+    (AW1): the Cranelift tier evolved in stages, each measured and
+    judged, stage 0 (the allocator's plain entry, the literal constants
+    in images), stage 1 (the calling convention: a boxed operand unboxed
+    at the site, the leave by the static ownership state, a parameter
+    only read passed borrowed under a flag in the bytecode, the frame
+    record cheaper), stage 2 (the records: `with` by static index,
+    `Done` returned in the caller's slots, the frees in place), stage 3
+    (the natives answering in place, the character tables, the VM's
+    hasher, the glue), stage 4 (field-less variants compared in place,
+    `match` by a table, the iterator in two slots), stages 5 and 6 (the
+    load, the expansion measured again), the checker's own cuts between
+    them; the estimates sum to 1,540 million, 3.5 times the reference
+    with every stage landed, the last part the checker's shape. The
+    gate is measured on the check row alone (AW1 (2)); the compile row
+    (13.25 by instructions) waits on the emitter's own round. Stage 0
+    begun.
 
 30. **The icon and the wordmark** (session 13, 2026-10-11, done;
     decision AV1). The owner asked for an icon that does not read as the
@@ -296,7 +314,8 @@ state of each line.
 - **D. The VM and its speed**: stages 7, 13, 16, 20, 21, 23, 24, 26,
   27 (B3), 29. Measured by AT1's rule on the frozen self-check and by
   the four benchmarks; every stage's numbers are in its decision entry.
-  Stage 29, a new backend, opens with its design study (AU58).
+  Stage 29, a new backend, has its design study (AU58, AW1) and its
+  stages under way, stage 0 first.
 - **E. Packages, the FFI and Python**: stages 15, 18. Done; candidates
   not decided: record types from dataclasses in the binder, a deadline
   per Python call, one worker across a test run.
@@ -314,16 +333,24 @@ state of each line.
 
 ## 4. What is next
 
-Stage 29 (decision AU58): the new backend for the VM, its design study
-first (the instructions of the checker's run attributed by category,
-the design, the stages with an estimate each, put to the owner), then
-its stages one by one, the calling convention first unless the study
-finds otherwise, each judged byte-equal and measured by the checker's
-run under callgrind, the ratio of AU36 (iii) and a table by category,
-toward the gate of AU35 (ii) at 3 times (2.3 times away after stage
-28); then, when the ratio is within 3, the switch of the binary's
-front end to the compiler written in Renyi. Candidates beside it, none
-decided: a hasher of the VM's own for its maps and sets (AU57), the
-loop iterator in two slots, the Rust front end's name sets as bits,
-the expansion of AU50 refined, the C API, the language server's
-completion, the showcase application, the WASM target of M6.
+Stage 29 (decisions AU58 and AW1): the new backend's stages in the
+order the study set and the owner confirmed, stage 0 first (the
+allocator entered by mimalloc's plain functions, a literal module
+constant known to the JIT in an image; a day), then stage 1 in the
+order 1a (a typed parameter's boxed operand unboxed at the call site),
+1c (the frame leave by the static ownership state), 1b (the read-only
+flag per parameter in the bytecode, both emitters, the judges), 1d
+(the frame record cheaper), then the character tables and the VM's
+hasher, stage 2 (2a `with` by static index, 2b `Done` in the caller's
+slots, 2c the frees in place), the natives' in-place entry and the
+glue, stage 4, the checker's own cuts between the stages, stages 5 and
+6 last; each measured by the checker's run under callgrind with the
+table by category, the ratio of AU36 (iii), AT1's rows where the tiers
+change, the four judges and the conformance suite on both tiers, kept
+by AT1's rule, toward the gate of AU35 (ii) at 3 times on the check
+row (6.99 by instructions at the study); then, when the ratio is
+within 3, the switch of the binary's front end to the compiler written
+in Renyi. Candidates beside it, none decided: the emitter's own round
+for the compile row, the Rust front end's name sets as bits, the C
+API, the language server's completion, the showcase application, the
+WASM target of M6.

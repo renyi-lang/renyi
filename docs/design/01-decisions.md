@@ -6202,3 +6202,100 @@ the name kept for screen readers. The social preview reaches GitHub
 through the repository's settings (Settings, General, Social preview),
 an upload only the owner can make. The site's design stays as AU51 (4)
 left it but for the header's brand. (user)
+
+## AW. The new backend (session 14)
+
+**AW1. The design study of the new backend (AU58) and the owner's
+answers: the Cranelift tier evolved in stages, the gate on the check
+row, stage 0 first, the read-only flag in the bytecode, `Done` by a
+convention per function, the natives' in-place entry through AK1's
+API, the character tables with a hasher of the VM's own, the iterator
+in two slots.** The study is the handoff's section "Stage 29, the new
+backend: the design study (session 14)", measured on 2026-10-11 on the
+release build of 7cbbbe0 for Linux under WSL against AU34's binary
+built from 44782aa the same way, by AU58's measure (callgrind on the
+Renyi checker run from its image on `compiler/bodies.ry`, the image
+built under `valgrind --tool=none`, the caches off). The attribution:
+3,085.3 million instructions, of which the generated code 1,011.8
+(32.8%), the counts and drops 448.2 (14.5%), the natives with their
+calling helpers 358.8 (11.6%), mimalloc 258.9 (8.4%), the hashing and
+equality 219.8 (7.1%), the records 208.1 (6.7%), the helpers' glue
+(`status`, `into_plain`) 130.9 (4.2%), the comparisons 124.0 (4.0%),
+the texts and copies 121.1 (3.9%), the calls through the VM's path
+114.1 (3.7%), the load 46.2 (1.5%), the iterators 40.6 (1.3%); the
+parse row 1,256.9 and the compile row 4,844.9 with the same shape; the
+reference's `check` 441.6, `parse --json` 284.7, `compile` 365.6, so
+the ratios by instructions are 6.99, 4.41 and 13.25 against the gate's
+3. The findings: a call of a declared function costs about 130
+instructions besides its body (2,770,541 calls, about 400 million); a
+third of the frames leave through `rt_truncate` at 329 each (917,264
+leaves, 301.8 million inclusive), which drops by the tags at run time
+where the analysis knows most slots are moved out; 306,392 calls enter
+generated code through the VM's path at about 435 each because an
+Integer parameter's operand is boxed at the site, half of them a
+module constant an image cannot know as a literal; a record update
+costs about 1,070 (201,205 updates, 219.0 million) and a record's free
+232 (1,084,633 frees, 251.2 million) while a construct costs 63; every
+allocation goes through mimalloc's aligned entry and 641,578 through
+its generic path; the natives' calling glue is about 150 million and
+the lexer's character classes 409,270 of the run's 555,512 hashed
+lookups; 521,364 comparisons go through the helper, 387,234 of them of
+two values of a field-less variant type; a `for each` allocates an
+iterator (238,534, about 95 million); the generated code's own
+sequences are about 600 million for 55 million ops, the retains and
+releases the larger half. The design weighed two roads: (A) the
+Cranelift tier evolved in stages, each measured, the judges and the
+conformance suite green at every step; (B) a new code generator with
+the operand stack and the locals in registers, the frame record lazy,
+the counts elided by dataflow, about 10% more than (A)'s stages for
+three times the work and months without a measure. The stages of (A)
+with their estimates: stage 0, the allocator entered by mimalloc's
+plain functions for an alignment of at most 16 and a module constant
+whose code object is a literal known to the JIT without the snapshot
+(165 million, 5%); stage 1, the calling convention, a typed
+parameter's boxed operand unboxed at the site, the leave by the static
+ownership state of the slots, a parameter only read passed borrowed
+under a flag per parameter in the bytecode (the callee's leave skips
+it when entered directly, every other entry owns it, `rt_deopt`
+retains it), the frame record cheaper (400 million, 13%); stage 2, the
+records: `with` by static index with the copy in place, the two-field
+result record returned in the caller's slots when the caller takes it
+apart at once (`Done`), the frees in place (400 million, 13%); stage 3,
+the natives answering in place through a second entry per native, the
+character classes as 128-bit tables in `run_of` and `run_until`, the
+hasher of the VM's own, `status` and `into_plain` off the path (315
+million, 10%); stage 4, two values of a field-less variant type
+compared in place, `match` by a table, the iterator in two slots (185
+million, 6%); stage 5, the moves of AU17 written in the image and the
+code objects decoded on demand (50 million); stage 6, AU50's expansion
+measured again under the new convention (25 million); the checker's
+own shape beside them (the lexer's text of a run, the lists shared
+when appended, the linear searches, the parser's look): about 250
+million. The sum, about 1,540 million, puts the check row near 1,550
+million, 3.5 times the reference, the gate's 3.0 reached with the
+checker's own cuts or (B)'s register-resident values after the stages.
+The owner's answers, every recommended option (AskUserQuestion, two
+batches of four): (1) road (A), the stages, over (B) and over "stages
+0 to 2 then the choice"; (2) the gate of AU35 (ii) measured on the
+check row alone, AU58's measure, the compile row (13.25 by
+instructions, the emitter's shape) left to the emitter's own round
+after it, over all three rows and over the check and parse rows; (3)
+stage 0 first, over stage 1 as AU58 (4) named it and over stage 2; (4)
+the read-only flag in the bytecode, a Boolean per parameter computed
+by both emitters from the finished ops and held equal by the compile
+judge, over the VM deriving it at load and over the leave by state
+alone; (5) `Done` without its allocation by the convention per
+function, over the checker rewritten and over leaving it; (6) a second
+entry per native answering in place through AK1's registration API,
+the standard library's hot natives first, over lean helpers for the
+hot ones only (AU34's way) and over none; (7) the character classes as
+tables and the hasher of the VM's own, over the tables alone and over
+none; (8) the iterator in two slots as a bytecode change in both
+emitters with the judges, over a lighter native in the slot and over
+none. The order: stage 0, stage 1 as 1a, 1c, 1b, 1d, the character
+tables and the hasher, stage 2 as 2a, 2b, 2c, the natives' entry and
+the glue, stage 4, the checker's own cuts between the stages, stages 5
+and 6 last; each measured by AU58's measure with the table by
+category from the study's scripts, AT1's rows where the tiers change,
+the benchmarks, the four judges and the conformance suite on both
+tiers, kept by AT1's rule, its entry recording the table. (user)

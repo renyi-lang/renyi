@@ -244,39 +244,35 @@ and push there directly.
 ## Start here (session 14)
 
 1. The work now is stage 29 of the roadmap, the new backend for the
-   VM, and it starts with its design study (decision AU58), which this
-   session did not begin: the section "The front end's round" below,
-   its last paragraph ("Stage 29, the new backend: its design study
-   first"), says what the study holds, and the paragraph before it ("B4
-   as built") what B4 did and left. The road there: the typed round
-   (AU1 to AU34, the section "The typed round") closed with its goals
-   met (AU35); the front end's round (from AU35, the section "The front
-   end's round") did the owner's list of AU36 (A0, A1, A4 and A2 on the
-   Rust front end, AU37 to AU44; B5, B1, B2 and B3 on the compiler in
-   Renyi and the VM, AU45 to AU50, the expansion of small callees off by
-   its measure) and left the ratio of AU36 (iii) at 7.4 against the
-   gate of AU35 (ii) (the compiler written in Renyi within 3 times
-   AU34's Rust front end on `compiler/bodies.ry`, then the binary's
-   front end switches to it); the owner kept the gate (AU51), and B4,
-   the compiler's own code, made eight cuts (AU52 to AU57: the checker's
-   run -10.3%, the ratio 6.9). AU58 records the owner's four answers: a
-   new backend, its study first, the gate at 3, the road months long;
-   AU57 pushed; the measure kept (the checker's run under callgrind with
-   `RENYI_NATIVE_SYNC=1`, the ratio of `tools/ratio.py`), with a table
-   by category in each entry; the first stage the calling convention
-   (scalar arguments and results in registers, a parameter only read
-   passed without a count), which the study examines again. The
-   distance by the gate's measure is 2.3 times: the checker's image run
-   3,080.0 million instructions against three times the reference's
-   `renyi check` of the same file, 442.8 million, and the wall-clock
-   says the same (557.9 ms against three times 81.4). The question to
-   the owner had said seven, comparing with this binary's own front
-   end; AU58 corrects it. The binaries the measures need are not in a
-   new container: build the reference from commit 44782aa (AU34's
-   binary; `git worktree add`, `cargo build --release` there, the
-   binary copied to `target/renyi-au34`, then the worktree and its
-   target directory deleted, item 4) and the base from this session's
-   last commit, and keep a copy of the base before changing the code.
+   VM. Its design study is written: the section "Stage 29, the new
+   backend: the design study (session 14)" below (the attribution by
+   category, eleven findings, the two roads, the stages with their
+   estimates, the checker's own shape, the order), and the owner's
+   eight answers are decision AW1 (road (A), the Cranelift tier evolved
+   in stages; the gate measured on the check row alone; stage 0 first;
+   the read-only flag per parameter in the bytecode from both emitters;
+   `Done` without its allocation by a convention per function; the
+   natives' in-place entry through AK1's API; the character tables and
+   the VM's hasher; the iterator in two slots). The work goes stage by
+   stage in AW1's order: stage 0 (the allocator entered by mimalloc's
+   plain functions, a literal module constant known to the JIT in an
+   image), stage 1 as 1a, 1c, 1b, 1d, the character tables and the
+   hasher, stage 2 as 2a, 2b, 2c, the natives' entry and the glue,
+   stage 4, the checker's own cuts between the stages, stages 5 and 6
+   last. Each stage: the code, the gates of item 3, the measure (AU58's:
+   the checker's image run under callgrind with the study's table by
+   category beside it, `tools/ratio.py` against AU34's binary on the
+   same boot, AT1's rows where the tiers change), then its decision
+   entry with the table and the roadmap's stage 29 paragraph. The
+   measuring binaries are in the perf lane
+   (`D:/Projects/.worktrees/Renyi/perf/`): `renyi_head` (7cbbbe0) and
+   `renyi_au34` (44782aa, the reference), built under WSL by
+   `build_linux.sh` and `build_au34.sh`; the study's scripts
+   (`study_callgrind.sh`, `study_rust_rows.sh`, `study_table.py`,
+   `study_map.py`) and its callgrind outputs (`study/head/`,
+   `study/au34/`) beside them; `renyi_head` is the base of stage 0's
+   measure. The road is months long (AU58); the gate is decided on the
+   measure at the end.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
@@ -3628,7 +3624,509 @@ and its measure (the checker's run under callgrind, the ratio, the
 table by category, AT1's rows for the VM's part), with the levers
 outside the backend placed among them (the VM's own hasher, the
 iterator in two slots, the Rust front end's name sets).
-Then the first stage the owner confirms.
+Then the first stage the owner confirms. Done in session 14: the study is
+the section "Stage 29, the new backend: the design study (session 14)"
+below, and the owner's answers are decision AW1.
+
+## Stage 29, the new backend: the design study (session 14)
+
+The study decision AU58 asked for, written before any code and put to
+the owner after it (the questions and the answers are decision AW1).
+Its measure is AU58's: the Renyi checker run from its image on
+`compiler/bodies.ry` under callgrind, the image built under `valgrind
+--tool=none` so that the CPU features match, the caches off; the
+binary is the release build of 7cbbbe0 (the session's start) for Linux
+under WSL, the reference AU34's binary built from 44782aa the same way.
+The scripts live in the perf lane (`D:/Projects/.worktrees/Renyi/perf/`:
+`study_callgrind.sh` runs the three rows of `tools/ratio.py` under
+callgrind, `study_rust_rows.sh` the Rust front end's rows,
+`study_table.py` sums a callgrind file by category and names the
+helpers' calls, `study_map.py` names the generated functions by the
+image's offsets and the bytecode file's code objects); they move into
+`tools/` with the first stage.
+
+**(a) The attribution.** The three rows of the ratio, in millions of
+instructions, by category (the generated code is every function
+callgrind sees at an address of the image's section; the allocator is
+mimalloc, which the binary uses through the `mimalloc` crate; the
+counts and drops are `rt_truncate`, the drop glue of `Value`,
+`Composite::free`, `Value::clone` and the `Rc` drops; the frames are
+the calls that enter generated code through the VM's path, `rt_call`,
+`call_from_stack`, `push_frame_in_place`, `run_top_frame`, `Jit::ready`
+and the trampolines' parameter helpers; the glue is `status`, which
+every helper that answers a value returns through, and `into_plain`;
+the records are the constructs, the updates and the field helpers; the
+natives are the primitives with their calling helpers `rt_call_typed`,
+`rt_call_pure` and `call_pure_from_stack`; the hashing is SipHash,
+`hash_one`, `get_index_of`, `insert_full` and `Value::eq`):
+
+| category | check | parse | compile |
+|---|---|---|---|
+| generated code | 1,011.8 (32.8%) | 348.1 (27.7%) | 1,347.4 (27.8%) |
+| counts and drops | 448.2 (14.5%) | 113.3 (9.0%) | 775.8 (16.0%) |
+| natives, with their calling helpers | 358.8 (11.6%) | 171.6 (13.7%) | 615.2 (12.7%) |
+| allocator (mimalloc) | 258.9 (8.4%) | 114.1 (9.1%) | 389.3 (8.0%) |
+| hashing and equality | 219.8 (7.1%) | 103.0 (8.2%) | 366.6 (7.6%) |
+| records: constructs, updates, fields | 208.1 (6.7%) | 82.8 (6.6%) | 272.0 (5.6%) |
+| helper glue: `status`, `into_plain` | 130.9 (4.2%) | 43.6 (3.5%) | 202.6 (4.2%) |
+| comparisons and arithmetic | 124.0 (4.0%) | 44.0 (3.5%) | 300.4 (6.2%) |
+| texts and memory copies | 121.1 (3.9%) | 98.3 (7.8%) | 215.9 (4.5%) |
+| frames: the calls through the VM | 114.1 (3.7%) | 42.9 (3.4%) | 123.5 (2.5%) |
+| load: the image and the program | 46.2 (1.5%) | 87.4 (7.0%) | 124.3 (2.6%) |
+| iterators | 40.6 (1.3%) | 0.1 (0.0%) | 63.1 (1.3%) |
+| other | 2.9 (0.1%) | 7.9 (0.6%) | 48.7 (1.0%) |
+| **total** | **3,085.3** | **1,256.9** | **4,844.9** |
+
+The Rust front end on the same file: the reference (AU34's binary)
+`check` 441.6, `parse --json` 284.7, `compile` 365.6; this binary
+178.8, 266.8 and 471.1. The ratios by instructions, against the
+reference: checking 6.99, parsing 4.41, compiling 13.25; the gate of
+AU35 (ii) at 3 asks for 1,324.8, 854.1 and 1,096.7 million: the check
+row 2.33 times fewer, the parse row 1.47, the compile row 4.42. The
+wall-clock ratio of `tools/ratio.py` puts the compile row near 7
+(AU55: 922.5 ms against 143.3) because the Rust `compile` spends its
+time writing the 6 MB bytecode file, not in instructions; by the
+gate's own measure the compile row is the far one.
+
+*What the run does* (the interpreter's profile, `renyi run --interpret
+--profile`): 58,089,897 operations, 2,770,541 calls of declared
+functions and 2,056,082 of primitives; by kind `Load` 8.21 million
+(14.1%), `LoadMove` 7.23 (12.4%), `Store` 6.32 (10.9%), `Call` 4.82
+(8.3%), `JumpIfFalse` 3.80, `LoadField` 3.09, `Binary` 3.07, `Return`
+2.77, `Const` 2.48, `Jump` 2.47, `PushHandler` and `PopHandler` 1.36
+each, `IsVariant` 1.35, `JumpIfAbsent` 1.16, `TakeField` 1.10,
+`JumpIfTrue` 0.97, `IterNext` 0.85, `ConstructVariant` 0.81, `Global`
+0.69, `Construct` 0.68. The generated code's 997.6 million in bodies
+(14.2 in trampolines) by module: the parser 413.6, `bodies` 274.8, the
+lexer 196.0, `declare` 71.9, `types` 39.7, the rest 1.6: the lexing and
+parsing of the 24 files (the program's nine and the library's fifteen,
+751 lines) are three fifths of the generated code of the check row.
+The hottest code objects, with the calls and the instructions per call:
+`lex_range` 70.5 million (511 calls), `token_at` 58.9 (361,397; 163 per
+call for 12 ops), `look_from` 42.8 (129,298; 331), `parse` 33.6 (24),
+`lex_word` 31.4 (44,354; 707), `at_position` 23.1 (119,904; 193),
+`next_step` 21.5 (78,773; 272), `find_binding` 21.2 (25,432; 836), the
+two `expr_span` 28.1, `resolve` 17.0 (76,867; 221), `substitute` 16.7,
+`binary` 16.5 (13,225; 1,246), `moved` 15.8 (132,395; 119 for 12 ops),
+`lookup_variant` 15.4 (650; 23,754), `is_symbol` 12.8 (104,973; 122
+for 5 ops), `type_at` 12.8 (72,990; 175), `slice` 12.4 (94,725; 131).
+
+*The findings*, each with its number:
+
+1. *A call of a declared function costs about 130 instructions besides
+   its body.* The five-op `is_symbol` runs 122 per call, the twelve-op
+   `moved` 119, the eight-op `slice` 131: the callee's prologue (the
+   room check, the frame pointer, the stack's length), its leave (the
+   releases of its holder slots, the handlers' height, the frame
+   popped, the result moved to the frame's first slot) and the caller's
+   site (`push_frame_inline`: the grant read from the caller's record,
+   two capacity checks, the record of five words, the stack's length,
+   the depth counted twice, the status tested) come to 110 to 160 for
+   a small function. On 2,770,541 calls that is about 400 million, 13%
+   of the run, inside the generated code's 1,011.8.
+2. *A third of the frames leave through `rt_truncate`*: 917,264 of the
+   2,770,541 returns, 301.8 million inclusive (9.8%, 329 per leave): a
+   frame with more than four holder slots (`RELEASES_INLINE`) hands its
+   leave to the helper, which reads every slot's tag and drops the
+   counted ones, 16.2 million drops of `Value` (151.3 million) in the
+   run; the callers are the functions with many locals (`next_step`
+   78,773, `resolve` 76,867, `substitute` 47,968, `substitute_all`
+   45,368, `lex_word` 44,354, `expr_span` 34,145, `find_binding`
+   25,432). AU55's moves leave most slots holding `Nothing` at the
+   return; the leave tests them all the same, because it drops by the
+   tags at run time and not by what the analysis knows.
+3. *306,392 calls, one in nine, enter generated code through the VM's
+   path* (`rt_call` 296,968 of them, `rt_call_value` 9,362), at about
+   435 instructions each (`call_from_stack`, `push_frame_in_place`
+   46.1 million inclusive, `run_top_frame`, `Jit::ready` 14.4,
+   `Jit::entry`, the trampoline, `rt_param_int` 368,980 times, the
+   result boxed by `rt_insert_int`): 133 million, 4.3%. Every callee
+   so entered has an Integer parameter whose operand is boxed at the
+   site: `is_symbol` 73,543 and `is_word` 50,694 (their `code` comes
+   from a module constant, `words.symbol_comma` and the like, which an
+   image cannot know as a literal because no constant is built when
+   `renyi build` runs, so `Global` stays a boxed operand), `type_at`
+   69,493 and `var_at` 7,460 (the id read from a variant's field),
+   `lex_reserved` 18,762, `assign_app` 13,546, `binary` 12,547,
+   `eat_word` 12,034, `line_layout` 7,209, `past_word` 6,983; and
+   `argument` 6,501 through `bracketed`, which takes the parser of an
+   item as a function value. AR3's direct call wants a typed operand
+   for a typed parameter; a boxed value the checker typed Integer is
+   not unboxed at the site.
+4. *Record updates cost a thousand instructions each*: `rt_with_slot`
+   157,460 calls, 167.3 million inclusive, `rt_with` 43,745, 51.7:
+   219.0 million, 7.1%. `Vm::with` finds each updated field by name
+   (`field_index`, 54.6 million self), takes the pairs through a
+   vector, asks `refinement_violation` for every type (201,205 calls,
+   7.0 million), and copies the record field by field when it is
+   shared (`make_mut`, 1,227,334 clones: `at_position` updates a
+   `Cursor` the caller still holds, 119,904 times); the old record is
+   freed later. The constructs are lean beside it: `rt_construct`
+   677,653 calls at 63 each (42.7 million inclusive),
+   `rt_construct_variant` 280,398 at 217 (60.8).
+5. *The frees are the records' real cost*: `Composite::free` 1,084,633
+   calls, 251.2 million inclusive (8.1%, 232 per free): the fields'
+   drops (the drop glue of `Value` recursing into lists and records),
+   then `mi_free`. The allocator's side: 2,381,541 allocations and
+   2,417,161 frees, 258.9 million (8.4%, 109 per pair); the `mimalloc`
+   crate calls `mi_malloc_aligned(size, align)` for every allocation
+   (its `lib.rs:51`), and 641,578 of them take mimalloc's generic
+   aligned path (`mi_theap_malloc_zero_aligned_at_generic` 27.6
+   million, `_at_overalloc` 23.0, `mi_bin` 11.0, `mi_good_size` 7.7),
+   which `mi_malloc` on an alignment of 8 or 16 never enters.
+6. *The natives and their calling helpers are 703 million inclusive*
+   (22.8%): `rt_call_typed` 527,883 calls, 382.7 million inclusive;
+   `rt_call_pure` 341,454, 320.3. The glue is about 150 million of it:
+   `call_pure_from_stack` 138 instructions per call (the arguments
+   drained into the scratch vector, the result through `Result` and
+   `status`), `rt_call_typed` 80 self, `typed_value_answer` 79,
+   `status` 34 on 2,334,594 calls (79.4 million), `Pinned::insert` 42
+   on 272,986, `into_plain` 33 on 1,319,263 calls (43.5 million; a
+   function call to test a tag). The work: `list_append` 187,030 calls,
+   93.6 million inclusive, copying 2,044,396 values (the list appended
+   to is shared, as a scope's bindings are, so AU54's copy with room
+   runs on most appends); the lexer's `slice` of a run, `List.slice`
+   94,734 calls (44.0 million, 572,753 clones) then `join` (68.8);
+   `characters` 26.7 million on 81 texts; `Text.contains` 154,702
+   calls (18.8), the lexer's `is_lower` and its kin on a text of the
+   letters; `run_of` and `run_until` (53,046 and 1,334 calls), whose
+   loops hash each character against the set: 342,059 and 67,211 of
+   the run's 555,512 set and map lookups.
+7. *Hashing and equality are 219.8 million* (7.1%): `hash_one` 547,570
+   calls, 133.9 million inclusive (244 per hash: SipHash's `write`
+   1,589,974 calls, 59.7 million; `Value::hash` 24.8), `get_index_of`
+   129.9 inclusive, `Value::eq` 998,506 calls, 41.6. Three quarters of
+   the lookups are the lexer's character classes (finding 6); the rest
+   `Map.get` 121,816 (`words.word_codes`, the world's modules and
+   types by name) and `Set.contains` 20,129.
+8. *Comparisons through the helper*: `rt_compare` 521,364 calls, 127.5
+   million inclusive (4.1%, 245 each): `parse` 187,664, `look_from`
+   129,298, `after_breaks` 70,272 (`token.kind is not LineBreak`: two
+   values of a variant type without fields, compared through
+   `Vm::compare`, `equal`, `has_declared_equals` and `PartialEq`);
+   `types.is_error` 33,746 and `assign` 16,117 on `Ty` values, which
+   are structural and belong to the helper. AU45 and AU49 compare two
+   small Integers and test a variant's tag in place; two values typed
+   as a field-less variant type are not compared in place.
+9. *A `for each` costs 330 instructions before its first item*:
+   `rt_iter_init` 238,534 calls, 78.8 million inclusive (`iterator_of`,
+   `iterate` cloning the list's `Rc`, `ListIter::new`, the `Rc<Native>`
+   allocated), then the iterator's drop (`drop_glue::<Native>` and
+   `Rc::drop_slow`, 10.9 million) and its free: about 95 million, 3%.
+10. *The load is 46.2 million* (1.5%): the program decoded from the
+    image (about 25 million) and `liveness::prepared`, 37.0 million
+    inclusive, which computes AU17's moves again at every run because
+    the image carries the program as the emitters wrote it.
+11. *The generated code's own sequences*, the 1,011.8 million less the
+    calls' 400: about 600 million for 55 million ops, 11 per op. A
+    `Load` of a boxed slot copies three words and retains (a tag test,
+    a branch, a count raised in the block: about 13), a `Store`
+    releases what the slot held (about 10 when it held a plain value),
+    a `LoadField` typed by the checker reads in place and retains, an
+    `IterNext` reads the item in place and retains; the jumps, the
+    constants and the in-place compares are a few each. The retains and
+    the releases are the larger half of it: the counts are kept per
+    reference at run time where the emitters' moves (AU55) already know
+    most slots are moved out or only read.
+
+The same table for the parse row shows the same shape with the load's
+share larger (87.4 million of 1,256.9: the program's decoding and the
+moves are a fixed cost that the parse of one file does not amortise)
+and the texts' share doubled (the JSON printed, 11.6 MB); the compile
+row adds the emitter in Renyi (`emit` 337.9 million of generated code),
+whose hottest functions are linear searches: `type_index` 56.1 million
+(18,919 calls at 2,965), `function_at` 32.9 (569 calls at 57,763),
+`expr_bound` 17.3; and the counts and drops rise to 16.0%.
+
+**(b) The design.** Two roads were weighed. (A) *The Cranelift tier
+evolved in stages*: each stage a change to the tier as it exists
+(`native/codegen.rs`, `native/runtime.rs`, the template tier where it
+shares the convention, the emitters where the bytecode changes),
+measured by AU58's measure, the judges and the conformance suite
+green at every step, the image's formats bumped as they are today. (B)
+*A new code generator*: the operand stack and the locals in registers
+and machine-stack slots (a value as its two words, the tag and the
+payload), the VM's stack written only where a helper reads it, the
+frame record built lazily from a chain the generated frames keep on
+the machine stack, the counts as explicit retain and release
+operations that a dataflow pass elides, the hand-back rebuilding the
+interpreter's frame from a map per point as `rt_deopt` does today from
+the deopt slot: a rewrite of `codegen.rs` (4,365 lines) and of the
+helpers' convention in `runtime.rs` (2,209), the template tier kept on
+the interpreter's layout with a conversion at each boundary. (B) is
+what "a new backend" names; what it gains over (A)'s stages is the
+loads and stores of boxed values as register moves (finding 11: the 26
+million `Load`, `LoadMove`, `Store`, `LoadField` and `TakeField` ops
+at 8 to 13 instructions each fall to one or two: about 200 million)
+and the counts elided by dataflow rather than by the emitters' static
+rules (perhaps 100 million more than stage 1 below), 10% of the run,
+for three times the work and months without a measure: the first
+number comes when the new generator runs the whole corpus under the
+conformance suite and the judges. (A)'s stages are the ground (B)
+would need anyway (the calling convention, the natives' convention,
+the ownership rules in the emitters), so the study recommends (A),
+with (B)'s register-resident values as the last stage if the gate is
+still out of reach after them. What follows is (A).
+
+*Stage 0, two items of the VM measured first, a day:* (i) the
+allocator: `renyi::Allocator` (`crates/renyi/src/main.rs`,
+`renyi_vm::memory::Counting` around the `mimalloc` crate) calls
+`mi_malloc` and `mi_realloc` for an alignment of at most 16 and the
+aligned entries only above it, which keeps every record, list and text
+out of the generic aligned path (finding 5): about 100 million, 3.2%,
+by the per-call costs of the paths; (ii) the constants in an image: a
+module constant whose code object is a `Const` of a small Integer and a
+`Return` is a literal the JIT may read without the snapshot
+(`Jit::small_globals`), so that an image's call sites with a constant
+code reach the direct path (finding 3: 150,000 of the 306,392 slow
+calls): about 65 million, 2.1%. Neither touches a format.
+
+*Stage 1, the calling convention (AU58 (4)), examined again.* What
+exists: AR3 passes Integer, Boolean and Float arguments and results in
+registers between compiled bodies (`direct_signature`), and the
+template tier calls compiled bodies through their trampolines with
+boxed arguments (AU21); the convention's gaps are findings 1 to 3.
+(1a) *A typed parameter's boxed operand unboxed at the site*: a call
+site whose operand the analysis holds as `Boxed(Some(Integer))` (a
+field, a `maybe` after its `otherwise`, a `Global`) tests the tag and
+the small-Integer flag in place and passes the payload, else takes the
+helper's path as today; the template tier passes boxed arguments and
+the trampoline unboxes them (`rt_param_int`), unchanged. The 306,392
+slow calls fall to the function-value calls (9,362): about 130 million
+less stage 0's 65, 2.1%. (1b) *A parameter that is only read, passed
+without a count*: a flag per parameter in the bytecode, which both
+emitters compute as a pass over the code object's finished ops (a
+parameter's slot is read-only when no op stores into it, moves it out,
+takes a field out of it or updates it in place: no `Store`,
+`LoadMove`, `TakeField` or `WithSlot` on the slot), held equal by the
+compile judge (decision Z3), written in the bytecode file (format 7 to
+8: `Code` gains `borrowed`, a Boolean per parameter, in `file.rs`,
+`binary.rs`, `compiler/bytecode.ry` and both emitters). The protocol:
+a direct call between compiled bodies passes a read-only parameter
+borrowed (the caller's `Load` copies without a retain; a `LoadMove`
+feeding such a parameter degrades to a borrow, the slot keeping its
+value, since the callee only reads it; a temporary operand, a call's
+result or a construct, is spilled to a slot of the caller's frame
+first, so that it is a borrow too), and the callee's leave skips the
+flagged slots when it was entered directly (the `direct` argument of
+the body's signature says so); every other entry (the interpreter's
+`call!`, the trampoline from `rt_call`, the template tier's direct
+call) passes the parameters owned as today, so the interpreter does
+not change and a frame handed back keeps its ownership (`rt_deopt`
+retains the flagged slots of a frame entered directly, one count each,
+on the rare path). The template tier can join later with a bit in
+`NativeState` that its caller sets and the callee's prologue clears,
+since its `Entry` signature has no room for the argument; the first
+stage leaves it on the owned protocol. The gain: a retain and a
+release per borrowed argument, 2,770,541 calls with about one and a
+half boxed parameters each that are only read: about 80 million, 2.6%,
+and fewer holder slots at the leave, which moves frames under the
+inline threshold of finding 2. (1c) *The leave by the static state*:
+the analysis of `native/infer.rs` gains, per slot and per op, whether
+the slot may own a counted block (unset or empty after a move or a
+take, owned after a store or an owned parameter, borrowed by 1b), and
+each return site releases only the slots that may own, inline, with
+`rt_truncate` kept for the frames with more than eight; the interpreter
+keeps dropping by tags (right for both). Finding 2's 301.8 million fall
+to about 100: 200 million, 6.5%. (1d) *The frame record made cheaper*:
+the grant kept in a register of the body and passed to the callee's
+record, the three vectors' pointers read once per body, the capacity
+checks folded into the prologue's one check where the callee's locals
+are known: `push_frame_inline` from about 45 instructions to 25; the
+record itself stays, because `sync_pc`, the grant, the handlers and the
+hand-back read `frames.last()` in every helper, and making it lazy is
+(B)'s chain. About 55 million, 1.8%. The tiers: the interpreter
+unchanged throughout; the template tier takes 1a (nothing to do), 1c
+(its leave uses the same analysis) and 1d, 1b later; the images bump
+the code format at 1b and 1c and the image format at 1b (the program's
+encoding). Stage 1 in all: about 400 million, 13%, by the findings'
+counts; the measure after each of 1a to 1d, each kept by AT1's rule.
+
+*Stage 2, the records.* (2a) *The update by static index*: where the
+checker typed the base of a `with` (AU1's annotations, as
+`static_field` uses them for a read), the generated code knows the
+record's type, so the field indices, the refinement check (skipped for
+a type without refinements) and the copy of a shared record (the block
+allocated and the fields copied with their counts raised, in place)
+are compiled into the site, with the helper kept for a base the
+checker did not type and for the refined types; the template tier
+calls a helper that takes the indices. Finding 4's 219.0 million to
+about 70: 150 million, 4.9%. (2b) *`Done` without its allocation*: a
+function whose declared result is a record of two fields that the
+caller takes apart at once (`let done be f(...)`, `done.value`,
+`done.checker`, the record dead after, which `last_uses` sees) returns
+the two fields in the caller's two stack slots under a convention per
+function (the result kind `Pair`, beside AR3's scalar kinds: the body
+writes the fields where the record would have gone and answers
+`D_RETURNED`; the trampoline boxes them into the record for the VM's
+path), and the caller's takes read the slots: no block allocated,
+constructed, taken apart and freed. The checker constructs 677,653
+records a run, most of them `Done` (187 sites in `bodies.ry` return
+one); the per-record cost is the construct (63), the two takes, the
+free (232) and the allocation's share: about 150 million, 4.9%; the
+emitter in Renyi has the same shape (`Step`). (2c) *The frees in
+place*: the last release of a record walks its fields in the generated
+code when their count is small and they are plain or counted, and
+calls `rt_drop_at` only for a nested collection: finding 5's 251.2
+million to about 150: 100 million, 3.2%; the interpreter unchanged.
+Stage 2 in all: about 400 million, 13%; the bytecode unchanged but for
+2b's result kind, which the VM derives from the declared type and the
+caller's ops (no flag), the code format bumped at each.
+
+*Stage 3, the natives' convention.* (3a) *Natives answering in place*:
+a second entry per native, `fn(vm, at: *mut Value, count) -> status`,
+the result written where the receiver lay, the arguments consumed by
+the native (no scratch vector, no `Result`, no `status`, no
+`Pinned::insert`), registered through the API of AK1 beside the typed
+entries of AU1, for the standard library first (the hot ones: `at`,
+`append`, `slice`, `join`, `contains`, `get`, `length`, `count`,
+`with_at`, `run_of`, `run_until`); finding 6's glue, 150 million, to
+about 50: 100 million, 3.2%, on both tiers (the same helper). (3b)
+*The character classes as tables*: `run_of` and `run_until` over a set
+of one-character texts build a 128-bit table of the set's ASCII members
+once per call (53,046 and 1,334 calls over sets of at most 64
+members) and scan with it, the hash kept for the characters outside
+ASCII: 409,270 lookups at about 330 each, 135 million, to about 10:
+125 million, 4.1%; a change to two natives. (3c) *The hasher of the
+VM's own* (AU57's candidate): a multiplicative hash over the words of
+a small text, an Integer or a Boolean, keyed per run, in place of
+SipHash for the VM's maps and sets (`IndexMap` and `IndexSet` with the
+hasher as their `BuildHasher`): the remaining 146,242 lookups from 244
+instructions a hash to about 60: 30 million, 1.0%, and the compile
+row's share with it. (3d) *`status` and `into_plain` out of the path*:
+the helpers that cannot fail answer without `Result` (`rt_make_list`,
+`rt_make_pair`, the constructs without refinements, `rt_list_push`),
+and `into_plain` is inlined with its fast path a tag test: about 60
+million, 1.9%. Stage 3 in all: about 315 million, 10%; no format
+change but 3a's registration API, a library-side addition.
+
+*Stage 4, comparisons, variants and iterators.* (4a) *Two values of a
+field-less variant type compared in place*: when the checker typed
+both operands as a variant type whose variants carry no fields, `is`
+and `is not` compare the type and tag words of the two blocks (AU24's
+unit variants) in place, the helper kept for the rest: finding 8's
+`parse`, `look_from` and `after_breaks` compares, 387,234 of the
+521,364, from 245 to about 12: 90 million, 2.9%; both tiers. (4b)
+*`match` on a variant by a table*: a chain of `IsVariant` tests on one
+value whose arms are tags becomes a jump by the tag when the chain has
+four arms or more (`expr_span`'s 189 ops, `infer_inner`, the parser's
+dispatch): about 20 million, 0.6%; the bytecode unchanged (the pattern
+is recognised in the ops). (4c) *The iterator in two slots*: `IterInit`
+keeps the list in the slot it has and its position in a second slot
+the emitters reserve beside it (a bytecode change: `IterInit {slot,
+position}`, both emitters, the judges, format 8 with 1b), the
+generated code and the interpreter reading the item at the position
+with no `Native` allocated; the range iterator stays in its registers:
+finding 9's 95 million to about 20: 75 million, 2.4%. Stage 4 in all:
+about 185 million, 6%.
+
+*Stage 5, the load:* the moves of AU17 computed by `renyi build` and
+written in the image (finding 10's `liveness::prepared`, 37.0 million,
+1.2%) and the decoding of the program's 1,102 code objects deferred to
+the first call of each (the ops are not read when the image's code
+runs): about 50 million, 1.6%, on the image row alone, which the ratio
+measures.
+
+*Stage 6, the small callees expanded again* (AU50's expansion, off by
+its measure, taken when a call cost what stage 1 removes): with
+the convention of stage 1 the expansion of a callee of at most twelve
+ops (`token_at`, `is_symbol`, `is_word`, `moved`, `type_at`,
+`at_position`, `is_bound_var`, `slice`: 780,000 of the run's calls)
+removes the 30 instructions a direct call still costs: about 25
+million, 0.8%, measured and kept if it pays.
+
+*The sum.* The stages' estimates, each by the findings' counts and the
+per-call costs read from the profile, come to about 1,540 million
+(stage 0 165, stage 1 465, stage 2 400, stage 3 315, stage 4 185, stage
+5 50, stage 6 25, some of them overlapping: the frees of stage 2 and
+the appends' copies of (c) share the drop glue), which would put the
+checker's run near 1,550 million, 3.5 times the reference against the
+gate's 3.0; the parse row, with the same stages, near 650 million
+against its 854; the compile row near 2,500 against its 1,097. An
+estimate of this kind has landed within a third of the measure in the
+rounds so far where the count behind it was known, and missed where a
+path was unmeasured (AU50's expansion was expected to gain and
+measured none). The last 250 million of the
+check row and the compile row's distance are the checker's and the
+emitter's own shape, (c), or (B)'s register-resident values.
+
+**(c) The checker's own shape, which no backend fixes.** (i) *The
+lexer's text of a run*: `slice(chars, start, stop)` builds a list of
+one-character texts and joins it, 94,725 times a run (finding 6: `slice`
+44.0 million inclusive, `join` 68.8, `characters` 26.7): a native that
+makes the text of a range of a character list in one step
+(`List.text_of(start, stop)`, a library addition), or the lexer keeping
+the source text and cutting it by offsets: about 100 million, 3.2%,
+and the parse row's share. (ii) *The lists shared when appended*:
+`list_append` copies 2,044,396 values a run because the list appended
+to is still held by the record it came from (a scope's bindings, the
+tokens, the diagnostics): the idiom `scope with bindings:
+scope.bindings.append(binding)` takes the field (AU55's `TakeField`)
+only when `scope` itself is held once; where the scope sits in the
+checker's list of scopes it is shared, and the whole chain copies. The
+rewrite is the checker's: the scopes as one flat list of bindings with
+the scope boundaries as indices, updated by `with_at` (AU57), which
+`find_binding` and `update_binding` walk from the end: about 60
+million, 1.9%, with `find_binding` (21.2) and `update_binding` (9.2)
+shortened with it. (iii) *`Done` per expression* is stage 2b's; the
+checker's 187 sites stay as they are. (iv) *The linear searches*:
+`lookup_variant` (650 calls at 23,754 instructions, walking the world's
+types through `type_at`), `variant_index` (13,957 at 949), and in the
+emitter `type_index` (18,919 at 2,965) and `function_at` (569 at
+57,763): a map by name beside each list: about 35 million of the check
+row, 1.1%, and 110 of the compile row. (v) *The library's fifteen
+files* are 751 lines, a twentieth of what the check row lexes and
+parses: not a lever. (vi) *The parser's cursor*: `at_position` updates
+a `Cursor` the caller still holds, 119,904 times, and `look_from`
+computes the look each time (129,298 calls at 331): stage 2a makes the
+copy cheap; a cursor that carries its look lazily, or the look kept
+beside the tokens as a table computed once per file (the next
+significant index per position, 100,000 Integers), would remove most
+of `look_from` and `after_breaks` (57 million, 1.8%): the parser's
+rewrite, a day. The judges hold the output of every rewrite here, not
+the shape (W3, W7, Z3). (c) in all: about 250 million, 8%, of which
+(i), (ii) and (vi) are the ones worth their day each.
+
+**(d) The order, and the measures.** By gain over cost: stage 0 (a
+day, 5%), stage 1 in the order 1a, 1c, 1b, 1d (two to three weeks of
+sessions, 13%: 1a and 1c are a few days each and touch no format; 1b
+is the bytecode change with both emitters and the judges; 1d is a
+measured try), stage 3b and 3c (days, 5%), stage 2 (two to three
+weeks, 13%: 2a first, then 2b, the convention per function, then 2c),
+stage 3a and 3d (a week, 5%), stage 4 (a week, 6%), (c) (i), (vi) and
+(ii) between the stages as the checker's own cuts (days, 7%), stage 5
+and stage 6 last (days, 2%). Every stage is measured by AU58's measure
+(the checker's image run under callgrind, with the table by category
+from the lane's script beside the number, and the ratio of
+`tools/ratio.py` on the same boot), AT1's rows for the VM's part where
+the stage touches the tiers (`tools/measure_size.sh`, the synchronous
+JIT row), the four benchmarks, the four judges and the conformance
+suite, on both tiers where the template tier shares the change; a
+stage stays by AT1's rule, and its entry records the table. The levers
+outside the backend are placed: the hasher is 3c, the iterator in two
+slots 4c, the character classes 3b, the Rust front end's name sets as
+bits (AU55's 4.7% of the Rust compile) a cut of the Rust emitter on its
+own day, and the Rust front end is not otherwise touched by the round.
+The road is months long, as AU58 acknowledges: about three months of
+sessions for stages 0 to 4 at the pace of the typed round, and the
+gate decided on the measure at the end, with the compile row's own
+distance (13.25 by instructions) to be settled by the owner's reading
+of AU35 (ii): the check row is the measure AU58 fixed, the compile row
+the emitter's round after it.
+
+**The questions put to the owner** (AskUserQuestion, two batches of
+four, the recommended option first): the road ((A) the stages, (B)
+the new generator, or stages 0 to 2 then the choice), the gate's rows
+(the check row by AU58's measure, all three rows, or the check and
+parse rows), the first stage (stage 0's two items, or stage 1 as AU58
+(4) names it, or stage 2), the read-only flag (in the bytecode from
+both emitters, derived by the VM at load with no format change, or
+none with 1c alone), `Done` (the convention per function, the checker
+rewritten, or left), the natives' convention (a second entry for every
+native through AK1's API, lean helpers for the hot ones only, or none),
+the hasher (the VM's own with the tables, or the tables only), and the
+iterator (the bytecode change, a lighter native in the slot, or left).
+The answers are decision AW1.
 
 ## The representation items: the design study (session 11)
 
