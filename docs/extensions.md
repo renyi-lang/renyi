@@ -153,6 +153,56 @@ of `renyi_vm::natives` read a plain argument of their kind and answer
 never answers a `Failure`. The standard library's hottest primitives
 carry such entries (`length`, `contains`, `get`, `at`, ...).
 
+A native may carry an in-place entry too (decision AW11), which the
+generated code of both tiers and the interpreter call directly, by its
+address in a table the VM keeps per function, on the arguments where
+they lie on the stack: it answers in the receiver's place and the other
+arguments are consumed, with no scratch vector, no `Result`, no status
+and no push on the way. The macro `in_place!` makes one from a typed
+entry, `in_place!(Int: twice_typed)` for the kinds `Bool`, `Int`,
+`Float` and `Value`, or from a function that takes its arguments:
+
+```rust
+use renyi_vm::natives::take_or_clone;
+use renyi_vm::in_place;
+
+fn grow_in_place(args: &mut [Value], borrowed: u32) -> Option<Value> {
+    if !matches!(args[0], Value::List(_)) {
+        return None;
+    }
+    let Value::List(mut items) = take_or_clone(args, 0, borrowed) else {
+        unreachable!("the argument is a list");
+    };
+    Rc::make_mut(&mut items).push(Value::integer(1));
+    Some(Value::List(items))
+}
+
+Native::function("demo", "twice", twice)
+    .with_typed(Typed::Int(twice_typed))
+    .with_in_place(in_place!(Int: twice_typed))
+Native::function("demo", "grow", grow).with_in_place(in_place!(takes grow_in_place))
+```
+
+An entry that takes is given the mask of the arguments the caller still
+holds (the first argument bit 0): it may take the others out of the
+slice, to update a collection in place when nothing else holds it, and
+must copy, not update, one whose bit is set, which `take_or_clone` does;
+when it declines, every argument must lie as it was. Either entry must
+answer exactly what the native answers whenever it answers and decline
+wherever a typed entry would; a declared `Integer`, `Boolean` or `Float`
+result is answered as a small Integer, a Boolean or a Float, which the
+generated code reads from the answer in place. An entry made from a
+typed entry of a scalar kind is the cheapest call the VM makes to a
+native: it answers or declines and nothing else, and the memory budget
+is tested at the next helper that allocates (a scalar answer retains
+nothing); an entry that answers a value or takes its arguments has its
+answer tested for a failure and the budget tested after it. The entry
+is called for one to thirty-two arguments; a call of more, or of none,
+runs the native itself. The function must need no capability, since the
+entry skips the boundary. The standard library's hottest primitives
+carry such entries (`append`, `slice`, `join`, `get`, `length`,
+`contains`, `run_of`, ...).
+
 The table and the declaration file are held equal both ways: every
 declared function must have a native and every native a declaration,
 every file must parse and check, and a module is declared by one

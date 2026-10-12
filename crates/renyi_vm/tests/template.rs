@@ -604,8 +604,9 @@ end
     assert_eq!(output, "1000 112893 900027 3003\n");
 }
 
-/// `List.at` in place and the lean helpers of `Text.contains` and
-/// `List.contains` in template code (decision AU34): items of every kind read
+/// `List.at` in place (decision AU34) and the in-place entries of
+/// `Text.contains` and `List.contains` (decision AW11, in place of
+/// AU34's lean helpers) in template code: items of every kind read
 /// at every position and past both ends, from lists that slots hold and
 /// from lists made for the call, released after their item is copied; an
 /// index past the machine word taking the general path (in a function of

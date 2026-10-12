@@ -12,11 +12,12 @@ use sha2::{Digest, Sha256};
 
 use super::{
     arg, bytes, crash, decimal, float, int, list, map, plain_float, plain_list, plain_map,
-    plain_set, plain_small, plain_text, range, set, small, take, text,
+    plain_set, plain_small, plain_text, range, set, small, take, take_or_clone, text,
 };
 use crate::decimal::Decimal;
 use crate::extension::{Native, Typed};
 use crate::hashing::ValueSet;
+use crate::in_place;
 use crate::integer::Int;
 use crate::value::{take_map, Value};
 use crate::vm::{finite_float, range_items, Interrupt, Vm};
@@ -28,13 +29,16 @@ pub(crate) const NATIVES: &[Native] = &[
     Native::method("std.prelude", "to_float", "Integer", integer_to_float)
         .with_typed(Typed::Float(integer_to_float_typed)),
     Native::method("std.prelude", "to_text", "Integer", integer_to_text),
-    Native::method("std.prelude", "quotient", "Integer", integer_quotient),
+    Native::method("std.prelude", "quotient", "Integer", integer_quotient)
+        .with_in_place(in_place!(Int: integer_quotient_typed)),
     Native::method("std.prelude", "absolute", "Integer", integer_absolute)
         .with_typed(Typed::Int(integer_absolute_typed)),
     Native::method("std.prelude", "at_least", "Integer", number_at_least)
-        .with_typed(Typed::Int(integer_at_least_typed)),
+        .with_typed(Typed::Int(integer_at_least_typed))
+        .with_in_place(in_place!(Int: integer_at_least_typed)),
     Native::method("std.prelude", "at_most", "Integer", number_at_most)
-        .with_typed(Typed::Int(integer_at_most_typed)),
+        .with_typed(Typed::Int(integer_at_most_typed))
+        .with_in_place(in_place!(Int: integer_at_most_typed)),
     Native::method("std.prelude", "rounded", "Decimal", decimal_rounded),
     Native::method("std.prelude", "truncated", "Decimal", decimal_truncated),
     Native::method("std.prelude", "to_float", "Decimal", decimal_to_float),
@@ -55,9 +59,11 @@ pub(crate) const NATIVES: &[Native] = &[
     Native::method("std.prelude", "at_most", "Float", number_at_most),
     Native::method("std.prelude", "to_text", "Boolean", any_to_text),
     Native::method("std.prelude", "length", "Text", text_length)
-        .with_typed(Typed::Int(text_length_typed)),
+        .with_typed(Typed::Int(text_length_typed))
+        .with_in_place(in_place!(Int: text_length_typed)),
     Native::method("std.prelude", "is_empty", "Text", text_is_empty)
-        .with_typed(Typed::Bool(text_is_empty_typed)),
+        .with_typed(Typed::Bool(text_is_empty_typed))
+        .with_in_place(in_place!(Bool: text_is_empty_typed)),
     Native::method("std.prelude", "trim", "Text", text_trim)
         .with_typed(Typed::Value(text_trim_typed)),
     Native::method("std.prelude", "trim_start", "Text", text_trim_start)
@@ -75,11 +81,14 @@ pub(crate) const NATIVES: &[Native] = &[
     Native::method("std.prelude", "characters", "Text", text_characters)
         .with_typed(Typed::Value(text_characters_typed)),
     Native::method("std.prelude", "contains", "Text", text_contains)
-        .with_typed(Typed::Bool(text_contains_typed)),
+        .with_typed(Typed::Bool(text_contains_typed))
+        .with_in_place(in_place!(Bool: text_contains_typed)),
     Native::method("std.prelude", "starts_with", "Text", text_starts_with)
-        .with_typed(Typed::Bool(text_starts_with_typed)),
+        .with_typed(Typed::Bool(text_starts_with_typed))
+        .with_in_place(in_place!(Bool: text_starts_with_typed)),
     Native::method("std.prelude", "ends_with", "Text", text_ends_with)
-        .with_typed(Typed::Bool(text_ends_with_typed)),
+        .with_typed(Typed::Bool(text_ends_with_typed))
+        .with_in_place(in_place!(Bool: text_ends_with_typed)),
     Native::method("std.prelude", "index_of", "Text", text_index_of)
         .with_typed(Typed::Value(text_index_of_typed)),
     Native::method("std.prelude", "replace", "Text", text_replace)
@@ -105,64 +114,83 @@ pub(crate) const NATIVES: &[Native] = &[
     Native::method("std.prelude", "to_base64", "Bytes", bytes_to_base64),
     Native::method("std.prelude", "sha256", "Bytes", bytes_sha256),
     Native::method("std.prelude", "length", "List", list_length)
-        .with_typed(Typed::Int(list_length_typed)),
+        .with_typed(Typed::Int(list_length_typed))
+        .with_in_place(in_place!(Int: list_length_typed)),
     Native::method("std.prelude", "is_empty", "List", list_is_empty)
-        .with_typed(Typed::Bool(list_is_empty_typed)),
+        .with_typed(Typed::Bool(list_is_empty_typed))
+        .with_in_place(in_place!(Bool: list_is_empty_typed)),
     Native::method("std.prelude", "at", "List", list_at).with_typed(Typed::Value(list_at_typed)),
     Native::method("std.prelude", "first", "List", list_first)
-        .with_typed(Typed::Value(list_first_typed)),
+        .with_typed(Typed::Value(list_first_typed))
+        .with_in_place(in_place!(Value: list_first_typed)),
     Native::method("std.prelude", "last", "List", list_last)
-        .with_typed(Typed::Value(list_last_typed)),
+        .with_typed(Typed::Value(list_last_typed))
+        .with_in_place(in_place!(Value: list_last_typed)),
     Native::method("std.prelude", "rest", "List", list_rest),
     Native::method("std.prelude", "without_last", "List", list_without_last),
     Native::method("std.prelude", "without_index", "List", list_without_index),
-    Native::method("std.prelude", "with_at", "List", list_with_at),
+    Native::method("std.prelude", "with_at", "List", list_with_at)
+        .with_in_place(in_place!(takes list_with_at_in_place)),
     Native::method("std.prelude", "take", "List", list_take),
     Native::method("std.prelude", "drop", "List", list_drop),
-    Native::method("std.prelude", "slice", "List", list_slice),
-    Native::method("std.prelude", "append", "List", list_append),
-    Native::method("std.prelude", "append_all", "List", list_append_all),
+    Native::method("std.prelude", "slice", "List", list_slice)
+        .with_in_place(in_place!(Value: list_slice_typed)),
+    Native::method("std.prelude", "append", "List", list_append)
+        .with_in_place(in_place!(takes list_append_in_place)),
+    Native::method("std.prelude", "append_all", "List", list_append_all)
+        .with_in_place(in_place!(takes list_append_all_in_place)),
     Native::method("std.prelude", "reversed", "List", list_reversed),
     Native::method("std.prelude", "sorted", "List", list_sorted),
     Native::method("std.prelude", "distinct", "List", list_distinct),
     Native::method("std.prelude", "contains", "List", list_contains)
-        .with_typed(Typed::Bool(list_contains_typed)),
+        .with_typed(Typed::Bool(list_contains_typed))
+        .with_in_place(in_place!(Bool: list_contains_typed)),
     Native::method("std.prelude", "index_of", "List", list_index_of)
         .with_typed(Typed::Value(list_index_of_typed)),
     Native::method("std.prelude", "run_of", "List", list_run_of)
-        .with_typed(Typed::Int(list_run_of_typed)),
+        .with_typed(Typed::Int(list_run_of_typed))
+        .with_in_place(in_place!(Int: list_run_of_typed)),
     Native::method("std.prelude", "run_until", "List", list_run_until)
-        .with_typed(Typed::Int(list_run_until_typed)),
+        .with_typed(Typed::Int(list_run_until_typed))
+        .with_in_place(in_place!(Int: list_run_until_typed)),
     Native::method("std.prelude", "largest", "List", list_largest),
     Native::method("std.prelude", "smallest", "List", list_smallest),
     Native::method("std.prelude", "with_index", "List", list_with_index),
     Native::method("std.prelude", "to_set", "List", list_to_set),
     Native::method("std.prelude", "flattened", "List", list_flattened),
     Native::method("std.prelude", "join", "List", list_join)
-        .with_typed(Typed::Value(list_join_typed)),
+        .with_typed(Typed::Value(list_join_typed))
+        .with_in_place(in_place!(Value: list_join_typed)),
     Native::method("std.prelude", "sum", "List of Integer", list_sum_integers)
-        .with_typed(Typed::Int(list_sum_integers_typed)),
+        .with_typed(Typed::Int(list_sum_integers_typed))
+        .with_in_place(in_place!(Int: list_sum_integers_typed)),
     Native::method("std.prelude", "sum", "List of Decimal", list_sum_decimals),
     Native::method("std.prelude", "sum", "List of Float", list_sum_floats),
     Native::method("std.prelude", "length", "Map", map_length)
-        .with_typed(Typed::Int(map_length_typed)),
+        .with_typed(Typed::Int(map_length_typed))
+        .with_in_place(in_place!(Int: map_length_typed)),
     Native::method("std.prelude", "is_empty", "Map", map_is_empty)
         .with_typed(Typed::Bool(map_is_empty_typed)),
-    Native::method("std.prelude", "get", "Map", map_get).with_typed(Typed::Value(map_get_typed)),
+    Native::method("std.prelude", "get", "Map", map_get)
+        .with_typed(Typed::Value(map_get_typed))
+        .with_in_place(in_place!(Value: map_get_typed)),
     Native::method("std.prelude", "set", "Map", map_set),
     Native::method("std.prelude", "without", "Map", map_without),
     Native::method("std.prelude", "contains_key", "Map", map_contains_key)
-        .with_typed(Typed::Bool(map_contains_key_typed)),
+        .with_typed(Typed::Bool(map_contains_key_typed))
+        .with_in_place(in_place!(Bool: map_contains_key_typed)),
     Native::method("std.prelude", "keys", "Map", map_keys),
     Native::method("std.prelude", "values", "Map", map_values),
     Native::method("std.prelude", "entries", "Map", map_entries),
     Native::method("std.prelude", "merged", "Map", map_merged),
     Native::method("std.prelude", "length", "Set", set_length)
-        .with_typed(Typed::Int(set_length_typed)),
+        .with_typed(Typed::Int(set_length_typed))
+        .with_in_place(in_place!(Int: set_length_typed)),
     Native::method("std.prelude", "is_empty", "Set", set_is_empty)
         .with_typed(Typed::Bool(set_is_empty_typed)),
     Native::method("std.prelude", "contains", "Set", set_contains)
-        .with_typed(Typed::Bool(set_contains_typed)),
+        .with_typed(Typed::Bool(set_contains_typed))
+        .with_in_place(in_place!(Bool: set_contains_typed)),
     Native::method("std.prelude", "add", "Set", set_add),
     Native::method("std.prelude", "without", "Set", set_without),
     Native::method("std.prelude", "union", "Set", set_union),
@@ -1225,34 +1253,121 @@ fn text_contains_typed(args: &[Value]) -> Option<bool> {
     Some(text_has(plain_text(&args[0])?, plain_text(&args[1])?))
 }
 
-/// The prelude's natives the generated code does in place of a typed
-/// call (decision AU34): `List.at`, and `Text.contains` and
-/// `List.contains` through helpers of their own. The prelude is the
-/// standard library's, which no other extension declares (decision AK2),
-/// so its functions' names say which natives they are.
-pub(crate) fn in_place(meta: &crate::compile::FunctionMeta) -> Option<crate::vm::InPlace> {
-    use crate::vm::InPlace;
+/// The prelude's native the generated code reads in place of a typed
+/// call (decision AU34): `List.at`. The prelude is the standard
+/// library's, which no other extension declares (decision AK2), so its
+/// functions' names say which natives they are.
+pub(crate) fn read_in_place(meta: &crate::compile::FunctionMeta) -> Option<crate::vm::ReadInPlace> {
+    use crate::vm::ReadInPlace;
     if !meta.is_library || meta.module != "std.prelude" {
         return None;
     }
     let receiver = meta.receiver.as_deref()?.split(' ').next()?;
     match (meta.name.as_str(), receiver) {
-        ("at", "List") => Some(InPlace::ListAt),
-        ("contains", "Text") => Some(InPlace::TextContains),
-        ("contains", "List") => Some(InPlace::ListContains),
+        ("at", "List") => Some(ReadInPlace::ListAt),
         _ => None,
     }
 }
 
-/// `Text.contains` for `rt_text_contains` (decision AU34): the answer of
-/// its typed entry, `None` when that declines.
-pub(crate) fn text_contains_in_place(args: &[Value]) -> Option<bool> {
-    text_contains_typed(args)
+// --------------------------------------------- in-place entries (AW11)
+
+/// `Integer.quotient` for its in-place entry: two small Integers whose
+/// quotient is small; declined on a division by zero, which the native
+/// crashes on, and on the one overflow.
+fn integer_quotient_typed(args: &[Value]) -> Option<i64> {
+    let dividend = plain_small(&args[0])?;
+    let divisor = plain_small(&args[1])?;
+    if divisor == 0 {
+        return None;
+    }
+    dividend.checked_div(divisor)
 }
 
-/// `List.contains` for `rt_list_contains`, as `text_contains_in_place`.
-pub(crate) fn list_contains_in_place(args: &[Value]) -> Option<bool> {
-    list_contains_typed(args)
+/// A count argument as `count` reads it: a small Integer, negative as
+/// zero; a big one declined.
+fn plain_count(value: &Value) -> Option<usize> {
+    Some(plain_small(value)?.max(0) as usize)
+}
+
+/// `List.slice` for its in-place entry: as the native, the bounds
+/// clamped to the list.
+fn list_slice_typed(args: &[Value]) -> Option<Value> {
+    let items = plain_list(&args[0])?;
+    let start = plain_count(&args[1])?.min(items.len());
+    let stop = plain_count(&args[2])?.min(items.len()).max(start);
+    Some(Value::list(items[start..stop].to_vec()))
+}
+
+/// `List.append` for its in-place entry, which takes: the list updated
+/// in place when the call owns it and nothing else holds it, else copied
+/// once with room, as the native does (decisions O1 and AU54); declined
+/// on anything but a list, which the native crashes on.
+fn list_append_in_place(args: &mut [Value], borrowed: u32) -> Option<Value> {
+    if !matches!(args[0], Value::List(_)) {
+        return None;
+    }
+    let item = take_or_clone(args, 1, borrowed);
+    let Value::List(mut items) = take_or_clone(args, 0, borrowed) else {
+        unreachable!("the receiver is a list");
+    };
+    match Rc::get_mut(&mut items) {
+        Some(list) => list.push(item),
+        None => {
+            let mut copy = Vec::with_capacity(items.len() + 1);
+            copy.extend(items.iter().cloned());
+            copy.push(item);
+            items = Rc::new(copy);
+        }
+    }
+    Some(Value::List(items))
+}
+
+/// `List.with_at` for its in-place entry, which takes, as
+/// `list_append_in_place`.
+fn list_with_at_in_place(args: &mut [Value], borrowed: u32) -> Option<Value> {
+    if !matches!(args[0], Value::List(_)) {
+        return None;
+    }
+    let index = plain_small(&args[1])?;
+    let item = take_or_clone(args, 2, borrowed);
+    let Value::List(mut items) = take_or_clone(args, 0, borrowed) else {
+        unreachable!("the receiver is a list");
+    };
+    if let Some(i) = index_in(items.len(), index) {
+        match Rc::get_mut(&mut items) {
+            Some(list) => list[i] = item,
+            None => {
+                let mut copy: Vec<Value> = (*items).clone();
+                copy[i] = item;
+                items = Rc::new(copy);
+            }
+        }
+    }
+    Some(Value::List(items))
+}
+
+/// `List.append_all` for its in-place entry, which takes, as
+/// `list_append_in_place`.
+fn list_append_all_in_place(args: &mut [Value], borrowed: u32) -> Option<Value> {
+    if !matches!(args[0], Value::List(_)) || !matches!(args[1], Value::List(_)) {
+        return None;
+    }
+    let Value::List(others) = take_or_clone(args, 1, borrowed) else {
+        unreachable!("the argument is a list");
+    };
+    let Value::List(mut items) = take_or_clone(args, 0, borrowed) else {
+        unreachable!("the receiver is a list");
+    };
+    match Rc::get_mut(&mut items) {
+        Some(list) => list.extend(others.iter().cloned()),
+        None => {
+            let mut copy = Vec::with_capacity(items.len() + others.len());
+            copy.extend(items.iter().cloned());
+            copy.extend(others.iter().cloned());
+            items = Rc::new(copy);
+        }
+    }
+    Some(Value::List(items))
 }
 
 fn text_starts_with_typed(args: &[Value]) -> Option<bool> {

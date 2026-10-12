@@ -43,7 +43,7 @@ pub mod vm;
 
 pub use compile::{compile_project, Program};
 pub use decimal::Decimal;
-pub use extension::{Extension, Native, Registry, Typed, TypedKind};
+pub use extension::{Extension, InPlace, InPlaceShim, Native, Registry, Typed, TypedKind};
 pub use grant::Narrowing;
 pub use integer::Int;
 pub use recording::{Manifest, Recording};

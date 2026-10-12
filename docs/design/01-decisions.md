@@ -7227,3 +7227,154 @@ tests. Since stage 0 the check row 2,889.9 to 2,296.2 (-20.5%), since
 the study's binary 3,085.3 (-25.6%); stage 2 in all, 2,527.2 to
 2,296.2. Next in AW1's order: stage 3, the natives' entry and the glue,
 where the glue's remaining 6,030,437 calls are.
+
+**AW11. Stage 3a of the new backend: the natives' in-place entry.** The
+first item of stage 3 in AW1's order (the study's item (3a); its items
+(3b) and (3c), the character tables and the hasher, are AW7), on
+2026-10-12, measured as AW1 prescribes against stage 2c's binary
+(f48282f). A pure native was called two ways from the generated code.
+Through `rt_call_typed` when it carried a typed entry (decision AU1):
+the helper looked the entry up, matched its kind, called it on the
+arguments where they lay, wrote a scalar to the out slot or pushed a
+value through `typed_value_answer`, consumed the arguments by the mask
+and tested the memory budget, 42.0 million instructions self on 527,824
+calls of the check row beside the entries' own work, and 19.0 million
+more on the 239,842 values answered. Through `rt_call_pure` otherwise:
+`call_pure_from_stack` drained the arguments into the scratch vector,
+ran the native on them through `run_native` and answered through
+`Result` and `status`, 47.2 million self on 341,454 calls (`append`
+187,030, `slice` 94,734, `with_at` 22,718, `quotient` 13,677,
+`append_all` 12,847) with a copy of the arguments, the vector's drop
+glue and the glue of `Value` on every argument (795,618 of the glue's
+6,030,437 calls) beside, and `status` 53.3 million on 1,567,934 calls
+from every helper that answers a value. The two `contains` went through
+AU34's lean helpers. The study's item (3a) prescribed a second entry
+per native answering in place, and the owner chose it through AK1's
+registration API over lean helpers for the hot ones only (AW1, answer
+6). `InPlace` in `extension.rs` is that entry. `in_place!(Int:
+list_length_typed)` makes one from a typed entry, for the four kinds,
+and `in_place!(takes list_append_in_place)` from a function `fn(&mut
+[Value], u32) -> Option<Value>` that takes its arguments
+(`take_or_clone` of `natives`), given the mask of those the caller
+still holds, which it copies rather than updates. The macro writes an
+`extern "C"` shim, `fn(vm, at, count, borrowed, pc) -> status`, which
+reads or takes the arguments where they lie on the stack, releases the
+ones the call owns (a taken one is `Nothing` there, a tag test), writes
+the answer over the first and answers `CONTINUE`, `FAILURE` for a
+failure value, `INTERRUPT` with the interrupt parked, or `DECLINED`
+with nothing touched. `Native::with_in_place` registers it, the
+registry holds it to the declaration as it holds a typed entry (no
+`needs`), and the VM keeps the shims in a table per function
+(`NativeState::in_place`), which the generated code of both tiers calls
+directly on one to thirty-two arguments: the Cranelift tier in
+`call_in_place` (the shim's address loaded from the table and called
+indirectly, a scalar answer read from the boxed value in place, the
+typed call as the fallback when the entry declines), the template tier
+in its `call_in_place` with the arguments in the convention's
+registers, and the interpreter in `Vm::call_in_place` before the typed
+entry. A moved operand of an entry that takes is the call's to consume,
+so that `append` on a list the call owns pushes in place as the flat
+path did, where a typed call lends it (decision AU17): `taking_entry`
+in the borrow analysis. The standard library registers 26 entries:
+`quotient`, `at_least` and `at_most` of Integer; `length`, `is_empty`,
+`contains`, `starts_with` and `ends_with` of Text; `length`,
+`is_empty`, `first`, `last`, `with_at`, `slice`, `append`,
+`append_all`, `contains`, `run_of`, `run_until`, `join` and `sum` of
+List; `length`, `get` and `contains_key` of Map; `length` and
+`contains` of Set (`with_at`, `append` and `append_all` take; `slice`
+and `quotient` through the read-only entries `list_slice_typed` and
+`integer_quotient_typed`, written for the stage). `List.at` keeps
+AU34's read in place with the typed call as its fallback, and AU34's
+lean helpers `rt_text_contains` and `rt_list_contains` go, the entries
+having taken their place (code format 20). Built twice. The first build
+gave every entry one shape: a guard tested, the arguments released by a
+loop over them, the memory budget tested after every answer, and in the
+generated code the length stored twice and the status tested twice
+(answered, then declined or failed). The check row fell 3.9% (2,296.2
+to 2,207.4 million), but the `strings` benchmark, whose digits loop
+calls `Text.contains` 1,188,895 times, rose 12.2% (431.9 to 484.6
+million): the shims cost 93.3 million self on its 1,288,897 calls
+against the lean helper's 23.8 million on its 1,188,895, 72
+instructions a call against 20, and the generated code (every chunk of
+the arena) 109.8 to 121.1 million. The second build gives a scalar
+entry that reads its operands the lean helper's shape, which the
+owner's choice did not ask it to give up: no guard tested (a typed
+entry answers on plain values alone, a guarded value matching no plain
+pattern, which `rt_call_typed` relies on too), no budget tested (a
+scalar answer retains nothing and the arguments released only lower the
+memory in use; the budget is tested at the next helper that allocates,
+as the lean helpers had it), the arguments the call owns released by a
+loop over the bits set (`release_owned`, one test when there are none),
+and in the generated code one test of the status after the call with
+the length stored for the answer alone; an entry that answers a value
+or takes its operands keeps the failure test and the budget, and the
+generated code tests its status as before (`Entry::Takes` tells the
+tiers). The tests: `tests/extension.rs` registers an in-place entry
+from `twice`'s typed entry and a taking one on a new native `grow`,
+which grows a list the call owns in place to a thousand items on both
+tiers and copies one the caller keeps, and the check refuses an
+in-place entry on a function with `needs`; the corpus, the conformance
+suite on both tiers and the four judges hold the standard library's
+entries. A correction to AW10 on the way: its self counts of the glue
+of `Value`, 123.5 to 62.6 million, were summed over the annotator's
+whole listing, whose source listings repeat the table's counts and add
+the callee lines; over the function table alone they are 111.8 to 50.8
+million (the calls as AW10 states them), and every self count here is
+summed that way. What the measure found: the check row 2,296.2 to
+2,203.9 million (-4.0%); the shims 1,050,545 calls, 133.2 million self
+with the entries' bodies inlined into them (`list_append`,
+`list_slice`, `list_length_typed` and the rest no longer appear as
+functions; `list_join_typed` 97,732 calls and `map_get_typed` 121,757
+do); on `strings` the shims 68.0 million self on 1,288,897 calls (53
+instructions a call) and the generated code 115.9 million, the
+benchmark +5.0% against stage 2c's lean helper: what remains over the
+helper's 20 is the uniform call of five arguments, the shim's prologue,
+which keeps the operands across the entry's call, and the answer boxed
+and read back, which a scalar shim of two arguments with the entry
+inlined would recover, an item for a later stage of the round;
+`records` -17.4%, its lists appended in place through the taking entry.
+The measure in full (callgrind under WSL on the release build for
+Linux, the images built under `valgrind --tool=none`, against stage
+2c's binary measured the same way in AW10, the reference AU34's
+44782aa): the check row 2,296.2 to 2,203.9 million instructions
+(-4.0%), the parse row 939.5 to 905.1 (-3.7%), the compile row 3,809.2
+to 3,672.4 (-3.6%); the ratios by instructions against the reference's
+rows (441.6, 284.7 and 365.6) 4.99, 3.18 and 10.04 against the gate's 3
+(5.20, 3.30 and 10.42 after AW10); the Rust front end's own rows within
+0.1% of stage 2c's (`check` 173.3, `parse --json` 246.7, `compile`
+446.6). The functions on the check row: the shims 1,050,545 calls,
+133.2 million self; `rt_call_typed` 527,824 to 1,908 calls (42.0 to 0.1
+million self), `typed_value_answer` 239,842 to 1,896 (19.0 to 0.1),
+`rt_call_pure` 341,454 to 10,448, `call_pure_from_stack` 341,454 to
+10,448 (47.2 to 1.3), `status` 1,567,934 to 1,236,928 (53.3 to 42.1),
+`into_plain` 816,882 to 816,882 (27.0 to 27.0), the glue of `Value`
+6,030,437 to 3,933,657 (50.8 to 33.3), `mi_malloc` 1,978,953 to
+1,978,955, `mi_free` 1,777,179 to 1,777,181; `list_append` 187,030 to 0
+calls, `list_slice` 94,734 to 0 (both inlined into their shims now),
+`map_get_typed` 121,757 to 121,757, `list_join_typed` 97,732 to 97,732
+(`list_length_typed`, 76,950 calls before, and `text_contains_typed`,
+154,702, are inlined into their shims). The check row by category,
+AW10's table against this one, in millions: the natives 365.0 to 307.3,
+the helpers' glue 85.3 to 74.0, the counts and drops 219.1 to 190.2,
+the VM's own 83.0 to 89.6, the records 57.6 to 57.6, the generated code
+982.2 to 986.4, mimalloc 121.1 to 121.0, the texts and copies 109.0 to
+103.8, the hashing 55.6 to 55.8, the calls through the VM's path 6.9 to
+6.9, the comparisons 123.8 to 123.8, the load 46.5 to 46.4, the
+iterators 40.3 to 40.3. AT1's rows on the frozen self-check
+(`tools/measure_size.sh` under WSL, stage 2c's binary against this
+one): the synchronous JIT row 5,750.6 to 5,613.6 million instructions
+(-2.4%) and 8,192.5 to 8,019.3 by the estimate (-2.1%), its indirect
+branches 13.3 to 12.7 million (-4.3%) and its mispredictions 32.4 to
+31.9, the image row 3,972.3 to 3,828.9 (-3.6%) and 5,773.1 to 5,617.0
+by the estimate (-2.7%), the cached run 4,052.1 to 3,908.7 (-3.5%), the
+interpreter 11,181.9 to 11,098.7 (-0.7%); the image 9,554,000 to
+9,601,808 bytes (+0.5%). The four benchmarks and hello by user-space
+instructions (`perf stat`, the JIT synchronous, in millions): `primes`
+265.0 to 265.2 (+0.1%), `strings` 431.9 to 453.7 (+5.0%), `records`
+204.2 to 168.7 (-17.4%), `json_round_trip` 841.6 to 841.2 (within
+0.05%), `hello` 5.43 to 5.44 (+0.2%). The four judges byte-equal, the
+conformance suite 55 of 55 on both tiers, the template tier's own tests
+with the tier forced, 399 tests. Since stage 0 the check row 2,889.9 to
+2,203.9 (-23.7%), since the study's binary 3,085.3 (-28.6%). Next in
+AW1's order: stage 3b, `status` and `into_plain` off the path (the
+study's item (3d)), then stage 4.

@@ -96,6 +96,19 @@ pub fn take(args: &mut [Value], index: usize) -> Value {
     }
 }
 
+/// The i-th argument of an in-place entry that takes (decision AW11):
+/// taken out, `Nothing` left in its place, when the call owns it; cloned
+/// when the caller still holds it (its bit set in `borrowed`, the first
+/// argument bit 0), so that a collection held elsewhere is copied, not
+/// updated in place.
+pub fn take_or_clone(args: &mut [Value], index: usize, borrowed: u32) -> Value {
+    if borrowed & (1 << index) != 0 {
+        args[index].clone()
+    } else {
+        take(args, index)
+    }
+}
+
 // ------------------------------------------------- typed entries (AU1)
 
 /// The plain Text of an argument of a typed entry: `None` for anything

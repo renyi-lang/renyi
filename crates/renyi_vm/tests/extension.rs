@@ -1,8 +1,9 @@
 //! The registration API (decisions AJ1 and AK1 to AK4): the standard
-//! library passes its own check, an extension of three natives checks,
+//! library passes its own check, an extension of four natives checks,
 //! runs, is recorded and is refused at the boundary like a library module,
-//! and the check names what is declared without a native or implemented
-//! without a declaration.
+//! its typed entry (decision AU1) and its in-place entries (decision AW11)
+//! answer on both tiers, and the check names what is declared without a
+//! native or implemented without a declaration.
 
 use std::cell::RefCell;
 use std::io::Write;
@@ -11,10 +12,10 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use renyi_check::check_project_in;
 use renyi_syntax::SourceFile;
-use renyi_vm::natives::{arg, crash, plain_small, small, text};
+use renyi_vm::natives::{arg, crash, plain_small, small, take, take_or_clone, text};
 use renyi_vm::{
-    compile_project, Extension, Interrupt, Native, Options, Program, Registry, RunOutcome, Typed,
-    Value, Vm,
+    compile_project, in_place, Extension, Interrupt, Native, Options, Program, Registry,
+    RunOutcome, Typed, Value, Vm,
 };
 
 const DEMO_MODULE: &str = r#"module demo
@@ -34,6 +35,8 @@ public function shout(text: Text) needs console
   purpose: Print the text in capitals with a bang.
 public function peek(path: Path) returns Text or fails with PeekError needs filesystem.read
   purpose: The first line of the file.
+public function grow(items: List of Integer) returns List of Integer
+  purpose: The list with one more item.
 "#;
 
 fn twice(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
@@ -69,14 +72,49 @@ fn peek(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     }
 }
 
+/// How often the in-place entry of `grow` was asked.
+static GROW_ASKED: AtomicUsize = AtomicUsize::new(0);
+
+fn grow(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    match take(args, 0) {
+        Value::List(mut items) => {
+            Rc::make_mut(&mut items).push(Value::integer(1));
+            Ok(Value::List(items))
+        }
+        other => Err(crash(format!(
+            "`grow` needs a List, found {}",
+            other.kind_name()
+        ))),
+    }
+}
+
+/// The in-place entry of `grow` (decision AW11), which takes: the list
+/// pushed to in place when the call owns it and nothing else holds it,
+/// copied otherwise; it declines on anything but a list, which the
+/// native crashes on.
+fn grow_in_place(args: &mut [Value], borrowed: u32) -> Option<Value> {
+    GROW_ASKED.fetch_add(1, Ordering::Relaxed);
+    if !matches!(args[0], Value::List(_)) {
+        return None;
+    }
+    let Value::List(mut items) = take_or_clone(args, 0, borrowed) else {
+        unreachable!("the argument is a list");
+    };
+    Rc::make_mut(&mut items).push(Value::integer(1));
+    Some(Value::List(items))
+}
+
 const DEMO: Extension = Extension {
     name: "demo",
     version: "0.1.0",
     modules: &[("demo", DEMO_MODULE)],
     natives: &[
-        Native::function("demo", "twice", twice).with_typed(Typed::Int(twice_typed)),
+        Native::function("demo", "twice", twice)
+            .with_typed(Typed::Int(twice_typed))
+            .with_in_place(in_place!(Int: twice_typed)),
         Native::function("demo", "shout", shout),
         Native::function("demo", "peek", peek),
+        Native::function("demo", "grow", grow).with_in_place(in_place!(takes grow_in_place)),
     ],
 };
 
@@ -120,6 +158,35 @@ public function main() or fails with PeekError needs console, filesystem.read("d
   demo.shout("hello")
   let secret be demo.peek(Path("elsewhere/secret.txt")) otherwise fail
   console.print(secret)
+end
+"#;
+
+/// A program that grows a list hot (a loop the machine code runs), the
+/// call owning the list it grows, and cold on a list the caller keeps,
+/// which the entry must copy; `twice` through its in-place entry too.
+const IN_PLACE_PROGRAM: &str = r#"module demo_program
+  purpose: Call the extension's in-place entries hot and cold.
+
+import demo
+import std.console
+
+function grown(limit: Integer) returns List of Integer
+  purpose: A list of one item grown by one per turn.
+
+  let mutable items be [0]
+  repeat until items.length() is at least limit
+    change items to demo.grow(items)
+  end
+  return items
+end
+
+public function main() needs console
+  purpose: Print the lengths and a doubling.
+
+  let base be [7]
+  let once be demo.grow(base)
+  let again be demo.grow(base)
+  console.print("{grown(1000).length()} {base.length()} {once.length()} {again.length()} {demo.twice(4)}")
 end
 "#;
 
@@ -269,6 +336,36 @@ fn a_typed_entry_answers_on_both_tiers_and_declines_to_the_native() {
 }
 
 #[test]
+fn an_in_place_entry_answers_on_both_tiers_and_takes_what_the_call_owns() {
+    std::env::set_var("RENYI_NATIVE_HOT", "0");
+    let registry = Registry::standard().with(DEMO);
+    assert_eq!(registry.verify(), Ok(()));
+    let program = compile(&registry, IN_PLACE_PROGRAM);
+    for interpret in [false, true] {
+        let stdout = Capture::default();
+        let asked = GROW_ASKED.load(Ordering::Relaxed);
+        let outcome = renyi_vm::run_main(
+            &program,
+            Options {
+                stdout: Box::new(stdout.clone()),
+                stderr: Box::new(Capture::default()),
+                registry: registry.clone(),
+                interpret,
+                ..Options::default()
+            },
+        );
+        assert_eq!(outcome, RunOutcome::Finished, "interpret: {interpret}");
+        // the list the call owns grows in place to a thousand items; the
+        // list the caller keeps is copied twice and keeps its one item
+        assert_eq!(stdout.text(), "1000 1 2 2 8\n", "interpret: {interpret}");
+        assert!(
+            GROW_ASKED.load(Ordering::Relaxed) - asked >= 1001,
+            "interpret: {interpret}"
+        );
+    }
+}
+
+#[test]
 fn the_check_holds_a_typed_entry_to_its_declaration() {
     fn wrong_kind(_: &[Value]) -> Option<bool> {
         None
@@ -280,6 +377,7 @@ fn the_check_holds_a_typed_entry_to_its_declaration() {
         Native::function("demo", "twice", twice).with_typed(Typed::Bool(wrong_kind)),
         Native::function("demo", "shout", shout),
         Native::function("demo", "peek", peek),
+        Native::function("demo", "grow", grow),
     ];
     let problem = Registry::standard()
         .with(Extension {
@@ -296,6 +394,7 @@ fn the_check_holds_a_typed_entry_to_its_declaration() {
         Native::function("demo", "twice", twice),
         Native::function("demo", "shout", shout).with_typed(Typed::Value(skips)),
         Native::function("demo", "peek", peek),
+        Native::function("demo", "grow", grow),
     ];
     let problem = Registry::standard()
         .with(Extension {
@@ -308,6 +407,24 @@ fn the_check_holds_a_typed_entry_to_its_declaration() {
         problem,
         "extension `demo`: `demo.shout` on `Text` has a typed entry but needs `console`; a typed entry skips the boundary"
     );
+    // an in-place entry skips the boundary too (decision AW11)
+    const SKIPS_IN_PLACE: &[Native] = &[
+        Native::function("demo", "twice", twice),
+        Native::function("demo", "shout", shout).with_in_place(in_place!(Value: skips)),
+        Native::function("demo", "peek", peek),
+        Native::function("demo", "grow", grow),
+    ];
+    let problem = Registry::standard()
+        .with(Extension {
+            natives: SKIPS_IN_PLACE,
+            ..DEMO
+        })
+        .verify()
+        .unwrap_err();
+    assert_eq!(
+        problem,
+        "extension `demo`: `demo.shout` on `Text` has an in-place entry but needs `console`; an in-place entry skips the boundary"
+    );
 }
 
 #[test]
@@ -315,6 +432,7 @@ fn the_check_names_a_declaration_without_a_native() {
     const NATIVES: &[Native] = &[
         Native::function("demo", "twice", twice),
         Native::function("demo", "shout", shout),
+        Native::function("demo", "grow", grow),
     ];
     let extension = Extension {
         natives: NATIVES,
@@ -333,6 +451,7 @@ fn the_check_names_a_native_without_a_declaration() {
         Native::function("demo", "twice", twice),
         Native::function("demo", "shout", shout),
         Native::function("demo", "peek", peek),
+        Native::function("demo", "grow", grow),
         Native::method("demo", "whisper", "Text", shout),
     ];
     let extension = Extension {

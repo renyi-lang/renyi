@@ -274,6 +274,10 @@ pub struct Jit {
     /// trampoline once the Cranelift code is ready, else the template,
     /// else null (the call goes through `rt_call`).
     entries: Box<[*const u8]>,
+    /// Per function, the shim of its native's in-place entry (decision
+    /// AW11), which the generated code calls through
+    /// `NativeState::in_place`; null where the native has none.
+    in_place: Box<[*const u8]>,
     /// Per code object, its constants, which the generated code reads
     /// through `NativeState::constants`.
     constants: Box<[*const Value]>,
@@ -483,7 +487,12 @@ impl CodeArena {
 impl Jit {
     /// A JIT for the program, or `None` when the host is not a machine
     /// Cranelift generates code for (the interpreter then runs alone).
-    pub fn new(program: &Program, opt_level: Option<&str>, calls: Vec<CallKind>) -> Option<Jit> {
+    pub fn new(
+        program: &Program,
+        opt_level: Option<&str>,
+        calls: Vec<CallKind>,
+        in_place: &[Option<crate::extension::InPlace>],
+    ) -> Option<Jit> {
         // no optimisation unless asked (`renyi build --opt speed`, or
         // `RENYI_NATIVE_OPT=speed` as a development aid): the generated
         // code calls a helper for most ops, and Cranelift's optimiser
@@ -532,6 +541,12 @@ impl Jit {
             .iter()
             .map(|code| code.constants.as_ptr())
             .collect();
+        // the in-place entries' shims per function (decision AW11), which
+        // the generated code calls through `NativeState::in_place`
+        let in_place: Box<[*const u8]> = in_place
+            .iter()
+            .map(|entry| entry.map_or(std::ptr::null(), |entry| entry.shim as *const u8))
+            .collect();
         Some(Jit {
             isa,
             ctx: Context::new(),
@@ -550,6 +565,7 @@ impl Jit {
             inline: std::env::var("RENYI_NATIVE_INLINE").is_ok_and(|text| text == "1"),
             helpers,
             entries: vec![std::ptr::null(); program.codes.len()].into_boxed_slice(),
+            in_place,
             constants,
             code: CodeArena::default(),
             calls,
@@ -749,6 +765,7 @@ impl Jit {
             hotness: std::ptr::null_mut(),
             entries: self.entries.as_ptr(),
             globals: self.globals.as_ptr(),
+            in_place: self.in_place.as_ptr(),
             ..crate::vm::NativeState::default()
         }
     }

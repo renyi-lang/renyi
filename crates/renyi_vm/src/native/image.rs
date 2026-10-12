@@ -85,8 +85,11 @@ const PART_ALIGN: usize = 16;
 /// of two fields returned as a pair of cells, `rt_pair_record`,
 /// `rt_split_pair`, `rt_pair_fits` and `rt_pair_resume` among the
 /// helpers, a pair slot's second cell in the frame, and the pair kinds
-/// with their type in a hand-back point (decision AW9).
-pub const CODE_FORMAT: u32 = 19;
+/// with their type in a hand-back point (decision AW9). 20: a native's
+/// in-place entry called through `NativeState::in_place`, and the lean
+/// helpers `rt_text_contains` and `rt_list_contains` gone (decision
+/// AW11).
+pub const CODE_FORMAT: u32 = 20;
 
 /// The extension of an image file.
 pub const EXTENSION: &str = "ryi";
@@ -126,7 +129,7 @@ pub fn build(
     opt_level: Option<&str>,
     registry: &Registry,
 ) -> Result<Image, String> {
-    let calls = crate::vm::call_kinds(program, registry);
+    let tables = crate::vm::tables_of(program, registry);
     // the machine code of the program as the VM runs it, with the last
     // reads of the slots as moves (decision AU17); the image carries the
     // program as the emitters wrote it
@@ -138,9 +141,14 @@ pub fn build(
     // values go with this VM, and the run builds its own on the first
     // read as before, the same values by the purity; a constant whose
     // build fails is left to the run, which crashes on its first read
-    let evaluable = pure_constants(&prepared, &calls);
-    let mut jit = Jit::new(&prepared, Some(opt_level.unwrap_or("speed")), calls)
-        .ok_or_else(|| "this machine generates no machine code".to_string())?;
+    let evaluable = pure_constants(&prepared, &tables.calls);
+    let mut jit = Jit::new(
+        &prepared,
+        Some(opt_level.unwrap_or("speed")),
+        tables.calls,
+        &tables.in_place,
+    )
+    .ok_or_else(|| "this machine generates no machine code".to_string())?;
     if !evaluable.is_empty() {
         let fresh = || {
             Vm::new(
@@ -237,7 +245,7 @@ pub fn pure_constants(program: &Program, calls: &[CallKind]) -> Vec<usize> {
                         Some(callee) => pure[callee],
                         None => matches!(
                             calls.get(*function),
-                            Some(CallKind::Pure | CallKind::Typed { .. })
+                            Some(CallKind::Pure { .. } | CallKind::Typed { .. })
                         ),
                     }
                 }

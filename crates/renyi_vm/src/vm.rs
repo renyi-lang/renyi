@@ -24,7 +24,7 @@ use renyi_syntax::ast::BinaryOp;
 use crate::bytecode::{Code, CodeKind, Op};
 use crate::compile::{CodeId, Program};
 use crate::decimal::{Decimal, DecimalError};
-use crate::extension::{Registry, Typed, TypedKind};
+use crate::extension::{Found, InPlace, Registry, Typed, TypedKind};
 use crate::grant::{self, Counter, Guard, Narrowing};
 use crate::integer::Int;
 use crate::memory;
@@ -212,6 +212,10 @@ pub(crate) struct NativeState {
     /// (decision AU53), which the generated code copies in place instead
     /// of asking `rt_global`; the JIT owns the table.
     pub(crate) globals: *const GlobalSlot,
+    /// Per function, the shim of its native's in-place entry (decision
+    /// AW11), which the generated code calls directly, else null; the JIT
+    /// owns the table.
+    pub(crate) in_place: *const *const u8,
 }
 
 /// A module constant as the generated code reads it (decision AU53): the
@@ -236,6 +240,7 @@ impl Default for NativeState {
             list_items: list_items as i64,
             list_len: list_len as i64,
             globals: std::ptr::null(),
+            in_place: std::ptr::null(),
         }
     }
 }
@@ -290,6 +295,10 @@ pub struct Vm<'p> {
     /// Per function, the typed entry of its native (decision AU1), which
     /// a call takes first when the function is pure.
     typed: Vec<Option<Typed>>,
+    /// Per function, the in-place entry of its native (decision AW11),
+    /// which a call takes before the typed entry when the function is
+    /// pure.
+    in_place: Vec<Option<InPlace>>,
     /// Per function, whether it is a native of this build that needs no
     /// capability: a call to it runs on the flat path (decision AU1).
     pure: Vec<bool>,
@@ -394,36 +403,48 @@ impl Drop for Vm<'_> {
 /// function or a primitive through `rt_call`; a pure primitive (no
 /// `needs`, a native of this build) through the flat path; one with a
 /// typed entry through `rt_call_typed`, its arguments borrowed and its
-/// result in a register, or in place when the generated code knows the
-/// native (decision AU34).
+/// result in a register, or read in place when the generated code knows
+/// the native (decision AU34); one with an in-place entry (decision
+/// AW11) through the entry first, called directly on the arguments where
+/// they lie, the typed call or the flat path when it declines.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CallKind {
     General,
-    Pure,
+    Pure {
+        entry: Option<Entry>,
+    },
     Typed {
         kind: TypedKind,
-        in_place: Option<InPlace>,
+        read: Option<ReadInPlace>,
+        entry: Option<Entry>,
     },
 }
 
-/// A native the generated code does in place of a typed call (decision
+/// A native the generated code reads in place of a typed call (decision
 /// AU34), the general path kept for what it does not take: the prelude's
 /// natives, which no other extension can declare (decision AK2).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum InPlace {
+pub enum ReadInPlace {
     /// `List.at` on a list and a small Integer: the item copied with one
     /// more reference, or `Nothing` past either end; read through the
     /// list's layout as `layout::list_layout` found it.
     ListAt,
-    /// `Text.contains` through `rt_text_contains`, which answers a
-    /// Boolean from the operands where they lie.
-    TextContains,
-    /// `List.contains` through `rt_list_contains`, as `TextContains`.
-    ListContains,
 }
 
-/// Per function, the native of this build and its typed entry.
-type Entries = Vec<Option<(NativeFn, Option<Typed>)>>;
+/// How a native's in-place entry (decision AW11) treats the arguments of
+/// a call: reading them where they lie, as a typed entry does, so that
+/// the generated code lends it a moved operand like a plain one (decision
+/// AU17), or taking an argument the call owns, to update a collection in
+/// place, so that a moved operand is the call's to consume.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Entry {
+    Reads,
+    Takes,
+}
+
+/// Per function, the native of this build with its typed entry and its
+/// in-place entry.
+type Entries = Vec<Option<Found>>;
 
 fn entries_of(program: &Program, registry: &Registry) -> Entries {
     program
@@ -449,30 +470,57 @@ fn pure_of(program: &Program, natives: &[Option<NativeFn>]) -> Vec<bool> {
         .collect()
 }
 
-fn kinds_of(program: &Program, pure: &[bool], typed: &[Option<Typed>]) -> Vec<CallKind> {
+fn kinds_of(
+    program: &Program,
+    pure: &[bool],
+    typed: &[Option<Typed>],
+    in_place: &[Option<InPlace>],
+) -> Vec<CallKind> {
     let list_layout = crate::value::layout::list_layout().is_some();
     pure.iter()
         .zip(typed)
+        .zip(in_place)
         .zip(&program.function_metas)
-        .map(|((pure, typed), meta)| match (pure, typed) {
-            (true, Some(typed)) => CallKind::Typed {
-                kind: typed.kind(),
-                in_place: natives::prelude::in_place(meta)
-                    .filter(|op| *op != InPlace::ListAt || list_layout),
-            },
-            (true, None) => CallKind::Pure,
-            (false, _) => CallKind::General,
+        .map(|(((pure, typed), in_place), meta)| {
+            let entry = in_place.map(|in_place| {
+                if in_place.takes {
+                    Entry::Takes
+                } else {
+                    Entry::Reads
+                }
+            });
+            match (pure, typed) {
+                (true, Some(typed)) => CallKind::Typed {
+                    kind: typed.kind(),
+                    read: natives::prelude::read_in_place(meta)
+                        .filter(|op| *op != ReadInPlace::ListAt || list_layout),
+                    entry,
+                },
+                (true, None) => CallKind::Pure { entry },
+                (false, _) => CallKind::General,
+            }
         })
         .collect()
 }
 
-/// How the generated code calls every function of the program under this
-/// registry (decision AU1): what `renyi build` compiles with.
-pub fn call_kinds(program: &Program, registry: &Registry) -> Vec<CallKind> {
+/// The natives' tables of a program under a registry: per function, the
+/// native of this build, whether it is pure, its typed entry (decision
+/// AU1) and its in-place entry (decision AW11), both for a pure function
+/// only since they skip the boundary, and how the generated code calls
+/// it.
+pub(crate) struct Tables {
+    pub(crate) natives: Vec<Option<NativeFn>>,
+    pub(crate) pure: Vec<bool>,
+    pub(crate) typed: Vec<Option<Typed>>,
+    pub(crate) in_place: Vec<Option<InPlace>>,
+    pub(crate) calls: Vec<CallKind>,
+}
+
+pub(crate) fn tables_of(program: &Program, registry: &Registry) -> Tables {
     let entries = entries_of(program, registry);
     let natives: Vec<Option<NativeFn>> = entries
         .iter()
-        .map(|entry| entry.map(|(run, _)| run))
+        .map(|entry| entry.map(|(run, _, _)| run))
         .collect();
     let pure = pure_of(program, &natives);
     let typed: Vec<Option<Typed>> = entries
@@ -480,13 +528,37 @@ pub fn call_kinds(program: &Program, registry: &Registry) -> Vec<CallKind> {
         .zip(&pure)
         .map(|(entry, pure)| {
             if *pure {
-                entry.and_then(|(_, typed)| typed)
+                entry.and_then(|(_, typed, _)| typed)
             } else {
                 None
             }
         })
         .collect();
-    kinds_of(program, &pure, &typed)
+    let in_place: Vec<Option<InPlace>> = entries
+        .iter()
+        .zip(&pure)
+        .map(|(entry, pure)| {
+            if *pure {
+                entry.and_then(|(_, _, in_place)| in_place)
+            } else {
+                None
+            }
+        })
+        .collect();
+    let calls = kinds_of(program, &pure, &typed, &in_place);
+    Tables {
+        natives,
+        pure,
+        typed,
+        in_place,
+        calls,
+    }
+}
+
+/// How the generated code calls every function of the program under this
+/// registry (decision AU1): what `renyi build` compiles with.
+pub fn call_kinds(program: &Program, registry: &Registry) -> Vec<CallKind> {
+    tables_of(program, registry).calls
 }
 
 /// How many variants a type has: those of a sum type, none for another.
@@ -522,24 +594,7 @@ pub(crate) fn unit_slot(program: &Program, ty: TypeId, tag: usize) -> Option<usi
 
 impl<'p> Vm<'p> {
     pub fn new(program: &'p Program, mut options: Options) -> Vm<'p> {
-        let entries = entries_of(program, &options.registry);
-        let natives: Vec<Option<NativeFn>> = entries
-            .iter()
-            .map(|entry| entry.map(|(run, _)| run))
-            .collect();
-        let pure = pure_of(program, &natives);
-        let typed: Vec<Option<Typed>> = entries
-            .iter()
-            .zip(&pure)
-            .map(|(entry, pure)| {
-                if *pure {
-                    entry.and_then(|(_, typed)| typed)
-                } else {
-                    None
-                }
-            })
-            .collect();
-        let calls = kinds_of(program, &pure, &typed);
+        let tables = tables_of(program, &options.registry);
         let seed = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_nanos() as u64)
@@ -554,7 +609,7 @@ impl<'p> Vm<'p> {
         {
             None
         } else {
-            Jit::new(program, None, calls).map(Box::new)
+            Jit::new(program, None, tables.calls, &tables.in_place).map(Box::new)
         };
         if let (Some(jit), Some(image)) = (native.as_mut(), options.image.as_ref()) {
             if let Err(message) = jit.load_image(program, image) {
@@ -575,9 +630,10 @@ impl<'p> Vm<'p> {
             profile: options.profile.then(Profile::start),
             scratch: Vec::with_capacity(8),
             globals: vec![None; program.constants.len()],
-            natives,
-            typed,
-            pure,
+            natives: tables.natives,
+            typed: tables.typed,
+            in_place: tables.in_place,
+            pure: tables.pure,
             foreign: vec![None; program.function_metas.len()],
             libraries: Vec::new(),
             python: None,
@@ -909,6 +965,60 @@ impl<'p> Vm<'p> {
     /// The typed entry of a pure function's native, if any (decision AU1).
     pub(crate) fn typed_of(&self, function: FunctionId) -> Option<Typed> {
         self.typed.get(function).copied().flatten()
+    }
+
+    /// A primitive's in-place entry (decision AW11) on the `count`
+    /// arguments where they lie on top of the stack, as the generated code
+    /// calls it: `Some` with the status when the entry answered, the
+    /// answer on top of the stack in the first argument's place and the
+    /// other arguments gone (`CONTINUE`, or `FAILURE` for a failure
+    /// value), or `Err` with the interrupt it parked; `None`, the stack as
+    /// it was, when it declined (a guarded argument, a big Integer, a case
+    /// the native fails or crashes on) and the native itself must run.
+    /// A call of no argument or of more than 32 takes the native itself
+    /// too, as it does in the generated code: the answer needs a place,
+    /// and the mask of the arguments borrowed has 32 bits.
+    pub(crate) fn call_in_place(
+        &mut self,
+        function: FunctionId,
+        in_place: InPlace,
+        count: usize,
+        pc: usize,
+    ) -> Option<Result<i32, Interrupt>> {
+        use crate::native::runtime::{DECLINED, INTERRUPT};
+        if !(1..=32).contains(&count) {
+            return None;
+        }
+        let at = self.stack.len().saturating_sub(count);
+        let vm: *mut Vm<'static> = (self as *mut Vm<'p>).cast();
+        // SAFETY: the shim reads and writes the `count` slots at `at`,
+        // which lie within the stack, and reaches the VM through the
+        // pointer, which nothing else uses meanwhile; the lifetime is
+        // erased as it is for every helper the generated code calls.
+        let status = unsafe {
+            (in_place.shim)(
+                vm,
+                self.stack.as_mut_ptr().add(at),
+                count as u32,
+                0,
+                pc as u32,
+            )
+        };
+        if status == DECLINED {
+            return None;
+        }
+        // the answer is in the first argument's place and the other
+        // arguments are consumed: the stack ends after the answer
+        self.stack.forget_from(at + 1);
+        if let Some(profile) = &mut self.profile {
+            profile.primitive(function);
+        }
+        if status == INTERRUPT {
+            let answer = self.pop();
+            drop(answer);
+            return Some(Err(self.take_pending()));
+        }
+        Some(Ok(status))
     }
 
     /// A library primitive, counted and sampled when profiling.
@@ -1873,6 +1983,21 @@ impl<'p> Vm<'p> {
                             }
                         }
                         None => reload!(),
+                    }
+                } else if let Some(in_place) = self.in_place.get($function).copied().flatten() {
+                    // an in-place entry answers where the arguments lie
+                    // (decision AW11), or declines to the general path
+                    match self.call_in_place($function, in_place, $count, pc) {
+                        Some(status) => {
+                            if try_op!(status) == native::runtime::FAILURE {
+                                let value = self.pop();
+                                flow!(self.settle(value, entry));
+                            }
+                        }
+                        None => {
+                            let result = self.call_scratch($function, $count);
+                            settle!(try_op!(result));
+                        }
                     }
                 } else if let Some(typed) = self.typed.get($function).copied().flatten() {
                     // a typed entry answers on the arguments where they lie

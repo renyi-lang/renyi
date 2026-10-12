@@ -62,6 +62,12 @@ impl<T> Pinned<T> {
         self
     }
 
+    /// The address of the first item: for an in-place entry (decision
+    /// AW11) called on the items where they lie.
+    pub fn as_mut_ptr(&mut self) -> *mut T {
+        self.ptr
+    }
+
     /// Room for `needed` items in all.
     pub fn room(&mut self, needed: usize) {
         if needed > self.cap {

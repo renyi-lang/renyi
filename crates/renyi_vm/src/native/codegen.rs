@@ -47,7 +47,9 @@ use crate::value::layout::{
     TAG_NATIVE, TAG_NOTHING, TAG_RECORD, TAG_SMALL_TEXT, TAG_VARIANT,
 };
 use crate::value::Value;
-use crate::vm::{unit_slot, CallKind, FieldSite, Frame, GlobalSlot, InPlace, NativeState, Vm};
+use crate::vm::{
+    unit_slot, CallKind, Entry, FieldSite, Frame, GlobalSlot, NativeState, ReadInPlace, Vm,
+};
 
 /// Where the VM keeps its stack (decision AR4): the generated code reads
 /// the pinned vector's pointer, length and capacity there.
@@ -127,8 +129,6 @@ pub(crate) const STACK_SAFE: &[&str] = &[
     "rt_is_failure",
     "rt_top_is_absent",
     "rt_top_is_failure",
-    "rt_text_contains",
-    "rt_list_contains",
 ];
 
 /// Where the VM keeps what the generated code reaches by pointer
@@ -148,6 +148,7 @@ pub(crate) const STATE_ENTRIES: i32 = std::mem::offset_of!(NativeState, entries)
 pub(crate) const STATE_LIST_ITEMS: i32 = std::mem::offset_of!(NativeState, list_items) as i32;
 pub(crate) const STATE_LIST_LEN: i32 = std::mem::offset_of!(NativeState, list_len) as i32;
 pub(crate) const STATE_GLOBALS: i32 = std::mem::offset_of!(NativeState, globals) as i32;
+pub(crate) const STATE_IN_PLACE: i32 = std::mem::offset_of!(NativeState, in_place) as i32;
 /// A module constant's slot in the JIT's table (decision AU53): its size,
 /// the flag that says the VM has built it and the value.
 pub(crate) const GLOBAL_SIZE: usize = std::mem::size_of::<GlobalSlot>();
@@ -232,8 +233,6 @@ pub const SIGNATURES: &[(&str, &str, char)] = &[
     ("rt_call", "pzww", 'i'),
     ("rt_call_pure", "pzww", 'i'),
     ("rt_call_typed", "pzwwwp", 'i'),
-    ("rt_text_contains", "pw", 'i'),
-    ("rt_list_contains", "pw", 'i'),
     ("rt_call_ability", "pzwww", 'i'),
     ("rt_call_value", "pww", 'i'),
     ("rt_result_type", "pw", 'v'),
@@ -433,6 +432,10 @@ struct Gen<'a, 'b> {
     /// The VM's table of helpers, read once at the entry: every helper is
     /// called through it (decision AS1).
     helper_table: IrValue,
+    /// The VM's table of in-place entries (decision AW11), read once as
+    /// the helpers are, and the shims' signature once imported.
+    in_place_table: IrValue,
+    in_place_sig: Option<SigRef>,
     /// The signatures imported so far, by helper name.
     helper_sigs: HashMap<&'static str, SigRef>,
     vm: IrValue,
@@ -575,13 +578,43 @@ pub(crate) fn direct_call(
 }
 
 /// Whether the generated code calls `function` through a typed entry
-/// (decision AU1): a primitive carrying one whose kind agrees with the
-/// function's result.
+/// (decision AU1), a primitive carrying one whose kind agrees with the
+/// function's result, or through an in-place entry (decision AW11),
+/// which reads or takes its arguments where they lie as a typed entry
+/// does: the operands of either call are lent, not retained.
 pub(crate) fn typed_entry(program: &Program, calls: &[CallKind], function: usize) -> bool {
+    match calls.get(function) {
+        Some(CallKind::Typed { kind, .. }) => kind_agrees(*kind, abs_of_result(program, function)),
+        Some(CallKind::Pure { entry }) => entry.is_some(),
+        _ => false,
+    }
+}
+
+/// Whether the generated code calls `function` through an in-place entry
+/// that takes its arguments (decision AW11): a moved operand of such a
+/// call is the call's to consume, not lent (`Entry::Takes`).
+pub(crate) fn taking_entry(calls: &[CallKind], function: usize) -> bool {
     matches!(
         calls.get(function),
-        Some(CallKind::Typed { kind, .. }) if kind_agrees(*kind, abs_of_result(program, function))
+        Some(CallKind::Typed {
+            entry: Some(Entry::Takes),
+            ..
+        }) | Some(CallKind::Pure {
+            entry: Some(Entry::Takes)
+        })
     )
+}
+
+/// The kind the generated code takes an in-place entry's answer in
+/// (decision AW11): the function's result, a scalar read from the boxed
+/// answer or the boxed answer itself.
+pub(crate) fn entry_kind(program: &Program, function: usize) -> TypedKind {
+    match abs_of_result(program, function) {
+        Abs::Int => TypedKind::Int,
+        Abs::Bool => TypedKind::Bool,
+        Abs::Float => TypedKind::Float,
+        _ => TypedKind::Value,
+    }
 }
 
 /// The pushes a call or a comparison at `pc` takes from the ops just
@@ -632,18 +665,23 @@ pub(crate) fn accepted_params(program: &Program, calls: &[CallKind], code_id: us
     // that reads it where it lies
     let mut lent = vec![false; code.ops.len()];
     for (pc, op) in code.ops.iter().enumerate() {
-        let count = match op {
+        let (count, takes) = match op {
             Op::Call { function, args } => {
                 let count = *args as usize;
                 if count == 0 || count > 32 || !typed_entry(program, calls, *function) {
                     continue;
                 }
-                count
+                (count, taking_entry(calls, *function))
             }
-            Op::Binary(op) if is_comparison(*op) => 2,
+            Op::Binary(op) if is_comparison(*op) => (2, false),
             _ => continue,
         };
         for (at, _) in simple_pushes(code, pc, count) {
+            // a moved operand of an entry that takes is the call's to
+            // consume, not lent (decision AW11)
+            if takes && matches!(code.ops[at], Op::LoadMove(_)) {
+                continue;
+            }
             lent[at] = true;
         }
     }
@@ -741,6 +779,11 @@ pub(crate) fn borrowed_operands(
                     None => {
                         if !typed_entry(program, calls, *function) {
                             continue;
+                        }
+                        // an entry that takes consumes a moved operand
+                        // (decision AW11)
+                        if taking_entry(calls, *function) {
+                            moves_borrowed = false;
                         }
                         vec![true; count]
                     }
@@ -883,12 +926,19 @@ pub fn compile(
         builder.append_block_param(exit, types::I32);
         let base24 = builder.ins().imul_imm_s(base, SIZE as i64);
         let frame_var = builder.declare_var(pointer);
-        // the VM's table of helpers, read once (decision AS1)
+        // the VM's table of helpers, read once (decision AS1), and its
+        // table of in-place entries (decision AW11)
         let helper_table = builder.ins().load(
             pointer,
             MemFlagsData::trusted(),
             vm,
             (native_state_offset() + STATE_HELPERS as i64) as i32,
+        );
+        let in_place_table = builder.ins().load(
+            pointer,
+            MemFlagsData::trusted(),
+            vm,
+            (native_state_offset() + STATE_IN_PLACE as i64) as i32,
         );
         // one word for a helper's answer, three for a range iterator's
         let out_slot =
@@ -921,6 +971,8 @@ pub fn compile(
             pointer,
             isa,
             helper_table,
+            in_place_table,
+            in_place_sig: None,
             helper_sigs: HashMap::new(),
             vm,
             base,
@@ -3565,24 +3617,30 @@ impl Gen<'_, '_> {
                         self.call_direct(callee, *function, &kinds, result_kind, pc);
                     }
                     None => match self.calls.get(*function).copied() {
-                        Some(CallKind::Typed { kind, in_place })
+                        Some(CallKind::Typed { kind, read, entry })
                             if kind_agrees(kind, result_kind) =>
                         {
                             let mask = self.masks[pc];
-                            match in_place {
-                                Some(InPlace::ListAt) if count == 2 => {
+                            match (read, entry) {
+                                (Some(ReadInPlace::ListAt), _) if count == 2 => {
                                     self.list_at_in_place(*function, mask, pc);
                                 }
-                                Some(InPlace::TextContains) if count == 2 => {
-                                    self.call_lean("rt_text_contains", *function, kind, mask, pc);
-                                }
-                                Some(InPlace::ListContains) if count == 2 => {
-                                    self.call_lean("rt_list_contains", *function, kind, mask, pc);
+                                (_, Some(entry)) if (1..=32).contains(&count) => {
+                                    let takes = matches!(entry, Entry::Takes);
+                                    self.call_in_place(*function, count, kind, takes, mask, pc);
                                 }
                                 _ => self.call_typed(*function, count, kind, mask, pc),
                             }
                         }
-                        Some(CallKind::Pure) => self.call_through_helper(
+                        Some(CallKind::Pure { entry: Some(entry) })
+                            if (1..=32).contains(&count) =>
+                        {
+                            let kind = entry_kind(self.program, *function);
+                            let takes = matches!(entry, Entry::Takes);
+                            let mask = self.masks[pc];
+                            self.call_in_place(*function, count, kind, takes, mask, pc);
+                        }
+                        Some(CallKind::Pure { .. }) => self.call_through_helper(
                             "rt_call_pure",
                             *function,
                             count,
@@ -4672,44 +4730,127 @@ impl Gen<'_, '_> {
         self.switch_to(join);
     }
 
-    /// A call through a lean helper (decision AU34): the operands' place
-    /// and the mask of those the call borrows, the Boolean answer in its
-    /// register; when the helper declines, the typed call's general path
-    /// on the operands it left as they were.
-    fn call_lean(
+    /// A call through the native's in-place entry (decision AW11): the
+    /// entry's shim called directly through the VM's table, on the
+    /// operands where they lie, with the mask of those the call borrows
+    /// and the pc; it answers in the first operand's place with the
+    /// others consumed, and the answer is the call's result, a scalar
+    /// read from the boxed value the entry wrote or that value as it
+    /// lies; when the entry declines, the typed call runs on the operands
+    /// it left as they were. A scalar entry that reads its operands
+    /// answers or declines and nothing else (`in_place_typed`): one test
+    /// after the call, the length stored for the answer alone, as AU34's
+    /// lean helpers had. An entry that answers a value or takes its
+    /// operands may fail or find the budget spent: a failure or an
+    /// interrupt lands where a typed call's does, the length stored for
+    /// the landing before the status is tested.
+    fn call_in_place(
         &mut self,
-        helper: &'static str,
         function: usize,
+        count: usize,
         kind: TypedKind,
+        takes: bool,
         mask: u32,
         pc: usize,
     ) {
-        self.box_top(2);
-        let depth = self.state.len() - 2;
+        self.box_top(count);
+        let depth = self.state.len() - count;
         let height = self.height();
-        let at = self.address_at(height - 2);
-        let mask_value = self.u32(mask);
-        let answer = self.call(helper, &[at, mask_value]).expect("an answer");
-        let answered = self.b.ins().icmp_imm_s(
-            IntCC::UnsignedLessThan,
-            answer,
-            crate::native::runtime::DECLINED as i64,
+        let at = self.address_at(height - count);
+        let flags = MemFlagsData::trusted();
+        let entry = self.b.ins().load(
+            self.pointer,
+            flags,
+            self.in_place_table,
+            (function * 8) as i32,
         );
+        let sig_ref = match self.in_place_sig {
+            Some(sig_ref) => sig_ref,
+            None => {
+                let sig_ref = self.b.import_signature(signature(self.isa, "ppwww", 'i'));
+                self.in_place_sig = Some(sig_ref);
+                sig_ref
+            }
+        };
+        let count_value = self.u32(count as u32);
+        let mask_value = self.u32(mask);
+        let pc_value = self.u32(pc as u32);
+        let call = self.b.ins().call_indirect(
+            sig_ref,
+            entry,
+            &[self.vm, at, count_value, mask_value, pc_value],
+        );
+        let status = self.b.inst_results(call)[0];
+        // the entry grows nothing: the frame pointer holds
         let yes = self.b.create_block();
         let general = self.b.create_block();
         self.b.set_cold_block(general);
         let join = self.b.create_block();
-        self.b.ins().brif(answered, yes, &[], general, &[]);
-        self.b.seal_block(yes);
-        self.b.seal_block(general);
-        self.switch_to(yes);
-        let value = self.b.ins().ireduce(types::I8, answer);
-        let var = self.bool_var(depth);
-        self.b.def_var(var, value);
-        self.store_height(height - 2);
+        let declined = self.b.ins().icmp_imm_s(
+            IntCC::Equal,
+            status,
+            crate::native::runtime::DECLINED as i64,
+        );
+        if takes || kind == TypedKind::Value {
+            // the answer is in the first operand's place and the operands
+            // above it are consumed, which the length says for the answer
+            // and for a failure's landing
+            self.store_height(height - count + 1);
+            let answered = self
+                .b
+                .ins()
+                .icmp_imm_s(IntCC::Equal, status, CONTINUE as i64);
+            let other = self.b.create_block();
+            self.b.ins().brif(answered, yes, &[], other, &[]);
+            self.b.seal_block(yes);
+            self.b.seal_block(other);
+            // declined: the typed call on the operands, which lie as they
+            // were; else the failure or the interrupt, the answer in place
+            self.switch_to(other);
+            let bad = self.bad_block(pc);
+            self.b.ins().brif(
+                declined,
+                general,
+                &[],
+                bad,
+                &[status.into(), pc_value.into()],
+            );
+            self.b.seal_block(general);
+            self.switch_to(general);
+            self.store_height(height);
+        } else {
+            self.b.ins().brif(declined, general, &[], yes, &[]);
+            self.b.seal_block(yes);
+            self.b.seal_block(general);
+            self.switch_to(general);
+        }
+        self.call_typed(function, count, kind, mask, pc);
         self.b.ins().jump(join, &[]);
-        self.switch_to(general);
-        self.call_typed(function, 2, kind, mask, pc);
+        // the answer: a scalar read from the boxed value the entry wrote
+        // (small, a Boolean or a Float by its contract), or the boxed
+        // value where it lies
+        self.switch_to(yes);
+        match kind {
+            TypedKind::Value => {}
+            TypedKind::Int => {
+                let value = self.b.ins().load(types::I64, flags, at, INT_PAYLOAD);
+                let var = self.int_var(depth);
+                self.b.def_var(var, value);
+                self.store_height(height - count);
+            }
+            TypedKind::Bool => {
+                let value = self.b.ins().load(types::I8, flags, at, PAYLOAD);
+                let var = self.bool_var(depth);
+                self.b.def_var(var, value);
+                self.store_height(height - count);
+            }
+            TypedKind::Float => {
+                let value = self.b.ins().load(types::F64, flags, at, PAYLOAD);
+                let var = self.float_var(depth);
+                self.b.def_var(var, value);
+                self.store_height(height - count);
+            }
+        }
         self.b.ins().jump(join, &[]);
         self.b.seal_block(join);
         self.switch_to(join);

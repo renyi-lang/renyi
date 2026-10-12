@@ -30,12 +30,12 @@ use crate::bytecode::{Code, Op};
 use crate::compile::Program;
 use crate::extension::TypedKind;
 use crate::native::codegen::{
-    borrowed_operands, field_cache_offset, frames_offset, handlers_offset, helper_index,
-    is_comparison, kind_agrees, native_state_offset, stack_offset, unit_variants_offset, Skipped,
-    FRAME_BASE, FRAME_CODE, FRAME_GRANT, FRAME_HANDLER_BASE, FRAME_PC, FRAME_SIZE, GLOBAL_READY,
-    GLOBAL_SIZE, GLOBAL_VALUE, SIGNATURES, SITE_INDEX, SITE_SIZE, SITE_TAG, SITE_TY, STACK_SAFE,
-    STATE_CONSTANTS, STATE_DEPTH, STATE_ENTRIES, STATE_GLOBALS, STATE_HELPERS, STATE_HOTNESS,
-    STATE_LIST_ITEMS, STATE_LIST_LEN,
+    borrowed_operands, entry_kind, field_cache_offset, frames_offset, handlers_offset,
+    helper_index, is_comparison, kind_agrees, native_state_offset, stack_offset,
+    unit_variants_offset, Skipped, FRAME_BASE, FRAME_CODE, FRAME_GRANT, FRAME_HANDLER_BASE,
+    FRAME_PC, FRAME_SIZE, GLOBAL_READY, GLOBAL_SIZE, GLOBAL_VALUE, SIGNATURES, SITE_INDEX,
+    SITE_SIZE, SITE_TAG, SITE_TY, STACK_SAFE, STATE_CONSTANTS, STATE_DEPTH, STATE_ENTRIES,
+    STATE_GLOBALS, STATE_HELPERS, STATE_HOTNESS, STATE_IN_PLACE, STATE_LIST_ITEMS, STATE_LIST_LEN,
 };
 use crate::native::infer::{
     abs_of_constant, abs_of_result, analyse, is_integer, is_text, update_by_index, Abs, Analysis,
@@ -49,7 +49,7 @@ use crate::value::layout::{
     RECORD_TY, SIZE, TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_GUARDED, TAG_INTEGER, TAG_LIST,
     TAG_NOTHING, TAG_RECORD, TAG_SMALL_TEXT, TAG_VARIANT,
 };
-use crate::vm::{unit_slot, CallKind, InPlace};
+use crate::vm::{unit_slot, CallKind, Entry, ReadInPlace};
 use x64::{host_abi, Abi, Asm, Cond, Label, Reg};
 
 /// The code of one code object: its bytes, which hold no address, the
@@ -675,36 +675,68 @@ impl Gen<'_> {
         self.store_len();
     }
 
-    /// A call through a lean helper (decision AU34): the operands' place
-    /// and the mask of those the call borrows, the Boolean answer boxed
-    /// over the first; when the helper declines, `rt_call_typed` on the
-    /// operands it left as they were.
-    fn call_lean(
+    /// A call through the native's in-place entry (decision AW11), as the
+    /// Cranelift tier makes it: the entry's shim called directly through
+    /// the VM's table on the operands where they lie, with the mask of
+    /// those the call borrows and the pc; it answers boxed in the first
+    /// operand's place, the others consumed; when it declines,
+    /// `rt_call_typed` on the operands it left as they were. A scalar
+    /// entry that reads its operands answers or declines and nothing else
+    /// (`in_place_typed`); one that answers a value or takes its operands
+    /// may fail or find the budget spent, and its status is tested, a
+    /// failure or an interrupt landing where a typed call's does.
+    fn call_in_place(
         &mut self,
-        helper: &'static str,
         function: usize,
+        count: usize,
         kind: TypedKind,
+        takes: bool,
         mask: u32,
         pc: usize,
     ) {
-        let at = self.depth - 2;
+        let at = self.depth - count;
         let place = self.operand(at);
         let general = self.asm.label();
         let done = self.asm.label();
-        self.call(
-            helper,
-            &[Arg::Addr(place.0, place.1), Arg::Imm(mask as u64)],
-        );
+        let args = [
+            Arg::Vm,
+            Arg::Addr(place.0, place.1),
+            Arg::Imm(count as u64),
+            Arg::Imm(mask as u64),
+            Arg::Imm(pc as u64),
+        ];
+        let regs = self.abi.args;
+        for (position, arg) in args.iter().enumerate() {
+            if position < regs.len() {
+                self.materialize(regs[position], *arg);
+            } else {
+                self.materialize(SCRATCH, *arg);
+                let slot = self.layout.stack_args + 8 * (position - regs.len()) as i32;
+                self.asm.mov_mr(Reg::Rsp, slot, SCRATCH);
+            }
+        }
+        // the shim's address from the VM's table; the entry grows
+        // nothing, so the frame pointer holds
+        let state = native_state_offset() as i32;
+        self.asm.mov_rm(Reg::Rax, VM, state + STATE_IN_PLACE);
+        self.asm.call_m(Reg::Rax, (function * 8) as i32);
         self.asm.cmp_r32i(Reg::Rax, DECLINED);
         self.asm.jcc(Cond::E, general);
-        self.asm.mov_m8i(place.0, place.1, TAG_BOOLEAN);
-        self.asm.mov_m8r(place.0, place.1 + PAYLOAD, Reg::Rax);
-        self.asm.jmp(done);
-        self.asm.bind(general);
-        self.call_typed(function, 2, kind, mask, pc);
-        self.asm.bind(done);
+        // the answer in the first operand's place and the operands above
+        // it consumed: the length for the answer and for a failure's
+        // landing
         self.depth = at + 1;
         self.store_len();
+        if takes || kind == TypedKind::Value {
+            self.check(pc);
+        }
+        self.asm.jmp(done);
+        self.asm.bind(general);
+        self.depth = at + count;
+        self.store_len();
+        self.call_typed(function, count, kind, mask, pc);
+        self.asm.bind(done);
+        self.depth = at + 1;
     }
 
     /// A helper that answers a scalar into the out slot with `CONTINUE`,
@@ -1669,22 +1701,26 @@ impl Gen<'_> {
                 let count = *args as usize;
                 let result = abs_of_result(self.program, *function);
                 match self.calls.get(*function).copied() {
-                    Some(CallKind::Typed { kind, in_place }) if kind_agrees(kind, result) => {
+                    Some(CallKind::Typed { kind, read, entry }) if kind_agrees(kind, result) => {
                         let mask = self.masks[pc];
-                        match in_place {
-                            Some(InPlace::ListAt) if count == 2 => {
+                        match (read, entry) {
+                            (Some(ReadInPlace::ListAt), _) if count == 2 => {
                                 self.list_at_in_place(*function, mask, pc);
                             }
-                            Some(InPlace::TextContains) if count == 2 => {
-                                self.call_lean("rt_text_contains", *function, kind, mask, pc);
-                            }
-                            Some(InPlace::ListContains) if count == 2 => {
-                                self.call_lean("rt_list_contains", *function, kind, mask, pc);
+                            (_, Some(entry)) if (1..=32).contains(&count) => {
+                                let takes = matches!(entry, Entry::Takes);
+                                self.call_in_place(*function, count, kind, takes, mask, pc);
                             }
                             _ => self.call_typed(*function, count, kind, mask, pc),
                         }
                     }
-                    Some(CallKind::Pure) => self.helper(
+                    Some(CallKind::Pure { entry: Some(entry) }) if (1..=32).contains(&count) => {
+                        let kind = entry_kind(self.program, *function);
+                        let takes = matches!(entry, Entry::Takes);
+                        let mask = self.masks[pc];
+                        self.call_in_place(*function, count, kind, takes, mask, pc);
+                    }
+                    Some(CallKind::Pure { .. }) => self.helper(
                         "rt_call_pure",
                         &[
                             Arg::Vm,

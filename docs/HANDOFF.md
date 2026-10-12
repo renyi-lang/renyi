@@ -46,11 +46,18 @@ its fields or its elements the same way; by instructions nearly what
 the glue cost, the check row 2,301.9 to 2,296.2, -0.2%, but the
 glue's indirect branch per field gone, AT1's estimate -1.3%,
 kept by AT1's rule; the ratio 5.21 to 5.20), which completes
-stage 2; on the way, a Windows defect since AT5 fixed (a2c4685: every
-run of an image there copied its code section, the mapping refused for
-want of execute access on the file's handle). Next is stage 3, the
-natives' entry and the glue (the start-here item 1). The session's
-record is "Done in session 14" below.
+stage 2, and stage 3a built and measured (decision AW11: the natives'
+in-place entry, a second entry per native through AK1's registration
+API, which the generated code of both tiers and the interpreter call
+directly through a table the VM keeps per function, answering in the
+receiver's place with the arguments consumed, no scratch vector, no
+`Result`, no status and no push on the way; the check row 2,296.2 to
+2,203.9, -4.0%; the ratio 5.20 to 4.99); on the way, a
+Windows defect since AT5 fixed (a2c4685: every run of an image there
+copied its code section, the mapping refused for want of execute access
+on the file's handle). Next is stage 3b, `status` and `into_plain` off
+the path (the start-here item 1). The session's record is "Done in
+session 14" below.
 Session 13, in the cloud environment, had as its last work the icon
 and the wordmark, at the owner's request after the
 handover below (decision AV1: a war hammer on the accent tile and the
@@ -349,9 +356,14 @@ and push there directly.
    instructions nearly what the glue cost, the check row to 2,296.2,
    -0.2%, but the glue's indirect branch per field gone, AT1's
    estimate -1.3%; the ratio to 5.20), which
-   completes stage 2 (the check row 2,527.2 to 2,296.2).
-   Next is stage 3 (the natives' entry and the glue), stage 4, the
-   checker's own cuts between the stages, stages
+   completes stage 2 (the check row 2,527.2 to 2,296.2); and stage 3a
+   (decision AW11, "Stage 3a as built": the natives' in-place entry, a
+   second entry per native the generated code of both tiers calls
+   directly through the VM's table, answering in the receiver's place;
+   the check row to 2,203.9, -4.0%; the ratio to 4.99).
+   Next is stage 3b (`status` and `into_plain` off the path, the
+   study's item (3d)), stage 4, the checker's own cuts between the
+   stages, stages
    5 and 6 last. Each stage: the code, the gates of item 3, the measure
    (AU58's: the checker's image run under callgrind with the study's
    table by category beside it, AT1's rows, the benchmarks by
@@ -381,8 +393,9 @@ and push there directly.
    2a's commit), `renyi_stage2b_plain` (stage 2b's part A, the pair at
    the call alone), `renyi_stage2b` (e87f3e1, stage 2b's commit),
    `renyi_stage2c_v1` (stage 2c's first build, the release out of line
-   for every value, rejected) and `renyi_stage2c` (stage 2c's commit,
-   the base of the next measure), each with its `study/` directory. The
+   for every value, rejected), `renyi_stage2c` (f48282f, stage 2c's
+   commit) and `renyi_stage3a` (stage 3a's commit, the base of the next
+   measure), each with its `study/` directory. The
    road is months long (AU58); the gate is decided on the measure at
    the end.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
@@ -4594,6 +4607,77 @@ the path; the glue's 6,030,437 remaining calls, from `rt_compare`,
 and the lists Rust's drops still free, each dropping its operands
 through Rust).
 
+**Stage 3a as built (decision AW11, 2026-10-12).** The study's item
+(3a), the owner's answer 6 of AW1: a second entry per native answering
+in place, through AK1's registration API. `InPlace` in `extension.rs`
+(`shim`, an `extern "C"` function `fn(vm, at, count, borrowed, pc) ->
+status`, and `takes`), the macro `in_place!` that writes the shim from
+a typed entry (`in_place!(Int: list_length_typed)`, the four kinds) or
+from a function that takes its arguments (`in_place!(takes
+list_append_in_place)`, `fn(&mut [Value], u32) -> Option<Value>` with
+the mask of the arguments the caller still holds, `take_or_clone` in
+`natives`), the shim's body `in_place_typed` and `in_place_taking`
+with `answered_in_place` (the arguments the call owns released in
+place, the answer written over the first, the memory budget tested),
+`Native::with_in_place`, the registry's lookup and check extended
+(`Found`; an in-place entry on a function with `needs` refused as a
+typed one is). The VM: `Tables` and `tables_of` in `vm.rs` (the
+natives, the pure flags, the typed and the in-place entries and the
+call kinds of a program under a registry, once), `CallKind::Pure {
+entry }` and `Typed { kind, read, entry }` with `Entry::Reads` or
+`Takes` and `ReadInPlace::ListAt` (AU34's read in place; its two
+`contains` through lean helpers go, with `rt_text_contains`,
+`rt_list_contains` and `lean_answer`), `Vm::call_in_place` before the
+typed entry in the interpreter's `call!`, `NativeState::in_place` and
+the JIT's table of shims per function (`Jit::new` takes the entries).
+The Cranelift tier: `call_in_place` in `codegen.rs` (the shim's address
+loaded from the table, `call_indirect` with the signature `ppwww -> i`
+imported once, the height stored for the answer and a failure's
+landing, a scalar answer read from the boxed value in place by the
+declared kind, `entry_kind`, the typed call in a cold block when the
+entry declines, the bad block for a failure or an interrupt),
+`typed_entry` true for a pure native with an entry (its operands lent),
+`taking_entry` (a moved operand of an entry that takes is owned by the
+call, not lent: `moves_borrowed` off and the push not `lent`). The
+template tier: `call_in_place` with the arguments in the convention's
+registers and the shim called through the table (`STATE_IN_PLACE`), the
+length stored, `check` for the landing, `rt_call_typed` when declined.
+The prelude: `read_in_place` (ListAt alone), `integer_quotient_typed`,
+`plain_count`, `list_slice_typed`, `list_append_in_place`,
+`list_with_at_in_place`, `list_append_all_in_place`, and 26
+registrations through `with_in_place`. Code format 20. Built twice:
+the first build's shim tested a guard and the budget for every kind
+and the generated code stored the length twice and tested the status
+twice, and `strings` (1,188,895 calls of `Text.contains`) rose 12.2%
+(the shim 72 instructions a call against the lean helper's 20); the
+second gives a scalar entry that reads its operands the lean helper's
+shape (`release_owned` over the bits set, no guard, no budget, one
+test after the call) and keeps the failure test and the budget for a
+value answered or operands taken (`Entry::Takes` told to both tiers).
+The interpreter's `Vm::call_in_place` declines a call of no argument
+or of more than 32, as the generated code does. The test
+`an_in_place_entry_answers_on_both_tiers_and_takes_what_the_call_owns`
+in `tests/extension.rs` (`grow`, a native with a taking entry: a list
+the call owns grown in place to a thousand items on both tiers, a list
+the caller keeps copied twice; `twice` through an entry made from its
+typed one) and the check's refusal of an in-place entry on `shout`;
+`docs/extensions.md` has the section. The measure: the check row
+2,296.2 to 2,203.9 (-4.0%), the ratios by instructions
+4.99, 3.18 and 10.04; `rt_call_typed`
+527,824 to 1,908 calls,
+`call_pure_from_stack` 341,454 to 10,448,
+`status` 1,567,934 to 1,236,928, the glue of `Value`
+6,030,437 to 3,933,657; the natives category 365.0
+to 307.3 million, the helper glue 85.3 to 74.0; AT1's
+synchronous estimate 8,192.5 to 8,019.3 (-2.1%). The table
+is in AW11. Next in AW1's order: stage 3b, `status` and `into_plain`
+off the path (the study's item (3d): the helpers that cannot fail
+answering without `Result`, `rt_construct`, `rt_construct_variant` and
+`rt_list_push` among them, 1,236,928 calls of `status` left,
+and `into_plain` inlined with its fast path a tag test,
+816,882 calls from `op_list_push`, `iterate` and
+`iterator_of`), then stage 4.
+
 ## The representation items: the design study (session 11)
 
 **What the owner ordered (AU20)**: after the template tier's follow-ups
@@ -6246,6 +6330,17 @@ holds between calls.
   `release_last` and `Composite::free_block` in `value.rs`, `rt_drop_at`
   in `native/runtime.rs` and `Pinned::truncate_values` in `pinned.rs`
   through them; the measure in AW10 and in "Stage 2c as built".
+- Stage 3a (decision AW11, the commit after f48282f): `InPlace`,
+  `in_place!`, `in_place_typed`, `in_place_taking` and `with_in_place`
+  in `extension.rs`, `Tables`, `CallKind` with `Entry` and
+  `ReadInPlace`, `Vm::call_in_place` and `NativeState::in_place` in
+  `vm.rs`, the JIT's table in `native/mod.rs`, `call_in_place` with
+  `typed_entry`, `taking_entry` and `entry_kind` in `native/codegen.rs`
+  and `call_in_place` in `native/template/mod.rs`, the lean helpers
+  gone from `native/runtime.rs`, the entries and their registrations in
+  `natives/prelude.rs`, `take_or_clone` in `natives/mod.rs`, code format
+  20, the test in `tests/extension.rs`, the section of
+  `docs/extensions.md`; the measure in AW11 and in "Stage 3a as built".
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 
