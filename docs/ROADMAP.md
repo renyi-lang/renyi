@@ -423,6 +423,28 @@ where one decided, the status. The dates are those of the decisions.
     the signature. The social preview waits on the owner's upload in the
     repository's settings.
 
+31. **The new code generator, road (B)** (session 14, 2026-10-12, in
+    progress; decision AW20, the study; AW21, the owner's answers). The
+    owner's answer after AW1's order: with the check row at 1,528.5
+    million instructions and the ratio at 3.46 against the gate's 3,
+    road (B) of AW1 over a second round of the checker's cuts, the
+    emitter's round and the switch at 3.46. The study (the handoff's
+    section "Stage 31, the new code generator (road (B)): the design
+    study"): the generated code 800.8 million of the 1,528.5 (52.4%), a
+    direct call about 100 instructions beside its body, a typed field
+    read about 58, a boxed local's load or store about 18 (the lane's
+    micro programs per turn), the loads, moves, stores, field reads,
+    constants and dups 26.0 million of the run's 49.5 million ops; (B)
+    buildable on the Cranelift tier as it stands in four measured
+    stages: B2 the operands in registers (`Abs::Held`, the VM's stack
+    written only where a helper reads it, about 180 million), B3 the
+    locals in registers (`SlotKind::Held`, the pair slots folded in,
+    about 90), B1 the frame record lazy (a chain on the machine stack
+    materialised by the helpers that read `Vm::frames`, about 40), B4
+    the counts by dataflow (about 30): about 340 million in all, the
+    check row to about 1,190 million, 2.7 times the reference, under
+    the gate.
+
 ## 3. The tracks
 
 The same stages grouped by the line of work they belong to, with the
@@ -452,8 +474,9 @@ state of each line.
   stages 0 and 1, the character tables with the hasher, stage 2 and
   stages 3 and 4, the checker's own cuts between them and stage 5a
   (AW2 to AW19), every stage of AW1's order done: the ratio by
-  instructions 3.46 on the check row against the gate's 3, the
-  road from here the owner's decision.
+  instructions 3.46 on the check row against the gate's 3; stage 31
+  (AW20, AW21), road (B), the new code generator on the Cranelift tier
+  in four measured stages, in progress.
 - **E. Packages, the FFI and Python**: stages 15, 18. Done; candidates
   not decided: record types from dataclasses in the binder, a deadline
   per Python call, one worker across a test run.
@@ -516,9 +539,13 @@ each measured by the checker's run under callgrind with the table by
 category, the ratio of AU36 (iii), AT1's rows where the tiers change,
 the four judges and the conformance suite on both tiers, kept by AT1's
 rule, toward the gate of AU35 (ii) at 3 times on the check row (3.46 by
-instructions after stage 6, every stage of AW1's order done); then, when
-the ratio is within 3, the switch of the binary's front end to the
-compiler written in Renyi. Candidates beside it, none decided: the
-emitter's own round for the compile row, the Rust front end's name sets
-as bits, the C API, the language server's completion, the showcase
-application, the WASM target of M6.
+instructions after stage 6, every stage of AW1's order done); then road
+(B), the owner's choice of 2026-10-12 (AW20): the new code generator on
+the Cranelift tier in four measured stages (the operands in registers,
+the locals in registers, the frame record lazy, the counts by dataflow;
+the study's estimate 340 million, the check row to about 1,190 million,
+2.7 times the reference); then, when the ratio is within 3, the switch
+of the binary's front end to the compiler written in Renyi. Candidates
+beside it, none decided: the emitter's own round for the compile row,
+the Rust front end's name sets as bits, the C API, the language server's
+completion, the showcase application, the WASM target of M6.

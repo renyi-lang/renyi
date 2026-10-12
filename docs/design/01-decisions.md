@@ -8046,3 +8046,32 @@ stands at 1,528.5 million instructions, 3.46 times the reference's
 441.6 against the gate's 3 of AU35 (ii) (6.99 at the study, AW1), the
 parse row at 696.2 (2.45) and the compile row at 2,719.7 (7.44); the
 road from here is the owner's decision.
+
+**AW20. The owner's answer after AW1's order: road (B), the new code
+generator, its design study first.** Asked on 2026-10-12 after stage 6
+(AW19), with every stage of AW1's order done and the check row at
+1,528.5 million instructions, 3.46 times the reference against the
+gate's 3 of AU35 (ii) (the parse row 2.45, the compile row 7.44). The
+question offered four roads: a second round of the checker's own cuts
+(recommended: the parser's result records read after their cursor,
+AU55's `Done` rewrite; a few percent, days, the gate still out of
+reach), road (B) of AW1 (a new code generator with the operand stack
+and the locals in registers, the frame record lazy, the counts elided
+by dataflow; AW1's estimate about 10% of the run more than (A)'s
+stages, three times the work and months without a measure), the
+emitter's round for the compile row, and the switch of the binary's
+front end at 3.46 with the gate relaxed or a turn to the other
+candidates. The owner chose road (B). The study it asks for is the
+handoff's section "Stage 31, the new code generator (road (B)): the
+design study (session 14)", measured on stage 5b's binary (0f17f67) by
+AU58's measure with the interpreter's profile, the Cranelift IR of the
+hottest small functions and four micro programs of the lane: the
+generated code is 800.8 million of the 1,528.5, a direct call costs
+about 100 instructions beside its body and a typed field read about 58,
+the loads, moves, stores, field reads, constants and dups are 26.0
+million of the run's 49.5 million ops; the study finds (B) buildable on
+the Cranelift tier as it stands in four measured stages (the operands
+in registers, the locals in registers, the frame record lazy, the
+counts by dataflow), about 340 million in all by its estimates, the
+check row to about 1,190 million, 2.7 times the reference; its
+questions and the owner's answers are decision AW21. (user)

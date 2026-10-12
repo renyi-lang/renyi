@@ -92,8 +92,12 @@ image's or the cache entry's bytes; the check row 1,547.9 to
 which completes stage 5; and stage 6 measured and left off (decision
 AW19: AU50's expansion under the new convention, the check row +3.7%
 with it on). Every stage of AW1's order is done: the ratio stands at
-3.46 on the check row against the gate's 3, and the road from
-here is the owner's decision (the start-here item 1).
+3.46 on the check row against the gate's 3; the owner chose road (B),
+the new code generator (decision AW20), and its design study is written
+(the section "Stage 31, the new code generator (road (B)): the design
+study (session 14)": four measured stages on the Cranelift tier, about
+340 million by the estimates), its questions put to the owner (the
+start-here item 1).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -421,8 +425,14 @@ and push there directly.
    which completes stage 5; and stage 6 (decision AW19, "Stage 6 as
    built": the expansion measured again under the new convention, the
    check row +3.7% with it on, left off; no code).
-   Every stage of AW1's order is done; the owner decides the road
-   from here. Each stage: the code, the gates of item 3, the measure
+   Every stage of AW1's order is done; the owner chose road (B) of
+   AW1 (decision AW20), and the work now is stage 31, the new code
+   generator: its design study is the section "Stage 31, the new code
+   generator (road (B)): the design study (session 14)" (where the run
+   stands, what an op costs today by the lane's micro programs, the
+   four stages B2, B3, B1 and B4 with their estimates, what (B) does
+   not touch), and the owner's answers to its questions are decision
+   AW21. Each stage: the code, the gates of item 3, the measure
    (AU58's: the checker's image run under callgrind with the study's
    table by category beside it, AT1's rows, the benchmarks by
    instructions), then its decision entry with the table and the
@@ -3819,6 +3829,248 @@ Then the first stage the owner confirms. Done in session 14: the study is
 the section "Stage 29, the new backend: the design study (session 14)"
 below, and the owner's answers are decision AW1.
 
+## Stage 31, the new code generator (road (B)): the design study (session 14)
+
+The study the owner's answer of 2026-10-12 asked for (decision AW20:
+after every stage of AW1's order, the check row at 1,528.5 million
+instructions and the ratio at 3.46 against the gate's 3, the owner
+chose road (B) of AW1, the new code generator, over a second round of
+the checker's own cuts, the emitter's round and the switch at 3.46).
+Written before any code and put to the owner after it (the questions
+and the answers are decision AW21). Its measure is AU58's, on stage
+5b's binary (0f17f67, `renyi_5b` in the perf lane) under WSL: the
+check row by category from `study/5b/table.check.txt`, the
+interpreter's profile of the same run (`renyi run --interpret
+--profile`, `study/5b/profile_interp.txt`), the Cranelift IR of the
+hottest small functions (`RENYI_NATIVE_IR`, `study/5b/ir_*.txt`), the
+micro benchmarks of `bench/micro/` (`tools/measure_native.sh`,
+`study/5b/micro.txt`) and four micro programs written for this study
+in the lane (`micro_b/`, measured per turn at two sizes by
+`micro_b.sh` as `tools/measure_native.sh` measures, with the IR of
+their loop functions in `study/5b/micro_b/`).
+
+**(a) Where the run stands.** The check row 1,528.5 million
+instructions: the generated code 800.8 (52.4%), the natives 255.8
+(16.7%), the counts and drops 131.0 (8.6%), the VM's own 79.6 (5.2%:
+`release_last` 51.9, `rt_record_copy` 18.1), mimalloc 76.8 (5.0%),
+the texts and memory copies 74.3 (4.9%, `memcpy` 60.6 on 1,757,630
+calls), the records 46.1 (3.0%), the hashing and equality 35.2
+(2.3%), the load 10.0, the calls through the VM's path 8.5, the
+comparisons through the helper 6.5, the glue 3.6. The generated code
+by module: the parser 327.8, `bodies` 244.7, the lexer 144.2, `types`
+41.1, `declare` 31.4; 2,136,802 calls enter bodies directly and 9,383
+through the trampolines (the parser's function values, `argument`
+6,501 and `parameter` 1,956 among them). The hottest code objects per
+call: `at_position` 506 instructions for 77 ops (125,905 calls, 63.7
+million), `token_at` 173 for 12 ops (171,276 calls), `moved` 116 for
+12 ops (132,621), `is_symbol` 119 for 5 ops (105,097), `after_breaks`
+369 for 18 ops, `find_binding` 911 for 42, `resolve` 263 for 41,
+`next_step` 265 for 89, `substitute` 321 for 86, `lex_word` 631 for
+138, `lex_range` 112,833 per call for its 140 ops (511 calls, 57.7
+million, the lexer's loop). What the run does (the interpreter's
+profile): 49,461,043 operations, 2,136,937 calls of declared functions
+and 1,746,647 of primitives; by kind `LoadMove` 6.63 million (13.4%),
+`Load` 6.42 (13.0%), `Store` 6.00 (12.1%), `Call` 3.87 (7.8%),
+`LoadField` 3.20 (6.5%), `Binary` 2.83 (5.7%), `JumpIfFalse` 2.60
+(5.3%), `Const` 2.49 (5.0%), `Return` 2.14 (4.3%), `Jump` 2.14 (4.3%),
+`PushHandler` and `PopHandler` 1.09 each, `JumpIfTrue` 0.99,
+`JumpIfAbsent` 0.89, `TakeField` 0.74, `ConstructVariant` 0.72,
+`Global` 0.68, `Construct` 0.68, `IterNext` 0.60, `Dup` 0.53; by pair
+`LoadMove LoadMove` 1.66 million, `Store Load` 1.46, `Load Load` 1.45,
+`LoadMove Call` 1.45, `Load Call` 1.37, `Binary JumpIfFalse` 1.35,
+`Const Binary` 1.29, `Store LoadField` 1.29, `Store LoadMove` 1.21,
+`LoadField Store` 1.20. The loads, moves, stores, field reads, takes,
+constants and dups are 26.0 million of the 49.5, more than half of
+every op the run executes; the calls and returns 6.0 million.
+
+**(b) What an op costs today**, measured per turn of a loop whose
+range iterator, sum and jump stay in registers (the micro programs of
+the lane; the counts are cachegrind's on the Cranelift tier, the
+interpreter's beside them):
+
+| program | the turn | native | interpreter |
+|---|---|---|---|
+| `calls_typed` | a direct call with an Integer argument and result, the callee `value + 1` | 120 | 1,112 |
+| `calls_boxed` | a direct call with a record argument, the callee reading one field | 215 | 1,181 |
+| `boxed_fields` | two typed field reads of a record parameter | 131 | 1,053 |
+| `boxed_moves` | a record copied between two locals and back, one typed field read | 146 | 1,023 |
+
+The loop's own turn (`IterNext` on a range in registers, two Integer
+adds, the store, the jump) is about 12 of each. So a direct call with
+a typed argument costs about 100 instructions beside its callee's one
+op (AW1's finding 1 put it at 130 before stage 1), about 130 with a
+record argument passed borrowed; a typed field read in place costs
+about 58; a boxed local's load with its retain and a store with its
+release of a record about 18 each (the two loads and two stores of
+`boxed_moves`, 73 together). The IR says where they go. The field
+read (`static_field`, decision AU8): the holder's tag and type tested,
+then `push_copy`: the field's three words copied onto the VM's stack,
+the retain (the tag's class tested, the small-Integer test, nothing to
+raise for an Integer), the stack's length written; then `unbox_top`:
+the value tested again and its payload taken into a register, the
+length written back. A value the checker typed Integer crosses the
+VM's stack and two tests to reach the register that holds it. A boxed
+load: three words copied from the slot to the top, the retain (a tag
+test, the class test, a branch, the block's count loaded, raised and
+stored), the length written; a store: the release of the slot's old
+value (the same tests, the count lowered, the test for the last
+reference), three words copied, the length written. A direct call (the
+5-op `is_symbol`: a field taken through the site's cache, a move, a
+comparison in place, a return, 119 per call): the site loads the
+callee's address from the direct table, tests and raises the depth,
+writes the frame record (the code, the pc, the base, the handlers'
+height, the grant: four loads and seven stores with the frames'
+length), calls, reloads the stack's pointer, lowers the depth, tests
+the status; the callee's prologue tests the stack's room, reloads the
+pointer, writes the length, writes `Nothing` into every local that is
+not a boxed parameter; its leave releases every slot that may own a
+block (`owned_slots`), pops the frame record (three loads, two
+stores), restores the handlers' height and returns the result in a
+register. About 100 of `is_symbol`'s 119 are the call's; the cost of
+the three ops that do its work is about 20.
+
+**(c) The design.** Road (B) as AW1 named it: the operand stack and
+the locals in registers and machine-stack slots, a value as its words,
+the VM's stack written only where a helper reads it, the frame record
+built lazily, the counts elided by dataflow, the hand-back rebuilding
+the interpreter's frame from a map per point. AW1 weighed it as a
+rewrite of `codegen.rs` with months without a measure; this study
+finds the Cranelift tier as it stands after AW2 to AW19 carries every
+mechanism (B) needs in a narrower form, so that (B) can be built on it
+in four stages, each measured as AW1's were, with the judges and the
+conformance suite green at every step: the abstract interpretation of
+`native/infer.rs` already keeps small Integers, Booleans and Floats in
+registers (`Abs::Int`, `SlotKind::Int`) and boxes them onto the VM's
+stack before a helper that reads them (`box_position`); the hand-back
+already carries the registers' values to `rt_deopt` through a buffer
+described by a `DeoptPoint`; a pair slot (decision AW9) already holds
+a record as two cells; the leave already releases by a static
+ownership state (`owned_slots`, AW4) and the borrowed operands are
+already a per-op property (`borrowed_operands`, AW5 and AW11). The
+four stages, in the order recommended below:
+
+*B2, the operands in registers.* A new operand kind `Abs::Held(type)`:
+a boxed value held as its three words (the tag word, the two payload
+words of the 24-byte `Value`) in SSA variables, with the type the
+checker noted as `Abs::Boxed` carries it. Every op that pushes a boxed
+value pushes a held one (`Load`, `LoadMove`, `LoadField`, `TakeField`,
+`Const`, `Global`, `Dup`, a direct call's boxed result, a pair's
+cells); an op the generated code performs itself reads the words (a
+`Store`, a comparison in place, `IsVariant`, `JumpIfAbsent` and
+`JumpIfFailure` on the tag, a field read of a held record, `Return`:
+the result's three words go to the caller in registers, the status
+beside them, as a typed result does today); an op that goes through a
+helper writes the held operands the helper consumes onto the VM's
+stack at their heights first (`box_position` generalised: three stores
+and the length, exactly what every push costs today, so a value that
+is pushed and consumed by a helper at once costs what it costs now,
+and nothing is lost on the helper paths), and reads a helper's boxed
+answer back into registers only when the op after keeps it. The
+retain and the release work on the words (the block's count through
+the payload word). The analysis settles per op where each operand
+lies, as it settles `Int` today, so the generated code and the
+hand-back agree: a `DeoptPoint` gains the `Held` kind, three words in
+the buffer, which `rt_deopt` pushes as the interpreter's operand
+(image format 9 to 10, since an image writes the kinds). The template
+tier, the interpreter, the bytecode and the emitters are untouched.
+The gain: the three-word copies to the stack and the length writes of
+every boxed load, move, constant, dup and field read whose value stays
+in the code (8 to 10 instructions each), and the typed field read's
+crossing (15); with three quarters of the 26.0 million such ops boxed
+(the checker's values are records, lists and texts; the Integers are
+the codes and the positions, in registers already): about 180 million
+(12%). The micro programs say what it should do: `boxed_moves` 146 to
+about 80 per turn, `boxed_fields` 131 to about 45.
+
+*B3, the locals in registers.* `SlotKind::Held(type)` for a boxed slot
+the analysis settles (every store into it of a held or boxed value;
+not an iterator, a mark or a deadline slot), its three words as
+variables; a pair slot of AW9 is two held values and the `pair_*`
+machinery folds into it. The slot's cell on the VM's stack is written
+only before a helper that reads the slot by its index (`rt_with_slot`
+and `rt_with_slot_by_index`, `rt_take_field` and `rt_load_field` on
+their slow paths, `rt_iter_init` of a list in a slot), by the
+hand-back (the buffer carries the held slots) and at a leave through
+`rt_truncate`; the prologue writes no `Nothing` into them; the stack's
+room is checked for the operands the helpers read alone; the entry at
+a loop header (`resume_at`) loads the words from the frame as the
+interpreter left them, three loads per slot and no helper; the leave
+releases the owned slots from their words. The gain: a load's three
+loads and a store's three stores (6 per op on the 14 million boxed
+loads, moves and stores), the `Nothing` stores of the prologue (about
+3 per call), the leave's releases from registers: about 90 million
+(6%). After it the expansion of AU50 is measured again, since an
+expanded callee's slots are registers then and AW19's loss (the
+borrowed parameters and the pair return) is gone.
+
+*B1, the frame record lazy.* A direct call pushes no record on
+`Vm::frames`: the callee's machine frame holds a node (its code, its
+base, the link to the caller's node, a flag whether its record exists)
+and `NativeState` the chain's head; a helper that reads `Vm::frames`
+(the grant of a callee that narrows, `rt_frame_grant`; `rt_call` to an
+interpreted callee, whose frame goes on top; the hand-back; an
+interrupt's location; `rt_osr`; the profiler and the narration run on
+the interpreter and never see one) first materialises the chain's
+unrecorded nodes into `Vm::frames` in order and marks them; a leave
+pops its record when marked (one test). The enclosing grant is in the
+body's signature already (AW6). The gain: the record's four loads and
+seven stores and the pop's five at every direct call, about 20 of the
+100: 2,136,802 calls, about 40 million (2.6%). The risk is in the
+readers (26 sites in `vm.rs`, 18 in `runtime.rs`), every one audited;
+the tests: the hand-backs of `tests/native.rs`, a crash's location
+from generated frames, the grant stack under `--sandbox`, the
+conformance suite on both tiers.
+
+*B4, the counts by dataflow.* A pass over the held values after B2 and
+B3: a retain at a load or a field read is elided when the value's only
+consumer borrows it (a comparison, a typed or in-place native call, a
+direct call's read-only parameter: `borrowed_operands` generalised
+from `Load`, `LoadMove` and `Const` to every pushing op, `LoadField`
+and `TakeField` among them) or when the slot is dead after it (a move
+the emitters did not write, found again on the held values); a release
+at a store is elided when the slot's old value is known plain or moved
+out (AW4's state per op, already there). The gain: a retain and a
+release on each field read that feeds a comparison (`token.kind is
+X`: about a million, by the pairs `Const Binary` 1.29 million and
+`Binary JumpIfFalse` 1.35), and the rest: about 30 million (2%).
+
+The sum: B2 180, B3 90, B1 40, B4 30, about 340 million, the check row
+to about 1,190 million, 2.7 times the reference, under the gate's 3
+(1,324.8) with a margin of about 135 million. The uncertainty: the
+boxed share of the loads and stores (three quarters assumed; the
+profile counts by kind, not by representation), the register pressure
+(Cranelift spills a held value to the machine stack, one instruction
+a word, against the VM stack's three and the length), the hand-backs
+(unchanged in number, three words more each). AW1's estimates summed
+to 1,540 million and the stages measured 1,557 (3,085.3 to 1,528.5,
+the checker's cuts among them), so the method has held once; if B2
+and B3 measure at half their estimates the gate is out of reach by
+135 million at B4's end, and the reserve is the checker's own shape
+(the parser's result records read after their cursor, 186 sites,
+`rt_record_copy` about 110,000 calls, and AU55's `Done` rewrite). The
+stages that touch a format bump the image's (B2, B3) and nothing
+else; the bytecode file, the emitters and the judges do not change.
+The measure of each stage: AU58's with the table by category, AT1's
+rows (the tiers change at every stage), the four benchmarks, the four
+judges and the conformance suite on both tiers, and the lane's four
+micro programs per turn, which say per op what the stage did; the
+keep rule as the owner set it (the check row down by at least 0.5%, or
+AT1's synchronous estimate down at all). The work, at session 14's
+pace (AW2 to AW19 in one session): B2 the largest, every op's operand
+side, the spill protocol, the hand-back and the image, about three to
+four days; B3 about two; B1 about one; B4 about one.
+
+**(d) What (B) does not touch**, for the road after it: the natives
+(255.8 million, `list_append` copying shared lists, `slice_text`, the
+character scans), mimalloc (76.8), the record copies of `with` on
+shared records (`rt_record_copy` 109,613 calls, 18.1 million self and
+most of `memcpy`'s 60.6), the frees (`free_block` 637,423 calls, 47.2
+million; `release_last` 51.9), the hashing (35.2). After (B) the
+generated code would be about 460 million of 1,190, 39%, and the
+natives and the allocator the next targets; the checker's own shape
+(the parser's `Parsed`, `Peek` and `Eaten` records read after their
+cursor) is where the record copies come from.
+
 ## Stage 29, the new backend: the design study (session 14)
 
 The study decision AU58 asked for, written before any code and put to
@@ -6733,6 +6985,14 @@ holds between calls.
 - Stage 6 (decision AW19, the commit after 0f17f67): no code;
   the probe `probe_inline.sh` in the lane with `study/5b_inline/`; the
   measure in AW19 and in "Stage 6 as built".
+- The owner's choice of road (B) (decision AW20, the commit after
+  549341e) and the design study of stage 31 (the section "Stage 31,
+  the new code generator (road (B)): the design study (session 14)"),
+  with the lane's `study_b_quick.sh` (the interpreter's profile and
+  the IR dumps), `micro_b.sh` and `micro_b/` (the four micro programs
+  per turn), `measure_native_b.sh`, `sync_cg.sh` (a cachegrind row
+  kept and annotated by cache misses) and `annotate_lines.sh`; no
+  code.
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 
