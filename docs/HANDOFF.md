@@ -11,14 +11,17 @@ stage 0 built and measured (decision AW2: the allocator entered by
 mimalloc's plain functions and the module constants an image builds
 before any run; the check row 3,085.3 to 2,889.9 million instructions,
 -6.3%, the ratio by instructions 6.99 to 6.54 against the gate's 3),
-and stage 1a built and measured (decision AW3: a typed parameter's
-boxed operand taken from the stack at the call site; the calls through
-the VM's path 141,577 to 9,380, the check row 2,889.9 to 2,826.6,
--2.2%, the ratio 6.54 to 6.40); on the way, a Windows defect since AT5
-fixed (a2c4685: every run of an image there copied its code section,
-the mapping refused for want of execute access on the file's handle).
-Next is stage 1c (the start-here item 1). The session's record is
-"Done in session 14" below.
+stage 1a built and measured (decision AW3: a typed parameter's boxed
+operand taken from the stack at the call site; the calls through the
+VM's path 141,577 to 9,380, the check row 2,889.9 to 2,826.6, -2.2%,
+the ratio 6.54 to 6.40), and stage 1c built and measured (decision
+AW4: the frame's leave by the static ownership state of the slots; the
+leaves through `rt_truncate` 917,264 to 32,514, the check
+row 2,826.6 to 2,729.4, -3.4%, the ratio 6.40 to 6.18);
+on the way, a Windows defect since AT5 fixed (a2c4685: every run of an
+image there copied its code section, the mapping refused for want of
+execute access on the file's handle). Next is stage 1b (the start-here
+item 1). The session's record is "Done in session 14" below.
 Session 13, in the cloud environment, had as its last work the icon
 and the wordmark, at the owner's request after the
 handover below (decision AV1: a war hammer on the accent tile and the
@@ -277,17 +280,19 @@ and push there directly.
    built" at the end of the study's section): the allocator entered by
    mimalloc's plain functions, the module constants an image builds
    before any run; the check row 3,085.3 to 2,889.9 million
-   instructions (-6.3%), the ratio by instructions 6.99 to 6.54. Stage
-   1a is done too (decision AW3; the paragraph "Stage 1a as built"
-   after it): a typed parameter's boxed operand, which the checker
-   typed, taken from the stack at the call site after a test of its
-   tags; the calls through the VM's path 141,577 to 9,380 (the parser's
-   function values remain), the check row 2,889.9 to 2,826.6 (-2.2%),
-   the ratio 6.54 to 6.40. Next is 1c (the frame leave by the static
-   ownership state: 917,264 frames still leave through `rt_truncate`,
-   301.5 million inclusive, finding 2), 1b (the read-only flag per
-   parameter in the bytecode, both emitters, the judges), 1d (the
-   frame record cheaper), then the character
+   instructions (-6.3%), the ratio by instructions 6.99 to 6.54. Stages
+   1a and 1c are done too (decisions AW3 and AW4; the paragraphs "Stage
+   1a as built" and "Stage 1c as built" after it): a typed parameter's
+   boxed operand, which the checker typed, taken from the stack at the
+   call site after a test of its tags (the calls through the VM's path
+   141,577 to 9,380, the check row 2,889.9 to 2,826.6, -2.2%, the ratio
+   6.54 to 6.40); and the frame's leave by the static ownership state
+   of the slots, `owned_slots` in `native/infer.rs` (the leaves through
+   `rt_truncate` 917,264 to 32,514, the check row to 2,729.4,
+   -3.4%, the ratio to 6.18). Next is 1b (the read-only
+   flag per parameter in the bytecode, both emitters, the judges; the
+   protocol is in the study's stage 1 paragraph), 1d (the frame record
+   cheaper), then the character
    tables and the hasher, stage 2 as 2a, 2b, 2c, the natives' entry and
    the glue, stage 4, the checker's own cuts between the stages, stages
    5 and 6 last. Each stage: the code, the gates of item 3, the measure
@@ -309,9 +314,10 @@ and push there directly.
    `ratio_wsl.sh` the wall-clock ratio, which the file reads through
    `/mnt/d` dominate, so the ratio by instructions is the one recorded.
    The binaries kept: `renyi_au34` (44782aa, the reference), `renyi_head`
-   (7cbbbe0, the study's base), `renyi_stage0` (2632cde, stage 0) and
-   `renyi_stage1a` (stage 1a's commit, the base of 1c's measure), each
-   with its `study/` directory. The
+   (7cbbbe0, the study's base), `renyi_stage0` (2632cde, stage 0),
+   `renyi_stage1a` (7bb927b, stage 1a) and `renyi_stage1c` (stage 1c's
+   commit, the base of 1b's measure), each with its `study/` directory.
+   The
    road is months long (AU58); the gate is decided on the measure at
    the end.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
@@ -4217,9 +4223,46 @@ calls through the trampolines 141,577 to 9,380 (`rt_call` 132,227 to
 2.1%), the calls through the VM's path 57.3 to 7.4 million, the parse
 row -0.9%, the compile row -1.6%, AT1's synchronous row {sync_pct},
 the benchmarks within {bench_range}; the ratios by instructions 6.40,
-4.05 and 12.41. The table is in AW3. Stage 1c next: the leave by the
-static ownership state (finding 2: 917,264 leaves through
-`rt_truncate`, 301.5 million inclusive on this binary); then 1b, 1d.
+4.05 and 12.41. The table is in AW3.
+
+**Stage 1c as built (decision AW4, 2026-10-11).** Finding 2: a third
+of the frames left through `rt_truncate` (917,264 leaves, 301.5
+million inclusive after 1a), which drops every slot by its tag,
+because the leave in place released the locals one by one only when
+the slots that are not typed, with the operands, were at most four,
+and the functions with many locals went to the helper although AU55's
+moves leave most slots holding `Nothing`. The change: `owned_slots` in
+`native/infer.rs`, a fixed point over the ops' flow (the analysis's
+entry states and handler regions) giving, per op, the slots that may
+hold a counted block on entry to it: a boxed parameter from the entry,
+a boxed slot from a store of anything but a plain scalar until the
+`LoadMove` that moves it out (a borrowed moved load keeps the slot's
+value, AU17, so it counts as no move) or the `WithSlot` that moves the
+record out, a slot of another kind always, a typed slot never; a
+failure flows to its handler with the state before the op; an op the
+analysis does not reach has every slot counted. `leave_frame_inline`
+in `native/codegen.rs` (and the boxed result's leave through it)
+releases the slots so counted at the return's op with the operands,
+inline up to eight (`RELEASES_INLINE` four to eight), and calls
+`rt_truncate` past that. The interpreter and the template tier are
+untouched (the template's return goes through `rt_return`, by tags;
+its leave by the same analysis is a later item); no format changes.
+The tests: `crates/renyi_vm/tests/native.rs` (a frame with thirteen
+locals left by three returns, both tiers) and
+`crates/renyi/tests/sandbox.rs` (the same frame left two hundred
+thousand times under a memory budget of sixteen megabytes through the
+binary, on both tiers: a slot skipped wrongly would leak past it, as a
+run that keeps every result alive does). The measure: the leaves
+through `rt_truncate` 917,264 to 32,514, the check row
+2,826.6 to 2,729.4 million (-3.4%, the estimate was 6.5%), the
+counts and drops 440.7 to 321.9, the parse row -1.7%, the
+compile row -3.1%, AT1's synchronous row -0.5%, the image
+row -2.7%; the ratios by instructions 6.18,
+3.98 and 12.02. The table is in AW4. Stage 1b next:
+the read-only flag per parameter in the bytecode (format 8 to 9:
+`Code` gains a Boolean per parameter in `file.rs`, `binary.rs`,
+`compiler/bytecode.ry` and both emitters, held equal by the compile
+judge; the protocol of the study's stage 1 paragraph); then 1d.
 
 ## The representation items: the design study (session 11)
 
@@ -5823,6 +5866,11 @@ holds between calls.
   from the stack at the call site (`noted_kind` in `native/infer.rs`,
   the direct condition and `call_direct` in `native/codegen.rs`); the
   test; the measure in AW3 and in "Stage 1a as built".
+- Stage 1c (decision AW4, the commit after 7bb927b): the frame's
+  leave by the static ownership state (`owned_slots` in
+  `native/infer.rs`, `leave_frame_inline` in `native/codegen.rs`,
+  `RELEASES_INLINE` eight); the two tests, one under a memory budget;
+  the measure in AW4 and in "Stage 1c as built".
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

@@ -1533,3 +1533,74 @@ end
         "42 8\n42 6\nfalse 8\nfalse 6\n2.5 8\n2.5 6\n18446744073709551616 8\n18446744073709551616 6\n8\n6\n"
     );
 }
+
+#[test]
+fn frames_leave_by_the_slots_that_may_hold_a_reference() {
+    // decision AW4: a return releases only the slots that may hold a
+    // counted block there (a boxed slot moved out by its last read or
+    // updated in place holds `Nothing` and is skipped), on every path out
+    // of a frame with many locals: an early return, one after a loop, one
+    // after a failing call caught by `otherwise`; both tiers print what
+    // the interpreter prints
+    let source = r#"module demo
+  purpose: Frames with many locals, most moved out before the return (AW4), left by every path.
+
+import std.console
+
+type Box
+  purpose: A record with a label, items and a weight.
+  has label: Text
+  has items: List of Text
+  has weight: Integer
+end
+
+type Problem
+  purpose: A failure for the test.
+  has reason: Text
+end
+
+function risky(value: Integer) returns Integer or fails with Problem
+  purpose: Fail on multiples of five.
+
+  if value remainder 5 is 0 then fail with Problem(reason: "five") end
+  return value * 3
+end
+
+public function build(index: Integer) returns Text
+  purpose: Counted values in a frame with many locals, returned by one of three paths.
+
+  let label be "a label longer than sixteen bytes {index}"
+  let items be [label, "second item of the list {index}", label]
+  let box be Box(label: label, items: items, weight: index)
+  let moved be box with weight: index * 2
+  let head be items.at(0) otherwise "none"
+  let kept be "{head} kept"
+  let tally be risky(index) otherwise 0
+  if index remainder 4 is 0 then
+    return "{moved.label} early {tally}"
+  end
+  let mutable joined be ""
+  for each item in moved.items
+    change joined to "{joined}{item.length()},"
+  end
+  if index remainder 4 is 1 then
+    return "{kept} {joined}"
+  end
+  let last be items.at(2) otherwise "none"
+  return "{last} {joined} {tally} {moved.weight}"
+end
+
+public function main() needs console
+  purpose: Call build many times and print a digest.
+
+  let mutable total be 0
+  for each index from 1 to 2000
+    change total to total + build(index).length()
+  end
+  console.print("{total}")
+end
+"#;
+    let (outcome, printed) = both_ways(source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(printed, "106495\n");
+}

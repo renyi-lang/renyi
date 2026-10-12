@@ -844,6 +844,122 @@ pub fn analyse(
     })
 }
 
+/// Per op, the local slots that may hold a counted block on entry to it
+/// (decision AW4), which is what the frame's leave releases: a boxed
+/// parameter from the entry; a boxed slot from a store of anything but a
+/// plain scalar until the move out of it (a `LoadMove` the code moves,
+/// not one a typed call or a comparison borrows, which keeps the slot's
+/// value) or the update in place (`WithSlot`, which moves the record out);
+/// a slot of another kind (an iterator, a deadline, a mark) always; a
+/// typed slot never. A failure flows to its handler with the state before
+/// the op, so that a slot the op would have emptied stays counted there;
+/// where the analysis reaches no op, every slot counts. The interpreter
+/// writes the slots as these ops say too, so a frame it hands over at a
+/// loop header fits the state there.
+pub fn owned_slots(code: &Code, analysis: &Analysis, borrowed: &[bool]) -> Vec<Vec<bool>> {
+    let count = code.ops.len();
+    let locals = code.locals as usize;
+    let boxed = |slot: usize| matches!(analysis.slots[slot], SlotKind::Boxed(_));
+    let start: Vec<bool> = (0..locals)
+        .map(|slot| match analysis.slots[slot] {
+            SlotKind::Int | SlotKind::Bool | SlotKind::Float => false,
+            SlotKind::Boxed(_) => slot < code.params as usize,
+            _ => true,
+        })
+        .collect();
+    let mut owned: Vec<Option<Vec<bool>>> = vec![None; count + 1];
+    owned[0] = Some(start);
+    let mut changed = true;
+    while changed {
+        changed = false;
+        for pc in 0..count {
+            let (Some(state), Some(entry)) = (owned[pc].clone(), analysis.entry[pc].as_ref())
+            else {
+                continue;
+            };
+            let op = &code.ops[pc];
+            let mut after = state.clone();
+            match op {
+                Op::Store(slot) => {
+                    let slot = *slot as usize;
+                    if boxed(slot) {
+                        after[slot] =
+                            !matches!(entry.last(), Some(Abs::Int | Abs::Bool | Abs::Float));
+                    }
+                }
+                Op::LoadMove(slot) if !borrowed[pc] => {
+                    let slot = *slot as usize;
+                    if boxed(slot) {
+                        after[slot] = false;
+                    }
+                }
+                Op::WithSlot { slot, .. } => {
+                    let slot = *slot as usize;
+                    if boxed(slot) {
+                        after[slot] = false;
+                    }
+                }
+                _ => {}
+            }
+            let mut flows: Vec<(usize, &Vec<bool>)> = Vec::new();
+            let may_fail = matches!(
+                op,
+                Op::Construct { .. }
+                    | Op::ConstructVariant { .. }
+                    | Op::With(_)
+                    | Op::WithSlot { .. }
+                    | Op::Call { .. }
+                    | Op::CallAbility { .. }
+                    | Op::CallValue(_)
+                    | Op::CheckDeadline(_)
+            );
+            if may_fail {
+                if let Some((target, _)) = analysis.handlers[pc].last() {
+                    flows.push((*target as usize, &state));
+                }
+            }
+            let mut falls_through = true;
+            match op {
+                Op::Jump(target) => {
+                    flows.push((*target as usize, &after));
+                    falls_through = false;
+                }
+                Op::JumpIfFalse(target)
+                | Op::JumpIfTrue(target)
+                | Op::JumpIfAbsent(target)
+                | Op::JumpIfFailure(target) => flows.push((*target as usize, &after)),
+                Op::IterNext { exit, .. } => flows.push((*exit as usize, &after)),
+                Op::Return | Op::ReturnNothing | Op::Fail | Op::Crash => falls_through = false,
+                _ => {}
+            }
+            if falls_through {
+                flows.push((pc + 1, &after));
+            }
+            for (target, flow) in flows {
+                match &mut owned[target] {
+                    None => {
+                        owned[target] = Some(flow.clone());
+                        changed = true;
+                    }
+                    Some(known) => {
+                        for (bit, more) in known.iter_mut().zip(flow) {
+                            if *more && !*bit {
+                                *bit = true;
+                                changed = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    owned.truncate(count);
+    owned
+        .into_iter()
+        .map(|state| state.unwrap_or_else(|| vec![true; locals]))
+        .collect()
+}
+
 /// The slot kind a stored value gives its slot.
 fn slot_of_abs(abs: Abs) -> SlotKind {
     match abs {

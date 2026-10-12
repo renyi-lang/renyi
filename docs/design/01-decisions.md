@@ -6489,3 +6489,86 @@ the conformance suite 55 of 55 on both tiers, the template tier's own
 tests with the tier forced, 385 tests. Stage 1c next, the leave by the
 static ownership state: on this binary 917,264 frames still leave
 through `rt_truncate`, 301.5 million inclusive, finding 2's target.
+
+**AW4. Stage 1c of the new backend: the frame's leave by the static
+ownership state of the slots.** The second item of stage 1 in AW1's
+order, on 2026-10-11, measured as AW1 prescribes against stage 1a's
+binary (7bb927b). Finding 2 of the study: a third of the frames left
+through `rt_truncate` (917,264 leaves, 301.5 million instructions
+inclusive on stage 1a's binary, 10.7% of the check row), which cuts the
+stack to the frame's base and drops every slot by its tag at run time,
+because the leave in place released a frame's locals one by one only
+when the slots that are not typed, with the boxed operands above them,
+were at most four (`RELEASES_INLINE`), and the callers with many locals
+(`next_step`, `resolve`, `substitute`, `lex_word`, `expr_span`,
+`find_binding`) went to the helper although AU55's moves leave most of
+their slots holding `Nothing` at the return. The change: `owned_slots`
+in `native/infer.rs` computes, per op, the slots that may hold a
+counted block on entry to it, as a fixed point over the ops' flow with
+the analysis's entry states and handler regions: a boxed parameter from
+the entry; a boxed slot from the store of anything but a plain scalar
+until the `LoadMove` that moves it out (a moved load a typed call or a
+comparison borrows keeps the slot's value, decision AU17, and counts as
+no move) or the `WithSlot` that moves the record out; a slot of another
+kind (an iterator, a deadline, a mark) always, a typed slot never; a
+failure flows to its handler with the state before the op; an op the
+analysis does not reach has every slot counted. The leave in place
+(`leave_frame_inline` in `native/codegen.rs`, and the boxed result's
+leave through it) releases the slots so counted at the return's op,
+with the boxed operands above the locals, inline when they are at most
+eight (`RELEASES_INLINE` four to eight, the study's figure), and calls
+`rt_truncate` otherwise; a slot skipped holds `Nothing` or a plain
+value, which the interpreter's own leave by tags would have found
+nothing to drop in either. The interpreter and the template tier are
+untouched: the interpreter writes the slots as the same ops say, so a
+frame it hands over at a loop header fits the state there, and the
+template tier's return still goes through `rt_return`, which drops by
+tags (its leave by the same analysis is left for a later stage, the
+measure being the check row); no format changes. The tests:
+`crates/renyi_vm/tests/native.rs`, a frame with thirteen locals (texts,
+a list, a record updated, a failing call caught by `otherwise`) left by
+three returns, both tiers equal to the interpreter; and
+`crates/renyi/tests/sandbox.rs`, the same frame left two hundred
+thousand times under a memory budget of sixteen megabytes on both
+tiers, through the binary, which a slot skipped wrongly would exceed (a
+run that keeps every result alive does, checked by hand); the IR of the
+frame shows no call of `rt_truncate` and the releases inline. The
+measure (callgrind under WSL on the release build for Linux, the images
+built under `valgrind --tool=none`, against stage 1a's binary measured
+the same way in AW3, the reference AU34's 44782aa): the check row
+2,826.6 to 2,729.4 million instructions (-3.4%; the study estimated 200
+million, 6.5%), the parse row 1,152.9 to 1,132.9 (-1.7%), the compile
+row 4,535.7 to 4,395.7 (-3.1%); the ratios by instructions against the
+reference's rows (441.6, 284.7 and 365.6) 6.18, 3.98 and 12.02 against
+the gate's 3 (6.40, 4.05 and 12.41 after stage 1a); the Rust front
+end's own rows unchanged (`check` 173.4, `parse --json` 246.7,
+`compile` 445.6). The leaves through `rt_truncate` 917,264 to 32,514
+(16.0 million inclusive, from 301.5); the drops out of line through
+`rt_drop_at`, the last reference's, 150,010 to 668,735 calls (201.1
+million inclusive, from 34.3): the frees the helper's loop made are
+made one by one now, which is why the gain is 97 million against the
+200 the study estimated, the study having counted the helper's
+inclusive cost as the leave's where the drops of the last references
+are the values' own cost and remain; the leave itself fell from about
+329 instructions to about 20. The check row by category, AW3's table
+against this one, in millions: the generated code 994.9 to 1,014.6, the
+counts and drops 440.7 to 321.9, the helpers' glue 120.7 to 120.7, the
+calls through the VM's path 7.4 to 7.4, mimalloc 146.8 to 146.8, the
+records 206.8 to 206.8, the natives 355.9 to 355.9, the hashing 219.8
+to 221.8, the comparisons 123.9 to 123.9, the texts and copies 120.3 to
+120.3, the load 46.0 to 46.0, the iterators 40.3 to 40.3. AT1's rows on
+the frozen self-check (`tools/measure_size.sh` under WSL, stage 1a's
+binary against this one): the synchronous JIT row 6,008.2 to 5,981.1
+million instructions (-0.5%) and 8,640.4 to 8,622.5 by the estimate
+(-0.2%), the image row 4,496.7 to 4,376.1 (-2.7%) and 6,622.5 to
+6,507.6 by the estimate (-1.7%), the cached run 4,576.3 to 4,455.7
+(-2.6%), the interpreter 11,240.5 to 11,240.4 (unchanged); the image
+9,008,656 to 9,837,312 bytes (+9.2%: the releases inline at every
+return, 191.8 bytes of body per op from 173.9). The four benchmarks and
+hello by user-space instructions (`perf stat`, the JIT synchronous, in
+millions): `primes` 288.8 to 288.9 (+0.0%), `strings` 430.1 to 429.9
+(-0.0%), `records` 209.4 to 208.9 (-0.2%), `json_round_trip` 838.1 to
+839.6 (+0.2%), `hello` 5.42 to 5.42 (unchanged). The four judges
+byte-equal, the conformance suite 55 of 55 on both tiers, the template
+tier's own tests with the tier forced, 387 tests. Stage 1b next, the
+read-only flag per parameter in the bytecode, then 1d.

@@ -32,7 +32,8 @@ use crate::extension::TypedKind;
 use crate::integer::Int;
 use crate::native::infer::{
     abs_of_binary, abs_of_constant, abs_of_field_at, abs_of_params, abs_of_result, abs_of_slot,
-    analyse, boxed_depth, is_integer, is_text, noted_kind, static_field, Abs, Analysis, SlotKind,
+    analyse, boxed_depth, is_integer, is_text, noted_kind, owned_slots, static_field, Abs,
+    Analysis, SlotKind,
 };
 use crate::native::runtime::{
     binary_code, fold_code, CONTINUE, DEOPT, D_BOXED, D_DEOPT, D_FAILURE, D_INTERRUPT, D_RETURNED,
@@ -91,8 +92,9 @@ pub(crate) const SITE_TAG: i32 = std::mem::offset_of!(FieldSite, tag) as i32;
 pub(crate) const SITE_INDEX: i32 = std::mem::offset_of!(FieldSite, index) as i32;
 
 /// How many values a return releases one by one before it calls the
-/// helper that cuts the stack instead.
-const RELEASES_INLINE: usize = 4;
+/// helper that cuts the stack instead: the slots that may hold a counted
+/// block there (decision AW4) and the boxed operands above the locals.
+const RELEASES_INLINE: usize = 8;
 
 /// The helpers that cannot move the stack's vector (they grow nothing
 /// and run no program code), after which the frame pointer needs no
@@ -398,6 +400,9 @@ struct Gen<'a, 'b> {
     borrowed: Vec<bool>,
     /// Per `Call` op, the bits of the arguments it borrows.
     masks: Vec<u32>,
+    /// Per op, the slots that may hold a counted block on entry to it
+    /// (decision AW4): what a leave at the op releases.
+    owned: Vec<Vec<bool>>,
     b: FunctionBuilder<'b>,
     pointer: Type,
     isa: &'a dyn TargetIsa,
@@ -586,6 +591,7 @@ pub fn compile(
     let started = Instant::now();
     let analysis = analyse(program, code, globals).map_err(Skipped::Analysis)?;
     let (borrowed, masks) = borrowed_operands(program, code, &analysis, calls);
+    let owned = owned_slots(code, &analysis, &borrowed);
     stats.analysis = started.elapsed();
     let mut headers: Vec<usize> = Vec::new();
     for (pc, op) in code.ops.iter().enumerate().take(original_len) {
@@ -665,6 +671,7 @@ pub fn compile(
             calls,
             borrowed,
             masks,
+            owned,
             b: builder,
             pointer,
             isa,
@@ -1957,11 +1964,13 @@ impl Gen<'_, '_> {
     }
 
     /// The frame left in place (decision AR4): every local that may hold
-    /// a reference and the `operands` boxed operands above the locals are
-    /// released, the stack is cut to the base, the handlers to the frame's
-    /// height, and the frame is popped. A typed local holds `Nothing` or
-    /// a plain value and needs no release.
-    fn leave_frame_inline(&mut self, operands: usize) {
+    /// a reference at the op (`owned_slots`, decision AW4: a boxed slot
+    /// moved out or updated in place holds `Nothing` and is skipped) and
+    /// the `operands` boxed operands above the locals are released, the
+    /// stack is cut to the base, the handlers to the frame's height, and
+    /// the frame is popped. A typed local holds `Nothing` or a plain
+    /// value and needs no release.
+    fn leave_frame_inline(&mut self, operands: usize, pc: usize) {
         let flags = MemFlagsData::trusted();
         let pointer = self.pointer;
         let locals = self.code.locals as usize;
@@ -1970,11 +1979,10 @@ impl Gen<'_, '_> {
         // moves them out; decision AU50): only its own locals may hold a
         // reference
         let holders: Vec<usize> = (0..self.original_locals)
-            .filter(|slot| {
-                !matches!(
-                    self.analysis.slots[*slot],
-                    SlotKind::Int | SlotKind::Bool | SlotKind::Float
-                )
+            .filter(|slot| match self.analysis.slots[*slot] {
+                SlotKind::Int | SlotKind::Bool | SlotKind::Float => false,
+                SlotKind::Boxed(_) => self.owned[pc][*slot],
+                _ => true,
             })
             .collect();
         if holders.len() + operands <= RELEASES_INLINE {
@@ -2009,7 +2017,7 @@ impl Gen<'_, '_> {
     /// moves out, the frame is left, and it goes where the frame's first
     /// local was; the status is `D_FAILURE` for a failure, else
     /// `D_BOXED`.
-    fn leave_boxed_inline(&mut self, operands: usize) -> IrValue {
+    fn leave_boxed_inline(&mut self, operands: usize, pc: usize) -> IrValue {
         let flags = MemFlagsData::trusted();
         // the result lies above the state's height: the caller popped it
         // from the state, not from the stack
@@ -2021,7 +2029,7 @@ impl Gen<'_, '_> {
             self.b.ins().load(types::I64, flags, from, 16),
         ];
         self.store_height(height);
-        self.leave_frame_inline(operands);
+        self.leave_frame_inline(operands, pc);
         // the result's slot was the frame's: the stack has the room, and
         // nothing moved it
         let to = self.address_at(0);
@@ -3152,12 +3160,12 @@ impl Gen<'_, '_> {
                         let on_stack = self.b.create_block();
                         self.b.ins().brif(direct, in_register, &[], on_stack, &[]);
                         self.switch_to(in_register);
-                        self.leave_frame_inline(operands);
+                        self.leave_frame_inline(operands, pc);
                         let bits = self.payload_bits(top, value);
                         let status = self.iconst(types::I32, D_RETURNED as i64);
                         self.return_with(status, bits);
                         self.switch_to(on_stack);
-                        self.leave_frame_inline(operands);
+                        self.leave_frame_inline(operands, pc);
                         self.push_typed_value(0, top, value);
                         self.return_direct(D_BOXED);
                     }
@@ -3170,7 +3178,7 @@ impl Gen<'_, '_> {
                             _ => self.pop_float(),
                         };
                         let operands = boxed_depth(&self.state);
-                        self.leave_frame_inline(operands);
+                        self.leave_frame_inline(operands, pc);
                         self.push_typed_value(0, top, value);
                         self.return_direct(D_BOXED);
                     }
@@ -3228,15 +3236,15 @@ impl Gen<'_, '_> {
                         self.switch_to(unboxed);
                         // a plain value: off the stack without a release
                         self.store_height(height);
-                        self.leave_frame_inline(operands);
+                        self.leave_frame_inline(operands, pc);
                         let status = self.iconst(types::I32, D_RETURNED as i64);
                         self.return_with(status, bits);
                         self.switch_to(stays);
-                        let status = self.leave_boxed_inline(operands);
+                        let status = self.leave_boxed_inline(operands, pc);
                         let zero = self.iconst(types::I64, 0);
                         self.return_with(status, zero);
                         self.switch_to(on_stack);
-                        let status = self.leave_boxed_inline(operands);
+                        let status = self.leave_boxed_inline(operands, pc);
                         let zero = self.iconst(types::I64, 0);
                         self.return_with(status, zero);
                     }
@@ -3244,7 +3252,7 @@ impl Gen<'_, '_> {
                         self.box_top(1);
                         self.state.pop();
                         let operands = boxed_depth(&self.state);
-                        let status = self.leave_boxed_inline(operands);
+                        let status = self.leave_boxed_inline(operands, pc);
                         let zero = self.iconst(types::I64, 0);
                         self.return_with(status, zero);
                     }
@@ -3252,7 +3260,7 @@ impl Gen<'_, '_> {
             }
             Op::ReturnNothing => {
                 let operands = boxed_depth(&self.state);
-                self.leave_frame_inline(operands);
+                self.leave_frame_inline(operands, pc);
                 self.push_nothing_at(0);
                 self.return_direct(D_BOXED);
             }

@@ -352,3 +352,99 @@ fn run_takes_a_sandbox_grant_from_a_file() {
         text(&test.stderr)
     );
 }
+
+#[test]
+fn frames_left_by_generated_code_release_what_they_hold_under_a_memory_budget() {
+    // decision AW4: a frame's leave in generated code releases the slots
+    // that may hold a counted block and skips the rest; a slot skipped
+    // wrongly would leak its block once per call, which two hundred
+    // thousand calls of a frame with many locals turn into tens of
+    // megabytes, past the budget of sixteen; on the Cranelift tier, with
+    // every code object compiled before its first call, and on the
+    // template tier
+    let dir = scratch("leaves");
+    let program = format!("{dir}/leaves.ry");
+    let grant = format!("{dir}/grant.json");
+    std::fs::write(&program, LEAVES).expect("leaves.ry");
+    std::fs::write(
+        &grant,
+        "{\"grant\": \"console\", \"memory\": \"16 megabytes\"}\n",
+    )
+    .expect("grant.json");
+    for tier in [None, Some("template")] {
+        let mut command = Command::new(env!("CARGO_BIN_EXE_renyi"));
+        command
+            .current_dir(root())
+            .args(["run", "--sandbox", &grant, &program])
+            .env("RENYI_NO_CACHE", "1")
+            .env("RENYI_NATIVE_HOT", "0")
+            .env("RENYI_NATIVE_SYNC", "1");
+        if let Some(tier) = tier {
+            command.env("RENYI_NATIVE_TIER", tier);
+        }
+        let run = command.output().expect("the renyi binary runs");
+        assert!(run.status.success(), "{tier:?}: {}", text(&run.stderr));
+        assert_eq!(text(&run.stdout), "11488897\n", "{tier:?}");
+    }
+}
+
+/// The program of the leave's test (decision AW4): a frame with many
+/// locals, most moved out before one of its three returns.
+const LEAVES: &str = r#"module leaves
+  purpose: Frames with many locals, most moved out before the return (AW4), left by every path.
+
+import std.console
+
+type Box
+  purpose: A record with a label, items and a weight.
+  has label: Text
+  has items: List of Text
+  has weight: Integer
+end
+
+type Problem
+  purpose: A failure for the test.
+  has reason: Text
+end
+
+function risky(value: Integer) returns Integer or fails with Problem
+  purpose: Fail on multiples of five.
+
+  if value remainder 5 is 0 then fail with Problem(reason: "five") end
+  return value * 3
+end
+
+public function build(index: Integer) returns Text
+  purpose: Counted values in a frame with many locals, returned by one of three paths.
+
+  let label be "a label longer than sixteen bytes {index}"
+  let items be [label, "second item of the list {index}", label]
+  let box be Box(label: label, items: items, weight: index)
+  let moved be box with weight: index * 2
+  let head be items.at(0) otherwise "none"
+  let kept be "{head} kept"
+  let tally be risky(index) otherwise 0
+  if index remainder 4 is 0 then
+    return "{moved.label} early {tally}"
+  end
+  let mutable joined be ""
+  for each item in moved.items
+    change joined to "{joined}{item.length()},"
+  end
+  if index remainder 4 is 1 then
+    return "{kept} {joined}"
+  end
+  let last be items.at(2) otherwise "none"
+  return "{last} {joined} {tally} {moved.weight}"
+end
+
+public function main() needs console
+  purpose: Call build many times and print a digest.
+
+  let mutable total be 0
+  for each index from 1 to 200000
+    change total to total + build(index).length()
+  end
+  console.print("{total}")
+end
+"#;

@@ -22,7 +22,7 @@ branches of the repository.
 | M4 | the library and the package manager: packages, `std.process`, the foreign function interface | done (stage 15) |
 | M5 | the integration: the registration API, the Python bridge and binder, the resident world, the language server, `serve --watch`, the embedding API | done (stages 18 and 19) |
 | M6 | ahead-of-time code: machine code for the bytecode, the baseline JIT, the template tier, `renyi build` images and self-contained executables | the machine code exists (stages 16, 21, 22, 24, 26); no WASM or C API target |
-| Self-hosting | the compiler written in Renyi (lexer, parser, checker, emitter) held equal to the Rust toolchain by the judges; the binary switches to it when it is within 3 times the Rust front end's time (decision AU35 ii) | the compiler exists and is judged (stages 11, 12, 14, 15); the speed round is under way (stages 25 to 28; stage 29, a new backend for the VM, has its study, its stage 0 and its stage 1a, AW1 to AW3) |
+| Self-hosting | the compiler written in Renyi (lexer, parser, checker, emitter) held equal to the Rust toolchain by the judges; the binary switches to it when it is within 3 times the Rust front end's time (decision AU35 ii) | the compiler exists and is judged (stages 11, 12, 14, 15); the speed round is under way (stages 25 to 28; stage 29, a new backend for the VM, has its study and its stages 0, 1a and 1c, AW1 to AW4) |
 
 ## 2. The stages, in order
 
@@ -294,8 +294,16 @@ where one decided, the status. The dates are those of the decisions.
     VM's path 141,577 to 9,380 (the parser's function values remain),
     the check row 2,889.9 to 2,826.6 million instructions (-2.2%, the
     study's estimate 2.1%), the ratio by instructions 6.54 to 6.40.
-    Stage 1c next (the frame leave by the static ownership state), then
-    1b and 1d.
+    Stage 1c done (session 14, 2026-10-11, decision AW4): a frame's
+    leave releases only the slots that may hold a counted block at the
+    return, by a fixed point over the ops (a boxed slot moved out by
+    its last read or updated in place holds `Nothing` and is skipped),
+    inline up to eight; the leaves through `rt_truncate` 917,264 to
+    32,514, the check row 2,826.6 to 2,729.4 million
+    instructions (-3.4%, the study's estimate 6.5%), the ratio by
+    instructions 6.40 to 6.18. Stage 1b next (the read-only
+    flag per parameter in the bytecode, both emitters, the judges),
+    then 1d.
 
 30. **The icon and the wordmark** (session 13, 2026-10-11, done;
     decision AV1). The owner asked for an icon that does not read as the
@@ -334,8 +342,8 @@ state of each line.
 - **D. The VM and its speed**: stages 7, 13, 16, 20, 21, 23, 24, 26,
   27 (B3), 29. Measured by AT1's rule on the frozen self-check and by
   the four benchmarks; every stage's numbers are in its decision entry.
-  Stage 29, a new backend, has its design study (AU58, AW1), its
-  stage 0 (AW2) and its stage 1a (AW3); stage 1c is next.
+  Stage 29, a new backend, has its design study (AU58, AW1) and its
+  stages 0, 1a and 1c (AW2 to AW4); stage 1b is next.
 - **E. Packages, the FFI and Python**: stages 15, 18. Done; candidates
   not decided: record types from dataclasses in the binder, a deadline
   per Python call, one worker across a test run.
@@ -358,13 +366,14 @@ order the study set and the owner confirmed: stage 0 is done (AW2,
 2026-10-11: the allocator entered by mimalloc's plain functions, the
 module constants an image builds before any run; the check row 3,085.3
 to 2,889.9 million instructions, -6.3%, the ratio by instructions 6.99
-to 6.54), and stage 1a is done (AW3, 2026-10-11: a typed parameter's
-boxed operand taken from the stack at the call site; the check row
-2,889.9 to 2,826.6, -2.2%, the ratio 6.54 to 6.40), then the rest of
-stage 1 in the order
-1c (the frame leave by the static ownership state), 1b (the read-only
-flag per parameter in the bytecode, both emitters, the judges), 1d
-(the frame record cheaper), then the character tables and the VM's
+to 6.54), and stages 1a and 1c are done (AW3, AW4, 2026-10-11: a
+typed parameter's boxed operand taken from the stack at the call
+site, the check row 2,889.9 to 2,826.6, -2.2%, the ratio 6.54 to
+6.40; the frame's leave by the static ownership state of the slots,
+the check row to 2,729.4, -3.4%, the ratio to 6.18),
+then the rest of stage 1 in the order 1b (the read-only flag per
+parameter in the bytecode, both emitters, the judges), 1d (the frame
+record cheaper), then the character tables and the VM's
 hasher, stage 2 (2a `with` by static index, 2b `Done` in the caller's
 slots, 2c the frees in place), the natives' in-place entry and the
 glue, stage 4, the checker's own cuts between the stages, stages 5 and
@@ -372,7 +381,7 @@ glue, stage 4, the checker's own cuts between the stages, stages 5 and
 table by category, the ratio of AU36 (iii), AT1's rows where the tiers
 change, the four judges and the conformance suite on both tiers, kept
 by AT1's rule, toward the gate of AU35 (ii) at 3 times on the check
-row (6.40 by instructions after stage 1a); then, when the ratio is
+row (6.18 by instructions after stage 1c); then, when the ratio is
 within 3, the switch of the binary's front end to the compiler written
 in Renyi. Candidates beside it, none decided: the emitter's own round
 for the compile row, the Rust front end's name sets as bits, the C
