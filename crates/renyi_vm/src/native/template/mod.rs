@@ -38,7 +38,8 @@ use crate::native::codegen::{
     STATE_GLOBALS, STATE_HELPERS, STATE_HOTNESS, STATE_IN_PLACE, STATE_LIST_ITEMS, STATE_LIST_LEN,
 };
 use crate::native::infer::{
-    abs_of_constant, abs_of_result, analyse, is_integer, is_text, update_by_index, Abs, Analysis,
+    abs_of_constant, abs_of_result, analyse, is_integer, is_text, sum_compared, update_by_index,
+    Abs, Analysis,
 };
 use crate::native::runtime::{
     binary_code, fold_code, BOXED, CONTINUE, DECLINED, FAILURE, INTERRUPT, LEFT, RETURNED, STAY,
@@ -1063,6 +1064,82 @@ impl Gen<'_> {
         self.depth = at + 2;
     }
 
+    /// Whether both operands of the comparison at `pc` are of one variant
+    /// type without its own `equals` by the checker's types (decision
+    /// AW13), and then which of its tags name a variant with fields.
+    fn sum_compared_at(&self, pc: usize) -> Option<u64> {
+        let state = self.analysis.entry[pc].as_ref()?;
+        let n = state.len();
+        if n < 2 {
+            return None;
+        }
+        sum_compared(self.program, state[n - 2], state[n - 1])
+    }
+
+    /// `is` or `is not` on the two operands at `at`, both of one variant
+    /// type without its own `equals` (decision AW13): when both lie as
+    /// variants (a guarded one does not), the type and the tag their
+    /// blocks hold are compared; different ones answer, the same tag
+    /// answers when it names a variant without fields (`fielded` has a
+    /// bit per tag that has them) and falls through to the general
+    /// comparison otherwise; an answer is kept in the out slot while the
+    /// operands not borrowed are released, then boxed where the left
+    /// operand lay, and the code goes on at `done`.
+    fn compare_sum_variants(
+        &mut self,
+        op: BinaryOp,
+        at: usize,
+        mask: u32,
+        fielded: u64,
+        done: Label,
+    ) {
+        let general = self.asm.label();
+        let differ = self.asm.label();
+        let answer = self.asm.label();
+        let left = self.operand(at);
+        let right = self.operand(at + 1);
+        self.asm.cmp_m8i(left.0, left.1, TAG_VARIANT);
+        self.asm.jcc(Cond::Ne, general);
+        self.asm.cmp_m8i(right.0, right.1, TAG_VARIANT);
+        self.asm.jcc(Cond::Ne, general);
+        for offset in [RECORD_TY, RECORD_TAG] {
+            self.asm.mov_rm(SCRATCH, left.0, left.1 + PAYLOAD);
+            self.asm.mov_rm(SCRATCH, SCRATCH, offset);
+            self.asm.mov_rm(SCRATCH2, right.0, right.1 + PAYLOAD);
+            self.asm.mov_rm(SCRATCH2, SCRATCH2, offset);
+            self.asm.cmp_rr(SCRATCH, SCRATCH2);
+            self.asm.jcc(Cond::Ne, differ);
+        }
+        // the same tag, left in SCRATCH: a variant with fields goes to the
+        // general comparison
+        if fielded != 0 {
+            self.asm.mov_ri(SCRATCH2, fielded as i64);
+            self.asm.bt_rr(SCRATCH2, SCRATCH);
+            self.asm.jcc(Cond::B, general);
+        }
+        let is = op == BinaryOp::Is;
+        self.asm.mov_ri32(SCRATCH, u32::from(is));
+        self.asm.jmp(answer);
+        self.asm.bind(differ);
+        self.asm.mov_ri32(SCRATCH, u32::from(!is));
+        self.asm.bind(answer);
+        self.asm.mov_m8r(Reg::Rsp, self.layout.out, SCRATCH);
+        // an operand a `Load`, a `Const` or `Nothing` pushed borrowed holds
+        // no reference of its own
+        if mask & 1 == 0 {
+            self.release(left);
+        }
+        if mask & 2 == 0 {
+            self.release(right);
+        }
+        self.box_out(TypedKind::Bool, left);
+        self.depth = at + 1;
+        self.store_len();
+        self.asm.jmp(done);
+        self.asm.bind(general);
+        self.depth = at + 2;
+    }
+
     /// Whether both operands of the comparison at `pc` are Integers by
     /// the checker's types, or small ones the analysis knows as such
     /// (decision AU45); on this tier every value lies boxed in its slot,
@@ -1827,6 +1904,11 @@ impl Gen<'_> {
                     }
                     if self.integers_compared(pc) {
                         self.compare_small_integers(*op, at, done);
+                    }
+                    if matches!(op, BinaryOp::Is | BinaryOp::IsNot) {
+                        if let Some(fielded) = self.sum_compared_at(pc) {
+                            self.compare_sum_variants(*op, at, mask, fielded, done);
+                        }
                     }
                     self.call(
                         "rt_compare",

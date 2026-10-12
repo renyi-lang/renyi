@@ -273,6 +273,47 @@ pub fn is_integer(program: &Program, abs: Abs) -> bool {
     )
 }
 
+/// Whether the checker noted both boxed operands as one variant type
+/// without its own `equals` and with at most 64 variants (decision AW13),
+/// and then which of its tags name a variant with fields, one bit per
+/// tag: the generated code compares two such values in place by the type
+/// and the tag their blocks hold, and settles the answer there unless the
+/// tags are the same and name a variant with fields, whose values the
+/// helper compares.
+pub fn sum_compared(program: &Program, left: Abs, right: Abs) -> Option<u64> {
+    let type_of = |abs: Abs| {
+        let Abs::Boxed(Some(index)) = abs else {
+            return None;
+        };
+        match program.result_types.get(index as usize)? {
+            Ty::App(id, args) if args.is_empty() => Some(*id),
+            _ => None,
+        }
+    };
+    let id = type_of(left)?;
+    if type_of(right)? != id
+        || program
+            .specials
+            .get(id)
+            .is_some_and(|special| special.equals.is_some())
+    {
+        return None;
+    }
+    let TypeShape::Sum(variants) = &program.types.metas.get(id)?.shape else {
+        return None;
+    };
+    if variants.len() > 64 {
+        return None;
+    }
+    Some(
+        variants
+            .iter()
+            .enumerate()
+            .filter(|(_, variant)| !variant.fields.is_empty())
+            .fold(0, |fielded, (tag, _)| fielded | 1 << tag),
+    )
+}
+
 /// The representation the checker's note gives a boxed operand: a small
 /// Integer, a Boolean or a Float when it noted such a type (a refined
 /// subtype's base among them, as `abs_of_type` reads it), else boxed. A

@@ -7480,3 +7480,103 @@ stage 0 the check row 2,889.9 to 2,099.1 (-27.4%), since the study's
 binary 3,085.3 (-32.0%); stage 3 in all, 2,296.2 to 2,099.1. Next in
 AW1's order: stage 4, two values of a field-less variant type compared
 in place, `match` by a table, the iterator in two slots.
+
+**AW13. Stage 4a of the new backend: `is` and `is not` answered in
+place, and two values of a variant type compared in the generated
+code.** The first item of stage 4 in AW1's order, on 2026-10-12,
+measured as AW1 prescribes against stage 3b's binary (1b25b85). The
+check row's 521,364 comparisons went through `rt_compare` (66.8 million
+instructions self, 125.8 inclusive), whose fast path answered small
+Integers, texts, Booleans, `Nothing` beside a value and two variants
+without fields of a type without its own `equals` (199,851 calls of
+`has_declared_equals`), and whose general path took every other `is`
+and `is not` (309,995 calls of `binary_values`, 30,193 of them
+`rt_binary`'s): the operands popped, `binary_values`'s own fast arms
+tried again, `binary` (9.1 million self), `equal` (10.6) and at last
+`Value::eq` (23.1 million self over 644,592 calls, 279,802 of them from
+`equal`, the rest the natives' and the hashed lookups'), the Boolean
+boxed, pushed and unboxed by the generated code: about 250 instructions
+around an equality of about 35. The stage: (1) `compare_in_place`
+answers `is` and `is not` on any operands as structural equality,
+`Value::eq` on the plain values, unless the left operand's type
+declares its own `equals`, which the general path keeps running
+(`has_declared_equals` inlined); an ordering is still answered for two
+small Integers, texts or Booleans and takes the general path otherwise.
+(2) The generated code of both tiers compares two values the checker
+typed as one variant type without its own `equals` and with at most 64
+variants (`sum_compared` in `native/infer.rs`, which also gives the
+tags that name a variant with fields, one bit per tag) in place: when
+both lie as variants (a guarded value does not, and takes the helper),
+the type and the tag their blocks hold are compared; different ones
+answer, and the same tag answers when it names a variant without fields
+and goes to the helper otherwise, which compares the fields, with the
+operands untouched; the answer goes to its register (on the template
+tier to the out slot, then boxed where the left operand lay), and the
+operands not borrowed (AU13's masks) are released in place
+(`compare_sum_variants` in `native/codegen.rs` and in
+`native/template/mod.rs`, beside AU26's small texts and AU45's small
+Integers; the template assembler gained the 64-bit `bt`). The first
+build compared only the types none of whose variants has a field, and
+its measure found that path taken by 238 of the check row's
+comparisons: the checker compares `Ty` and `TokenKind` values, and both
+types have variants with fields beside the field-less ones it mostly
+compares; the second build is the one measured. The tests: the corpus,
+the conformance suite on both tiers, the four judges, AU13's comparison
+test and a new one in `tests/native.rs` and `tests/template.rs`,
+`variants_compare_in_place_by_tag_and_fielded_ones_through_the_helper`,
+which runs field-less variants in both orders and with both operators,
+different tags and the same tag of a type with fielded variants, the
+same tag with fields, a guarded one read out of a guarded record, a
+`maybe`, a type with its own `equals` and lists on machine code against
+the interpreter. What the measure found: the check row 2,099.1 to
+1,995.8 million (-4.9%); `rt_compare` 521,364 to 43,402 calls (66.8 to
+3.5 million self, 125.8 to 5.1 inclusive), `binary_values` 309,995 to
+30,193 (12.3 to 1.6), `binary` 279,802 to 0 (9.1 to 0.0), `equal`
+279,802 to 0 (10.6 to 0.0), `has_declared_equals` 199,851 to 0
+(inlined), `Value::eq` 644,592 to 414,005 (23.1 to 15.4); the
+comparisons category 131.6 to 34.5 million, the hashing and equality
+55.7 to 48.3, the counts and drops 189.4 to 173.8, the generated code
+981.3 to 998.0. The measure in full (callgrind under WSL on the release
+build for Linux, the images built under `valgrind --tool=none`, against
+stage 3b's binary measured the same way in AW12, the reference AU34's
+44782aa): the check row 2,099.1 to 1,995.8 million instructions
+(-4.9%), the parse row 878.7 to 827.8 (-5.8%), the compile row 3,531.7
+to 3,260.6 (-7.7%); the ratios by instructions against the reference's
+rows (441.6, 284.7 and 365.6) 4.52, 2.91 and 8.92 against the gate's 3
+(4.75, 3.09 and 9.66 after AW12); the Rust front end's own rows within
+0.1% of stage 3b's (`check` 173.5, `parse --json` 246.7, `compile`
+446.4). The functions on the check row: `rt_compare` 521,364 to 43,402
+calls (66.8 to 3.5 million self, 125.8 to 5.1 inclusive),
+`has_declared_equals` 199,851 calls (3.4 million self) to none of its
+own, inlined, `binary_values` 309,995 to 30,193 (48.8 to 2.3
+inclusive), `binary` 279,802 to 0 (9.1 to 0.0 self), `equal` 279,802 to
+0 (20.1 to none inclusive), `Value::eq` 644,592 to 414,005 (23.1 to
+15.4 self), `Vm::compare` (the sort's) 366,276 to 366,276 (17.6 to
+17.6), `rt_binary` 30,193 to 30,193, the shims 1,050,545 calls (133.2
+million self), the glue of `Value` 3,775,548 to 2,016,576 (32.5 to
+17.0), `mi_malloc` 1,978,955 to 1,978,955, `mi_free` 1,777,181 to
+1,777,181. The check row by category, AW12's table against this one, in
+millions: the comparisons 131.6 to 34.5, the hashing and equality 55.7
+to 48.3, the counts and drops 189.4 to 173.8, the generated code 981.3
+to 998.0, the natives 297.2 to 297.2, the VM's own 90.0 to 90.0, the
+records 46.0 to 46.0, mimalloc 121.1 to 121.1, the texts and copies
+103.8 to 103.8, the calls through the VM's path 6.9 to 6.9, the
+helpers' glue 3.7 to 3.7, the load 46.4 to 46.4, the iterators 25.3 to
+25.3. AT1's rows on the frozen self-check (`tools/measure_size.sh`
+under WSL, stage 3b's binary against this one): the synchronous JIT row
+5,456.5 to 5,248.2 million instructions (-3.8%) and 7,800.2 to 7,546.0
+by the estimate (-3.3%), its indirect branches 11.9 to 10.7 million
+(-9.5%) and its mispredictions 31.9 to 31.2, the image row 3,694.0 to
+3,473.0 (-6.0%) and 5,486.6 to 5,166.3 by the estimate (-5.8%), the
+cached run 3,774.1 to 3,552.7 (-5.9%), the interpreter 11,204.0 to
+11,203.6 (within 0.05%); the image 9,567,648 to 9,588,256 bytes
+(+0.2%). The four benchmarks and hello by user-space instructions
+(`perf stat`, the JIT synchronous, in millions): `primes` 265.2 to
+265.2 (unchanged), `strings` 450.7 to 450.7 (unchanged), `records`
+157.1 to 157.1 (unchanged), `json_round_trip` 841.1 to 841.1
+(unchanged), `hello` 5.44 to 5.44 (unchanged). The four judges
+byte-equal, the conformance suite 55 of 55 on both tiers, the template
+tier's own tests with the tier forced, 402 tests. Since stage 0 the
+check row 2,889.9 to 1,995.8 (-30.9%), since the study's binary 3,085.3
+(-35.3%). Next in AW1's order: the rest of stage 4, the iterator in two
+slots (4b) and `match` by a table (4c).

@@ -512,6 +512,137 @@ end
 }
 
 #[test]
+fn variants_compare_in_place_by_tag_and_fielded_ones_through_the_helper() {
+    // two values the checker typed as one variant type without its own
+    // `equals` are compared in place by the type and the tag of their
+    // blocks, the operands not borrowed released (decision AW13): different
+    // tags and the same tag of a variant without fields answer there, the
+    // same tag of a variant with fields takes the helper; a guarded one, a
+    // `maybe`, a type with its own `equals` and lists take the helper too,
+    // which answers `is` and `is not` as structural equality unless the
+    // left operand's type declares its own: machine code prints what the
+    // interpreter prints
+    let dir = scratch("unit-variants");
+    std::fs::write(format!("{dir}/greeting.txt"), "hello").expect("the data file");
+    let source = format!(
+        r#"module demo
+  purpose: Variants without fields compared in place, the rest through the helper (decision AW13).
+
+import std.console
+import std.filesystem exposing FileError, Path
+
+type Kind is one of
+  purpose: Kinds without fields.
+  Word
+  Number
+  Symbol
+end
+
+type Mood is one of
+  purpose: Kinds without fields whose equality is declared: any two are equal.
+  Glad
+  Sad
+end
+
+function weight(mood: Mood) returns Integer
+  purpose: A number per mood.
+
+  match mood
+    when Glad then return 1
+    when Sad then return 2
+  end
+end
+
+ability Equal for Mood
+  function equals(self, other: Mood) returns Boolean
+    return weight(self) + weight(other) is at least 0
+  end
+end
+
+type Shape is one of
+  purpose: Variants with fields, compared structurally.
+  Dot
+  Line(length: Integer)
+end
+
+type Note
+  purpose: A kind with a text.
+  has kind: Kind
+  has body: Text
+end
+
+function kind_of(text: Text) returns Kind
+  purpose: A kind by the text.
+
+  if text is "1" then return Number end
+  if text is "+" then return Symbol end
+  return Word
+end
+
+function tally_kinds(kinds: List of Kind, wanted: Kind) returns Integer
+  purpose: How many kinds are the wanted one, in both orders and with both operators.
+
+  let mutable hits be 0
+  for each kind in kinds
+    if kind is wanted then change hits to hits + 1 end
+    if wanted is kind then change hits to hits + 10 end
+    if kind is not wanted then change hits to hits + 100 end
+    if kind is Word then change hits to hits + 1000 end
+    if kind_of("1") is kind then change hits to hits + 10000 end
+  end
+  return hits
+end
+
+function shapes(moods: List of Mood) returns Integer
+  purpose: Comparisons through the helper: variants with fields, lists and a declared equals.
+
+  let mutable hits be 0
+  let short be Line(length: 3)
+  let long be Line(length: 4)
+  for each mood in moods
+    if short is Line(length: 3) then change hits to hits + 1 end
+    if short is not long then change hits to hits + 10 end
+    if Dot is short then change hits to hits + 100 end
+    if Dot is Dot then change hits to hits + 100000 end
+    if [1, 2] is [1, 2] then change hits to hits + 1000 end
+    if mood is Glad then change hits to hits + 10000 end
+  end
+  return hits
+end
+
+function first_kind(kinds: List of Kind) returns maybe Kind
+  purpose: The first kind, or nothing.
+
+  return kinds.at(0)
+end
+
+public function main() or fails with FileError needs console, filesystem.read("{dir}") only to console
+  purpose: Print the tallies, with a guarded note's kind compared through the helper.
+
+  let secret be filesystem.read_text(Path("{dir}/greeting.txt")) otherwise fail
+  let note be Note(kind: kind_of(secret), body: secret)
+  let kinds be [Word, Number, Word, Symbol]
+  let mutable kept be 0
+  for each kind in kinds
+    if note.kind is kind then change kept to kept + 1 end
+    if note.kind is not kind_of("+") then change kept to kept + 10 end
+  end
+  let none be first_kind([])
+  let found be first_kind(kinds)
+  let mutable maybe_hits be 0
+  if none is Word then change maybe_hits to maybe_hits + 1 end
+  if found is Word then change maybe_hits to maybe_hits + 10 end
+  if found is not none then change maybe_hits to maybe_hits + 100 end
+  console.print("{{tally_kinds(kinds: kinds, wanted: Word)}} {{shapes([Glad, Sad, Sad])}} {{kept}} {{maybe_hits}}")
+end
+"#
+    );
+    let (outcome, printed) = both_ways(&source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(printed, "12222 333033 42 110\n");
+}
+
+#[test]
 fn a_guarded_integer_parameter_hands_the_frame_back_at_its_entry() {
     let dir = scratch("guarded");
     std::fs::write(format!("{dir}/count.txt"), "12345").expect("the data file");

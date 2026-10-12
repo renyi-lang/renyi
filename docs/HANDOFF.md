@@ -60,10 +60,15 @@ AW12: `status` and `into_plain` off the path, a plain record or
 variant built through a helper without a status on both tiers, a
 plain item pushed onto a plain list where it lies, the guard tests in
 place; the check row 2,203.9 to 2,099.1, -4.8%; the ratio 4.99
-to 4.75), which completes stage 3. Next is stage 4, field-less
-variants compared in place, `match` by a table and the iterator in two
-slots (the start-here item 1). The session's record is "Done in
-session 14" below.
+to 4.75), which completes stage 3; and stage 4a built and measured
+(decision AW13: `is` and `is not` answered in place as structural
+equality unless the left operand's type declares its own `equals`,
+two values of one variant type compared in the generated code of both
+tiers by the type and the tag of their blocks; the check row 2,099.1
+to 1,995.8, -4.9%; the ratio 4.75 to 4.52). Next is
+the rest of stage 4, the iterator in two slots and `match` by a table
+(the start-here item 1). The session's record is "Done in session 14"
+below.
 Session 13, in the cloud environment, had as its last work the icon
 and the wordmark, at the owner's request after the
 handover below (decision AV1: a war hammer on the accent tile and the
@@ -369,9 +374,12 @@ and push there directly.
    the check row to 2,203.9, -4.0%; the ratio to 4.99); and stage 3b
    (decision AW12, "Stage 3b as built": `status` and `into_plain` off
    the path; the check row to 2,099.1, -4.8%; the ratio to
-   4.75), which completes stage 3.
-   Next is stage 4 (two values of a field-less variant type compared
-   in place, `match` by a table, the iterator in two slots), the
+   4.75), which completes stage 3; and stage 4a (decision AW13,
+   "Stage 4a as built": `is` and `is not` in place, variants compared
+   in the generated code by the type and the tag; the check row to
+   1,995.8, -4.9%; the ratio to 4.52).
+   Next is the rest of stage 4 (the iterator in two slots, `match` by
+   a table), the
    checker's own cuts between the stages, stages
    5 and 6 last. Each stage: the code, the gates of item 3, the measure
    (AU58's: the checker's image run under callgrind with the study's
@@ -404,8 +412,10 @@ and push there directly.
    `renyi_stage2c_v1` (stage 2c's first build, the release out of line
    for every value, rejected), `renyi_stage2c` (f48282f, stage 2c's
    commit), `renyi_stage3a` (9828e2e, stage 3a's commit) and
-   `renyi_stage3b` (stage 3b's commit, the base of the next measure),
-   each with its `study/` directory. The
+   `renyi_stage3b` (1b25b85, stage 3b's commit), `renyi_stage4a`
+   (stage 4a's first build, the field-less types alone) and
+   `renyi_stage4a_v2` (stage 4a's commit, the base of the next
+   measure), each with its `study/` directory. The
    road is months long (AU58); the gate is decided on the measure at
    the end.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
@@ -4719,6 +4729,46 @@ order: stage 4 (two values of a field-less variant type compared in
 place, `match` by a table, the iterator in two slots), then the
 checker's own cuts, stages 5 and 6.
 
+**Stage 4a as built (decision AW13, 2026-10-12).** The first item of
+stage 4 in AW1's order. In `native/runtime.rs`, `compare_in_place`
+answers `is` and `is not` on any operands as structural equality
+(`Value::eq` on the plain values) unless the left operand's type
+declares its own `equals`, which the general path keeps running
+(`has_declared_equals` inlined); an ordering is answered for two small
+Integers, texts or Booleans as before. In `native/infer.rs`,
+`sum_compared`: whether the checker noted both boxed operands as one
+variant type without its own `equals` and with at most 64 variants,
+and then the tags that name a variant with fields, one bit per tag. In
+`native/codegen.rs`, `compare_sum_variants`, which `compare_boxed`
+emits for `is` and `is not` on two such operands: both tags tested for
+a variant (a guarded value takes the helper), the type and the tag of
+the blocks compared, different ones answered, the same tag answered
+when it names a variant without fields and left to the helper
+otherwise, the Boolean to its register, the operands not borrowed
+released in place; the same in `native/template/mod.rs`
+(`sum_compared_at`, `compare_sum_variants`, the answer kept in the out
+slot while the operands are released, then boxed where the left
+operand lay; `bt_rr`, the 64-bit bit test, in `x64.rs`). No code
+format change. The first build compared only the types none of whose
+variants has a field, which the checker hardly compares (`Ty` and
+`TokenKind` have fielded variants): 238 of the check row's comparisons
+took the path, the check row 2,099.1 to 2,049.9 (-2.3%) from the
+helper's structural equality alone; the second build is the one
+measured. The corpus, the conformance suite on both tiers, the four
+judges, AU13's comparison test and the new test
+`variants_compare_in_place_by_tag_and_fielded_ones_through_the_helper`
+in `tests/native.rs` and `tests/template.rs` hold the paths. The
+measure: the check row 2,099.1 to 1,995.8 (-4.9%), the ratios
+by instructions 4.52, 2.91 and 8.92;
+`rt_compare` 521,364 to 43,402 calls
+(125.8 to 5.1 million inclusive),
+`binary_values` 309,995 to 30,193; the
+comparisons category 131.6 to 34.5 million; AT1's
+synchronous estimate 7,800.2 to 7,546.0 (-3.3%). The
+table is in AW13. Next in AW1's order: the rest of stage 4 (the
+iterator in two slots, 4b; `match` by a table, 4c), then the checker's
+own cuts, stages 5 and 6.
+
 ## The representation items: the design study (session 11)
 
 **What the owner ordered (AU20)**: after the template tier's follow-ups
@@ -6389,6 +6439,13 @@ holds between calls.
   `rt_compare` and `iterator_of` in `native/runtime.rs`, the helpers
   and the two ops in `native/codegen.rs` and `native/template/mod.rs`,
   code format 21; the measure in AW12 and in "Stage 3b as built".
+- Stage 4a (decision AW13, the commit after 1b25b85):
+  `compare_in_place` and `has_declared_equals` in `native/runtime.rs`,
+  `sum_compared` in `native/infer.rs`, `compare_sum_variants` in
+  `native/codegen.rs` and with `sum_compared_at` in
+  `native/template/mod.rs`, `bt_rr` in `native/template/x64.rs`, the
+  test in `tests/native.rs` and `tests/template.rs`; the measure in
+  AW13 and in "Stage 4a as built".
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

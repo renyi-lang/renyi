@@ -33,7 +33,8 @@ use crate::integer::Int;
 use crate::native::infer::{
     abs_of_binary, abs_of_constant, abs_of_field_at, abs_of_params, abs_of_result, abs_of_slot,
     analyse, boxed_depth, handler_only, is_integer, is_text, noted_kind, otherwise_end,
-    owned_slots, pair_fused, pair_result, static_field, update_by_index, Abs, Analysis, SlotKind,
+    owned_slots, pair_fused, pair_result, static_field, sum_compared, update_by_index, Abs,
+    Analysis, SlotKind,
 };
 use crate::native::runtime::{
     binary_code, fold_code, CONTINUE, DEOPT, D_BOXED, D_DEOPT, D_FAILURE, D_INTERRUPT, D_RETURNED,
@@ -5310,6 +5311,18 @@ impl Gen<'_, '_> {
         if integers {
             self.compare_small_integers(op, join);
         }
+        // two values of one variant type the checker typed (decision
+        // AW13): compared in place by the type and the tag of their
+        // blocks, the same tag of a variant with fields left to the helper
+        let summed = if matches!(op, BinaryOp::Is | BinaryOp::IsNot) {
+            let n = self.state.len();
+            sum_compared(self.program, self.state[n - 2], self.state[n - 1])
+        } else {
+            None
+        };
+        if let Some(fielded) = summed {
+            self.compare_sum_variants(op, pc, join, fielded);
+        }
         let op_value = self.u8(binary_code(op));
         let mask_value = self.u32(self.masks[pc]);
         let pc_value = self.u32(pc as u32);
@@ -5461,6 +5474,101 @@ impl Gen<'_, '_> {
         let dropped = usize::from(left.is_boxed()) + usize::from(right.is_boxed());
         self.store_height(height - dropped);
         let var = self.bool_var(n - 2);
+        self.b.def_var(var, answer);
+        self.b.ins().jump(join, &[]);
+        self.switch_to(general);
+    }
+
+    /// `is` or `is not` on two operands the checker typed as one variant
+    /// type without its own `equals` (decision AW13): when both lie as
+    /// variants (a guarded one does not), the type and the tag their
+    /// blocks hold are compared; different ones answer, the same tag
+    /// answers when it names a variant without fields (`fielded` has a
+    /// bit per tag that has them) and goes to the general comparison
+    /// otherwise, with the operands untouched; an answer goes to `join`
+    /// as the Boolean of the depth the comparison leaves, the operands not
+    /// borrowed released in place.
+    fn compare_sum_variants(&mut self, op: BinaryOp, pc: usize, join: Block, fielded: u64) {
+        let flags = MemFlagsData::trusted();
+        let height = self.height();
+        let left = self.address_at(height - 2);
+        let right = self.address_at(height - 1);
+        let left_tag = self.tag_at(left, 0);
+        let right_tag = self.tag_at(right, 0);
+        let left_variant = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::Equal, left_tag, TAG_VARIANT as i64);
+        let right_variant = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::Equal, right_tag, TAG_VARIANT as i64);
+        let both = self.b.ins().band(left_variant, right_variant);
+        let inline = self.b.create_block();
+        let general = self.b.create_block();
+        let answered = self.b.create_block();
+        self.b.append_block_param(answered, types::I8);
+        self.b.ins().brif(both, inline, &[], general, &[]);
+        self.b.seal_block(inline);
+        self.switch_to(inline);
+        let left_block = self.b.ins().load(self.pointer, flags, left, PAYLOAD);
+        let right_block = self.b.ins().load(self.pointer, flags, right, PAYLOAD);
+        let left_ty = self.b.ins().load(types::I64, flags, left_block, RECORD_TY);
+        let right_ty = self.b.ins().load(types::I64, flags, right_block, RECORD_TY);
+        let same_ty = self.b.ins().icmp(IntCC::Equal, left_ty, right_ty);
+        let left_word = self.b.ins().load(types::I64, flags, left_block, RECORD_TAG);
+        let right_word = self
+            .b
+            .ins()
+            .load(types::I64, flags, right_block, RECORD_TAG);
+        let same_tag = self.b.ins().icmp(IntCC::Equal, left_word, right_word);
+        let same = self.b.ins().band(same_ty, same_tag);
+        let is = matches!(op, BinaryOp::Is);
+        if fielded == 0 {
+            let answer = if is {
+                same
+            } else {
+                self.b.ins().bxor_imm_u(same, 1)
+            };
+            self.b.ins().jump(answered, &[answer.into()]);
+        } else {
+            let alike = self.b.create_block();
+            let differ = self.b.create_block();
+            let plain = self.b.create_block();
+            self.b.ins().brif(same, alike, &[], differ, &[]);
+            self.b.seal_block(alike);
+            self.b.seal_block(differ);
+            // the same tag: the helper compares the fields of a variant
+            // that has them
+            self.switch_to(alike);
+            let mask = self.iconst(types::I64, fielded as i64);
+            let shifted = self.b.ins().ushr(mask, left_word);
+            let bit = self.b.ins().band_imm_s(shifted, 1);
+            self.b.ins().brif(bit, general, &[], plain, &[]);
+            self.b.seal_block(plain);
+            self.switch_to(plain);
+            let yes = self.u8(u8::from(is));
+            self.b.ins().jump(answered, &[yes.into()]);
+            self.switch_to(differ);
+            let no = self.u8(u8::from(!is));
+            self.b.ins().jump(answered, &[no.into()]);
+        }
+        self.b.seal_block(answered);
+        self.b.seal_block(general);
+        self.switch_to(answered);
+        let answer = self.b.block_params(answered)[0];
+        // an operand a `Load`, a `Const` or `Nothing` pushed borrowed holds
+        // no reference of its own
+        let mask = self.masks[pc];
+        if mask & 1 == 0 {
+            self.release(left);
+        }
+        if mask & 2 == 0 {
+            self.release(right);
+        }
+        let depth = self.state.len() - 2;
+        self.store_height(height - 2);
+        let var = self.bool_var(depth);
         self.b.def_var(var, answer);
         self.b.ins().jump(join, &[]);
         self.switch_to(general);

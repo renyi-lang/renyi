@@ -813,9 +813,10 @@ pub(crate) unsafe extern "C" fn rt_binary(vm: VmPtr, op: u8, pc: u32) -> i32 {
 
 /// A comparison on two boxed operands where they lie on the stack
 /// (decision AU13): the Boolean answered into `out` and the operands
-/// consumed, a borrowed one without a drop, when both are small Integers,
-/// texts, Booleans, `Nothing` beside a value, or variants without fields
-/// of a type without its own `equals`; anything else takes the general
+/// consumed, a borrowed one without a drop, for `is` and `is not` on any
+/// operands but a left one whose type declares its own `equals`
+/// (structural equality in place, decision AW13), and for an ordering of
+/// two small Integers, texts or Booleans; anything else takes the general
 /// path with every borrowed operand given its reference, and its boxed
 /// answer comes back as `BOXED`.
 pub(crate) unsafe extern "C" fn rt_compare(
@@ -860,12 +861,23 @@ pub(crate) unsafe extern "C" fn rt_compare(
 }
 
 /// The comparison of the two values at `at` and after it, when their kinds
-/// let it be answered without the general path. A Boolean carries no
-/// origins, so the guards of the operands are looked through.
+/// let it be answered without the general path: `is` and `is not` are
+/// structural equality (`Value::eq`, which the general path reached
+/// through `binary_values`, `binary` and `equal` with the answer boxed)
+/// unless the left operand's type declares its own `equals`, which that
+/// path runs (decision AW13); an ordering is answered for two small
+/// Integers, texts or Booleans. A Boolean carries no origins, so the
+/// guards of the operands are looked through.
 fn compare_in_place(vm: &Vm, op: BinaryOp, at: usize) -> Option<bool> {
-    use BinaryOp::{Is, IsNot};
     let left = vm.stack[at].plain();
     let right = vm.stack[at + 1].plain();
+    if matches!(op, BinaryOp::Is | BinaryOp::IsNot) {
+        if has_declared_equals(vm, left) {
+            return None;
+        }
+        let same = left == right;
+        return Some(same == matches!(op, BinaryOp::Is));
+    }
     let fast = match (left, right) {
         (Value::Integer(Int::Small(a)), Value::Integer(Int::Small(b))) => {
             crate::vm::small_binary(op, *a, *b)
@@ -877,34 +889,6 @@ fn compare_in_place(vm: &Vm, op: BinaryOp, at: usize) -> Option<bool> {
         (Value::Text(a), Value::SmallText(b)) => crate::vm::text_binary(op, a, b.as_str()),
         (Value::SmallText(a), Value::Text(b)) => crate::vm::text_binary(op, a.as_str(), b),
         (Value::Boolean(a), Value::Boolean(b)) => crate::vm::boolean_binary(op, *a, *b),
-        // `equal` asks the left operand's type for a declared `equals`:
-        // `Nothing` on the left has none, and on the right the left's
-        // type is asked
-        (Value::Nothing, Value::Nothing) => match op {
-            Is => Some(Value::Boolean(true)),
-            IsNot => Some(Value::Boolean(false)),
-            _ => None,
-        },
-        (Value::Nothing, _) => match op {
-            Is => Some(Value::Boolean(false)),
-            IsNot => Some(Value::Boolean(true)),
-            _ => None,
-        },
-        (_, Value::Nothing) if !has_declared_equals(vm, left) => match op {
-            Is => Some(Value::Boolean(false)),
-            IsNot => Some(Value::Boolean(true)),
-            _ => None,
-        },
-        (Value::Variant(a), Value::Variant(b))
-            if a.fields.is_empty() && b.fields.is_empty() && !has_declared_equals(vm, left) =>
-        {
-            let same = a.ty == b.ty && a.tag == b.tag;
-            match op {
-                Is => Some(Value::Boolean(same)),
-                IsNot => Some(Value::Boolean(!same)),
-                _ => None,
-            }
-        }
         _ => None,
     };
     match fast {
@@ -915,6 +899,7 @@ fn compare_in_place(vm: &Vm, op: BinaryOp, at: usize) -> Option<bool> {
 
 /// Whether the value's type declares its own `equals`, which the general
 /// path runs.
+#[inline]
 fn has_declared_equals(vm: &Vm, value: &Value) -> bool {
     value
         .type_id()

@@ -431,6 +431,15 @@ impl Asm {
         self.reg(b as u8, a);
     }
 
+    /// `bt a, b` (64 bits): the carry flag set to the bit of `a` that the
+    /// low six bits of `b` number.
+    pub fn bt_rr(&mut self, a: Reg, b: Reg) {
+        self.rex(true, b as u8, a);
+        self.byte(0x0F);
+        self.byte(0xA3);
+        self.reg(b as u8, a);
+    }
+
     /// `test a32, b32`.
     pub fn test_rr32(&mut self, a: Reg, b: Reg) {
         self.rex(false, b as u8, a);
