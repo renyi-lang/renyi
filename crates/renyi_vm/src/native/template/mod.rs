@@ -224,7 +224,9 @@ pub fn compile(
     let started = Instant::now();
     let code = &program.codes[code_id];
     let analysis = analyse(program, code, &[]).map_err(Skipped::Analysis)?;
-    let (borrowed, masks) = borrowed_operands(program, code, &analysis, calls);
+    // every parameter passed owned on this tier (decision AW5: the
+    // borrowed protocol is the Cranelift tier's)
+    let (borrowed, masks) = borrowed_operands(program, code, &analysis, calls, false);
     let abi = host_abi();
     let mut asm = Asm::new();
     let labels = (0..=code.ops.len()).map(|_| asm.label()).collect();

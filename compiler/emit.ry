@@ -335,12 +335,35 @@ function finish(emitter: Emitter) returns Code
     function_id: emitter.function_id,
     params: emitter.params,
     locals: emitter.next_slot,
+    read_only: read_only_params(params: emitter.params, ops: emitter.ops),
     ops: emitter.ops,
     spans: emitter.spans,
     constants: for each pooled in emitter.pool
     collect constant_of(pooled),
     types: emitter.types
   )
+end
+
+function read_only_params(params: Integer, ops: List of Op) returns List of Boolean
+  purpose: Per parameter, whether no op writes its slot (decision AW5): a LoadMove reads it.
+
+  let mutable written: Set of Integer be [].to_set()
+  for each op in ops
+    match op
+      when OpStore(slot) then change written to written.add(slot)
+      when OpWithSlot(slot) then change written to written.add(slot)
+      when OpTakeField(slot) then change written to written.add(slot)
+      when OpIterInit(slot) then change written to written.add(slot)
+      when OpDeadline(slot) then change written to written.add(slot)
+      when OpMarkStack(slot) then change written to written.add(slot)
+      otherwise continue
+    end
+  end
+  let mutable flags: List of Boolean be []
+  for each index from 1 to params
+    change flags to flags.append(not written.contains(index - 1))
+  end
+  return flags
 end
 
 function constant_of(pooled: Pooled) returns CodeConstant
@@ -3725,7 +3748,7 @@ function assemble(context: Context, modules: List of CheckedModule) returns Prog
     for each declared in world.abilities
     collect AbilityMeta(name: declared.name, methods: method_names(declared.methods))
   return Program(
-    format: 7,
+    format: 8,
     modules: module_sources(world: world, modules: modules),
     builtins: builtin_ids(world.builtins),
     types: context.types,

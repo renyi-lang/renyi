@@ -806,6 +806,7 @@ impl<'c, 'w> Compiler<'c, 'w> {
 
     fn finish(mut self) -> Code {
         self.code.locals = self.next_slot;
+        self.code.read_only = self.code.read_only_params();
         self.code
     }
 

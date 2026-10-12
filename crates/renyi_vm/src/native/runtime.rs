@@ -279,6 +279,21 @@ pub(crate) unsafe extern "C" fn rt_truncate(vm: VmPtr, base: usize, locals: u32,
         .truncate_values(base + locals as usize + boxed as usize);
 }
 
+/// The frame's parameters that the caller passed borrowed (decision AW5:
+/// the bits of `mask`, read-only parameters whose operands a direct call
+/// pushed without a reference of their own) given a reference each, so
+/// that every slot of the frame is owned: before a hand-back, a leave
+/// through a helper, an interrupt, or the leave through `rt_truncate`.
+pub(crate) unsafe extern "C" fn rt_retain_params(vm: VmPtr, base: usize, mask: u64) {
+    let vm = vm!(vm);
+    let mut bits = mask;
+    while bits != 0 {
+        let slot = bits.trailing_zeros() as usize;
+        bits &= bits - 1;
+        std::mem::forget(vm.stack[base + slot].clone());
+    }
+}
+
 /// Take a small plain Integer off the top into `out`; anything else stays
 /// and the answer is 0.
 pub(crate) unsafe extern "C" fn rt_take_int(vm: VmPtr, out: *mut i64) -> i8 {
@@ -2146,6 +2161,7 @@ pub const HELPERS: &[(&str, *const u8)] = &[
     ("rt_frame_grant", rt_frame_grant as *const u8),
     ("rt_dup", rt_dup as *const u8),
     ("rt_truncate", rt_truncate as *const u8),
+    ("rt_retain_params", rt_retain_params as *const u8),
     ("rt_take_int", rt_take_int as *const u8),
     ("rt_take_float", rt_take_float as *const u8),
     ("rt_take_bool", rt_take_bool as *const u8),

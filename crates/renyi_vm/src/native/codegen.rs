@@ -178,6 +178,7 @@ pub const SIGNATURES: &[(&str, &str, char)] = &[
     ("rt_frame_grant", "pz", 'i'),
     ("rt_dup", "p", 'v'),
     ("rt_truncate", "pzww", 'v'),
+    ("rt_retain_params", "pzq", 'v'),
     ("rt_take_int", "pp", 'b'),
     ("rt_take_float", "pp", 'b'),
     ("rt_take_bool", "pwp", 'i'),
@@ -274,8 +275,10 @@ pub fn signature(isa: &dyn TargetIsa, params: &str, result: char) -> Signature {
 /// The signature of a code object's body (`renyi_direct_*`, decision AR3):
 /// the VM, the frame's base, the pc to enter at, whether a direct call
 /// entered (a typed result then goes back in a register; a trampoline's
-/// caller wants it on the stack), then the typed parameters in slot order;
-/// the status (`runtime::D_*`) and the bits of a typed result come back.
+/// caller wants it on the stack), the bits of the parameters the caller
+/// passed borrowed (decision AW5; none from a trampoline), then the typed
+/// parameters in slot order; the status (`runtime::D_*`) and the bits of
+/// a typed result come back.
 pub fn direct_signature(isa: &dyn TargetIsa, kinds: &[Abs]) -> Signature {
     let pointer = isa.pointer_type();
     let mut sig = Signature::new(isa.default_call_conv());
@@ -283,6 +286,7 @@ pub fn direct_signature(isa: &dyn TargetIsa, kinds: &[Abs]) -> Signature {
     sig.params.push(AbiParam::new(pointer));
     sig.params.push(AbiParam::new(types::I32));
     sig.params.push(AbiParam::new(types::I8));
+    sig.params.push(AbiParam::new(types::I64));
     for kind in kinds {
         match kind {
             Abs::Int => sig.params.push(AbiParam::new(types::I64)),
@@ -418,6 +422,18 @@ struct Gen<'a, 'b> {
     /// Whether a direct call entered the frame (an `i8`): a typed result
     /// then leaves in a register, else on the stack.
     direct: IrValue,
+    /// The bits of the parameters the caller passed borrowed (decision
+    /// AW5): read-only parameters whose operands a direct call pushed
+    /// without a reference of their own; `0` from a trampoline. The leave
+    /// skips a slot so marked, a `LoadMove` of it copies with a reference
+    /// instead of moving, and a path that treats the frame as owned (a
+    /// hand-back, a leave through a helper, an interrupt, the leave
+    /// through `rt_truncate`) gives the slots so marked a reference first
+    /// (`rt_retain_params`).
+    borrowed_params: IrValue,
+    /// The bits of the parameters a direct call may pass borrowed
+    /// (`accepted_params`), the bits every caller reads.
+    flagged: u64,
     /// The typed parameters, each with its slot: in the registers the
     /// signature put them in.
     typed_params: Vec<(usize, IrValue)>,
@@ -492,40 +508,191 @@ fn comparison_cc(op: BinaryOp) -> IntCC {
     }
 }
 
-/// The operands a typed call or a comparison borrows (decisions AU1 and
-/// AU13): for a `Call` of a primitive with a typed entry, the arguments
-/// pushed by the `Load`s and `LoadMove`s of boxed slots and the boxed
-/// `Const`s immediately before it, which are its last arguments in order,
-/// each pushed without a reference of its own; for a `Binary` comparison
-/// on boxed operands, the same kinds of pushes and `Nothing` just before
-/// it; per op whether it pushes such an operand, and per call or
-/// comparison the bits of the operands so pushed (the first argument, or
-/// the left operand, bit 0). A moved load is borrowed like a plain one
-/// (decision AU17): the entries read their arguments where they lie and
-/// update nothing in place, so the slot keeps its value, which nothing
-/// reads again, and the helper counts the copy out; moving it would cost
-/// a release after the call where the plain load cost nothing.
+/// The direct call the `Call` of `function` with `count` arguments makes
+/// at a state (decisions AR3 and AW3): the callee's code object and its
+/// parameters' kinds, when the callee has a code object, the count
+/// agrees, and every typed parameter has a typed operand there, or a
+/// boxed one the checker noted as the parameter's type, which the site
+/// takes from the stack; `None` for the call through the VM's path.
+pub(crate) fn direct_call(
+    program: &Program,
+    state: &[Abs],
+    function: usize,
+    count: usize,
+) -> Option<(usize, Vec<Abs>)> {
+    let callee = program.function_codes.get(function).copied().flatten()?;
+    let params = program.codes[callee].params as usize;
+    let kinds = abs_of_params(program, function, params);
+    if kinds.len() != count || count > 64 || state.len() < count {
+        return None;
+    }
+    let first = state.len() - count;
+    let fits = kinds.iter().enumerate().all(|(index, kind)| {
+        let operand = state[first + index];
+        kind.is_boxed() || operand == *kind || noted_kind(program, operand) == *kind
+    });
+    fits.then_some((callee, kinds))
+}
+
+/// Whether the generated code calls `function` through a typed entry
+/// (decision AU1): a primitive carrying one whose kind agrees with the
+/// function's result.
+pub(crate) fn typed_entry(program: &Program, calls: &[CallKind], function: usize) -> bool {
+    matches!(
+        calls.get(function),
+        Some(CallKind::Typed { kind, .. }) if kind_agrees(*kind, abs_of_result(program, function))
+    )
+}
+
+/// The pushes a call or a comparison at `pc` takes from the ops just
+/// before it, walking back over the `Load`s, `LoadMove`s and `Const`s
+/// and, before a `Binary`, `Nothing`, which push one operand each, up to
+/// `count`: each with the index of the argument it is (the first 0). The
+/// walk stops at any other op: what was pushed before it is whatever the
+/// stack holds.
+fn simple_pushes(code: &Code, pc: usize, count: usize) -> Vec<(usize, usize)> {
+    let binary = matches!(code.ops[pc], Op::Binary(_));
+    let mut pushes = Vec::with_capacity(count.min(pc));
+    for back in 1..=count.min(pc) {
+        let at = pc - back;
+        let simple = match &code.ops[at] {
+            Op::Load(_) | Op::LoadMove(_) | Op::Const(_) => true,
+            Op::Nothing => binary,
+            _ => false,
+        };
+        if !simple {
+            break;
+        }
+        pushes.push((at, count - back));
+    }
+    pushes
+}
+
+/// The parameters of a code object a direct call may pass borrowed
+/// (decision AW5), as bits (the first parameter bit 0): among the first
+/// thirty-two, boxed, read-only (`Code::read_only`), and never moved into
+/// an owned sink, that is, every `LoadMove` of the slot is an argument of
+/// a call through a typed entry or an operand of a comparison, which read
+/// it where it lies (decision AU17), so that the callee's code never
+/// needs a reference of its own to the value. The bits come from the
+/// code object's ops and the program's tables alone, so that a caller
+/// compiled on another thread, or for an image, reads the same bits the
+/// callee's compilation does, which the protocol requires: the callee's
+/// leave releases every parameter not among them and, for one among
+/// them, asks the call. A moved load this rule counts as read where it
+/// lies but the analysis finds owned (a comparison with a typed operand)
+/// is moved conditionally, the fallback of the callee's `LoadMove`.
+pub(crate) fn accepted_params(program: &Program, calls: &[CallKind], code_id: usize) -> u32 {
+    let code = &program.codes[code_id];
+    let (Some(function), CodeKind::Function) = (code.function, code.kind) else {
+        return 0;
+    };
+    let params = (code.params as usize).min(32);
+    // per op, whether a push there is taken by a call or a comparison
+    // that reads it where it lies
+    let mut lent = vec![false; code.ops.len()];
+    for (pc, op) in code.ops.iter().enumerate() {
+        let count = match op {
+            Op::Call { function, args } => {
+                let count = *args as usize;
+                if count == 0 || count > 32 || !typed_entry(program, calls, *function) {
+                    continue;
+                }
+                count
+            }
+            Op::Binary(op) if is_comparison(*op) => 2,
+            _ => continue,
+        };
+        for (at, _) in simple_pushes(code, pc, count) {
+            lent[at] = true;
+        }
+    }
+    // per parameter, whether a move of it goes anywhere else
+    let mut moved = vec![false; params];
+    for (pc, op) in code.ops.iter().enumerate() {
+        if let Op::LoadMove(slot) = op {
+            if let Some(flag) = moved.get_mut(*slot as usize) {
+                *flag |= !lent[pc];
+            }
+        }
+    }
+    let kinds = abs_of_params(program, function, code.params as usize);
+    (0..params)
+        .filter(|slot| {
+            kinds[*slot].is_boxed()
+                && code.read_only.get(*slot).copied().unwrap_or(false)
+                && !moved[*slot]
+        })
+        .fold(0, |mask, slot| mask | 1 << slot)
+}
+
+/// The operands a typed call, a comparison or a direct call borrows
+/// (decisions AU1, AU13 and AW5): for a `Call` of a primitive with a
+/// typed entry, the arguments pushed by the `Load`s and `LoadMove`s of
+/// boxed slots and the boxed `Const`s immediately before it, which are
+/// its last arguments in order, each pushed without a reference of its
+/// own; for a `Binary` comparison on boxed operands, the same kinds of
+/// pushes and `Nothing` just before it; for a `Call` made directly
+/// (`direct_call`), the plain `Load`s and the boxed `Const`s among its
+/// last arguments whose parameter the callee accepts borrowed
+/// (`accepted_params`), which the callee's frame then holds without a
+/// reference of its own and its leave skips, when `direct_calls` says
+/// the tier makes such calls (the template tier passes every parameter
+/// owned and says no); a moved load, the caller's last use of the slot,
+/// is not borrowed by a direct call but moved into the callee as before,
+/// which then holds the only reference and may update the value in place
+/// (borrowed, the caller's slot kept the value, the callee's copy had two
+/// references, and every append or update copied the list or the record
+/// and the caller's leave freed the old one: the first build of decision
+/// AW5 measured 4.5% more instructions on the check row for it). A push
+/// of a typed slot or a typed constant among them is stepped over (it is
+/// one operand, in a register). Per op, whether it pushes a borrowed
+/// operand; per call or comparison, the bits of the operands so pushed
+/// (the first argument, or the left operand, bit 0). For a typed call or
+/// a comparison, a moved load is borrowed like a plain one (decision
+/// AU17): the entries read their arguments where they lie and update
+/// nothing in place, so the slot keeps its value, which nothing reads
+/// again, and the helper counts the copy out; moving it would cost a
+/// release after the call where the plain load cost nothing.
 pub(crate) fn borrowed_operands(
     program: &Program,
     code: &Code,
     analysis: &Analysis,
     calls: &[CallKind],
+    direct_calls: bool,
 ) -> (Vec<bool>, Vec<u32>) {
     let mut borrowed = vec![false; code.ops.len()];
     let mut masks = vec![0u32; code.ops.len()];
     for (pc, op) in code.ops.iter().enumerate() {
-        let count = match op {
+        // per argument, whether a boxed push of it is borrowed; and whether
+        // a moved load among them is (not for a direct call)
+        let mut moves_borrowed = true;
+        let takes: Vec<bool> = match op {
             Op::Call { function, args } => {
                 let count = *args as usize;
-                let typed = matches!(
-                    calls.get(*function),
-                    Some(CallKind::Typed { kind, .. })
-                        if kind_agrees(*kind, abs_of_result(program, *function))
-                );
-                if count == 0 || count > 32 || !typed {
+                if count == 0 || count > 32 {
                     continue;
                 }
-                count
+                let state = analysis.entry.get(pc).and_then(|state| state.as_deref());
+                let direct = match state {
+                    Some(state) if direct_calls => direct_call(program, state, *function, count),
+                    _ => None,
+                };
+                match direct {
+                    Some((callee, _)) => {
+                        let accepted = accepted_params(program, calls, callee);
+                        moves_borrowed = false;
+                        (0..count)
+                            .map(|index| accepted & (1 << index) != 0)
+                            .collect()
+                    }
+                    None => {
+                        if !typed_entry(program, calls, *function) {
+                            continue;
+                        }
+                        vec![true; count]
+                    }
+                }
             }
             Op::Binary(op) if is_comparison(*op) => {
                 // both operands boxed by the analysis: a register operand
@@ -540,26 +707,29 @@ pub(crate) fn borrowed_operands(
                 if !boxed {
                     continue;
                 }
-                2
+                vec![true; 2]
             }
             _ => continue,
         };
+        let count = takes.len();
         let mut mask = 0u32;
-        for back in 1..=count.min(pc) {
-            let at = pc - back;
-            let simple = match &code.ops[at] {
-                Op::Load(slot) | Op::LoadMove(slot) => {
-                    matches!(analysis.slots[*slot as usize], SlotKind::Boxed(_))
+        for (at, index) in simple_pushes(code, pc, count) {
+            // whether the operand pushed is boxed: a typed one is in a
+            // register
+            let boxed = match &code.ops[at] {
+                Op::Load(slot) => matches!(analysis.slots[*slot as usize], SlotKind::Boxed(_)),
+                Op::LoadMove(slot) => {
+                    moves_borrowed && matches!(analysis.slots[*slot as usize], SlotKind::Boxed(_))
                 }
-                Op::Const(index) => abs_of_constant(&code.constants[*index as usize]).is_boxed(),
-                Op::Nothing => matches!(op, Op::Binary(_)),
-                _ => false,
+                Op::Const(constant) => {
+                    abs_of_constant(&code.constants[*constant as usize]).is_boxed()
+                }
+                _ => true,
             };
-            if !simple {
-                break;
+            if boxed && takes[index] {
+                borrowed[at] = true;
+                mask |= 1 << index;
             }
-            borrowed[at] = true;
-            mask |= 1 << (count - back);
         }
         masks[pc] = mask;
     }
@@ -590,7 +760,7 @@ pub fn compile(
     let mut stats = Stats::default();
     let started = Instant::now();
     let analysis = analyse(program, code, globals).map_err(Skipped::Analysis)?;
-    let (borrowed, masks) = borrowed_operands(program, code, &analysis, calls);
+    let (borrowed, masks) = borrowed_operands(program, code, &analysis, calls, true);
     let owned = owned_slots(code, &analysis, &borrowed);
     stats.analysis = started.elapsed();
     let mut headers: Vec<usize> = Vec::new();
@@ -609,6 +779,9 @@ pub fn compile(
     let kinds: Vec<Abs> = (0..code.params as usize)
         .map(|slot| abs_of_slot(analysis.slots[slot]))
         .collect();
+    // the parameters a direct call may pass borrowed (decision AW5), the
+    // bits every caller's compilation computes the same way
+    let flagged = u64::from(accepted_params(program, calls, code_id));
     let result_kind = match (code.kind, code.function) {
         (CodeKind::Function, Some(function)) => abs_of_result(program, function),
         _ => Abs::Boxed(None),
@@ -627,11 +800,12 @@ pub fn compile(
         let base = builder.block_params(entry)[1];
         let pc_param = builder.block_params(entry)[2];
         let direct = builder.block_params(entry)[3];
+        let borrowed_params = builder.block_params(entry)[4];
         let typed_params: Vec<(usize, IrValue)> = kinds
             .iter()
             .enumerate()
             .filter(|(_, kind)| !kind.is_boxed())
-            .zip(builder.block_params(entry)[4..].iter())
+            .zip(builder.block_params(entry)[5..].iter())
             .map(|((slot, _), value)| (slot, *value))
             .collect();
         let exit = builder.create_block();
@@ -681,6 +855,8 @@ pub fn compile(
             base,
             pc_param,
             direct,
+            borrowed_params,
+            flagged,
             typed_params,
             base24,
             frame_var,
@@ -784,6 +960,8 @@ fn trampoline(
         let body_sig = b.import_signature(direct_signature(isa, kinds));
         let out = b.create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, 8, 3));
         let zero8 = b.ins().iconst(types::I8, 0);
+        // no parameter borrowed: the frame owns every slot (decision AW5)
+        let zero64 = b.ins().iconst(types::I64, 0);
         let start = b.create_block();
         let resume = b.create_block();
         let finish = b.create_block();
@@ -793,7 +971,7 @@ fn trampoline(
         b.ins().brif(at_start, start, &[], resume, &[]);
         // the start: the typed parameters from the frame's slots
         b.switch_to_block(start);
-        let mut args = vec![vm, base, pc, zero8];
+        let mut args = vec![vm, base, pc, zero8, zero64];
         for (slot, kind) in kinds.iter().enumerate() {
             let (name, ty) = match kind {
                 Abs::Int => ("rt_param_int", types::I64),
@@ -826,7 +1004,7 @@ fn trampoline(
             .jump(finish, &[results[0].into(), results[1].into()]);
         // a loop header: the body takes the slots itself
         b.switch_to_block(resume);
-        let mut args = vec![vm, base, pc, zero8];
+        let mut args = vec![vm, base, pc, zero8, zero64];
         for kind in kinds {
             match kind {
                 Abs::Int => args.push(b.ins().iconst(types::I64, 0)),
@@ -1150,6 +1328,7 @@ impl Gen<'_, '_> {
                     self.jump_to(target as usize);
                 }
                 None => {
+                    self.retain_params();
                     let status = self
                         .call("rt_unhandled", &[self.vm, pc_value])
                         .expect("a status");
@@ -1367,6 +1546,8 @@ impl Gen<'_, '_> {
         let code = self.usize(self.code_id);
         let point = self.u32(index);
         let buffer = self.b.ins().stack_addr(self.pointer, self.deopt_slot, 0);
+        // the interpreter owns every slot of the frame it takes over
+        self.retain_params();
         self.call("rt_deopt", &[self.vm, self.base, code, point, buffer]);
         self.return_direct(D_DEOPT);
     }
@@ -1969,7 +2150,11 @@ impl Gen<'_, '_> {
     /// the `operands` boxed operands above the locals are released, the
     /// stack is cut to the base, the handlers to the frame's height, and
     /// the frame is popped. A typed local holds `Nothing` or a plain
-    /// value and needs no release.
+    /// value and needs no release. A read-only parameter is released only
+    /// when the frame owns it (decision AW5: the caller's bit in
+    /// `borrowed_params` says it was passed borrowed, and the caller's
+    /// slot keeps the reference); the leave through `rt_truncate` gives
+    /// the borrowed parameters a reference first.
     fn leave_frame_inline(&mut self, operands: usize, pc: usize) {
         let flags = MemFlagsData::trusted();
         let pointer = self.pointer;
@@ -1988,7 +2173,20 @@ impl Gen<'_, '_> {
         if holders.len() + operands <= RELEASES_INLINE {
             for slot in holders {
                 let at = self.address_at(slot);
-                self.release(at);
+                if self.may_be_borrowed(slot) {
+                    let owned = self.b.create_block();
+                    let next = self.b.create_block();
+                    let bit = self.borrowed_bit(slot);
+                    self.b.ins().brif(bit, next, &[], owned, &[]);
+                    self.b.seal_block(owned);
+                    self.switch_to(owned);
+                    self.release(at);
+                    self.b.ins().jump(next, &[]);
+                    self.b.seal_block(next);
+                    self.switch_to(next);
+                } else {
+                    self.release(at);
+                }
             }
             for operand in 0..operands {
                 let at = self.address_at(locals + operand);
@@ -1996,6 +2194,7 @@ impl Gen<'_, '_> {
             }
             self.store_height(0);
         } else {
+            self.retain_params();
             let zero = self.u32(0);
             self.call("rt_truncate", &[self.vm, self.base, zero, zero]);
         }
@@ -2011,6 +2210,49 @@ impl Gen<'_, '_> {
         let handlers = self.handlers_vector();
         self.b.ins().store(flags, handler_base, handlers, 8);
         self.b.ins().store(flags, top, frames, 8);
+    }
+
+    /// Whether the parameter in `slot` may have been passed borrowed
+    /// (decision AW5): among those `accepted_params` names.
+    fn may_be_borrowed(&self, slot: usize) -> bool {
+        slot < 32 && self.flagged & (1 << slot) != 0
+    }
+
+    /// The bit of `borrowed_params` for the parameter in `slot`: non-zero
+    /// when the caller passed it borrowed.
+    fn borrowed_bit(&mut self, slot: usize) -> IrValue {
+        self.b.ins().band_imm_s(self.borrowed_params, 1 << slot)
+    }
+
+    /// The parameters the caller passed borrowed given a reference each
+    /// (decision AW5), before a path that treats every slot of the frame
+    /// as owned: a hand-back, a leave through a helper, an interrupt, the
+    /// leave through `rt_truncate`. Nothing when no parameter may be
+    /// borrowed.
+    fn retain_params(&mut self) {
+        if self.flagged != 0 {
+            self.call(
+                "rt_retain_params",
+                &[self.vm, self.base, self.borrowed_params],
+            );
+        }
+    }
+
+    /// The arguments of the call at `pc` that were pushed borrowed
+    /// (decision AW5) given a reference each, before the call goes through
+    /// the VM's path, which takes its arguments owned.
+    fn retain_borrowed_arguments(&mut self, pc: usize, count: usize) {
+        let mask = self.masks[pc];
+        if mask == 0 {
+            return;
+        }
+        let first = self.state.len() - count;
+        for index in 0..count {
+            if mask & (1 << index) != 0 {
+                let at = self.operand_address(first + index);
+                self.retain(at);
+            }
+        }
     }
 
     /// The boxed result on top of the stack returned (decision AR4): it
@@ -2244,6 +2486,7 @@ impl Gen<'_, '_> {
         let zero = self.iconst(types::I64, 0);
         self.return_with(status, zero);
         self.switch_to(other);
+        self.retain_params();
         self.return_direct(D_INTERRUPT);
     }
 
@@ -2430,7 +2673,30 @@ impl Gen<'_, '_> {
                         let from = self.address_at(index);
                         let to = self.top_address();
                         self.copy_value(from, to);
-                        if moving {
+                        if moving && self.may_be_borrowed(index) {
+                            // a read-only parameter (decision AW5): moved
+                            // when the frame owns it, copied with a
+                            // reference of its own when the caller passed
+                            // it borrowed
+                            let lent = self.b.create_block();
+                            let owned = self.b.create_block();
+                            let done = self.b.create_block();
+                            let bit = self.borrowed_bit(index);
+                            self.b.ins().brif(bit, lent, &[], owned, &[]);
+                            self.b.seal_block(lent);
+                            self.b.seal_block(owned);
+                            self.switch_to(owned);
+                            let nothing = self.iconst(types::I32, TAG_NOTHING as i64);
+                            self.b
+                                .ins()
+                                .istore8(MemFlagsData::trusted(), nothing, from, 0);
+                            self.b.ins().jump(done, &[]);
+                            self.switch_to(lent);
+                            self.retain(to);
+                            self.b.ins().jump(done, &[]);
+                            self.b.seal_block(done);
+                            self.switch_to(done);
+                        } else if moving {
                             let nothing = self.iconst(types::I32, TAG_NOTHING as i64);
                             self.b
                                 .ins()
@@ -2980,39 +3246,15 @@ impl Gen<'_, '_> {
             Op::Call { function, args } => {
                 let count = *args as usize;
                 let result_kind = abs_of_result(self.program, *function);
-                let callee = self
-                    .program
-                    .function_codes
-                    .get(*function)
-                    .copied()
-                    .flatten();
-                let kinds = callee.map(|callee| {
-                    let params = self.program.codes[callee].params as usize;
-                    abs_of_params(self.program, *function, params)
-                });
-                let first = self.state.len() - count;
                 // a direct call (decision AR3) when the callee has a code
                 // object and every typed parameter has a typed operand here,
                 // or a boxed one the checker noted as the parameter's type,
                 // which the site takes from the stack (decision AW3)
-                let direct = match &kinds {
-                    Some(kinds) => {
-                        kinds.len() == count
-                            && count <= 64
-                            && kinds.iter().enumerate().all(|(index, kind)| {
-                                let operand = self.state[first + index];
-                                kind.is_boxed()
-                                    || operand == *kind
-                                    || noted_kind(self.program, operand) == *kind
-                            })
-                    }
-                    None => false,
-                };
-                match (direct, callee, kinds) {
-                    (true, Some(callee), Some(kinds)) => {
+                match direct_call(self.program, &self.state, *function, count) {
+                    Some((callee, kinds)) => {
                         self.call_direct(callee, *function, &kinds, result_kind, pc);
                     }
-                    _ => match self.calls.get(*function).copied() {
+                    None => match self.calls.get(*function).copied() {
                         Some(CallKind::Typed { kind, in_place })
                             if kind_agrees(kind, result_kind) =>
                         {
@@ -3037,7 +3279,12 @@ impl Gen<'_, '_> {
                             result_kind,
                             pc,
                         ),
-                        _ => self.call_through_helper("rt_call", *function, count, result_kind, pc),
+                        _ => {
+                            // the operands a direct call would have borrowed
+                            // (decision AW5) go owned through the VM's path
+                            self.retain_borrowed_arguments(pc, count);
+                            self.call_through_helper("rt_call", *function, count, result_kind, pc)
+                        }
                     },
                 }
             }
@@ -3265,6 +3512,7 @@ impl Gen<'_, '_> {
                 self.return_direct(D_BOXED);
             }
             Op::Fail => {
+                self.retain_params();
                 let status = self
                     .helper_on_stack("rt_fail", 1, &[pc_value])
                     .expect("a status");
@@ -3601,6 +3849,7 @@ impl Gen<'_, '_> {
                 self.b.ins().brif(condition, cont, &[], failed, &[]);
                 self.b.set_cold_block(failed);
                 self.switch_to(failed);
+                self.retain_params();
                 let message_value = self.u32(*message);
                 let status = self
                     .call("rt_check_failed", &[self.vm, code_value, message_value])
@@ -3990,7 +4239,10 @@ impl Gen<'_, '_> {
         let base = self.push_frame_inline(callee, mask);
         let pc0 = self.u32(0);
         let one = self.u8(1);
-        let mut arguments = vec![self.vm, base, pc0, one];
+        // the parameters passed borrowed (decision AW5): the callee's leave
+        // skips them and its other ways out give them a reference first
+        let borrowed_mask = self.iconst(types::I64, self.masks[pc] as i64);
+        let mut arguments = vec![self.vm, base, pc0, one, borrowed_mask];
         for (index, kind) in kinds.iter().enumerate() {
             let depth = first + index;
             if let Some(payload) = payloads[index] {
@@ -4073,6 +4325,8 @@ impl Gen<'_, '_> {
         // the path through the interpreter's call
         self.switch_to(slow);
         self.state = saved;
+        // the VM's path takes its arguments owned (decision AW5)
+        self.retain_borrowed_arguments(pc, count);
         self.call_through_helper("rt_call", function, count, result_kind, pc);
         self.b.ins().jump(join, &[]);
         self.terminated = true;

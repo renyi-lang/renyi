@@ -1604,3 +1604,134 @@ end
     assert_eq!(outcome, RunOutcome::Finished);
     assert_eq!(printed, "106495\n");
 }
+
+#[test]
+fn read_only_parameters_are_passed_borrowed_between_compiled_bodies() {
+    // decision AW5: a direct call passes a parameter the callee accepts
+    // borrowed (boxed, read-only, never moved into an owned sink) without
+    // a reference of its own and the callee's leave skips it; four of
+    // `main`'s eleven direct calls do (a record read by its fields, a
+    // text read by its length in a frame that fails beside, the same
+    // text passed on borrowed again under a failure propagated, a record
+    // beside a list passed by its last use, read in a loop), the others
+    // take the owned protocol by the rule (a parameter returned, passed
+    // on by a last use, constructed into a record, updated by `with`,
+    // read through a field on its last use; a temporary or a last use as
+    // the argument; a hand-back past the machine word beside), and both
+    // tiers print what the interpreter prints
+    let source = r#"module demo
+  purpose: Read-only parameters passed borrowed between compiled bodies (AW5), on every path.
+
+import std.console
+
+type Box
+  purpose: A record with a label and a weight.
+  has label: Text
+  has weight: Integer
+end
+
+type Problem
+  purpose: A failure for the test.
+  has reason: Text
+end
+
+function label_length(box: Box) returns Integer
+  purpose: A field of the record on its last read, which takes it: not read-only.
+
+  return box.label.length()
+end
+
+function describe(box: Box, suffix: Text) returns Text
+  purpose: A borrowed record read into a text beside a text moved into it.
+
+  return "{box.label}{suffix}{box.weight}"
+end
+
+function same(text: Text) returns Text
+  purpose: The parameter returned: moved on its last read, so passed owned.
+
+  return text
+end
+
+function through(text: Text) returns Integer
+  purpose: The parameter passed on, then into a record on its last read: passed owned.
+
+  return same(text).length() + label_length(Box(label: text, weight: 1))
+end
+
+function heavier(box: Box) returns Box
+  purpose: An updated copy of the record, which is not read-only; the caller's is unchanged.
+
+  return box with weight: box.weight + 1
+end
+
+function risky(text: Text, value: Integer) returns Integer or fails with Problem
+  purpose: Fail on multiples of five in a frame holding the borrowed text.
+
+  if value remainder 5 is 0 then fail with Problem(reason: "a multiple of five") end
+  return text.length() + value
+end
+
+function relayed(text: Text, value: Integer) returns Integer or fails with Problem
+  purpose: A callee's failure propagated through a frame holding a borrowed parameter.
+
+  let inner be risky(text: text, value: value) otherwise fail
+  return inner + text.length()
+end
+
+function doubled(text: Text, times: Integer) returns Integer
+  purpose: Doubled past the machine word: the frame is handed back after reading a text passed by its last use.
+
+  let mutable result be text.length()
+  let mutable remaining be times
+  repeat until remaining is 0
+    change result to result * 2
+    change remaining to remaining - 1
+  end
+  return result
+end
+
+function digest(text: Text) returns Integer
+  purpose: The doubling past the machine word, brought back small.
+
+  return doubled(text: text, times: 60) remainder 1000
+end
+
+function tally(items: List of Text, box: Box) returns Integer
+  purpose: A borrowed record and a list passed by its last use, read many times in a loop.
+
+  let mutable total be 0
+  for each item in items
+    change total to total + item.length() + box.weight
+  end
+  return total + items.length()
+end
+
+public function main() needs console
+  purpose: Every function called many times, four of the calls with a borrowed argument; a digest printed.
+
+  let mutable total be 0
+  for each index from 1 to 2000
+    let text be "a label longer than sixteen bytes {index}"
+    let box be Box(label: text, weight: index)
+    let items be [text, "second {index}", text]
+    change total to total + label_length(box)
+    change total to total + describe(box: box, suffix: " and ").length()
+    let temporary be Box(label: "temporary {index}", weight: 2)
+    change total to total + describe(box: heavier(box), suffix: text).length()
+    change total to total + describe(box: temporary, suffix: same(text)).length()
+    change total to total + through(text)
+    let safe be risky(text: text, value: index) otherwise 0
+    let relay be relayed(text: text, value: index) otherwise 1
+    change total to total + safe + relay
+    change total to total + tally(items: items, box: box)
+    change total to total + digest(text)
+    change total to total + box.weight
+  end
+  console.print("{total}")
+end
+"#;
+    let (outcome, printed) = both_ways(source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(printed, "12340316\n");
+}

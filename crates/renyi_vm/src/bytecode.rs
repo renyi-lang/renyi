@@ -268,6 +268,13 @@ pub struct Code {
     /// Parameters first, then the other locals.
     pub params: u16,
     pub locals: u16,
+    /// Per parameter, whether no op writes its slot (decision AW5): no
+    /// `Store`, `WithSlot`, `TakeField`, `IterInit`, `Deadline` or
+    /// `MarkStack` on it (a `LoadMove` reads it). The generated code
+    /// passes such a parameter between compiled bodies without a reference
+    /// of its own; both emitters compute the flags from the finished ops
+    /// (`read_only_params`), held equal by the compile judge.
+    pub read_only: Vec<bool>,
     pub ops: Vec<Op>,
     /// The source span of each op, for crash messages.
     pub spans: Vec<Span>,
@@ -327,6 +334,7 @@ impl Code {
             function: None,
             params: 0,
             locals: 0,
+            read_only: Vec::new(),
             ops: Vec::new(),
             spans: Vec::new(),
             constants: Vec::new(),
@@ -339,6 +347,27 @@ impl Code {
         self.spans.push(span);
         self.types.push(None);
         self.ops.len() - 1
+    }
+
+    /// The read-only flags of the parameters (decision AW5) from the ops
+    /// as they stand: a parameter's slot is read-only when no op writes it.
+    pub fn read_only_params(&self) -> Vec<bool> {
+        let mut read_only = vec![true; self.params as usize];
+        for op in &self.ops {
+            let slot = match op {
+                Op::Store(slot)
+                | Op::IterInit(slot)
+                | Op::Deadline(slot)
+                | Op::MarkStack(slot)
+                | Op::WithSlot { slot, .. }
+                | Op::TakeField { slot, .. } => *slot as usize,
+                _ => continue,
+            };
+            if let Some(flag) = read_only.get_mut(slot) {
+                *flag = false;
+            }
+        }
+        read_only
     }
 
     /// Add a constant, reusing an equal one of the same kind.

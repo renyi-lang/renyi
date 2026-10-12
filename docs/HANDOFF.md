@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated: 2026-10-11, session 14, on the owner's machine. Its work:
+Last updated: 2026-10-12, session 14, on the owner's machine. Its work:
 the design study of stage 29, the new backend for the VM (the section
 "Stage 29, the new backend: the design study (session 14)" below: the
 checker's image run attributed by category under callgrind, eleven
@@ -14,14 +14,19 @@ before any run; the check row 3,085.3 to 2,889.9 million instructions,
 stage 1a built and measured (decision AW3: a typed parameter's boxed
 operand taken from the stack at the call site; the calls through the
 VM's path 141,577 to 9,380, the check row 2,889.9 to 2,826.6, -2.2%,
-the ratio 6.54 to 6.40), and stage 1c built and measured (decision
-AW4: the frame's leave by the static ownership state of the slots; the
-leaves through `rt_truncate` 917,264 to 32,514, the check
-row 2,826.6 to 2,729.4, -3.4%, the ratio 6.40 to 6.18);
-on the way, a Windows defect since AT5 fixed (a2c4685: every run of an
-image there copied its code section, the mapping refused for want of
-execute access on the file's handle). Next is stage 1b (the start-here
-item 1). The session's record is "Done in session 14" below.
+the ratio 6.54 to 6.40), stage 1c built and measured (decision AW4:
+the frame's leave by the static ownership state of the slots; the
+leaves through `rt_truncate` 917,264 to 32,514, the check row 2,826.6
+to 2,729.4, -3.4%, the ratio 6.40 to 6.18), and stage 1b built and
+measured (decision AW5: the read-only flag per parameter in the
+bytecode, format 7 to 8, and a direct call passing such a parameter
+borrowed when its callee never moves it into an owned sink; the check
+row 2,729.4 to 2,719.3, -0.4%, the ratio
+6.18 to 6.16); on the way, a Windows defect since AT5 fixed
+(a2c4685: every run of an image there copied its code section, the
+mapping refused for want of execute access on the file's handle). Next
+is stage 1d (the start-here item 1). The session's record is "Done in
+session 14" below.
 Session 13, in the cloud environment, had as its last work the icon
 and the wordmark, at the owner's request after the
 handover below (decision AV1: a war hammer on the accent tile and the
@@ -281,18 +286,25 @@ and push there directly.
    mimalloc's plain functions, the module constants an image builds
    before any run; the check row 3,085.3 to 2,889.9 million
    instructions (-6.3%), the ratio by instructions 6.99 to 6.54. Stages
-   1a and 1c are done too (decisions AW3 and AW4; the paragraphs "Stage
-   1a as built" and "Stage 1c as built" after it): a typed parameter's
-   boxed operand, which the checker typed, taken from the stack at the
-   call site after a test of its tags (the calls through the VM's path
-   141,577 to 9,380, the check row 2,889.9 to 2,826.6, -2.2%, the ratio
-   6.54 to 6.40); and the frame's leave by the static ownership state
-   of the slots, `owned_slots` in `native/infer.rs` (the leaves through
-   `rt_truncate` 917,264 to 32,514, the check row to 2,729.4,
-   -3.4%, the ratio to 6.18). Next is 1b (the read-only
-   flag per parameter in the bytecode, both emitters, the judges; the
-   protocol is in the study's stage 1 paragraph), 1d (the frame record
-   cheaper), then the character
+   1a, 1c and 1b are done too (decisions AW3, AW4 and AW5; the
+   paragraphs "Stage 1a as built", "Stage 1c as built" and "Stage 1b
+   as built" after it): a typed parameter's boxed operand, which the
+   checker typed, taken from the stack at the call site after a test
+   of its tags (the calls through the VM's path 141,577 to 9,380, the
+   check row 2,889.9 to 2,826.6, -2.2%, the ratio 6.54 to 6.40); the
+   frame's leave by the static ownership state of the slots,
+   `owned_slots` in `native/infer.rs` (the leaves through
+   `rt_truncate` 917,264 to 32,514, the check row to 2,729.4, -3.4%,
+   the ratio to 6.18); and the read-only flag per parameter in the
+   bytecode (`Code::read_only`, format 7 to 8, both emitters, the
+   judges) with a direct call passing such a parameter borrowed when
+   its callee never moves it into an owned sink (the mask in the
+   body's signature, `rt_retain_params` on the ways out
+   that take the frame as owned; the check row to 2,719.3,
+   -0.4%, the ratio to 6.16). Next is 1d (the frame
+   record cheaper: the grant in a register, the vectors' pointers read
+   once per body, the capacity checks folded into the prologue), then
+   the character
    tables and the hasher, stage 2 as 2a, 2b, 2c, the natives' entry and
    the glue, stage 4, the checker's own cuts between the stages, stages
    5 and 6 last. Each stage: the code, the gates of item 3, the measure
@@ -315,9 +327,9 @@ and push there directly.
    `/mnt/d` dominate, so the ratio by instructions is the one recorded.
    The binaries kept: `renyi_au34` (44782aa, the reference), `renyi_head`
    (7cbbbe0, the study's base), `renyi_stage0` (2632cde, stage 0),
-   `renyi_stage1a` (7bb927b, stage 1a) and `renyi_stage1c` (stage 1c's
-   commit, the base of 1b's measure), each with its `study/` directory.
-   The
+   `renyi_stage1a` (7bb927b, stage 1a), `renyi_stage1c` (1cfcd7d, stage
+   1c) and `renyi_stage1b` (stage 1b's commit, the base of 1d's
+   measure), each with its `study/` directory. The
    road is months long (AU58); the gate is decided on the measure at
    the end.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
@@ -4258,11 +4270,96 @@ through `rt_truncate` 917,264 to 32,514, the check row
 counts and drops 440.7 to 321.9, the parse row -1.7%, the
 compile row -3.1%, AT1's synchronous row -0.5%, the image
 row -2.7%; the ratios by instructions 6.18,
-3.98 and 12.02. The table is in AW4. Stage 1b next:
-the read-only flag per parameter in the bytecode (format 8 to 9:
-`Code` gains a Boolean per parameter in `file.rs`, `binary.rs`,
-`compiler/bytecode.ry` and both emitters, held equal by the compile
-judge; the protocol of the study's stage 1 paragraph); then 1d.
+3.98 and 12.02. The table is in AW4.
+
+**Stage 1b as built (decision AW5, 2026-10-12).** The study's item
+(1b): a retain at the caller's `Load` and a release at the callee's
+leave for every boxed argument of a direct call, although most
+parameters are only read. The flag: `Code::read_only`, a Boolean per
+parameter (`file.rs` format 7 to 8, after `locals`; `binary.rs` 4 to
+5; `image.rs` image format 9, code format 16; `compiler/bytecode.ry`),
+computed from the finished ops by `Code::read_only_params` in
+`bytecode.rs` (the Rust emitter's `finish`) and by `read_only_params`
+in `compiler/emit.ry`, held equal by the compile judge: no `Store`,
+`WithSlot`, `TakeField`, `IterInit`, `Deadline` or `MarkStack` on the
+slot; a `LoadMove` is allowed (AU55 makes the last read of nearly
+every parameter one; the study's rule, which excluded it, would have
+flagged almost nothing). The checker's program: 2,133 of 2,328
+parameters read-only, 177 excluded by a `TakeField` (166 by that
+alone: a record read once through a field on its last use; a
+`TakeField` that clones when the slot is borrowed could admit them
+later), 29 by a `WithSlot`. The protocol (`native/codegen.rs`): the
+body's signature gains an `i64` after the direct flag, the bits of the
+parameters the caller passed borrowed (a trampoline passes zero);
+`borrowed_operands` marks, for a `Call` that `direct_call` makes
+directly, the plain `Load`s and boxed `Const`s among its last
+arguments whose parameter the callee accepts borrowed
+(`accepted_params`: boxed, read-only, among the first thirty-two, and
+never moved into an owned sink, every `LoadMove` of the slot in the
+prepared program an argument of a call through a typed entry or an
+operand of a comparison, which read it where it lies; one rule from
+the ops and the program's tables alone, so that a caller compiled on
+the compile thread or for an image reads the same bits the callee's
+compilation does), stepping over a typed push, and the mask per
+call; the marked push carries no
+reference (as a typed call's, AU1 and AU17), `call_direct` passes the
+mask, and the path through `rt_call` (the slow path, and the call
+through the VM's path when the emission does not take the direct
+call) gives the marked operands a reference first
+(`retain_borrowed_arguments`). A moved load (the caller's last use)
+moves into the callee as before: the first build borrowed it too and
+measured 4.5% more instructions on the check row (2,851.6 million;
+the counts and drops 321.9 to 424.4, the natives 355.9 to 385.6), the
+callee's copy having two references where the moved value had one, so
+every append or update of a list or a record passed by its last use
+copied it and the caller's leave freed the old one (kept as the lane's
+`study/stage1b_moves_borrowed`). The second build accepted every
+boxed read-only parameter and had the callee move conditionally (a
+`LoadMove` of such a parameter tested its bit and moved or copied
+with a reference); it measured the check row at 2,723.4 million,
+-0.2%, and AT1's estimate +0.1% (kept as the lane's
+`study/stage1b_conditional_moves`), the conditional moves costing
+about half of what the borrows of plain loads and constants saved;
+the owner chose the refinement first, then the measure's verdict (the
+stage reverted whole if the check row still falls by less than 0.5%
+and AT1's estimate does not fall). In the callee a `LoadMove` of an
+accepted parameter is one a typed entry or a comparison borrows; the
+conditional move remains as the fallback where the analysis finds
+such a move owned; the leave in place releases an accepted slot only
+when its bit is clear (`owned_slots` unchanged); every way out that
+treats the frame as owned calls `rt_retain_params` first (before
+`rt_deopt`, `rt_truncate` at the leave, `rt_fail`, `rt_check_failed`,
+`rt_unhandled`, and at the interrupt exit). The interpreter is
+untouched; the template tier stays on the owned protocol and tells
+`borrowed_operands` so (`direct_calls`): without that switch the first
+build double-freed on `RENYI_NATIVE_TIER=template` (the template
+shares the analysis, pushed the marked operands without a reference
+and passed the frame owned), a segmentation fault the same run under a
+memory budget did not show. The tests: `crates/renyi_vm/tests/native.rs`
+(two thousand turns of ten paths out of frames holding borrowed
+parameters, both tiers; the masks of `main`'s direct calls read from
+its IR: 1 for a record read by its fields beside a text whose move
+goes into an interpolation, 2 for a record beside a list passed by its
+last use, 1 for a text whose only move goes into `Text.length`, 0
+where the parameter is returned, passed on, constructed into a record
+or a failure or updated by `with`, where its last read takes a field,
+or where the argument is a temporary or a last use)
+and `crates/renyi/tests/sandbox.rs`
+(forty thousand turns under sixteen megabytes on both tiers through
+the binary, and a crash inside a frame holding a borrowed parameter);
+`crates/renyi/tests/compile.rs`'s literal format numbers moved up by
+one. The measure: the check row 2,729.4 to 2,719.3 million
+(-0.4%, the estimate was 2.6%), the counts and drops 321.9 to
+322.2, the generated code 1,014.6 to 1,004.1, the parse row
+-0.4%, the compile row +0.2%, AT1's synchronous row
+-0.1%, the image row -0.4%; the ratios by instructions
+6.16, 3.96 and 12.04. The table is in AW5.
+Stage 1d next: the frame record made cheaper (the grant kept in a
+register of the body and passed to the callee's record, the three
+vectors' pointers read once per body, the capacity checks folded into
+the prologue's one check where the callee's locals are known;
+`push_frame_inline` from about 45 instructions to 25, the study's
+estimate 55 million, 1.8%).
 
 ## The representation items: the design study (session 11)
 
@@ -5871,6 +5968,16 @@ holds between calls.
   `native/infer.rs`, `leave_frame_inline` in `native/codegen.rs`,
   `RELEASES_INLINE` eight); the two tests, one under a memory budget;
   the measure in AW4 and in "Stage 1c as built".
+- Stage 1b (decision AW5, the commit after 1cfcd7d): the read-only
+  flag per parameter (`Code::read_only`, bytecode format 8, binary
+  encoding 5, image format 9, code format 16, both emitters, the
+  judges), the borrowed protocol of direct calls (`direct_call`,
+  `accepted_params`, `borrowed_operands` with its `direct_calls`
+  switch, the mask in `direct_signature`, `retain_params` and
+  `retain_borrowed_arguments` in `native/codegen.rs`,
+  `rt_retain_params` in `native/runtime.rs`);
+  the two tests, one under a memory budget; the measure in AW5 and in
+  "Stage 1b as built".
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

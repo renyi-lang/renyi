@@ -32,8 +32,9 @@ use crate::render::float_text;
 use crate::types::{FieldMeta, TypeMeta, TypeShape, Types, VariantMeta};
 use crate::value::Value;
 
-/// The version of the format, the first field of the file.
-pub const FORMAT: usize = 7;
+/// The version of the format, the first field of the file; 8 added the
+/// read-only flags of a code object's parameters (decision AW5).
+pub const FORMAT: usize = 8;
 
 /// The extension of a bytecode file.
 pub const EXTENSION: &str = "ryc";
@@ -385,6 +386,7 @@ fn code_json(code: &Code) -> Out {
         ),
         ("params", number(code.params as usize)),
         ("locals", number(code.locals as usize)),
+        ("read_only", array(&code.read_only, |flag| Out::Bool(*flag))),
         ("ops", array(&code.ops, op_json)),
         ("spans", array(&code.spans, |span| span_json(*span))),
         ("constants", array(&code.constants, constant_json)),
@@ -1124,6 +1126,7 @@ fn read_code(json: &In, at: &str) -> Read<Code> {
         function: optional_at(fields, "function_id", at, usize_of)?,
         params: small(params, &format!("{at}.params"))?,
         locals: small(locals, &format!("{at}.locals"))?,
+        read_only: list_at(fields, "read_only", at, bool_of)?,
         ops: list_at(fields, "ops", at, read_op)?,
         spans: list_at(fields, "spans", at, read_span)?,
         constants: list_at(fields, "constants", at, read_constant)?,
@@ -1439,6 +1442,13 @@ pub(crate) fn check(program: &Program) -> Read<()> {
                 "the file is not consistent: code {index} has {} operations and {} types",
                 code.ops.len(),
                 code.types.len()
+            ));
+        }
+        if code.read_only.len() != code.params as usize {
+            return Err(format!(
+                "the file is not consistent: code {index} has {} parameters and {} read-only flags",
+                code.params,
+                code.read_only.len()
             ));
         }
         for ty in code.types.iter().flatten() {

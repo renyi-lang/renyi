@@ -214,6 +214,7 @@ public type Code
   has function_id: maybe Integer
   has params: Integer
   has locals: Integer
+  has read_only: List of Boolean
   has ops: List of Op
   has spans: List of Span
   has constants: List of CodeConstant

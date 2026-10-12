@@ -6572,3 +6572,143 @@ millions): `primes` 288.8 to 288.9 (+0.0%), `strings` 430.1 to 429.9
 byte-equal, the conformance suite 55 of 55 on both tiers, the template
 tier's own tests with the tier forced, 387 tests. Stage 1b next, the
 read-only flag per parameter in the bytecode, then 1d.
+
+**AW5. Stage 1b of the new backend: a read-only parameter passed
+borrowed between compiled bodies.** The third item of stage 1 in AW1's
+order, on 2026-10-12, measured as AW1 prescribes against stage 1c's
+binary (1cfcd7d). The study's item (1b): a direct call retained every
+boxed argument at the caller's `Load` and the callee released it at its
+leave, a pair of count operations per argument on 2,770,541 calls with
+about one and a half such arguments each, although most parameters are
+only read. The flag, as AW1 (4) chose: `Code` gains `read_only`, a
+Boolean per parameter, in the bytecode file (`file.rs`, format 7 to 8,
+after `locals`), the binary encoding (`binary.rs`, 4 to 5), the image
+(`image.rs`, image format 8 to 9, code format 15 to 16) and
+`compiler/bytecode.ry`; both emitters compute it from the finished ops
+(`Code::read_only_params` in `bytecode.rs`, called by the Rust
+emitter's `finish`; `read_only_params` in `compiler/emit.ry`), held
+equal by the compile judge: a parameter is read-only when no op writes
+its slot, no `Store`, `WithSlot`, `TakeField`, `IterInit`, `Deadline`
+or `MarkStack`. A `LoadMove` does not disqualify the flag, where the
+study's rule had it: AU55 makes the last read of nearly every parameter
+a move, so the study's rule would have flagged almost none; which moves
+a borrow tolerates is the tier's question, answered below. On the
+checker's own program, 2,133 of its 2,328 parameters are read-only; 177
+are not for a `TakeField` (166 for that alone: a record read once
+through a field on its last use, as AU55 compiles it, which a
+`TakeField` that clones when the slot is borrowed could admit later)
+and 29 for a `WithSlot`. The protocol in `native/codegen.rs`: the
+body's signature (`direct_signature`) gains an `i64` after the direct
+flag, the bits of the parameters the caller passed borrowed, which a
+trampoline passes as zero; `borrowed_operands` marks, for a `Call` that
+`direct_call` (the condition of AR3 and AW3, now one function for the
+analysis and the emission) makes directly, the plain `Load`s and the
+boxed `Const`s among its last arguments whose parameter the callee
+accepts borrowed (`accepted_params`, below), stepping over a typed push
+(one operand, in a register), and the mask per call; the caller's push
+of a marked operand carries no reference, as a typed call's does (AU1,
+AU17), and `call_direct` passes the mask, or gives the marked operands
+a reference first on its path through `rt_call`, as the call through
+the VM's path does when the emission does not take the direct call the
+analysis expected. A moved load, the caller's last use of the slot, is
+not borrowed by a direct call but moved into the callee as before: the
+first build borrowed it too, as a typed call does, and measured 4.5%
+more instructions on the check row (2,851.6 million against 2,729.4;
+the counts and drops 321.9 to 424.4, the natives 355.9 to 385.6), the
+callee's copy of the value then having two references where the moved
+one had one, so that every append or update of a list or a record
+passed by its last use copied it and the caller's leave freed the old
+one (the measure is kept as the lane's `study/stage1b_moves_borrowed`).
+Which parameters a call may pass borrowed is one rule both sides read,
+`accepted_params` in `native/codegen.rs`: boxed, read-only, among the
+first thirty-two, and never moved into an owned sink, that is, every
+`LoadMove` of the slot (in the program as the VM prepares it, its last
+reads moves, AU17) is an argument of a call through a typed entry or an
+operand of a comparison, which read the value where it lies; computed
+from the code object's ops and the program's tables alone, so that a
+caller's compilation, on the compile thread or for an image, reads the
+same bits the callee's does, which the protocol requires. The second
+build accepted every boxed read-only parameter and had the callee move
+conditionally, a `LoadMove` of such a parameter testing its bit to move
+when the frame owned the slot or to copy with a reference when the
+caller did; it measured the check row at 2,723.4 million, 0.2% under
+stage 1c, and AT1's estimate 0.1% over it (kept as the lane's
+`study/stage1b_conditional_moves`): AU55 makes most arguments moves,
+which a direct call cannot borrow, so the pairs saved were those of
+plain loads and constants alone, and the conditional move of every
+flagged parameter cost about half of what they saved. The owner's
+answer of 2026-10-12: refine first, accepting a borrow only for a
+parameter never moved into an owned sink, then decide by the measure,
+the stage reverted whole if the check row still falls by less than 0.5%
+and AT1's estimate does not fall. In the callee now, a `LoadMove` of an
+accepted parameter is one a typed entry or a comparison borrows, and
+moves nothing; the conditional move remains as the fallback where the
+analysis finds such a move owned after all (a comparison whose other
+operand is typed); the leave in place releases an accepted slot only
+when its bit is clear (`owned_slots` is unchanged); and every way out
+that treats the frame as owned gives the borrowed slots a reference
+first through the new helper `rt_retain_params` (a hand-back before
+`rt_deopt`, the leave through `rt_truncate`, `rt_fail`,
+`rt_check_failed`, `rt_unhandled`, and an interrupt at the exit, whose
+frame the caller's `abandon` drops). The interpreter is untouched; the
+template tier stays on the owned protocol and says so to
+`borrowed_operands` (its switch `direct_calls`), which the first build
+did not: the template tier shares the analysis, pushed the marked
+operands without a reference and passed the frame owned through its own
+call, a double free found by the test program's run with
+`RENYI_NATIVE_TIER=template` (a segmentation fault; the same run under
+a memory budget passed, the counting allocator hiding it). The tests:
+`crates/renyi_vm/tests/native.rs`, two thousand turns of ten paths out
+of a frame holding a borrowed parameter (a field read, two parameters
+read into a text, the parameter returned, passed on borrowed again and
+into a record, a record updated by `with` beside a borrowed one, a
+failure caught by the caller, one propagated through `otherwise fail`,
+a hand-back after the read at an overflow, a temporary beside a
+borrowed argument, the reads in a loop), both tiers equal to the
+interpreter, the masks of `main`'s eleven direct calls read from its IR
+(1 for a record read by its fields beside a text whose move goes into
+an interpolation, 1 for a text whose only move goes into `Text.length`,
+passed on borrowed again by its callee, 2 for a record beside a list
+passed by its last use, 0 where the parameter is returned, passed on by
+a last use, constructed into a record or updated by `with`, where its
+last read takes a field, or where the argument is a temporary or a last
+use); and `crates/renyi/tests/sandbox.rs`, the same forty thousand
+times under a memory budget of sixteen megabytes through the binary on
+both tiers, and a crash inside a frame holding a borrowed parameter,
+which exits with the crash. The compile tests' literal format numbers
+moved up by one. The measure (callgrind under WSL on the release build
+for Linux, the images built under `valgrind --tool=none`, against stage
+1c's binary measured the same way in AW4, the reference AU34's
+44782aa): the check row 2,729.4 to 2,719.3 million instructions (-0.4%;
+the study estimated 80 million, 2.6%), the parse row 1,132.9 to 1,128.1
+(-0.4%), the compile row 4,395.7 to 4,403.4 (+0.2%); the ratios by
+instructions against the reference's rows (441.6, 284.7 and 365.6)
+6.16, 3.96 and 12.04 against the gate's 3 (6.18, 3.98 and 12.02 after
+stage 1c); the Rust front end's own rows within 0.2% of stage 1c's (`check` 173.6,
+`parse --json` 246.7, `compile` 446.7). The helpers on the check row:
+`rt_retain_params` 330,192 instructions (0.01%; the borrowed slots
+given a reference before a hand-back or a leave through a helper;
+763,432 in the second build), `rt_truncate` 16.0 million (0.6%),
+`rt_drop_at` 201.1 million (7.4%), the last two as in stage 1c. The
+check row by category, AW4's table against this one, in millions: the
+generated code 1,014.6 to 1,004.1, the counts and drops 321.9 to 322.2,
+the helpers' glue 120.7 to 120.7, the calls through the VM's path 7.4
+to 7.4, mimalloc 146.8 to 146.9, the records 206.8 to 206.8, the
+natives 355.9 to 355.9, the hashing 221.8 to 221.5, the comparisons
+123.9 to 123.9, the texts and copies 120.3 to 120.3, the load 46.0 to
+46.2, the iterators 40.3 to 40.3. AT1's rows on the frozen self-check
+(`tools/measure_size.sh` under WSL, stage 1c's binary against this
+one): the synchronous JIT row 5,981.1 to 5,975.3 million instructions
+(-0.1%) and 8,622.5 to 8,590.5 by the estimate (-0.4%), the image row
+4,376.1 to 4,358.8 (-0.4%) and 6,507.6 to 6,409.7 by the estimate
+(-1.5%), the cached run 4,455.7 to 4,438.7 (-0.4%), the interpreter
+11,240.4 to 11,241.1 (+0.0%); the image 9,837,312 to 9,833,784 bytes
+(-0.0%, 3,528 bytes under stage 1c's, where the second build's
+conditional moves had added 394,024, 4.0%). The four benchmarks and
+hello by user-space instructions (`perf stat`, the JIT synchronous, in
+millions): `primes` 288.9 to 289.2 (+0.1%), `strings` 429.9 to 433.3
+(+0.8%), `records` 208.9 to 209.0 (+0.0%), `json_round_trip` 839.6 to
+839.6 (unchanged), `hello` 5.42 to 5.42 (unchanged). The four judges
+byte-equal, the conformance suite 55 of 55 on both tiers, the template
+tier's own tests with the tier forced, 389 tests. Stage 1d next, the
+frame record made cheaper.

@@ -28,8 +28,9 @@ use crate::integer::Int;
 use crate::types::{FieldMeta, TypeMeta, TypeShape, Types, VariantMeta};
 use crate::value::Value;
 
-/// The version of the encoding, its first integer.
-pub const FORMAT: u64 = 4;
+/// The version of the encoding, its first integer; 5 added the read-only
+/// flags of a code object's parameters (decision AW5).
+pub const FORMAT: u64 = 5;
 
 type Read<T> = Result<T, String>;
 
@@ -427,6 +428,7 @@ fn write_code(out: &mut Writer, code: &Code) {
     out.opt(code.function.as_ref(), |out, function| out.usize(*function));
     out.usize(code.params as usize);
     out.usize(code.locals as usize);
+    out.list(&code.read_only, |out, flag| out.bool(*flag));
     out.list(&code.ops, write_op);
     out.list(&code.spans, |out, span| out.span(*span));
     out.list(&code.constants, write_constant);
@@ -920,6 +922,7 @@ fn read_code(input: &mut Reader) -> Read<Code> {
         function: input.opt(Reader::usize)?,
         params: input.u16()?,
         locals: input.u16()?,
+        read_only: input.list(Reader::bool)?,
         ops: input.list(read_op)?,
         spans: input.list(Reader::span)?,
         constants: input.list(read_constant)?,

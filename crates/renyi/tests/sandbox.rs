@@ -448,3 +448,199 @@ public function main() needs console
   console.print("{total}")
 end
 "#;
+
+#[test]
+fn borrowed_parameters_leave_nothing_behind_under_a_memory_budget() {
+    // decision AW5: a parameter passed borrowed is neither released by
+    // the callee's leave nor leaked by its other ways out (a failure
+    // caught by the caller, one propagated); forty thousand turns of
+    // every path under a budget of sixteen megabytes, through the binary,
+    // on the Cranelift tier with every code object compiled before its
+    // first call, and on the template tier; and a crash inside a frame
+    // holding a borrowed parameter comes out as the crash
+    let dir = scratch("borrows");
+    let program = format!("{dir}/borrows.ry");
+    let crashes = format!("{dir}/crashes.ry");
+    let grant = format!("{dir}/grant.json");
+    std::fs::write(&program, BORROWS).expect("borrows.ry");
+    std::fs::write(&crashes, CRASHES).expect("crashes.ry");
+    std::fs::write(
+        &grant,
+        "{\"grant\": \"console\", \"memory\": \"16 megabytes\"}\n",
+    )
+    .expect("grant.json");
+    for tier in [None, Some("template")] {
+        let mut command = Command::new(env!("CARGO_BIN_EXE_renyi"));
+        command
+            .current_dir(root())
+            .args(["run", "--sandbox", &grant, &program])
+            .env("RENYI_NO_CACHE", "1")
+            .env("RENYI_NATIVE_HOT", "0")
+            .env("RENYI_NATIVE_SYNC", "1");
+        if let Some(tier) = tier {
+            command.env("RENYI_NATIVE_TIER", tier);
+        }
+        let run = command.output().expect("the renyi binary runs");
+        assert!(run.status.success(), "{tier:?}: {}", text(&run.stderr));
+        assert_eq!(text(&run.stdout), "4502367506\n", "{tier:?}");
+        let run = Command::new(env!("CARGO_BIN_EXE_renyi"))
+            .current_dir(root())
+            .args(["run", "--sandbox", &grant, &crashes])
+            .env("RENYI_NO_CACHE", "1")
+            .env("RENYI_NATIVE_HOT", "0")
+            .env("RENYI_NATIVE_SYNC", "1")
+            .output()
+            .expect("the renyi binary runs");
+        assert_eq!(
+            run.status.code(),
+            Some(2),
+            "{tier:?}: {}",
+            text(&run.stderr)
+        );
+        assert!(
+            text(&run.stderr).contains("boom a label longer than sixteen bytes 300"),
+            "{tier:?}: {}",
+            text(&run.stderr)
+        );
+    }
+}
+
+/// The program of the borrowed parameters' test (decision AW5): every
+/// way out of a frame holding a parameter passed borrowed.
+const BORROWS: &str = r#"module borrows
+  purpose: Read-only parameters passed borrowed between compiled bodies (AW5), on every path.
+
+import std.console
+
+type Box
+  purpose: A record with a label and a weight.
+  has label: Text
+  has weight: Integer
+end
+
+type Problem
+  purpose: A failure for the test.
+  has reason: Text
+end
+
+function label_length(box: Box) returns Integer
+  purpose: A field of the record on its last read, which takes it: not read-only.
+
+  return box.label.length()
+end
+
+function describe(box: Box, suffix: Text) returns Text
+  purpose: A borrowed record read into a text beside a text moved into it.
+
+  return "{box.label}{suffix}{box.weight}"
+end
+
+function same(text: Text) returns Text
+  purpose: The parameter returned: moved on its last read, so passed owned.
+
+  return text
+end
+
+function through(text: Text) returns Integer
+  purpose: The parameter passed on, then into a record on its last read: passed owned.
+
+  return same(text).length() + label_length(Box(label: text, weight: 1))
+end
+
+function heavier(box: Box) returns Box
+  purpose: An updated copy of the record, which is not read-only; the caller's is unchanged.
+
+  return box with weight: box.weight + 1
+end
+
+function risky(text: Text, value: Integer) returns Integer or fails with Problem
+  purpose: Fail on multiples of five in a frame holding the borrowed text.
+
+  if value remainder 5 is 0 then fail with Problem(reason: "a multiple of five") end
+  return text.length() + value
+end
+
+function relayed(text: Text, value: Integer) returns Integer or fails with Problem
+  purpose: A callee's failure propagated through a frame holding a borrowed parameter.
+
+  let inner be risky(text: text, value: value) otherwise fail
+  return inner + text.length()
+end
+
+function doubled(text: Text, times: Integer) returns Integer
+  purpose: Doubled past the machine word: the frame is handed back after reading a text passed by its last use.
+
+  let mutable result be text.length()
+  let mutable remaining be times
+  repeat until remaining is 0
+    change result to result * 2
+    change remaining to remaining - 1
+  end
+  return result
+end
+
+function digest(text: Text) returns Integer
+  purpose: The doubling past the machine word, brought back small.
+
+  return doubled(text: text, times: 60) remainder 1000
+end
+
+function tally(items: List of Text, box: Box) returns Integer
+  purpose: A borrowed record and a list passed by its last use, read many times in a loop.
+
+  let mutable total be 0
+  for each item in items
+    change total to total + item.length() + box.weight
+  end
+  return total + items.length()
+end
+
+public function main() needs console
+  purpose: Every function called many times, four of the calls with a borrowed argument; a digest printed.
+
+  let mutable total be 0
+  for each index from 1 to 40000
+    let text be "a label longer than sixteen bytes {index}"
+    let box be Box(label: text, weight: index)
+    let items be [text, "second {index}", text]
+    change total to total + label_length(box)
+    change total to total + describe(box: box, suffix: " and ").length()
+    let temporary be Box(label: "temporary {index}", weight: 2)
+    change total to total + describe(box: heavier(box), suffix: text).length()
+    change total to total + describe(box: temporary, suffix: same(text)).length()
+    change total to total + through(text)
+    let safe be risky(text: text, value: index) otherwise 0
+    let relay be relayed(text: text, value: index) otherwise 1
+    change total to total + safe + relay
+    change total to total + tally(items: items, box: box)
+    change total to total + digest(text)
+    change total to total + box.weight
+  end
+  console.print("{total}")
+end
+"#;
+
+/// A crash inside a frame holding a borrowed parameter (decision AW5).
+const CRASHES: &str = r#"module crashes
+  purpose: A crash inside a frame holding a borrowed parameter (AW5).
+
+import std.console
+
+function shout(label: Text, text: Text, index: Integer) returns Integer
+  purpose: Crash on the last index in a frame holding the borrowed label.
+
+  if index is 300 then crash with "boom {text}" end
+  return label.length() + text.length() + index
+end
+
+public function main() needs console
+  purpose: Call shout until it crashes.
+
+  let mutable total be 0
+  for each index from 1 to 300
+    let text be "a label longer than sixteen bytes {index}"
+    change total to total + shout(label: text, text: text, index: index)
+  end
+  console.print("{total}")
+end
+"#;

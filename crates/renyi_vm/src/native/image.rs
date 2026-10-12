@@ -41,8 +41,10 @@ pub const MAGIC: &[u8; 4] = b"RYI\0";
 
 /// The layout of the file: bumped when it changes. 3: the code section
 /// (decision AT5); 7: the handled regions of a deopt point (decision
-/// AU18); 8: the callees expanded into a code object (decision AU50).
-pub const IMAGE_FORMAT: u32 = 8;
+/// AU18); 8: the callees expanded into a code object (decision AU50); 9:
+/// the read-only flags of a code object's parameters in the program's
+/// encoding (decision AW5).
+pub const IMAGE_FORMAT: u32 = 9;
 
 /// The alignment of the code section in the file: a multiple of every
 /// page size the toolchain runs on (16 KB on Apple silicon), so that the
@@ -73,8 +75,10 @@ const PART_ALIGN: usize = 16;
 /// `rt_text_contains` and `rt_list_contains` among the helpers (decision
 /// AU34). 13: two boxed values the checker typed Integer compared in
 /// place when both are small (decision AU45). 14: a variant test in place
-/// (decision AU49).
-pub const CODE_FORMAT: u32 = 15;
+/// (decision AU49). 16: the bits of the parameters a direct call passed
+/// borrowed in the body's signature and `rt_retain_params` among the
+/// helpers (decision AW5).
+pub const CODE_FORMAT: u32 = 16;
 
 /// The extension of an image file.
 pub const EXTENSION: &str = "ryi";
