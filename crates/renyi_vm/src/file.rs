@@ -33,10 +33,11 @@ use crate::types::{FieldMeta, TypeMeta, TypeShape, Types, VariantMeta};
 use crate::value::Value;
 
 /// The version of the format, the first field of the file; 8 added the
-/// read-only flags of a code object's parameters (decision AW5), and 9
+/// read-only flags of a code object's parameters (decision AW5), 9
 /// holds a loop's iterator in two slots, the source and the position
-/// (decision AW14).
-pub const FORMAT: usize = 9;
+/// (decision AW14), and 10 adds the jump tables of a code object and
+/// `JumpByTag` (decision AW15).
+pub const FORMAT: usize = 10;
 
 /// The extension of a bytecode file.
 pub const EXTENSION: &str = "ryc";
@@ -398,6 +399,12 @@ fn code_json(code: &Code) -> Out {
                 optional(ty.as_ref(), |index| number(*index as usize))
             }),
         ),
+        (
+            "tables",
+            array(&code.tables, |table| {
+                array(table, |target| number(*target as usize))
+            }),
+        ),
     ])
 }
 
@@ -552,6 +559,10 @@ fn op_json(op: &Op) -> Out {
         Op::JumpIfTrue(target) => variant("OpJumpIfTrue", vec![("target", wide(*target))]),
         Op::JumpIfAbsent(target) => variant("OpJumpIfAbsent", vec![("target", wide(*target))]),
         Op::JumpIfFailure(target) => variant("OpJumpIfFailure", vec![("target", wide(*target))]),
+        Op::JumpByTag { slot, table } => variant(
+            "OpJumpByTag",
+            vec![("slot", small(*slot)), ("table", small(*table))],
+        ),
         Op::PushHandler(target) => variant("OpPushHandler", vec![("target", wide(*target))]),
         Op::PopHandler => variant("OpPopHandler", vec![]),
         Op::Return => variant("OpReturn", vec![]),
@@ -1133,6 +1144,9 @@ fn read_code(json: &In, at: &str) -> Read<Code> {
         spans: list_at(fields, "spans", at, read_span)?,
         constants: list_at(fields, "constants", at, read_constant)?,
         types: list_at(fields, "types", at, read_type_index)?,
+        tables: list_at(fields, "tables", at, |table, at| {
+            list_of(table, at, |target, at| Ok(usize_of(target, at)? as u32))
+        })?,
     })
 }
 
@@ -1256,6 +1270,10 @@ fn read_op(json: &In, at: &str) -> Read<Op> {
         "OpJumpIfTrue" => Op::JumpIfTrue(index("target")?),
         "OpJumpIfAbsent" => Op::JumpIfAbsent(index("target")?),
         "OpJumpIfFailure" => Op::JumpIfFailure(index("target")?),
+        "OpJumpByTag" => Op::JumpByTag {
+            slot: slot("slot")?,
+            table: slot("table")?,
+        },
         "OpPushHandler" => Op::PushHandler(index("target")?),
         "OpPopHandler" => Op::PopHandler,
         "OpReturn" => Op::Return,
@@ -1462,6 +1480,9 @@ pub(crate) fn check(program: &Program) -> Read<()> {
         let ops = code.ops.len();
         let locals = code.locals as usize;
         let constants = code.constants.len();
+        for target in code.tables.iter().flatten() {
+            place("jump", *target as usize, ops)?;
+        }
         for op in &code.ops {
             match op {
                 Op::Const(i) | Op::Check(i) => place("constant", *i as usize, constants)?,
@@ -1477,6 +1498,10 @@ pub(crate) fn check(program: &Program) -> Read<()> {
                 Op::IterNext { slot, exit } => {
                     place("slot", *slot as usize, locals)?;
                     place("jump", *exit as usize, ops)?;
+                }
+                Op::JumpByTag { slot, table } => {
+                    place("slot", *slot as usize, locals)?;
+                    place("table", *table as usize, code.tables.len())?;
                 }
                 Op::Jump(target)
                 | Op::JumpIfFalse(target)

@@ -70,8 +70,13 @@ iterator in two slots of the frame, the source listed in the first and
 the position as a small Integer in the second, which the Cranelift
 tier keeps in a register, the native iterator gone; the check row
 1,995.8 to 1,930.3, -3.3%; the ratio 4.52
-to 4.37). Next is the last item of stage 4, `match` by a table
-(the start-here item 1). The session's record is "Done in session 14"
+to 4.37); and stage 4c built and measured (decision AW15: a `match` with
+at least three arms naming a variant entered through a jump table by
+the subject's tag on both tiers and in the interpreter; the check row
+1,930.3 to 1,896.4, -1.8%; the ratio 4.37
+to 4.29), which completes stage 4. Next are the checker's own
+cuts between the stages (the start-here item 1), then stages 5 and 6.
+The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
 and the wordmark, at the owner's request after the
@@ -383,8 +388,10 @@ and push there directly.
    in the generated code by the type and the tag; the check row to
    1,995.8, -4.9%; the ratio to 4.52); and stage 4b (decision AW14, "Stage 4b as built": the
    iterator in two slots; the check row to 1,930.3, -3.3%; the
-   ratio to 4.37).
-   Next is the last item of stage 4 (`match` by a table), the
+   ratio to 4.37); and stage 4c (decision AW15, "Stage 4c as built": `match` by
+   a table; the check row to 1,896.4, -1.8%; the ratio to
+   4.29), which completes stage 4.
+   Next are the
    checker's own cuts between the stages, stages
    5 and 6 last. Each stage: the code, the gates of item 3, the measure
    (AU58's: the checker's image run under callgrind with the study's
@@ -420,8 +427,9 @@ and push there directly.
    `renyi_stage3b` (1b25b85, stage 3b's commit), `renyi_stage4a`
    (stage 4a's first build, the field-less types alone) and
    `renyi_stage4a_v2` (cf06592, stage 4a's commit) and
-   `renyi_stage4b` (stage 4b's commit, the base of the next measure),
-   each with its `study/` directory. The
+   `renyi_stage4b` (8eed964, stage 4b's commit) and `renyi_stage4c`
+   (stage 4c's commit, the base of the next measure), each with its
+   `study/` directory. The
    road is months long (AU58); the gate is decided on the measure at
    the end.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
@@ -4815,6 +4823,48 @@ synchronous estimate 7,546.0 to 7,481.6
 item of stage 4, `match` by a table (4c), then the checker's own cuts,
 stages 5 and 6.
 
+**Stage 4c as built (decision AW15, 2026-10-12).** The last item of
+stage 4 in AW1's order: a `match` by a table. A new op, `JumpByTag {
+slot, table }` (`bytecode.rs`, kind 55), with the jump tables of a
+code object beside its ops, `Code.tables`: the op peeks at the frame
+slot and, for a variant whose tag is below the table's length, jumps
+to the table's entry; anything else (a guarded value, a `Nothing`, a
+failure, a tag past the table) falls through to the arms' own tests,
+which stay as they were. Both emitters emit it after the subject's
+store when at least three arms name a variant (`TABLE_ARMS`,
+`match_table` and the emission in `compile/expr.rs` with
+`variant_tag_of` in `compile/pattern.rs`; `arm_tag`, `named_arms`,
+`match_table`, `target_of` and `emit_match` in `compiler/emit.ry`):
+for every tag up to the highest an arm names, the first arm in order
+that can match it, entered past its own tag test (three ops) when it
+names the tag and at its start for any other pattern, else the
+`otherwise` or the crash after the arms. The interpreter's arm is in
+`vm.rs`; the Cranelift tier (`native/codegen.rs`) reads the slot's
+kind and the block's tag in place and enters the arm's block through
+a jump table (`br_table`), the edges coerced as a branch's are; the
+template tier (`native/template/mod.rs`) compares the tag with each
+entry in turn, the entries block starts; the analysis follows the
+targets among the flows (`native/infer.rs`, both passes), as do the
+last reads (`liveness.rs`) and the inliner (`native/inline.rs`, the
+tables appended with the targets shifted). The bytecode file is
+format 10 (`file.rs`: the op, the tables, their checks;
+`compiler/bytecode.ry`: `OpJumpByTag`, `tables`; the literals of
+`tests/compile.rs`), the binary encoding 6 (`binary.rs`), the image
+code format 23 (`native/image.rs`). The corpus, the conformance suite
+on both tiers, the four judges (the compile judge on the tables of
+every `match`) and the new test
+`matches_by_a_table_enter_the_arm_by_the_tag_and_fall_through_otherwise`
+in `tests/native.rs` and `tests/template.rs` hold the paths. The
+measure: the check row 1,930.3 to 1,896.4 (-1.8%), the
+ratios by instructions 4.29, 2.89 and
+8.47; the generated code 1,000.9 to 962.7 million; the
+indirect branches of AT1's synchronous row 10.6 to
+10.5 million (-0.7%), its mispredictions 31.7
+to 30.4; AT1's synchronous estimate 7,481.6 to
+7,395.6 (-1.1%). The table is in AW15. Stage 4 is done.
+Next in AW1's order: the checker's own cuts between the stages, then
+stages 5 and 6.
+
 ## The representation items: the design study (session 11)
 
 **What the owner ordered (AU20)**: after the template tier's follow-ups
@@ -6502,6 +6552,20 @@ holds between calls.
   `Native::Iterator` and `ListIter` gone from `value.rs` and
   `render.rs`; the test in `tests/native.rs` and `tests/template.rs`;
   the measure in AW14 and in "Stage 4b as built".
+- Stage 4c (decision AW15, the commit after 8eed964):
+  `JumpByTag` and `Code.tables` in `bytecode.rs`, the interpreter's
+  arm in `vm.rs`, the op and the tables in `file.rs` (format 10) and
+  `binary.rs` (encoding 6), `TABLE_ARMS`, `match_table` and the
+  emission in `compile/expr.rs` with `variant_tag_of` in
+  `compile/pattern.rs`, the flows in `native/infer.rs`, the last reads
+  in `liveness.rs`, the jump table in `native/codegen.rs`, the
+  comparisons in `native/template/mod.rs`, the tables of an expanded
+  callee in `native/inline.rs`, code format 23 in `native/image.rs`;
+  `OpJumpByTag` and `tables` in `compiler/bytecode.ry`; `arm_tag`,
+  `named_arms`, `match_table`, `target_of` and `emit_match` in
+  `compiler/emit.ry`; the literals of `tests/compile.rs`; the test in
+  `tests/native.rs` and `tests/template.rs`; the measure in AW15 and
+  in "Stage 4c as built".
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

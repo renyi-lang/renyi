@@ -91,8 +91,9 @@ const PART_ALIGN: usize = 16;
 /// AW11). 21: `rt_construct_plain` and `rt_construct_variant_plain`
 /// among the helpers, without a status (decision AW12). 22: a loop's
 /// iterator in two slots of the frame, the source and the position,
-/// which the generated code reads in place (decision AW14).
-pub const CODE_FORMAT: u32 = 22;
+/// which the generated code reads in place (decision AW14). 23: `JumpByTag`,
+/// a `match` by a table (decision AW15).
+pub const CODE_FORMAT: u32 = 23;
 
 /// The extension of an image file.
 pub const EXTENSION: &str = "ryi";

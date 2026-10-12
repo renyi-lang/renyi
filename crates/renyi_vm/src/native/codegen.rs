@@ -17,6 +17,7 @@ use std::time::{Duration, Instant};
 
 use cranelift_codegen::control::ControlPlane;
 use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
+use cranelift_codegen::ir::JumpTableData;
 use cranelift_codegen::ir::{
     types, AbiParam, Block, InstBuilder, MemFlagsData, SigRef, Signature, StackSlot, StackSlotData,
     StackSlotKind, Type, UserFuncName, Value as IrValue,
@@ -3768,6 +3769,60 @@ impl Gen<'_, '_> {
                 self.check_status(status, pc, false);
             }
             Op::Jump(target) => self.jump_to(*target as usize),
+            Op::JumpByTag { slot, table } => {
+                // a `match` by a table (decision AW15): a variant in the slot
+                // picks the arm's block by its tag through a jump table;
+                // anything else, a guarded value among it, or a tag past the
+                // table falls through to the arms' own tests
+                let index = *slot as usize;
+                if !matches!(self.analysis.slots[index], SlotKind::Boxed(_)) {
+                    return;
+                }
+                let targets = self.code.tables[*table as usize].clone();
+                let at = self.address_at(index);
+                let flags = MemFlagsData::trusted();
+                let kind = self.tag_at(at, 0);
+                let is_variant = self
+                    .b
+                    .ins()
+                    .icmp_imm_s(IntCC::Equal, kind, TAG_VARIANT as i64);
+                let variant = self.b.create_block();
+                let (through, fill_through) = self.edge_to(pc + 1);
+                self.b.ins().brif(is_variant, variant, &[], through, &[]);
+                self.b.seal_block(variant);
+                self.switch_to(variant);
+                let rc = self.b.ins().load(self.pointer, flags, at, PAYLOAD);
+                let held = self.b.ins().load(types::I64, flags, rc, RECORD_TAG);
+                let tag = self.b.ins().ireduce(types::I32, held);
+                let mut edges: Vec<(usize, Block, bool)> = Vec::new();
+                let mut entries = Vec::new();
+                for target in targets {
+                    let target = target as usize;
+                    let block = match edges.iter().find(|(known, _, _)| *known == target) {
+                        Some((_, block, _)) => *block,
+                        None => {
+                            let (block, fill) = self.edge_to(target);
+                            edges.push((target, block, fill));
+                            block
+                        }
+                    };
+                    entries.push(self.b.func.dfg.block_call(block, &[]));
+                }
+                let default = self.b.func.dfg.block_call(through, &[]);
+                let jump_table = self
+                    .b
+                    .create_jump_table(JumpTableData::new(default, &entries));
+                self.b.ins().br_table(tag, jump_table);
+                self.terminated = true;
+                if fill_through {
+                    self.fill_edge(through, pc + 1);
+                }
+                for (target, block, fill) in edges {
+                    if fill {
+                        self.fill_edge(block, target);
+                    }
+                }
+            }
             Op::JumpIfFalse(target) => {
                 let condition = self.pop_condition(pc);
                 self.branch(condition, pc + 1, *target as usize);

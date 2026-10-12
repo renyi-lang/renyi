@@ -123,6 +123,7 @@ type Emitter
   has ops: List of Op
   has spans: List of Span
   has types: List of maybe Integer
+  has tables: List of List of Integer
   has pool: List of Pooled
   has scopes: List of List of Local
   has next_slot: Integer
@@ -313,6 +314,7 @@ function new_emitter(
     ops: [],
     spans: [],
     types: [],
+    tables: [],
     pool: [],
     scopes: [[]],
     next_slot: 0,
@@ -340,7 +342,8 @@ function finish(emitter: Emitter) returns Code
     spans: emitter.spans,
     constants: for each pooled in emitter.pool
     collect constant_of(pooled),
-    types: emitter.types
+    types: emitter.types,
+    tables: emitter.tables
   )
 end
 
@@ -1591,11 +1594,35 @@ function emit_match(
     change updated to emit_expr(emitter: updated, expr: subject)
   end
   change updated to emit(emitter: updated, op: OpStore(slot: slot), span: span)
+  # the arms by a table (decision AW15): with at least three arms whose
+  # pattern names a variant, a JumpByTag before the arms takes a variant
+  # subject to the first arm that can match its tag, past that arm's own
+  # tag test; the table is filled once the arms' positions are known
+  let named be for each arm in arms collect arm_tag(emitter: updated, pattern: arm.pattern)
+  let mutable table_index: maybe Integer be nothing
+  if named_arms(named) is at least 3 then
+    change table_index to updated.tables.length()
+    change updated to updated with tables: updated.tables.append([])
+    change updated to emit(
+      emitter: updated,
+      op: OpJumpByTag(slot: slot, table: updated.tables.length() - 1),
+      span: span
+    )
+  end
+  let mutable starts: List of Integer be []
   let mutable ends: List of Integer be []
   for each arm in arms
+    change starts to starts.append(here(updated))
     let done be emit_arm(emitter: updated, arm: arm, slot: slot)
     change ends to ends.append(done.value)
     change updated to done.emitter
+  end
+  match table_index
+    when some(index) then
+      let entries be match_table(named: named, starts: starts, otherwise_at: here(updated))
+      change updated to updated
+        with tables: lists.replace_at(items: updated.tables, index: index, item: entries)
+    when nothing then change updated to updated
   end
   match fallback
     when some(body) then change updated to emit_arm_body(emitter: updated, body: body)
@@ -1608,6 +1635,72 @@ function emit_match(
       change updated to emit(emitter: updated, op: OpCrash, span: span)
   end
   return patch_all(emitter: updated, positions: ends)
+end
+
+function arm_tag(emitter: Emitter, pattern: Pattern) returns maybe Integer
+  purpose: The tag an arm's variant pattern names (decision AW15): nothing for any other pattern, for a record matched like a single variant and for a name the checker did not resolve, each of which may match a variant of any tag.
+
+  match pattern
+    when VariantPattern(name) then
+      match variant_tag(emitter: emitter, span: name.span)
+        when some(found) then return found.tag
+        when nothing then return nothing
+      end
+    otherwise return nothing
+  end
+end
+
+function named_arms(named: List of maybe Integer) returns Integer
+  purpose: How many arms name a variant's tag.
+
+  let mutable total be 0
+  for each tag in named
+    let value be tag otherwise 0 - 1
+    if value is at least 0 then change total to total + 1 end
+  end
+  return total
+end
+
+function match_table(named: List of maybe Integer, starts: List of Integer, otherwise_at: Integer)
+  returns List of Integer
+  purpose: The table of a `match` by a table (decision AW15): for every tag up to the highest an arm names, the op to jump to: the first arm, in order, that can match the tag, past its own tag test (the load, the test and the jump, three ops) when it names the tag and at its start otherwise, else the otherwise or the crash after the arms.
+
+  let mutable size be 0
+  for each tag in named
+    match tag
+      when some(value) then if value + 1 is greater than size then change size to value + 1 end
+      when nothing then change size to size
+    end
+  end
+  if size is 0 then return [] end
+  let mutable entries: List of Integer be []
+  for each tag from 0 to size - 1
+    change entries to entries.append(
+      target_of(named: named, starts: starts, tag: tag, otherwise_at: otherwise_at)
+    )
+  end
+  return entries
+end
+
+function target_of(
+  named: List of maybe Integer,
+  starts: List of Integer,
+  tag: Integer,
+  otherwise_at: Integer
+)
+  returns Integer
+  purpose: The op a tag jumps to (decision AW15): the first arm that can match it.
+
+  let mutable index be 0
+  for each start in starts
+    let name be named.at(index) otherwise crash with "an arm"
+    match name
+      when some(value) then if value is tag then return start + 3 end
+      when nothing then return start
+    end
+    change index to index + 1
+  end
+  return otherwise_at
 end
 
 function emit_arm(emitter: Emitter, arm: GenericArm, slot: Integer) returns Step of Integer
@@ -3756,7 +3849,7 @@ function assemble(context: Context, modules: List of CheckedModule) returns Prog
     for each declared in world.abilities
     collect AbilityMeta(name: declared.name, methods: method_names(declared.methods))
   return Program(
-    format: 9,
+    format: 10,
     modules: module_sources(world: world, modules: modules),
     builtins: builtin_ids(world.builtins),
     types: context.types,

@@ -101,6 +101,7 @@ pub fn expand(program: &Program, code_id: CodeId) -> Option<Expansion> {
         spans: original.spans.clone(),
         types: original.types.clone(),
         constants: original.constants.clone(),
+        tables: original.tables.clone(),
         regions: Vec::new(),
         next_slot: original.locals as usize,
         appended: 0,
@@ -142,6 +143,7 @@ pub fn expand(program: &Program, code_id: CodeId) -> Option<Expansion> {
     code.spans = expander.spans;
     code.types = expander.types;
     code.constants = expander.constants;
+    code.tables = expander.tables;
     code.locals = u16::try_from(expander.next_slot).ok()?;
     Some(Expansion {
         code,
@@ -176,6 +178,7 @@ struct Expander<'p> {
     spans: Vec<Span>,
     types: Vec<Option<u32>>,
     constants: Vec<crate::value::Value>,
+    tables: Vec<Vec<u32>>,
     regions: Vec<Region>,
     next_slot: usize,
     appended: usize,
@@ -309,6 +312,13 @@ impl Expander<'_> {
                 {
                     return Err("a loop");
                 }
+                Op::JumpByTag { table, .. }
+                    if code.tables[*table as usize]
+                        .iter()
+                        .any(|target| *target as usize <= pc) =>
+                {
+                    return Err("a loop");
+                }
                 Op::IterInit(_)
                 | Op::IterNext { .. }
                 | Op::ListPush
@@ -388,6 +398,12 @@ impl Expander<'_> {
         let nothing = shape.returns_nothing.then_some(exit + 2 * locals + 1);
         let shift = |target: &u32| (*target as usize + body) as u32;
         let slot = |slot: &u16| (*slot as usize + slot_base) as u16;
+        // the callee's jump tables after the caller's, their targets shifted
+        // with the ops (decision AW15)
+        let table_offset = self.tables.len();
+        for table in &code.tables {
+            self.tables.push(table.iter().map(shift).collect());
+        }
         for (q, op) in code.ops.iter().enumerate() {
             let mapped = match op {
                 Op::Const(index) => Op::Const(index + const_offset),
@@ -425,6 +441,10 @@ impl Expander<'_> {
                 Op::JumpIfTrue(target) => Op::JumpIfTrue(shift(target)),
                 Op::JumpIfAbsent(target) => Op::JumpIfAbsent(shift(target)),
                 Op::JumpIfFailure(target) => Op::JumpIfFailure(shift(target)),
+                Op::JumpByTag { slot: s, table } => Op::JumpByTag {
+                    slot: slot(s),
+                    table: (table_offset + *table as usize) as u16,
+                },
                 Op::PushHandler(target) => Op::PushHandler(shift(target)),
                 Op::Return => Op::Jump(exit as u32),
                 // a `ReturnNothing` the analysis never reached has no tail

@@ -49,7 +49,7 @@ fn a_program_runs_records_and_reproduces_from_its_bytecode_file() {
     );
     let written = std::fs::read_to_string(&file).expect("the file");
     assert!(
-        written.starts_with("{\n  \"format\": 9,\n  \"modules\": [\n"),
+        written.starts_with("{\n  \"format\": 10,\n  \"modules\": [\n"),
         "{}",
         &written[..60]
     );
@@ -104,11 +104,11 @@ fn tests_run_from_a_bytecode_file_and_find_their_fixtures() {
 fn a_file_that_does_not_fit_is_refused() {
     let directory = scratch("bad");
     let wrong_format = path(&directory.join("format.ryc"));
-    std::fs::write(&wrong_format, "{\n  \"format\": 10\n}\n").expect("the file");
+    std::fs::write(&wrong_format, "{\n  \"format\": 11\n}\n").expect("the file");
     let run = renyi(&["run", &wrong_format]);
     assert_eq!(run.status.code(), Some(1));
     assert!(
-        text(&run.stderr).contains("is format 10; this VM reads format 9"),
+        text(&run.stderr).contains("is format 11; this VM reads format 10"),
         "{}",
         text(&run.stderr)
     );

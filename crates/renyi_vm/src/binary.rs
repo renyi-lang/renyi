@@ -29,8 +29,9 @@ use crate::types::{FieldMeta, TypeMeta, TypeShape, Types, VariantMeta};
 use crate::value::Value;
 
 /// The version of the encoding, its first integer; 5 added the read-only
-/// flags of a code object's parameters (decision AW5).
-pub const FORMAT: u64 = 5;
+/// flags of a code object's parameters (decision AW5), and 6 the jump
+/// tables of a code object (decision AW15).
+pub const FORMAT: u64 = 6;
 
 type Read<T> = Result<T, String>;
 
@@ -364,6 +365,10 @@ fn write_op(out: &mut Writer, op: &Op) {
         | Op::MarkStack(slot)
         | Op::UnwindStack(slot) => out.usize(*slot as usize),
         Op::MakeRange { stepped } => out.bool(*stepped),
+        Op::JumpByTag { slot, table } => {
+            out.usize(*slot as usize);
+            out.usize(*table as usize);
+        }
         Op::Construct { ty, fields } => {
             out.usize(*ty);
             out.usize(*fields as usize);
@@ -434,6 +439,9 @@ fn write_code(out: &mut Writer, code: &Code) {
     out.list(&code.constants, write_constant);
     out.list(&code.types, |out, ty| {
         out.opt(ty.as_ref(), |out, index| out.usize(*index as usize))
+    });
+    out.list(&code.tables, |out, table| {
+        out.list(table, |out, target| out.usize(*target as usize))
     });
 }
 
@@ -903,6 +911,10 @@ fn read_op(input: &mut Reader) -> Read<Op> {
             name: input.u32()?,
             site: input.u32()?,
         },
+        55 => Op::JumpByTag {
+            slot: input.u16()?,
+            table: input.u16()?,
+        },
         other => return Err(format!("the program holds {other} for an op")),
     })
 }
@@ -927,6 +939,7 @@ fn read_code(input: &mut Reader) -> Read<Code> {
         spans: input.list(Reader::span)?,
         constants: input.list(read_constant)?,
         types: input.list(|input| Ok(input.opt(Reader::usize)?.map(|index| index as u32)))?,
+        tables: input.list(|input| input.list(Reader::u32))?,
     })
 }
 

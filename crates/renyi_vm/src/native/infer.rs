@@ -895,6 +895,12 @@ pub fn analyse(
                     pop!();
                     flows.push((*target as usize, stack.clone(), open_after.clone()));
                 }
+                Op::JumpByTag { table, .. } => {
+                    // the arms by the tag (decision AW15), the stack as it is
+                    for target in &code.tables[*table as usize] {
+                        flows.push((*target as usize, stack.clone(), open_after.clone()));
+                    }
+                }
                 Op::JumpIfAbsent(target) | Op::JumpIfFailure(target) => {
                     // the value stays, boxed, and may be a failure or nothing
                     let top = pop!();
@@ -1179,6 +1185,11 @@ pub fn owned_slots(code: &Code, analysis: &Analysis, borrowed: &[bool]) -> Vec<V
                 | Op::JumpIfAbsent(target)
                 | Op::JumpIfFailure(target) => flows.push((*target as usize, &after)),
                 Op::IterNext { exit, .. } => flows.push((*exit as usize, &after)),
+                Op::JumpByTag { table, .. } => {
+                    for target in &code.tables[*table as usize] {
+                        flows.push((*target as usize, &after));
+                    }
+                }
                 Op::Return | Op::ReturnNothing | Op::Fail | Op::Crash => falls_through = false,
                 _ => {}
             }

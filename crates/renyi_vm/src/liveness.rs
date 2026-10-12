@@ -65,6 +65,13 @@ pub fn move_last_reads(code: &mut Code) {
             Op::IterNext { exit, .. } => Some(*exit as usize),
             _ => None,
         };
+        if let Op::JumpByTag { table, .. } = op {
+            for target in &code.tables[*table as usize] {
+                if (*target as usize) < count {
+                    next.push(*target as usize);
+                }
+            }
+        }
         if let Some(target) = target {
             if target < count {
                 next.push(target);

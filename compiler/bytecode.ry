@@ -219,6 +219,7 @@ public type Code
   has spans: List of Span
   has constants: List of CodeConstant
   has types: List of maybe Integer
+  has tables: List of List of Integer
   can ToJson
 end
 
@@ -296,6 +297,7 @@ public type Op is one of
   OpJumpIfTrue(target: Integer)
   OpJumpIfAbsent(target: Integer)
   OpJumpIfFailure(target: Integer)
+  OpJumpByTag(slot: Integer, table: Integer)
   OpPushHandler(target: Integer)
   OpPopHandler
   OpReturn

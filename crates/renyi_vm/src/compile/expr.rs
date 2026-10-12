@@ -550,8 +550,33 @@ impl Compiler<'_, '_> {
             self.expr(subject);
         }
         self.emit(Op::Store(slot), span);
+        // the arms by a table (decision AW15): with at least `TABLE_ARMS`
+        // arms whose pattern names a variant, a `JumpByTag` before the arms
+        // takes a variant subject to the first arm that can match its tag,
+        // past that arm's own tag test; the table is filled once the arms'
+        // positions are known
+        let named: Vec<Option<usize>> = arms
+            .iter()
+            .map(|arm| self.variant_tag_of(&arm.pattern))
+            .collect();
+        let table = if named.iter().flatten().count() >= TABLE_ARMS {
+            let index = self.code.tables.len();
+            self.code.tables.push(Vec::new());
+            self.emit(
+                Op::JumpByTag {
+                    slot,
+                    table: index as u16,
+                },
+                span,
+            );
+            Some(index)
+        } else {
+            None
+        };
+        let mut starts = Vec::new();
         let mut ends = Vec::new();
         for arm in arms {
+            starts.push(self.here());
             self.push_scope();
             let mut next = self.pattern(&arm.pattern, slot);
             if let Some(guard) = &arm.guard {
@@ -565,6 +590,10 @@ impl Compiler<'_, '_> {
                 self.patch(at);
             }
         }
+        if let Some(index) = table {
+            let otherwise_at = self.here();
+            self.code.tables[index] = match_table(&named, &starts, otherwise_at);
+        }
         match otherwise {
             Some(fallback) => body(self, fallback),
             None => {
@@ -576,4 +605,34 @@ impl Compiler<'_, '_> {
             self.patch(end);
         }
     }
+}
+
+/// How many arms naming a variant a `match` needs for a table (decision
+/// AW15); `compiler/emit.ry` holds the same number.
+pub const TABLE_ARMS: usize = 3;
+
+/// The table of a `match` by a table (decision AW15): for every tag up to
+/// the highest an arm names, the op to jump to: the first arm, in order,
+/// that can match the tag, past its own tag test (the load, the test and
+/// the jump, three ops) when it names the tag and at its start otherwise
+/// (any other pattern may match a variant), else the `otherwise` or the
+/// crash after the arms.
+pub fn match_table(named: &[Option<usize>], starts: &[u32], otherwise_at: u32) -> Vec<u32> {
+    let count = named
+        .iter()
+        .flatten()
+        .max()
+        .map_or(0, |highest| highest + 1);
+    (0..count)
+        .map(|tag| {
+            for (start, name) in starts.iter().zip(named) {
+                match name {
+                    Some(other) if *other != tag => continue,
+                    Some(_) => return start + 3,
+                    None => return *start,
+                }
+            }
+            otherwise_at
+        })
+        .collect()
 }

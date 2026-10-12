@@ -122,6 +122,14 @@ pub enum Op {
     /// Peek; jump when the top is a `Failure` (an `otherwise` on a fallible
     /// call, whose success may be `Nothing` when it returns no value).
     JumpIfFailure(u32),
+    /// Peek at the frame slot: a variant whose tag is below the length of
+    /// the code's table jumps to the table's entry for the tag; anything
+    /// else falls through to the arms' own tests (a `match` by a table,
+    /// decision AW15).
+    JumpByTag {
+        slot: u16,
+        table: u16,
+    },
     /// Open a handled region: a failure inside it unwinds the operand stack
     /// to its height here, pushes the `Failure` and jumps to the target.
     PushHandler(u32),
@@ -181,7 +189,7 @@ pub enum Op {
 
 impl Op {
     /// How many kinds `kind` tells apart.
-    pub const KINDS: usize = 55;
+    pub const KINDS: usize = 56;
 
     /// The operation's kind as a small number below `KINDS`, with its name:
     /// the profiler counts by it (decision X4).
@@ -242,6 +250,7 @@ impl Op {
             Op::LoadField { .. } => (52, "LoadField"),
             Op::WithSlot { .. } => (53, "WithSlot"),
             Op::TakeField { .. } => (54, "TakeField"),
+            Op::JumpByTag { .. } => (55, "JumpByTag"),
         }
     }
 }
@@ -287,6 +296,10 @@ pub struct Code {
     /// too: `Op::pushes_its_expression` says which ops the VM may read it
     /// for.
     pub types: Vec<Option<u32>>,
+    /// The jump tables of the code's `JumpByTag` ops (decision AW15): per
+    /// table, for each variant tag, the index of the op to jump to, the
+    /// first arm that can match the tag past its own tag test.
+    pub tables: Vec<Vec<u32>>,
 }
 
 impl Op {
@@ -339,6 +352,7 @@ impl Code {
             spans: Vec::new(),
             constants: Vec::new(),
             types: Vec::new(),
+            tables: Vec::new(),
         }
     }
 

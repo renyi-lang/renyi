@@ -1323,3 +1323,114 @@ end
     assert_eq!(outcome, RunOutcome::Finished);
     assert_eq!(printed, "1000 3006 21\n3 3 4 40\n");
 }
+
+#[test]
+fn matches_by_a_table_enter_the_arm_by_the_tag_and_fall_through_otherwise() {
+    // a `match` with at least three arms naming a variant goes through a
+    // table by the subject's tag (decision AW15): the first arm that can
+    // match the tag, entered past its own tag test; a guard or a nested
+    // pattern that fails goes on down the arms, a binding arm is entered
+    // at its start, a tag past the table and a guarded subject fall
+    // through to the arms' own tests, an overflow inside an arm hands the
+    // frame back, a `maybe` subject and a two-arm match have no table:
+    // template code prints what the interpreter prints
+    let dir = scratch("match-table");
+    std::fs::write(format!("{dir}/greeting.txt"), "hello").expect("the data file");
+    let source = format!(
+        r#"module demo
+  purpose: Matches by a table (decision AW15): arms with and without fields, a guard that fails to a later arm of the same tag, a nested literal, a binding arm, a tag past the table, an overflow inside an arm, a maybe subject, a guarded subject and a two-arm match without a table.
+
+import std.console
+import std.filesystem exposing FileError, Path
+
+type Shape is one of
+  purpose: Shapes, the last one past the table of `area`.
+  Circle(radius: Integer)
+  Square(side: Integer)
+  Triangle(base: Integer, height: Integer)
+  Dot
+  Blank
+end
+
+function area(shape: Shape) returns Integer
+  purpose: Six arms: a guarded circle falls to the next circle arm, a square with a nested literal to the next square arm, the field-less ones, the otherwise for the tag past the table.
+
+  match shape
+    when Circle(radius) where radius is greater than 100 then return radius * 3
+    when Circle(radius) then return radius * radius * 3
+    when Square(side: 0) then return 7
+    when Square(side) then return side * side
+    when Triangle(base, height) then return base * height
+    when Dot then return 1
+    otherwise return 5
+  end
+end
+
+function wide(shape: Shape, factor: Integer) returns Integer
+  purpose: A product that leaves the machine word inside an arm entered through the table, so that the arm goes on in the interpreter.
+
+  match shape
+    when Circle(radius) then return radius * factor * factor remainder 1000
+    when Square(side) then return side * factor remainder 1000
+    when Dot then return factor remainder 1000
+    otherwise return 0
+  end
+end
+
+function two(shape: Shape) returns Integer
+  purpose: Two arms naming a variant: no table.
+
+  match shape
+    when Dot then return 10
+    when Blank then return 20
+    otherwise return 30
+  end
+end
+
+function wrapped(shape: maybe Shape) returns Integer
+  purpose: A maybe subject: nothing, then variants through some; no arm names a variant directly.
+
+  match shape
+    when nothing then return 100
+    when some(Circle(radius)) then return radius
+    when some(Dot) then return 7
+    otherwise return 9
+  end
+end
+
+function kind_number(shape: Shape) returns Integer
+  purpose: Three arms naming a variant, then a binding arm that catches the rest, which the table enters at its start.
+
+  match shape
+    when Dot then return 1
+    when Blank then return 2
+    when Circle(radius) then return 3 + radius - radius
+    when rest then return area(rest)
+  end
+end
+
+function total_area(shapes: List of Shape) returns Integer
+  purpose: The areas summed.
+
+  let mutable total be 0
+  for each shape in shapes
+    change total to total + area(shape)
+  end
+  return total
+end
+
+public function main() or fails with FileError needs console, filesystem.read("{dir}") only to console
+  purpose: Print the tallies, with a guarded shape matched through the table's fallthrough.
+
+  let shapes be [Circle(radius: 2), Circle(radius: 200), Square(side: 0), Square(side: 3), Triangle(base: 4, height: 5), Dot, Blank]
+  let secret be filesystem.read_text(Path("{dir}/greeting.txt")) otherwise fail
+  let guarded_shape be Square(side: secret.length())
+  let kinds be kind_number(Square(side: 3)) + kind_number(Triangle(base: 4, height: 5)) + kind_number(Dot) + kind_number(Blank) + kind_number(Circle(radius: 9))
+  console.print("{{total_area(shapes)}} {{wide(shape: Circle(radius: 3), factor: 10000000019)}} {{wide(shape: Dot, factor: 12)}} {{two(Dot) + two(Blank) + two(Circle(radius: 1))}} {{wrapped(nothing) + wrapped(Circle(radius: 4)) + wrapped(Dot) + wrapped(Blank)}} {{area(guarded_shape)}} {{kinds}}")
+end
+"#
+    );
+    let (outcome, printed, _) = both_ways(&source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(printed, "654 83 12 60 120 25 35\n");
+}

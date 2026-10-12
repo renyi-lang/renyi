@@ -94,6 +94,25 @@ impl Compiler<'_, '_> {
         next
     }
 
+    /// The tag of a variant pattern, as `pattern` tests it (decision AW15):
+    /// `None` for any other pattern, for a record matched like a single
+    /// variant (decision K6) and for a name the checker did not resolve,
+    /// each of which may match a variant of any tag.
+    pub fn variant_tag_of(&self, pattern: &Pattern) -> Option<usize> {
+        let Pattern::Variant { name, .. } = pattern else {
+            return None;
+        };
+        let mut found = None;
+        for target in self.targets(name.span) {
+            match target {
+                Target::Variant(_, tag) => found = Some(*tag),
+                Target::Type(_) => found = None,
+                _ => {}
+            }
+        }
+        found
+    }
+
     fn type_of(&self, ty: &Type) -> Option<usize> {
         match ty {
             Type::Named { name, .. } => self.lookup_type(&name.text),

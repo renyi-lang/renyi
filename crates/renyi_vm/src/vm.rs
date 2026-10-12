@@ -2204,6 +2204,16 @@ impl<'p> Vm<'p> {
                     let value = try_op!(self.op_concat(*count as usize));
                     self.stack.push(value);
                 }
+                Op::JumpByTag { slot, table } => {
+                    // a `match` by a table (decision AW15): a variant's tag
+                    // picks the arm; anything else, or a tag past the table,
+                    // falls through to the arms' own tests
+                    if let Value::Variant(variant) = self.stack[base + *slot as usize].plain() {
+                        if let Some(target) = code.tables[*table as usize].get(variant.tag) {
+                            pc = *target as usize;
+                        }
+                    }
+                }
                 Op::Jump(target) => {
                     let target = *target as usize;
                     if target < pc {

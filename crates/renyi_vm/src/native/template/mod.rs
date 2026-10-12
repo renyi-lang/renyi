@@ -346,6 +346,11 @@ fn block_lengths(code: &Code) -> Vec<Option<u32>> {
         if let Some(target) = target {
             starts[target.min(count)] = true;
         }
+        if let Op::JumpByTag { table, .. } = op {
+            for target in &code.tables[*table as usize] {
+                starts[(*target as usize).min(count)] = true;
+            }
+        }
         let ends = matches!(
             op,
             Op::Jump(_)
@@ -353,6 +358,7 @@ fn block_lengths(code: &Code) -> Vec<Option<u32>> {
                 | Op::JumpIfTrue(_)
                 | Op::JumpIfAbsent(_)
                 | Op::JumpIfFailure(_)
+                | Op::JumpByTag { .. }
                 | Op::IterNext { .. }
                 | Op::Return
                 | Op::ReturnNothing
@@ -1949,6 +1955,23 @@ impl Gen<'_> {
                 self.pop_condition(pc);
                 self.asm.test_rr32(Reg::Rax, Reg::Rax);
                 self.jump_to(*target as usize, pc, Some(Cond::Ne));
+            }
+            Op::JumpByTag { slot, table } => {
+                // a `match` by a table (decision AW15): the slot's kind read,
+                // a variant's tag compared with each entry of the table in
+                // turn; anything else falls through to the arms' own tests
+                let at = self.slot(*slot as usize);
+                let through = self.asm.label();
+                self.asm.cmp_m8i(at.0, at.1, TAG_VARIANT);
+                self.asm.jcc(Cond::Ne, through);
+                self.asm.mov_rm(SCRATCH2, at.0, at.1 + PAYLOAD);
+                self.asm.mov_rm(SCRATCH, SCRATCH2, RECORD_TAG);
+                let targets = self.code.tables[*table as usize].clone();
+                for (tag, target) in targets.iter().enumerate() {
+                    self.asm.cmp_ri(SCRATCH, tag as i32);
+                    self.jump_to(*target as usize, pc, Some(Cond::E));
+                }
+                self.asm.bind(through);
             }
             Op::JumpIfAbsent(target) | Op::JumpIfFailure(target) => {
                 let at = self.operand(self.depth - 1);

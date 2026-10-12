@@ -7671,3 +7671,87 @@ check row 2,889.9 to 1,930.3 (-33.2%), since the study's binary 3,085.3
 (-37.4%). Next in AW1's order: the last item of stage 4, `match` by a
 table (4c), then the checker's own cuts between the stages, stages 5
 and 6.
+
+**AW15. Stage 4c of the new backend: `match` by a table.** The last
+item of stage 4 in AW1's order, on 2026-10-12, measured as AW1
+prescribes against stage 4b's binary (8eed964). A `match` tested its
+arms in turn: for every arm whose pattern names a variant, the subject
+loaded, its tag tested (`IsVariant`, in place since AU49) and a jump
+past the arm when it did not fit, so that a value of the last of n
+variants paid n tests, each a load, a test and a branch, and the
+checker's and the parser's matches over the kinds of expressions, types
+and tokens paid most of theirs on the arms before the right one. The
+stage: (1) a new op, `JumpByTag { slot, table }`, with the jump tables
+of a code object beside its ops (`Code.tables`): the op peeks at the
+frame slot and, for a variant whose tag is below the table's length,
+jumps to the table's entry for the tag; anything else, a guarded value,
+a `Nothing`, a failure, a tag past the table, falls through to the
+arms' own tests, which stay as they were. (2) Both emitters emit it
+after the subject's store when at least three arms name a variant
+(`TABLE_ARMS` in `compile/expr.rs`, the same number in
+`compiler/emit.ry`), the table filled once the arms' positions are
+known (`match_table` in both): for every tag up to the highest an arm
+names, the first arm in order that can match it, entered past its own
+tag test (three ops: the load, the test, the jump) when it names the
+tag and at its start when its pattern is anything else (a binding, a
+typed name, a literal, a `some`, a record matched like a single
+variant: any of them may fit), else the `otherwise` or the crash after
+the arms; a guard or a nested pattern that fails goes on down the arms
+as before. The compile judge holds the two emitters equal on the tables
+of every program of the corpus, the suite and `compiler/`. (3) The
+interpreter reads the slot's plain value; the Cranelift tier reads the
+slot's kind and the block's tag in place and enters the arm's block
+through a jump table (`br_table`), the edges coerced as a branch's are,
+the fall-through the block after; the template tier compares the tag
+with each entry in turn (`cmp`, `je`), the entries block starts of its
+counting. The analysis follows the table's targets among the flows
+(`native/infer.rs`, both passes), as do the last reads (`liveness.rs`)
+and the inliner, which appends an expanded callee's tables to the
+caller's with the targets shifted. (4) The bytecode file is format 10,
+the binary encoding 6 and the image format 23. The tests: the corpus,
+the conformance suite on both tiers, the four judges, and a new test in
+`tests/native.rs` and `tests/template.rs`,
+`matches_by_a_table_enter_the_arm_by_the_tag_and_fall_through_otherwise`:
+six arms with a guard that fails to a later arm of the same tag, a
+nested literal that fails to the next arm, field-less arms, a tag past
+the table, an overflow inside an arm entered through the table (the
+frame handed back), a binding arm entered at its start, a `maybe`
+subject and a two-arm match without a table, and a guarded subject that
+falls through, on machine code against the interpreter. What the
+measure found on the check row: the generated code 1,000.9 to 962.7
+million, the comparisons 34.5 to 34.5, the counts and drops 152.2 to
+152.2, the glue of `Value` 1,191,936 to 1,191,936 calls (10.2 to 10.2
+million self), `mi_malloc` 1,740,421 to 1,740,842. The measure in full
+(callgrind under WSL on the release build for Linux, the images built
+under `valgrind --tool=none`, against stage 4b's binary measured the
+same way in AW14, the reference AU34's 44782aa): the check row 1,930.3
+to 1,896.4 million instructions (-1.8%), the parse row 827.6 to 822.8
+(-0.6%), the compile row 3,156.9 to 3,097.6 (-1.9%); the ratios by
+instructions against the reference's rows (441.6, 284.7 and 365.6)
+4.29, 2.89 and 8.47 against the gate's 3 (4.37, 2.91 and 8.63 after
+AW14); the Rust front end's own rows within 0.2% of stage 4b's (`check`
+173.1, `parse --json` 246.7, `compile` 447.2). The check row by
+category, AW14's table against this one, in millions: the generated
+code 1,000.9 to 962.7, the comparisons 34.5 to 34.5, the counts and
+drops 152.2 to 152.2, mimalloc 108.8 to 108.7, the hashing and equality
+47.4 to 47.7, the natives 297.2 to 297.2, the VM's own 88.9 to 88.9,
+the records 46.0 to 46.0, the texts and copies 96.7 to 96.8, the calls
+through the VM's path 6.9 to 6.9, the helpers' glue 3.7 to 3.7, the
+load 46.5 to 50.4, the iterators 0.0 to 0.0. AT1's rows on the frozen
+self-check (`tools/measure_size.sh` under WSL, stage 4b's binary
+against this one): the synchronous JIT row 5,224.1 to 5,156.1 million
+instructions (-1.3%) and 7,481.6 to 7,395.6 by the estimate (-1.1%),
+its indirect branches 10.6 to 10.5 million (-0.7%) and its
+mispredictions 31.7 to 30.4, the image row 3,401.3 to 3,371.1 (-0.9%)
+and 5,103.8 to 4,998.4 by the estimate (-2.1%), the cached run 3,481.0
+to 3,451.4 (-0.9%), the interpreter 11,217.7 to 11,061.4 (-1.4%); the
+image 9,742,192 to 9,770,848 bytes (+0.3%). The four benchmarks and
+hello by user-space instructions (`perf stat`, the JIT synchronous, in
+millions): `primes` 265.9 to 265.9 (unchanged), `strings` 442.9 to
+442.9 (unchanged), `records` 160.9 to 160.9 (unchanged),
+`json_round_trip` 843.9 to 843.9 (unchanged), `hello` 5.44 to 5.44
+(unchanged). The four judges byte-equal, the conformance suite 55 of 55
+on both tiers, the template tier's own tests with the tier forced, 405
+tests. Since stage 0 the check row 2,889.9 to 1,896.4 (-34.4%), since
+the study's binary 3,085.3 (-38.5%). Stage 4 is done. Next in AW1's
+order: the checker's own cuts between the stages, then stages 5 and 6.
