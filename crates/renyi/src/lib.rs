@@ -646,7 +646,8 @@ fn report_compile_error(error: CompileError) -> ExitCode {
 
 /// A program as `run`, `record`, `test` and `build --cache` take it:
 /// loaded from an image or a bytecode file, or compiled from its sources
-/// through the cache keyed by them.
+/// through the cache keyed by them; prepared, the last reads of its slots
+/// as moves (decisions AU17 and AW17).
 struct Loaded {
     program: renyi_vm::Program,
     hashed: Hashed,
@@ -668,7 +669,10 @@ struct Loaded {
 fn compile_cached(path: &str, no_cache: bool, manifest: bool) -> Result<Loaded, ExitCode> {
     let eligible = !no_cache && !image::is_image(path) && !file::is_bytecode(path);
     let Some(directory) = eligible.then(cache::directory).flatten() else {
-        let (program, hashed, image) = compile_with_sources(path)?;
+        let (mut program, hashed, image) = compile_with_sources(path)?;
+        // the last reads of the slots as moves (decision AU17), once here
+        // for every path (decision AW17): an image's program comes so
+        renyi_vm::liveness::prepare(&mut program);
         return Ok(Loaded {
             program,
             hashed,
@@ -680,7 +684,9 @@ fn compile_cached(path: &str, no_cache: bool, manifest: bool) -> Result<Loaded, 
     if let Some(found) = entry.lookup(manifest) {
         // an encoding this binary cannot read is a miss, never a failure:
         // the program is compiled again below and the entry written over
-        if let Ok(program) = renyi_vm::binary::decode(&found.encoding) {
+        if let Ok(mut program) = renyi_vm::binary::decode(&found.encoding) {
+            // stored prepared (decision AW17), so nothing to do here
+            renyi_vm::liveness::prepare(&mut program);
             print!("{}", found.warnings);
             if cache::reporting() {
                 eprintln!(
@@ -704,11 +710,14 @@ fn compile_cached(path: &str, no_cache: bool, manifest: bool) -> Result<Loaded, 
         });
         Ok((compiled, kept))
     });
-    let (compiled, kept) = match compiled {
+    let (mut compiled, kept) = match compiled {
         Ok(compiled) => compiled,
         Err(error) => return Err(report_compile_error(error)),
     };
     print!("{}", compiled.diagnostics);
+    // the program as the VM runs it, the last reads of the slots as moves
+    // (decision AU17), stored so and run so (decision AW17)
+    renyi_vm::liveness::prepare(&mut compiled.program);
     let sources = cache::Sources {
         reads,
         warnings: compiled.diagnostics,

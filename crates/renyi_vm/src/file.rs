@@ -876,6 +876,7 @@ fn read_program(top: &Fields) -> Read<Program> {
         field_sites,
         specials,
         date,
+        prepared: false,
     })
 }
 

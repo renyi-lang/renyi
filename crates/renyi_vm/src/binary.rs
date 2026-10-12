@@ -29,9 +29,10 @@ use crate::types::{FieldMeta, TypeMeta, TypeShape, Types, VariantMeta};
 use crate::value::Value;
 
 /// The version of the encoding, its first integer; 5 added the read-only
-/// flags of a code object's parameters (decision AW5), and 6 the jump
-/// tables of a code object (decision AW15).
-pub const FORMAT: u64 = 6;
+/// flags of a code object's parameters (decision AW5), 6 the jump tables
+/// of a code object (decision AW15), and 7 the flag that says the last
+/// reads of the slots are moves already (decision AW17).
+pub const FORMAT: u64 = 7;
 
 type Read<T> = Result<T, String>;
 
@@ -449,6 +450,7 @@ fn write_code(out: &mut Writer, code: &Code) {
 pub fn encode(program: &Program) -> Vec<u8> {
     let mut out = Writer::default();
     out.uint(FORMAT);
+    out.bool(program.prepared);
     out.usize(program.module_names.len());
     for (name, source) in program.module_names.iter().zip(&program.sources) {
         out.text(name);
@@ -954,6 +956,7 @@ pub fn decode(bytes: &[u8]) -> Read<Program> {
             "the program is encoding {format}; this VM reads encoding {FORMAT}"
         ));
     }
+    let prepared = input.bool()?;
     let modules: Vec<(String, Option<SourceLines>)> = input.list(|input| {
         Ok((
             input.text()?,
@@ -1056,6 +1059,7 @@ pub fn decode(bytes: &[u8]) -> Read<Program> {
         field_sites,
         specials,
         date,
+        prepared,
     };
     crate::file::check(&program)?;
     Ok(program)
@@ -1104,7 +1108,8 @@ mod tests {
         assert_eq!(refusal(&[]), "the program is truncated");
         let other = (FORMAT + 1) as u8;
         assert!(refusal(&[other]).contains(&format!("encoding {other}")));
-        // the format, then a count of modules past the end
-        assert_eq!(refusal(&[FORMAT as u8, 9]), "the program is truncated");
+        // the format, the flag, then a count of modules past the end
+        assert_eq!(refusal(&[FORMAT as u8, 0, 9]), "the program is truncated");
+        assert!(refusal(&[FORMAT as u8, 7]).contains("7 for a boolean"));
     }
 }

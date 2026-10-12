@@ -7860,3 +7860,72 @@ stat`, the JIT synchronous, in millions): `primes` 265.9 to 266.0
 the conformance suite 55 of 55 on both tiers, 406 tests. Since stage 0
 the check row 2,889.9 to 1,586.1 (-45.1%), since the study's binary
 3,085.3 (-48.6%). Next in AW1's order: stages 5 and 6.
+
+**AW17. Stage 5a of the new backend: the moves of AU17 written in the
+image and in the cache keyed by the sources.** The first half of stage
+5 of AW1's order (the load), on 2026-10-12, measured as AW1 prescribes
+against the cuts' binary (c7b8f6c). AU17 ran its liveness pass on a
+copy of the program before every run, so that the bytecode file, the
+image's program and the cache's key stayed what the emitters wrote: on
+the checker's image run the copy and the pass cost 37.5 million
+instructions, 2.4% of the row (`liveness::prepared` inclusive in the
+cuts' profile), at every run of a program whose machine code was
+compiled from the prepared program already. Now the pass runs once,
+where a program enters the VM, and marks it: `Program::prepared`, a
+flag the binary encoding keeps (encoding 7, the flag after the format)
+and the bytecode file does not (the `.ryc` stays the emitters' program,
+held equal by the judges); `liveness::prepare` applies the moves in
+place and sets the flag, and `liveness::prepared` answers the program
+itself (`Cow::Borrowed`) when it is prepared and a prepared copy
+otherwise, which the runner, the sandbox and `image::build` take.
+`renyi build` writes the prepared program in the image, so that a run
+from an image, a file's or the cache's, skips the pass; the binary's
+`compile_cached` prepares the program on every path (an image's comes
+prepared; a bytecode file's and a fresh compile's are prepared there)
+and stores the prepared encoding in the cache keyed by the sources, so
+that a run from that cache skips it too and the image cache's entry,
+named from that encoding, holds the image's program byte for byte as
+before. This reverses the part of AU17 that kept the image's program
+and the cache's key as the emitters wrote them; the bytecode file keeps
+that promise, and `tests/build.rs` now holds the image's program to the
+bytecode file's prepared by the pass. An image built from a program
+that comes prepared (`build --cache`) carries in `code_hash` the hash
+of the prepared rendering, which nothing reads: a run through the cache
+takes its hash from the sources, and `build` from a file prepares a
+copy and hashes the file's program. A test in `tests/native.rs` holds
+the pass to once: a prepared program is borrowed, a second pass over it
+finds nothing, and the flag survives the encoding. The measure in full
+(callgrind under WSL on the release build for Linux, the images built
+under `valgrind --tool=none`, against the cuts' binary measured the
+same way in AW16, the reference AU34's 44782aa): the check row 1,586.1
+to 1,547.9 million instructions (-2.4%), the parse row 711.9 to 701.6
+(-1.4%), the compile row 2,794.9 to 2,743.6 (-1.8%); the ratios by
+instructions against the reference's rows (441.6, 284.7 and 365.6)
+3.51, 2.46 and 7.50 against the gate's 3 (3.59, 2.50 and 7.64 after
+AW16); the Rust front end's own rows within 0.1% of the cuts' (`check`
+173.8, `parse --json` 246.4, `compile` 450.0). The check row by
+category, AW16's table against this one, in millions: the load 50.4 to
+26.1, the generated code 800.8 to 800.8, the comparisons 6.5 to 6.5,
+the counts and drops 131.6 to 131.0, mimalloc 87.9 to 79.8, the hashing
+and equality 35.2 to 35.4, the natives 255.8 to 255.8, the VM's own
+79.5 to 79.5, the records 46.1 to 46.1, the texts and copies 79.5 to
+74.4, the calls through the VM's path 8.5 to 8.5, the helpers' glue 3.6
+to 3.6, the iterators 0.0 to 0.0. AT1's rows on the frozen self-check
+(`tools/measure_size.sh` under WSL, the cuts' binary against this one;
+the tiers are the same, the pass skipped on the image row and on the
+cached run, the self-check's program from its sources prepared once
+without the copy): the synchronous JIT row 5,160.2 to 5,157.5 million
+instructions (-0.1%) and 7,381.0 to 7,332.3 by the estimate (-0.7%),
+its indirect branches 10.5 to 10.6 million (+1.2%) and its
+mispredictions 30.2 to 30.6, the image row 3,374.3 to 3,328.7 (-1.4%)
+and 5,043.5 to 4,967.1 by the estimate (-1.5%), the cached run 3,464.0
+to 3,408.8 (-1.6%), the interpreter 11,068.3 to 11,065.9 (within
+0.05%); the image 9,770,928 to 9,770,928 bytes (unchanged). The four
+benchmarks and hello by user-space instructions (`perf stat`, the JIT
+synchronous, in millions): `primes` 266.0 to 265.8 (-0.1%), `strings`
+443.0 to 442.6 (-0.1%), `records` 160.9 to 160.7 (-0.1%),
+`json_round_trip` 843.9 to 843.1 (-0.1%), `hello` 5.47 to 5.20 (-4.9%).
+The four judges byte-equal, the conformance suite 55 of 55 on both
+tiers, 407 tests. Since stage 0 the check row 2,889.9 to 1,547.9
+(-46.4%), since the study's binary 3,085.3 (-49.8%). Next in AW1's
+order: stage 5b, the code objects decoded on demand, then stage 6.

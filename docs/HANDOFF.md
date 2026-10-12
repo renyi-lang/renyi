@@ -81,7 +81,12 @@ looked-at token and updated in its slot, the lexer's previous token as
 two Integers and the text of a run as the primitive `slice_text`, the
 resolver's loop, the checker's lists updated in the slot; the check row
 1,896.4 to 1,586.1, -16.4%; the ratio 4.29
-to 3.59). Next are stages 5 and 6 (the start-here item 1).
+to 3.59); and stage 5a built and measured (decision AW17: the moves of
+AU17 written in the image and in the cache keyed by the sources, the
+pass run once where a program enters the VM; the check row
+1,586.1 to 1,547.9, -2.4%; the ratio 3.59 to
+3.51). Next are stage 5b (the code objects decoded on demand)
+and stage 6 (the start-here item 1).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -401,9 +406,11 @@ and push there directly.
    variants indexed, the parser's cursor with its token, the lexer's
    previous token as two Integers and `slice_text`, the resolver's
    loop, the lists updated in the slot; the check row to 1,586.1,
-   -16.4%; the ratio to 3.59).
-   Next are stages
-   5 and 6 last. Each stage: the code, the gates of item 3, the measure
+   -16.4%; the ratio to 3.59); and stage 5a (decision AW17, "Stage 5a
+   as built": the moves written in the image and the cache; the check
+   row to 1,547.9, -2.4%; the ratio to 3.51).
+   Next are stage 5b and stage
+   6 last. Each stage: the code, the gates of item 3, the measure
    (AU58's: the checker's image run under callgrind with the study's
    table by category beside it, AT1's rows, the benchmarks by
    instructions), then its decision entry with the table and the
@@ -438,8 +445,9 @@ and push there directly.
    (stage 4a's first build, the field-less types alone) and
    `renyi_stage4a_v2` (cf06592, stage 4a's commit) and
    `renyi_stage4b` (8eed964, stage 4b's commit), `renyi_stage4c`
-   (805ea3a, stage 4c's commit) and `renyi_cuts` (the commit of
-   the checker's own cuts, the base of the next measure), each with its
+   (805ea3a, stage 4c's commit), `renyi_cuts` (c7b8f6c, the
+   checker's own cuts' commit) and `renyi_5a` (the commit of stage 5a,
+   the base of the next measure), each with its
    `study/` directory. The
    road is months long (AU58); the gate is decided on the measure at
    the end.
@@ -4909,7 +4917,28 @@ the natives 297.2 to 255.8, the texts and copies
 96.8 to 79.5, the counts and drops 152.2 to
 131.6; AT1's synchronous estimate 7,395.6 to
 7,381.0 (-0.2%). The table is in AW16. Next in AW1's
-order: stages 5 and 6.
+order: stage 5a (the next paragraph), stage 5b, stage 6.
+
+**Stage 5a as built (decision AW17, 2026-10-12).** The first half of
+stage 5 of AW1's order, the load: AU17's pass ran on a copy of the
+program at every run (37.5 million instructions on the checker's image
+run, 2.4%); now `liveness::prepare` runs it once where a program enters
+the VM and marks it (`Program::prepared`, kept by the binary encoding,
+encoding 7, not by the bytecode file), `liveness::prepared` borrows a
+prepared program (`Cow`) and copies another, `image::build` encodes the
+prepared program in the image, `compile_cached` prepares on every path
+and stores the prepared encoding in the cache keyed by the sources, and
+the runner and the sandbox take a prepared program as it is.
+`tests/build.rs` holds the image's program to the bytecode file's
+prepared; a test in `tests/native.rs` holds the pass to once. The
+measure: the check row 1,586.1 to 1,547.9 (-2.4%), the
+ratios by instructions 3.51, 2.46 and
+7.50; the load 50.4 to 26.1 million; AT1's
+synchronous estimate 7,381.0 to 7,332.3
+(-0.7%), the image row 3,374.3 to 3,328.7
+(-1.4%), the cached run 3,464.0 to 3,408.8
+(-1.6%). The table is in AW17. Next in AW1's order: stage 5b
+(the code objects decoded on demand), then stage 6.
 
 ## The representation items: the design study (session 11)
 
@@ -6629,6 +6658,14 @@ holds between calls.
   and `crates/renyi_vm/src/natives/prelude.rs` (`list_slice_text`,
   `list_slice_text_typed`), its test in `tests/semantics.rs`; the
   measure in AW16 and in "The checker's own cuts as built".
+- Stage 5a (decision AW17, the commit after c7b8f6c):
+  `Program::prepared` in `compile/mod.rs`, `file.rs` and `binary.rs`
+  (encoding 7); `prepare` and `prepared` as a `Cow` in `liveness.rs`;
+  the runner's two uses in `runner.rs`, `image::build` (the prepared
+  program encoded) in `native/image.rs`, the sandbox in
+  `crates/renyi/src/sandbox.rs`, `compile_cached` in
+  `crates/renyi/src/lib.rs`; the tests in `tests/native.rs` and
+  `tests/build.rs`; the measure in AW17 and in "Stage 5a as built".
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

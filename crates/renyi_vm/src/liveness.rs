@@ -2,9 +2,11 @@
 //! that no path reads again before the slot is written or the frame ends
 //! becomes a `LoadMove`, so that the value reaches its consumer held once
 //! and an update in place (decisions O1 and AU11) finds it so. The VM does
-//! this to a copy of the program before it runs it or builds its image:
-//! the bytecode file and the image's program stay what the emitters wrote,
-//! as the machine code is the VM's own business (decision AG1).
+//! this once, where a program enters it (`prepare`): the bytecode file
+//! stays what the emitters wrote, as the machine code is the VM's own
+//! business (decision AG1), while an image and the cache keyed by the
+//! sources carry the prepared program with its flag (`Program::prepared`),
+//! so that a run from either skips the pass (decision AW17).
 //!
 //! The liveness is the usual backward one over the ops: a slot is live
 //! out of an op when some successor reads it before writing it. The
@@ -15,16 +17,32 @@
 //! slots as they are, so what the fallback reads stays live through the
 //! region, whichever op fails.
 
+use std::borrow::Cow;
+
 use crate::bytecode::{Code, Op};
 use crate::compile::Program;
 
-/// The program with the last reads of its slots as moves.
-pub fn prepared(program: &Program) -> Program {
-    let mut prepared = program.clone();
-    for code in &mut prepared.codes {
+/// The program with the last reads of its slots as moves: the program
+/// itself when it is prepared already, else a prepared copy.
+pub fn prepared(program: &Program) -> Cow<'_, Program> {
+    if program.prepared {
+        return Cow::Borrowed(program);
+    }
+    let mut copy = program.clone();
+    prepare(&mut copy);
+    Cow::Owned(copy)
+}
+
+/// The last reads of the program's slots made moves in place and the
+/// program marked, once: a prepared program is left as it is.
+pub fn prepare(program: &mut Program) {
+    if program.prepared {
+        return;
+    }
+    for code in &mut program.codes {
         move_last_reads(code);
     }
-    prepared
+    program.prepared = true;
 }
 
 /// Every `Load` of the code that is the last read of its slot on every

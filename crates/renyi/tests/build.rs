@@ -282,8 +282,17 @@ fn the_image_carries_the_program_in_binary_with_the_bytecode_hash() {
         image.code_hash,
         renyi_vm::recording::sha256_of(rendered.as_bytes())
     );
+    // the image's program is the bytecode file's with the last reads of
+    // its slots as moves (decisions AU17 and AW17), marked so, which a
+    // run from the image takes as it is
     let program = renyi_vm::binary::decode(&image.program).expect("the image's program");
-    assert_eq!(renyi_vm::file::render(&program), rendered);
+    assert!(program.prepared, "the image's program comes prepared");
+    let from_file = renyi_vm::file::load(&rendered).expect("the program");
+    let expected = renyi_vm::liveness::prepared(&from_file);
+    assert_eq!(
+        renyi_vm::file::render(&program),
+        renyi_vm::file::render(&expected)
+    );
     // the code section lies at the alignment that maps from the file,
     // and the file reads back as it was written
     assert_eq!(

@@ -135,9 +135,10 @@ pub fn build(
 ) -> Result<Image, String> {
     let tables = crate::vm::tables_of(program, registry);
     // the machine code of the program as the VM runs it, with the last
-    // reads of the slots as moves (decision AU17); the image carries the
-    // program as the emitters wrote it
+    // reads of the slots as moves (decision AU17), which the image carries
+    // too, so that a run from it skips the pass (decision AW17)
     let prepared = crate::liveness::prepared(program);
+    let prepared: &Program = &prepared;
     // the module constants a pure computation gives, built now on the
     // interpreter, so that a small Integer among them is a literal in the
     // image's code (decision AW2: the parser's `is_symbol(code:
@@ -145,9 +146,9 @@ pub fn build(
     // values go with this VM, and the run builds its own on the first
     // read as before, the same values by the purity; a constant whose
     // build fails is left to the run, which crashes on its first read
-    let evaluable = pure_constants(&prepared, &tables.calls);
+    let evaluable = pure_constants(prepared, &tables.calls);
     let mut jit = Jit::new(
-        &prepared,
+        prepared,
         Some(opt_level.unwrap_or("speed")),
         tables.calls,
         &tables.in_place,
@@ -156,7 +157,7 @@ pub fn build(
     if !evaluable.is_empty() {
         let fresh = || {
             Vm::new(
-                &prepared,
+                prepared,
                 Options {
                     interpret: true,
                     registry: registry.clone(),
@@ -174,7 +175,7 @@ pub fn build(
             }
         }
     }
-    let compiled = jit.compile_everything(&prepared);
+    let compiled = jit.compile_everything(prepared);
     // the section: every body and trampoline in order, sixteen-aligned
     let mut section = Vec::new();
     let mut place = |bytes: &[u8]| -> Placement {
@@ -207,7 +208,7 @@ pub fn build(
             opt_level: jit.opt_level().to_string(),
         },
         code_hash: crate::recording::sha256_of(crate::file::render(program).as_bytes()),
-        program: crate::binary::encode(program),
+        program: crate::binary::encode(prepared),
         codes,
         section,
         section_offset: 0,

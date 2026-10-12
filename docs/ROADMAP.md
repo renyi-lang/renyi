@@ -392,8 +392,13 @@ where one decided, the status. The dates are those of the decisions.
     the text of a run as the primitive `slice_text`, the resolver's
     loop, the checker's lists updated in the slot; the check row
     1,896.4 to 1,586.1 million (-16.4%); the ratio by
-    instructions 4.29 to 3.59. Stages 5 and 6 are
-    next.
+    instructions 4.29 to 3.59. Stage 5a done (session 14,
+    2026-10-12, decision AW17): the moves of AU17 written in the image
+    and in the cache keyed by the sources, the pass run once where a
+    program enters the VM; the check row 1,586.1 to 1,547.9
+    million (-2.4%); the ratio by instructions 3.59 to
+    3.51. Stage 5b (the code objects decoded on demand) and
+    stage 6 are next.
 
 30. **The icon and the wordmark** (session 13, 2026-10-11, done;
     decision AV1). The owner asked for an icon that does not read as the
@@ -434,8 +439,8 @@ state of each line.
   the four benchmarks; every stage's numbers are in its decision entry.
   Stage 29, a new backend, has its design study (AU58, AW1) and its
   stages 0 and 1, the character tables with the hasher, stage 2 and
-  stages 3 and 4 and the checker's own cuts between them (AW2 to
-  AW16); stages 5 and 6 are next.
+  stages 3 and 4, the checker's own cuts between them and stage 5a
+  (AW2 to AW17); stage 5b and stage 6 are next.
 - **E. Packages, the FFI and Python**: stages 15, 18. Done; candidates
   not decided: record types from dataclasses in the binder, a deadline
   per Python call, one worker across a test run.
@@ -489,13 +494,15 @@ which completes stage 4, and the checker's own cuts between the
 stages are done (AW16, 2026-10-12: the variants indexed, the parser's
 cursor with its token, the lexer's previous token as two Integers and
 `slice_text`, the resolver's loop, the lists updated in the slot; the
-check row to 1,586.1, -16.4%, the ratio to 3.59), then
-stages 5 and
+check row to 1,586.1, -16.4%, the ratio to 3.59), and stage 5a is
+done (AW17, 2026-10-12: the moves of AU17 written in the image and the
+cache, the check row to 1,547.9, -2.4%, the ratio to
+3.51), then stage 5b and stage
 6 last; each measured by the checker's run under callgrind with the
 table by category, the ratio of AU36 (iii), AT1's rows where the tiers
 change, the four judges and the conformance suite on both tiers, kept
 by AT1's rule, toward the gate of AU35 (ii) at 3 times on the check
-row (3.59 by instructions after the checker's own cuts); then, when the ratio is
+row (3.51 by instructions after stage 5a); then, when the ratio is
 within 3, the switch of the binary's front end to the compiler written
 in Renyi. Candidates beside it, none decided: the emitter's own round
 for the compile row, the Rust front end's name sets as bits, the C

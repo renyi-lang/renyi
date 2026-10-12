@@ -215,6 +215,11 @@ pub struct Program {
     /// `std.time.Date`, whose construction also checks the day against the
     /// month (library sketch, section 4).
     pub date: Option<TypeId>,
+    /// Whether the last reads of the slots are moves already (decision
+    /// AU17): set by `liveness::prepare` and kept by the binary encoding,
+    /// so that a program from an image or from the cache keyed by the
+    /// sources is not prepared again (decision AW17).
+    pub prepared: bool,
 }
 
 /// The declared `equals`, `compare`, `to_text` and `to_list` of a type,
@@ -388,6 +393,7 @@ pub fn compile_project(checked: &CheckedProject, files: &[SourceFile]) -> Progra
         field_sites: 0,
         specials: Vec::new(),
         date: None,
+        prepared: false,
     };
     let single = |ty: TypeId, name: &str| -> Option<FunctionId> {
         match world.method_index.get(&(ty, name.to_string()))?.as_slice() {

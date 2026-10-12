@@ -1092,7 +1092,8 @@ public function main() needs console
   console.print(digits_in(text: "a1b22c333-", marker: "-"))
 end
 "#;
-    let prepared = renyi_vm::liveness::prepared(&compile(source));
+    let compiled = compile(source);
+    let prepared = renyi_vm::liveness::prepared(&compiled);
     let code = prepared
         .codes
         .iter()
@@ -1117,6 +1118,74 @@ end
     let (outcome, printed) = both_ways(source);
     assert_eq!(outcome, RunOutcome::Finished);
     assert_eq!(printed, "6 1 -\n");
+}
+
+#[test]
+fn a_program_is_prepared_once_and_a_prepared_one_is_borrowed() {
+    // decision AW17: the pass runs where a program enters the VM and marks
+    // it, so that the runner, the image and the cache do not run it again;
+    // the mark survives the binary encoding, and a second pass over a
+    // program unmarked finds nothing left to move
+    let source = r#"module demo
+  purpose: Loop variables read for the last time (decision AU17).
+
+import std.console
+
+function digits_in(text: Text, marker: Text) returns Text
+  purpose: Count the digits and the markers among the glyphs, and keep the last glyph through an alias.
+
+  let mutable found be 0
+  let mutable marked be 0
+  let mutable last be ""
+  for each glyph in text.characters()
+    let alias be glyph
+    let twin be glyph
+    if twin is marker then change marked to marked + 1 end
+    if "0123456789".contains(glyph) then change found to found + 1 end
+    change last to alias
+  end
+  return "{found} {marked} {last}"
+end
+
+public function main() needs console
+  purpose: Print the counts.
+
+  console.print(digits_in(text: "a1b22c333-", marker: "-"))
+end
+"#;
+    let compiled = compile(source);
+    assert!(!compiled.prepared, "a compiled program is not prepared yet");
+    let once = renyi_vm::liveness::prepared(&compiled);
+    assert!(matches!(once, std::borrow::Cow::Owned(_)));
+    assert!(once.prepared);
+    let moves = |program: &Program| -> usize {
+        program
+            .codes
+            .iter()
+            .flat_map(|code| code.ops.iter())
+            .filter(|op| matches!(op, Op::LoadMove(_)))
+            .count()
+    };
+    assert!(
+        moves(&once) > moves(&compiled),
+        "the pass moved some last read"
+    );
+    let twice = renyi_vm::liveness::prepared(&once);
+    assert!(matches!(twice, std::borrow::Cow::Borrowed(_)));
+    let mut again = once.clone().into_owned();
+    again.prepared = false;
+    renyi_vm::liveness::prepare(&mut again);
+    assert!(again.prepared);
+    for (before, after) in once.codes.iter().zip(&again.codes) {
+        assert_eq!(format!("{:?}", before.ops), format!("{:?}", after.ops));
+    }
+    let encoded = renyi_vm::binary::encode(&once);
+    let decoded = renyi_vm::binary::decode(&encoded).expect("the program decodes");
+    assert!(decoded.prepared, "the encoding keeps the mark");
+    assert_eq!(moves(&decoded), moves(&once));
+    let unprepared = renyi_vm::binary::decode(&renyi_vm::binary::encode(&compiled))
+        .expect("the program decodes");
+    assert!(!unprepared.prepared);
 }
 
 #[test]

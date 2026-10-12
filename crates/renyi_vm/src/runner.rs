@@ -123,7 +123,9 @@ fn run_measured(program: &Program, mut options: Options) -> (Run, Option<(String
         digest
     });
     // the last reads of the slots as moves (decision AU17), on a copy
-    let program = &crate::liveness::prepared(program);
+    // unless the program comes prepared (decision AW17)
+    let prepared = crate::liveness::prepared(program);
+    let program: &Program = &prepared;
     let mut vm = Vm::new(program, options);
     let stopped = |message: String| {
         (
@@ -355,7 +357,9 @@ pub fn run_tests(program: &Program, mut options: Options) -> TestReport {
     options.replay = None;
     options.record = false;
     // the last reads of the slots as moves (decision AU17), on a copy
-    let program = &crate::liveness::prepared(program);
+    // unless the program comes prepared (decision AW17)
+    let prepared = crate::liveness::prepared(program);
+    let program: &Program = &prepared;
     let mut vm = Vm::new(program, options);
     let mut items: Vec<(usize, usize, Item)> = Vec::new();
     for (index, example) in program.examples.iter().enumerate() {
