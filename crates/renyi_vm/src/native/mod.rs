@@ -288,6 +288,9 @@ pub struct Jit {
     /// Whether the image's code section was mapped from its file
     /// (decision AT5) rather than copied.
     pub mapped: bool,
+    /// Why it was copied when the file was there to map: the system's
+    /// refusal, for the report.
+    pub unmapped: Option<String>,
     /// Per code object, its deopt points, numbered as the generated code
     /// names them.
     pub deopts: Vec<Vec<DeoptPoint>>,
@@ -552,6 +555,7 @@ impl Jit {
             opt_level: level,
             loaded: 0,
             mapped: false,
+            unmapped: None,
             deopts: vec![Vec::new(); program.codes.len()],
             compiled: 0,
             skipped: 0,
@@ -662,10 +666,18 @@ impl Jit {
         // compiled code is when the image is in memory or the system
         // refuses an executable mapping of the file
         let mapped = match &image.mapped {
-            Some(mapped) => self
-                .code
-                .map_section(&mapped.file, mapped.offset, image.section_len)
-                .ok(),
+            Some(mapped) => {
+                match self
+                    .code
+                    .map_section(&mapped.file, mapped.offset, image.section_len)
+                {
+                    Ok(base) => Some(base),
+                    Err(error) => {
+                        self.unmapped = Some(error);
+                        None
+                    }
+                }
+            }
             None => None,
         };
         let base = match mapped {
@@ -756,10 +768,12 @@ impl Jit {
             format!(
                 "{} code objects loaded from the image ({}); ",
                 self.loaded,
-                if self.mapped {
-                    "the section mapped from the file"
-                } else {
-                    "the section copied"
+                match (self.mapped, &self.unmapped) {
+                    (true, _) => "the section mapped from the file".to_string(),
+                    (false, Some(error)) => {
+                        format!("the section copied, the mapping refused: {error}")
+                    }
+                    (false, None) => "the section copied".to_string(),
                 }
             )
         } else {

@@ -11,7 +11,7 @@ use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 
-use renyi_vm::native::image::SECTION_ALIGN;
+use renyi_vm::native::image::{open_file, SECTION_ALIGN};
 
 /// The last eight bytes of a self-contained executable.
 pub const TRAILER_MAGIC: &[u8; 8] = b"RENYIEXE";
@@ -24,7 +24,7 @@ pub const TRAILER_LEN: u64 = 24;
 /// trailer costs one open and one read of its last bytes.
 pub fn embedded_image() -> Option<(File, u64, usize)> {
     let path = std::env::current_exe().ok()?;
-    let mut file = File::open(&path).ok()?;
+    let mut file = open_file(&path).ok()?;
     let len = file.metadata().ok()?.len();
     if len < TRAILER_LEN {
         return None;

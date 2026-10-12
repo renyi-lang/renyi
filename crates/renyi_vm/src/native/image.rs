@@ -211,6 +211,24 @@ pub struct ImageCode {
     pub regions: Vec<Region>,
 }
 
+/// An image's file opened for reading and, on Windows, for execution
+/// too: a mapping of its code section executable (`CodeArena::map_section`,
+/// `PAGE_EXECUTE_READ`) needs `GENERIC_EXECUTE` on the handle there, and
+/// a handle opened for reading alone had the mapping refused with "access
+/// denied" on every Windows run since decision AT5, the section copied
+/// in its place. The executable of decision AS4 opens itself this way.
+pub fn open_file(path: &std::path::Path) -> std::io::Result<File> {
+    let mut options = std::fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        // GENERIC_READ | GENERIC_EXECUTE
+        options.access_mode(0x8000_0000 | 0x2000_0000);
+    }
+    options.open(path)
+}
+
 /// The code section as it lies in the image's file (decision AT5): the
 /// file and the section's offset in it, a multiple of the page size, so
 /// that the JIT maps it executable without a copy.
@@ -248,7 +266,8 @@ impl Image {
     /// says what is wrong with the file, not whether it matches this
     /// machine (`Header::mismatch`).
     pub fn open(path: &str) -> Result<Image, String> {
-        let file = File::open(path).map_err(|error| format!("cannot read {path}: {error}"))?;
+        let file = open_file(std::path::Path::new(path))
+            .map_err(|error| format!("cannot read {path}: {error}"))?;
         let length = file
             .metadata()
             .map_err(|error| format!("cannot read {path}: {error}"))?
