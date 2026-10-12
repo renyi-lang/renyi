@@ -256,6 +256,27 @@ impl Composite {
         Composite { block }
     }
 
+    /// A copy of the block at the pointer, held once, every field with
+    /// one more reference: what the generated code calls for the shared
+    /// base of a `with` compiled in place (decision AW8), as `make_mut`
+    /// copies.
+    ///
+    /// # Safety
+    /// `block` points at the block of a live composite.
+    pub unsafe fn copy_block(block: *mut u8) -> *mut u8 {
+        let head = NonNull::new_unchecked(block as *mut Head);
+        let len = (*head.as_ptr()).len;
+        let ty = *(block.add(layout::RECORD_TY as usize) as *const TypeId);
+        let tag = *(block.add(layout::RECORD_TAG as usize) as *const usize);
+        let copy = Composite::allocate(ty, tag, len);
+        let from = Composite::fields_of(head);
+        let to = Composite::fields_of(copy);
+        for index in 0..len {
+            to.add(index).write((*from.add(index)).clone());
+        }
+        copy.as_ptr() as *mut u8
+    }
+
     fn head(&self) -> &Head {
         // SAFETY: the block lives while a composite points at it.
         unsafe { self.block.as_ref() }

@@ -32,8 +32,8 @@ use crate::extension::TypedKind;
 use crate::integer::Int;
 use crate::native::infer::{
     abs_of_binary, abs_of_constant, abs_of_field_at, abs_of_params, abs_of_result, abs_of_slot,
-    analyse, boxed_depth, is_integer, is_text, noted_kind, owned_slots, static_field, Abs,
-    Analysis, SlotKind,
+    analyse, boxed_depth, is_integer, is_text, noted_kind, owned_slots, static_field,
+    update_by_index, Abs, Analysis, SlotKind,
 };
 use crate::native::runtime::{
     binary_code, fold_code, CONTINUE, DEOPT, D_BOXED, D_DEOPT, D_FAILURE, D_INTERRUPT, D_RETURNED,
@@ -104,6 +104,7 @@ const RELEASES_INLINE: usize = 8;
 /// pushes.
 pub(crate) const STACK_SAFE: &[&str] = &[
     "rt_clear_slots",
+    "rt_record_copy",
     "rt_drop_at",
     "rt_frame_grant",
     "rt_grow_frames",
@@ -199,6 +200,9 @@ pub const SIGNATURES: &[(&str, &str, char)] = &[
     ("rt_load_field", "pzwzwww", 'i'),
     ("rt_with", "pww", 'i'),
     ("rt_with_slot", "pzwww", 'i'),
+    ("rt_with_by_index", "pzqw", 'i'),
+    ("rt_with_slot_by_index", "pzwzqw", 'i'),
+    ("rt_record_copy", "p", 'p'),
     ("rt_take_field", "pzwzwww", 'i'),
     ("rt_not", "pw", 'i'),
     ("rt_binary", "puw", 'i'),
@@ -3190,28 +3194,43 @@ impl Gen<'_, '_> {
                 }
             }
             Op::With(count) => {
-                let count_value = self.u32(*count as u32);
-                let status = self
-                    .helper_on_stack("rt_with", 2 * *count as usize + 1, &[count_value, pc_value])
-                    .expect("a status");
-                self.push_boxed();
-                self.check_status(status, pc, true);
+                let n = *count as usize;
+                match update_by_index(self.program, self.code, self.analysis, pc, n) {
+                    Some((ty, packed)) => self.update_in_place(None, n, ty, packed, pc),
+                    None => {
+                        let count_value = self.u32(*count as u32);
+                        let status = self
+                            .helper_on_stack("rt_with", 2 * n + 1, &[count_value, pc_value])
+                            .expect("a status");
+                        self.push_boxed();
+                        self.check_status(status, pc, true);
+                    }
+                }
             }
             Op::WithSlot { slot, fields } => {
-                // the helper moves the record out of the slot in the VM's
-                // memory and updates it in place when it is held once
-                // (decision AU11)
-                let slot_value = self.u32(*slot as u32);
-                let count_value = self.u32(*fields as u32);
-                let status = self
-                    .helper_on_stack(
-                        "rt_with_slot",
-                        2 * *fields as usize,
-                        &[self.base, slot_value, count_value, pc_value],
-                    )
-                    .expect("a status");
-                self.push_boxed();
-                self.check_status(status, pc, true);
+                // the record moved out of the slot and updated in place
+                // when it is held once (decision AU11): in the generated
+                // code when the checker typed the record (decision AW8),
+                // else through the helper
+                let n = *fields as usize;
+                match update_by_index(self.program, self.code, self.analysis, pc, n) {
+                    Some((ty, packed)) => {
+                        self.update_in_place(Some(*slot as usize), n, ty, packed, pc)
+                    }
+                    None => {
+                        let slot_value = self.u32(*slot as u32);
+                        let count_value = self.u32(*fields as u32);
+                        let status = self
+                            .helper_on_stack(
+                                "rt_with_slot",
+                                2 * n,
+                                &[self.base, slot_value, count_value, pc_value],
+                            )
+                            .expect("a status");
+                        self.push_boxed();
+                        self.check_status(status, pc, true);
+                    }
+                }
             }
             Op::TakeField { slot, name, site } => {
                 // as `LoadField` through the site's cache in place (decision
@@ -3923,6 +3942,140 @@ impl Gen<'_, '_> {
 
     /// A call through `rt_call`: the arguments boxed on the stack, the
     /// result boxed, and unboxed when the declared result is typed.
+    /// A `with` whose base the checker typed, in place (decision AW8):
+    /// the `n` pairs boxed on the stack, the holder (the frame's slot,
+    /// left `Nothing`, or the operand under the pairs) checked to be a
+    /// record of the type `ty` and every new value to be plain, the block
+    /// updated in place when held once and a copy of it otherwise
+    /// (`rt_record_copy`, the holder's reference given up), each field at
+    /// its index in `packed` released and the new value moved in, each
+    /// name released, and the record left where the first name lay (where
+    /// the holder lay). Anything else goes through the helper of the
+    /// same indices, which leaves the same stack.
+    fn update_in_place(
+        &mut self,
+        slot: Option<usize>,
+        n: usize,
+        ty: usize,
+        packed: u64,
+        pc: usize,
+    ) {
+        let flags = MemFlagsData::trusted();
+        let pointer = self.pointer;
+        self.box_top(2 * n);
+        let height = self.height();
+        let first = height - 2 * n;
+        let (holder_height, result_height) = match slot {
+            Some(_) => (first, first + 1),
+            None => (first - 1, first),
+        };
+        let holder_at = match slot {
+            Some(slot) => self.address_at(slot),
+            None => self.address_at(holder_height),
+        };
+        // the state after the op, for the landing of the helper's status
+        for _ in 0..(2 * n + usize::from(slot.is_none())) {
+            self.state.pop();
+        }
+        self.push_boxed();
+        let typed = self.b.create_block();
+        let shared = self.b.create_block();
+        let update = self.b.create_block();
+        self.b.append_block_param(update, pointer);
+        let slow = self.b.create_block();
+        let join = self.b.create_block();
+        self.b.set_cold_block(slow);
+        let tag = self.tag_at(holder_at, 0);
+        let is_record = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::Equal, tag, TAG_RECORD as i64);
+        self.b.ins().brif(is_record, typed, &[], slow, &[]);
+        self.switch_to(typed);
+        let rc = self.b.ins().load(pointer, flags, holder_at, PAYLOAD);
+        let holder_ty = self.b.ins().load(types::I64, flags, rc, RECORD_TY);
+        let mut ok = self.b.ins().icmp_imm_s(IntCC::Equal, holder_ty, ty as i64);
+        for index in 0..n {
+            let at = self.address_at(first + 2 * index + 1);
+            let tag = self.tag_at(at, 0);
+            let plain = self
+                .b
+                .ins()
+                .icmp_imm_s(IntCC::NotEqual, tag, TAG_GUARDED as i64);
+            ok = self.b.ins().band(ok, plain);
+        }
+        let counted = self.b.create_block();
+        self.b.ins().brif(ok, counted, &[], slow, &[]);
+        self.switch_to(counted);
+        let count = self.b.ins().load(types::I64, flags, rc, 0);
+        let held_once = self.b.ins().icmp_imm_s(IntCC::Equal, count, 1);
+        self.b
+            .ins()
+            .brif(held_once, update, &[rc.into()], shared, &[]);
+        // shared: the holder's reference moves to a copy
+        self.switch_to(shared);
+        let copy = self.call("rt_record_copy", &[rc]).expect("a block");
+        let fewer = self.b.ins().iadd_imm_s(count, -1);
+        self.b.ins().store(flags, fewer, rc, 0);
+        self.b.ins().jump(update, &[copy.into()]);
+        self.switch_to(update);
+        let block = self.b.block_params(update)[0];
+        let fields_ptr = self.b.ins().iadd_imm_s(block, RECORD_FIELDS as i64);
+        // the last update first, as the helper pops them: of two updates
+        // of one field the first in the source wins
+        for index in (0..n).rev() {
+            let field_index = (packed >> (8 * index)) as usize & 0xff;
+            let field = self
+                .b
+                .ins()
+                .iadd_imm_s(fields_ptr, (field_index * SIZE) as i64);
+            self.release(field);
+            let from = self.address_at(first + 2 * index + 1);
+            self.copy_value(from, field);
+            let name = self.address_at(first + 2 * index);
+            self.release(name);
+        }
+        if slot.is_some() {
+            let nothing = self.iconst(types::I32, TAG_NOTHING as i64);
+            self.b.ins().istore8(flags, nothing, holder_at, 0);
+        }
+        let to = self.address_at(result_height - 1);
+        let record_tag = self.iconst(types::I32, TAG_RECORD as i64);
+        self.b.ins().istore8(flags, record_tag, to, 0);
+        self.b.ins().store(flags, block, to, PAYLOAD);
+        self.store_height(result_height);
+        self.b.ins().jump(join, &[]);
+        // the helper: the same indices, the same stack after
+        self.switch_to(slow);
+        let ty_value = self.usize(ty);
+        let packed_value = self.iconst(types::I64, packed as i64);
+        let pc_value = self.u32(pc as u32);
+        let status = match slot {
+            Some(slot) => {
+                let slot_value = self.u32(slot as u32);
+                self.call(
+                    "rt_with_slot_by_index",
+                    &[
+                        self.vm,
+                        self.base,
+                        slot_value,
+                        ty_value,
+                        packed_value,
+                        pc_value,
+                    ],
+                )
+            }
+            None => self.call(
+                "rt_with_by_index",
+                &[self.vm, ty_value, packed_value, pc_value],
+            ),
+        }
+        .expect("a status");
+        self.check_status(status, pc, true);
+        self.b.ins().jump(join, &[]);
+        self.switch_to(join);
+    }
+
     fn call_through_helper(
         &mut self,
         helper: &'static str,

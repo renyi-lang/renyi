@@ -366,6 +366,63 @@ pub fn static_field(program: &Program, ty: u32, name: &str) -> Option<(usize, us
     }
 }
 
+/// The type and the packed field indices of a `with` whose base the
+/// checker typed (decision AW8): the op's annotation names the record's
+/// type, a record without refinements and not `Date`; the name of each
+/// update is the text the `Const` at its depth pushed, found through the
+/// analysis's states (every op between that `Const` and the `with` lies
+/// deeper); the indices eight bits each, the first update lowest, and
+/// the count in the top byte, so at most seven updates. `None` when the
+/// op carries no such type, a name is not found or names no field, or
+/// there are more updates than fit: the general helper then.
+pub fn update_by_index(
+    program: &Program,
+    code: &Code,
+    analysis: &Analysis,
+    pc: usize,
+    count: usize,
+) -> Option<(usize, u64)> {
+    if count > 7 {
+        return None;
+    }
+    let noted = code.types.get(pc).copied().flatten()?;
+    let Ty::App(id, _) = program.result_types.get(noted as usize)? else {
+        return None;
+    };
+    let meta = program.types.metas.get(*id)?;
+    let TypeShape::Record(fields) = &meta.shape else {
+        return None;
+    };
+    if !meta.refinements.is_empty() || Some(*id) == program.date {
+        return None;
+    }
+    let first = analysis
+        .entry
+        .get(pc)?
+        .as_ref()?
+        .len()
+        .checked_sub(2 * count)?;
+    let mut packed = (count as u64) << 56;
+    for update in 0..count {
+        let depth = first + 2 * update;
+        let at = (0..pc).rev().find(|&at| {
+            analysis.entry[at]
+                .as_ref()
+                .is_some_and(|state| state.len() == depth)
+        })?;
+        let Op::Const(constant) = code.ops[at] else {
+            return None;
+        };
+        let name = code.constants[constant as usize].as_text()?;
+        let field = fields.iter().position(|field| field.name == name)?;
+        if field > 0xff {
+            return None;
+        }
+        packed |= (field as u64) << (8 * update);
+    }
+    Some((*id, packed))
+}
+
 /// The result of a binary operator on two operands of these representations.
 pub fn abs_of_binary(op: BinaryOp, left: Abs, right: Abs) -> Abs {
     use BinaryOp::*;

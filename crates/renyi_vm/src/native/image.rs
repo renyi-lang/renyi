@@ -79,8 +79,10 @@ const PART_ALIGN: usize = 16;
 /// borrowed in the body's signature and `rt_retain_params` among the
 /// helpers (decision AW5). 17: the frame's grant in the body's
 /// signature, a direct caller passing its own, and the room checks of a
-/// direct call in the callee's prologue (decision AW6).
-pub const CODE_FORMAT: u32 = 17;
+/// direct call in the callee's prologue (decision AW6). 18: a `with` whose
+/// base the checker typed through `rt_with_by_index` and
+/// `rt_with_slot_by_index` among the helpers (decision AW8).
+pub const CODE_FORMAT: u32 = 18;
 
 /// The extension of an image file.
 pub const EXTENSION: &str = "ryi";

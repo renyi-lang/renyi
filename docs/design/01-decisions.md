@@ -6886,3 +6886,96 @@ on both tiers, the template tier's own tests with the tier forced, 394
 tests. Since stage 0 the check row 2,889.9 to 2,527.2 (-12.5%), since
 the study's binary 3,085.3 (-18.1%). Next in AW1's order: stage 2, 2a
 first (`with` by static index with the copy in place).
+
+**AW8. Stage 2a of the new backend: the update by static index.** The
+first item of stage 2 in AW1's order (the study's item (2a)), on
+2026-10-12, measured as AW1 prescribes against the hasher's binary
+(94089f9). A `with` ran through `rt_with` or `rt_with_slot` (decision
+AU11), which popped the pairs into a vector, looked every field up by
+name (`field_index`, a scan of the type's fields comparing texts),
+checked the refinements and pushed the result: about a thousand
+instructions a call, 212.4 million on the check row over 201,205 calls.
+Where the checker typed the `with` (AU1's annotation on the op, which
+pushes its expression), the generated code knows the record's type, so
+`update_by_index` in `native/infer.rs` settles at compile time the type
+and the index of every updated field: the op's annotation names a
+record type without refinements and not `Date`, and the name of each
+update is the text the `Const` at its depth pushed, found through the
+analysis's states (every op between that `Const` and the `with` lies
+deeper), the indices packed eight bits each with the count in the top
+byte, at most seven updates; anything else keeps the helpers by name.
+Built in two parts, each measured. (A) A helper that takes the type and
+the packed indices (`rt_with_by_index`, `rt_with_slot_by_index`,
+`Vm::op_with_by_index`): a holder that is a record of the type with
+plain new values is updated at the indices, in place when held once and
+in a copy otherwise, with no vector, no lookup and no refinement check;
+a holder of another kind or a guarded new value goes the general way.
+Both tiers call it, the template tier for good (the study's "a helper
+that takes the indices"). (B) On the Cranelift tier the update compiled
+into the site (`update_in_place` in `native/codegen.rs`): the pairs
+boxed, the holder's tag and type and the new values' tags tested in
+place, the block updated where it lies when its count is one and a copy
+of it (`rt_record_copy`, the fields cloned, the holder's reference
+given up) otherwise, each field's old value released in place (AU32's
+sequence) and the new value moved in, each name released, the record
+left where the first name lay (where the holder lay, for `With`) and
+the slot left `Nothing`; the helper of (A) in a cold block for the
+rest, leaving the same stack. The code format is 18. The tests: the
+program of every shape (a parameter's record shared with the caller, a
+record held once in its slot through a loop, field names longer than a
+small text, a refined type and an update of eight fields through the
+general helper, a fresh record updated each turn) in
+`crates/renyi_vm/tests/native.rs` against the interpreter and in
+`crates/renyi_vm/tests/template.rs` on the template tier. The measure
+(callgrind under WSL on the release build for Linux, the images built
+under `valgrind --tool=none`, against the hasher's binary measured the
+same way in AW7, the reference AU34's 44782aa). With (A) alone, both
+tiers on the helper: the check row 2,527.2 to 2,416.7 million
+instructions (-4.4%), the parse row 1,040.1 to 994.0 (-4.4%), the
+compile row 4,148.8 to 3,992.6 (-3.8%); the records category 206.8 to
+142.7, the helpers' glue 120.7 to 99.5, mimalloc 147.1 to 135.6, the
+counts and drops 322.2 to 315.4, the texts and copies 120.3 to 112.7;
+`rt_with_slot_by_index` 72.6 million inclusive and `rt_with_by_index`
+28.6 against 162.7 and 49.7 for the helpers by name, `make_mut` 41.2
+(the copies of shared bases); AT1's synchronous row -1.5% (-1.4% by the
+estimate). With (B), the update compiled into the site: the check row
+2,527.2 to 2,370.7 (-6.2%), the parse row 1,040.1 to 974.3 (-6.3%), the
+compile row 4,148.8 to 3,934.1 (-5.2%); the ratios by instructions
+against the reference's rows (441.6, 284.7 and 365.6) 5.37, 3.42 and
+10.76 against the gate's 3 (5.72, 3.65 and 11.35 after AW7); the Rust
+front end's own rows within 0.1% of the hasher's (`check` 173.4, `parse
+--json` 246.7, `compile` 446.3). The functions on the check row: with
+(A), `op_with_by_index` 89.1 million inclusive over 201,205 calls (443
+each, against about 1,050 by name), `make_mut` 41.2 of them, the copies
+of the shared bases; with (B), the helpers by index are never called on
+this row (the site's tests always pass), `rt_record_copy` 38.3 million
+inclusive over 126,606 calls (the bases held by another value at the
+update, 63 of 100, 302 each with the allocation and the fields'
+clones), `Value`'s drop glue 14,611,263 calls to 13,282,873,
+`rt_drop_at` 668,735 to 683,178 (the old field values released in place
+that reach zero), the generated code 966.7 to 980.4 million with the
+sequences, which the records' fall pays for nine times over; on the
+frozen self-check the sequences cost what the helper saved, (A) -1.5%
+and (B) -1.3% on the synchronous row, the check row deciding (AW1). The
+check row by category, AW7's table against this one, in millions: the
+records 206.8 to 79.9, the generated code 966.7 to 980.4, the helpers'
+glue 120.7 to 92.7, mimalloc 147.1 to 135.7, the counts and drops 322.2
+to 306.8, the texts and copies 120.3 to 112.7, the natives 366.9 to
+366.9, the hashing 55.5 to 55.6, the calls through the VM's path 7.4 to
+7.4, the comparisons 123.8 to 123.8, the load 46.2 to 46.2, the
+iterators 40.3 to 40.3. AT1's rows on the frozen self-check
+(`tools/measure_size.sh` under WSL, the hasher's binary against this
+one): the synchronous JIT row 5,880.1 to 5,802.0 million instructions
+(-1.3%) and 8,428.0 to 8,356.3 by the estimate (-0.9%), the image row
+4,270.5 to 4,140.7 (-3.0%) and 6,266.7 to 6,084.3 by the estimate
+(-2.9%), the cached run 4,350.4 to 4,220.6 (-3.0%), the interpreter
+11,223.5 to 11,229.0 (+0.0%); the image 9,009,552 to 9,137,440 bytes
+(+1.4%). The four benchmarks and hello by user-space instructions
+(`perf stat`, the JIT synchronous, in millions): `primes` 265.0 to
+265.0 (unchanged), `strings` 432.5 to 432.5 (unchanged), `records`
+207.0 to 207.0 (unchanged), `json_round_trip` 839.7 to 839.7
+(unchanged), `hello` 5.42 to 5.42 (unchanged). The four judges
+byte-equal, the conformance suite 55 of 55 on both tiers, the template
+tier's own tests with the tier forced, 396 tests. Since stage 0 the
+check row 2,889.9 to 2,370.7 (-18.0%), since the study's binary 3,085.3
+(-23.2%). Next in AW1's order: stage 2b, `Done` without its allocation.

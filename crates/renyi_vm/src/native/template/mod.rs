@@ -38,7 +38,7 @@ use crate::native::codegen::{
     STATE_LIST_ITEMS, STATE_LIST_LEN,
 };
 use crate::native::infer::{
-    abs_of_constant, abs_of_result, analyse, is_integer, is_text, Abs, Analysis,
+    abs_of_constant, abs_of_result, analyse, is_integer, is_text, update_by_index, Abs, Analysis,
 };
 use crate::native::runtime::{
     binary_code, fold_code, BOXED, CONTINUE, DECLINED, FAILURE, INTERRUPT, LEFT, RETURNED, STAY,
@@ -1562,30 +1562,57 @@ impl Gen<'_> {
                 self.store_len();
             }
             Op::With(count) => {
+                // by the site's indices when the checker typed the record
+                // (decision AW8), else by name
                 let n = *count as usize;
-                self.helper(
-                    "rt_with",
-                    &[Arg::Vm, Arg::Imm(n as u64), pc_arg],
-                    2 * n + 1,
-                    1,
-                    pc,
-                );
+                match update_by_index(self.program, self.code, self.analysis, pc, n) {
+                    Some((ty, packed)) => self.helper(
+                        "rt_with_by_index",
+                        &[Arg::Vm, Arg::Imm(ty as u64), Arg::Imm(packed), pc_arg],
+                        2 * n + 1,
+                        1,
+                        pc,
+                    ),
+                    None => self.helper(
+                        "rt_with",
+                        &[Arg::Vm, Arg::Imm(n as u64), pc_arg],
+                        2 * n + 1,
+                        1,
+                        pc,
+                    ),
+                }
             }
             Op::WithSlot { slot, fields } => {
                 let n = *fields as usize;
-                self.helper(
-                    "rt_with_slot",
-                    &[
-                        Arg::Vm,
-                        Arg::Base,
-                        Arg::Imm(*slot as u64),
-                        Arg::Imm(n as u64),
-                        pc_arg,
-                    ],
-                    2 * n,
-                    1,
-                    pc,
-                );
+                match update_by_index(self.program, self.code, self.analysis, pc, n) {
+                    Some((ty, packed)) => self.helper(
+                        "rt_with_slot_by_index",
+                        &[
+                            Arg::Vm,
+                            Arg::Base,
+                            Arg::Imm(*slot as u64),
+                            Arg::Imm(ty as u64),
+                            Arg::Imm(packed),
+                            pc_arg,
+                        ],
+                        2 * n,
+                        1,
+                        pc,
+                    ),
+                    None => self.helper(
+                        "rt_with_slot",
+                        &[
+                            Arg::Vm,
+                            Arg::Base,
+                            Arg::Imm(*slot as u64),
+                            Arg::Imm(n as u64),
+                            pc_arg,
+                        ],
+                        2 * n,
+                        1,
+                        pc,
+                    ),
+                }
             }
             Op::TakeField { slot, name, site } => {
                 // as `LoadField`, through the site's cache in place (decision

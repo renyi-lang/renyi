@@ -31,11 +31,15 @@ measured (decision AW7: `run_of` and `run_until` by a table of the
 set's one-character members, the tables of the last eight sets kept,
 the VM's maps and sets hashed by a folded multiplication keyed per
 process in place of SipHash; the check row 2,681.0 to 2,527.2,
--5.7%, the ratio 6.07 to 5.72); on the way, a Windows
-defect since AT5 fixed (a2c4685: every run of an image there copied
-its code section, the mapping refused for want of execute access on
-the file's handle). Next is stage 2, 2a first (the start-here item 1).
-The session's record is "Done in session 14" below.
+-5.7%, the ratio 6.07 to 5.72), and stage 2a built and measured
+(decision AW8: a `with` whose base the checker typed updated by static
+index, through a helper on both tiers and in the generated code on the
+Cranelift tier; the check row 2,527.2 to 2,370.7, -6.2%, the
+ratio 5.72 to 5.37); on the way, a Windows defect since AT5
+fixed (a2c4685: every run of an image there copied its code section,
+the mapping refused for want of execute access on the file's handle).
+Next is stage 2b (the start-here item 1). The session's record is
+"Done in session 14" below.
 Session 13, in the cloud environment, had as its last work the icon
 and the wordmark, at the owner's request after the
 handover below (decision AV1: a war hammer on the accent tile and the
@@ -319,8 +323,12 @@ and push there directly.
    and the hasher (decision AW7, "The character tables and the hasher
    as built": the scans by a 128-bit table with the tables of the last
    eight sets kept, the VM's own hasher for its maps and sets; the
-   check row to 2,527.2, -5.7%, the ratio to 5.72).
-   Next is stage 2 as 2a, 2b, 2c, the natives' entry and
+   check row to 2,527.2, -5.7%, the ratio to 5.72); and stage 2a
+   (decision AW8, "Stage 2a as built": a `with` whose base the checker
+   typed updated by static index, the helper on both tiers and the
+   update in the generated code on the Cranelift tier; the check row
+   to 2,370.7, -6.2%, the ratio to 5.37).
+   Next is stage 2 as 2b and 2c, the natives' entry and
    the glue, stage 4, the checker's own cuts between the stages, stages
    5 and 6 last. Each stage: the code, the gates of item 3, the measure
    (AU58's: the checker's image run under callgrind with the study's
@@ -345,9 +353,11 @@ and push there directly.
    `renyi_stage1a` (7bb927b, stage 1a), `renyi_stage1c` (1cfcd7d, stage
    1c), `renyi_stage1b` (2367c63, stage 1b), `renyi_stage1d` (ddbf36a,
    stage 1d), `renyi_tables` (the character tables alone, the table
-   built per call) and `renyi_hasher` (the tables with their cache and
-   the hasher, AW7's commit, the base of the next measure), each with
-   its `study/` directory. The
+   built per call), `renyi_hasher` (94089f9, the tables with their
+   cache and the hasher), `renyi_stage2a_helper` (stage 2a's part A,
+   the helper by index on both tiers) and `renyi_stage2a` (stage 2a's
+   commit, the base of the next measure), each with its `study/`
+   directory. The
    road is months long (AU58); the gate is decided on the measure at
    the end.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
@@ -4436,6 +4446,38 @@ in AW1's order: stage 2, 2a first (`with` by static index with the copy
 in place), then 2b (`Done` in the caller's slots) and 2c (the frees in
 place).
 
+**Stage 2a as built (decision AW8, 2026-10-12).** The study's item
+(2a). `update_by_index` in `native/infer.rs` settles at compile time,
+for a `with` whose base the checker typed (the op's annotation, a
+record without refinements and not `Date`), the type and the index of
+every updated field, the names read from the `Const` ops at their
+depths through the analysis's states, packed eight bits each with the
+count in the top byte (at most seven updates). Part A: the helpers
+`rt_with_by_index` and `rt_with_slot_by_index` (`Vm::op_with_by_index`)
+update at the indices with no vector, no lookup and no refinement
+check, in place when held once and in a copy otherwise, the general
+way for a holder of another kind or a guarded value; both tiers call
+them, the template tier for good. Part B: on the Cranelift tier the
+update is compiled into the site (`update_in_place` in
+`native/codegen.rs`): the tags and the type tested in place, the block
+updated where it lies when its count is one and in a copy
+(`rt_record_copy`) otherwise, the old field values and the names
+released in place, the new values moved in, the helper in a cold
+block for the rest; the updates applied in the helper's order (the
+last first, so that of two updates of one field the first in the
+source wins). The code format is 18. The measure: the check row
+2,527.2 to 2,416.7 with the helper alone (-4.4%)
+and to 2,370.7 with the update in place (-6.2%; the study's
+estimate 4.9%), the records category 206.8 to 79.9, the parse
+row -6.3%, the compile row -5.2%, AT1's synchronous row
+-1.3% (-0.9% by the estimate), the image row
+-3.0%; the ratios by instructions 5.37, 3.42
+and 10.76. Since stage 0 the check row 2,889.9 to 2,370.7,
+-18.0%. The table is in AW8. Next in AW1's order: stage 2b
+(`Done` without its allocation: a two-field record a caller takes
+apart at once returned in the caller's slots under a convention per
+function), then 2c (the frees in place).
+
 ## The representation items: the design study (session 11)
 
 **What the owner ordered (AU20)**: after the template tier's follow-ups
@@ -6068,6 +6110,13 @@ holds between calls.
   `ValueMap`, `ValueSet`) in place of SipHash for every map and set of
   values; the measure in AW7 and in "The character tables and the
   hasher as built".
+- Stage 2a (decision AW8, the commit after 94089f9): `update_by_index`
+  in `native/infer.rs`, the helpers `rt_with_by_index` and
+  `rt_with_slot_by_index` (`Vm::op_with_by_index` in
+  `native/runtime.rs`) on both tiers, `update_in_place` in
+  `native/codegen.rs` with `rt_record_copy` (`Composite::copy_block`)
+  on the Cranelift tier (code format 18); the two tests; the measure in
+  AW8 and in "Stage 2a as built".
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

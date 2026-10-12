@@ -988,3 +988,131 @@ end
         "say 1000\nsay 1000\nsay 2000\nsay 2000\nsay 3000\nsay 3000\n14582220\n"
     );
 }
+
+#[test]
+fn records_are_updated_by_static_index_through_the_template_tier() {
+    // decision AW8: the template tier calls the helper that takes the type
+    // and the indices from the site, and the general one for a refined
+    // type and for more than seven updates
+    let source = r#"module demo
+  purpose: Records updated by static index on both tiers, with every case the site cannot take.
+
+import std.console
+
+type Point
+  purpose: A point with a label.
+  has east: Integer
+  has north: Integer
+  has label: Text
+end
+
+type Wide
+  purpose: A record whose field names are longer than a small text holds.
+  has first_component_value: Integer
+  has second_component_value: Integer
+  has third_component_value: Text
+end
+
+type Span
+  purpose: A refined record: the update goes through the general helper.
+  has low: Integer
+  has high: Integer where high is at least 0
+end
+
+type Nine
+  purpose: More fields than the packed indices hold.
+  has a1: Integer
+  has a2: Integer
+  has a3: Integer
+  has a4: Integer
+  has a5: Integer
+  has a6: Integer
+  has a7: Integer
+  has a8: Integer
+  has a9: Integer
+end
+
+function moved(point: Point, step: Integer) returns Point
+  purpose: The point moved east, the base a parameter.
+
+  return point with east: point.east + step
+end
+
+function relabelled(point: Point, label: Text) returns Point
+  purpose: The point relabelled in its slot.
+
+  let mutable next be point
+  change next to next with label: label, north: next.north * 2
+  return next
+end
+
+function widened(wide: Wide, amount: Integer) returns Wide
+  purpose: Two long-named fields updated, the third kept.
+
+  return wide
+    with second_component_value: wide.second_component_value + amount, first_component_value: amount
+end
+
+function spanned(span: Span, high: Integer) returns Span or fails with Text
+  purpose: The refined record updated, which may fail.
+
+  let next be span with high: high otherwise fail with "below zero"
+  return next
+end
+
+function all_nine(nine: Nine, step: Integer) returns Nine
+  purpose: Eight fields updated at once: more than the packed indices hold.
+
+  return nine with a1: nine.a1 + step, a2: 2, a3: 3, a4: 4, a5: 5, a6: 6, a7: 7, a8: 8
+end
+
+public function main() needs console
+  purpose: Runs every form and prints what each leaves.
+
+  let origin be Point(east: 1, north: 2, label: "o")
+  let kept be origin
+  let far be moved(point: origin, step: 5)
+  console.print("shared base: {origin.east} {kept.east} {far.east} {far.label}")
+  let mutable own be Point(east: 10, north: 20, label: "own")
+  for each step from 1 to 1000
+    change own to own with east: own.east + step, north: own.north + 1
+  end
+  console.print("in place: {own.east} {own.north} {own.label}")
+  let renamed be relabelled(point: own, label: "renamed")
+  console.print("relabelled: {renamed.label} {renamed.north} / {own.label} {own.north}")
+  let mutable wide be Wide(
+    first_component_value: 1,
+    second_component_value: 2,
+    third_component_value: "third"
+  )
+  for each step from 1 to 300
+    change wide to widened(wide: wide, amount: step)
+  end
+  console.print(
+    "wide: {wide.first_component_value} {wide.second_component_value} {wide.third_component_value}"
+  )
+  let span be Span(low: 1, high: 2)
+  let raised be spanned(span: span, high: 9) otherwise Span(low: 0, high: 0)
+  let lowered be spanned(span: span, high: -1) otherwise Span(low: -7, high: 0)
+  console.print("refined: {raised.high} {lowered.low} {span.high}")
+  let mutable nine be Nine(a1: 1, a2: 2, a3: 3, a4: 4, a5: 5, a6: 6, a7: 7, a8: 8, a9: 9)
+  for each step from 1 to 50
+    change nine to all_nine(nine: nine, step: step)
+  end
+  console.print("nine: {nine.a1} {nine.a5} {nine.a9}")
+  let mutable total be 0
+  for each step from 1 to 500
+    let fresh be Point(east: step, north: step, label: "f")
+    let twice be fresh with north: fresh.north * 2, east: fresh.east + 1
+    change total to total + twice.east + twice.north
+  end
+  console.print("fresh: {total}")
+end
+"#;
+    let (outcome, output, _) = both_ways(source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(
+        output,
+        "shared base: 1 1 6 o\nin place: 500510 1020 own\nrelabelled: renamed 2040 / own 1020\nwide: 300 45152 third\nrefined: 9 -7 2\nnine: 1276 5 9\nfresh: 376250\n"
+    );
+}

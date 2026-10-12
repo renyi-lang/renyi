@@ -594,6 +594,43 @@ pub(crate) unsafe extern "C" fn rt_with_slot(
     status(vm, result)
 }
 
+/// `Op::With` by static index (decision AW8): the holder under the pairs
+/// on the stack, the type and the packed indices from the site.
+pub(crate) unsafe extern "C" fn rt_with_by_index(
+    vm: VmPtr,
+    ty: usize,
+    packed: i64,
+    pc: u32,
+) -> i32 {
+    let vm = vm!(vm);
+    vm.sync_pc(pc);
+    let result = vm.op_with_by_index(None, ty, packed as u64);
+    status(vm, result)
+}
+
+/// `Op::WithSlot` by static index (decision AW8): the record moved out of
+/// the frame's slot, the type and the packed indices from the site.
+pub(crate) unsafe extern "C" fn rt_with_slot_by_index(
+    vm: VmPtr,
+    base: usize,
+    slot: u32,
+    ty: usize,
+    packed: i64,
+    pc: u32,
+) -> i32 {
+    let vm = vm!(vm);
+    vm.sync_pc(pc);
+    let result = vm.op_with_by_index(Some(base + slot as usize), ty, packed as u64);
+    status(vm, result)
+}
+
+/// A copy of a record's block, held once, its fields with one more
+/// reference each (decision AW8): the shared base of a `with` compiled in
+/// place takes its updates in the copy.
+pub(crate) unsafe extern "C" fn rt_record_copy(block: *mut u8) -> *mut u8 {
+    crate::value::Composite::copy_block(block)
+}
+
 /// `Op::TakeField` (decision AU11): the field moved out of the record in
 /// the frame's slot when the record is held once, else cloned.
 pub(crate) unsafe extern "C" fn rt_take_field(
@@ -1757,7 +1794,10 @@ impl Vm<'_> {
             .guarded(holder.origins()))
     }
 
-    pub(crate) fn op_with(&mut self, count: usize) -> Result<Value, Interrupt> {
+    /// The `count` pairs on top of the stack popped, the last pair first:
+    /// the names with their values made plain, and the origins of the
+    /// values.
+    fn pop_updates(&mut self, count: usize) -> (Vec<(Value, Value)>, u64) {
         let mut updates = Vec::with_capacity(count);
         let mut origins = 0;
         for _ in 0..count {
@@ -1766,6 +1806,11 @@ impl Vm<'_> {
             origins |= value.origins();
             updates.push((name, value.into_plain()));
         }
+        (updates, origins)
+    }
+
+    pub(crate) fn op_with(&mut self, count: usize) -> Result<Value, Interrupt> {
+        let (updates, mut origins) = self.pop_updates(count);
         let holder = self.pop();
         origins |= holder.origins();
         Ok(self.with(holder.into_plain(), updates)?.guarded(origins))
@@ -1775,17 +1820,58 @@ impl Vm<'_> {
     /// is left), updated with the `count` pairs on the stack in place when
     /// it is held once (decision AU11).
     pub(crate) fn op_with_slot(&mut self, at: usize, count: usize) -> Result<Value, Interrupt> {
-        let mut updates = Vec::with_capacity(count);
-        let mut origins = 0;
-        for _ in 0..count {
-            let value = self.pop();
-            let name = self.pop();
-            origins |= value.origins();
-            updates.push((name, value.into_plain()));
-        }
+        let (updates, mut origins) = self.pop_updates(count);
         let holder = std::mem::replace(&mut self.stack[at], Value::Nothing);
         origins |= holder.origins();
         Ok(self.with(holder.into_plain(), updates)?.guarded(origins))
+    }
+
+    /// `Op::With` and `Op::WithSlot` by static index (decision AW8): the
+    /// holder from the slot at `at` (`Nothing` left) or from under the
+    /// pairs, a record of the type `ty` the site found, updated at the
+    /// indices packed in `packed` (eight bits each, the first update
+    /// lowest, the count in the top byte) with no name looked up and no
+    /// refinement to check (the site chose a type without any), in place
+    /// when held once and in a copy otherwise. A holder that is not such a
+    /// record, or a guarded value among the new ones, goes the general way.
+    pub(crate) fn op_with_by_index(
+        &mut self,
+        at: Option<usize>,
+        ty: usize,
+        packed: u64,
+    ) -> Result<Value, Interrupt> {
+        let count = (packed >> 56) as usize;
+        let len = self.stack.len();
+        let holder_at = at.unwrap_or(len - 2 * count - 1);
+        let fast = matches!(&self.stack[holder_at], Value::Record(record) if record.ty == ty)
+            && (0..count).all(|update| !self.stack[len - 1 - 2 * update].is_guarded());
+        if !fast {
+            let (updates, mut origins) = self.pop_updates(count);
+            let holder = match at {
+                Some(at) => std::mem::replace(&mut self.stack[at], Value::Nothing),
+                None => self.pop(),
+            };
+            origins |= holder.origins();
+            return Ok(self.with(holder.into_plain(), updates)?.guarded(origins));
+        }
+        let Value::Record(mut record) =
+            std::mem::replace(&mut self.stack[holder_at], Value::Nothing)
+        else {
+            unreachable!("a record of the type")
+        };
+        {
+            let shape = record.make_mut();
+            for update in (0..count).rev() {
+                let value = self.pop();
+                self.pop();
+                shape.fields[(packed >> (8 * update)) as usize & 0xff] = value;
+            }
+        }
+        if at.is_none() {
+            // the `Nothing` left under the pairs
+            self.pop();
+        }
+        Ok(Value::Record(record))
     }
 
     /// The pieces are joined where they lie on the stack, an Integer
@@ -2183,6 +2269,9 @@ pub const HELPERS: &[(&str, *const u8)] = &[
     ("rt_load_field", rt_load_field as *const u8),
     ("rt_with", rt_with as *const u8),
     ("rt_with_slot", rt_with_slot as *const u8),
+    ("rt_with_by_index", rt_with_by_index as *const u8),
+    ("rt_with_slot_by_index", rt_with_slot_by_index as *const u8),
+    ("rt_record_copy", rt_record_copy as *const u8),
     ("rt_take_field", rt_take_field as *const u8),
     ("rt_not", rt_not as *const u8),
     ("rt_binary", rt_binary as *const u8),
