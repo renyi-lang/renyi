@@ -35,11 +35,15 @@ process in place of SipHash; the check row 2,681.0 to 2,527.2,
 (decision AW8: a `with` whose base the checker typed updated by static
 index, through a helper on both tiers and in the generated code on the
 Cranelift tier; the check row 2,527.2 to 2,370.7, -6.2%, the
-ratio 5.72 to 5.37); on the way, a Windows defect since AT5
-fixed (a2c4685: every run of an image there copied its code section,
-the mapping refused for want of execute access on the file's handle).
-Next is stage 2b (the start-here item 1). The session's record is
-"Done in session 14" below.
+ratio 5.72 to 5.37), and stage 2b built and measured (decision AW9: a
+record of two fields returned as a pair of cells to a direct caller,
+kept in a pair slot and taken apart in place, past the test of an
+`otherwise` that only a failure reaches; the check row 2,370.7 to
+2,301.9, -2.9%, the ratio 5.37 to 5.21); on the way, a
+Windows defect since AT5 fixed (a2c4685: every run of an image there
+copied its code section, the mapping refused for want of execute access
+on the file's handle). Next is stage 2c (the start-here item 1). The
+session's record is "Done in session 14" below.
 Session 13, in the cloud environment, had as its last work the icon
 and the wordmark, at the owner's request after the
 handover below (decision AV1: a war hammer on the accent tile and the
@@ -327,8 +331,12 @@ and push there directly.
    (decision AW8, "Stage 2a as built": a `with` whose base the checker
    typed updated by static index, the helper on both tiers and the
    update in the generated code on the Cranelift tier; the check row
-   to 2,370.7, -6.2%, the ratio to 5.37).
-   Next is stage 2 as 2b and 2c, the natives' entry and
+   to 2,370.7, -6.2%, the ratio to 5.37); and stage 2b (decision AW9,
+   "Stage 2b as built": a record of two fields returned as a pair of
+   cells to a direct caller, kept in a pair slot and taken apart in
+   place, past the test of an `otherwise` that only a failure reaches;
+   the check row to 2,301.9, -2.9%, the ratio to 5.21).
+   Next is stage 2c (the frees in place), the natives' entry and
    the glue, stage 4, the checker's own cuts between the stages, stages
    5 and 6 last. Each stage: the code, the gates of item 3, the measure
    (AU58's: the checker's image run under callgrind with the study's
@@ -355,9 +363,10 @@ and push there directly.
    stage 1d), `renyi_tables` (the character tables alone, the table
    built per call), `renyi_hasher` (94089f9, the tables with their
    cache and the hasher), `renyi_stage2a_helper` (stage 2a's part A,
-   the helper by index on both tiers) and `renyi_stage2a` (stage 2a's
-   commit, the base of the next measure), each with its `study/`
-   directory. The
+   the helper by index on both tiers), `renyi_stage2a` (1ad4399, stage
+   2a's commit), `renyi_stage2b_plain` (stage 2b's part A, the pair at
+   the call alone) and `renyi_stage2b` (stage 2b's commit, the base of
+   the next measure), each with its `study/` directory. The
    road is months long (AU58); the gate is decided on the measure at
    the end.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
@@ -4478,6 +4487,52 @@ and 10.76. Since stage 0 the check row 2,889.9 to 2,370.7,
 apart at once returned in the caller's slots under a convention per
 function), then 2c (the frees in place).
 
+**Stage 2b as built (decision AW9, 2026-10-12).** The study's item
+(2b). A function whose declared result is a record of exactly two
+fields of a type without refinements and not `Date`, with a code
+object, is a pair function (`pair_result` in `native/infer.rs`): on the
+Cranelift tier its body answers a direct caller with the two fields in
+the first two cells of where its frame was and `D_RETURNED`
+(`pair_return` in `native/codegen.rs`), and the trampoline's caller, or
+any caller under provenance guards, with the record and `D_BOXED`;
+before the `Return` a `Construct` of the type leaves its fields as they
+lie, a call of a pair function passes its pair on, a load of a pair
+slot its cells, anything else is taken apart (`rt_split_pair`). The
+caller keeps the pair as it lies (`Abs::Pair`) when the op after is a
+`Store`, a `Field` or a `Return` (`pair_fused`), or when the call ends
+the region of an `otherwise` whose end holds such an op
+(`otherwise_end`: the success path jumps past the test, which only a
+failure then reaches, `handler_only`; `pair_bypass` in the generator),
+and makes the record otherwise (`rt_pair_record`); a `Store` of a pair
+into a slot stored from pairs alone makes a pair slot
+(`SlotKind::Pair`: the second field in a cell past the code object's
+locals), whose fields `LoadField` and `TakeField` read or move in place
+and `Load` and `LoadMove` push as a pair. The hand-back rebuilds a
+pair's record (an owned word per pair slot in the point); an entry at a
+loop header checks each pair slot (`rt_pair_fits`, else `D_STAY`),
+widens the frame and takes the records apart (`rt_pair_resume`); the
+prologue's write of the stack's length before the header dispatch is
+gone (it lengthened the stack of an entry refused after it). The
+template tier, the expanded callees and the typed test analyse without
+pairs. The code format is 19; `tools/image_census.py` and the lane's
+`study_map.py` read the pair kinds' type. The measure: the check row
+2,370.7 to 2,342.0 with the pair at the call alone
+(-1.2%; two pairs of three were made into their record by
+the caller after all, most at the `otherwise`) and to 2,301.9 with the
+pair past the test (-2.9%; the study's estimate 4.9%), the records
+category 79.9 to 57.6, `rt_construct` 677,653 to
+410,681 calls, the parse row -3.4%, the compile row
+-2.5%, AT1's synchronous row -0.5% (-0.7% by the
+estimate), the image row -3.7%; the ratios by instructions
+5.21, 3.31 and 10.49. Since stage 0 the
+check row 2,889.9 to 2,301.9, -20.3%. The table is in AW9. A
+candidate seen on the way, not decided: `rt_resume_range` refuses a
+finished range iterator, so a function with two loops in sequence is
+never entered at the second header from the interpreter. Next in AW1's
+order: stage 2c (the frees in place: the last release of a record walks
+its fields in the generated code, `rt_drop_at` only for a nested
+collection), then the natives' entry and the glue.
+
 ## The representation items: the design study (session 11)
 
 **What the owner ordered (AU20)**: after the template tier's follow-ups
@@ -6117,6 +6172,15 @@ holds between calls.
   `native/codegen.rs` with `rt_record_copy` (`Composite::copy_block`)
   on the Cranelift tier (code format 18); the two tests; the measure in
   AW8 and in "Stage 2a as built".
+- Stage 2b (decision AW9, the commit after 1ad4399): `pair_result`,
+  `pair_fused`, `otherwise_end` and `handler_only` with `Abs::Pair` and
+  `SlotKind::Pair` in `native/infer.rs`, `pair_return`, the pair slots
+  and `pair_bypass` in `native/codegen.rs`, the helpers
+  `rt_pair_record`, `rt_split_pair`, `rt_pair_fits` and
+  `rt_pair_resume` with the hand-back's rebuild of a pair in
+  `native/runtime.rs` (code format 19; `tools/image_census.py` reads
+  the pair kinds' type); the two tests; the measure in AW9 and in
+  "Stage 2b as built".
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

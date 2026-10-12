@@ -333,7 +333,7 @@ impl Expander<'_> {
     fn shape_of(&self, callee: CodeId) -> Result<Shape, &'static str> {
         let code = &self.program.codes[callee];
         let analysis =
-            analyse(self.program, code, &[]).map_err(|_| "its analysis does not settle")?;
+            analyse(self.program, code, &[], false).map_err(|_| "its analysis does not settle")?;
         let mut returns_nothing = false;
         for (pc, op) in code.ops.iter().enumerate() {
             // an op the analysis never reached (the `ReturnNothing` every

@@ -1188,7 +1188,7 @@ pub(crate) fn compile_with_inlining(
         // the kinds the analysis settled on for the regions' slots, a
         // development aid: an argument that arrives boxed keeps the
         // callee's body on the boxed paths
-        if let Ok(analysis) = infer::analyse(program, body, &[]) {
+        if let Ok(analysis) = infer::analyse(program, body, &[], false) {
             let kinds: Vec<String> = analysis.slots[program.codes[code].locals as usize..]
                 .iter()
                 .map(|kind| format!("{kind:?}"))

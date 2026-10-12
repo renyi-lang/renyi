@@ -1947,3 +1947,161 @@ end
         "shared base: 1 1 6 o\nin place: 500510 1020 own\nrelabelled: renamed 2040 / own 1020\nwide: 300 45152 third\nrefined: 9 -7 2\nnine: 1276 5 9\nfresh: 376250\n"
     );
 }
+
+#[test]
+fn records_of_two_fields_are_returned_as_pairs_on_every_shape_of_call_and_use() {
+    // decision AW9: a function whose declared result is a record of two
+    // fields leaves its two fields in two cells of the caller's stack (a
+    // construct returned at once, a call passed on, a pair slot returned
+    // whole), and the caller takes the pair as it lies (stored and taken
+    // apart, read as a field at once, kept whole in a list, held across a
+    // loop whose Integer leaves the machine word and hands the frame back,
+    // its two fields rebuilt into the record, kept past `otherwise fail`
+    // and returned past one, taken with a fallback value, on the success
+    // path and the failure path); a record of three fields stays a
+    // record; every form prints what the interpreter prints
+    let source = r#"module demo
+  purpose: Records of two fields returned as pairs: every shape of call, use and hand-back.
+
+import std.console
+
+type State
+  purpose: A counter with a label and a history.
+  has tally: Integer
+  has label: Text
+  has history: List of Integer
+end
+
+type Step of Value
+  purpose: A value computed and the state after it.
+  has value: Value
+  has state: State
+end
+
+type Overflow
+  purpose: The count past its limit.
+  has reached: Integer
+end
+
+type Triple
+  purpose: A record of three fields, which stays a record.
+  has lowest: Integer
+  has second: Integer
+  has third: Text
+end
+
+function advance(state: State, amount: Integer) returns Step of Integer
+  purpose: The count raised and recorded, with the new count.
+
+  let tally be state.tally + amount
+  return Step(value: tally, state: state with tally: tally, history: state.history.append(tally))
+end
+
+function examine(state: State, limit: Integer) returns Step of Boolean
+  purpose: Whether the count is under the limit, the label marked when it is.
+
+  if state.tally is less than limit then
+    return Step(value: true, state: state with label: "{state.label}+")
+  end
+  return Step(value: false, state: state)
+end
+
+function relay(state: State, limit: Integer) returns Step of Boolean
+  purpose: The check passed on as it comes.
+
+  return examine(state: state, limit: limit)
+end
+
+function pick(state: State, limit: Integer) returns Step of Boolean
+  purpose: The check kept in a local and returned whole, or remade.
+
+  let done be examine(state: state, limit: limit)
+  if done.value then return done end
+  return Step(value: false, state: done.state with label: "over")
+end
+
+function bounded(state: State, limit: Integer) returns Step of Integer or fails with Overflow
+  purpose: The count advanced by one, or a failure past the limit.
+
+  if state.tally is at least limit then fail with Overflow(reached: state.tally) end
+  return advance(state: state, amount: 1)
+end
+
+function climb(state: State, limit: Integer) returns Step of Integer or fails with Overflow
+  purpose: Two bounded steps, the first kept, the second returned as it comes.
+
+  let lower be bounded(state: state, limit: limit) otherwise fail
+  return bounded(state: lower.state, limit: limit) otherwise fail
+end
+
+function settle(state: State, limit: Integer) returns Step of Integer
+  purpose: A bounded step, or the state as it stands.
+
+  let stepped be bounded(state: state, limit: limit) otherwise Step(value: 99, state: state)
+  return stepped
+end
+
+function summed(state: State, turns: Integer) returns Step of Integer
+  purpose: A loop that doubles past the machine word, with a step held across it.
+
+  let before be advance(state: state, amount: 100)
+  let mutable total be 0
+  let mutable doubled be 1
+  for each turn from 1 to turns
+    change doubled to doubled * 2
+    change total to total + before.value + turn
+  end
+  return Step(value: total, state: before.state with label: "{doubled}")
+end
+
+function triple(amount: Integer) returns Triple
+  purpose: A record of three fields.
+
+  return Triple(lowest: amount, second: amount * 2, third: "t")
+end
+
+public function main() needs console
+  purpose: Runs every form and prints what each leaves.
+
+  let mutable state be State(tally: 0, label: "", history: [0])
+  let mutable total be 0
+  for each amount from 1 to 5
+    let step be advance(state: state, amount: amount)
+    let value be step.value
+    change state to step.state
+    change total to total + value
+  end
+  console.print("advanced: {total} {state.tally}")
+  let checked be examine(state: state, limit: 100)
+  let flag be checked.value
+  change state to checked.state
+  console.print("checked: {flag} {state.label}")
+  change state to relay(state: state, limit: 10).state
+  console.print("relayed: {state.label}")
+  let picked be pick(state: state, limit: 100)
+  let over be pick(state: state, limit: 1)
+  console.print("picked: {picked.value} {picked.state.label} {over.value} {over.state.label}")
+  let kept be advance(state: state, amount: 7)
+  let mutable steps be [kept]
+  change steps to steps.append(kept)
+  let head be steps.at(0) otherwise kept
+  console.print("kept: {kept.value} {head.state.tally} {kept.state.tally}")
+  let climbed be climb(state: state, limit: 100) otherwise Step(value: 0, state: state)
+  console.print("climbed: {climbed.value} {climbed.state.tally}")
+  let blocked be climb(state: state, limit: 1) otherwise Step(value: 0, state: state)
+  console.print("blocked: {blocked.value} {blocked.state.tally}")
+  let settled be settle(state: state, limit: 1)
+  console.print("settled: {settled.value} {settled.state.tally}")
+  let summed_step be summed(state: state, turns: 70)
+  console.print("doubled: {summed_step.state.label} {summed_step.value} {summed_step.state.tally}")
+  let three be triple(3)
+  console.print("triple: {three.lowest} {three.second} {three.third}")
+end
+"#;
+    let (outcome, output) = both_ways(source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(
+        output,
+        "advanced: 35 15\nchecked: true +\nrelayed: +\npicked: true ++ false over\nkept: 22 22 22\nclimbed: 17 17\nblocked: 0 15\nsettled: 99 15\ndoubled: 1180591620717411303424 10535 115\ntriple: 3 6 t\n"
+    );
+}

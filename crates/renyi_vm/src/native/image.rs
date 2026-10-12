@@ -81,8 +81,12 @@ const PART_ALIGN: usize = 16;
 /// signature, a direct caller passing its own, and the room checks of a
 /// direct call in the callee's prologue (decision AW6). 18: a `with` whose
 /// base the checker typed through `rt_with_by_index` and
-/// `rt_with_slot_by_index` among the helpers (decision AW8).
-pub const CODE_FORMAT: u32 = 18;
+/// `rt_with_slot_by_index` among the helpers (decision AW8). 19: a record
+/// of two fields returned as a pair of cells, `rt_pair_record`,
+/// `rt_split_pair`, `rt_pair_fits` and `rt_pair_resume` among the
+/// helpers, a pair slot's second cell in the frame, and the pair kinds
+/// with their type in a hand-back point (decision AW9).
+pub const CODE_FORMAT: u32 = 19;
 
 /// The extension of an image file.
 pub const EXTENSION: &str = "ryi";
@@ -446,10 +450,17 @@ impl Image {
                         out.u32(point.stack.len() as u32);
                         for abs in &point.stack {
                             out.u8(abs.code());
+                            // a pair's type follows its kind (decision AW9)
+                            if let Abs::Pair(ty) = abs {
+                                out.u32(*ty);
+                            }
                         }
                         out.u32(point.slots.len() as u32);
                         for kind in &point.slots {
                             out.u8(kind.code());
+                            if let SlotKind::Pair(ty) = kind {
+                                out.u32(*ty);
+                            }
                         }
                         out.u32(point.marks.len() as u32);
                         for mark in &point.marks {
@@ -545,13 +556,24 @@ impl Image {
                 let stack = (0..input.u32()?)
                     .map(|_| {
                         let code = input.u8()?;
-                        Abs::from_code(code).ok_or_else(|| format!("unknown operand kind {code}"))
+                        let abs = Abs::from_code(code)
+                            .ok_or_else(|| format!("unknown operand kind {code}"))?;
+                        // a pair's type follows its kind (decision AW9)
+                        Ok(match abs {
+                            Abs::Pair(_) => Abs::Pair(input.u32()?),
+                            other => other,
+                        })
                     })
                     .collect::<Result<Vec<Abs>, String>>()?;
                 let slots = (0..input.u32()?)
                     .map(|_| {
                         let code = input.u8()?;
-                        SlotKind::from_code(code).ok_or_else(|| format!("unknown slot kind {code}"))
+                        let kind = SlotKind::from_code(code)
+                            .ok_or_else(|| format!("unknown slot kind {code}"))?;
+                        Ok(match kind {
+                            SlotKind::Pair(_) => SlotKind::Pair(input.u32()?),
+                            other => other,
+                        })
                     })
                     .collect::<Result<Vec<SlotKind>, String>>()?;
                 let marks = (0..input.u32()?)

@@ -32,8 +32,8 @@ use crate::extension::TypedKind;
 use crate::integer::Int;
 use crate::native::infer::{
     abs_of_binary, abs_of_constant, abs_of_field_at, abs_of_params, abs_of_result, abs_of_slot,
-    analyse, boxed_depth, is_integer, is_text, noted_kind, owned_slots, static_field,
-    update_by_index, Abs, Analysis, SlotKind,
+    analyse, boxed_depth, handler_only, is_integer, is_text, noted_kind, otherwise_end,
+    owned_slots, pair_fused, pair_result, static_field, update_by_index, Abs, Analysis, SlotKind,
 };
 use crate::native::runtime::{
     binary_code, fold_code, CONTINUE, DEOPT, D_BOXED, D_DEOPT, D_FAILURE, D_INTERRUPT, D_RETURNED,
@@ -53,6 +53,12 @@ use crate::vm::{unit_slot, CallKind, FieldSite, Frame, GlobalSlot, InPlace, Nati
 /// the pinned vector's pointer, length and capacity there.
 pub(crate) fn stack_offset() -> i64 {
     std::mem::offset_of!(Vm<'static>, stack) as i64
+}
+
+/// Where the VM keeps whether provenance guards are on (decision P3): a
+/// pair goes back as its record under them (decision AW9).
+pub(crate) fn guarding_offset() -> i64 {
+    std::mem::offset_of!(Vm<'static>, guarding) as i64
 }
 
 /// Where the VM keeps its frames and its handlers, and the layout of a
@@ -105,6 +111,8 @@ const RELEASES_INLINE: usize = 8;
 pub(crate) const STACK_SAFE: &[&str] = &[
     "rt_clear_slots",
     "rt_record_copy",
+    "rt_pair_fits",
+    "rt_pair_resume",
     "rt_drop_at",
     "rt_frame_grant",
     "rt_grow_frames",
@@ -203,6 +211,10 @@ pub const SIGNATURES: &[(&str, &str, char)] = &[
     ("rt_with_by_index", "pzqw", 'i'),
     ("rt_with_slot_by_index", "pzwzqw", 'i'),
     ("rt_record_copy", "p", 'p'),
+    ("rt_pair_record", "pzz", 'v'),
+    ("rt_split_pair", "pzw", 'i'),
+    ("rt_pair_fits", "pzwz", 'b'),
+    ("rt_pair_resume", "pzwwzb", 'v'),
     ("rt_take_field", "pzwzwww", 'i'),
     ("rt_not", "pw", 'i'),
     ("rt_binary", "puw", 'i'),
@@ -464,6 +476,18 @@ struct Gen<'a, 'b> {
     max_depth: usize,
     /// The kind the declared result is passed back as.
     result_kind: Abs,
+    /// The type of the record of two fields the body returns in two cells
+    /// to a direct caller (decision AW9), when its declared result is one.
+    pair_result: Option<u32>,
+    /// Whether a record of two fields is held as a pair in this body
+    /// (decision AW9): not in an expanded one, whose regions' slots lie
+    /// where the pairs' cells go.
+    pairs: bool,
+    /// Per slot, the cell of the frame past the code object's locals that
+    /// holds the second field of a pair slot (decision AW9).
+    pair_cells: Vec<Option<usize>>,
+    /// The frame's locals: the code object's and a cell per pair slot.
+    frame_locals: usize,
     /// The loop headers the interpreter may hand a frame over at: the
     /// targets of jumps backwards whose operand stack holds nothing in
     /// registers.
@@ -787,7 +811,11 @@ pub fn compile(
     let original_len = program.codes[code_id].ops.len();
     let mut stats = Stats::default();
     let started = Instant::now();
-    let analysis = analyse(program, code, globals).map_err(Skipped::Analysis)?;
+    // the pairs of decision AW9 in a code object's own ops: the regions of
+    // an expansion (decision AU50) lay their slots where the pairs' cells
+    // would go
+    let pairs = code.ops.len() == original_len;
+    let analysis = analyse(program, code, globals, pairs).map_err(Skipped::Analysis)?;
     let (borrowed, masks) = borrowed_operands(program, code, &analysis, calls, true);
     let owned = owned_slots(code, &analysis, &borrowed);
     let calls_directly = has_direct_call(program, code, &analysis);
@@ -815,6 +843,19 @@ pub fn compile(
         (CodeKind::Function, Some(function)) => abs_of_result(program, function),
         _ => Abs::Boxed(None),
     };
+    let returns_pair = match (code.kind, code.function) {
+        (CodeKind::Function, Some(function)) => pair_result(program, function),
+        _ => None,
+    };
+    // a pair slot's second field in a cell past the locals (decision AW9)
+    let mut pair_cells = vec![None; code.locals as usize];
+    let mut frame_locals = code.locals as usize;
+    for (slot, kind) in analysis.slots.iter().enumerate() {
+        if let SlotKind::Pair(_) = kind {
+            pair_cells[slot] = Some(frame_locals);
+            frame_locals += 1;
+        }
+    }
     ctx.clear();
     ctx.func.signature = direct_signature(isa, &kinds);
     ctx.func.name = UserFuncName::user(0, code_id as u32);
@@ -859,7 +900,7 @@ pub fn compile(
             .map(Vec::len)
             .max()
             .unwrap_or(0);
-        let words = (code.locals as usize + max_depth) * 3 + 1;
+        let words = (frame_locals + max_depth) * 3 + 1;
         let deopt_slot = builder.create_sized_stack_slot(StackSlotData::new(
             StackSlotKind::ExplicitSlot,
             (words * 8) as u32,
@@ -894,6 +935,10 @@ pub fn compile(
             frame_var,
             max_depth,
             result_kind,
+            pair_result: returns_pair,
+            pairs,
+            pair_cells,
+            frame_locals,
             headers: headers.clone(),
             positions: Vec::new(),
             slots: vec![SlotVars::None; code.locals as usize],
@@ -1361,7 +1406,7 @@ impl Gen<'_, '_> {
                     debug_assert_eq!(below.len(), depth);
                     self.state = below;
                     let floor = boxed_depth(&self.state) as u32;
-                    let locals = self.u32(self.code.locals as u32);
+                    let locals = self.u32(self.frame_locals as u32);
                     let floor = self.u32(floor);
                     self.call("rt_settle_handler", &[self.vm, self.base, locals, floor]);
                     self.state.push(Abs::Boxed(None));
@@ -1426,6 +1471,11 @@ impl Gen<'_, '_> {
                 let to = self.b.use_var(vars[1]);
                 let by = self.b.use_var(vars[2]);
                 self.call("rt_insert_range", &[self.vm, above_value, from, to, by]);
+            }
+            Abs::Pair(ty) => {
+                // the pair made into its record where it lies (decision AW9)
+                let ty_value = self.usize(ty as usize);
+                self.call("rt_pair_record", &[self.vm, above_value, ty_value]);
             }
             Abs::Boxed(_) | Abs::Unset => return,
         }
@@ -1511,7 +1561,7 @@ impl Gen<'_, '_> {
     fn deopt_here(&mut self, pc: usize) {
         let point = DeoptPoint {
             pc: pc as u32,
-            locals: self.code.locals,
+            locals: self.frame_locals as u16,
             stack: self.state.clone(),
             slots: self.analysis.slots.clone(),
             marks: self.analysis.marks.clone(),
@@ -1552,6 +1602,13 @@ impl Gen<'_, '_> {
                         store(self, value);
                     }
                 }
+                SlotKind::Pair(_) => {
+                    // whether the slot holds its pair at the point (decision
+                    // AW9): the hand-back makes the record of its two cells
+                    let whole = self.owned.get(pc).is_none_or(|owned| owned[slot]);
+                    let bit = self.iconst(types::I64, i64::from(whole));
+                    store(self, bit);
+                }
                 _ => {}
             }
         }
@@ -1580,7 +1637,7 @@ impl Gen<'_, '_> {
                         store(self, value);
                     }
                 }
-                Abs::Boxed(_) | Abs::Unset => {}
+                Abs::Boxed(_) | Abs::Pair(_) | Abs::Unset => {}
             }
         }
         let code = self.usize(self.code_id);
@@ -1814,12 +1871,13 @@ impl Gen<'_, '_> {
     }
 
     /// How many values of the frame lie on the stack by the current
-    /// state: the locals, then the boxed operands (a typed operand is in
-    /// a register). The stack's length is `base` plus this at every op,
+    /// state: the locals (a cell per pair slot among them, decision AW9),
+    /// then the boxed operands (a typed operand is in a register, a pair
+    /// in two cells). The stack's length is `base` plus this at every op,
     /// so the generated code computes it and never loads it (decision
     /// AT4).
     fn height(&self) -> usize {
-        self.code.locals as usize + boxed_depth(&self.state)
+        self.frame_locals + boxed_depth(&self.state)
     }
 
     /// The stack's length for a height: `base` plus it.
@@ -2134,7 +2192,7 @@ impl Gen<'_, '_> {
             .rev()
             .find(|slot| mask & (1 << slot) != 0)
             .map_or(0, |slot| callee_height + slot + 1);
-        if farthest > self.code.locals as usize + self.max_depth + 1 {
+        if farthest > self.frame_locals + self.max_depth + 1 {
             let stack = self.stack_vector();
             let needed = self.b.ins().iadd_imm_s(base, locals as i64);
             let cap = self.b.ins().load(pointer, flags, stack, 16);
@@ -2198,18 +2256,29 @@ impl Gen<'_, '_> {
     fn leave_frame_inline(&mut self, operands: usize, pc: usize) {
         let flags = MemFlagsData::trusted();
         let pointer = self.pointer;
-        let locals = self.code.locals as usize;
+        let locals = self.frame_locals;
         // the slots of the expanded callees hold `Nothing` at a return of
         // the code object's own (every region leaves by its exit, which
         // moves them out; decision AU50): only its own locals may hold a
-        // reference
-        let holders: Vec<usize> = (0..self.original_locals)
-            .filter(|slot| match self.analysis.slots[*slot] {
-                SlotKind::Int | SlotKind::Bool | SlotKind::Float => false,
-                SlotKind::Boxed(_) => self.owned[pc][*slot],
-                _ => true,
-            })
-            .collect();
+        // reference, a pair slot in its two cells (decision AW9)
+        let mut holders: Vec<usize> = Vec::new();
+        for slot in 0..self.original_locals {
+            match self.analysis.slots[slot] {
+                SlotKind::Int | SlotKind::Bool | SlotKind::Float => {}
+                SlotKind::Boxed(_) => {
+                    if self.owned[pc][slot] {
+                        holders.push(slot);
+                    }
+                }
+                SlotKind::Pair(_) => {
+                    if self.owned[pc][slot] {
+                        holders.push(slot);
+                        holders.push(self.pair_cells[slot].expect("a pair slot"));
+                    }
+                }
+                _ => holders.push(slot),
+            }
+        }
         if holders.len() + operands <= RELEASES_INLINE {
             for slot in holders {
                 let at = self.address_at(slot);
@@ -2339,7 +2408,7 @@ impl Gen<'_, '_> {
         let flags = MemFlagsData::trusted();
         let stack = self.stack_vector();
         let cap = self.b.ins().load(self.pointer, flags, stack, 16);
-        let room = (self.code.locals as usize + self.max_depth + 1) as i64;
+        let room = (self.frame_locals + self.max_depth + 1) as i64;
         let needed = self.b.ins().iadd_imm_s(self.base, room);
         let short = self.b.ins().icmp(IntCC::UnsignedLessThan, cap, needed);
         let grow = self.b.create_block();
@@ -2371,13 +2440,12 @@ impl Gen<'_, '_> {
         }
         // the stack's length is `base` plus the code object's own locals
         // as the caller left it; the expanded code's locals go on past
-        // them (decision AU50), and the length follows before the first
-        // helper pushes at it, in the entries at the loop headers through
-        // `make_room_for_expansion`, here through the height alone
-        if self.code.locals as usize != self.original_locals {
-            let locals = self.code.locals as usize;
-            self.store_height(locals);
-        }
+        // them (decision AU50), as the pairs' second cells do (decision
+        // AW9), and the length follows before the first helper pushes at
+        // it: in the entries at the loop headers through
+        // `make_room_for_expansion`, once their checks have passed (an
+        // entry refused leaves the frame as the interpreter had it), and
+        // on the start path below through the height alone
         // the entries at the loop headers are tried first: `pc` names one
         // when the interpreter hands a frame over in a loop
         let headers = self.headers.clone();
@@ -2399,7 +2467,7 @@ impl Gen<'_, '_> {
         // caller left it at the arguments, having checked nothing for the
         // locals, which the room above covers; the interpreter's frame and
         // the template tier's have it so already
-        self.store_height(self.code.locals as usize);
+        self.store_height(self.frame_locals);
         // the typed parameters, in the registers the signature put them in
         // (the trampoline took them from the frame's slots under a check,
         // a direct caller had them in registers)
@@ -2413,9 +2481,10 @@ impl Gen<'_, '_> {
         // written here once per callee rather than at every call site; the
         // interpreter's frame has them so already, and a typed parameter's
         // slot is written too, its value being in a register now (a plain
-        // value, with nothing to release)
+        // value, with nothing to release); the pairs' second cells too
+        // (decision AW9)
         let params = self.code.params as usize;
-        let locals = self.code.locals as usize;
+        let locals = self.frame_locals;
         let fresh: Vec<usize> = (0..locals)
             .filter(|slot| *slot >= params || typed.iter().any(|(typed, _)| typed == slot))
             .collect();
@@ -2429,7 +2498,6 @@ impl Gen<'_, '_> {
         self.jump_to(0);
         for (header, block) in resumes {
             self.switch_to(block);
-            self.make_room_for_expansion(header);
             self.resume_at(header);
         }
     }
@@ -2437,11 +2505,13 @@ impl Gen<'_, '_> {
     /// A frame the interpreter hands over at a loop header has the code
     /// object's own locals and its operands right above them; the
     /// expanded code keeps the slots of its expanded callees between the
-    /// two (decision AU50), so the operands move up past them, which hold
-    /// `Nothing` outside the regions, and the stack's length follows.
+    /// two (decision AU50), and a body with pair slots the cells of their
+    /// second fields (decision AW9), so the operands move up past them,
+    /// which hold `Nothing` outside the regions, and the stack's length
+    /// follows.
     fn make_room_for_expansion(&mut self, header: usize) {
         let original = self.original_locals;
-        let expanded = self.code.locals as usize;
+        let expanded = self.frame_locals;
         if expanded == original {
             return;
         }
@@ -2477,7 +2547,12 @@ impl Gen<'_, '_> {
     /// The entry at a loop header (decision AG3): every slot the code
     /// keeps in registers is taken from the frame as the interpreter left
     /// it, under a check; one that fails returns `STAY`, and the
-    /// interpreter carries on with the frame as it is.
+    /// interpreter carries on with the frame as it is. A pair slot that
+    /// holds its pair at the header (decision AW9) has the interpreter's
+    /// record in the slot, checked to be a plain record of the type or
+    /// `Nothing` before anything moves; then the room past the locals is
+    /// made, and every pair slot is taken apart into its cells, or
+    /// cleared where it holds no pair.
     fn resume_at(&mut self, header: usize) {
         let out = self.out_address();
         let analysis = self.analysis;
@@ -2518,6 +2593,46 @@ impl Gen<'_, '_> {
                 }
                 _ => {}
             }
+        }
+        let pairs: Vec<(usize, u32, bool)> = analysis
+            .slots
+            .iter()
+            .enumerate()
+            .take(self.original_locals)
+            .filter_map(|(slot, kind)| match kind {
+                SlotKind::Pair(ty) => Some((slot, *ty, self.owned[header][slot])),
+                _ => None,
+            })
+            .collect();
+        for &(slot, ty, owned) in &pairs {
+            if !owned {
+                continue;
+            }
+            let slot_value = self.u32(slot as u32);
+            let ty_value = self.usize(ty as usize);
+            let ok = self
+                .call("rt_pair_fits", &[self.vm, self.base, slot_value, ty_value])
+                .expect("an answer");
+            self.leave_unless(ok, D_STAY);
+        }
+        self.make_room_for_expansion(header);
+        for &(slot, ty, owned) in &pairs {
+            let extra = self.pair_cells[slot].expect("a pair slot");
+            let slot_value = self.u32(slot as u32);
+            let extra_value = self.u32(extra as u32);
+            let ty_value = self.usize(ty as usize);
+            let owned_value = self.u8(u8::from(owned));
+            self.call(
+                "rt_pair_resume",
+                &[
+                    self.vm,
+                    self.base,
+                    slot_value,
+                    extra_value,
+                    ty_value,
+                    owned_value,
+                ],
+            );
         }
         self.state = self.analysis.entry[header]
             .clone()
@@ -2725,6 +2840,20 @@ impl Gen<'_, '_> {
                         let value = self.b.use_var(var);
                         self.push_float(value);
                     }
+                    SlotKind::Pair(ty) => {
+                        // the pair's two cells pushed (decision AW9), copied
+                        // with a reference each or moved at the last read (a
+                        // pair slot is never a parameter, so never borrowed),
+                        // as they lie for the op after, else as the record
+                        let moving = matches!(self.code.ops[pc], Op::LoadMove(_));
+                        self.push_pair_from_slot(index, moving);
+                        if self.pairs && pair_fused(self.code, pc) {
+                            self.state.push(Abs::Pair(ty));
+                        } else {
+                            self.pair_record_on_top(ty);
+                            self.push_boxed();
+                        }
+                    }
                     _ => {
                         // the slot's value pushed in place: a copy with one
                         // more reference, the move that leaves `Nothing`, or,
@@ -2775,8 +2904,30 @@ impl Gen<'_, '_> {
             }
             Op::Store(slot) => {
                 let index = *slot as usize;
-                let top = *self.state.last().expect("an operand");
+                let mut top = *self.state.last().expect("an operand");
+                if let (SlotKind::Boxed(_), Abs::Pair(ty)) = (self.analysis.slots[index], top) {
+                    // a slot that holds other things too takes the record
+                    // (decision AW9)
+                    self.pair_record_on_top(ty);
+                    top = Abs::Boxed(None);
+                    *self.state.last_mut().expect("an operand") = top;
+                }
                 match (self.analysis.slots[index], top) {
+                    (SlotKind::Pair(_), Abs::Pair(_)) => {
+                        // the pair's cells moved into the slot and its second
+                        // cell (decision AW9), whose old values go
+                        let extra = self.pair_cells[index].expect("a pair slot");
+                        let height = self.height();
+                        for (part, to_height) in [index, extra].into_iter().enumerate() {
+                            let from = self.address_at(height - 2 + part);
+                            let to = self.address_at(to_height);
+                            self.release(to);
+                            self.copy_value(from, to);
+                        }
+                        self.store_height(height - 2);
+                        self.state.pop();
+                    }
+                    (SlotKind::Pair(_), _) => unreachable!("a pair slot takes pairs alone"),
                     (SlotKind::Int, Abs::Int) => {
                         let value = self.pop_int();
                         let var = self.slot_var(index);
@@ -2915,6 +3066,17 @@ impl Gen<'_, '_> {
                 }
             }
             Op::Construct { ty, fields } => {
+                if *fields == 2
+                    && self.pair_result == Some(*ty as u32)
+                    && matches!(self.code.ops.get(pc + 1), Some(Op::Return))
+                    && !self.analysis.block_starts[pc + 1]
+                {
+                    // the record returned at once (decision AW9): its two
+                    // fields go back as they lie, the `Return` after this
+                    // op being the record's only reader
+                    self.pair_return(*ty as u32, 2, pc);
+                    return;
+                }
                 let ty_value = self.usize(*ty);
                 let fields_value = self.u32(*fields as u32);
                 let status = self
@@ -2998,6 +3160,27 @@ impl Gen<'_, '_> {
                     .as_text()
                     .unwrap_or("")
                     .to_string();
+                if let Some(Abs::Pair(ty)) = self.state.last().copied() {
+                    match self.program.types.field_index(ty as usize, &field_name) {
+                        Some(index) => {
+                            // the field of a pair as it lies (decision AW9):
+                            // the other cell released, the field left in the
+                            // lower cell
+                            self.pair_field_on_top(index);
+                            self.state.pop();
+                            self.push_boxed();
+                            let kind = abs_of_field_at(self.program, self.code, pc, &field_name);
+                            if !kind.is_boxed() {
+                                self.unbox_top(kind, pc + 1);
+                            }
+                            return;
+                        }
+                        None => {
+                            self.pair_record_on_top(ty);
+                            *self.state.last_mut().expect("an operand") = Abs::Boxed(None);
+                        }
+                    }
+                }
                 let name_value = self.u32(*name);
                 let site_value = self.u32(*site);
                 let fixed = self
@@ -3074,6 +3257,26 @@ impl Gen<'_, '_> {
                     .as_text()
                     .unwrap_or("")
                     .to_string();
+                if let SlotKind::Pair(ty) = self.analysis.slots[*slot as usize] {
+                    // a field of a pair slot copied from its cell with one
+                    // more reference (decision AW9)
+                    match self.program.types.field_index(ty as usize, &field_name) {
+                        Some(index) => {
+                            let from_height = self.pair_cell(*slot as usize, index);
+                            let from = self.address_at(from_height);
+                            self.push_copy(from, true);
+                        }
+                        None => {
+                            self.pair_field_through_helper(*slot as usize, ty, *name, *site, pc)
+                        }
+                    }
+                    self.push_boxed();
+                    let kind = abs_of_field_at(self.program, self.code, pc, &field_name);
+                    if !kind.is_boxed() {
+                        self.unbox_top(kind, pc + 1);
+                    }
+                    return;
+                }
                 let fixed = self.analysis.slot_types[*slot as usize]
                     .and_then(|ty| static_field(self.program, ty, &field_name));
                 if let Some((ty_id, index)) = fixed {
@@ -3244,6 +3447,35 @@ impl Gen<'_, '_> {
                     .as_text()
                     .unwrap_or("")
                     .to_string();
+                if let SlotKind::Pair(ty) = self.analysis.slots[*slot as usize] {
+                    // the field of a pair slot moved out of its cell, the
+                    // other field released, both cells left `Nothing`
+                    // (decision AW9): the slot is dead after its last read,
+                    // as the interpreter's record with a hole in it is
+                    match self.program.types.field_index(ty as usize, &field_name) {
+                        Some(index) => {
+                            let flags = MemFlagsData::trusted();
+                            let taken = self.pair_cell(*slot as usize, index);
+                            let other = self.pair_cell(*slot as usize, 1 - index);
+                            let from = self.address_at(taken);
+                            self.push_copy(from, false);
+                            let nothing = self.iconst(types::I32, TAG_NOTHING as i64);
+                            self.b.ins().istore8(flags, nothing, from, 0);
+                            let other_at = self.address_at(other);
+                            self.release(other_at);
+                            self.b.ins().istore8(flags, nothing, other_at, 0);
+                        }
+                        None => {
+                            self.pair_field_through_helper(*slot as usize, ty, *name, *site, pc)
+                        }
+                    }
+                    self.push_boxed();
+                    let kind = abs_of_field_at(self.program, self.code, pc, &field_name);
+                    if !kind.is_boxed() {
+                        self.unbox_top(kind, pc + 1);
+                    }
+                    return;
+                }
                 let flags = MemFlagsData::trusted();
                 let pointer = self.pointer;
                 let at = self.address_at(*slot as usize);
@@ -3361,9 +3593,23 @@ impl Gen<'_, '_> {
                             // the operands a direct call would have borrowed
                             // (decision AW5) go owned through the VM's path
                             self.retain_borrowed_arguments(pc, count);
-                            self.call_through_helper("rt_call", *function, count, result_kind, pc)
+                            self.call_through_helper("rt_call", *function, count, result_kind, pc);
+                            // a pair callee's record taken apart when the op
+                            // after takes the pair as it lies (decision AW9)
+                            if let Some(ty) = pair_result(self.program, *function) {
+                                if self.pairs && pair_fused(self.code, pc) {
+                                    self.state.pop();
+                                    self.split_pair_top(ty, pc);
+                                }
+                            }
                         }
                     },
+                }
+                // the pair past the test of the `otherwise` whose region the
+                // call ends (decision AW9): straight to the end, as the
+                // analysis flows it; the test is left to the failures
+                if let Some(end) = self.pair_bypass(*function, pc) {
+                    self.jump_to(end);
                 }
             }
             Op::CallAbility {
@@ -3438,7 +3684,11 @@ impl Gen<'_, '_> {
             }
             Op::JumpIfAbsent(target) | Op::JumpIfFailure(target) => {
                 let depth = self.state.len() - 1;
-                if self.state[depth].is_boxed() {
+                if handler_only(self.code, &self.analysis.entry, pc) {
+                    // reached through its handler alone (decision AW9): a
+                    // failure on top, the jump taken
+                    self.jump_to(*target as usize);
+                } else if self.state[depth].is_boxed() {
                     // the top's tag: absent is `Nothing` or a failure
                     let at = self.last_address();
                     let tag = self.tag_at(at, 0);
@@ -3465,6 +3715,17 @@ impl Gen<'_, '_> {
             }
             Op::PushHandler(_) | Op::PopHandler => {}
             Op::Return => {
+                if let Some(Abs::Pair(found)) = self.state.last().copied() {
+                    if self.pair_result == Some(found) {
+                        // the pair returned as it lies (decision AW9)
+                        self.pair_return(found, 1, pc);
+                        return;
+                    }
+                    // a pair of another type than the declared result's
+                    // (which the checker rules out): its record
+                    self.pair_record_on_top(found);
+                    *self.state.last_mut().expect("an operand") = Abs::Boxed(None);
+                }
                 let depth = self.state.len() - 1;
                 let top = self.state[depth];
                 let result = self.result_kind;
@@ -3914,7 +4175,7 @@ impl Gen<'_, '_> {
                 let depth = self.analysis.marks[*slot as usize].unwrap_or(0);
                 let keep = boxed_depth(&self.state[..depth]);
                 if boxed_depth(&self.state) > keep {
-                    let locals = self.u32(self.code.locals as u32);
+                    let locals = self.u32(self.frame_locals as u32);
                     let keep_value = self.u32(keep as u32);
                     self.call("rt_truncate", &[self.vm, self.base, locals, keep_value]);
                 }
@@ -3940,8 +4201,203 @@ impl Gen<'_, '_> {
 
     // ------------------------------------------------------------ operators
 
-    /// A call through `rt_call`: the arguments boxed on the stack, the
-    /// result boxed, and unboxed when the declared result is typed.
+    // ------------------------------------------------------------ pairs
+
+    /// The cell of the pair slot that holds the field at `index` (decision
+    /// AW9): the slot itself for the first, its second cell for the other.
+    fn pair_cell(&self, slot: usize, index: usize) -> usize {
+        if index == 0 {
+            slot
+        } else {
+            self.pair_cells[slot].expect("a pair slot")
+        }
+    }
+
+    /// The two fields of the pair slot pushed as two cells (decision AW9):
+    /// moved out, `Nothing` left in both cells, or copied with a reference
+    /// each. The state is the caller's to push.
+    fn push_pair_from_slot(&mut self, slot: usize, moving: bool) {
+        let flags = MemFlagsData::trusted();
+        let extra = self.pair_cells[slot].expect("a pair slot");
+        let height = self.height();
+        for (part, from_height) in [slot, extra].into_iter().enumerate() {
+            let from = self.address_at(from_height);
+            let to = self.address_at(height + part);
+            self.copy_value(from, to);
+            if moving {
+                let nothing = self.iconst(types::I32, TAG_NOTHING as i64);
+                self.b.ins().istore8(flags, nothing, from, 0);
+            } else {
+                self.retain(to);
+            }
+        }
+        self.store_height(height + 2);
+    }
+
+    /// The two cells on top of the stack made into their record in their
+    /// place (decision AW9), through the helper. The state is the caller's.
+    fn pair_record_on_top(&mut self, ty: u32) {
+        let zero = self.usize(0);
+        let ty_value = self.usize(ty as usize);
+        self.call("rt_pair_record", &[self.vm, zero, ty_value]);
+    }
+
+    /// The field at `index` of the pair on top of the stack kept and the
+    /// other released (decision AW9): the field in the lower of the two
+    /// cells, the height one less. The state is the caller's.
+    fn pair_field_on_top(&mut self, index: usize) {
+        let height = self.height();
+        let first = self.address_at(height - 2);
+        let second = self.address_at(height - 1);
+        if index == 0 {
+            self.release(second);
+        } else {
+            self.release(first);
+            self.copy_value(second, first);
+        }
+        self.store_height(height - 1);
+    }
+
+    /// The record on top of the stack taken apart into the pair's two
+    /// cells through the helper (decision AW9), which crashes for anything
+    /// else; the pair pushed on the state.
+    fn split_pair_top(&mut self, ty: u32, pc: usize) {
+        let ty_value = self.usize(ty as usize);
+        let pc_value = self.u32(pc as u32);
+        let status = self
+            .call("rt_split_pair", &[self.vm, ty_value, pc_value])
+            .expect("a status");
+        self.check_status(status, pc, false);
+        self.state.push(Abs::Pair(ty));
+    }
+
+    /// A field by name of a pair slot through the helper on its record
+    /// (decision AW9): for a name that is no field of the type, which the
+    /// checker rules out and the helper crashes on.
+    fn pair_field_through_helper(&mut self, slot: usize, ty: u32, name: u32, site: u32, pc: usize) {
+        self.push_pair_from_slot(slot, false);
+        self.pair_record_on_top(ty);
+        self.state.push(Abs::Boxed(None));
+        let code_value = self.usize(self.code_id);
+        let name_value = self.u32(name);
+        let site_value = self.u32(site);
+        let pc_value = self.u32(pc as u32);
+        let status = self
+            .helper_on_stack(
+                "rt_field",
+                1,
+                &[code_value, name_value, site_value, pc_value],
+            )
+            .expect("a status");
+        self.check_status(status, pc, false);
+    }
+
+    /// The three words of a value at the address.
+    fn words_at(&mut self, at: IrValue) -> [IrValue; 3] {
+        let flags = MemFlagsData::trusted();
+        [0, 8, 16].map(|offset| self.b.ins().load(types::I64, flags, at, offset))
+    }
+
+    /// The three words of the operand at `depth` as a `Value`: a boxed
+    /// one's from its cell, a typed one's made up as `write_typed` writes
+    /// them.
+    fn operand_words(&mut self, depth: usize) -> [IrValue; 3] {
+        match self.state[depth] {
+            Abs::Int => {
+                let var = self.int_var(depth);
+                let value = self.b.use_var(var);
+                let tag = self.iconst(types::I64, TAG_INTEGER as i64);
+                let small = self.iconst(types::I64, INT_SMALL as i64);
+                [tag, small, value]
+            }
+            Abs::Bool => {
+                let var = self.bool_var(depth);
+                let value = self.b.use_var(var);
+                let wide = self.b.ins().uextend(types::I64, value);
+                let tag = self.iconst(types::I64, TAG_BOOLEAN as i64);
+                let zero = self.iconst(types::I64, 0);
+                [tag, wide, zero]
+            }
+            Abs::Float => {
+                let var = self.float_var(depth);
+                let value = self.b.use_var(var);
+                let bits = self.b.ins().bitcast(types::I64, MemFlagsData::new(), value);
+                let tag = self.iconst(types::I64, TAG_FLOAT as i64);
+                let zero = self.iconst(types::I64, 0);
+                [tag, bits, zero]
+            }
+            Abs::Boxed(_) | Abs::Unset => {
+                let at = self.operand_address(depth);
+                self.words_at(at)
+            }
+            Abs::Range | Abs::Pair(_) => unreachable!("a field is one value"),
+        }
+    }
+
+    /// The two fields on top of the state returned as a pair (decision
+    /// AW9; `entries` operands: the two fields as `Construct` found them,
+    /// or one pair): to a direct caller, in the frame's first two cells
+    /// with `D_RETURNED`; to a trampoline's caller, and under provenance
+    /// guards (the record carries the union of the fields' origins), as
+    /// the record, with the status `leave_boxed_inline` gives.
+    fn pair_return(&mut self, ty: u32, entries: usize, pc: usize) {
+        let flags = MemFlagsData::trusted();
+        let saved = self.state.clone();
+        let guarding = self
+            .b
+            .ins()
+            .load(types::I8, flags, self.vm, guarding_offset() as i32);
+        let in_cells = self.b.create_block();
+        let as_record = self.b.create_block();
+        let check = self.b.create_block();
+        self.b.ins().brif(guarding, as_record, &[], check, &[]);
+        self.switch_to(check);
+        self.b
+            .ins()
+            .brif(self.direct, in_cells, &[], as_record, &[]);
+        // the fields' words read before the leave, written where the
+        // frame's first two slots were, the stack cut below the fields
+        // first so that no leave releases them
+        self.switch_to(in_cells);
+        let len = self.state.len();
+        let words: Vec<[IrValue; 3]> = if entries == 2 {
+            vec![self.operand_words(len - 2), self.operand_words(len - 1)]
+        } else {
+            let height = self.height();
+            let first = self.address_at(height - 2);
+            let second = self.address_at(height - 1);
+            vec![self.words_at(first), self.words_at(second)]
+        };
+        self.state.truncate(len - entries);
+        let operands = boxed_depth(&self.state);
+        let height = self.height();
+        self.store_height(height);
+        self.leave_frame_inline(operands, pc);
+        for (cell, chunk) in words.iter().enumerate() {
+            let to = self.address_at(cell);
+            for (word, offset) in chunk.iter().zip([0, 8, 16]) {
+                self.b.ins().store(flags, *word, to, offset);
+            }
+        }
+        self.store_height(2);
+        let status = self.iconst(types::I32, D_RETURNED as i64);
+        let zero = self.iconst(types::I64, 0);
+        self.return_with(status, zero);
+        // the record
+        self.switch_to(as_record);
+        self.state = saved;
+        if entries == 2 {
+            self.box_top(2);
+        }
+        self.pair_record_on_top(ty);
+        let len = self.state.len();
+        self.state.truncate(len - entries);
+        let operands = boxed_depth(&self.state);
+        let status = self.leave_boxed_inline(operands, pc);
+        let zero = self.iconst(types::I64, 0);
+        self.return_with(status, zero);
+    }
+
     /// A `with` whose base the checker typed, in place (decision AW8):
     /// the `n` pairs boxed on the stack, the holder (the frame's slot,
     /// left `Nothing`, or the operand under the pairs) checked to be a
@@ -4076,6 +4532,8 @@ impl Gen<'_, '_> {
         self.switch_to(join);
     }
 
+    /// A call through `rt_call`: the arguments boxed on the stack, the
+    /// result boxed, and unboxed when the declared result is typed.
     fn call_through_helper(
         &mut self,
         helper: &'static str,
@@ -4490,8 +4948,32 @@ impl Gen<'_, '_> {
         let depth = self.b.ins().load(pointer, flags, depth_address, 0);
         let shallower = self.b.ins().iadd_imm_s(depth, -1);
         self.b.ins().store(flags, shallower, depth_address, 0);
+        // a pair callee (decision AW9) leaves its two cells with
+        // `D_RETURNED` and its record on every other way out: the pair
+        // stays as it lies when the op after takes it so (`fused`), the
+        // record then taken apart on the other paths; else the pair
+        // becomes its record here
+        let pair = pair_result(self.program, function);
+        let fused = pair.is_some() && self.pairs && pair_fused(self.code, pc);
+        let split = fused.then(|| self.b.create_block());
         let rest = self.b.create_block();
-        if result_kind.is_boxed() {
+        if let Some(ty) = pair {
+            let returned = self
+                .b
+                .ins()
+                .icmp_imm_s(IntCC::Equal, status, D_RETURNED as i64);
+            let fast = self.b.create_block();
+            self.b.ins().brif(returned, fast, &[], rest, &[]);
+            self.switch_to(fast);
+            if fused {
+                self.state.push(Abs::Pair(ty));
+            } else {
+                self.pair_record_on_top(ty);
+                self.push_boxed();
+            }
+            self.b.ins().jump(join, &[]);
+            self.terminated = true;
+        } else if result_kind.is_boxed() {
             self.b.ins().jump(rest, &[]);
             self.terminated = true;
         } else {
@@ -4517,11 +4999,16 @@ impl Gen<'_, '_> {
         let after = self.b.create_block();
         self.b.ins().brif(boxed, ok, &[], after, &[]);
         self.switch_to(ok);
-        self.push_boxed();
-        if !result_kind.is_boxed() {
-            self.unbox_top(result_kind, pc + 1);
-        }
-        self.b.ins().jump(join, &[]);
+        match split {
+            Some(split) => self.b.ins().jump(split, &[]),
+            None => {
+                self.push_boxed();
+                if !result_kind.is_boxed() {
+                    self.unbox_top(result_kind, pc + 1);
+                }
+                self.b.ins().jump(join, &[])
+            }
+        };
         self.terminated = true;
         self.switch_to(after);
         self.state.truncate(first);
@@ -4529,11 +5016,16 @@ impl Gen<'_, '_> {
             .call("rt_direct_after", &[self.vm, status])
             .expect("a status");
         self.check_status(settled, pc, true);
-        self.push_boxed();
-        if !result_kind.is_boxed() {
-            self.unbox_top(result_kind, pc + 1);
-        }
-        self.b.ins().jump(join, &[]);
+        match split {
+            Some(split) => self.b.ins().jump(split, &[]),
+            None => {
+                self.push_boxed();
+                if !result_kind.is_boxed() {
+                    self.unbox_top(result_kind, pc + 1);
+                }
+                self.b.ins().jump(join, &[])
+            }
+        };
         self.terminated = true;
         // the path through the interpreter's call
         self.switch_to(slow);
@@ -4541,10 +5033,40 @@ impl Gen<'_, '_> {
         // the VM's path takes its arguments owned (decision AW5)
         self.retain_borrowed_arguments(pc, count);
         self.call_through_helper("rt_call", function, count, result_kind, pc);
-        self.b.ins().jump(join, &[]);
+        match split {
+            Some(split) => {
+                self.state.pop();
+                self.b.ins().jump(split, &[])
+            }
+            None => self.b.ins().jump(join, &[]),
+        };
         self.terminated = true;
+        // the record of a pair callee taken apart into the pair's cells
+        if let (Some(ty), Some(split)) = (pair, split) {
+            self.switch_to(split);
+            self.state.truncate(first);
+            self.split_pair_top(ty, pc);
+            self.b.ins().jump(join, &[]);
+            self.terminated = true;
+        }
         // every path leaves one operand of the result's kind
         self.switch_to(join);
+    }
+
+    /// Where a pair the call at `pc` leaves goes past the test of its
+    /// `otherwise` (decision AW9, `otherwise_end`): the end of the
+    /// `otherwise`, when the callee answers a pair the op there takes as it
+    /// lies and the region the call ends is the innermost one open.
+    fn pair_bypass(&self, function: usize, pc: usize) -> Option<usize> {
+        pair_result(self.program, function)?;
+        if !(self.pairs && pair_fused(self.code, pc)) {
+            return None;
+        }
+        let end = otherwise_end(self.code, pc)?;
+        let innermost = self.analysis.handlers[pc]
+            .last()
+            .map(|(target, _)| *target as usize);
+        (innermost == Some(pc + 2)).then_some(end)
     }
 
     fn binary(&mut self, op: BinaryOp, pc: usize) {

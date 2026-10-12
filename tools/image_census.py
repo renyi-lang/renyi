@@ -72,9 +72,11 @@ def read_image(path):
             reader.u32()  # pc
             reader.u16()  # locals
             for _ in range(reader.u32()):
-                reader.u8()
+                if reader.u8() == 6:  # a pair on the stack: its type follows (decision AW9)
+                    reader.u32()
             for _ in range(reader.u32()):
-                reader.u8()
+                if reader.u8() == 9:  # a pair slot: its type follows (decision AW9)
+                    reader.u32()
             for _ in range(reader.u32()):
                 if reader.u8() == 1:
                     reader.u32()

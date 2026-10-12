@@ -33,6 +33,14 @@ pub enum Abs {
     /// A range written as `from to by` whose three bounds are small
     /// Integers in registers: only `IterInit` consumes it unboxed.
     Range,
+    /// A record of two fields that lies in two cells on the VM's stack,
+    /// the first field below the second, with the record's type (decision
+    /// AW9): what a call to a function whose declared result is such a
+    /// record leaves, and a load of a slot that holds one, when the op
+    /// after takes the pair as it lies (`pair_fused`: a `Store`, a `Field`
+    /// or a `Return`, for a call past the test of an `otherwise` that only
+    /// a failure reaches); before any other op the pair becomes its record.
+    Pair(u32),
     /// Any value, on the VM's stack, with the index in the program's
     /// `result_types` of the type the checker noted for it when the op
     /// that pushed it was emitted under its expression (decision AU1,
@@ -54,6 +62,16 @@ impl Abs {
 
     pub fn is_boxed(self) -> bool {
         matches!(self, Abs::Boxed(_))
+    }
+
+    /// How many cells of the VM's stack the operand takes: one boxed, two
+    /// for a pair (decision AW9), none in a register.
+    pub fn cells(self) -> usize {
+        match self {
+            Abs::Boxed(_) => 1,
+            Abs::Pair(_) => 2,
+            _ => 0,
+        }
     }
 
     /// The type noted for a boxed value, when one was.
@@ -82,6 +100,7 @@ impl Abs {
             Abs::Float => 3,
             Abs::Range => 4,
             Abs::Boxed(_) => 5,
+            Abs::Pair(_) => 6,
         }
     }
 
@@ -93,6 +112,8 @@ impl Abs {
             3 => Abs::Float,
             4 => Abs::Range,
             5 => Abs::Boxed(None),
+            // the type follows the kind in an image
+            6 => Abs::Pair(0),
             _ => return None,
         })
     }
@@ -109,6 +130,11 @@ pub enum SlotKind {
     /// the program's `result_types` of its type when every store into the
     /// slot agreed on one (decision AU8).
     Boxed(Option<u32>),
+    /// A record of two fields held as its fields (decision AW9): the
+    /// first in the slot, the second in a cell of the frame past the code
+    /// object's locals (the k-th pair slot's in the k-th), both `Nothing`
+    /// once the pair is moved out or taken apart; with the record's type.
+    Pair(u32),
     /// The operand stack's height at a loop's entry (`MarkStack`): unused
     /// by the generated code, whose stack is static, and reconstructed
     /// when the frame is handed back to the interpreter.
@@ -136,6 +162,7 @@ impl SlotKind {
             SlotKind::RangeIter => 6,
             SlotKind::Iter => 7,
             SlotKind::Deadline => 8,
+            SlotKind::Pair(_) => 9,
         }
     }
 
@@ -150,6 +177,8 @@ impl SlotKind {
             6 => SlotKind::RangeIter,
             7 => SlotKind::Iter,
             8 => SlotKind::Deadline,
+            // the type follows the kind in an image
+            9 => SlotKind::Pair(0),
             _ => return None,
         })
     }
@@ -185,9 +214,10 @@ pub struct Analysis {
     pub slot_types: Vec<Option<u32>>,
 }
 
-/// How many boxed operands lie on the VM's stack in a state.
+/// How many cells of the VM's stack the operands of a state take: one
+/// per boxed operand, two per pair (decision AW9).
 pub fn boxed_depth(state: &[Abs]) -> usize {
-    state.iter().filter(|abs| abs.is_boxed()).count()
+    state.iter().map(|abs| abs.cells()).sum()
 }
 
 /// The representation a declared type gives a value that is known to have
@@ -309,6 +339,70 @@ pub fn abs_of_result(program: &Program, function: usize) -> Abs {
         Some(ty) => abs_of_type(program, ty),
         None => Abs::Boxed(None),
     }
+}
+
+/// The type of the record of two fields a call to the function leaves in
+/// two cells (decision AW9): the declared result is a record of two
+/// fields without refinements and not `Date`, and the function has a code
+/// object (its body returns the pair to a direct caller and the record to
+/// a trampoline's); `None` for every other function.
+pub fn pair_result(program: &Program, function: usize) -> Option<u32> {
+    program.function_codes.get(function).copied().flatten()?;
+    let Some(Ty::App(id, _)) = &program.function_metas[function].returns else {
+        return None;
+    };
+    let meta = program.types.metas.get(*id)?;
+    let TypeShape::Record(fields) = &meta.shape else {
+        return None;
+    };
+    let fits = fields.len() == 2 && meta.refinements.is_empty() && Some(*id) != program.date;
+    fits.then_some(*id as u32)
+}
+
+/// Whether the op after `pc` takes a pair as it lies (decision AW9): a
+/// `Store`, a `Field` or a `Return`, for a call that ends the region of an
+/// `otherwise` (`otherwise_end`) the op where the region's success path
+/// lands. Before any other op the pair becomes its record at once, so that
+/// a pair never lies under another operand.
+pub fn pair_fused(code: &Code, pc: usize) -> bool {
+    let next = otherwise_end(code, pc).unwrap_or(pc + 1);
+    matches!(
+        code.ops.get(next),
+        Some(Op::Store(_) | Op::Field { .. } | Op::Return)
+    )
+}
+
+/// Where the success path of an `otherwise` lands when the call at `pc`
+/// ends its handled region (decision AW9): the compiler closes the region
+/// with `PopHandler`, tests the value with `JumpIfFailure` or
+/// `JumpIfAbsent` to the fallback right after the next op, a `Jump` to the
+/// end. A pair the call leaves takes that jump at once, past the test,
+/// which only a failure then reaches (`handler_only`).
+pub fn otherwise_end(code: &Code, pc: usize) -> Option<usize> {
+    if !matches!(code.ops.get(pc), Some(Op::Call { .. })) {
+        return None;
+    }
+    match (
+        code.ops.get(pc + 1),
+        code.ops.get(pc + 2),
+        code.ops.get(pc + 3),
+    ) {
+        (
+            Some(Op::PopHandler),
+            Some(Op::JumpIfFailure(fallback) | Op::JumpIfAbsent(fallback)),
+            Some(Op::Jump(end)),
+        ) if *fallback as usize == pc + 4 => Some(*end as usize),
+        _ => None,
+    }
+}
+
+/// Whether the op at `pc`, the test of an `otherwise`, is reached through
+/// its handler alone (decision AW9): the op before it is the region's
+/// `PopHandler` and no path reaches that, the call before having taken its
+/// pair past the test. The value on top is then a failure, and the test's
+/// jump is taken.
+pub fn handler_only(code: &Code, entry: &[Option<Vec<Abs>>], pc: usize) -> bool {
+    pc > 0 && matches!(code.ops[pc - 1], Op::PopHandler) && matches!(entry.get(pc - 1), Some(None))
 }
 
 /// The representation of a field read by name, when every record or
@@ -471,11 +565,14 @@ type Edge = (usize, Vec<Abs>, Vec<(u32, usize)>);
 /// `globals` says which module constants are already evaluated to a
 /// small Integer, by index (decision AU53): such a constant is an Int
 /// operand, which the generated code pushes as a literal; an empty
-/// slice says none is known.
+/// slice says none is known. `pairs` says whether a record of two fields
+/// is held as a pair (decision AW9): the Cranelift tier holds one so in a
+/// code object's own ops; the template tier and an expanded body do not.
 pub fn analyse(
     program: &Program,
     code: &Code,
     globals: &[Option<i64>],
+    pairs: bool,
 ) -> Result<Analysis, Rejection> {
     let count = code.ops.len();
     let mut slots = vec![SlotKind::Unset; code.locals as usize];
@@ -600,13 +697,23 @@ pub fn analyse(
                             | SlotKind::Bool
                             | SlotKind::Float
                             | SlotKind::Boxed(_)
+                            | SlotKind::Pair(_)
                     ) {
                         return Err(Rejection::SlotConflict(*slot));
                     }
-                    stack.push(note(abs_of_slot(kind)));
+                    // a pair slot's pair as it lies for the op after, else
+                    // its record (decision AW9)
+                    stack.push(match kind {
+                        SlotKind::Pair(ty) if pair_fused(code, pc) => Abs::Pair(ty),
+                        SlotKind::Pair(_) => note(Abs::Boxed(None)),
+                        kind => note(abs_of_slot(kind)),
+                    });
                 }
                 Op::LoadField { slot, name, .. } => {
-                    if !matches!(slots[*slot as usize], SlotKind::Unset | SlotKind::Boxed(_)) {
+                    if !matches!(
+                        slots[*slot as usize],
+                        SlotKind::Unset | SlotKind::Boxed(_) | SlotKind::Pair(_)
+                    ) {
                         return Err(Rejection::SlotConflict(*slot));
                     }
                     let name = code.constants[*name as usize].as_text().unwrap_or("");
@@ -666,6 +773,11 @@ pub fn analyse(
                     may_fail!();
                 }
                 Op::WithSlot { slot, fields } => {
+                    // a pair slot updated in place holds its record instead
+                    // (decision AW9): boxed from here on
+                    if let SlotKind::Pair(_) = slots[*slot as usize] {
+                        store!(*slot, SlotKind::Boxed(None));
+                    }
                     if !matches!(slots[*slot as usize], SlotKind::Unset | SlotKind::Boxed(_)) {
                         return Err(Rejection::SlotConflict(*slot));
                     }
@@ -674,7 +786,10 @@ pub fn analyse(
                     may_fail!();
                 }
                 Op::TakeField { slot, name, .. } => {
-                    if !matches!(slots[*slot as usize], SlotKind::Unset | SlotKind::Boxed(_)) {
+                    if !matches!(
+                        slots[*slot as usize],
+                        SlotKind::Unset | SlotKind::Boxed(_) | SlotKind::Pair(_)
+                    ) {
                         return Err(Rejection::SlotConflict(*slot));
                     }
                     let name = code.constants[*name as usize].as_text().unwrap_or("");
@@ -682,8 +797,25 @@ pub fn analyse(
                 }
                 Op::Call { function, args } => {
                     pop_n!(*args);
-                    stack.push(note(abs_of_result(program, *function)));
+                    // a pair callee's two cells as they lie for the op
+                    // after, else its record (decision AW9)
+                    let pair =
+                        pair_result(program, *function).filter(|_| pairs && pair_fused(code, pc));
+                    stack.push(match pair {
+                        Some(ty) => Abs::Pair(ty),
+                        None => note(abs_of_result(program, *function)),
+                    });
                     may_fail!();
+                    // the pair past the test of the `otherwise` whose region
+                    // the call ends: the region closed, the success path
+                    // straight to the end, the test left to the failures
+                    if let (Some(_), Some(end)) = (pair, otherwise_end(code, pc)) {
+                        if open.last().map(|(target, _)| *target as usize) == Some(pc + 2) {
+                            open_after.pop();
+                            flows.push((end, stack.clone(), open_after.clone()));
+                            falls_through = false;
+                        }
+                    }
                 }
                 Op::CallAbility { args, .. } => {
                     pop_n!(*args);
@@ -729,6 +861,11 @@ pub fn analyse(
                         _ => Abs::Boxed(None),
                     });
                     flows.push((*target as usize, stack.clone(), open_after.clone()));
+                    // reached through its handler alone (decision AW9): a
+                    // failure on top, the jump taken
+                    if handler_only(code, &entry, pc) {
+                        falls_through = false;
+                    }
                 }
                 Op::PushHandler(target) => {
                     open_after.push((*target, stack.len()));
@@ -908,7 +1045,9 @@ pub fn analyse(
 /// not one a typed call or a comparison borrows, which keeps the slot's
 /// value) or the update in place (`WithSlot`, which moves the record out);
 /// a slot of another kind (an iterator, a deadline, a mark) always; a
-/// typed slot never. A failure flows to its handler with the state before
+/// typed slot never; a pair slot (decision AW9) from the store of a pair
+/// until the move out of it or the take of a field, which empties both
+/// cells. A failure flows to its handler with the state before
 /// the op, so that a slot the op would have emptied stays counted there;
 /// where the analysis reaches no op, every slot counts. The interpreter
 /// writes the slots as these ops say too, so a frame it hands over at a
@@ -916,10 +1055,11 @@ pub fn analyse(
 pub fn owned_slots(code: &Code, analysis: &Analysis, borrowed: &[bool]) -> Vec<Vec<bool>> {
     let count = code.ops.len();
     let locals = code.locals as usize;
-    let boxed = |slot: usize| matches!(analysis.slots[slot], SlotKind::Boxed(_));
+    let boxed =
+        |slot: usize| matches!(analysis.slots[slot], SlotKind::Boxed(_) | SlotKind::Pair(_));
     let start: Vec<bool> = (0..locals)
         .map(|slot| match analysis.slots[slot] {
-            SlotKind::Int | SlotKind::Bool | SlotKind::Float => false,
+            SlotKind::Int | SlotKind::Bool | SlotKind::Float | SlotKind::Pair(_) => false,
             SlotKind::Boxed(_) => slot < code.params as usize,
             _ => true,
         })
@@ -953,6 +1093,14 @@ pub fn owned_slots(code: &Code, analysis: &Analysis, borrowed: &[bool]) -> Vec<V
                 Op::WithSlot { slot, .. } => {
                     let slot = *slot as usize;
                     if boxed(slot) {
+                        after[slot] = false;
+                    }
+                }
+                Op::TakeField { slot, .. } => {
+                    // a pair slot taken apart at its last read holds
+                    // `Nothing` in both cells (decision AW9)
+                    let slot = *slot as usize;
+                    if let SlotKind::Pair(_) = analysis.slots[slot] {
                         after[slot] = false;
                     }
                 }
@@ -1026,6 +1174,7 @@ fn slot_of_abs(abs: Abs) -> SlotKind {
         Abs::Float => SlotKind::Float,
         Abs::Range => SlotKind::Boxed(None),
         Abs::Boxed(ty) => SlotKind::Boxed(ty),
+        Abs::Pair(ty) => SlotKind::Pair(ty),
     }
 }
 
@@ -1037,6 +1186,7 @@ pub fn abs_of_slot(kind: SlotKind) -> Abs {
         SlotKind::Bool => Abs::Bool,
         SlotKind::Float => Abs::Float,
         SlotKind::Boxed(ty) => Abs::Boxed(ty),
+        SlotKind::Pair(ty) => Abs::Pair(ty),
         SlotKind::Mark | SlotKind::RangeIter | SlotKind::Iter | SlotKind::Deadline => {
             Abs::Boxed(None)
         }
@@ -1051,7 +1201,11 @@ fn join_slot(known: SlotKind, new: SlotKind) -> Option<SlotKind> {
         (Unset, x) | (x, Unset) => x,
         (a, b) if a == b => a,
         (Boxed(_), Boxed(_)) => Boxed(None),
-        (Int | Bool | Float | Boxed(_), Int | Bool | Float | Boxed(_)) => Boxed(None),
+        // a pair slot stored into with anything else holds records
+        // (decision AW9)
+        (Int | Bool | Float | Boxed(_) | Pair(_), Int | Bool | Float | Boxed(_) | Pair(_)) => {
+            Boxed(None)
+        }
         _ => return None,
     })
 }

@@ -6979,3 +6979,144 @@ byte-equal, the conformance suite 55 of 55 on both tiers, the template
 tier's own tests with the tier forced, 396 tests. Since stage 0 the
 check row 2,889.9 to 2,370.7 (-18.0%), since the study's binary 3,085.3
 (-23.2%). Next in AW1's order: stage 2b, `Done` without its allocation.
+
+**AW9. Stage 2b of the new backend: a record of two fields returned as
+a pair.** The second item of stage 2 in AW1's order (the study's item
+(2b), `Done` without its allocation, which AW1 (5) settled as a
+convention per function), on 2026-10-12, measured as AW1 prescribes
+against stage 2a's binary (1ad4399). A function whose declared result
+is a record of two fields (the checker's `Done`, the parser's `Parsed`,
+the emitter's `Built`: 275 such functions with a code object in the
+checker's program, 105 of them returning `Done` and 100 `Parsed`)
+constructed it on its way out (`rt_construct`: the block allocated, the
+fields moved in), and its caller took the fields out at once and freed
+it: 677,653 constructs, 683,178 releases through `rt_drop_at`,
+1,084,633 frees of a block (the nested ones counted) on the check row
+of AW8's build. The convention per function: a function whose declared
+result is a record of exactly two fields of a type without refinements
+and not `Date`, with a code object, is a pair function (`pair_result`
+in `native/infer.rs`); on the Cranelift tier its body answers a direct
+caller with the two fields in the first two cells of where its frame
+was, with `D_RETURNED` (`pair_return` in `native/codegen.rs`: the
+fields' words read before the leave, the frame left, the words written,
+the stack's length two above the base), and answers the trampoline's
+caller, and any caller under provenance guards (the record then carries
+the union of the fields' origins), with the record and `D_BOXED`, as
+`Construct` would have made it; before the `Return` a `Construct` of
+the type leaves its two fields as they lie (no block), a call of a pair
+function passes its pair on, a load of a pair slot pushes its cells,
+and anything else is a record taken apart (`rt_split_pair`: moved out
+of a record held once, copied from a shared one, each field with the
+record's origins under guards). On the caller's side the abstract
+operand `Abs::Pair` of two cells, with the record's type, is what a
+call of a pair function leaves when the op after takes the pair as it
+lies (`pair_fused`: a `Store`, a `Field` or a `Return`), and before any
+other op it becomes its record (`rt_pair_record`, in place), so that a
+pair never lies under another operand; a `Store` of a pair into a slot
+stored from pairs alone makes a pair slot (`SlotKind::Pair`: the first
+field in the slot, the second in a cell of the frame past the code
+object's locals, `frame_locals` in the generator; a slot stored into
+with anything else holds records, `join_slot`); `LoadField` and
+`TakeField` on a pair slot read or move the field's cell (a take at the
+slot's last read leaves both cells `Nothing`); `Load` and `LoadMove`
+push both cells, copied with a reference each or moved at the last
+read; a `Field` on a pair leaves the field in the lower cell and
+releases the other; a `WithSlot` on a pair slot makes it boxed from
+there on. The hand-back (`rt_deopt`) rebuilds a pair on the stack from
+its two cells and a pair slot's record from the slot and its second
+cell when the slot holds its pair (an owned word per pair slot in the
+point's buffer), and cuts the cells past the locals off. The entry at a
+loop header from a frame the interpreter hands over: `rt_pair_fits`
+checks that each pair slot holds a plain record of the type or
+`Nothing` (else the entry is refused with `D_STAY`), the frame is
+widened by the pair cells, and `rt_pair_resume` takes each record apart
+into its cells; on the way the prologue's write of the stack's length
+before the header dispatch, which lengthened the stack of an entry
+refused after it (a latent defect for the expanded bodies of AU50, hit
+here through the second loop of a function whose first loop's finished
+range `rt_resume_range` refuses), is gone: the start path writes the
+length after the dispatch, the resume path once its checks have passed.
+The template tier calls a pair function through its trampoline, which
+answers the record (`analyse` without pairs), as do the expanded
+callees of AU50 and the typed test. The code format is 19 (the pair
+kinds with their type in the hand-back points, which
+`tools/image_census.py` reads). Built in two parts, each measured. (A)
+The pair at the call alone. The survey of the checker's bytecode: of
+the 782 calls of a pair function, 312 are followed by a `Store`, 100 by
+a `Return`, 34 by a `Field`, and 244 by the `PopHandler` of an
+`otherwise` (`let done be check(...) otherwise fail`, the idiom of the
+checker's failure propagation); of the pair functions' returns, 423
+return a `Construct` of the type, 100 a call of a pair function, 88 a
+load; 305 slots are stored from pair calls alone. Measured, the check
+row 2,370.7 to 2,342.0 million instructions (-1.2%) against the study's
+estimate of 4.9%: `rt_construct` 677,653 to 410,681 calls, but
+`rt_pair_record` 176,261 calls, two pairs of three made into their
+record by the caller after all, most at the `otherwise`: the compiler
+closes the handled region after the call with `PopHandler` and tests
+the value (`JumpIfFailure` to the fallback, then a `Jump` to the end),
+and a pair before the test was boxed for it. (B) The pair past the
+test. `otherwise_end` in `native/infer.rs` recognises the three ops
+after a call that ends a region, and a pair the call leaves takes the
+jump to the end at once (the analysis flows the state there with the
+region closed, `pair_bypass` in the generator jumps there), so that the
+test is reached through its handler alone, with a failure on top
+(`handler_only`: the region's `PopHandler` before it on no path), and
+its jump is always taken; `pair_fused` looks at the op at the end.
+Where the fallback falls through with a value (`otherwise Step(...)`),
+the states join boxed and the pair becomes its record at the edge, as
+before. The tests: the program of every shape (a pair stored and taken
+apart, read as a field at once, relayed, kept whole in a list, held
+across a loop whose Integer leaves the machine word and hands the frame
+back, kept past `otherwise fail` and returned past one, taken with a
+fallback value, on the success path and the failure path; a record of
+three fields) in `crates/renyi_vm/tests/native.rs` against the
+interpreter with everything compiled, and in
+`crates/renyi_vm/tests/promotion.rs` promoted from template code (the
+trampoline's path, and the entry at a loop header with a pair slot
+live). The measure (callgrind under WSL on the release build for Linux,
+the images built under `valgrind --tool=none`, against stage 2a's
+binary measured the same way in AW8, the reference AU34's 44782aa).
+With (A) alone: the check row 2,370.7 to 2,342.0 million instructions
+(-1.2%), the parse row 974.3 to 966.4 (-0.8%), the compile row 3,934.1
+to 3,874.0 (-1.5%); the records category 79.9 to 57.7, the generated
+code 980.4 to 985.4, the helpers' glue 92.7 to 85.3, mimalloc 135.7 to
+130.4, the counts and drops 306.8 to 300.0; `rt_construct` 677,653 to
+410,681 calls, `rt_pair_record` 176,261, `rt_split_pair` 23,596,
+`rt_drop_at` 683,178 to 617,399, `Composite::free` 1,084,633 to 991,989
+(the nested ones counted), `mi_malloc` 2,180,274 to 2,087,608; AT1's
+synchronous row -0.4% (-0.9% by the estimate). With (B), the pair past
+the test: the check row 2,370.7 to 2,301.9 (-2.9%), the parse row 974.3
+to 941.6 (-3.4%), the compile row 3,934.1 to 3,834.3 (-2.5%); the
+ratios by instructions against the reference's rows (441.6, 284.7 and
+365.6) 5.21, 3.31 and 10.49 against the gate's 3 (5.37, 3.42 and 10.76
+after AW8); the Rust front end's own rows within 0.2% of stage 2a's
+(`check` 173.2, `parse --json` 246.7, `compile` 446.3). The functions
+on the check row with (B): `rt_construct` 677,653 to 410,681 calls
+(71.8 million inclusive), `rt_pair_record` 67,670 (6.7),
+`rt_split_pair` 23,596 (5.5), `rt_drop_at` 683,178 to 529,303 (152.9),
+`Composite::free` 1,084,633 to 650,434, `mi_malloc` 2,180,274 to
+1,978,953. The check row by category, AW8's table against this one, in
+millions: the records 79.9 to 57.6, the generated code 980.4 to 982.2,
+the helpers' glue 92.7 to 85.3, mimalloc 135.7 to 121.1, the counts and
+drops 306.8 to 279.3, the texts and copies 112.7 to 109.0, the natives
+366.9 to 365.0, the hashing 55.6 to 55.6, the calls through the VM's
+path 7.4 to 6.9, the comparisons 123.8 to 123.8, the load 46.2 to 46.5,
+the iterators 40.3 to 40.3. AT1's rows on the frozen self-check
+(`tools/measure_size.sh` under WSL, stage 2a's binary against this
+one): the synchronous JIT row 5,802.0 to 5,775.8 million instructions
+(-0.5%) and 8,356.3 to 8,299.5 by the estimate (-0.7%), the image row
+4,140.7 to 3,989.5 (-3.7%) and 6,084.3 to 5,846.3 by the estimate
+(-3.9%), the cached run 4,220.6 to 4,069.4 (-3.6%), the interpreter
+11,229.0 to 11,229.7 (+0.0%); the image 9,137,440 to 9,554,000 bytes
+(+4.6%). The four benchmarks and hello by user-space instructions
+(`perf stat`, the JIT synchronous, in millions): `primes` 265.0 to
+265.0 (unchanged), `strings` 432.5 to 432.5 (unchanged), `records`
+207.0 to 207.0 (unchanged), `json_round_trip` 839.7 to 839.7
+(unchanged), `hello` 5.42 to 5.43 (+0.2%). The four judges byte-equal,
+the conformance suite 55 of 55 on both tiers, the template tier's own
+tests with the tier forced, 398 tests. Since stage 0 the check row
+2,889.9 to 2,301.9 (-20.3%), since the study's binary 3,085.3 (-25.4%).
+A candidate seen on the way, not decided: `rt_resume_range` refuses a
+finished range iterator, so a function with two loops in sequence is
+never entered at the second header from the interpreter. Next in AW1's
+order: stage 2c, the frees in place.

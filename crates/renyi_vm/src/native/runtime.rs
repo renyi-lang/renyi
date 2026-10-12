@@ -26,7 +26,7 @@ use crate::integer::Int;
 use crate::native::infer::{Abs, SlotKind};
 use crate::native::DeoptPoint;
 use crate::natives;
-use crate::value::{plain_all, Native, RangeValue, Value};
+use crate::value::{plain_all, Composite, Native, RangeValue, Value};
 use crate::vm::{Interrupt, Vm};
 
 pub const CONTINUE: i32 = 0;
@@ -629,6 +629,107 @@ pub(crate) unsafe extern "C" fn rt_with_slot_by_index(
 /// place takes its updates in the copy.
 pub(crate) unsafe extern "C" fn rt_record_copy(block: *mut u8) -> *mut u8 {
     crate::value::Composite::copy_block(block)
+}
+
+// ------------------------------------------------------------ pairs
+
+/// The two cells `above` cells below the top of the stack made into the
+/// record of two fields of the type, in their place (decision AW9): the
+/// pair a call left when the op after does not take it as it lies, a
+/// pair slot loaded whole, a pair boxed for an edge. Under provenance
+/// guards the record carries the union of the fields' origins, as
+/// `rt_construct` makes it.
+pub(crate) unsafe extern "C" fn rt_pair_record(vm: VmPtr, above: usize, ty: usize) {
+    let vm = vm!(vm);
+    if above == 0 && !vm.guarding {
+        let record = Composite::from_top(&mut vm.stack, 2, ty, usize::MAX);
+        vm.stack.push(Value::Record(record));
+        return;
+    }
+    let at = vm.stack.len() - above - 2;
+    let first = std::mem::replace(&mut vm.stack[at], Value::Nothing);
+    let second = vm.stack.remove(at + 1);
+    vm.stack[at] = vm.pair_record(ty, first, second);
+}
+
+/// The record of two fields on top of the stack taken apart into its
+/// fields, the first below the second (decision AW9): moved out of a
+/// record held once, copied with a reference each from a shared one, each
+/// with the record's origins under provenance guards; a crash for
+/// anything else, which the checker rules out.
+pub(crate) unsafe extern "C" fn rt_split_pair(vm: VmPtr, ty: usize, pc: u32) -> i32 {
+    let vm = vm!(vm);
+    let value = vm.pop();
+    let origins = value.origins();
+    let fields = match value.into_plain() {
+        Value::Record(mut record) if record.ty == ty && record.fields.len() == 2 => {
+            match record.get_mut() {
+                Some(unique) => [
+                    std::mem::replace(&mut unique.fields[0], Value::Nothing),
+                    std::mem::replace(&mut unique.fields[1], Value::Nothing),
+                ],
+                None => [record.fields[0].clone(), record.fields[1].clone()],
+            }
+        }
+        other => {
+            vm.sync_pc(pc);
+            let message = format!(
+                "{} is not a {}",
+                vm.describe(&other),
+                vm.program.types.meta(ty).name
+            );
+            return interrupt(vm, Interrupt::crash(message));
+        }
+    };
+    for field in fields {
+        vm.stack.push(field.guarded(origins));
+    }
+    CONTINUE
+}
+
+/// Whether the slot holds what a pair slot takes at a loop header
+/// (decision AW9): a plain record of the type, or `Nothing`.
+pub(crate) unsafe extern "C" fn rt_pair_fits(vm: VmPtr, base: usize, slot: u32, ty: usize) -> i8 {
+    let vm = vm!(vm);
+    i8::from(match &vm.stack[base + slot as usize] {
+        Value::Record(record) => record.ty == ty && record.fields.len() == 2,
+        Value::Nothing => true,
+        _ => false,
+    })
+}
+
+/// A pair slot of a frame the interpreter hands over at a loop header
+/// (decision AW9): the record in the slot taken apart into the slot and
+/// its second cell where the slot holds its pair there (`owned`), else
+/// the slot cleared, dropping what the interpreter left (a record with a
+/// hole after the take of a field, which nothing reads).
+pub(crate) unsafe extern "C" fn rt_pair_resume(
+    vm: VmPtr,
+    base: usize,
+    slot: u32,
+    extra: u32,
+    ty: usize,
+    owned: i8,
+) {
+    let vm = vm!(vm);
+    let at = base + slot as usize;
+    let value = std::mem::replace(&mut vm.stack[at], Value::Nothing);
+    if owned == 0 {
+        return;
+    }
+    let (first, second) = match value {
+        Value::Record(mut record) if record.ty == ty => match record.get_mut() {
+            Some(unique) => (
+                std::mem::replace(&mut unique.fields[0], Value::Nothing),
+                std::mem::replace(&mut unique.fields[1], Value::Nothing),
+            ),
+            None => (record.fields[0].clone(), record.fields[1].clone()),
+        },
+        Value::Nothing => return,
+        other => unreachable!("rt_pair_fits admitted {other:?}"),
+    };
+    vm.stack[at] = first;
+    vm.stack[base + extra as usize] = second;
 }
 
 /// `Op::TakeField` (decision AU11): the field moved out of the record in
@@ -1400,9 +1501,12 @@ pub(crate) unsafe extern "C" fn rt_deopt(
         next += 1;
         value
     };
-    // the typed locals, in slot order
+    // the typed locals, in slot order; a pair slot's word says whether it
+    // holds its pair (decision AW9), rebuilt below
+    let mut pairs: Vec<(usize, u32, bool)> = Vec::new();
     for (slot, kind) in point.slots.iter().enumerate() {
         match kind {
+            SlotKind::Pair(ty) => pairs.push((slot, *ty, word() != 0)),
             SlotKind::Int => vm.stack[base + slot] = Value::integer(word() as i64),
             SlotKind::Bool => vm.stack[base + slot] = Value::Boolean(word() != 0),
             SlotKind::Float => vm.stack[base + slot] = Value::Float(f64::from_bits(word())),
@@ -1431,6 +1535,12 @@ pub(crate) unsafe extern "C" fn rt_deopt(
     for abs in &point.stack {
         let value = match abs {
             Abs::Boxed(_) | Abs::Unset => boxed.next().unwrap_or(Value::Nothing),
+            Abs::Pair(ty) => {
+                // a pair's two cells as its record (decision AW9)
+                let first = boxed.next().unwrap_or(Value::Nothing);
+                let second = boxed.next().unwrap_or(Value::Nothing);
+                vm.pair_record(*ty as usize, first, second)
+            }
             Abs::Int => Value::integer(word() as i64),
             Abs::Bool => Value::Boolean(word() != 0),
             Abs::Float => Value::Float(f64::from_bits(word())),
@@ -1469,6 +1579,17 @@ pub(crate) unsafe extern "C" fn rt_deopt(
     // frame as it lays frames out
     let locals = original.locals as usize;
     if point.locals as usize > locals {
+        // the pair slots (decision AW9): the record of the slot's cell and
+        // of its second cell past the locals, made as `Construct` makes
+        // it; a slot whose pair was moved out or taken apart holds
+        // `Nothing`, and the second cells go with the cells past the locals
+        for (k, &(slot, ty, whole)) in pairs.iter().enumerate() {
+            let first = std::mem::replace(&mut vm.stack[base + slot], Value::Nothing);
+            let second = std::mem::replace(&mut vm.stack[base + locals + k], Value::Nothing);
+            if whole {
+                vm.stack[base + slot] = vm.pair_record(ty as usize, first, second);
+            }
+        }
         let operands = vm.stack.split_off(base + point.locals as usize);
         vm.stack.truncate(base + locals);
         vm.stack.extend(operands);
@@ -1537,7 +1658,7 @@ fn rebuild_inlined_frames(vm: &mut Vm, base: usize, code: usize, point: &DeoptPo
             Op::Call { args, .. } => args as usize,
             _ => unreachable!("a region replaces a call"),
         };
-        let depth = analyse(program, callee, &[])
+        let depth = analyse(program, callee, &[], false)
             .ok()
             .and_then(|analysis| analysis.entry[call_pc].clone())
             .map_or(0, |state| state.len());
@@ -1552,7 +1673,7 @@ fn rebuild_inlined_frames(vm: &mut Vm, base: usize, code: usize, point: &DeoptPo
     }
     let inner_depth = match stored {
         Some(_) => 0,
-        None => analyse(program, inner_code, &[])
+        None => analyse(program, inner_code, &[], false)
             .ok()
             .and_then(|analysis| analysis.entry[pc - inner.body as usize].clone())
             .map_or(0, |state| state.len()),
@@ -1876,6 +1997,18 @@ impl Vm<'_> {
 
     /// The pieces are joined where they lie on the stack, an Integer
     /// written straight into the text, and the stack cut below them after.
+    /// The record of two fields of the type made of the two values, as
+    /// `Construct` makes one (decision AW9): under provenance guards the
+    /// fields' origins come off onto the record.
+    pub(crate) fn pair_record(&self, ty: usize, first: Value, second: Value) -> Value {
+        if self.guarding {
+            let (origins, fields) = plain_all(vec![first, second]);
+            Value::record(ty, fields).guarded(origins)
+        } else {
+            Value::record(ty, vec![first, second])
+        }
+    }
+
     pub(crate) fn op_concat(&mut self, count: usize) -> Result<Value, Interrupt> {
         let at = self.stack.len().saturating_sub(count);
         let mut origins = 0;
@@ -2272,6 +2405,10 @@ pub const HELPERS: &[(&str, *const u8)] = &[
     ("rt_with_by_index", rt_with_by_index as *const u8),
     ("rt_with_slot_by_index", rt_with_slot_by_index as *const u8),
     ("rt_record_copy", rt_record_copy as *const u8),
+    ("rt_pair_record", rt_pair_record as *const u8),
+    ("rt_split_pair", rt_split_pair as *const u8),
+    ("rt_pair_fits", rt_pair_fits as *const u8),
+    ("rt_pair_resume", rt_pair_resume as *const u8),
     ("rt_take_field", rt_take_field as *const u8),
     ("rt_not", rt_not as *const u8),
     ("rt_binary", rt_binary as *const u8),
