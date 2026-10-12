@@ -98,8 +98,11 @@ the new code generator (decision AW20), and its design study is written
 study (session 14)": four measured stages on the Cranelift tier, about
 340 million by the estimates), its questions answered (decision
 AW21: every recommended option; the order B2, B3, B1, B4, each
-measured by the old measure with the lane's micro programs); the work
-now is B2, the operands in registers (the start-here item 1).
+measured by the old measure with the lane's micro programs), and B2
+built and measured (decision AW22: the operands in registers,
+`Abs::Held`; the check row 1,528.5 to 1,482.3, -3.0%;
+the ratio 3.46 to 3.36); the work now is B3, the
+locals in registers (the start-here item 1).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -434,7 +437,13 @@ and push there directly.
    stands, what an op costs today by the lane's micro programs, the
    four stages B2, B3, B1 and B4 with their estimates, what (B) does
    not touch), and the owner's answers to its questions are decision
-   AW21. Each stage: the code, the gates of item 3, the measure
+   AW21; B2 is built and measured (decision AW22, "Stage B2 as
+   built" at the end of the study's section: the operands in
+   registers, `Abs::Held`; the check row to 1,482.3, -3.0%;
+   the ratio to 3.36), and the work now is B3, the locals in
+   registers, with AW9's pair slots folded in and AU50's expansion
+   measured again at its end. Each stage: the code, the gates of item
+   3, the measure
    (AU58's: the checker's image run under callgrind with the study's
    table by category beside it, AT1's rows, the benchmarks by
    instructions), then its decision entry with the table and the
@@ -471,8 +480,9 @@ and push there directly.
    `renyi_stage4b` (8eed964, stage 4b's commit), `renyi_stage4c`
    (805ea3a, stage 4c's commit), `renyi_cuts` (c7b8f6c, the
    checker's own cuts' commit), `renyi_5a` (16a0dd6, stage 5a's
-   commit) and `renyi_5b` (the commit of stage 5b, the base of the next
-   measure), each with its
+   commit), `renyi_5b` (0f17f67, stage 5b's commit) and
+   `renyi_b2` (the commit of stage B2, the base of the next measure),
+   each with its
    `study/` directory. The
    road is months long (AU58); the gate is decided on the measure at
    the end.
@@ -4073,6 +4083,47 @@ natives and the allocator the next targets; the checker's own shape
 (the parser's `Parsed`, `Peek` and `Eaten` records read after their
 cursor) is where the record copies come from.
 
+**Stage B2 as built (decision AW22, 2026-10-12).** The first stage of
+road (B): a value a load of a boxed slot, a boxed constant, `Nothing`,
+a module constant, a field read or a loop's item pushes is held as the
+three words of its `Value` in Cranelift variables (`Abs::Held` in
+`native/infer.rs`, when `analyse` is asked to hold values; the
+Cranelift tier is, the template tier and the expansion are not), and
+the VM's stack is written only where something reads it there: an op
+whose result goes on the stack writes every held operand under its
+operands back first, three stores at the top each (`spill_below`), the
+analysis spilling the same way at its `push!`; a helper that takes its
+arguments from the stack finds them written there by `box_position`
+(by index through `rt_insert_held` where values lie above); a direct
+call reads a held typed argument from its words, a comparison in place
+a held operand's tags and words from its registers, a test of the top
+the tag from the first word, a store writes the words into the slot, a
+`Return` unboxes a held result from the words or leaves it where the
+frame's first slot was, and the counts are raised and lowered in the
+words. Off the straight line a landing and an exit write every held
+operand back by its index (`spill_all_held_by_index`, the landings
+keyed by the whole operand stack, `exit_for_state`), the helpers that
+leave the frame find them written back, a hand-back carries the words
+in its buffer (`rt_deopt`, kind code 7, image format 10), and a frame
+left releases the held operands below the result. The analysis
+computes its entry states again from the final slot kinds once they
+settle, so that no state carries a kind an earlier round's slot kinds
+gave an op (a load of a slot boxed in a later round pushed a register
+in an earlier one). The measure: the check row 1,528.5 to
+1,482.3 million (-3.0%), the ratios by instructions
+3.36, 2.39 and 7.28; the generated code
+800.8 to 756.8 million, the counts and drops 131.0 to
+131.0; the micro programs per turn `calls_typed`
+119 to 120, `calls_boxed`
+215 to 201, `boxed_fields`
+131 to 123, `boxed_moves`
+145 to 120; AT1's synchronous
+row 5,161.6 to 5,195.4 (+0.7%) and its estimate
+7,479.8 to 7,372.5 (-1.4%). The table is in
+AW22. Against the study's estimate of about 180 million the stage took
+46.2 million off the check row: a load that feeds a direct call's boxed parameter (`Load Call` and `LoadMove Call`, 2.8 million pairs in the interpreter's profile of the run), a `with`, a construct or a native that reads the stack still writes the value where the callee's frame, the update or the native reads it, three stores where the copy was three loads and three stores, and only the loads whose consumer reads in place (a comparison, a test, a store into a slot, a field read, a typed parameter, a `Return`) stopped copying; `at_position`, the hottest body, kept 267 of its 305 stores, its calls' arguments and its `with` among them. B3 moves the parameters into registers, and a direct call can then pass a held argument's words without the stack: the study's split of the estimate between B2 and B3 was wrong where its sum need not be, and B3's measure will say. Next in AW21's
+order: B3, the locals in registers.
+
 ## Stage 29, the new backend: the design study (session 14)
 
 The study decision AU58 asked for, written before any code and put to
@@ -6995,6 +7046,26 @@ holds between calls.
   per turn), `measure_native_b.sh`, `sync_cg.sh` (a cachegrind row
   kept and annotated by cache misses) and `annotate_lines.sh`; no
   code.
+- The owner's answers after the study (decision AW21, the commit after
+  4632f66): no code.
+- Stage B2 (decision AW22, the commit after 0db6523): `Abs::Held`,
+  `is_held`, `is_value`, `spilled`, `push!`, `hold`, the `held`
+  argument of `analyse` and its clean run in `native/infer.rs`;
+  `held_vars`, `held_words`, `push_held`, `push_held_state`,
+  `unload_top`, `word_byte`, `operand_byte`, `operand_word`,
+  `retain_words`, `release_words`, `retain_operand`,
+  `release_operand`, `spill_below`, `spill_all_held`,
+  `spill_all_held_by_index`, `insert_held`, `exit_for_state`,
+  `emit_exits`, `unbox_held_top`, `take_bool_held`,
+  `leave_held_inline`, `branch_on_count_tag`, the `scratch_slot`, the
+  landings keyed by the whole operand stack and the op arms in
+  `native/codegen.rs`; `rt_insert_held`, `value_of_words` and the held
+  kind in `rt_deopt` in `native/runtime.rs`; image format 10 in
+  `native/image.rs` and `tools/image_census.py`; the callers of
+  `analyse` in
+  `native/template/mod.rs`, `native/inline.rs`, `native/mod.rs` and
+  `tests/typed.rs`; the test in `tests/native.rs`; the measure in AW22
+  and in "Stage B2 as built".
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

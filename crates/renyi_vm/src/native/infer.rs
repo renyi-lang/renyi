@@ -4,11 +4,14 @@
 //! compiler), so the depth, the representation of every operand and the
 //! kind of every local slot are computed once here. An operand or a slot
 //! that is always a small Integer, a Boolean or a Float is kept unboxed in
-//! a machine register by the generated code; everything else stays a
-//! `Value` on the VM's stack ("boxed"), where the interpreter's own
-//! helpers operate on it, and the VM's stack holds exactly the boxed
-//! operands, in order. A function the analysis cannot settle (an
-//! inconsistent join, a slot used two ways) is left to the interpreter.
+//! a machine register by the generated code; any other operand is either
+//! held as the three words of its `Value` in registers (decision AW22:
+//! what a load, a constant, a field read or a loop's item pushes, as long
+//! as nothing above it goes on the stack) or a `Value` on the VM's stack
+//! ("boxed"), where the interpreter's own helpers operate on it, and the
+//! VM's stack holds exactly the boxed operands, in order. A function the
+//! analysis cannot settle (an inconsistent join, a slot used two ways) is
+//! left to the interpreter.
 
 use renyi_check::types::Ty;
 use renyi_syntax::ast::BinaryOp;
@@ -46,22 +49,62 @@ pub enum Abs {
     /// that pushed it was emitted under its expression (decision AU1,
     /// stage iv; `Code::types`), else `None`.
     Boxed(Option<u32>),
+    /// Any value held as its three words in registers (decision AW22,
+    /// stage B2 of road (B)): the tag word and the two payload words of
+    /// the 24-byte `Value`, as a `Load` of a boxed slot reads them. It
+    /// lies nowhere on the VM's stack: a helper that reads the operand
+    /// finds it written there first (`box_position`), a landing and an
+    /// exit find every held operand written back, and a hand-back
+    /// carries the words in its buffer. With the type the checker noted,
+    /// as `Boxed` carries it. A held operand never lies under an operand
+    /// on the stack: an op whose result goes on the stack writes every
+    /// held operand back first, so that the write is three stores at the
+    /// top. What a load of a boxed slot, a boxed constant, `Nothing`, a
+    /// module constant, a field read, a loop's item and a `Dup` of one
+    /// push, when the tier holds values (`analyse`'s `held`).
+    Held(Option<u32>),
 }
 
 impl Abs {
-    /// The least upper bound: equal kinds stay, `Unset` yields, two boxed
-    /// values of different types are boxed without one, anything else is
-    /// boxed.
+    /// The least upper bound: equal kinds stay, `Unset` yields, two held
+    /// values of different types are held without one (decision AW22),
+    /// two boxed values of different types are boxed without one,
+    /// anything else is boxed on the stack.
     pub fn join(self, other: Abs) -> Abs {
         match (self, other) {
             (Abs::Unset, x) | (x, Abs::Unset) => x,
             (a, b) if a == b => a,
+            (Abs::Held(_), Abs::Held(_)) => Abs::Held(None),
             _ => Abs::Boxed(None),
         }
     }
 
+    /// Whether the operand lies on the VM's stack as one value, where a
+    /// helper reads it.
     pub fn is_boxed(self) -> bool {
         matches!(self, Abs::Boxed(_))
+    }
+
+    /// Whether the operand is held as its three words in registers
+    /// (decision AW22).
+    pub fn is_held(self) -> bool {
+        matches!(self, Abs::Held(_))
+    }
+
+    /// Whether the operand is a value of any type, on the stack or held,
+    /// and not a scalar in a register.
+    pub fn is_value(self) -> bool {
+        matches!(self, Abs::Boxed(_) | Abs::Held(_))
+    }
+
+    /// The kind with a held value written back to the stack (decision
+    /// AW22): what a landing and an exit leave, and what an op whose
+    /// result goes on the stack leaves below it.
+    pub fn spilled(self) -> Abs {
+        match self {
+            Abs::Held(ty) => Abs::Boxed(ty),
+            other => other,
+        }
     }
 
     /// How many cells of the VM's stack the operand takes: one boxed, two
@@ -77,7 +120,7 @@ impl Abs {
     /// The type noted for a boxed value, when one was.
     pub fn type_index(self) -> Option<u32> {
         match self {
-            Abs::Boxed(index) => index,
+            Abs::Boxed(index) | Abs::Held(index) => index,
             _ => None,
         }
     }
@@ -87,6 +130,7 @@ impl Abs {
     pub fn untyped(self) -> Abs {
         match self {
             Abs::Boxed(_) => Abs::Boxed(None),
+            Abs::Held(_) => Abs::Held(None),
             other => other,
         }
     }
@@ -101,6 +145,7 @@ impl Abs {
             Abs::Range => 4,
             Abs::Boxed(_) => 5,
             Abs::Pair(_) => 6,
+            Abs::Held(_) => 7,
         }
     }
 
@@ -114,6 +159,7 @@ impl Abs {
             5 => Abs::Boxed(None),
             // the type follows the kind in an image
             6 => Abs::Pair(0),
+            7 => Abs::Held(None),
             _ => return None,
         })
     }
@@ -253,7 +299,7 @@ pub fn abs_of_type(program: &Program, ty: &Ty) -> Abs {
 /// code compares two texts held in the value itself in place (decision
 /// AU26).
 pub fn is_text(program: &Program, abs: Abs) -> bool {
-    let Abs::Boxed(Some(index)) = abs else {
+    let Some(index) = abs.type_index() else {
         return false;
     };
     matches!(
@@ -265,7 +311,7 @@ pub fn is_text(program: &Program, abs: Abs) -> bool {
 /// Whether the checker noted the boxed operand as an Integer: the
 /// generated code compares two small Integers in place (decision AU45).
 pub fn is_integer(program: &Program, abs: Abs) -> bool {
-    let Abs::Boxed(Some(index)) = abs else {
+    let Some(index) = abs.type_index() else {
         return false;
     };
     matches!(
@@ -283,9 +329,7 @@ pub fn is_integer(program: &Program, abs: Abs) -> bool {
 /// helper compares.
 pub fn sum_compared(program: &Program, left: Abs, right: Abs) -> Option<u64> {
     let type_of = |abs: Abs| {
-        let Abs::Boxed(Some(index)) = abs else {
-            return None;
-        };
+        let index = abs.type_index()?;
         match program.result_types.get(index as usize)? {
             Ty::App(id, args) if args.is_empty() => Some(*id),
             _ => None,
@@ -321,12 +365,12 @@ pub fn sum_compared(program: &Program, left: Abs, right: Abs) -> Option<u64> {
 /// direct call takes such an operand of a typed parameter from the stack
 /// at the site, after a test of its tags (decision AW3).
 pub fn noted_kind(program: &Program, abs: Abs) -> Abs {
-    match abs {
-        Abs::Boxed(Some(index)) => match program.result_types.get(index as usize) {
+    match abs.type_index() {
+        Some(index) => match program.result_types.get(index as usize) {
             Some(ty) => abs_of_type(program, ty),
             None => Abs::Boxed(None),
         },
-        _ => Abs::Boxed(None),
+        None => Abs::Boxed(None),
     }
 }
 
@@ -612,11 +656,15 @@ type Edge = (usize, Vec<Abs>, Vec<(u32, usize)>);
 /// slice says none is known. `pairs` says whether a record of two fields
 /// is held as a pair (decision AW9): the Cranelift tier holds one so in a
 /// code object's own ops; the template tier and an expanded body do not.
+/// `held` says whether a value a load, a constant, a field read or a
+/// loop's item pushes is held as its three words in registers (decision
+/// AW22): the Cranelift tier holds them; the template tier does not.
 pub fn analyse(
     program: &Program,
     code: &Code,
     globals: &[Option<i64>],
     pairs: bool,
+    held: bool,
 ) -> Result<Analysis, Rejection> {
     let count = code.ops().len();
     let mut slots = vec![SlotKind::Unset; code.locals as usize];
@@ -656,6 +704,7 @@ pub fn analyse(
     // slot it reads keeps changing; a slot nothing stores into is boxed
     // (it holds `Nothing`), decided once the rest has settled
     let mut rounds = 0;
+    let mut cleaned = false;
     loop {
         let mut changed = false;
         rounds += 1;
@@ -693,7 +742,10 @@ pub fn analyse(
             macro_rules! may_fail {
                 () => {
                     if let Some((target, depth)) = open.last() {
-                        let mut handler_state: Vec<Abs> = stack[..*depth].to_vec();
+                        // a landing finds every held operand written back
+                        // to the stack (decision AW22)
+                        let mut handler_state: Vec<Abs> =
+                            stack[..*depth].iter().map(|abs| abs.spilled()).collect();
                         handler_state.push(Abs::Boxed(None));
                         let mut outer = open.clone();
                         outer.pop();
@@ -711,6 +763,29 @@ pub fn analyse(
                     other => other,
                 }
             };
+            // a value held as its words where the tier holds one (decision
+            // AW22): what a load of a boxed slot, a boxed constant,
+            // `Nothing`, a module constant, a field read or a loop's item
+            // pushes
+            let hold = |abs: Abs| -> Abs {
+                match abs {
+                    Abs::Boxed(ty) if held => Abs::Held(ty),
+                    other => other,
+                }
+            };
+            // a value pushed on the VM's stack lies above every held
+            // operand, which is written back first (decision AW22)
+            macro_rules! push {
+                ($abs:expr) => {{
+                    let pushed: Abs = $abs;
+                    if pushed.is_boxed() || matches!(pushed, Abs::Pair(_)) {
+                        for below in stack.iter_mut() {
+                            *below = below.spilled();
+                        }
+                    }
+                    stack.push(pushed);
+                }};
+            }
             macro_rules! store {
                 ($slot:expr, $kind:expr) => {{
                     let slot = $slot as usize;
@@ -725,12 +800,14 @@ pub fn analyse(
             }
             match op {
                 Op::Const(index) => {
-                    stack.push(note(abs_of_constant(&code.constants[*index as usize])))
+                    push!(hold(note(abs_of_constant(
+                        &code.constants[*index as usize]
+                    ))))
                 }
-                Op::Nothing => stack.push(note(Abs::Boxed(None))),
+                Op::Nothing => push!(hold(note(Abs::Boxed(None)))),
                 Op::Global(index) => match globals.get(*index as usize) {
-                    Some(Some(_)) => stack.push(Abs::Int),
-                    _ => stack.push(note(Abs::Boxed(None))),
+                    Some(Some(_)) => push!(Abs::Int),
+                    _ => push!(hold(note(Abs::Boxed(None)))),
                 },
                 Op::Load(slot) | Op::LoadMove(slot) => {
                     let kind = slots[*slot as usize];
@@ -747,10 +824,10 @@ pub fn analyse(
                     }
                     // a pair slot's pair as it lies for the op after, else
                     // its record (decision AW9)
-                    stack.push(match kind {
+                    push!(match kind {
                         SlotKind::Pair(ty) if pair_fused(code, pc) => Abs::Pair(ty),
                         SlotKind::Pair(_) => note(Abs::Boxed(None)),
-                        kind => note(abs_of_slot(kind)),
+                        kind => hold(note(abs_of_slot(kind))),
                     });
                 }
                 Op::LoadField { slot, name, .. } => {
@@ -761,7 +838,7 @@ pub fn analyse(
                         return Err(Rejection::SlotConflict(*slot));
                     }
                     let name = code.constants[*name as usize].as_text().unwrap_or("");
-                    stack.push(note(abs_of_field_at(program, code, pc, name)));
+                    push!(hold(note(abs_of_field_at(program, code, pc, name))));
                 }
                 Op::Store(slot) => {
                     let abs = pop!();
@@ -772,48 +849,48 @@ pub fn analyse(
                 }
                 Op::Dup => {
                     let top = *stack.last().ok_or(Rejection::StackUnderflow(pc))?;
-                    stack.push(top);
+                    push!(top);
                 }
                 Op::MakeList(n) => {
                     pop_n!(*n);
-                    stack.push(note(Abs::Boxed(None)));
+                    push!(note(Abs::Boxed(None)));
                 }
                 Op::MakeMap(n) => {
                     pop_n!(2 * *n);
-                    stack.push(note(Abs::Boxed(None)));
+                    push!(note(Abs::Boxed(None)));
                 }
                 Op::MakePair => {
                     pop_n!(2);
-                    stack.push(note(Abs::Boxed(None)));
+                    push!(note(Abs::Boxed(None)));
                 }
                 Op::MakeRange { stepped } => {
                     let by = if *stepped { pop!() } else { Abs::Int };
                     let to = pop!();
                     let from = pop!();
                     if from == Abs::Int && to == Abs::Int && by == Abs::Int {
-                        stack.push(Abs::Range);
+                        push!(Abs::Range);
                     } else {
-                        stack.push(note(Abs::Boxed(None)));
+                        push!(note(Abs::Boxed(None)));
                     }
                 }
                 Op::Construct { fields, .. } => {
                     pop_n!(*fields);
-                    stack.push(note(Abs::Boxed(None)));
+                    push!(note(Abs::Boxed(None)));
                     may_fail!();
                 }
                 Op::ConstructVariant { fields, .. } => {
                     pop_n!(*fields);
-                    stack.push(note(Abs::Boxed(None)));
+                    push!(note(Abs::Boxed(None)));
                     may_fail!();
                 }
                 Op::Field { name, .. } => {
                     pop!();
                     let name = code.constants[*name as usize].as_text().unwrap_or("");
-                    stack.push(note(abs_of_field_at(program, code, pc, name)));
+                    push!(hold(note(abs_of_field_at(program, code, pc, name))));
                 }
                 Op::With(n) => {
                     pop_n!(2 * *n + 1);
-                    stack.push(note(Abs::Boxed(None)));
+                    push!(note(Abs::Boxed(None)));
                     may_fail!();
                 }
                 Op::WithSlot { slot, fields } => {
@@ -826,7 +903,7 @@ pub fn analyse(
                         return Err(Rejection::SlotConflict(*slot));
                     }
                     pop_n!(2 * *fields);
-                    stack.push(note(Abs::Boxed(None)));
+                    push!(note(Abs::Boxed(None)));
                     may_fail!();
                 }
                 Op::TakeField { slot, name, .. } => {
@@ -837,7 +914,7 @@ pub fn analyse(
                         return Err(Rejection::SlotConflict(*slot));
                     }
                     let name = code.constants[*name as usize].as_text().unwrap_or("");
-                    stack.push(note(abs_of_field_at(program, code, pc, name)));
+                    push!(hold(note(abs_of_field_at(program, code, pc, name))));
                 }
                 Op::Call { function, args } => {
                     pop_n!(*args);
@@ -845,7 +922,7 @@ pub fn analyse(
                     // after, else its record (decision AW9)
                     let pair =
                         pair_result(program, *function).filter(|_| pairs && pair_fused(code, pc));
-                    stack.push(match pair {
+                    push!(match pair {
                         Some(ty) => Abs::Pair(ty),
                         None => note(abs_of_result(program, *function)),
                     });
@@ -863,31 +940,31 @@ pub fn analyse(
                 }
                 Op::CallAbility { args, .. } => {
                     pop_n!(*args);
-                    stack.push(note(Abs::Boxed(None)));
+                    push!(note(Abs::Boxed(None)));
                     may_fail!();
                 }
                 Op::CallValue(n) => {
                     pop_n!(*n + 1);
-                    stack.push(note(Abs::Boxed(None)));
+                    push!(note(Abs::Boxed(None)));
                     may_fail!();
                 }
                 Op::ResultType(_) => {}
                 Op::Not => {
                     pop!();
-                    stack.push(Abs::Bool);
+                    push!(Abs::Bool);
                 }
                 Op::Binary(op) => {
                     let right = pop!();
                     let left = pop!();
-                    stack.push(note(abs_of_binary(*op, left, right)));
+                    push!(note(abs_of_binary(*op, left, right)));
                 }
                 Op::ToText => {
                     pop!();
-                    stack.push(Abs::Boxed(None));
+                    push!(Abs::Boxed(None));
                 }
                 Op::Concat(n) => {
                     pop_n!(*n);
-                    stack.push(note(Abs::Boxed(None)));
+                    push!(note(Abs::Boxed(None)));
                 }
                 Op::Jump(target) => {
                     flows.push((*target as usize, stack.clone(), open_after.clone()));
@@ -906,8 +983,9 @@ pub fn analyse(
                 Op::JumpIfAbsent(target) | Op::JumpIfFailure(target) => {
                     // the value stays, boxed, and may be a failure or nothing
                     let top = pop!();
-                    stack.push(match top {
+                    push!(match top {
                         Abs::Boxed(noted) => Abs::Boxed(noted),
+                        Abs::Held(noted) => Abs::Held(noted),
                         _ => Abs::Boxed(None),
                     });
                     flows.push((*target as usize, stack.clone(), open_after.clone()));
@@ -930,17 +1008,17 @@ pub fn analyse(
                 Op::ReturnNothing => falls_through = false,
                 Op::IsVariant(_) | Op::IsNothing | Op::IsFailure | Op::IsType(_) => {
                     pop!();
-                    stack.push(Abs::Bool);
+                    push!(Abs::Bool);
                 }
                 Op::Unpack(n) => {
                     pop!();
                     for _ in 0..*n {
-                        stack.push(Abs::Boxed(None));
+                        push!(Abs::Boxed(None));
                     }
                 }
                 Op::UnwrapFailure => {
                     pop!();
-                    stack.push(Abs::Boxed(None));
+                    push!(Abs::Boxed(None));
                 }
                 Op::IterInit(slot) => {
                     let source = pop!();
@@ -958,21 +1036,21 @@ pub fn analyse(
                     flows.push((*exit as usize, stack.clone(), open_after.clone()));
                     let item = match slots[*slot as usize] {
                         SlotKind::RangeIter => Abs::Int,
-                        _ => Abs::Boxed(None),
+                        _ => hold(Abs::Boxed(None)),
                     };
-                    stack.push(item);
+                    push!(item);
                 }
                 Op::ListPush => {
                     pop_n!(2);
-                    stack.push(Abs::Boxed(None));
+                    push!(Abs::Boxed(None));
                 }
                 Op::GroupInsert | Op::GroupFold(_) => {
                     pop_n!(3);
-                    stack.push(Abs::Boxed(None));
+                    push!(Abs::Boxed(None));
                 }
                 Op::SortByKey { .. } => {
                     pop!();
-                    stack.push(Abs::Boxed(None));
+                    push!(Abs::Boxed(None));
                 }
                 Op::Deadline(slot) => {
                     pop!();
@@ -1045,6 +1123,9 @@ pub fn analyse(
         if changed {
             continue;
         }
+        if cleaned {
+            break;
+        }
         let mut settled = false;
         for slot in &mut slots {
             if *slot == SlotKind::Unset {
@@ -1052,9 +1133,22 @@ pub fn analyse(
                 settled = true;
             }
         }
-        if !settled {
-            break;
+        if settled {
+            continue;
         }
+        // the slot kinds are final: every entry state computed again from
+        // them (decision AW22), so that no state carries what an earlier
+        // round's slot kinds gave an op: a load of a slot that was an
+        // Integer before it was boxed pushed a register then and pushes
+        // a held value now, and their join, a value on the stack, is
+        // what the generated code, which pushes by the final kinds, would
+        // not have; the clean run changes no slot, its states lying under
+        // the ones that settled them
+        cleaned = true;
+        rounds = 0;
+        entry = vec![None; count + 1];
+        entry[0] = Some(Vec::new());
+        handlers = vec![Vec::new(); count + 1];
     }
     // a parameter keeps the kind its declared type gives it (decision
     // AR3): a direct call passes it so, and a function that stores
@@ -1232,6 +1326,7 @@ fn slot_of_abs(abs: Abs) -> SlotKind {
         Abs::Float => SlotKind::Float,
         Abs::Range => SlotKind::Boxed(None),
         Abs::Boxed(ty) => SlotKind::Boxed(ty),
+        Abs::Held(ty) => SlotKind::Boxed(ty),
         Abs::Pair(ty) => SlotKind::Pair(ty),
     }
 }

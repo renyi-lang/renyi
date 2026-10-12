@@ -4,8 +4,10 @@
 //! bounds of a range), or a call to the runtime helper that does what the
 //! interpreter's arm does on the VM's stack. The operand stack is static
 //! (`infer.rs`): an unboxed operand at depth `i` is a Cranelift variable,
-//! so that the frontend's SSA construction joins the paths; a boxed one is
-//! a `Value` on the VM's stack, where the helpers find it. Where a typed
+//! so that the frontend's SSA construction joins the paths; a held one is
+//! three variables, the words of its `Value` (decision AW22), written to
+//! the VM's stack where a helper reads it; a boxed one is a `Value` on the
+//! VM's stack, where the helpers find it. Where a typed
 //! assumption may not hold at run time (a parameter that is a big or a
 //! guarded Integer, a call or a field whose declared Integer is not small,
 //! an addition that overflows), the generated code hands the frame to the
@@ -106,6 +108,11 @@ pub(crate) const SITE_INDEX: i32 = std::mem::offset_of!(FieldSite, index) as i32
 /// block there (decision AW4) and the boxed operands above the locals.
 const RELEASES_INLINE: usize = 8;
 
+// A held value's words (decision AW22): the tag byte starts the first,
+// `PAYLOAD` is the second and `INT_PAYLOAD` the third, with `INT_TAG` the
+// second word's low byte, which `word_byte` and `operand_word` count on.
+const _: () = assert!(PAYLOAD == 8 && INT_TAG == 8 && INT_PAYLOAD == 16 && SIZE == 24);
+
 /// The helpers that cannot move the stack's vector (they grow nothing
 /// and run no program code), after which the frame pointer needs no
 /// reload (decision AT6; a helper not listed is reloaded after, which is
@@ -178,6 +185,7 @@ pub const SIGNATURES: &[(&str, &str, char)] = &[
     ("rt_insert_bool", "pzb", 'v'),
     ("rt_insert_float", "pzf", 'v'),
     ("rt_insert_range", "pzqqq", 'v'),
+    ("rt_insert_held", "pzqqq", 'v'),
     ("rt_global", "pww", 'i'),
     ("rt_load", "pzw", 'v'),
     ("rt_load_move", "pzw", 'v'),
@@ -377,8 +385,8 @@ pub struct Compiled {
     pub stats: Stats,
 }
 
-/// A shared failure block: the innermost handler, the operand stack
-/// below its depth, the block.
+/// A shared failure block: the innermost handler, the operand stack at
+/// the op (its kinds alone), the block.
 type Landing = (Option<(u32, usize)>, Vec<Abs>, Block);
 
 /// Why a code object was not compiled.
@@ -397,6 +405,8 @@ struct PositionVars {
     bool: Option<Variable>,
     float: Option<Variable>,
     range: Option<[Variable; 3]>,
+    /// A value held as its three words (decision AW22).
+    held: Option<[Variable; 3]>,
 }
 
 /// The variables of a slot the generated code keeps in registers.
@@ -506,9 +516,17 @@ struct Gen<'a, 'b> {
     blocks: HashMap<usize, Block>,
     exit: Block,
     /// The blocks a failed status goes to (`bad_block`), one per innermost
-    /// handler and operand stack below it, filled at the end.
+    /// handler and operand stack, filled at the end.
     landings: Vec<Landing>,
+    /// The cold blocks a status leaves through where an operand is held
+    /// (`exit_for_state`), one per operand state, filled at the end: each
+    /// writes every held operand back and goes to the exit (decision
+    /// AW22).
+    exits: Vec<(Vec<Abs>, Block)>,
     out_slot: StackSlot,
+    /// A value's size on the machine stack, where a held value is written
+    /// for the helper that drops it (decision AW22).
+    scratch_slot: StackSlot,
     deopt_slot: StackSlot,
     deopts: Vec<DeoptPoint>,
     /// The blocks that hand the frame to the interpreter (`deopt_block`),
@@ -796,12 +814,12 @@ pub(crate) fn borrowed_operands(
                 }
             }
             Op::Binary(op) if is_comparison(*op) => {
-                // both operands boxed by the analysis: a register operand
-                // takes the typed paths
+                // both operands values by the analysis, on the stack or held
+                // (decision AW22): a register operand takes the typed paths
                 let boxed = match analysis.entry.get(pc) {
                     Some(Some(state)) => {
                         state.len() >= 2
-                            && state[state.len() - 2..].iter().all(|abs| abs.is_boxed())
+                            && state[state.len() - 2..].iter().all(|abs| abs.is_value())
                     }
                     _ => false,
                 };
@@ -864,7 +882,8 @@ pub fn compile(
     // an expansion (decision AU50) lay their slots where the pairs' cells
     // would go
     let pairs = code.ops().len() == original_len;
-    let analysis = analyse(program, code, globals, pairs).map_err(Skipped::Analysis)?;
+    // the operands held as their words on this tier (decision AW22)
+    let analysis = analyse(program, code, globals, pairs, true).map_err(Skipped::Analysis)?;
     let (borrowed, masks) = borrowed_operands(program, code, &analysis, calls, true);
     let owned = owned_slots(code, &analysis, &borrowed);
     let calls_directly = has_direct_call(program, code, &analysis);
@@ -949,6 +968,10 @@ pub fn compile(
         // one word for a helper's answer, three for a range iterator's
         let out_slot =
             builder.create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, 24, 3));
+        // a value's size, where a held value is written for `rt_drop_at`
+        // (decision AW22)
+        let scratch_slot =
+            builder.create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, 24, 3));
         let max_depth = analysis
             .entry
             .iter()
@@ -1003,7 +1026,9 @@ pub fn compile(
             blocks: HashMap::new(),
             exit,
             landings: Vec::new(),
+            exits: Vec::new(),
             out_slot,
+            scratch_slot,
             deopt_slot,
             deopts: Vec::new(),
             deopt_blocks: Vec::new(),
@@ -1268,6 +1293,31 @@ impl Gen<'_, '_> {
         vars
     }
 
+    /// The three variables of a value held as its words at a depth
+    /// (decision AW22).
+    fn held_vars(&mut self, depth: usize) -> [Variable; 3] {
+        if let Some(vars) = self.position(depth).held {
+            return vars;
+        }
+        let vars = [
+            self.b.declare_var(types::I64),
+            self.b.declare_var(types::I64),
+            self.b.declare_var(types::I64),
+        ];
+        self.position(depth).held = Some(vars);
+        vars
+    }
+
+    /// The words of the value held at a depth.
+    fn held_words(&mut self, depth: usize) -> [IrValue; 3] {
+        let vars = self.held_vars(depth);
+        [
+            self.b.use_var(vars[0]),
+            self.b.use_var(vars[1]),
+            self.b.use_var(vars[2]),
+        ]
+    }
+
     // ------------------------------------------------------------ helpers
 
     fn call(&mut self, name: &'static str, args: &[IrValue]) -> Option<IrValue> {
@@ -1341,7 +1391,8 @@ impl Gen<'_, '_> {
 
     /// Leave the function with a status: `LEFT` means the frame returned.
     fn exit_with(&mut self, status: IrValue) {
-        self.b.ins().jump(self.exit, &[status.into()]);
+        let exit = self.exit_for_state();
+        self.b.ins().jump(exit, &[status.into()]);
         self.terminated = true;
     }
 
@@ -1410,39 +1461,69 @@ impl Gen<'_, '_> {
                 .ins()
                 .brif(ok, cont, &[], bad, &[status.into(), pc_value.into()]);
         } else {
-            let exit = self.exit;
+            let exit = self.exit_for_state();
             self.b.ins().brif(ok, cont, &[], exit, &[status.into()]);
         }
         self.b.seal_block(cont);
         self.switch_to(cont);
     }
 
+    /// The block a status leaves the function through: the exit itself
+    /// when no operand is held, else a cold block, one per operand state,
+    /// that writes every held operand back to the stack first (decision
+    /// AW22), so that the frame is whole for whoever releases it; filled
+    /// by `emit_exits`.
+    fn exit_for_state(&mut self) -> Block {
+        if !self.state.iter().any(|abs| abs.is_held()) {
+            return self.exit;
+        }
+        let state: Vec<Abs> = self.state.iter().map(|abs| abs.untyped()).collect();
+        if let Some((_, block)) = self.exits.iter().find(|(known, _)| *known == state) {
+            return *block;
+        }
+        let block = self.b.create_block();
+        self.b.append_block_param(block, types::I32);
+        self.b.set_cold_block(block);
+        self.exits.push((state, block));
+        block
+    }
+
+    /// Fill the blocks of `exit_for_state`.
+    fn emit_exits(&mut self) {
+        let exits = std::mem::take(&mut self.exits);
+        for (state, block) in exits {
+            self.state = state;
+            self.switch_to(block);
+            let status = self.b.block_params(block)[0];
+            self.spill_all_held_by_index();
+            let exit = self.exit;
+            self.b.ins().jump(exit, &[status.into()]);
+            self.terminated = true;
+        }
+    }
+
     /// The block a failed status of the op at `pc` goes to, with the
     /// status and the pc as its parameters: one block serves every op
-    /// with the same innermost handler and the same operand stack below
-    /// the handler's depth, since the landing boxes that stack the same
-    /// way. It is filled by `emit_landings`.
+    /// with the same innermost handler and the same operand stack (its
+    /// kinds), since the landing writes the held operands back and cuts
+    /// the stack the same way. It is filled by `emit_landings`.
     fn bad_block(&mut self, pc: usize) -> Block {
         let handler = self.analysis.handlers[pc].last().copied();
-        // keyed by the kinds alone, as the hand-backs are
-        let below: Vec<Abs> = match handler {
-            Some((_, depth)) => self.state[..depth]
-                .iter()
-                .map(|abs| abs.untyped())
-                .collect(),
-            None => Vec::new(),
-        };
+        // keyed by the kinds alone, as the hand-backs are: the whole
+        // state, since the landing writes every held operand back
+        // (decision AW22) before the floor cuts the stack
+        let state: Vec<Abs> = self.state.iter().map(|abs| abs.untyped()).collect();
         let known = self
             .landings
             .iter()
-            .find(|(h, b, _)| *h == handler && *b == below);
+            .find(|(h, s, _)| *h == handler && *s == state);
         if let Some((_, _, block)) = known {
             return *block;
         }
         let block = self.b.create_block();
         self.b.append_block_param(block, types::I32);
         self.b.append_block_param(block, types::I32);
-        self.landings.push((handler, below, block));
+        self.landings.push((handler, state, block));
         block
     }
 
@@ -1452,10 +1533,14 @@ impl Gen<'_, '_> {
     /// status leaves the function.
     fn emit_landings(&mut self) {
         let landings = std::mem::take(&mut self.landings);
-        for (handler, below, block) in landings {
+        for (handler, state, block) in landings {
             self.switch_to(block);
             let status = self.b.block_params(block)[0];
             let pc_value = self.b.block_params(block)[1];
+            // every held operand written back first (decision AW22): the
+            // floor cuts the stack and the frame leaves whole
+            self.state = state;
+            self.spill_all_held_by_index();
             let failed = self
                 .b
                 .ins()
@@ -1469,8 +1554,7 @@ impl Gen<'_, '_> {
             self.switch_to(landing);
             match handler {
                 Some((target, depth)) => {
-                    debug_assert_eq!(below.len(), depth);
-                    self.state = below;
+                    self.state.truncate(depth);
                     let floor = boxed_depth(&self.state) as u32;
                     let locals = self.u32(self.frame_locals as u32);
                     let floor = self.u32(floor);
@@ -1514,6 +1598,26 @@ impl Gen<'_, '_> {
             self.state[depth] = Abs::Boxed(None);
             return;
         }
+        if let Abs::Held(ty) = kind {
+            // the held value written back (decision AW22): three stores at
+            // the top, or, under operands on the stack, which only a path
+            // off the straight line leaves it under, inserted at its
+            // height by the helper
+            let words = self.held_words(depth);
+            if above == 0 {
+                let height = self.height();
+                let to = self.address_at(height);
+                let flags = MemFlagsData::trusted();
+                for (word, offset) in words.into_iter().zip([0, 8, 16]) {
+                    self.b.ins().store(flags, word, to, offset);
+                }
+                self.store_height(height + 1);
+            } else {
+                self.insert_held(depth, words);
+            }
+            self.state[depth] = Abs::Boxed(ty);
+            return;
+        }
         let above_value = self.usize(above);
         match kind {
             Abs::Int => {
@@ -1543,9 +1647,56 @@ impl Gen<'_, '_> {
                 let ty_value = self.usize(ty as usize);
                 self.call("rt_pair_record", &[self.vm, above_value, ty_value]);
             }
-            Abs::Boxed(_) | Abs::Unset => return,
+            Abs::Boxed(_) | Abs::Unset | Abs::Held(_) => return,
         }
         self.state[depth] = Abs::Boxed(None);
+    }
+
+    /// The held operand at `depth` inserted into the stack at the index
+    /// its height gives it, whatever lies above (decision AW22): off the
+    /// straight-line path, the stack may hold what a helper pushed that
+    /// the state does not count.
+    fn insert_held(&mut self, depth: usize, words: [IrValue; 3]) {
+        let height = self.frame_locals + boxed_depth(&self.state[..depth]);
+        let at = self.length_at(height);
+        self.call(
+            "rt_insert_held",
+            &[self.vm, at, words[0], words[1], words[2]],
+        );
+    }
+
+    /// Every held operand written back to the stack, the deepest first
+    /// (decision AW22): before an op whose result goes on the stack, so
+    /// that no held operand lies under one there, and before a helper
+    /// that leaves the frame.
+    fn spill_all_held(&mut self) {
+        let count = self.state.len();
+        self.spill_below(count);
+    }
+
+    /// Every held operand under `depth` written back to the stack, the
+    /// deepest first (decision AW22): the operands an op consumes may stay
+    /// held for it to read.
+    fn spill_below(&mut self, depth: usize) {
+        for below in 0..depth {
+            if self.state[below].is_held() {
+                self.box_position(below);
+            }
+        }
+    }
+
+    /// Every held operand written back through the helper, at its index
+    /// (decision AW22): at a landing and an exit, where the stack may
+    /// hold what a helper pushed above them.
+    fn spill_all_held_by_index(&mut self) {
+        for depth in 0..self.state.len() {
+            let Abs::Held(ty) = self.state[depth] else {
+                continue;
+            };
+            let words = self.held_words(depth);
+            self.insert_held(depth, words);
+            self.state[depth] = Abs::Boxed(ty);
+        }
     }
 
     /// Box the top `count` operands.
@@ -1703,6 +1854,15 @@ impl Gen<'_, '_> {
                         store(self, value);
                     }
                 }
+                Abs::Held(_) => {
+                    // the three words, which the hand-back reads as the
+                    // value (decision AW22)
+                    let vars = self.held_vars(depth);
+                    for var in vars {
+                        let value = self.b.use_var(var);
+                        store(self, value);
+                    }
+                }
                 Abs::Boxed(_) | Abs::Pair(_) | Abs::Unset => {}
             }
         }
@@ -1760,6 +1920,10 @@ impl Gen<'_, '_> {
     /// boxed on the stack, where the interpreter expects it).
     fn unbox_top(&mut self, kind: Abs, pc: usize) {
         let depth = self.state.len() - 1;
+        if self.state[depth].is_held() {
+            self.unbox_held_top(kind, pc);
+            return;
+        }
         let flags = MemFlagsData::trusted();
         match kind {
             Abs::Int => {
@@ -1806,6 +1970,79 @@ impl Gen<'_, '_> {
         self.state[depth] = kind;
     }
 
+    /// `unbox_top` on a value held as its words (decision AW22): the tags
+    /// tested in the words, the register taken from the payload word; a
+    /// hand-back carries the words in its buffer, where the interpreter
+    /// finds the value boxed.
+    fn unbox_held_top(&mut self, kind: Abs, pc: usize) {
+        let depth = self.state.len() - 1;
+        let words = self.held_words(depth);
+        let tag = self.word_byte(words[0], 0);
+        match kind {
+            Abs::Int => {
+                let is_int = self
+                    .b
+                    .ins()
+                    .icmp_imm_s(IntCC::Equal, tag, TAG_INTEGER as i64);
+                let int_tag = self.word_byte(words[(INT_TAG / 8) as usize], INT_TAG % 8);
+                let is_small = self
+                    .b
+                    .ins()
+                    .icmp_imm_s(IntCC::Equal, int_tag, INT_SMALL as i64);
+                let ok = self.b.ins().band(is_int, is_small);
+                self.deopt_unless(ok, pc);
+                let var = self.int_var(depth);
+                self.b.def_var(var, words[(INT_PAYLOAD / 8) as usize]);
+            }
+            Abs::Float => {
+                let ok = self.b.ins().icmp_imm_s(IntCC::Equal, tag, TAG_FLOAT as i64);
+                self.deopt_unless(ok, pc);
+                let bits = words[(PAYLOAD / 8) as usize];
+                let value = self.b.ins().bitcast(types::F64, MemFlagsData::new(), bits);
+                let var = self.float_var(depth);
+                self.b.def_var(var, value);
+            }
+            Abs::Bool => {
+                let value = self.take_bool_held(pc);
+                let var = self.bool_var(depth);
+                self.b.def_var(var, value);
+            }
+            _ => return,
+        }
+        self.state[depth] = kind;
+    }
+
+    /// `take_bool_top` on a value held as its words (decision AW22): the
+    /// Boolean's byte from its payload word; a value of another type goes
+    /// to the helper, which reads the stack, so it is written there first.
+    fn take_bool_held(&mut self, pc: usize) -> IrValue {
+        let depth = self.state.len() - 1;
+        let words = self.held_words(depth);
+        let tag = self.word_byte(words[0], 0);
+        let ok = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::Equal, tag, TAG_BOOLEAN as i64);
+        let cont = self.b.create_block();
+        let bad = self.b.create_block();
+        self.b.ins().brif(ok, cont, &[], bad, &[]);
+        self.b.set_cold_block(bad);
+        self.switch_to(bad);
+        let saved = self.state.clone();
+        self.box_position(depth);
+        let out = self.out_address();
+        let pc_value = self.u32(pc as u32);
+        let status = self
+            .call("rt_take_bool", &[self.vm, pc_value, out])
+            .expect("a status");
+        self.exit_with(status);
+        self.state = saved;
+        self.switch_to(cont);
+        self.b
+            .ins()
+            .ireduce(types::I8, words[(PAYLOAD / 8) as usize])
+    }
+
     /// The Boolean on top of the stack taken into an `i8`, in place; a
     /// value of another type is the crash the interpreter raises, through
     /// the helper (decision AR4).
@@ -1844,6 +2081,7 @@ impl Gen<'_, '_> {
                 let var = self.bool_var(depth);
                 self.b.use_var(var)
             }
+            Abs::Held(_) => self.take_bool_held(pc),
             _ => {
                 self.box_position(depth);
                 self.take_bool_top(pc)
@@ -1880,12 +2118,107 @@ impl Gen<'_, '_> {
     /// the checker noted for its expression when the op pushes that
     /// expression's value (decision AU1, stage iv), as the analysis has it.
     fn push_boxed(&mut self) {
-        let noted = if self.code.ops()[self.current_pc].pushes_its_expression() {
+        let noted = self.noted_type();
+        self.state.push(Abs::Boxed(noted));
+    }
+
+    /// The type the checker noted for the op being translated, when it
+    /// pushes its expression's value.
+    fn noted_type(&self) -> Option<u32> {
+        if self.code.ops()[self.current_pc].pushes_its_expression() {
             self.code.types().get(self.current_pc).copied().flatten()
         } else {
             None
+        }
+    }
+
+    /// A held operand pushed by the op being translated (decision AW22),
+    /// its words in the three variables of the depth.
+    fn push_held(&mut self, words: [IrValue; 3]) {
+        let depth = self.state.len();
+        let vars = self.held_vars(depth);
+        for (var, word) in vars.into_iter().zip(words) {
+            self.b.def_var(var, word);
+        }
+        self.push_held_state();
+    }
+
+    /// The state's push of a held operand whose variables every path
+    /// defined already.
+    fn push_held_state(&mut self) {
+        let noted = self.noted_type();
+        self.state.push(Abs::Held(noted));
+    }
+
+    /// The words of the value on top of the stack, which a helper pushed,
+    /// taken off it to be held (decision AW22): the state does not count
+    /// the value, which lies at the state's height.
+    fn unload_top(&mut self) -> [IrValue; 3] {
+        let height = self.height();
+        let at = self.address_at(height);
+        let words = self.words_at(at);
+        self.store_height(height);
+        words
+    }
+
+    /// A byte of a word of a value held as its words, as an `i32`: the
+    /// first word's low byte is the value's tag (decision AW22).
+    fn word_byte(&mut self, word: IrValue, byte: i32) -> IrValue {
+        let shifted = if byte == 0 {
+            word
+        } else {
+            self.b.ins().ushr_imm_s(word, 8 * byte as i64)
         };
-        self.state.push(Abs::Boxed(noted));
+        let low = self.b.ins().band_imm_s(shifted, 0xff);
+        self.b.ins().ireduce(types::I32, low)
+    }
+
+    /// The byte at `offset` of the value at `depth` as an `i32`: a tag
+    /// (`0`, `INT_TAG`), read from its cell on the stack or from its words.
+    fn operand_byte(&mut self, depth: usize, offset: i32) -> IrValue {
+        if self.state[depth].is_held() {
+            let words = self.held_words(depth);
+            self.word_byte(words[(offset / 8) as usize], offset % 8)
+        } else {
+            let at = self.operand_address(depth);
+            self.tag_at(at, offset)
+        }
+    }
+
+    /// The word at `offset` (`0`, `PAYLOAD`, `INT_PAYLOAD`) of the value at
+    /// `depth`: loaded from its cell, or the register that holds it.
+    fn operand_word(&mut self, depth: usize, offset: i32) -> IrValue {
+        if self.state[depth].is_held() {
+            let words = self.held_words(depth);
+            words[(offset / 8) as usize]
+        } else {
+            let at = self.operand_address(depth);
+            self.b
+                .ins()
+                .load(types::I64, MemFlagsData::trusted(), at, offset)
+        }
+    }
+
+    /// One reference fewer to the value at `depth`, on the stack or held.
+    fn release_operand(&mut self, depth: usize) {
+        if self.state[depth].is_held() {
+            let words = self.held_words(depth);
+            self.release_words(words);
+        } else {
+            let at = self.operand_address(depth);
+            self.release(at);
+        }
+    }
+
+    /// One more reference to the value at `depth`, on the stack or held.
+    fn retain_operand(&mut self, depth: usize) {
+        if self.state[depth].is_held() {
+            let words = self.held_words(depth);
+            self.retain_words(words);
+        } else {
+            let at = self.operand_address(depth);
+            self.retain(at);
+        }
     }
 
     /// The top operand as a register value of its kind, popped.
@@ -2033,6 +2366,12 @@ impl Gen<'_, '_> {
     /// caller's jumps.
     fn branch_on_count(&mut self, at: IrValue) -> (Block, Block, Block) {
         let tag = self.tag_at(at, 0);
+        self.branch_on_count_tag(tag)
+    }
+
+    /// `branch_on_count` from a tag already read, an `i32`: a held value's,
+    /// from its first word (decision AW22).
+    fn branch_on_count_tag(&mut self, tag: IrValue) -> (Block, Block, Block) {
         let tag_wide = self.b.ins().uextend(types::I64, tag);
         let mask = self.iconst(types::I64, COUNTED_OR_INTEGER as i64);
         let shifted = self.b.ins().ushr(mask, tag_wide);
@@ -2145,16 +2484,74 @@ impl Gen<'_, '_> {
         self.switch_to(done);
     }
 
-    /// A value pushed on the stack from the address, one more reference to
-    /// it when `retain` says so (a move needs none).
-    fn push_copy(&mut self, from: IrValue, retain: bool) {
-        let to = self.top_address();
-        self.copy_value(from, to);
-        if retain {
-            self.retain(to);
+    /// `retain` on a value held as its words (decision AW22): the tag from
+    /// its first word, a counted block's address in its second, a big
+    /// Integer's in its third.
+    fn retain_words(&mut self, words: [IrValue; 3]) {
+        let tag = self.word_byte(words[0], 0);
+        let (counted, integer, done) = self.branch_on_count_tag(tag);
+        self.switch_to(counted);
+        self.raise_count(words[(PAYLOAD / 8) as usize]);
+        self.b.ins().jump(done, &[]);
+        self.switch_to(integer);
+        let int_tag = self.word_byte(words[(INT_TAG / 8) as usize], INT_TAG % 8);
+        let is_small = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::Equal, int_tag, INT_SMALL as i64);
+        let big = self.b.create_block();
+        self.b.set_cold_block(big);
+        self.b.ins().brif(is_small, done, &[], big, &[]);
+        self.b.seal_block(big);
+        self.switch_to(big);
+        self.raise_count(words[(INT_PAYLOAD / 8) as usize]);
+        self.b.ins().jump(done, &[]);
+        self.b.seal_block(done);
+        self.switch_to(done);
+    }
+
+    /// `release` on a value held as its words (decision AW22), dead after:
+    /// a counted block's count lowered in place; the last reference, and
+    /// a big Integer, dropped by the helper, which takes an address: the
+    /// words are written to the scratch slot for it.
+    fn release_words(&mut self, words: [IrValue; 3]) {
+        let flags = MemFlagsData::trusted();
+        let tag = self.word_byte(words[0], 0);
+        let (counted, integer, done) = self.branch_on_count_tag(tag);
+        self.switch_to(counted);
+        let block = words[(PAYLOAD / 8) as usize];
+        let count = self.b.ins().load(types::I64, flags, block, 0);
+        let fewer = self.b.ins().iadd_imm_s(count, -1);
+        self.b.ins().store(flags, fewer, block, 0);
+        let last = self.b.create_block();
+        let drop = self.b.create_block();
+        self.b.set_cold_block(last);
+        self.b.set_cold_block(drop);
+        self.b.ins().brif(fewer, done, &[], last, &[]);
+        self.b.seal_block(last);
+        self.switch_to(last);
+        let one = self.iconst(types::I64, 1);
+        self.b.ins().store(flags, one, block, 0);
+        self.b.ins().jump(drop, &[]);
+        self.switch_to(integer);
+        let int_tag = self.word_byte(words[(INT_TAG / 8) as usize], INT_TAG % 8);
+        let is_small = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::Equal, int_tag, INT_SMALL as i64);
+        self.b.ins().brif(is_small, done, &[], drop, &[]);
+        self.b.seal_block(drop);
+        self.switch_to(drop);
+        for (word, offset) in words.into_iter().zip([0, 8, 16]) {
+            self.b
+                .ins()
+                .stack_store(self.pointer, word, self.scratch_slot, offset);
         }
-        let height = self.height() + 1;
-        self.store_height(height);
+        let at = self.b.ins().stack_addr(self.pointer, self.scratch_slot, 0);
+        self.call("rt_drop_at", &[at]);
+        self.b.ins().jump(done, &[]);
+        self.b.seal_block(done);
+        self.switch_to(done);
     }
 
     /// A typed value written into the three words at the address.
@@ -2318,11 +2715,19 @@ impl Gen<'_, '_> {
     /// when the frame owns it (decision AW5: the caller's bit in
     /// `borrowed_params` says it was passed borrowed, and the caller's
     /// slot keeps the reference); the leave through `rt_truncate` gives
-    /// the borrowed parameters a reference first.
+    /// the borrowed parameters a reference first. A held operand below
+    /// the result, dead with the frame, is released from its registers
+    /// (decision AW22).
     fn leave_frame_inline(&mut self, operands: usize, pc: usize) {
         let flags = MemFlagsData::trusted();
         let pointer = self.pointer;
         let locals = self.frame_locals;
+        for depth in 0..self.state.len() {
+            if self.state[depth].is_held() {
+                let words = self.held_words(depth);
+                self.release_words(words);
+            }
+        }
         // the slots of the expanded callees hold `Nothing` at a return of
         // the code object's own (every region leaves by its exit, which
         // moves them out; decision AU50): only its own locals may hold a
@@ -2424,8 +2829,7 @@ impl Gen<'_, '_> {
         let first = self.state.len() - count;
         for index in 0..count {
             if mask & (1 << index) != 0 {
-                let at = self.operand_address(first + index);
-                self.retain(at);
+                self.retain_operand(first + index);
             }
         }
     }
@@ -2449,6 +2853,26 @@ impl Gen<'_, '_> {
         self.leave_frame_inline(operands, pc);
         // the result's slot was the frame's: the stack has the room, and
         // nothing moved it
+        let to = self.address_at(0);
+        for (word, offset) in words.into_iter().zip([0, 8, 16]) {
+            self.b.ins().store(flags, word, to, offset);
+        }
+        self.store_height(1);
+        let tag = self.b.ins().band_imm_s(words[0], 0xff);
+        let failed = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::Equal, tag, TAG_FAILURE as i64);
+        let failure = self.iconst(types::I32, D_FAILURE as i64);
+        let boxed = self.iconst(types::I32, D_BOXED as i64);
+        self.b.ins().select(failed, failure, boxed)
+    }
+
+    /// `leave_boxed_inline` for a result held as its words (decision
+    /// AW22): the frame left, the words written where its first slot was.
+    fn leave_held_inline(&mut self, words: [IrValue; 3], operands: usize, pc: usize) -> IrValue {
+        let flags = MemFlagsData::trusted();
+        self.leave_frame_inline(operands, pc);
         let to = self.address_at(0);
         for (word, offset) in words.into_iter().zip([0, 8, 16]) {
             self.b.ins().store(flags, word, to, offset);
@@ -2709,6 +3133,7 @@ impl Gen<'_, '_> {
     fn epilogue(&mut self) {
         self.emit_deopts();
         self.emit_landings();
+        self.emit_exits();
         // the end of the code: an implicit `return nothing`
         let count = self.code.ops().len();
         if let Some(block) = self.blocks.get(&count).copied() {
@@ -2836,16 +3261,21 @@ impl Gen<'_, '_> {
                             .b
                             .ins()
                             .iadd_imm_s(base, (*index as usize * SIZE) as i64);
-                        let borrowed = self.borrowed[pc];
-                        self.push_copy(from, !borrowed);
-                        self.push_boxed();
+                        // held as its words (decision AW22)
+                        let words = self.words_at(from);
+                        if !self.borrowed[pc] {
+                            self.retain_words(words);
+                        }
+                        self.push_held(words);
                     }
                 }
             }
             Op::Nothing => {
-                let height = self.height();
-                self.push_nothing_at(height);
-                self.push_boxed();
+                // `Nothing` held as its words (decision AW22): the tag and
+                // nothing else
+                let tag = self.iconst(types::I64, TAG_NOTHING as i64);
+                let zero = self.iconst(types::I64, 0);
+                self.push_held([tag, zero, zero]);
             }
             Op::Global(index) => {
                 if let Some(Some(value)) = self.globals.get(*index as usize) {
@@ -2874,18 +3304,30 @@ impl Gen<'_, '_> {
                     self.b.seal_block(unbuilt);
                     self.switch_to(built);
                     let from = self.b.ins().iadd_imm_s(slot, GLOBAL_VALUE as i64);
-                    self.push_copy(from, true);
+                    // held as its words (decision AW22), on both paths
+                    let vars = self.held_vars(self.state.len());
+                    let words = self.words_at(from);
+                    self.retain_words(words);
+                    for (var, word) in vars.into_iter().zip(words) {
+                        self.b.def_var(var, word);
+                    }
                     self.b.ins().jump(done, &[]);
                     self.switch_to(unbuilt);
                     let index = self.u32(*index);
                     let status = self
                         .call("rt_global", &[self.vm, index, pc_value])
                         .expect("a status");
+                    self.push_boxed();
                     self.check_status(status, pc, false);
+                    self.state.pop();
+                    let words = self.unload_top();
+                    for (var, word) in vars.into_iter().zip(words) {
+                        self.b.def_var(var, word);
+                    }
                     self.b.ins().jump(done, &[]);
                     self.b.seal_block(done);
                     self.switch_to(done);
-                    self.push_boxed();
+                    self.push_held_state();
                 }
             }
             Op::Load(slot) | Op::LoadMove(slot) => {
@@ -2910,7 +3352,10 @@ impl Gen<'_, '_> {
                         // the pair's two cells pushed (decision AW9), copied
                         // with a reference each or moved at the last read (a
                         // pair slot is never a parameter, so never borrowed),
-                        // as they lie for the op after, else as the record
+                        // as they lie for the op after, else as the record;
+                        // the cells go on the stack: every held operand
+                        // written back first (decision AW22)
+                        self.spill_all_held();
                         let moving = matches!(self.code.ops()[pc], Op::LoadMove(_));
                         self.push_pair_from_slot(index, moving);
                         if self.pairs && pair_fused(self.code, pc) {
@@ -2929,8 +3374,10 @@ impl Gen<'_, '_> {
                         let moving =
                             matches!(self.code.ops()[pc], Op::LoadMove(_)) && !self.borrowed[pc];
                         let from = self.address_at(index);
-                        let to = self.top_address();
-                        self.copy_value(from, to);
+                        // the slot's value held as its words (decision
+                        // AW22): read once, with one more reference, or
+                        // moved out, `Nothing` left in the slot
+                        let words = self.words_at(from);
                         if moving && self.may_be_borrowed(index) {
                             // a read-only parameter (decision AW5): moved
                             // when the frame owns it, copied with a
@@ -2950,7 +3397,7 @@ impl Gen<'_, '_> {
                                 .istore8(MemFlagsData::trusted(), nothing, from, 0);
                             self.b.ins().jump(done, &[]);
                             self.switch_to(lent);
-                            self.retain(to);
+                            self.retain_words(words);
                             self.b.ins().jump(done, &[]);
                             self.b.seal_block(done);
                             self.switch_to(done);
@@ -2960,11 +3407,9 @@ impl Gen<'_, '_> {
                                 .ins()
                                 .istore8(MemFlagsData::trusted(), nothing, from, 0);
                         } else if !self.borrowed[pc] {
-                            self.retain(to);
+                            self.retain_words(words);
                         }
-                        let height = self.height() + 1;
-                        self.store_height(height);
-                        self.push_boxed();
+                        self.push_held(words);
                     }
                 }
             }
@@ -3021,6 +3466,19 @@ impl Gen<'_, '_> {
                         self.release(to);
                         self.write_typed(to, top, value);
                     }
+                    (SlotKind::Boxed(_), Abs::Held(_)) => {
+                        // the held value's words stored into the slot, whose
+                        // old value goes (decision AW22)
+                        let depth = self.state.len() - 1;
+                        let words = self.held_words(depth);
+                        let to = self.address_at(index);
+                        self.release(to);
+                        let flags = MemFlagsData::trusted();
+                        for (word, offset) in words.into_iter().zip([0, 8, 16]) {
+                            self.b.ins().store(flags, word, to, offset);
+                        }
+                        self.state.pop();
+                    }
                     _ => {
                         // the top moved into the slot, whose old value goes
                         self.box_top(1);
@@ -3040,6 +3498,10 @@ impl Gen<'_, '_> {
                     self.release(at);
                     let height = self.height() - 1;
                     self.store_height(height);
+                } else if self.state.last().is_some_and(|abs| abs.is_held()) {
+                    let depth = self.state.len() - 1;
+                    let words = self.held_words(depth);
+                    self.release_words(words);
                 }
                 self.state.pop();
             }
@@ -3074,9 +3536,22 @@ impl Gen<'_, '_> {
                         }
                         self.state.push(Abs::Range);
                     }
+                    Abs::Held(ty) => {
+                        // the words copied with one more reference, the type
+                        // with them (decision AW22)
+                        let words = self.held_words(depth);
+                        self.retain_words(words);
+                        let copy = self.held_vars(depth + 1);
+                        for (var, word) in copy.into_iter().zip(words) {
+                            self.b.def_var(var, word);
+                        }
+                        self.state.push(Abs::Held(ty));
+                    }
                     _ => {
                         // the top copied with one more reference, its type
-                        // with it
+                        // with it; the copy goes on the stack: every held
+                        // operand written back first (decision AW22)
+                        self.spill_all_held();
                         let from = self.last_address();
                         let to = self.top_address();
                         self.copy_value(from, to);
@@ -3089,16 +3564,25 @@ impl Gen<'_, '_> {
                 }
             }
             Op::MakeList(count) => {
+                // the result goes on the stack: every held operand written
+                // back first (decision AW22)
+                self.spill_all_held();
                 let count_value = self.u32(*count as u32);
                 self.helper_on_stack("rt_make_list", *count as usize, &[count_value]);
                 self.push_boxed();
             }
             Op::MakeMap(count) => {
+                // the result goes on the stack: every held operand written
+                // back first (decision AW22)
+                self.spill_all_held();
                 let count_value = self.u32(*count as u32);
                 self.helper_on_stack("rt_make_map", 2 * *count as usize, &[count_value]);
                 self.push_boxed();
             }
             Op::MakePair => {
+                // the result goes on the stack: every held operand written
+                // back first (decision AW22)
+                self.spill_all_held();
                 self.helper_on_stack("rt_make_pair", 2, &[]);
                 self.push_boxed();
             }
@@ -3123,6 +3607,9 @@ impl Gen<'_, '_> {
                     self.b.def_var(vars[2], by);
                     self.state.push(Abs::Range);
                 } else {
+                    // the range goes on the stack: every held operand
+                    // written back first (decision AW22)
+                    self.spill_all_held();
                     let stepped_value = self.u8(*stepped as u8);
                     let status = self
                         .helper_on_stack("rt_make_range", operands, &[stepped_value, pc_value])
@@ -3132,6 +3619,11 @@ impl Gen<'_, '_> {
                 }
             }
             Op::Construct { ty, fields } => {
+                // the record goes on the stack: every held operand under the
+                // fields written back first (decision AW22); a field stays
+                // held for the pair returned as it lies
+                let first = self.state.len() - *fields as usize;
+                self.spill_below(first);
                 if *fields == 2
                     && self.pair_result == Some(*ty as u32)
                     && matches!(self.code.ops().get(pc + 1), Some(Op::Return))
@@ -3169,6 +3661,9 @@ impl Gen<'_, '_> {
             Op::ConstructVariant { ty, tag, fields: 0 }
                 if unit_slot(self.program, *ty, *tag as usize).is_some() =>
             {
+                // the value goes on the stack: every held operand written
+                // back first (decision AW22)
+                self.spill_all_held();
                 // a variant without fields is the same value every time
                 // (decision AG6): once built it is copied from its slot in
                 // place, with one more reference counted on its block, the
@@ -3219,6 +3714,9 @@ impl Gen<'_, '_> {
                 self.push_boxed();
             }
             Op::ConstructVariant { ty, tag, fields } => {
+                // the result goes on the stack: every held operand written
+                // back first (decision AW22)
+                self.spill_all_held();
                 let ty_value = self.usize(*ty);
                 let tag_value = self.u32(*tag as u32);
                 let fields_value = self.u32(*fields as u32);
@@ -3257,7 +3755,10 @@ impl Gen<'_, '_> {
                             // lower cell
                             self.pair_field_on_top(index);
                             self.state.pop();
-                            self.push_boxed();
+                            // held as its words, as every field read is
+                            // (decision AW22)
+                            let words = self.unload_top();
+                            self.push_held(words);
                             let kind = abs_of_field_at(self.program, self.code, pc, &field_name);
                             if !kind.is_boxed() {
                                 self.unbox_top(kind, pc + 1);
@@ -3277,17 +3778,25 @@ impl Gen<'_, '_> {
                     .last()
                     .and_then(|abs| abs.type_index())
                     .and_then(|ty| static_field(self.program, ty, &field_name));
+                // the field held as its words on every path (decision
+                // AW22), in the variables of the holder's depth
+                let depth = self.state.len() - 1;
+                let vars = self.held_vars(depth);
                 if let Some((ty_id, index)) = fixed {
                     // the holder's type is known (decision AU8): a record of
                     // it holds the field at this index, so the tag and the
-                    // type are checked and the field takes the holder's
-                    // place on the stack, its words read and one more
-                    // reference to it before the holder goes (which may free
-                    // the record); anything else goes through the helper
+                    // type are checked and the field's words are read, with
+                    // one more reference to it before the holder goes
+                    // (which may free the record); a holder on the stack
+                    // leaves it; anything else goes through the helper
                     let flags = MemFlagsData::trusted();
                     let pointer = self.pointer;
-                    let at = self.last_address();
-                    let tag = self.tag_at(at, 0);
+                    let holder_words = self.state[depth].is_held().then(|| self.held_words(depth));
+                    let at = self.operand_address(depth);
+                    let tag = match holder_words {
+                        Some(words) => self.word_byte(words[0], 0),
+                        None => self.tag_at(at, 0),
+                    };
                     let holder = self.b.create_block();
                     let hit = self.b.create_block();
                     let slow = self.b.create_block();
@@ -3296,24 +3805,34 @@ impl Gen<'_, '_> {
                     let is_holder = self.b.ins().icmp_imm_u(IntCC::UnsignedLessThan, kind, 2);
                     self.b.ins().brif(is_holder, holder, &[], slow, &[]);
                     self.switch_to(holder);
-                    let rc = self.b.ins().load(pointer, flags, at, PAYLOAD);
+                    let rc = match holder_words {
+                        Some(words) => words[(PAYLOAD / 8) as usize],
+                        None => self.b.ins().load(pointer, flags, at, PAYLOAD),
+                    };
                     let ty = self.b.ins().load(types::I64, flags, rc, RECORD_TY);
                     let same_ty = self.b.ins().icmp_imm_s(IntCC::Equal, ty, ty_id as i64);
                     self.b.ins().brif(same_ty, hit, &[], slow, &[]);
                     self.switch_to(hit);
                     let fields_ptr = self.b.ins().iadd_imm_s(rc, RECORD_FIELDS as i64);
                     let field = self.b.ins().iadd_imm_s(fields_ptr, (index * SIZE) as i64);
-                    let words: Vec<IrValue> = [0, 8, 16]
-                        .into_iter()
-                        .map(|offset| self.b.ins().load(types::I64, flags, field, offset))
-                        .collect();
-                    self.retain(field);
-                    self.release(at);
-                    for (offset, word) in [0, 8, 16].into_iter().zip(words) {
-                        self.b.ins().store(flags, word, at, offset);
+                    let words = self.words_at(field);
+                    self.retain_words(words);
+                    match holder_words {
+                        Some(holder_words) => self.release_words(holder_words),
+                        None => {
+                            self.release(at);
+                            let height = self.height() - 1;
+                            self.store_height(height);
+                        }
+                    }
+                    for (var, word) in vars.into_iter().zip(words) {
+                        self.b.def_var(var, word);
                     }
                     self.b.ins().jump(join, &[]);
+                    // the helper: on the holder on the stack, the field
+                    // taken off the stack into the words
                     self.switch_to(slow);
+                    let saved = self.state.clone();
                     let status = self
                         .helper_on_stack(
                             "rt_field",
@@ -3321,10 +3840,18 @@ impl Gen<'_, '_> {
                             &[code_value, name_value, site_value, pc_value],
                         )
                         .expect("a status");
+                    self.push_boxed();
                     self.check_status(status, pc, false);
+                    self.state.pop();
+                    let words = self.unload_top();
+                    for (var, word) in vars.into_iter().zip(words) {
+                        self.b.def_var(var, word);
+                    }
+                    self.state = saved;
                     self.b.ins().jump(join, &[]);
                     self.switch_to(join);
-                    self.push_boxed();
+                    self.state.pop();
+                    self.push_held_state();
                 } else {
                     let status = self
                         .helper_on_stack(
@@ -3335,6 +3862,9 @@ impl Gen<'_, '_> {
                         .expect("a status");
                     self.push_boxed();
                     self.check_status(status, pc, false);
+                    self.state.pop();
+                    let words = self.unload_top();
+                    self.push_held(words);
                 }
                 let kind = abs_of_field_at(self.program, self.code, pc, &field_name);
                 if !kind.is_boxed() {
@@ -3346,6 +3876,10 @@ impl Gen<'_, '_> {
                     .as_text()
                     .unwrap_or("")
                     .to_string();
+                // the field held as its words on every path (decision
+                // AW22): read in place with one more reference, or taken
+                // off the stack where the helper pushed it
+                let vars = self.held_vars(self.state.len());
                 if let SlotKind::Pair(ty) = self.analysis.slots[*slot as usize] {
                     // a field of a pair slot copied from its cell with one
                     // more reference (decision AW9)
@@ -3353,13 +3887,22 @@ impl Gen<'_, '_> {
                         Some(index) => {
                             let from_height = self.pair_cell(*slot as usize, index);
                             let from = self.address_at(from_height);
-                            self.push_copy(from, true);
+                            let words = self.words_at(from);
+                            self.retain_words(words);
+                            for (var, word) in vars.into_iter().zip(words) {
+                                self.b.def_var(var, word);
+                            }
                         }
                         None => {
-                            self.pair_field_through_helper(*slot as usize, ty, *name, *site, pc)
+                            self.spill_all_held();
+                            self.pair_field_through_helper(*slot as usize, ty, *name, *site, pc);
+                            let words = self.unload_top();
+                            for (var, word) in vars.into_iter().zip(words) {
+                                self.b.def_var(var, word);
+                            }
                         }
                     }
-                    self.push_boxed();
+                    self.push_held_state();
                     let kind = abs_of_field_at(self.program, self.code, pc, &field_name);
                     if !kind.is_boxed() {
                         self.unbox_top(kind, pc + 1);
@@ -3393,7 +3936,11 @@ impl Gen<'_, '_> {
                     self.switch_to(hit);
                     let fields_ptr = self.b.ins().iadd_imm_s(rc, RECORD_FIELDS as i64);
                     let field = self.b.ins().iadd_imm_s(fields_ptr, (index * SIZE) as i64);
-                    self.push_copy(field, true);
+                    let words = self.words_at(field);
+                    self.retain_words(words);
+                    for (var, word) in vars.into_iter().zip(words) {
+                        self.b.def_var(var, word);
+                    }
                     self.b.ins().jump(join, &[]);
                     self.switch_to(slow);
                     let slot_value = self.u32(*slot as u32);
@@ -3408,7 +3955,13 @@ impl Gen<'_, '_> {
                             ],
                         )
                         .expect("a status");
+                    self.push_boxed();
                     self.check_status(status, pc, false);
+                    self.state.pop();
+                    let words = self.unload_top();
+                    for (var, word) in vars.into_iter().zip(words) {
+                        self.b.def_var(var, word);
+                    }
                     self.b.ins().jump(join, &[]);
                     self.switch_to(join);
                 } else {
@@ -3456,10 +4009,14 @@ impl Gen<'_, '_> {
                     let ok = self.b.ins().band(same_ty, same_tag);
                     let field = self.item_address(fields_ptr, cached_index);
                     self.b.ins().brif(ok, hit, &[field.into()], slow, &[]);
-                    // the field copied, with one more reference
+                    // the field's words, with one more reference
                     self.switch_to(hit);
                     let from = self.b.block_params(hit)[0];
-                    self.push_copy(from, true);
+                    let words = self.words_at(from);
+                    self.retain_words(words);
+                    for (var, word) in vars.into_iter().zip(words) {
+                        self.b.def_var(var, word);
+                    }
                     self.b.ins().jump(join, &[]);
                     // the helper: by name, filling the cache
                     self.switch_to(slow);
@@ -3475,17 +4032,26 @@ impl Gen<'_, '_> {
                             ],
                         )
                         .expect("a status");
+                    self.push_boxed();
                     self.check_status(status, pc, false);
+                    self.state.pop();
+                    let words = self.unload_top();
+                    for (var, word) in vars.into_iter().zip(words) {
+                        self.b.def_var(var, word);
+                    }
                     self.b.ins().jump(join, &[]);
                     self.switch_to(join);
                 }
-                self.push_boxed();
+                self.push_held_state();
                 let kind = abs_of_field_at(self.program, self.code, pc, &field_name);
                 if !kind.is_boxed() {
                     self.unbox_top(kind, pc + 1);
                 }
             }
             Op::With(count) => {
+                // the result goes on the stack: every held operand written
+                // back first (decision AW22)
+                self.spill_all_held();
                 let n = *count as usize;
                 match update_by_index(self.program, self.code, self.analysis, pc, n) {
                     Some((ty, packed)) => self.update_in_place(None, n, ty, packed, pc),
@@ -3500,6 +4066,9 @@ impl Gen<'_, '_> {
                 }
             }
             Op::WithSlot { slot, fields } => {
+                // the result goes on the stack: every held operand written
+                // back first (decision AW22)
+                self.spill_all_held();
                 // the record moved out of the slot and updated in place
                 // when it is held once (decision AU11): in the generated
                 // code when the checker typed the record (decision AW8),
@@ -3536,6 +4105,8 @@ impl Gen<'_, '_> {
                     .as_text()
                     .unwrap_or("")
                     .to_string();
+                // the field held as its words on every path (decision AW22)
+                let vars = self.held_vars(self.state.len());
                 if let SlotKind::Pair(ty) = self.analysis.slots[*slot as usize] {
                     // the field of a pair slot moved out of its cell, the
                     // other field released, both cells left `Nothing`
@@ -3547,7 +4118,10 @@ impl Gen<'_, '_> {
                             let taken = self.pair_cell(*slot as usize, index);
                             let other = self.pair_cell(*slot as usize, 1 - index);
                             let from = self.address_at(taken);
-                            self.push_copy(from, false);
+                            let words = self.words_at(from);
+                            for (var, word) in vars.into_iter().zip(words) {
+                                self.b.def_var(var, word);
+                            }
                             let nothing = self.iconst(types::I32, TAG_NOTHING as i64);
                             self.b.ins().istore8(flags, nothing, from, 0);
                             let other_at = self.address_at(other);
@@ -3555,10 +4129,15 @@ impl Gen<'_, '_> {
                             self.b.ins().istore8(flags, nothing, other_at, 0);
                         }
                         None => {
-                            self.pair_field_through_helper(*slot as usize, ty, *name, *site, pc)
+                            self.spill_all_held();
+                            self.pair_field_through_helper(*slot as usize, ty, *name, *site, pc);
+                            let words = self.unload_top();
+                            for (var, word) in vars.into_iter().zip(words) {
+                                self.b.def_var(var, word);
+                            }
                         }
                     }
-                    self.push_boxed();
+                    self.push_held_state();
                     let kind = abs_of_field_at(self.program, self.code, pc, &field_name);
                     if !kind.is_boxed() {
                         self.unbox_top(kind, pc + 1);
@@ -3611,13 +4190,20 @@ impl Gen<'_, '_> {
                 self.b.ins().brif(once, moved, &[], shared, &[]);
                 // held once: the field moved out, `Nothing` left in the record
                 self.switch_to(moved);
-                self.push_copy(from, false);
+                let words = self.words_at(from);
+                for (var, word) in vars.into_iter().zip(words) {
+                    self.b.def_var(var, word);
+                }
                 let nothing = self.iconst(types::I32, TAG_NOTHING as i64);
                 self.b.ins().istore8(flags, nothing, from, 0);
                 self.b.ins().jump(join, &[]);
-                // shared: the field copied, with one more reference
+                // shared: the field's words, with one more reference
                 self.switch_to(shared);
-                self.push_copy(from, true);
+                let words = self.words_at(from);
+                self.retain_words(words);
+                for (var, word) in vars.into_iter().zip(words) {
+                    self.b.def_var(var, word);
+                }
                 self.b.ins().jump(join, &[]);
                 // the helper: by name, filling the cache
                 self.switch_to(slow);
@@ -3633,10 +4219,16 @@ impl Gen<'_, '_> {
                         ],
                     )
                     .expect("a status");
+                self.push_boxed();
                 self.check_status(status, pc, false);
+                self.state.pop();
+                let words = self.unload_top();
+                for (var, word) in vars.into_iter().zip(words) {
+                    self.b.def_var(var, word);
+                }
                 self.b.ins().jump(join, &[]);
                 self.switch_to(join);
-                self.push_boxed();
+                self.push_held_state();
                 let kind = abs_of_field_at(self.program, self.code, pc, &field_name);
                 if !kind.is_boxed() {
                     self.unbox_top(kind, pc + 1);
@@ -3645,6 +4237,13 @@ impl Gen<'_, '_> {
             Op::Call { function, args } => {
                 let count = *args as usize;
                 let result_kind = abs_of_result(self.program, *function);
+                if result_kind.is_boxed() {
+                    // the result goes on the stack: every held operand under
+                    // the arguments written back first (decision AW22); a
+                    // held argument goes where its call reads it
+                    let first = self.state.len() - count;
+                    self.spill_below(first);
+                }
                 // a direct call (decision AR3) when the callee has a code
                 // object and every typed parameter has a typed operand here,
                 // or a boxed one the checker noted as the parameter's type,
@@ -3713,6 +4312,9 @@ impl Gen<'_, '_> {
                 args,
             } => {
                 let ability_value = self.usize(*ability);
+                // the result goes on the stack: every held operand written
+                // back first (decision AW22)
+                self.spill_all_held();
                 let method_value = self.u32(*method as u32);
                 let args_value = self.u32(*args as u32);
                 let status = self
@@ -3726,6 +4328,9 @@ impl Gen<'_, '_> {
                 self.check_status(status, pc, true);
             }
             Op::CallValue(args) => {
+                // the result goes on the stack: every held operand written
+                // back first (decision AW22)
+                self.spill_all_held();
                 let args_value = self.u32(*args as u32);
                 let status = self
                     .helper_on_stack("rt_call_value", *args as usize + 1, &[args_value, pc_value])
@@ -3754,6 +4359,9 @@ impl Gen<'_, '_> {
             }
             Op::Binary(op) => self.binary(*op, pc),
             Op::ToText => {
+                // the result goes on the stack: every held operand written
+                // back first (decision AW22)
+                self.spill_all_held();
                 let status = self
                     .helper_on_stack("rt_to_text", 1, &[pc_value])
                     .expect("a status");
@@ -3761,6 +4369,9 @@ impl Gen<'_, '_> {
                 self.check_status(status, pc, false);
             }
             Op::Concat(count) => {
+                // the result goes on the stack: every held operand written
+                // back first (decision AW22)
+                self.spill_all_held();
                 let count_value = self.u32(*count as u32);
                 let status = self
                     .helper_on_stack("rt_concat", *count as usize, &[count_value, pc_value])
@@ -3855,9 +4466,29 @@ impl Gen<'_, '_> {
                         failed
                     };
                     self.branch(taken, *target as usize, pc + 1);
+                } else if self.state[depth].is_held() {
+                    // the tag from the words (decision AW22)
+                    let words = self.held_words(depth);
+                    let tag = self.word_byte(words[0], 0);
+                    let failed = self
+                        .b
+                        .ins()
+                        .icmp_imm_s(IntCC::Equal, tag, TAG_FAILURE as i64);
+                    let taken = if matches!(self.code.ops()[pc], Op::JumpIfAbsent(_)) {
+                        let nothing =
+                            self.b
+                                .ins()
+                                .icmp_imm_s(IntCC::Equal, tag, TAG_NOTHING as i64);
+                        self.b.ins().bor(failed, nothing)
+                    } else {
+                        failed
+                    };
+                    self.branch(taken, *target as usize, pc + 1);
                 } else {
                     // an unboxed value is never absent: the jump is not
-                    // taken, but the value is boxed, as both paths expect
+                    // taken, but the value is boxed, as both paths expect,
+                    // above every held operand written back (decision AW22)
+                    self.spill_all_held();
                     self.box_position(depth);
                     self.jump_to(pc + 1);
                 }
@@ -3916,6 +4547,76 @@ impl Gen<'_, '_> {
                         self.leave_frame_inline(operands, pc);
                         self.push_typed_value(0, top, value);
                         self.return_direct(D_BOXED);
+                    }
+                    // a held result (decision AW22) of the declared typed
+                    // kind: unboxed from its words on the way out to a
+                    // direct caller when it fits, else left where the frame
+                    // was, as a boxed one is
+                    (Abs::Held(_), Abs::Int | Abs::Bool | Abs::Float) => {
+                        let words = self.held_words(depth);
+                        self.state.pop();
+                        let operands = boxed_depth(&self.state);
+                        let in_register = self.b.create_block();
+                        let on_stack = self.b.create_block();
+                        self.b.ins().brif(direct, in_register, &[], on_stack, &[]);
+                        self.switch_to(in_register);
+                        let tag = self.word_byte(words[0], 0);
+                        let (fits, bits) = match result {
+                            Abs::Int => {
+                                let is_int =
+                                    self.b
+                                        .ins()
+                                        .icmp_imm_s(IntCC::Equal, tag, TAG_INTEGER as i64);
+                                let int_tag =
+                                    self.word_byte(words[(INT_TAG / 8) as usize], INT_TAG % 8);
+                                let is_small = self.b.ins().icmp_imm_s(
+                                    IntCC::Equal,
+                                    int_tag,
+                                    INT_SMALL as i64,
+                                );
+                                let fits = self.b.ins().band(is_int, is_small);
+                                (fits, words[(INT_PAYLOAD / 8) as usize])
+                            }
+                            Abs::Bool => {
+                                let fits =
+                                    self.b
+                                        .ins()
+                                        .icmp_imm_s(IntCC::Equal, tag, TAG_BOOLEAN as i64);
+                                let bits =
+                                    self.b.ins().band_imm_s(words[(PAYLOAD / 8) as usize], 0xff);
+                                (fits, bits)
+                            }
+                            _ => {
+                                let fits =
+                                    self.b.ins().icmp_imm_s(IntCC::Equal, tag, TAG_FLOAT as i64);
+                                (fits, words[(PAYLOAD / 8) as usize])
+                            }
+                        };
+                        let unboxed = self.b.create_block();
+                        let stays = self.b.create_block();
+                        self.b.ins().brif(fits, unboxed, &[], stays, &[]);
+                        self.switch_to(unboxed);
+                        self.leave_frame_inline(operands, pc);
+                        let status = self.iconst(types::I32, D_RETURNED as i64);
+                        self.return_with(status, bits);
+                        self.switch_to(stays);
+                        let status = self.leave_held_inline(words, operands, pc);
+                        let zero = self.iconst(types::I64, 0);
+                        self.return_with(status, zero);
+                        self.switch_to(on_stack);
+                        let status = self.leave_held_inline(words, operands, pc);
+                        let zero = self.iconst(types::I64, 0);
+                        self.return_with(status, zero);
+                    }
+                    // a held result where the declared result is boxed:
+                    // left where the frame was
+                    (Abs::Held(_), _) => {
+                        let words = self.held_words(depth);
+                        self.state.pop();
+                        let operands = boxed_depth(&self.state);
+                        let status = self.leave_held_inline(words, operands, pc);
+                        let zero = self.iconst(types::I64, 0);
+                        self.return_with(status, zero);
                     }
                     // a boxed value where the declared result is typed:
                     // unboxed on the way out when it fits, for a direct
@@ -4000,6 +4701,9 @@ impl Gen<'_, '_> {
                 self.return_direct(D_BOXED);
             }
             Op::Fail => {
+                // the helper leaves the frame: every held operand written
+                // back first, for the leave to release (decision AW22)
+                self.spill_all_held();
                 self.retain_params();
                 let status = self
                     .helper_on_stack("rt_fail", 1, &[pc_value])
@@ -4023,13 +4727,22 @@ impl Gen<'_, '_> {
                     self.push_bool(no);
                     return;
                 }
-                self.box_top(1);
+                // a held top is read from its words (decision AW22), else
+                // the top is boxed and read where it lies
+                let depth = self.state.len() - 1;
+                let words = self.state[depth].is_held().then(|| self.held_words(depth));
+                if words.is_none() {
+                    self.box_top(1);
+                }
                 self.state.pop();
-                // the value lies above the state's height
+                // a boxed value lies above the state's height
                 let height = self.height();
                 let at = self.address_at(height);
                 let flags = MemFlagsData::trusted();
-                let kind = self.tag_at(at, 0);
+                let kind = match words {
+                    Some(words) => self.word_byte(words[0], 0),
+                    None => self.tag_at(at, 0),
+                };
                 let variant = self.b.create_block();
                 let other = self.b.create_block();
                 let guarded = self.b.create_block();
@@ -4046,7 +4759,10 @@ impl Gen<'_, '_> {
                 self.b.seal_block(variant);
                 self.b.seal_block(other);
                 self.switch_to(variant);
-                let rc = self.b.ins().load(self.pointer, flags, at, PAYLOAD);
+                let rc = match words {
+                    Some(words) => words[(PAYLOAD / 8) as usize],
+                    None => self.b.ins().load(self.pointer, flags, at, PAYLOAD),
+                };
                 let held = self.b.ins().load(types::I64, flags, rc, RECORD_TAG);
                 let fits = self.b.ins().icmp_imm_s(IntCC::Equal, held, *tag as i64);
                 self.b.ins().jump(answer, &[fits.into()]);
@@ -4063,10 +4779,19 @@ impl Gen<'_, '_> {
                 self.b.seal_block(answer);
                 self.switch_to(answer);
                 let fits = self.b.block_params(answer)[0];
-                self.release(at);
+                match words {
+                    Some(words) => self.release_words(words),
+                    None => self.release(at),
+                }
                 self.b.ins().jump(join, &[fits.into()]);
-                // the helper pops the value: the stack's length includes it
+                // the helper pops the value from the stack: a held one is
+                // written there first, and the stack's length includes it
                 self.switch_to(guarded);
+                if let Some(words) = words {
+                    for (word, offset) in words.into_iter().zip([0, 8, 16]) {
+                        self.b.ins().store(flags, word, at, offset);
+                    }
+                }
                 self.store_height(height + 1);
                 let out = self.out_address();
                 let tag_value = self.u32(*tag as u32);
@@ -4094,6 +4819,17 @@ impl Gen<'_, '_> {
                     self.push_bool(no);
                     return;
                 }
+                let depth = self.state.len() - 1;
+                if self.state[depth].is_held() {
+                    // the tag from the words (decision AW22)
+                    let words = self.held_words(depth);
+                    self.state.pop();
+                    let tag = self.word_byte(words[0], 0);
+                    let is = self.b.ins().icmp_imm_s(IntCC::Equal, tag, wanted as i64);
+                    self.release_words(words);
+                    self.push_bool(is);
+                    return;
+                }
                 self.box_top(1);
                 self.state.pop();
                 // the value lies above the state's height
@@ -4113,6 +4849,9 @@ impl Gen<'_, '_> {
                 self.push_bool(value);
             }
             Op::Unpack(count) => {
+                // the result goes on the stack: every held operand written
+                // back first (decision AW22)
+                self.spill_all_held();
                 let count_value = self.u32(*count as u32);
                 let status = self
                     .helper_on_stack("rt_unpack", 1, &[count_value, pc_value])
@@ -4123,6 +4862,9 @@ impl Gen<'_, '_> {
                 self.check_status(status, pc, false);
             }
             Op::UnwrapFailure => {
+                // the result goes on the stack: every held operand written
+                // back first (decision AW22)
+                self.spill_all_held();
                 self.helper_on_stack("rt_unwrap_failure", 1, &[]);
                 self.push_boxed();
             }
@@ -4159,13 +4901,22 @@ impl Gen<'_, '_> {
                     self.start_position(index);
                 } else {
                     // a plain list goes into the slot as it lies, the
-                    // slot's old value released (decision AW14); anything
-                    // else through the helper, which lists it; the
-                    // position starts at 0 either way
-                    self.box_top(1);
+                    // slot's old value released (decision AW14), a held one
+                    // from its words (decision AW22); anything else through
+                    // the helper, which lists it; the position starts at 0
+                    // either way
+                    let depth = self.state.len() - 1;
+                    let words = self.state[depth].is_held().then(|| self.held_words(depth));
+                    if words.is_none() {
+                        self.box_top(1);
+                    }
                     let height = self.height();
-                    let source = self.address_at(height - 1);
-                    let tag = self.tag_at(source, 0);
+                    let source = words.is_none().then(|| self.address_at(height - 1));
+                    let tag = match (words, source) {
+                        (Some(words), _) => self.word_byte(words[0], 0),
+                        (None, Some(source)) => self.tag_at(source, 0),
+                        (None, None) => unreachable!("a boxed source lies on the stack"),
+                    };
                     let is_list = self.b.ins().icmp_imm_s(IntCC::Equal, tag, TAG_LIST as i64);
                     let listed = self.b.create_block();
                     let general = self.b.create_block();
@@ -4176,8 +4927,19 @@ impl Gen<'_, '_> {
                     self.switch_to(listed);
                     let to = self.address_at(index);
                     self.release(to);
-                    self.copy_value(source, to);
-                    self.store_height(height - 1);
+                    match (words, source) {
+                        (Some(words), _) => {
+                            let flags = MemFlagsData::trusted();
+                            for (word, offset) in words.into_iter().zip([0, 8, 16]) {
+                                self.b.ins().store(flags, word, to, offset);
+                            }
+                        }
+                        (None, Some(source)) => {
+                            self.copy_value(source, to);
+                            self.store_height(height - 1);
+                        }
+                        (None, None) => unreachable!("a boxed source lies on the stack"),
+                    }
                     self.b.ins().jump(join, &[]);
                     self.switch_to(general);
                     let slot_value = self.u32(*slot as u32);
@@ -4218,6 +4980,9 @@ impl Gen<'_, '_> {
                     self.b.def_var(vars[0], next);
                 } else {
                     let found = self.b.create_block();
+                    // the item held as its words on every path (decision
+                    // AW22)
+                    let vars = self.held_vars(self.state.len());
                     let (exit_block, fill_exit) = self.edge_to(*exit as usize);
                     if crate::value::layout::list_layout().is_some() {
                         // a list in the slot read in place (decision AW14):
@@ -4263,28 +5028,45 @@ impl Gen<'_, '_> {
                         let items = self.b.ins().load(pointer, flags, items_at, 0);
                         let offset = self.b.ins().imul_imm_s(position, SIZE as i64);
                         let item = self.b.ins().iadd(items, offset);
-                        self.push_copy(item, true);
+                        // the item's words, with one more reference
+                        let words = self.words_at(item);
+                        self.retain_words(words);
+                        for (var, word) in vars.into_iter().zip(words) {
+                            self.b.def_var(var, word);
+                        }
                         let advanced = self.b.ins().iadd_imm_s(position, 1);
                         self.b.def_var(position_var, advanced);
                         self.b.ins().jump(found, &[]);
                         self.switch_to(slow);
                     }
-                    // the helper for anything else
+                    // the helper for anything else: the item it pushed taken
+                    // off the stack into the words
                     let slot_value = self.u32(*slot as u32);
                     let has = self
                         .call("rt_iter_next", &[self.vm, self.base, slot_value])
                         .expect("an answer");
-                    self.b.ins().brif(has, found, &[], exit_block, &[]);
-                    self.b.seal_block(found);
+                    let pushed = self.b.create_block();
+                    self.b.ins().brif(has, pushed, &[], exit_block, &[]);
+                    self.b.seal_block(pushed);
                     self.terminated = true;
                     if fill_exit {
                         self.fill_edge(exit_block, *exit as usize);
                     }
+                    self.switch_to(pushed);
+                    let words = self.unload_top();
+                    for (var, word) in vars.into_iter().zip(words) {
+                        self.b.def_var(var, word);
+                    }
+                    self.b.ins().jump(found, &[]);
+                    self.b.seal_block(found);
                     self.switch_to(found);
-                    self.push_boxed();
+                    self.push_held_state();
                 }
             }
             Op::ListPush => {
+                // the result goes on the stack: every held operand written
+                // back first (decision AW22)
+                self.spill_all_held();
                 let status = self
                     .helper_on_stack("rt_list_push", 2, &[pc_value])
                     .expect("a status");
@@ -4292,6 +5074,9 @@ impl Gen<'_, '_> {
                 self.check_status(status, pc, false);
             }
             Op::GroupInsert => {
+                // the result goes on the stack: every held operand written
+                // back first (decision AW22)
+                self.spill_all_held();
                 let status = self
                     .helper_on_stack("rt_group_insert", 3, &[pc_value])
                     .expect("a status");
@@ -4299,6 +5084,9 @@ impl Gen<'_, '_> {
                 self.check_status(status, pc, false);
             }
             Op::GroupFold(fold) => {
+                // the result goes on the stack: every held operand written
+                // back first (decision AW22)
+                self.spill_all_held();
                 let fold_value = self.u8(fold_code(*fold));
                 let status = self
                     .helper_on_stack("rt_group_fold", 3, &[fold_value, pc_value])
@@ -4307,6 +5095,9 @@ impl Gen<'_, '_> {
                 self.check_status(status, pc, false);
             }
             Op::SortByKey { descending } => {
+                // the result goes on the stack: every held operand written
+                // back first (decision AW22)
+                self.spill_all_held();
                 let descending_value = self.u8(*descending as u8);
                 let status = self
                     .helper_on_stack("rt_sort_by_key", 1, &[descending_value, pc_value])
@@ -4334,6 +5125,15 @@ impl Gen<'_, '_> {
             Op::MarkStack(_) => {}
             Op::UnwindStack(slot) => {
                 let depth = self.analysis.marks[*slot as usize].unwrap_or(0);
+                // the held operands above the mark released from their
+                // registers (decision AW22), the ones on the stack by the
+                // helper
+                for above in depth..self.state.len() {
+                    if self.state[above].is_held() {
+                        let words = self.held_words(above);
+                        self.release_words(words);
+                    }
+                }
                 let keep = boxed_depth(&self.state[..depth]);
                 if boxed_depth(&self.state) > keep {
                     let locals = self.u32(self.frame_locals as u32);
@@ -4349,12 +5149,18 @@ impl Gen<'_, '_> {
                 self.b.ins().brif(condition, cont, &[], failed, &[]);
                 self.b.set_cold_block(failed);
                 self.switch_to(failed);
+                // the helper leaves the frame: every held operand written
+                // back first (decision AW22), the state kept for the path
+                // that goes on
+                let saved = self.state.clone();
+                self.spill_all_held();
                 self.retain_params();
                 let message_value = self.u32(*message);
                 let status = self
                     .call("rt_check_failed", &[self.vm, code_value, message_value])
                     .expect("a status");
                 self.exit_with(status);
+                self.state = saved;
                 self.switch_to(cont);
             }
         }
@@ -4491,6 +5297,7 @@ impl Gen<'_, '_> {
                 let at = self.operand_address(depth);
                 self.words_at(at)
             }
+            Abs::Held(_) => self.held_words(depth),
             Abs::Range | Abs::Pair(_) => unreachable!("a field is one value"),
         }
     }
@@ -5082,11 +5889,10 @@ impl Gen<'_, '_> {
         // Float of the parameter's kind going on, anything else through
         // the helper's path
         let unboxed: Vec<usize> = (0..count)
-            .filter(|index| !kinds[*index].is_boxed() && self.state[first + index].is_boxed())
+            .filter(|index| !kinds[*index].is_boxed() && self.state[first + index].is_value())
             .collect();
         let mut fits: Option<IrValue> = None;
         for &index in &unboxed {
-            let at = self.operand_address(first + index);
             let tags: &[(i32, u8)] = match kinds[index] {
                 Abs::Int => &[(0, TAG_INTEGER), (INT_TAG, INT_SMALL)],
                 Abs::Bool => &[(0, TAG_BOOLEAN)],
@@ -5094,7 +5900,7 @@ impl Gen<'_, '_> {
                 _ => unreachable!("a parameter is typed or boxed"),
             };
             for &(offset, tag) in tags {
-                let found = self.tag_at(at, offset);
+                let found = self.operand_byte(first + index, offset);
                 let is = self.b.ins().icmp_imm_s(IntCC::Equal, found, tag as i64);
                 fits = Some(match fits {
                     Some(before) => self.b.ins().band(before, is),
@@ -5142,8 +5948,27 @@ impl Gen<'_, '_> {
         // the frame moves them to their parameters' slots
         let mut payloads: Vec<Option<IrValue>> = vec![None; count];
         for &index in &unboxed {
+            let depth = first + index;
+            if self.state[depth].is_held() {
+                // from the words (decision AW22): no cell to move into the
+                // parameter's slot, which the callee's prologue clears
+                let words = self.held_words(depth);
+                payloads[index] = Some(match kinds[index] {
+                    Abs::Int => words[(INT_PAYLOAD / 8) as usize],
+                    Abs::Bool => self
+                        .b
+                        .ins()
+                        .ireduce(types::I8, words[(PAYLOAD / 8) as usize]),
+                    _ => self.b.ins().bitcast(
+                        types::F64,
+                        MemFlagsData::new(),
+                        words[(PAYLOAD / 8) as usize],
+                    ),
+                });
+                continue;
+            }
             mask |= 1 << index;
-            let at = self.operand_address(first + index);
+            let at = self.operand_address(depth);
             payloads[index] = Some(match kinds[index] {
                 Abs::Int => self.b.ins().load(types::I64, flags, at, INT_PAYLOAD),
                 Abs::Bool => self.b.ins().load(types::I8, flags, at, PAYLOAD),
@@ -5342,6 +6167,9 @@ impl Gen<'_, '_> {
             }
             _ if is_comparison(op) => self.compare_boxed(op, pc),
             _ => {
+                // the result goes on the stack: every held operand written
+                // back first (decision AW22)
+                self.spill_all_held();
                 let op_value = self.u8(binary_code(op));
                 let pc_value = self.u32(pc as u32);
                 let status = self
@@ -5367,8 +6195,8 @@ impl Gen<'_, '_> {
         let texts = matches!(op, BinaryOp::Is | BinaryOp::IsNot) && {
             let n = self.state.len();
             let (left, right) = (self.state[n - 2], self.state[n - 1]);
-            left.is_boxed()
-                && right.is_boxed()
+            left.is_value()
+                && right.is_value()
                 && (is_text(self.program, left) || is_text(self.program, right))
         };
         if texts {
@@ -5380,7 +6208,7 @@ impl Gen<'_, '_> {
             let n = self.state.len();
             let (left, right) = (self.state[n - 2], self.state[n - 1]);
             let typed = |abs: Abs| matches!(abs, Abs::Int) || is_integer(self.program, abs);
-            (left.is_boxed() || right.is_boxed()) && typed(left) && typed(right)
+            (left.is_value() || right.is_value()) && typed(left) && typed(right)
         };
         if integers {
             self.compare_small_integers(op, join);
@@ -5422,7 +6250,7 @@ impl Gen<'_, '_> {
             self.b
                 .ins()
                 .icmp_imm_s(IntCC::Equal, status, crate::native::runtime::BOXED as i64);
-        let exit = self.exit;
+        let exit = self.exit_for_state();
         self.b.ins().brif(boxed, slow, &[], exit, &[status.into()]);
         self.b.seal_block(slow);
         self.switch_to(slow);
@@ -5450,12 +6278,13 @@ impl Gen<'_, '_> {
     /// and the operands are popped with nothing to release; anything else
     /// carries on to the general comparison in a block of its own.
     fn compare_small_texts(&mut self, op: BinaryOp, join: Block) {
-        let flags = MemFlagsData::trusted();
+        let n = self.state.len();
         let height = self.height();
-        let left = self.address_at(height - 2);
-        let right = self.address_at(height - 1);
-        let left_tag = self.tag_at(left, 0);
-        let right_tag = self.tag_at(right, 0);
+        // on the stack or held as its words (decision AW22)
+        let dropped =
+            usize::from(self.state[n - 2].is_boxed()) + usize::from(self.state[n - 1].is_boxed());
+        let left_tag = self.operand_byte(n - 2, 0);
+        let right_tag = self.operand_byte(n - 1, 0);
         let left_small = self
             .b
             .ins()
@@ -5473,8 +6302,8 @@ impl Gen<'_, '_> {
         self.switch_to(inline);
         let mut same = None;
         for offset in [PAYLOAD, PAYLOAD + 8] {
-            let a = self.b.ins().load(types::I64, flags, left, offset);
-            let b = self.b.ins().load(types::I64, flags, right, offset);
+            let a = self.operand_word(n - 2, offset);
+            let b = self.operand_word(n - 1, offset);
             let equal = self.b.ins().icmp(IntCC::Equal, a, b);
             same = Some(match same {
                 Some(before) => self.b.ins().band(before, equal),
@@ -5487,7 +6316,7 @@ impl Gen<'_, '_> {
             _ => self.b.ins().bxor_imm_u(same, 1),
         };
         let depth = self.state.len() - 2;
-        self.store_height(height - 2);
+        self.store_height(height - dropped);
         let var = self.bool_var(depth);
         self.b.def_var(var, answer);
         self.b.ins().jump(join, &[]);
@@ -5502,20 +6331,18 @@ impl Gen<'_, '_> {
     /// small Integer holds no count; a big Integer falls through to the
     /// helper, which has the big Integers.
     fn compare_small_integers(&mut self, op: BinaryOp, join: Block) {
-        let flags = MemFlagsData::trusted();
         let n = self.state.len();
         let (left, right) = (self.state[n - 2], self.state[n - 1]);
         let height = self.height();
-        // the right operand is the top slot when boxed, the left the slot
-        // below it, or the top slot when the right is in a register
-        let right_at = right.is_boxed().then(|| self.address_at(height - 1));
-        let left_at = left
-            .is_boxed()
-            .then(|| self.address_at(height - 1 - usize::from(right.is_boxed())));
+        // a boxed operand's tags from its cell, a held one's from its
+        // words (decision AW22), a register's known
         let mut small = None;
-        for at in [left_at, right_at].into_iter().flatten() {
+        for depth in [n - 2, n - 1] {
+            if !self.state[depth].is_value() {
+                continue;
+            }
             for (offset, tag) in [(0, TAG_INTEGER), (INT_TAG, INT_SMALL)] {
-                let found = self.tag_at(at, offset);
+                let found = self.operand_byte(depth, offset);
                 let fits = self.b.ins().icmp_imm_s(IntCC::Equal, found, tag as i64);
                 small = Some(match small {
                     Some(before) => self.b.ins().band(before, fits),
@@ -5530,19 +6357,17 @@ impl Gen<'_, '_> {
         self.b.seal_block(inline);
         self.b.seal_block(general);
         self.switch_to(inline);
-        let a = match left_at {
-            Some(at) => self.b.ins().load(types::I64, flags, at, INT_PAYLOAD),
-            None => {
-                let var = self.int_var(n - 2);
-                self.b.use_var(var)
-            }
+        let a = if left.is_value() {
+            self.operand_word(n - 2, INT_PAYLOAD)
+        } else {
+            let var = self.int_var(n - 2);
+            self.b.use_var(var)
         };
-        let b = match right_at {
-            Some(at) => self.b.ins().load(types::I64, flags, at, INT_PAYLOAD),
-            None => {
-                let var = self.int_var(n - 1);
-                self.b.use_var(var)
-            }
+        let b = if right.is_value() {
+            self.operand_word(n - 1, INT_PAYLOAD)
+        } else {
+            let var = self.int_var(n - 1);
+            self.b.use_var(var)
         };
         let answer = self.b.ins().icmp(comparison_cc(op), a, b);
         let dropped = usize::from(left.is_boxed()) + usize::from(right.is_boxed());
@@ -5564,11 +6389,13 @@ impl Gen<'_, '_> {
     /// borrowed released in place.
     fn compare_sum_variants(&mut self, op: BinaryOp, pc: usize, join: Block, fielded: u64) {
         let flags = MemFlagsData::trusted();
+        let n = self.state.len();
         let height = self.height();
-        let left = self.address_at(height - 2);
-        let right = self.address_at(height - 1);
-        let left_tag = self.tag_at(left, 0);
-        let right_tag = self.tag_at(right, 0);
+        // on the stack or held as its words (decision AW22)
+        let dropped =
+            usize::from(self.state[n - 2].is_boxed()) + usize::from(self.state[n - 1].is_boxed());
+        let left_tag = self.operand_byte(n - 2, 0);
+        let right_tag = self.operand_byte(n - 1, 0);
         let left_variant = self
             .b
             .ins()
@@ -5585,8 +6412,8 @@ impl Gen<'_, '_> {
         self.b.ins().brif(both, inline, &[], general, &[]);
         self.b.seal_block(inline);
         self.switch_to(inline);
-        let left_block = self.b.ins().load(self.pointer, flags, left, PAYLOAD);
-        let right_block = self.b.ins().load(self.pointer, flags, right, PAYLOAD);
+        let left_block = self.operand_word(n - 2, PAYLOAD);
+        let right_block = self.operand_word(n - 1, PAYLOAD);
         let left_ty = self.b.ins().load(types::I64, flags, left_block, RECORD_TY);
         let right_ty = self.b.ins().load(types::I64, flags, right_block, RECORD_TY);
         let same_ty = self.b.ins().icmp(IntCC::Equal, left_ty, right_ty);
@@ -5635,13 +6462,13 @@ impl Gen<'_, '_> {
         // no reference of its own
         let mask = self.masks[pc];
         if mask & 1 == 0 {
-            self.release(left);
+            self.release_operand(n - 2);
         }
         if mask & 2 == 0 {
-            self.release(right);
+            self.release_operand(n - 1);
         }
         let depth = self.state.len() - 2;
-        self.store_height(height - 2);
+        self.store_height(height - dropped);
         let var = self.bool_var(depth);
         self.b.def_var(var, answer);
         self.b.ins().jump(join, &[]);

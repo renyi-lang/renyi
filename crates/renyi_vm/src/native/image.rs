@@ -44,8 +44,9 @@ pub const MAGIC: &[u8; 4] = b"RYI\0";
 /// (decision AT5); 7: the handled regions of a deopt point (decision
 /// AU18); 8: the callees expanded into a code object (decision AU50); 9:
 /// the read-only flags of a code object's parameters in the program's
-/// encoding (decision AW5).
-pub const IMAGE_FORMAT: u32 = 9;
+/// encoding (decision AW5); 10: a held operand's kind in a deopt point
+/// (decision AW22).
+pub const IMAGE_FORMAT: u32 = 10;
 
 /// The alignment of the code section in the file: a multiple of every
 /// page size the toolchain runs on (16 KB on Apple silicon), so that the

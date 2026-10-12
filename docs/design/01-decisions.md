@@ -8114,3 +8114,134 @@ result records read after their cursor, `Done` rewritten), over
 stopping at B4 and over the natives' round. The order: B2, B3 (with the
 expansion measured again), B1, B4, each with its entry and its
 paragraph in the handoff's section of stage 31. (user)
+
+**AW22. Stage B2 of the new code generator: the operands in
+registers.** The first stage of road (B) in AW21's order, on
+2026-10-12, measured as AW21 prescribes against stage 5b's binary
+(0f17f67, the base of road (B)). A new operand kind in the analysis of
+the Cranelift tier, `Abs::Held(type)` in `native/infer.rs`: a value
+held as the three words of its 24-byte `Value` in Cranelift variables,
+the tag word and the two payload words, as a `Load` of a boxed slot
+reads them, with the type the checker noted as `Boxed` carries it; what
+a load of a boxed slot, a boxed constant, `Nothing`, a module constant,
+a field read (`Field`, `LoadField` and `TakeField`, on every path: the
+field's words read in place with one more reference, moved out of a
+record held once, or taken off the stack where the helper pushed them),
+a loop's item (`IterNext`, the item's words from the list's block or
+from the helper's push) and a `Dup` of a held value push, when the tier
+holds values (`analyse`'s `held`: the Cranelift tier does; the template
+tier, the expansion of AU50 and the hand-back's rebuild of the expanded
+frames do not). The VM's stack is written only where something reads it
+there. An op whose result goes on the stack (a list, a map, a pair, a
+range through the helper, a record or a variant, a `with`, a call
+through a helper or whose result is a value, a method call, a value
+called, a text's conversion, a concatenation, an unpack, a failure
+unwrapped, the query terminals) writes every held operand under its
+operands back first, three stores at the top each (`spill_below`,
+`spill_all_held`), so that a held operand never lies under one on the
+stack on the straight line, and the analysis's `push!` keeps the same
+rule (a held operand under a pushed value on the stack is spilled in
+the state). A helper that takes its arguments from the stack
+(`helper_on_stack`, `call_typed`, `call_in_place`, `list_at_in_place`,
+`update_in_place`) finds them written there by `box_position`, which
+inserts a held operand by its index through `rt_insert_held` where
+values lie above it (a join of paths can leave one under a value). A
+direct call reads a held operand of a typed parameter from its words,
+its tags tested there, with no cell for the frame to clear
+(`call_direct`); a comparison in place reads a held operand's tags and
+payload words from its registers (`operand_byte`, `operand_word`: the
+small texts, the small Integers, the variants by the type and the tag,
+the borrowed operands of AU13 now held, `is_value`); a test of the top
+(`IsVariant`, `IsNothing`, `IsFailure`, `JumpIfAbsent`,
+`JumpIfFailure`, a condition) reads the tag from the first word and a
+Boolean from the second (`unbox_held_top`, `take_bool_held`); a store
+writes the three words into the slot; an iterator over a held list
+takes the words into its slot; a `Return` of a held value unboxes it
+from the words for a direct caller or leaves it where the frame's first
+slot was (`leave_held_inline`); the counts are raised and lowered in
+the words (`retain_words`, `release_words`, the last reference dropped
+through `rt_drop_at` on a scratch slot of the machine stack). Off the
+straight line: a landing writes every held operand back at its index
+through `rt_insert_held` before the floor cuts the stack
+(`spill_all_held_by_index`; the landings keyed by the whole operand
+stack, and the analysis's handler state the same with every held
+operand spilled), an exit from a state with held operands goes through
+a cold block per state that writes them back first (`exit_for_state`,
+`emit_exits`), the helpers that leave the frame (`rt_fail`,
+`rt_check_failed`, `rt_unhandled`) find them written back, a hand-back
+carries the three words in its buffer and `rt_deopt` reads them as the
+value (`DeoptPoint` kind code 7, image format 9 to 10), a frame left
+releases the held operands below the result from their registers
+(`leave_frame_inline`), and `UnwindStack` releases the held operands
+above the mark. The analysis computes its entry states again from the
+final slot kinds once they settle (the clean run at the end of
+`analyse`), so that no state carries a kind an earlier round's slot
+kinds gave an op: a load of a slot that was an Integer before it was
+boxed pushed a register then and pushes a held value now, and their
+join, a value on the stack, is what the generated code, which pushes by
+the final kinds, would not have (the generator's state is held to the
+analysis's at every op in debug builds, as before). A test in
+`tests/native.rs` takes a held operand through an overflow's hand-back,
+a failure's landing under an `otherwise` and a loop's item returned
+from the loop, the two tiers and the interpreter agreeing. Nothing
+changes for the template tier, the bytecode file, the emitters and the
+judges. The measure in full (callgrind under WSL on the release build
+for Linux, the images built under `valgrind --tool=none`, against stage
+5b's binary measured the same way in AW18, the reference AU34's
+44782aa): the check row 1,528.5 to 1,482.3 million instructions
+(-3.0%), the parse row 696.2 to 680.4 (-2.3%), the compile row 2,719.7
+to 2,661.2 (-2.2%); the ratios by instructions against the reference's
+rows (441.6, 284.7 and 365.6) 3.36, 2.39 and 7.28 against the gate's 3
+(3.46, 2.45 and 7.44 after AW18); the Rust front end's own rows within
+0.1% of stage 5b's (`check` 173.6, `parse --json` 246.4, `compile`
+450.7). The check row by category, the study's table against this one,
+in millions: the generated code 800.8 to 756.8, the natives 255.8 to
+254.2, the counts and drops 131.0 to 131.0, the VM's own 79.6 to 79.6,
+mimalloc 76.8 to 76.8, the texts and copies 74.3 to 73.8, the records
+46.1 to 46.1, the hashing and equality 35.2 to 35.4, the load 10.0 to
+10.0, the calls through the VM's path 8.5 to 8.0, the comparisons
+through the helper 6.5 to 6.5, the helpers' glue 3.6 to 3.6, the
+iterators 0.0 to 0.0; `rt_drop_at` 313,620 to 313,620 calls, `rt_deopt`
+0 to 0, `rt_insert_held` 0 (none before). The four micro programs of
+the study per turn (`micro_b.sh`, the generated code; the interpreter
+in brackets): `calls_typed` 119 to 120 (+0.8%; 1112 to 1112),
+`calls_boxed` 215 to 201 (-6.5%; 1181 to 1181), `boxed_fields` 131 to
+123 (-6.1%; 1053 to 1053), `boxed_moves` 145 to 120 (-17.2%; 1023 to
+1023). AT1's rows on the frozen self-check (`tools/measure_size.sh`
+under WSL, stage 5b's binary against this one): the synchronous JIT row
+5,161.6 to 5,195.4 million instructions (+0.7%: the generated code
+1,617.9 to 1,558.8 million on this row, and the JIT's own work up by
+about 93 million, Cranelift's register allocation over more variables
+with longer live ranges and the analysis's clean run, which doubles
+`analyse` to 16.0 million; an image run does not pay it) and 7,479.8 to
+7,372.5 by the estimate (-1.4%, with the instruction-cache misses 98.8
+to 87.8 million), its indirect branches 10.5 to 9.8 million (-6.6%) and
+its mispredictions 30.1 to 30.8, the image row 3,311.8 to 3,219.2
+(-2.8%) and 4,965.0 to 4,778.3 by the estimate (-3.8%), the cached run
+3,392.8 to 3,299.5 (-2.7%), the interpreter 10,942.5 to 10,942.0
+(within 0.05%); the image 9,770,928 to 10,315,120 bytes (+5.6%: the
+spills, the exit per state and the counts in the words). The four
+benchmarks and hello by user-space instructions (`perf stat`, the JIT
+synchronous, in millions): `primes` 265.8 to 266.0 (+0.1%), `strings`
+442.6 to 444.0 (+0.3%), `records` 160.7 to 155.2 (-3.4%),
+`json_round_trip` 843.1 to 841.7 (-0.2%), `hello` 5.20 to 5.22 (+0.4%).
+The four judges byte-equal, the conformance suite 55 of 55 on both
+tiers, 409 tests. Since stage 0 the check row 2,889.9 to 1,482.3
+(-48.7%), since the study's binary 3,085.3 (-52.0%). Kept by the
+owner's rule (the check row down by more than 0.5%). Against the
+study's estimate of about 180 million for B2, the stage took 46.2
+million off the check row: a load that feeds a direct call's boxed
+parameter (`Load Call` and `LoadMove Call`, 2.8 million pairs in the
+interpreter's profile of the run), a `with`, a construct or a native
+that reads the stack still writes the value where the callee's frame,
+the update or the native reads it, three stores where the copy was
+three loads and three stores, and only the loads whose consumer reads
+in place (a comparison, a test, a store into a slot, a field read, a
+typed parameter, a `Return`) stopped copying; `at_position`, the
+hottest body, kept 267 of its 305 stores, its calls' arguments and its
+`with` among them. B3 moves the parameters into registers, and a direct
+call can then pass a held argument's words without the stack: the
+study's split of the estimate between B2 and B3 was wrong where its sum
+need not be, and B3's measure will say. Next in AW21's order: B3, the
+locals in registers, with AW9's pair slots folded in and AU50's
+expansion measured again at its end.

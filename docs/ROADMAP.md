@@ -448,7 +448,14 @@ where one decided, the status. The dates are those of the decisions.
     held value as its three words, each stage measured as AW1's were
     with the lane's micro programs per turn, the expansion measured
     again after B3, the pair slots folded into B3, the template tier
-    unchanged, the checker's cuts as the reserve. B2 is in work.
+    unchanged, the checker's cuts as the reserve. B2 done (session 14,
+    2026-10-12, decision AW22): the operands in registers, `Abs::Held`
+    on the Cranelift tier, the VM's stack written only where a helper,
+    a landing, an exit or a hand-back reads it; the check row
+    1,528.5 to 1,482.3 million (-3.0%, 46.2
+    million against the study's estimate of about 180); the ratio by
+    instructions 3.46 to 3.36. B3 (the locals in
+    registers) is next.
 
 ## 3. The tracks
 
@@ -481,7 +488,8 @@ state of each line.
   (AW2 to AW19), every stage of AW1's order done: the ratio by
   instructions 3.46 on the check row against the gate's 3; stage 31
   (AW20, AW21), road (B), the new code generator on the Cranelift tier
-  in four measured stages, in progress.
+  in four measured stages, in progress: B2 done (AW22, the check row to
+  1,482.3, -3.0%, the ratio to 3.36), B3 in work.
 - **E. Packages, the FFI and Python**: stages 15, 18. Done; candidates
   not decided: record types from dataclasses in the binder, a deadline
   per Python call, one worker across a test run.
@@ -549,7 +557,9 @@ instructions after stage 6, every stage of AW1's order done); then road
 the Cranelift tier in four measured stages (the operands in registers,
 the locals in registers, the frame record lazy, the counts by dataflow;
 the study's estimate 340 million, the check row to about 1,190 million,
-2.7 times the reference); then, when the ratio is within 3, the switch
+2.7 times the reference), of which B2 is done (AW22, 2026-10-12: the
+operands in registers, the check row to 1,482.3, -3.0%, the
+ratio to 3.36); then, when the ratio is within 3, the switch
 of the binary's front end to the compiler written in Renyi. Candidates
 beside it, none decided: the emitter's own round for the compile row,
 the Rust front end's name sets as bits, the C API, the language server's

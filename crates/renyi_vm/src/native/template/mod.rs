@@ -225,8 +225,9 @@ pub fn compile(
     let started = Instant::now();
     let code = &program.codes[code_id];
     // no pairs (decision AW9): the tier calls a pair callee through its
-    // trampoline, which answers the record
-    let analysis = analyse(program, code, &[], false).map_err(Skipped::Analysis)?;
+    // trampoline, which answers the record; no held operands (decision
+    // AW22): every value lies on the stack
+    let analysis = analyse(program, code, &[], false, false).map_err(Skipped::Analysis)?;
     // every parameter passed owned on this tier (decision AW5: the
     // borrowed protocol is the Cranelift tier's)
     let (borrowed, masks) = borrowed_operands(program, code, &analysis, calls, false);

@@ -187,6 +187,32 @@ pub(crate) unsafe extern "C" fn rt_insert_range(
     vm.stack.insert(at, range_value(from, to, by));
 }
 
+/// A value held as its three words (decision AW22) written back into
+/// the stack at the index `at`, the values above it moved up: a landing,
+/// an exit and a write-back under operands on the stack.
+pub(crate) unsafe extern "C" fn rt_insert_held(
+    vm: VmPtr,
+    at: usize,
+    first: i64,
+    second: i64,
+    third: i64,
+) {
+    let vm = vm!(vm);
+    let value = value_of_words([first as u64, second as u64, third as u64]);
+    vm.stack.insert(at, value);
+}
+
+/// The `Value` whose bytes the three words are (decision AW22): what the
+/// generated code holds in registers, carrying the value's reference,
+/// and what a hand-back reads from its buffer.
+fn value_of_words(words: [u64; 3]) -> Value {
+    const _: () = assert!(std::mem::size_of::<Value>() == 24 && std::mem::align_of::<Value>() == 8);
+    // SAFETY: the words were read from a `Value` by the generated code,
+    // which holds them as they lay with the value's reference; the
+    // array is 8-aligned and as large as a `Value`.
+    unsafe { std::ptr::read(words.as_ptr() as *const Value) }
+}
+
 fn range_value(from: i64, to: i64, by: i64) -> Value {
     Value::Range(Rc::new(RangeValue {
         from: Int::Small(from),
@@ -1558,6 +1584,11 @@ pub(crate) unsafe extern "C" fn rt_deopt(
                 let second = boxed.next().unwrap_or(Value::Nothing);
                 vm.pair_record(*ty as usize, first, second)
             }
+            Abs::Held(_) => {
+                // the three words of the value (decision AW22)
+                let words = [word(), word(), word()];
+                value_of_words(words)
+            }
             Abs::Int => Value::integer(word() as i64),
             Abs::Bool => Value::Boolean(word() != 0),
             Abs::Float => Value::Float(f64::from_bits(word())),
@@ -1675,7 +1706,7 @@ fn rebuild_inlined_frames(vm: &mut Vm, base: usize, code: usize, point: &DeoptPo
             Op::Call { args, .. } => args as usize,
             _ => unreachable!("a region replaces a call"),
         };
-        let depth = analyse(program, callee, &[], false)
+        let depth = analyse(program, callee, &[], false, false)
             .ok()
             .and_then(|analysis| analysis.entry[call_pc].clone())
             .map_or(0, |state| state.len());
@@ -1690,7 +1721,7 @@ fn rebuild_inlined_frames(vm: &mut Vm, base: usize, code: usize, point: &DeoptPo
     }
     let inner_depth = match stored {
         Some(_) => 0,
-        None => analyse(program, inner_code, &[], false)
+        None => analyse(program, inner_code, &[], false, false)
             .ok()
             .and_then(|analysis| analysis.entry[pc - inner.body as usize].clone())
             .map_or(0, |state| state.len()),
@@ -2400,6 +2431,7 @@ pub const HELPERS: &[(&str, *const u8)] = &[
     ("rt_insert_bool", rt_insert_bool as *const u8),
     ("rt_insert_float", rt_insert_float as *const u8),
     ("rt_insert_range", rt_insert_range as *const u8),
+    ("rt_insert_held", rt_insert_held as *const u8),
     ("rt_global", rt_global as *const u8),
     ("rt_load", rt_load as *const u8),
     ("rt_load_move", rt_load_move as *const u8),

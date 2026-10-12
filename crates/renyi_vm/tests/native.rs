@@ -2623,3 +2623,66 @@ end
         "advanced: 35 15\nchecked: true +\nrelayed: +\npicked: true ++ false over\nkept: 22 22 22\nclimbed: 17 17\nblocked: 0 15\nsettled: 99 15\ndoubled: 1180591620717411303424 10535 115\ntriple: 3 6 t\n"
     );
 }
+
+#[test]
+fn held_operands_go_to_the_interpreter_and_to_handlers_as_the_stack_has_them() {
+    // decision AW22: a value a load pushes is held in registers; a
+    // hand-back under it (the overflow) carries its words to the
+    // interpreter's stack, and a failure under it inside an `otherwise`
+    // lands with it written back and cut by the floor, both tiers agreeing
+    let source = r#"module demo
+  purpose: Held operands under an overflow and under a failure.
+
+import std.console
+
+type Zero
+  purpose: The number was zero.
+end
+
+function label(text: Text, left: Integer, right: Integer) returns Text
+  purpose: The text before the product.
+
+  return "{text}: {left * right}"
+end
+
+function risky(amount: Integer) returns Integer or fails with Zero
+  purpose: Zero is refused.
+
+  if amount is 0 then fail with Zero() end
+  return amount
+end
+
+function combined(text: Text, amount: Integer) returns Text
+  purpose: The text before the number, or none.
+
+  let joined be "{text}{risky(amount) otherwise 0}"
+  return joined
+end
+
+function first_word(words: List of Text) returns Text
+  purpose: The first word, held and returned.
+
+  for each word in words
+    return word
+  end
+  return "empty"
+end
+
+public function main() needs console
+  purpose: Print the six results.
+
+  console.print(label(text: "small", left: 3, right: 4))
+  console.print(label(text: "big", left: 4611686018427387904, right: 4))
+  console.print(combined(text: "n=", amount: 5))
+  console.print(combined(text: "n=", amount: 0))
+  console.print(first_word(["held", "spare"]))
+  console.print(first_word([]))
+end
+"#;
+    let (outcome, printed) = both_ways(source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(
+        printed,
+        "small: 12\nbig: 18446744073709551616\nn=5\nn=0\nheld\nempty\n"
+    );
+}
