@@ -6712,3 +6712,90 @@ millions): `primes` 288.9 to 289.2 (+0.1%), `strings` 429.9 to 433.3
 byte-equal, the conformance suite 55 of 55 on both tiers, the template
 tier's own tests with the tier forced, 389 tests. Stage 1d next, the
 frame record made cheaper.
+
+**AW6. Stage 1d of the new backend: the frame record made cheaper.**
+The fourth and last item of stage 1 in AW1's order, on 2026-10-12,
+measured as AW1 prescribes against stage 1b's binary (2367c63). The
+study's item (1d): at every direct call, `push_frame_inline` read the
+caller's grant from the frame record on top (the frames' pointer and
+length loaded, the record's address computed, the grant loaded),
+checked the stack's capacity for the callee's locals and wrote the
+stack's length, and checked the frames' capacity for one more record,
+about 45 instructions with the depth guard where the record's five
+words cost a few. Three changes in `native/codegen.rs`, the interpreter
+untouched and the template tier as it was (its push follows the
+interpreter's protocol, clearing the callee's locals and writing the
+length itself, since its callee may be template code with no prologue
+of its own; a grant in a register there would change the `Entry`
+signature through `Vm::run_generated`, for code that runs only until
+the Cranelift code is ready, which the measure does not see): (i) the
+frame's grant (decision Q1, an index into `Vm::grants`) travels in the
+body's signature (`direct_signature`, an `i32` after the borrowed
+bits), a direct caller passing its own, which it holds in a register
+from its entry, or the helper's answer (`rt_frame_grant`) when the
+callee narrows the grant, and the trampoline reading it from the record
+on top; the call site writes the callee's record from the register;
+(ii) the stack's length, which the call site wrote as the callee's base
+plus its locals after a check of the capacity, is written by the
+callee's prologue instead, after the check it makes anyway for its
+locals and its deepest operand stack (AR4), the call site leaving the
+length at the arguments; the exception is a boxed argument that moves
+to a slot past the room the caller's prologue made (a typed parameter
+before a boxed one, called at the caller's deepest operand), which
+keeps the check at the site; (iii) the frames' capacity for the record
+a direct call pushes is checked once, in the prologue of a body that
+makes a direct call (`has_direct_call`), since the frames' length is
+the same at every one of its calls, this frame on top, and the capacity
+never falls. The code format is 17. On the test program of AW5,
+`main`'s eleven direct calls, the IR fell from 4,699 to 4,405
+instructions by a count of its lines. The tests: the program of every
+shape of direct call (a callee that narrows the grant called from
+`main` and from another that narrows, a callee that inherits the grant
+and calls on, recursion past the frames' capacity and the depth limit,
+typed parameters before a boxed one at the caller's deepest operand) in
+`crates/renyi_vm/tests/native.rs` against the interpreter, in
+`crates/renyi_vm/tests/template.rs` on the template tier, and in
+`crates/renyi/tests/sandbox.rs` through the binary under a memory
+budget of sixteen megabytes on both tiers; its `main`'s IR calls
+`rt_grow_frames` and `rt_room` once each, in the prologue, and
+`rt_frame_grant` twice, for the two narrowing callees. The measure
+(callgrind under WSL on the release build for Linux, the images built
+under `valgrind --tool=none`, against stage 1b's binary measured the
+same way in AW5, the reference AU34's 44782aa): the check row 2,719.3
+to 2,681.0 million instructions (-1.4%; the study estimated 55 million,
+1.8%), the parse row 1,128.1 to 1,116.1 (-1.1%), the compile row
+4,403.4 to 4,352.4 (-1.2%); the ratios by instructions against the
+reference's rows (441.6, 284.7 and 365.6) 6.07, 3.92 and 11.90 against
+the gate's 3 (6.16, 3.96 and 12.04 after stage 1b); the Rust front
+end's own rows within 0.3% of stage 1b's (`check` 173.1, `parse --json`
+246.7, `compile` 446.3). The helpers on the check row run as in stage
+1b: `rt_frame_grant` 54,165 instructions (the narrowing callees'
+grants), `rt_room` 17,926 and `rt_grow_frames` 1,215 (the growths, now
+from the prologues), `rt_retain_params` 330,192, `rt_call` 378.1
+million, `rt_truncate` 16.0 million, `rt_drop_at` 201.1 million; the
+whole fall is in the generated code. The check row by category, AW5's
+table against this one, in millions: the generated code 1,004.1 to
+966.7, the counts and drops 322.2 to 322.2, the helpers' glue 120.7 to
+120.7, the calls through the VM's path 7.4 to 7.4, mimalloc 146.9 to
+146.9, the records 206.8 to 206.8, the natives 355.9 to 355.9, the
+hashing 221.5 to 220.5, the comparisons 123.9 to 123.9, the texts and
+copies 120.3 to 120.3, the load 46.2 to 46.2, the iterators 40.3 to
+40.3. AT1's rows on the frozen self-check (`tools/measure_size.sh`
+under WSL, stage 1b's binary against this one): the synchronous JIT row
+5,975.3 to 5,897.8 million instructions (-1.3%) and 8,590.5 to 8,484.1
+by the estimate (-1.2%), the image row 4,358.8 to 4,288.4 (-1.6%) and
+6,409.7 to 6,288.7 by the estimate (-1.9%), the cached run 4,438.7 to
+4,368.2 (-1.6%), the interpreter 11,241.1 to 11,241.3 (+0.0%); the
+image 9,833,784 to 9,009,552 bytes (-8.4%: the bodies 8,831,433 to
+7,981,545 bytes without the call sites' checks and the grant's loads,
+the trampolines 156,448 to 186,616 with the grant's read). The four
+benchmarks and hello by user-space instructions (`perf stat`, the JIT
+synchronous, in millions): `primes` 289.2 to 265.0 (-8.4%), `strings`
+433.3 to 432.5 (-0.2%), `records` 209.0 to 207.0 (-1.0%),
+`json_round_trip` 839.6 to 839.7 (+0.0%), `hello` 5.42 to 5.42
+(unchanged). The four judges byte-equal, the conformance suite 55 of 55
+on both tiers, the template tier's own tests with the tier forced, 392
+tests. Stage 1 is complete: the check row 2,889.9 million after stage 0
+to 2,681.0, -7.2%, against the study's estimate of 400 million, 13%, by
+the findings' counts. Next in AW1's order: the character tables and the
+hasher.

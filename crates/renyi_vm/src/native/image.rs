@@ -77,8 +77,10 @@ const PART_ALIGN: usize = 16;
 /// place when both are small (decision AU45). 14: a variant test in place
 /// (decision AU49). 16: the bits of the parameters a direct call passed
 /// borrowed in the body's signature and `rt_retain_params` among the
-/// helpers (decision AW5).
-pub const CODE_FORMAT: u32 = 16;
+/// helpers (decision AW5). 17: the frame's grant in the body's
+/// signature, a direct caller passing its own, and the room checks of a
+/// direct call in the callee's prologue (decision AW6).
+pub const CODE_FORMAT: u32 = 17;
 
 /// The extension of an image file.
 pub const EXTENSION: &str = "ryi";

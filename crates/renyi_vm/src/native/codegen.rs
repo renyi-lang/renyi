@@ -276,9 +276,12 @@ pub fn signature(isa: &dyn TargetIsa, params: &str, result: char) -> Signature {
 /// the VM, the frame's base, the pc to enter at, whether a direct call
 /// entered (a typed result then goes back in a register; a trampoline's
 /// caller wants it on the stack), the bits of the parameters the caller
-/// passed borrowed (decision AW5; none from a trampoline), then the typed
-/// parameters in slot order; the status (`runtime::D_*`) and the bits of
-/// a typed result come back.
+/// passed borrowed (decision AW5; none from a trampoline), the frame's
+/// grant by its index in `Vm::grants` (decision AW6: a direct caller
+/// passes its own, or the helper's answer when the callee narrows it; a
+/// trampoline reads the record's), then the typed parameters in slot
+/// order; the status (`runtime::D_*`) and the bits of a typed result
+/// come back.
 pub fn direct_signature(isa: &dyn TargetIsa, kinds: &[Abs]) -> Signature {
     let pointer = isa.pointer_type();
     let mut sig = Signature::new(isa.default_call_conv());
@@ -287,6 +290,7 @@ pub fn direct_signature(isa: &dyn TargetIsa, kinds: &[Abs]) -> Signature {
     sig.params.push(AbiParam::new(types::I32));
     sig.params.push(AbiParam::new(types::I8));
     sig.params.push(AbiParam::new(types::I64));
+    sig.params.push(AbiParam::new(types::I32));
     for kind in kinds {
         match kind {
             Abs::Int => sig.params.push(AbiParam::new(types::I64)),
@@ -434,6 +438,14 @@ struct Gen<'a, 'b> {
     /// The bits of the parameters a direct call may pass borrowed
     /// (`accepted_params`), the bits every caller reads.
     flagged: u64,
+    /// The frame's grant (decision Q1), by its index in `Vm::grants`, as
+    /// the signature passed it (decision AW6): what a direct call writes
+    /// into the record of a callee that does not narrow it.
+    grant: IrValue,
+    /// Whether some `Call` of the body is made directly (`direct_call`):
+    /// the prologue then makes room in the frames for the record such a
+    /// call pushes (decision AW6).
+    calls_directly: bool,
     /// The typed parameters, each with its slot: in the registers the
     /// signature put them in.
     typed_params: Vec<(usize, IrValue)>,
@@ -626,6 +638,18 @@ pub(crate) fn accepted_params(program: &Program, calls: &[CallKind], code_id: us
         .fold(0, |mask, slot| mask | 1 << slot)
 }
 
+/// Whether some `Call` of the code object is made directly
+/// (`direct_call`) at the state the analysis found there.
+fn has_direct_call(program: &Program, code: &Code, analysis: &Analysis) -> bool {
+    code.ops.iter().enumerate().any(|(pc, op)| match op {
+        Op::Call { function, args } => matches!(
+            analysis.entry.get(pc).and_then(|state| state.as_deref()),
+            Some(state) if direct_call(program, state, *function, *args as usize).is_some()
+        ),
+        _ => false,
+    })
+}
+
 /// The operands a typed call, a comparison or a direct call borrows
 /// (decisions AU1, AU13 and AW5): for a `Call` of a primitive with a
 /// typed entry, the arguments pushed by the `Load`s and `LoadMove`s of
@@ -762,6 +786,7 @@ pub fn compile(
     let analysis = analyse(program, code, globals).map_err(Skipped::Analysis)?;
     let (borrowed, masks) = borrowed_operands(program, code, &analysis, calls, true);
     let owned = owned_slots(code, &analysis, &borrowed);
+    let calls_directly = has_direct_call(program, code, &analysis);
     stats.analysis = started.elapsed();
     let mut headers: Vec<usize> = Vec::new();
     for (pc, op) in code.ops.iter().enumerate().take(original_len) {
@@ -801,11 +826,12 @@ pub fn compile(
         let pc_param = builder.block_params(entry)[2];
         let direct = builder.block_params(entry)[3];
         let borrowed_params = builder.block_params(entry)[4];
+        let grant = builder.block_params(entry)[5];
         let typed_params: Vec<(usize, IrValue)> = kinds
             .iter()
             .enumerate()
             .filter(|(_, kind)| !kind.is_boxed())
-            .zip(builder.block_params(entry)[5..].iter())
+            .zip(builder.block_params(entry)[6..].iter())
             .map(|((slot, _), value)| (slot, *value))
             .collect();
         let exit = builder.create_block();
@@ -857,6 +883,8 @@ pub fn compile(
             direct,
             borrowed_params,
             flagged,
+            grant,
+            calls_directly,
             typed_params,
             base24,
             frame_var,
@@ -962,6 +990,14 @@ fn trampoline(
         let zero8 = b.ins().iconst(types::I8, 0);
         // no parameter borrowed: the frame owns every slot (decision AW5)
         let zero64 = b.ins().iconst(types::I64, 0);
+        // the frame's grant from its record, the frame on top (decision AW6)
+        let frames = b.ins().iadd_imm_s(vm, frames_offset());
+        let frames_len = b.ins().load(pointer, flags, frames, 8);
+        let frames_ptr = b.ins().load(pointer, flags, frames, 0);
+        let top = b.ins().iadd_imm_s(frames_len, -1);
+        let offset = b.ins().imul_imm_s(top, FRAME_SIZE as i64);
+        let record = b.ins().iadd(frames_ptr, offset);
+        let grant = b.ins().load(types::I32, flags, record, FRAME_GRANT);
         let start = b.create_block();
         let resume = b.create_block();
         let finish = b.create_block();
@@ -971,7 +1007,7 @@ fn trampoline(
         b.ins().brif(at_start, start, &[], resume, &[]);
         // the start: the typed parameters from the frame's slots
         b.switch_to_block(start);
-        let mut args = vec![vm, base, pc, zero8, zero64];
+        let mut args = vec![vm, base, pc, zero8, zero64, grant];
         for (slot, kind) in kinds.iter().enumerate() {
             let (name, ty) = match kind {
                 Abs::Int => ("rt_param_int", types::I64),
@@ -1004,7 +1040,7 @@ fn trampoline(
             .jump(finish, &[results[0].into(), results[1].into()]);
         // a loop header: the body takes the slots itself
         b.switch_to_block(resume);
-        let mut args = vec![vm, base, pc, zero8, zero64];
+        let mut args = vec![vm, base, pc, zero8, zero64, grant];
         for kind in kinds {
             match kind {
                 Abs::Int => args.push(b.ins().iconst(types::I64, 0)),
@@ -2055,11 +2091,17 @@ impl Gen<'_, '_> {
     /// The callee's frame pushed in place (decision AR4), as
     /// `Vm::push_frame_in_place` pushes one: the boxed arguments on top
     /// of the stack move to their parameters' slots (every other local is
-    /// written `Nothing` by the callee's prologue, decision AT2), and the
-    /// frame record carries the grant of decision Q1:
-    /// the caller's, unless the callee narrows it, when the helper
-    /// computes it. The new frame's base is returned.
-    fn push_frame_inline(&mut self, callee: usize, mask: u64) -> IrValue {
+    /// written `Nothing` by the callee's prologue, decision AT2, which
+    /// writes the stack's length too, decision AW6), and the frame record
+    /// carries the grant of decision Q1: this frame's, from the register
+    /// the signature passed it in, unless the callee narrows it, when the
+    /// helper computes it. The frames have room for the record by this
+    /// body's prologue (decision AW6), and the stack has room for the
+    /// callee's locals by the callee's own prologue, except where an
+    /// argument moves to a slot past the room this frame's prologue made,
+    /// which is checked here first. The new frame's base and its grant
+    /// are returned.
+    fn push_frame_inline(&mut self, callee: usize, mask: u64) -> (IrValue, IrValue) {
         let flags = MemFlagsData::trusted();
         let pointer = self.pointer;
         let program = self.program;
@@ -2070,35 +2112,38 @@ impl Gen<'_, '_> {
         let narrows = meta
             .function
             .is_some_and(|function| !program.function_metas[function].needs.is_empty());
-        // the grant first: it is read from the caller's frame, on top
-        let frames = self.frames_vector();
-        let frames_len = self.b.ins().load(pointer, flags, frames, 8);
         let grant = if narrows {
             let callee_value = self.usize(callee);
             self.call("rt_frame_grant", &[self.vm, callee_value])
                 .expect("a grant")
         } else {
-            let frames_ptr = self.b.ins().load(pointer, flags, frames, 0);
-            let top = self.b.ins().iadd_imm_s(frames_len, -1);
-            let record = self.frame_address(frames_ptr, top);
-            self.b.ins().load(types::I32, flags, record, FRAME_GRANT)
+            self.grant
         };
-        // room on the stack for the locals; the callee's base is this
-        // frame's height less the boxed arguments (decision AT4)
-        let stack = self.stack_vector();
+        // the callee's base is this frame's height less the boxed
+        // arguments (decision AT4)
         let callee_height = self.height() - boxed;
         let base = self.length_at(callee_height);
-        let needed = self.b.ins().iadd_imm_s(base, locals as i64);
-        let cap = self.b.ins().load(pointer, flags, stack, 16);
-        let short = self.b.ins().icmp(IntCC::UnsignedLessThan, cap, needed);
-        let grow = self.b.create_block();
-        let cont = self.b.create_block();
-        self.b.ins().brif(short, grow, &[], cont, &[]);
-        self.b.set_cold_block(grow);
-        self.switch_to(grow);
-        self.call("rt_room", &[self.vm, needed]);
-        self.b.ins().jump(cont, &[]);
-        self.switch_to(cont);
+        // a slot an argument moves to past this frame's room (its locals
+        // and its deepest operand stack, one more; the prologue) needs the
+        // stack's room checked for the callee's locals first
+        let farthest = (0..params)
+            .rev()
+            .find(|slot| mask & (1 << slot) != 0)
+            .map_or(0, |slot| callee_height + slot + 1);
+        if farthest > self.code.locals as usize + self.max_depth + 1 {
+            let stack = self.stack_vector();
+            let needed = self.b.ins().iadd_imm_s(base, locals as i64);
+            let cap = self.b.ins().load(pointer, flags, stack, 16);
+            let short = self.b.ins().icmp(IntCC::UnsignedLessThan, cap, needed);
+            let grow = self.b.create_block();
+            let cont = self.b.create_block();
+            self.b.ins().brif(short, grow, &[], cont, &[]);
+            self.b.set_cold_block(grow);
+            self.switch_to(grow);
+            self.call("rt_room", &[self.vm, needed]);
+            self.b.ins().jump(cont, &[]);
+            self.switch_to(cont);
+        }
         let first = self.address_at(callee_height);
         // the boxed arguments to their slots, from the last parameter
         // down: the k-th lies at slot k and goes to the k-th set bit,
@@ -2114,18 +2159,9 @@ impl Gen<'_, '_> {
                 }
             }
         }
-        self.b.ins().store(flags, needed, stack, 8);
         // the frame record
-        let frames_cap = self.b.ins().load(pointer, flags, frames, 16);
-        let full = self.b.ins().icmp(IntCC::Equal, frames_len, frames_cap);
-        let grow = self.b.create_block();
-        let cont = self.b.create_block();
-        self.b.ins().brif(full, grow, &[], cont, &[]);
-        self.b.set_cold_block(grow);
-        self.switch_to(grow);
-        self.call("rt_grow_frames", &[self.vm]);
-        self.b.ins().jump(cont, &[]);
-        self.switch_to(cont);
+        let frames = self.frames_vector();
+        let frames_len = self.b.ins().load(pointer, flags, frames, 8);
         let frames_ptr = self.b.ins().load(pointer, flags, frames, 0);
         let record = self.frame_address(frames_ptr, frames_len);
         let code_value = self.usize(callee);
@@ -2141,7 +2177,7 @@ impl Gen<'_, '_> {
         self.b.ins().store(flags, grant, record, FRAME_GRANT);
         let more = self.b.ins().iadd_imm_s(frames_len, 1);
         self.b.ins().store(flags, more, frames, 8);
-        base
+        (base, grant)
     }
 
     /// The frame left in place (decision AR4): every local that may hold
@@ -2311,6 +2347,24 @@ impl Gen<'_, '_> {
         self.b.ins().jump(cont, &[]);
         self.switch_to(cont);
         self.reload_frame();
+        // room in the frames for the record a direct call of this body
+        // pushes (decision AW6), checked once: the frames' length is the
+        // same at every such call, this frame on top, and the capacity
+        // never falls
+        if self.calls_directly {
+            let frames = self.frames_vector();
+            let frames_len = self.b.ins().load(self.pointer, flags, frames, 8);
+            let frames_cap = self.b.ins().load(self.pointer, flags, frames, 16);
+            let full = self.b.ins().icmp(IntCC::Equal, frames_len, frames_cap);
+            let grow = self.b.create_block();
+            let cont = self.b.create_block();
+            self.b.ins().brif(full, grow, &[], cont, &[]);
+            self.b.set_cold_block(grow);
+            self.switch_to(grow);
+            self.call("rt_grow_frames", &[self.vm]);
+            self.b.ins().jump(cont, &[]);
+            self.switch_to(cont);
+        }
         // the stack's length is `base` plus the code object's own locals
         // as the caller left it; the expanded code's locals go on past
         // them (decision AU50), and the length follows before the first
@@ -2337,6 +2391,11 @@ impl Gen<'_, '_> {
             resumes.push((header, resume));
             self.switch_to(next);
         }
+        // the stack's length takes in the locals (decision AW6): a direct
+        // caller left it at the arguments, having checked nothing for the
+        // locals, which the room above covers; the interpreter's frame and
+        // the template tier's have it so already
+        self.store_height(self.code.locals as usize);
         // the typed parameters, in the registers the signature put them in
         // (the trampoline took them from the frame's slots under a check,
         // a direct caller had them in registers)
@@ -4236,13 +4295,14 @@ impl Gen<'_, '_> {
                 _ => self.b.ins().load(types::F64, flags, at, PAYLOAD),
             });
         }
-        let base = self.push_frame_inline(callee, mask);
+        let (base, grant) = self.push_frame_inline(callee, mask);
         let pc0 = self.u32(0);
         let one = self.u8(1);
         // the parameters passed borrowed (decision AW5): the callee's leave
-        // skips them and its other ways out give them a reference first
+        // skips them and its other ways out give them a reference first;
+        // the callee's grant as its record has it (decision AW6)
         let borrowed_mask = self.iconst(types::I64, self.masks[pc] as i64);
-        let mut arguments = vec![self.vm, base, pc0, one, borrowed_mask];
+        let mut arguments = vec![self.vm, base, pc0, one, borrowed_mask, grant];
         for (index, kind) in kinds.iter().enumerate() {
             let depth = first + index;
             if let Some(payload) = payloads[index] {

@@ -644,3 +644,111 @@ public function main() needs console
   console.print("{total}")
 end
 "#;
+
+#[test]
+fn the_grant_travels_with_a_direct_call_under_a_memory_budget() {
+    // decision AW6: the frame's grant travels in the body's signature and
+    // a direct call writes the callee's record from it (the helper only
+    // for a callee that narrows it); the stack's length is written by the
+    // callee's prologue, where the room is checked, and the frames' room
+    // for the records this body's direct calls push is checked there
+    // once; every shape (a narrowing callee from `main` and from another
+    // narrowing one, a callee that inherits the grant and calls on,
+    // recursion past the frames' capacity and the machine stack's depth
+    // limit, typed parameters before a boxed one at the deepest operand
+    // of the caller), through the binary under a budget of sixteen megabytes,
+    // the frames and the stack growing under the counting allocator, on
+    // both tiers
+    let dir = scratch("grants");
+    let program = format!("{dir}/grants.ry");
+    let grant = format!("{dir}/grant.json");
+    std::fs::write(&program, GRANTS).expect("grants.ry");
+    std::fs::write(
+        &grant,
+        "{\"grant\": \"console\", \"memory\": \"16 megabytes\"}\n",
+    )
+    .expect("grant.json");
+    for tier in [None, Some("template")] {
+        let mut command = Command::new(env!("CARGO_BIN_EXE_renyi"));
+        command
+            .current_dir(root())
+            .args(["run", "--sandbox", &grant, &program])
+            .env("RENYI_NO_CACHE", "1")
+            .env("RENYI_NATIVE_HOT", "0")
+            .env("RENYI_NATIVE_SYNC", "1");
+        if let Some(tier) = tier {
+            command.env("RENYI_NATIVE_TIER", tier);
+        }
+        let run = command.output().expect("the renyi binary runs");
+        assert!(run.status.success(), "{tier:?}: {}", text(&run.stderr));
+        assert_eq!(
+            text(&run.stdout),
+            "say 1000\nsay 1000\nsay 2000\nsay 2000\nsay 3000\nsay 3000\n14582220\n",
+            "{tier:?}"
+        );
+    }
+}
+
+/// The program of the grant's test (decision AW6): every shape of direct
+/// call.
+const GRANTS: &str = r#"module grants
+  purpose: The frame record of a direct call (AW6), every shape.
+
+import std.console
+
+type Box
+  purpose: A record with a label and a weight.
+  has label: Text
+  has weight: Integer
+end
+
+function say(text: Text, index: Integer) returns Integer needs console
+  purpose: A callee that narrows the grant: it prints on every thousandth call and reads the text.
+
+  if index remainder 1000 is 0 then console.print("say {index}") end
+  return text.length() + index
+end
+
+function relay(text: Text, index: Integer) returns Integer needs console
+  purpose: A narrowing callee that calls another narrowing callee.
+
+  return say(text: text, index: index) + 1
+end
+
+function plain(text: Text, index: Integer) returns Integer
+  purpose: A callee that inherits the caller's grant and calls another that does.
+
+  return shifted(left: index, right: 2, box: Box(label: text, weight: 3)) + 2
+end
+
+function deep(remaining: Integer, text: Text) returns Integer
+  purpose: Recursion past the frames' capacity and past the machine stack's depth limit.
+
+  if remaining is 0 then return text.length() end
+  return deep(remaining: remaining - 1, text: text) + 1
+end
+
+function shifted(left: Integer, right: Integer, box: Box) returns Integer
+  purpose: Typed parameters before a boxed one: the argument moves to the third slot.
+
+  return left + right + box.weight
+end
+
+public function main() needs console
+  purpose: Every shape of direct call many times; a digest printed.
+
+  let mutable total be 0
+  for each index from 1 to 3000
+    let text be "a label longer than sixteen bytes {index}"
+    let box be Box(label: text, weight: index)
+    change total to total + say(text: text, index: index)
+    change total to total + relay(text: text, index: index)
+    change total to total + plain(text: text, index: index)
+    change total to total + deep(remaining: index remainder 400, text: text)
+    change total to total + "{text} {shifted(left: 1, right: index, box: box)}".length()
+    let fresh be Box(label: text, weight: 3)
+    change total to total + [index, shifted(left: index, right: 2, box: fresh), box.weight].length()
+  end
+  console.print("{total}")
+end
+"#;

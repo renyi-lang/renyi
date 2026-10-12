@@ -21,12 +21,16 @@ to 2,729.4, -3.4%, the ratio 6.40 to 6.18), and stage 1b built and
 measured (decision AW5: the read-only flag per parameter in the
 bytecode, format 7 to 8, and a direct call passing such a parameter
 borrowed when its callee never moves it into an owned sink; the check
-row 2,729.4 to 2,719.3, -0.4%, the ratio
-6.18 to 6.16); on the way, a Windows defect since AT5 fixed
+row 2,729.4 to 2,719.3, -0.4%, the ratio 6.18 to 6.16), and stage 1d
+built and measured (decision AW6: the frame record of a direct call
+made cheaper, the grant in the body's signature, the stack's length
+and the room checks in the callee's prologue; the check row 2,719.3 to
+2,681.0, -1.4%, the ratio 6.16 to 6.07), which
+completes stage 1; on the way, a Windows defect since AT5 fixed
 (a2c4685: every run of an image there copied its code section, the
 mapping refused for want of execute access on the file's handle). Next
-is stage 1d (the start-here item 1). The session's record is "Done in
-session 14" below.
+is the character tables and the hasher (the start-here item 1). The
+session's record is "Done in session 14" below.
 Session 13, in the cloud environment, had as its last work the icon
 and the wordmark, at the owner's request after the
 handover below (decision AV1: a war hammer on the accent tile and the
@@ -301,10 +305,13 @@ and push there directly.
    its callee never moves it into an owned sink (the mask in the
    body's signature, `rt_retain_params` on the ways out
    that take the frame as owned; the check row to 2,719.3,
-   -0.4%, the ratio to 6.16). Next is 1d (the frame
-   record cheaper: the grant in a register, the vectors' pointers read
-   once per body, the capacity checks folded into the prologue), then
-   the character
+   -0.4%, the ratio to 6.16); and the frame record of a direct call
+   made cheaper (decision AW6, "Stage 1d as built": the grant in the
+   body's signature, the stack's length and the room checks in the
+   callee's prologue; the check row to 2,681.0, -1.4%, the
+   ratio to 6.07), which completes stage 1 (the check row
+   2,889.9 to 2,681.0 since stage 0, -7.2%). Next is the
+   character
    tables and the hasher, stage 2 as 2a, 2b, 2c, the natives' entry and
    the glue, stage 4, the checker's own cuts between the stages, stages
    5 and 6 last. Each stage: the code, the gates of item 3, the measure
@@ -328,8 +335,9 @@ and push there directly.
    The binaries kept: `renyi_au34` (44782aa, the reference), `renyi_head`
    (7cbbbe0, the study's base), `renyi_stage0` (2632cde, stage 0),
    `renyi_stage1a` (7bb927b, stage 1a), `renyi_stage1c` (1cfcd7d, stage
-   1c) and `renyi_stage1b` (stage 1b's commit, the base of 1d's
-   measure), each with its `study/` directory. The
+   1c), `renyi_stage1b` (2367c63, stage 1b) and `renyi_stage1d` (stage
+   1d's commit, the base of the next measure), each with its `study/`
+   directory. The
    road is months long (AU58); the gate is decided on the measure at
    the end.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
@@ -4354,12 +4362,43 @@ one. The measure: the check row 2,729.4 to 2,719.3 million
 -0.4%, the compile row +0.2%, AT1's synchronous row
 -0.1%, the image row -0.4%; the ratios by instructions
 6.16, 3.96 and 12.04. The table is in AW5.
-Stage 1d next: the frame record made cheaper (the grant kept in a
-register of the body and passed to the callee's record, the three
-vectors' pointers read once per body, the capacity checks folded into
-the prologue's one check where the callee's locals are known;
-`push_frame_inline` from about 45 instructions to 25, the study's
-estimate 55 million, 1.8%).
+
+**Stage 1d as built (decision AW6, 2026-10-12).** The study's item
+(1d): at every direct call, `push_frame_inline` read the caller's
+grant from the frame record on top, checked the stack's capacity for
+the callee's locals and wrote the stack's length, and checked the
+frames' capacity for one more record. Three changes in
+`native/codegen.rs`, the interpreter untouched and the template tier
+as it was: the frame's grant travels in the body's signature
+(`direct_signature`, an `i32` after the borrowed bits; a direct caller
+passes its own from the register it holds it in, or `rt_frame_grant`'s
+answer when the callee narrows the grant; the trampoline reads the
+record's), so the call site writes the callee's record from a
+register; the stack's length is written by the callee's prologue after
+the room check it makes anyway (AR4), the call site leaving it at the
+arguments, except where a boxed argument moves to a slot past the room
+the caller's prologue made (a typed parameter before a boxed one at
+the caller's deepest operand), which keeps the check at the site; and
+the frames' room for the record a direct call pushes is checked once,
+in the prologue of a body that makes a direct call (`has_direct_call`),
+the frames' length being the same at every one of its calls. The code
+format is 17. The tests: the program of every shape of direct call (a
+callee that narrows the grant from `main` and from another that
+narrows, a callee that inherits the grant, recursion past the frames'
+capacity and the depth limit, typed parameters before a boxed one at
+the deepest operand) in `crates/renyi_vm/tests/native.rs`,
+`crates/renyi_vm/tests/template.rs` and, through the binary under a
+memory budget on both tiers, `crates/renyi/tests/sandbox.rs`. The
+measure: the check row 2,719.3 to 2,681.0 million (-1.4%, the
+estimate was 1.8%), the generated code 1,004.1 to 966.7, the parse
+row -1.1%, the compile row -1.2%, AT1's synchronous row
+-1.3% (-1.2% by the estimate), the image row
+-1.6%; the ratios by instructions 6.07, 3.92
+and 11.90. Stage 1 in all: the check row 2,889.9 after stage
+0 to 2,681.0, -7.2%, against the study's 13%. The table is in
+AW6. Next in AW1's order: the character tables and the hasher (the
+study's item (7): the character classes as tables and the hasher of the
+VM's own).
 
 ## The representation items: the design study (session 11)
 
@@ -5978,6 +6017,13 @@ holds between calls.
   `rt_retain_params` in `native/runtime.rs`);
   the two tests, one under a memory budget; the measure in AW5 and in
   "Stage 1b as built".
+- Stage 1d (decision AW6, the commit after 2367c63): the frame's grant
+  in the body's signature (`direct_signature`, the trampoline reading
+  the record's), the stack's length and the frames' room in the
+  callee's prologue (`has_direct_call`), `push_frame_inline` without
+  the grant's loads and the checks (code format 17); the three tests,
+  one under a memory budget; the measure in AW6 and in "Stage 1d as
+  built".
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 
