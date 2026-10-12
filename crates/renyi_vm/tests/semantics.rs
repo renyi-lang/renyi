@@ -533,16 +533,16 @@ end
         .find(|code| code.name == "main")
         .expect("main");
     let marks = main
-        .ops
+        .ops()
         .iter()
         .filter(|op| matches!(op, Op::MarkStack(_)))
         .count();
     let unwinds = main
-        .ops
+        .ops()
         .iter()
         .filter(|op| matches!(op, Op::UnwindStack(_)))
         .count();
-    assert_eq!((marks, unwinds), (2, 3), "{:?}", main.ops);
+    assert_eq!((marks, unwinds), (2, 3), "{:?}", main.ops());
     let (outcome, printed) = run(source, Options::default());
     assert_eq!(outcome, RunOutcome::Finished);
     assert_eq!(printed, "12 7\n");

@@ -356,7 +356,7 @@ end
         program
             .codes
             .iter()
-            .flat_map(|code| code.ops.iter())
+            .flat_map(|code| code.ops().iter())
             .filter(|op| wanted(op))
             .count()
     };
@@ -1100,10 +1100,10 @@ end
         .find(|code| code.name.ends_with("digits_in"))
         .expect("the function's code");
     let moved_into_call = code
-        .ops
+        .ops()
         .windows(2)
         .any(|pair| matches!(pair, [Op::LoadMove(_), Op::Call { .. }]));
-    let moved_into_comparison = code.ops.windows(3).any(|three| {
+    let moved_into_comparison = code.ops().windows(3).any(|three| {
         matches!(
             three,
             [
@@ -1162,7 +1162,7 @@ end
         program
             .codes
             .iter()
-            .flat_map(|code| code.ops.iter())
+            .flat_map(|code| code.ops().iter())
             .filter(|op| matches!(op, Op::LoadMove(_)))
             .count()
     };
@@ -1177,7 +1177,7 @@ end
     renyi_vm::liveness::prepare(&mut again);
     assert!(again.prepared);
     for (before, after) in once.codes.iter().zip(&again.codes) {
-        assert_eq!(format!("{:?}", before.ops), format!("{:?}", after.ops));
+        assert_eq!(format!("{:?}", before.ops()), format!("{:?}", after.ops()));
     }
     let encoded = renyi_vm::binary::encode(&once);
     let decoded = renyi_vm::binary::decode(&encoded).expect("the program decodes");
@@ -1186,6 +1186,75 @@ end
     let unprepared = renyi_vm::binary::decode(&renyi_vm::binary::encode(&compiled))
         .expect("the program decodes");
     assert!(!unprepared.prepared);
+}
+
+#[test]
+fn a_code_objects_body_is_decoded_at_its_first_use() {
+    // decision AW18: a program from the binary encoding (an image's, the
+    // cache's) holds every code object's head, and decodes a body from
+    // the bytes when it is first read, the same body the encoder wrote;
+    // the bytecode file's rendering forces them all
+    let source = r#"module demo
+  purpose: Two functions, one never called.
+
+import std.console
+
+function unused(number: Integer) returns Integer
+  purpose: Never called.
+  return number + 1
+end
+
+public function main() needs console
+  purpose: Print a number.
+  console.print("{unused(1)}")
+end
+"#;
+    let compiled = compile(source);
+    let encoded = renyi_vm::binary::encode(&compiled);
+    let decoded = renyi_vm::binary::decode(&encoded).expect("the program decodes");
+    assert_eq!(decoded.codes.len(), compiled.codes.len());
+    assert!(
+        decoded
+            .codes
+            .iter()
+            .all(|code| code.decoded_body().is_none()),
+        "no body is decoded with the program"
+    );
+    let (index, original) = compiled
+        .codes
+        .iter()
+        .enumerate()
+        .find(|(_, code)| code.name.ends_with("unused"))
+        .expect("the function's code");
+    let lazy = &decoded.codes[index];
+    assert_eq!(lazy.name, original.name);
+    assert_eq!(lazy.locals, original.locals);
+    assert_eq!(format!("{:?}", lazy.ops()), format!("{:?}", original.ops()));
+    assert!(
+        lazy.decoded_body().is_some(),
+        "the first read decoded the body"
+    );
+    assert_eq!(
+        decoded
+            .codes
+            .iter()
+            .filter(|code| code.decoded_body().is_some())
+            .count(),
+        1,
+        "the other bodies stay undecoded"
+    );
+    assert_eq!(
+        renyi_vm::file::render(&decoded),
+        renyi_vm::file::render(&compiled)
+    );
+    assert!(decoded
+        .codes
+        .iter()
+        .all(|code| code.decoded_body().is_some()));
+    // a body cut short is refused with the program: the block's length
+    // reaches past the end
+    let cut = &encoded[..encoded.len() - 1];
+    assert!(renyi_vm::binary::decode(cut).is_err());
 }
 
 #[test]

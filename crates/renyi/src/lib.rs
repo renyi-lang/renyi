@@ -784,8 +784,10 @@ fn check_image(loaded: Image, path: &str) -> Result<(renyi_vm::Program, Image), 
     if let Some(mismatch) = loaded.header.mismatch(&target) {
         return Err(format!("{path}: {mismatch}"));
     }
-    let program =
-        renyi_vm::binary::decode(&loaded.program).map_err(|detail| format!("{path}: {detail}"))?;
+    // the code objects decode their bodies from the image's bytes at
+    // their first use (decision AW18)
+    let program = renyi_vm::binary::decode_shared(std::sync::Arc::clone(&loaded.program))
+        .map_err(|detail| format!("{path}: {detail}"))?;
     Ok((program, loaded))
 }
 

@@ -3,10 +3,13 @@
 //! stack below the operands of the frame; jumps are absolute indices into
 //! `ops`.
 
+use std::sync::OnceLock;
+
 use renyi_check::{AbilityId, FunctionId, ModuleId, TypeId};
 use renyi_syntax::ast::BinaryOp;
 use renyi_syntax::Span;
 
+use crate::binary::Encoded;
 use crate::value::Value;
 
 /// How a terminal after `group by` folds one group's values (decision M1).
@@ -284,10 +287,24 @@ pub struct Code {
     /// of its own; both emitters compute the flags from the finished ops
     /// (`read_only_params`), held equal by the compile judge.
     pub read_only: Vec<bool>,
+    pub constants: Vec<Value>,
+    /// The ops with what stands beside them: decoded with the head by the
+    /// compiler and the bytecode file, and from `encoded` at the first
+    /// read when the program comes from an image or from the cache keyed
+    /// by the sources (decision AW18). `body`, `ops`, `spans`, `types`
+    /// and `tables` read it, `body_mut` and `set_body` write it.
+    pub(crate) body: OnceLock<Body>,
+    /// The bytes the body is decoded from, when it was not decoded with
+    /// the head.
+    pub(crate) encoded: Option<Encoded>,
+}
+
+/// The ops of a code object with what stands beside them.
+#[derive(Clone, Debug, Default)]
+pub struct Body {
     pub ops: Vec<Op>,
     /// The source span of each op, for crash messages.
     pub spans: Vec<Span>,
-    pub constants: Vec<Value>,
     /// Per op, the index in the program's `result_types` of the type of
     /// what it pushes, when the checker noted the type of the expression
     /// the op was emitted under (decision AU1, stage iii); `None` where it
@@ -348,26 +365,79 @@ impl Code {
             params: 0,
             locals: 0,
             read_only: Vec::new(),
-            ops: Vec::new(),
-            spans: Vec::new(),
             constants: Vec::new(),
-            types: Vec::new(),
-            tables: Vec::new(),
+            body: OnceLock::from(Body::default()),
+            encoded: None,
         }
     }
 
+    /// The body: decoded from its bytes at the first read when the program
+    /// came from an image or from the cache keyed by the sources (decision
+    /// AW18); a body that does not decode is a corrupt file, which stops
+    /// the run as a corrupt op would.
+    pub fn body(&self) -> &Body {
+        self.body.get_or_init(|| {
+            let encoded = self
+                .encoded
+                .as_ref()
+                .expect("a code object holds its body or the bytes of it");
+            match encoded.decode_body(self) {
+                Ok(body) => body,
+                Err(message) => {
+                    panic!("the code object `{}` does not decode: {message}", self.name)
+                }
+            }
+        })
+    }
+
+    pub fn ops(&self) -> &[Op] {
+        &self.body().ops
+    }
+
+    pub fn spans(&self) -> &[Span] {
+        &self.body().spans
+    }
+
+    pub fn types(&self) -> &[Option<u32>] {
+        &self.body().types
+    }
+
+    pub fn tables(&self) -> &[Vec<u32>] {
+        &self.body().tables
+    }
+
+    /// The body when it is decoded, without decoding it.
+    pub fn decoded_body(&self) -> Option<&Body> {
+        self.body.get()
+    }
+
+    /// The body to change, decoded first when it was not yet.
+    pub fn body_mut(&mut self) -> &mut Body {
+        if self.body.get().is_none() {
+            let _ = self.body();
+        }
+        self.body.get_mut().expect("the body was decoded above")
+    }
+
+    /// The body replaced whole.
+    pub fn set_body(&mut self, body: Body) {
+        self.body = OnceLock::from(body);
+        self.encoded = None;
+    }
+
     pub fn emit(&mut self, op: Op, span: Span) -> usize {
-        self.ops.push(op);
-        self.spans.push(span);
-        self.types.push(None);
-        self.ops.len() - 1
+        let body = self.body_mut();
+        body.ops.push(op);
+        body.spans.push(span);
+        body.types.push(None);
+        body.ops.len() - 1
     }
 
     /// The read-only flags of the parameters (decision AW5) from the ops
     /// as they stand: a parameter's slot is read-only when no op writes it.
     pub fn read_only_params(&self) -> Vec<bool> {
         let mut read_only = vec![true; self.params as usize];
-        for op in &self.ops {
+        for op in self.ops() {
             let slot = match op {
                 Op::Store(slot)
                 | Op::IterInit(slot)
@@ -396,7 +466,7 @@ impl Code {
     }
 
     pub fn here(&self) -> u32 {
-        self.ops.len() as u32
+        self.ops().len() as u32
     }
 
     /// Point a jump emitted earlier at the current position.
@@ -406,7 +476,7 @@ impl Code {
     }
 
     pub fn patch_to(&mut self, at: usize, target: u32) {
-        match &mut self.ops[at] {
+        match &mut self.body_mut().ops[at] {
             Op::Jump(t)
             | Op::JumpIfFalse(t)
             | Op::JumpIfTrue(t)

@@ -932,7 +932,7 @@ impl<'c, 'w> Compiler<'c, 'w> {
         let typed = self.type_index_at(span);
         let span = self.ctx.characters(self.module, span);
         let at = self.code.emit(op, span);
-        self.code.types[at] = typed;
+        self.code.body_mut().types[at] = typed;
         at
     }
 

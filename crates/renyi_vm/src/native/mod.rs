@@ -656,7 +656,7 @@ impl Jit {
                 Ok(compiled) => {
                     self.stats.add(&compiled.stats);
                     self.compiled += 1;
-                    self.ops += program.codes[code].ops.len();
+                    self.ops += program.codes[code].ops().len();
                     Some(compiled)
                 }
                 Err(reason) => {
@@ -981,7 +981,7 @@ native: {} code objects on templates ({} ops, {} bytes) in {} ms{}; {} loops han
             State::Ready { .. } => {}
             State::Skipped => return None,
             State::Cold => {
-                if !self.is_hot(program.codes[code].ops.len(), hotness) {
+                if !self.is_hot(program.codes[code].ops().len(), hotness) {
                     return None;
                 }
                 if self.background {
@@ -1174,7 +1174,7 @@ native: {} code objects on templates ({} ops, {} bytes) in {} ms{}; {} loops han
             headers: compiled.headers,
         };
         self.compiled += 1;
-        self.ops += program.codes[code].ops.len();
+        self.ops += program.codes[code].ops().len();
     }
 }
 
@@ -1229,7 +1229,7 @@ pub(crate) fn compile_with_inlining(
 /// image is. The VM builds the same value on the constant's first read.
 fn literal_constant(program: &Program, code: CodeId) -> Option<Value> {
     let code = &program.codes[code];
-    match code.ops.as_slice() {
+    match code.ops() {
         [Op::Const(index), Op::Return] => code.constants.get(*index as usize).cloned(),
         _ => None,
     }

@@ -630,11 +630,11 @@ pub(crate) fn entry_kind(program: &Program, function: usize) -> TypedKind {
 /// walk stops at any other op: what was pushed before it is whatever the
 /// stack holds.
 fn simple_pushes(code: &Code, pc: usize, count: usize) -> Vec<(usize, usize)> {
-    let binary = matches!(code.ops[pc], Op::Binary(_));
+    let binary = matches!(code.ops()[pc], Op::Binary(_));
     let mut pushes = Vec::with_capacity(count.min(pc));
     for back in 1..=count.min(pc) {
         let at = pc - back;
-        let simple = match &code.ops[at] {
+        let simple = match &code.ops()[at] {
             Op::Load(_) | Op::LoadMove(_) | Op::Const(_) => true,
             Op::Nothing => binary,
             _ => false,
@@ -669,8 +669,8 @@ pub(crate) fn accepted_params(program: &Program, calls: &[CallKind], code_id: us
     let params = (code.params as usize).min(32);
     // per op, whether a push there is taken by a call or a comparison
     // that reads it where it lies
-    let mut lent = vec![false; code.ops.len()];
-    for (pc, op) in code.ops.iter().enumerate() {
+    let mut lent = vec![false; code.ops().len()];
+    for (pc, op) in code.ops().iter().enumerate() {
         let (count, takes) = match op {
             Op::Call { function, args } => {
                 let count = *args as usize;
@@ -685,7 +685,7 @@ pub(crate) fn accepted_params(program: &Program, calls: &[CallKind], code_id: us
         for (at, _) in simple_pushes(code, pc, count) {
             // a moved operand of an entry that takes is the call's to
             // consume, not lent (decision AW11)
-            if takes && matches!(code.ops[at], Op::LoadMove(_)) {
+            if takes && matches!(code.ops()[at], Op::LoadMove(_)) {
                 continue;
             }
             lent[at] = true;
@@ -693,7 +693,7 @@ pub(crate) fn accepted_params(program: &Program, calls: &[CallKind], code_id: us
     }
     // per parameter, whether a move of it goes anywhere else
     let mut moved = vec![false; params];
-    for (pc, op) in code.ops.iter().enumerate() {
+    for (pc, op) in code.ops().iter().enumerate() {
         if let Op::LoadMove(slot) = op {
             if let Some(flag) = moved.get_mut(*slot as usize) {
                 *flag |= !lent[pc];
@@ -713,7 +713,7 @@ pub(crate) fn accepted_params(program: &Program, calls: &[CallKind], code_id: us
 /// Whether some `Call` of the code object is made directly
 /// (`direct_call`) at the state the analysis found there.
 fn has_direct_call(program: &Program, code: &Code, analysis: &Analysis) -> bool {
-    code.ops.iter().enumerate().any(|(pc, op)| match op {
+    code.ops().iter().enumerate().any(|(pc, op)| match op {
         Op::Call { function, args } => matches!(
             analysis.entry.get(pc).and_then(|state| state.as_deref()),
             Some(state) if direct_call(program, state, *function, *args as usize).is_some()
@@ -757,9 +757,9 @@ pub(crate) fn borrowed_operands(
     calls: &[CallKind],
     direct_calls: bool,
 ) -> (Vec<bool>, Vec<u32>) {
-    let mut borrowed = vec![false; code.ops.len()];
-    let mut masks = vec![0u32; code.ops.len()];
-    for (pc, op) in code.ops.iter().enumerate() {
+    let mut borrowed = vec![false; code.ops().len()];
+    let mut masks = vec![0u32; code.ops().len()];
+    for (pc, op) in code.ops().iter().enumerate() {
         // per argument, whether a boxed push of it is borrowed; and whether
         // a moved load among them is (not for a direct call)
         let mut moves_borrowed = true;
@@ -817,7 +817,7 @@ pub(crate) fn borrowed_operands(
         for (at, index) in simple_pushes(code, pc, count) {
             // whether the operand pushed is boxed: a typed one is in a
             // register
-            let boxed = match &code.ops[at] {
+            let boxed = match &code.ops()[at] {
                 Op::Load(slot) => matches!(analysis.slots[*slot as usize], SlotKind::Boxed(_)),
                 Op::LoadMove(slot) => {
                     moves_borrowed && matches!(analysis.slots[*slot as usize], SlotKind::Boxed(_))
@@ -857,20 +857,20 @@ pub fn compile(
     fctx: &mut FunctionBuilderContext,
 ) -> Result<Compiled, Skipped> {
     let code = body;
-    let original_len = program.codes[code_id].ops.len();
+    let original_len = program.codes[code_id].ops().len();
     let mut stats = Stats::default();
     let started = Instant::now();
     // the pairs of decision AW9 in a code object's own ops: the regions of
     // an expansion (decision AU50) lay their slots where the pairs' cells
     // would go
-    let pairs = code.ops.len() == original_len;
+    let pairs = code.ops().len() == original_len;
     let analysis = analyse(program, code, globals, pairs).map_err(Skipped::Analysis)?;
     let (borrowed, masks) = borrowed_operands(program, code, &analysis, calls, true);
     let owned = owned_slots(code, &analysis, &borrowed);
     let calls_directly = has_direct_call(program, code, &analysis);
     stats.analysis = started.elapsed();
     let mut headers: Vec<usize> = Vec::new();
-    for (pc, op) in code.ops.iter().enumerate().take(original_len) {
+    for (pc, op) in code.ops().iter().enumerate().take(original_len) {
         if let Op::Jump(target) = op {
             let target = *target as usize;
             let fits = matches!(
@@ -1880,8 +1880,8 @@ impl Gen<'_, '_> {
     /// the checker noted for its expression when the op pushes that
     /// expression's value (decision AU1, stage iv), as the analysis has it.
     fn push_boxed(&mut self) {
-        let noted = if self.code.ops[self.current_pc].pushes_its_expression() {
-            self.code.types.get(self.current_pc).copied().flatten()
+        let noted = if self.code.ops()[self.current_pc].pushes_its_expression() {
+            self.code.types().get(self.current_pc).copied().flatten()
         } else {
             None
         };
@@ -2710,7 +2710,7 @@ impl Gen<'_, '_> {
         self.emit_deopts();
         self.emit_landings();
         // the end of the code: an implicit `return nothing`
-        let count = self.code.ops.len();
+        let count = self.code.ops().len();
         if let Some(block) = self.blocks.get(&count).copied() {
             self.switch_to(block);
             self.call("rt_return_nothing", &[self.vm]);
@@ -2735,7 +2735,7 @@ impl Gen<'_, '_> {
     }
 
     fn body(&mut self) {
-        let count = self.code.ops.len();
+        let count = self.code.ops().len();
         let mut unreachable = false;
         for pc in 0..count {
             // a jump target, or the op a branch falls through to, which got
@@ -2790,7 +2790,7 @@ impl Gen<'_, '_> {
         self.current_pc = pc;
         let pc_value = self.u32(pc as u32);
         let code_value = self.usize(self.code_id);
-        match &self.code.ops[pc] {
+        match &self.code.ops()[pc] {
             Op::Const(index) => {
                 let constant = &self.code.constants[*index as usize];
                 match abs_of_constant(constant) {
@@ -2911,7 +2911,7 @@ impl Gen<'_, '_> {
                         // with a reference each or moved at the last read (a
                         // pair slot is never a parameter, so never borrowed),
                         // as they lie for the op after, else as the record
-                        let moving = matches!(self.code.ops[pc], Op::LoadMove(_));
+                        let moving = matches!(self.code.ops()[pc], Op::LoadMove(_));
                         self.push_pair_from_slot(index, moving);
                         if self.pairs && pair_fused(self.code, pc) {
                             self.state.push(Abs::Pair(ty));
@@ -2927,7 +2927,7 @@ impl Gen<'_, '_> {
                         // (a move or not), a copy without one, the slot
                         // keeping its value
                         let moving =
-                            matches!(self.code.ops[pc], Op::LoadMove(_)) && !self.borrowed[pc];
+                            matches!(self.code.ops()[pc], Op::LoadMove(_)) && !self.borrowed[pc];
                         let from = self.address_at(index);
                         let to = self.top_address();
                         self.copy_value(from, to);
@@ -3134,7 +3134,7 @@ impl Gen<'_, '_> {
             Op::Construct { ty, fields } => {
                 if *fields == 2
                     && self.pair_result == Some(*ty as u32)
-                    && matches!(self.code.ops.get(pc + 1), Some(Op::Return))
+                    && matches!(self.code.ops().get(pc + 1), Some(Op::Return))
                     && !self.analysis.block_starts[pc + 1]
                 {
                     // the record returned at once (decision AW9): its two
@@ -3778,7 +3778,7 @@ impl Gen<'_, '_> {
                 if !matches!(self.analysis.slots[index], SlotKind::Boxed(_)) {
                     return;
                 }
-                let targets = self.code.tables[*table as usize].clone();
+                let targets = self.code.tables()[*table as usize].clone();
                 let at = self.address_at(index);
                 let flags = MemFlagsData::trusted();
                 let kind = self.tag_at(at, 0);
@@ -3845,7 +3845,7 @@ impl Gen<'_, '_> {
                         .b
                         .ins()
                         .icmp_imm_s(IntCC::Equal, tag, TAG_FAILURE as i64);
-                    let taken = if matches!(self.code.ops[pc], Op::JumpIfAbsent(_)) {
+                    let taken = if matches!(self.code.ops()[pc], Op::JumpIfAbsent(_)) {
                         let nothing =
                             self.b
                                 .ins()
@@ -4083,7 +4083,7 @@ impl Gen<'_, '_> {
             Op::IsNothing | Op::IsFailure => {
                 // the top's tag read, the top dropped; a typed top is
                 // neither
-                let wanted = if matches!(self.code.ops[pc], Op::IsNothing) {
+                let wanted = if matches!(self.code.ops()[pc], Op::IsNothing) {
                     TAG_NOTHING
                 } else {
                     TAG_FAILURE

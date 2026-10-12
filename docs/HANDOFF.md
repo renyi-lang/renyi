@@ -85,8 +85,11 @@ to 3.59); and stage 5a built and measured (decision AW17: the moves of
 AU17 written in the image and in the cache keyed by the sources, the
 pass run once where a program enters the VM; the check row
 1,586.1 to 1,547.9, -2.4%; the ratio 3.59 to
-3.51). Next are stage 5b (the code objects decoded on demand)
-and stage 6 (the start-here item 1).
+3.51); and stage 5b built and measured (decision AW18: the code
+objects decoded on demand, a body decoded at its first read from the
+image's or the cache entry's bytes; the check row 1,547.9 to
+1,528.5, -1.3%; the ratio 3.51 to 3.46),
+which completes stage 5. Next is stage 6 (the start-here item 1).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -408,9 +411,12 @@ and push there directly.
    loop, the lists updated in the slot; the check row to 1,586.1,
    -16.4%; the ratio to 3.59); and stage 5a (decision AW17, "Stage 5a
    as built": the moves written in the image and the cache; the check
-   row to 1,547.9, -2.4%; the ratio to 3.51).
-   Next are stage 5b and stage
-   6 last. Each stage: the code, the gates of item 3, the measure
+   row to 1,547.9, -2.4%; the ratio to 3.51); and stage 5b (decision
+   AW18, "Stage 5b as built": the code objects decoded on demand; the
+   check row to 1,528.5, -1.3%; the ratio to 3.46),
+   which completes stage 5.
+   Next is stage
+   6, the last. Each stage: the code, the gates of item 3, the measure
    (AU58's: the checker's image run under callgrind with the study's
    table by category beside it, AT1's rows, the benchmarks by
    instructions), then its decision entry with the table and the
@@ -446,8 +452,9 @@ and push there directly.
    `renyi_stage4a_v2` (cf06592, stage 4a's commit) and
    `renyi_stage4b` (8eed964, stage 4b's commit), `renyi_stage4c`
    (805ea3a, stage 4c's commit), `renyi_cuts` (c7b8f6c, the
-   checker's own cuts' commit) and `renyi_5a` (the commit of stage 5a,
-   the base of the next measure), each with its
+   checker's own cuts' commit), `renyi_5a` (16a0dd6, stage 5a's
+   commit) and `renyi_5b` (the commit of stage 5b, the base of the next
+   measure), each with its
    `study/` directory. The
    road is months long (AU58); the gate is decided on the measure at
    the end.
@@ -4938,7 +4945,30 @@ synchronous estimate 7,381.0 to 7,332.3
 (-0.7%), the image row 3,374.3 to 3,328.7
 (-1.4%), the cached run 3,464.0 to 3,408.8
 (-1.6%). The table is in AW17. Next in AW1's order: stage 5b
-(the code objects decoded on demand), then stage 6.
+(the next paragraph), then stage 6.
+
+**Stage 5b as built (decision AW18, 2026-10-12).** The second half of
+stage 5 of AW1's order, the load: the program of an image or of a cache
+entry was decoded whole at the load (32.2 million instructions on the
+checker's image run, 2.1%); now a code object's head is decoded with the
+program and its body (`Body` in `bytecode.rs`: the ops, the spans, the
+types, the tables) at its first read, through a `OnceLock` from the
+shared bytes (`binary::Encoded`, `decode_shared`, encoding 8, the body a
+length-prefixed block after the head), checked then (`file::check_body`,
+`file::Limits`); every read goes through `Code::body`, `ops`, `spans`,
+`types` and `tables`, every write through `body_mut` and `set_body`, and
+the interpreter's loop binds the body once per frame. A test in
+`tests/native.rs` holds the bodies undecoded after the decode and
+decoded by their first read. The measure: the check row 1,547.9 to
+1,528.5 (-1.3%), the ratios by instructions 3.46, 2.45 and 7.44; the
+load 26.1 to 10.0 million; AT1's synchronous estimate 7,332.3 to 7,479.8
+(+2.0%, the instruction cache's: the same instructions in the same
+functions with more misses, the code's placement; the instructions
++0.1%), the image row 3,328.7 to 3,311.8 (-0.5%), the cached run 3,408.8
+to 3,392.8 (-0.5%), the interpreter 11,065.9 to 10,942.5 (-1.1%). The
+table is in AW18.
+Stage 5 is done. Next in AW1's order: stage 6, AU50's expansion
+measured again under the new convention.
 
 ## The representation items: the design study (session 11)
 
@@ -6666,6 +6696,19 @@ holds between calls.
   `crates/renyi/src/sandbox.rs`, `compile_cached` in
   `crates/renyi/src/lib.rs`; the tests in `tests/native.rs` and
   `tests/build.rs`; the measure in AW17 and in "Stage 5a as built".
+- Stage 5b (decision AW18, the commit after 16a0dd6): `Body`,
+  `body`, `ops`, `spans`, `types`, `tables`, `decoded_body`, `body_mut`
+  and `set_body` in `bytecode.rs`; `Encoded`, `decode_shared`,
+  `write_body`, `read_body` and encoding 8 in `binary.rs`; `check_body`
+  and `Limits` in `file.rs`; the body bound per frame in `vm.rs`;
+  `move_last_reads` in `liveness.rs`; the readers in
+  `native/codegen.rs`, `native/infer.rs`, `native/template/mod.rs`,
+  `native/runtime.rs`, `native/mod.rs`, `native/inline.rs` and
+  `native/image.rs` (the image's program as an `Arc`), the writers in
+  `compile/mod.rs` and `compile/expr.rs`; `check_image` in
+  `crates/renyi/src/lib.rs` and the cache's lookup in `cache.rs`; the
+  tests in `tests/native.rs`, `tests/typed.rs` and
+  `tests/semantics.rs`; the measure in AW18 and in "Stage 5b as built".
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

@@ -48,15 +48,16 @@ pub fn prepare(program: &mut Program) {
 /// Every `Load` of the code that is the last read of its slot on every
 /// path from it replaced by `LoadMove`.
 pub fn move_last_reads(code: &mut Code) {
-    let count = code.ops.len();
     let slots = code.locals as usize;
+    let body = code.body_mut();
+    let count = body.ops.len();
     if count == 0 || slots == 0 {
         return;
     }
     let words = slots.div_ceil(64);
     // the targets of the handled regions each op lies in
     let mut handlers: Vec<Vec<usize>> = vec![Vec::new(); count];
-    for (at, op) in code.ops.iter().enumerate() {
+    for (at, op) in body.ops.iter().enumerate() {
         if let Op::PushHandler(target) = op {
             let target = *target as usize;
             for inside in handlers.iter_mut().take(target.min(count)).skip(at + 1) {
@@ -66,7 +67,7 @@ pub fn move_last_reads(code: &mut Code) {
     }
     let successors = |pc: usize| -> Vec<usize> {
         let mut next = Vec::with_capacity(3);
-        let op = &code.ops[pc];
+        let op = &body.ops[pc];
         let leaves = matches!(
             op,
             Op::Jump(_) | Op::Return | Op::ReturnNothing | Op::Fail | Op::Crash
@@ -84,7 +85,7 @@ pub fn move_last_reads(code: &mut Code) {
             _ => None,
         };
         if let Op::JumpByTag { table, .. } = op {
-            for target in &code.tables[*table as usize] {
+            for target in &body.tables[*table as usize] {
                 if (*target as usize) < count {
                     next.push(*target as usize);
                 }
@@ -127,7 +128,7 @@ pub fn move_last_reads(code: &mut Code) {
                     out[word] |= live_in[next * words + word];
                 }
             }
-            let (used, defined) = uses_and_defs(&code.ops[pc]);
+            let (used, defined) = uses_and_defs(&body.ops[pc]);
             if let Some(slot) = defined {
                 let (word, mask) = bit(slot);
                 out[word] &= !mask;
@@ -148,7 +149,7 @@ pub fn move_last_reads(code: &mut Code) {
     }
     let moves: Vec<(usize, u16)> = (0..count)
         .filter_map(|pc| {
-            let Op::Load(slot) = code.ops[pc] else {
+            let Op::Load(slot) = body.ops[pc] else {
                 return None;
             };
             let (word, mask) = bit(slot);
@@ -159,7 +160,7 @@ pub fn move_last_reads(code: &mut Code) {
         })
         .collect();
     for (pc, slot) in moves {
-        code.ops[pc] = Op::LoadMove(slot);
+        body.ops[pc] = Op::LoadMove(slot);
     }
 }
 
@@ -178,7 +179,7 @@ mod tests {
     }
 
     fn moved(code: &Code) -> Vec<usize> {
-        code.ops
+        code.ops()
             .iter()
             .enumerate()
             .filter(|(_, op)| matches!(op, Op::LoadMove(_)))

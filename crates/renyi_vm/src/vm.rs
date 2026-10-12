@@ -21,7 +21,7 @@ use renyi_check::types::Ty;
 use renyi_check::{AbilityId, FunctionId, TypeId};
 use renyi_syntax::ast::BinaryOp;
 
-use crate::bytecode::{Code, CodeKind, Op};
+use crate::bytecode::{Body, Code, CodeKind, Op};
 use crate::compile::{CodeId, Program};
 use crate::decimal::{Decimal, DecimalError};
 use crate::extension::{Found, InPlace, Registry, Typed, TypedKind};
@@ -1701,7 +1701,7 @@ impl<'p> Vm<'p> {
                     let pc = frame.pc.saturating_sub(1);
                     // a pc past the code object's ops lies in a callee the
                     // generated code expanded into it (decision AU50)
-                    let (module, span) = match code.spans.get(pc) {
+                    let (module, span) = match code.spans().get(pc) {
                         Some(span) => (code.module, *span),
                         None => {
                             self.native
@@ -1886,6 +1886,7 @@ impl<'p> Vm<'p> {
         let mut frame = self.frames.len() - 1;
         let mut code_id = self.frames[frame].code;
         let mut code: &Code = &program.codes[code_id];
+        let mut body: &Body = code.body();
         let mut pc = self.frames[frame].pc;
         let mut base = self.frames[frame].base;
         // the ops run in the running frame since it became the running one,
@@ -1900,6 +1901,7 @@ impl<'p> Vm<'p> {
                 let running = &self.frames[frame];
                 code_id = running.code;
                 code = &program.codes[code_id];
+                body = code.body();
                 pc = running.pc;
                 base = running.base;
             }};
@@ -2036,7 +2038,7 @@ impl<'p> Vm<'p> {
             }};
         }
         loop {
-            let Some(op) = code.ops.get(pc) else {
+            let Some(op) = body.ops.get(pc) else {
                 leave!(Value::Nothing);
                 continue;
             };
@@ -2209,7 +2211,7 @@ impl<'p> Vm<'p> {
                     // picks the arm; anything else, or a tag past the table,
                     // falls through to the arms' own tests
                     if let Value::Variant(variant) = self.stack[base + *slot as usize].plain() {
-                        if let Some(target) = code.tables[*table as usize].get(variant.tag) {
+                        if let Some(target) = body.tables[*table as usize].get(variant.tag) {
                             pc = *target as usize;
                         }
                     }
@@ -2226,7 +2228,7 @@ impl<'p> Vm<'p> {
                         let hot = self
                             .native
                             .as_ref()
-                            .is_some_and(|jit| jit.is_hot(code.ops.len(), self.hotness[code_id]));
+                            .is_some_and(|jit| jit.is_hot(body.ops.len(), self.hotness[code_id]));
                         if hot {
                             self.frames[frame].pc = target;
                             if let Some(function) = self.native_resume_of_top(target as u32) {

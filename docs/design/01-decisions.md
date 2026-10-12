@@ -7929,3 +7929,82 @@ The four judges byte-equal, the conformance suite 55 of 55 on both
 tiers, 407 tests. Since stage 0 the check row 2,889.9 to 1,547.9
 (-46.4%), since the study's binary 3,085.3 (-49.8%). Next in AW1's
 order: stage 5b, the code objects decoded on demand, then stage 6.
+
+**AW18. Stage 5b of the new backend: the code objects decoded on
+demand.** The second half of stage 5 of AW1's order (the load), on
+2026-10-12, measured as AW1 prescribes against stage 5a's binary
+(16a0dd6). The program of an image, and of an entry of the cache keyed
+by the sources, was decoded whole at the load, 32.2 million
+instructions on the checker's image run (2.1%, `binary::decode`
+inclusive in stage 5a's profile), most of it the ops of 946 code
+objects whose machine code the image carries and the run never reads as
+ops, with their spans, their types and their jump tables. Now a code
+object's head (the name, the module, the kind, the function, the
+parameters, the locals, the read-only flags, the constants) is decoded
+with the program, and its body (`Body` in `bytecode.rs`: the ops, the
+spans, the types, the tables) is decoded at its first read:
+`write_code` writes the body as a length-prefixed block after the head
+(encoding 8), `read_code` keeps the block's bounds in the shared bytes
+(`binary::Encoded`: an `Arc` of the program's encoding, which
+`decode_shared` takes and `decode` makes from a slice, and the image
+holds its program as such an `Arc`), and `Code::body` decodes it
+through a `OnceLock`, which the compile thread of AU15 and the
+interpreter may reach at once, checked then as the file's loader checks
+a body (`file::check_body` against `file::Limits`, the counts of the
+program's tables, filled in once the program is read; a body that does
+not decode stops the run as a corrupt op would, the file's loader
+having no body to check at the load). Every read goes through
+`Code::body`, `ops`, `spans`, `types` and `tables`, every write through
+`body_mut` and `set_body` (the compiler's `emit`, the jump patches, the
+pass of AU17, the expansion of AU50), and the interpreter's loop binds
+the body once per frame beside the code object; a program from the
+compiler or from the bytecode file holds every body decoded, as before,
+and `file::check` checks the bodies it finds decoded. What an image run
+decodes: the module constants that are literals (`literal_constant`
+reads their two ops at `Jit::new`), the bodies the interpreter runs or
+the hand-backs reach, and nothing else; a run from the cache keyed by
+the sources decodes each body as the JIT compiles it or the interpreter
+enters it. A test in `tests/native.rs` holds the bodies undecoded after
+the decode, decoded by their first read, equal to the encoder's, and a
+block cut short refused with the program. The measure in full
+(callgrind under WSL on the release build for Linux, the images built
+under `valgrind --tool=none`, against stage 5a's binary measured the
+same way in AW17, the reference AU34's 44782aa): the check row 1,547.9
+to 1,528.5 million instructions (-1.3%), the parse row 701.6 to 696.2
+(-0.8%), the compile row 2,743.6 to 2,719.7 (-0.9%); the ratios by
+instructions against the reference's rows (441.6, 284.7 and 365.6)
+3.46, 2.45 and 7.44 against the gate's 3 (3.51, 2.46 and 7.50 after
+AW17); the Rust front end's own rows within 0.2% of stage 5a's (`check`
+173.9, `parse --json` 246.4, `compile` 450.9). The check row by
+category, AW17's table against this one, in millions: the load 26.1 to
+10.0, the generated code 800.8 to 800.8, the comparisons 6.5 to 6.5,
+the counts and drops 131.0 to 131.0, mimalloc 79.8 to 76.8, the hashing
+and equality 35.4 to 35.2, the natives 255.8 to 255.8, the VM's own
+79.5 to 79.6, the records 46.1 to 46.1, the texts and copies 74.4 to
+74.3, the calls through the VM's path 8.5 to 8.5, the helpers' glue 3.6
+to 3.6, the iterators 0.0 to 0.0. AT1's rows on the frozen self-check
+(`tools/measure_size.sh` under WSL, stage 5a's binary against this one;
+the tiers are the same, the bodies decoded as the JIT compiles them on
+the JIT rows and as the interpreter enters them on its row, from the
+image's bytes on the image row and the cached run): the synchronous JIT
+row 5,157.5 to 5,161.6 million instructions (+0.1%) and 7,332.3 to
+7,479.8 by the estimate (+2.0%), its indirect branches 10.6 to 10.5
+million (-1.6%) and its mispredictions 30.6 to 30.1, its
+instruction-cache misses 88.8 to 98.8 million and its last-level misses
+3.2 to 3.7 (the estimate's rise is theirs: the generated code's
+instructions the same, 1,617.9 million, with its misses 63.3 to 68.0
+million, and the helpers' (`runtime.rs`) 304.8 million the same with
+their misses 4.1 to 6.7, the same functions placed differently in the
+cache's sets; the instructions within 0.1%), the image row 3,328.7 to
+3,311.8 (-0.5%) and 4,967.1 to 4,965.0 by the estimate (within 0.05%),
+the cached run 3,408.8 to 3,392.8 (-0.5%), the interpreter 11,065.9 to
+10,942.5 (-1.1%); the image 9,770,928 to 9,770,928 bytes (unchanged).
+The four benchmarks and hello by user-space instructions (`perf stat`,
+the JIT synchronous, in millions): `primes` 265.8 to 265.8 (unchanged),
+`strings` 442.6 to 442.6 (unchanged), `records` 160.7 to 160.7
+(unchanged), `json_round_trip` 843.1 to 843.1 (unchanged), `hello` 5.20
+to 5.20 (unchanged). The four judges byte-equal, the conformance suite
+55 of 55 on both tiers, 408 tests. Since stage 0 the check row 2,889.9
+to 1,528.5 (-47.1%), since the study's binary 3,085.3 (-50.5%). Stage 5
+is done. Next in AW1's order: stage 6, AU50's expansion measured again
+under the new convention.

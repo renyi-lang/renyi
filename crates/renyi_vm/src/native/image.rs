@@ -25,6 +25,7 @@
 
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
+use std::sync::Arc;
 
 use cranelift_codegen::isa::TargetIsa;
 
@@ -208,7 +209,7 @@ pub fn build(
             opt_level: jit.opt_level().to_string(),
         },
         code_hash: crate::recording::sha256_of(crate::file::render(program).as_bytes()),
-        program: crate::binary::encode(prepared),
+        program: crate::binary::encode(prepared).into(),
         codes,
         section,
         section_offset: 0,
@@ -240,7 +241,7 @@ pub fn pure_constants(program: &Program, calls: &[CallKind]) -> Vec<usize> {
             if !pure[code] {
                 continue;
             }
-            let stays = body.ops.iter().all(|op| match op {
+            let stays = body.ops().iter().all(|op| match op {
                 Op::Call { function, .. } => {
                     let meta = &program.function_metas[*function];
                     if meta.foreign.is_some() || meta.python.is_some() {
@@ -363,7 +364,9 @@ pub struct MappedSection {
 pub struct Image {
     pub header: Header,
     pub code_hash: String,
-    pub program: Vec<u8>,
+    /// The program in the binary encoding, shared with its code objects,
+    /// which decode their bodies from it (decision AW18).
+    pub program: Arc<[u8]>,
     pub codes: Vec<Option<ImageCode>>,
     /// The section's bytes; empty when `mapped` names the file instead.
     pub section: Vec<u8>,
@@ -542,7 +545,7 @@ impl Image {
             opt_level: input.text()?,
         };
         let code_hash = input.text()?;
-        let program = input.block()?.to_vec();
+        let program: Arc<[u8]> = Arc::from(input.block()?);
         let count = input.u32()? as usize;
         let mut codes = Vec::with_capacity(count.min(1 << 16));
         for _ in 0..count {
@@ -759,7 +762,7 @@ mod tests {
                 opt_level: "none".to_string(),
             },
             code_hash: "abc".to_string(),
-            program: vec![1, 0],
+            program: vec![1, 0].into(),
             codes: vec![
                 None,
                 Some(ImageCode {

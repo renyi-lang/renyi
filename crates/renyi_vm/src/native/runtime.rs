@@ -1580,7 +1580,7 @@ pub(crate) unsafe extern "C" fn rt_deopt(
     // into it (decision AU50): the frames of the real call are built
     let original = &vm.program.codes[code];
     let frames = vm.frames.len();
-    if point.pc as usize >= original.ops.len() {
+    if point.pc as usize >= original.ops().len() {
         rebuild_inlined_frames(vm, base, code, point);
         let rebuilt = vm.frames.len() - frames;
         if let Some(jit) = vm.native.as_mut() {
@@ -1671,7 +1671,7 @@ fn rebuild_inlined_frames(vm: &mut Vm, base: usize, code: usize, point: &DeoptPo
         let next = &regions[chain[k + 1]];
         let callee = &program.codes[region.callee as usize];
         let call_pc = next.call_pc as usize - region.body as usize;
-        let args = match callee.ops[call_pc] {
+        let args = match callee.ops()[call_pc] {
             Op::Call { args, .. } => args as usize,
             _ => unreachable!("a region replaces a call"),
         };

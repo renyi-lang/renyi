@@ -20,7 +20,7 @@ use renyi_syntax::ast::BinaryOp;
 use renyi_syntax::json::Json as Out;
 use renyi_syntax::Span;
 
-use crate::bytecode::{Code, CodeKind, GroupFold, Op};
+use crate::bytecode::{Body, Code, CodeKind, GroupFold, Op};
 use crate::compile::{
     CodeId, ConstantMeta, ExampleMeta, Expected, Foreign, FunctionMeta, Program, Python,
     SourceLines, Specials, TestMeta,
@@ -390,18 +390,18 @@ fn code_json(code: &Code) -> Out {
         ("params", number(code.params as usize)),
         ("locals", number(code.locals as usize)),
         ("read_only", array(&code.read_only, |flag| Out::Bool(*flag))),
-        ("ops", array(&code.ops, op_json)),
-        ("spans", array(&code.spans, |span| span_json(*span))),
+        ("ops", array(&code.body().ops, op_json)),
+        ("spans", array(&code.body().spans, |span| span_json(*span))),
         ("constants", array(&code.constants, constant_json)),
         (
             "types",
-            array(&code.types, |ty| {
+            array(&code.body().types, |ty| {
                 optional(ty.as_ref(), |index| number(*index as usize))
             }),
         ),
         (
             "tables",
-            array(&code.tables, |table| {
+            array(&code.body().tables, |table| {
                 array(table, |target| number(*target as usize))
             }),
         ),
@@ -1141,13 +1141,16 @@ fn read_code(json: &In, at: &str) -> Read<Code> {
         params: small(params, &format!("{at}.params"))?,
         locals: small(locals, &format!("{at}.locals"))?,
         read_only: list_at(fields, "read_only", at, bool_of)?,
-        ops: list_at(fields, "ops", at, read_op)?,
-        spans: list_at(fields, "spans", at, read_span)?,
         constants: list_at(fields, "constants", at, read_constant)?,
-        types: list_at(fields, "types", at, read_type_index)?,
-        tables: list_at(fields, "tables", at, |table, at| {
-            list_of(table, at, |target, at| Ok(usize_of(target, at)? as u32))
-        })?,
+        body: std::sync::OnceLock::from(Body {
+            ops: list_at(fields, "ops", at, read_op)?,
+            spans: list_at(fields, "spans", at, read_span)?,
+            types: list_at(fields, "types", at, read_type_index)?,
+            tables: list_at(fields, "tables", at, |table, at| {
+                list_of(table, at, |target, at| Ok(usize_of(target, at)? as u32))
+            })?,
+        }),
+        encoded: None,
     })
 }
 
@@ -1439,9 +1442,15 @@ pub(crate) fn check(program: &Program) -> Read<()> {
             }
         }
     }
+    let limits = Limits::of(program);
     for (index, code) in program.codes.iter().enumerate() {
-        // the message is built only when a check fails: one per op would
-        // be most of the cost of loading an image (decision AT5)
+        if code.read_only.len() != code.params as usize {
+            return Err(format!(
+                "the file is not consistent: code {index} has {} parameters and {} read-only flags",
+                code.params,
+                code.read_only.len()
+            ));
+        }
         let place = |what: &str, value: usize, limit: usize| -> Read<()> {
             if value < limit {
                 Ok(())
@@ -1451,102 +1460,140 @@ pub(crate) fn check(program: &Program) -> Read<()> {
                 ))
             }
         };
-        if code.spans.len() != code.ops.len() {
-            return Err(format!(
-                "the file is not consistent: code {index} has {} operations and {} spans",
-                code.ops.len(),
-                code.spans.len()
-            ));
-        }
-        if code.types.len() != code.ops.len() {
-            return Err(format!(
-                "the file is not consistent: code {index} has {} operations and {} types",
-                code.ops.len(),
-                code.types.len()
-            ));
-        }
-        if code.read_only.len() != code.params as usize {
-            return Err(format!(
-                "the file is not consistent: code {index} has {} parameters and {} read-only flags",
-                code.params,
-                code.read_only.len()
-            ));
-        }
-        for ty in code.types.iter().flatten() {
-            place("type", *ty as usize, program.result_types.len())?;
-        }
         if let Some(function) = code.function {
             place("function", function, functions)?;
-        }
-        let ops = code.ops.len();
-        let locals = code.locals as usize;
-        let constants = code.constants.len();
-        for target in code.tables.iter().flatten() {
-            place("jump", *target as usize, ops)?;
-        }
-        for op in &code.ops {
-            match op {
-                Op::Const(i) | Op::Check(i) => place("constant", *i as usize, constants)?,
-                Op::Global(i) => place("global", *i as usize, program.constants.len())?,
-                Op::Load(slot)
-                | Op::LoadMove(slot)
-                | Op::Store(slot)
-                | Op::IterInit(slot)
-                | Op::Deadline(slot)
-                | Op::CheckDeadline(slot)
-                | Op::MarkStack(slot)
-                | Op::UnwindStack(slot) => place("slot", *slot as usize, locals)?,
-                Op::IterNext { slot, exit } => {
-                    place("slot", *slot as usize, locals)?;
-                    place("jump", *exit as usize, ops)?;
-                }
-                Op::JumpByTag { slot, table } => {
-                    place("slot", *slot as usize, locals)?;
-                    place("table", *table as usize, code.tables.len())?;
-                }
-                Op::Jump(target)
-                | Op::JumpIfFalse(target)
-                | Op::JumpIfTrue(target)
-                | Op::JumpIfAbsent(target)
-                | Op::JumpIfFailure(target)
-                | Op::PushHandler(target) => place("jump", *target as usize, ops)?,
-                Op::Construct { ty, .. } | Op::ConstructVariant { ty, .. } | Op::IsType(ty) => {
-                    place("type", *ty, types)?
-                }
-                Op::Field {
-                    name: constant,
-                    site,
-                } => {
-                    place("constant", *constant as usize, constants)?;
-                    place("field site", *site as usize, program.field_sites)?;
-                }
-                Op::LoadField {
-                    slot,
-                    name: constant,
-                    site,
-                }
-                | Op::TakeField {
-                    slot,
-                    name: constant,
-                    site,
-                } => {
-                    place("slot", *slot as usize, locals)?;
-                    place("constant", *constant as usize, constants)?;
-                    place("field site", *site as usize, program.field_sites)?;
-                }
-                Op::WithSlot { slot, .. } => place("slot", *slot as usize, locals)?,
-                Op::Call { function, .. } => place("function", *function, functions)?,
-                Op::CallAbility { ability, .. } => {
-                    place("ability", *ability, program.abilities.len())?
-                }
-                Op::ResultType(i) => place("result type", *i as usize, program.result_types.len())?,
-                _ => {}
-            }
         }
         for constant in &code.constants {
             if let Value::Function(function) = constant {
                 place("function constant", *function, functions)?;
             }
+        }
+        // the body of a code object from an image or from the cache keyed
+        // by the sources is checked when it is decoded (decision AW18)
+        if let Some(body) = code.decoded_body() {
+            check_body(index, code, body, &limits)?;
+        }
+    }
+    Ok(())
+}
+
+/// What a code object's body is checked against: the counts of the
+/// program's tables (decision AW18).
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct Limits {
+    pub functions: usize,
+    pub types: usize,
+    pub globals: usize,
+    pub result_types: usize,
+    pub field_sites: usize,
+    pub abilities: usize,
+}
+
+impl Limits {
+    pub(crate) fn of(program: &Program) -> Limits {
+        Limits {
+            functions: program.function_metas.len(),
+            types: program.types.metas.len(),
+            globals: program.constants.len(),
+            result_types: program.result_types.len(),
+            field_sites: program.field_sites,
+            abilities: program.abilities.len(),
+        }
+    }
+}
+
+/// A code object's body checked as `check` checks a file's: every index
+/// inside the program and the code object (decision AW18).
+pub(crate) fn check_body(index: usize, code: &Code, body: &Body, limits: &Limits) -> Read<()> {
+    // the message is built only when a check fails: one per op would be
+    // most of the cost of loading an image (decision AT5)
+    let place = |what: &str, value: usize, limit: usize| -> Read<()> {
+        if value < limit {
+            Ok(())
+        } else {
+            Err(format!(
+                "the file is not consistent: code {index}'s {what} {value} is out of range (the limit is {limit})"
+            ))
+        }
+    };
+    if body.spans.len() != body.ops.len() {
+        return Err(format!(
+            "the file is not consistent: code {index} has {} operations and {} spans",
+            body.ops.len(),
+            body.spans.len()
+        ));
+    }
+    if body.types.len() != body.ops.len() {
+        return Err(format!(
+            "the file is not consistent: code {index} has {} operations and {} types",
+            body.ops.len(),
+            body.types.len()
+        ));
+    }
+    for ty in body.types.iter().flatten() {
+        place("type", *ty as usize, limits.result_types)?;
+    }
+    let ops = body.ops.len();
+    let locals = code.locals as usize;
+    let constants = code.constants.len();
+    for target in body.tables.iter().flatten() {
+        place("jump", *target as usize, ops)?;
+    }
+    for op in &body.ops {
+        match op {
+            Op::Const(i) | Op::Check(i) => place("constant", *i as usize, constants)?,
+            Op::Global(i) => place("global", *i as usize, limits.globals)?,
+            Op::Load(slot)
+            | Op::LoadMove(slot)
+            | Op::Store(slot)
+            | Op::IterInit(slot)
+            | Op::Deadline(slot)
+            | Op::CheckDeadline(slot)
+            | Op::MarkStack(slot)
+            | Op::UnwindStack(slot) => place("slot", *slot as usize, locals)?,
+            Op::IterNext { slot, exit } => {
+                place("slot", *slot as usize, locals)?;
+                place("jump", *exit as usize, ops)?;
+            }
+            Op::JumpByTag { slot, table } => {
+                place("slot", *slot as usize, locals)?;
+                place("table", *table as usize, body.tables.len())?;
+            }
+            Op::Jump(target)
+            | Op::JumpIfFalse(target)
+            | Op::JumpIfTrue(target)
+            | Op::JumpIfAbsent(target)
+            | Op::JumpIfFailure(target)
+            | Op::PushHandler(target) => place("jump", *target as usize, ops)?,
+            Op::Construct { ty, .. } | Op::ConstructVariant { ty, .. } | Op::IsType(ty) => {
+                place("type", *ty, limits.types)?
+            }
+            Op::Field {
+                name: constant,
+                site,
+            } => {
+                place("constant", *constant as usize, constants)?;
+                place("field site", *site as usize, limits.field_sites)?;
+            }
+            Op::LoadField {
+                slot,
+                name: constant,
+                site,
+            }
+            | Op::TakeField {
+                slot,
+                name: constant,
+                site,
+            } => {
+                place("slot", *slot as usize, locals)?;
+                place("constant", *constant as usize, constants)?;
+                place("field site", *site as usize, limits.field_sites)?;
+            }
+            Op::WithSlot { slot, .. } => place("slot", *slot as usize, locals)?,
+            Op::Call { function, .. } => place("function", *function, limits.functions)?,
+            Op::CallAbility { ability, .. } => place("ability", *ability, limits.abilities)?,
+            Op::ResultType(i) => place("result type", *i as usize, limits.result_types)?,
+            _ => {}
         }
     }
     Ok(())

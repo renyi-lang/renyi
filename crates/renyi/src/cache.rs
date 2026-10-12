@@ -138,7 +138,8 @@ impl Entry {
     /// and this machine; its use marks it recently used.
     pub(crate) fn lookup(&self) -> Option<Image> {
         let loaded = Image::open(self.path.to_str()?).ok()?;
-        if loaded.header.mismatch(&self.target).is_some() || loaded.program != self.encoding {
+        if loaded.header.mismatch(&self.target).is_some() || loaded.program[..] != self.encoding[..]
+        {
             return None;
         }
         touch(&self.path);

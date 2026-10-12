@@ -409,7 +409,7 @@ pub fn pair_result(program: &Program, function: usize) -> Option<u32> {
 pub fn pair_fused(code: &Code, pc: usize) -> bool {
     let next = otherwise_end(code, pc).unwrap_or(pc + 1);
     matches!(
-        code.ops.get(next),
+        code.ops().get(next),
         Some(Op::Store(_) | Op::Field { .. } | Op::Return)
     )
 }
@@ -421,13 +421,13 @@ pub fn pair_fused(code: &Code, pc: usize) -> bool {
 /// end. A pair the call leaves takes that jump at once, past the test,
 /// which only a failure then reaches (`handler_only`).
 pub fn otherwise_end(code: &Code, pc: usize) -> Option<usize> {
-    if !matches!(code.ops.get(pc), Some(Op::Call { .. })) {
+    if !matches!(code.ops().get(pc), Some(Op::Call { .. })) {
         return None;
     }
     match (
-        code.ops.get(pc + 1),
-        code.ops.get(pc + 2),
-        code.ops.get(pc + 3),
+        code.ops().get(pc + 1),
+        code.ops().get(pc + 2),
+        code.ops().get(pc + 3),
     ) {
         (
             Some(Op::PopHandler),
@@ -444,7 +444,9 @@ pub fn otherwise_end(code: &Code, pc: usize) -> Option<usize> {
 /// pair past the test. The value on top is then a failure, and the test's
 /// jump is taken.
 pub fn handler_only(code: &Code, entry: &[Option<Vec<Abs>>], pc: usize) -> bool {
-    pc > 0 && matches!(code.ops[pc - 1], Op::PopHandler) && matches!(entry.get(pc - 1), Some(None))
+    pc > 0
+        && matches!(code.ops()[pc - 1], Op::PopHandler)
+        && matches!(entry.get(pc - 1), Some(None))
 }
 
 /// The representation of a field read by name, when every record or
@@ -480,7 +482,7 @@ pub fn abs_of_field(program: &Program, name: &str) -> Abs {
 /// noted for the expression when the op carries one (decision AU8), else
 /// by the field's name across every type.
 pub fn abs_of_field_at(program: &Program, code: &Code, pc: usize, name: &str) -> Abs {
-    match code.types.get(pc).copied().flatten() {
+    match code.types().get(pc).copied().flatten() {
         Some(index) => abs_of_type(program, &program.result_types[index as usize]),
         None => abs_of_field(program, name),
     }
@@ -521,7 +523,7 @@ pub fn update_by_index(
     if count > 7 {
         return None;
     }
-    let noted = code.types.get(pc).copied().flatten()?;
+    let noted = code.types().get(pc).copied().flatten()?;
     let Ty::App(id, _) = program.result_types.get(noted as usize)? else {
         return None;
     };
@@ -546,7 +548,7 @@ pub fn update_by_index(
                 .as_ref()
                 .is_some_and(|state| state.len() == depth)
         })?;
-        let Op::Const(constant) = code.ops[at] else {
+        let Op::Const(constant) = code.ops()[at] else {
             return None;
         };
         let name = code.constants[constant as usize].as_text()?;
@@ -616,7 +618,7 @@ pub fn analyse(
     globals: &[Option<i64>],
     pairs: bool,
 ) -> Result<Analysis, Rejection> {
-    let count = code.ops.len();
+    let count = code.ops().len();
     let mut slots = vec![SlotKind::Unset; code.locals as usize];
     // a parameter starts as its declared type says (`abs_of_params`, the
     // kind a direct caller passes it as); the parameters of a test, an
@@ -638,9 +640,9 @@ pub fn analyse(
     entry[0] = Some(Vec::new());
     // a variable's type, from the ops that load its slot
     let mut slot_types: Vec<Option<Option<u32>>> = vec![None; code.locals as usize];
-    for (pc, op) in code.ops.iter().enumerate() {
+    for (pc, op) in code.ops().iter().enumerate() {
         if let Op::Load(slot) | Op::LoadMove(slot) = op {
-            let noted = code.types.get(pc).copied().flatten();
+            let noted = code.types().get(pc).copied().flatten();
             let known = &mut slot_types[*slot as usize];
             *known = match (*known, noted) {
                 (None, noted) => Some(noted),
@@ -667,7 +669,7 @@ pub fn analyse(
             let open = handlers[pc].clone();
             let mut stack = state;
             let mut open_after = open.clone();
-            let op = &code.ops[pc];
+            let op = &code.ops()[pc];
             // the successors of this op with the state they receive
             let mut flows: Vec<Edge> = Vec::new();
             let mut falls_through = true;
@@ -704,7 +706,7 @@ pub fn analyse(
             let note = |abs: Abs| -> Abs {
                 match abs {
                     Abs::Boxed(None) if op.pushes_its_expression() => {
-                        Abs::Boxed(code.types.get(pc).copied().flatten())
+                        Abs::Boxed(code.types().get(pc).copied().flatten())
                     }
                     other => other,
                 }
@@ -897,7 +899,7 @@ pub fn analyse(
                 }
                 Op::JumpByTag { table, .. } => {
                     // the arms by the tag (decision AW15), the stack as it is
-                    for target in &code.tables[*table as usize] {
+                    for target in &code.tables()[*table as usize] {
                         flows.push((*target as usize, stack.clone(), open_after.clone()));
                     }
                 }
@@ -1104,7 +1106,7 @@ pub fn analyse(
 /// writes the slots as these ops say too, so a frame it hands over at a
 /// loop header fits the state there.
 pub fn owned_slots(code: &Code, analysis: &Analysis, borrowed: &[bool]) -> Vec<Vec<bool>> {
-    let count = code.ops.len();
+    let count = code.ops().len();
     let locals = code.locals as usize;
     let boxed =
         |slot: usize| matches!(analysis.slots[slot], SlotKind::Boxed(_) | SlotKind::Pair(_));
@@ -1125,7 +1127,7 @@ pub fn owned_slots(code: &Code, analysis: &Analysis, borrowed: &[bool]) -> Vec<V
             else {
                 continue;
             };
-            let op = &code.ops[pc];
+            let op = &code.ops()[pc];
             let mut after = state.clone();
             match op {
                 Op::Store(slot) => {
@@ -1186,7 +1188,7 @@ pub fn owned_slots(code: &Code, analysis: &Analysis, borrowed: &[bool]) -> Vec<V
                 | Op::JumpIfFailure(target) => flows.push((*target as usize, &after)),
                 Op::IterNext { exit, .. } => flows.push((*exit as usize, &after)),
                 Op::JumpByTag { table, .. } => {
-                    for target in &code.tables[*table as usize] {
+                    for target in &code.tables()[*table as usize] {
                         flows.push((*target as usize, &after));
                     }
                 }

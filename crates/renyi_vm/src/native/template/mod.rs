@@ -232,20 +232,20 @@ pub fn compile(
     let (borrowed, masks) = borrowed_operands(program, code, &analysis, calls, false);
     let abi = host_abi();
     let mut asm = Asm::new();
-    let labels = (0..=code.ops.len()).map(|_| asm.label()).collect();
+    let labels = (0..=code.ops().len()).map(|_| asm.label()).collect();
     let epilogue = asm.label();
     let leave = asm.label();
     let not_bool = asm.label();
     // the count a back edge promotes at, within the compare's immediate
     let threshold = promotion.then(|| {
-        (code.ops.len() as u32)
+        (code.ops().len() as u32)
             .saturating_mul(hot_factor)
             .min(i32::MAX as u32)
     });
     let counts = if threshold.is_some() {
         block_lengths(code)
     } else {
-        vec![None; code.ops.len()]
+        vec![None; code.ops().len()]
     };
     let mut gen = Gen {
         program,
@@ -278,7 +278,7 @@ pub fn compile(
     Ok(Template {
         body,
         headers,
-        ops: code.ops.len(),
+        ops: code.ops().len(),
         time: started.elapsed(),
     })
 }
@@ -329,10 +329,10 @@ struct Gen<'a> {
 /// the ops of a block run together, but for a failure in its middle,
 /// which counts the rest too.
 fn block_lengths(code: &Code) -> Vec<Option<u32>> {
-    let count = code.ops.len();
+    let count = code.ops().len();
     let mut starts = vec![false; count + 1];
     starts[0] = true;
-    for (pc, op) in code.ops.iter().enumerate() {
+    for (pc, op) in code.ops().iter().enumerate() {
         let target = match op {
             Op::Jump(target)
             | Op::JumpIfFalse(target)
@@ -347,7 +347,7 @@ fn block_lengths(code: &Code) -> Vec<Option<u32>> {
             starts[target.min(count)] = true;
         }
         if let Op::JumpByTag { table, .. } = op {
-            for target in &code.tables[*table as usize] {
+            for target in &code.tables()[*table as usize] {
                 starts[(*target as usize).min(count)] = true;
             }
         }
@@ -792,7 +792,7 @@ impl Gen<'_> {
         let reached = |pc: usize| matches!(self.analysis.entry.get(pc), Some(Some(_)));
         let mut headers: Vec<u32> = self
             .code
-            .ops
+            .ops()
             .iter()
             .enumerate()
             .filter_map(|(pc, op)| match op {
@@ -879,7 +879,7 @@ impl Gen<'_> {
     }
 
     fn body(&mut self) {
-        let count = self.code.ops.len();
+        let count = self.code.ops().len();
         for pc in 0..count {
             let Some(state) = &self.analysis.entry[pc] else {
                 // no path reaches the op
@@ -1459,7 +1459,7 @@ impl Gen<'_> {
     fn op(&mut self, pc: usize) {
         let code_id = self.code_id as u64;
         let pc_arg = Arg::Imm(pc as u64);
-        match &self.code.ops[pc] {
+        match &self.code.ops()[pc] {
             Op::Const(index) => {
                 let constant = &self.code.constants[*index as usize];
                 let plain = !abs_of_constant(constant).is_boxed();
@@ -1507,7 +1507,7 @@ impl Gen<'_> {
                 let from = self.slot(*slot as usize);
                 let top = self.top();
                 self.copy(from, top);
-                let moving = matches!(self.code.ops[pc], Op::LoadMove(_)) && !self.borrowed[pc];
+                let moving = matches!(self.code.ops()[pc], Op::LoadMove(_)) && !self.borrowed[pc];
                 if moving {
                     self.asm.mov_m8i(from.0, from.1, TAG_NOTHING);
                 } else if !self.borrowed[pc] {
@@ -1966,7 +1966,7 @@ impl Gen<'_> {
                 self.asm.jcc(Cond::Ne, through);
                 self.asm.mov_rm(SCRATCH2, at.0, at.1 + PAYLOAD);
                 self.asm.mov_rm(SCRATCH, SCRATCH2, RECORD_TAG);
-                let targets = self.code.tables[*table as usize].clone();
+                let targets = self.code.tables()[*table as usize].clone();
                 for (tag, target) in targets.iter().enumerate() {
                     self.asm.cmp_ri(SCRATCH, tag as i32);
                     self.jump_to(*target as usize, pc, Some(Cond::E));
@@ -1978,7 +1978,7 @@ impl Gen<'_> {
                 self.asm.movzx_rm8(SCRATCH, at.0, at.1);
                 self.asm.cmp_r32i(SCRATCH, TAG_FAILURE as i32);
                 self.jump_to(*target as usize, pc, Some(Cond::E));
-                if matches!(self.code.ops[pc], Op::JumpIfAbsent(_)) {
+                if matches!(self.code.ops()[pc], Op::JumpIfAbsent(_)) {
                     self.asm.cmp_r32i(SCRATCH, TAG_NOTHING as i32);
                     self.jump_to(*target as usize, pc, Some(Cond::E));
                 }
@@ -2033,7 +2033,7 @@ impl Gen<'_> {
                 });
             }
             Op::IsNothing | Op::IsFailure => {
-                let name = if matches!(self.code.ops[pc], Op::IsNothing) {
+                let name = if matches!(self.code.ops()[pc], Op::IsNothing) {
                     "rt_is_nothing"
                 } else {
                     "rt_is_failure"

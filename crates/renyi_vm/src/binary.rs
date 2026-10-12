@@ -10,7 +10,9 @@
 //! the order `file.rs` writes them; a map is written in key order, so
 //! that one program has one encoding.
 
+use std::cell::Cell;
 use std::collections::HashMap;
+use std::sync::{Arc, OnceLock};
 
 use renyi_check::effects::Capability;
 use renyi_check::types::{FunctionTy, Ty};
@@ -18,7 +20,7 @@ use renyi_check::world::Builtins;
 use renyi_syntax::ast::BinaryOp;
 use renyi_syntax::Span;
 
-use crate::bytecode::{Code, CodeKind, GroupFold, Op};
+use crate::bytecode::{Body, Code, CodeKind, GroupFold, Op};
 use crate::compile::{
     CodeId, ConstantMeta, ExampleMeta, Expected, Foreign, FunctionMeta, Program, Python,
     SourceLines, Specials, TestMeta,
@@ -30,11 +32,52 @@ use crate::value::Value;
 
 /// The version of the encoding, its first integer; 5 added the read-only
 /// flags of a code object's parameters (decision AW5), 6 the jump tables
-/// of a code object (decision AW15), and 7 the flag that says the last
-/// reads of the slots are moves already (decision AW17).
-pub const FORMAT: u64 = 7;
+/// of a code object (decision AW15), 7 the flag that says the last reads
+/// of the slots are moves already (decision AW17), and 8 the body of a
+/// code object as a block after its head, decoded at the first use
+/// (decision AW18).
+pub const FORMAT: u64 = 8;
 
 type Read<T> = Result<T, String>;
+
+/// The bytes a code object's body is decoded from at its first use
+/// (decision AW18): the program's encoding, shared, the body's block in
+/// it, and the limits its indices are checked against.
+#[derive(Clone)]
+pub struct Encoded {
+    bytes: Arc<[u8]>,
+    start: usize,
+    end: usize,
+    /// The code object's index in the program, for the messages.
+    index: usize,
+    limits: crate::file::Limits,
+}
+
+impl std::fmt::Debug for Encoded {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Encoded({}..{} of code {})",
+            self.start, self.end, self.index
+        )
+    }
+}
+
+impl Encoded {
+    /// The body, checked as the file's loader checks one.
+    pub(crate) fn decode_body(&self, head: &Code) -> Read<Body> {
+        let mut input = Reader {
+            bytes: &self.bytes[..self.end],
+            at: self.start,
+        };
+        let body = read_body(&mut input)?;
+        if input.remaining() != 0 {
+            return Err(format!("{} bytes after the body", input.remaining()));
+        }
+        crate::file::check_body(self.index, head, &body, &self.limits)?;
+        Ok(body)
+    }
+}
 
 /// The operators in the order of their codes.
 const OPERATORS: [BinaryOp; 14] = [
@@ -435,13 +478,22 @@ fn write_code(out: &mut Writer, code: &Code) {
     out.usize(code.params as usize);
     out.usize(code.locals as usize);
     out.list(&code.read_only, |out, flag| out.bool(*flag));
-    out.list(&code.ops, write_op);
-    out.list(&code.spans, |out, span| out.span(*span));
     out.list(&code.constants, write_constant);
-    out.list(&code.types, |out, ty| {
+    // the body as a block, so that the loader can leave it to the first
+    // use (decision AW18)
+    let mut block = Writer::default();
+    write_body(&mut block, code.body());
+    out.usize(block.out.len());
+    out.out.extend_from_slice(&block.out);
+}
+
+fn write_body(out: &mut Writer, body: &Body) {
+    out.list(&body.ops, write_op);
+    out.list(&body.spans, |out, span| out.span(*span));
+    out.list(&body.types, |out, ty| {
         out.opt(ty.as_ref(), |out, index| out.usize(*index as usize))
     });
-    out.list(&code.tables, |out, table| {
+    out.list(&body.tables, |out, table| {
         out.list(table, |out, target| out.usize(*target as usize))
     });
 }
@@ -921,25 +973,52 @@ fn read_op(input: &mut Reader) -> Read<Op> {
     })
 }
 
-fn read_code(input: &mut Reader) -> Read<Code> {
+/// A code object's head, with its body left as the block's bytes, to
+/// decode at the first use (decision AW18); the limits are filled in
+/// once the whole program is read.
+fn read_code(input: &mut Reader, shared: &Arc<[u8]>, index: usize) -> Read<Code> {
+    let name = input.text()?;
+    let module = input.usize()?;
+    let kind = match input.u8()? {
+        0 => CodeKind::Function,
+        1 => CodeKind::Test,
+        2 => CodeKind::Constant,
+        3 => CodeKind::Example,
+        4 => CodeKind::Refinement,
+        other => return Err(format!("the program holds {other} for a code kind")),
+    };
+    let function = input.opt(Reader::usize)?;
+    let params = input.u16()?;
+    let locals = input.u16()?;
+    let read_only = input.list(Reader::bool)?;
+    let constants = input.list(read_constant)?;
+    let length = input.usize()?;
+    let start = input.at;
+    input.take(length)?;
     Ok(Code {
-        name: input.text()?,
-        module: input.usize()?,
-        kind: match input.u8()? {
-            0 => CodeKind::Function,
-            1 => CodeKind::Test,
-            2 => CodeKind::Constant,
-            3 => CodeKind::Example,
-            4 => CodeKind::Refinement,
-            other => return Err(format!("the program holds {other} for a code kind")),
-        },
-        function: input.opt(Reader::usize)?,
-        params: input.u16()?,
-        locals: input.u16()?,
-        read_only: input.list(Reader::bool)?,
+        name,
+        module,
+        kind,
+        function,
+        params,
+        locals,
+        read_only,
+        constants,
+        body: OnceLock::new(),
+        encoded: Some(Encoded {
+            bytes: Arc::clone(shared),
+            start,
+            end: start + length,
+            index,
+            limits: crate::file::Limits::default(),
+        }),
+    })
+}
+
+fn read_body(input: &mut Reader) -> Read<Body> {
+    Ok(Body {
         ops: input.list(read_op)?,
         spans: input.list(Reader::span)?,
-        constants: input.list(read_constant)?,
         types: input.list(|input| Ok(input.opt(Reader::usize)?.map(|index| index as u32)))?,
         tables: input.list(|input| input.list(Reader::u32))?,
     })
@@ -947,9 +1026,18 @@ fn read_code(input: &mut Reader) -> Read<Code> {
 
 /// The program the bytes hold; the error says what does not fit. Every
 /// index is checked to point inside the program, as the file's loader
-/// checks (`file::check`).
+/// checks (`file::check`), a code object's body when it is decoded.
 pub fn decode(bytes: &[u8]) -> Read<Program> {
-    let mut input = Reader { bytes, at: 0 };
+    decode_shared(Arc::from(bytes))
+}
+
+/// `decode` of bytes shared with the code objects, which decode their
+/// bodies from them at the first use (decision AW18).
+pub fn decode_shared(shared: Arc<[u8]>) -> Read<Program> {
+    let mut input = Reader {
+        bytes: &shared,
+        at: 0,
+    };
     let format = input.uint()?;
     if format != FORMAT {
         return Err(format!(
@@ -1013,7 +1101,12 @@ pub fn decode(bytes: &[u8]) -> Read<Program> {
             },
         })
     })?;
-    let codes = input.list(read_code)?;
+    let next = Cell::new(0);
+    let codes = input.list(|input| {
+        let index = next.get();
+        next.set(index + 1);
+        read_code(input, &shared, index)
+    })?;
     let result_types = input.list(read_type)?;
     let specials = input.list(|input| {
         Ok(Specials {
@@ -1037,7 +1130,7 @@ pub fn decode(bytes: &[u8]) -> Read<Program> {
         .enumerate()
         .filter_map(|(id, code)| code.map(|code| (id, code)))
         .collect();
-    let program = Program {
+    let mut program = Program {
         codes,
         functions: function_table,
         function_codes,
@@ -1061,6 +1154,12 @@ pub fn decode(bytes: &[u8]) -> Read<Program> {
         date,
         prepared,
     };
+    let limits = crate::file::Limits::of(&program);
+    for code in &mut program.codes {
+        if let Some(encoded) = code.encoded.as_mut() {
+            encoded.limits = limits;
+        }
+    }
     crate::file::check(&program)?;
     Ok(program)
 }

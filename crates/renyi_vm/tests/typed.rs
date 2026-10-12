@@ -67,18 +67,18 @@ fn disagreements(program: &Program) -> Vec<String> {
         let Ok(analysis) = analyse(program, code, &[], false) else {
             continue;
         };
-        assert_eq!(code.types.len(), code.ops.len(), "{}", code.name);
-        for (pc, op) in code.ops.iter().enumerate() {
+        assert_eq!(code.types().len(), code.ops().len(), "{}", code.name);
+        for (pc, op) in code.ops().iter().enumerate() {
             if !op.pushes_its_expression() {
                 continue;
             }
-            let Some(index) = code.types[pc] else {
+            let Some(index) = code.types()[pc] else {
                 continue;
             };
             let noted_ty = &program.result_types[index as usize];
             let noted = abs_of_type(program, noted_ty);
             let next = pc + 1;
-            if next >= code.ops.len() || analysis.block_starts[next] {
+            if next >= code.ops().len() || analysis.block_starts[next] {
                 continue;
             }
             let Some(Some(state)) = analysis.entry.get(next) else {
@@ -132,8 +132,8 @@ fn the_noted_types_agree_with_the_inference_over_the_corpus_and_the_compiler() {
     // the compiler's own ops are typed for the most part
     let (typed, total) = program.codes.iter().fold((0, 0), |(typed, total), code| {
         (
-            typed + code.types.iter().filter(|t| t.is_some()).count(),
-            total + code.ops.len(),
+            typed + code.types().iter().filter(|t| t.is_some()).count(),
+            total + code.ops().len(),
         )
     });
     assert!(typed * 2 > total, "{typed} of {total} ops typed");

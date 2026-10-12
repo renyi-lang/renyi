@@ -38,7 +38,7 @@ use std::ops::Range;
 use renyi_syntax::Span;
 
 use super::infer::analyse;
-use crate::bytecode::{Code, CodeKind, Op};
+use crate::bytecode::{Body, Code, CodeKind, Op};
 use crate::compile::{CodeId, Program};
 
 /// The largest callee expanded, in ops.
@@ -78,7 +78,7 @@ impl Region {
     /// the tails.
     pub fn callee_pc(&self, pc: usize, callee: &Code) -> Option<usize> {
         let body = self.body as usize;
-        (body <= pc && pc < body + callee.ops.len()).then(|| pc - body)
+        (body <= pc && pc < body + callee.ops().len()).then(|| pc - body)
     }
 }
 
@@ -92,23 +92,23 @@ pub struct Expansion {
 /// into it, or `None` when nothing was expanded.
 pub fn expand(program: &Program, code_id: CodeId) -> Option<Expansion> {
     let original = &program.codes[code_id];
-    if original.ops.len() >= u32::MAX as usize / 4 {
+    if original.ops().len() >= u32::MAX as usize / 4 {
         return None;
     }
     let mut expander = Expander {
         program,
-        ops: original.ops.clone(),
-        spans: original.spans.clone(),
-        types: original.types.clone(),
+        ops: original.ops().to_vec(),
+        spans: original.spans().to_vec(),
+        types: original.types().to_vec(),
         constants: original.constants.clone(),
-        tables: original.tables.clone(),
+        tables: original.tables().to_vec(),
         regions: Vec::new(),
         next_slot: original.locals as usize,
         appended: 0,
-        budget: budget_for(original.ops.len()),
+        budget: budget_for(original.ops().len()),
         limit: callee_limit(),
     };
-    expander.scan(0..original.ops.len(), None, &mut vec![code_id], 1);
+    expander.scan(0..original.ops().len(), None, &mut vec![code_id], 1);
     if expander.regions.is_empty() {
         return None;
     }
@@ -116,7 +116,7 @@ pub fn expand(program: &Program, code_id: CodeId) -> Option<Expansion> {
         eprintln!(
             "inline: {} ({} ops, {} locals)",
             original.name,
-            original.ops.len(),
+            original.ops().len(),
             original.locals
         );
         for region in &expander.regions {
@@ -139,11 +139,13 @@ pub fn expand(program: &Program, code_id: CodeId) -> Option<Expansion> {
         }
     }
     let mut code = original.clone();
-    code.ops = expander.ops;
-    code.spans = expander.spans;
-    code.types = expander.types;
     code.constants = expander.constants;
-    code.tables = expander.tables;
+    code.set_body(Body {
+        ops: expander.ops,
+        spans: expander.spans,
+        types: expander.types,
+        tables: expander.tables,
+    });
     code.locals = u16::try_from(expander.next_slot).ok()?;
     Some(Expansion {
         code,
@@ -226,7 +228,7 @@ impl Expander<'_> {
                 Ok((callee, shape)) => {
                     let callee_code = &self.program.codes[callee];
                     let size = args as usize
-                        + callee_code.ops.len()
+                        + callee_code.ops().len()
                         + 2 * callee_code.locals as usize
                         + 1
                         + if shape.returns_nothing { 2 } else { 0 };
@@ -262,7 +264,7 @@ impl Expander<'_> {
         if depth < NESTING_LIMIT {
             for (region, callee) in emitted {
                 let body = self.regions[region].body as usize;
-                let len = self.program.codes[callee].ops.len();
+                let len = self.program.codes[callee].ops().len();
                 chain.push(callee);
                 self.scan(body..body + len, Some(region as u32), chain, depth + 1);
                 chain.pop();
@@ -295,13 +297,13 @@ impl Expander<'_> {
         if code.params as usize != args {
             return Err("the arguments do not match the parameters");
         }
-        if code.ops.len() > self.limit {
+        if code.ops().len() > self.limit {
             return Err("too big");
         }
         if !program.function_metas[function].needs.is_empty() {
             return Err("it needs capabilities");
         }
-        for (pc, op) in code.ops.iter().enumerate() {
+        for (pc, op) in code.ops().iter().enumerate() {
             match op {
                 Op::Jump(target)
                 | Op::JumpIfFalse(target)
@@ -313,7 +315,7 @@ impl Expander<'_> {
                     return Err("a loop");
                 }
                 Op::JumpByTag { table, .. }
-                    if code.tables[*table as usize]
+                    if code.tables()[*table as usize]
                         .iter()
                         .any(|target| *target as usize <= pc) =>
                 {
@@ -345,7 +347,7 @@ impl Expander<'_> {
         let analysis =
             analyse(self.program, code, &[], false).map_err(|_| "its analysis does not settle")?;
         let mut returns_nothing = false;
-        for (pc, op) in code.ops.iter().enumerate() {
+        for (pc, op) in code.ops().iter().enumerate() {
             // an op the analysis never reached (the `ReturnNothing` every
             // function ends with, after a `Return`) is left out, as the
             // generated code leaves it out
@@ -394,17 +396,17 @@ impl Expander<'_> {
         let const_offset = self.constants.len() as u32;
         self.constants.extend(code.constants.iter().cloned());
         // where the tails will lie
-        let exit = body + code.ops.len();
+        let exit = body + code.ops().len();
         let nothing = shape.returns_nothing.then_some(exit + 2 * locals + 1);
         let shift = |target: &u32| (*target as usize + body) as u32;
         let slot = |slot: &u16| (*slot as usize + slot_base) as u16;
         // the callee's jump tables after the caller's, their targets shifted
         // with the ops (decision AW15)
         let table_offset = self.tables.len();
-        for table in &code.tables {
+        for table in code.tables() {
             self.tables.push(table.iter().map(shift).collect());
         }
-        for (q, op) in code.ops.iter().enumerate() {
+        for (q, op) in code.ops().iter().enumerate() {
             let mapped = match op {
                 Op::Const(index) => Op::Const(index + const_offset),
                 Op::Load(s) => Op::Load(slot(s)),
@@ -452,8 +454,8 @@ impl Expander<'_> {
                 Op::ReturnNothing => Op::Jump(nothing.unwrap_or(exit) as u32),
                 other => other.clone(),
             };
-            let ty = code.types.get(q).copied().flatten();
-            self.push(mapped, code.spans[q], ty);
+            let ty = code.types().get(q).copied().flatten();
+            self.push(mapped, code.spans()[q], ty);
         }
         // the exit: the region's slots released as the callee's frame
         // would be, then back to the op after the call, the result on top
@@ -521,19 +523,19 @@ pub fn location(
     let region = &regions[index];
     let callee = &program.codes[region.callee as usize];
     if let Some(q) = region.callee_pc(pc, callee) {
-        return Some((callee.module, callee.spans[q]));
+        return Some((callee.module, callee.spans()[q]));
     }
     // the call's site: in the caller's own ops, or in the parent's body
     match region.parent {
         None => {
             let caller = &program.codes[code];
-            Some((caller.module, caller.spans[region.call_pc as usize]))
+            Some((caller.module, caller.spans()[region.call_pc as usize]))
         }
         Some(parent) => {
             let parent = &regions[parent as usize];
             let outer = &program.codes[parent.callee as usize];
             let q = parent.callee_pc(region.call_pc as usize, outer)?;
-            Some((outer.module, outer.spans[q]))
+            Some((outer.module, outer.spans()[q]))
         }
     }
 }

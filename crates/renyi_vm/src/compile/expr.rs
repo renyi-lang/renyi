@@ -560,8 +560,8 @@ impl Compiler<'_, '_> {
             .map(|arm| self.variant_tag_of(&arm.pattern))
             .collect();
         let table = if named.iter().flatten().count() >= TABLE_ARMS {
-            let index = self.code.tables.len();
-            self.code.tables.push(Vec::new());
+            let index = self.code.tables().len();
+            self.code.body_mut().tables.push(Vec::new());
             self.emit(
                 Op::JumpByTag {
                     slot,
@@ -592,7 +592,7 @@ impl Compiler<'_, '_> {
         }
         if let Some(index) = table {
             let otherwise_at = self.here();
-            self.code.tables[index] = match_table(&named, &starts, otherwise_at);
+            self.code.body_mut().tables[index] = match_table(&named, &starts, otherwise_at);
         }
         match otherwise {
             Some(fallback) => body(self, fallback),
