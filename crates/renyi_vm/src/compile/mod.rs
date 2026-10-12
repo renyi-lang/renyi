@@ -829,6 +829,15 @@ impl<'c, 'w> Compiler<'c, 'w> {
         slot
     }
 
+    /// The two slots of a loop's iterator (decision AW14): the source,
+    /// listed, in the first, the position in the one after it. Both
+    /// emitters allocate them this way, which the compile judge holds.
+    pub fn loop_slots(&mut self) -> u16 {
+        let slot = self.temp();
+        self.temp();
+        slot
+    }
+
     /// Give an existing slot a name in the current scope (a pattern binding).
     pub fn alias(&mut self, name: &str, slot: u16) {
         self.scopes

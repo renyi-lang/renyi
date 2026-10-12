@@ -466,8 +466,9 @@ impl std::fmt::Debug for Composite {
 
 /// Values of the library that carry more than their declared fields. The
 /// layout is fixed (decision AU1, stage ii): the tag at offset 0, the
-/// payload at offset 8, so that the generated code reads a list
-/// iterator in place (`layout::NATIVE_TAG`, `NATIVE_PAYLOAD`).
+/// payload at offset 8, which the generated code read for a list
+/// iterator until a loop's iterator went into two slots of the frame
+/// (decision AW14).
 #[derive(Debug)]
 #[repr(C, u8)]
 pub enum Native {
@@ -478,10 +479,6 @@ pub enum Native {
         header: Rc<Vec<String>>,
         cells: Vec<String>,
     },
-    /// A loop's position over its source: the list itself when the source
-    /// was one, else a snapshot of the items; read and advanced by the
-    /// generated code in place (decision AU1, stage ii).
-    Iterator(ListIter),
     /// A loop's position over a range of small Integers: the next value,
     /// the last one and the step, and whether it has run out; the shape
     /// the generated code keeps in registers (decision AG3), so that a
@@ -500,42 +497,6 @@ pub enum Native {
         connection: RefCell<Option<rusqlite::Connection>>,
         path: String,
     },
-}
-
-/// A loop's position over a list (decision AU1, stage ii): the items'
-/// address and count, which the generated code reads, the position, which
-/// it advances, and the list itself, which keeps the items where they
-/// are: a list another holder changes is copied first (`Rc::make_mut`),
-/// and a list only the iterator holds is changed by nobody.
-#[derive(Debug)]
-#[repr(C)]
-pub struct ListIter {
-    pub items: *const Value,
-    pub len: usize,
-    pub position: std::cell::Cell<usize>,
-    pub list: Rc<Vec<Value>>,
-}
-
-impl ListIter {
-    pub fn new(list: Rc<Vec<Value>>) -> ListIter {
-        ListIter {
-            items: list.as_ptr(),
-            len: list.len(),
-            position: std::cell::Cell::new(0),
-            list,
-        }
-    }
-
-    /// The next item, the position advanced past it; `None` at the end,
-    /// where the position stays.
-    pub fn next(&self) -> Option<Value> {
-        let at = self.position.get();
-        let item = self.list.get(at).cloned();
-        if item.is_some() {
-            self.position.set(at + 1);
-        }
-        item
-    }
 }
 
 // Decision X3: the stack and every collection hold values by this width.
@@ -600,17 +561,8 @@ pub mod layout {
     pub const RECORD_TY: i32 = 16;
     pub const RECORD_TAG: i32 = 24;
     pub const RECORD_FIELDS: i32 = 32;
-    /// A `Native` value's tag, and inside a `Native` (`repr(C, u8)`) its
-    /// own tag and its payload (decision AU1, stage ii).
+    /// A `Native` value's tag.
     pub const TAG_NATIVE: u8 = 17;
-    pub const NATIVE_TAG: i32 = 0;
-    pub const NATIVE_PAYLOAD: i32 = 8;
-    /// The tag of `Native::Iterator`.
-    pub const NATIVE_ITERATOR: u8 = 1;
-    /// Inside a `ListIter`: the items' address, their count, the position.
-    pub const ITER_ITEMS: i32 = std::mem::offset_of!(super::ListIter, items) as i32;
-    pub const ITER_LEN: i32 = std::mem::offset_of!(super::ListIter, len) as i32;
-    pub const ITER_POSITION: i32 = std::mem::offset_of!(super::ListIter, position) as i32;
 
     /// Where a list's block keeps the address of its items and their
     /// count, from the start of the `Rc`'s allocation that a list's
@@ -1039,39 +991,6 @@ mod layout_tests {
     fn payload_word(value: &Value, offset: usize) -> usize {
         // SAFETY: the value is 24 bytes wide and the word lies inside it.
         unsafe { *((value as *const Value as *const u8).add(offset) as *const usize) }
-    }
-
-    #[test]
-    fn a_list_iterator_lies_where_the_generated_code_reads_it() {
-        let list = Rc::new(vec![Value::integer(7), Value::Nothing]);
-        let value = Value::Native(Rc::new(Native::Iterator(ListIter::new(list.clone()))));
-        assert_eq!(tag(&value), TAG_NATIVE);
-        let allocation = payload_word(&value, PAYLOAD as usize);
-        let native = allocation + RC_VALUE as usize;
-        // SAFETY: the words lie inside the allocation of the native value.
-        unsafe {
-            assert_eq!(
-                *((native + NATIVE_TAG as usize) as *const u8),
-                NATIVE_ITERATOR
-            );
-            let iterator = native + NATIVE_PAYLOAD as usize;
-            assert_eq!(
-                *((iterator + ITER_ITEMS as usize) as *const usize),
-                list.as_ptr() as usize
-            );
-            assert_eq!(*((iterator + ITER_LEN as usize) as *const usize), 2);
-            assert_eq!(*((iterator + ITER_POSITION as usize) as *const usize), 0);
-        }
-        let Value::Native(native) = &value else {
-            unreachable!()
-        };
-        let Native::Iterator(iterator) = &**native else {
-            unreachable!()
-        };
-        assert_eq!(iterator.next(), Some(Value::integer(7)));
-        assert_eq!(iterator.next(), Some(Value::Nothing));
-        assert_eq!(iterator.next(), None);
-        assert_eq!(iterator.position.get(), 2);
     }
 
     #[test]

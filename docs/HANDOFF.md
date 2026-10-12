@@ -65,8 +65,12 @@ to 4.75), which completes stage 3; and stage 4a built and measured
 equality unless the left operand's type declares its own `equals`,
 two values of one variant type compared in the generated code of both
 tiers by the type and the tag of their blocks; the check row 2,099.1
-to 1,995.8, -4.9%; the ratio 4.75 to 4.52). Next is
-the rest of stage 4, the iterator in two slots and `match` by a table
+to 1,995.8, -4.9%; the ratio 4.75 to 4.52); and stage 4b built and measured (decision AW14: a loop's
+iterator in two slots of the frame, the source listed in the first and
+the position as a small Integer in the second, which the Cranelift
+tier keeps in a register, the native iterator gone; the check row
+1,995.8 to 1,930.3, -3.3%; the ratio 4.52
+to 4.37). Next is the last item of stage 4, `match` by a table
 (the start-here item 1). The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -377,9 +381,10 @@ and push there directly.
    4.75), which completes stage 3; and stage 4a (decision AW13,
    "Stage 4a as built": `is` and `is not` in place, variants compared
    in the generated code by the type and the tag; the check row to
-   1,995.8, -4.9%; the ratio to 4.52).
-   Next is the rest of stage 4 (the iterator in two slots, `match` by
-   a table), the
+   1,995.8, -4.9%; the ratio to 4.52); and stage 4b (decision AW14, "Stage 4b as built": the
+   iterator in two slots; the check row to 1,930.3, -3.3%; the
+   ratio to 4.37).
+   Next is the last item of stage 4 (`match` by a table), the
    checker's own cuts between the stages, stages
    5 and 6 last. Each stage: the code, the gates of item 3, the measure
    (AU58's: the checker's image run under callgrind with the study's
@@ -414,8 +419,9 @@ and push there directly.
    commit), `renyi_stage3a` (9828e2e, stage 3a's commit) and
    `renyi_stage3b` (1b25b85, stage 3b's commit), `renyi_stage4a`
    (stage 4a's first build, the field-less types alone) and
-   `renyi_stage4a_v2` (stage 4a's commit, the base of the next
-   measure), each with its `study/` directory. The
+   `renyi_stage4a_v2` (cf06592, stage 4a's commit) and
+   `renyi_stage4b` (stage 4b's commit, the base of the next measure),
+   each with its `study/` directory. The
    road is months long (AU58); the gate is decided on the measure at
    the end.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
@@ -4769,6 +4775,46 @@ table is in AW13. Next in AW1's order: the rest of stage 4 (the
 iterator in two slots, 4b; `match` by a table, 4c), then the checker's
 own cuts, stages 5 and 6.
 
+**Stage 4b as built (decision AW14, 2026-10-12).** The second item of
+stage 4 in AW1's order: a loop's iterator in two consecutive slots of
+the frame. Both emitters allocate them (`loop_slots` in
+`compile/mod.rs`, at every `IterInit` of `compile/stmt.rs` and
+`compile/query.rs`, and in `compiler/emit.ry`): the first holds the
+source listed (`iterator_of` in `vm.rs`: a list as it is, the items of
+anything else as a list, a range of small Integers as its own iterator
+value, as before), the second the position as a small Integer. The
+interpreter's `IterInit` writes both and `IterNext` reads the item at
+the position and advances it (`iterator_next`); `rt_iter_init` does
+the same on the helpers' path, and the template tier calls the helpers
+as before. The analysis (`native/infer.rs`) marks the second slot an
+Integer, so the Cranelift tier keeps the position in a register: its
+`IterInit` moves a plain list from the stack into the slot where it
+lies, the slot's old value released, and sets the register to 0
+(anything else through the helper); its `IterNext` tests the slot for
+a list, reads the items' address and their count through the list's
+block as `List.at` does (AU34), compares the position, copies the item
+with one more reference and advances the register, a range iterator
+value in the slot through the helper as before; a hand-back boxes the
+position as any Integer slot and an entry at the loop header reads it
+back. `Native::Iterator` and `ListIter` are gone from `value.rs` with
+their layout constants; the bytecode file is format 9 (`file.rs`,
+`compiler/emit.ry`, `tests/compile.rs`), the image code format 22
+(`native/image.rs`). The corpus, the conformance suite on both tiers,
+the four judges (the compile judge on the slots of every loop), the
+loop tests and the new test
+`loops_in_two_slots_keep_their_list_and_position_across_a_hand_back`
+in `tests/native.rs` and `tests/template.rs` hold the paths. The
+measure: the check row 1,995.8 to 1,930.3 (-3.3%), the
+ratios by instructions 4.37, 2.91 and
+8.63; `rt_iter_init` 238,534 to
+0 calls, the native's drops 238,534 to
+0, `mi_malloc` 1,978,955 to 1,740,421;
+the iterators category 25.3 to 0.0 million; AT1's
+synchronous estimate 7,546.0 to 7,481.6
+(-0.9%). The table is in AW14. Next in AW1's order: the last
+item of stage 4, `match` by a table (4c), then the checker's own cuts,
+stages 5 and 6.
+
 ## The representation items: the design study (session 11)
 
 **What the owner ordered (AU20)**: after the template tier's follow-ups
@@ -6446,6 +6492,16 @@ holds between calls.
   `native/template/mod.rs`, `bt_rr` in `native/template/x64.rs`, the
   test in `tests/native.rs` and `tests/template.rs`; the measure in
   AW13 and in "Stage 4a as built".
+- Stage 4b (decision AW14, the commit after cf06592):
+  `loop_slots` in `compile/mod.rs` with its sites in `compile/stmt.rs`
+  and `compile/query.rs` and in `compiler/emit.ry` (format 9 there and
+  in `file.rs`, the literals of `tests/compile.rs`); `iterator_of` and
+  `iterator_next` in `vm.rs`, `rt_iter_init` in `native/runtime.rs`,
+  the position slot in `native/infer.rs`, `IterInit` and `IterNext` in
+  `native/codegen.rs`, code format 22 in `native/image.rs`;
+  `Native::Iterator` and `ListIter` gone from `value.rs` and
+  `render.rs`; the test in `tests/native.rs` and `tests/template.rs`;
+  the measure in AW14 and in "Stage 4b as built".
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

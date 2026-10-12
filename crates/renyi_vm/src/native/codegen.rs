@@ -42,10 +42,9 @@ use crate::native::runtime::{
 };
 use crate::native::{DeoptPoint, DEPTH_LIMIT};
 use crate::value::layout::{
-    COUNTED_OR_INTEGER, INT_PAYLOAD, INT_SMALL, INT_TAG, ITER_ITEMS, ITER_LEN, ITER_POSITION,
-    NATIVE_ITERATOR, NATIVE_PAYLOAD, NATIVE_TAG, PAYLOAD, RC_VALUE, RECORD_FIELDS, RECORD_TAG,
+    COUNTED_OR_INTEGER, INT_PAYLOAD, INT_SMALL, INT_TAG, PAYLOAD, RECORD_FIELDS, RECORD_TAG,
     RECORD_TY, SIZE, TAG_BOOLEAN, TAG_FAILURE, TAG_FLOAT, TAG_GUARDED, TAG_INTEGER, TAG_LIST,
-    TAG_NATIVE, TAG_NOTHING, TAG_RECORD, TAG_SMALL_TEXT, TAG_VARIANT,
+    TAG_NOTHING, TAG_RECORD, TAG_SMALL_TEXT, TAG_VARIANT,
 };
 use crate::value::Value;
 use crate::vm::{
@@ -1211,6 +1210,14 @@ impl Gen<'_, '_> {
             SlotVars::Three(vars) => vars,
             _ => panic!("slot {slot} is not a range iterator"),
         }
+    }
+
+    /// The position of the loop whose iterator is in `slot` set to 0, in
+    /// the register of the slot after it (decision AW14).
+    fn start_position(&mut self, slot: usize) {
+        let zero = self.iconst(types::I64, 0);
+        let var = self.slot_var(slot + 1);
+        self.b.def_var(var, zero);
     }
 
     fn position(&mut self, depth: usize) -> &mut PositionVars {
@@ -4094,12 +4101,39 @@ impl Gen<'_, '_> {
                     self.b.def_var(slot_vars[0], from);
                     self.b.def_var(slot_vars[1], to);
                     self.b.def_var(slot_vars[2], by);
+                    self.start_position(index);
                 } else {
+                    // a plain list goes into the slot as it lies, the
+                    // slot's old value released (decision AW14); anything
+                    // else through the helper, which lists it; the
+                    // position starts at 0 either way
+                    self.box_top(1);
+                    let height = self.height();
+                    let source = self.address_at(height - 1);
+                    let tag = self.tag_at(source, 0);
+                    let is_list = self.b.ins().icmp_imm_s(IntCC::Equal, tag, TAG_LIST as i64);
+                    let listed = self.b.create_block();
+                    let general = self.b.create_block();
+                    let join = self.b.create_block();
+                    self.b.ins().brif(is_list, listed, &[], general, &[]);
+                    self.b.seal_block(listed);
+                    self.b.seal_block(general);
+                    self.switch_to(listed);
+                    let to = self.address_at(index);
+                    self.release(to);
+                    self.copy_value(source, to);
+                    self.store_height(height - 1);
+                    self.b.ins().jump(join, &[]);
+                    self.switch_to(general);
                     let slot_value = self.u32(*slot as u32);
                     let status = self
                         .helper_on_stack("rt_iter_init", 1, &[self.base, slot_value, pc_value])
                         .expect("a status");
                     self.check_status(status, pc, false);
+                    self.b.ins().jump(join, &[]);
+                    self.b.seal_block(join);
+                    self.switch_to(join);
+                    self.start_position(index);
                 }
             }
             Op::IterNext { slot, exit } => {
@@ -4128,74 +4162,59 @@ impl Gen<'_, '_> {
                     let next = self.b.ins().iadd(current, step);
                     self.b.def_var(vars[0], next);
                 } else {
-                    // a list iterator read and advanced in place (decision
-                    // AU1, stage ii): the items' address, their count and
-                    // the position from the native's fixed layout, the item
-                    // copied with one more reference; anything else in the
-                    // slot (a range iterator, a value the analysis did not
-                    // type) goes through the helper
-                    let flags = MemFlagsData::trusted();
-                    let slot_address = self.address_at(index);
-                    let tag = self.tag_at(slot_address, 0);
-                    let is_native = self
-                        .b
-                        .ins()
-                        .icmp_imm_s(IntCC::Equal, tag, TAG_NATIVE as i64);
-                    let kind_block = self.b.create_block();
-                    let inline_block = self.b.create_block();
-                    let next_block = self.b.create_block();
-                    let slow = self.b.create_block();
                     let found = self.b.create_block();
                     let (exit_block, fill_exit) = self.edge_to(*exit as usize);
-                    self.b.ins().brif(is_native, kind_block, &[], slow, &[]);
-                    self.b.seal_block(kind_block);
-                    self.switch_to(kind_block);
-                    let rc = self
-                        .b
-                        .ins()
-                        .load(self.pointer, flags, slot_address, PAYLOAD);
-                    let kind = self
-                        .b
-                        .ins()
-                        .load(types::I8, flags, rc, RC_VALUE + NATIVE_TAG);
-                    let is_iterator =
-                        self.b
-                            .ins()
-                            .icmp_imm_s(IntCC::Equal, kind, NATIVE_ITERATOR as i64);
-                    self.b.ins().brif(is_iterator, inline_block, &[], slow, &[]);
-                    self.b.seal_block(inline_block);
-                    self.b.seal_block(slow);
-                    self.switch_to(inline_block);
-                    let iterator = RC_VALUE + NATIVE_PAYLOAD;
-                    let items = self
-                        .b
-                        .ins()
-                        .load(self.pointer, flags, rc, iterator + ITER_ITEMS);
-                    let len = self
-                        .b
-                        .ins()
-                        .load(types::I64, flags, rc, iterator + ITER_LEN);
-                    let position =
-                        self.b
-                            .ins()
-                            .load(types::I64, flags, rc, iterator + ITER_POSITION);
-                    let done = self
-                        .b
-                        .ins()
-                        .icmp(IntCC::UnsignedGreaterThanOrEqual, position, len);
-                    self.b.ins().brif(done, exit_block, &[], next_block, &[]);
-                    self.b.seal_block(next_block);
-                    self.switch_to(next_block);
-                    let offset = self.b.ins().imul_imm_s(position, SIZE as i64);
-                    let item = self.b.ins().iadd(items, offset);
-                    self.push_copy(item, true);
-                    let advanced = self.b.ins().iadd_imm_s(position, 1);
-                    self.b
-                        .ins()
-                        .store(flags, advanced, rc, iterator + ITER_POSITION);
-                    self.b.ins().jump(found, &[]);
+                    if crate::value::layout::list_layout().is_some() {
+                        // a list in the slot read in place (decision AW14):
+                        // its items' address and their count through the
+                        // list's block (where `layout::list_layout` found
+                        // them, loaded from the native state), the position
+                        // in the register of the slot after it, the item
+                        // copied with one more reference; anything else in
+                        // the slot (a range iterator, a value the analysis
+                        // did not type) goes through the helper
+                        let flags = MemFlagsData::trusted();
+                        let pointer = self.pointer;
+                        let slot_address = self.address_at(index);
+                        let tag = self.tag_at(slot_address, 0);
+                        let is_list = self.b.ins().icmp_imm_s(IntCC::Equal, tag, TAG_LIST as i64);
+                        let listed = self.b.create_block();
+                        let next_block = self.b.create_block();
+                        let slow = self.b.create_block();
+                        self.b.ins().brif(is_list, listed, &[], slow, &[]);
+                        self.b.seal_block(listed);
+                        self.b.seal_block(slow);
+                        self.switch_to(listed);
+                        let block = self.b.ins().load(pointer, flags, slot_address, PAYLOAD);
+                        let state = self.native_state();
+                        let len_offset =
+                            self.b.ins().load(types::I64, flags, state, STATE_LIST_LEN);
+                        let len_at = self.b.ins().iadd(block, len_offset);
+                        let len = self.b.ins().load(types::I64, flags, len_at, 0);
+                        let position_var = self.slot_var(index + 1);
+                        let position = self.b.use_var(position_var);
+                        let done =
+                            self.b
+                                .ins()
+                                .icmp(IntCC::UnsignedGreaterThanOrEqual, position, len);
+                        self.b.ins().brif(done, exit_block, &[], next_block, &[]);
+                        self.b.seal_block(next_block);
+                        self.switch_to(next_block);
+                        let items_offset =
+                            self.b
+                                .ins()
+                                .load(types::I64, flags, state, STATE_LIST_ITEMS);
+                        let items_at = self.b.ins().iadd(block, items_offset);
+                        let items = self.b.ins().load(pointer, flags, items_at, 0);
+                        let offset = self.b.ins().imul_imm_s(position, SIZE as i64);
+                        let item = self.b.ins().iadd(items, offset);
+                        self.push_copy(item, true);
+                        let advanced = self.b.ins().iadd_imm_s(position, 1);
+                        self.b.def_var(position_var, advanced);
+                        self.b.ins().jump(found, &[]);
+                        self.switch_to(slow);
+                    }
                     // the helper for anything else
-                    self.switch_to(slow);
                     let slot_value = self.u32(*slot as u32);
                     let has = self
                         .call("rt_iter_next", &[self.vm, self.base, slot_value])

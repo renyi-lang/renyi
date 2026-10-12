@@ -161,7 +161,7 @@ impl Compiler<'_, '_> {
         match order {
             None => {
                 self.expr(source);
-                let iterator = self.temp();
+                let iterator = self.loop_slots();
                 self.emit(Op::IterInit(iterator), span);
                 self.enter_loop(span);
                 let top = self.here();
@@ -189,7 +189,7 @@ impl Compiler<'_, '_> {
                 self.emit(Op::MakeList(0), span);
                 self.emit(Op::Store(buffer), span);
                 self.expr(source);
-                let iterator = self.temp();
+                let iterator = self.loop_slots();
                 self.emit(Op::IterInit(iterator), span);
                 let top = self.here();
                 let next = self.emit(
@@ -224,7 +224,7 @@ impl Compiler<'_, '_> {
                     },
                     span,
                 );
-                let sorted = self.temp();
+                let sorted = self.loop_slots();
                 self.emit(Op::IterInit(sorted), span);
                 self.enter_loop(span);
                 let top = self.here();

@@ -7580,3 +7580,94 @@ tier's own tests with the tier forced, 402 tests. Since stage 0 the
 check row 2,889.9 to 1,995.8 (-30.9%), since the study's binary 3,085.3
 (-35.3%). Next in AW1's order: the rest of stage 4, the iterator in two
 slots (4b) and `match` by a table (4c).
+
+**AW14. Stage 4b of the new backend: a loop's iterator in two slots of
+the frame.** The second item of stage 4 in AW1's order (the owner's
+answer 8 there: the iterator in two slots as a bytecode change in both
+emitters with the judges), on 2026-10-12, measured as AW1 prescribes
+against stage 4a's binary (cf06592). A `for each` over anything but a
+range held in registers allocated a native iterator (`Native::Iterator`
+with a `ListIter`: the items' address, their count, the position and
+the list, in a counted block): 238,534 on the check row through
+`rt_iter_init` (43.3 million instructions inclusive, `iterator_of` 11.2
+self), freed when the frame left (238,534 drops of the native, 6.5
+million self, 33.8 inclusive with the block's free), and the generated
+code read the position through the slot, the block and the native every
+turn and wrote it back. The stage: (1) both emitters allocate two
+consecutive slots per loop (`loop_slots` in `compile/mod.rs` and in
+`compiler/emit.ry`, at every `IterInit`: the plain loop, the two passes
+of a sorted one, a query's sources and its sorted pass, the compile
+judge holding them equal): the first holds the source listed (the list
+itself; the items of a set, a map, a text or a guarded source as a
+list; a range of small Integers as its own iterator value, as before),
+the second the position as a small Integer. (2) The interpreter's
+`IterInit` writes both and `IterNext` reads the item at the position
+and advances it (`iterator_of`, `iterator_next`); the helpers
+`rt_iter_init` and `rt_iter_next` do the same, and the template tier
+calls them as before. (3) The analysis marks the second slot an Integer
+(`SlotKind::Int`), so the Cranelift tier keeps the position in a
+register: `IterInit` moves a plain list from the stack into the slot
+where it lies, the slot's old value released, and sets the register to
+0 (anything else through the helper, which lists it; a range in
+registers sets the register too); `IterNext` tests the slot for a list,
+reads the items' address and their count through the list's block as
+`List.at` does (AU34: the layout words from the native state), compares
+the position, copies the item with one more reference and advances the
+register; a range iterator value in the slot takes the helper as
+before; a hand-back boxes the position as any Integer slot (`rt_deopt`)
+and an entry at a loop header reads it back (`rt_resume_int`), so a
+loop goes on in the interpreter from where the code was and comes back.
+(4) The bytecode file is format 9 and the image format 22 (the slots);
+`Native::Iterator`, `ListIter` and the layout constants of the native
+iterator are gone. The tests: the corpus, the conformance suite on both
+tiers, the four judges (the compile judge on the slots of every loop of
+the corpus, the suite and `compiler/`), the loop tests of
+`tests/native.rs` and `tests/template.rs`, and a new one in both,
+`loops_in_two_slots_keep_their_list_and_position_across_a_hand_back`: a
+product that leaves the machine word inside a loop hands the frame back
+and the loop goes on in the interpreter, the list grown in its own body
+keeps the loop's items, an inner loop uses its slots again on every
+row, a sorted loop and a query over two sources run, on machine code
+against the interpreter. What the measure found on the check row:
+`rt_iter_init` 238,534 to 0 calls (43.3 million inclusive to none:
+every loop's source there is a plain list, placed by the generated
+code), `iterator_of` 238,534 to 0 (11.2 to 0.0 self), `rt_iter_next`
+not called before either (the generated code read a list iterator in
+place since AU34), the native's drops 238,534 to 0 (6.5 to 0.0 self),
+`mi_malloc` 1,978,955 to 1,740,421, `mi_free` 1,777,181 to 1,538,721,
+`rt_truncate` 97,106 to 97,106 (28.6 to 26.6 inclusive), the glue of
+`Value` 2,016,576 to 1,191,936 (17.0 to 10.2). The measure in full
+(callgrind under WSL on the release build for Linux, the images built
+under `valgrind --tool=none`, against stage 4a's binary measured the
+same way in AW13, the reference AU34's 44782aa): the check row 1,995.8
+to 1,930.3 million instructions (-3.3%), the parse row 827.8 to 827.6
+(within 0.05%), the compile row 3,260.6 to 3,156.9 (-3.2%); the ratios
+by instructions against the reference's rows (441.6, 284.7 and 365.6)
+4.37, 2.91 and 8.63 against the gate's 3 (4.52, 2.91 and 8.92 after
+AW13); the Rust front end's own rows within 0.1% of stage 4a's (`check`
+173.3, `parse --json` 246.7, `compile` 446.2). The check row by
+category, AW13's table against this one, in millions: the iterators
+25.3 to 0.0, the counts and drops 173.8 to 152.2, mimalloc 121.1 to
+108.8, the generated code 998.0 to 1,000.9, the comparisons 34.5 to
+34.5, the hashing and equality 48.3 to 47.4, the natives 297.2 to
+297.2, the VM's own 90.0 to 88.9, the records 46.0 to 46.0, the texts
+and copies 103.8 to 96.7, the calls through the VM's path 6.9 to 6.9,
+the helpers' glue 3.7 to 3.7, the load 46.4 to 46.5. AT1's rows on the
+frozen self-check (`tools/measure_size.sh` under WSL, stage 4a's binary
+against this one): the synchronous JIT row 5,248.2 to 5,224.1 million
+instructions (-0.5%) and 7,546.0 to 7,481.6 by the estimate (-0.9%),
+its indirect branches 10.7 to 10.6 million (-1.5%) and its
+mispredictions 31.2 to 31.7, the image row 3,473.0 to 3,401.3 (-2.1%)
+and 5,166.3 to 5,103.8 by the estimate (-1.2%), the cached run 3,552.7
+to 3,481.0 (-2.0%), the interpreter 11,203.6 to 11,217.7 (+0.1%); the
+image 9,588,256 to 9,742,192 bytes (+1.6%). The four benchmarks and
+hello by user-space instructions (`perf stat`, the JIT synchronous, in
+millions): `primes` 265.2 to 265.9 (+0.3%), `strings` 450.7 to 442.9
+(-1.7%), `records` 157.1 to 160.9 (+2.4%), `json_round_trip` 841.1 to
+843.9 (+0.3%), `hello` 5.44 to 5.44 (unchanged). The four judges
+byte-equal, the conformance suite 55 of 55 on both tiers, the template
+tier's own tests with the tier forced, 403 tests. Since stage 0 the
+check row 2,889.9 to 1,930.3 (-33.2%), since the study's binary 3,085.3
+(-37.4%). Next in AW1's order: the last item of stage 4, `match` by a
+table (4c), then the checker's own cuts between the stages, stages 5
+and 6.

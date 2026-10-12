@@ -33,8 +33,10 @@ use crate::types::{FieldMeta, TypeMeta, TypeShape, Types, VariantMeta};
 use crate::value::Value;
 
 /// The version of the format, the first field of the file; 8 added the
-/// read-only flags of a code object's parameters (decision AW5).
-pub const FORMAT: usize = 8;
+/// read-only flags of a code object's parameters (decision AW5), and 9
+/// holds a loop's iterator in two slots, the source and the position
+/// (decision AW14).
+pub const FORMAT: usize = 9;
 
 /// The extension of a bytecode file.
 pub const EXTENSION: &str = "ryc";

@@ -88,7 +88,7 @@ impl Compiler<'_, '_> {
                 },
                 span,
             );
-            let iterator = self.temp();
+            let iterator = self.loop_slots();
             self.emit(Op::IterInit(iterator), span);
             let top = self.here();
             let next = self.emit(
@@ -123,7 +123,7 @@ impl Compiler<'_, '_> {
         let several = sources.len() > 1;
         for source in sources {
             self.expr(&source.source);
-            let iterator = self.temp();
+            let iterator = self.loop_slots();
             self.emit(Op::IterInit(iterator), span);
             tops.push(self.here());
             nexts.push(self.emit(

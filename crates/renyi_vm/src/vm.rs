@@ -2343,9 +2343,13 @@ impl<'p> Vm<'p> {
                     }
                 }
                 Op::IterInit(slot) => {
+                    // the source listed in the slot, the position in the
+                    // one after it (decision AW14)
                     let source = self.pop();
                     let iterator = try_op!(self.iterator_of(source));
-                    self.stack[base + *slot as usize] = iterator;
+                    let at = base + *slot as usize;
+                    self.stack[at] = iterator;
+                    self.stack[at + 1] = Value::integer(0);
                 }
                 Op::IterNext { slot, exit } => match self.iterator_next(base + *slot as usize) {
                     Some(item) => self.stack.push(item),
@@ -3119,7 +3123,7 @@ fn native_json(native: &Native) -> Json {
     match native {
         Native::Connection { path, .. } => Json::Text(format!("<connection {path}>")),
         Native::CsvRow { .. } => Json::Text("<row>".to_string()),
-        Native::Iterator(_) | Native::RangeIterator { .. } => Json::Text("<iterator>".to_string()),
+        Native::RangeIterator { .. } => Json::Text("<iterator>".to_string()),
         Native::Deadline(..) => Json::Text("<deadline>".to_string()),
     }
 }

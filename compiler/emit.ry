@@ -402,6 +402,14 @@ function temp(emitter: Emitter) returns Step of Integer
   return Step(value: slot, emitter: emitter with next_slot: slot + 1)
 end
 
+function loop_slots(emitter: Emitter) returns Step of Integer
+  purpose: The two slots of a loop's iterator (decision AW14): the source, then the position.
+
+  let source_slot be temp(emitter)
+  let position_slot be temp(source_slot.emitter)
+  return Step(value: source_slot.value, emitter: position_slot.emitter)
+end
+
 function alias(emitter: Emitter, name: Text, slot: Integer) returns Emitter
   purpose: An existing slot given a name in the current scope (a pattern binding).
 
@@ -1951,7 +1959,7 @@ function for_each_plain(
 
   let mutable updated be push_scope(emitter)
   change updated to emit_expr(emitter: updated, expr: source)
-  let made be temp(updated)
+  let made be loop_slots(updated)
   let iterator be made.value
   change updated to emit(emitter: made.emitter, op: OpIterInit(slot: iterator), span: span)
   change updated to enter_loop(emitter: updated, span: span)
@@ -1997,7 +2005,7 @@ function for_each_sorted(
   change updated to emit(emitter: buffered.emitter, op: OpMakeList(size: 0), span: span)
   change updated to emit(emitter: updated, op: OpStore(slot: buffer), span: span)
   change updated to emit_expr(emitter: updated, expr: source)
-  let made be temp(updated)
+  let made be loop_slots(updated)
   let iterator be made.value
   change updated to emit(emitter: made.emitter, op: OpIterInit(slot: iterator), span: span)
   let top be here(updated)
@@ -2020,7 +2028,7 @@ function for_each_sorted(
   change updated to emit(emitter: updated, op: OpLoad(slot: buffer), span: span)
   let sort be OpSortByKey(is_descending: order.is_descending)
   change updated to emit(emitter: updated, op: sort, span: span)
-  let sorted_made be temp(updated)
+  let sorted_made be loop_slots(updated)
   let sorted_slot be sorted_made.value
   let sorted_init be OpIterInit(slot: sorted_slot)
   change updated to emit(emitter: sorted_made.emitter, op: sorted_init, span: span)
@@ -3748,7 +3756,7 @@ function assemble(context: Context, modules: List of CheckedModule) returns Prog
     for each declared in world.abilities
     collect AbilityMeta(name: declared.name, methods: method_names(declared.methods))
   return Program(
-    format: 8,
+    format: 9,
     modules: module_sources(world: world, modules: modules),
     builtins: builtin_ids(world.builtins),
     types: context.types,
@@ -4158,7 +4166,7 @@ function source_loops(emitter: Emitter, sources: List of QuerySource, span: Span
   let mutable nexts: List of Integer be []
   for each source in sources
     change updated to emit_expr(emitter: updated, expr: source.source)
-    let iterator be temp(updated)
+    let iterator be loop_slots(updated)
     let init be OpIterInit(slot: iterator.value)
     change updated to emit(emitter: iterator.emitter, op: init, span: span)
     change tops to tops.append(here(updated))
@@ -4251,7 +4259,7 @@ function sorted_terminal(
   let mutable updated be emit(emitter: emitter, op: OpLoad(slot: buffer), span: span)
   let sort be OpSortByKey(is_descending: is_descending)
   change updated to emit(emitter: updated, op: sort, span: span)
-  let iterator be temp(updated)
+  let iterator be loop_slots(updated)
   let init be OpIterInit(slot: iterator.value)
   change updated to emit(emitter: iterator.emitter, op: init, span: span)
   let top be here(updated)

@@ -1382,13 +1382,17 @@ pub(crate) unsafe extern "C" fn rt_settle_handler(vm: VmPtr, base: usize, locals
 
 // ------------------------------------------------------------ loops
 
+/// `IterInit` through the helper: the source listed into the slot, the
+/// position into the one after it (decision AW14).
 pub(crate) unsafe extern "C" fn rt_iter_init(vm: VmPtr, base: usize, slot: u32, pc: u32) -> i32 {
     let vm = vm!(vm);
     vm.sync_pc(pc);
     let source = vm.pop();
     match vm.iterator_of(source) {
         Ok(iterator) => {
-            vm.stack[base + slot as usize] = iterator;
+            let at = base + slot as usize;
+            vm.stack[at] = iterator;
+            vm.stack[at + 1] = Value::integer(0);
             CONTINUE
         }
         Err(error) => interrupt(vm, error),
@@ -2053,17 +2057,15 @@ impl Vm<'_> {
         Ok(Value::text(text).guarded(origins))
     }
 
-    /// The loop iterator over a collection value (the interpreter's
-    /// `IterInit`).
+    /// What a loop's first slot holds over a collection value (the
+    /// interpreter's `IterInit`, decision AW14): the list itself, or the
+    /// items of anything else as a list, or a range of small Integers as
+    /// its own iterator value; the position goes into the slot after it.
     pub(crate) fn iterator_of(&mut self, source: Value) -> Result<Value, Interrupt> {
         // a plain list iterates as it is: no origins, no unwrapping, no
         // special, no listing (decision AW12)
         let source = match source {
-            Value::List(items) => {
-                return Ok(Value::Native(Rc::new(Native::Iterator(
-                    crate::value::ListIter::new(items),
-                ))));
-            }
+            Value::List(_) => return Ok(source),
             other => other,
         };
         let program = self.program;
@@ -2100,16 +2102,24 @@ impl Vm<'_> {
                     .collect(),
             );
         }
-        Ok(Value::Native(Rc::new(Native::Iterator(
-            crate::value::ListIter::new(items),
-        ))))
+        Ok(Value::List(items))
     }
 
-    /// The next item of the iterator in the stack slot.
+    /// The next item of the loop whose iterator is in the slot and the
+    /// one after it (decision AW14): the item at the position of a list,
+    /// the position advanced; the next value of a range iterator.
     pub(crate) fn iterator_next(&mut self, index: usize) -> Option<Value> {
+        if let Value::List(items) = &self.stack[index] {
+            let Value::Integer(Int::Small(position)) = &self.stack[index + 1] else {
+                unreachable!("the position of a loop is a small Integer");
+            };
+            let position = *position as usize;
+            let item = items.get(position).cloned()?;
+            self.stack[index + 1] = Value::integer(position as i64 + 1);
+            return Some(item);
+        }
         match &self.stack[index] {
             Value::Native(native) => match &**native {
-                Native::Iterator(iterator) => iterator.next(),
                 Native::RangeIterator {
                     current,
                     to,

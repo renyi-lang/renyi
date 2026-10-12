@@ -142,8 +142,9 @@ pub enum SlotKind {
     /// A loop's iterator over a range whose bounds were unboxed: the
     /// position, the end and the step stay in registers.
     RangeIter,
-    /// A loop's iterator over anything else, held by the interpreter's
-    /// own iterator value in the slot.
+    /// A loop's iterator over anything else: the source as a list in the
+    /// slot (or a range iterator value), the position an Integer in the
+    /// slot after it (decision AW14).
     Iter,
     /// A `within` deadline, held in the slot by the interpreter's helper.
     Deadline,
@@ -941,6 +942,9 @@ pub fn analyse(
                         SlotKind::Iter
                     };
                     store!(*slot, kind);
+                    // the position, an Integer in the slot after (decision
+                    // AW14)
+                    store!(*slot + 1, SlotKind::Int);
                 }
                 Op::IterNext { slot, exit } => {
                     flows.push((*exit as usize, stack.clone(), open_after.clone()));

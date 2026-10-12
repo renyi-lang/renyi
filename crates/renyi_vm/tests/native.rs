@@ -512,6 +512,81 @@ end
 }
 
 #[test]
+fn loops_in_two_slots_keep_their_list_and_position_across_a_hand_back() {
+    // a loop's iterator lies in two slots of the frame (decision AW14):
+    // the source listed in the first, the position in the one after it,
+    // which the generated code keeps in a register and reads the list in
+    // place; a hand-back in the body (a product that leaves the machine
+    // word) carries the position to the interpreter, the list grown in
+    // its own body keeps the loop's items, an inner loop uses its slots
+    // again on every row, and a sorted loop and a query over two sources
+    // allocate their slots as the compile judge holds: machine code prints what
+    // the interpreter prints
+    let source = r#"module demo
+  purpose: Loops whose iterator lies in two slots (decision AW14): a hand-back in the body, the list grown in the body, nested loops entered again.
+
+import std.console
+
+function total(items: List of Integer, factor: Integer) returns Integer
+  purpose: A product that leaves the machine word partway, so that the loop goes on in the interpreter.
+
+  let mutable product be 1
+  let mutable seen be 0
+  for each item in items
+    change product to product * factor + item
+    change seen to seen + 1
+  end
+  return seen + product remainder 1000
+end
+
+function grown(items: List of Integer) returns Integer
+  purpose: The loop's list appended to in its own body keeps its items.
+
+  let mutable list be items
+  let mutable turns be 0
+  for each item in list
+    change list to list.append(item * 2)
+    change turns to turns + 1
+  end
+  return turns * 1000 + list.length()
+end
+
+function nested(rows: List of List of Integer) returns Integer
+  purpose: An inner loop entered once per row, its slot used again.
+
+  let mutable total_value be 0
+  for each row in rows
+    for each cell in row
+      change total_value to total_value + cell
+    end
+  end
+  return total_value
+end
+
+function sorted_turns(items: List of Integer) returns Text
+  purpose: A sorted loop, two iterators in turn, and a query over two sources.
+
+  let mutable seen: List of Integer be []
+  for each item in items sorted by item descending
+    change seen to seen.append(item)
+  end
+  let pairs be for each left in items, right in [10, 20] where left is less than 3 collect left * right
+  return "{seen.length()} {seen.first() otherwise 0} {pairs.length()} {pairs.last() otherwise 0}"
+end
+
+public function main() needs console
+  purpose: Print the tallies.
+
+  console.print("{total(items: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], factor: 1000000007)} {grown([1, 2, 3])} {nested([[1, 2], [3], [], [4, 5, 6]])}")
+  console.print(sorted_turns([3, 1, 2]))
+end
+"#;
+    let (outcome, printed) = both_ways(source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(printed, "1000 3006 21\n3 3 4 40\n");
+}
+
+#[test]
 fn variants_compare_in_place_by_tag_and_fielded_ones_through_the_helper() {
     // two values the checker typed as one variant type without its own
     // `equals` are compared in place by the type and the tag of their
