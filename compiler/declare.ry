@@ -97,6 +97,7 @@ public type ModuleInfo
   has imports: Map of Text to Integer
   has exposed_types: Map of Text to Integer
   has exposed_abilities: Map of Text to Integer
+  has variants: Map of Text to List of VariantRef
   has line_starts: List of Integer
   has source_chars: List of Text
   has package: maybe PackageTag
@@ -534,6 +535,7 @@ public function add_module(world: World, tree: Module, is_library: Boolean) retu
     imports: {},
     exposed_types: {},
     exposed_abilities: {},
+    variants: {},
     line_starts: [],
     source_chars: [],
     package: nothing,
@@ -712,7 +714,7 @@ public function resolve_all(world: World) returns World
     change updated to check_see_also(world: updated, id: id)
     change id to id + 1
   end
-  return updated
+  return index_variants(updated)
 end
 
 function check_requirements(world: World) returns World
@@ -1302,20 +1304,47 @@ public function suggest_ability(world: World, owner: Integer, name: Text) return
 end
 
 public function lookup_variant(world: World, owner: Integer, name: Text) returns List of VariantRef
-  purpose: The sum types in scope that have a variant of this name, by type id.
+  purpose: The sum types in scope with a variant of this name, by type id: the module's index.
 
-  let info be module_at(world: world, id: owner)
+  return module_at(world: world, id: owner).variants.get(name) otherwise []
+end
+
+function index_variants(world: World) returns World
+  purpose: Every module's variants by name, built once the types are final, for `lookup_variant`.
+
+  let mutable updated be world
+  let total be updated.modules.length()
+  let mutable id be 0
+  repeat until id is at least total
+    let info be module_at(world: updated, id: id)
+    let by_name be variants_of(world: updated, info: info)
+    change updated to update_module(world: updated, id: id, info: info with variants: by_name)
+    change id to id + 1
+  end
+  return updated
+end
+
+function variants_of(world: World, info: ModuleInfo) returns Map of Text to List of VariantRef
+  purpose: The variants of the sum types in a module's scope by name, each name's by type id.
+
   let candidates be info.types.values().append_all(info.exposed_types.values()).append_all(
     prelude_type_ids(world)
   )
-  let mutable found: List of VariantRef be []
+  let mutable found: Map of Text to List of VariantRef be {}
   for each type_id in candidates.distinct().sorted()
     match type_at(world: world, id: type_id).kind
       when SumKind(variants) then
-        match variant_index(variants: variants, name: name)
-          when some(index) then
-            change found to found.append(VariantRef(type_id: type_id, index: index))
-          when nothing then continue
+        let mutable position be 0
+        for each variant in variants
+          let earliest be variant_index(variants: variants, name: variant.name) otherwise position
+          if earliest is position then
+            let references be found.get(variant.name) otherwise []
+            change found to found.set(
+              key: variant.name,
+              value: references.append(VariantRef(type_id: type_id, index: position))
+            )
+          end
+          change position to position + 1
         end
       otherwise continue
     end

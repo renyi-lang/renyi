@@ -715,3 +715,31 @@ end
     assert_eq!(outcome, RunOutcome::Finished);
     assert_eq!(printed, "5 3 5 7 5 7 4\n");
 }
+
+#[test]
+fn a_slice_of_texts_as_one_text_clamps_its_bounds() {
+    // the lexer's text of a run (decision AW16): the texts from a start to a
+    // stop joined, the bounds clamped to the list as `slice` clamps them, an
+    // empty text for a start at or past the stop, and for an empty list
+    let source = r#"module demo
+  purpose: Join runs of characters with the list primitive.
+
+import std.console
+
+public function main() needs console
+  purpose: Print some runs as text.
+
+  let chars be "ab_12 x".characters()
+  let word be chars.slice_text(start: 0, stop: 5)
+  let tail be chars.slice_text(start: 6, stop: 20)
+  let backwards be chars.slice_text(start: 4, stop: 2)
+  let past be chars.slice_text(start: 9, stop: 12)
+  let none: List of Text be []
+  let empty be none.slice_text(start: 0, stop: 1)
+  console.print("[{word}] [{tail}] [{backwards}] [{past}] [{empty}]")
+end
+"#;
+    let (outcome, printed) = run(source, Options::default());
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(printed, "[ab_12] [x] [] [] []\n");
+}

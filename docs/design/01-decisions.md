@@ -7755,3 +7755,108 @@ on both tiers, the template tier's own tests with the tier forced, 405
 tests. Since stage 0 the check row 2,889.9 to 1,896.4 (-34.4%), since
 the study's binary 3,085.3 (-38.5%). Stage 4 is done. Next in AW1's
 order: the checker's own cuts between the stages, then stages 5 and 6.
+
+**AW16. The checker's own cuts between the stages: the variants indexed
+by name, the parser's cursor with its token, the lexer's previous token
+as two Integers and the text of a run as a primitive, the resolver's
+loop, the lists updated in the slot.** The item of AW1's order after
+stage 4, on 2026-10-12, measured as AW1 prescribes against stage 4c's
+binary (805ea3a). The cuts are in the compiler written in Renyi
+(`compiler/*.ry`), one library primitive beside them; each was gated by
+`renyi check`, the canonical layout and the four judges byte-equal,
+then kept or dropped by the lane's quick measure, the check row by
+`perf stat` (user-space instructions) with the images rebuilt from the
+edited sources, 1,860.8 million before any cut. (1) The variants of a
+module's scope indexed by name once the types are final
+(`index_variants` and `variants_of` at the end of `resolve_all`, the
+`variants` field of `ModuleInfo`, in `compiler/declare.ry`):
+`lookup_variant` rebuilt its candidates (the module's types, the
+exposed ones, the prelude's, distinct and sorted) and scanned every sum
+type's variants on each of its 650 calls, 102.6 million instructions
+inclusive, 5.4% of the row; it is one map read now. The row 1,860.8 to
+1,766.6 (-5.1%). (2) The parser's cursor carries its looked-at token
+(`token` in `Cursor`): `at_position` computes the look and the token
+together (what `look_from` did) and binds them before the update, so
+that the cursor is updated in its slot (AU11, AW8) where the update
+read the cursor twice in one statement and copied it on every move
+(`rt_record_copy` 124,609 calls); `moved` changes the position alone,
+the look and the token at it being the same already; 39 sites read
+`cursor.token` in place of `token_at(cursor, look)`. 1,766.6 to 1,719.5
+(-2.7%). (3) The lexer's previous token as two Integers, its stop and
+its code (`previous_stop` and `previous_code` through `lex_range`,
+`next_step`, `lex_word`, `lex_text` and `camel_case_word`), compared in
+place against `words.symbol_dot` and `words.word_raw` where a `maybe
+Token` was matched on at every word and every text literal; a reserved
+word's text sliced once (`lex_reserved` takes the word's text) where it
+was sliced three times; and the parser sets the comments aside in one
+pass over the tokens where two queries ran. 1,719.5 to 1,628.7 (-5.3%).
+(4) `resolve` follows a variable's binding in one match per step
+(`is_bound_var` gone) where it looked the variable up twice per step.
+1,628.7 to 1,615.8 (-0.8%). (5) The lexer's text of a run as a library
+primitive, `slice_text(self: List of Text, start: Integer, stop:
+Integer) returns Text`, a library addition through the sketch,
+`library/std/prelude.ry`, the checker's copy and `natives/prelude.rs`
+(a typed and an in-place entry; a test in `tests/semantics.rs`), as
+AU52 (iv) added `run_of`: the texts from start to stop as one text, the
+bounds clamped as `slice` clamps them, where `slice` then `join`
+allocated a list, raised and lowered a count per character and
+allocated the text (135.1 million inclusive for 94,725 slices, 7.1%);
+the lexer's 19 slices, the parser's `text_of` and the checker's
+`source_text` use it; the cheat sheet does not list it, its budget
+standing at 2,997 of 3,000 tokens. 1,615.8 to 1,561.4 (-3.4%). (6) The
+checker's scopes flattened into one list of bindings with the scope
+starts measured worse (1,561.4 to 1,575.7, +0.9%: a pop truncates by
+`take`, which copies) and was dropped; in its place the lists of scopes
+and of inference variables are updated in the checker's slot,
+`checker.scopes.with_at(...)` and `checker.vars.with_at(...)` in the
+update, where `lists.replace_at(items: checker.scopes, ...)` read the
+list out of the record (a second holder, which the native copied) on
+every binding declared, marked as used or retagged and on every
+variable bound. (7) The parser's bracket loop looks the closing
+symbol's code up once, not per element, and `zonk` resolves a type
+once. The row 1,561.4 to 1,554.3 (-0.5%) with (7), to 1,548.3 (-0.4%)
+with (6). The sum by the quick measure: 1,860.8 to 1,548.3 million
+(-16.8%). What the profile leaves (`study_incl.py`, the lane's new
+script, ranks the generated functions by their inclusive cost, what a
+cut in the Renyi sources removes): the record copies 124,609 to 109,613
+only, since the parser's result records (`Parsed`, `Peek`, `Eaten`) are
+read after their cursor is taken at 186 sites, which keeps the cursor
+shared so that `at_position` copies it on most moves (AU55's rewrite
+for `Done` applied to them is the next cut there); the clones 4,753,908
+to 3,822,834, mimalloc's allocations 1,740,842 to 1,378,394, the lists
+joined 97,732 to 3,011; and the backend's own costs, the call of a
+five-op helper (`is_word` and `is_symbol`, 178,401 calls at 119
+instructions each) and the clone a field read makes, which stages 5 and
+6 and AU50's expansion are for. The measure in full (callgrind under
+WSL on the release build for Linux, the images built under `valgrind
+--tool=none`, against stage 4c's binary measured the same way in AW15,
+the reference AU34's 44782aa): the check row 1,896.4 to 1,586.1 million
+instructions (-16.4%), the parse row 822.8 to 711.9 (-13.5%), the
+compile row 3,097.6 to 2,794.9 (-9.8%); the ratios by instructions
+against the reference's rows (441.6, 284.7 and 365.6) 3.59, 2.50 and
+7.64 against the gate's 3 (4.29, 2.89 and 8.47 after AW15); the Rust
+front end's own rows within 0.6% of stage 4c's (`check` 173.8, `parse
+--json` 246.4, `compile` 449.7). The check row by category, AW15's
+table against this one, in millions: the generated code 962.7 to 800.8,
+the comparisons 34.5 to 6.5, the counts and drops 152.2 to 131.6,
+mimalloc 108.7 to 87.9, the hashing and equality 47.7 to 35.2, the
+natives 297.2 to 255.8, the VM's own 88.9 to 79.5, the records 46.0 to
+46.1, the texts and copies 96.8 to 79.5, the calls through the VM's
+path 6.9 to 8.5, the helpers' glue 3.7 to 3.6, the load 50.4 to 50.4,
+the iterators 0.0 to 0.0. AT1's rows on the frozen self-check
+(`tools/measure_size.sh` under WSL, stage 4c's binary against this one;
+the tiers are the same, the one native added): the synchronous JIT row
+5,156.1 to 5,160.2 million instructions (+0.1%) and 7,395.6 to 7,381.0
+by the estimate (-0.2%), its indirect branches 10.5 to 10.5 million
+(+0.1%) and its mispredictions 30.4 to 30.2, the image row 3,371.1 to
+3,374.3 (+0.1%) and 4,998.4 to 5,043.5 by the estimate (+0.9%), the
+cached run 3,451.4 to 3,464.0 (+0.4%), the interpreter 11,061.4 to
+11,068.3 (+0.1%); the image 9,770,848 to 9,770,928 bytes (within
+0.05%). The four benchmarks and hello by user-space instructions (`perf
+stat`, the JIT synchronous, in millions): `primes` 265.9 to 266.0
+(within 0.05%), `strings` 442.9 to 443.0 (within 0.05%), `records`
+160.9 to 160.9 (unchanged), `json_round_trip` 843.9 to 843.9
+(unchanged), `hello` 5.44 to 5.47 (+0.6%). The four judges byte-equal,
+the conformance suite 55 of 55 on both tiers, 406 tests. Since stage 0
+the check row 2,889.9 to 1,586.1 (-45.1%), since the study's binary
+3,085.3 (-48.6%). Next in AW1's order: stages 5 and 6.

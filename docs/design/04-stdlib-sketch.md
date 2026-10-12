@@ -184,6 +184,8 @@ function with_index(self: List of Item) returns List of Pair of Item, Integer fo
 function to_set(self: List of Item) returns Set of Item for any Item where Item can Hash
 function flattened(self: List of List of Item) returns List of Item for any Item
 function join(self: List of Text, separator: Text) returns Text
+function slice_text(self: List of Text, start: Integer, stop: Integer) returns Text
+  purpose: The texts from start to stop, the end exclusive, as one text: `slice` then `join` with no separator, in one step (decision AW16).
 function sum(self: List of Integer) returns Integer
 function sum(self: List of Decimal) returns Decimal
 function sum(self: List of Float) returns Float

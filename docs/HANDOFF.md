@@ -74,8 +74,14 @@ to 4.37); and stage 4c built and measured (decision AW15: a `match` with
 at least three arms naming a variant entered through a jump table by
 the subject's tag on both tiers and in the interpreter; the check row
 1,930.3 to 1,896.4, -1.8%; the ratio 4.37
-to 4.29), which completes stage 4. Next are the checker's own
-cuts between the stages (the start-here item 1), then stages 5 and 6.
+to 4.29), which completes stage 4; and the checker's own cuts between
+the stages built and measured (decision AW16: the variants of a
+module's scope indexed by name, the parser's cursor carrying its
+looked-at token and updated in its slot, the lexer's previous token as
+two Integers and the text of a run as the primitive `slice_text`, the
+resolver's loop, the checker's lists updated in the slot; the check row
+1,896.4 to 1,586.1, -16.4%; the ratio 4.29
+to 3.59). Next are stages 5 and 6 (the start-here item 1).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -390,9 +396,13 @@ and push there directly.
    iterator in two slots; the check row to 1,930.3, -3.3%; the
    ratio to 4.37); and stage 4c (decision AW15, "Stage 4c as built": `match` by
    a table; the check row to 1,896.4, -1.8%; the ratio to
-   4.29), which completes stage 4.
-   Next are the
-   checker's own cuts between the stages, stages
+   4.29), which completes stage 4; and the checker's own cuts between
+   the stages (decision AW16, "The checker's own cuts as built": the
+   variants indexed, the parser's cursor with its token, the lexer's
+   previous token as two Integers and `slice_text`, the resolver's
+   loop, the lists updated in the slot; the check row to 1,586.1,
+   -16.4%; the ratio to 3.59).
+   Next are stages
    5 and 6 last. Each stage: the code, the gates of item 3, the measure
    (AU58's: the checker's image run under callgrind with the study's
    table by category beside it, AT1's rows, the benchmarks by
@@ -427,8 +437,9 @@ and push there directly.
    `renyi_stage3b` (1b25b85, stage 3b's commit), `renyi_stage4a`
    (stage 4a's first build, the field-less types alone) and
    `renyi_stage4a_v2` (cf06592, stage 4a's commit) and
-   `renyi_stage4b` (8eed964, stage 4b's commit) and `renyi_stage4c`
-   (stage 4c's commit, the base of the next measure), each with its
+   `renyi_stage4b` (8eed964, stage 4b's commit), `renyi_stage4c`
+   (805ea3a, stage 4c's commit) and `renyi_cuts` (the commit of
+   the checker's own cuts, the base of the next measure), each with its
    `study/` directory. The
    road is months long (AU58); the gate is decided on the measure at
    the end.
@@ -4862,8 +4873,43 @@ indirect branches of AT1's synchronous row 10.6 to
 10.5 million (-0.7%), its mispredictions 31.7
 to 30.4; AT1's synchronous estimate 7,481.6 to
 7,395.6 (-1.1%). The table is in AW15. Stage 4 is done.
-Next in AW1's order: the checker's own cuts between the stages, then
-stages 5 and 6.
+Next in AW1's order: the checker's own cuts between the stages (the
+next paragraph), then stages 5 and 6.
+
+**The checker's own cuts as built (decision AW16, 2026-10-12).** The
+item of AW1's order after stage 4: the cuts in the compiler written in
+Renyi, each gated by `renyi check`, the canonical layout and the four
+judges byte-equal and kept by the lane's quick measure (the check row
+by `perf stat` with the images rebuilt from the edited sources;
+`gate_cut.sh`, `gate_native.sh` and `quick_check_row.sh` in the lane).
+In `compiler/declare.ry`: `index_variants` and `variants_of` at the end
+of `resolve_all` fill the `variants` field of `ModuleInfo`, and
+`lookup_variant` is one map read (-5.1% by the quick measure). In
+`compiler/parser.ry`: `token` in `Cursor`, the looked-at token;
+`at_position` computes the look and the token together and updates the
+cursor in its slot; `moved` changes the position alone; 39 sites read
+`cursor.token`; `parse` sets the comments aside in one pass;
+`bracketed` looks the closing symbol's code up once (-2.7% and part of
+-0.5%). In `compiler/lexer.ry`: `previous_stop` and `previous_code`
+through `lex_range`, `next_step`, `lex_word`, `lex_text` and
+`camel_case_word`; `lex_reserved` takes the word's text; every run's
+text through `slice_text` (-5.3% and -3.4%). In `compiler/bodies.ry`:
+`resolve` in one match per step, `zonk` resolving once, `source_text`
+through `slice_text`, the scopes and the variables updated in the slot
+by `with_at` (-0.8%, part of -0.5%, -0.4%). The library primitive
+`slice_text(self: List of Text, start, stop) returns Text` in the
+sketch, `library/std/prelude.ry`, the checker's copy and
+`natives/prelude.rs`, with a test in `tests/semantics.rs`; the cheat
+sheet does not list it (its budget stands at 2,997 of 3,000 tokens).
+The flat list of bindings with the scope starts was tried and dropped
+(+0.9%). The measure: the check row 1,896.4 to 1,586.1
+(-16.4%), the ratios by instructions 3.59, 2.50
+and 7.64; the generated code 962.7 to 800.8 million,
+the natives 297.2 to 255.8, the texts and copies
+96.8 to 79.5, the counts and drops 152.2 to
+131.6; AT1's synchronous estimate 7,395.6 to
+7,381.0 (-0.2%). The table is in AW16. Next in AW1's
+order: stages 5 and 6.
 
 ## The representation items: the design study (session 11)
 
@@ -6566,6 +6612,23 @@ holds between calls.
   `compiler/emit.ry`; the literals of `tests/compile.rs`; the test in
   `tests/native.rs` and `tests/template.rs`; the measure in AW15 and
   in "Stage 4c as built".
+- The checker's own cuts (decision AW16, the commit after
+  805ea3a): `index_variants`, `variants_of`, the `variants` field
+  of `ModuleInfo` and `lookup_variant` in `compiler/declare.ry`;
+  `token` in `Cursor`, `at_position`, `moved`, `with_nesting`,
+  `skip_newlines`, `peek`, the 39 `cursor.token` sites, `parse`'s one
+  pass, `text_of`, `bracketed` and `element_after_comma` in
+  `compiler/parser.ry`; `lex_range`, `next_step`, `lex_word`,
+  `lex_reserved`, `lex_text`, `camel_case_word` and the 19 `slice_text`
+  sites in `compiler/lexer.ry` (`slice`, `last_of` and
+  `previous_is_adjacent_dot` gone); `resolve` (`is_bound_var` gone),
+  `zonk`, `source_text`, `set_var_binding`, `set_var_kind`,
+  `update_binding`, `mark_all_used`, `bind` and `retag_count` in
+  `compiler/bodies.ry`; `slice_text` in `docs/design/04-stdlib-sketch.md`,
+  `library/std/prelude.ry`, `crates/renyi_check/library/std/prelude.ry`
+  and `crates/renyi_vm/src/natives/prelude.rs` (`list_slice_text`,
+  `list_slice_text_typed`), its test in `tests/semantics.rs`; the
+  measure in AW16 and in "The checker's own cuts as built".
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

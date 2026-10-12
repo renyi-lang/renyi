@@ -161,6 +161,9 @@ pub(crate) const NATIVES: &[Native] = &[
     Native::method("std.prelude", "join", "List", list_join)
         .with_typed(Typed::Value(list_join_typed))
         .with_in_place(in_place!(Value: list_join_typed)),
+    Native::method("std.prelude", "slice_text", "List", list_slice_text)
+        .with_typed(Typed::Value(list_slice_text_typed))
+        .with_in_place(in_place!(Value: list_slice_text_typed)),
     Native::method("std.prelude", "sum", "List of Integer", list_sum_integers)
         .with_typed(Typed::Int(list_sum_integers_typed))
         .with_in_place(in_place!(Int: list_sum_integers_typed)),
@@ -910,6 +913,21 @@ fn list_join(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     Ok(Value::text(parts.join(separator)))
 }
 
+/// `List.slice_text`: the texts from `start` to `stop` as one text, what
+/// `slice` and `join` with no separator give, in one allocation and
+/// without a count raised per item (the lexer's text of a run, decision
+/// AW16); the bounds are clamped as `slice` clamps them.
+fn list_slice_text(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let items = list(arg(args, 0))?;
+    let start = count(arg(args, 1))?.min(items.len());
+    let stop = count(arg(args, 2))?.min(items.len()).max(start);
+    let mut joined = String::with_capacity(stop - start);
+    for item in items[start..stop].iter() {
+        joined.push_str(text(item)?);
+    }
+    Ok(Value::text(joined))
+}
+
 fn list_sum_integers(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     let items = list(arg(args, 0))?;
     let mut total = Int::Small(0);
@@ -1480,6 +1498,17 @@ fn list_join_typed(args: &[Value]) -> Option<Value> {
         parts.push(item.as_text()?);
     }
     Some(Value::text(parts.join(separator)))
+}
+
+fn list_slice_text_typed(args: &[Value]) -> Option<Value> {
+    let items = plain_list(&args[0])?;
+    let start = plain_count(&args[1])?.min(items.len());
+    let stop = plain_count(&args[2])?.min(items.len()).max(start);
+    let mut joined = String::with_capacity(stop - start);
+    for item in items[start..stop].iter() {
+        joined.push_str(item.as_text()?);
+    }
+    Some(Value::text(joined))
 }
 
 fn list_sum_integers_typed(args: &[Value]) -> Option<i64> {

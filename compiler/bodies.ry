@@ -374,7 +374,7 @@ function source_text(checker: Checker, span: Span) returns Text
   purpose: The source text under a span, for a fix that quotes it.
 
   let chars be module_info(checker).source_chars
-  return chars.take(span.stop).drop(span.start).join("")
+  return chars.slice_text(start: span.start, stop: span.stop)
 end
 
 function line_of(checker: Checker, offset: Integer) returns Integer
@@ -546,14 +546,14 @@ function set_var_binding(checker: Checker, id: Integer, ty: Ty) returns Checker
   purpose: The checker with a variable bound.
 
   let info be var_at(checker: checker, id: id) with binding: ty
-  return checker with vars: lists.replace_at(items: checker.vars, index: id, item: info)
+  return checker with vars: checker.vars.with_at(index: id, item: info)
 end
 
 function set_var_kind(checker: Checker, id: Integer, kind: VarKind) returns Checker
   purpose: The checker with a variable's kind changed.
 
   let info be var_at(checker: checker, id: id) with kind: kind
-  return checker with vars: lists.replace_at(items: checker.vars, index: id, item: info)
+  return checker with vars: checker.vars.with_at(index: id, item: info)
 end
 
 function fresh(checker: Checker, kind: VarKind) returns Done of Ty
@@ -568,22 +568,18 @@ function resolve(checker: Checker, ty: Ty) returns Ty
   purpose: The type with variable bindings followed at the top.
 
   let mutable current be ty
-  repeat until not is_bound_var(checker: checker, ty: current)
+  let mutable bound be true
+  repeat until not bound
     match current
-      when Var(id) then change current to var_at(checker: checker, id: id).binding otherwise current
-      otherwise break
+      when Var(id) then
+        match var_at(checker: checker, id: id).binding
+          when some(target) then change current to target
+          when nothing then change bound to false
+        end
+      otherwise change bound to false
     end
   end
   return current
-end
-
-function is_bound_var(checker: Checker, ty: Ty) returns Boolean
-  purpose: Whether the type is a variable that has a binding.
-
-  match ty
-    when Var(id) then return var_at(checker: checker, id: id).binding is not nothing
-    otherwise return false
-  end
 end
 
 function var_id(ty: Ty) returns maybe Integer
@@ -598,7 +594,8 @@ end
 function zonk(checker: Checker, ty: Ty) returns Ty
   purpose: The type with variable bindings followed everywhere.
 
-  match resolve(checker: checker, ty: ty)
+  let resolved be resolve(checker: checker, ty: ty)
+  match resolved
     when App(id, args) then return App(id: id, args: zonk_all(checker: checker, tys: args))
     when MaybeTy(inner) then return MaybeTy(inner: zonk(checker: checker, ty: inner))
     when FunctionTy(signature) then
@@ -609,7 +606,7 @@ function zonk(checker: Checker, ty: Ty) returns Ty
         signature: signature with params: params, result: result, failures: failures
       )
     when Union(members) then return Union(members: zonk_all(checker: checker, tys: members))
-    otherwise return resolve(checker: checker, ty: ty)
+    otherwise return resolved
   end
 end
 
@@ -1512,12 +1509,8 @@ function update_binding(checker: Checker, name: Text, replacement: Binding) retu
           index: binding_index,
           item: replacement
         )
-        let scopes be lists.replace_at(
-          items: checker.scopes,
-          index: scope_index,
-          item: Scope(bindings: bindings)
-        )
-        return checker with scopes: scopes
+        let scope_replaced be Scope(bindings: bindings)
+        return checker with scopes: checker.scopes.with_at(index: scope_index, item: scope_replaced)
       end
       change binding_index to binding_index + 1
     end
@@ -1539,12 +1532,8 @@ function mark_all_used(checker: Checker) returns Checker
   let scope be checker.scopes.last() otherwise return checker
   let bindings be for each binding in scope.bindings collect binding with used: true
   let index be checker.scopes.length() - 1
-  return checker
-    with scopes: lists.replace_at(
-      items: checker.scopes,
-      index: index,
-      item: Scope(bindings: bindings)
-    )
+  let replaced be Scope(bindings: bindings)
+  return checker with scopes: checker.scopes.with_at(index: index, item: replaced)
 end
 
 function bind(checker: Checker, name: Name, ty: Ty, is_mutable: Boolean, kind: BindingKind)
@@ -1566,7 +1555,7 @@ function bind(checker: Checker, name: Name, ty: Ty, is_mutable: Boolean, kind: B
   let scope be updated.scopes.last() otherwise crash with "a scope"
   let index be updated.scopes.length() - 1
   let replaced be Scope(bindings: scope.bindings.append(binding))
-  return updated with scopes: lists.replace_at(items: updated.scopes, index: index, item: replaced)
+  return updated with scopes: updated.scopes.with_at(index: index, item: replaced)
 end
 
 function check_shadowing(checker: Checker, name: Name) returns Checker
@@ -7682,12 +7671,8 @@ function retag_count(checker: Checker, source: maybe Span) returns Checker
     for each binding in scope.bindings
     collect count_tagged(binding: binding, span: span)
   let index be checker.scopes.length() - 1
-  return checker
-    with scopes: lists.replace_at(
-      items: checker.scopes,
-      index: index,
-      item: Scope(bindings: bindings)
-    )
+  let replaced be Scope(bindings: bindings)
+  return checker with scopes: checker.scopes.with_at(index: index, item: replaced)
 end
 
 function count_tagged(binding: Binding, span: Span) returns Binding
