@@ -7,15 +7,18 @@ checker's image run attributed by category under callgrind, eleven
 findings, two roads, the stages with their estimates), the owner's
 eight answers to it as decision AW1 (road (A), the Cranelift tier
 evolved in stages, the gate on the check row alone, stage 0 first),
-and stage 0 built and measured (decision AW2: the allocator entered by
+stage 0 built and measured (decision AW2: the allocator entered by
 mimalloc's plain functions and the module constants an image builds
 before any run; the check row 3,085.3 to 2,889.9 million instructions,
--6.3%, the ratio by instructions 6.99 to 6.54 against the gate's 3);
-on the way, a Windows defect since AT5 fixed (a2c4685: every run of an
-image there copied its code section, the mapping refused for want of
-execute access on the file's handle). Next is stage 1 as 1a (the
-start-here item 1). The session's record is "Done in session 14"
-below.
+-6.3%, the ratio by instructions 6.99 to 6.54 against the gate's 3),
+and stage 1a built and measured (decision AW3: a typed parameter's
+boxed operand taken from the stack at the call site; the calls through
+the VM's path 141,577 to 9,380, the check row 2,889.9 to 2,826.6,
+-2.2%, the ratio 6.54 to 6.40); on the way, a Windows defect since AT5
+fixed (a2c4685: every run of an image there copied its code section,
+the mapping refused for want of execute access on the file's handle).
+Next is stage 1c (the start-here item 1). The session's record is
+"Done in session 14" below.
 Session 13, in the cloud environment, had as its last work the icon
 and the wordmark, at the owner's request after the
 handover below (decision AV1: a war hammer on the accent tile and the
@@ -274,11 +277,17 @@ and push there directly.
    built" at the end of the study's section): the allocator entered by
    mimalloc's plain functions, the module constants an image builds
    before any run; the check row 3,085.3 to 2,889.9 million
-   instructions (-6.3%), the ratio by instructions 6.99 to 6.54. Next
-   is stage 1 as 1a (a typed parameter's boxed operand unboxed at the
-   call site), 1c (the frame leave by the static ownership state), 1b
-   (the read-only flag per parameter in the bytecode, both emitters,
-   the judges), 1d (the frame record cheaper), then the character
+   instructions (-6.3%), the ratio by instructions 6.99 to 6.54. Stage
+   1a is done too (decision AW3; the paragraph "Stage 1a as built"
+   after it): a typed parameter's boxed operand, which the checker
+   typed, taken from the stack at the call site after a test of its
+   tags; the calls through the VM's path 141,577 to 9,380 (the parser's
+   function values remain), the check row 2,889.9 to 2,826.6 (-2.2%),
+   the ratio 6.54 to 6.40. Next is 1c (the frame leave by the static
+   ownership state: 917,264 frames still leave through `rt_truncate`,
+   301.5 million inclusive, finding 2), 1b (the read-only flag per
+   parameter in the bytecode, both emitters, the judges), 1d (the
+   frame record cheaper), then the character
    tables and the hasher, stage 2 as 2a, 2b, 2c, the natives' entry and
    the glue, stage 4, the checker's own cuts between the stages, stages
    5 and 6 last. Each stage: the code, the gates of item 3, the measure
@@ -293,11 +302,16 @@ and push there directly.
    the Rust rows into `study/<name>/`; `size_rows.sh <name>` AT1's
    rows; `bench_both.sh <a> <b>` the benchmarks by `perf stat`;
    `study_table.py study/<name>/cg.check.out` the table by category;
+   `study_map.py study/<name>/cg.check.out study/<name>/checker.ryi
+   study/<name>/checker.ryc` the generated code per code object and the
+   calls that enter one through its trampoline, ranked (the slow calls
+   of finding 3; the `.ryc` is `renyi compile compiler/checker.ry`);
    `ratio_wsl.sh` the wall-clock ratio, which the file reads through
    `/mnt/d` dominate, so the ratio by instructions is the one recorded.
    The binaries kept: `renyi_au34` (44782aa, the reference), `renyi_head`
-   (7cbbbe0, the study's base) and `renyi_stage0` (stage 0's commit, the
-   base of stage 1's measure), each with its `study/` directory. The
+   (7cbbbe0, the study's base), `renyi_stage0` (2632cde, stage 0) and
+   `renyi_stage1a` (stage 1a's commit, the base of 1c's measure), each
+   with its `study/` directory. The
    road is months long (AU58); the gate is decided on the measure at
    the end.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
@@ -4173,10 +4187,39 @@ mimalloc 258.9 to 146.8, the calls through the VM's path 114.1 to 57.3
 (`call_from_stack` 306,330 to 141,589 calls), the parse row -7.5%, the
 compile row -4.9%, AT1's synchronous row -3.6% and -2.5% by the
 estimate, `records` -11.5%; the ratios by instructions 6.54, 4.08 and
-12.61. The table is in AW2. Stage 1 next, 1a first; the slow calls
-that remain (141,589 through `call_from_stack`) are to be attributed
-again with `study_map.py` on `study/stage0/` before 1a's sites are
-chosen.
+12.61. The table is in AW2.
+
+**Stage 1a as built (decision AW3, 2026-10-11).** The slow calls that
+remained after stage 0, attributed by `study_map.py` (the calls through
+each code object's trampoline): 141,577 into 62 code objects, half of
+them `type_at`, then `lex_reserved`, `assign_app`, `var_at`,
+`line_layout`, `module_at`, `lookup_param`, `function_at`,
+`call_known`, every one an Integer parameter whose operand the
+generated code held boxed although the checker typed it Integer (a
+variant's field bound by a pattern, `when Named(id)`, which `Unpack`
+pushes untyped and the slot's `Load` notes; a `maybe` after its
+`otherwise`; a difference of two such); the two function values
+(`argument`, `parameter`, through `bracketed`) are not of this kind.
+The change (`native/codegen.rs`, `native/infer.rs`): the direct call's
+condition admits a boxed operand the checker noted as the typed
+parameter's type (`noted_kind`), and `call_direct` tests its tags in
+place before the table lookup (an Integer that is small, a Boolean, a
+Float), reads the payload from the stack into the register the body
+takes, and leaves the operand for the frame push to move into the
+parameter's slot, where the trampoline's entry reads it; anything else
+takes the helper's path with the state untouched. The interpreter and
+the template tier are untouched; no format changes. The test is in
+`crates/renyi_vm/tests/native.rs` (an Integer, a Boolean and a Float
+parameter with a pattern's binding and a `maybe` after its
+`otherwise`, a big Integer through the same site). The measure: the
+calls through the trampolines 141,577 to 9,380 (`rt_call` 132,227 to
+30), the check row 2,889.9 to 2,826.6 million (-2.2%, the estimate was
+2.1%), the calls through the VM's path 57.3 to 7.4 million, the parse
+row -0.9%, the compile row -1.6%, AT1's synchronous row {sync_pct},
+the benchmarks within {bench_range}; the ratios by instructions 6.40,
+4.05 and 12.41. The table is in AW3. Stage 1c next: the leave by the
+static ownership state (finding 2: 917,264 leaves through
+`rt_truncate`, 301.5 million inclusive on this binary); then 1b, 1d.
 
 ## The representation items: the design study (session 11)
 
@@ -5772,9 +5815,14 @@ holds between calls.
   the test; the measure in AW2 and in "Stage 0 as built"; the lane's
   `measure_stage.sh`, `size_rows.sh`, `bench_stat.sh`, `bench_both.sh`,
   `ratio_wsl.sh` and `check_env.sh`.
-- For the owner: the cloud branch `origin/ccr-69f89985-9k2lfo` is
-  merged into `main` and was not deleted (CLAUDE.md: `main` is the
-  only branch; deleting a remote branch is the owner's call).
+- The cloud branch `origin/ccr-69f89985-9k2lfo`, merged into `main`,
+  deleted at the owner's word; `main` is the only branch again.
+- Stage 1a (decision AW3, the commit after 2632cde): the slow calls
+  after stage 0 attributed by `study_map.py`, which now ranks the calls
+  through the trampolines; a typed parameter's boxed operand taken
+  from the stack at the call site (`noted_kind` in `native/infer.rs`,
+  the direct condition and `call_direct` in `native/codegen.rs`); the
+  test; the measure in AW3 and in "Stage 1a as built".
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

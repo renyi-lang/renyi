@@ -6400,3 +6400,92 @@ on the owner's machine; `image::open_file` opens for reading and, on
 Windows, execution, the executable of decision AS4 opens itself the
 same way, and the report names a refused mapping with the system's
 reason.
+
+**AW3. Stage 1a of the new backend: a typed parameter's boxed operand
+taken from the stack at the call site.** The first item of stage 1 in
+AW1's order, on 2026-10-11, measured as AW1 prescribes against stage
+0's binary (2632cde). Before it, the slow calls that remained after
+stage 0 were attributed again (the lane's `study_map.py`, extended to
+rank the calls that enter a code object through its trampoline, that is
+through the VM's path): 141,577 into 62 code objects, half of them
+`type_at` (69,493), then `lex_reserved` (18,762), `assign_app`
+(13,546), `var_at` (7,460), `line_layout` (7,209), `argument` (6,501, a
+function value through `bracketed`), `module_at`, `lookup_param`,
+`parameter` (a function value), `function_at`, `call_known`; every one
+but the two function values an Integer parameter whose operand the
+generated code holds boxed although the checker typed it Integer: a
+variant's field bound by a pattern (`when Named(id)`, `when App(id:
+actual_id, ...)`, `when some(function_id)`), which `Unpack` pushes
+without a type and the slot's `Load` notes, a `maybe` after its
+`otherwise` (`words.word_codes.get(text) otherwise 0`, `starts.at(line)
+otherwise 0`), whose join with the literal is boxed, or a difference of
+two such (`stop - start`). AR3's direct call wanted a typed operand for
+a typed parameter and sent these through `rt_call` at about 435
+instructions each (the frame pushed by the VM, the trampoline,
+`rt_param_int`). The change: the direct condition of `Op::Call` in
+`native/codegen.rs` admits, for a typed parameter, a boxed operand the
+checker noted as the parameter's type (`noted_kind` in
+`native/infer.rs`: the note's type read as `abs_of_type` reads a
+parameter's, so a refined subtype of Integer counts as Integer, as it
+does for the parameter); and `call_direct` tests such an operand's tags
+in place before the table lookup (an Integer that is small, a Boolean,
+a Float: the same tests `unbox_top` makes), goes to the helper's path
+with the state untouched when one fails (a big or a guarded Integer,
+which the trampoline's `rt_param_int` would have handed to the
+interpreter as before), and otherwise reads the payload from the stack
+into the register the body's signature takes, leaving the operand on
+the stack for the frame push to move into the parameter's slot, where
+the trampoline's entry reads it: the slot holds a plain small Integer,
+which no leave counts, instead of whatever the stack held. Nothing else
+moves: an operand in the middle of the arguments is not shifted out,
+which would cost a copy per operand above it; the frame's move is the
+same copy the boxed parameters get, and none when every parameter is on
+the stack, as in `type_at(world, id)` and `assign_app`. The interpreter
+and the template tier are untouched, as the study set for 1a (the
+template tier passes boxed arguments and the trampoline unboxes them);
+no format changes. The test: `crates/renyi_vm/tests/native.rs`, an
+Integer, a Boolean and a Float parameter each called with a variant's
+field bound by a pattern and with a `maybe` after its `otherwise`, a
+big Integer through the same site, both tiers equal to the interpreter;
+the IR of the caller shows the two tag tests and the branch to the
+helper's path before the table lookup, the payload read before the
+frame push. The measure (callgrind under WSL on the release build for
+Linux, the images built under `valgrind --tool=none`, against stage 0's
+binary measured the same way in AW2, the reference AU34's 44782aa): the
+check row 2,889.9 to 2,826.6 million instructions (-2.2%; the study
+estimated 65 million after stage 0, 2.1%), the parse row 1,162.8 to
+1,152.9 (-0.9%), the compile row 4,608.8 to 4,535.7 (-1.6%); the ratios
+by instructions against the reference's rows (441.6, 284.7 and 365.6)
+6.40, 4.05 and 12.41 against the gate's 3 (6.54, 4.08 and 12.61 after
+stage 0); the Rust front end's own rows unchanged (`check` 173.2,
+`parse --json` 246.7, `compile` 444.9). The calls through the
+trampolines 141,577 to 9,380 (`call_from_stack` 141,589 to 9,392,
+`rt_call` 132,227 to 30): what remains is the parser's function values
+(`argument` 6,501, `parameter` 1,952, `field_pattern` 463,
+`variant_field` 275, `expression` 170, each the item parser `bracketed`
+and its kin take as a value, `rt_call_value`) and the eleven module
+constants the run builds at their first read. The check row by
+category, AW2's table against this one, in millions: the generated code
+996.9 to 994.9, the calls through the VM's path 57.3 to 7.4 (the
+stage's part, 49.9, with the glue's 4.5, the counts' 3.8, the natives'
+2.3, the generated code's 2.0 and the copies' 0.7 about 63 against the
+65 estimated), the helpers' glue 125.2 to 120.7, the counts and drops
+444.5 to 440.7, the natives 358.2 to 355.9, the texts and copies 121.0
+to 120.3, mimalloc 146.8 both, the records 206.8 both, the hashing
+219.9 to 219.8, the comparisons 123.9 both, the load 46.0 both, the
+iterators 40.3 both. AT1's rows on the frozen self-check
+(`tools/measure_size.sh` under WSL, stage 0's binary against this one):
+the synchronous JIT row 6,013.9 to 6,008.2 million instructions (-0.1%)
+and 8,659.1 to 8,640.4 million by the estimate (-0.2%), the image row
+4,538.9 to 4,496.7 (-0.9%) and 6,690.1 to 6,622.5 by the estimate
+(-1.0%), the cached run 4,618.7 to 4,576.3 (-0.9%), the interpreter
+11,240.2 to 11,240.5 (unchanged); the image 8,945,136 to 9,008,656
+bytes (the tag tests, 173.9 bytes of body per op from 172.5). The four
+benchmarks and hello by user-space instructions (`perf stat`, the JIT
+synchronous) are unchanged to the sixth figure (`primes` 288.8 million,
+`strings` 430.1, `records` 209.4, `json_round_trip` 838.1, `hello`
+5.42): no such site lies on their paths. The four judges byte-equal,
+the conformance suite 55 of 55 on both tiers, the template tier's own
+tests with the tier forced, 385 tests. Stage 1c next, the leave by the
+static ownership state: on this binary 917,264 frames still leave
+through `rt_truncate`, 301.5 million inclusive, finding 2's target.

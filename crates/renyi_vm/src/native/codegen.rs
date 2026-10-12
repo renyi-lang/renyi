@@ -32,7 +32,7 @@ use crate::extension::TypedKind;
 use crate::integer::Int;
 use crate::native::infer::{
     abs_of_binary, abs_of_constant, abs_of_field_at, abs_of_params, abs_of_result, abs_of_slot,
-    analyse, boxed_depth, is_integer, is_text, static_field, Abs, Analysis, SlotKind,
+    analyse, boxed_depth, is_integer, is_text, noted_kind, static_field, Abs, Analysis, SlotKind,
 };
 use crate::native::runtime::{
     binary_code, fold_code, CONTINUE, DEOPT, D_BOXED, D_DEOPT, D_FAILURE, D_INTERRUPT, D_RETURNED,
@@ -1644,6 +1644,12 @@ impl Gen<'_, '_> {
         self.address_at(height)
     }
 
+    /// The address of the boxed operand at `depth` of the state.
+    fn operand_address(&mut self, depth: usize) -> IrValue {
+        let height = self.height() - 1 - self.boxed_above(depth);
+        self.address_at(height)
+    }
+
     /// The address of the item at `index` of a pinned vector of values,
     /// from its pointer.
     fn item_address(&mut self, ptr: IrValue, index: IrValue) -> IrValue {
@@ -2978,13 +2984,18 @@ impl Gen<'_, '_> {
                 });
                 let first = self.state.len() - count;
                 // a direct call (decision AR3) when the callee has a code
-                // object and every typed parameter has a typed operand here
+                // object and every typed parameter has a typed operand here,
+                // or a boxed one the checker noted as the parameter's type,
+                // which the site takes from the stack (decision AW3)
                 let direct = match &kinds {
                     Some(kinds) => {
                         kinds.len() == count
                             && count <= 64
                             && kinds.iter().enumerate().all(|(index, kind)| {
-                                kind.is_boxed() || self.state[first + index] == *kind
+                                let operand = self.state[first + index];
+                                kind.is_boxed()
+                                    || operand == *kind
+                                    || noted_kind(self.program, operand) == *kind
                             })
                     }
                     None => false,
@@ -3865,7 +3876,13 @@ impl Gen<'_, '_> {
     }
 
     /// A direct call (decision AR3): the callee's body called with its
-    /// typed arguments in registers and the boxed ones on the stack. The
+    /// typed arguments in registers and the boxed ones on the stack. A
+    /// typed parameter whose operand is boxed here, noted by the checker as
+    /// the parameter's type, is taken from the stack at the site (decision
+    /// AW3): its tags tested in place, its payload passed in the register,
+    /// and the operand left for the frame to move into the parameter's
+    /// slot, where the trampoline's entry would read it; a big or a guarded
+    /// Integer takes the helper's path with everything else. The
     /// body's address comes from the JIT's table; without one (the callee
     /// is cold, or not placed yet), or with no room on the machine stack,
     /// the call goes through `rt_call`, and the interpreter compiles a hot
@@ -3889,6 +3906,36 @@ impl Gen<'_, '_> {
         self.b.append_block_param(have, pointer);
         let slow = self.b.create_block();
         let join = self.b.create_block();
+        // the typed parameters whose operands are boxed here (decision
+        // AW3): the tags tested in place, a small Integer, a Boolean or a
+        // Float of the parameter's kind going on, anything else through
+        // the helper's path
+        let unboxed: Vec<usize> = (0..count)
+            .filter(|index| !kinds[*index].is_boxed() && self.state[first + index].is_boxed())
+            .collect();
+        let mut fits: Option<IrValue> = None;
+        for &index in &unboxed {
+            let at = self.operand_address(first + index);
+            let tags: &[(i32, u8)] = match kinds[index] {
+                Abs::Int => &[(0, TAG_INTEGER), (INT_TAG, INT_SMALL)],
+                Abs::Bool => &[(0, TAG_BOOLEAN)],
+                Abs::Float => &[(0, TAG_FLOAT)],
+                _ => unreachable!("a parameter is typed or boxed"),
+            };
+            for &(offset, tag) in tags {
+                let found = self.tag_at(at, offset);
+                let is = self.b.ins().icmp_imm_s(IntCC::Equal, found, tag as i64);
+                fits = Some(match fits {
+                    Some(before) => self.b.ins().band(before, is),
+                    None => is,
+                });
+            }
+        }
+        if let Some(fits) = fits {
+            let fit = self.b.create_block();
+            self.b.ins().brif(fits, fit, &[], slow, &[]);
+            self.switch_to(fit);
+        }
         // the body's address from the table
         let state = self.native_state();
         let table = self.b.ins().load(pointer, flags, state, STATE_DIRECT);
@@ -3920,12 +3967,28 @@ impl Gen<'_, '_> {
                 self.box_position(first + index);
             }
         }
+        // the payloads of the operands taken from the stack, read before
+        // the frame moves them to their parameters' slots
+        let mut payloads: Vec<Option<IrValue>> = vec![None; count];
+        for &index in &unboxed {
+            mask |= 1 << index;
+            let at = self.operand_address(first + index);
+            payloads[index] = Some(match kinds[index] {
+                Abs::Int => self.b.ins().load(types::I64, flags, at, INT_PAYLOAD),
+                Abs::Bool => self.b.ins().load(types::I8, flags, at, PAYLOAD),
+                _ => self.b.ins().load(types::F64, flags, at, PAYLOAD),
+            });
+        }
         let base = self.push_frame_inline(callee, mask);
         let pc0 = self.u32(0);
         let one = self.u8(1);
         let mut arguments = vec![self.vm, base, pc0, one];
         for (index, kind) in kinds.iter().enumerate() {
             let depth = first + index;
+            if let Some(payload) = payloads[index] {
+                arguments.push(payload);
+                continue;
+            }
             match kind {
                 Abs::Int => {
                     let var = self.int_var(depth);

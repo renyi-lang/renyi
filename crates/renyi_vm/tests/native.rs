@@ -1460,3 +1460,76 @@ end
     assert_eq!(outcome, RunOutcome::Finished);
     assert_eq!(stdout.text(), "20 40 2 9 8\n");
 }
+
+#[test]
+fn typed_parameters_take_boxed_operands_the_checker_typed_from_the_stack() {
+    // decision AW3: a call whose Integer, Boolean or Float parameter gets
+    // an operand the generated code holds boxed (a variant's field bound
+    // by a pattern, a maybe after its otherwise), noted by the checker as
+    // the parameter's type, enters the callee's body directly, the
+    // operand's tags tested at the site; a big Integer at the same site
+    // takes the helper's path, and both tiers print what the interpreter
+    // prints
+    let source = r#"module demo
+  purpose: Typed parameters with boxed operands (decision AW3), a big Integer among them.
+
+import std.console
+
+type Reading is one of
+  purpose: An Integer, a Boolean or a Float behind a variant's field, or nothing.
+  Count(value: Integer)
+  Flag(value: Boolean)
+  Measure(value: Float)
+  Blank
+end
+
+function doubled(value: Integer) returns Integer
+  purpose: Twice the value.
+
+  return value + value
+end
+
+function negated(flag: Boolean) returns Boolean
+  purpose: The flag turned.
+
+  return not flag
+end
+
+function halved(value: Float) returns Float
+  purpose: Half the value.
+
+  return value / 2.0
+end
+
+function describe(reading: Reading, fallback: maybe Integer) returns Text
+  purpose: Each kind of reading through its typed parameter, with the fallback after its otherwise.
+
+  let code be fallback otherwise 3
+  match reading
+    when Count(value) then return "{doubled(value)} {doubled(code)}"
+    when Flag(value) then return "{negated(value)} {doubled(code)}"
+    when Measure(value) then return "{halved(value)} {doubled(code)}"
+    when Blank then return "{doubled(code)}"
+  end
+end
+
+public function main() needs console
+  purpose: Print every reading with and without a fallback.
+
+  let huge be 9223372036854775807 + 1
+  let readings be [
+    Count(value: 21), Flag(value: true), Measure(value: 5.0), Count(value: huge), Blank
+  ]
+  for each reading in readings
+    console.print(describe(reading: reading, fallback: 4))
+    console.print(describe(reading: reading, fallback: nothing))
+  end
+end
+"#;
+    let (outcome, printed) = both_ways(source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(
+        printed,
+        "42 8\n42 6\nfalse 8\nfalse 6\n2.5 8\n2.5 6\n18446744073709551616 8\n18446744073709551616 6\n8\n6\n"
+    );
+}

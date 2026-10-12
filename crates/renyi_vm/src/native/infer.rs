@@ -243,6 +243,21 @@ pub fn is_integer(program: &Program, abs: Abs) -> bool {
     )
 }
 
+/// The representation the checker's note gives a boxed operand: a small
+/// Integer, a Boolean or a Float when it noted such a type (a refined
+/// subtype's base among them, as `abs_of_type` reads it), else boxed. A
+/// direct call takes such an operand of a typed parameter from the stack
+/// at the site, after a test of its tags (decision AW3).
+pub fn noted_kind(program: &Program, abs: Abs) -> Abs {
+    match abs {
+        Abs::Boxed(Some(index)) => match program.result_types.get(index as usize) {
+            Some(ty) => abs_of_type(program, ty),
+            None => Abs::Boxed(None),
+        },
+        _ => Abs::Boxed(None),
+    }
+}
+
 /// The representation of a declared parameter from the type as the
 /// checker spells it (`FunctionMeta::param_types`).
 pub fn abs_of_spelling(spelling: &str) -> Abs {
