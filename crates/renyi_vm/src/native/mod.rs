@@ -35,6 +35,7 @@ use cranelift_codegen::settings::{self, Configurable};
 use cranelift_codegen::Context;
 use cranelift_frontend::FunctionBuilderContext;
 
+use crate::bytecode::Op;
 use crate::compile::{CodeId, Program};
 use crate::value::Value;
 use crate::vm::{CallKind, GlobalSlot, Vm};
@@ -570,9 +571,12 @@ impl Jit {
             globals: program
                 .constants
                 .iter()
-                .map(|_| GlobalSlot {
-                    ready: 0,
-                    value: Value::Nothing,
+                .map(|meta| match literal_constant(program, meta.code) {
+                    Some(value) => GlobalSlot { ready: 1, value },
+                    None => GlobalSlot {
+                        ready: 0,
+                        value: Value::Nothing,
+                    },
                 })
                 .collect(),
             calls_cold: 0,
@@ -1198,6 +1202,20 @@ pub(crate) fn compile_with_inlining(
     }
     compiled.regions = regions;
     Ok(compiled)
+}
+
+/// The value of a module constant whose code object is a literal and a
+/// `Return` (decision AW2): known before the VM builds it, so that the
+/// generated code reads it in place from the start and a small Integer
+/// among them is a literal in the Cranelift code (`Jit::small_globals`);
+/// an image's code has them too, where no constant is built when the
+/// image is. The VM builds the same value on the constant's first read.
+fn literal_constant(program: &Program, code: CodeId) -> Option<Value> {
+    let code = &program.codes[code];
+    match code.ops.as_slice() {
+        [Op::Const(index), Op::Return] => code.constants.get(*index as usize).cloned(),
+        _ => None,
+    }
 }
 
 /// The reason a code object stays with the interpreter, under

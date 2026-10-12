@@ -1367,3 +1367,96 @@ end
     assert_eq!(outcome, RunOutcome::Finished);
     assert_eq!(printed, "5661951\n");
 }
+
+#[test]
+fn an_image_builds_the_pure_module_constants_and_leaves_the_rest_to_the_run() {
+    // decision AW2: when an image is built, every module constant whose
+    // code reaches only declared functions, constant reads and natives
+    // without `needs` is built on the interpreter, so that a small
+    // Integer among them is a literal in the image's code; a constant
+    // that reaches an ability call (a method on a type parameter; one on
+    // a known type is a declared function) or a function value is left
+    // to the run, and one whose build fails too; the run from the image
+    // prints what the interpreter prints
+    let source = r#"module demo
+  purpose: Module constants an image builds before any run (AW2): the pure ones, the rest left to the run.
+
+import std.console
+
+type Square
+  has side: Integer
+  has name: Text
+end
+
+ability Measured
+  function area(self) returns Integer
+end
+
+ability Measured for Square
+  function area(self) returns Integer
+    return self.side * self.side
+  end
+end
+
+let base: Integer be 20
+
+let doubled: Integer be twice(base)
+
+let names: List of Text be ["ab", "cd"]
+
+let zero: Integer be twice(0)
+
+let broken: Integer be base.quotient(zero)
+
+let measured: Integer be area_of(Square(side: 3, name: "s"))
+
+let picked: Integer be apply(action: twice, value: 4)
+
+function twice(value: Integer) returns Integer
+  return value * 2
+end
+
+function area_of(shape: Shape) returns Integer for any Shape where Shape can Measured
+  return shape.area()
+end
+
+function apply(action: function(Integer) returns Integer, value: Integer) returns Integer
+  return action(value)
+end
+
+public function main() needs console
+  purpose: Print every constant but the broken one, which is read past a branch not taken.
+
+  if base is greater than 100 then console.print("{broken}") end
+  console.print("{base} {doubled} {names.length()} {measured} {picked}")
+end
+"#;
+    let program = compile(source);
+    let registry = renyi_vm::Registry::standard();
+    let calls = renyi_vm::vm::call_kinds(&program, &registry);
+    let pure: Vec<&str> = renyi_vm::native::image::pure_constants(&program, &calls)
+        .into_iter()
+        .map(|index| program.constants[index].name.as_str())
+        .collect();
+    assert_eq!(pure, ["base", "doubled", "names", "zero", "broken"]);
+    let (outcome, printed) = both_ways(source);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(printed, "20 40 2 9 8\n");
+    // the image: `broken` fails to build and is left to the run, the
+    // others are built, and `base`, `doubled` and `zero` are literals
+    let image = renyi_vm::native::image::build(&program, None, &registry).expect("an image");
+    let stdout = Capture::default();
+    let outcome = run_program(
+        &program,
+        Options {
+            stdout: Box::new(stdout.clone()),
+            stderr: Box::new(Capture::default()),
+            stdin: Box::new(std::io::Cursor::new(Vec::new())),
+            image: Some(image),
+            ..Options::default()
+        },
+    )
+    .outcome;
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(stdout.text(), "20 40 2 9 8\n");
+}

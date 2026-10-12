@@ -31,8 +31,10 @@ use cranelift_codegen::isa::TargetIsa;
 use super::infer::{Abs, SlotKind};
 use super::inline::Region;
 use super::{DeoptPoint, Jit};
+use crate::bytecode::Op;
 use crate::compile::Program;
 use crate::extension::Registry;
+use crate::vm::{CallKind, Options, Vm};
 
 /// The first four bytes of an image file.
 pub const MAGIC: &[u8; 4] = b"RYI\0";
@@ -117,8 +119,37 @@ pub fn build(
     // reads of the slots as moves (decision AU17); the image carries the
     // program as the emitters wrote it
     let prepared = crate::liveness::prepared(program);
+    // the module constants a pure computation gives, built now on the
+    // interpreter, so that a small Integer among them is a literal in the
+    // image's code (decision AW2: the parser's `is_symbol(code:
+    // words.symbol_comma)` and the like reach the direct path); the
+    // values go with this VM, and the run builds its own on the first
+    // read as before, the same values by the purity; a constant whose
+    // build fails is left to the run, which crashes on its first read
+    let evaluable = pure_constants(&prepared, &calls);
     let mut jit = Jit::new(&prepared, Some(opt_level.unwrap_or("speed")), calls)
         .ok_or_else(|| "this machine generates no machine code".to_string())?;
+    if !evaluable.is_empty() {
+        let fresh = || {
+            Vm::new(
+                &prepared,
+                Options {
+                    interpret: true,
+                    registry: registry.clone(),
+                    ..Options::default()
+                },
+            )
+        };
+        let mut vm = fresh();
+        for index in evaluable {
+            match vm.global(index) {
+                Ok(value) => jit.note_global(index, &value),
+                // the VM is left as a crash leaves it: a new one builds
+                // the rest
+                Err(_) => vm = fresh(),
+            }
+        }
+    }
     let compiled = jit.compile_everything(&prepared);
     // the section: every body and trampoline in order, sixteen-aligned
     let mut section = Vec::new();
@@ -159,6 +190,64 @@ pub fn build(
         section_len,
         mapped: None,
     })
+}
+
+/// The module constants a build can evaluate before any run (decision
+/// AW2). A constant's code is effect-free (the checker admits no `needs`
+/// in one; a foreign or a Python function needs `foreign` or `python`),
+/// so what it builds is the same at every run unless a deadline passed
+/// while it was built (`run concurrently within` needs nothing): a
+/// constant is pure when its code reaches, through the declared
+/// functions it calls and the constants it reads, no deadline, no
+/// ability call and no call of a function value (whose targets the code
+/// does not name), only natives without `needs` (a pure or a typed call)
+/// and no foreign or Python function, should one ever come without
+/// `needs`. What a native or an op reaches through an ability's
+/// implementation on a record (`hash`, `equals`, `to_text`) is not
+/// followed: such an implementation with a deadline in it was a race
+/// between two runs already. A fixed point over the code objects, so
+/// that a cycle of calls settles as impure when one of its members is.
+pub fn pure_constants(program: &Program, calls: &[CallKind]) -> Vec<usize> {
+    let mut pure = vec![true; program.codes.len()];
+    loop {
+        let mut changed = false;
+        for (code, body) in program.codes.iter().enumerate() {
+            if !pure[code] {
+                continue;
+            }
+            let stays = body.ops.iter().all(|op| match op {
+                Op::Call { function, .. } => {
+                    let meta = &program.function_metas[*function];
+                    if meta.foreign.is_some() || meta.python.is_some() {
+                        return false;
+                    }
+                    match program.function_codes.get(*function).copied().flatten() {
+                        Some(callee) => pure[callee],
+                        None => matches!(
+                            calls.get(*function),
+                            Some(CallKind::Pure | CallKind::Typed { .. })
+                        ),
+                    }
+                }
+                Op::Global(index) => pure[program.constants[*index as usize].code],
+                Op::CallAbility { .. }
+                | Op::CallValue(_)
+                | Op::Deadline(_)
+                | Op::CheckDeadline(_) => false,
+                _ => true,
+            });
+            if !stays {
+                pure[code] = false;
+                changed = true;
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+    (0..program.constants.len())
+        .filter(|&index| pure[program.constants[index].code])
+        .collect()
 }
 
 /// What an image was built by and for.

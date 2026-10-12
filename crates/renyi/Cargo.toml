@@ -26,4 +26,4 @@ renyi_vm.workspace = true
 renyi_package.workspace = true
 renyi_json.workspace = true
 ureq = "3"
-mimalloc = "0.1.52"
+libmimalloc-sys = "0.1.49"

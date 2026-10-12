@@ -496,15 +496,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mimalloc"
-version = "0.1.52"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d4139bb28d14ad1facf21d5eb8825051b326e172d216b39f6d31df53cc97862"
-dependencies = [
- "libmimalloc-sys",
-]
-
-[[package]]
 name = "miniz_oxide"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -637,7 +628,7 @@ dependencies = [
 name = "renyi"
 version = "0.1.0"
 dependencies = [
- "mimalloc",
+ "libmimalloc-sys",
  "renyi_check",
  "renyi_index",
  "renyi_json",

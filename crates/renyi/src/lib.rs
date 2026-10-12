@@ -54,6 +54,11 @@ use renyi_vm::native::image::{self, Image};
 use renyi_vm::recording::Dependency;
 use renyi_vm::{file, Manifest};
 
+use libmimalloc_sys::{
+    mi_free, mi_malloc, mi_malloc_aligned, mi_realloc, mi_realloc_aligned, mi_zalloc,
+    mi_zalloc_aligned,
+};
+
 pub use renyi_vm::memory::Counting;
 pub use renyi_vm::{Extension, Native, Registry, Typed, TypedKind, Value};
 pub use sandbox::{bytes_text, CallError, Function, Grant, Sandbox};
@@ -68,7 +73,58 @@ pub use sandbox::{bytes_text, CallError, Function, Grant, Sandbox};
 /// allocator of its own wraps that one in [`Counting`] instead.
 pub struct Allocator;
 
-static COUNTING: Counting<mimalloc::MiMalloc> = Counting(mimalloc::MiMalloc);
+/// mimalloc entered by its plain functions where they serve (decision
+/// AW2): an allocation whose alignment is at most `PLAIN_ALIGN` takes
+/// `mi_malloc`, whose every block is a multiple of eight bytes at a
+/// multiple of eight from a page area that starts sixteen-aligned, and
+/// the aligned entries serve the alignments above it. The `mimalloc`
+/// crate's allocator called `mi_malloc_aligned` for every allocation,
+/// whose fast case fails whenever the page's free list is empty and
+/// whose generic path then over-allocates every block of a size that is
+/// not a power of two: 621,420 of the checker's 2,381,541 allocations in
+/// the study of AW1.
+struct Plain;
+
+/// The alignment mimalloc's plain blocks have by their granularity.
+const PLAIN_ALIGN: usize = 8;
+
+unsafe impl std::alloc::GlobalAlloc for Plain {
+    unsafe fn alloc(&self, layout: std::alloc::Layout) -> *mut u8 {
+        if layout.align() <= PLAIN_ALIGN {
+            mi_malloc(layout.size()) as *mut u8
+        } else {
+            mi_malloc_aligned(layout.size(), layout.align()) as *mut u8
+        }
+    }
+
+    unsafe fn alloc_zeroed(&self, layout: std::alloc::Layout) -> *mut u8 {
+        if layout.align() <= PLAIN_ALIGN {
+            mi_zalloc(layout.size()) as *mut u8
+        } else {
+            mi_zalloc_aligned(layout.size(), layout.align()) as *mut u8
+        }
+    }
+
+    unsafe fn dealloc(&self, pointer: *mut u8, _layout: std::alloc::Layout) {
+        mi_free(pointer as *mut std::ffi::c_void)
+    }
+
+    unsafe fn realloc(
+        &self,
+        pointer: *mut u8,
+        layout: std::alloc::Layout,
+        new_size: usize,
+    ) -> *mut u8 {
+        if layout.align() <= PLAIN_ALIGN {
+            mi_realloc(pointer as *mut std::ffi::c_void, new_size) as *mut u8
+        } else {
+            mi_realloc_aligned(pointer as *mut std::ffi::c_void, new_size, layout.align())
+                as *mut u8
+        }
+    }
+}
+
+static COUNTING: Counting<Plain> = Counting(Plain);
 
 unsafe impl std::alloc::GlobalAlloc for Allocator {
     unsafe fn alloc(&self, layout: std::alloc::Layout) -> *mut u8 {

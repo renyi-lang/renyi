@@ -1,7 +1,23 @@
 # Handoff
 
-Last updated: 2026-10-11, session 13, in the cloud environment. Its
-last work is the icon and the wordmark, at the owner's request after the
+Last updated: 2026-10-11, session 14, on the owner's machine. Its work:
+the design study of stage 29, the new backend for the VM (the section
+"Stage 29, the new backend: the design study (session 14)" below: the
+checker's image run attributed by category under callgrind, eleven
+findings, two roads, the stages with their estimates), the owner's
+eight answers to it as decision AW1 (road (A), the Cranelift tier
+evolved in stages, the gate on the check row alone, stage 0 first),
+and stage 0 built and measured (decision AW2: the allocator entered by
+mimalloc's plain functions and the module constants an image builds
+before any run; the check row 3,085.3 to 2,889.9 million instructions,
+-6.3%, the ratio by instructions 6.99 to 6.54 against the gate's 3);
+on the way, a Windows defect since AT5 fixed (a2c4685: every run of an
+image there copied its code section, the mapping refused for want of
+execute access on the file's handle). Next is stage 1 as 1a (the
+start-here item 1). The session's record is "Done in session 14"
+below.
+Session 13, in the cloud environment, had as its last work the icon
+and the wordmark, at the owner's request after the
 handover below (decision AV1: a war hammer on the accent tile and the
 name signed in Ms Madi, held by `tools/brand.py` and used in the site's
 header and tab, the README, the VS Code extension and the social
@@ -244,35 +260,46 @@ and push there directly.
 ## Start here (session 14)
 
 1. The work now is stage 29 of the roadmap, the new backend for the
-   VM. Its design study is written: the section "Stage 29, the new
-   backend: the design study (session 14)" below (the attribution by
-   category, eleven findings, the two roads, the stages with their
-   estimates, the checker's own shape, the order), and the owner's
-   eight answers are decision AW1 (road (A), the Cranelift tier evolved
-   in stages; the gate measured on the check row alone; stage 0 first;
-   the read-only flag per parameter in the bytecode from both emitters;
-   `Done` without its allocation by a convention per function; the
-   natives' in-place entry through AK1's API; the character tables and
-   the VM's hasher; the iterator in two slots). The work goes stage by
-   stage in AW1's order: stage 0 (the allocator entered by mimalloc's
-   plain functions, a literal module constant known to the JIT in an
-   image), stage 1 as 1a, 1c, 1b, 1d, the character tables and the
-   hasher, stage 2 as 2a, 2b, 2c, the natives' entry and the glue,
-   stage 4, the checker's own cuts between the stages, stages 5 and 6
-   last. Each stage: the code, the gates of item 3, the measure (AU58's:
-   the checker's image run under callgrind with the study's table by
-   category beside it, `tools/ratio.py` against AU34's binary on the
-   same boot, AT1's rows where the tiers change), then its decision
-   entry with the table and the roadmap's stage 29 paragraph. The
-   measuring binaries are in the perf lane
-   (`D:/Projects/.worktrees/Renyi/perf/`): `renyi_head` (7cbbbe0) and
-   `renyi_au34` (44782aa, the reference), built under WSL by
-   `build_linux.sh` and `build_au34.sh`; the study's scripts
-   (`study_callgrind.sh`, `study_rust_rows.sh`, `study_table.py`,
-   `study_map.py`) and its callgrind outputs (`study/head/`,
-   `study/au34/`) beside them; `renyi_head` is the base of stage 0's
-   measure. The road is months long (AU58); the gate is decided on the
-   measure at the end.
+   VM, stage by stage in AW1's order. Its design study is the section
+   "Stage 29, the new backend: the design study (session 14)" below
+   (the attribution by category, eleven findings, the two roads, the
+   stages with their estimates, the checker's own shape, the order),
+   and the owner's eight answers are decision AW1 (road (A), the
+   Cranelift tier evolved in stages; the gate measured on the check row
+   alone; stage 0 first; the read-only flag per parameter in the
+   bytecode from both emitters; `Done` without its allocation by a
+   convention per function; the natives' in-place entry through AK1's
+   API; the character tables and the VM's hasher; the iterator in two
+   slots). Stage 0 is done (decision AW2; the paragraph "Stage 0 as
+   built" at the end of the study's section): the allocator entered by
+   mimalloc's plain functions, the module constants an image builds
+   before any run; the check row 3,085.3 to 2,889.9 million
+   instructions (-6.3%), the ratio by instructions 6.99 to 6.54. Next
+   is stage 1 as 1a (a typed parameter's boxed operand unboxed at the
+   call site), 1c (the frame leave by the static ownership state), 1b
+   (the read-only flag per parameter in the bytecode, both emitters,
+   the judges), 1d (the frame record cheaper), then the character
+   tables and the hasher, stage 2 as 2a, 2b, 2c, the natives' entry and
+   the glue, stage 4, the checker's own cuts between the stages, stages
+   5 and 6 last. Each stage: the code, the gates of item 3, the measure
+   (AU58's: the checker's image run under callgrind with the study's
+   table by category beside it, AT1's rows, the benchmarks by
+   instructions), then its decision entry with the table and the
+   roadmap's stage 29 paragraph. The measuring is done in the perf lane
+   (`D:/Projects/.worktrees/Renyi/perf/`) under WSL, from PowerShell as
+   `wsl.exe -d Ubuntu -- bash /mnt/d/Projects/.worktrees/Renyi/perf/<script>`:
+   `measure_stage.sh <name>` builds the working tree for Linux, keeps
+   the binary as `renyi_<name>` and runs the three callgrind rows and
+   the Rust rows into `study/<name>/`; `size_rows.sh <name>` AT1's
+   rows; `bench_both.sh <a> <b>` the benchmarks by `perf stat`;
+   `study_table.py study/<name>/cg.check.out` the table by category;
+   `ratio_wsl.sh` the wall-clock ratio, which the file reads through
+   `/mnt/d` dominate, so the ratio by instructions is the one recorded.
+   The binaries kept: `renyi_au34` (44782aa, the reference), `renyi_head`
+   (7cbbbe0, the study's base) and `renyi_stage0` (stage 0's commit, the
+   base of stage 1's measure), each with its `study/` directory. The
+   road is months long (AU58); the gate is decided on the measure at
+   the end.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
    release binary of the stage against the binary before it (keep a
    copy of that binary before changing the code; the rows are
@@ -4128,6 +4155,29 @@ the hasher (the VM's own with the tables, or the tables only), and the
 iterator (the bytecode change, a lighter native in the slot, or left).
 The answers are decision AW1.
 
+**Stage 0 as built (decision AW2, 2026-10-11).** (i) The allocator:
+`renyi::Allocator` takes mimalloc's plain entries for an alignment of
+at most 8 (`Plain` in `crates/renyi/src/lib.rs`, the binary on
+`libmimalloc-sys` itself), the aligned ones above. (ii) The constants:
+the study's assumption that the checker's constants are literals was
+wrong (of 184, 30 are; 118 are `symbol_code(",")` and the like), so
+besides the literal ones `Jit::new` fills (`literal_constant` in
+`native/mod.rs`), `image::build` evaluates the pure constants
+(`pure_constants` in `native/image.rs`: a fixed point over the code
+objects, no deadline, ability call or function value reached, natives
+without `needs` only) on an interpreter VM and notes them with the JIT,
+so that the small Integers among them are literals in the image's
+code; the test is in `crates/renyi_vm/tests/native.rs`. The measure:
+the check row 3,085.3 to 2,889.9 million (-6.3%, the estimate was 5%),
+mimalloc 258.9 to 146.8, the calls through the VM's path 114.1 to 57.3
+(`call_from_stack` 306,330 to 141,589 calls), the parse row -7.5%, the
+compile row -4.9%, AT1's synchronous row -3.6% and -2.5% by the
+estimate, `records` -11.5%; the ratios by instructions 6.54, 4.08 and
+12.61. The table is in AW2. Stage 1 next, 1a first; the slow calls
+that remain (141,589 through `call_from_stack`) are to be attributed
+again with `study_map.py` on `study/stage0/` before 1a's sites are
+chosen.
+
 ## The representation items: the design study (session 11)
 
 **What the owner ordered (AU20)**: after the template tier's follow-ups
@@ -4589,7 +4639,10 @@ read reads.
   executable to the alignment before the image, so that the embedded
   image's section maps from the executable's own file; the report says
   "the section mapped from the file" or "copied", which `tests/build.rs`
-  asserts for a `.ryi` run and for the executable. `IMAGE_FORMAT` 3;
+  asserts for a `.ryi` run and for the executable. Since a2c4685
+  (session 14) the file is opened with execute access on Windows, where
+  the mapping had been refused and the section copied on every run, and
+  the report names a refused mapping with the system's reason. `IMAGE_FORMAT` 3;
   `tools/image_census.py` reads the table and the section's offset.
   Measured: a run that exits at once (`renyi run <image>`
   without arguments) 16 ms with the image mapped, 27 with it copied and
@@ -5696,6 +5749,32 @@ holds between calls.
   map as the base, with `--json` and against itself; `HEAD` as the base
   for the corpus and for one file; a bad base), the `diff` call in
   `tests/mcp.rs`, and a unit test of `own_text_hash`.
+
+## Done in session 14 (the study, AW1, the Windows mapping fix, stage 0; on the owner's machine)
+
+- The design study of stage 29 (the section "Stage 29, the new
+  backend: the design study (session 14)"), with the lane's scripts
+  `study_callgrind.sh`, `study_rust_rows.sh`, `study_table.py` and
+  `study_map.py`, and the binaries `renyi_head` and `renyi_au34`
+  measured under WSL; the owner's eight answers as decision AW1;
+  commit d43c07f.
+- The image's file opened with execute access on Windows (a2c4685):
+  every Windows run of an image had copied its code section since AT5,
+  the mapping refused with "access denied" for want of
+  `GENERIC_EXECUTE` on the handle; `image::open_file`, the executable
+  of AS4 opening itself the same way, and the report naming a refused
+  mapping with the system's reason; found by the two tests of
+  `crates/renyi/tests/build.rs` that assert "mapped from the file",
+  which had been failing on the owner's machine.
+- Stage 0 (decision AW2, the commit after a2c4685): the allocator
+  entered by mimalloc's plain functions; the literal constants known
+  to the JIT from `Jit::new` and the pure constants an image builds;
+  the test; the measure in AW2 and in "Stage 0 as built"; the lane's
+  `measure_stage.sh`, `size_rows.sh`, `bench_stat.sh`, `bench_both.sh`,
+  `ratio_wsl.sh` and `check_env.sh`.
+- For the owner: the cloud branch `origin/ccr-69f89985-9k2lfo` is
+  merged into `main` and was not deleted (CLAUDE.md: `main` is the
+  only branch; deleting a remote branch is the owner's call).
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

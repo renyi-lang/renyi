@@ -22,7 +22,7 @@ branches of the repository.
 | M4 | the library and the package manager: packages, `std.process`, the foreign function interface | done (stage 15) |
 | M5 | the integration: the registration API, the Python bridge and binder, the resident world, the language server, `serve --watch`, the embedding API | done (stages 18 and 19) |
 | M6 | ahead-of-time code: machine code for the bytecode, the baseline JIT, the template tier, `renyi build` images and self-contained executables | the machine code exists (stages 16, 21, 22, 24, 26); no WASM or C API target |
-| Self-hosting | the compiler written in Renyi (lexer, parser, checker, emitter) held equal to the Rust toolchain by the judges; the binary switches to it when it is within 3 times the Rust front end's time (decision AU35 ii) | the compiler exists and is judged (stages 11, 12, 14, 15); the speed round is under way (stages 25 to 28; stage 29, a new backend for the VM, has its study and its first stages under way, AW1) |
+| Self-hosting | the compiler written in Renyi (lexer, parser, checker, emitter) held equal to the Rust toolchain by the judges; the binary switches to it when it is within 3 times the Rust front end's time (decision AU35 ii) | the compiler exists and is judged (stages 11, 12, 14, 15); the speed round is under way (stages 25 to 28; stage 29, a new backend for the VM, has its study and its stage 0, AW1 and AW2) |
 
 ## 2. The stages, in order
 
@@ -275,7 +275,18 @@ where one decided, the status. The dates are those of the decisions.
     with every stage landed, the last part the checker's shape. The
     gate is measured on the check row alone (AW1 (2)); the compile row
     (13.25 by instructions) waits on the emitter's own round. Stage 0
-    begun.
+    done (session 14, 2026-10-11, decision AW2): the allocator entered
+    by mimalloc's plain functions for an alignment of at most 8, and
+    the module constants a pure computation gives built when an image
+    is built, so that a small Integer among them is a literal in the
+    image's code (the checker's constants are computed, `symbol_code(",")`,
+    not literal, which the study had assumed); the check row 3,085.3
+    to 2,889.9 million instructions (-6.3%, the study's estimate 5%),
+    the ratio by instructions 6.99 to 6.54, AT1's synchronous row -3.6%
+    and -2.5% by the estimate, `records` -11.5%. Found on the way: on
+    Windows every run of an image copied its code section, the mapping
+    refused for want of execute access on the file's handle (a2c4685).
+    Stage 1 next, 1a first.
 
 30. **The icon and the wordmark** (session 13, 2026-10-11, done;
     decision AV1). The owner asked for an icon that does not read as the
@@ -315,7 +326,7 @@ state of each line.
   27 (B3), 29. Measured by AT1's rule on the frozen self-check and by
   the four benchmarks; every stage's numbers are in its decision entry.
   Stage 29, a new backend, has its design study (AU58, AW1) and its
-  stages under way, stage 0 first.
+  stage 0 (AW2); stage 1 is next.
 - **E. Packages, the FFI and Python**: stages 15, 18. Done; candidates
   not decided: record types from dataclasses in the binder, a deadline
   per Python call, one worker across a test run.
@@ -334,9 +345,11 @@ state of each line.
 ## 4. What is next
 
 Stage 29 (decisions AU58 and AW1): the new backend's stages in the
-order the study set and the owner confirmed, stage 0 first (the
-allocator entered by mimalloc's plain functions, a literal module
-constant known to the JIT in an image; a day), then stage 1 in the
+order the study set and the owner confirmed: stage 0 is done (AW2,
+2026-10-11: the allocator entered by mimalloc's plain functions, the
+module constants an image builds before any run; the check row 3,085.3
+to 2,889.9 million instructions, -6.3%, the ratio by instructions 6.99
+to 6.54), then stage 1 in the
 order 1a (a typed parameter's boxed operand unboxed at the call site),
 1c (the frame leave by the static ownership state), 1b (the read-only
 flag per parameter in the bytecode, both emitters, the judges), 1d
@@ -348,7 +361,7 @@ glue, stage 4, the checker's own cuts between the stages, stages 5 and
 table by category, the ratio of AU36 (iii), AT1's rows where the tiers
 change, the four judges and the conformance suite on both tiers, kept
 by AT1's rule, toward the gate of AU35 (ii) at 3 times on the check
-row (6.99 by instructions at the study); then, when the ratio is
+row (6.54 by instructions after stage 0); then, when the ratio is
 within 3, the switch of the binary's front end to the compiler written
 in Renyi. Candidates beside it, none decided: the emitter's own round
 for the compile row, the Rust front end's name sets as bits, the C

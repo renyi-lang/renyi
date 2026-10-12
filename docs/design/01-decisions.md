@@ -6299,3 +6299,104 @@ and 6 last; each measured by AU58's measure with the table by
 category from the study's scripts, AT1's rows where the tiers change,
 the benchmarks, the four judges and the conformance suite on both
 tiers, kept by AT1's rule, its entry recording the table. (user)
+
+**AW2. Stage 0 of the new backend: the allocator entered by mimalloc's
+plain functions, and the module constants an image builds before any
+run.** The first stage of AW1's order, on 2026-10-11, measured as AW1
+prescribes. (i) The allocator: `renyi::Allocator` wrapped the
+`mimalloc` crate's `MiMalloc`, which calls `mi_malloc_aligned`,
+`mi_zalloc_aligned` and `mi_realloc_aligned` for every allocation;
+mimalloc's aligned fast path serves only when the page's free list has
+a block, and its generic path over-allocates every block whose size is
+not a power of two (`mi_malloc_aligned_at_generic`, 621,420 of the
+checker's 2,381,541 allocations in the study). The binary depends on
+`libmimalloc-sys` itself now, and `Plain` calls `mi_malloc`,
+`mi_zalloc` and `mi_realloc` for an alignment of at most 8 (every
+block mimalloc hands out is a multiple of eight bytes at a multiple of
+eight from a page area that starts sixteen-aligned, so the plain
+entries honour it), the aligned entries above it; the VM's blocks
+(`Composite`, `Layout::from_size_align(size, align_of::<Value>())`),
+its vectors and its texts ask for eight or less, hashbrown's tables for
+sixteen. (ii) The constants: the study's item was a module constant
+whose code object is a `Const` and a `Return`, known to the JIT
+without the snapshot; but the checker's constants are computed, not
+literal (of its 184, 30 are a literal and 118 a native call on a
+literal, `symbol_code(",")` and `word_code("ability")`, the rest lists,
+sets and maps built from literals and from one another), so that rule
+alone reached none of the parser's `is_symbol(code: words.symbol_comma)`
+sites. Two parts then: `Jit::new` fills the table of module constants
+(`GlobalSlot`, decision AU53) with every literal one, so that a run and
+a build know them before the VM builds them; and `image::build`
+evaluates on the interpreter every constant `pure_constants` admits and
+notes the values with the JIT, so that a small Integer among them is a
+literal in the image's code (`Jit::small_globals`) and the call sites
+that pass it reach the direct path. The values go with the build's VM;
+the run builds its own on the first read as before (reference section
+6), the same values by the purity. A constant's code is effect-free
+(the checker admits no `needs` in one, `capability-missing`; a foreign
+or a Python function needs `foreign` or `python`), so what it builds is
+the same at every run unless a deadline passed while it was built (`run
+concurrently within` needs nothing): `pure_constants` takes a constant
+whose code reaches, through the declared functions it calls and the
+constants it reads, no deadline, no ability call (a method on a type
+parameter; one on a known type is a declared function), no call of a
+function value and only natives without `needs`, as a fixed point over
+the code objects; what an op or a native reaches through an ability's
+implementation on a record (`hash`, `equals`, `to_text`) it does not
+follow, such an implementation with a deadline in it having been a race
+between two runs already. A constant whose build fails is left to the
+run, which crashes at its first read as before, and a new VM builds the
+rest; a constant whose build does not end would hang the build, as it
+hangs the run that reads it. Neither part touches a format. The test:
+`crates/renyi_vm/tests/native.rs`, a program with a literal constant,
+one computed through a declared function, a list, one that fails, one
+through an ability on a type parameter and one through a function
+value, the pure five named, the run from the image equal to the
+interpreter's. The measure (callgrind under WSL on the release build
+for Linux, the images built under `valgrind --tool=none`, against the
+binary of 7cbbbe0 measured the same way in AW1, the reference AU34's
+44782aa): the check row 3,085.3 to 2,889.9 million instructions (-6.3%;
+the study estimated 165 million, 5%), the parse row 1,256.9 to 1,162.8
+(-7.5%), the compile row 4,844.9 to 4,608.8 (-4.9%); the ratios by
+instructions against the reference's rows (441.6, 284.7 and 365.6) 6.54,
+4.08 and 12.61 against the gate's 3 (6.99, 4.41 and 13.25 before); the
+Rust front end's own rows on this binary, which the allocator serves
+too, `check` 178.8 to 173.4 (-3.0%), `parse --json` 266.8 to 246.7
+(-7.5%), `compile` 471.1 to 445.1 (-5.5%). The check row by category,
+AW1's table against this one, in millions: the generated code 1,011.8
+to 996.9, mimalloc 258.9 to 146.8 (the allocator's part, 112.1 against
+the 100 estimated), the counts and drops 448.2 to 444.5, the calls
+through the VM's path 114.1 to 57.3 (`call_from_stack` 306,330 to
+141,589 calls, `rt_call` 296,968 to 132,227: the constants' part, with
+the generated code's 14.9 and the glue's 5.7 about 80 against the 65
+estimated), the helpers' glue 130.9 to 125.2, the records 208.1 to
+206.8, the natives 358.8 to 358.2, the hashing 219.8 to 219.9, the
+comparisons 124.0 to 123.9, the texts and copies 121.1 to 121.0, the
+load 46.2 to 46.0, the iterators 40.6 to 40.3. `tools/ratio.py` under
+WSL on the same binaries gives 1.9, 1.6 and 2.9 by wall-clock, the best
+of five, but the reference's rows there are the file reads through
+`/mnt/d` (266.8 ms for a `check` of 441.6 million instructions), so the
+ratio by instructions is the one recorded, as AW1 (2) fixed. AT1's rows
+on the frozen self-check (`tools/measure_size.sh` under WSL, the binary
+before against this one): the synchronous JIT row 6,237.9 to 6,013.9
+million instructions (-3.6%) and 8,883.9 to 8,659.1 million by the
+estimate (-2.5%), the image row 4,742.8 to 4,538.9 (-4.3%) and 6,943.9
+to 6,690.1 by the estimate (-3.7%), the cached run 4,821.3 to 4,618.7
+(-4.2%), the interpreter 11,451.3 to 11,240.2 (-1.8%) and 15,726.1 to
+15,399.6 by the estimate (-2.1%); the image 8,947,664 to 8,945,136
+bytes. The four benchmarks and hello by user-space instructions (`perf
+stat`, the JIT synchronous, in millions): `primes` 289.1 to 288.8,
+`strings` 433.5 to 430.1 (-0.8%), `records` 236.5 to 209.4 (-11.5%),
+`json_round_trip` 872.7 to 838.1 (-4.0%), `hello` 5.67 to 5.42 (-4.4%).
+The four judges byte-equal, the conformance suite 55 of 55 on both
+tiers, the template tier's own tests with the tier forced, 384 tests.
+Found on the way and fixed in a2c4685 before this stage's commit: on
+Windows every run of an image had the mapping of its code section
+refused ("access denied": a mapping with `PAGE_EXECUTE_READ` needs
+`GENERIC_EXECUTE` on the handle, which `File::open` does not ask) and
+copied the section instead since decision AT5, which the two tests of
+`crates/renyi/tests/build.rs` that assert "mapped from the file" showed
+on the owner's machine; `image::open_file` opens for reading and, on
+Windows, execution, the executable of decision AS4 opens itself the
+same way, and the report names a refused mapping with the system's
+reason.
