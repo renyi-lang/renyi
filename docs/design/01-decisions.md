@@ -8008,3 +8008,41 @@ to 5.20 (unchanged). The four judges byte-equal, the conformance suite
 to 1,528.5 (-47.1%), since the study's binary 3,085.3 (-50.5%). Stage 5
 is done. Next in AW1's order: stage 6, AU50's expansion measured again
 under the new convention.
+
+**AW19. Stage 6 of the new backend: AU50's expansion measured again
+under the new convention, and left off.** The last item of AW1's order,
+on 2026-10-12, measured as AW1 prescribes on stage 5b's binary
+(0f17f67): the three rows of AU58's measure with the images built under
+`RENYI_NATIVE_INLINE=1` (the lane's `probe_inline.sh`,
+`study/5b_inline/`) against the same binary with the expansion off,
+stage 5b's rows. AW1 estimated that with the convention of stage 1 the
+expansion of a callee of at most twelve ops would remove the 30
+instructions a direct call still costs, about 25 million on the check
+row; the measure says the opposite: the check row 1,528.5 to 1,585.3
+million instructions (+3.7%), the parse row 696.2 to 718.6 (+3.2%), the
+compile row 2,719.7 to 2,784.0 (+2.4%). By category on the check row,
+the generated code itself falls, 800.8 to 789.0 million, and everything
+around it rises: the counts and drops 131.0 to 148.1, mimalloc 76.8 to
+91.7, the VM's own 79.6 to 107.4, the records 46.1 to 50.4, the calls
+through the VM's path 8.5 to 10.2. The counts say why:
+`Composite::free_block` 637,423 to 1,060,403 calls, `release_last`
+737,168 to 1,114,125, `mi_free` 1,013,869 to 1,448,701,
+`rt_pair_record` 67,784 to 252,115 and `rt_split_pair` 20,590 to
+58,778, `rt_call` 30 to 4,535, while `rt_truncate` falls 97,275 to
+29,521 with the frames the expansion removes. The stages since AU50's
+measure gave a direct call what the expansion cannot give an expanded
+callee: a read-only parameter passed borrowed (AW5) is stored into the
+region's slot as an owned value and released at the region's end,
+423,000 more frees and 377,000 more releases; a record of two fields
+returned as a pair of cells to a direct caller (AW9) is built as a
+record inside the expansion (`rt_pair_record`) and split by the caller
+(`rt_split_pair`); and the code objects that grew past the direct
+path's shape take the helper path (`rt_call`). The expansion stays off
+unless `RENYI_NATIVE_INLINE=1`, as AU50 left it; the mechanism, its
+tests (`tests/inline.rs`) and the hand-back stay, so that it can be
+measured again when the convention changes. No code changes in this
+stage. With it, every stage of AW1's order is done: the check row
+stands at 1,528.5 million instructions, 3.46 times the reference's
+441.6 against the gate's 3 of AU35 (ii) (6.99 at the study, AW1), the
+parse row at 696.2 (2.45) and the compile row at 2,719.7 (7.44); the
+road from here is the owner's decision.

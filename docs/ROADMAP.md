@@ -402,8 +402,14 @@ where one decided, the status. The dates are those of the decisions.
     from the image's or the cache entry's bytes; the check row
     1,547.9 to 1,528.5 million (-1.3%); the ratio by
     instructions 3.51 to 3.46, which completes stage
-    5. Stage 6 (AU50's expansion measured again under the new
-    convention) is next.
+    5. Stage 6 done (session 14, 2026-10-12, decision AW19): AU50's
+    expansion of small callees measured again under the new convention
+    and left off (the check row 1,528.5 to 1,585.3 million, +3.7%,
+    with it on: an expanded callee loses the borrowed parameters of
+    AW5 and the pair return of AW9), which completes AW1's order; the
+    ratio by instructions stands at 3.46 on the check row
+    against the gate's 3, and the road from here is the owner's
+    decision.
 
 30. **The icon and the wordmark** (session 13, 2026-10-11, done;
     decision AV1). The owner asked for an icon that does not read as the
@@ -445,7 +451,9 @@ state of each line.
   Stage 29, a new backend, has its design study (AU58, AW1) and its
   stages 0 and 1, the character tables with the hasher, stage 2 and
   stages 3 and 4, the checker's own cuts between them and stage 5a
-  (AW2 to AW18), which completes stage 5; stage 6 is next.
+  (AW2 to AW19), every stage of AW1's order done: the ratio by
+  instructions 3.46 on the check row against the gate's 3, the
+  road from here the owner's decision.
 - **E. Packages, the FFI and Python**: stages 15, 18. Done; candidates
   not decided: record types from dataclasses in the binder, a deadline
   per Python call, one worker across a test run.
@@ -463,55 +471,54 @@ state of each line.
 
 ## 4. What is next
 
-Stage 29 (decisions AU58 and AW1): the new backend's stages in the
-order the study set and the owner confirmed: stage 0 is done (AW2,
-2026-10-11: the allocator entered by mimalloc's plain functions, the
-module constants an image builds before any run; the check row 3,085.3
-to 2,889.9 million instructions, -6.3%, the ratio by instructions 6.99
-to 6.54), and stage 1 is done (AW3 to AW6, 2026-10-11 and
-2026-10-12: a typed parameter's boxed operand taken from the stack at
-the call site, the check row 2,889.9 to 2,826.6, -2.2%, the ratio
-6.54 to 6.40; the frame's leave by the static ownership state of the
-slots, the check row to 2,729.4, -3.4%, the ratio to 6.18; a
-read-only parameter passed borrowed between compiled bodies, the
-check row to 2,719.3, -0.4%, the ratio to 6.16; the frame record of a
-direct call made cheaper, the check row to 2,681.0, -1.4%, the
-ratio to 6.07), and the character tables with the hasher of the VM's
-own are done (AW7, 2026-10-12: the check row to 2,527.2, -5.7%,
-the ratio to 5.72), and stage 2a is done (AW8, 2026-10-12: `with` by
-static index, the check row to 2,370.7, -6.2%, the ratio to
-5.37), and stage 2b is done (AW9, 2026-10-12: a record of two fields
-returned as a pair, the check row to 2,301.9, -2.9%, the ratio
-to 5.21), and stage 2c is done (AW10, 2026-10-12: the frees in place,
-the check row to 2,296.2, -0.2%, AT1's estimate -1.3%,
-the ratio to 5.20), and stage 3a is done (AW11, 2026-10-12: the
-natives' in-place entry, the check row to 2,203.9, -4.0%, the
-ratio to 4.99), and stage 3b is done (AW12, 2026-10-12: `status` and
-`into_plain` off the path, the check row to 2,099.1, -4.8%, the
-ratio to 4.75), and stage 4a is done (AW13, 2026-10-12: `is` and `is
-not` in place, variants compared in the generated code by the type and
-the tag, the check row to 1,995.8, -4.9%, the ratio to
-4.52), and stage 4b is done (AW14, 2026-10-12: the iterator in two
-slots, the check row to 1,930.3, -3.3%, the ratio to
-4.37), and stage 4c is done (AW15, 2026-10-12: `match` by a table,
-the check row to 1,896.4, -1.8%, the ratio to 4.29),
-which completes stage 4, and the checker's own cuts between the
-stages are done (AW16, 2026-10-12: the variants indexed, the parser's
-cursor with its token, the lexer's previous token as two Integers and
-`slice_text`, the resolver's loop, the lists updated in the slot; the
-check row to 1,586.1, -16.4%, the ratio to 3.59), and stage 5a is
-done (AW17, 2026-10-12: the moves of AU17 written in the image and the
-cache, the check row to 1,547.9, -2.4%, the ratio to
-3.51), and stage 5b is done (AW18, 2026-10-12: the code objects
-decoded on demand, the check row to 1,528.5, -1.3%, the ratio to
-3.46), which completes stage 5, then stage
-6 last; each measured by the checker's run under callgrind with the
-table by category, the ratio of AU36 (iii), AT1's rows where the tiers
-change, the four judges and the conformance suite on both tiers, kept
-by AT1's rule, toward the gate of AU35 (ii) at 3 times on the check
-row (3.46 by instructions after stage 5b); then, when the ratio is
-within 3, the switch of the binary's front end to the compiler written
-in Renyi. Candidates beside it, none decided: the emitter's own round
-for the compile row, the Rust front end's name sets as bits, the C
-API, the language server's completion, the showcase application, the
-WASM target of M6.
+Stage 29 (decisions AU58 and AW1): the new backend's stages in the order
+the study set and the owner confirmed: stage 0 is done (AW2, 2026-10-11:
+the allocator entered by mimalloc's plain functions, the module
+constants an image builds before any run; the check row 3,085.3 to
+2,889.9 million instructions, -6.3%, the ratio by instructions 6.99 to
+6.54), and stage 1 is done (AW3 to AW6, 2026-10-11 and 2026-10-12: a
+typed parameter's boxed operand taken from the stack at the call site,
+the check row 2,889.9 to 2,826.6, -2.2%, the ratio 6.54 to 6.40; the
+frame's leave by the static ownership state of the slots, the check row
+to 2,729.4, -3.4%, the ratio to 6.18; a read-only parameter passed
+borrowed between compiled bodies, the check row to 2,719.3, -0.4%, the
+ratio to 6.16; the frame record of a direct call made cheaper, the check
+row to 2,681.0, -1.4%, the ratio to 6.07), and the character tables with
+the hasher of the VM's own are done (AW7, 2026-10-12: the check row to
+2,527.2, -5.7%, the ratio to 5.72), and stage 2a is done (AW8,
+2026-10-12: `with` by static index, the check row to 2,370.7, -6.2%, the
+ratio to 5.37), and stage 2b is done (AW9, 2026-10-12: a record of two
+fields returned as a pair, the check row to 2,301.9, -2.9%, the ratio to
+5.21), and stage 2c is done (AW10, 2026-10-12: the frees in place, the
+check row to 2,296.2, -0.2%, AT1's estimate -1.3%, the ratio to 5.20),
+and stage 3a is done (AW11, 2026-10-12: the natives' in-place entry, the
+check row to 2,203.9, -4.0%, the ratio to 4.99), and stage 3b is done
+(AW12, 2026-10-12: `status` and `into_plain` off the path, the check row
+to 2,099.1, -4.8%, the ratio to 4.75), and stage 4a is done (AW13,
+2026-10-12: `is` and `is not` in place, variants compared in the
+generated code by the type and the tag, the check row to 1,995.8, -4.9%,
+the ratio to 4.52), and stage 4b is done (AW14, 2026-10-12: the iterator
+in two slots, the check row to 1,930.3, -3.3%, the ratio to 4.37), and
+stage 4c is done (AW15, 2026-10-12: `match` by a table, the check row to
+1,896.4, -1.8%, the ratio to 4.29), which completes stage 4, and the
+checker's own cuts between the stages are done (AW16, 2026-10-12: the
+variants indexed, the parser's cursor with its token, the lexer's
+previous token as two Integers and `slice_text`, the resolver's loop,
+the lists updated in the slot; the check row to 1,586.1, -16.4%, the
+ratio to 3.59), and stage 5a is done (AW17, 2026-10-12: the moves of
+AU17 written in the image and the cache, the check row to 1,547.9,
+-2.4%, the ratio to 3.51), and stage 5b is done (AW18, 2026-10-12: the
+code objects decoded on demand, the check row to 1,528.5, -1.3%, the
+ratio to 3.46), which completes stage 5, and stage 6 is done (AW19,
+2026-10-12: the expansion measured again under the new convention, +3.7%
+on the check row with it on, left off), which completes AW1's order;
+each measured by the checker's run under callgrind with the table by
+category, the ratio of AU36 (iii), AT1's rows where the tiers change,
+the four judges and the conformance suite on both tiers, kept by AT1's
+rule, toward the gate of AU35 (ii) at 3 times on the check row (3.46 by
+instructions after stage 6, every stage of AW1's order done); then, when
+the ratio is within 3, the switch of the binary's front end to the
+compiler written in Renyi. Candidates beside it, none decided: the
+emitter's own round for the compile row, the Rust front end's name sets
+as bits, the C API, the language server's completion, the showcase
+application, the WASM target of M6.

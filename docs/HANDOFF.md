@@ -89,7 +89,11 @@ pass run once where a program enters the VM; the check row
 objects decoded on demand, a body decoded at its first read from the
 image's or the cache entry's bytes; the check row 1,547.9 to
 1,528.5, -1.3%; the ratio 3.51 to 3.46),
-which completes stage 5. Next is stage 6 (the start-here item 1).
+which completes stage 5; and stage 6 measured and left off (decision
+AW19: AU50's expansion under the new convention, the check row +3.7%
+with it on). Every stage of AW1's order is done: the ratio stands at
+3.46 on the check row against the gate's 3, and the road from
+here is the owner's decision (the start-here item 1).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -414,9 +418,11 @@ and push there directly.
    row to 1,547.9, -2.4%; the ratio to 3.51); and stage 5b (decision
    AW18, "Stage 5b as built": the code objects decoded on demand; the
    check row to 1,528.5, -1.3%; the ratio to 3.46),
-   which completes stage 5.
-   Next is stage
-   6, the last. Each stage: the code, the gates of item 3, the measure
+   which completes stage 5; and stage 6 (decision AW19, "Stage 6 as
+   built": the expansion measured again under the new convention, the
+   check row +3.7% with it on, left off; no code).
+   Every stage of AW1's order is done; the owner decides the road
+   from here. Each stage: the code, the gates of item 3, the measure
    (AU58's: the checker's image run under callgrind with the study's
    table by category beside it, AT1's rows, the benchmarks by
    instructions), then its decision entry with the table and the
@@ -4968,7 +4974,22 @@ functions with more misses, the code's placement; the instructions
 to 3,392.8 (-0.5%), the interpreter 11,065.9 to 10,942.5 (-1.1%). The
 table is in AW18.
 Stage 5 is done. Next in AW1's order: stage 6, AU50's expansion
-measured again under the new convention.
+measured again under the new convention (the next paragraph).
+
+**Stage 6 as built (decision AW19, 2026-10-12).** The last item of
+AW1's order: AU50's expansion of small callees measured again on stage
+5b's binary with the images built under `RENYI_NATIVE_INLINE=1`
+(`probe_inline.sh`, `study/5b_inline/`): the check row 1,528.5 to
+1,585.3 (+3.7%), the parse row 696.2 to 718.6 (+3.2%), the compile
+row 2,719.7 to 2,784.0 (+2.4%); the generated code 800.8 to 789.0
+million, the counts and drops 131.0 to 148.1, mimalloc 76.8 to 91.7,
+the VM's own 79.6 to 107.4 (`free_block` 637,423 to 1,060,403 calls,
+`release_last` 737,168 to 1,114,125, `rt_pair_record` 67,784 to
+252,115): an expanded callee loses the borrowed parameters of AW5 and
+the pair return of AW9. The expansion stays off; no code changes. Every
+stage of AW1's order is done: the ratio by instructions stands at
+3.46 on the check row against the gate's 3, the road from here
+the owner's decision.
 
 ## The representation items: the design study (session 11)
 
@@ -6709,6 +6730,9 @@ holds between calls.
   `crates/renyi/src/lib.rs` and the cache's lookup in `cache.rs`; the
   tests in `tests/native.rs`, `tests/typed.rs` and
   `tests/semantics.rs`; the measure in AW18 and in "Stage 5b as built".
+- Stage 6 (decision AW19, the commit after 0f17f67): no code;
+  the probe `probe_inline.sh` in the lane with `study/5b_inline/`; the
+  measure in AW19 and in "Stage 6 as built".
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 
