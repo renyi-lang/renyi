@@ -13,10 +13,9 @@ use std::rc::Rc;
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
-use indexmap::IndexMap;
-
 use super::{arg, crash, list, text};
 use crate::extension::Native;
+use crate::hashing::ValueMap;
 use crate::value::Value;
 use crate::vm::{Interrupt, Vm};
 
@@ -74,7 +73,7 @@ fn defaults(vm: &mut Vm, _: &mut [Value]) -> Result<Value, Interrupt> {
         "Options",
         vec![
             Value::Nothing,
-            Value::Map(Rc::new(IndexMap::new())),
+            Value::Map(Rc::new(ValueMap::default())),
             Value::text(""),
             Value::Nothing,
         ],

@@ -1,10 +1,10 @@
 //! The prelude's methods: numbers, text, bytes, lists, maps, sets, ranges
 //! and durations.
 
+use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::rc::Rc;
 
-use indexmap::IndexSet;
 use num_bigint::BigInt;
 use num_traits::FromPrimitive;
 
@@ -16,6 +16,7 @@ use super::{
 };
 use crate::decimal::Decimal;
 use crate::extension::{Native, Typed};
+use crate::hashing::ValueSet;
 use crate::integer::Int;
 use crate::value::{take_map, Value};
 use crate::vm::{finite_float, range_items, Interrupt, Vm};
@@ -696,7 +697,7 @@ fn list_sorted(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
 
 fn list_distinct(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     let items = list(arg(args, 0))?;
-    let distinct: IndexSet<Value> = items.iter().cloned().collect();
+    let distinct: ValueSet = items.iter().cloned().collect();
     Ok(Value::list(distinct.into_iter().collect()))
 }
 
@@ -713,28 +714,100 @@ fn run_bounds(len: usize, start: &Value, stop: &Value) -> Result<(usize, usize),
     Ok((start, stop))
 }
 
+thread_local! {
+    /// The tables of the sets scanned last, each with its set, whose
+    /// address names it while the entry holds it (decision AW7): a lexer
+    /// scans with a few sets, module constants, many thousand times each,
+    /// and the table of a class of sixty members cost a thousand
+    /// instructions to build. The VM clears them when it is dropped.
+    static CLASS_TABLES: RefCell<Vec<(Rc<ValueSet>, [u64; 2])>> = const { RefCell::new(Vec::new()) };
+}
+
+/// How many tables `CLASS_TABLES` keeps: the oldest goes when a ninth set
+/// is scanned.
+const CLASS_TABLES_KEPT: usize = 8;
+
+/// The table of the set, from `CLASS_TABLES` or built and kept there.
+fn class_table(members: &Rc<ValueSet>) -> [u64; 2] {
+    CLASS_TABLES.with(|tables| {
+        let mut tables = tables.borrow_mut();
+        if let Some((_, table)) = tables.iter().find(|(set, _)| Rc::ptr_eq(set, members)) {
+            return *table;
+        }
+        let table = ascii_members(members);
+        if tables.len() == CLASS_TABLES_KEPT {
+            tables.remove(0);
+        }
+        tables.push((Rc::clone(members), table));
+        table
+    })
+}
+
+/// Drops the tables kept and the sets they hold (`Vm::drop`).
+pub(crate) fn forget_class_tables() {
+    CLASS_TABLES.with(|tables| tables.borrow_mut().clear());
+}
+
+/// The members of a set that are texts of one ASCII character, as a
+/// table of 128 bits (decision AW7): what `run_of` and `run_until` scan
+/// with, built once per set (`class_table`), where a hash lookup per
+/// item cost some three hundred instructions. A text of one ASCII
+/// character equals a member only when the member is that text, so the
+/// table answers for such an item exactly; any other item asks the set.
+fn ascii_members(members: &ValueSet) -> [u64; 2] {
+    let mut table = [0u64; 2];
+    for member in members {
+        if let Some(byte) = ascii_character(member) {
+            table[usize::from(byte >> 6)] |= 1 << (byte & 63);
+        }
+    }
+    table
+}
+
+/// The byte of a text of one ASCII character, else `None`.
+#[inline]
+fn ascii_character(value: &Value) -> Option<u8> {
+    match value.as_text()?.as_bytes() {
+        [byte] if byte.is_ascii() => Some(*byte),
+        _ => None,
+    }
+}
+
+/// Whether the item is a member of the set: by the table for a text of
+/// one ASCII character, by the set for anything else.
+#[inline]
+fn is_member(table: &[u64; 2], members: &ValueSet, item: &Value) -> bool {
+    match ascii_character(item) {
+        Some(byte) => table[usize::from(byte >> 6)] & (1 << (byte & 63)) != 0,
+        None => members.contains(item),
+    }
+}
+
 /// The end of the run of members of the set from `start`, below `stop`
-/// (decision AU52): a lexer's scan over a character class in one call.
+/// (decision AU52): a lexer's scan over a character class in one call,
+/// through the table of decision AW7.
 fn list_run_of(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     let items = list(arg(args, 0))?;
     let members = set(arg(args, 1))?;
     let (start, stop) = run_bounds(items.len(), arg(args, 2), arg(args, 3))?;
+    let table = class_table(members);
     let end = items[start..stop]
         .iter()
-        .position(|item| !members.contains(item))
+        .position(|item| !is_member(&table, members, item))
         .map_or(stop, |offset| start + offset);
     Ok(Value::integer(end as i64))
 }
 
 /// The index of the first item of the set from `start`, below `stop`, or
-/// `stop` (decision AU52).
+/// `stop` (decision AU52), through the table of decision AW7.
 fn list_run_until(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     let items = list(arg(args, 0))?;
     let stops = set(arg(args, 1))?;
     let (start, stop) = run_bounds(items.len(), arg(args, 2), arg(args, 3))?;
+    let table = class_table(stops);
     let end = items[start..stop]
         .iter()
-        .position(|item| stops.contains(item))
+        .position(|item| is_member(&table, stops, item))
         .map_or(stop, |offset| start + offset);
     Ok(Value::integer(end as i64))
 }
@@ -1347,9 +1420,10 @@ fn list_run_of_typed(args: &[Value]) -> Option<i64> {
     let items = plain_list(&args[0])?;
     let members = plain_set(&args[1])?;
     let (start, stop) = run_bounds_typed(items.len(), &args[2], &args[3])?;
+    let table = class_table(members);
     let end = items[start..stop]
         .iter()
-        .position(|item| !members.contains(item))
+        .position(|item| !is_member(&table, members, item))
         .map_or(stop, |offset| start + offset);
     Some(end as i64)
 }
@@ -1358,9 +1432,10 @@ fn list_run_until_typed(args: &[Value]) -> Option<i64> {
     let items = plain_list(&args[0])?;
     let stops = plain_set(&args[1])?;
     let (start, stop) = run_bounds_typed(items.len(), &args[2], &args[3])?;
+    let table = class_table(stops);
     let end = items[start..stop]
         .iter()
-        .position(|item| stops.contains(item))
+        .position(|item| is_member(&table, stops, item))
         .map_or(stop, |offset| start + offset);
     Some(end as i64)
 }

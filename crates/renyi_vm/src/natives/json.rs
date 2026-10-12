@@ -10,13 +10,13 @@ use std::borrow::Cow;
 use std::fmt::{Display, Write};
 use std::rc::Rc;
 
-use indexmap::{IndexMap, IndexSet};
 use renyi_check::types::Ty;
 use renyi_check::TypeId;
 
 use super::{arg, base64_decode, base64_encode, crash, text};
 use crate::decimal::Decimal;
 use crate::extension::Native;
+use crate::hashing::{ValueMap, ValueSet};
 use crate::integer::Int;
 use crate::natives::time::{instant_text, parse_instant_text};
 use crate::render::float_text;
@@ -273,7 +273,7 @@ fn decode_at(
         return Ok(Ok(if id == b.list {
             Value::list(values)
         } else {
-            Value::Set(Rc::new(values.into_iter().collect::<IndexSet<Value>>()))
+            Value::Set(Rc::new(values.into_iter().collect::<ValueSet>()))
         }));
     }
     if id == b.map {
@@ -281,7 +281,7 @@ fn decode_at(
             return mismatch(vm, path, "Map", json);
         };
         let value_ty = args.get(1).unwrap_or(&open);
-        let mut map = IndexMap::with_capacity(fields.len());
+        let mut map = ValueMap::with_capacity_and_hasher(fields.len(), Default::default());
         for (key, item) in fields {
             match decode_at(vm, item, value_ty, &Path::Key(path, key), naming)? {
                 Ok(value) => {
@@ -476,7 +476,7 @@ fn json_value(vm: &Vm, json: &Json) -> Result<Value, Interrupt> {
             make("JsonArray", vec![Value::list(values)])
         }
         Json::Object(fields) => {
-            let mut map = IndexMap::with_capacity(fields.len());
+            let mut map = ValueMap::with_capacity_and_hasher(fields.len(), Default::default());
             for (key, value) in fields {
                 map.insert(Value::text(key), json_value(vm, value)?);
             }

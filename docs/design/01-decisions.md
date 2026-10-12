@@ -6799,3 +6799,90 @@ tests. Stage 1 is complete: the check row 2,889.9 million after stage 0
 to 2,681.0, -7.2%, against the study's estimate of 400 million, 13%, by
 the findings' counts. Next in AW1's order: the character tables and the
 hasher.
+
+**AW7. The character tables and the hasher of the VM's own.** The item
+after stage 1 in AW1's order (the study's items (3b) and (3c), the
+owner's answer (7)), on 2026-10-12, measured as AW1 prescribes against
+stage 1d's binary (ddbf36a). Two changes to the natives and one to the
+maps and sets, the generated code untouched. (i) `run_of` and
+`run_until` (decision AU52, the lexer's scans over a character class)
+scan with a table of 128 bits of the set's members that are texts of
+one ASCII character (`ascii_members` in `natives/prelude.rs`): such an
+item is a member exactly when its bit is set, since it equals a member
+only when the member is that text, and any other item asks the set as
+before. Measured alone, the tables took the check row from 2,681.0 to
+2,621.5 million (-2.2%) and the hashing from 220.5 to 96.2, but the
+natives from 355.9 to 420.7: the table was built per call over the
+sixty-odd members of a class, about a thousand instructions a call,
+70.0 million over `list_run_of_typed`'s 53,046 calls. So (ii) the
+tables of the sets scanned last are kept, eight at most, in a
+thread-local list with the set each belongs to, whose address names it
+while the entry holds it (`class_table`); the VM clears the list when
+it is dropped. (iii) The maps and sets of values (`Value::Map`,
+`Value::Set`) hash with a hasher of the VM's own (`hashing.rs`:
+`ValueHasher`, `ValueHashing`, the aliases `ValueMap` and `ValueSet`
+every site uses) in place of the standard library's SipHash, whose
+`write` cost a hundred instructions and more for the one to twelve
+bytes of a typical key: one state word, every word written folded in by
+a multiplication whose 128-bit product is folded to 64 bits, so that
+every bit of the state depends on every bit written; a span of bytes
+read as two overlapping words (the first and last eight, the first and
+last four, or the first, middle and last byte of a shorter span,
+sixteen at a time before that), its length in the multiplier, so that
+spans whose overlapping reads agree ("aaaa" and "aaaaa") hash apart;
+the state starts from a key drawn once per process from the standard
+library's `RandomState`, so that keys chosen to collide in one run do
+not collide in the next, the defence SipHash's keys give a server
+against a flood of colliding keys, though a multiplication is easier to
+reverse than SipHash once the key is known, a trade the owner may
+revisit by a decision. The order of a map or a set is the order of
+insertion (`IndexMap`), so the hash is not observable by a program;
+`Value.hash()` (`vm::hash_of`) keeps the standard hasher with its fixed
+keys, being a number a program reads. The tests: `hashing.rs`'s own
+(spans of one character repeated zero to forty times hash apart
+pairwise, as do a text and its prefix and two long texts differing in a
+byte, and the key holds across hashers), `value.rs`'s set test through
+`ValueSet`, the judges and the conformance suite, and the lexer's
+tokens equal on a probe with text outside ASCII. The measure (callgrind
+under WSL on the release build for Linux, the images built under
+`valgrind --tool=none`, against stage 1d's binary measured the same way
+in AW6, the reference AU34's 44782aa): the check row 2,681.0 to 2,527.2
+million instructions (-5.7%), the parse row 1,116.1 to 1,040.1 (-6.8%;
+the tables alone 1,082.4, -3.0%), the compile row 4,352.4 to 4,148.8
+(-4.7%); the ratios by instructions against the reference's rows
+(441.6, 284.7 and 365.6) 5.72, 3.65 and 11.35 against the gate's 3
+(6.07, 3.92 and 11.90 after stage 1d); the Rust front end's own rows
+within 0.1% of stage 1d's (`check` 173.2, `parse --json` 246.7,
+`compile` 446.1). The functions on the check row, inclusive:
+`list_run_of_typed` 125.2 million over 53,046 calls in stage 1d, 70.0
+with the table built per call, 16.1 with the tables kept (`class_table`
+2.5); the hashes of a `Value` 547,511 in stage 1d at 244 instructions
+each (`hash_one` 133.9 million, SipHash's `write` 59.7 over 1,589,797
+calls), 207,134 with the tables, the scans no longer hashing, and 12.3
+million in all with the hasher, 59 each; the set lookups
+(`get_index_of`) 429,399 to 20,129, the map lookups 126,054 as before;
+`Value::eq` 42.3 million over 1,011,987 calls to 23.2 over 642,529, the
+lookups' comparisons; SipHash's `write` 0.4 million left, in the VM's
+own tables keyed by `usize`. The check row by category, AW6's table
+against this one, in millions: the natives 355.9 to 366.9, the hashing
+220.5 to 55.5, the generated code 966.7 to 966.7, the counts and drops
+322.2 to 322.2, the helpers' glue 120.7 to 120.7, the calls through the
+VM's path 7.4 to 7.4, mimalloc 146.9 to 147.1, the records 206.8 to
+206.8, the comparisons 123.9 to 123.8, the texts and copies 120.3 to
+120.3, the load 46.2 to 46.2, the iterators 40.3 to 40.3. AT1's rows on
+the frozen self-check (`tools/measure_size.sh` under WSL, stage 1d's
+binary against this one): the synchronous JIT row 5,897.8 to 5,880.1
+million instructions (-0.3%) and 8,484.1 to 8,428.0 by the estimate
+(-0.7%), the image row 4,288.4 to 4,270.5 (-0.4%) and 6,288.7 to
+6,266.7 by the estimate (-0.3%), the cached run 4,368.2 to 4,350.4
+(-0.4%), the interpreter 11,241.3 to 11,223.5 (-0.2%); the image
+9,009,552 to 9,009,552 bytes (unchanged). The four benchmarks and hello
+by user-space instructions (`perf stat`, the JIT synchronous, in
+millions): `primes` 265.0 to 265.0 (unchanged), `strings` 432.5 to
+432.5 (unchanged), `records` 207.0 to 207.0 (unchanged),
+`json_round_trip` 839.7 to 839.7 (unchanged), `hello` 5.42 to 5.42
+(unchanged). The four judges byte-equal, the conformance suite 55 of 55
+on both tiers, the template tier's own tests with the tier forced, 394
+tests. Since stage 0 the check row 2,889.9 to 2,527.2 (-12.5%), since
+the study's binary 3,085.3 (-18.1%). Next in AW1's order: stage 2, 2a
+first (`with` by static index with the copy in place).

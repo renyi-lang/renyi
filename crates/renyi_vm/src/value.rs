@@ -14,10 +14,10 @@ use std::hash::{Hash, Hasher};
 use std::ptr::NonNull;
 use std::rc::Rc;
 
-use indexmap::{IndexMap, IndexSet};
 use renyi_check::{FunctionId, TypeId};
 
 use crate::decimal::Decimal;
+use crate::hashing::{ValueMap, ValueSet};
 use crate::integer::Int;
 use crate::pinned::Pinned;
 
@@ -38,8 +38,8 @@ pub enum Value {
     Text(Rc<str>),
     Bytes(Rc<[u8]>),
     List(Rc<Vec<Value>>),
-    Map(Rc<IndexMap<Value, Value>>),
-    Set(Rc<IndexSet<Value>>),
+    Map(Rc<ValueMap>),
+    Set(Rc<ValueSet>),
     Range(Rc<RangeValue>),
     Pair(Rc<(Value, Value)>),
     Record(Composite),
@@ -896,11 +896,11 @@ pub fn take_list(list: Rc<Vec<Value>>) -> Vec<Value> {
     Rc::try_unwrap(list).unwrap_or_else(|shared| (*shared).clone())
 }
 
-pub fn take_map(map: Rc<IndexMap<Value, Value>>) -> IndexMap<Value, Value> {
+pub fn take_map(map: Rc<ValueMap>) -> ValueMap {
     Rc::try_unwrap(map).unwrap_or_else(|shared| (*shared).clone())
 }
 
-pub fn take_set(set: Rc<IndexSet<Value>>) -> IndexSet<Value> {
+pub fn take_set(set: Rc<ValueSet>) -> ValueSet {
     Rc::try_unwrap(set).unwrap_or_else(|shared| (*shared).clone())
 }
 
@@ -974,7 +974,7 @@ mod layout_tests {
             Value::text("sixteen bytes!!!"),
             Value::text(String::from("sixteen bytes!!!"))
         );
-        let mut set = IndexSet::new();
+        let mut set = ValueSet::default();
         set.insert(Value::text("ab"));
         set.insert(Value::text("sixteen bytes!!!"));
         assert!(!set.contains(&Value::character('a')));
@@ -1039,8 +1039,8 @@ mod layout_tests {
             Value::text("a text past sixteen bytes"),
             Value::Bytes(Rc::from(&b"b"[..])),
             Value::list(vec![]),
-            Value::Map(Rc::new(IndexMap::new())),
-            Value::Set(Rc::new(IndexSet::new())),
+            Value::Map(Rc::new(ValueMap::default())),
+            Value::Set(Rc::new(ValueSet::default())),
             Value::Range(Rc::new(RangeValue {
                 from: Int::Small(1),
                 to: Int::Small(2),

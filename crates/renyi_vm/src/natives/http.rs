@@ -6,12 +6,12 @@
 use std::rc::Rc;
 use std::time::Duration;
 
-use indexmap::IndexMap;
 use renyi_check::effects::{self, Capability};
 
 use super::{arg, map, text};
 use crate::extension::Native;
 use crate::grant::host_of;
+use crate::hashing::ValueMap;
 use crate::natives::json::{self, Naming};
 use crate::value::Value;
 use crate::vm::{Interrupt, Vm};
@@ -189,7 +189,7 @@ fn perform(
                 ],
             );
         }
-        let mut headers_map: IndexMap<Value, Value> = IndexMap::new();
+        let mut headers_map = ValueMap::default();
         for (name, value) in parts.headers.iter() {
             let value = String::from_utf8_lossy(value.as_bytes()).into_owned();
             let key = Value::text(name.as_str());

@@ -21,6 +21,7 @@ use std::rc::Rc;
 use renyi_syntax::ast::BinaryOp;
 
 use crate::bytecode::{CodeKind, GroupFold};
+use crate::hashing::ValueMap;
 use crate::integer::Int;
 use crate::native::infer::{Abs, SlotKind};
 use crate::native::DeoptPoint;
@@ -1718,7 +1719,7 @@ impl Vm<'_> {
     pub(crate) fn op_make_map(&mut self, count: usize) {
         let (origins, items) = plain_all(self.pop_n(2 * count));
         let mut items = items.into_iter();
-        let mut map = indexmap::IndexMap::with_capacity(count);
+        let mut map = ValueMap::with_capacity_and_hasher(count, Default::default());
         while let (Some(key), Some(value)) = (items.next(), items.next()) {
             map.insert(key, value);
         }

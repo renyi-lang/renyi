@@ -26,6 +26,7 @@ pub mod decimal;
 pub mod extension;
 pub mod file;
 pub mod grant;
+pub mod hashing;
 pub mod integer;
 pub mod liveness;
 pub mod memory;

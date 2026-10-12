@@ -383,6 +383,7 @@ pub struct Vm<'p> {
 
 impl Drop for Vm<'_> {
     fn drop(&mut self) {
+        natives::prelude::forget_class_tables();
         if self.counting {
             memory::end();
         }

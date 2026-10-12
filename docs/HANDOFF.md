@@ -26,11 +26,16 @@ built and measured (decision AW6: the frame record of a direct call
 made cheaper, the grant in the body's signature, the stack's length
 and the room checks in the callee's prologue; the check row 2,719.3 to
 2,681.0, -1.4%, the ratio 6.16 to 6.07), which
-completes stage 1; on the way, a Windows defect since AT5 fixed
-(a2c4685: every run of an image there copied its code section, the
-mapping refused for want of execute access on the file's handle). Next
-is the character tables and the hasher (the start-here item 1). The
-session's record is "Done in session 14" below.
+completes stage 1, and the character tables and the hasher built and
+measured (decision AW7: `run_of` and `run_until` by a table of the
+set's one-character members, the tables of the last eight sets kept,
+the VM's maps and sets hashed by a folded multiplication keyed per
+process in place of SipHash; the check row 2,681.0 to 2,527.2,
+-5.7%, the ratio 6.07 to 5.72); on the way, a Windows
+defect since AT5 fixed (a2c4685: every run of an image there copied
+its code section, the mapping refused for want of execute access on
+the file's handle). Next is stage 2, 2a first (the start-here item 1).
+The session's record is "Done in session 14" below.
 Session 13, in the cloud environment, had as its last work the icon
 and the wordmark, at the owner's request after the
 handover below (decision AV1: a war hammer on the accent tile and the
@@ -310,9 +315,12 @@ and push there directly.
    body's signature, the stack's length and the room checks in the
    callee's prologue; the check row to 2,681.0, -1.4%, the
    ratio to 6.07), which completes stage 1 (the check row
-   2,889.9 to 2,681.0 since stage 0, -7.2%). Next is the
-   character
-   tables and the hasher, stage 2 as 2a, 2b, 2c, the natives' entry and
+   2,889.9 to 2,681.0 since stage 0, -7.2%); and the character tables
+   and the hasher (decision AW7, "The character tables and the hasher
+   as built": the scans by a 128-bit table with the tables of the last
+   eight sets kept, the VM's own hasher for its maps and sets; the
+   check row to 2,527.2, -5.7%, the ratio to 5.72).
+   Next is stage 2 as 2a, 2b, 2c, the natives' entry and
    the glue, stage 4, the checker's own cuts between the stages, stages
    5 and 6 last. Each stage: the code, the gates of item 3, the measure
    (AU58's: the checker's image run under callgrind with the study's
@@ -335,9 +343,11 @@ and push there directly.
    The binaries kept: `renyi_au34` (44782aa, the reference), `renyi_head`
    (7cbbbe0, the study's base), `renyi_stage0` (2632cde, stage 0),
    `renyi_stage1a` (7bb927b, stage 1a), `renyi_stage1c` (1cfcd7d, stage
-   1c), `renyi_stage1b` (2367c63, stage 1b) and `renyi_stage1d` (stage
-   1d's commit, the base of the next measure), each with its `study/`
-   directory. The
+   1c), `renyi_stage1b` (2367c63, stage 1b), `renyi_stage1d` (ddbf36a,
+   stage 1d), `renyi_tables` (the character tables alone, the table
+   built per call) and `renyi_hasher` (the tables with their cache and
+   the hasher, AW7's commit, the base of the next measure), each with
+   its `study/` directory. The
    road is months long (AU58); the gate is decided on the measure at
    the end.
 2. Each stage is measured by AT1's rule: `tools/measure_size.sh` on the
@@ -4241,8 +4251,9 @@ parameter with a pattern's binding and a `maybe` after its
 calls through the trampolines 141,577 to 9,380 (`rt_call` 132,227 to
 30), the check row 2,889.9 to 2,826.6 million (-2.2%, the estimate was
 2.1%), the calls through the VM's path 57.3 to 7.4 million, the parse
-row -0.9%, the compile row -1.6%, AT1's synchronous row {sync_pct},
-the benchmarks within {bench_range}; the ratios by instructions 6.40,
+row -0.9%, the compile row -1.6%, AT1's synchronous row -0.1% (-0.2%
+by the estimate), the benchmarks unchanged to the sixth figure; the
+ratios by instructions 6.40,
 4.05 and 12.41. The table is in AW3.
 
 **Stage 1c as built (decision AW4, 2026-10-11).** Finding 2: a third
@@ -4396,9 +4407,34 @@ row -1.1%, the compile row -1.2%, AT1's synchronous row
 -1.6%; the ratios by instructions 6.07, 3.92
 and 11.90. Stage 1 in all: the check row 2,889.9 after stage
 0 to 2,681.0, -7.2%, against the study's 13%. The table is in
-AW6. Next in AW1's order: the character tables and the hasher (the
-study's item (7): the character classes as tables and the hasher of the
-VM's own).
+AW6.
+
+**The character tables and the hasher as built (decision AW7,
+2026-10-12).** The study's items (3b) and (3c). `run_of` and `run_until`
+(`natives/prelude.rs`) scan with a table of 128 bits of the set's
+members that are texts of one ASCII character, which answers for such
+an item exactly and leaves any other to the set; measured alone, with
+the table built per call, the check row fell 2,681.0 to 2,621.5
+(-2.2%) and `list_run_of_typed` cost 70.0
+million over 53,046 calls, so the tables of the last
+eight sets scanned are kept in a thread-local list with their sets
+(`class_table`, `CLASS_TABLES`; `Vm::drop` clears it). `hashing.rs` is
+the hasher of the VM's maps and sets (`ValueHasher`, `ValueHashing`,
+the aliases `ValueMap` and `ValueSet`, which every site uses in place
+of `IndexMap<Value, Value>` and `IndexSet<Value>`): a folded
+multiplication over the words written, a span of bytes as two
+overlapping words with its length in the multiplier, the state keyed
+once per process from `RandomState`; `vm::hash_of` (`Value.hash()`)
+keeps the standard hasher. The measure: the check row 2,681.0 to
+2,527.2 (-5.7%), the hashing 220.5 to 55.5, the natives 355.9
+to 366.9, the parse row -6.8%, the compile row
+-4.7%, AT1's synchronous row -0.3% (-0.7% by the
+estimate), the image row -0.4%; the ratios by instructions
+5.72, 3.65 and 11.35. Since stage 0 the
+check row 2,889.9 to 2,527.2, -12.5%. The table is in AW7. Next
+in AW1's order: stage 2, 2a first (`with` by static index with the copy
+in place), then 2b (`Done` in the caller's slots) and 2c (the frees in
+place).
 
 ## The representation items: the design study (session 11)
 
@@ -6024,6 +6060,14 @@ holds between calls.
   the grant's loads and the checks (code format 17); the three tests,
   one under a memory budget; the measure in AW6 and in "Stage 1d as
   built".
+- The character tables and the hasher (decision AW7, the commit after
+  ddbf36a): `run_of` and `run_until` through a 128-bit table of the
+  set's one-character members (`ascii_members`, `class_table` and the
+  thread-local `CLASS_TABLES` in `natives/prelude.rs`, cleared by
+  `Vm::drop`), and `hashing.rs` (`ValueHasher`, `ValueHashing`,
+  `ValueMap`, `ValueSet`) in place of SipHash for every map and set of
+  values; the measure in AW7 and in "The character tables and the
+  hasher as built".
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

@@ -7,11 +7,11 @@ use std::net::{TcpListener, TcpStream};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-use indexmap::IndexMap;
 use renyi_check::effects::Capability;
 
 use super::{arg, crash, small, text};
 use crate::extension::Native;
+use crate::hashing::ValueMap;
 use crate::natives::json::{self, Naming};
 use crate::value::Value;
 use crate::vm::{Interrupt, Vm};
@@ -43,7 +43,7 @@ fn response(
     headers: Vec<(&str, String)>,
     body: String,
 ) -> Result<Value, Interrupt> {
-    let mut map = IndexMap::new();
+    let mut map = ValueMap::default();
     for (name, value) in headers {
         map.insert(Value::text(name), Value::text(value));
     }
@@ -118,7 +118,7 @@ fn with_header(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     };
     let mut headers = match record.fields.get(index) {
         Some(Value::Map(map)) => (**map).clone(),
-        _ => IndexMap::new(),
+        _ => ValueMap::default(),
     };
     headers.insert(Value::text(name), Value::text(value));
     record.make_mut().fields[index] = Value::Map(Rc::new(headers));
@@ -239,7 +239,7 @@ fn request_record(vm: &Vm, incoming: Incoming) -> Result<Value, Interrupt> {
         Some((path, query)) => (path, query),
         None => (incoming.target.as_str(), ""),
     };
-    let mut query = IndexMap::new();
+    let mut query = ValueMap::default();
     for pair in query_text.split('&').filter(|pair| !pair.is_empty()) {
         let (name, value) = pair.split_once('=').unwrap_or((pair, ""));
         query.insert(
@@ -247,7 +247,7 @@ fn request_record(vm: &Vm, incoming: Incoming) -> Result<Value, Interrupt> {
             Value::text(percent_decode(value)),
         );
     }
-    let mut headers = IndexMap::new();
+    let mut headers = ValueMap::default();
     for (name, value) in &incoming.headers {
         headers.insert(Value::text(name), Value::text(value));
     }

@@ -22,7 +22,7 @@ branches of the repository.
 | M4 | the library and the package manager: packages, `std.process`, the foreign function interface | done (stage 15) |
 | M5 | the integration: the registration API, the Python bridge and binder, the resident world, the language server, `serve --watch`, the embedding API | done (stages 18 and 19) |
 | M6 | ahead-of-time code: machine code for the bytecode, the baseline JIT, the template tier, `renyi build` images and self-contained executables | the machine code exists (stages 16, 21, 22, 24, 26); no WASM or C API target |
-| Self-hosting | the compiler written in Renyi (lexer, parser, checker, emitter) held equal to the Rust toolchain by the judges; the binary switches to it when it is within 3 times the Rust front end's time (decision AU35 ii) | the compiler exists and is judged (stages 11, 12, 14, 15); the speed round is under way (stages 25 to 28; stage 29, a new backend for the VM, has its study and its stages 0 and 1, AW1 to AW6) |
+| Self-hosting | the compiler written in Renyi (lexer, parser, checker, emitter) held equal to the Rust toolchain by the judges; the binary switches to it when it is within 3 times the Rust front end's time (decision AU35 ii) | the compiler exists and is judged (stages 11, 12, 14, 15); the speed round is under way (stages 25 to 28; stage 29, a new backend for the VM, has its study, its stages 0 and 1 and the character tables with the hasher, AW1 to AW7) |
 
 ## 2. The stages, in order
 
@@ -317,7 +317,14 @@ where one decided, the status. The dates are those of the decisions.
     (-1.4%, the study's estimate 1.8%), the ratio by
     instructions 6.16 to 6.07. Stage 1 is complete (the check
     row 2,889.9 to 2,681.0 since stage 0, -7.2%; the study's
-    estimate 13%); the character tables and the hasher are next.
+    estimate 13%). The character tables and the hasher done
+    (session 14, 2026-10-12, decision AW7): `run_of` and `run_until`
+    scan by a table of 128 bits of the set's one-character members,
+    the tables of the last eight sets kept, and the VM's maps and sets
+    hash by a folded multiplication keyed per process in place of
+    SipHash; the check row 2,681.0 to 2,527.2 million instructions
+    (-5.7%; the tables alone -2.2%), the ratio by
+    instructions 6.07 to 5.72. Stage 2 is next, 2a first.
 
 30. **The icon and the wordmark** (session 13, 2026-10-11, done;
     decision AV1). The owner asked for an icon that does not read as the
@@ -357,8 +364,8 @@ state of each line.
   27 (B3), 29. Measured by AT1's rule on the frozen self-check and by
   the four benchmarks; every stage's numbers are in its decision entry.
   Stage 29, a new backend, has its design study (AU58, AW1) and its
-  stages 0 and 1 (AW2 to AW6); the character tables and the hasher are
-  next.
+  stages 0 and 1 and the character tables with the hasher (AW2 to
+  AW7); stage 2 is next.
 - **E. Packages, the FFI and Python**: stages 15, 18. Done; candidates
   not decided: record types from dataclasses in the binder, a deadline
   per Python call, one worker across a test run.
@@ -389,15 +396,18 @@ slots, the check row to 2,729.4, -3.4%, the ratio to 6.18; a
 read-only parameter passed borrowed between compiled bodies, the
 check row to 2,719.3, -0.4%, the ratio to 6.16; the frame record of a
 direct call made cheaper, the check row to 2,681.0, -1.4%, the
-ratio to 6.07), then the character tables and the VM's
-hasher, stage 2 (2a `with` by static index, 2b `Done` in the caller's
+ratio to 6.07), and the character tables with the hasher of the VM's
+own are done (AW7, 2026-10-12: the check row to 2,527.2, -5.7%,
+the ratio to 5.72), then stage 2 (2a `with` by static index,
+2b `Done` in the caller's
 slots, 2c the frees in place), the natives' in-place entry and the
 glue, stage 4, the checker's own cuts between the stages, stages 5 and
 6 last; each measured by the checker's run under callgrind with the
 table by category, the ratio of AU36 (iii), AT1's rows where the tiers
 change, the four judges and the conformance suite on both tiers, kept
 by AT1's rule, toward the gate of AU35 (ii) at 3 times on the check
-row (6.07 by instructions after stage 1d); then, when the ratio is
+row (5.72 by instructions after the character tables and the
+hasher); then, when the ratio is
 within 3, the switch of the binary's front end to the compiler written
 in Renyi. Candidates beside it, none decided: the emitter's own round
 for the compile row, the Rust front end's name sets as bits, the C

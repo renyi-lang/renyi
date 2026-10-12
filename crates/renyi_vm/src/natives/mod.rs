@@ -23,11 +23,11 @@ pub mod time;
 use std::rc::Rc;
 use std::sync::OnceLock;
 
-use indexmap::{IndexMap, IndexSet};
 use renyi_check::TypeId;
 
 use crate::decimal::Decimal;
 use crate::extension::{Extension, Native};
+use crate::hashing::{ValueMap, ValueSet};
 use crate::integer::Int;
 use crate::value::{RangeValue, Value};
 use crate::vm::{Interrupt, Vm};
@@ -136,7 +136,7 @@ pub fn plain_list(value: &Value) -> Option<&Rc<Vec<Value>>> {
 }
 
 #[inline]
-pub fn plain_map(value: &Value) -> Option<&Rc<IndexMap<Value, Value>>> {
+pub fn plain_map(value: &Value) -> Option<&Rc<ValueMap>> {
     match value {
         Value::Map(entries) => Some(entries),
         _ => None,
@@ -144,7 +144,7 @@ pub fn plain_map(value: &Value) -> Option<&Rc<IndexMap<Value, Value>>> {
 }
 
 #[inline]
-pub fn plain_set(value: &Value) -> Option<&Rc<IndexSet<Value>>> {
+pub fn plain_set(value: &Value) -> Option<&Rc<ValueSet>> {
     match value {
         Value::Set(items) => Some(items),
         _ => None,
@@ -203,14 +203,14 @@ pub fn list(value: &Value) -> Result<&Rc<Vec<Value>>, Interrupt> {
     value.as_list().ok_or_else(|| wrong("a List", value))
 }
 
-pub fn map(value: &Value) -> Result<&Rc<IndexMap<Value, Value>>, Interrupt> {
+pub fn map(value: &Value) -> Result<&Rc<ValueMap>, Interrupt> {
     match value {
         Value::Map(value) => Ok(value),
         other => Err(wrong("a Map", other)),
     }
 }
 
-pub fn set(value: &Value) -> Result<&Rc<IndexSet<Value>>, Interrupt> {
+pub fn set(value: &Value) -> Result<&Rc<ValueSet>, Interrupt> {
     match value {
         Value::Set(value) => Ok(value),
         other => Err(wrong("a Set", other)),
