@@ -443,7 +443,12 @@ where one decided, the status. The dates are those of the decisions.
     materialised by the helpers that read `Vm::frames`, about 40), B4
     the counts by dataflow (about 30): about 340 million in all, the
     check row to about 1,190 million, 2.7 times the reference, under
-    the gate.
+    the gate. The owner's answers (AW21, every recommended option): the
+    four stages on the Cranelift tier in the order B2, B3, B1, B4, a
+    held value as its three words, each stage measured as AW1's were
+    with the lane's micro programs per turn, the expansion measured
+    again after B3, the pair slots folded into B3, the template tier
+    unchanged, the checker's cuts as the reserve. B2 is in work.
 
 ## 3. The tracks
 

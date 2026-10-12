@@ -8075,3 +8075,42 @@ in registers, the locals in registers, the frame record lazy, the
 counts by dataflow), about 340 million in all by its estimates, the
 check row to about 1,190 million, 2.7 times the reference; its
 questions and the owner's answers are decision AW21. (user)
+
+**AW21. The owner's answers after the study of road (B): the Cranelift
+tier evolved in four measured stages, B2 then B3, B1 and B4, a held
+value as its three words, the old measure with the micro programs, the
+expansion measured again after B3, the pair slots folded into B3, the
+template tier unchanged, the checker's cuts as the reserve.** Asked on
+2026-10-12 after the study (AskUserQuestion, two batches of four, every
+recommended option taken): (1) (B) built on the Cranelift tier as it
+stands in four stages, each measured and kept by the owner's rule, over
+a rewrite of `codegen.rs` as one piece (AW1's framing, months without a
+measure) and over a third tier beside the two; (2) the order B2 (the
+operands in registers), B3 (the locals in registers), B1 (the frame
+record lazy), B4 (the counts by dataflow), the largest first, over B1
+first and over B3 before B2; (3) a held value as its three words, the
+tag and the two payload words of the 24-byte `Value` as it lies on the
+stack, a small text held whole, over two words with the small texts of
+AU26 left on the stack and over the tag elided where the checker's type
+is exact (a `maybe` and a guarded value break it; after (B), if at
+all); (4) each stage measured as AW1's were (AU58's measure with the
+table by category, AT1's rows, the four benchmarks, the four judges,
+the conformance suite on both tiers) with the lane's four micro
+programs per turn (`calls_typed`, `calls_boxed`, `boxed_fields`,
+`boxed_moves`) recorded in the entry, kept by the rule of 2026-10-12
+(the check row down by at least 0.5%, or AT1's synchronous estimate
+down at all), over the gate measured once at (B)'s end and over the
+micro programs moved into `bench/micro/`; (5) AU50's expansion measured
+again at B3's end as part of its measure and turned on by default if it
+pays, over its removal and over leaving it; (6) the pair slots of AW9
+folded into B3, a pair slot two held values and the `pair_*` machinery
+removed, over keeping both; (7) the template tier unchanged through
+(B), its calls into Cranelift bodies through the trampolines with the
+arguments on the VM's stack and the callee's prologue taking them into
+registers, over register arguments from template code at B3 and over
+the tier's retirement; (8) the reserve if B2 and B3 measure at half
+their estimates: a second round of the checker's own cuts (the parser's
+result records read after their cursor, `Done` rewritten), over
+stopping at B4 and over the natives' round. The order: B2, B3 (with the
+expansion measured again), B1, B4, each with its entry and its
+paragraph in the handoff's section of stage 31. (user)

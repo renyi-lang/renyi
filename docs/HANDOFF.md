@@ -96,8 +96,10 @@ with it on). Every stage of AW1's order is done: the ratio stands at
 the new code generator (decision AW20), and its design study is written
 (the section "Stage 31, the new code generator (road (B)): the design
 study (session 14)": four measured stages on the Cranelift tier, about
-340 million by the estimates), its questions put to the owner (the
-start-here item 1).
+340 million by the estimates), its questions answered (decision
+AW21: every recommended option; the order B2, B3, B1, B4, each
+measured by the old measure with the lane's micro programs); the work
+now is B2, the operands in registers (the start-here item 1).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
