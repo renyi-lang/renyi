@@ -501,9 +501,19 @@ where one decided, the status. The dates are those of the decisions.
     left out or stubbed, a page on the site that runs a program, and the
     suspension of a program inside a native call (`screen.present`,
     decision AW28 (3)) so that a frame loop hands control back to the
-    page. The design study first (the blockers surveyed, the target and
-    the host interface chosen), its questions to the owner in a batch,
-    then the stages the answers set.
+    page. The design study done on 2026-10-13 (the handoff's section
+    "Stage 33, the WASM target: the design study (session 14)"): the
+    front end's crates build for wasm32 as they are and the VM stops in
+    `getrandom` through `ureq`, `region` and `libloading` have no wasm
+    backend, the record block's offsets are 64-bit (a bug for any 32-bit
+    target), the clock panics on the target, the JIT and the natives of
+    what the browser cannot have go behind cargo features; the
+    suspension as a fifth interrupt that keeps the frames, resumed by
+    the host with the input, on the interpreter in this stage; a web
+    crate with a C ABI by hand and the page's own script, the VM alone
+    on bytecode; `std.screen` as a library module with a new capability.
+    Its four questions were put to the owner; the stages 33a to 33d
+    follow the answers.
 
 34. **The showcase game** (session 14, 2026-10-13, in progress, in
     parallel with stage 33; decision AW28). A Doom-style raycasting maze
@@ -511,7 +521,9 @@ where one decided, the status. The dates are those of the decisions.
     5.5, medium effort): the map, the player, the rays, the enemies, the
     score, every frame a pure function of the state and the input,
     rendered as a list of shapes (`Column`, `Rectangle`, `Label`) on a
-    320 by 200 screen and, for local runs, as text; then the library
+    320 by 200 screen and, for local runs, as text; the subagent's part
+    done on 2026-10-13 (commit b8f700e: eleven modules, 94 examples and
+    tests, the demo reaching the exit, CI holding it); then the library
     module `std.screen` (the frame handed to the host, the input
     returned, `present` suspending) and the page on the site where the
     game is played in the browser, after stage 33.
@@ -626,24 +638,23 @@ the Cranelift tier in four measured stages (the operands in registers,
 the locals in registers, the frame record lazy, the counts by dataflow;
 the study's estimate 340 million, the check row to about 1,190 million,
 2.7 times the reference), of which B2 is done (AW22, 2026-10-12: the
-operands in registers, the check row to 1,482.3, -3.0%, the
-ratio to 3.36) and B3 measured and left off with the leak of stages
-2b to B2 fixed (AW23, 2026-10-12: the check row 1,493.5, the ratio
-3.38) and B1 done (AW24, 2026-10-13: the frame record lazy, the
-check row to 1,482.7, -0.7%, the ratio to 3.36) and B4 done (AW25,
-2026-10-13: the counts by dataflow, the check row to 1,437.8,
--3.0%, the ratio to 3.26; the four stages measured), and after them
-stage 32 (AW26, 2026-10-13: the second round of the checker's own
-cuts, the check row to 1,307.5, -9.1%, the ratio to
-2.96, within the gate of 3); the owner's decision after it (AW27,
-2026-10-13): the switch of the binary's front end to the compiler
+operands in registers, the check row to 1,482.3, -3.0%, the ratio to
+3.36) and B3 measured and left off with the leak of stages 2b to B2
+fixed (AW23, 2026-10-12: the check row 1,493.5, the ratio 3.38) and B1
+done (AW24, 2026-10-13: the frame record lazy, the check row to 1,482.7,
+-0.7%, the ratio to 3.36) and B4 done (AW25, 2026-10-13: the counts by
+dataflow, the check row to 1,437.8, -3.0%, the ratio to 3.26; the four
+stages measured), and after them stage 32 (AW26, 2026-10-13: the second
+round of the checker's own cuts, the check row to 1,307.5, -9.1%, the
+ratio to 2.96, within the gate of 3); the owner's decision after it
+(AW27, 2026-10-13): the switch of the binary's front end to the compiler
 written in Renyi is deferred although its gate is met, the Rust front
-end stays, and the speed round closes. The owner's choice after it (AW28, 2026-10-13): the WASM target of M6
-(stage 33, its design study first), then the language server's
-completion, references and rename, then the C API of decision A5, in
-that order, with the showcase game in parallel (stage 34: a Doom-style
-raycaster in Renyi by a subagent, the library module `std.screen`,
-`present` suspending the program for the page, the game played in the
-browser after stage 33). Not scheduled: the Python binder's items of
-track E, the Rust front end's name sets as bits, the emitter's own round
-for the compile row.
+end stays, and the speed round closes. The owner's choice after it
+(AW28, 2026-10-13): the WASM target of M6 (stage 33, its design study
+first), then the language server's completion, references and rename,
+then the C API of decision A5, in that order, with the showcase game in
+parallel (stage 34: a Doom-style raycaster in Renyi by a subagent, the
+library module `std.screen`, `present` suspending the program for the
+page, the game played in the browser after stage 33). Not scheduled: the
+Python binder's items of track E, the Rust front end's name sets as
+bits, the emitter's own round for the compile row.

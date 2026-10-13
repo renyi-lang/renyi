@@ -117,8 +117,11 @@ within the gate of 3); the owner's decision after it (AW27): the switch
 of the front end deferred, the Rust front end kept, the speed round
 closed; the owner's choice after it (AW28): the WASM target, then the
 language server's completion, then the C API, in that order, with the
-showcase game in parallel by a subagent; the work now is stage 33's
-design study and stage 34's game (the start-here item 1).
+showcase game in parallel by a subagent; the game's part by the
+subagent is committed (b8f700e) and stage 33's design study is
+written (the section "Stage 33, the WASM target: the design study
+(session 14)"), its four questions put to the owner (the start-here
+item 1).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -483,11 +486,19 @@ and push there directly.
    designed, the questions to the owner in a batch of four), then the
    language server's completion, references and rename, then the C API;
    and in parallel stage 34, the showcase game, a Doom-style raycaster
-   under `showcase/raycaster/` written by a subagent (Opus 5.5, medium
-   effort, dispatched 2026-10-13 with the contract of AW28 (4); it runs
-   no cargo and no git; review its report, run `renyi check`, `format`
-   and `test` on its files, then commit them), whose `std.screen` module
-   and page on the site come after stage 33.
+   under `showcase/raycaster/` written by a subagent (Opus 5.5, medium effort, the contract of AW28
+   (4)), committed as b8f700e (eleven modules and a README, 94 examples
+   and tests, CI holds it like the starter pack; the fields `screen_x`
+   and `screen_y`, the checker refusing single-letter names); the design
+   study of stage 33 is the section "Stage 33, the WASM target: the
+   design study (session 14)" (the trial build in the wasm lane, the
+   blockers, the suspension, the host interface, `std.screen`, the
+   stages 33a to 33d proposed), and its four questions were put to the
+   owner on 2026-10-13 (the suspension, what the browser runs, the
+   toolchain, the gating), to be asked again at the start of the next
+   session if unanswered; the answers are the next decision, and the
+   stages follow them, `std.screen` and the game's page among them (33c
+   and 33d).
    Each stage: the code, the gates of item
    3, the measure
    (AU58's: the checker's image run under callgrind with the study's
@@ -3889,6 +3900,276 @@ iterator in two slots, the Rust front end's name sets).
 Then the first stage the owner confirms. Done in session 14: the study is
 the section "Stage 29, the new backend: the design study (session 14)"
 below, and the owner's answers are decision AW1.
+
+## Stage 33, the WASM target: the design study (session 14)
+
+**What the owner ordered (AW28)**: the WASM target of M6 first among
+the next stages, its design study before any code and the study's
+questions in a batch of four; and the showcase game's need beside it
+(AW28 (2) and (3)): a program that writes its own frame loop and
+hands each frame to the host through `screen.present`, which suspends
+the program and gives control back to the page until the next frame.
+
+**What exists.** The decisions: A5 names "server-side WASI; browser
+WASM" among the first-class platforms, H3 puts "AOT and WASM targets"
+in M6, and AG1 (iv) set WASM aside as "another target, not a
+speed-up". The machine: `rustup target list --installed` on 2026-10-13
+had the two darwin and the two windows targets and no wasm32 one;
+`wasm32-unknown-unknown` was installed in this session (`rustup target
+add`, cargo 1.94.1); the machine has no `wasm-pack`, `wasm-bindgen`,
+`wasm-opt`, clang or WASI SDK. The site: `tools/site.py` renders the
+Markdown and the grammar under `docs/`, the corpus and the starter
+pack's README into static pages, `.github/workflows/pages.yml` builds
+them with Python alone (`pip install markdown`) on every push to
+`main` and deploys them from a public repository, and no request
+leaves a page. The crates have no features, no optional dependency,
+no `cfg(feature)` and no `build.rs`: the JIT, the FFI, the HTTP
+client, SQLite and mimalloc are built unconditionally, and the only
+target gates are a dozen `cfg` sites (the executable of AS4, the cache,
+the process module, the Python bridge, the template tier's
+convention, the image's file).
+
+**The blockers surveyed** (the greps of 2026-10-13, the survey of the
+crates and of the third-party sources at the lockfile's versions, and
+one trial build in the wasm lane, `D:\Projects\.worktrees\Renyi\wasm\`,
+`check_asis.log`):
+
+- *The front end builds as it is.* `cargo check --target
+  wasm32-unknown-unknown` of `renyi_json`, `renyi_syntax`,
+  `renyi_package`, `renyi_check` and `renyi_index` finished in 5.4
+  seconds with no error: they depend on `regex` and `sha2` alone, pure
+  Rust (`renyi_package` reads files through `std::fs`, which compiles
+  on `wasm32-unknown-unknown` and answers "unsupported" at run time;
+  every read of the resolver goes through one function,
+  `reads::read_text`, where a virtual file system would go).
+- *The VM does not.* The same check of `renyi_vm` stops in `getrandom
+  0.2`, a `compile_error!` on the wasm32-unknown-unknown target
+  ("you may need to enable the `js` feature"), reached through `ureq`,
+  `rustls` and `ring`, before anything of the VM's own is compiled.
+  Behind it: `region` (executable memory) and `libloading` (`dlopen`)
+  have no wasm backend and fail to compile on both wasm targets, and
+  `libloading::Library` is a field of `Vm` (`vm.rs:344`); `rusqlite`
+  switches on wasm32-unknown-unknown to `sqlite-wasm-rs`, which
+  compiles SQLite's C with `cc` (clang for wasm32 needed) and brings
+  `wasm-bindgen` and `js-sys` into the lockfile, and the value type
+  holds a connection (`value::Native::Connection`, `value.rs:494`,
+  matched in `grant.rs`, `render.rs` and `vm.rs`); `cranelift-codegen`'s
+  build script finds no ISA for wasm32; `memmap2` and
+  `wasmtime-internal-jit-icache-coherence` compile with stubs; the
+  binary crate's `libmimalloc-sys` has no backend for the target. Every
+  one of these serves a feature the browser cannot have (the JIT and
+  its images, the FFI, the HTTP client, SQLite, the allocator), so they
+  go behind cargo features of `renyi_vm`, on by default and off for the
+  web crate: the natives of a module left out are absent from its
+  table, and a call to a declared function without a native already
+  crashes with "`m.f` is not available in this build of the VM"
+  (`vm.rs:1035`); the page's grant covers `screen` and `console` and
+  nothing else, so `begin_run` refuses a `main` that needs more before
+  anything runs, with the capability named, and the crash is never
+  reached.
+- *The JIT cannot be cut by dropping `mod native`.* `runtime.rs` holds
+  the status codes the interpreter and the in-place shims use and the
+  op helpers of `impl Vm` (`sync_pc`, the deadlines, the queries), and
+  needs only `infer.rs` and `DeoptPoint`, both pure; `codegen.rs`,
+  `template/`, `image.rs`, `inline.rs` and the `Jit`, `CodeArena` and
+  compile thread of `native/mod.rs` are the gated part, with a `Jit`
+  stub whose `new` answers `None` for the twenty sites of `vm.rs` that
+  reach it through `Option<Box<Jit>>`; `runtime.rs:210` asserts `Value`
+  at 24 bytes and 8-aligned, `RC_VALUE` and `list_layout` are 64-bit,
+  all three the JIT's. The interpreter alone runs in the browser
+  (`Options::interpret` is a mode the VM has: a narrated, a profiled
+  and a budgeted run use it).
+- *A bug for any 32-bit target.* `Composite::allocate` writes a
+  record's type and tag at the fixed offsets 16 and 24 and its fields
+  at 32 (`layout::RECORD_TY`, `RECORD_TAG`, `RECORD_FIELDS`,
+  `value.rs:215-216` and `:560-563`), while `shape()` reads them through
+  the `repr(C)` `Shape` placed at `size_of::<Head>()` (`value.rs:289`,
+  the head two words); the two agree at 64 bits only, and on wasm32
+  (the head 8 bytes, `TypeId` 4) every record and variant would read
+  garbage. The offsets become multiples of the word size, the
+  generated code's constants unchanged on x86-64.
+- *The clock.* `std::time::SystemTime::now()` and `Instant::now()`
+  panic on `wasm32-unknown-unknown` ("time not implemented on this
+  platform"), and they sit on the main path: `Vm::new` seeds the random
+  generator from the system time (`vm.rs:652`) and `now_millis`
+  (`natives/mod.rs:74`) is called in `Vm::new` and `begin_run`
+  (`vm.rs:718`, `:768`), at every live effectful call for the budget
+  counters, at every `within` deadline (`vm.rs:2531`,
+  `runtime.rs:1501`, `:2301`) and by `time.now` and `time.today`;
+  `run_measured` calls `Instant::now()` unconditionally
+  (`runner.rs:115`). A clock of the VM's own, `std`'s on the native
+  targets and a function the host hands in on wasm32 (`Date.now()`;
+  `performance.now()` for the elapsed times), takes the place of the
+  direct calls. `time.sleep` sleeps the thread (`time.rs:212`) and
+  `environment.current_directory` crashes when the system has none
+  (`system.rs:73`): both behind capabilities the page does not grant.
+- *Threads, files, sockets, processes.* `std::thread` in the compile
+  thread (gated with the JIT), the profiler's sampler, the process
+  module's pipes, `time.sleep` and the server's watch; `std::fs` in
+  the filesystem natives (their errors are the `FileError` failure
+  value already), the test fixtures and the images; `std::net` in the
+  server (the listener of AO1 is a type in `vm.rs` and `runner.rs`,
+  which compiles); `std::process` in the process module and the Python
+  bridge, which answer `CannotStart` and `Unavailable`. All of it
+  compiles on `wasm32-unknown-unknown` and fails at run time, and all
+  of it is behind a capability the page does not grant: no stub is
+  needed for the semantics, only the features for the build. The
+  command's own thread of 64 MiB (`renyi/src/lib.rs:285-296`) has no
+  place in a module; the wasm's stack is set at link time
+  (`-C link-arg=-zstack-size=`, 16 MiB), since the render and the
+  parser recurse on the Rust stack while Renyi's own calls do not.
+- *The size.* The release binary is 10.4 MB with Cranelift, SQLite,
+  the client and the FFI; the page needs the interpreter with the
+  prelude, `std.console`, `std.time`, `std.random`, `std.json`,
+  `std.csv` and `std.regex`, plus the loader of the bytecode file. The
+  estimate before the build: 2 to 4 MB of WASM, 0.7 to 1.2 MB over the
+  wire (Pages serves gzip); `opt-level = "s"` and `wasm-opt -Oz` are
+  later cuts, not dependencies of the first build.
+
+**The suspension at `screen.present`.** What the VM has: the frames of
+a run are the VM's own (`Vm::frames`, the loop of decision X3), not the
+Rust stack; a call of a declared function pushes a frame and continues
+in the same loop (`call!`, `vm.rs:2122`), the fetch has moved the pc
+past the op (`pc += 1` before the match, `vm.rs:2181`), and
+`run_frames` leaves on an interrupt with the pc written back into the
+running frame and the frames in place (`try_op!` and `sync!`,
+`vm.rs:2060`); a primitive's arguments leave the stack before it runs
+(`call_scratch`, `vm.rs:1046`) and its answer is settled onto the stack
+after; `Interrupt` is the enum of the ways a run stops before the
+program says so (a crash, an exit, the watch's reload, the memory
+budget), and the watch of `serve` (decision AO1) is the precedent of a
+native stopping the run from inside (`Interrupt::Reload` from
+`server.rs:188`), after which the runner drops the VM. What stands in
+the way: `execute` and `run_top_frame` hand every `Err` to `abandon`
+(`vm.rs:1820`, `:1865`), which locates a crash and gives the frames up;
+the boundary records nothing on an `Err` (`vm.rs:1248`), an exit
+excepted; the template tier compiles a function at its first call, so
+on x86-64 nearly every call runs as machine code unless the run is
+interpreted; and about a dozen sites run a nested loop on the Rust
+stack, inside which a suspension cannot be resumed: a module constant
+built at its first read (`global`, `vm.rs:2659`), a refinement checked
+(`holds`, `vm.rs:2822`), a declared `equals` (`equal`, `vm.rs:3086`),
+a declared `compare` (`declared_compare`, `render.rs:276`, the sorts
+and `largest`, `smallest`, `at_least` and `at_most` through it), a
+declared `to_text` and a derived ability (`derived_ability`,
+`vm.rs:2613`), a decode into a refined type (`json`, `sqlite`), and the
+handler of `server.serve`, the only library function that calls back
+into Renyi. The design: a fifth way out and a way back in.
+`screen.present(frame)` hands the frame to the host through a field of
+`Options` (a trait with one method, handed in as the streams and the
+watch are). A host that can answer at once (the console host of `renyi
+run`: it draws the frame as text at the terminal's size, reads a line,
+and the letters of the line are the keys held, the elapsed time the
+real one) returns the `Input`, and the program continues as from any
+primitive. A host that cannot (the page, whose main thread must return
+to the browser to draw) answers "later": the native returns
+`Err(Interrupt::Suspended)`, which `execute` passes through without
+`abandon`, `run_frames` having left with the pc past the call and the
+stack without the arguments; the runner hands back a run that is
+suspended, with the frame to draw; the host draws it, waits for the
+next animation frame, and resumes with the `Input`: the VM pushes the
+record where the primitive's answer would have landed, records the
+call then (so that `renyi record` of a session is a demo and a
+`replays` test replays a game), and runs the frames from the top one
+at its pc through `run_frames` (the interpreter's entry, since the
+generated code's entries are a code object's start and its loop
+headers). Three rules: a suspension inside a nested loop (a counter of
+them in the VM, and `native_state.depth` for machine code) crashes
+with a message that names the construct; in this stage a run that may
+suspend stays on the interpreter (`interpret`, as a budgeted run
+does), because a suspension under generated frames would need every
+compiled frame handed back to the interpreter at the call, which the
+hand-back of AU1 does for one frame at a deopt point and the records
+of AW24 prepare but no path does yet, and the browser has no generated
+code anyway; and the console host answers in place, so `renyi run` of
+the game keeps the JIT. The holder: `Vm<'p>` borrows its program, so a
+suspended run is a session that owns the program and the VM over it,
+dropped in order; `Sandbox::call` makes a VM per call today
+(`sandbox.rs:395`) with `Options::default()` for the streams, and would
+hand back `Suspended` with a `resume`; the C API later, `renyi_resume`.
+The alternatives weighed: (a) Asyncify, binaryen's rewrite of the WASM
+so that an import can unwind and rewind the whole stack: no change to
+the VM, but a tool in the build (`wasm-opt`), the rewritten functions
+slower and larger, and a mechanism outside the VM's knowledge that the
+C API and a Rust host cannot share; (b) the VM in a Web Worker,
+blocking inside `present` on a `SharedArrayBuffer` (`Atomics.wait`)
+until the page writes the input: no change to the VM either, but
+cross-origin isolation headers that GitHub Pages cannot set (a
+service-worker shim is the known workaround, with a reload on the first
+visit) and again a mechanism of one host; (c) the host-driven frame
+function the owner declined in AW28 (3).
+
+**The host interface.** A crate `crates/renyi_web/` of a few hundred
+lines, `crate-type = ["cdylib"]`, built for `wasm32-unknown-unknown`
+with the VM's features off, over the VM's own entry points (`Vm::new`,
+`begin_run`, `run_main`, `call_function`, the program from `file::load`
+of a `.ryc` or `binary::decode`, held `'static`), exporting a C ABI the
+page's script calls: `renyi_alloc` and `renyi_free` for the buffers,
+`renyi_load(bytes, len)` taking a bytecode file (the `.ryc` of decision
+Z1, written by `renyi compile` at the site's build), `renyi_run()`
+returning a status (finished, failed, crashed, suspended),
+`renyi_frame()` the suspended run's frame as a flat buffer of shapes (a
+kind, the integers and the colour of each, the labels' texts after),
+`renyi_output()` what the program printed since the last call,
+`renyi_resume(forward, backward, left, right, fire, quit, elapsed_ms)`;
+and one import from the page, the clock. No `wasm-bindgen`, no
+`wasm-pack`, no npm: the glue is one script of the site
+(`docs/assets/play.js`, about 150 lines: fetch the two files,
+instantiate, draw the shapes with `fillRect` and `fillText` on a canvas
+of 320 by 200 scaled up, read the keys, `requestAnimationFrame`). The
+page `docs/play.md`, rendered by `tools/site.py` with the canvas and
+the script, a "Play" entry of the Learn group; the Pages workflow gains
+a Rust step (`rustup target add wasm32-unknown-unknown`, `cargo build
+--release --target wasm32-unknown-unknown -p renyi_web`, `renyi compile
+showcase/raycaster/raycaster.ry --to _site/play/raycaster.ryc`), the
+two files served by the site, so still no request leaving a page; CI's
+Linux job builds the web crate. What the browser runs is the VM alone
+on bytecode: the front end stays native, and the playground (the whole
+toolchain in WASM, a visitor editing and running a program, which
+needs the resolver's one read function over a virtual file system) is
+a later slice.
+
+**`std.screen`.** The library module (`library/std/screen.ry` and the
+checker's copy; a new section of the stdlib sketch): the types
+`Colour` (three channels), `Shape` (`Column`, `Rectangle`, `Label`
+with the fields the game's contract has, `screen_x` and `screen_y`
+among them, since the checker refuses single-letter names; the logical
+screen of 320 by 200 as two constants) and `Input` (the keys held and
+the milliseconds elapsed), and `present(frame: List of Shape) returns
+Input needs screen`. The capability `screen` is a new root of the
+built-in tree: `effects.rs`'s `TREE` and the mirror in
+`compiler/effects.ry` (decision AD1), the reference's table, the cheat
+sheet's line and the sketch, a library addition under decision V11,
+not a surface change. The native (`natives/screen.rs`) reads the list
+of variants into a frame of plain Rust and asks the host; the console
+host of `renyi run` is in the binary (no window library, AW28 (2));
+the game's modules switch from their own `shapes` and `input` to the
+library's types once it exists.
+
+**The measure of the stage**: the WASM's size raw and over the wire;
+the interpreter's speed in the browser on `bench/primes.ry` and on one
+frame of the game, counted as ops per frame and frames a second (the
+demo's 237 frames run in 0.16 s on the interpreter natively, 0.7 ms a
+frame; the column's width is the game's knob if the browser needs
+one); and the suspension's cost per frame.
+
+**The stages proposed**: 33a the VM for wasm32 (the features, the
+composite's offsets, the clock, the web crate with `load`, `run` and
+`output`, a program printing to the page's log, the size and the speed
+measured, CI building it); 33b the suspension (`Interrupt::Suspended`,
+the host in `Options`, the session and `resume`, the nested-loop
+counter, the recording at the resume, the sandbox's `Suspended`, tests
+on the interpreter); 33c `std.screen` (the module, the capability, the
+native, the console host, the game on the library's types); 33d the
+page (the frame and the input across the boundary, `play.js`,
+`docs/play.md`, the Pages workflow), which closes stage 34's
+integration with it. The questions put to the owner at the end of the
+study: the suspension (the VM's own, Asyncify, or the worker), what the
+browser runs (the VM alone on bytecode, the whole toolchain, or both
+now), the toolchain (a C ABI by hand with no tool beyond cargo,
+`wasm-bindgen` and `wasm-pack`, or `wasm32-wasip1` with a WASI shim),
+and the gating (cargo features of `renyi_vm`, stubs and target `cfg`s
+without features, or a core crate split out).
 
 ## Stage 32, the second round of the checker's own cuts (session 14)
 
@@ -7324,6 +7605,22 @@ holds between calls.
   summary and start-here item 1, CLAUDE.md's decisions cell; the game
   subagent dispatched with the contract of AW28 (4) and the survey of
   the wasm32 blockers started.
+- The showcase game, the subagent's part (b8f700e): eleven modules
+  and a README under `showcase/raycaster/`, checked with the
+  repository's binary (`check --strict` and `format --check` clean,
+  `test` 94 passed, the demo reaching the exit), the CI step that
+  holds it, CLAUDE.md's showcase row.
+- The design study of stage 33 (the commit after b8f700e): the
+  section "Stage 33, the WASM target: the design study (session
+  14)"; the wasm lane `D:\Projects\.worktrees\Renyi\wasm\` with
+  the trial build's `check_asis.log` (the front end's crates build,
+  the VM stops in `getrandom`); the `wasm32-unknown-unknown` target
+  installed on the owner's machine; the survey of the crates by an
+  exploring agent folded in (the 32-bit layout bug of the record
+  block among its findings); the scratchpad's `study33.md`,
+  `apply_game.py` and `apply_docs_study33.py`; the roadmap's stages
+  33 and 34, this handoff's summary and start-here item 1; the four
+  questions put to the owner.
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 
