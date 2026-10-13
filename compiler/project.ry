@@ -190,7 +190,8 @@ let library_modules: List of Text be [
   "regex",
   "process",
   "foreign",
-  "python"
+  "python",
+  "screen"
 ]
 
 let manifest_file: Text be "renyi.json"

@@ -8884,3 +8884,122 @@ in WASM runs at about two thirds of its native speed on integer loops
 and at parity on the allocating programs, and a frame of the game costs
 about a millisecond, a sixteenth of what a frame at 60 a second allows.
 Next: 33b, the suspension.
+
+**AW31. Stage 33b, the suspension: `Interrupt::Suspended`, the host in
+`Options`, `resume`, `std.screen`.** Built on 2026-10-13 as decision
+AW29 set it: a program's frame loop hands each frame to the host, and
+when the host cannot answer at once the VM suspends inside the call and
+the host resumes it later; with it the library module the mechanism
+serves, `std.screen`, and its capability. (1) The mechanism. A fifth
+interrupt, `Interrupt::Suspended` (`vm.rs`): a native returns it when
+the host answers later; `run_frames` leaves as for any interrupt, the
+pc past the call written back and the arguments off the stack; `execute`
+passes it through without `abandon`, so the frames, the stack and the
+handlers stay as they are; the boundary (`call_primitive`) keeps what
+the call needs to be noted (`Suspension`: the function, the effect, the
+encoded arguments, the start time, the origins, the arguments as
+`--explain` shows them, and the entry `execute` was running for) and
+notes nothing yet. `Vm::resume(input)` builds the `Input` record, notes
+the call as the boundary notes a live one (`note_call`, now shared by
+both: the narration of `--explain` and the recording's entry, the
+duration measured to the resume), pushes the record where the
+primitive's answer would have landed and runs `execute` from the top
+frame at its pc; its result is `run_main`'s, or the next suspension;
+`Vm::is_suspended` says whether a resume is due. Under a replay the
+boundary answers `present` from the recording before the native runs,
+so a replay never asks the host and never suspends. The host is
+`Options::screen`, an `Rc<RefCell<dyn Screen>>` shared between the VM
+and whoever drives it (`screen.rs`: `Screen::present(frame) ->
+Answer::Now(input) | Later` and `Screen::suspends()`; the frame as
+plain Rust, a `Vec<Shape>` of `Column`, `Rectangle` and `Label` with a
+`Colour`, the input as `Input`); the runner, the sandbox and the web
+crate hand none unless given one. (2) Three rules. A suspension can be
+resumed only from the run's own loop: `execute` counts the loops in
+progress on the Rust stack (`nesting`), and a primitive may suspend
+only at depth one, with no generated code on the stack
+(`native_state.depth`) and no suspension pending (`can_suspend`);
+inside a nested loop (a module constant, a comparison, a text
+conversion, a decode, the handler of `server.serve`, the one library
+callback) a host that answers later crashes the run with a message that
+says so. A run whose host may answer later stays on the interpreter:
+`Vm::new` treats `screen.suspends()` as it treats `--interpret`, since
+the interpreter alone resumes a frame at its pc (the generated code's
+entries are a code object's start and its loop headers; handing every
+compiled frame back at a call is work the records of AW24 prepare and no
+path does), while a host that always answers at once (the console host
+of 33c) leaves the run its machine code. The call is recorded in full,
+like every effect: the frame as its argument (the list of shapes as
+JSON), the input as its outcome, the duration to the resume; a summary
+of the frame was weighed and declined, because a replay matches a call
+by its arguments and a `replays` test of a game should see a changed
+frame. (3) The holders. `run_main`, `run_program` and `run_tests` run
+to the end of `main` in one piece: a host that answers later under them
+ends the run with a crash that says what drives a suspension
+(`Vm::run_main` and `Vm::resume`, as the VM's tests do and the web
+crate's session of 33d will). `Sandbox::set_screen` gives a sandbox a
+host, and a call runs in one piece too: a host that answers later ends
+it with `CallError::Crashed` saying so; the study's `Suspended` with a
+`resume` on the sandbox would need the VM kept across calls, which
+`Sandbox::call` does not do (a VM per call), so the session that keeps
+one is the web crate's, stage 33d, and the web crate maps the interrupt
+to a crash until then. (4) `std.screen` (`library/std/screen.ry` and
+the checker's copy, `LIBRARY`; section 16 of the stdlib sketch, the
+module among the core modules of its rule 3): `Colour` (three Integer
+channels, clamped to 0 to 255 by the host), `Shape` (`Column(screen_x,
+top, bottom, colour)`, `Rectangle(screen_x, screen_y, width, height,
+colour)`, `Label(screen_x, screen_y, text, colour)`: the game's contract
+of AW28 field for field, `screen_x` and `screen_y` because a
+single-letter name is rejected), `Input` (the six keys and
+`elapsed_ms`), the three `can ToText` (derived, as the VM derives it
+for a library type); `present(frame: List of Shape) returns Input
+needs screen`; `width()` and `height()`, 320 and 200, pure functions
+since a declaration file holds no constant with a value. The
+capability `screen` is a root of the tree (`effects.rs`,
+`compiler/effects.ry` and the module list of `compiler/project.ry`,
+decision AD1), takes no scope and no budget; the reference's section
+11, the cheat sheet (its `renyi tools` sentence trimmed to stay under
+the budget, 2998 tokens), the syntax sketch, `06-runtime-guarantees.md`,
+`extensions.md`, the starter skill, the README and the VS Code grammar
+(which also gains `python`, missing there) list it. The native
+(`natives/screen.rs`) reads the list of variants by tag and field
+position into the frame, asks the host and builds the `Input` record
+through `library_record`; without a host the call crashes ("the screen
+is not available here"), which the console host of 33c replaces for
+`renyi run`. (5) Tests. `crates/renyi_vm/tests/screen.rs`, seven: a
+host that answers at once drives a frame loop (with the JIT); a host
+that answers later suspends the run at every frame and `resume`
+continues it, the recording holding the three `present` calls with the
+frame as their argument and the input as their outcome among the
+prints, in order; a replay of that recording runs without asking the
+host; a run without a host crashes at the call; a host that answers
+later under the runner is a crash that says so; the size and every
+shape cross the boundary with the colours clamped; a suspension inside
+the handler of `server.serve` crashes with the message naming the
+place. `crates/renyi/tests/sandbox.rs`, one more: a sandbox hands the
+frames to its screen, which must answer at once. The conformance suite:
+a frame loop that needs the screen checks clean (`screen_needs.ry`, a
+`check` case). The selfhost judges parse, check and compile the new
+declaration file and the conformance program as the Rust toolchain
+does; the library test counts sixteen modules. (6) The measure (the
+wasm lane's `measure_33b/`: 2,000 frames of 320 columns and a label,
+Windows wall-clock, coarse, three rounds): a frame suspended and
+resumed through a host that answers later costs 470 to 497 microseconds on
+the interpreter against 409 to 497 for the same frame answered at once on the
+interpreter and 402 to 423 with the machine code, the frame's own cost (the
+320 columns built, converted and encoded) in every row: the suspension
+itself is below the noise of the measure. The module for wasm32
+3,038,187 bytes (2.90 MiB), 982,441 gzipped (0.94 MiB),
+hello and the game's demo under node as at 33a. The whole suite,
+432 tests, passes; clippy is clean natively and for wasm32; the VM
+without its features checks.
+
+Why: the owner chose the VM's own suspension over Asyncify and a worker
+(AW29 (1)), and this is the smallest form of it: one interrupt passed
+through one function, every other path (`abandon`, the hand-backs, the
+replay) as it was; the host behind a trait keeps the VM free of any
+knowledge of a terminal or a browser; the call noted at the resume keeps
+`renyi record` and `replays` whole for a session; and the three rules
+say exactly where a suspension cannot happen (a nested loop, a compiled
+frame, a holder that runs in one piece) instead of letting one corrupt
+what it cannot resume. Next: 33c, the console host and the game on the
+library's types.

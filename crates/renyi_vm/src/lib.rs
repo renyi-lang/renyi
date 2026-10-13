@@ -38,6 +38,7 @@ pub mod profile;
 pub mod recording;
 pub mod render;
 pub mod runner;
+pub mod screen;
 pub mod types;
 pub mod value;
 pub mod vm;

@@ -644,13 +644,16 @@ random               random numbers
 process              start other processes
 foreign              call code across the FFI boundary
 python               call the functions of a Python module through the bridge
+screen               hand a frame to the host that draws it (`std.screen`)
 ```
 
 Naming a parent (`needs filesystem`) grants its children. `process` is
 needed by `std.process` (decision AE1), `foreign` by the functions of a
 foreign module (decision AF1) and `python` by the functions of a Python
 module (decision AJ3); until those decisions the checker rejected them
-in a `needs` clause (`capability-unavailable`, decision V6).
+in a `needs` clause (`capability-unavailable`, decision V6). `screen` is
+needed by `std.screen.present`, which hands a frame to the host that
+draws it (decision AW31).
 
 **Scopes.** A capability may carry one literal argument that narrows it: a
 path prefix for `filesystem` and its children (`filesystem.read("data")`), a

@@ -35,6 +35,7 @@ use crate::natives::{self, NativeFn};
 use crate::pinned::Pinned;
 use crate::profile::Profile;
 use crate::recording::{clip, redact, Call, Manifest, Outcome, Recording, Replay};
+use crate::screen::{Input, SharedScreen};
 use crate::types::TypeShape;
 use crate::value::{plain_all, plain_in_place, take_list, Composite, Native, RangeValue, Value};
 
@@ -58,6 +59,11 @@ pub enum Interrupt {
     /// limit, and the most bytes the run held above the level at its
     /// start.
     OverMemory { limit: u64, used: u64 },
+    /// `screen.present` asked a host that answers later (decision AW31):
+    /// the frames stay as they are, the pc past the call and the stack
+    /// without its arguments, until `Vm::resume` pushes the input and
+    /// runs on; `execute` passes it through without abandoning them.
+    Suspended,
 }
 
 impl Interrupt {
@@ -132,6 +138,10 @@ pub struct Options {
     /// of `memory`, checked at every call, primitive and loop turning;
     /// a budgeted run stays on the interpreter.
     pub memory: Option<u64>,
+    /// The host that draws the frames of `screen.present` (decision
+    /// AW31); without one the call crashes. A host that may answer
+    /// later keeps the run on the interpreter.
+    pub screen: Option<SharedScreen>,
 }
 
 impl Default for Options {
@@ -160,8 +170,23 @@ impl Default for Options {
             watch: None,
             listener: None,
             memory: None,
+            screen: None,
         }
     }
+}
+
+/// A run stopped inside `screen.present` (decision AW31): what the
+/// boundary needs to note the call when the host resumes it, and the
+/// entry `execute` was running for.
+struct Suspension {
+    function: FunctionId,
+    effect: Capability,
+    arguments: Vec<(String, Json)>,
+    at_ms: i64,
+    origins: u64,
+    /// The arguments as `--explain` shows them, when narrating.
+    shown: Option<Vec<Value>>,
+    entry: usize,
 }
 
 /// A grant shared by the frames it is in force for.
@@ -427,6 +452,15 @@ pub struct Vm<'p> {
     memory: Option<u64>,
     /// Whether this VM's budget is the one `memory` counts against.
     counting: bool,
+    /// See `Options::screen`.
+    pub(crate) screen: Option<SharedScreen>,
+    /// The call of `screen.present` the run is stopped in (decision
+    /// AW31), until `resume`.
+    suspension: Option<Suspension>,
+    /// How many interpreter loops are in progress on the Rust stack:
+    /// one for the run, one more for every nested loop a primitive
+    /// started (a module constant, a comparison, a callback).
+    nesting: usize,
 }
 
 impl Drop for Vm<'_> {
@@ -659,11 +693,17 @@ impl<'p> Vm<'p> {
         let tables = tables_of(program, &options.registry);
         let seed = crate::clock::seed_entropy() | 1;
         // a narrated, profiled or budgeted run is the interpreter's
-        // (decisions AG3 and AP1)
+        // (decisions AG3 and AP1), and so is one whose host may suspend
+        // it, since only the interpreter resumes a frame at its pc
+        // (decision AW31)
         let native = if options.interpret
             || options.explain
             || options.profile
             || options.memory.is_some()
+            || options
+                .screen
+                .as_ref()
+                .is_some_and(|screen| screen.borrow().suspends())
         {
             None
         } else {
@@ -744,6 +784,9 @@ impl<'p> Vm<'p> {
             listener: options.listener,
             memory: options.memory,
             counting: false,
+            screen: options.screen,
+            suspension: None,
+            nesting: 0,
         };
         // the template tier's code adds to the counts in place (decision
         // AU18); the vector is never resized after this
@@ -1249,22 +1292,52 @@ impl<'p> Vm<'p> {
             self.expected = None;
             return self.over_budget(function, &effect, &budget, args);
         }
-        let shown_args = self.explain.then(|| args.to_vec());
+        let shown = self.explain.then(|| args.to_vec());
         // a live primitive takes the context type itself (`sqlite.query`)
         let result = self.run_primitive(function, native, origins, args);
         self.expected = None;
-        let duration_ms = natives::now_millis() - self.started - at_ms;
         let value = match &result {
             Ok(value) => value.clone(),
             // an exit is recorded as a call that returned nothing
             Err(Interrupt::Exit(_)) => Value::Nothing,
+            // the host answers later (decision AW31): the call is noted
+            // when `resume` brings the answer
+            Err(Interrupt::Suspended) => {
+                self.suspension = Some(Suspension {
+                    function,
+                    effect,
+                    arguments,
+                    at_ms,
+                    origins,
+                    shown,
+                    entry: 0,
+                });
+                return result;
+            }
             Err(_) => return result,
         };
-        if let Some(shown_args) = shown_args {
-            self.narrate_effect(&effect, function, &shown_args, &value, Some(duration_ms));
+        self.note_call(function, &effect, arguments, shown, &value, at_ms)?;
+        result
+    }
+
+    /// The boundary's note of a live call that answered: narrated when
+    /// the run is explained, pushed onto the recording when there is
+    /// one. A call that suspended is noted when it resumes.
+    fn note_call(
+        &mut self,
+        function: FunctionId,
+        effect: &Capability,
+        arguments: Vec<(String, Json)>,
+        shown: Option<Vec<Value>>,
+        value: &Value,
+        at_ms: i64,
+    ) -> Result<(), Interrupt> {
+        let duration_ms = natives::now_millis() - self.started - at_ms;
+        if let Some(shown) = shown {
+            self.narrate_effect(effect, function, &shown, value, Some(duration_ms));
         }
         if self.recording.is_some() {
-            let outcome = self.encode_outcome(&value)?;
+            let outcome = self.encode_outcome(value)?;
             let primitive = self.qualified(function);
             let mut call = Call {
                 sequence: 0,
@@ -1280,7 +1353,7 @@ impl<'p> Vm<'p> {
                 recording.push(call);
             }
         }
-        result
+        Ok(())
     }
 
     /// Run a primitive on plain arguments. A function it calls back
@@ -1754,6 +1827,47 @@ impl<'p> Vm<'p> {
         })
     }
 
+    /// Continue a run suspended at `screen.present` (decision AW31) with
+    /// the host's input: the record is pushed where the primitive's
+    /// answer would have landed, the call is noted as the boundary notes
+    /// a live one, and the frames run on from the top one at its pc, on
+    /// the interpreter. The result is `run_main`'s: the failure of the
+    /// function the run started with, or none; or the next suspension.
+    pub fn resume(&mut self, input: Input) -> Result<Option<Value>, Interrupt> {
+        let Some(suspension) = self.suspension.take() else {
+            return Err(Interrupt::crash(
+                "the run is not suspended at `screen.present`",
+            ));
+        };
+        let value = natives::screen::input_value(self, input)?.guarded(suspension.origins);
+        self.note_call(
+            suspension.function,
+            &suspension.effect,
+            suspension.arguments,
+            suspension.shown,
+            &value,
+            suspension.at_ms,
+        )?;
+        self.stack.push(value);
+        let result = self.execute(suspension.entry)?;
+        Ok(match result {
+            Value::Failure(error) => Some((*error).clone()),
+            _ => None,
+        })
+    }
+
+    /// Whether the run is stopped inside `screen.present`, waiting for
+    /// `resume`.
+    pub fn is_suspended(&self) -> bool {
+        self.suspension.is_some()
+    }
+
+    /// Whether a primitive called now may suspend the run: from the
+    /// outermost loop, on the interpreter, no suspension pending.
+    pub(crate) fn can_suspend(&self) -> bool {
+        self.nesting == 1 && self.native_state.depth == 0 && self.suspension.is_none()
+    }
+
     /// Call a declared function with its arguments; the result may be a
     /// `Failure`. Called back from a primitive, the function receives the
     /// origins of the primitive's arguments, and what it returns joins the
@@ -1827,10 +1941,24 @@ impl<'p> Vm<'p> {
     /// Run until the frame at `entry` (and every frame above it) has
     /// returned. An interrupt abandons the entry frame and everything
     /// above it; a crash gets its location from the frame that was
-    /// running.
+    /// running. A suspension (decision AW31) keeps them for `resume`,
+    /// which enters here again with the same entry. The loops in
+    /// progress are counted: a suspension can be resumed only from the
+    /// outermost one, since a nested loop (a module constant, a
+    /// comparison, a text conversion, a decode, a callback) runs on the
+    /// Rust stack of the primitive that started it.
     pub(crate) fn execute(&mut self, entry: usize) -> Result<Value, Interrupt> {
-        match self.run_frames(entry) {
+        self.nesting += 1;
+        let result = self.run_frames(entry);
+        self.nesting -= 1;
+        match result {
             Ok(value) => Ok(value),
+            Err(Interrupt::Suspended) => {
+                if let Some(suspension) = &mut self.suspension {
+                    suspension.entry = entry;
+                }
+                Err(Interrupt::Suspended)
+            }
             Err(interrupt) => Err(self.abandon(entry, interrupt)),
         }
     }

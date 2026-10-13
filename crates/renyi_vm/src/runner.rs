@@ -253,12 +253,20 @@ pub fn denied_functions(program: &Program, denied: &Capability) -> Vec<String> {
         .collect()
 }
 
+/// A run of these entry points ends when `main` does: a host that
+/// answers `screen.present` later drives the VM itself (decision AW31).
+const SUSPENDED: &str = "suspended at `screen.present`: a host that answers later drives the VM itself, through `Vm::run_main` and `Vm::resume`";
+
 fn crashed(interrupt: Interrupt) -> RunOutcome {
     match interrupt {
         Interrupt::Crash { message, location } => RunOutcome::Crashed { message, location },
         Interrupt::Exit(code) => RunOutcome::Exited(code),
         Interrupt::Reload => RunOutcome::Reload,
         Interrupt::OverMemory { limit, used } => RunOutcome::OverMemory { limit, used },
+        Interrupt::Suspended => RunOutcome::Crashed {
+            message: SUSPENDED.to_string(),
+            location: None,
+        },
     }
 }
 
@@ -562,5 +570,6 @@ fn describe_interrupt(interrupt: Interrupt) -> String {
         Interrupt::OverMemory { limit, used } => {
             format!("exceeded the memory budget of {limit} bytes ({used} bytes held)")
         }
+        Interrupt::Suspended => SUSPENDED.to_string(),
     }
 }

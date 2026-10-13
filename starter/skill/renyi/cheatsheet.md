@@ -215,7 +215,7 @@ for each url in urls concurrently collect web.get(url) otherwise fail
 `needs` lists capabilities; callers declare a superset; no `needs` means
 pure. Capabilities: `console`, `filesystem.read`, `filesystem.write`,
 `network.http`, `network.socket`, `environment`, `time`, `random`,
-`process`, `foreign`, `python`. A parent
+`process`, `foreign`, `python`, `screen`. A parent
 covers its children. A literal argument narrows a scope:
 `filesystem.read("data")`, `network.http("api.example.com")`; no argument
 covers every scope. `main` declares the whole grant. Only there: `at most 60 per minute` (budget; also `per run`) and
@@ -249,7 +249,7 @@ end
 ```
 A recording (`renyi record`) answers a `replays` test's effects offline.
 `expose as tool` publishes a function to agents (schema from the parameters,
-description from `purpose:`, permissions from `needs`; `renyi tools` prints it).
+description from `purpose:`, permissions from `needs`).
 `deprecated: since 2.0, replaced by new_name` warns callers.
 
 ## Library (names and parameters; nothing else exists)
@@ -275,7 +275,7 @@ Modules: std.console (print, print_error, read_line); std.environment
   Instant, Duration); std.random; std.filesystem (Path, read_text, write_text,
   exists, list); std.json (parse, render); std.http (Url, get, post_json);
   std.server; std.csv; std.sqlite; std.regex; std.process (execute, attempt);
-  std.foreign; std.python
+  std.foreign; std.python; std.screen (present)
 ```
 One parameter is positional, more are named: `line.split(",")`,
 `text.replace(old: "a", new: "b")`.

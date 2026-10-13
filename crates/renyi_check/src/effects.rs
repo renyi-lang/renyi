@@ -29,6 +29,7 @@ pub const TREE: &[&str] = &[
     "process",
     "foreign",
     "python",
+    "screen",
 ];
 
 /// Capabilities that take a scope argument (a path, a host, a variable, a

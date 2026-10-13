@@ -21,7 +21,7 @@ branches of the repository.
 | M3 | the VM: `run`, `record`, `run --replay`, `reproduce`, `--explain`, `--profile`, `test` with `replays`, budgets, the grant stack, the run manifest, every library module | done (stage 7) |
 | M4 | the library and the package manager: packages, `std.process`, the foreign function interface | done (stage 15) |
 | M5 | the integration: the registration API, the Python bridge and binder, the resident world, the language server, `serve --watch`, the embedding API | done (stages 18 and 19) |
-| M6 | ahead-of-time code: machine code for the bytecode, the baseline JIT, the template tier, `renyi build` images and self-contained executables | the machine code exists (stages 16, 21, 22, 24, 26); the WASM target is stage 33 (its study AW28 and AW29; the toolchain built for wasm32 at 33a, AW30; the suspension, `std.screen` and the pages follow); the C API comes after the language server's completion (AW28) |
+| M6 | ahead-of-time code: machine code for the bytecode, the baseline JIT, the template tier, `renyi build` images and self-contained executables | the machine code exists (stages 16, 21, 22, 24, 26); the WASM target is stage 33 (its study AW28 and AW29; the toolchain built for wasm32 at 33a, AW30, the suspension and `std.screen` at 33b, AW31; the console host and the pages follow); the C API comes after the language server's completion (AW28) |
 | Self-hosting | the compiler written in Renyi (lexer, parser, checker, emitter) held equal to the Rust toolchain by the judges; the binary switches to it when it is within 3 times the Rust front end's time (decision AU35 ii) | the compiler exists and is judged (stages 11, 12, 14, 15); the speed round (stages 25 to 32) closed at the gate on 2026-10-13, the ratio 2.96 against 3 (AW26); the switch deferred by the owner, the Rust front end kept (AW27) |
 
 ## 2. The stages, in order
@@ -523,7 +523,16 @@ where one decided, the status. The dates are those of the decisions.
     `renyi_web` with its C ABI, `tools/wasm_check.js`, CI's `wasm` job;
     the module 3,027,356 bytes (2.89 MiB), 978,737 gzipped (0.93 MiB);
     hello and the game's demo run under node, the interpreter at about
-    two thirds of its native speed on integer loops); 33b is next.
+    two thirds of its native speed on integer loops); 33b done on
+    2026-10-13 (decision AW31: `Interrupt::Suspended` passed through
+    `execute` with the frames kept, the host `Options::screen`,
+    `Vm::resume` noting the call in the recording, a suspension only
+    from the run's own loop and on the interpreter, `Sandbox::set_screen`,
+    the module `std.screen` and the capability `screen`; seven tests of
+    the VM, one of the sandbox, a conformance case; a frame of 320
+    columns suspended and resumed costs 470 to 497 microseconds against 409 to 497
+    answered at once on the interpreter, coarse wall-clock); 33c is
+    next.
 
 34. **The showcase game** (session 14, 2026-10-13, in progress, in
     parallel with stage 33; decision AW28). A Doom-style raycasting maze
@@ -533,10 +542,11 @@ where one decided, the status. The dates are those of the decisions.
     rendered as a list of shapes (`Column`, `Rectangle`, `Label`) on a
     320 by 200 screen and, for local runs, as text; the subagent's part
     done on 2026-10-13 (commit b8f700e: eleven modules, 94 examples and
-    tests, the demo reaching the exit, CI holding it); then the library
+    tests, the demo reaching the exit, CI holding it); the library
     module `std.screen` (the frame handed to the host, the input
-    returned, `present` suspending) and the page on the site where the
-    game is played in the browser, after stage 33.
+    returned, `present` suspending) built at 33b (decision AW31); then
+    the game on the library's types (33c) and the page on the site
+    where the game is played in the browser (33d).
 
 ## 3. The tracks
 

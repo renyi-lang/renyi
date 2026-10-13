@@ -49,6 +49,7 @@ pub const LIBRARY: &[(&str, &str)] = &[
     ("std.process", include_str!("../library/std/process.ry")),
     ("std.foreign", include_str!("../library/std/foreign.ry")),
     ("std.python", include_str!("../library/std/python.ry")),
+    ("std.screen", include_str!("../library/std/screen.ry")),
 ];
 
 /// The declaration files the checker knows besides a project's own: the

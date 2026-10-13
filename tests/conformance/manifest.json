@@ -110,6 +110,13 @@
       "exit_code": 1
     },
     {
+      "name": "a frame loop that needs the screen checks clean",
+      "command": "check",
+      "program": "tests/conformance/programs/screen_needs.ry",
+      "stdout": "tests/conformance/expected/empty.out",
+      "exit_code": 0
+    },
+    {
       "name": "a deprecated call warns",
       "command": "check",
       "program": "tests/conformance/programs/deprecated_call.ry",

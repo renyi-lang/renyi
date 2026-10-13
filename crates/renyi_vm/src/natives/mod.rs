@@ -18,6 +18,7 @@ pub mod prelude;
 pub mod process;
 pub mod python;
 pub mod regex;
+pub mod screen;
 pub mod server;
 #[cfg(feature = "sqlite")]
 pub mod sqlite;
@@ -64,6 +65,7 @@ pub fn standard() -> Extension {
                 regex::NATIVES,
                 server::NATIVES,
                 process::NATIVES,
+                screen::NATIVES,
             ] {
                 natives.extend_from_slice(table);
             }

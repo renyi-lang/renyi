@@ -144,7 +144,7 @@ end
 
 The standard library modules are `console`, `csv`, `environment`,
 `filesystem`, `foreign`, `http`, `json`, `process`, `python`, `random`,
-`regex`, `server`, `sqlite` and `time`, each under `std.`; the prelude's types,
+`regex`, `screen`, `server`, `sqlite` and `time`, each under `std.`; the prelude's types,
 `Text`, `Integer`, `Decimal`, `Float`, `Boolean`, `Bytes`, `List of`,
 `Map of ... to`, `Set of`, `Pair of`, `Range`, `Duration` and `maybe`,
 need no import.

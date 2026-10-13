@@ -221,7 +221,8 @@ checker (M2), the project map (`renyi index`), the VM (M3) and packages
   prelude, console, environment, time, random, filesystem, JSON, CSV,
   regular expressions, the HTTP client (`ureq`), the HTTP server (over
   `std::net`), SQLite (`rusqlite`, compiled in) and other programs
-  (`std.process`, decision AE1), C libraries through foreign modules
+  (`std.process`, decision AE1), the screen a frame loop draws on
+  (`std.screen`, decision AW31), C libraries through foreign modules
   (decision AF1; `renyi bind` writes one from a header) and Python
   modules through the bridge (decisions AJ2, AJ3 and AL1 to AL4; `renyi
   bind --python` writes one from a package, AM1 and AM2; the guide is

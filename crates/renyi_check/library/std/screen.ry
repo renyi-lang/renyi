@@ -1,0 +1,37 @@
+module std.screen
+  purpose: The screen a program draws frame by frame: the shapes of a frame handed to the host, the input of the frame handed back.
+
+public type Colour
+  purpose: A colour as three channels from 0 to 255.
+  has red: Integer
+  has green: Integer
+  has blue: Integer
+  can ToText
+end
+
+public type Shape is one of
+  purpose: One drawing primitive; a frame is a list of them, drawn in order on the logical screen of 320 by 200 with the origin at the top left.
+  Column(screen_x: Integer, top: Integer, bottom: Integer, colour: Colour)
+  Rectangle(screen_x: Integer, screen_y: Integer, width: Integer, height: Integer, colour: Colour)
+  Label(screen_x: Integer, screen_y: Integer, text: Text, colour: Colour)
+  can ToText
+end
+
+public type Input
+  purpose: The keys held during one frame and the milliseconds since the previous frame.
+  has forward: Boolean
+  has backward: Boolean
+  has turn_left: Boolean
+  has turn_right: Boolean
+  has fire: Boolean
+  has quit: Boolean
+  has elapsed_ms: Integer
+  can ToText
+end
+
+public function present(frame: List of Shape) returns Input needs screen
+  purpose: Hand the frame to the host to draw and get the frame's input back; a host that must return to its own loop first suspends the program here and resumes it with the input.
+public function width() returns Integer
+  purpose: The width of the logical screen in columns, 320.
+public function height() returns Integer
+  purpose: The height of the logical screen in rows, 200.

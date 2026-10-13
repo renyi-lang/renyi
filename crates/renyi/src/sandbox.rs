@@ -15,6 +15,7 @@ use renyi_syntax::diagnostics::render_text;
 use renyi_syntax::{parse_grant, SourceFile};
 use renyi_vm::grant::{self, Counter};
 use renyi_vm::natives::json::{read_json, Json};
+use renyi_vm::screen::SharedScreen;
 use renyi_vm::{file, memory, Interrupt, Narrowing, Options, Program, Value, Vm};
 
 use crate::{
@@ -243,6 +244,9 @@ pub struct Sandbox {
     warnings: String,
     /// The budget counters and their clock after the last call.
     budgets: Option<(Vec<Counter>, i64)>,
+    /// The host of `screen.present` (decision AW31), when the embedder
+    /// gave one.
+    screen: Option<SharedScreen>,
 }
 
 impl Sandbox {
@@ -323,6 +327,7 @@ impl Sandbox {
             functions,
             warnings: compiled.diagnostics,
             budgets: None,
+            screen: None,
         })
     }
 
@@ -344,6 +349,14 @@ impl Sandbox {
     /// them; empty when there are none.
     pub fn warnings(&self) -> &str {
         &self.warnings
+    }
+
+    /// The host that draws the frames a function hands to
+    /// `screen.present` (decision AW31). A call runs to its end in one
+    /// piece, so the host must answer every frame at once: one that
+    /// answers later ends the call with a crash that says so.
+    pub fn set_screen(&mut self, screen: SharedScreen) {
+        self.screen = Some(screen);
     }
 
     /// Call a public function by name with its arguments in order. The
@@ -390,6 +403,7 @@ impl Sandbox {
             },
             memory: self.grant.memory,
             registry: registry().clone(),
+            screen: self.screen.clone(),
             ..Options::default()
         };
         let mut vm = Vm::new(&self.program, options);
@@ -415,6 +429,10 @@ impl Sandbox {
             }
             Err(Interrupt::Reload) => Err(CallError::Crashed {
                 message: "stopped for a new version".to_string(),
+                location: None,
+            }),
+            Err(Interrupt::Suspended) => Err(CallError::Crashed {
+                message: "suspended at `screen.present`: the host answers later, which a sandbox call cannot wait for".to_string(),
                 location: None,
             }),
         }

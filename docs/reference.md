@@ -231,7 +231,8 @@ types `ConstraintViolation`, `InvalidNumber`, `InvalidEncoding`, `TimedOut`
 and `Guarded`, and the methods of the base types. The modules `std.console`,
 `std.environment`, `std.time`, `std.random`, `std.filesystem`, `std.json`,
 `std.http`, `std.server`, `std.csv`, `std.sqlite`, `std.regex`,
-`std.process`, `std.foreign` and `std.python` are imported by name, and
+`std.process`, `std.foreign`, `std.python` and `std.screen` are imported
+by name, and
 so are the modules of the extensions a toolchain is built with (decision
 AJ1; the guide is `extensions.md`), which `renyi version` lists.
 
@@ -1031,13 +1032,15 @@ random               random numbers
 process              start other programs (`std.process`)
 foreign              call the C functions of a foreign module (decision AF1)
 python               call the functions of a Python module through the bridge (decision AJ3)
+screen               hand a frame to the host that draws it (`std.screen`, decision AW31)
 ```
 
 A parent (`filesystem`, `network`) covers its children. A capability may
 carry one literal **scope** that narrows it: a path prefix for
 `filesystem` and its children, a host for `network` and its children, a
 variable name for `environment`, a program name for `process`, a package
-for `python`; `console`, `time`, `random` and `foreign` take none. A
+for `python`; `console`, `time`, `random`, `foreign` and `screen` take
+none. A
 declaration without a scope covers every scope. A granted capability
 covers a needed one when its path is the same or an ancestor and its
 scope contains the needed scope: a path prefix contains its sub-paths

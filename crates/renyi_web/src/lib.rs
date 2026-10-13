@@ -201,6 +201,12 @@ pub fn run(
             "crashed: stopped for a new version\n".to_string(),
             0,
         ),
+        Err(Interrupt::Suspended) => (
+            CRASHED,
+            "crashed: suspended at `screen.present`, which this page does not resume yet\n"
+                .to_string(),
+            0,
+        ),
         Err(Interrupt::OverMemory { limit, used }) => (
             CRASHED,
             format!("crashed: exceeded the memory budget of {limit} bytes ({used} bytes held)\n"),

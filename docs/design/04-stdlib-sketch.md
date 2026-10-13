@@ -22,7 +22,8 @@ Rules that generate the library:
    Core modules: `std.console`, `std.environment`, `std.time`, `std.random`.
    Extension packages, released in lockstep with the compiler (decision G2):
    `std.filesystem`, `std.json`, `std.http`, `std.server`, `std.csv`,
-   `std.sqlite`, `std.regex`, `std.process`, `std.foreign`, `std.python`.
+   `std.sqlite`, `std.regex`, `std.process`, `std.foreign`, `std.python`,
+   `std.screen`.
 4. **One error type per module**, a sum type whose variants carry the context a
    caller needs. "Absent" is `maybe`; "went wrong" is a failure.
 5. **Effects are declared exactly.** Constructors and conversions are pure;
@@ -821,7 +822,68 @@ answer, a module that does not import or a worker that ended, and
 `PermissionDenied` a package outside the grant. `renyi bind --python`
 writes a Python module from the package itself (decisions AM1 and AM2).
 
-## 16. Not in v1
+## 16. std.screen
+
+```
+module std.screen
+  purpose: The screen a program draws frame by frame: the shapes of a frame handed to the host, the input of the frame handed back.
+
+public type Colour
+  has red: Integer
+  has green: Integer
+  has blue: Integer
+  can ToText
+end
+
+public type Shape is one of
+  Column(screen_x: Integer, top: Integer, bottom: Integer, colour: Colour)
+  Rectangle(screen_x: Integer, screen_y: Integer, width: Integer, height: Integer, colour: Colour)
+  Label(screen_x: Integer, screen_y: Integer, text: Text, colour: Colour)
+  can ToText
+end
+
+public type Input
+  has forward: Boolean
+  has backward: Boolean
+  has turn_left: Boolean
+  has turn_right: Boolean
+  has fire: Boolean
+  has quit: Boolean
+  has elapsed_ms: Integer
+  can ToText
+end
+
+public function present(frame: List of Shape) returns Input needs screen
+  purpose: Hand the frame to the host to draw and get the frame's input back.
+public function width() returns Integer
+  purpose: The width of the logical screen in columns, 320.
+public function height() returns Integer
+  purpose: The height of the logical screen in rows, 200.
+```
+
+The module of a program that draws (decision AW31; the showcase game of
+decision AW28 is its first client). A frame is a `List of Shape`, drawn
+in order on a logical screen of 320 columns by 200 rows with the origin
+at the top left, so that a later shape covers an earlier one; a
+`Column` is a vertical strip at `screen_x` from row `top` to row
+`bottom`, both included; the fields are `screen_x` and `screen_y`
+because a single-letter name is rejected; a colour's channels are
+clamped to 0 to 255 by the host. `present` hands the frame to the host
+the run was given (`Options::screen` of the VM: the console host of
+`renyi run`, a page's script in the browser) and returns the keys held
+during the frame and the milliseconds since the previous one. A host
+that can answer at once returns the `Input` and the program continues
+as from any primitive; one that must return to its own loop first (a
+page) suspends the program inside the call with its frames kept and
+resumes it with the input, on the interpreter; a run without a host
+crashes at the call. The call is recorded like any effect (the frame as
+its argument, the input as its outcome), so `renyi record` of a session
+is a demo and a replay answers `present` from the recording without a
+host. A `present` inside a callback (the handler of `server.serve`) or
+any other nested loop cannot wait: a host that answers later crashes
+the run there.
+
+## 17. Not in v1
 
 Candidates for later extension packages, in no order: `std.socket` (raw
 sockets), `std.crypto`
@@ -830,7 +892,7 @@ with persistent settings (default headers, per-client timeouts, retries), and
 streaming variants of the file and HTTP functions for data that does not fit
 in memory.
 
-## 17. Open questions
+## 18. Open questions
 
 R3-1 to R3-3 were decided (decisions K9 to K11). New questions are listed here
 as they arise.

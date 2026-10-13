@@ -140,7 +140,7 @@
     "capability": {
       "comment": "the capability tree of reference section 11, as it appears in needs clauses and as module names",
       "name": "support.module.renyi",
-      "match": "(?<![a-z0-9_.])(console|filesystem|network|time|random|environment|process|foreign)(\\.[a-z_]+)*(?![a-z0-9_])"
+      "match": "(?<![a-z0-9_.])(console|filesystem|network|time|random|environment|process|foreign|python|screen)(\\.[a-z_]+)*(?![a-z0-9_])"
     },
     "type": {
       "name": "entity.name.type.renyi",

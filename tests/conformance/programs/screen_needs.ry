@@ -1,0 +1,24 @@
+module screen_needs
+  purpose: A frame loop that needs the screen checks clean.
+
+import std.screen exposing Colour, Shape
+
+public function main() needs screen
+  purpose: Present a frame a turn and stop when the host asks.
+
+  let mutable turn be 0
+  repeat until turn is at least 3
+    let input be screen.present(frame_for(turn))
+    if input.quit then break end
+    change turn to turn + 1
+  end
+end
+
+function frame_for(turn: Integer) returns List of Shape
+  purpose: A frame with one column and one label.
+
+  return [
+    Column(screen_x: turn, top: 10, bottom: 20, colour: Colour(red: 255, green: 0, blue: 0)),
+    Label(screen_x: 5, screen_y: 5, text: "turn {turn}", colour: Colour(red: 0, green: 0, blue: 0))
+  ]
+end

@@ -124,8 +124,12 @@ written (the section "Stage 33, the WASM target: the design study
 suspension, the whole toolchain in the browser, a C ABI by hand,
 cargo features); stage 33a, the toolchain for wasm32, is built
 (decision AW30: the features, the record block's offsets, the clock,
-the files provided, the crate `renyi_web`, CI's `wasm` job); the work
-now is stage 33b, the suspension (the start-here item 1).
+the files provided, the crate `renyi_web`, CI's `wasm` job); stage
+33b, the suspension, is built (decision AW31: `Interrupt::Suspended`
+passed through `execute`, the host `Options::screen`, `Vm::resume`,
+the module `std.screen` and the capability `screen`); the work now is
+stage 33c, the console host and the game on the library's types (the
+start-here item 1).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -511,12 +515,17 @@ and push there directly.
    offsets in words, `clock.rs`, `renyi_package::reads::provide`, the
    crate `crates/renyi_web/` with its C ABI and `tools/wasm_check.js`,
    CI's `wasm` job; the module 3,027,356 bytes (2.89 MiB), 978,737
-   gzipped (0.93 MiB)), 33b the suspension, next (`Interrupt::Suspended`
-   passed through `execute` without `abandon`, the host in `Options`, a
-   session that owns the program and the VM, `resume` pushing the answer
-   and recording the call, the nested-loop counter, the sandbox's
-   `Suspended`, tests on the interpreter), 33c `std.screen` with
-   the console host and the game on the library's types, 33d the pages
+   gzipped (0.93 MiB)), 33b the suspension, done (decision AW31, "Stage
+   33b as built" after 33a's paragraph: `Interrupt::Suspended` passed
+   through `execute` with the frames kept, the host `Options::screen`
+   (`screen.rs`), `Vm::resume` noting the call, the nesting counter
+   and the interpreter rule, `Sandbox::set_screen`, `std.screen` with
+   the capability `screen`, seven tests of the VM, one of the sandbox,
+   a conformance case), 33c the console host (the frame drawn as text
+   at the terminal's size, a line read per frame, its letters the keys
+   held, the elapsed time the real one; `renyi run` of a program that
+   needs `screen` gets it) and the game on the library's types, next,
+   33d the pages
    (the playground, the game, the Pages workflow), which closes stage
    34; each gets its entry and its paragraph at the end of the study's
    section; the wasm lane is `D:\Projects\.worktrees\Renyi\wasm\` (its
@@ -4225,6 +4234,39 @@ interpreter: about two thirds of the native speed on integer loops,
 parity on the allocating programs; the game's 237 frames in 0.34 s). The
 measure of the frame rate in a browser comes with the page (33d).
 
+**Stage 33b as built (decision AW31, 2026-10-13).** `Interrupt::Suspended`
+(`vm.rs`), returned by `screen.present` when the host answers later and
+passed through `execute` without `abandon`; `execute` counts the loops
+in progress (`nesting`) and `can_suspend` allows a suspension at depth
+one on the interpreter with none pending; the boundary keeps a
+`Suspension` (the function, the effect, the encoded arguments, the start
+time, the origins, the shown arguments, the entry) and `Vm::resume`
+builds the `Input` record, notes the call through `note_call` (shared
+with the live path), pushes it and runs `execute` from the top frame;
+`Vm::is_suspended`; `Options::screen` an `Rc<RefCell<dyn Screen>>`
+(`screen.rs`: `Screen`, `Answer`, `Shape`, `Colour`, `Input`, `WIDTH`,
+`HEIGHT`), and `Vm::new` keeps a run on the interpreter when the host
+`suspends()`. `natives/screen.rs`: `present` (the frame read by tag and
+field position, the host asked, the crash without a host or inside a
+nested loop), `width`, `height`. `library/std/screen.ry` and the
+checker's copy, `LIBRARY`; `screen` in `effects.rs`, `compiler/effects.ry`
+and `compiler/project.ry`; the reference, the cheat sheet (trimmed to
+2998 tokens) and its copies, both sketches, `06-runtime-guarantees.md`,
+`extensions.md`, the starter skill, the README, the VS Code grammar.
+`runner.rs` maps the interrupt to a crash that says what drives a
+suspension; `Sandbox::set_screen` and the same crash for a host that
+answers later; the web crate maps it to a crash until 33d. Tests:
+`crates/renyi_vm/tests/screen.rs` (seven, the handler of `server.serve`
+among them), one more in `crates/renyi/tests/sandbox.rs`, the
+conformance `check` case `screen_needs.ry`, the library test counting
+sixteen modules. The measure (the wasm lane's `measure_33b/`, a cargo
+project over the crates by path: `CARGO_TARGET_DIR=<lane>/target cargo
+run --release -- 2000 320`): a frame of 320 columns suspended and
+resumed 470 to 497 microseconds against 409 to 497 answered at once on the
+interpreter and 402 to 423 with the machine code (Windows wall-clock,
+coarse); the module 3,038,187 bytes, 982,441 gzipped. The rules and
+the reasons are in AW31.
+
 ## Stage 32, the second round of the checker's own cuts (session 14)
 
 **Stage 32 as built (decision AW26, 2026-10-13).** The reserve of AW21
@@ -7690,6 +7732,16 @@ holds between calls.
   `patch_33a_fix.py`, `patch_33a_clippy.py`, `fix_web_tests.py`,
   `patch_ci_33a.py` and `apply_docs_33a.py`, copied to the wasm
   lane's `scratch_33a/`.
+- Stage 33b (decision AW31, the commit after a131aa2):
+  `Interrupt::Suspended`, `Options::screen` and `screen.rs`,
+  `Vm::resume`, `note_call`, the nesting counter, `natives/screen.rs`,
+  `library/std/screen.ry` and the checker's copy, the capability
+  `screen` in both checkers and every list, `Sandbox::set_screen`,
+  seven tests of the VM and one of the sandbox, the conformance case;
+  the measure in the wasm lane's `measure_33b/`; "Stage 33b as built"
+  after 33a's paragraph; the scratchpad's `patch_33b_code.py`,
+  `patch_33b_docs.py` and `apply_docs_33b.py`, copied to the wasm
+  lane's `scratch_33b/`.
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

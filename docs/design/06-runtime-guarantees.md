@@ -199,8 +199,8 @@ fails with the module's error type, `HttpError.OverBudget(host: Text)`,
 `StartError.OverBudget(port: Port)`, `ProcessError.OverBudget(program:
 Text)`; the program handles it like any failure (`otherwise`, a `match`, a
 retry). Budgets apply to `network`, `process` and `filesystem` and their
-children; `console`, `time`, `random`, `environment`, `foreign` and
-`python` take none. A denied call is reported the same way (`PermissionDenied`,
+children; `console`, `time`, `random`, `environment`, `foreign`,
+`python` and `screen` take none. A denied call is reported the same way (`PermissionDenied`,
 `HostNotAllowed`, decision J11); a primitive that cannot fail crashes,
 naming the function whose `needs` narrowed the grant, and a path scope
 contains a path by its text, with nothing resolved on disk (decision Y1).

@@ -752,3 +752,89 @@ public function main() needs console
   console.print("{total}")
 end
 "#;
+
+/// A module that draws, for the test of the sandbox's screen (decision
+/// AW31).
+const FRAMES: &str = r#"module frames
+  purpose: A module that draws, for the test of the sandbox's screen.
+
+import std.screen exposing Colour, Shape
+
+public function draw(turns: Integer) returns Integer needs screen
+  purpose: Present a frame a turn until the turns are up or the host asks to stop; the turns drawn.
+
+  let mutable turn be 0
+  repeat until turn is at least turns
+    let input be screen.present([
+      Column(screen_x: turn, top: 0, bottom: 9, colour: Colour(red: 0, green: 0, blue: 255))
+    ])
+    if input.quit then break end
+    change turn to turn + 1
+  end
+  return turn
+end
+"#;
+
+#[test]
+fn a_sandbox_hands_the_frames_to_its_screen_which_answers_at_once() {
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    use renyi_vm::screen::{Answer, Input, Screen, Shape};
+
+    /// Counts the frames; asks to stop at the third, or answers later.
+    struct Host {
+        frames: usize,
+        later: bool,
+    }
+
+    impl Screen for Host {
+        fn present(&mut self, frame: Vec<Shape>) -> Answer {
+            self.frames += 1;
+            assert_eq!(frame.len(), 1);
+            if self.later {
+                Answer::Later
+            } else {
+                Answer::Now(Input {
+                    quit: self.frames == 3,
+                    ..Input::default()
+                })
+            }
+        }
+
+        fn suspends(&self) -> bool {
+            self.later
+        }
+    }
+
+    let mut frames = Sandbox::load_source(
+        "frames.ry",
+        FRAMES,
+        Grant::parse("screen").expect("a grant"),
+    )
+    .expect("the module loads");
+    // without a host, the first frame crashes the call
+    let error = frames.call("draw", vec![Value::integer(5)]).unwrap_err();
+    assert!(
+        matches!(&error, CallError::Crashed { message, .. } if message.starts_with("the screen is not available here")),
+        "{error}"
+    );
+    let host = Rc::new(RefCell::new(Host {
+        frames: 0,
+        later: false,
+    }));
+    frames.set_screen(host.clone());
+    assert_eq!(
+        frames.call("draw", vec![Value::integer(5)]),
+        Ok(Value::integer(2))
+    );
+    assert_eq!(host.borrow().frames, 3);
+    // a sandbox call runs in one piece: a host that answers later ends it
+    host.borrow_mut().later = true;
+    let error = frames.call("draw", vec![Value::integer(5)]).unwrap_err();
+    assert!(
+        matches!(&error, CallError::Crashed { message, .. } if message.starts_with("suspended at `screen.present`")),
+        "{error}"
+    );
+    assert_eq!(host.borrow().frames, 4);
+}
