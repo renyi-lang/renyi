@@ -135,8 +135,23 @@ as the host of `std.screen`, a suspended run held by the web crate's
 session, `renyi_resume` and `renyi_frame` in the C ABI, the play page
 of the site with the game on a canvas and a playground, the Pages
 workflow building the module; 60 frames a second in a headless
-Chrome), which closes stages 33 and 34; the work now is the language
-server's completion, references and rename (the start-here item 1).
+Chrome), which closes stages 33 and 34; stage 35's design study is
+written and answered (decision AW34: the section "Stage 35, the
+language server's completion, references and rename: the design study
+(session 14)"); stage 36, the DOOM look, asked for by the owner on
+seeing the play page, is built (decision AW35 its plan, AW37 its
+record: `Strip`, `Picture` and `play` in `std.screen` with the hosts
+and the web crate, the art of Freedoom under `showcase/raycaster/art/`
+written by `tools/freedoom_art.py`, the game rewritten by a subagent
+in sixteen modules, the game's page `docs/game.md` of the site; 55 to
+60 frames a second in a headless Chrome; commits 79ad76c, c868686 and
+2829075); the owner's answers on release 0.2 and the platforms are
+decision AW36 (0.2 after stage 35; the Marketplace and Open VSX from
+the owner's publisher; GitHub's front set; Linguist's bar; the
+announcements at 0.2; `docs/RELEASE.md` section 6), and the Open VSX
+namespace `renyi-lang` exists with the owner's token verified against
+it, the publish waiting for 0.2; the work now is stage 35a, the
+references and the rename of declarations (the start-here item 1).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -548,15 +563,53 @@ and push there directly.
    section "Stage 35, the language server's completion, references
    and rename: the design study (session 14)" below, its four
    questions answered on 2026-10-13 (decision AW34, every answer the
-   recommended one). The same day the owner, shown the play page,
-   asked for the DOOM look: stage 36 (decision AW35), opened in
-   parallel and going first: the contract (`Strip`, `Picture`,
-   `play`), the hosts and the page by this session, the art from
-   Freedoom by a script, the game by a subagent (Opus 5.5, medium);
-   then 35a. The wasm lane is
+   recommended one: 35a the references and the rename of
+   declarations; 35b the locals, recorded as references by both
+   checkers, then their references, rename and the names in scope;
+   35c the completion at a bare position with signature help and
+   workspace symbols). The same day the owner, shown the play page,
+   asked for the DOOM look: stage 36 (decision AW35), done in
+   parallel and first (decision AW37, 2026-10-13, holds the record;
+   the bullets of "Done in session 14" below): 36a the contract
+   (79ad76c: `Strip`, `Picture` and `play` in `std.screen`,
+   `Shape::Strip`, `Shape::Picture` and `Screen::play` in
+   `crates/renyi_vm/src/screen.rs`, the console host's blocks by the
+   shade's glyph, the web crate's `strip` and `picture` lines and
+   `renyi_sounds`); 36b the art (c868686: `tools/freedoom_art.py`,
+   `showcase/raycaster/art/` with the license and `art.ry`); 36c the
+   game, the subagent's (2829075: sixteen modules, 3,045 lines, 192
+   examples and tests, the demo escaping at frame 279 with the score
+   1,120, CI's expected lines); 36d the page (the same commit:
+   `docs/game.md` with the layout `game`, `docs/assets/play.js`
+   shared with `docs/play.md`, `tools/site.py` copying the art; 55 to
+   60 frames a second at 3.0 to 3.8 ms a frame in the VM in a
+   headless Chrome 155, no console error). Its limits are AW37's, for
+   the owner to ask for: a rising door drawn squashed (a source range
+   on `Strip` would draw it sliding, a contract change), the kills on
+   the end screen only, no pain flash, four art files unused. The
+   owner's answers on the release and the platforms are decision AW36
+   (release 0.2 after stage 35; the Marketplace and Open VSX from the
+   owner's publisher, a session preparing the commands; GitHub's
+   front set on 2026-10-13; Linguist's bar of 2,000 files; the
+   announcements at 0.2 with texts a session writes;
+   `docs/RELEASE.md` section 6 holds the steps). Open VSX: the
+   namespace `renyi-lang` exists and the owner's token was verified
+   against it on 2026-10-13 (the token is the owner's, kept outside
+   the repository and every log; the owner chose to publish at 0.2,
+   not the 0.1.0 package, which is the grammar alone). The work now
+   is 35a. The wasm lane is
    `D:\Projects\.worktrees\Renyi\wasm\` (its target directory for the
    wasm32 builds, `check_asis.log` the trial build, the gates logs,
-   the measures and the scripts of each stage).
+   the measures and the scripts of each stage; of stage 36:
+   `art_36b/` the art's contact sheets and the script's first output,
+   `_site_36d/` a build of the site with the module and `serve.js` a
+   node server for it (the listen queue of `python -m http.server`
+   refuses the art's parallel fetches), `measure_36d/measure.js` the
+   headless Chrome drive with its logs and screenshots, `linguist/`
+   Linguist's `languages.yml` and `CONTRIBUTING.md` as read on
+   2026-10-13, `vsix_010/` the released extension package,
+   `ovsx_publish.py` the Open VSX script, which reads the token from
+   the owner's mailbox into the environment of `ovsx` and masks it).
    Each stage: the code, the gates of item
    3, the measure
    (AU58's: the checker's image run under callgrind with the study's
@@ -730,9 +783,11 @@ repository is public at `github.com/renyi-lang/renyi`, the release
 page carries the three archives, their checksums and the `.vsix`,
 the seven crates of 0.1.0 are on crates.io (`cargo install renyi` builds
 0.1.0), the installers were run against the release, and the site is
-at `renyi-lang.org` (the GitHub Pages address redirects there).
-Design decisions are
-in sections 0 to AU of `01-decisions.md`; the positioning in
+at `renyi-lang.org` (the GitHub Pages address redirects there), with
+the toolchain for the browser behind its play page and the showcase
+game on its game page since stages 33 and 36 (decisions AW33 and
+AW37). Release 0.2 follows stage 35 (decision AW36). Design decisions
+are in sections 0 to AW of `01-decisions.md`; the positioning in
 `08-positioning.md`; the agent tooling in
 `05-agent-tooling.md`, the signature capabilities in
 `06-runtime-guarantees.md`, the system-level commitments in
@@ -8027,6 +8082,82 @@ holds between calls.
   maze's heading and on the canvas) made the script fail in the first
   headless run; the heading's id is `maze` now. Stages 33 and 34
   closed.
+- The design study of stage 35 (the section "Stage 35, the language
+  server's completion, references and rename: the design study
+  (session 14)") and the owner's answers to it, decision AW34, with
+  the owner's request for the DOOM look after the play page, decision
+  AW35 (29a2fa8): stage 36 in four parts, opened in parallel with 35
+  and first.
+- Stage 36a, the contract (decision AW35; 79ad76c): `Strip`, `Picture`
+  and `play` in `library/std/screen.ry` and the checker's copy,
+  `Shape::Strip`, `Shape::Picture` and `Screen::play` in
+  `crates/renyi_vm/src/screen.rs` with the console host's blocks by
+  the shade's glyph, `natives/screen.rs` (`play`, the tags 3 and 4,
+  the crash without a host), the web crate's `strip` and `picture`
+  frame lines, `Session.sounds`, `renyi_sounds` and
+  `renyi_sounds_len`; the stdlib sketch's section 16, the reference's
+  section 11, the cheat sheet at 3,000 of 3,000 with its two copies;
+  the VM's and the web crate's tests extended. Its CI run was red:
+  `text_view.ry` matched the shapes without the new two, which the
+  gates of 33b do not check (`showcase/` is CI's); 36b fixed it. The
+  scratchpad's `patch_36a.py` (its "already applied" check fails when
+  an `old` is contained in its `new`: the script applied twice once,
+  reverted with `git checkout --` on the eleven files it alone had
+  touched, and applied once from a clean tree).
+- Stage 36b, the art (decision AW35; c868686): `tools/freedoom_art.py`
+  (the files of Freedoom at a pinned commit, eight at a time, the PNG
+  sizes and `grAb` anchors read, `art/README.md` with their sources,
+  `COPYING.adoc` verbatim, `art.ry` written with `Image`, `images`,
+  `sounds` and `image(name)`), the 188 images and 12 sounds under
+  `showcase/raycaster/art/`, `text_view.ry` exhaustive over the new
+  shapes (`block_of`, `shade_glyph`); the lane's `art_36b/` with the
+  contact sheets of the scratchpad's `contact_sheet.py`. CI green.
+- Stage 36c, the game (decision AW37; 2829075): the subagent (Opus
+  5.5, medium effort, 37 minutes, 134 tool calls, the owner's
+  authorization for the quota) rewrote `showcase/raycaster/` on the
+  contract: sixteen modules, 3,045 lines (`font.ry`, `hud.ry`,
+  `sprites.ry` and `weapon.ry` new), 192 examples and tests, the
+  README; every claim of its report checked again by the session
+  (`check --strict`, `format --check`, `test`, the demo's final line,
+  the module under node: 306 frames, 3.85 to 4.46 ms a frame); CI's
+  expected lines `final score 1120: Escaped` and its play script with
+  `S1` first to leave the title.
+- Stage 36d, the page (decision AW37; the same commit): `docs/game.md`
+  (the layout `game` of `tools/site.py`: the canvas as wide as the
+  window, full screen, the sound switch, the keys on the window, the
+  last line and the rate under the canvas), `docs/play.md` kept for
+  the playground with a poster and a screen under its output,
+  `docs/assets/play.js` rewritten for both pages (the strips and the
+  pictures through `drawImage`, sixteen shades per image made once
+  with `source-atop`, the sounds through an audio context made at the
+  first click, the art six files at a time with two retries),
+  `play_files` copying the art with `index.json` and the license,
+  `docs/index.md`'s play card, CLAUDE.md's rows; measured in a
+  headless Chrome 155 by the lane's `measure_36d/measure.js` served
+  by the lane's `serve.js` (55 to 60 frames a second, 3.0 to 3.8 ms a
+  frame in the VM, no console error, the screenshots `title.png`,
+  `game.png`, `play.png` and `screen.png`). The duplicate id `game`
+  (the play page's heading and the canvas) broke the script again, as
+  in 33d; the heading is `the-game` now.
+- The owner's question on the steps after stage 36, the release and
+  the platforms, answered with the facts checked (release 0.1.0 of
+  2026-10-07; the crates on crates.io; no Marketplace and no Open VSX
+  listing; Linguist's `CONTRIBUTING.md` and `languages.yml` read),
+  and the owner's answers as decision AW36 (7c240cd): release 0.2
+  after stage 35; the Marketplace and Open VSX from a publisher the
+  owner creates, a session preparing the commands; GitHub's front set
+  the same day with `gh repo edit` (the description, the homepage,
+  fifteen topics); Linguist's bar; the announcements at 0.2 (Show HN,
+  lobste.rs, the MCP directories and the awesome lists, X and
+  LinkedIn) with texts a session writes; `docs/RELEASE.md` section 6.
+- Open VSX (after 2829075, nothing in the repository): the owner
+  mailed their access token to themselves; the lane's
+  `ovsx_publish.py` read it from the mailbox into the environment of
+  `npx --yes ovsx`, created the namespace `renyi-lang` and verified
+  the token against it ("PAT valid to publish"), masking it in every
+  printed line; the token was never printed or written. The owner
+  chose to publish at 0.2 (the 0.1.0 package of the release is the
+  grammar alone: no client, no icon).
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 
@@ -9221,13 +9352,22 @@ on a fresh clone).
 - **The social preview** (decision AV1): upload
   `docs/assets/social-preview.png` in the repository's settings
   (Settings, General, Social preview); GitHub offers no other way to set
-  it. The VS Code Marketplace, if the extension is published there,
+  it. The VS Code Marketplace, when the extension is published there,
   takes its icon from `editors/vscode/package.json` already.
-- **Release 0.1.0 is out** (2026-10-07). Left to the owner: the
-  announcement with the texts of `08-positioning.md` section 6; the
-  VS Code Marketplace publisher `renyi-lang` and `vsce publish` from
-  `editors/vscode/` if the extension is to be found by search (the
-  `.vsix` on the release page installs by hand). The domain
+- **Release 0.2 and the platforms** (decision AW36, 2026-10-13;
+  `docs/RELEASE.md` section 6): the release follows stage 35. Before
+  it, the owner creates the Marketplace publisher `renyi-lang` (a
+  Microsoft account, an Azure DevOps token with the scope
+  "Marketplace: Manage"); a session runs the publish with the
+  release's `.vsix`. Open VSX is ready: the namespace `renyi-lang`
+  exists and the owner's token was verified against it on
+  2026-10-13; the publish waits for 0.2 by the owner's choice (the
+  token is the owner's, outside the repository). The announcements
+  go out at 0.2 with texts a session writes (Show HN, lobste.rs, the
+  MCP directories and the awesome lists, the owner's X and
+  LinkedIn); the owner posts them. GitHub's front (the description,
+  the homepage, the topics) is set.
+- **Release 0.1.0 is out** (2026-10-07). The domain
   renyi-lang.org is in front of the site (AI4, 2026-10-07, late):
   the zone is on Cloudflare, its records name GitHub Pages, the
   Pages setting names the domain and HTTPS is enforced; the session
@@ -9294,10 +9434,12 @@ on a fresh clone).
 
 1. **After the bridge and the binder** (decisions AJ2, AJ3, AL1 to
    AL4, AM1 and AM2 are in; the sections above): pending from the
-   release, the announcement (owner), the three measurements of the
-   positioning's section 5 on the starter pack, the Marketplace if
-   wanted, and the update candidates above (`renyi upgrade`, the
-   package-manager manifests), in the order the owner sets; then M5
+   release, the announcement at 0.2 (decision AW36: texts a session
+   writes, the owner posting), the three measurements of the
+   positioning's section 5 on the starter pack, the Marketplace and
+   Open VSX at 0.2 (AW36), and the update candidates above (`renyi
+   upgrade`, the package-manager manifests), in the order the owner
+   sets; then M5
    (item 5). Candidates around the bridge, none decided: record types
    from dataclasses and `TypedDict`s in the binder; a deadline per
    call; one worker across the tests of a `renyi test` run instead of
@@ -9370,10 +9512,12 @@ on a fresh clone).
    `renyi::Sandbox`, the grant as a `needs` clause with the memory
    budget, `renyi run --sandbox`): M5 is complete. Next, as the owner
    set on 2026-10-07, the interspersed items below, and later the C
-   API of decision A5 over the Rust one. Candidates for the server,
-   none decided: completion (names in
-   scope, the library's), references, rename, formatting through the
-   editor, a `renyi.path` prompt when the binary is missing. Interspersed, as the owner asked the same day: the performance
+   API of decision A5 over the Rust one. The server's completion,
+   references and rename are stage 35 (decision AW34; the section
+   "Stage 35, the language server's completion, references and
+   rename: the design study (session 14)" above), 35a next; formatting
+   through the editor and a `renyi.path` prompt when the binary is
+   missing remain candidates, none decided. Interspersed, as the owner asked the same day: the performance
    items by the profile of AG5 (the pattern cache of `Text.matches`,
    the string building, the JSON path; strings and JSON to CPython's
    speed, the compiler's self-check twice as fast): the first round is
@@ -9454,13 +9598,20 @@ on a fresh clone).
   file without the copies fails `cargo test` or CI, which is the
   point, but the failure names the file to copy rather than copying
   it.
-- **The site is checked as text, the play page in a headless Chrome by
-  hand**: the live pages were fetched over HTTP (status, size, titles,
-  the example links, the build stamp) and the generator's output
-  inspected as text; the play page was driven in a headless Chrome by
-  the wasm lane's `measure_33d/measure.js` (stage 33d: the game played,
-  the playground run, no console error), which CI does not run; no one
-  has looked at the other pages' rendering in a browser.
+- **The site is checked as text, the play and game pages in a
+  headless Chrome by hand**: the live pages were fetched over HTTP
+  (status, size, titles, the example links, the build stamp) and the
+  generator's output inspected as text; the play page was driven in a
+  headless Chrome by the wasm lane's `measure_33d/measure.js` (stage
+  33d) and both pages by `measure_36d/measure.js` (stage 36d: the game
+  started and played with the keys, the rate sampled, the playground
+  run, screenshots, no console error), which CI does not run; no one
+  has looked at the other pages' rendering in a browser. Twice a
+  heading given the id `game` beside the canvas broke the script:
+  grep a page's ids against the script's targets after editing one.
+  The game's own limits are in decision AW37 (the rising door drawn
+  squashed, the kills on the end screen only, no pain flash, four art
+  files unused).
 - **The FFI.** `natives/foreign.rs` and `foreign_abi.rs` are the VM's
   only unsafe code: a declaration that does not match the C side (a
   width, a missing length, a pointer the function keeps) is undefined

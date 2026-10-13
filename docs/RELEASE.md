@@ -180,11 +180,19 @@ by section 3 above.
    publisher, the icon, the license, the repository, the categories and
    the keywords the Marketplace requires; its page shows `README.md`
    and `CHANGELOG.md`. The token never enters the repository or a log.
-2. (owner) Open VSX (the registry of VSCodium, Cursor, Gitpod and
-   others): an Eclipse account with the publisher agreement signed, an
-   access token from <https://open-vsx.org/user-settings/tokens>; once
+2. Open VSX (the registry of VSCodium, Cursor, Gitpod and others): an
+   Eclipse account with the publisher agreement signed, an access
+   token from <https://open-vsx.org/user-settings/tokens>; once
    `npx --yes ovsx create-namespace renyi-lang -p <token>`, then per
    release `npx --yes ovsx publish <the release's .vsix> -p <token>`.
+   Done up to the publish on 2026-10-13: the owner's account and
+   token exist, the namespace `renyi-lang` was created and the token
+   verified against it (`ovsx verify-pat renyi-lang`); the token
+   stays with the owner, outside the repository and every log, and
+   reaches `ovsx` through its environment variable `OVSX_PAT`. The
+   publish itself waits for release 0.2 (the owner's choice: the
+   0.1.0 package is the grammar alone, without the language client
+   and the icon).
 3. GitHub's front, set on 2026-10-13 with `gh repo edit`: the
    description (the one line of `docs/design/08-positioning.md`
    section 6), the homepage `https://renyi-lang.org` and the topics
