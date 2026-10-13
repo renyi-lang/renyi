@@ -470,3 +470,76 @@ end
         }]]
     );
 }
+
+#[test]
+fn the_console_host_draws_the_frame_as_text_and_reads_the_keys_from_a_line() {
+    use renyi_vm::screen::ConsoleScreen;
+
+    // the grid of the text view's own test: a column under a label
+    let white = Colour {
+        red: 255,
+        green: 255,
+        blue: 255,
+    };
+    let frame = vec![
+        Shape::Column {
+            screen_x: 120,
+            top: 0,
+            bottom: 99,
+            colour: white,
+        },
+        Shape::Label {
+            screen_x: 0,
+            screen_y: 150,
+            text: "HI".to_string(),
+            colour: white,
+        },
+    ];
+    assert_eq!(ConsoleScreen::text_of(&frame, 4, 2), " @  \nHI  ");
+
+    let program = compile(
+        "keys.ry",
+        "module keys
+  purpose: A frame loop that prints the keys the host sends.
+
+import std.console
+import std.screen exposing Colour, Shape
+
+public function main() needs screen, console
+  purpose: Present frames until the host quits, printing the keys of each.
+
+  let mutable turn be 0
+  repeat until turn is at least 5
+    let input be screen.present([
+      Rectangle(screen_x: 0, screen_y: 0, width: 160, height: 200, colour: Colour(red: 255, green: 255, blue: 255)),
+      Label(screen_x: 160, screen_y: 0, text: \"T{turn}\", colour: Colour(red: 0, green: 0, blue: 0))
+    ])
+    let keys be \"w {input.forward} s {input.backward} a {input.turn_left} d {input.turn_right}\"
+    console.print(\"{turn}: {keys} f {input.fire} q {input.quit}\")
+    if input.quit then break end
+    change turn to turn + 1
+  end
+end
+",
+    );
+    let stdout = Capture::default();
+    // the host writes the frames to the same stream the program prints to;
+    // the lines are the keys of three frames, then the end of the input
+    let host: SharedScreen = Rc::new(RefCell::new(ConsoleScreen::new(
+        Box::new(stdout.clone()),
+        Box::new(std::io::Cursor::new(b"wf\n\nsad\n".to_vec())),
+        8,
+        2,
+    )));
+    let outcome = run_main(&program, options(&stdout, Some(host)));
+    assert_eq!(outcome, RunOutcome::Finished);
+    let prompt =
+        "w forward, s backward, a left, d right, f fire, q quit, enter for the next frame> ";
+    let expected = format!(
+        "@@@@T0  \n@@@@    \n{prompt}0: w true s false a false d false f true q false\n\
+         @@@@T1  \n@@@@    \n{prompt}1: w false s false a false d false f false q false\n\
+         @@@@T2  \n@@@@    \n{prompt}2: w false s true a true d true f false q false\n\
+         @@@@T3  \n@@@@    \n{prompt}3: w false s false a false d false f false q true\n"
+    );
+    assert_eq!(stdout.text(), expected);
+}

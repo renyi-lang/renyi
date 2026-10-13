@@ -1,12 +1,13 @@
 module raycaster
-  purpose: Play the maze without a screen: scripted input, frames printed as text, the final score.
+  purpose: Play the maze at the host's screen, or without one: scripted input, frames as text.
 
 import game exposing State, Status
-import input exposing Input
+import input
 import fixed
 import level
 import std.console
 import std.environment
+import std.screen exposing Input
 import text_view
 import view
 
@@ -97,12 +98,24 @@ function play(script: List of Text, every: Integer, draw: Boolean) needs console
   console.print("final score {state.score}: {state.status}")
 end
 
-public function main() needs console, environment
-  purpose: Run `demo`, `trace` (one line a frame) or `steps F4 R8 S ...`; nothing shows the start.
+function play_live() needs console, screen
+  purpose: Play at the host's screen: every frame handed to it, its input stepping the game.
+
+  let mutable state be game.new_game(level.maze_rows)
+  repeat until state.status is not Playing
+    let controls be screen.present(view.render(state))
+    change state to game.step(state: state, controls: controls)
+  end
+  console.print("final score {state.score}: {state.status}")
+end
+
+public function main() needs console, environment, screen
+  purpose: Run `play` (at the screen), `demo`, `trace` (a line a frame) or `steps F4 R8 S ...`.
 
   let arguments be environment.arguments()
   let mode be arguments.at(0) otherwise "start"
   match mode
+    when "play" then play_live()
     when "demo" then play(script: demo_script(), every: 20, draw: true)
     when "trace" then play(script: demo_script(), every: 1, draw: false)
     when "steps" then play(script: arguments.drop(1), every: 1, draw: false)

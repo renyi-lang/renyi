@@ -9003,3 +9003,67 @@ say exactly where a suspension cannot happen (a nested loop, a compiled
 frame, a holder that runs in one piece) instead of letting one corrupt
 what it cannot resume. Next: 33c, the console host and the game on the
 library's types.
+
+**AW32. Stage 33c, the console host and the game on the library's
+types.** Built on 2026-10-13 as decision AW29 set it. (1) The console
+host, `ConsoleScreen` in `screen.rs` of the VM: a `Screen` over two
+streams that answers every frame at once, so a run under it keeps its
+machine code. A frame is drawn as text into a grid of characters, each
+cell the brightness of the colour under the cell's middle (the ten
+characters from dark to bright by the luma weights of Rec. 601, the
+sampling of the game's own `text_view.ry`: a column or a rectangle
+covers the cells whose middle lies in it, a label is written from its
+cell to the right and clipped at the row's end); then a line is read,
+whose letters are the keys held, `w` forward, `s` backward, `a` turn
+left, `d` turn right, `f` fire, `q` quit, the end of the input being
+`quit`; the elapsed time is the real one since the previous frame
+(`clock::Stopwatch`). `ConsoleScreen::standard()` is the host over the
+process's own streams at the terminal's size, read from the variables
+`COLUMNS` and `LINES` when they are set and 80 by 24 otherwise, one row
+kept for the prompt: no terminal library, as AW28 (2) asked, and the
+size a variable away when the default is wrong. `renyi run` and
+`record` give it to a program whose `main` needs `screen` (`grants`, as
+the notes for `foreign` and `python` are chosen), `renyi test` to every
+test (a `replays` test never asks it); `serve`, the MCP server and the
+sandbox hand none, where a `present` crashes with the reason as before.
+`ConsoleScreen::text_of` is the grid alone, for the tests. (2) The game
+on the library's types: `shapes.ry` keeps the screen's size as two
+constants built from `screen.width()` and `screen.height()` (a module
+constant from a pure library call, so `view.ry` and `text_view.ry`
+read them as before, and the generated code sees a literal) and
+`shaded`; `input.ry` keeps `idle` and `repeated` over the `Input` of
+`std.screen`; `game.ry`, `player.ry`, `view.ry`, `text_view.ry` and
+`raycaster.ry` import the types from `std.screen`; `raycaster.ry`
+gains `play`, the real-time loop (`screen.present(view.render(state))`
+stepping the game until the status leaves `Playing`, the final score
+printed), and `main` needs `screen` with it, so `renyi run
+showcase/raycaster/raycaster.ry play` plays the maze at the terminal;
+`demo`, `trace` and `steps` are as they were, the 94 examples and tests
+pass and the demo ends as before. The page's grant in the web crate
+gains `screen` (the page is its host at 33d; a `present` in the
+browser crashes with the reason until then), so the game's `main`
+passes the page's refusal and the demo runs through the module as CI
+checks. The README of the game names the contract as `std.screen` and
+the browser's part as the page. (3) The reference's section 11 gains
+the note on `screen` beside those on `foreign` and `python`: the frame
+to the host, the console host of the commands and its keys, the
+suspension and the recording, the callback that cannot wait. (4) Tests:
+`crates/renyi_vm/tests/screen.rs` one more, eight: the console host's
+grid on the text view's own case and a frame loop driven by three
+lines and the end of the input, the frames and the prompt on the same
+stream as the program's prints. The game's 94 examples and tests, CI's
+strict check, format check and tests of the showcase, and the demo
+through the WASM module. The whole suite, 433 tests, the
+conformance suite 56 of 56; clippy clean natively and for wasm32; the
+module 3,038,512 bytes (2.90 MiB), 982,497 gzipped
+(0.94 MiB).
+
+Why: the console host is the second client of the mechanism and the
+one that needs no page, so `renyi run` of the game works today and the
+VM's tests cover the host's grid and keys without a terminal; the
+sampling is the game's own so that the terminal and the text view
+agree; the size from two variables keeps the binary free of a terminal
+library; the constants over `width()` and `height()` keep the game's
+other modules untouched; and `screen` in the page's grant now, with the
+crash until 33d, keeps CI's demo run honest about what the page serves.
+Next: 33d, the pages.

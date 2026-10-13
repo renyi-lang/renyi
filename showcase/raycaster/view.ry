@@ -6,7 +6,8 @@ import fixed
 import game exposing State, Status
 import level exposing Tile
 import raycast exposing Hit, Side, Vector
-import shapes exposing Colour, Shape
+import shapes
+import std.screen exposing Colour, Shape
 
 public type Span
   purpose: The first and last screen rows of something drawn on a column.

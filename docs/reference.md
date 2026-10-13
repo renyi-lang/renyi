@@ -1180,6 +1180,23 @@ refuses to cross; `python` takes a scope and no budget; `renyi run` says
 when `main` grants `python`. What the Python side does is outside every
 guarantee of the VM.
 
+`screen.present` (decision AW31) hands a frame, a `List of Shape` of
+`std.screen`, to the host the run was given and returns the frame's
+`Input`; `screen` takes no scope and no budget. `renyi run`, `record`
+and `test` give a program whose `main` needs `screen` the console host
+(decision AW32): each frame is drawn as text at the terminal's size
+(`COLUMNS` and `LINES` when they are set, else 80 by 24), a line is read
+per frame and its letters are the keys held (`w` forward, `s` backward,
+`a` turn left, `d` turn right, `f` fire, `q` quit; the end of the input
+quits), and the elapsed time is the real one. A host that must return
+to its own loop before it can answer (a page in the browser) suspends
+the program inside the call and resumes it with the input; a run
+without a host crashes at the call. The call is recorded like any
+primitive, the frame as its argument and the input as its outcome, and
+a replay answers it without a host. A `present` inside a callback (the
+handler of `server.serve`) cannot wait: a host that answers later
+crashes the run there.
+
 ---
 
 ## 12. Concurrency

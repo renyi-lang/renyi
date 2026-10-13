@@ -1,17 +1,7 @@
 module input
-  purpose: The player's input for one frame, as the display hands it to the game.
+  purpose: Inputs for scripted frames, an idle one and its repetition, over the Input of std.screen.
 
-public type Input
-  purpose: The keys held during one frame and the milliseconds since the previous frame.
-  has forward: Boolean
-  has backward: Boolean
-  has turn_left: Boolean
-  has turn_right: Boolean
-  has fire: Boolean
-  has quit: Boolean
-  has elapsed_ms: Integer
-  can ToText
-end
+import std.screen exposing Input
 
 public function idle(elapsed_ms: Integer) returns Input
   purpose: An input with no key held, lasting the given milliseconds.

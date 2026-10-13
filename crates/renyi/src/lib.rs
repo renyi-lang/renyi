@@ -1472,6 +1472,9 @@ fn run_loaded(
         manifest,
         registry: registry().clone(),
         memory,
+        // a program that draws gets the terminal as its screen (decision
+        // AW32)
+        screen: grants(&program, "screen").then(renyi_vm::screen::ConsoleScreen::standard),
         ..renyi_vm::Options::default()
     };
     let run = renyi_vm::run_program(&program, options);
@@ -1600,6 +1603,9 @@ fn test_command(args: &[String]) -> ExitCode {
             refresh: flags.refresh.clone(),
             redact: flags.redact.clone(),
             registry: registry().clone(),
+            // a test that draws gets the terminal as its screen (decision
+            // AW32); a `replays` test never asks it
+            screen: Some(renyi_vm::screen::ConsoleScreen::standard()),
             ..renyi_vm::Options::default()
         };
         let report = renyi_vm::run_tests(&program, options);

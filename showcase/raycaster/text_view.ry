@@ -1,7 +1,8 @@
 module text_view
   purpose: A software rasterizer for development: a frame of shapes sampled into a character grid.
 
-import shapes exposing Colour, Shape
+import shapes
+import std.screen exposing Colour, Shape
 
 let ramp: List of Text be [" ", ".", ":", "-", "=", "+", "*", "#", "%", "@"]
   purpose: The characters from dark to bright that stand for a colour.

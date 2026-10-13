@@ -64,7 +64,9 @@ thread_local! {
 /// The capabilities the page serves: the console (its log), the clock,
 /// the random numbers and the environment (which answers nothing).
 fn grant() -> Vec<renyi_check::effects::Capability> {
-    ["console", "time", "random", "environment"]
+    // `screen` since decision AW32: the page is its host (stage 33d);
+    // until then a call crashes with the reason
+    ["console", "time", "random", "environment", "screen"]
         .iter()
         .map(|name| parse_capability(name).expect("a capability of the tree"))
         .collect()

@@ -16,12 +16,19 @@ series in `Float`, because the library has no trigonometry.
 From the repository root:
 
 ```
+renyi run showcase/raycaster/raycaster.ry play       # at the terminal: w a s d f q, enter per frame
 renyi run showcase/raycaster/raycaster.ry            # the first frame
 renyi run showcase/raycaster/raycaster.ry demo       # the demo, every 20th frame as text
 renyi run showcase/raycaster/raycaster.ry trace      # the demo, one summary line per frame
 renyi run showcase/raycaster/raycaster.ry steps F5 R8 F22 S
 renyi test showcase/raycaster/raycaster.ry           # every example and test of every module
 ```
+
+`play` hands every frame to the host of `std.screen`: at the terminal
+(`renyi run`) the frame is drawn as text at the terminal's size and a
+line is read, whose letters are the keys held (`w` forward, `s` back, `a`
+and `d` turn, `f` shoot, `q` quit; the end of the input quits), the
+elapsed time being the real one; in the browser the page is the host.
 
 A script move is a key and an optional frame count: `F` forward, `B` back,
 `L` and `R` turn, `S` shoot, `Q` quit, and any other key waits. `F22` means
@@ -32,8 +39,8 @@ millisecond, so `R8` is a quarter turn. Walking covers 3 cells a second.
 
 | File | Content |
 |------|---------|
-| `shapes.ry` | the display contract: `Colour`, `Shape`, the 320 by 200 screen |
-| `input.ry` | the display contract: `Input`, `idle`, `repeated` |
+| `shapes.ry` | the screen's size as constants and `shaded`, over the types of `std.screen` |
+| `input.ry` | `idle` and `repeated`, over the `Input` of `std.screen` |
 | `fixed.ry` | fixed-point helpers and the sine and cosine table |
 | `level.ry` | tiles, the level's text rows, parsing, doors |
 | `raycast.ry` | camera rays, the DDA walk through the grid, camera-space projection |
@@ -42,12 +49,14 @@ millisecond, so `R8` is a quarter turn. Walking covers 3 cells a second.
 | `game.ry` | `State`, `new_game`, `step`, `played` |
 | `view.ry` | `render`: sky and floor, wall columns, sprites, the HUD |
 | `text_view.ry` | `text_view`, which samples a frame into a character grid |
-| `raycaster.ry` | `main`, which plays a script and prints frames |
+| `raycaster.ry` | `main`: `play` at the host's screen, or a script played and printed as text |
 
 ## The display contract
 
-A display needs three things: the types it draws, the input it sends, and
-two calls.
+The display contract is the library module `std.screen` (decision AW31):
+the types the game draws with, the input it receives, and one call,
+`screen.present(frame)`, which hands a frame to the host and returns the
+frame's input.
 
 ```
 type Colour            red, green, blue: Integer, 0 to 255
@@ -59,26 +68,29 @@ type Input             forward, backward, turn_left, turn_right, fire, quit: Boo
                        elapsed_ms: Integer (the milliseconds since the previous frame)
 ```
 
-The logical screen is 320 columns by 200 rows, with the origin at the top
-left. A frame is a `List of Shape`, drawn in order, so later shapes cover
-earlier ones. The text view gives a label character 4 columns by 5 rows, so a
-font about 8 pixels high fits the HUD.
+The logical screen is 320 columns by 200 rows (`screen.width()` and
+`screen.height()`), with the origin at the top left. A frame is a `List of
+Shape`, drawn in order, so later shapes cover earlier ones. The text view
+gives a label character 4 columns by 5 rows, so a font about 8 pixels high
+fits the HUD.
 
 The fields are named `screen_x` and `screen_y`, not `x` and `y`, because
 Renyi rejects single-letter names (`single-letter-identifier`).
 
-A real-time display runs this loop:
+`play` in `raycaster.ry` is the real-time loop:
 
 ```
 let mutable state be game.new_game(level.maze_rows)
-every frame:
-  change state to game.step(state: state, controls: <the keys held, elapsed_ms>)
-  draw view.render(state)
-stop when state.status is not Playing
+repeat until state.status is not Playing
+  let controls be screen.present(view.render(state))
+  change state to game.step(state: state, controls: controls)
+end
 ```
 
-## What the browser build replaces
+## In the browser
 
-The browser build replaces `raycaster.ry` and `text_view.ry`. It runs the
-loop above in real time, with `std.screen` drawing the shapes on a canvas
-and the keyboard filling `Input`. All the other modules stay the same.
+The page of the site is a host of `std.screen` (stage 33d): the same
+`play` runs there, the page draws the shapes on a canvas and fills `Input`
+from the keyboard, and `present` suspends the program between frames so
+that the page can draw. Nothing in the game changes between the terminal
+and the browser.

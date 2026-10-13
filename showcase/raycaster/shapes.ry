@@ -1,26 +1,12 @@
 module shapes
-  purpose: The drawing primitives a frame is made of, on a logical screen of 320 by 200.
+  purpose: The screen's size as constants and the shading of a colour, over std.screen's types.
 
-public type Colour
-  purpose: A colour as three channels from 0 to 255.
-  has red: Integer
-  has green: Integer
-  has blue: Integer
-  can ToText
-end
+import std.screen exposing Colour
 
-public type Shape is one of
-  purpose: One drawing primitive; a frame is a list of them drawn in order.
-  Column(screen_x: Integer, top: Integer, bottom: Integer, colour: Colour)
-  Rectangle(screen_x: Integer, screen_y: Integer, width: Integer, height: Integer, colour: Colour)
-  Label(screen_x: Integer, screen_y: Integer, text: Text, colour: Colour)
-  can ToText
-end
-
-public let screen_width: Integer be 320
+public let screen_width: Integer be screen.width()
   purpose: The width of the logical screen in columns.
 
-public let screen_height: Integer be 200
+public let screen_height: Integer be screen.height()
   purpose: The height of the logical screen in rows.
 
 public function shaded(colour: Colour, percent: Integer) returns Colour

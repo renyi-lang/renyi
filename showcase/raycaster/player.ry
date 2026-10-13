@@ -2,7 +2,8 @@ module player
   purpose: The player: position, facing, health, and movement with collision against the walls.
 
 import fixed
-import input exposing Input
+import input
+import std.screen exposing Input
 import level exposing Level, Cell
 import raycast exposing Vector
 

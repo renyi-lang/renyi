@@ -3,7 +3,8 @@ module game
 
 import enemies exposing Enemy
 import fixed
-import input exposing Input
+import input
+import std.screen exposing Input
 import level exposing Level, Cell, Tile
 import player exposing Player
 import raycast exposing Vector

@@ -127,9 +127,11 @@ cargo features); stage 33a, the toolchain for wasm32, is built
 the files provided, the crate `renyi_web`, CI's `wasm` job); stage
 33b, the suspension, is built (decision AW31: `Interrupt::Suspended`
 passed through `execute`, the host `Options::screen`, `Vm::resume`,
-the module `std.screen` and the capability `screen`); the work now is
-stage 33c, the console host and the game on the library's types (the
-start-here item 1).
+the module `std.screen` and the capability `screen`); stage 33c is
+built (decision AW32: the console host `ConsoleScreen`, given by `renyi
+run`, `record` and `test`, the game on the library's types with its
+`play` mode); the work now is stage 33d, the pages (the start-here
+item 1).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -521,11 +523,17 @@ and push there directly.
    (`screen.rs`), `Vm::resume` noting the call, the nesting counter
    and the interpreter rule, `Sandbox::set_screen`, `std.screen` with
    the capability `screen`, seven tests of the VM, one of the sandbox,
-   a conformance case), 33c the console host (the frame drawn as text
-   at the terminal's size, a line read per frame, its letters the keys
-   held, the elapsed time the real one; `renyi run` of a program that
-   needs `screen` gets it) and the game on the library's types, next,
-   33d the pages
+   a conformance case), 33c the console host and the game on the
+   library's types, done (decision AW32, "Stage 33c as built" after
+   33b's paragraph: `ConsoleScreen` in `screen.rs`, the frame as text
+   at the terminal's size and a line read per frame, given by `renyi
+   run`, `record` and `test`; the game's `play` mode; `screen` in the
+   page's grant), 33d the pages, next (the web crate's session holding
+   the program and the VM across a suspension, `renyi_frame` and
+   `renyi_resume` in the C ABI, `docs/assets/play.js` drawing the
+   shapes on a canvas and reading the keys, `docs/play.md` with the
+   playground and the game, the Pages workflow building the module
+   with a Rust step; the frame rate in a browser measured)
    (the playground, the game, the Pages workflow), which closes stage
    34; each gets its entry and its paragraph at the end of the study's
    section; the wasm lane is `D:\Projects\.worktrees\Renyi\wasm\` (its
@@ -4267,6 +4275,30 @@ interpreter and 402 to 423 with the machine code (Windows wall-clock,
 coarse); the module 3,038,187 bytes, 982,441 gzipped. The rules and
 the reasons are in AW31.
 
+**Stage 33c as built (decision AW32, 2026-10-13).** `ConsoleScreen` in
+`crates/renyi_vm/src/screen.rs` (`new` over two streams and a grid size,
+`standard` over the process's streams at the terminal's size from
+`COLUMNS` and `LINES`, else 80 by 24, `text_of` the grid alone; the
+sampling of the game's `text_view.ry`: `cells_covering`, `paint`,
+`glyph` over `RAMP`; `present` draws, prompts, reads a line, maps its
+letters to the keys and measures the elapsed time with
+`clock::Stopwatch`). `crates/renyi/src/lib.rs`: `screen:
+grants(&program, "screen").then(ConsoleScreen::standard)` for `run` and
+`record`, `Some(ConsoleScreen::standard())` for `test`. The web crate's
+`grant()` gains `screen`. The game: `shapes.ry` (the constants from
+`screen.width()` and `screen.height()`, `shaded`), `input.ry` (`idle`,
+`repeated` over `std.screen`'s `Input`), the imports of `game.ry`,
+`player.ry`, `view.ry`, `text_view.ry` and `raycaster.ry`, `play_live`
+and the `play` mode of `main`, which needs `screen`; the README's play
+line and paragraph, modules table, contract and browser sections. The
+reference's section 11 note on `screen`. Tests: the console host's in
+`crates/renyi_vm/tests/screen.rs` (eight now); the game's 94 pass,
+`demo` ends as before, `printf 'w\nw\nd\nq\n' | renyi run
+showcase/raycaster/raycaster.ry play` draws four frames and quits. The
+suite 433 tests, the conformance suite 56; the module 3,038,512
+bytes, 982,497 gzipped; hello and the game's demo run through it under
+node with `main` needing `screen`. The reasons are in AW32.
+
 ## Stage 32, the second round of the checker's own cuts (session 14)
 
 **Stage 32 as built (decision AW26, 2026-10-13).** The reserve of AW21
@@ -7742,6 +7774,20 @@ holds between calls.
   after 33a's paragraph; the scratchpad's `patch_33b_code.py`,
   `patch_33b_docs.py` and `apply_docs_33b.py`, copied to the wasm
   lane's `scratch_33b/`.
+- Stage 33c (decision AW32, the commit after 4abdc5b): `ConsoleScreen`
+  in `screen.rs`, the host given by `renyi run`, `record` and `test`,
+  `screen` in the page's grant, the game on the library's types with
+  `play`, the README of the game, the reference's note, one more test
+  of the VM; the scratchpad's `patch_33c_game.py`,
+  `patch_33c_code.py`, `console_screen_test.rs.txt` and
+  `apply_docs_33c.py`, copied to the wasm lane's `scratch_33c/`. In
+  the stage's first gates chain the leak test
+  `a_constant_pushed_borrowed_and_a_store_over_a_value_held`
+  (`crates/renyi_vm/tests/leaks.rs`) failed once with bytes held after
+  the second run and passed on three reruns of its binary and in the
+  chain run again: a flake to watch (the allocator counts for the
+  whole process; an allocation from outside the counted window is
+  the suspect), not investigated in this stage.
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 
