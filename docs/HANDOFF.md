@@ -113,8 +113,10 @@ are measured; the owner's call after them, the reserve of AW21 (8),
 is stage 32, the second round of the checker's own cuts, done
 (decision AW26: four cuts in `compiler/*.ry` on B4's binary, the
 check row to 1,307.5, -9.1%; the ratio to 2.96,
-within the gate of 3); what comes next is the owner's call (the start-here
-item 1).
+within the gate of 3); the owner's decision after it (AW27): the switch
+of the front end deferred, the Rust front end kept, the speed round
+closed; the next stage is one of the roadmap's candidates, the owner's
+choice (the start-here item 1).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -470,10 +472,12 @@ and push there directly.
    below: four cuts in `compiler/*.ry` on B4's binary, the check row
    to 1,307.5, -9.1%; the ratio to 2.96, within the gate of 3;
    `study/cuts2/` in the perf lane, `renyi_b4` still the binary and
-   the base of the next measure); the next step is the owner's call:
-   the switch of the front end (its design study first), the VM's
-   items the profile leaves (the natives' shim, the code per op, the
-   lexer's tables), or the emitters' round for the compile row.
+   the base of the next measure); the owner's decision after it (AW27,
+   2026-10-13): the switch of the front end deferred although its gate
+   is met, the Rust front end kept, the speed round closed at the gate;
+   the next stage is one of the roadmap's candidates (section 4 of
+   `docs/ROADMAP.md`), the owner's choice, asked at the end of session
+   14 and to be asked again at the start of the next if unanswered.
    Each stage: the code, the gates of item
    3, the measure
    (AU58's: the checker's image run under callgrind with the study's
@@ -7294,10 +7298,15 @@ holds between calls.
   lane's `gate_kill.sh`, `chain_cuts2.sh`, `chain_cuts2_wsl.sh`,
   `study/cut1/`, `study/cut3/` and `study/cuts2/`, the scratchpad's
   `numbers_cuts2.py`, `numbers_cuts2.json`, `aw26_template.md`,
-  `render_cuts2.py`, `apply_docs_cuts2.py`, `update_memory_cuts2.py` and
+  `render_cuts2.py`, `apply_docs_cuts2.py`, `apply_docs_aw27.py` and
   `msg_cuts2.txt`, all copied to `scratch_cuts2/`; the measure in AW26
   and in "Stage 32 as built": the check row 1,437.8 to 1,307.5 (-9.1%),
   the ratio 2.96.
+- The owner's decision after stage 32 (AW27, the commit after 0ee25f2):
+  the switch of the front end deferred, the Rust front end kept, the
+  speed round closed at the gate; the roadmap's milestone row, stage
+  32's close, track D and "what is next", this handoff's summary and
+  start-here item 1, CLAUDE.md's decisions cell.
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

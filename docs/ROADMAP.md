@@ -22,7 +22,7 @@ branches of the repository.
 | M4 | the library and the package manager: packages, `std.process`, the foreign function interface | done (stage 15) |
 | M5 | the integration: the registration API, the Python bridge and binder, the resident world, the language server, `serve --watch`, the embedding API | done (stages 18 and 19) |
 | M6 | ahead-of-time code: machine code for the bytecode, the baseline JIT, the template tier, `renyi build` images and self-contained executables | the machine code exists (stages 16, 21, 22, 24, 26); no WASM or C API target |
-| Self-hosting | the compiler written in Renyi (lexer, parser, checker, emitter) held equal to the Rust toolchain by the judges; the binary switches to it when it is within 3 times the Rust front end's time (decision AU35 ii) | the compiler exists and is judged (stages 11, 12, 14, 15); the speed round is under way (stages 25 to 28; stage 29, a new backend for the VM, has its study, its stages 0 and 1, the character tables with the hasher, stages 2, 3 and 4, AW1 to AW15) |
+| Self-hosting | the compiler written in Renyi (lexer, parser, checker, emitter) held equal to the Rust toolchain by the judges; the binary switches to it when it is within 3 times the Rust front end's time (decision AU35 ii) | the compiler exists and is judged (stages 11, 12, 14, 15); the speed round (stages 25 to 32) closed at the gate on 2026-10-13, the ratio 2.96 against 3 (AW26); the switch deferred by the owner, the Rust front end kept (AW27) |
 
 ## 2. The stages, in order
 
@@ -490,9 +490,10 @@ where one decided, the status. The dates are those of the decisions.
     slot's last read. The check row 1,437.8 to 1,307.5 million (-9.1%),
     the parse row 629.5 (-6.0%), the compile row 2,468.1 (-5.0%); the
     ratio 2.96, within the gate of 3; the record copies 109,613 to
-    19,266. The next step is the owner's call: the switch of the front
-    end (its design study first) or the VM's items the profile leaves
-    (the natives' shim, the code per op, the lexer's tables).
+    19,266. The owner's decision after it (AW27, 2026-10-13): the switch
+    of the front end deferred although its gate is met, the Rust front
+    end kept, the speed round closed; the next stage is one of the
+    candidates of section 4, the owner's choice.
 
 ## 3. The tracks
 
@@ -533,7 +534,9 @@ state of each line.
   the ratio to 3.26); the four stages measured; stage 32 (AW26),
   the second round of the checker's own cuts on the same binary,
   done (the check row to 1,307.5, -9.1%, the ratio to
-  2.96, within the gate of 3); the next step the owner's call.
+  2.96, within the gate of 3); the round closed by the owner's decision
+  (AW27, 2026-10-13: the switch of the front end deferred, the Rust
+  front end kept).
 - **E. Packages, the FFI and Python**: stages 15, 18. Done; candidates
   not decided: record types from dataclasses in the binder, a deadline
   per Python call, one worker across a test run.
@@ -611,10 +614,11 @@ check row to 1,482.7, -0.7%, the ratio to 3.36) and B4 done (AW25,
 -3.0%, the ratio to 3.26; the four stages measured), and after them
 stage 32 (AW26, 2026-10-13: the second round of the checker's own
 cuts, the check row to 1,307.5, -9.1%, the ratio to
-2.96, within the gate of 3); the next step is the owner's call: the
-switch of the binary's front end to the compiler written in Renyi,
-which the ratio opens, its design study first, or the VM's items the
-profile leaves first. Candidates
-beside it, none decided: the emitter's own round for the compile row,
-the Rust front end's name sets as bits, the C API, the language server's
-completion, the showcase application, the WASM target of M6.
+2.96, within the gate of 3); the owner's decision after it (AW27,
+2026-10-13): the switch of the binary's front end to the compiler
+written in Renyi is deferred although its gate is met, the Rust front
+end stays, and the speed round closes. What comes next is one of the
+candidates, none decided yet: the showcase application, the WASM target
+of M6, the language server's completion, references and rename, the C
+API of decision A5, the Python binder's items of track E, the Rust front
+end's name sets as bits, the emitter's own round for the compile row.

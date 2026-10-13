@@ -8695,3 +8695,29 @@ first time since the gate was set: the switch of the binary's front end
 to the compiler written in Renyi, which the roadmap puts after the gate,
 is open, and whether to take it now, its design study first, or to spend
 the VM's items above first, is the owner's call.
+
+**AW27. The owner's decision after stage 32: the switch of the front end
+deferred, the Rust front end kept.** Put to the owner on 2026-10-13 with
+stage 32's measure (AW26: the check row 1,307.5 million instructions,
+the ratio 2.96, within the gate of 3 that AU35 (ii) set for the switch
+of the binary's front end to the compiler written in Renyi), the owner's
+answer, in the owner's words: the question of self-hosting is put on
+hold, this is a point to stop at, the binary keeps the Rust front end
+for the time being, and the work goes on to the next step. So: the
+switch is deferred, not taken, although its gate is met; `renyi check`,
+`parse`, `format`, `compile`, `run` and the rest keep the Rust lexer,
+parser, checker and emitters; the compiler written in Renyi stays what
+it is today, a program of the corpus held equal to the Rust toolchain by
+the four judges on every push (decisions W3, W7, Z3), a reference
+implementation and the largest test of the VM; and the speed round of
+the self-hosting track (stages 25 to 32, AU35 to AW26) closes at the
+gate, its binaries and studies kept in the perf lane for whoever reopens
+it. The VM's items the profile leaves (the natives' shim at about 110
+instructions a call, the code per op, the comparison of two texts) and
+the emitters' round for the compile row are not scheduled: they served
+the ratio, and the ratio has no consumer now. The next stage is one of
+the roadmap's candidates (section 4 of `docs/ROADMAP.md`: the showcase
+application, the WASM target of M6, the language server's completion,
+references and rename, the C API of decision A5, the Python binder's
+items, the Rust front end's name sets as bits, the emitter's own round),
+chosen by the owner; the question is put with this entry.
