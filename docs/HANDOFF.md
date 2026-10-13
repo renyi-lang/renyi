@@ -120,8 +120,10 @@ language server's completion, then the C API, in that order, with the
 showcase game in parallel by a subagent; the game's part by the
 subagent is committed (b8f700e) and stage 33's design study is
 written (the section "Stage 33, the WASM target: the design study
-(session 14)"), its four questions put to the owner (the start-here
-item 1).
+(session 14)") and answered by the owner (AW29: the VM's own
+suspension, the whole toolchain in the browser, a C ABI by hand,
+cargo features); the work now is stage 33a, the toolchain for wasm32
+(the start-here item 1).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -493,12 +495,24 @@ and push there directly.
    study of stage 33 is the section "Stage 33, the WASM target: the
    design study (session 14)" (the trial build in the wasm lane, the
    blockers, the suspension, the host interface, `std.screen`, the
-   stages 33a to 33d proposed), and its four questions were put to the
-   owner on 2026-10-13 (the suspension, what the browser runs, the
-   toolchain, the gating), to be asked again at the start of the next
-   session if unanswered; the answers are the next decision, and the
-   stages follow them, `std.screen` and the game's page among them (33c
-   and 33d).
+   stages 33a to 33d proposed), and its four questions were answered by the owner on 2026-10-13
+   (decision AW29: the VM's own suspension; the whole toolchain in the
+   browser, the owner's choice over the VM alone on bytecode, so the
+   resolver gets a virtual file system behind
+   `renyi_package::reads::read_text` and a page checks and runs sources,
+   the game's page compiling the game and a playground beside it; a C
+   ABI by hand in a crate `renyi_web`, no tool beyond cargo and the
+   rustup target; cargo features `jit`, `sqlite`, `http` and `foreign`
+   of `renyi_vm`, on by default). The stages: 33a the toolchain for
+   wasm32 (under way: the features, the record block's offsets, the
+   clock, the virtual file system, the web crate, the size and the speed
+   measured, CI building it), 33b the suspension, 33c `std.screen` with
+   the console host and the game on the library's types, 33d the pages
+   (the playground, the game, the Pages workflow), which closes stage
+   34; each gets its entry and its paragraph at the end of the study's
+   section; the wasm lane is `D:\Projects\.worktrees\Renyi\wasm\` (its
+   target directory for the wasm32 builds, `check_asis.log` the trial
+   build).
    Each stage: the code, the gates of item
    3, the measure
    (AU58's: the checker's image run under callgrind with the study's
@@ -7621,6 +7635,11 @@ holds between calls.
   `apply_game.py` and `apply_docs_study33.py`; the roadmap's stages
   33 and 34, this handoff's summary and start-here item 1; the four
   questions put to the owner.
+- The owner's answers after the study (AW29, the commit after
+  35e0914): the VM's own suspension, the whole toolchain in the
+  browser, a C ABI by hand, cargo features; the stages 33a to 33d;
+  the roadmap's stage 33, this handoff's summary and start-here item
+  1, CLAUDE.md's decisions cell; `apply_docs_aw29.py`.
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

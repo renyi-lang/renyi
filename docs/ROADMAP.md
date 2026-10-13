@@ -511,9 +511,13 @@ where one decided, the status. The dates are those of the decisions.
     suspension as a fifth interrupt that keeps the frames, resumed by
     the host with the input, on the interpreter in this stage; a web
     crate with a C ABI by hand and the page's own script, the VM alone
-    on bytecode; `std.screen` as a library module with a new capability.
-    Its four questions were put to the owner; the stages 33a to 33d
-    follow the answers.
+    on bytecode; `std.screen` as a library module with a new capability. The owner's answers (AW29, 2026-10-13): the VM's own
+    suspension, the whole toolchain in the browser (the owner's choice
+    over the VM alone: a page takes sources, checks and runs them, the
+    game compiled in the browser and a playground beside it), a C ABI by
+    hand with no tool beyond cargo, cargo features for what the browser
+    cannot have. The stages: 33a the toolchain for wasm32, 33b the
+    suspension, 33c `std.screen`, 33d the pages; 33a is under way.
 
 34. **The showcase game** (session 14, 2026-10-13, in progress, in
     parallel with stage 33; decision AW28). A Doom-style raycasting maze

@@ -8757,3 +8757,57 @@ a batch; 34, the showcase game and its page on the site, the subagent's
 part first and the integration after stage 33; then the language
 server's completion, references and rename, and the C API, each a stage
 of its own when it starts.
+
+**AW29. The owner's answers after the design study of stage 33: the VM's
+own suspension, the whole toolchain in the browser, a C ABI by hand,
+cargo features.** Asked on 2026-10-13 after the study (the handoff's
+section "Stage 33, the WASM target: the design study (session 14)": the
+front end's crates build for `wasm32-unknown-unknown` as they are and
+the VM stops in `getrandom` through `ureq`, `region` and `libloading`
+have no wasm backend, the record block's offsets are 64-bit, the clock
+panics on the target, the JIT cannot be cut by dropping `mod native`;
+AskUserQuestion, one batch of four). (1) The suspension at
+`screen.present`: the VM's own (recommended), a fifth `Interrupt` that
+keeps the frames, which `execute` passes through without `abandon`, the
+host resuming with the `Input` pushed where the primitive's answer would
+land and the call recorded then, refused inside a nested loop and on the
+interpreter in this stage, over Asyncify (binaryen's rewrite of the
+WASM, a tool in the build, the code slower and larger, a mechanism of
+one host) and over the VM in a Web Worker blocking on a
+`SharedArrayBuffer` (the cross-origin isolation headers GitHub Pages
+cannot set). (2) What the browser runs: the whole toolchain, the owner's
+choice over the recommended VM alone on bytecode and over both in turn:
+the front end (which builds already), the resolver over a virtual file
+system behind its one read function (`renyi_package::reads::read_text`,
+where every file the resolution reads goes through, the manifests looked
+for above a program included), the checker and the emitter in the WASM,
+so that a page takes sources, checks them with the diagnostics and runs
+them: the game's page compiles the game's modules in the browser, and a
+playground page lets a visitor edit, check and run a program, the corpus
+loadable into it; the WASM two to three times the VM alone, which the
+measure records. (3) The toolchain: a C ABI by hand (recommended), a
+crate `renyi_web` of `crate-type = ["cdylib"]` exporting a dozen plain
+functions (the buffers, the files of a virtual file system, `check`,
+`compile`, `run`, the output, the frame, `resume`), the page's script of
+about 150 lines written into the site, no tool installed beyond cargo
+and the rustup target, over `wasm-bindgen` with `wasm-pack` (two tools
+on the machine and in CI, the glue generated) and over `wasm32-wasip1`
+with a WASI shim in the page (the road of the server-side WASI of A5,
+later). (4) The gating: cargo features of `renyi_vm` (recommended),
+`jit`, `sqlite`, `http` and `foreign`, on by default and off for the web
+crate, the natives of a module left out absent from its table and a
+program that needs it refused by the grant before it runs, over stubs
+with target `cfg`s and no features (the wasm build carrying code it
+never runs) and over a core crate split out of `renyi_vm` (the cleanest
+cut, the largest move). The stages the answers set: 33a the toolchain
+for wasm32 (the features, the record block's offsets as multiples of the
+word size, the clock of the VM's own, the virtual file system, the web
+crate with the files, `check`, `compile`, `run` and the output, a
+program checked and run from a page, the size and the speed measured, CI
+building the crate); 33b the suspension (`Interrupt::Suspended`, the
+host in `Options`, the session and `resume`, the nested-loop counter,
+the recording at the resume, the sandbox's `Suspended`, tests on the
+interpreter); 33c `std.screen` (the module, the capability `screen`, the
+native, the console host, the game on the library's types); 33d the
+pages (the playground and the game, `play.js`, the Pages workflow),
+which closes stage 34 with it; each with its entry. (user)
