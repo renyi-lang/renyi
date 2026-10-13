@@ -9507,3 +9507,55 @@ the tests of the ids' stability and of the shape, `05-agent-tooling.md`,
 positioning 2.3, the starter's README, the MCP table); 37c the extras.
 No model and no network in the toolchain: Renyi writes, the host
 embeds. 35c follows stage 37; release 0.2 follows stage 35 (AW36).
+
+**AW41. Stage 37a built: the prototype of the chunks and the measure of
+their text.** 2026-10-13. `tools/chunks_prototype.py <path> --text
+source|header|hops [--renyi <binary>] [--out <file>]` writes the map's
+definitions as JSON Lines, one chunk per definition after a header line
+(the project, the revision, the toolchain, the text, the count): `id`
+the SHA-256 of the text, `text` one of three candidates, `metadata` the
+qualified name, the map's `id` as `map_id`, `text_hash`, module,
+package, kind, public, signature, purpose, the transitive effects and
+failures, calls, uses, tested_by, see_also, whether tested and the
+location. The texts: `source`, the definition's canonical source;
+`header`, a header (the kind and the qualified name, the signature, the
+purpose, the tags, the transitive effects and failures, the module's
+purpose) and then the source; `hops`, the header, the source and the
+purposes of the project definitions the body calls.
+`tools/chunks_measure.py --queries tests/retrieval/queries.json [--model
+<name>] [--bm25] <chunks.jsonl>...` ranks one index of chunks for every
+query by the cosine of normalized embeddings (`sentence_transformers`, a
+model from the local cache under `HF_HUB_OFFLINE=1`) and by BM25 over
+lower-cased alphanumeric tokens, and prints hit@1, hit@5 and the mean
+reciprocal rank in all and per project. The query set,
+`tests/retrieval/queries.json`: forty-five questions, twenty-five on
+`examples/` and twenty on `compiler/`, paraphrasing the purposes, a few
+quoting code, each with its target. The measure, the two projects'
+chunks in one index of 1,747 (the corpus 171, the compiler 1,576): with
+`BAAI/bge-m3` (8,192 tokens, nothing truncated) hit@1 64.4%, 68.9% and
+71.1% for source, header and hops, hit@5 86.7%, 91.1% and 91.1%, MRR
+0.746, 0.782 and 0.788; with `sentence-transformers/all-MiniLM-L6-v2`
+(256 tokens, the longer chunks truncated after their head) hit@1 48.9%,
+53.3% and 48.9%, hit@5 77.8%, 84.4% and 82.2%, MRR 0.640, 0.655 and
+0.629; BM25 hit@1 60.0%, 71.1% and 62.2%, hit@5 84.4%, 86.7% and 84.4%,
+MRR 0.724, 0.786 and 0.745. The compiler's queries are the hard ones
+(bge-m3 on the header text hit@1 60.0% against the corpus's 76.0%;
+MiniLM 20.0% and 80.0%). The text settled: `header`, which wins on every
+measure of the small model and of BM25 and ties the large model's hit@5,
+where `hops` has one query more at hit@1 (32 against 31) and 0.006 more
+MRR, for chunks a fifth longer (1.19 of the header's text in all) that
+change whenever a callee's purpose does; the header with the source is
+what 37b exports, the hop is left out. Noted beside it: BM25 over the
+header text matches the large model on hit@1 (71.1% against 68.9%) and
+beats the small one, the purposes carrying the words a question uses, so
+a host without an embedding model retrieves well from the same chunks
+lexically. The chunks' sizes with the header: the corpus median 476
+characters, the 90th percentile 982, the longest 1,653; the compiler
+676, 1,636 and 3,596; in the small model's tokens the compiler's median
+176, the 90th percentile 421, the longest 1,149, and 479 of its 1,576
+chunks (30.4%) and 18 of the corpus's 171 are over its 256, so its
+measure is of the chunks' heads. The six chunk files and the two measure
+logs are the wasm lane's `rag_37a/`. Next: 37b, the export in Rust
+(`renyi_index::chunks`, `renyi index --chunks`, the MCP tool `chunks`,
+module chunks beside the definitions', the tests of the ids and of the
+shape, the documents).

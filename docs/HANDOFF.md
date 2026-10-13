@@ -626,14 +626,26 @@ and push there directly.
    Lines from `renyi index --chunks` and an MCP tool `chunks`, the
    measure by a query set, the stages 37a to 37c), and its four
    questions were answered on 2026-10-13, every one the recommended
-   option (decision AW40). The work now is 37a, the prototype and the
-   measure: `tools/chunks_prototype.py` over `index --json` and the
-   sources writes the three chunk texts as JSON Lines, the query set
-   under `tests/retrieval/` (about forty questions over `examples/`
-   and `compiler/` with the definition each targets), the measure
-   hit@1 and hit@5 with one local embedding model, the text settled
-   by it and the numbers in 37a's decision entry; then 37b, the
-   export in Rust with the MCP tool, and 37c the extras. Then
+   option (decision AW40). 37a is done (decision AW41; the paragraph
+   "Stage 37a as built" at the end of the study's section): the
+   prototype and the measure settled the chunk's text, a header from
+   the record (the kind and the qualified name, the signature, the
+   purpose, the tags, the transitive effects and failures, the
+   module's purpose) and then the canonical source, the id the SHA-256
+   of that text. The work now is 37b, the export in Rust:
+   `renyi_index::chunks` renders the chunks from the checked program
+   (the definitions' as the prototype does, with a module chunk per
+   module: its purpose and its public signatures), `renyi index
+   --chunks [path]` writes them as JSON Lines after a header line, the
+   MCP tool `chunks` answers the same (its parameters `module` to
+   narrow, `json` not needed: the lines are the answer), tests hold
+   the ids equal across a formatting-only change and different after
+   a body change and the shape to the prototype's, and the documents
+   follow (`05-agent-tooling.md` a section, positioning 2.3 a
+   sentence, the starter's README a paragraph, the MCP table a row,
+   the reference's `renyi index` row, the notes). Then 37c, the
+   extras (the language's documents as chunks, the example pipeline in
+   `starter/`). Then
    35c, completion with signature help and workspace symbols (AW34
    (3) and (4)), and release 0.2 (decision AW36). The wasm lane is
    `D:\Projects\.worktrees\Renyi\wasm\` (its target directory for the
@@ -4180,6 +4192,25 @@ with `id` and `text_hash` in the metadata (recommended), `text_hash`,
 documents and the example pipeline in 37c (recommended), definitions
 only, everything in one stage. Answered on 2026-10-13, every one the
 recommended option: decision AW40.
+
+**Stage 37a as built** (decision AW41, 2026-10-13). The prototype
+`tools/chunks_prototype.py` (the map by `renyi index --json`, the
+sources by the map's locations, one JSON Lines chunk per definition in
+one of three texts, the id the SHA-256 of the text, the metadata the
+map's identities, kind, effects, edges and location) and the measure
+`tools/chunks_measure.py` (one index of chunks ranked for every query of
+`tests/retrieval/queries.json`, forty-five questions over the corpus and
+the compiler, by an embedding model from the local cache and by BM25;
+hit@1, hit@5, MRR in all and per project). Measured on 1,747 chunks:
+with bge-m3 hit@1 64.4% / 68.9% / 71.1% for source / header / hops,
+hit@5 86.7% / 91.1% / 91.1%; with all-MiniLM-L6-v2 (256 tokens) 48.9% /
+53.3% / 48.9% and 77.8% / 84.4% / 82.2%; BM25 60.0% / 71.1% / 62.2% and
+84.4% / 86.7% / 84.4%. The text settled: the header with the source (the
+hop gains one query on the large model's hit@1 for chunks a fifth longer
+that change with a callee's purpose; 30.4% of the compiler's header
+chunks are over the small model's 256 tokens). BM25 on the header text
+matches the large model on hit@1: the purposes carry the words. The
+lane's `rag_37a/` holds the six chunk files and the two measure logs.
 
 ## Stage 35, the language server's completion, references and rename: the design study (session 14)
 
@@ -8437,6 +8468,12 @@ holds between calls.
   questions put to the owner and answered the same day, every one the
   recommended option (decision AW40); the study's draft and the
   scripts kept in the wasm lane's `scratch_37/`.
+- Stage 37a (decision AW41): `tools/chunks_prototype.py`,
+  `tools/chunks_measure.py`, the query set `tests/retrieval/` with
+  its README; the three texts measured with bge-m3, all-MiniLM-L6-v2
+  and BM25 on 1,747 chunks, the header text settled; the chunk files
+  and the measure logs in the wasm lane's `rag_37a/`, the scripts in
+  `scratch_37/`.
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 
