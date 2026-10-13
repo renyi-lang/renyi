@@ -163,6 +163,9 @@ const USAGE: &str = "usage:
   renyi index --diff <base> [--json] [path]
                                       what changed since a saved map (a file `renyi index --json` wrote)
                                       or a git revision: per definition, what it reaches, the version bump
+  renyi index --chunks [path]         the map's modules and definitions as chunks for retrieval by
+                                      embedding: JSON Lines, a header line then one object per chunk with
+                                      id (the hash of its text), text and metadata; no model involved
   renyi tools [path]                  the manifest of every function with `expose as tool`: JSON Schema
                                       from the parameters, the description from `purpose:`, the
                                       permissions from `needs`
@@ -1785,6 +1788,7 @@ fn budgets_of(path: &Path) -> renyi_index::Budgets {
 fn index_command(args: &[String]) -> ExitCode {
     let mut json = false;
     let mut budgets = false;
+    let mut chunks = false;
     let mut base: Option<String> = None;
     let mut path: Option<&str> = None;
     let mut rest = args.iter();
@@ -1792,6 +1796,7 @@ fn index_command(args: &[String]) -> ExitCode {
         match arg.as_str() {
             "--json" => json = true,
             "--budgets" => budgets = true,
+            "--chunks" => chunks = true,
             "--diff" => match rest.next() {
                 Some(value) => base = Some(value.clone()),
                 None => {
@@ -1811,6 +1816,10 @@ fn index_command(args: &[String]) -> ExitCode {
         eprintln!("renyi: --budgets and --diff do not combine");
         return ExitCode::FAILURE;
     }
+    if chunks && (json || budgets || base.is_some()) {
+        eprintln!("renyi: --chunks is JSON Lines of its own and does not combine with --json, --budgets or --diff");
+        return ExitCode::FAILURE;
+    }
     let path = Path::new(path.unwrap_or("."));
     let files = match renyi_index::load_project(path) {
         Ok(files) => files,
@@ -1824,8 +1833,13 @@ fn index_command(args: &[String]) -> ExitCode {
         revision: renyi_index::git_revision(path),
         toolchain: toolchain(),
     };
-    let index = renyi_index::index_files_in(&library(), &files, header);
-    let rendered = if let Some(base) = base {
+    // the canonical files are kept: the chunks carry each definition's source
+    let (canonical, was_canonical) = renyi_index::canonical_files(&files);
+    let checked = renyi_check::check_project_in(&library(), &canonical, &[]);
+    let index = renyi_index::index_checked(&canonical, &was_canonical, &checked, header);
+    let rendered = if chunks {
+        renyi_index::chunks_lines(&index.header, &renyi_index::chunks(&index, &canonical))
+    } else if let Some(base) = base {
         let old = match maps::load_base(&base, path, &toolchain()) {
             Ok(old) => old,
             Err(error) => {

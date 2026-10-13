@@ -11,7 +11,8 @@ use crate::ast::*;
 use crate::diagnostics::json_string;
 use crate::span::{SourceFile, Span};
 
-/// A JSON value, built from the tree and rendered with two-space indentation.
+/// A JSON value, built from the tree and rendered with two-space
+/// indentation, or on one line (`render_line`, the JSON Lines framing).
 #[derive(Clone, Debug)]
 pub enum Json {
     Null,
@@ -28,6 +29,45 @@ impl Json {
         self.render_into(&mut out, 0);
         out.push('\n');
         out
+    }
+
+    /// The value on one line, no line break inside: the framing of JSON
+    /// Lines (`renyi index --chunks`).
+    pub fn render_line(&self) -> String {
+        let mut out = String::new();
+        self.render_line_into(&mut out);
+        out
+    }
+
+    fn render_line_into(&self, out: &mut String) {
+        match self {
+            Json::Null => out.push_str("null"),
+            Json::Bool(value) => out.push_str(if *value { "true" } else { "false" }),
+            Json::Number(value) => out.push_str(&value.to_string()),
+            Json::String(value) => out.push_str(&json_string(value)),
+            Json::Array(items) => {
+                out.push('[');
+                for (index, item) in items.iter().enumerate() {
+                    if index > 0 {
+                        out.push_str(", ");
+                    }
+                    item.render_line_into(out);
+                }
+                out.push(']');
+            }
+            Json::Object(fields) => {
+                out.push('{');
+                for (index, (key, value)) in fields.iter().enumerate() {
+                    if index > 0 {
+                        out.push_str(", ");
+                    }
+                    out.push_str(&json_string(key));
+                    out.push_str(": ");
+                    value.render_line_into(out);
+                }
+                out.push('}');
+            }
+        }
     }
 
     fn render_into(&self, out: &mut String, depth: usize) {

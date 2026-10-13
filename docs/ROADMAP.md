@@ -633,8 +633,13 @@ where one decided, the status. The dates are those of the decisions.
     prototype and the measure on forty-five questions over the corpus
     and the compiler, 1,747 chunks, with bge-m3, all-MiniLM-L6-v2 and
     BM25; the header text settled (bge-m3 hit@1 68.9%, hit@5 91.1%;
-    BM25 on the same text hit@1 71.1%). 37b, the export in Rust, is
-    the work now. 35c follows it.
+    BM25 on the same text hit@1 71.1%). 37b done (decision AW42,
+    2026-10-13): `renyi_index::chunks`, `renyi index --chunks` (JSON
+    Lines, one chunk per module and per definition, the id the hash of
+    the text) and the MCP tool `chunks`, held by tests and checked
+    against the prototype byte for byte. 37c, the extras (the
+    language's documents as chunks, the example pipeline in
+    `starter/`), is the work now. 35c follows it.
 
 ## 3. The tracks
 
@@ -686,7 +691,8 @@ state of each line.
   embedding API), 35 (references and rename in the language server,
   35a and 35b done; 35c completion open), 37 (the map for retrieval by
   embedding, opened 2026-10-13, its study done and its questions
-  answered, AW40; 37a the measure done, AW41; 37b the export open).
+  answered, AW40; 37a the measure done, AW41; 37b the export done,
+  AW42; 37c the extras open).
   Candidate not decided: the C API of decision A5.
 - **G. Release and the ecosystem**: stages 17, 30. Release 0.1.0 is
   out; every release after it follows `docs/RELEASE.md`; the icon and
@@ -778,8 +784,9 @@ to 60 frames a second in the browser); 35a and 35b are done
 then of the locals), so the next stage is 37, the map for retrieval
 by embedding (the owner's request of 2026-10-13; its design study is
 in the handoff and its four questions answered, decision AW40; 37a
-measured the chunk texts and settled the header, decision AW41; 37b,
-the export in Rust, is the work now), then 35c, completion with
+measured the chunk texts and settled the header, decision AW41; 37b
+built the export, `renyi index --chunks` and the tool `chunks`, decision
+AW42; 37c, the extras, is the work now), then 35c, completion with
 signature help and workspace symbols. Release 0.2
 follows stage 35 (decision AW36,
 the owner's answer of 2026-10-13), with the extension published to

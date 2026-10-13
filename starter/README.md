@@ -73,9 +73,20 @@ take the same command and arguments. The server's tools:
 | `run` | run a program's `main` under its grant, narrowed by `deny`, `allow_host`, `allow_read`, `allow_write` and `at_most`; `replay` answers every effect from a recording |
 | `run_tests` | every `example:` line and `test` block of a program, `replays` tests from their recordings |
 | `diff` | what changed since a saved map or a git revision, what each change reaches, the version bump it forces |
+| `chunks` | the project as chunks for retrieval by embedding: JSON Lines, one per module and per definition, each with an id that changes exactly when its text does; `module` narrows it |
 
 The server is the same code as the commands: a host without MCP runs the
 commands of section 5 instead.
+
+A host that keeps an index of the project (an agent's memory, an IDE's
+search) embeds the chunks rather than the files: `chunks`, or `renyi
+index --chunks`, gives one chunk per module and per definition, the text
+a header from the map's record (the name, the signature, the purpose,
+the effects, the module's purpose) and then the canonical source, the id
+the hash of that text, so that the host re-embeds exactly what changed,
+and the metadata (module, kind, effects, calls, uses, tests, location) to
+filter a query and walk from a hit. Nothing in the toolchain embeds: the
+host brings the model.
 
 ## 4. The five workflows
 
@@ -125,7 +136,8 @@ renyi test --refresh "three links are checked" link_check.ry
    says what happens when it does; there are no exceptions.
 4. `renyi index workflows/` prints the project map, one line per
    definition with its effects and failures; `renyi index --budgets`
-   every value over a budget.
+   every value over a budget; `renyi index --chunks workflows/` the map
+   as chunks for retrieval by embedding (section 3).
 5. `renyi run --manifest <file>` prints, after the run, the toolchain,
    the code hash, the grant, the arguments, the environment variables
    read, the outcome and the output hash; `renyi run --explain <file>`

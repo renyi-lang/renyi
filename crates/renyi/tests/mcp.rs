@@ -146,7 +146,8 @@ fn a_legacy_client_initializes_lists_and_calls() {
             "format",
             "run",
             "run_tests",
-            "diff"
+            "diff",
+            "chunks"
         ]
     );
     assert!(content(&messages[2]).starts_with("# Renyi Cheat Sheet"));
@@ -270,8 +271,10 @@ fn the_tools_answer_from_the_served_project() {
         call(7, "project_map", r#"{"json":true}"#),
         call(8, "definition", r#"{"name":"no_such_thing"}"#),
         call(9, "diff", r#"{"base":"HEAD"}"#),
+        call(10, "chunks", r#"{"module":"invoice"}"#),
+        call(11, "chunks", r#"{"module":"no_such_module"}"#),
     ]);
-    assert_eq!(messages.len(), 9);
+    assert_eq!(messages.len(), 11);
     let lookup = content(&messages[0]);
     assert!(
         lookup.contains("std.http: public function get_with(url: Url, headers: Map of Text to Text) returns Response or fails with HttpError needs network.http"),
@@ -324,4 +327,28 @@ fn the_tools_answer_from_the_served_project() {
         &Json::Boolean(true)
     );
     assert!(content(&messages[7]).contains("no definition named `no_such_thing`"));
+    let chunks = content(&messages[9]);
+    let first = chunks.lines().next().unwrap_or("");
+    assert!(
+        first.starts_with("{\"project\": \"examples\", \"revision\": "),
+        "{first}"
+    );
+    assert!(
+        first.ends_with(", \"modules\": 1, \"definitions\": 7}"),
+        "{first}"
+    );
+    assert!(
+        chunks.contains("\"metadata\": {\"name\": \"invoice.total\", \"kind\": \"function\""),
+        "{chunks}"
+    );
+    assert!(!chunks.contains("\"name\": \"hello.main\""), "{chunks}");
+    assert_eq!(
+        get(&messages[10], &["result", "isError"]),
+        &Json::Boolean(true)
+    );
+    assert!(
+        content(&messages[10]).contains("no module named `no_such_module`"),
+        "{}",
+        content(&messages[10])
+    );
 }

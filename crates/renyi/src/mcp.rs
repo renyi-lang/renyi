@@ -55,7 +55,8 @@ const INSTRUCTIONS: &str = "The Renyi toolchain. Read cheat_sheet before writing
 names up with library_lookup instead of guessing them. project_map, definition and effects describe \
 the served project; check and format close the loop on source text; run and run_tests execute \
 programs on the VM under the grants they declare; diff tells what changed since a saved map or a git \
-revision and what each change reaches.";
+revision and what each change reaches; chunks gives the project as chunks for retrieval by embedding, \
+for a host that keeps an index of its own.";
 
 const PARSE_ERROR: i64 = -32700;
 const INVALID_REQUEST: i64 = -32600;
@@ -74,6 +75,7 @@ const TOOL_NAMES: &[&str] = &[
     "run",
     "run_tests",
     "diff",
+    "chunks",
 ];
 
 /// `renyi mcp [path]`: serve the directory (the current one by default)
@@ -395,6 +397,22 @@ impl Server {
                     renyi_index::render_diff(&diff)
                 })
             }
+            "chunks" => {
+                let module = optional_text(arguments, "module")?;
+                self.refresh()?;
+                let index = self.index();
+                if let Some(module) = &module {
+                    if !index.modules.iter().any(|m| m.name == *module) {
+                        return Err(format!("the served project has no module named `{module}`"));
+                    }
+                }
+                let chunks: Vec<renyi_index::Chunk> =
+                    renyi_index::chunks(index, self.workspace.sources())
+                        .into_iter()
+                        .filter(|chunk| module.as_ref().is_none_or(|m| chunk.module == *m))
+                        .collect();
+                Ok(renyi_index::chunks_lines(&index.header, &chunks))
+            }
             other => Err(format!("unknown tool {other}")),
         }
     }
@@ -690,6 +708,19 @@ fn tool_json(name: &str) -> Json {
                     ("json", boolean_property("true for the JSON shape; the text form by default")),
                 ],
                 &["base"],
+            ),
+        ),
+        "chunks" => (
+            "The served project as chunks for retrieval by embedding, as `renyi index --chunks` writes \
+             them: JSON Lines, a first line with the project, the revision, the toolchain and the \
+             counts, then one object per module and per definition with `id` (the SHA-256 of its \
+             text, which changes exactly when the text does), `text` (a header from the record, then \
+             the canonical source) and `metadata` (the map's id and text hash, module, package, kind, \
+             effects, edges, location). The host embeds; the toolchain only writes. `module` narrows \
+             it to one module.",
+            schema(
+                vec![("module", string_property("a module name, to give only that module's chunks"))],
+                &[],
             ),
         ),
         _ => ("", schema(Vec::new(), &[])),

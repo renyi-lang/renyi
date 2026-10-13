@@ -10,6 +10,7 @@
 //! error count.
 
 pub mod budgets;
+pub mod chunks;
 pub mod diff;
 mod drafts;
 mod edges;
@@ -31,6 +32,7 @@ use renyi_syntax::{format, SourceFile, Span};
 use drafts::{Draft, Key};
 
 pub use budgets::{over_budget, Budgets};
+pub use chunks::{chunk_json, chunks, chunks_lines, Chunk};
 pub use diff::{diff, diff_json, render_diff, Bump, Change, Diff, Entry};
 pub use drafts::{function_signature, signature_references, type_signature};
 pub use render::{definition_json, to_json, to_text};
@@ -623,6 +625,6 @@ pub fn canonical_files(files: &[SourceFile]) -> (Vec<SourceFile>, Vec<bool>) {
     (canonical, was_canonical)
 }
 
-fn display_path(name: &str) -> String {
+pub(crate) fn display_path(name: &str) -> String {
     name.replace('\\', "/")
 }

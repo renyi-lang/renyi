@@ -9559,3 +9559,49 @@ logs are the wasm lane's `rag_37a/`. Next: 37b, the export in Rust
 (`renyi_index::chunks`, `renyi index --chunks`, the MCP tool `chunks`,
 module chunks beside the definitions', the tests of the ids and of the
 shape, the documents).
+
+**AW42. Stage 37b built: the chunks in the toolchain.** 2026-10-13.
+`renyi_index::chunks` (`crates/renyi_index/src/chunks.rs`) projects a map
+and the canonical files it was built from into one chunk per module and
+per definition, in the map's order. A definition's text is the header of
+AW41 (the kind and the qualified name, the signature, the purpose, the
+tags, the transitive effects and failures, the module's purpose) and then
+its canonical source by the map's location; a module's text is its
+purpose, what it needs and imports, and the kind and signature of each
+public definition; a module record without a purpose and without
+definitions (a file that does not parse) gets no chunk. The id is
+`sha256:` and the SHA-256 of the text. The metadata is an object with the
+same keys for every chunk (`name`, `kind`, `module`, `package`, the map's
+`id` as `map_id`, `text_hash`, `public`, `signature`, `purpose`, `tags`,
+`see_also`, the transitive `effects` and `fails`, `calls`, `uses`,
+`tested_by`, `tested`, `location`), a module's with `imports` and `ids`
+besides and nulls where it has no value. `chunks_lines` renders JSON
+Lines: a first line with the project, the revision, the toolchain and
+the counts of what the lines hold (chunks, modules, definitions), then
+one object (`id`, `text`, `metadata`) per line, through
+`Json::render_line`, the one-line renderer added to `renyi_syntax::json`
+beside the indented one. `renyi index --chunks [path]` writes them (the
+command now keeps the canonical files the map is built from, the three
+steps of `index_files_in` spelled out; `--chunks` does not combine with
+`--json`, `--budgets` or `--diff`), and the MCP tool `chunks`, the
+eleventh, answers the same from the resident world, `module` narrowing
+it to one module. Held by tests: on the corpus a chunk per module and
+per definition, each id the hash of its text, the text of AW41 for
+`invoice.total`, the module chunk of `invoice`, a test chunk; the ids
+the same after a formatting-only change and after a dependency's body
+change (where `map_id` changes and `text_hash` does not), different
+after the definition's own text, the module's purpose or a callee's name
+changed; the lines one object each with the counts of what they hold;
+the command and the tool through the binary. Checked against the
+prototype of AW41: the 171 definition chunks of the corpus and the 1,576
+of `compiler/` equal the measured header text byte for byte, ids
+included, so what the measure ranked is what the toolchain writes. The
+export of `compiler/`: 1,597 chunks in 2.9 MB, 2.3 s with the debug
+binary (Windows wall-clock, coarse; the check is most of it). The
+documents: design document 05 gains section 8 (the two after it
+renumbered), its tool table a row and its status the stage; positioning
+2.3 a sentence and its table the command; the starter's README a row
+and a paragraph, its skill the option; the reference's command row; the
+README's fourth point and its command list. Next: 37c, the extras of
+AW40: the language's documents as chunks (`--language`) and the example
+pipeline in `starter/`.

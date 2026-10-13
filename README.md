@@ -28,10 +28,11 @@ person reviews, and the language makes the review a glance.
 3. **Dependencies cannot widen what you allowed.** A package's effects are
    computed from its sources, never written by hand; an update that would
    let the program do more is refused, not noticed later.
-4. **The tooling an agent needs is built in.** The project map and the
-   semantic diff are commands (`renyi index`, `--diff`), the toolchain is an
-   MCP server (`renyi mcp`), documentation is syntax (`purpose:`), and every
-   error carries a fix, so the agent's next attempt is right.
+4. **The tooling an agent needs is built in.** The project map, the
+   semantic diff and the chunks for retrieval by embedding are commands
+   (`renyi index`, `--diff`, `--chunks`), the toolchain is an MCP server
+   (`renyi mcp`), documentation is syntax (`purpose:`), and every error
+   carries a fix, so the agent's next attempt is right.
 5. **Read in one pass, by anyone.** Regular English with one spelling per
    concept, one canonical layout, no exceptions, no null, no anonymous
    functions, no operator overloading. A reviewer who has never seen Renyi
@@ -177,7 +178,9 @@ checker (M2), the project map (`renyi index`), the VM (M3) and packages
   failures, edges, metrics and content hash, `renyi index --diff <map or
   revision>` what changed since a saved map or a git revision, per
   definition, with what each change reaches and the version bump it
-  forces; `renyi run` checks a program
+  forces, `renyi index --chunks` the map's modules and definitions as
+  chunks for retrieval by embedding (JSON Lines: an id that changes
+  exactly when the text does, the text, the metadata); `renyi run` checks a program
   and runs its `main` on the bytecode VM under the grant `main` declares,
   narrowed by `--deny`, `--allow-host`, `--allow-read`, `--allow-write`
   and `--at-most`, and inside each function by that function's own

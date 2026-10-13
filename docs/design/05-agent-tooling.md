@@ -4,10 +4,12 @@ Status: design accepted (decisions O2 to O5). `renyi index` (sections 1 to
 4) is implemented in `crates/renyi_index` and measured on the corpus
 (section 5); `renyi index --budgets` reports the values over the thresholds
 of decision R7; `renyi mcp` (section 7) is implemented in
-`crates/renyi/src/mcp.rs` with all ten tools; the diff (section 6) in
-`crates/renyi_index/src/diff.rs` behind `renyi index --diff`. Date:
-2026-10-06. Companion to `01-decisions.md` (D5, D6, M8, O1 to O5, R7, T1
-to T5).
+`crates/renyi/src/mcp.rs` with all eleven tools; the diff (section 6) in
+`crates/renyi_index/src/diff.rs` behind `renyi index --diff`; the chunks
+for retrieval by embedding (section 8) in
+`crates/renyi_index/src/chunks.rs` behind `renyi index --chunks` and the
+tool `chunks`. Date: 2026-10-13. Companion to `01-decisions.md` (D5, D6,
+M8, O1 to O5, R7, T1 to T5, AW40 to AW42).
 
 Renyi programs are written mostly by LLM agents (decision A3). An agent works
 inside a token budget and cannot hold a project in its context, so it needs
@@ -274,6 +276,7 @@ again (open item R5-5, closed).
 | `format` | source text | the canonical text, or the parse diagnostics |
 | `run`, `run_tests` | a path and arguments | the program's output or the test results (after M3) |
 | `diff` | a base map or revision, optional `json` | the semantic diff of section 6 |
+| `chunks` | optional module name | the chunks of section 8: JSON Lines, one per module and per definition, each with an id that changes exactly when its text does |
 
 The first two tools answer the two causes of failure the readability
 pre-test found (library names invented, cheat-sheet rules missed) before
@@ -298,7 +301,8 @@ resolve); `run` takes the arguments, the narrowing options of the command
 line (`deny`, `allow_host`, `allow_read`, `allow_write`, `at_most`),
 `replay` and `explain`, answers with what the program printed, its
 standard error and how it ended, and marks a run that did not finish as a
-tool error; `run_tests` takes `strict` and `explain`. The map is refreshed
+tool error; `run_tests` takes `strict` and `explain`; `chunks` takes
+`module` and answers as `renyi index --chunks` prints (section 8). The map is refreshed
 before the call through the resident world of decision AN1: a file is read
 again when its stamp changed, parsed again when its text changed, and its
 items are checked again where their text changed (every item when a
@@ -328,7 +332,78 @@ an array, a map keyed by `Text` is an object, `Decimal` is a number with
 (`tool-type`) or that has no purpose. `renyi serve --mcp` (M5) will serve
 the same entries.
 
-## 8. Order of work
+## 8. Chunks for retrieval by embedding
+
+`renyi index --chunks [path]` (decisions AW40 to AW42) writes the map's
+modules and definitions as chunks: the units a host embeds and keeps in a
+vector store, so that an agent's own index of a project is a projection
+of the map rather than a scrape of its files. Nothing here embeds: the
+toolchain writes, the host embeds; no model and no network in the
+toolchain.
+
+One chunk per definition and one per module, in the map's order. A
+definition's text is a header from its record and then its canonical
+source, by the map's location:
+
+```
+function invoice.total
+total(invoice: Invoice) returns Decimal
+purpose: Subtotal after the percentage discount, rounded to cents.
+module invoice: Compute invoice totals with a percentage discount, exact to the cent.
+
+public function total(invoice: Invoice) returns Decimal
+  purpose: Subtotal after the percentage discount, rounded to cents.
+  see also: subtotal
+
+  let before_discount be subtotal(invoice)
+  let discount be before_discount * invoice.discount_percent / 100
+  return (before_discount - discount).rounded(2)
+end
+```
+
+The header carries `tags:`, `needs:` (the transitive effects) and `fails
+with:` (the transitive failures) when there are any. A module's text is
+its purpose, `needs:`, `imports:` and the kind and signature of each
+public definition, one per line. The text was settled by a measure
+(decision AW41; `tools/chunks_prototype.py`, `tools/chunks_measure.py`,
+the query set under `tests/retrieval/`): on forty-five questions over the
+corpus and `compiler/`, the header with the source beat the source alone
+with every embedding model tried and with BM25, one hop of context (the
+purposes of the callees) gained nothing worth chunks a fifth longer, and
+the purposes let a lexical ranker over the same text match a large
+embedding model (hit@1 71.1% against 68.9%).
+
+A chunk's `id` is `sha256:` and the SHA-256 of its text: it changes
+exactly when the text does, so a host that keeps its index by id embeds
+again only the chunks whose text changed and deletes the ids that are
+gone. The metadata carries the map's `id` as `map_id` (the content hash
+of section 3, which a dependency's change changes too) and `text_hash`
+(section 1) for the semantic identity beside the textual one, and what a
+query filters by and a hit is walked from: `name` (qualified), `kind`,
+`module`, `package`, `public`, `signature`, `purpose`, `tags`,
+`see_also`, `effects` and `fails` (transitive), `calls`, `uses`,
+`tested_by`, `tested` (an example or a test refers to it) and
+`location`. A module's chunk has the same keys (`map_id`, `text_hash`
+and `signature` null, `kind` `module`) with `imports` and `ids`, the map
+ids of its definitions. A renamed callee changes a caller's text and id
+and not its `text_hash`; a changed module purpose changes every chunk of
+the module, since every header carries it.
+
+The format is JSON Lines: a first line `{"project", "revision",
+"toolchain", "chunks", "modules", "definitions"}` (the counts of what the
+lines hold), then one object per line with `id`, `text` and `metadata`,
+rendered on one line each (`Json::render_line`). `--chunks` does not
+combine with `--json`, `--budgets` or `--diff`. The MCP tool `chunks`
+answers the same from the resident world, `module` narrowing it to one
+module. The sizes with this text (decision AW41): the corpus's median
+chunk 476 characters, the compiler's 676, its longest 3,596; the export
+of `compiler/` is 1,597 chunks in 2.9 MB. Implemented in
+`crates/renyi_index/src/chunks.rs`; `crates/renyi_index/tests/chunks.rs`
+holds the shape, the order and the ids (the same after a formatting-only
+change and after a dependency's change, different after the
+definition's own text changed).
+
+## 9. Order of work
 
 1. `renyi index` with the record, the six metrics and the hashes, measured
    on the corpus; the text form and `--json`. Done 2026-10-05
@@ -351,8 +426,11 @@ the same entries.
    which says what a fused operation would save, since decision AR1).
    A development aid like `renyi tokens`: it is how the VM's own hot
    spots were found (`crates/renyi_vm/src/profile.rs`).
+6. The chunks for retrieval by embedding (done 2026-10-13, decisions
+   AW40 to AW42: the text settled by a measure, `renyi index --chunks`
+   and the tool `chunks`, section 8).
 
-## 9. Open items
+## 10. Open items
 
 - R5-1: budget thresholds. Settled by decision R7 (10 / 5 / 7) as the first
   defaults; to be revisited on real projects.

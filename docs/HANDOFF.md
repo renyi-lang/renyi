@@ -626,26 +626,24 @@ and push there directly.
    Lines from `renyi index --chunks` and an MCP tool `chunks`, the
    measure by a query set, the stages 37a to 37c), and its four
    questions were answered on 2026-10-13, every one the recommended
-   option (decision AW40). 37a is done (decision AW41; the paragraph
-   "Stage 37a as built" at the end of the study's section): the
-   prototype and the measure settled the chunk's text, a header from
-   the record (the kind and the qualified name, the signature, the
-   purpose, the tags, the transitive effects and failures, the
-   module's purpose) and then the canonical source, the id the SHA-256
-   of that text. The work now is 37b, the export in Rust:
-   `renyi_index::chunks` renders the chunks from the checked program
-   (the definitions' as the prototype does, with a module chunk per
-   module: its purpose and its public signatures), `renyi index
-   --chunks [path]` writes them as JSON Lines after a header line, the
-   MCP tool `chunks` answers the same (its parameters `module` to
-   narrow, `json` not needed: the lines are the answer), tests hold
-   the ids equal across a formatting-only change and different after
-   a body change and the shape to the prototype's, and the documents
-   follow (`05-agent-tooling.md` a section, positioning 2.3 a
-   sentence, the starter's README a paragraph, the MCP table a row,
-   the reference's `renyi index` row, the notes). Then 37c, the
-   extras (the language's documents as chunks, the example pipeline in
-   `starter/`). Then
+   option (decision AW40). 37a and 37b are done (decisions AW41 and
+   AW42; the paragraphs "Stage 37a as built" and "Stage 37b as built"
+   at the end of the study's section): the measure settled the chunk's
+   text, and `renyi index --chunks` and the MCP tool `chunks` write it
+   (design document 05, section 8). The work now is 37c, the extras:
+   the language's documents as chunks, `renyi index --chunks
+   --language` (one chunk per section of the cheat sheet, per section
+   of the reference and per declaration of the library with its
+   purpose, kind `section` or `library`, the same keys in the
+   metadata, the project header naming the toolchain), so that a host
+   embeds the language beside the project; and the example pipeline in
+   `starter/retrieval/` (a Python script of about sixty lines with its
+   README: read the JSON Lines, embed with a local model through
+   `sentence-transformers`, answer a question with the nearest chunks
+   and their neighbours by `calls` and `tested_by`; CI does not run it,
+   a model being outside the toolchain). Each with its decision entry,
+   its paragraph here, the documents (05 section 8, the starter's
+   README). Then
    35c, completion with signature help and workspace symbols (AW34
    (3) and (4)), and release 0.2 (decision AW36). The wasm lane is
    `D:\Projects\.worktrees\Renyi\wasm\` (its target directory for the
@@ -4211,6 +4209,37 @@ that change with a callee's purpose; 30.4% of the compiler's header
 chunks are over the small model's 256 tokens). BM25 on the header text
 matches the large model on hit@1: the purposes carry the words. The
 lane's `rag_37a/` holds the six chunk files and the two measure logs.
+
+**Stage 37b as built** (decision AW42, 2026-10-13).
+`renyi_index::chunks` (`crates/renyi_index/src/chunks.rs`): one chunk
+per module and per definition from the map and the canonical files it
+was built from, in the map's order; a definition's text the header of
+AW41 and then its canonical source by the map's location, a module's
+its purpose, `needs:`, `imports:` and the kind and signature of each
+public definition; the id `sha256:` and the hash of the text; the
+metadata an object with the same keys for every chunk (the names, the
+map's `id` as `map_id`, `text_hash`, kind, package, public, signature,
+purpose, tags, see_also, the transitive effects and failures, calls,
+uses, tested_by, tested, location), a module's with `imports` and
+`ids`. `chunks_lines` renders JSON Lines: the header line with the
+counts, then one object per line through `Json::render_line`, the
+one-line renderer added to `renyi_syntax::json`. `renyi index --chunks
+[path]` (the command now keeps the canonical files; `--chunks` combines
+with no other option) and the MCP tool `chunks` (`module` narrows). The
+tests: `crates/renyi_index/tests/chunks.rs` (the corpus: a chunk per
+module and per definition, the ids the hashes, the text of
+`invoice.total`, the module chunk, a test chunk; the ids after a
+formatting-only change, a dependency's body change, a module purpose
+change and a callee's rename; the lines), `crates/renyi/tests/index.rs`
+(the command) and `tests/mcp.rs` (the tool, the eleventh). Checked
+against the prototype: the 171 definition chunks of the corpus and the
+1,576 of `compiler/` equal the measured header text byte for byte, ids
+included (the lane's `rag_37b/`). The export of `compiler/`: 1,597
+chunks, 2.9 MB, 2.3 s with the debug binary (Windows wall-clock,
+coarse; the check is most of it). The documents: 05 section 8 (the
+sections after it renumbered), its tool table and status, positioning
+2.3 and its table, the starter's README and skill, the reference's
+command row, the README, the notes.
 
 ## Stage 35, the language server's completion, references and rename: the design study (session 14)
 
@@ -8474,6 +8503,10 @@ holds between calls.
   and BM25 on 1,747 chunks, the header text settled; the chunk files
   and the measure logs in the wasm lane's `rag_37a/`, the scripts in
   `scratch_37/`.
+- Stage 37b (decision AW42): `crates/renyi_index/src/chunks.rs`,
+  `Json::render_line`, `renyi index --chunks`, the MCP tool `chunks`,
+  the tests, the documents; the export checked against the prototype
+  (the lane's `rag_37b/`, the scripts in `scratch_37/`).
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

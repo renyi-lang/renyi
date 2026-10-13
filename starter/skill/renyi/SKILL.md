@@ -138,7 +138,7 @@ end
 | `renyi run [options] <file> [arguments]` | `main` under its grant; `--explain` narrates, `--manifest` prints the run manifest, `--replay <recording>` answers every effect from a recording |
 | `renyi record [--to <file>] <file> [arguments]` | `main`, with every effect's arguments and result written to a recording |
 | `renyi reproduce <recording>` | the same run from the recording, the outcome and the output compared byte for byte |
-| `renyi index [--json] [--budgets] [path]` | the project map: every definition with its effects, failures and metrics |
+| `renyi index [--json] [--budgets] [--chunks] [path]` | the project map: every definition with its effects, failures and metrics; `--chunks` the map as chunks for retrieval by embedding (JSON Lines) |
 | `renyi tools <file>` | the manifest of every function marked `expose as tool`, as JSON Schema |
 | `renyi mcp [path]` | the same answers over the Model Context Protocol |
 

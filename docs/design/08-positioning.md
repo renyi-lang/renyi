@@ -70,7 +70,11 @@ Where it is specified: decisions O1 to O4, P1, P2, Q2;
 its effects, its callers and callees, its metrics, its content hash and
 its budgets, as text or JSON; `renyi index --diff <base>` is the semantic
 diff, per definition, with what each change reaches and the version bump
-it forces. `renyi mcp` serves the whole toolchain to an agent host over
+it forces; `renyi index --chunks` writes the map's modules and
+definitions as chunks for retrieval by embedding (JSON Lines: an id that
+changes exactly when the text does, the text, the metadata), so that a
+host's own index of a project is a projection of the map, not a scrape of
+its files. `renyi mcp` serves the whole toolchain to an agent host over
 standard input and output. `purpose:` is syntax, so that a definition
 can be retrieved by what it is for, and every diagnostic carries a fix
 (`fix: write `needs foreign``), so that an agent's next attempt is right.
@@ -127,7 +131,7 @@ things.
 | Dependencies' effects | computed from their sources, in the lockfile, refused when they widen | not declared | not declared | not declared | the host's |
 | A run can be recorded and replayed | every effect, with the run manifest, by the runtime | with external tooling | with external tooling | with external tooling | no |
 | A run can be narrated | through `purpose:` clauses, by the runtime | no | no | `set -x` traces commands | no |
-| The project map and the semantic diff | `renyi index`, `--diff`, `renyi mcp` | language servers, text diffs | language servers, text diffs | none | none |
+| The project map, the semantic diff, the chunks for retrieval | `renyi index`, `--diff`, `--chunks`, `renyi mcp` | language servers, text diffs | language servers, text diffs | none | none |
 | Every error carries a fix | yes, by decision (D3) | no | partly | no | no |
 | Read by a person without training | regular English, one spelling per concept | familiar to programmers | familiar to programmers | terse | familiar to programmers |
 | Speed on integer loops | machine code in the process (decision AG1): `bench/primes.ry` six times faster than CPython | CPython | V8 | n/a | LuaJIT faster, Starlark slower |

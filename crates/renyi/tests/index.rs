@@ -1,8 +1,11 @@
 //! `renyi index --diff`: the semantic diff against a saved map and against
-//! a git revision (design document 05, section 6).
+//! a git revision (design document 05, section 6); `renyi index --chunks`:
+//! the chunks for retrieval by embedding as JSON Lines (section 8).
 
 use std::path::PathBuf;
 use std::process::Command;
+
+use renyi_vm::natives::json::{read_json, Json};
 
 fn renyi(arguments: &[&str]) -> (bool, String, String) {
     let output = Command::new(env!("CARGO_BIN_EXE_renyi"))
@@ -102,4 +105,84 @@ fn a_git_revision_is_the_base_of_a_diff() {
         stderr.contains("`no-such-revision` is neither a map file nor a git revision"),
         "{stderr}"
     );
+}
+
+fn get<'a>(json: &'a Json, path: &[&str]) -> &'a Json {
+    let mut current = json;
+    for key in path {
+        current = match current {
+            Json::Object(fields) => {
+                &fields
+                    .iter()
+                    .find(|(name, _)| name == key)
+                    .unwrap_or_else(|| panic!("no field `{key}` in {current:?}"))
+                    .1
+            }
+            other => panic!("`{key}`: {other:?} has no fields"),
+        };
+    }
+    current
+}
+
+fn text_of(json: &Json) -> &str {
+    match json {
+        Json::Text(text) => text,
+        other => panic!("not text: {other:?}"),
+    }
+}
+
+fn line_json(line: &str) -> Json {
+    read_json(line).unwrap_or_else(|(detail, _)| panic!("not JSON: {detail}: {line}"))
+}
+
+#[test]
+fn the_chunks_are_json_lines() {
+    let directory = scratch("chunks");
+    std::fs::write(directory.join("demo.ry"), BEFORE).expect("written");
+    let file = directory.join("demo.ry").display().to_string();
+    let (ok, output, stderr) = renyi(&["index", "--chunks", &file]);
+    assert!(ok, "{stderr}");
+    let lines: Vec<&str> = output.lines().collect();
+    assert_eq!(
+        lines.len(),
+        4,
+        "a header line, the module, two definitions:\n{output}"
+    );
+    let header = line_json(lines[0]);
+    assert_eq!(text_of(get(&header, &["project"])), "demo");
+    assert_eq!(get(&header, &["chunks"]), &Json::Number("3".to_string()));
+    assert_eq!(get(&header, &["modules"]), &Json::Number("1".to_string()));
+    assert_eq!(
+        get(&header, &["definitions"]),
+        &Json::Number("2".to_string())
+    );
+    let module = line_json(lines[1]);
+    assert_eq!(text_of(get(&module, &["metadata", "kind"])), "module");
+    assert!(
+        text_of(get(&module, &["text"]))
+            .starts_with("module demo\npurpose: A caller and a helper.\n"),
+        "{}",
+        text_of(get(&module, &["text"]))
+    );
+    let caller = line_json(lines[2]);
+    assert!(text_of(get(&caller, &["id"])).starts_with("sha256:"));
+    assert_eq!(text_of(get(&caller, &["metadata", "name"])), "demo.caller");
+    assert_eq!(text_of(get(&caller, &["metadata", "kind"])), "function");
+    let text = text_of(get(&caller, &["text"]));
+    assert!(
+        text.starts_with("function demo.caller\ncaller(value: Integer) returns Integer\npurpose: One more than the helper.\nmodule demo: A caller and a helper.\n\npublic function caller"),
+        "{text}"
+    );
+    assert!(
+        text.ends_with("  return helper(value) + 1\nend\n"),
+        "{text}"
+    );
+    assert_eq!(
+        get(&caller, &["metadata", "calls"]),
+        &Json::Array(vec![Json::Text("demo.helper".to_string())])
+    );
+
+    let (ok, _, stderr) = renyi(&["index", "--chunks", "--json", &file]);
+    assert!(!ok);
+    assert!(stderr.contains("--chunks"), "{stderr}");
 }
