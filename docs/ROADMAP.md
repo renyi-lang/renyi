@@ -614,6 +614,19 @@ where one decided, the status. The dates are those of the decisions.
     frames a second at 3.0 to 3.8 ms a frame in the VM, no console
     error. Stage 35 follows it.
 
+37. **The map for retrieval by embedding** (session 14, opened
+    2026-10-13 at the owner's request after 35b: "find a way to fit the
+    RAG side"). The map's records and the sources as chunks for an
+    embedding pipeline on the host's side: one per definition (and per
+    module and per test if the measure says so) with an id that changes
+    with the embedded text, the metadata to filter by and to walk from
+    a hit, as JSON Lines from `renyi index --chunks` and the MCP tool
+    `chunks`; the chunk's text settled by a prototype measured on a
+    query set (hit@1 and hit@5 with one embedding model); no model in
+    the toolchain. The design study is the handoff's section "Stage 37,
+    the map for retrieval by embedding: the design study (session 14)";
+    its four questions are with the owner. 35c follows it.
+
 ## 3. The tracks
 
 The same stages grouped by the line of work they belong to, with the
@@ -661,8 +674,10 @@ state of each line.
   per Python call, one worker across a test run.
 - **F. The agent tooling and the integrations**: stages 5, 7 (the MCP
   server), 19 (the resident world, the language server, the watch, the
-  embedding API). Done; candidates not decided: completion, references
-  and rename in the language server, the C API of decision A5.
+  embedding API), 35 (references and rename in the language server,
+  35a and 35b done; 35c completion open), 37 (the map for retrieval by
+  embedding, opened 2026-10-13, its study done). Candidate not decided:
+  the C API of decision A5.
 - **G. Release and the ecosystem**: stages 17, 30. Release 0.1.0 is
   out; every release after it follows `docs/RELEASE.md`; the icon and
   the wordmark (AV1) are in the site, the README and the extension; the
@@ -750,10 +765,10 @@ parallel with it (decision AW35: the owner's call after the play
 page) and is done (decision AW37: the game's page of the site at 55
 to 60 frames a second in the browser); 35a and 35b are done
 (decisions AW38 and AW39: references and rename of declarations,
-then of the locals), so the next stage is the adaptation of the map
-for retrieval by embedding (the owner's request of 2026-10-13, its
-design study first), then 35c, completion with signature help and
-workspace symbols. Release 0.2
+then of the locals), so the next stage is 37, the map for retrieval
+by embedding (the owner's request of 2026-10-13; its design study is
+in the handoff, its four questions with the owner), then 35c,
+completion with signature help and workspace symbols. Release 0.2
 follows stage 35 (decision AW36,
 the owner's answer of 2026-10-13), with the extension published to
 the Marketplace and Open VSX from the owner's publisher and the

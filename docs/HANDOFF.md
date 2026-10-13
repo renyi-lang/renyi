@@ -154,8 +154,10 @@ it, the publish waiting for 0.2; stages 35a and 35b are built (decisions
 AW38 and AW39: references and rename of declarations, then of the
 locals, in the language server, the paragraphs "Stage 35a as built"
 and "Stage 35b as built" at the end of the stage 35 study's section);
-the work now is the adaptation of the map for retrieval by embedding,
-the owner's request of 2026-10-13 (the start-here item 1), then 35c.
+the work now is stage 37, the map for retrieval by embedding, the
+owner's request of 2026-10-13 (the start-here item 1; the section
+"Stage 37, the map for retrieval by embedding: the design study
+(session 14)" is its study), then 35c.
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -616,27 +618,18 @@ and push there directly.
    was +12.2%, an append through a checker held twice copying the
    module's list; AW39 has the probe and the numbers). The work now,
    by the owner's call of 2026-10-13 ("find a way to fit the RAG
-   side; start after the current task"), is the adaptation of the map
-   for retrieval by embedding: a design study first, as a section of
-   this handoff, then the owner's questions in one batch of four, then
-   the stage. What the study starts from: the map's JSON gives one
-   record per definition (`renyi_index::render::definition_json`:
-   id and text hash, module, name, kind, signature, purpose, tags,
-   effects, fails, calls, uses, implements, tested_by, metrics,
-   coverage, location) and `renyi mcp`'s `definition` tool answers
-   the source text with the record; an embedding pipeline needs one
-   chunk per definition (the record's fields as text with the
-   definition's source), a stable id for incremental re-embedding
-   (the content hash), the metadata to filter by (module, kind,
-   effects, package) and a way to get them all and to get what
-   changed (`index --diff`); no model belongs in the toolchain, so
-   the export is a command or a tool that writes the chunks and the
-   host embeds them. The design documents never mention embedding or
-   RAG (checked on 2026-10-13: `05-agent-tooling.md`,
-   `08-positioning.md`, `GAPS.md`); positioning 2.3 is the point it
-   extends. Then 35c, completion with signature help and workspace
-   symbols (AW34 (3) and (4)), and release 0.2 (decision AW36). The
-   wasm lane is
+   side; start after the current task"), is stage 37, the map for
+   retrieval by embedding: its design study is the section "Stage 37,
+   the map for retrieval by embedding: the design study (session 14)"
+   below (what the map gives, what an embedding pipeline on the
+   host's side needs, the chunk's text, its id, the metadata, JSON
+   Lines from `renyi index --chunks` and an MCP tool `chunks`, the
+   measure by a query set, the stages 37a to 37c), and its four
+   questions were put to the owner on 2026-10-13 (the answers become
+   decision AW40, then 37a starts: the prototype in Python over
+   `index --json` and the measure of the three chunk texts). Then
+   35c, completion with signature help and workspace symbols (AW34
+   (3) and (4)), and release 0.2 (decision AW36). The wasm lane is
    `D:\Projects\.worktrees\Renyi\wasm\` (its target directory for the
    wasm32 builds, `check_asis.log` the trial build, the gates logs,
    the measures and the scripts of each stage; of stage 36:
@@ -4052,6 +4045,134 @@ iterator in two slots, the Rust front end's name sets).
 Then the first stage the owner confirms. Done in session 14: the study is
 the section "Stage 29, the new backend: the design study (session 14)"
 below, and the owner's answers are decision AW1.
+
+## Stage 37, the map for retrieval by embedding: the design study (session 14)
+
+**The owner's request** (2026-10-13, after stage 35b): "find a way to fit
+the RAG side; start after the current task". The intent behind it is in
+the positioning: Renyi code is to be located, searched and traced by
+agents, and embedded for retrieval, so that an agent can change a project
+and review it whole. The design documents never mention embedding or
+retrieval by similarity (checked on 2026-10-13: `05-agent-tooling.md`,
+`08-positioning.md`, `GAPS.md`); positioning 2.3, "the tooling an agent
+needs", is the point this stage extends. The stage adds nothing to the
+language: it adapts what the map already knows to what an embedding
+pipeline consumes.
+
+**What exists.** The map (`renyi index --json`, `renyi_index`): one record
+per definition with `id` (the content hash of decision D5: the canonical
+text with the name and every project reference replaced by the referenced
+definition's hash, so a callee's change changes it), `text_hash` (the own
+canonical text with the name and the references blanked, unchanged by a
+dependency's change), module, package, name, kind, public, signature,
+purpose, tags, see_also, deprecated, exposed_as_tool, effects (declared
+and transitive), fails, calls, uses, implements, tested_by, metrics,
+coverage and location; one record per module with its purpose, imports,
+counts, effects and ids. `renyi mcp` serves `project_map` (the map),
+`definition` (one definition's source text with its record), `effects`
+(the transitive graph under a definition) and `diff` (the semantic diff
+of `index --diff`: what changed, with its reach). The resident world of
+decision AN1 refreshes the map per changed item. `purpose:` is syntax,
+required on the module and on every public definition (`purpose-missing`,
+reference section 3), written to say what a definition is for: the
+retrieval hook by design. A function body is at most 60 lines
+(`body-length`), so a definition's text with its record fits any embedding
+window. The largest project of the repository, `compiler/` (16 modules,
+1,550 definitions: 1,149 functions, 217 types, 184 constants; the median
+definition 10 lines, the 90th percentile 36, the longest 90; 1,329 with a
+purpose, every public one among them, 161 private functions and 60
+constants without), is the size an export has to be cheap on.
+
+**What retrieval by embedding needs**, on the host's side (an embedding
+model, a vector store, a query at use time; none of them in the
+toolchain):
+
+1. *Chunks*: units of text to embed, each with an id and metadata. The
+   natural unit is the definition, the map's record: small, named, with a
+   purpose written for retrieval; a module as a chunk of its own (its
+   purpose and its public signatures) answers the coarse questions ("where
+   is the invoicing"); a test as a chunk answers "what is checked".
+2. *The text of a chunk*, what the embedding sees. The candidates: (a) the
+   canonical source alone; (b) a header from the record (the qualified
+   name, the kind, the signature, the purpose, the tags, the transitive
+   effects, the module's purpose) and then the canonical source; (c) (b)
+   with one hop of context, the purposes of what it calls. The header lets
+   "where do we round money to cents" land on the function whose purpose
+   says so when its body only says `rounded`; the source lets a query that
+   quotes code land; the hop may help a query about a step that a callee
+   does, at the price of longer chunks and of chunks that change when a
+   callee's purpose changes.
+3. *Identity for incremental re-embedding*: the host keeps its index keyed
+   by the chunk id; at the next export, the ids it has not seen are
+   embedded and the ids gone are deleted, so the id must change exactly
+   when the embedded text changes. `text_hash` blanks the names of the
+   references, so a callee renamed changes the text and not the hash; `id`
+   changes when a callee's body changes, which the text does not show. The
+   hash of the embedded text itself is the right id, with `id` and
+   `text_hash` carried in the metadata for the host that wants the
+   semantic identity (what to re-review) beside the textual one (what to
+   re-embed).
+4. *Metadata*, for filtering a query (module, package, kind, public, the
+   transitive effects, whether tested) and for walking from a hit (calls,
+   uses, tested_by, see_also as the names of the neighbouring chunks, so
+   that the host expands a hit to its callees, its callers and its tests
+   without a tool call), with the location for the editor.
+5. *The format*: JSON Lines, one object per line (`id`, `text`,
+   `metadata`), the input every loader and store takes (a JSON loader, an
+   upsert into a vector store, a batch to an embedding API), with a first
+   line for the project, the revision, the toolchain and the count; or a
+   JSON array. JSON Lines streams and diffs line by line.
+6. *Where it lives*: `renyi index --chunks [path]`, the map's command
+   writing the chunks (the chunks are a projection of the map and the
+   sources, which the index holds), and an MCP tool `chunks` with the same
+   answer for an agent host that keeps its own index (Claude Code's
+   memory, an IDE's); `definition` and `effects` stay the tools a hit is
+   followed with.
+7. *Beyond the project's code*: the language's own documents as chunks for
+   an agent that writes Renyi (the cheat sheet, the reference's sections,
+   the library's declarations with their purposes), `--language`, which
+   the host embeds beside the project; and a reference pipeline as an
+   example in `starter/` (a Python script of about sixty lines: read the
+   JSON Lines, embed with a local model, answer a question with the
+   nearest chunks and their neighbours), so that the starter pack shows
+   the loop, not only the export.
+
+**The measure**: retrieval quality on the repository's own code. A query
+set of about forty natural-language questions written from the purposes
+of definitions in `examples/` and `compiler/` (paraphrased, not copied,
+some quoting a line of code), each with the definition it targets; hit@1
+and hit@5 with one embedding model, run once by hand (a local model
+through `sentence-transformers`, or the owner's own pipeline), for the
+three chunk texts of item 2: the stage keeps the one that scores best,
+and the decision entry records the numbers. Beside it: the chunks' sizes
+(tokens per chunk, the longest), the export's time on `compiler/`
+(wall-clock, coarse, or instructions in the perf lane), and a test that
+the chunk ids are the same after a formatting-only change and differ
+after a body change.
+
+**The stages proposed**: 37a the prototype and the measure, in Python
+over `index --json` and the sources (`tools/chunks_prototype.py`, a
+development aid as decision H1 allows), the query set under `tests/`,
+the three texts measured, the text settled; 37b the export in Rust
+(`renyi_index::chunks`, `index --chunks`, the MCP tool `chunks`, the
+header line, the tests of the ids' stability and of the shape), with
+`05-agent-tooling.md` gaining a section, positioning 2.3 a sentence, the
+starter's README a paragraph and the MCP table a row; 37c the extras the
+owner takes: the module and test chunks if 37a shows them useful, the
+language's documents as chunks, the example pipeline in `starter/`. Each
+with its decision entry and its paragraph here. The stage inserts itself
+before 35c at the owner's request; release 0.2 follows stage 35.
+
+**The questions for the owner** (one batch of four, AskUserQuestion):
+(1) the chunk's text: the prototype measures the three texts and the best
+is built (recommended), the header with the source without measuring,
+the source alone; (2) where the export lives: `renyi index --chunks` and
+the MCP tool `chunks` (recommended), a command of its own `renyi chunks`,
+the MCP tool alone; (3) the chunk's id: the hash of the embedded text
+with `id` and `text_hash` in the metadata (recommended), `text_hash`,
+`id`; (4) the extras: module and test chunks in 37b, the language's
+documents and the example pipeline in 37c (recommended), definitions
+only, everything in one stage.
 
 ## Stage 35, the language server's completion, references and rename: the design study (session 14)
 
@@ -8302,6 +8423,12 @@ holds between calls.
   `patch_35b_test.py`, `patch_35b_test_lsp.py`, `patch_35b_docs.py`
   and the probe `probe_list_copy.py`, copied to the wasm lane's
   `scratch_35b/` with the probe's logs.
+- Stage 37 opened (the owner's request after 35b, 2026-10-13): the
+  design study of the map for retrieval by embedding (the section
+  "Stage 37, the map for retrieval by embedding: the design study
+  (session 14)"), the roadmap's entry 37 and its track line; the four
+  questions put to the owner; the study's draft kept in the wasm
+  lane's `scratch_37/`.
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 
