@@ -1,0 +1,41 @@
+module input
+  purpose: The player's input for one frame, as the display hands it to the game.
+
+public type Input
+  purpose: The keys held during one frame and the milliseconds since the previous frame.
+  has forward: Boolean
+  has backward: Boolean
+  has turn_left: Boolean
+  has turn_right: Boolean
+  has fire: Boolean
+  has quit: Boolean
+  has elapsed_ms: Integer
+  can ToText
+end
+
+public function idle(elapsed_ms: Integer) returns Input
+  purpose: An input with no key held, lasting the given milliseconds.
+  example: idle(50).forward is false
+
+  return Input(
+    forward: false,
+    backward: false,
+    turn_left: false,
+    turn_right: false,
+    fire: false,
+    quit: false,
+    elapsed_ms: elapsed_ms
+  )
+end
+
+public function repeated(controls: Input, times: Integer) returns List of Input
+  purpose: The same input for the given number of frames.
+  example: repeated(controls: idle(10), times: 3).length() is 3
+  example: repeated(controls: idle(10), times: 0) is []
+
+  let mutable frames: List of Input be []
+  repeat until frames.length() is at least times
+    change frames to frames.append(controls)
+  end
+  return frames
+end

@@ -1,0 +1,224 @@
+module enemies
+  purpose: The enemies: they chase the player they can see, bite on contact and fall when shot.
+
+import fixed
+import level exposing Level, Cell
+import player
+import raycast exposing Vector
+
+public type Enemy
+  purpose: One enemy: where it stands, its health, and its bite and flash timers in milliseconds.
+  has position: Vector
+  has health: Integer
+  has cooldown: Integer
+  has flash: Integer
+  can ToText
+end
+
+public type Advance
+  purpose: An enemy after one frame and the damage it dealt to the player in that frame.
+  has enemy: Enemy
+  has damage: Integer
+end
+
+type Rules
+  purpose: The numbers of an enemy's behaviour, in fixed-point units and milliseconds.
+  has sight: Integer
+  has reach: Integer
+  has bite: Integer
+  has bite_pause: Integer
+end
+
+let rules: Rules be Rules(sight: 32768, reach: 3072, bite: 10, bite_pause: 800)
+  purpose: Enemies see eight cells, bite within three quarters of a cell for 10, every 800 ms.
+
+public function spawn(cell: Cell) returns Enemy
+  purpose: A fresh enemy at the centre of a cell, with two hit points.
+  example: spawn(Cell(column: 2, row: 1)).position is Vector(dx: 10240, dy: 6144)
+
+  let centre be fixed.unit.quotient(2)
+  return Enemy(
+    position: Vector(dx: cell.column * fixed.unit + centre, dy: cell.row * fixed.unit + centre),
+    health: 2,
+    cooldown: 0,
+    flash: 0
+  )
+end
+
+public function is_alive(enemy: Enemy) returns Boolean
+  purpose: Whether the enemy still stands.
+  example: is_alive(spawn(Cell(column: 1, row: 1))) is true
+
+  return enemy.health is greater than 0
+end
+
+public function length_of(offset: Vector) returns Integer
+  purpose: The length of an offset in fixed-point units, rounded down.
+  example: length_of(Vector(dx: 3, dy: 4)) is 5
+
+  let squared be offset.dx * offset.dx + offset.dy * offset.dy
+  return squared.to_float().square_root().truncated()
+end
+
+public function can_see(maze: Level, origin: Vector, target: Vector) returns Boolean
+  purpose: Whether no solid tile lies between two points, sampled every quarter cell.
+  example: can_see(
+    maze: level.parse_level(["#####", "#...#", "#####"]),
+    origin: Vector(dx: 6144, dy: 6144),
+    target: Vector(dx: 14336, dy: 6144)
+  ) is true
+  example: can_see(
+    maze: level.parse_level(["#####", "#.#.#", "#####"]),
+    origin: Vector(dx: 6144, dy: 6144),
+    target: Vector(dx: 14336, dy: 6144)
+  ) is false
+
+  let span_x be target.dx - origin.dx
+  let span_y be target.dy - origin.dy
+  let samples be (span_x.absolute().at_least(span_y.absolute())).quotient(1024) + 1
+  for each sample from 1 to samples
+    let column be fixed.cell_of(origin.dx + (span_x * sample).quotient(samples))
+    let row be fixed.cell_of(origin.dy + (span_y * sample).quotient(samples))
+    if level.is_solid(level.tile_at(level: maze, column: column, row: row)) then return false end
+  end
+  return true
+end
+
+public function distance_between(origin: Vector, target: Vector) returns Integer
+  purpose: The distance between two points in fixed-point units, rounded down.
+  example: distance_between(origin: Vector(dx: 1, dy: 1), target: Vector(dx: 4, dy: 5)) is 5
+
+  return length_of(Vector(dx: target.dx - origin.dx, dy: target.dy - origin.dy))
+end
+
+public function advance(maze: Level, enemy: Enemy, target: Vector, elapsed: Integer) returns Advance
+  purpose: One frame of an enemy: bite a target in reach, else chase it if it is in sight.
+
+  let timed be ticked(enemy: enemy, elapsed: elapsed)
+  return bitten(enemy: timed, target: target) otherwise chased(
+    maze: maze,
+    enemy: timed,
+    target: target,
+    elapsed: elapsed
+  )
+end
+
+function ticked(enemy: Enemy, elapsed: Integer) returns Enemy
+  purpose: The enemy with its timers run down by the elapsed milliseconds.
+
+  let cooldown be (enemy.cooldown - elapsed).at_least(0)
+  return enemy with cooldown: cooldown, flash: (enemy.flash - elapsed).at_least(0)
+end
+
+function bitten(enemy: Enemy, target: Vector) returns maybe Advance
+  purpose: The bite of a living enemy within reach of the target, or nothing when out of reach.
+
+  if not is_alive(enemy) then return nothing end
+  if distance_between(origin: enemy.position, target: target) is greater than rules.reach then
+    return nothing
+  end
+  if enemy.cooldown is greater than 0 then return Advance(enemy: enemy, damage: 0) end
+  return Advance(enemy: (enemy with cooldown: rules.bite_pause), damage: rules.bite)
+end
+
+function in_pursuit(maze: Level, enemy: Enemy, target: Vector) returns Boolean
+  purpose: Whether a living enemy sees the target within its sight.
+
+  if not is_alive(enemy) then return false end
+  if distance_between(origin: enemy.position, target: target) is greater than rules.sight then
+    return false
+  end
+  return can_see(maze: maze, origin: enemy.position, target: target)
+end
+
+function pursuit(enemy: Enemy, target: Vector, elapsed: Integer) returns Vector
+  purpose: The step toward the target that 1.5 cells a second gives in the elapsed time.
+
+  let distance be distance_between(origin: enemy.position, target: target).at_least(1)
+  let pace be (elapsed.at_most(100) * fixed.unit * 3).quotient(2000)
+  let gap_x be target.dx - enemy.position.dx
+  let gap_y be target.dy - enemy.position.dy
+  return Vector(dx: (gap_x * pace).quotient(distance), dy: (gap_y * pace).quotient(distance))
+end
+
+function chased(maze: Level, enemy: Enemy, target: Vector, elapsed: Integer) returns Advance
+  purpose: The enemy moved toward a target it pursues, stopped by walls; otherwise it stays.
+
+  if not in_pursuit(maze: maze, enemy: enemy, target: target) then
+    return Advance(enemy: enemy, damage: 0)
+  end
+  let step be player.moved(
+    maze: maze,
+    origin: enemy.position,
+    offset: pursuit(enemy: enemy, target: target, elapsed: elapsed)
+  )
+  return Advance(enemy: (enemy with position: step.position), damage: 0)
+end
+
+let aim_width: Integer be 1434
+  purpose: How far beside the line of fire a shot still hits: 0.35 of a cell.
+
+public function target_of(crowd: List of Enemy, origin: Vector, angle: Integer, wall: Integer)
+  returns maybe Integer
+  purpose: The index of the nearest living enemy on the line of fire, closer than the wall ahead.
+
+  let mutable best: maybe Integer be nothing
+  let mutable best_depth be wall
+  for each enemy, index in crowd.with_index()
+    if not is_alive(enemy) then continue end
+    let seen be raycast.seen_from(origin: origin, angle: angle, point: enemy.position)
+    let depth be seen.dx
+    let beside be seen.dy
+    if depth is greater than 0
+      and depth is less than best_depth
+      and beside.absolute() is less than aim_width then
+      change best to index
+      change best_depth to depth
+    end
+  end
+  return best
+end
+
+public function wounded(enemy: Enemy) returns Enemy
+  purpose: The enemy after one shot: one hit point less, flashing for 150 milliseconds.
+  example: wounded(spawn(Cell(column: 1, row: 1))).health is 1
+
+  return enemy with health: enemy.health - 1, flash: 150
+end
+
+test "an enemy in sight walks toward the player"
+  let maze be level.parse_level(["##########", "#........#", "##########"])
+  let enemy be spawn(Cell(column: 7, row: 1))
+  let result be advance(maze: maze, enemy: enemy, target: Vector(dx: 6144, dy: 6144), elapsed: 100)
+  check result.enemy.position is Vector(dx: 30720 - 614, dy: 6144)
+  check result.damage is 0
+end
+
+test "an enemy behind a wall stays where it is"
+  let maze be level.parse_level(["##########", "#...#....#", "##########"])
+  let enemy be spawn(Cell(column: 7, row: 1))
+  let result be advance(maze: maze, enemy: enemy, target: Vector(dx: 6144, dy: 6144), elapsed: 100)
+  check result.enemy.position is enemy.position
+end
+
+test "an enemy in reach bites, then waits before it bites again"
+  let maze be level.parse_level(["#####", "#...#", "#####"])
+  let enemy be spawn(Cell(column: 2, row: 1))
+  let target be Vector(dx: 8192, dy: 6144)
+  let first_frame be advance(maze: maze, enemy: enemy, target: target, elapsed: 50)
+  check first_frame.damage is 10
+  let second_frame be advance(maze: maze, enemy: first_frame.enemy, target: target, elapsed: 50)
+  check second_frame.damage is 0
+  check second_frame.enemy.cooldown is 750
+end
+
+test "a shot hits the nearest enemy on the line of fire, not one behind a wall"
+  let near be spawn(Cell(column: 3, row: 1))
+  let far be spawn(Cell(column: 5, row: 1))
+  let aside be spawn(Cell(column: 2, row: 3))
+  let origin be Vector(dx: 6144, dy: 6144)
+  check target_of(crowd: [far, near, aside], origin: origin, angle: 0, wall: 40960) is 1
+  check target_of(crowd: [far], origin: origin, angle: 0, wall: 8192) is nothing
+  check target_of(crowd: [far], origin: origin, angle: 2048, wall: 40960) is nothing
+  check target_of(crowd: [wounded(wounded(near)), far], origin: origin, angle: 0, wall: 40960) is 1
+end

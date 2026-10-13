@@ -1,0 +1,254 @@
+module raycast
+  purpose: The raycaster: one ray per screen column stepped through the grid cell by cell (DDA).
+
+import fixed
+import level exposing Level, Tile
+
+public type Vector
+  purpose: A direction or an offset in fixed-point map units.
+  has dx: Integer
+  has dy: Integer
+  can ToText
+end
+
+public type Side is one of
+  purpose: Which face of a cell a ray hit: a face across x (east or west) or across y.
+  AcrossX
+  AcrossY
+  can ToText
+end
+
+public type Hit
+  purpose: Where a ray stopped: the perpendicular distance, the tile, the face, the offset on it.
+  has distance: Integer
+  has tile: Tile
+  has side: Side
+  has offset: Integer
+  can ToText
+end
+
+let plane_scale: Integer be 2703
+  purpose: The half-width of the camera plane, 0.66 of the unit: a field of view of 66 degrees.
+
+let farthest: Integer be 64
+  purpose: The most grid lines a ray crosses before it gives up.
+
+public function facing(angle: Integer) returns Vector
+  purpose: The unit direction of an angle in steps.
+  example: facing(0) is Vector(dx: 4096, dy: 0)
+  example: facing(1024) is Vector(dx: 0, dy: 4096)
+
+  return Vector(dx: fixed.cosine(angle), dy: fixed.sine(angle))
+end
+
+public function ray_for(angle: Integer, column: Integer, columns: Integer) returns Vector
+  purpose: The ray through a screen column: the facing plus a share of the camera plane.
+  example: ray_for(angle: 0, column: 0, columns: 2) is Vector(dx: 4096, dy: -1351)
+  example: ray_for(angle: 0, column: 1, columns: 2) is Vector(dx: 4096, dy: 1351)
+
+  let ahead be facing(angle)
+  let camera be ((2 * column + 1) * fixed.unit).quotient(columns) - fixed.unit
+  let plane_x be fixed.multiply(left: 0 - ahead.dy, right: plane_scale)
+  let plane_y be fixed.multiply(left: ahead.dx, right: plane_scale)
+  return Vector(
+    dx: ahead.dx + fixed.multiply(left: plane_x, right: camera),
+    dy: ahead.dy + fixed.multiply(left: plane_y, right: camera)
+  )
+end
+
+function cells_per_crossing(component: Integer) returns Integer
+  purpose: How far along the ray, in units of the facing, one grid cell is crossed on one axis.
+  example: cells_per_crossing(4096) is 4096
+  example: cells_per_crossing(-2048) is 8192
+
+  if component is 0 then return 1_000_000_000 end
+  return (fixed.unit * fixed.unit).quotient(component.absolute())
+end
+
+function first_crossing(position: Integer, component: Integer, per_cell: Integer) returns Integer
+  purpose: How far along the ray the first grid line is crossed on one axis.
+  example: first_crossing(position: 6144, component: 4096, per_cell: 4096) is 2048
+  example: first_crossing(position: 6144, component: -4096, per_cell: 4096) is 2048
+
+  let inside be position - fixed.cell_of(position) * fixed.unit
+  if component is less than 0 then return (inside * per_cell).quotient(fixed.unit) end
+  return ((fixed.unit - inside) * per_cell).quotient(fixed.unit)
+end
+
+function step_of(component: Integer) returns Integer
+  purpose: The cell step of a ray on one axis: -1 or 1.
+
+  if component is less than 0 then return -1 end
+  return 1
+end
+
+type Walker
+  purpose: A ray on its way through the grid: its cell, the next crossing on each axis, its face.
+  has column: Integer
+  has row: Integer
+  has next_x: Integer
+  has next_y: Integer
+  has per_x: Integer
+  has per_y: Integer
+  has step_x: Integer
+  has step_y: Integer
+  has distance: Integer
+  has side: Side
+  has crossings: Integer
+end
+
+function started(origin: Vector, ray: Vector) returns Walker
+  purpose: A ray at its origin, before it crosses its first grid line.
+
+  let per_x be cells_per_crossing(ray.dx)
+  let per_y be cells_per_crossing(ray.dy)
+  return Walker(
+    column: fixed.cell_of(origin.dx),
+    row: fixed.cell_of(origin.dy),
+    next_x: first_crossing(position: origin.dx, component: ray.dx, per_cell: per_x),
+    next_y: first_crossing(position: origin.dy, component: ray.dy, per_cell: per_y),
+    per_x: per_x,
+    per_y: per_y,
+    step_x: step_of(ray.dx),
+    step_y: step_of(ray.dy),
+    distance: 0,
+    side: AcrossX,
+    crossings: 0
+  )
+end
+
+function stepped(walker: Walker) returns Walker
+  purpose: The ray moved into the next cell, across whichever grid line comes first.
+
+  let crossings be walker.crossings + 1
+  if walker.next_x is less than walker.next_y then
+    let across be walker with column: walker.column + walker.step_x, side: AcrossX
+    return across
+      with next_x: walker.next_x + walker.per_x, distance: walker.next_x, crossings: crossings
+  end
+  let down be walker with row: walker.row + walker.step_y, side: AcrossY
+  return down
+    with next_y: walker.next_y + walker.per_y, distance: walker.next_y, crossings: crossings
+end
+
+function walked(maze: Level, walker: Walker) returns Walker
+  purpose: The ray stepped until it enters a solid cell, or gives up after the farthest crossing.
+
+  let mutable current be stepped(walker)
+  repeat until current.crossings is at least farthest or solid(maze: maze, walker: current)
+    change current to stepped(current)
+  end
+  return current
+end
+
+function solid(maze: Level, walker: Walker) returns Boolean
+  purpose: Whether the cell the ray is in stops it.
+
+  return level.is_solid(level.tile_at(level: maze, column: walker.column, row: walker.row))
+end
+
+public function cast(maze: Level, origin: Vector, ray: Vector) returns Hit
+  purpose: The first solid tile on the ray; the distance is along the facing, so it has no fish-eye.
+  see also: ray_for
+
+  let walker be walked(maze: maze, walker: started(origin: origin, ray: ray))
+  return Hit(
+    distance: walker.distance,
+    tile: level.tile_at(level: maze, column: walker.column, row: walker.row),
+    side: walker.side,
+    offset: offset_of(origin: origin, ray: ray, distance: walker.distance, side: walker.side)
+  )
+end
+
+function offset_of(origin: Vector, ray: Vector, distance: Integer, side: Side) returns Integer
+  purpose: Where along the face the ray struck, from 0 to the unit.
+
+  let struck_at be
+    match side
+      when AcrossX then origin.dy + fixed.multiply(left: distance, right: ray.dy)
+      when AcrossY then origin.dx + fixed.multiply(left: distance, right: ray.dx)
+    end
+  return struck_at remainder fixed.unit
+end
+
+public function along(offset: Vector, direction: Vector) returns Integer
+  purpose: How far an offset reaches along a unit direction: their dot product.
+  example: along(offset: Vector(dx: 8192, dy: 4096), direction: Vector(dx: 4096, dy: 0)) is 8192
+
+  return fixed.multiply(left: offset.dx, right: direction.dx) + fixed.multiply(
+    left: offset.dy,
+    right: direction.dy
+  )
+end
+
+public function beside(offset: Vector, direction: Vector) returns Integer
+  purpose: How far an offset lies to the right of a unit direction (y grows downward).
+  example: beside(offset: Vector(dx: 8192, dy: 4096), direction: Vector(dx: 4096, dy: 0)) is 4096
+
+  return fixed.multiply(left: offset.dy, right: direction.dx) - fixed.multiply(
+    left: offset.dx,
+    right: direction.dy
+  )
+end
+
+public function seen_from(origin: Vector, angle: Integer, point: Vector) returns Vector
+  purpose: A point in the camera's frame: dx how far ahead along the facing, dy how far right.
+  example: seen_from(
+    origin: Vector(dx: 4096, dy: 4096),
+    angle: 1024,
+    point: Vector(dx: 0, dy: 12288)
+  ) is Vector(dx: 8192, dy: 4096)
+
+  let gap be Vector(dx: point.dx - origin.dx, dy: point.dy - origin.dy)
+  let ahead be facing(angle)
+  return Vector(dx: along(offset: gap, direction: ahead), dy: beside(offset: gap, direction: ahead))
+end
+
+public function column_of(seen: Vector, columns: Integer) returns Integer
+  purpose: The screen column a point in the camera's frame (ahead, right) projects to.
+  example: column_of(seen: Vector(dx: 8192, dy: 0), columns: 320) is 160
+  example: column_of(seen: Vector(dx: 4096, dy: 2703), columns: 320) is 320
+
+  let half be columns.quotient(2)
+  return half + (half * seen.dy * fixed.unit).quotient(seen.dx.at_least(1) * plane_scale)
+end
+
+test "a ray straight ahead stops at the wall two and a half cells away"
+  let maze be level.parse_level(["#####", "#...#", "#...#", "#...#", "#####"])
+  let origin be Vector(dx: 6144, dy: 10240)
+  let hit be cast(maze: maze, origin: origin, ray: ray_for(angle: 0, column: 160, columns: 320))
+  check hit.distance is 10240
+  check hit.tile is Stone
+  check hit.side is AcrossX
+  check hit.offset is at least 2048 and hit.offset is at most 2100
+end
+
+test "a ray to the north meets the top wall across y"
+  let maze be level.parse_level(["#####", "#...#", "#...#", "#...#", "#####"])
+  let hit be cast(maze: maze, origin: Vector(dx: 6144, dy: 10240), ray: facing(3072))
+  check hit.distance is 6144
+  check hit.side is AcrossY
+end
+
+test "a flat wall is equally far at the centre and at both edges: no fish-eye"
+  let open_rows be ["#######", "#.....#", "#.....#", "#.....#", "#.....#", "#.....#"]
+  let maze be level.parse_level(open_rows.append_all(["#.....#", "#.....#", "#######"]))
+  let origin be Vector(dx: 6144, dy: 18432)
+  let centre be cast(maze: maze, origin: origin, ray: ray_for(angle: 0, column: 160, columns: 320))
+  let left_edge be cast(maze: maze, origin: origin, ray: ray_for(angle: 0, column: 0, columns: 320))
+  let right_edge be cast(
+    maze: maze,
+    origin: origin,
+    ray: ray_for(angle: 0, column: 319, columns: 320)
+  )
+  check centre.distance is 18432
+  check left_edge.distance is centre.distance
+  check right_edge.distance is centre.distance
+end
+
+test "a ray stops at a closed door and names it"
+  let maze be level.parse_level(["#####", "#..D#", "#####"])
+  let hit be cast(maze: maze, origin: Vector(dx: 6144, dy: 6144), ray: facing(0))
+  check hit.tile is Door
+  check hit.distance is 6144
+end

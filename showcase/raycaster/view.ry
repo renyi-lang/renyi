@@ -1,0 +1,297 @@
+module view
+  purpose: The frame of a game state: ceiling, floor, a wall column per screen column, sprites, HUD.
+
+import enemies exposing Enemy
+import fixed
+import game exposing State, Status
+import level exposing Tile
+import raycast exposing Hit, Side, Vector
+import shapes exposing Colour, Shape
+
+public type Span
+  purpose: The first and last screen rows of something drawn on a column.
+  has top: Integer
+  has bottom: Integer
+  can ToText
+end
+
+type Walls
+  purpose: The wall columns of a frame and the depth of the wall behind every screen column.
+  has columns: List of Shape
+  has depths: List of Integer
+end
+
+let horizon: Integer be 100
+  purpose: The screen row of the horizon, half the screen height.
+
+function height_at(distance: Integer) returns Integer
+  purpose: The rows a thing of one cell's height takes at a perpendicular distance.
+
+  return (shapes.screen_height * fixed.unit).quotient(distance.at_least(64))
+end
+
+public function wall_span(distance: Integer) returns Span
+  purpose: The rows a wall at a perpendicular distance covers: one cell away fills the height.
+  example: wall_span(4096) is Span(top: 0, bottom: 199)
+  example: wall_span(8192) is Span(top: 50, bottom: 149)
+  example: wall_span(1024) is Span(top: 0, bottom: 199)
+
+  let height be height_at(distance)
+  let top be horizon - height.quotient(2)
+  return Span(top: top.at_least(0), bottom: (top + height - 1).at_most(shapes.screen_height - 1))
+end
+
+public function shade_for(distance: Integer, side: Side) returns Integer
+  purpose: The brightness of a wall in percent: darker with distance, and darker on faces across y.
+  example: shade_for(distance: 0, side: AcrossX) is 100
+  example: shade_for(distance: 4096 * 5, side: AcrossY) is 48
+  example: shade_for(distance: 4096 * 50, side: AcrossX) is 40
+
+  let near be (100 - (distance * 7).quotient(fixed.unit)).at_least(40)
+  match side
+    when AcrossX then return near
+    when AcrossY then return (near * 3).quotient(4)
+  end
+end
+
+public function wall_colour(hit: Hit) returns Colour
+  purpose: The colour of the wall a ray hit, with its pattern, before shading.
+
+  let seam be hit.offset remainder 1024 is less than 96
+  let edge be hit.offset is less than 400 or hit.offset is greater than 3696
+  match hit.tile
+    when Brick then
+      return if seam then Colour(red: 90, green: 80, blue: 70)
+      otherwise Colour(red: 170, green: 70, blue: 50)
+      end
+    when Wood then
+      return if seam then Colour(red: 80, green: 50, blue: 25)
+      otherwise Colour(red: 140, green: 95, blue: 55)
+      end
+    when Door then
+      return if edge then Colour(red: 40, green: 60, blue: 90)
+      otherwise Colour(red: 70, green: 120, blue: 190)
+      end
+    when Exit then return Colour(red: 60, green: 230, blue: 100)
+    otherwise return Colour(red: 130, green: 130, blue: 140)
+  end
+end
+
+function walls(state: State) returns Walls
+  purpose: One wall column per screen column, and the distance of each for the sprites to test.
+
+  let mutable columns: List of Shape be []
+  let mutable depths: List of Integer be []
+  for each column from 0 to shapes.screen_width - 1
+    let ray be raycast.ray_for(
+      angle: state.hero.angle,
+      column: column,
+      columns: shapes.screen_width
+    )
+    let hit be raycast.cast(maze: state.maze, origin: state.hero.position, ray: ray)
+    change columns to columns.append(wall_strip(hit: hit, column: column))
+    change depths to depths.append(hit.distance)
+  end
+  return Walls(columns: columns, depths: depths)
+end
+
+public function wall_strip(hit: Hit, column: Integer) returns Shape
+  purpose: The Column a ray's hit draws: its height from the distance, its colour shaded.
+  example: wall_strip(hit: Hit(distance: 8192, tile: Exit, side: AcrossX, offset: 0), column: 7)
+    is Column(screen_x: 7, top: 50, bottom: 149, colour: Colour(red: 51, green: 197, blue: 86))
+
+  let span be wall_span(hit.distance)
+  let percent be shade_for(distance: hit.distance, side: hit.side)
+  let colour be shapes.shaded(colour: wall_colour(hit), percent: percent)
+  return Column(screen_x: column, top: span.top, bottom: span.bottom, colour: colour)
+end
+
+type Sprite
+  purpose: An enemy as the camera sees it: its depth, its centre column and its height in rows.
+  has depth: Integer
+  has centre: Integer
+  has height: Integer
+end
+
+function projected(origin: Vector, angle: Integer, enemy: Enemy) returns Sprite
+  purpose: Where an enemy lands on the screen: depth along the facing, column from the side offset.
+
+  let seen be raycast.seen_from(origin: origin, angle: angle, point: enemy.position)
+  if seen.dx is less than 512 then return Sprite(depth: seen.dx, centre: 0, height: 0) end
+  let centre be raycast.column_of(seen: seen, columns: shapes.screen_width)
+  let height be height_at(seen.dx)
+  return Sprite(depth: seen.dx, centre: centre, height: height)
+end
+
+function figure(enemy: Enemy, sprite: Sprite, depths: List of Integer) returns List of Shape
+  purpose: The columns of one enemy that are nearer than the wall behind them.
+
+  let mutable drawn: List of Shape be []
+  if sprite.height is 0 then return drawn end
+  let floor_row be horizon + sprite.height.quotient(2)
+  let half_width be (sprite.height * 3).quotient(10).at_least(1)
+  let leftmost be (sprite.centre - half_width).at_least(0)
+  let rightmost be (sprite.centre + half_width).at_most(shapes.screen_width - 1)
+  if leftmost is greater than rightmost then return drawn end
+  for each column from leftmost to rightmost
+    let wall be depths.at(column) otherwise 0
+    if sprite.depth is at least wall then continue end
+    let across be ((column - sprite.centre).absolute() * 100).quotient(half_width)
+    change drawn to drawn.append_all(
+      slice_of(
+        enemy: enemy,
+        height: sprite.height,
+        floor_row: floor_row,
+        column: column,
+        across: across
+      )
+    )
+  end
+  return drawn
+end
+
+function slice_of(
+  enemy: Enemy,
+  height: Integer,
+  floor_row: Integer,
+  column: Integer,
+  across: Integer
+)
+  returns List of Shape
+  purpose: The columns of an enemy at a distance from its centre, in percent of its half width.
+
+  let shade be if enemy.flash is greater than 0 then 220 otherwise 100 end
+  let body be shapes.shaded(colour: Colour(red: 255, green: 90, blue: 60), percent: shade)
+  let skin be shapes.shaded(colour: Colour(red: 250, green: 215, blue: 170), percent: shade)
+  let bottom be floor_row.at_most(shapes.screen_height - 1)
+  if not enemies.is_alive(enemy) then
+    let corpse be Colour(red: 90, green: 20, blue: 20)
+    return [
+      Column(
+        screen_x: column,
+        top: (floor_row - height.quotient(10)).at_least(0),
+        bottom: bottom,
+        colour: corpse
+      )
+    ]
+  end
+  let shoulders be (floor_row - (height * 6).quotient(10)).at_least(0)
+  let crown be (floor_row - (height * 8).quotient(10)).at_least(0)
+  if across is less than 35 then
+    let torso be Column(screen_x: column, top: shoulders, bottom: bottom, colour: body)
+    return [Column(screen_x: column, top: crown, bottom: shoulders, colour: skin), torso]
+  end
+  if across is less than 85 then
+    return [Column(screen_x: column, top: shoulders, bottom: bottom, colour: body)]
+  end
+  return []
+end
+
+function hud(state: State) returns List of Shape
+  purpose: The status bar, the crosshair, the weapon and the notice of the moment.
+
+  let white be Colour(red: 255, green: 255, blue: 255)
+  let gold be Colour(red: 255, green: 210, blue: 60)
+  let bar be Rectangle(
+    screen_x: 0,
+    screen_y: 186,
+    width: 320,
+    height: 14,
+    colour: Colour(red: 0, green: 0, blue: 0)
+  )
+  let gun be Rectangle(
+    screen_x: 150,
+    screen_y: 160,
+    width: 20,
+    height: 26,
+    colour: Colour(red: 60, green: 60, blue: 70)
+  )
+  let health be Label(screen_x: 4, screen_y: 190, text: "HEALTH {state.hero.health}", colour: white)
+  let score be Label(screen_x: 120, screen_y: 190, text: "SCORE {state.score}", colour: gold)
+  let left be Label(
+    screen_x: 228,
+    screen_y: 190,
+    text: "ENEMIES {game.remaining(state)}",
+    colour: white
+  )
+  let notice be Label(screen_x: 4, screen_y: 2, text: banner(state), colour: gold)
+  let aim be Label(screen_x: 158, screen_y: 98, text: "+", colour: white)
+  let mutable drawn: List of Shape be [gun]
+  if state.muzzle is greater than 0 then
+    change drawn to drawn.append(
+      Rectangle(screen_x: 152, screen_y: 148, width: 16, height: 12, colour: gold)
+    )
+  end
+  return drawn.append_all([bar, health, score, left, notice, aim])
+end
+
+function banner(state: State) returns Text
+  purpose: The text at the top of the screen: the end of the game, or the latest notice.
+
+  match state.status
+    when Escaped then return "YOU ESCAPED - FINAL SCORE {state.score}"
+    when Fallen then return "YOU DIED - FINAL SCORE {state.score}"
+    when Quit then return "GAME OVER"
+    when Playing then return state.notice
+  end
+end
+
+function backdrop() returns List of Shape
+  purpose: The sky above the horizon and the floor below it.
+
+  let sky be Colour(red: 20, green: 20, blue: 32)
+  let ground be Colour(red: 50, green: 44, blue: 38)
+  return [
+    Rectangle(screen_x: 0, screen_y: 0, width: 320, height: horizon, colour: sky),
+    Rectangle(screen_x: 0, screen_y: horizon, width: 320, height: horizon, colour: ground)
+  ]
+end
+
+public function render(state: State) returns List of Shape
+  purpose: The frame to draw for a state, back to front: sky and floor, walls, enemies, HUD.
+
+  let built be walls(state)
+  let mutable frame be backdrop().append_all(built.columns)
+  let origin be state.hero.position
+  let angle be state.hero.angle
+  for each enemy in state.crowd
+    sorted by projected(origin: origin, angle: angle, enemy: enemy).depth descending
+    let sprite be projected(origin: origin, angle: angle, enemy: enemy)
+    change frame to frame.append_all(figure(enemy: enemy, sprite: sprite, depths: built.depths))
+  end
+  return frame.append_all(hud(state))
+end
+
+function wall_columns(frame: List of Shape) returns List of Integer
+  purpose: The screen columns of the Column shapes of a frame, in order.
+
+  let mutable found: List of Integer be []
+  for each shape in frame
+    match shape
+      when Column(screen_x) then change found to found.append(screen_x)
+      otherwise continue
+    end
+  end
+  return found
+end
+
+test "a frame has the sky, the floor and one wall column per screen column, in order"
+  let state be game.new_game(["#####", "#S..#", "#####"])
+  let frame be render(state)
+  let expected be for each column from 0 to 319 collect column
+  check wall_columns(frame) is expected
+  check frame.at(0) is Rectangle(
+    screen_x: 0,
+    screen_y: 0,
+    width: 320,
+    height: 100,
+    colour: Colour(red: 20, green: 20, blue: 32)
+  )
+end
+
+test "an enemy in view adds its columns; one behind a wall adds none"
+  let open_state be game.new_game(["#######", "#S..E.#", "#######"])
+  let hidden_state be game.new_game(["#######", "#S.#E.#", "#######"])
+  check wall_columns(render(open_state)).length() is greater than 320
+  check wall_columns(render(hidden_state)).length() is 320
+end

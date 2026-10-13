@@ -1,0 +1,139 @@
+module text_view
+  purpose: A software rasterizer for development: a frame of shapes sampled into a character grid.
+
+import shapes exposing Colour, Shape
+
+let ramp: List of Text be [" ", ".", ":", "-", "=", "+", "*", "#", "%", "@"]
+  purpose: The characters from dark to bright that stand for a colour.
+
+public function glyph(colour: Colour) returns Text
+  purpose: The character for the brightness of a colour, by the luma weights of Rec. 601.
+  example: glyph(Colour(red: 0, green: 0, blue: 0)) is " "
+  example: glyph(Colour(red: 255, green: 255, blue: 255)) is "@"
+  example: glyph(Colour(red: 128, green: 128, blue: 128)) is "+"
+
+  let luma be (colour.red * 299 + colour.green * 587 + colour.blue * 114).quotient(1000)
+  return ramp.at((luma * ramp.length()).quotient(256)) otherwise "@"
+end
+
+public function cells_covering(start: Integer, stop: Integer, size: Integer, limit: Integer)
+  returns Range
+  purpose: The cells of the size whose sample point, the cell's middle, lies from start to stop.
+  example: cells_covering(start: 0, stop: 3, size: 4, limit: 80).to_list() is [0]
+  example: cells_covering(start: 3, stop: 9, size: 4, limit: 80).to_list() is [1]
+  example: cells_covering(start: 0, stop: 199, size: 5, limit: 40).length() is 40
+  example: cells_covering(start: 5, stop: 6, size: 5, limit: 40).length() is 0
+
+  let middle be size.quotient(2)
+  let low be (start - middle + size - 1).at_least(0).quotient(size)
+  let high be (stop - middle).quotient(size).at_most(limit - 1)
+  if stop is less than middle then return from 1 to 0 end
+  return from low to high
+end
+
+public function text_view(frame: List of Shape, columns: Integer, rows: Integer) returns Text
+  purpose: The frame drawn into a grid of characters, each the sample of a 320 by 200 screen cell.
+  example: text_view(
+    frame: [
+      Rectangle(
+        screen_x: 0,
+        screen_y: 0,
+        width: 320,
+        height: 200,
+        colour: Colour(red: 255, green: 255, blue: 255)
+      )
+    ],
+    columns: 2,
+    rows: 1
+  ) is "@@"
+
+  let cell_width be shapes.screen_width.quotient(columns)
+  let cell_height be shapes.screen_height.quotient(rows)
+  let mutable grid be " ".repeat(columns * rows).characters()
+  for each shape in frame
+    match shape
+      when Column(screen_x, top, bottom, colour) then
+        let across be cells_covering(
+          start: screen_x,
+          stop: screen_x,
+          size: cell_width,
+          limit: columns
+        )
+        let down be cells_covering(start: top, stop: bottom, size: cell_height, limit: rows)
+        change grid to painted(
+          grid: grid,
+          width: columns,
+          across: across,
+          down: down,
+          symbol: glyph(colour)
+        )
+      when Rectangle(screen_x, screen_y, width, height, colour) then
+        let across be cells_covering(
+          start: screen_x,
+          stop: screen_x + width - 1,
+          size: cell_width,
+          limit: columns
+        )
+        let down be cells_covering(
+          start: screen_y,
+          stop: screen_y + height - 1,
+          size: cell_height,
+          limit: rows
+        )
+        change grid to painted(
+          grid: grid,
+          width: columns,
+          across: across,
+          down: down,
+          symbol: glyph(colour)
+        )
+      when Label(screen_x, screen_y, text) then
+        change grid to lettered(
+          grid: grid,
+          width: columns,
+          column: screen_x.quotient(cell_width),
+          row: screen_y.quotient(cell_height),
+          text: text
+        )
+    end
+  end
+  let lines be
+    for each row from 0 to rows - 1
+    collect grid.slice_text(start: row * columns, stop: row * columns + columns)
+  return lines.join("\n")
+end
+
+function painted(grid: List of Text, width: Integer, across: Range, down: Range, symbol: Text)
+  returns List of Text
+  purpose: The grid with every cell of the block of columns and rows set to the symbol.
+
+  let mutable result be grid
+  for each row in down
+    for each column in across
+      change result to result.with_at(index: row * width + column, item: symbol)
+    end
+  end
+  return result
+end
+
+function lettered(grid: List of Text, width: Integer, column: Integer, row: Integer, text: Text)
+  returns List of Text
+  purpose: The grid with the text written from a cell to the right, clipped at the end of its row.
+
+  let mutable result be grid
+  if row * width + column is at least grid.length() then return result end
+  for each letter, place in text.characters().with_index()
+    if column + place is at least width then break end
+    change result to result.with_at(index: row * width + column + place, item: letter)
+  end
+  return result
+end
+
+test "a column lands in the cells its sample points fall in, under a label"
+  let white be Colour(red: 255, green: 255, blue: 255)
+  let frame be [
+    Column(screen_x: 120, top: 0, bottom: 99, colour: white),
+    Label(screen_x: 0, screen_y: 150, text: "HI", colour: white)
+  ]
+  check text_view(frame: frame, columns: 4, rows: 2) is " @  \nHI  "
+end

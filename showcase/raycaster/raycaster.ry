@@ -1,0 +1,118 @@
+module raycaster
+  purpose: Play the maze without a screen: scripted input, frames printed as text, the final score.
+
+import game exposing State, Status
+import input exposing Input
+import fixed
+import level
+import std.console
+import std.environment
+import text_view
+import view
+
+let frame_ms: Integer be 64
+  purpose: The milliseconds one scripted frame lasts: about fifteen frames a second.
+
+let demo_moves: List of Text be [
+  "F5 R8 F22",
+  "L3 S1 W5 S1 W5",
+  "R3 F6 L8 F5 R8 F30",
+  "L8 S1 W5 S1 W5 S1 W5",
+  "F45 R8 F5 L8 F50"
+]
+  purpose: The demo in five legs: open a door, shoot, cross a room, shoot again, run for the exit.
+
+function demo_script() returns List of Text
+  purpose: The demo's moves one by one, each a key and a frame count (F forward, L and R turn, ...).
+
+  return demo_moves.join(" ").split(" ")
+end
+
+public function controls_for(key: Text) returns Input
+  purpose: The input of one scripted frame for a key; an unknown key waits.
+  example: controls_for("F").forward is true
+  example: controls_for("S").fire is true
+  example: controls_for("?").forward is false
+
+  let idle be input.idle(frame_ms)
+  match key
+    when "F" then return idle with forward: true
+    when "B" then return idle with backward: true
+    when "L" then return idle with turn_left: true
+    when "R" then return idle with turn_right: true
+    when "S" then return idle with fire: true
+    when "Q" then return idle with quit: true
+    otherwise return idle
+  end
+end
+
+public function expanded(script: List of Text) returns List of Input
+  purpose: One input per frame for a script of moves such as F4 (forward for four frames) or S.
+  example: expanded(["F2", "S"]).length() is 3
+  example: expanded(["L3"]).at(2) is controls_for("L")
+
+  let mutable frames: List of Input be []
+  for each move in script
+    let times be move.drop(1).to_integer() otherwise 1
+    for each key in move.take(1).repeat(times).characters()
+      change frames to frames.append(controls_for(key))
+    end
+  end
+  return frames
+end
+
+function summary(state: State, frame_number: Integer) returns Text
+  purpose: One line on a frame: its number, the player's cell and facing, health, score and status.
+
+  let cell_x be fixed.cell_of(state.hero.position.dx)
+  let cell_y be fixed.cell_of(state.hero.position.dy)
+  let place be "frame {frame_number}: cell {cell_x},{cell_y} angle {state.hero.angle}"
+  let tally be "health {state.hero.health} score {state.score} enemies {game.remaining(state)}"
+  return "{place} {tally} {state.status} ({state.notice})"
+end
+
+function show(state: State, frame_number: Integer) needs console
+  purpose: Print a frame as text with its summary line.
+
+  console.print(text_view.text_view(frame: view.render(state), columns: 80, rows: 40))
+  console.print(summary(state: state, frame_number: frame_number))
+end
+
+function play(script: List of Text, every: Integer, draw: Boolean) needs console
+  purpose: Play a script from the start of the level, showing every n-th frame and the last.
+
+  let frames be expanded(script)
+  let mutable state be game.new_game(level.maze_rows)
+  let mutable number be 0
+  for each controls in frames
+    if state.status is not Playing then break end
+    change state to game.step(state: state, controls: controls)
+    change number to number + 1
+    if number remainder every is 0 and draw then show(state: state, frame_number: number) end
+    if number remainder every is 0 and not draw then
+      console.print(summary(state: state, frame_number: number))
+    end
+  end
+  show(state: state, frame_number: number)
+  console.print("final score {state.score}: {state.status}")
+end
+
+public function main() needs console, environment
+  purpose: Run `demo`, `trace` (one line a frame) or `steps F4 R8 S ...`; nothing shows the start.
+
+  let arguments be environment.arguments()
+  let mode be arguments.at(0) otherwise "start"
+  match mode
+    when "demo" then play(script: demo_script(), every: 20, draw: true)
+    when "trace" then play(script: demo_script(), every: 1, draw: false)
+    when "steps" then play(script: arguments.drop(1), every: 1, draw: false)
+    otherwise show(state: game.new_game(level.maze_rows), frame_number: 0)
+  end
+end
+
+test "the demo script reaches the exit with two enemies down"
+  let final be game.played(state: game.new_game(level.maze_rows), frames: expanded(demo_script()))
+  check final.status is Escaped
+  check game.remaining(final) is 4
+  check final.score is 1220
+end

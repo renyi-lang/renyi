@@ -1,0 +1,100 @@
+module fixed
+  purpose: Fixed-point arithmetic for the game: one map cell is 4096 units, a full turn 4096 steps.
+
+public let unit: Integer be 4096
+  purpose: The fixed-point scale: one map cell, and the value 1.0 of a sine or a cosine.
+
+public let full_turn: Integer be 4096
+  purpose: The number of angle steps in a full turn; a quarter turn is 1024.
+
+let quarter: Integer be 1024
+  purpose: The number of angle steps in a quarter turn.
+
+let quarter_sines: List of Integer be build_quarter_sines()
+  purpose: The sine of every angle step from 0 to a quarter turn, scaled by the unit.
+
+function build_quarter_sines() returns List of Integer
+  purpose: The table of quarter_sines, computed once by a Taylor series in Float.
+
+  let mutable table: List of Integer be []
+  for each step from 0 to quarter
+    let radians be step.to_float() * 1.5707963267948966 / quarter.to_float()
+    let scaled be taylor_sine(radians) * unit.to_float() + 0.5
+    change table to table.append(scaled.truncated())
+  end
+  return table
+end
+
+function taylor_sine(radians: Float) returns Float
+  purpose: The sine of an angle from 0 to a right angle, by its Taylor series to the 15th power.
+
+  let square be radians * radians
+  let mutable term be radians
+  let mutable total be radians
+  for each order from 1 to 7
+    let divisor be (2 * order * (2 * order + 1)).to_float()
+    change term to 0.0 - term * square / divisor
+    change total to total + term
+  end
+  return total
+end
+
+public function wrap_angle(angle: Integer) returns Integer
+  purpose: The angle brought into the range 0 to a full turn, exclusive.
+  example: wrap_angle(4100) is 4
+  example: wrap_angle(-1) is 4095
+
+  let rest be angle remainder full_turn
+  if rest is less than 0 then return rest + full_turn end
+  return rest
+end
+
+public function sine(angle: Integer) returns Integer
+  purpose: The sine of an angle in steps, scaled by the unit.
+  example: sine(0) is 0
+  example: sine(1024) is 4096
+  example: sine(2048) is 0
+  example: sine(3072) is -4096
+  example: sine(512) is 2896
+
+  let turned be wrap_angle(angle)
+  let half_turn_part be turned remainder (2 * quarter)
+  let folded be
+    if half_turn_part is greater than quarter then 2 * quarter - half_turn_part
+    otherwise half_turn_part
+    end
+  let magnitude be quarter_sines.at(folded) otherwise 0
+  if turned is at least 2 * quarter then return 0 - magnitude end
+  return magnitude
+end
+
+public function cosine(angle: Integer) returns Integer
+  purpose: The cosine of an angle in steps, scaled by the unit.
+  example: cosine(0) is 4096
+  example: cosine(2048) is -4096
+  example: cosine(1024) is 0
+
+  return sine(angle + quarter)
+end
+
+public function multiply(left: Integer, right: Integer) returns Integer
+  purpose: The product of two fixed-point values, rounded toward zero.
+  example: multiply(left: 8192, right: 2048) is 4096
+
+  return (left * right).quotient(unit)
+end
+
+public function divide(dividend: Integer, divisor: Integer) returns Integer
+  purpose: The quotient of two fixed-point values, rounded toward zero.
+  example: divide(dividend: 4096, divisor: 8192) is 2048
+
+  return (dividend * unit).quotient(divisor)
+end
+
+public function cell_of(position: Integer) returns Integer
+  purpose: The map cell a non-negative fixed-point coordinate lies in.
+  example: cell_of(4095) is 0
+  example: cell_of(4096) is 1
+
+  return position.quotient(unit)
+end

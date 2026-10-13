@@ -1,0 +1,118 @@
+module level
+  purpose: The maze: its tiles, its text rows, and where the player and the enemies start.
+
+public type Tile is one of
+  purpose: What fills one cell of the map.
+  Floor
+  Stone
+  Brick
+  Wood
+  Door
+  Exit
+  can ToText
+end
+
+public type Cell
+  purpose: The column and row of one map cell.
+  has column: Integer
+  has row: Integer
+  can ToText
+end
+
+public type Level
+  purpose: A parsed map: the tiles row by row, the start of the player and the enemies.
+  has width: Integer
+  has height: Integer
+  has tiles: List of Tile
+  has start: Cell
+  has enemy_cells: List of Cell
+end
+
+public let maze_rows: List of Text be [
+  "####################",
+  "#S...#......B......#",
+  "#....#..E...B...E..#",
+  "#....D......BBB.BBB#",
+  "#....#.............#",
+  "##D######WWDWW#D####",
+  "#......#W....W#....#",
+  "#..E...#W..E.W#..E.#",
+  "#......D.....W#....#",
+  "#......#WWWWWW#....#",
+  "###D####......D....#",
+  "#.......E.....######",
+  "#..BB....BB........X",
+  "####################"
+]
+  purpose: The level of the showcase: # stone, B brick, W wood, D door, X exit, S start, E enemy.
+
+public function tile_of(symbol: Text) returns Tile
+  purpose: The tile a map symbol stands for; the start and the enemies stand on floor.
+  example: tile_of("#") is Stone
+  example: tile_of("E") is Floor
+  example: tile_of("D") is Door
+
+  match symbol
+    when "#" then return Stone
+    when " " then return Stone
+    when "B" then return Brick
+    when "W" then return Wood
+    when "D" then return Door
+    when "X" then return Exit
+    otherwise return Floor
+  end
+end
+
+public function parse_level(rows: List of Text) returns Level
+  purpose: The level drawn by the rows; short rows are padded with stone, the start defaults to 1,1.
+  example: parse_level(["###", "#S#", "###"]).start is Cell(column: 1, row: 1)
+  example: parse_level(["#E", "#"]).tiles is [Stone, Floor, Stone, Stone]
+
+  let width be for each line in rows collect line.length()
+  let widest be width.largest() otherwise 0
+  let mutable tiles: List of Tile be []
+  let mutable start be Cell(column: 1, row: 1)
+  let mutable enemies: List of Cell be []
+  for each line, row in rows.with_index()
+    let symbols be line.pad_right(widest).characters()
+    for each symbol, column in symbols.with_index()
+      change tiles to tiles.append(tile_of(symbol))
+      if symbol is "S" then change start to Cell(column: column, row: row) end
+      if symbol is "E" then change enemies to enemies.append(Cell(column: column, row: row)) end
+    end
+  end
+  return Level(
+    width: widest,
+    height: rows.length(),
+    tiles: tiles,
+    start: start,
+    enemy_cells: enemies
+  )
+end
+
+public function tile_at(level: Level, column: Integer, row: Integer) returns Tile
+  purpose: The tile of a cell; every cell outside the map is stone.
+  example: tile_at(level: parse_level(["#.", ".D"]), column: 1, row: 1) is Door
+  example: tile_at(level: parse_level(["#."]), column: 5, row: 0) is Stone
+
+  if column is less than 0 or row is less than 0 then return Stone end
+  if column is at least level.width or row is at least level.height then return Stone end
+  return level.tiles.at(row * level.width + column) otherwise Stone
+end
+
+public function is_solid(tile: Tile) returns Boolean
+  purpose: Whether a tile stops movement and rays; only floor lets both through.
+  example: is_solid(Floor) is false
+  example: is_solid(Door) is true
+
+  return tile is not Floor
+end
+
+public function opened(level: Level, cell: Cell) returns Level
+  purpose: The level with the door at the cell replaced by floor; any other tile is left alone.
+  example: opened(level: parse_level(["#D"]), cell: Cell(column: 1, row: 0)).tiles is [Stone, Floor]
+
+  if tile_at(level: level, column: cell.column, row: cell.row) is not Door then return level end
+  let index be cell.row * level.width + cell.column
+  return level with tiles: level.tiles.with_at(index: index, item: Floor)
+end

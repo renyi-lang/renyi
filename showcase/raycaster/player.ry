@@ -1,0 +1,132 @@
+module player
+  purpose: The player: position, facing, health, and movement with collision against the walls.
+
+import fixed
+import input exposing Input
+import level exposing Level, Cell
+import raycast exposing Vector
+
+public type Player
+  purpose: Where the player stands, which way they face (in angle steps) and their health.
+  has position: Vector
+  has angle: Integer
+  has health: Integer
+  can ToText
+end
+
+public type Moved
+  purpose: A position after a move, and the solid cell the body walked into, if any.
+  has position: Vector
+  has bumped: maybe Cell
+end
+
+let radius: Integer be 1024
+  purpose: How close the player may come to a wall: a quarter of a cell.
+
+let longest_frame: Integer be 100
+  purpose: The most milliseconds one frame may move the player, so no wall is skipped.
+
+public function turned(player: Player, controls: Input) returns Player
+  purpose: The player turned by the held keys, two angle steps per millisecond.
+
+  let elapsed be controls.elapsed_ms.at_least(0).at_most(longest_frame)
+  let mutable angle be player.angle
+  if controls.turn_left then change angle to angle - 2 * elapsed end
+  if controls.turn_right then change angle to angle + 2 * elapsed end
+  return player with angle: fixed.wrap_angle(angle)
+end
+
+public function stride(player: Player, controls: Input) returns Vector
+  purpose: The offset the held keys ask for this frame: three cells a second along the facing.
+  example: stride(
+    player: Player(position: Vector(dx: 0, dy: 0), angle: 0, health: 100),
+    controls: input.idle(100) with forward: true
+  ) is Vector(dx: 1228, dy: 0)
+
+  let elapsed be controls.elapsed_ms.at_least(0).at_most(longest_frame)
+  let mutable sense be 0
+  if controls.forward then change sense to sense + 1 end
+  if controls.backward then change sense to sense - 1 end
+  let ahead be raycast.facing(player.angle)
+  return Vector(
+    dx: (ahead.dx * elapsed * 3 * sense).quotient(1000),
+    dy: (ahead.dy * elapsed * 3 * sense).quotient(1000)
+  )
+end
+
+function probe(coordinate: Integer, change_by: Integer) returns Integer
+  purpose: The point a body's edge reaches when it moves along one axis by the change.
+
+  if change_by is less than 0 then return coordinate + change_by - radius end
+  return coordinate + change_by + radius
+end
+
+public function moved(maze: Level, origin: Vector, offset: Vector) returns Moved
+  purpose: A body at the origin moved by the offset, one axis at a time, stopped by solid tiles.
+
+  let mutable position be origin
+  let mutable bumped: maybe Cell be nothing
+  if offset.dx is not 0 then
+    let edge be Cell(
+      column: fixed.cell_of(probe(coordinate: position.dx, change_by: offset.dx)),
+      row: fixed.cell_of(position.dy)
+    )
+    if blocked(maze: maze, cell: edge) then
+      change bumped to edge
+    otherwise
+      change position to position with dx: position.dx + offset.dx
+    end
+  end
+  if offset.dy is not 0 then
+    let edge be Cell(
+      column: fixed.cell_of(position.dx),
+      row: fixed.cell_of(probe(coordinate: position.dy, change_by: offset.dy))
+    )
+    if blocked(maze: maze, cell: edge) then
+      change bumped to edge
+    otherwise
+      change position to position with dy: position.dy + offset.dy
+    end
+  end
+  return Moved(position: position, bumped: bumped)
+end
+
+function blocked(maze: Level, cell: Cell) returns Boolean
+  purpose: Whether the tile of a cell stops the player.
+
+  return level.is_solid(level.tile_at(level: maze, column: cell.column, row: cell.row))
+end
+
+test "walking into a wall stops short of it and names the cell"
+  let maze be level.parse_level(["####", "#..#", "####"])
+  let start be Player(position: Vector(dx: 10240, dy: 6144), angle: 0, health: 100)
+  let result be moved(maze: maze, origin: start.position, offset: Vector(dx: 1024, dy: 0))
+  check result.position is start.position
+  check result.bumped is Cell(column: 3, row: 1)
+end
+
+test "walking along a corridor moves freely"
+  let maze be level.parse_level(["#####", "#...#", "#####"])
+  let start be Player(position: Vector(dx: 6144, dy: 6144), angle: 0, health: 100)
+  let result be moved(maze: maze, origin: start.position, offset: Vector(dx: 2048, dy: 0))
+  check result.position is Vector(dx: 8192, dy: 6144)
+  check result.bumped is nothing
+end
+
+test "sliding along a wall keeps the free axis"
+  let maze be level.parse_level(["#####", "#...#", "#...#", "#####"])
+  let start be Player(position: Vector(dx: 6144, dy: 5200), angle: 0, health: 100)
+  let result be moved(maze: maze, origin: start.position, offset: Vector(dx: 1000, dy: -1000))
+  check result.position is Vector(dx: 7144, dy: 5200)
+  check result.bumped is Cell(column: 1, row: 0)
+end
+
+test "turning and striding follow the held keys and the elapsed time"
+  let start be Player(position: Vector(dx: 0, dy: 0), angle: 0, health: 100)
+  check turned(player: start, controls: input.idle(10) with turn_right: true).angle is 20
+  check turned(player: start, controls: input.idle(10) with turn_left: true).angle is 4076
+  let ahead be stride(player: start, controls: input.idle(100) with forward: true)
+  check ahead is Vector(dx: 1228, dy: 0)
+  let capped be stride(player: start, controls: input.idle(5000) with backward: true)
+  check capped is Vector(dx: -1228, dy: 0)
+end

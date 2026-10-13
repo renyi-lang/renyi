@@ -1,0 +1,44 @@
+module shapes
+  purpose: The drawing primitives a frame is made of, on a logical screen of 320 by 200.
+
+public type Colour
+  purpose: A colour as three channels from 0 to 255.
+  has red: Integer
+  has green: Integer
+  has blue: Integer
+  can ToText
+end
+
+public type Shape is one of
+  purpose: One drawing primitive; a frame is a list of them drawn in order.
+  Column(screen_x: Integer, top: Integer, bottom: Integer, colour: Colour)
+  Rectangle(screen_x: Integer, screen_y: Integer, width: Integer, height: Integer, colour: Colour)
+  Label(screen_x: Integer, screen_y: Integer, text: Text, colour: Colour)
+  can ToText
+end
+
+public let screen_width: Integer be 320
+  purpose: The width of the logical screen in columns.
+
+public let screen_height: Integer be 200
+  purpose: The height of the logical screen in rows.
+
+public function shaded(colour: Colour, percent: Integer) returns Colour
+  purpose: The colour with each channel scaled to the given percentage, clamped to 0 to 255.
+  example: shaded(colour: Colour(red: 200, green: 100, blue: 50), percent: 50)
+    is Colour(red: 100, green: 50, blue: 25)
+  example: shaded(colour: Colour(red: 200, green: 100, blue: 50), percent: 200)
+    is Colour(red: 255, green: 200, blue: 100)
+
+  return Colour(
+    red: scale_channel(channel: colour.red, percent: percent),
+    green: scale_channel(channel: colour.green, percent: percent),
+    blue: scale_channel(channel: colour.blue, percent: percent)
+  )
+end
+
+function scale_channel(channel: Integer, percent: Integer) returns Integer
+  purpose: One channel scaled to a percentage and clamped to 0 to 255.
+
+  return (channel * percent).quotient(100).at_least(0).at_most(255)
+end

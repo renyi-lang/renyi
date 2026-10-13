@@ -1,0 +1,215 @@
+module game
+  purpose: The state of a game and one frame of its simulation, a pure function of state and input.
+
+import enemies exposing Enemy
+import fixed
+import input exposing Input
+import level exposing Level, Cell, Tile
+import player exposing Player
+import raycast exposing Vector
+
+public type Status is one of
+  purpose: Whether the game goes on, and how it ended.
+  Playing
+  Escaped
+  Fallen
+  Quit
+  can ToText
+end
+
+public type State
+  purpose: Everything a frame needs: the maze, the player, the enemies, the score and the timers.
+  has maze: Level
+  has hero: Player
+  has crowd: List of Enemy
+  has score: Integer
+  has status: Status
+  has reload: Integer
+  has muzzle: Integer
+  has hurt: Integer
+  has notice: Text
+  has clock: Integer
+end
+
+let reload_time: Integer be 350
+  purpose: The milliseconds between two shots.
+
+public function new_game(rows: List of Text) returns State
+  purpose: A game on the level drawn by the rows: full health, no score, facing east.
+  example: new_game(["###", "#S#", "###"]).hero.position is Vector(dx: 6144, dy: 6144)
+
+  let maze be level.parse_level(rows)
+  let crowd be for each cell in maze.enemy_cells collect enemies.spawn(cell)
+  let centre be fixed.unit.quotient(2)
+  let start be Vector(
+    dx: maze.start.column * fixed.unit + centre,
+    dy: maze.start.row * fixed.unit + centre
+  )
+  return State(
+    maze: maze,
+    hero: Player(position: start, angle: 0, health: 100),
+    crowd: crowd,
+    score: 0,
+    status: Playing,
+    reload: 0,
+    muzzle: 0,
+    hurt: 0,
+    notice: "FIND THE GREEN EXIT",
+    clock: 0
+  )
+end
+
+public function step(state: State, controls: Input) returns State
+  purpose: One frame: turn and move the player, open doors, shoot, then let the enemies act.
+
+  if state.status is not Playing then return state end
+  if controls.quit then return state with status: Quit end
+  let elapsed be controls.elapsed_ms.at_least(0).at_most(100)
+  let reload be (state.reload - elapsed).at_least(0)
+  let muzzle be (state.muzzle - elapsed).at_least(0)
+  let hurt be (state.hurt - elapsed).at_least(0)
+  let timed be state with reload: reload, muzzle: muzzle, hurt: hurt, clock: state.clock + elapsed
+  let walked be walk(state: timed, controls: controls)
+  if walked.status is not Playing then return walked end
+  let shot be if controls.fire then fire(walked) otherwise walked end
+  return enemies_act(state: shot, elapsed: elapsed)
+end
+
+function walk(state: State, controls: Input) returns State
+  purpose: The player turned and moved; walking into a door opens it, into the exit wins.
+
+  let facing be player.turned(player: state.hero, controls: controls)
+  let offset be player.stride(player: facing, controls: controls)
+  let result be player.moved(maze: state.maze, origin: facing.position, offset: offset)
+  let moved be state with hero: (facing with position: result.position)
+  let cell be result.bumped otherwise return moved
+  return bumped_into(state: moved, cell: cell)
+end
+
+function bumped_into(state: State, cell: Cell) returns State
+  purpose: What walking into a solid cell does: a door opens, the exit wins, a wall does nothing.
+
+  match level.tile_at(level: state.maze, column: cell.column, row: cell.row)
+    when Door then return opened(state: state, cell: cell)
+    when Exit then
+      let score be state.score + state.hero.health * 10
+      return state with status: Escaped, score: score, notice: "YOU ESCAPED"
+    otherwise return state
+  end
+end
+
+function opened(state: State, cell: Cell) returns State
+  purpose: The state with the door at the cell opened and a notice saying so.
+
+  return state with maze: level.opened(level: state.maze, cell: cell), notice: "A DOOR OPENS"
+end
+
+function fire(state: State) returns State
+  purpose: A shot along the facing when the weapon is ready: a hit scores 10, a kill 100.
+
+  if state.reload is greater than 0 then return state end
+  let fired be state with reload: reload_time, muzzle: 120
+  let ray be raycast.facing(state.hero.angle)
+  let wall be raycast.cast(maze: state.maze, origin: state.hero.position, ray: ray)
+  let index be enemies.target_of(
+    crowd: state.crowd,
+    origin: state.hero.position,
+    angle: state.hero.angle,
+    wall: wall.distance
+  ) otherwise return fired
+  let enemy be state.crowd.at(index) otherwise return fired
+  let hit be enemies.wounded(enemy)
+  let gained be if enemies.is_alive(hit) then 10 otherwise 100 end
+  let notice be if enemies.is_alive(hit) then "HIT" otherwise "ENEMY DOWN" end
+  let crowd be state.crowd.with_at(index: index, item: hit)
+  return fired with crowd: crowd, score: state.score + gained, notice: notice
+end
+
+function enemies_act(state: State, elapsed: Integer) returns State
+  purpose: Every enemy takes its frame; bites lower the player's health, and zero health loses.
+
+  let mutable crowd: List of Enemy be []
+  let mutable damage be 0
+  for each enemy in state.crowd
+    let result be enemies.advance(
+      maze: state.maze,
+      enemy: enemy,
+      target: state.hero.position,
+      elapsed: elapsed
+    )
+    change crowd to crowd.append(result.enemy)
+    change damage to damage + result.damage
+  end
+  let health be (state.hero.health - damage).at_least(0)
+  let after be state with crowd: crowd, hero: (state.hero with health: health)
+  if damage is 0 then return after end
+  if health is 0 then return after with status: Fallen, hurt: 300, notice: "YOU DIED" end
+  return after with hurt: 300, notice: "OUCH"
+end
+
+public function remaining(state: State) returns Integer
+  purpose: How many enemies still stand.
+  example: remaining(new_game(["#####", "#SEE#", "#####"])) is 2
+
+  return for each enemy in state.crowd where enemies.is_alive(enemy) count
+end
+
+public function played(state: State, frames: List of Input) returns State
+  purpose: The state after every frame of input in turn; a finished game stays as it is.
+
+  let mutable current be state
+  for each controls in frames
+    if current.status is not Playing then break end
+    change current to step(state: current, controls: controls)
+  end
+  return current
+end
+
+test "walking into a door opens it, and the next steps pass through"
+  let pushing be input.idle(64) with forward: true
+  let start be new_game(["#####", "#S.D.#", "#####"])
+  let state be played(state: start, frames: input.repeated(controls: pushing, times: 12))
+  check level.tile_at(level: start.maze, column: 3, row: 1) is Door
+  check level.tile_at(level: state.maze, column: 3, row: 1) is Floor
+  check state.hero.position.dx is greater than 3 * fixed.unit
+end
+
+test "reaching the exit wins and adds ten points per point of health"
+  let pushing be input.idle(100) with forward: true
+  let start be new_game(["#####", "#S.X#", "#####"])
+  let state be played(state: start, frames: input.repeated(controls: pushing, times: 20))
+  check state.status is Escaped
+  check state.score is 1000
+end
+
+test "enemies at the player's side bite until health runs out, and the game is lost"
+  let start be new_game(["#######", "#SE...#", "#E....#", "#######"])
+  let first_bites be played(
+    state: start,
+    frames: input.repeated(controls: input.idle(100), times: 5)
+  )
+  check first_bites.hero.health is 80
+  check first_bites.hurt is greater than 0
+  let state be played(state: start, frames: input.repeated(controls: input.idle(100), times: 200))
+  check state.status is Fallen
+  check state.hero.health is 0
+end
+
+test "two shots fell an enemy ahead and score 110"
+  let shooting be input.idle(50) with fire: true
+  let start be new_game(["#######", "#S...E#", "#######"])
+  let state be played(state: start, frames: input.repeated(controls: shooting, times: 8))
+  check remaining(start) is 1
+  check remaining(state) is 0
+  check state.score is 110
+end
+
+test "a finished game does not change"
+  let state be new_game(["###", "#S#", "###"]) with status: Fallen
+  check step(state: state, controls: input.idle(50) with forward: true) is state
+end
+
+test "quitting ends the game"
+  let state be new_game(["###", "#S#", "###"])
+  check step(state: state, controls: input.idle(50) with quit: true).status is Quit
+end
