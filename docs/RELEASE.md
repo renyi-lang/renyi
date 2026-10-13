@@ -162,3 +162,60 @@ and these are the things the procedure did not say:
    https_enforced=true`). The old address redirects. The credential
    stays on the owner's machine, outside the repository; no token
    value was printed or written anywhere.
+
+## 6. After release 0.1: the platforms (2026-10-13)
+
+Decision AW36, the owner's answers of 2026-10-13. Release 0.2 follows
+stage 35 (the language server's completion, references and rename),
+by section 3 above.
+
+1. (owner) The Visual Studio Marketplace. Create the publisher
+   `renyi-lang` at <https://marketplace.visualstudio.com/manage> with a
+   Microsoft account, and a personal access token in Azure DevOps
+   (organization "All accessible organizations", scope "Marketplace:
+   Manage"). Then, from `editors/vscode/` at the release's tag:
+   `npx --yes @vscode/vsce@3 publish --packagePath <the release's .vsix>
+   -p <token>`, or `npx --yes @vscode/vsce@3 login renyi-lang` once and
+   `publish` without the token after it. `package.json` carries the
+   publisher, the icon, the license, the repository, the categories and
+   the keywords the Marketplace requires; its page shows `README.md`
+   and `CHANGELOG.md`. The token never enters the repository or a log.
+2. (owner) Open VSX (the registry of VSCodium, Cursor, Gitpod and
+   others): an Eclipse account with the publisher agreement signed, an
+   access token from <https://open-vsx.org/user-settings/tokens>; once
+   `npx --yes ovsx create-namespace renyi-lang -p <token>`, then per
+   release `npx --yes ovsx publish <the release's .vsix> -p <token>`.
+3. GitHub's front, set on 2026-10-13 with `gh repo edit`: the
+   description (the one line of `docs/design/08-positioning.md`
+   section 6), the homepage `https://renyi-lang.org` and the topics
+   `programming-language`, `ai-agents`, `agentic`, `mcp`, `mcp-server`,
+   `claude-code`, `codex`, `capability-based-security`, `effect-system`,
+   `reproducibility`, `sandbox`, `rust`, `webassembly`,
+   `language-server`, `vscode-extension`. (owner) The social preview
+   image `docs/assets/social-preview.png` (decision AV1) uploaded in the
+   repository's settings.
+4. GitHub's recognition of `.ry` as a language is Linguist's
+   (`github-linguist/linguist`), and Linguist adds a language only once
+   GitHub's search finds at least 2,000 files of the extension indexed
+   in the last year, forks excluded, spread across repositories and not
+   mostly the language's owner's (its `CONTRIBUTING.md`, "Language
+   extension and filename usage requirements"); `.ry` and `.renyi` are
+   free in its table. When the bar is met, the pull request carries: an
+   entry in `lib/linguist/languages.yml` (`Renyi`, type `programming`,
+   a `color` (the site's accent, `LIGHT["accent"]` in `tools/site.py`),
+   `extensions` `.ry` and `.renyi`, `tm_scope` `source.renyi`,
+   `ace_mode` `text`, a fresh `language_id`), the grammar added with
+   `script/add-grammar https://github.com/renyi-lang/renyi` (it takes
+   `editors/vscode/syntaxes/renyi.tmLanguage.json`, Apache-2.0),
+   samples under `samples/Renyi/` taken from `examples/`, and the
+   search query of the template as the evidence. Until then GitHub
+   shows a `.ry` file as plain text and counts no Renyi in the language
+   bar; `.gitattributes` cannot change that (`linguist-language` names
+   only a language of the table).
+5. The announcements, at release 0.2: Show HN and lobste.rs, the MCP
+   directories and the awesome lists (the official MCP registry,
+   Smithery, a pull request to awesome-mcp-servers), the owner's X and
+   LinkedIn. A session writes the texts from section 6 of the
+   positioning document, with the game's page (`docs/game.md`) and the
+   starter pack as the hooks and a screenshot of the game; the owner
+   posts them.

@@ -9240,3 +9240,49 @@ than one that looks like a sketch; Freedoom gives the look at no
 license cost; the contract stays a list of shapes, each a few
 integers and a name, so recording, replay and the console host keep
 working and the game stays a pure function of its state. (user)
+
+**AW36. The owner's answers on release 0.2, the marketplaces, GitHub's
+front and the announcements; GitHub's recognition of `.ry` waits for
+Linguist's usage bar.** Asked on 2026-10-13 (AskUserQuestion, one batch
+of four) after the owner asked what remains, and how the release, the
+promotion and the presence on GitHub and in VS Code are completed.
+(1) Release 0.2 follows stage 35, not stage 36 (the owner's choice over
+the recommended release at the end of stage 36): the language server's
+completion, references and rename go into it. (2) The VS Code extension
+is published to the Visual Studio Marketplace and to Open VSX from a
+publisher `renyi-lang` the owner creates (a Microsoft account with a
+personal access token of Azure DevOps scoped to the Marketplace; an
+Eclipse account for Open VSX; neither token enters the repository); a
+session prepares the commands and the extension's page, the owner runs
+the publish (`docs/RELEASE.md` section 6). (3) The repository's front on
+GitHub was set the same day with `gh repo edit`: the description (the
+one line of `docs/design/08-positioning.md` section 6), the homepage
+`renyi-lang.org` and fifteen topics (programming-language, ai-agents,
+agentic, mcp, mcp-server, claude-code, codex, capability-based-security,
+effect-system, reproducibility, sandbox, rust, webassembly,
+language-server, vscode-extension); the social preview image of
+decision AV1 is the owner's to upload. (4) The announcements go to Show
+HN and lobste.rs, to the MCP directories and the awesome lists (the
+official MCP registry, Smithery, awesome-mcp-servers) and to the owner's
+X and LinkedIn; a session writes the texts from section 6 of the
+positioning document with the game's page as the hook, at release 0.2,
+and the owner posts them. Also asked that day: whether GitHub can
+recognise `.ry` as a language. That is Linguist's
+(`github-linguist/linguist`): a language is added by a pull request
+only once GitHub's search finds at least 2,000 files of the extension
+indexed in the last year, forks excluded, spread across repositories
+and not mostly the language's owner's (its `CONTRIBUTING.md`, read that
+day; `.ry` and `.renyi` are taken by no language of its table), so the
+pull request waits for the use, and its materials are in the
+repository already: the TextMate grammar
+`editors/vscode/syntaxes/renyi.tmLanguage.json` with the scope
+`source.renyi` under the Apache-2.0 license, and the corpus as samples
+(`docs/RELEASE.md` section 6 says what the pull request carries). Until
+then GitHub shows a `.ry` file as plain text and counts no Renyi in a
+repository's language bar, and no `.gitattributes` changes that:
+`linguist-language` names only a language of the table. Why: the
+release waits for the extension's completion because the extension is
+what a reviewer sees first; the publishers are accounts, which are the
+owner's; the front costs nothing and is read before the README; the
+channels are where the first users are (decision AH1); Linguist's bar
+is theirs to set. (user)

@@ -725,6 +725,9 @@ language server's completion, references and rename are stage 35,
 its design study done on 2026-10-13 and its four questions answered
 (decision AW34); stage 36, the DOOM look, was opened the same day in
 parallel with it (decision AW35: the owner's call after the play
-page) and goes first. Not scheduled: the
+page) and goes first. Release 0.2 follows stage 35 (decision AW36,
+the owner's answer of 2026-10-13), with the extension published to
+the Marketplace and Open VSX from the owner's publisher and the
+announcements of `docs/RELEASE.md` section 6. Not scheduled: the
 Python binder's items of track E, the Rust front end's name sets as
 bits, the emitter's own round for the compile row.
