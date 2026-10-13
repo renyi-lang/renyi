@@ -574,7 +574,8 @@ function add_type(state: ModuleState, id: Integer, def: TypeDefinition) returns 
     deprecation: def.docs.deprecation,
     span: def.span
   )
-  let mutable updated be world with types: world.types.append(info)
+  let mutable updated be world
+  change updated to updated with types: updated.types.append(info)
   if state.info.types.contains_key(def.name.text) then
     let message be "the type `{def.name.text}` is declared twice"
     let diagnostic be report.bare_error(
@@ -604,7 +605,8 @@ function add_ability(state: ModuleState, id: Integer, abil: Ability) returns Mod
     span: abil.span,
     resolved: false
   )
-  let mutable updated be world with abilities: world.abilities.append(info)
+  let mutable updated be world
+  change updated to updated with abilities: updated.abilities.append(info)
   if state.info.abilities.contains_key(abil.name.text) then
     let message be "the ability `{abil.name.text}` is declared twice"
     let diagnostic be report.bare_error(
@@ -2126,7 +2128,8 @@ function register_ability_params(world: World, id: Integer, abil: Ability)
   if not base.methods.is_empty() or base.resolved then return Built(value: [], world: world) end
   let built be new_params(world: world, names: abil.type_params)
   let param_ids be for each param in built.value collect param.id
-  let info be base with params: param_ids, resolved: true
+  let mutable info be base
+  change info to info with params: param_ids, resolved: true
   let updated be update_ability(world: built.world, id: ability_id, info: info)
   let waiting be PendingAbility(abil: abil, ability_id: ability_id, params: built.value)
   return Built(value: [waiting], world: updated)
@@ -2155,7 +2158,8 @@ function resolve_ability_item(world: World, id: Integer, pending: PendingAbility
   let required be requirements_built.value
   let methods be methods_built.value
   let base be ability_at(world: updated, id: ability_id)
-  let info be base with requirements: required, methods: methods
+  let mutable info be base
+  change info to info with requirements: required, methods: methods
   change updated to update_ability(world: updated, id: ability_id, info: info)
   if abil.is_public
     and abil.docs.summary is nothing

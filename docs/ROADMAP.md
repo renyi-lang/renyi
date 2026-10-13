@@ -471,8 +471,28 @@ where one decided, the status. The dates are those of the decisions.
     reference, and the walk of the borrowed operands stopped where
     another path enters, a leak since AU13 fixed on both tiers; the
     check row 1,482.7 to 1,437.8, -3.0%; the ratio 3.26). The four
-    stages of road (B) are measured; what comes next is the owner's
-    call.
+    stages of road (B) are measured; the owner's call after them is
+    stage 32.
+
+32. **The second round of the checker's own cuts** (session 14,
+    2026-10-13, done; decision AW26). The owner's answer after B4: the
+    reserve of AW21 (8), cuts in the compiler's own sources on stage
+    B4's binary, over the emitters' round and the switch at 3.26. Four
+    cuts, each judged byte-equal and kept by the check row: the parser's
+    result records read after their cursor bind the other field first
+    (138 sites); a record updated into a fresh local written as a move
+    and an update in the slot (12 sites, the checker copied 17,036 times
+    in `infer` alone); `identifier`, `primary` and `word_primary` moving
+    the cursor only in the arms that take it; the one-line helpers
+    `is_word`, `is_symbol`, `token_at`, `moved` and `var_at` inlined. An
+    experiment on the emitters' liveness rule (a write kills the name)
+    measured and not kept: the VM's pass of AU17 already moves every
+    slot's last read. The check row 1,437.8 to 1,307.5 million (-9.1%),
+    the parse row 629.5 (-6.0%), the compile row 2,468.1 (-5.0%); the
+    ratio 2.96, within the gate of 3; the record copies 109,613 to
+    19,266. The next step is the owner's call: the switch of the front
+    end (its design study first) or the VM's items the profile leaves
+    (the natives' shim, the code per op, the lexer's tables).
 
 ## 3. The tracks
 
@@ -510,8 +530,10 @@ state of each line.
   leak of stages 2b to B2 fixed (AW23, the check row 1,493.5, the
   ratio 3.38), B1 done (AW24, the check row to 1,482.7, -0.7%,
   the ratio to 3.36), B4 done (AW25, the check row to 1,437.8, -3.0%,
-  the ratio to 3.26); the four stages measured, the next step
-  the owner's call.
+  the ratio to 3.26); the four stages measured; stage 32 (AW26),
+  the second round of the checker's own cuts on the same binary,
+  done (the check row to 1,307.5, -9.1%, the ratio to
+  2.96, within the gate of 3); the next step the owner's call.
 - **E. Packages, the FFI and Python**: stages 15, 18. Done; candidates
   not decided: record types from dataclasses in the binder, a deadline
   per Python call, one worker across a test run.
@@ -586,9 +608,13 @@ ratio to 3.36) and B3 measured and left off with the leak of stages
 3.38) and B1 done (AW24, 2026-10-13: the frame record lazy, the
 check row to 1,482.7, -0.7%, the ratio to 3.36) and B4 done (AW25,
 2026-10-13: the counts by dataflow, the check row to 1,437.8,
--3.0%, the ratio to 3.26; the four stages measured, the
-next step the owner's call); then, when the ratio is within 3, the switch
-of the binary's front end to the compiler written in Renyi. Candidates
+-3.0%, the ratio to 3.26; the four stages measured), and after them
+stage 32 (AW26, 2026-10-13: the second round of the checker's own
+cuts, the check row to 1,307.5, -9.1%, the ratio to
+2.96, within the gate of 3); the next step is the owner's call: the
+switch of the binary's front end to the compiler written in Renyi,
+which the ratio opens, its design study first, or the VM's items the
+profile leaves first. Candidates
 beside it, none decided: the emitter's own round for the compile row,
 the Rust front end's name sets as bits, the C API, the language server's
 completion, the showcase application, the WASM target of M6.

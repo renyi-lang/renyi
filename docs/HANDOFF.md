@@ -109,7 +109,11 @@ B2 its measure found fixed (AW23: the check row 1,493.5, the ratio
 row to 1,482.7, -0.7%; the ratio to 3.36); B4, the counts by
 dataflow, done (decision AW25: the check row to 1,437.8,
 -3.0%; the ratio to 3.26); the four stages of road (B)
-are measured, and what comes next is the owner's call (the start-here
+are measured; the owner's call after them, the reserve of AW21 (8),
+is stage 32, the second round of the checker's own cuts, done
+(decision AW26: four cuts in `compiler/*.ry` on B4's binary, the
+check row to 1,307.5, -9.1%; the ratio to 2.96,
+within the gate of 3); what comes next is the owner's call (the start-here
 item 1).
 The session's record is "Done in session 14"
 below.
@@ -460,9 +464,16 @@ and push there directly.
    B4, the counts by dataflow, done (decision AW25, "Stage B4 as
    built" after B1's: the check row to 1,437.8, -3.0%; the ratio
    to 3.26; `renyi_b4`, the base of the next measure); the four
-   stages of road (B) are measured, and the next step is the owner's
-   call: the reserve of AW21 (8), the checker's own cuts, the emitter's
-   round, or the switch of the front end at the ratio as it stands.
+   stages of road (B) are measured; the owner's call after them was
+   the reserve of AW21 (8), stage 32, the second round of the
+   checker's own cuts, done (decision AW26, "Stage 32 as built"
+   below: four cuts in `compiler/*.ry` on B4's binary, the check row
+   to 1,307.5, -9.1%; the ratio to 2.96, within the gate of 3;
+   `study/cuts2/` in the perf lane, `renyi_b4` still the binary and
+   the base of the next measure); the next step is the owner's call:
+   the switch of the front end (its design study first), the VM's
+   items the profile leaves (the natives' shim, the code per op, the
+   lexer's tables), or the emitters' round for the compile row.
    Each stage: the code, the gates of item
    3, the measure
    (AU58's: the checker's image run under callgrind with the study's
@@ -3865,6 +3876,53 @@ Then the first stage the owner confirms. Done in session 14: the study is
 the section "Stage 29, the new backend: the design study (session 14)"
 below, and the owner's answers are decision AW1.
 
+## Stage 32, the second round of the checker's own cuts (session 14)
+
+**Stage 32 as built (decision AW26, 2026-10-13).** The reserve of AW21
+(8), the owner's answer after B4: cuts in the compiler's own sources
+(`compiler/*.ry`) on stage B4's binary, which the round leaves as it is.
+The method: B4's check row attributed by code object (`study_map.py`),
+the callers of `rt_record_copy` resolved to the code objects that copy
+(the scratchpad's `copy_callers.py`, copied to `scratch_cuts2/`), a cut
+written by a script, gated by `renyi check`, the canonical layout and
+the four judges (`gate_cut.sh <label> b4`), and kept by the check row of
+`perf stat` on the same binary (`quick_check_row.sh b4 <label>`, about
+ten seconds). Four cuts kept: (1) the parser's result records read after
+their cursor bind the other field first, 138 sites (`hoist_fields.py`);
+the quick row 1,400.7 to 1,389.6 million. (2) `let X be Y with ...`
+written as `let mutable X be Y` and `change X to X with ...`, 12 sites
+in `bodies.ry`, `declare.ry` and `parser.ry` (`let_with_to_change.py`);
+to 1,335.7. (3) `identifier`, `primary` and `word_primary` move the
+cursor in the arms that take it, `clause_text` and the callers of
+`with_nesting` bind the number first (`cut3_parser.py`); to 1,302.7. (4)
+`is_word`, `is_symbol` and `token_at` inlined and removed, `moved`
+inlined into its slot and in `peek`, `advance`, `bump`, `parse_block`,
+`eat_word` and `eat_symbol`, `var_at` inlined in `resolve`
+(`cut4_inline.py`); to 1,277.1. Measured and not kept: the four pinned
+moves `at_position(cursor: current, position: current.position + 1)`
+bound first (`unpin_moves.py`, no change), and an experiment on the Rust
+emitter's liveness rule, a write at a block's own level killing the name
+(`kill_rule.py`, the diff `kill_rule_experiment.diff`), no change: the
+VM's pass of AU17 already moves every slot's last read by a dataflow
+over the bytecode. The measure (callgrind, `renyi_b4`, `study/cuts2/`
+against `study/b4/`): the check row 1,437.8 to 1,307.5 (-9.1%), the
+parse row 670.0 to 629.5 (-6.0%), the compile row 2,598.6 to 2,468.1
+(-5.0%); the ratios 2.96, 2.21 and 6.75, the check row within the gate
+of 3 (1,324.8 million); the generated code 708.2 to 651.4, the counts
+and drops 131.0 to 94.7, the records 46.1 to 61.1 (the updates in the
+slot), VM other 89.2 to 59.3; the record copies 109,613 to 19,266; the
+shim's calls 999,647 to 999,410. What the map leaves: `at_position` 56.6
+million over 114,188 calls (the code per op), the lexer's loop and word
+path 103 million (every character through `Text.contains` and two text
+comparisons, every word through four natives), the shim (999,410 calls
+at about 110 instructions), `find_binding` 19.0 million by a text
+comparison per binding: the VM's items, or structural. The whole suite
+382 tests. The scripts in `scratch_cuts2/` in the perf lane, with
+`chain_cuts2.sh` and `chain_cuts2_wsl.sh`, the chain of a sources-only
+stage (the three rows, the Rust rows, the table, the map, the helpers;
+AT1's rows, the benchmarks and the micro programs unchanged by
+construction), `numbers_cuts2.py` and `render_cuts2.py`.
+
 ## Stage 31, the new code generator (road (B)): the design study (session 14)
 
 The study the owner's answer of 2026-10-12 asked for (decision AW20:
@@ -7227,6 +7285,19 @@ holds between calls.
   (reused), `apply_docs_b4.py`, `update_memory_b4.py`, `msg_b4.txt`,
   `numbers_b4.json`) copied to `scratch_b4/`; the measure in AW25 and in
   "Stage B4 as built".
+- Stage 32 (decision AW26, the commit after b4c057b): the four cuts in
+  `compiler/parser.ry`, `compiler/bodies.ry` and `compiler/declare.ry`
+  (the scripts `cursor_census.py`, `hoist_fields.py`,
+  `let_with_to_change.py`, `cut3_parser.py`, `cut4_inline.py`; measured
+  and not kept `unpin_moves.py` and `kill_rule.py` with
+  `kill_rule_experiment.diff`), the attribution `copy_callers.py`, the
+  lane's `gate_kill.sh`, `chain_cuts2.sh`, `chain_cuts2_wsl.sh`,
+  `study/cut1/`, `study/cut3/` and `study/cuts2/`, the scratchpad's
+  `numbers_cuts2.py`, `numbers_cuts2.json`, `aw26_template.md`,
+  `render_cuts2.py`, `apply_docs_cuts2.py`, `update_memory_cuts2.py` and
+  `msg_cuts2.txt`, all copied to `scratch_cuts2/`; the measure in AW26
+  and in "Stage 32 as built": the check row 1,437.8 to 1,307.5 (-9.1%),
+  the ratio 2.96.
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

@@ -560,7 +560,8 @@ function fresh(checker: Checker, kind: VarKind) returns Done of Ty
   purpose: A new inference variable of a kind.
 
   let id be checker.vars.length()
-  let updated be checker with vars: checker.vars.append(VarInfo(binding: nothing, kind: kind))
+  let mutable updated be checker
+  change updated to updated with vars: updated.vars.append(VarInfo(binding: nothing, kind: kind))
   return Done(value: Var(id: id), checker: updated)
 end
 
@@ -572,7 +573,7 @@ function resolve(checker: Checker, ty: Ty) returns Ty
   repeat until not bound
     match current
       when Var(id) then
-        match var_at(checker: checker, id: id).binding
+        match (checker.vars.at(id) otherwise crash with "an inference variable").binding
           when some(target) then change current to target
           when nothing then change bound to false
         end
@@ -1437,7 +1438,8 @@ function pop_scope(checker: Checker) returns Checker
   purpose: Leave the innermost scope, reporting the bindings it never read.
 
   let scope be checker.scopes.last() otherwise crash with "a scope"
-  let mutable updated be checker with scopes: checker.scopes.without_last()
+  let mutable updated be checker
+  change updated to updated with scopes: updated.scopes.without_last()
   for each binding in scope.bindings
     if not binding.used and binding.name is not "self" then
       change updated to unused_binding(checker: updated, binding: binding)
@@ -1803,7 +1805,8 @@ public function check_test(checker: Checker, index: Integer, block: Test) return
   purpose: A `test` block, the `index`th item of the module.
 
   let grants be for each capability in block.capabilities collect effects.from_ast(capability)
-  let mutable updated be checker with owner: ItemBody(item: index)
+  let mutable updated be checker
+  change updated to updated with owner: ItemBody(item: index)
   let quoted_name be debug_quoted(block.name)
   let context be fresh_context(
     name: "test {quoted_name}",
@@ -1997,7 +2000,8 @@ function check_example(checker: Checker, owner: BodyLocation, func: Function, sa
     capabilities: [],
     is_test: false
   )
-  let mutable updated be checker with owner: owner, context: context, vars: [], deferred: []
+  let mutable updated be checker
+  change updated to updated with owner: owner, context: context, vars: [], deferred: []
   change updated to push_scope(updated)
   let result be infer(checker: updated, expr: sample.expression, expected: nothing)
   let result_value be result.value
@@ -2298,7 +2302,9 @@ function check_statement(checker: Checker, statement: Statement) returns Done of
 
   match opening_word(statement)
     when some(word) then
-      let mutable updated be checker with depth: checker.depth + 1
+      let updated_depth be checker.depth + 1
+      let mutable updated be checker
+      change updated to updated with depth: updated_depth
       if updated.depth is nesting_depth + 1 then
         let start be statement_span(statement).start
         change updated to push_error(
@@ -3177,10 +3183,12 @@ function infer(checker: Checker, expr: Expr, expected: maybe Ty) returns Done of
   let after be done.checker
   if after.typed.length() is at least 64 then
     let chunks be after.typed_chunks.append(after.typed)
-    let rotated be after with typed_chunks: chunks, typed: [noted]
+    let mutable rotated be after
+    change rotated to rotated with typed_chunks: chunks, typed: [noted]
     return Done(value: done_value, checker: rotated)
   end
-  let updated be after with typed: after.typed.append(noted)
+  let mutable updated be after
+  change updated to updated with typed: updated.typed.append(noted)
   return Done(value: done_value, checker: updated)
 end
 

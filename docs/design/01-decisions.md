@@ -8591,3 +8591,107 @@ held 2.4 GB on each. Kept by the owner's rule (AW21: the check row down
 by at least 0.5%, or AT1's synchronous estimate down at all: -3.0% and
 -1.1%). The four stages of road (B) are measured; what comes next is the
 owner's call.
+
+**AW26. The second round of the checker's own cuts: the reserve of AW21
+(8).** The owner's answer after stage B4 (AW25), with the check row at
+1,437.8 million instructions and the ratio at 3.26 against the gate's 3:
+the reserve of AW21 (8), a second round of cuts in the compiler's own
+sources (`compiler/*.ry`), over the emitters' round and the switch at
+3.26. Built on 2026-10-13 on stage B4's binary (`renyi_b4`, the tree of
+commit b4c057b), which the round leaves as it is: every cut is a change
+of the Renyi sources, gated by `renyi check` clean, the canonical layout
+and the four judges byte-equal, and kept by the check row of `perf stat`
+on the same binary (the lane's `quick_check_row.sh`, the base 1,400.7
+million on the sources before the round). The profile of B4's check row
+attributed by code object (`study_map.py`) and the callers of
+`rt_record_copy` resolved to the code objects that copy
+(`copy_callers.py`): 109,613 copies, 65,755 of them in the parser's
+`at_position`, 17,036 in the checker's `infer`, 9,408 in `with_nesting`,
+8,162 in `mark_used`. Four cuts. (1) The reserve's item: 138 of the
+parser's result records (`Parsed`, `Peek`, `Eaten`, the clause records)
+read after their cursor now bind the other field first (`let look_token
+be look.token` before `look.cursor` is taken), so that the cursor read
+is the last mention and a `TakeField` (AU55) instead of a shared read;
+the quick row 1,400.7 to 1,389.6 (-0.8%), the copies in `at_position`
+65,755 to 43,120. Less than the reserve expected, and an experiment
+settled why: the emitters' liveness rule (AU55) extended so that a write
+at a block's own level kills the name, a read before it moving even
+inside a loop and across the enclosing statement, measured on the Rust
+emitter alone, left the quick row where it was (1,389.4): the VM's pass
+of AU17 already moves the last read of every slot by a dataflow over the
+bytecode where a program enters it, and an image carries the prepared
+program (AW17), so the emitters' syntactic rule has nothing left to find
+at run time; the copies came from the sources' shapes, not the rule, and
+the experiment is not kept. (2) A record updated into a fresh local,
+`let updated be checker with vars: checker.vars.append(info)`, is a
+`With` over a base its slot still holds: the base is pushed with one
+more reference, the update copies the record (the checker's 24 fields)
+and `append` copies the list it reads from the shared record; 12 such
+sites in `bodies.ry`, `declare.ry` and `parser.ry` are written `let
+mutable updated be checker` and `change updated to updated with ...`,
+the base moved into the local at its last read and the update run in the
+slot by AU11's plans (a value that reads the base other than as
+`x.f.method(args)` bound first, so that no update pins the local); the
+quick row 1,389.6 to 1,335.7 (-3.9%): `infer`'s 17,036 copies of the
+checker and of its `typed` list on every noted expression,
+`pop_scope`'s, `fresh`'s and `with_nesting`'s gone. (3) `identifier`,
+`primary` and `word_primary` moved the cursor past the token before the
+`match` on its kind, while the arms for the other kinds read `cursor`
+again (the error paths, the constructs entered at the looked-at token),
+so the cursor stayed live across the move, `at_position` found it shared
+and copied it on every call (22,459 in `identifier`, 13,146 in
+`primary`), and the arms that re-enter at the token paid for a move they
+drop; the move now stands in the arms that take it, where `cursor` is
+read for the last time; `clause_text` and the callers of `with_nesting`
+that pinned the cursor with `x.position + 1` or `x.nesting + 1` in the
+same call bind the number first; the quick row to 1,302.7 (-2.5%);
+19,261 copies remain (8,174 in `mark_used`, a binding updated inside its
+scope's list; 5,125 in `at_position`). (4) The one-line helpers inlined
+where they are called and removed: `is_word` and `is_symbol`
+(`token.code is code`, 53 sites, 178,401 calls), `token_at`
+(`cursor.tokens.at(index) otherwise end_token(cursor)`, 21 sites,
+171,276 calls), `moved` where its result goes back into the slot it came
+from (`if look is not x.position then change x to x with position: look
+end`, 17 sites) and in `peek`, `advance`, `bump`, `parse_block` and the
+misses of `eat_word` and `eat_symbol` (6 sites), and `var_at` in
+`resolve`, the loop that follows a variable's bindings (77,148 calls);
+the quick row to 1,277.1 (-1.9%). Every gate passed on every cut: the
+four judges byte-equal (382 tests of the whole suite at the end, the
+conformance suite among them).
+
+The measure (callgrind, `renyi_b4` on the sources after the round
+against the same binary on the sources before it, `study/cuts2/` against
+`study/b4/`): the check row 1,437.8 to 1,307.5 million instructions
+(-9.1%), the parse row 670.0 to 629.5 (-6.0%), the compile row 2,598.6
+to 2,468.1 (-5.0%); the ratios by instructions 2.96, 2.21 and 6.75
+against the gate's 3 (the gate on the check row 1,324.8 million; before
+the round 3.26, 2.35 and 7.11); the Rust front end's rows on the edited
+`compiler/bodies.ry` 173.6 to 174.0 (+0.2%), 246.4 to 246.6 (+0.1%) and
+450.4 to 451.0 (+0.1%); the generated code 708.2 to 651.4 million, the
+natives 245.6 to 234.4, the counts and drops 131.0 to 94.7, the
+allocator 79.7 to 73.5, the records 46.1 to 61.1, the texts and memory
+copies 73.8 to 66.6, the hashing 35.5 to 34.8; the record copies 109,613
+to 19,266, the calls through the natives' shim 999,647 to 999,410. AT1's
+rows, the benchmarks and the micro programs read neither the compiler's
+sources nor a changed binary and keep AW25's numbers. By the map, what
+remains on the check row is the generated code's own cost per op
+(`at_position`, 56.6 million over 114,188 calls, about 500 instructions
+for some fifteen ops a call: the field read, the tag test and the update
+in the slot among them), the lexer's loop and its word path
+(`lex_range`, `lex_word`, `next_step`, `lex_reserved`, 103 million:
+every character classified through `Text.contains` and two text
+comparisons, every word through four natives), the natives' boundary
+(999,410 calls through the in-place shim at about 110 instructions each,
+7.6% of the row, the same count as before the round) and the checker's
+scans and substitutions (`find_binding`, 19.0 million by a text
+comparison per binding; `resolve`, `substitute`, `substitute_all`);
+these are the VM's to cut (the shim's entry, the code per op, the
+comparison of two texts) or structural in the sources (the lexer's
+tables), and this round's lever, the shapes that share a record or call
+a one-liner, is spent. Kept by the owner's rule (AW21: the check row
+down by at least 0.5%, here -9.1%). The ratio 2.96 is within the gate of
+3 (AU36 (iii), AU58: the check row 1,307.5 million against 1,324.8), the
+first time since the gate was set: the switch of the binary's front end
+to the compiler written in Renyi, which the roadmap puts after the gate,
+is open, and whether to take it now, its design study first, or to spend
+the VM's items above first, is the owner's call.
