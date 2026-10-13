@@ -11,9 +11,10 @@ use std::io::{Read, Write};
 use std::process::{Child, Command, ExitStatus, Stdio};
 use std::rc::Rc;
 use std::thread::JoinHandle;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use super::{arg, crash, list, text};
+use crate::clock::Stopwatch;
 use crate::extension::Native;
 use crate::hashing::ValueMap;
 use crate::value::Value;
@@ -248,12 +249,12 @@ fn wait(child: &mut Child, limit: Option<Duration>) -> std::io::Result<Option<Ex
     let Some(limit) = limit else {
         return child.wait().map(Some);
     };
-    let started = Instant::now();
+    let started = Stopwatch::start();
     loop {
         if let Some(status) = child.try_wait()? {
             return Ok(Some(status));
         }
-        if started.elapsed() >= limit {
+        if started.elapsed_ms() >= limit.as_millis() as f64 {
             return Ok(None);
         }
         // `Child::wait` has no deadline, so a limited run polls; the pause

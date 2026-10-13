@@ -36,6 +36,11 @@ jobs:
       - name: Clippy
         run: cargo clippy --all-targets -- -D warnings
 
+      # the VM without its features (decision AW29): what the web crate
+      # builds, checked on the native target too
+      - name: The VM without its features
+        run: cargo check -p renyi_vm --no-default-features
+
       # a Python 3 on the PATH: the bridge's tests (decision AL1) and the
       # conformance cases of `tests/conformance/python/` run one
       - uses: actions/setup-python@v5
@@ -119,3 +124,33 @@ jobs:
 
       - name: Test the VM
         run: cargo test -p renyi_vm
+
+  # the toolchain for the browser (decision AW29, stage 33a): the web
+  # crate lints and builds for wasm32-unknown-unknown, and the module runs
+  # the hello program of the corpus and the showcase game's demo under
+  # node, through the same script the page's glue mirrors
+  wasm:
+    name: The toolchain for the browser
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@1.94.1
+        with:
+          components: clippy
+          targets: wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Clippy for wasm32
+        run: cargo clippy -p renyi_web --target wasm32-unknown-unknown -- -D warnings
+
+      - name: Build the module
+        run: cargo build -p renyi_web --target wasm32-unknown-unknown --release
+
+      - name: Run hello and the game's demo under node
+        run: |
+          module=target/wasm32-unknown-unknown/release/renyi_web.wasm
+          ls -l "$module"
+          test "$(node tools/wasm_check.js "$module" examples/hello.ry)" = "Hello, world!"
+          test "$(node tools/wasm_check.js "$module" showcase/raycaster/raycaster.ry showcase/raycaster/*.ry -- demo | tail -1)" = "final score 1220: Escaped"

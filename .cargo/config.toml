@@ -7,3 +7,10 @@
 # of their own.
 [env]
 RENYI_NO_CACHE = "1"
+
+# The web crate (decision AW29): the parser, the checker and the render
+# recurse on the Rust stack, which the command line gives 64 MiB; the
+# module's stack is set when it is linked, 16 MiB in place of the
+# default 1 MiB.
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "link-arg=-zstack-size=16777216"]

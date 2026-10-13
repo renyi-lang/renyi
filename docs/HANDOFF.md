@@ -122,8 +122,10 @@ subagent is committed (b8f700e) and stage 33's design study is
 written (the section "Stage 33, the WASM target: the design study
 (session 14)") and answered by the owner (AW29: the VM's own
 suspension, the whole toolchain in the browser, a C ABI by hand,
-cargo features); the work now is stage 33a, the toolchain for wasm32
-(the start-here item 1).
+cargo features); stage 33a, the toolchain for wasm32, is built
+(decision AW30: the features, the record block's offsets, the clock,
+the files provided, the crate `renyi_web`, CI's `wasm` job); the work
+now is stage 33b, the suspension (the start-here item 1).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -503,10 +505,17 @@ and push there directly.
    the game's page compiling the game and a playground beside it; a C
    ABI by hand in a crate `renyi_web`, no tool beyond cargo and the
    rustup target; cargo features `jit`, `sqlite`, `http` and `foreign`
-   of `renyi_vm`, on by default). The stages: 33a the toolchain for
-   wasm32 (under way: the features, the record block's offsets, the
-   clock, the virtual file system, the web crate, the size and the speed
-   measured, CI building it), 33b the suspension, 33c `std.screen` with
+   of `renyi_vm`, on by default). The stages: 33a the toolchain for wasm32, done (decision AW30, "Stage
+   33a as built" at the end of the study's section: the features `jit`,
+   `foreign`, `http` and `sqlite` of `renyi_vm`, the record block's
+   offsets in words, `clock.rs`, `renyi_package::reads::provide`, the
+   crate `crates/renyi_web/` with its C ABI and `tools/wasm_check.js`,
+   CI's `wasm` job; the module 3,027,356 bytes (2.89 MiB), 978,737
+   gzipped (0.93 MiB)), 33b the suspension, next (`Interrupt::Suspended`
+   passed through `execute` without `abandon`, the host in `Options`, a
+   session that owns the program and the VM, `resume` pushing the answer
+   and recording the call, the nested-loop counter, the sandbox's
+   `Suspended`, tests on the interpreter), 33c `std.screen` with
    the console host and the game on the library's types, 33d the pages
    (the playground, the game, the Pages workflow), which closes stage
    34; each gets its entry and its paragraph at the end of the study's
@@ -4185,6 +4194,37 @@ now), the toolchain (a C ABI by hand with no tool beyond cargo,
 and the gating (cargo features of `renyi_vm`, stubs and target `cfg`s
 without features, or a core crate split out).
 
+**Stage 33a as built (decision AW30, 2026-10-13).** The features of
+`renyi_vm` (`jit`, `foreign`, `http`, `sqlite`; `Cargo.toml`), on by
+default; without `jit` the stub `Jit` at the end of `native/mod.rs`
+(every entry `None`, the counters the helpers raise), `native/infer.rs`,
+`inline.rs` and `runtime.rs` kept, `codegen.rs`, `image.rs` and
+`template/` out, `Options::image` and `unit_slot` out; without `foreign`
+the VM's `foreign` and `libraries` fields and the dispatch out; without
+`sqlite` `Native::Connection` and its three matches out; the natives'
+table a loop over the modules' slices with the gated ones appended
+(`natives/mod.rs`). The record block's offsets as multiples of
+`layout::WORD` (`value.rs`). `clock.rs` (`now_millis`, `seed_entropy`,
+`Stopwatch`; the import `renyi_host_now_ms` on wasm32) at the seed of
+`Vm::new`, `natives::now_millis`, the runner's timer, the profiler, the
+server's watch and the process module's wait; `time.sleep` a crash in
+the browser (`sleep_ms` per target). `renyi_package::reads::provide` and
+`read_file`. The crate `crates/renyi_web/` (`Cargo.toml` with the VM by
+its path and its default features off; `src/lib.rs`: the session,
+`compile`, `check` and `run` as Rust functions the tests call, the C ABI
+over them); `.cargo/config.toml` the 16 MiB stack for the target;
+`tools/wasm_check.js`; CI's "The VM without its features" step and the
+`wasm` job. The build: `rustup target add wasm32-unknown-unknown` once
+(done on the owner's machine), then in the wasm lane
+`CARGO_TARGET_DIR=D:/Projects/.worktrees/Renyi/wasm/target cargo build
+-p renyi_web --target wasm32-unknown-unknown --release` and `node
+tools/wasm_check.js <the module> examples/hello.ry`; the module
+3,027,356 bytes (2.89 MiB), 978,737 gzipped (0.93 MiB). The timings in
+AW30 (Windows wall-clock under node against the development binary's
+interpreter: about two thirds of the native speed on integer loops,
+parity on the allocating programs; the game's 237 frames in 0.34 s). The
+measure of the frame rate in a browser comes with the page (33d).
+
 ## Stage 32, the second round of the checker's own cuts (session 14)
 
 **Stage 32 as built (decision AW26, 2026-10-13).** The reserve of AW21
@@ -7640,6 +7680,16 @@ holds between calls.
   browser, a C ABI by hand, cargo features; the stages 33a to 33d;
   the roadmap's stage 33, this handoff's summary and start-here item
   1, CLAUDE.md's decisions cell; `apply_docs_aw29.py`.
+- Stage 33a (decision AW30, the commit after 5954956): the features
+  of `renyi_vm`, the JIT stub, the record block's offsets in words,
+  `clock.rs`, `reads::provide`, the crate `crates/renyi_web/`,
+  `tools/wasm_check.js`, the 16 MiB stack in `.cargo/config.toml`,
+  CI's no-feature check and `wasm` job; the module built in the wasm
+  lane and measured under node; "Stage 33a as built" after the
+  study's section; the scratchpad's `patch_33a.py`,
+  `patch_33a_fix.py`, `patch_33a_clippy.py`, `fix_web_tests.py`,
+  `patch_ci_33a.py` and `apply_docs_33a.py`, copied to the wasm
+  lane's `scratch_33a/`.
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

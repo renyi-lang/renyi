@@ -5,8 +5,15 @@
 //! there, which covers the manifests looked for in the directories above a
 //! program and the `.ry` file looked for before a `.renyi` one. `unchanged`
 //! answers whether every file noted would read the same now.
+//!
+//! The files of a program may be given as texts instead (decision
+//! AW29, the toolchain in the browser, where there is no file system):
+//! while `provide` holds them, every read comes from them and a path
+//! not among them is missing, the manifests looked for above a program
+//! included.
 
 use std::cell::RefCell;
+use std::collections::BTreeMap;
 
 use crate::registry::hash_of;
 
@@ -22,6 +29,24 @@ pub struct Read {
 
 thread_local! {
     static NOTED: RefCell<Option<Vec<Read>>> = const { RefCell::new(None) };
+    static PROVIDED: RefCell<Option<BTreeMap<String, String>>> = const { RefCell::new(None) };
+}
+
+/// The files every read comes from until the next call, by the path a
+/// read names (a program's main file by its name, the files it imports
+/// beside it); `None` reads the disk again.
+pub fn provide(files: Option<BTreeMap<String, String>>) {
+    PROVIDED.with(|provided| provided.replace(files));
+}
+
+/// A file's text from the files provided, or from the disk.
+fn read_file(path: &str) -> std::io::Result<String> {
+    PROVIDED.with(|provided| match &*provided.borrow() {
+        Some(files) => files.get(path).cloned().ok_or_else(|| {
+            std::io::Error::new(std::io::ErrorKind::NotFound, "not among the files provided")
+        }),
+        None => std::fs::read_to_string(path),
+    })
 }
 
 /// Run `work` with every file it reads through `read_text` noted, each path
@@ -39,7 +64,7 @@ pub fn noting<T>(work: impl FnOnce() -> T) -> (T, Vec<Read>) {
 
 /// A file's text, the read noted when a caller of `noting` asks for it.
 pub fn read_text(path: &str) -> std::io::Result<String> {
-    let text = std::fs::read_to_string(path);
+    let text = read_file(path);
     note(&Read {
         path: path.to_string(),
         hash: text.as_ref().ok().map(|text| hash_of(text.as_bytes())),
@@ -61,7 +86,7 @@ fn note(read: &Read) {
 /// was one, still nothing where there was none.
 pub fn unchanged(reads: &[Read]) -> bool {
     reads.iter().all(|read| {
-        let now = std::fs::read_to_string(&read.path)
+        let now = read_file(&read.path)
             .ok()
             .map(|text| hash_of(text.as_bytes()));
         now == read.hash
@@ -105,5 +130,25 @@ mod tests {
         let ((), inner) = noting(|| {});
         assert!(inner.is_empty());
         let _ = std::fs::remove_dir_all(&directory);
+    }
+
+    #[test]
+    fn the_files_provided_stand_in_for_the_disk() {
+        let mut files = BTreeMap::new();
+        files.insert("main.ry".to_string(), "module main\n".to_string());
+        provide(Some(files));
+        let ((main, other), reads) = noting(|| (read_text("main.ry"), read_text("other.ry")));
+        assert_eq!(main.expect("the file provided"), "module main\n");
+        assert_eq!(
+            other.expect_err("not provided").kind(),
+            std::io::ErrorKind::NotFound
+        );
+        assert_eq!(reads.len(), 2);
+        assert_eq!(reads[0].hash, Some(hash_of(b"module main\n")));
+        assert_eq!(reads[1].hash, None);
+        assert!(unchanged(&reads));
+        provide(None);
+        // the disk has neither file
+        assert!(!unchanged(&reads));
     }
 }

@@ -114,6 +114,7 @@ pub struct Options {
     pub interpret: bool,
     /// The image of the program (decision AS1): its machine code, loaded
     /// in place of compiling; built for this machine from this program.
+    #[cfg(feature = "jit")]
     pub image: Option<crate::native::image::Image>,
     /// The extensions the toolchain is built with (decision AJ1): where
     /// the natives behind the program's library calls come from.
@@ -153,6 +154,7 @@ impl Default for Options {
             replay_output: false,
             profile: false,
             interpret: false,
+            #[cfg(feature = "jit")]
             image: None,
             registry: Registry::standard(),
             watch: None,
@@ -338,9 +340,11 @@ pub struct Vm<'p> {
     /// capability: a call to it runs on the flat path (decision AU1).
     pure: Vec<bool>,
     /// Per function, its foreign binding once made (decision AF1).
+    #[cfg(feature = "foreign")]
     pub(crate) foreign: Vec<Option<natives::foreign::Bound>>,
     /// The libraries loaded for foreign modules, by the list of names that
     /// found them; a library is never unloaded while the VM lives.
+    #[cfg(feature = "foreign")]
     pub(crate) libraries: Vec<(Vec<String>, libloading::Library)>,
     /// The worker of the Python bridge, started at the first call into a
     /// Python module (decision AL2) and ended with the VM.
@@ -621,6 +625,7 @@ fn unit_layout(program: &Program) -> (Vec<(usize, usize)>, usize) {
 /// The slot of a variant in `Vm::unit_variants`, as `unit_layout` lays
 /// them out, for the generated code that reads a variant without fields
 /// in place (decision AU24); `None` when the type has no such variant.
+#[cfg(feature = "jit")]
 pub(crate) fn unit_slot(program: &Program, ty: TypeId, tag: usize) -> Option<usize> {
     let meta = program.types.metas.get(ty)?;
     let base: usize = program.types.metas[..ty].iter().map(variant_count).sum();
@@ -647,16 +652,15 @@ pub(crate) fn plain_variant_type(program: &Program, ty: TypeId) -> bool {
 }
 
 impl<'p> Vm<'p> {
-    pub fn new(program: &'p Program, mut options: Options) -> Vm<'p> {
+    pub fn new(program: &'p Program, options: Options) -> Vm<'p> {
+        // the image's loading writes to the streams (decision AS1)
+        #[cfg(feature = "jit")]
+        let mut options = options;
         let tables = tables_of(program, &options.registry);
-        let seed = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_nanos() as u64)
-            .unwrap_or(0x9E37_79B9_7F4A_7C15)
-            | 1;
+        let seed = crate::clock::seed_entropy() | 1;
         // a narrated, profiled or budgeted run is the interpreter's
         // (decisions AG3 and AP1)
-        let mut native = if options.interpret
+        let native = if options.interpret
             || options.explain
             || options.profile
             || options.memory.is_some()
@@ -665,6 +669,9 @@ impl<'p> Vm<'p> {
         } else {
             Jit::new(program, None, tables.calls, &tables.in_place).map(Box::new)
         };
+        #[cfg(feature = "jit")]
+        let mut native = native;
+        #[cfg(feature = "jit")]
         if let (Some(jit), Some(image)) = (native.as_mut(), options.image.as_ref()) {
             if let Err(message) = jit.load_image(program, image) {
                 let _ = writeln!(options.stderr, "renyi: the image was not loaded: {message}");
@@ -688,7 +695,9 @@ impl<'p> Vm<'p> {
             typed: tables.typed,
             in_place: tables.in_place,
             pure: tables.pure,
+            #[cfg(feature = "foreign")]
             foreign: vec![None; program.function_metas.len()],
+            #[cfg(feature = "foreign")]
             libraries: Vec::new(),
             python: None,
             stdout: options.stdout,
@@ -1292,6 +1301,7 @@ impl<'p> Vm<'p> {
         if let Some(native) = native {
             return self.run_native(native, origins, args);
         }
+        #[cfg(feature = "foreign")]
         if self.program.function_metas[function].foreign.is_some() {
             return natives::foreign::run(self, function, origins, args);
         }
@@ -1562,6 +1572,7 @@ impl<'p> Vm<'p> {
         let program = self.program;
         // a connection has no file on a replay: a placeholder that keeps
         // the path, so that later calls match the recording
+        #[cfg(feature = "sqlite")]
         if let Some(path) = connection_path(json) {
             return Ok(Value::Native(Rc::new(Native::Connection {
                 connection: std::cell::RefCell::new(None),
@@ -3269,6 +3280,7 @@ fn grant_text(grant: &[Capability]) -> String {
 /// kind.
 fn native_json(native: &Native) -> Json {
     match native {
+        #[cfg(feature = "sqlite")]
         Native::Connection { path, .. } => Json::Text(format!("<connection {path}>")),
         Native::CsvRow { .. } => Json::Text("<row>".to_string()),
         Native::RangeIterator { .. } => Json::Text("<iterator>".to_string()),
@@ -3276,6 +3288,7 @@ fn native_json(native: &Native) -> Json {
     }
 }
 
+#[cfg(feature = "sqlite")]
 fn connection_path(json: &Json) -> Option<String> {
     match json {
         Json::Text(text) => text

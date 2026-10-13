@@ -9,6 +9,7 @@ members = [
     "crates/renyi_workspace",
     "crates/renyi_vm",
     "crates/renyi",
+    "crates/renyi_web",
 ]
 
 [workspace.package]
@@ -29,6 +30,7 @@ renyi_check = { path = "crates/renyi_check", version = "0.1.0" }
 renyi_index = { path = "crates/renyi_index", version = "0.1.0" }
 renyi_workspace = { path = "crates/renyi_workspace", version = "0.1.0" }
 renyi_vm = { path = "crates/renyi_vm", version = "0.1.0" }
+renyi_web = { path = "crates/renyi_web", version = "0.1.0" }
 
 # Decision X1: the VM and every dependency are optimized in development
 # builds, so that `cargo test`, CI and every `renyi run` from a development

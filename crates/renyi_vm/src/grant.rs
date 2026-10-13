@@ -11,7 +11,9 @@ use std::collections::VecDeque;
 use renyi_check::effects::{self, Capability, TREE};
 
 use crate::compile::FunctionMeta;
-use crate::value::{Native, Value};
+#[cfg(feature = "sqlite")]
+use crate::value::Native;
+use crate::value::Value;
 
 /// `second`, `minute`, `hour` and `day` are sliding windows; `run` counts
 /// the whole program.
@@ -523,6 +525,7 @@ pub fn effect_of(meta: &FunctionMeta, args: &[Value]) -> Option<Capability> {
             Some("filesystem") => match args.first() {
                 // a database call acts on the file its connection opened
                 Some(Value::Native(native)) => match &**native {
+                    #[cfg(feature = "sqlite")]
                     Native::Connection { path, .. } => Some(normalize_path(path)),
                     _ => None,
                 },

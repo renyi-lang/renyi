@@ -21,7 +21,7 @@ branches of the repository.
 | M3 | the VM: `run`, `record`, `run --replay`, `reproduce`, `--explain`, `--profile`, `test` with `replays`, budgets, the grant stack, the run manifest, every library module | done (stage 7) |
 | M4 | the library and the package manager: packages, `std.process`, the foreign function interface | done (stage 15) |
 | M5 | the integration: the registration API, the Python bridge and binder, the resident world, the language server, `serve --watch`, the embedding API | done (stages 18 and 19) |
-| M6 | ahead-of-time code: machine code for the bytecode, the baseline JIT, the template tier, `renyi build` images and self-contained executables | the machine code exists (stages 16, 21, 22, 24, 26); the WASM target is stage 33 (in progress, its study first, AW28); the C API comes after the language server's completion (AW28) |
+| M6 | ahead-of-time code: machine code for the bytecode, the baseline JIT, the template tier, `renyi build` images and self-contained executables | the machine code exists (stages 16, 21, 22, 24, 26); the WASM target is stage 33 (its study AW28 and AW29; the toolchain built for wasm32 at 33a, AW30; the suspension, `std.screen` and the pages follow); the C API comes after the language server's completion (AW28) |
 | Self-hosting | the compiler written in Renyi (lexer, parser, checker, emitter) held equal to the Rust toolchain by the judges; the binary switches to it when it is within 3 times the Rust front end's time (decision AU35 ii) | the compiler exists and is judged (stages 11, 12, 14, 15); the speed round (stages 25 to 32) closed at the gate on 2026-10-13, the ratio 2.96 against 3 (AW26); the switch deferred by the owner, the Rust front end kept (AW27) |
 
 ## 2. The stages, in order
@@ -516,8 +516,14 @@ where one decided, the status. The dates are those of the decisions.
     over the VM alone: a page takes sources, checks and runs them, the
     game compiled in the browser and a playground beside it), a C ABI by
     hand with no tool beyond cargo, cargo features for what the browser
-    cannot have. The stages: 33a the toolchain for wasm32, 33b the
-    suspension, 33c `std.screen`, 33d the pages; 33a is under way.
+    cannot have. The stages: 33a the toolchain for wasm32, 33b the suspension, 33c `std.screen`, 33d the pages. 33a done on
+    2026-10-13 (decision AW30: the features `jit`, `foreign`, `http` and
+    `sqlite` of `renyi_vm`, the record block's offsets in words, the
+    clock of the VM's own, the files provided to the resolver, the crate
+    `renyi_web` with its C ABI, `tools/wasm_check.js`, CI's `wasm` job;
+    the module 3,027,356 bytes (2.89 MiB), 978,737 gzipped (0.93 MiB);
+    hello and the game's demo run under node, the interpreter at about
+    two thirds of its native speed on integer loops); 33b is next.
 
 34. **The showcase game** (session 14, 2026-10-13, in progress, in
     parallel with stage 33; decision AW28). A Doom-style raycasting maze

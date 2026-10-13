@@ -8811,3 +8811,76 @@ interpreter); 33c `std.screen` (the module, the capability `screen`, the
 native, the console host, the game on the library's types); 33d the
 pages (the playground and the game, `play.js`, the Pages workflow),
 which closes stage 34 with it; each with its entry. (user)
+
+**AW30. Stage 33a, the toolchain for wasm32: the features, the record
+block's offsets, the clock, the files provided, the web crate.** Built
+on 2026-10-13 as decision AW29 set it. (1) The features of `renyi_vm`,
+on by default and off for the web crate: `jit` (the Cranelift crates,
+`region`, the cache coherence crate and `memmap2`; `native/codegen.rs`,
+`native/image.rs` and `native/template/`, the `Jit`, the `CodeArena` and
+the compile thread of `native/mod.rs`, `Options::image` and
+`unit_slot`), `foreign` (`libloading`; `natives/foreign.rs` and
+`foreign_abi.rs`, the VM's `foreign` and `libraries` fields and the
+dispatch of a foreign function), `http` (`ureq`; `natives/http.rs`) and
+`sqlite` (`rusqlite`; `natives/sqlite.rs`, `value::Native::Connection`
+and its matches); `infer.rs`, `inline.rs` and `runtime.rs` stay, since
+the interpreter and the in-place shims use their statuses and helpers,
+and without `jit` a stub `Jit` whose `new` answers `None` carries the
+methods and the counters the helpers name, so that `vm.rs` and
+`runtime.rs` compile unchanged; the natives' table is built by a loop
+over the modules' slices with the gated ones appended, and a call to a
+function of a module left out crashes as `unavailable` says. (2) The
+record block's offsets (`value::layout`) are multiples of the word,
+`WORD = size_of::<usize>()`: `RC_VALUE` two words, `RECORD_LEN` one,
+`RECORD_TY` two, `RECORD_TAG` three, `RECORD_FIELDS` four, the same
+bytes on x86-64 and the `repr(C)` `Shape`'s own on wasm32, where the
+study found them apart. (3) The clock of the VM, `clock.rs`:
+`now_millis` (the budgets, the deadlines, `std.time`, re-exported by
+`natives`), `seed_entropy` (the random generator's seed in `Vm::new`)
+and `Stopwatch` (the runner's timer, the profiler, the server's watch,
+the process module's wait), `std`'s on the native targets and on
+`wasm32-unknown-unknown` one import, `renyi_host_now_ms`, the page's
+`Date.now()`; `time.sleep` crashes there with the reason, since a page
+cannot wait inside a call. (4) The files of a program given as texts,
+`renyi_package::reads::provide`: while they are held, every read of the
+resolver comes from them through `read_file` and a path not among them
+is missing, the manifests looked for above a program included;
+`unchanged` reads the same way. (5) The crate `crates/renyi_web/`
+(`cdylib` and `rlib`, the VM without its features by its path, since a
+member cannot turn a workspace dependency's default features off), a
+session per thread holding the files, the arguments and the last
+answer's text, and the C ABI: `renyi_alloc` and `renyi_free` for the
+buffers, `renyi_file` (a file by its name, the main file and the files
+its imports resolve to), `renyi_clear`, `renyi_argument`, `renyi_check`
+(the diagnostics as `renyi check` renders them), `renyi_run` (what the
+program wrote and how it ended), `renyi_text` with `renyi_text_len`,
+`renyi_exit_code` and `renyi_version`; the statuses 0 finished, 1 `main`
+failed, 2 crashed, 3 exited, 4 the program does not check, 5 `main`
+needs a capability the page cannot serve; a run is interpreted under the
+grant of what the page serves (`console`, `time`, `random`,
+`environment`), and a `main` that needs more is refused before the run
+with the capability named, as the sandbox of AP1 refuses a call; the
+module's stack is 16 MiB (`.cargo/config.toml`, the render and the
+parser recursing on the Rust stack); `tools/wasm_check.js` drives the
+module under node with the import the page provides. (6) CI: the VM
+checked without its features on the Linux job, and a `wasm` job that
+lints and builds the web crate for wasm32-unknown-unknown and runs the
+hello program and the game's demo through the module under node. Five
+unit tests of the web crate (a program checked and run from its texts,
+an import among the files given, a program rejected with its
+diagnostics, one refused for a capability, a failure, a crash and an
+exit told apart), one of the files provided and one of the clock; 424
+tests of the whole suite pass, the VM's unit tests without its features
+too. The measure: the module 3,027,356 bytes (2.89 MiB), 978,737 gzipped
+(0.93 MiB); under node on the owner's machine (Windows wall-clock, a
+coarse first measure, node's start of about 0.14 s in every WASM row,
+the native rows the development binary's interpreter with the front end,
+`run --interpret`): `bench/primes.ry` 1.6 to 2.0 s against 1.2,
+`records` 0.29 to 0.32 against 0.15 to 0.21, `strings` 0.30 against 0.22
+to 0.24, `json_round_trip` 0.27 against 0.33 to 0.39; the game's `trace`
+of 237 frames 0.34 to 0.37 s against 0.22 to 0.23, its `demo` 0.37 to
+0.64 s with the eleven modules compiled in the module: the interpreter
+in WASM runs at about two thirds of its native speed on integer loops
+and at parity on the allocating programs, and a frame of the game costs
+about a millisecond, a sixteenth of what a frame at 60 a second allows.
+Next: 33b, the suspension.

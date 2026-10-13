@@ -5,11 +5,12 @@
 use std::io::{ErrorKind, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::rc::Rc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use renyi_check::effects::Capability;
 
 use super::{arg, crash, small, text};
+use crate::clock::Stopwatch;
 use crate::extension::Native;
 use crate::hashing::ValueMap;
 use crate::natives::json::{self, Naming};
@@ -175,14 +176,14 @@ fn serve(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     if watching && listener.set_nonblocking(true).is_err() {
         return Err(crash(format!("cannot poll the socket of port {port}")));
     }
-    let mut asked = Instant::now();
+    let mut asked = Stopwatch::start();
     let mut served = 0usize;
     while vm.serve_limit.is_none_or(|limit| served < limit) {
         let mut stream = match listener.accept() {
             Ok((stream, _)) => stream,
             Err(error) if error.kind() == ErrorKind::WouldBlock => {
-                if asked.elapsed() >= WATCH_INTERVAL {
-                    asked = Instant::now();
+                if asked.elapsed_ms() >= WATCH_INTERVAL.as_millis() as f64 {
+                    asked = Stopwatch::start();
                     if vm.watch.as_mut().is_some_and(|ready| ready()) {
                         vm.listener = Some(listener);
                         return Err(Interrupt::Reload);

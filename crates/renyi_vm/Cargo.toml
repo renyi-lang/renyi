@@ -17,17 +17,42 @@ indexmap = "2"
 regex = "1"
 sha2 = "0.10"
 # decision S1: the HTTP client, and SQLite compiled into the binary
-ureq = "3"
-rusqlite = { version = "0.40", features = ["bundled"] }
+ureq = { version = "3", optional = true }
+rusqlite = { version = "0.40", features = ["bundled"], optional = true }
 # decision AF1: shared libraries loaded at run time for the foreign function interface
-libloading = "0.8"
+libloading = { version = "0.8", optional = true }
 # decision AT5: the code section of an image mapped executable from its file
-memmap2 = "0.9"
+memmap2 = { version = "0.9", optional = true }
 # decision AG1: machine code for the bytecode, generated inside the process
-cranelift-codegen = "0.134"
-cranelift-frontend = "0.134"
-cranelift-native = "0.134"
+cranelift-codegen = { version = "0.134", optional = true }
+cranelift-frontend = { version = "0.134", optional = true }
+cranelift-native = { version = "0.134", optional = true }
 # decision AS1: the generated code is placed in executable memory by the VM
 # itself (what cranelift-jit did), so that an image of it can be loaded
-region = "3.0"
-wasmtime-internal-jit-icache-coherence = "47.0.4"
+region = { version = "3.0", optional = true }
+wasmtime-internal-jit-icache-coherence = { version = "47.0.4", optional = true }
+
+# decision AW29: what the browser cannot have is a feature, on by default
+# and off for the web crate (`crates/renyi_web`), which builds the
+# interpreter, the front end and the library's pure modules for
+# wasm32-unknown-unknown; the natives of a module left out are absent
+# from its table, and a program that needs the module is refused by the
+# grant before it runs
+[features]
+default = ["jit", "foreign", "http", "sqlite"]
+# the machine code of decision AG1: the Cranelift and the template tiers,
+# the images of `renyi build` and the executable memory they need
+jit = [
+    "dep:cranelift-codegen",
+    "dep:cranelift-frontend",
+    "dep:cranelift-native",
+    "dep:region",
+    "dep:wasmtime-internal-jit-icache-coherence",
+    "dep:memmap2",
+]
+# the foreign function interface of decision AF1
+foreign = ["dep:libloading"]
+# the HTTP client of decision S1 (`std.http`)
+http = ["dep:ureq"]
+# SQLite compiled into the binary (`std.sqlite`, decision S1)
+sqlite = ["dep:rusqlite"]

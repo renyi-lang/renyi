@@ -699,6 +699,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "renyi_web"
+version = "0.1.0"
+dependencies = [
+ "renyi_check",
+ "renyi_package",
+ "renyi_syntax",
+ "renyi_vm",
+]
+
+[[package]]
 name = "renyi_workspace"
 version = "0.1.0"
 dependencies = [

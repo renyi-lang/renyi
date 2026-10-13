@@ -21,6 +21,7 @@
 
 pub mod binary;
 pub mod bytecode;
+pub mod clock;
 pub mod compile;
 pub mod decimal;
 pub mod extension;

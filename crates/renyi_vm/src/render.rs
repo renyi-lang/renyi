@@ -120,6 +120,7 @@ impl Vm<'_> {
                 Native::CsvRow { line, .. } => format!("Row(line: {line})"),
                 Native::RangeIterator { .. } => "<iterator>".to_string(),
                 Native::Deadline(_, limit) => format!("<deadline after {}>", duration_text(*limit)),
+                #[cfg(feature = "sqlite")]
                 Native::Connection { path, .. } => format!("<connection {path}>"),
             },
             Value::Failure(error) => format!("failure({})", self.nested_text(error)?),

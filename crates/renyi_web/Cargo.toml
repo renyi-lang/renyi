@@ -1,0 +1,23 @@
+[package]
+name = "renyi_web"
+description = "The Renyi toolchain for the browser: the front end, the checker and the interpreter as a WebAssembly module with a C ABI (decision AW29)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+# the module the page loads (`cdylib`), and the library the tests and a
+# Rust host link (`rlib`)
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+renyi_syntax.workspace = true
+renyi_package.workspace = true
+renyi_check.workspace = true
+# the interpreter alone: no JIT, no FFI, no HTTP client, no SQLite
+# (decision AW29), spelled with its path since a member cannot turn the
+# default features of a workspace dependency off; a native build of the
+# whole workspace unifies the features back on, which changes nothing
+# the crate does
+renyi_vm = { path = "../renyi_vm", version = "0.1.0", default-features = false }

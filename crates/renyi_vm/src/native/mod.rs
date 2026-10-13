@@ -18,27 +18,41 @@
 //!   everything it does not do in registers: each is the interpreter's
 //!   arm for that op, on the VM's stack.
 
+#[cfg(feature = "jit")]
 pub mod codegen;
+#[cfg(feature = "jit")]
 pub mod image;
 pub mod infer;
 pub mod inline;
 pub mod runtime;
+#[cfg(feature = "jit")]
 pub mod template;
 
+#[cfg(feature = "jit")]
 use std::io::{Read, Seek};
+#[cfg(feature = "jit")]
 use std::sync::atomic::{AtomicBool, Ordering};
+#[cfg(feature = "jit")]
 use std::sync::{mpsc, Arc};
+#[cfg(feature = "jit")]
 use std::thread::JoinHandle;
 
+#[cfg(feature = "jit")]
 use cranelift_codegen::isa::OwnedTargetIsa;
+#[cfg(feature = "jit")]
 use cranelift_codegen::settings::{self, Configurable};
+#[cfg(feature = "jit")]
 use cranelift_codegen::Context;
+#[cfg(feature = "jit")]
 use cranelift_frontend::FunctionBuilderContext;
 
+#[cfg(feature = "jit")]
 use crate::bytecode::Op;
 use crate::compile::{CodeId, Program};
 use crate::value::Value;
-use crate::vm::{CallKind, GlobalSlot, Vm};
+#[cfg(feature = "jit")]
+use crate::vm::GlobalSlot;
+use crate::vm::{CallKind, Vm};
 use infer::{Abs, SlotKind};
 
 /// The generated function of a code object: the VM, the frame's base and
@@ -97,6 +111,7 @@ pub struct DeoptPoint {
     pub handlers: Vec<(u32, usize)>,
 }
 
+#[cfg(feature = "jit")]
 enum State {
     /// Not compiled yet: the interpreter runs it.
     Cold,
@@ -119,6 +134,7 @@ enum State {
 /// the machine code comes back through a channel, to be placed when that
 /// code object is asked for next. The thread has Cranelift's target and
 /// contexts of its own.
+#[cfg(feature = "jit")]
 struct Worker {
     requests: Option<mpsc::Sender<(CodeId, Vec<Option<i64>>)>>,
     results: mpsc::Receiver<(CodeId, Result<codegen::Compiled, codegen::Skipped>)>,
@@ -130,6 +146,7 @@ struct Worker {
 }
 
 /// The program as the compile thread reads it.
+#[cfg(feature = "jit")]
 struct ProgramRef(*const Program);
 
 // SAFETY: the program is read and never written while the thread runs:
@@ -140,8 +157,10 @@ struct ProgramRef(*const Program);
 // tags and payloads and never their reference counts, which a clone of
 // a constant on the interpreter's thread changes, so the two touch no
 // word in common.
+#[cfg(feature = "jit")]
 unsafe impl Send for ProgramRef {}
 
+#[cfg(feature = "jit")]
 impl Worker {
     /// The thread started for the program, or `None` when the system
     /// gives none.
@@ -199,6 +218,7 @@ impl Worker {
     }
 }
 
+#[cfg(feature = "jit")]
 impl Drop for Worker {
     fn drop(&mut self) {
         // the thread stops after the compilation under way: the requests
@@ -215,6 +235,7 @@ impl Drop for Worker {
 /// The template tier's code of a code object (decision AU18): the
 /// function the VM calls, which enters at the start or at any loop
 /// header, since the frame is in the interpreter's layout at every op.
+#[cfg(feature = "jit")]
 struct TemplateCode {
     entry: Entry,
 }
@@ -222,6 +243,7 @@ struct TemplateCode {
 /// The JIT of one VM: Cranelift's target, the state of every code
 /// object, the tables the generated code reaches through the VM
 /// (decision AS1) and the executable memory the code is placed in.
+#[cfg(feature = "jit")]
 pub struct Jit {
     isa: OwnedTargetIsa,
     ctx: Context,
@@ -346,6 +368,7 @@ pub struct Jit {
 /// pages for each spread them over as many mappings, every function at
 /// the same page offset, which cost the self-check's run more than the
 /// templates saved.
+#[cfg(feature = "jit")]
 #[derive(Default)]
 pub struct CodeArena {
     pages: Vec<Pages>,
@@ -356,21 +379,25 @@ pub struct CodeArena {
 /// template lies on made writable while it is written and executable
 /// again before anything runs it (the VM runs generated code on one
 /// thread, and none of it while it places code).
+#[cfg(feature = "jit")]
 struct Packed {
     allocation: region::Allocation,
     used: usize,
 }
 
 /// The size of a chunk of packed templates.
+#[cfg(feature = "jit")]
 const PACKED_CHUNK: usize = 4 << 20;
 
 /// Executable pages the arena holds: ones it wrote, or an image's code
 /// section mapped from its file (decision AT5).
+#[cfg(feature = "jit")]
 enum Pages {
     Owned(#[allow(dead_code)] region::Allocation),
     Mapped(#[allow(dead_code)] memmap2::Mmap),
 }
 
+#[cfg(feature = "jit")]
 impl CodeArena {
     /// An image's code section mapped executable from its file, `len`
     /// bytes at `offset` (a multiple of the page size); its address. The
@@ -484,6 +511,7 @@ impl CodeArena {
     }
 }
 
+#[cfg(feature = "jit")]
 impl Jit {
     /// A JIT for the program, or `None` when the host is not a machine
     /// Cranelift generates code for (the interpreter then runs alone).
@@ -1181,6 +1209,7 @@ native: {} code objects on templates ({} ops, {} bytes) in {} ms{}; {} loops han
 /// A code object compiled with its small callees expanded into it first
 /// (decision AU50), unless the expansion is off or finds nothing.
 #[allow(clippy::too_many_arguments)]
+#[cfg(feature = "jit")]
 pub(crate) fn compile_with_inlining(
     program: &Program,
     code: CodeId,
@@ -1227,6 +1256,7 @@ pub(crate) fn compile_with_inlining(
 /// among them is a literal in the Cranelift code (`Jit::small_globals`);
 /// an image's code has them too, where no constant is built when the
 /// image is. The VM builds the same value on the constant's first read.
+#[cfg(feature = "jit")]
 fn literal_constant(program: &Program, code: CodeId) -> Option<Value> {
     let code = &program.codes[code];
     match code.ops() {
@@ -1237,11 +1267,87 @@ fn literal_constant(program: &Program, code: CodeId) -> Option<Value> {
 
 /// The reason a code object stays with the interpreter, under
 /// `RENYI_NATIVE_REPORT`.
+#[cfg(feature = "jit")]
 fn report_skipped(program: &Program, code: CodeId, reason: &codegen::Skipped) {
     if std::env::var_os("RENYI_NATIVE_REPORT").is_some() {
         eprintln!(
             "native: {} stays with the interpreter: {reason:?}",
             program.codes[code].name
         );
+    }
+}
+
+/// The JIT when the feature `jit` is off (decision AW29: the toolchain
+/// for the browser, where a module cannot generate code for itself): no
+/// code object is ever compiled, every entry answers `None`, so the
+/// interpreter runs everything, and the counters the runtime helpers
+/// raise stay at zero. `Jit::new` answers `None`, so a VM never holds
+/// one; the methods exist for the helpers of `runtime.rs` that the
+/// generated code would call, which compile against them and run never.
+#[cfg(not(feature = "jit"))]
+pub struct Jit {
+    pub deopts: Vec<Vec<DeoptPoint>>,
+    pub compiled: usize,
+    pub deopts_taken: usize,
+    pub rebuilt_frames: usize,
+    pub calls_cold: usize,
+}
+
+#[cfg(not(feature = "jit"))]
+impl Jit {
+    pub fn new(
+        _: &Program,
+        _: Option<&str>,
+        _: Vec<CallKind>,
+        _: &[Option<crate::extension::InPlace>],
+    ) -> Option<Jit> {
+        None
+    }
+
+    pub(crate) fn state_pointers(&self) -> crate::vm::NativeState {
+        crate::vm::NativeState::default()
+    }
+
+    pub fn report(&self, _: &[u32]) -> String {
+        String::new()
+    }
+
+    pub fn entry(&mut self, _: &Program, _: CodeId, _: u32) -> Option<Entry> {
+        None
+    }
+
+    pub(crate) fn promote(&mut self, _: &Program, _: CodeId) {}
+
+    pub(crate) fn promoted_resume(&mut self, _: &Program, _: CodeId, _: u32) -> Option<Entry> {
+        None
+    }
+
+    pub fn resume(&mut self, _: &Program, _: CodeId, _: u32, _: u32) -> Option<Entry> {
+        None
+    }
+
+    pub fn refuse_resume(&mut self, _: CodeId) {}
+
+    pub fn is_hot(&self, _: usize, _: u32) -> bool {
+        false
+    }
+
+    pub(crate) fn note_global(&mut self, _: usize, _: &Value) {}
+
+    pub(crate) fn regions_of(&self, _: CodeId) -> &[inline::Region] {
+        &[]
+    }
+
+    pub(crate) fn constant(&self, _: CodeId, _: usize) -> Option<&Value> {
+        None
+    }
+
+    pub(crate) fn inlined_location(
+        &self,
+        _: &Program,
+        _: CodeId,
+        _: usize,
+    ) -> Option<(usize, renyi_syntax::Span)> {
+        None
     }
 }

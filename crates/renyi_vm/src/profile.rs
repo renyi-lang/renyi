@@ -9,11 +9,12 @@
 use std::collections::HashMap;
 use std::fmt::Write as _;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use renyi_check::FunctionId;
 
 use crate::bytecode::Op;
+use crate::clock::Stopwatch;
 use crate::compile::{CodeId, Program};
 
 /// How often the timer thread raises the flag.
@@ -36,7 +37,7 @@ enum Site {
 }
 
 pub struct Profile {
-    started: Instant,
+    started: Stopwatch,
     /// The operation that ran last: where the next sample lands.
     last: Option<Site>,
     samples: HashMap<Site, u64>,
@@ -64,7 +65,7 @@ impl Profile {
             });
         }
         Profile {
-            started: Instant::now(),
+            started: Stopwatch::start(),
             last: None,
             samples: HashMap::new(),
             ops: vec![("", 0); Op::KINDS],
@@ -125,7 +126,7 @@ impl Profile {
             commas(total_calls),
             commas(total_primitives),
             commas(total_samples),
-            self.started.elapsed().as_secs_f64()
+            self.started.elapsed_ms() / 1000.0
         );
         let code_name = |code: CodeId| {
             let code = &program.codes[code];

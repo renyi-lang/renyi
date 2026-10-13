@@ -7,8 +7,11 @@
 
 pub mod csv;
 pub mod filesystem;
+#[cfg(feature = "foreign")]
 pub mod foreign;
+#[cfg(feature = "foreign")]
 pub mod foreign_abi;
+#[cfg(feature = "http")]
 pub mod http;
 pub mod json;
 pub mod prelude;
@@ -16,6 +19,7 @@ pub mod process;
 pub mod python;
 pub mod regex;
 pub mod server;
+#[cfg(feature = "sqlite")]
 pub mod sqlite;
 pub mod system;
 pub mod time;
@@ -47,7 +51,10 @@ pub fn standard() -> Extension {
         version: env!("CARGO_PKG_VERSION"),
         modules: renyi_check::LIBRARY,
         natives: NATIVES.get_or_init(|| {
-            [
+            // the modules a feature leaves out (decision AW29) have no
+            // natives: a call to one crashes as `unavailable` says
+            let mut natives = Vec::new();
+            for table in [
                 prelude::NATIVES,
                 system::NATIVES,
                 time::NATIVES,
@@ -55,12 +62,16 @@ pub fn standard() -> Extension {
                 json::NATIVES,
                 csv::NATIVES,
                 regex::NATIVES,
-                http::NATIVES,
                 server::NATIVES,
-                sqlite::NATIVES,
                 process::NATIVES,
-            ]
-            .concat()
+            ] {
+                natives.extend_from_slice(table);
+            }
+            #[cfg(feature = "http")]
+            natives.extend_from_slice(http::NATIVES);
+            #[cfg(feature = "sqlite")]
+            natives.extend_from_slice(sqlite::NATIVES);
+            natives
         }),
     }
 }
@@ -69,13 +80,9 @@ pub fn crash(message: impl Into<String>) -> Interrupt {
     Interrupt::crash(message)
 }
 
-/// Milliseconds since the Unix epoch.
-pub fn now_millis() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_millis() as i64)
-        .unwrap_or(0)
-}
+/// Milliseconds since the Unix epoch, from the clock of the VM
+/// (decision AW29).
+pub use crate::clock::now_millis;
 
 // ---------------------------------------------------------------- arguments
 

@@ -209,8 +209,20 @@ fn time_today(vm: &mut Vm, _: &mut [Value]) -> Result<Value, Interrupt> {
 
 fn time_sleep(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     let ms = duration(arg(args, 0))?.max(0) as u64;
+    sleep_ms(ms)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn sleep_ms(ms: u64) -> Result<Value, Interrupt> {
     std::thread::sleep(std::time::Duration::from_millis(ms));
     Ok(Value::Nothing)
+}
+
+/// The browser has no thread to sleep (decision AW29): a crash with the
+/// reason, since a page cannot wait inside a call.
+#[cfg(target_arch = "wasm32")]
+fn sleep_ms(_: u64) -> Result<Value, Interrupt> {
+    Err(crash("time.sleep is not available in the browser"))
 }
 
 fn scaled(args: &[Value], factor: i64) -> Result<Value, Interrupt> {

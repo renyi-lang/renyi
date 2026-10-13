@@ -9,7 +9,9 @@
 //! origins, and every operation strips its operands and tags its result.
 
 use std::alloc::Layout;
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
+#[cfg(feature = "sqlite")]
+use std::cell::RefCell;
 use std::hash::{Hash, Hasher};
 use std::ptr::NonNull;
 use std::rc::Rc;
@@ -200,7 +202,7 @@ impl Composite {
     fn allocate(ty: TypeId, tag: usize, len: usize) -> NonNull<Head> {
         let layout = Composite::layout(len);
         // SAFETY: the layout is never empty: the head, the type and the
-        // tag take 32 bytes.
+        // tag take four words.
         let raw = unsafe { std::alloc::alloc(layout) };
         let Some(block) = NonNull::new(raw as *mut Head) else {
             std::alloc::handle_alloc_error(layout)
@@ -493,6 +495,7 @@ pub enum Native {
     Deadline(i64, i64),
     /// An SQLite connection and the path it was opened on; `None` once
     /// closed, or on a replay, where no query reaches the file.
+    #[cfg(feature = "sqlite")]
     Connection {
         connection: RefCell<Option<rusqlite::Connection>>,
         path: String,
@@ -550,17 +553,20 @@ pub mod layout {
     /// A list's tag: its payload an `Rc<Vec<Value>>`, whose vector's
     /// fields Rust lays out as it chooses (`list_layout`, decision AU34).
     pub const TAG_LIST: u8 = 7;
+    /// A word of the machine: the offsets below are counted in words,
+    /// since the block is the same on a 32-bit target (decision AW29).
+    pub const WORD: i32 = std::mem::size_of::<usize>() as i32;
     /// Inside an `Rc` allocation: the value, after the two counts.
-    pub const RC_VALUE: i32 = 16;
+    pub const RC_VALUE: i32 = 2 * WORD;
     /// Inside the block of a record or a variant (`Composite`, decision
     /// AU27), from its start: the count, the number of fields, the type,
     /// the tag and the fields themselves. The type and the tag lie where
     /// an `Rc` of the former layout held them, so that a field read
     /// changes only in where the fields are.
-    pub const RECORD_LEN: i32 = 8;
-    pub const RECORD_TY: i32 = 16;
-    pub const RECORD_TAG: i32 = 24;
-    pub const RECORD_FIELDS: i32 = 32;
+    pub const RECORD_LEN: i32 = WORD;
+    pub const RECORD_TY: i32 = 2 * WORD;
+    pub const RECORD_TAG: i32 = 3 * WORD;
+    pub const RECORD_FIELDS: i32 = 4 * WORD;
     /// A `Native` value's tag.
     pub const TAG_NATIVE: u8 = 17;
 
