@@ -8245,3 +8245,131 @@ study's split of the estimate between B2 and B3 was wrong where its sum
 need not be, and B3's measure will say. Next in AW21's order: B3, the
 locals in registers, with AW9's pair slots folded in and AU50's
 expansion measured again at its end.
+
+**AW23. Stage B3 of the new code generator measured and left off; the
+leak of stages 2b to B2 found and fixed.** The second stage of road (B)
+in AW21's order, the locals in registers, was built on 2026-10-12 and
+measured as AW21 prescribes against stage B2's binary (2758464). As
+built: a new slot kind in the analysis of the Cranelift tier,
+`SlotKind::Held(type)` in `native/infer.rs`, every slot that holds a
+value (a value parameter, a local a store of a value fills; not an
+iterator, a mark or a deadline slot) held as the three words of its
+`Value` in Cranelift variables, a pair slot of AW9 as its two fields'
+six words (`Abs::Pair` taking no cell, the cells past the locals gone),
+a `Load` pushing the slot's words held and a `Store` moving a value's
+words into them, `LoadField`, `TakeField` and `JumpByTag` reading the
+holder from the words, a `with` on a slot updating the block in place
+from them, a direct call passing a value argument as its three words in
+registers (three `i64` per value parameter in the direct signature, the
+callee's prologue taking them from the registers, the trampoline loading
+them from the frame's cell), the slot's cell on the VM's stack written
+only where the VM reads it (before a helper that reads the slot by its
+index, before a helper that leaves the frame or crashes in it, on an
+exit with the frame alive, and by a hand-back, whose buffer carries
+every held slot's words; image format 11), the entry at a loop header
+loading a held slot's words from the frame as the interpreter left them
+and a pair slot's through `rt_pair_resume`, and a frame left through one
+leave block per body that releases every slot of the code object's own
+from its registers (the inline leaves of AW4, AW9 and AW22 and the leave
+through `rt_truncate` gone). Every gate passed: the four judges
+byte-equal, the conformance suite 55 of 55 on both tiers, 410 tests. The
+measure against B2: the check row 1,482.3 to 1,583.1 million
+instructions (+6.8%), the parse row 680.4 to 705.5 (+3.7%), the compile
+row 2,661.2 to 2,821.4 (+6.0%); the generated code 756.8 to 867.8
+million; AT1's synchronous row 5,195.4 to 5,644.1 (+8.6%) and its
+estimate 7,372.5 to 8,061.6 (+9.3%), the image row 3,219.2 to 3,378.1
+and 4,778.3 to 5,250.4 by the estimate (+9.9%), the image 10,315,120 to
+14,959,912 bytes (+45.0%); the micro programs per turn `calls_typed` 120
+to 133, `calls_boxed` 201 to 225, `boxed_fields` 123 to 121,
+`boxed_moves` 120 to 121; the benchmarks `primes` +1.5%, `strings`
++1.9%, `records` +4.0%, `json_round_trip` +0.7%; AU50's expansion
+measured again on it (AW21), the check row 1,598.0 with it on (+0.9%),
+left off. The study's estimate for B3 was about 90 million off the check
+row; the measure put 100.8 million on.
+
+Looking for the rise found a leak instead. On the check row B3's binary
+freed 870,960 record blocks of the 870,960 allocated, B2's 637,621: B2's
+Cranelift tier left 233,339 blocks per run of the checker on
+`compiler/bodies.ry` (the interpreter and the template tier free every
+one), and the stages' profiles say since when: mimalloc's frees matched
+its allocations through stage 2a and fell short from stage 2b (AW9) on,
+1,978,953 allocations to 1,777,179 frees there. The blocks by type (a
+probe counting `Composite::allocate` and `free_block`, never committed):
+91,945 tokens with their spans and kinds, the token lists of every file
+read, held by 476 leaked `Cursor` records of the parser; the parser's
+`if_statement` leaks one cursor per `if` statement (a file with one
+function holding one `if` leaks; `for`, `match` and `repeat` do not; the
+lane's `bisect/`). The mechanism: `owned_slots` (AW4), the analysis of
+the slots a frame's leave releases, followed the ops only where the
+abstract interpretation had left an entry state; since AW9 a call that
+returns a record of two fields under an `otherwise` takes the success
+path straight to the region's end (`otherwise_end`), and the
+`PopHandler` and the `Jump` it skips have no state, so the owned
+analysis stopped there: every op after the region counted as unreached,
+every slot owned there (a harmless release of `Nothing` cells), but a
+loop's back edge never carried the body's stores to the header, and a
+frame leaving by the loop's exit path, the header's state being the
+entry's, skipped the pair slots the body had stored: in `if_statement`,
+`otherwise_word` and `if_word`, two `Eaten` pairs of a flag and a
+cursor, left in their cells at the return. The fix: `owned_slots` passes
+the state through an op the analysis left without a state, as the op's
+kind says (the `Store` rule's scalar test reads the state where there is
+one), so that the ops after the region and the back edge are reached and
+every slot counts only where no path reaches an op. With it the probe's
+run of the checker frees 870,960 of 870,960, the parse of
+`compiler/effects.ry` 5,611 of 5,611 (2,333 leaked before). A test in
+`tests/native.rs`
+(`the_owned_analysis_reaches_past_an_otherwise_region`) runs the
+analysis on a function of the shape of `if_statement`, a loop whose body
+calls a pair-returning function under `otherwise` and stores two more
+pairs, and holds the two pairs owned at the return and the region's end
+reached with a state of its own; it fails on the analysis before the fix
+(every pair unowned at the return). B3's leave did not depend on the
+owned analysis and freed everything, which is why B3's measure showed
+the leak as a rise; B3 still took `owned` at a loop header for its pair
+slots' resume, right as well with the fix.
+
+The fair base, stage B2 with the fix (`renyi_b2fix`, the commit of this
+entry's code), measured the same way: the check row 1,482.3 to 1,493.5
+million (+0.8%: `free_block` 47.2 to 61.1 million, `release_last` 51.9
+to 60.2 and `mi_free` 22.3 to 27.6 for the blocks now freed, against
+`rt_truncate` 18.4 to 3.8, the leave releasing by the precise states
+where every slot counted before, its calls 97,275 to 15,725), the parse
+row 680.4 to 688.6 (+1.2%), the compile row 2,661.2 to 2,673.0 (+0.4%);
+the ratios by instructions 3.38, 2.42 and 7.31 against the gate's 3; the
+generated code 756.8 to 757.4 million; AT1's synchronous row 5,195.4 to
+5,188.5 (-0.1%) and its estimate 7,372.5 to 7,394.5 (+0.3%), the image
+row 3,219.2 to 3,203.6 (-0.5%) and 4,778.3 to 4,743.0 by the estimate
+(-0.7%), the cached run 3,299.5 to 3,287.1, the image 10,315,120 to
+10,330,704 bytes (+0.2%); the micro programs within one instruction per
+turn (`calls_typed` 120, `calls_boxed` 202, `boxed_fields` 122,
+`boxed_moves` 119); the benchmarks unchanged. B3 against this base: the
+check row +6.0%, the parse row +2.5%, the compile row +5.6%, AT1's
+synchronous row +8.8% and its estimate +9.0%, the image row +5.4% and
++10.7% by the estimate, the image +44.8%, `calls_typed` +10.8% and
+`calls_boxed` +11.4% per turn, the benchmarks +0.7% to +4.1%; the
+helpers equal (`release_last` 383.4 to 383.3 million inclusive,
+`free_block` 215.1 to 215.0, `rt_drop_at` 155.1 to 159.0), the whole of
+the rise in the generated code, 757.4 to 867.8 million (+14.6%) less
+what left (`Pinned::insert` 11.2 to 0.6, `rt_truncate` 3.8 to 0,
+`rt_insert_int` 3.1 to 0.1, the clones 43.3 to 29.0 inclusive), and in
+every body: per call `at_position` 506 to 509, `token_at` 170 to 191,
+`lex_word` 607 to 662, `next_step` 262 to 313, `find_binding` 794 to
+938, `resolve` 228 to 275, `substitute` 295 to 404, `moved` 95 to 130
+(the lane's `study/b3/map.txt` against `study/b2/`). The cause as read
+from the IR: a slot held as three SSA values lives across the whole
+body, so Cranelift spills most of them around every call and moves them
+through every block's parameters (a loop header carrying ten words where
+B2 carried seven), and the leave block takes its mode, status and result
+words as parameters that a small callee materialises before the jump;
+the cells of the VM's stack cost less than the spills and the moves that
+replaced them. Left off by the owner's rule (AW21: kept only when the
+check row falls by 0.5% or AT1's estimate falls at all), the owner's
+answer of 2026-10-12 with the recommended options: B3's code not merged
+(its diff with the fix and the test on top is the lane's
+`scratch_b3/b3_as_built.diff`, its binary `renyi_b3`, its study
+`study/b3/` and `study/b3_inline/`), this entry's code the fix and its
+test alone, and B1 next in AW21's order, the frame record lazy, on the
+fixed base. A held slot as one word (the pointer of a record whose type
+the checker settled, the tag implied) is the variant B3 did not try,
+noted for the day B1 and B4 fall short, beside AW21's reserve.

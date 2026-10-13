@@ -1195,8 +1195,12 @@ pub fn analyse(
 /// typed slot never; a pair slot (decision AW9) from the store of a pair
 /// until the move out of it or the take of a field, which empties both
 /// cells. A failure flows to its handler with the state before
-/// the op, so that a slot the op would have emptied stays counted there;
-/// where the analysis reaches no op, every slot counts. The interpreter
+/// the op, so that a slot the op would have emptied stays counted there.
+/// An op the analysis left without a state (the `PopHandler` and the
+/// `Jump` of an `otherwise` region whose call takes its pair straight to
+/// the region's end, decision AW9) passes the state on as its kind says,
+/// so that the ops after the region and a loop's back edge are reached;
+/// where no path reaches an op, every slot counts. The interpreter
 /// writes the slots as these ops say too, so a frame it hands over at a
 /// loop header fits the state there.
 pub fn owned_slots(code: &Code, analysis: &Analysis, borrowed: &[bool]) -> Vec<Vec<bool>> {
@@ -1217,18 +1221,20 @@ pub fn owned_slots(code: &Code, analysis: &Analysis, borrowed: &[bool]) -> Vec<V
     while changed {
         changed = false;
         for pc in 0..count {
-            let (Some(state), Some(entry)) = (owned[pc].clone(), analysis.entry[pc].as_ref())
-            else {
+            let Some(state) = owned[pc].clone() else {
                 continue;
             };
+            let entry = analysis.entry[pc].as_deref();
             let op = &code.ops()[pc];
             let mut after = state.clone();
             match op {
                 Op::Store(slot) => {
                     let slot = *slot as usize;
                     if boxed(slot) {
-                        after[slot] =
-                            !matches!(entry.last(), Some(Abs::Int | Abs::Bool | Abs::Float));
+                        after[slot] = !matches!(
+                            entry.and_then(|state| state.last()),
+                            Some(Abs::Int | Abs::Bool | Abs::Float)
+                        );
                     }
                 }
                 Op::LoadMove(slot) if !borrowed[pc] => {

@@ -454,8 +454,15 @@ where one decided, the status. The dates are those of the decisions.
     a landing, an exit or a hand-back reads it; the check row
     1,528.5 to 1,482.3 million (-3.0%, 46.2
     million against the study's estimate of about 180); the ratio by
-    instructions 3.46 to 3.36. B3 (the locals in
-    registers) is next.
+    instructions 3.46 to 3.36. B3 (the locals in registers) built,
+    measured and left off (decision AW23, 2026-10-12: the check row
+    +6.0% against the base with the leak fixed, AT1's estimate +9.0%,
+    the whole rise in the generated code, three SSA words per slot
+    spilled and moved); the leak its measure found, since stage 2b,
+    the owned analysis stopping at an `otherwise` region a pair's
+    call skips, fixed (AW23: the check row 1,482.3 to 1,493.5 for the
+    blocks now freed, the ratio 3.38). B1 (the frame record lazy) is
+    next.
 
 ## 3. The tracks
 
@@ -489,7 +496,9 @@ state of each line.
   instructions 3.46 on the check row against the gate's 3; stage 31
   (AW20, AW21), road (B), the new code generator on the Cranelift tier
   in four measured stages, in progress: B2 done (AW22, the check row to
-  1,482.3, -3.0%, the ratio to 3.36), B3 in work.
+  1,482.3, -3.0%, the ratio to 3.36), B3 measured and left off and the
+  leak of stages 2b to B2 fixed (AW23, the check row 1,493.5, the
+  ratio 3.38), B1 in work.
 - **E. Packages, the FFI and Python**: stages 15, 18. Done; candidates
   not decided: record types from dataclasses in the binder, a deadline
   per Python call, one worker across a test run.
@@ -559,7 +568,9 @@ the locals in registers, the frame record lazy, the counts by dataflow;
 the study's estimate 340 million, the check row to about 1,190 million,
 2.7 times the reference), of which B2 is done (AW22, 2026-10-12: the
 operands in registers, the check row to 1,482.3, -3.0%, the
-ratio to 3.36); then, when the ratio is within 3, the switch
+ratio to 3.36) and B3 measured and left off with the leak of stages
+2b to B2 fixed (AW23, 2026-10-12: the check row 1,493.5, the ratio
+3.38; B1 next); then, when the ratio is within 3, the switch
 of the binary's front end to the compiler written in Renyi. Candidates
 beside it, none decided: the emitter's own round for the compile row,
 the Rust front end's name sets as bits, the C API, the language server's

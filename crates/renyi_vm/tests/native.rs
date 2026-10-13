@@ -2686,3 +2686,137 @@ end
         "small: 12\nbig: 18446744073709551616\nn=5\nn=0\nheld\nempty\n"
     );
 }
+
+#[test]
+fn the_owned_analysis_reaches_past_an_otherwise_region() {
+    // the owned-slot analysis (decision AW4) follows the ops as the
+    // abstract interpretation left them; a call returning a record of two
+    // fields under `otherwise` takes the success path straight to the
+    // region's end (decision AW9), and the `PopHandler` and the `Jump` it
+    // skips carry no state, which once stopped the analysis there: every
+    // op after the region counted as unreached, the loop's back edge
+    // never reached the header, and a frame leaving by the loop's exit
+    // skipped the pair slots its body had stored, leaking their fields
+    // once per call (stages 2b to B2, found at B3's measure); here the
+    // shape of the parser's `if_statement`: the pair stored after the
+    // region and taken apart (`step`) is not owned at the return, the two
+    // stored after it and left (`seen`, `again`) are, and the region's
+    // end is reached with a state of its own rather than every slot
+    use renyi_vm::native::infer::{analyse, owned_slots, SlotKind};
+    let program = compile(REGIONS);
+    let code = program
+        .codes
+        .iter()
+        .find(|code| code.name == "walk")
+        .expect("the code object of walk");
+    let analysis = analyse(&program, code, &[], true, true).expect("walk analysed");
+    let borrowed = vec![false; code.ops().len()];
+    let owned = owned_slots(code, &analysis, &borrowed);
+    let pairs: Vec<usize> = analysis
+        .slots
+        .iter()
+        .enumerate()
+        .filter(|(_, kind)| matches!(kind, SlotKind::Pair(_)))
+        .map(|(slot, _)| slot)
+        .collect();
+    assert_eq!(pairs.len(), 3, "{:?}", analysis.slots);
+    let exit = code
+        .ops()
+        .iter()
+        .rposition(|op| matches!(op, Op::Return))
+        .expect("the return of walk");
+    let at_exit: Vec<bool> = pairs.iter().map(|&slot| owned[exit][slot]).collect();
+    assert_eq!(at_exit, [false, true, true], "{:?}", owned[exit]);
+    let region_end = code
+        .ops()
+        .iter()
+        .position(|op| matches!(op, Op::Store(slot) if *slot as usize == pairs[0]))
+        .expect("the store of step");
+    assert!(
+        !owned[region_end].iter().all(|held| *held),
+        "the region's end is reached: {:?}",
+        owned[region_end]
+    );
+}
+
+/// The program of the owned analysis's test: the parser's
+/// `if_statement`, a loop whose body calls a pair-returning function
+/// under `otherwise`, stores two more pairs and leaves by the exit.
+const REGIONS: &str = r#"module demo
+  purpose: A loop past an `otherwise` region (AW9) storing pairs its exit must release.
+
+import std.console
+
+type Box
+  purpose: A counted value.
+  has label: Text
+  has weight: Integer
+end
+
+type Found
+  purpose: A record of two fields, a pair: a flag and a box.
+  has found: Boolean
+  has box: Box
+end
+
+type Step
+  purpose: A record of two fields, a pair: a count and a box.
+  has tally: Integer
+  has box: Box
+end
+
+type Problem
+  purpose: A failure for the test.
+  has reason: Text
+end
+
+function advance(box: Box) returns Step or fails with Problem
+  purpose: The next step, or a failure past a weight.
+
+  if box.weight is greater than 1000000 then fail with Problem(reason: "too heavy") end
+  return Step(tally: box.weight + 1, box: Box(label: box.label, weight: box.weight + 1))
+end
+
+function look(box: Box, wanted: Integer) returns Found
+  purpose: Whether the box's weight is the wanted one, with a fresh box.
+
+  return Found(
+    found: box.weight is wanted,
+    box: Box(label: "{box.label} looked", weight: box.weight)
+  )
+end
+
+function walk(start: Integer) returns Integer or fails with Problem
+  purpose: The parser's `if_statement`: a pair call under `otherwise`, two pairs left at the exit.
+
+  let mutable current be Box(label: "a label longer than sixteen bytes", weight: start)
+  let mutable total be 0
+  let mutable done be false
+  repeat until done
+    let step be advance(current) otherwise fail
+    change total to total + step.tally
+    let seen be look(box: step.box, wanted: start + 1)
+    change current to seen.box
+    change total to total + current.label.length()
+    let again be look(box: current, wanted: start + 1)
+    if seen.found and again.found then
+      change current to again.box
+    otherwise if seen.found then
+      change done to true
+    otherwise
+      change done to true
+    end
+  end
+  return total + current.weight
+end
+
+public function main() needs console
+  purpose: Call walk many times and print a digest.
+
+  let mutable total be 0
+  for each index from 1 to 200000
+    change total to total + (walk(index) otherwise 0)
+  end
+  console.print("{total}")
+end
+"#;

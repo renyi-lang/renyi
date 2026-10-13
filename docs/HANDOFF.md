@@ -101,8 +101,12 @@ AW21: every recommended option; the order B2, B3, B1, B4, each
 measured by the old measure with the lane's micro programs), and B2
 built and measured (decision AW22: the operands in registers,
 `Abs::Held`; the check row 1,528.5 to 1,482.3, -3.0%;
-the ratio 3.46 to 3.36); the work now is B3, the
-locals in registers (the start-here item 1).
+the ratio 3.46 to 3.36); B3, the locals in registers, built,
+measured and left off (decision AW23: +6.0% on the check row
+against the base with the leak fixed), and the leak of stages 2b to
+B2 its measure found fixed (AW23: the check row 1,493.5, the ratio
+3.38); the work now is B1, the frame record lazy (the start-here
+item 1).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -440,9 +444,14 @@ and push there directly.
    AW21; B2 is built and measured (decision AW22, "Stage B2 as
    built" at the end of the study's section: the operands in
    registers, `Abs::Held`; the check row to 1,482.3, -3.0%;
-   the ratio to 3.36), and the work now is B3, the locals in
-   registers, with AW9's pair slots folded in and AU50's expansion
-   measured again at its end. Each stage: the code, the gates of item
+   the ratio to 3.36); B3, the locals in registers, was built,
+   measured and left off (decision AW23, "Stage B3 as built" after
+   B2's: +6.0% on the check row against the base with the leak fixed,
+   the whole rise in the generated code), and the leak of stages 2b to
+   B2 its measure found is fixed (AW23: the owned analysis past an
+   `otherwise` region; `renyi_b2fix`, the check row 1,493.5, the ratio
+   3.38, the base of the next measure); the work now is B1, the frame
+   record lazy. Each stage: the code, the gates of item
    3, the measure
    (AU58's: the checker's image run under callgrind with the study's
    table by category beside it, AT1's rows, the benchmarks by
@@ -481,7 +490,9 @@ and push there directly.
    (805ea3a, stage 4c's commit), `renyi_cuts` (c7b8f6c, the
    checker's own cuts' commit), `renyi_5a` (16a0dd6, stage 5a's
    commit), `renyi_5b` (0f17f67, stage 5b's commit) and
-   `renyi_b2` (the commit of stage B2, the base of the next measure),
+   `renyi_b2` (2758464, stage B2's commit), `renyi_b3` (stage B3 as
+   built, left off) and `renyi_b2fix` (stage B2 with the owned analysis
+   fixed, AW23's commit, the base of the next measure),
    each with its
    `study/` directory. The
    road is months long (AU58); the gate is decided on the measure at
@@ -4124,6 +4135,34 @@ AW22. Against the study's estimate of about 180 million the stage took
 46.2 million off the check row: a load that feeds a direct call's boxed parameter (`Load Call` and `LoadMove Call`, 2.8 million pairs in the interpreter's profile of the run), a `with`, a construct or a native that reads the stack still writes the value where the callee's frame, the update or the native reads it, three stores where the copy was three loads and three stores, and only the loads whose consumer reads in place (a comparison, a test, a store into a slot, a field read, a typed parameter, a `Return`) stopped copying; `at_position`, the hottest body, kept 267 of its 305 stores, its calls' arguments and its `with` among them. B3 moves the parameters into registers, and a direct call can then pass a held argument's words without the stack: the study's split of the estimate between B2 and B3 was wrong where its sum need not be, and B3's measure will say. Next in AW21's
 order: B3, the locals in registers.
 
+**Stage B3 as built, measured and left off (decision AW23,
+2026-10-12).** The second stage of road (B): every value slot held as
+the three words of its `Value` in Cranelift variables (`SlotKind::Held`
+in `native/infer.rs`, a pair slot of AW9 as six words), the cell on the
+VM's stack written only where the VM reads it (a helper that reads the
+slot by its index, one that leaves the frame, an exit with the frame
+alive, a hand-back), a direct call's value arguments in registers, and
+one leave block per body releasing every slot from its registers; the
+gates passed (the judges, the suite on both tiers, 410 tests). The
+measure against B2: the check row 1,482.3 to 1,583.1 million (+6.8%),
+AT1's estimate 7,372.5 to 8,061.6 (+9.3%), the image +45%, `calls_typed`
+120 to 133 per turn; and against B2 with the leak below fixed
+(`renyi_b2fix`, the check row 1,493.5): +6.0% on the check row, +9.0% by
+AT1's estimate, the helpers equal and the whole rise in the generated
+code (757.4 to 867.8 million, every body slower per call: three SSA
+words per slot spilled around every call and moved through every block's
+parameters). Left off by the owner's rule and answer; the diff is the
+lane's `scratch_b3/b3_as_built.diff` (the fix and the test on top), the
+binary `renyi_b3`, the study `study/b3/` and `study/b3_inline/` (AU50's
+expansion measured again, +0.9%, left off). The leak its measure found:
+since stage 2b (AW9) the owned analysis of AW4 stopped at the ops of an
+`otherwise` region a pair's call skips, so a frame leaving by a loop's
+exit skipped the pair slots the body stored (the parser's
+`if_statement`, one `Cursor` per `if`, 233,339 blocks per checker run);
+the fix in `owned_slots` and its test in `tests/native.rs` are AW23's
+code; B2 with the fix is the base of B1 (the check row 1,493.5, +0.8%;
+the ratio 3.38). Next in AW21's order: B1, the frame record lazy.
+
 ## Stage 29, the new backend: the design study (session 14)
 
 The study decision AU58 asked for, written before any code and put to
@@ -7066,6 +7105,21 @@ holds between calls.
   `native/template/mod.rs`, `native/inline.rs`, `native/mod.rs` and
   `tests/typed.rs`; the test in `tests/native.rs`; the measure in AW22
   and in "Stage B2 as built".
+- Stage B3 (decision AW23, built and measured, left off, no code
+  merged): the diff in the lane's `scratch_b3/b3_as_built.diff`, with
+  the lane's `after_measure_b3.sh`, `measure_after_tests_b3.sh`,
+  `study/b3/`, `study/b3_inline/` and the scratchpad's scripts copied to
+  `scratch_b3/`; the measure in AW23 and in "Stage B3 as built".
+- The leak of stages 2b to B2 (decision AW23, the commit after 2758464):
+  `owned_slots` in `native/infer.rs` passing the state through an op
+  without one; the test
+  `the_owned_analysis_reaches_past_an_otherwise_region` in
+  `tests/native.rs`; the lane's `bisect/` (the probes' inputs,
+  `regions.ry`, the dumps), `build_b2fix.sh`, `measure_b2fix.sh`,
+  `chain_b2fix.sh`, `census_b2.sh b2fix`, `renyi_b2fix` and
+  `study/b2fix/`; the probes (`probe_frees.py`, `probe_hist.py`,
+  `probe_skip.py`, `probe_dump2.py`, `bisect_leak.py`, `ops_of.py`,
+  `fix_owned.py`, `add_owned_test.py`) in `scratch_b3/`.
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 
