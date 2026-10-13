@@ -27,6 +27,10 @@
 //! (`renyi_resume`), which answers as `renyi_run` does, the next frame
 //! included. The suspended run, its program and its VM, lives in the
 //! session until it ends or the next run or `renyi_clear` abandons it.
+//! A strip and a picture name an image (decision AW35), which the page
+//! resolves to the files served with the program; the sounds the run
+//! asked for during a call come with its answer, one name per line
+//! (`renyi_sounds`, `renyi_sounds_len`), for the page to play.
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -68,15 +72,23 @@ struct Session {
     live: Option<Live>,
     /// The frame of the suspended run as text, one shape per line.
     frame: Vec<u8>,
+    /// The sounds the last call played, one name per line.
+    sounds: Vec<u8>,
 }
 
 impl Session {
     /// A run's or a resumption's answer kept for the page: the text,
-    /// the exit code, the frame and the run when it is suspended; the
-    /// status.
+    /// the exit code, the sounds, the frame and the run when it is
+    /// suspended; the status.
     fn answer(&mut self, outcome: Outcome, live: Option<Live>) -> i32 {
         self.text = outcome.text.into_bytes();
         self.exit_code = outcome.exit_code;
+        self.sounds = outcome
+            .sounds
+            .iter()
+            .map(|sound| format!("{}\n", one_line(sound)))
+            .collect::<String>()
+            .into_bytes();
         self.frame = live
             .as_ref()
             .map(Live::frame)
@@ -96,6 +108,7 @@ thread_local! {
             exit_code: 0,
             live: None,
             frame: Vec::new(),
+            sounds: Vec::new(),
         })
     };
 }
@@ -177,9 +190,11 @@ impl Log {
 /// The page as the host of `std.screen` (decision AW33): it keeps the
 /// frame and answers `Later`, so that the run suspends inside `present`
 /// and the page draws the frame before it resumes the run with the
-/// input.
+/// input; it keeps the sounds asked for since the previous answer, for
+/// the page to play with the next (decision AW35).
 struct PageScreen {
     frame: Vec<Shape>,
+    sounds: Vec<String>,
 }
 
 impl Screen for PageScreen {
@@ -190,6 +205,10 @@ impl Screen for PageScreen {
 
     fn suspends(&self) -> bool {
         true
+    }
+
+    fn play(&mut self, sound: &str) {
+        self.sounds.push(sound.to_string());
     }
 }
 
@@ -220,21 +239,26 @@ impl Drop for Live {
 impl Live {
     /// The frame the run presented, as text, one shape per line:
     /// `column <x> <top> <bottom> <red> <green> <blue>`,
-    /// `rectangle <x> <y> <width> <height> <red> <green> <blue>` or
-    /// `label <x> <y> <red> <green> <blue> <text>`, the text to the end
-    /// of the line with a line break in it made a space.
+    /// `rectangle <x> <y> <width> <height> <red> <green> <blue>`,
+    /// `label <x> <y> <red> <green> <blue> <text>`,
+    /// `strip <x> <top> <bottom> <column> <shade> <image>` or
+    /// `picture <x> <y> <width> <height> <shade> <image>`, the text and
+    /// the image's name to the end of the line with a line break in
+    /// them made a space.
     pub fn frame(&self) -> String {
         frame_text(&self.screen.borrow().frame)
     }
 }
 
 /// What a run or a resumption answers: the status, what the program
-/// wrote during the call followed by how it ended, and the exit code.
+/// wrote during the call followed by how it ended, the exit code and
+/// the sounds the call asked for, in order.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Outcome {
     pub status: i32,
     pub text: String,
     pub exit_code: i32,
+    pub sounds: Vec<String>,
 }
 
 impl Outcome {
@@ -243,6 +267,7 @@ impl Outcome {
             status,
             text: text.into(),
             exit_code,
+            sounds: Vec::new(),
         }
     }
 }
@@ -289,7 +314,10 @@ pub fn run(
         );
     }
     let log = Log(Rc::new(RefCell::new(warnings.into_bytes())));
-    let screen = Rc::new(RefCell::new(PageScreen { frame: Vec::new() }));
+    let screen = Rc::new(RefCell::new(PageScreen {
+        frame: Vec::new(),
+        sounds: Vec::new(),
+    }));
     let options = Options {
         arguments,
         stdout: Box::new(log.clone()),
@@ -331,8 +359,9 @@ pub fn resume(mut live: Live, input: Input) -> (Outcome, Option<Live>) {
     settle(live, result)
 }
 
-/// How a run or a resumption ended, with what the program wrote during
-/// the call; the run itself when it is suspended, else dropped.
+/// How a run or a resumption ended, with what the program wrote and the
+/// sounds it asked for during the call; the run itself when it is
+/// suspended, else dropped.
 fn settle(mut live: Live, result: Result<Option<Value>, Interrupt>) -> (Outcome, Option<Live>) {
     let (status, ending, exit_code) = match result {
         Ok(None) => (FINISHED, String::new(), 0),
@@ -362,10 +391,12 @@ fn settle(mut live: Live, result: Result<Option<Value>, Interrupt>) -> (Outcome,
     };
     let mut text = live.log.drain();
     text.push_str(&ending);
+    let sounds = std::mem::take(&mut live.screen.borrow_mut().sounds);
     let outcome = Outcome {
         status,
         text,
         exit_code,
+        sounds,
     };
     (outcome, (status == SUSPENDED).then_some(live))
 }
@@ -399,27 +430,53 @@ fn frame_text(frame: &[Shape]) -> String {
                 screen_y,
                 text: label,
                 colour,
-            } => {
-                let label: String = label
-                    .chars()
-                    .map(|letter| {
-                        if letter == '\n' || letter == '\r' {
-                            ' '
-                        } else {
-                            letter
-                        }
-                    })
-                    .collect();
-                format!(
-                    "label {screen_x} {screen_y} {} {} {} {label}",
-                    colour.red, colour.green, colour.blue
-                )
-            }
+            } => format!(
+                "label {screen_x} {screen_y} {} {} {} {}",
+                colour.red,
+                colour.green,
+                colour.blue,
+                one_line(label)
+            ),
+            Shape::Strip {
+                screen_x,
+                top,
+                bottom,
+                image,
+                column,
+                shade,
+            } => format!(
+                "strip {screen_x} {top} {bottom} {column} {shade} {}",
+                one_line(image)
+            ),
+            Shape::Picture {
+                screen_x,
+                screen_y,
+                width,
+                height,
+                image,
+                shade,
+            } => format!(
+                "picture {screen_x} {screen_y} {width} {height} {shade} {}",
+                one_line(image)
+            ),
         };
         text.push_str(&line);
         text.push('\n');
     }
     text
+}
+
+/// The text on one line: a line break in it made a space.
+fn one_line(text: &str) -> String {
+    text.chars()
+        .map(|letter| {
+            if letter == '\n' || letter == '\r' {
+                ' '
+            } else {
+                letter
+            }
+        })
+        .collect()
 }
 
 // ------------------------------------------------------------ the C ABI
@@ -466,7 +523,8 @@ pub unsafe extern "C" fn renyi_file(
     });
 }
 
-/// Every file forgotten, and a run suspended at a frame abandoned.
+/// Every file forgotten, and a run suspended at a frame abandoned with
+/// its frame and its sounds.
 #[no_mangle]
 pub extern "C" fn renyi_clear() {
     SESSION.with(|session| {
@@ -474,6 +532,7 @@ pub extern "C" fn renyi_clear() {
         session.files.clear();
         session.live = None;
         session.frame.clear();
+        session.sounds.clear();
     });
 }
 
@@ -571,6 +630,19 @@ pub extern "C" fn renyi_frame() -> *const u8 {
 #[no_mangle]
 pub extern "C" fn renyi_frame_len() -> usize {
     SESSION.with(|session| session.borrow().frame.len())
+}
+
+/// The sounds the last run or resumption asked for, as text, one name
+/// per line in the order asked: its bytes, valid until the next call;
+/// empty when the call played nothing.
+#[no_mangle]
+pub extern "C" fn renyi_sounds() -> *const u8 {
+    SESSION.with(|session| session.borrow().sounds.as_ptr())
+}
+
+#[no_mangle]
+pub extern "C" fn renyi_sounds_len() -> usize {
+    SESSION.with(|session| session.borrow().sounds.len())
 }
 
 /// The last answer's text: its bytes, valid until the next call.
@@ -814,6 +886,22 @@ end
         use renyi_vm::screen::Colour;
 
         let frame = [
+            Shape::Strip {
+                screen_x: 3,
+                top: 10,
+                bottom: 90,
+                image: "wall\n2".to_string(),
+                column: 70,
+                shade: 60,
+            },
+            Shape::Picture {
+                screen_x: 0,
+                screen_y: 168,
+                width: 320,
+                height: 32,
+                image: "bar".to_string(),
+                shade: 100,
+            },
             Shape::Label {
                 screen_x: 1,
                 screen_y: 2,
@@ -838,8 +926,80 @@ end
         ];
         assert_eq!(
             frame_text(&frame),
-            "label 1 2 1 2 3 two lines \nrectangle 0 0 320 200 0 0 0\n"
+            "strip 3 10 90 70 60 wall 2\npicture 0 168 320 32 100 bar\n\
+             label 1 2 1 2 3 two lines \nrectangle 0 0 320 200 0 0 0\n"
         );
+    }
+
+    /// A sound before the first frame and one after it.
+    const SOUNDS: &str = "module sounds
+  purpose: Play a sound, present a frame of a strip, play another.
+
+import std.console
+import std.screen exposing Shape
+
+public function main() needs console, screen
+  purpose: Play, present, play, print the elapsed time.
+
+  screen.play(\"shot\")
+  let input be screen.present([
+    Strip(screen_x: 3, top: 10, bottom: 90, image: \"wall\", column: 70, shade: 60)
+  ])
+  screen.play(\"door\")
+  console.print(\"elapsed {input.elapsed_ms}\")
+end
+";
+
+    /// The last answer's sounds, as the page reads them.
+    fn sounds() -> String {
+        // SAFETY: as for `text`, by `renyi_sounds`'s promise
+        unsafe {
+            String::from_utf8_lossy(std::slice::from_raw_parts(
+                renyi_sounds(),
+                renyi_sounds_len(),
+            ))
+            .into_owned()
+        }
+    }
+
+    #[test]
+    fn the_sounds_a_call_asked_for_come_with_its_answer() {
+        let files = files(&[("sounds.ry", SOUNDS)]);
+        let (outcome, live) = run(&files, "sounds.ry", Vec::new());
+        assert_eq!(outcome.status, SUSPENDED, "{}", outcome.text);
+        assert_eq!(outcome.sounds, ["shot"]);
+        let live = live.expect("the run is suspended at its frame");
+        assert_eq!(live.frame(), "strip 3 10 90 70 60 wall\n");
+        let input = Input {
+            elapsed_ms: 7,
+            ..Input::default()
+        };
+        let (outcome, live) = resume(live, input);
+        assert_eq!(
+            outcome,
+            Outcome {
+                sounds: vec!["door".to_string()],
+                ..Outcome::new(FINISHED, "elapsed 7\n", 0)
+            }
+        );
+        assert!(live.is_none());
+        // through the C ABI: one name per line, until the next call
+        let name = "sounds.ry";
+        // SAFETY: the texts lie at their pointers for their lengths, as
+        // the functions ask
+        unsafe {
+            renyi_clear();
+            renyi_file(name.as_ptr(), name.len(), SOUNDS.as_ptr(), SOUNDS.len());
+            assert_eq!(renyi_run(name.as_ptr(), name.len()), SUSPENDED);
+            assert_eq!(sounds(), "shot\n");
+            assert_eq!(renyi_resume(0, 0, 0, 0, 0, 0, 7), FINISHED);
+            assert_eq!(
+                (text(), sounds()),
+                ("elapsed 7\n".to_string(), "door\n".to_string())
+            );
+            renyi_clear();
+            assert_eq!(renyi_sounds_len(), 0);
+        }
     }
 
     /// The last answer's text, as the page reads it.

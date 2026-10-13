@@ -1,5 +1,6 @@
 //! `std.screen` (decision AW31): the frame of a program to the host that
-//! draws it, the frame's input back, and the logical screen's size.
+//! draws it, the frame's input back, a sound to the host that plays it
+//! (decision AW35), and the logical screen's size.
 
 use super::{arg, crash, list, small, text};
 use crate::extension::Native;
@@ -9,6 +10,7 @@ use crate::vm::{Interrupt, Vm};
 
 pub(crate) const NATIVES: &[Native] = &[
     Native::function("std.screen", "present", screen_present),
+    Native::function("std.screen", "play", screen_play),
     Native::function("std.screen", "width", screen_width),
     Native::function("std.screen", "height", screen_height),
 ];
@@ -32,9 +34,7 @@ fn screen_height(_: &mut Vm, _: &mut [Value]) -> Result<Value, Interrupt> {
 fn screen_present(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
     let frame = frame_of(arg(args, 0))?;
     let Some(screen) = vm.screen.clone() else {
-        return Err(crash(
-            "the screen is not available here: the run has no host for `screen`",
-        ));
+        return Err(crash(NO_HOST));
     };
     let answer = screen.borrow_mut().present(frame);
     match answer {
@@ -44,6 +44,20 @@ fn screen_present(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
             "screen.present cannot wait here: the host answers later, and the call runs inside a module constant, a comparison, a text conversion, a decode or a callback, or on generated code",
         )),
     }
+}
+
+/// The crash of a call under no host.
+const NO_HOST: &str = "the screen is not available here: the run has no host for `screen`";
+
+/// The named sound to the host, which plays it once if it can; a run
+/// without a host crashes, as at `present`.
+fn screen_play(vm: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
+    let sound = text(arg(args, 0))?.to_string();
+    let Some(screen) = vm.screen.clone() else {
+        return Err(crash(NO_HOST));
+    };
+    screen.borrow_mut().play(&sound);
+    Ok(Value::Nothing)
 }
 
 /// The frame as plain Rust: the list's variants by tag, their fields by
@@ -76,6 +90,22 @@ fn frame_of(value: &Value) -> Result<Vec<Shape>, Interrupt> {
                 screen_y: small(&fields[1])?,
                 text: text(&fields[2])?.to_string(),
                 colour: colour_of(&fields[3])?,
+            },
+            3 => Shape::Strip {
+                screen_x: small(&fields[0])?,
+                top: small(&fields[1])?,
+                bottom: small(&fields[2])?,
+                image: text(&fields[3])?.to_string(),
+                column: small(&fields[4])?,
+                shade: small(&fields[5])?,
+            },
+            4 => Shape::Picture {
+                screen_x: small(&fields[0])?,
+                screen_y: small(&fields[1])?,
+                width: small(&fields[2])?,
+                height: small(&fields[3])?,
+                image: text(&fields[4])?.to_string(),
+                shade: small(&fields[5])?,
             },
             _ => return Err(crash("a frame holds something that is not a Shape")),
         };

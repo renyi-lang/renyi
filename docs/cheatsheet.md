@@ -275,7 +275,7 @@ Modules: std.console (print, print_error, read_line); std.environment
   Instant, Duration); std.random; std.filesystem (Path, read_text, write_text,
   exists, list); std.json (parse, render); std.http (Url, get, post_json);
   std.server; std.csv; std.sqlite; std.regex; std.process (execute, attempt);
-  std.foreign; std.python; std.screen (present)
+  std.foreign; std.python; std.screen (present, play)
 ```
 One parameter is positional, more are named: `line.split(",")`,
 `text.replace(old: "a", new: "b")`.

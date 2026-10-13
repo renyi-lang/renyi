@@ -10,10 +10,12 @@ public type Colour
 end
 
 public type Shape is one of
-  purpose: One drawing primitive; a frame is a list of them, drawn in order on the logical screen of 320 by 200 with the origin at the top left.
+  purpose: One drawing primitive; a frame is a list of them, drawn in order on the logical screen of 320 by 200 with the origin at the top left. A Strip is one column of a named image stretched between two rows, the column taken modulo the image's width, and a Picture a named image stretched to a size; both are shaded in percent, and the host resolves the name.
   Column(screen_x: Integer, top: Integer, bottom: Integer, colour: Colour)
   Rectangle(screen_x: Integer, screen_y: Integer, width: Integer, height: Integer, colour: Colour)
   Label(screen_x: Integer, screen_y: Integer, text: Text, colour: Colour)
+  Strip(screen_x: Integer, top: Integer, bottom: Integer, image: Text, column: Integer, shade: Integer)
+  Picture(screen_x: Integer, screen_y: Integer, width: Integer, height: Integer, image: Text, shade: Integer)
   can ToText
 end
 
@@ -31,6 +33,8 @@ end
 
 public function present(frame: List of Shape) returns Input needs screen
   purpose: Hand the frame to the host to draw and get the frame's input back; a host that must return to its own loop first suspends the program here and resumes it with the input.
+public function play(sound: Text) needs screen
+  purpose: Play the named sound once on a host that can; the host resolves the name, and one without sound ignores the call.
 public function width() returns Integer
   purpose: The width of the logical screen in columns, 320.
 public function height() returns Integer

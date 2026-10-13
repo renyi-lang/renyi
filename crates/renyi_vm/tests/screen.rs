@@ -3,7 +3,8 @@
 //! inside `screen.present`, and `resume` continues it with the input and
 //! notes the call in the recording, which a replay answers from; a run
 //! without a host crashes at the call, as does a suspension inside a
-//! callback, which runs on a nested loop.
+//! callback, which runs on a nested loop. A sound (decision AW35) goes
+//! to the host and into the recording, and crashes without a host too.
 
 use std::cell::RefCell;
 use std::io::{Read, Write};
@@ -52,12 +53,13 @@ impl Capture {
     }
 }
 
-/// A host for the tests: it keeps every frame it is shown and answers
-/// at once, `quit` once `quit_after` frames went by, or later when
-/// `later`.
+/// A host for the tests: it keeps every frame it is shown and every
+/// sound it is asked to play, and answers at once, `quit` once
+/// `quit_after` frames went by, or later when `later`.
 #[derive(Default)]
 struct Host {
     frames: Vec<Vec<Shape>>,
+    sounds: Vec<String>,
     later: bool,
     quit_after: usize,
 }
@@ -77,6 +79,10 @@ impl Screen for Host {
 
     fn suspends(&self) -> bool {
         self.later
+    }
+
+    fn play(&mut self, sound: &str) {
+        self.sounds.push(sound.to_string());
     }
 }
 
@@ -308,18 +314,20 @@ fn the_size_and_every_shape_cross_the_boundary_with_the_colours_clamped() {
     let program = compile(
         "shapes.ry",
         "module shapes
-  purpose: Every shape across the boundary, a colour out of range clamped.
+  purpose: Every shape across the boundary, a colour out of range clamped, an image named.
 
 import std.console
 import std.screen exposing Colour, Shape
 
 public function main() needs screen, console
-  purpose: Present one frame of three shapes and print the size and the input.
+  purpose: Present one frame of five shapes and print the size and the input.
 
   let input be screen.present([
     Column(screen_x: 0, top: 0, bottom: 199, colour: Colour(red: 300, green: 0, blue: 128)),
     Rectangle(screen_x: 10, screen_y: 20, width: 30, height: 40, colour: Colour(red: 1, green: 2, blue: 3)),
-    Label(screen_x: 5, screen_y: 5, text: \"score 12\", colour: Colour(red: 255, green: 255, blue: 255))
+    Label(screen_x: 5, screen_y: 5, text: \"score 12\", colour: Colour(red: 255, green: 255, blue: 255)),
+    Strip(screen_x: 7, top: 40, bottom: 160, image: \"wall\", column: 70, shade: 60),
+    Picture(screen_x: 0, screen_y: 168, width: 320, height: 32, image: \"bar\", shade: 100)
   ])
   console.print(\"{screen.width()} by {screen.height()}\")
   console.print(\"forward {input.forward}, fire {input.fire}, elapsed {input.elapsed_ms}\")
@@ -381,8 +389,115 @@ end
                 text: "score 12".to_string(),
                 colour: white,
             },
+            Shape::Strip {
+                screen_x: 7,
+                top: 40,
+                bottom: 160,
+                image: "wall".to_string(),
+                column: 70,
+                shade: 60,
+            },
+            Shape::Picture {
+                screen_x: 0,
+                screen_y: 168,
+                width: 320,
+                height: 32,
+                image: "bar".to_string(),
+                shade: 100,
+            },
         ]]
     );
+}
+
+const SOUNDS: &str = "module sounds
+  purpose: Play a sound, present a frame, play another.
+
+import std.console
+import std.screen exposing Shape
+
+public function main() needs screen, console
+  purpose: Play a sound before and after one frame and print the input's elapsed time.
+
+  screen.play(\"shot\")
+  let input be screen.present([
+    Strip(screen_x: 3, top: 10, bottom: 90, image: \"wall\", column: 70, shade: 60)
+  ])
+  screen.play(\"door\")
+  console.print(\"elapsed {input.elapsed_ms}\")
+end
+";
+
+#[test]
+fn a_sound_goes_to_the_host_and_into_the_recording_and_crashes_without_a_host() {
+    let program = compile("sounds.ry", SOUNDS);
+    let host = Rc::new(RefCell::new(Host::default()));
+    let stdout = Capture::default();
+    let run = run_program(
+        &program,
+        Options {
+            record: true,
+            ..options(&stdout, Some(host.clone()))
+        },
+    );
+    assert_eq!(run.outcome, RunOutcome::Finished);
+    assert_eq!(stdout.text(), "elapsed 16\n");
+    assert_eq!(host.borrow().sounds, ["shot", "door"]);
+    assert_eq!(
+        host.borrow().frames,
+        vec![vec![Shape::Strip {
+            screen_x: 3,
+            top: 10,
+            bottom: 90,
+            image: "wall".to_string(),
+            column: 70,
+            shade: 60,
+        }]]
+    );
+    let recording = run.recording.expect("a recording");
+    let primitives: Vec<&str> = recording
+        .calls
+        .iter()
+        .map(|call| call.primitive.as_str())
+        .collect();
+    assert_eq!(
+        primitives,
+        [
+            "std.screen.play",
+            "std.screen.present",
+            "std.screen.play",
+            "std.console.print",
+        ]
+    );
+    let first = &recording.calls[0];
+    assert_eq!(first.capability, "screen");
+    assert_eq!(
+        first.arguments,
+        [("sound".to_string(), Json::Text("shot".to_string()))]
+    );
+    // a replay plays nothing: the host is not asked
+    let replayed = Capture::default();
+    let untouched: SharedScreen = Rc::new(RefCell::new(Untouched));
+    let replay = run_program(
+        &program,
+        Options {
+            replay: Some(recording),
+            replay_output: true,
+            ..options(&replayed, Some(untouched))
+        },
+    );
+    assert_eq!(replay.outcome, RunOutcome::Finished);
+    assert_eq!(replayed.text(), "elapsed 16\n");
+    // without a host, the first sound is the crash
+    let silent = Capture::default();
+    let RunOutcome::Crashed { message, location } = run_main(&program, options(&silent, None))
+    else {
+        panic!("a run without a host crashes");
+    };
+    assert_eq!(
+        message,
+        "the screen is not available here: the run has no host for `screen`"
+    );
+    assert!(location.is_some());
 }
 
 #[test]
@@ -475,7 +590,8 @@ end
 fn the_console_host_draws_the_frame_as_text_and_reads_the_keys_from_a_line() {
     use renyi_vm::screen::ConsoleScreen;
 
-    // the grid of the text view's own test: a column under a label
+    // the grid of the text view's own test: a column under a label, a
+    // strip at half shade beside it, a picture at full shade below
     let white = Colour {
         red: 255,
         green: 255,
@@ -494,8 +610,24 @@ fn the_console_host_draws_the_frame_as_text_and_reads_the_keys_from_a_line() {
             text: "HI".to_string(),
             colour: white,
         },
+        Shape::Strip {
+            screen_x: 200,
+            top: 0,
+            bottom: 99,
+            image: "wall".to_string(),
+            column: 1,
+            shade: 50,
+        },
+        Shape::Picture {
+            screen_x: 240,
+            screen_y: 100,
+            width: 80,
+            height: 100,
+            image: "bar".to_string(),
+            shade: 100,
+        },
     ];
-    assert_eq!(ConsoleScreen::text_of(&frame, 4, 2), " @  \nHI  ");
+    assert_eq!(ConsoleScreen::text_of(&frame, 4, 2), " @= \nHI @");
 
     let program = compile(
         "keys.ry",

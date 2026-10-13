@@ -8,7 +8,10 @@
 //! call with its frames kept (`Interrupt::Suspended`) and the host
 //! resumes it with the input (`Vm::resume`). The frame and the input
 //! cross the boundary as plain Rust values; the native of `std.screen`
-//! converts them.
+//! converts them. A `Strip` and a `Picture` name an image and `play`
+//! names a sound (decision AW35); the names are the host's to resolve:
+//! the page's to the files served with the program, the console host's
+//! to a block of the shade's glyph and to no sound.
 
 use std::cell::RefCell;
 use std::io::{BufRead, Write};
@@ -56,6 +59,27 @@ pub enum Shape {
         text: String,
         colour: Colour,
     },
+    /// One column of the named image, stretched from row `top` to row
+    /// `bottom`, both included, its colours scaled by `shade` in
+    /// percent; the column is taken modulo the image's width.
+    Strip {
+        screen_x: i64,
+        top: i64,
+        bottom: i64,
+        image: String,
+        column: i64,
+        shade: i64,
+    },
+    /// The named image stretched to `width` by `height` at a place,
+    /// its colours scaled by `shade` in percent.
+    Picture {
+        screen_x: i64,
+        screen_y: i64,
+        width: i64,
+        height: i64,
+        image: String,
+        shade: i64,
+    },
 }
 
 /// The keys held during one frame and the milliseconds since the previous
@@ -92,6 +116,9 @@ pub trait Screen {
     fn suspends(&self) -> bool {
         false
     }
+
+    /// Play the named sound once; a host without sound ignores it.
+    fn play(&mut self, _sound: &str) {}
 }
 
 /// A host shared between the VM and whoever drives it: the VM borrows it
@@ -107,7 +134,8 @@ const KEYS: &str = "w forward, s backward, a left, d right, f fire, q quit";
 /// The console host of `renyi run` (decision AW32): every frame drawn
 /// as text, each cell of a grid of characters the brightness of the
 /// colour under the cell's middle (a label written from its cell to the
-/// right), then a line read, whose letters are the keys held: `w`
+/// right, a strip or a picture a block of its shade's glyph; a sound
+/// is ignored), then a line read, whose letters are the keys held: `w`
 /// forward, `s` backward, `a` turn left, `d` turn right, `f` fire, `q`
 /// quit; the end of the input is `quit`; the elapsed time is the real
 /// one since the previous frame. It answers at once, so a run keeps its
@@ -213,6 +241,33 @@ impl ConsoleScreen {
                         grid[row * columns + column + place] = letter;
                     }
                 }
+                Shape::Strip {
+                    screen_x,
+                    top,
+                    bottom,
+                    shade,
+                    ..
+                } => paint(
+                    &mut grid,
+                    columns,
+                    cells_covering(*screen_x, *screen_x, cell_width, columns),
+                    cells_covering(*top, *bottom, cell_height, rows),
+                    shade_glyph(*shade),
+                ),
+                Shape::Picture {
+                    screen_x,
+                    screen_y,
+                    width,
+                    height,
+                    shade,
+                    ..
+                } => paint(
+                    &mut grid,
+                    columns,
+                    cells_covering(*screen_x, screen_x + width - 1, cell_width, columns),
+                    cells_covering(*screen_y, screen_y + height - 1, cell_height, rows),
+                    shade_glyph(*shade),
+                ),
             }
         }
         grid.chunks(columns)
@@ -258,6 +313,16 @@ fn glyph(colour: Colour) -> char {
         (colour.red as usize * 299 + colour.green as usize * 587 + colour.blue as usize * 114)
             / 1000;
     RAMP[(luma * RAMP.len() / 256).min(RAMP.len() - 1)]
+}
+
+/// The character for a shade in percent: the grey of that brightness.
+fn shade_glyph(shade: i64) -> char {
+    let level = (shade.clamp(0, 100) * 255 / 100) as u8;
+    glyph(Colour {
+        red: level,
+        green: level,
+        blue: level,
+    })
 }
 
 impl Screen for ConsoleScreen {

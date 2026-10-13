@@ -839,6 +839,8 @@ public type Shape is one of
   Column(screen_x: Integer, top: Integer, bottom: Integer, colour: Colour)
   Rectangle(screen_x: Integer, screen_y: Integer, width: Integer, height: Integer, colour: Colour)
   Label(screen_x: Integer, screen_y: Integer, text: Text, colour: Colour)
+  Strip(screen_x: Integer, top: Integer, bottom: Integer, image: Text, column: Integer, shade: Integer)
+  Picture(screen_x: Integer, screen_y: Integer, width: Integer, height: Integer, image: Text, shade: Integer)
   can ToText
 end
 
@@ -855,6 +857,8 @@ end
 
 public function present(frame: List of Shape) returns Input needs screen
   purpose: Hand the frame to the host to draw and get the frame's input back.
+public function play(sound: Text) needs screen
+  purpose: Play the named sound once on a host that can; the host resolves the name, and one without sound ignores the call.
 public function width() returns Integer
   purpose: The width of the logical screen in columns, 320.
 public function height() returns Integer
@@ -882,6 +886,17 @@ is a demo and a replay answers `present` from the recording without a
 host. A `present` inside a callback (the handler of `server.serve`) or
 any other nested loop cannot wait: a host that answers later crashes
 the run there.
+
+A `Strip` and a `Picture` draw from a named image (decision AW35): a
+`Strip` is one column of the image, `column` taken modulo the image's
+width, stretched from row `top` to row `bottom`, and a `Picture` the
+image stretched to `width` by `height` at a place; the colours of
+both are scaled by `shade`, a percentage. `play` names a sound the
+host plays once. The names are the host's to resolve: the page in the
+browser takes them to the images and the sounds served with the
+program, the console host draws a strip or a picture as a block of
+its shade's glyph and ignores a sound. A run without a host crashes
+at `play` as at `present`, and both are recorded like any effect.
 
 ## 17. Not in v1
 

@@ -1195,7 +1195,12 @@ without a host crashes at the call. The call is recorded like any
 primitive, the frame as its argument and the input as its outcome, and
 a replay answers it without a host. A `present` inside a callback (the
 handler of `server.serve`) cannot wait: a host that answers later
-crashes the run there.
+crashes the run there. A `Strip` and a `Picture` name an image and
+`screen.play` a sound (decision AW35), which the host resolves: the
+page in the browser to the files served with the program, the console
+host to a block of the shade's glyph and to no sound; `play` needs
+`screen`, is recorded like `present` and crashes without a host as it
+does.
 
 ---
 
