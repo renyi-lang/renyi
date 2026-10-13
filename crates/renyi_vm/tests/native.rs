@@ -2973,3 +2973,171 @@ end
         other => panic!("expected a denial, got {other:?}"),
     }
 }
+
+#[test]
+fn fields_and_constants_borrowed_by_their_consumers_print_as_the_interpreter_prints() {
+    // decision AW25: a field read for a comparison through the cache (a
+    // `User`) and through the helper (an `Admin` at the same site), a
+    // field passed to a direct call that accepts it borrowed, a module
+    // constant compared and passed to a typed entry, and the value of an
+    // `if` expression and of an `otherwise` compared at once
+    let (outcome, printed) = both_ways(BORROWED);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(
+        printed,
+        "true\nfalse\ntrue\nfalse\ntrue\ntrue\nfalse\ntrue\nfalse\n37\ntrue\nfalse\ntrue\n"
+    );
+}
+
+#[test]
+fn the_borrowed_walk_stops_where_another_path_enters_and_finds_the_field_reads() {
+    // the walk of `borrowed_operands` (decision AW25): it stops before a
+    // position another path enters at, so that the push of one branch of
+    // an `if` expression or of an `otherwise` is not borrowed while the
+    // other branch's is moved (the leak the probe of B4 found); on the
+    // Cranelift tier it steps over a field read and a module constant,
+    // marks them borrowed with their bit among the consumer's dynamic
+    // ones, and notes the borrowed operands below each; the template
+    // tier's walk stops at them
+    use renyi_vm::native::codegen::borrowed_operands;
+    use renyi_vm::native::infer::analyse;
+    let program = compile(BORROWED);
+    let code_of = |name: &str| {
+        program
+            .codes
+            .iter()
+            .find(|code| code.name == name)
+            .unwrap_or_else(|| panic!("the code object of {name}"))
+    };
+    let found = |name: &str, fields: bool| {
+        let code = code_of(name);
+        let analysis = analyse(&program, code, &[], true, true).expect("analysed");
+        borrowed_operands(&program, code, &analysis, &[], true, fields)
+    };
+    // `pick`: the branch before the comparison moves (op 4), the
+    // constant is borrowed (op 5)
+    let pick = found("pick", true);
+    assert!(matches!(code_of("pick").ops()[4], Op::LoadMove(2)));
+    assert!(!pick.ops[4], "{:?}", pick.ops);
+    assert!(pick.ops[5]);
+    assert_eq!(pick.masks[6], 0b10);
+    // `fallback`: the same past the `otherwise`
+    let fallback = found("fallback", true);
+    assert!(matches!(code_of("fallback").ops()[6], Op::LoadMove(1)));
+    assert!(!fallback.ops[6], "{:?}", fallback.ops);
+    assert!(fallback.ops[7]);
+    assert_eq!(fallback.masks[8], 0b10);
+    // `is_word`: the text and the constant borrowed, the constant dynamic
+    // with the text below it
+    let is_word = found("is_word", true);
+    assert!(matches!(code_of("is_word").ops()[1], Op::Global(_)));
+    assert_eq!((is_word.ops[0], is_word.ops[1]), (true, true));
+    assert_eq!(is_word.masks[2], 0b11);
+    assert_eq!(is_word.dynamic[2], 0b10);
+    assert_eq!(is_word.indices[1], 1);
+    assert_eq!((is_word.below[1], is_word.below_dynamic[1]), (0b01, 0));
+    // `named`: the field read first, nothing below it
+    let named = found("named", true);
+    assert!(matches!(code_of("named").ops()[0], Op::LoadField { .. }));
+    assert_eq!((named.ops[0], named.ops[1]), (true, true));
+    assert_eq!(named.masks[2], 0b11);
+    assert_eq!(named.dynamic[2], 0b01);
+    assert_eq!(named.below[0], 0);
+    // `wanted_first`: the field read second, the text below it
+    let wanted_first = found("wanted_first", true);
+    assert!(matches!(
+        code_of("wanted_first").ops()[1],
+        Op::LoadField { .. }
+    ));
+    assert_eq!((wanted_first.ops[0], wanted_first.ops[1]), (true, true));
+    assert_eq!(wanted_first.masks[2], 0b11);
+    assert_eq!(wanted_first.dynamic[2], 0b10);
+    assert_eq!(wanted_first.below[1], 0b01);
+    // the template tier's walk stops at a field read and a constant
+    let named = found("named", false);
+    assert_eq!((named.ops[0], named.ops[1]), (false, true));
+    assert_eq!((named.masks[2], named.dynamic[2]), (0b10, 0));
+    let wanted_first = found("wanted_first", false);
+    assert_eq!((wanted_first.ops[0], wanted_first.ops[1]), (false, false));
+    assert_eq!(wanted_first.masks[2], 0);
+    let is_word = found("is_word", false);
+    assert_eq!((is_word.ops[0], is_word.ops[1]), (false, false));
+    assert_eq!(is_word.masks[2], 0);
+}
+
+/// The program of the tests of decision AW25.
+const BORROWED: &str = r#"module demo
+  purpose: Field reads and constants borrowed, and a value joined from two branches compared.
+
+import std.console
+
+type User
+  purpose: A named account.
+  has name: Text
+  has age: Integer
+end
+
+type Admin is User
+  purpose: A user with more rights, passed where a user is.
+
+let word: Text be "a constant text longer than sixteen bytes"
+  purpose: A module constant compared and passed.
+
+function pick(flag: Boolean, left: Text, right: Text) returns Boolean
+  purpose: Whether the chosen text is the word.
+
+  return (if flag then left otherwise right end) is "word"
+end
+
+function fallback(name: maybe Text, other: Text) returns Boolean
+  purpose: Whether the name or its default is the word.
+
+  return (name otherwise other) is "word"
+end
+
+function named(user: User, wanted: Text) returns Boolean
+  purpose: Whether the user has the wanted name; an admin takes the slow path of the site.
+
+  let found be user.name is wanted
+  return found and user.age is at least 0
+end
+
+function wanted_first(user: User, wanted: Text) returns Boolean
+  purpose: The same with the wanted name pushed first, below the field read.
+
+  let found be wanted is user.name
+  return found and user.age is at least 0
+end
+
+function length_of(text: Text) returns Integer
+  purpose: The length, the text passed borrowed by a direct call.
+
+  return text.length()
+end
+
+function is_word(text: Text) returns Boolean
+  purpose: Whether the text is the constant.
+
+  return text is word
+end
+
+public function main() needs console
+  purpose: Print the answers.
+
+  console.print(pick(flag: true, left: "word", right: "other").to_text())
+  console.print(pick(flag: false, left: "word", right: "other").to_text())
+  console.print(fallback(name: nothing, other: "word").to_text())
+  console.print(fallback(name: "other", other: "word").to_text())
+  let user be User(name: "a user name longer than sixteen bytes", age: 30)
+  let admin be Admin(User(name: "an admin name longer than sixteen bytes", age: 40))
+  console.print(named(user: user, wanted: "a user name longer than sixteen bytes").to_text())
+  console.print(named(user: admin, wanted: "an admin name longer than sixteen bytes").to_text())
+  console.print(named(user: admin, wanted: "nobody").to_text())
+  console.print(wanted_first(user: user, wanted: "a user name longer than sixteen bytes").to_text())
+  console.print(wanted_first(user: admin, wanted: "nobody").to_text())
+  console.print("{length_of(user.name)}")
+  console.print(is_word(word).to_text())
+  console.print(is_word("another text longer than sixteen bytes").to_text())
+  console.print(word.contains("sixteen").to_text())
+end
+"#;

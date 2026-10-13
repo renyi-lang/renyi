@@ -443,12 +443,19 @@ struct Gen<'a, 'b> {
     analysis: &'a Analysis,
     /// Per function, how a call to it is made (decision AU1).
     calls: &'a [CallKind],
-    /// Per op, whether a `Load` or a `Const` pushes an operand a typed
-    /// call borrows: pushed without a reference of its own, consumed by
-    /// the call without a release (decision AU1).
-    borrowed: Vec<bool>,
-    /// Per `Call` op, the bits of the arguments it borrows.
-    masks: Vec<u32>,
+    /// Per op, whether it pushes an operand a typed call, a comparison or
+    /// a direct call borrows (decisions AU1, AU13, AW5 and AW25): pushed
+    /// without a reference of its own, consumed without a release; per
+    /// consumer, the bits of the operands so pushed; and what the pushes
+    /// through a helper need (`Borrowed`).
+    borrowed: Borrowed,
+    /// The bits of the operands pushed for their consumer by the helper
+    /// path of a `LoadField` or a `Global`, with a reference of their own
+    /// (decision AW25): an `i64`, bit `i` for the consumer's operand `i`,
+    /// cleared where the fast path pushed the operand borrowed and set
+    /// where the helper pushed it; a consumer takes these bits out of its
+    /// static mask, so that the helper's value is released as owned.
+    slow_owned: Variable,
     /// Per op, the slots that may hold a counted block on entry to it
     /// (decision AW4): what a leave at the op releases.
     owned: Vec<Vec<bool>>,
@@ -652,21 +659,72 @@ pub(crate) fn entry_kind(program: &Program, function: usize) -> TypedKind {
     }
 }
 
+/// Per position, whether a path enters there from elsewhere (decision
+/// AW25): the target of a jump, a handler's landing or a loop's exit; one
+/// entry more for the position past the last op.
+pub fn jump_targets(code: &Code) -> Vec<bool> {
+    let mut targets = vec![false; code.ops().len() + 1];
+    let mut mark = |target: u32| {
+        if let Some(flag) = targets.get_mut(target as usize) {
+            *flag = true;
+        }
+    };
+    for op in code.ops() {
+        match op {
+            Op::Jump(target)
+            | Op::JumpIfFalse(target)
+            | Op::JumpIfTrue(target)
+            | Op::JumpIfAbsent(target)
+            | Op::JumpIfFailure(target)
+            | Op::PushHandler(target) => mark(*target),
+            Op::IterNext { exit, .. } => mark(*exit),
+            Op::JumpByTag { table, .. } => {
+                for target in &code.tables()[*table as usize] {
+                    mark(*target);
+                }
+            }
+            _ => {}
+        }
+    }
+    targets
+}
+
 /// The pushes a call or a comparison at `pc` takes from the ops just
 /// before it, walking back over the `Load`s, `LoadMove`s and `Const`s
 /// and, before a `Binary`, `Nothing`, which push one operand each, up to
 /// `count`: each with the index of the argument it is (the first 0). The
 /// walk stops at any other op: what was pushed before it is whatever the
-/// stack holds.
-fn simple_pushes(code: &Code, pc: usize, count: usize) -> Vec<(usize, usize)> {
+/// stack holds; and before a position another path enters at (`targets`,
+/// decision AW25), since that path pushed the operands below it
+/// elsewhere: the join of an `if` expression or of an `otherwise` whose
+/// value is compared at once, which the walk once crossed, the push of
+/// the branch before the comparison marked borrowed and the other
+/// branch's moved out of its slot and never released (100 KB a turn in
+/// the probe of B4, on both tiers since decision AU13).
+fn simple_pushes(code: &Code, targets: &[bool], pc: usize, count: usize) -> Vec<(usize, usize)> {
+    pushes_before(code, targets, pc, count, |_, _| false)
+}
+
+/// `simple_pushes` walking back over the ops `more` accepts too.
+fn pushes_before(
+    code: &Code,
+    targets: &[bool],
+    pc: usize,
+    count: usize,
+    more: impl Fn(usize, &Op) -> bool,
+) -> Vec<(usize, usize)> {
     let binary = matches!(code.ops()[pc], Op::Binary(_));
     let mut pushes = Vec::with_capacity(count.min(pc));
     for back in 1..=count.min(pc) {
         let at = pc - back;
-        let simple = match &code.ops()[at] {
+        if targets[at + 1] {
+            break;
+        }
+        let op = &code.ops()[at];
+        let simple = match op {
             Op::Load(_) | Op::LoadMove(_) | Op::Const(_) => true,
             Op::Nothing => binary,
-            _ => false,
+            _ => more(at, op),
         };
         if !simple {
             break;
@@ -698,6 +756,7 @@ pub(crate) fn accepted_params(program: &Program, calls: &[CallKind], code_id: us
     let params = (code.params as usize).min(32);
     // per op, whether a push there is taken by a call or a comparison
     // that reads it where it lies
+    let targets = jump_targets(code);
     let mut lent = vec![false; code.ops().len()];
     for (pc, op) in code.ops().iter().enumerate() {
         let (count, takes) = match op {
@@ -711,7 +770,7 @@ pub(crate) fn accepted_params(program: &Program, calls: &[CallKind], code_id: us
             Op::Binary(op) if is_comparison(*op) => (2, false),
             _ => continue,
         };
-        for (at, _) in simple_pushes(code, pc, count) {
+        for (at, _) in simple_pushes(code, &targets, pc, count) {
             // a moved operand of an entry that takes is the call's to
             // consume, not lent (decision AW11)
             if takes && matches!(code.ops()[at], Op::LoadMove(_)) {
@@ -766,16 +825,50 @@ pub(crate) fn accepted_params(program: &Program, calls: &[CallKind], code_id: us
 /// AU17): the entries read their arguments where they lie and update
 /// nothing in place, so the slot keeps its value, which nothing reads
 /// again, and the helper counts the copy out; moving it would cost a
-/// release after the call where the plain load cost nothing.
-pub(crate) fn borrowed_operands(
+/// release after the call where the plain load cost nothing. On the tier
+/// that asks for it (`fields`, the Cranelift tier), a `LoadField` of a
+/// slot that is not a pair, pushing a value, and a `Global` are pushed
+/// for the consumer too (decision AW25): borrowed on their fast paths,
+/// which read the field in place or copy the constant from the VM's
+/// table, both held by something that outlives the consumer (the
+/// holder's slot, which no op between the push and the consumer writes;
+/// the table, which keeps a constant once built), unless the holder is
+/// moved into the same call; their helper paths push a value with a
+/// reference of its own, which the generated code notes in `slow_owned`
+/// and the consumer releases (`Borrowed::dynamic`), and give the
+/// borrowed operands below them a reference on the way out when the
+/// helper fails (`Borrowed::below`), since whoever releases the frame
+/// counts every operand as owned. A typed field goes in a register and
+/// stops the walk: its unboxing may hand the frame back with the operands
+/// below it on the stack, which a hand-back counts as owned. The template
+/// tier keeps the shorter walk: its field reads retain, and its helper
+/// paths give nothing back on the way out.
+pub fn borrowed_operands(
     program: &Program,
     code: &Code,
     analysis: &Analysis,
     calls: &[CallKind],
     direct_calls: bool,
-) -> (Vec<bool>, Vec<u32>) {
-    let mut borrowed = vec![false; code.ops().len()];
-    let mut masks = vec![0u32; code.ops().len()];
+    fields: bool,
+) -> Borrowed {
+    let count_ops = code.ops().len();
+    let mut found = Borrowed {
+        ops: vec![false; count_ops],
+        masks: vec![0; count_ops],
+        indices: vec![0; count_ops],
+        dynamic: vec![0; count_ops],
+        below: vec![0; count_ops],
+        below_dynamic: vec![0; count_ops],
+    };
+    let targets = jump_targets(code);
+    // whether the op at `at` pushes a value, boxed or held, by the state
+    // after it, which no other path reaches where the walk crosses it
+    let value_pushed = |at: usize| {
+        matches!(
+            analysis.entry.get(at + 1),
+            Some(Some(state)) if state.last().is_some_and(|abs| abs.is_value())
+        )
+    };
     for (pc, op) in code.ops().iter().enumerate() {
         // per argument, whether a boxed push of it is borrowed; and whether
         // a moved load among them is (not for a direct call)
@@ -830,28 +923,93 @@ pub(crate) fn borrowed_operands(
             _ => continue,
         };
         let count = takes.len();
+        // a field read of a slot that is not a pair, pushing a value, and a
+        // module constant push for the consumer too, on the tier that
+        // gives their helper paths a bit (decision AW25)
+        let pushes = pushes_before(code, &targets, pc, count, |at, op| {
+            fields
+                && match op {
+                    Op::LoadField { slot, .. } => {
+                        !matches!(analysis.slots[*slot as usize], SlotKind::Pair(_))
+                            && value_pushed(at)
+                    }
+                    Op::Global(_) => true,
+                    _ => false,
+                }
+        });
+        // a field is not borrowed where its holder is moved into the same
+        // call: the callee could drop the record under the field
+        let moved: Vec<u16> = pushes
+            .iter()
+            .filter_map(|(at, _)| match code.ops()[*at] {
+                Op::LoadMove(slot) => Some(slot),
+                _ => None,
+            })
+            .collect();
         let mut mask = 0u32;
-        for (at, index) in simple_pushes(code, pc, count) {
-            // whether the operand pushed is boxed: a typed one is in a
-            // register
-            let boxed = match &code.ops()[at] {
-                Op::Load(slot) => matches!(analysis.slots[*slot as usize], SlotKind::Boxed(_)),
-                Op::LoadMove(slot) => {
-                    moves_borrowed && matches!(analysis.slots[*slot as usize], SlotKind::Boxed(_))
-                }
-                Op::Const(constant) => {
-                    abs_of_constant(&code.constants[*constant as usize]).is_boxed()
-                }
-                _ => true,
+        let mut dynamic = 0u32;
+        for &(at, index) in &pushes {
+            found.indices[at] = index as u32;
+            // whether the operand pushed is boxed (a typed one is in a
+            // register), and whether a helper path pushes it owned
+            let (boxed, helper) = match &code.ops()[at] {
+                Op::Load(slot) => (
+                    matches!(analysis.slots[*slot as usize], SlotKind::Boxed(_)),
+                    false,
+                ),
+                Op::LoadMove(slot) => (
+                    moves_borrowed && matches!(analysis.slots[*slot as usize], SlotKind::Boxed(_)),
+                    false,
+                ),
+                Op::Const(constant) => (
+                    abs_of_constant(&code.constants[*constant as usize]).is_boxed(),
+                    false,
+                ),
+                Op::LoadField { slot, .. } => (!moved.contains(slot), true),
+                Op::Global(_) => (value_pushed(at), true),
+                _ => (true, false),
             };
             if boxed && takes[index] {
-                borrowed[at] = true;
+                found.ops[at] = true;
                 mask |= 1 << index;
+                if helper {
+                    dynamic |= 1 << index;
+                }
             }
         }
-        masks[pc] = mask;
+        found.masks[pc] = mask;
+        found.dynamic[pc] = dynamic;
+        for &(at, index) in &pushes {
+            if matches!(code.ops()[at], Op::LoadField { .. } | Op::Global(_)) {
+                let before = (1u32 << index) - 1;
+                found.below[at] = mask & before;
+                found.below_dynamic[at] = dynamic & before;
+            }
+        }
     }
-    (borrowed, masks)
+    found
+}
+
+/// What `borrowed_operands` finds for the generated code (decision AW25).
+pub struct Borrowed {
+    /// Per op, whether its push is an operand its consumer borrows.
+    pub ops: Vec<bool>,
+    /// Per call or comparison, the bits of the operands pushed borrowed
+    /// (the first argument, or the left operand, bit 0).
+    pub masks: Vec<u32>,
+    /// Per push the walk found, which operand of the consumer it is.
+    pub indices: Vec<u32>,
+    /// Per consumer, the bits among `masks` of the operands a `LoadField`
+    /// or a `Global` pushed, whose helper path pushes a value with a
+    /// reference of its own: the generated code takes those bits out of
+    /// the mask at run time where the helper ran (`slow_owned`).
+    pub dynamic: Vec<u32>,
+    /// Per `LoadField` or `Global` the walk found, the bits of the
+    /// consumer's operands pushed borrowed before it, which its helper's
+    /// failing path gives a reference each; and which of them are
+    /// dynamic.
+    pub below: Vec<u32>,
+    pub below_dynamic: Vec<u32>,
 }
 
 /// Compile one code object (decision AS1): its body and its trampoline
@@ -883,8 +1041,8 @@ pub fn compile(
     let pairs = code.ops().len() == original_len;
     // the operands held as their words on this tier (decision AW22)
     let analysis = analyse(program, code, globals, pairs, true).map_err(Skipped::Analysis)?;
-    let (borrowed, masks) = borrowed_operands(program, code, &analysis, calls, true);
-    let owned = owned_slots(code, &analysis, &borrowed);
+    let borrowed = borrowed_operands(program, code, &analysis, calls, true, true);
+    let owned = owned_slots(code, &analysis, &borrowed.ops);
     stats.analysis = started.elapsed();
     let mut headers: Vec<usize> = Vec::new();
     for (pc, op) in code.ops().iter().enumerate().take(original_len) {
@@ -949,6 +1107,10 @@ pub fn compile(
         builder.append_block_param(exit, types::I32);
         let base24 = builder.ins().imul_imm_s(base, SIZE as i64);
         let frame_var = builder.declare_var(pointer);
+        // no helper has pushed an operand yet (decision AW25)
+        let slow_owned = builder.declare_var(types::I64);
+        let no_bits = builder.ins().iconst(types::I64, 0);
+        builder.def_var(slow_owned, no_bits);
         // the VM's table of helpers, read once (decision AS1), and its
         // table of in-place entries (decision AW11)
         let helper_table = builder.ins().load(
@@ -998,7 +1160,7 @@ pub fn compile(
             analysis: &analysis,
             calls,
             borrowed,
-            masks,
+            slow_owned,
             owned,
             b: builder,
             pointer,
@@ -2868,15 +3030,178 @@ impl Gen<'_, '_> {
     /// (decision AW5) given a reference each, before the call goes through
     /// the VM's path, which takes its arguments owned.
     fn retain_borrowed_arguments(&mut self, pc: usize, count: usize) {
-        let mask = self.masks[pc];
+        let mask = self.borrowed.masks[pc];
         if mask == 0 {
             return;
         }
+        let dynamic = self.borrowed.dynamic[pc];
         let first = self.state.len() - count;
         for index in 0..count {
-            if mask & (1 << index) != 0 {
+            if mask & (1 << index) == 0 {
+                continue;
+            }
+            if dynamic & (1 << index) != 0 {
+                // the helper's value has its reference already
+                self.retain_operand_if_lent(first + index, index as u32);
+            } else {
                 self.retain_operand(first + index);
             }
+        }
+    }
+
+    /// The bits of the operands the consumer at `pc` borrows as the
+    /// generated code knows them at run time (decision AW25): the static
+    /// bits less those of a dynamic operand whose helper path pushed it
+    /// with a reference of its own (`slow_owned`); the static bits alone,
+    /// a constant, where no operand is dynamic.
+    fn runtime_mask(&mut self, pc: usize) -> IrValue {
+        let mask = self.borrowed.masks[pc];
+        let dynamic = self.borrowed.dynamic[pc];
+        if dynamic == 0 {
+            return self.u32(mask);
+        }
+        let bits = self.b.use_var(self.slow_owned);
+        let owned = self.b.ins().band_imm_s(bits, dynamic as i64);
+        let lent = self.b.ins().bnot(owned);
+        let masked = self.b.ins().band_imm_s(lent, mask as i64);
+        self.b.ins().ireduce(types::I32, masked)
+    }
+
+    /// The push at `pc`, an operand its consumer borrows, made on a path
+    /// that pushed it with a reference of its own (`owned`, the helper's)
+    /// or without (the fast path's): its bit in `slow_owned` set or
+    /// cleared (decision AW25). Nothing for a push nobody borrows.
+    fn note_dynamic_push(&mut self, pc: usize, owned: bool) {
+        if !self.borrowed.ops[pc] {
+            return;
+        }
+        let bit = 1i64 << self.borrowed.indices[pc];
+        let bits = self.b.use_var(self.slow_owned);
+        let next = if owned {
+            self.b.ins().bor_imm_s(bits, bit)
+        } else {
+            self.b.ins().band_imm_s(bits, !bit)
+        };
+        self.b.def_var(self.slow_owned, next);
+    }
+
+    /// A field or a constant read in place at `pc` (decision AW25): one
+    /// more reference to it, unless its consumer borrows it, where the
+    /// fast path's bit is cleared instead.
+    fn retain_or_note(&mut self, words: [IrValue; 3], pc: usize) {
+        if self.borrowed.ops[pc] {
+            self.note_dynamic_push(pc, false);
+        } else {
+            self.retain_words(words);
+        }
+    }
+
+    /// The bit of `slow_owned` for the consumer's operand `index`.
+    fn slow_owned_bit(&mut self, index: u32) -> IrValue {
+        let bits = self.b.use_var(self.slow_owned);
+        self.b.ins().band_imm_s(bits, 1i64 << index)
+    }
+
+    /// `release_operand` where the helper path pushed the operand with a
+    /// reference of its own (decision AW25), nothing where the fast path
+    /// pushed it borrowed.
+    fn release_operand_if_owned(&mut self, depth: usize, index: u32) {
+        let bit = self.slow_owned_bit(index);
+        let owned = self.b.create_block();
+        let next = self.b.create_block();
+        self.b.set_cold_block(owned);
+        self.b.ins().brif(bit, owned, &[], next, &[]);
+        self.b.seal_block(owned);
+        self.switch_to(owned);
+        self.release_operand(depth);
+        self.b.ins().jump(next, &[]);
+        self.b.seal_block(next);
+        self.switch_to(next);
+    }
+
+    /// `release` at the address where the helper path pushed the
+    /// consumer's operand `index` with a reference of its own (decision
+    /// AW25), nothing where the fast path pushed it borrowed.
+    fn release_if_owned(&mut self, at: IrValue, index: u32) {
+        let bit = self.slow_owned_bit(index);
+        let owned = self.b.create_block();
+        let next = self.b.create_block();
+        self.b.set_cold_block(owned);
+        self.b.ins().brif(bit, owned, &[], next, &[]);
+        self.b.seal_block(owned);
+        self.switch_to(owned);
+        self.release(at);
+        self.b.ins().jump(next, &[]);
+        self.b.seal_block(next);
+        self.switch_to(next);
+    }
+
+    /// `retain_operand` where the fast path pushed the consumer's operand
+    /// `index` borrowed (decision AW25), nothing where the helper path
+    /// pushed it with a reference of its own.
+    fn retain_operand_if_lent(&mut self, depth: usize, index: u32) {
+        let bit = self.slow_owned_bit(index);
+        let lent = self.b.create_block();
+        let next = self.b.create_block();
+        self.b.ins().brif(bit, next, &[], lent, &[]);
+        self.b.seal_block(lent);
+        self.switch_to(lent);
+        self.retain_operand(depth);
+        self.b.ins().jump(next, &[]);
+        self.b.seal_block(next);
+        self.switch_to(next);
+    }
+
+    /// `check_status` after the helper of a `LoadField` or a `Global`
+    /// that pushes for a consumer (decision AW25), its value on top of
+    /// the stack: on a status that leaves the frame, the operands pushed
+    /// borrowed before it for the same consumer (`Borrowed::below`) are
+    /// given a reference first, since whoever releases the frame counts
+    /// every operand as owned; a dynamic one among them only where its
+    /// own helper did not push it owned.
+    fn check_status_over_borrowed(&mut self, status: IrValue, pc: usize) {
+        let below = self.borrowed.below[pc];
+        if below == 0 {
+            self.check_status(status, pc, false);
+            return;
+        }
+        let ok = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::Equal, status, CONTINUE as i64);
+        let cont = self.b.create_block();
+        let failing = self.b.create_block();
+        self.b.set_cold_block(failing);
+        self.b.ins().brif(ok, cont, &[], failing, &[]);
+        self.b.seal_block(cont);
+        self.b.seal_block(failing);
+        self.switch_to(failing);
+        let top = self.state.len() - 1;
+        let index = self.borrowed.indices[pc] as usize;
+        let dynamic = self.borrowed.below_dynamic[pc];
+        for before in 0..index {
+            if below & (1 << before) == 0 {
+                continue;
+            }
+            let depth = top - index + before;
+            if dynamic & (1 << before) != 0 {
+                self.retain_operand_if_lent(depth, before as u32);
+            } else {
+                self.retain_operand(depth);
+            }
+        }
+        let exit = self.exit_for_state();
+        self.b.ins().jump(exit, &[status.into()]);
+        self.switch_to(cont);
+    }
+
+    /// The value in the slot released before a store into it, where the
+    /// slot may hold a reference at the op (`owned_slots`, decision AW25):
+    /// a fresh local, a slot moved out, a slot holding a typed value hold
+    /// `Nothing` or a plain value and need no release.
+    fn release_in_slot(&mut self, at: IrValue, slot: usize, pc: usize) {
+        if self.owned[pc][slot] {
+            self.release(at);
         }
     }
 
@@ -3294,7 +3619,7 @@ impl Gen<'_, '_> {
                             .iadd_imm_s(base, (*index as usize * SIZE) as i64);
                         // held as its words (decision AW22)
                         let words = self.words_at(from);
-                        if !self.borrowed[pc] {
+                        if !self.borrowed.ops[pc] {
                             self.retain_words(words);
                         }
                         self.push_held(words);
@@ -3338,7 +3663,7 @@ impl Gen<'_, '_> {
                     // held as its words (decision AW22), on both paths
                     let vars = self.held_vars(self.state.len());
                     let words = self.words_at(from);
-                    self.retain_words(words);
+                    self.retain_or_note(words, pc);
                     for (var, word) in vars.into_iter().zip(words) {
                         self.b.def_var(var, word);
                     }
@@ -3349,9 +3674,10 @@ impl Gen<'_, '_> {
                         .call("rt_global", &[self.vm, index, pc_value])
                         .expect("a status");
                     self.push_boxed();
-                    self.check_status(status, pc, false);
+                    self.check_status_over_borrowed(status, pc);
                     self.state.pop();
                     let words = self.unload_top();
+                    self.note_dynamic_push(pc, true);
                     for (var, word) in vars.into_iter().zip(words) {
                         self.b.def_var(var, word);
                     }
@@ -3402,8 +3728,8 @@ impl Gen<'_, '_> {
                         // for an operand a typed call or a comparison borrows
                         // (a move or not), a copy without one, the slot
                         // keeping its value
-                        let moving =
-                            matches!(self.code.ops()[pc], Op::LoadMove(_)) && !self.borrowed[pc];
+                        let moving = matches!(self.code.ops()[pc], Op::LoadMove(_))
+                            && !self.borrowed.ops[pc];
                         let from = self.address_at(index);
                         // the slot's value held as its words (decision
                         // AW22): read once, with one more reference, or
@@ -3437,7 +3763,7 @@ impl Gen<'_, '_> {
                             self.b
                                 .ins()
                                 .istore8(MemFlagsData::trusted(), nothing, from, 0);
-                        } else if !self.borrowed[pc] {
+                        } else if !self.borrowed.ops[pc] {
                             self.retain_words(words);
                         }
                         self.push_held(words);
@@ -3463,7 +3789,7 @@ impl Gen<'_, '_> {
                         for (part, to_height) in [index, extra].into_iter().enumerate() {
                             let from = self.address_at(height - 2 + part);
                             let to = self.address_at(to_height);
-                            self.release(to);
+                            self.release_in_slot(to, index, pc);
                             self.copy_value(from, to);
                         }
                         self.store_height(height - 2);
@@ -3494,7 +3820,7 @@ impl Gen<'_, '_> {
                             _ => self.pop_float(),
                         };
                         let to = self.address_at(index);
-                        self.release(to);
+                        self.release_in_slot(to, index, pc);
                         self.write_typed(to, top, value);
                     }
                     (SlotKind::Boxed(_), Abs::Held(_)) => {
@@ -3503,7 +3829,7 @@ impl Gen<'_, '_> {
                         let depth = self.state.len() - 1;
                         let words = self.held_words(depth);
                         let to = self.address_at(index);
-                        self.release(to);
+                        self.release_in_slot(to, index, pc);
                         let flags = MemFlagsData::trusted();
                         for (word, offset) in words.into_iter().zip([0, 8, 16]) {
                             self.b.ins().store(flags, word, to, offset);
@@ -3515,7 +3841,7 @@ impl Gen<'_, '_> {
                         self.box_top(1);
                         let from = self.last_address();
                         let to = self.address_at(index);
-                        self.release(to);
+                        self.release_in_slot(to, index, pc);
                         self.copy_value(from, to);
                         let height = self.height() - 1;
                         self.store_height(height);
@@ -3968,7 +4294,7 @@ impl Gen<'_, '_> {
                     let fields_ptr = self.b.ins().iadd_imm_s(rc, RECORD_FIELDS as i64);
                     let field = self.b.ins().iadd_imm_s(fields_ptr, (index * SIZE) as i64);
                     let words = self.words_at(field);
-                    self.retain_words(words);
+                    self.retain_or_note(words, pc);
                     for (var, word) in vars.into_iter().zip(words) {
                         self.b.def_var(var, word);
                     }
@@ -3987,9 +4313,10 @@ impl Gen<'_, '_> {
                         )
                         .expect("a status");
                     self.push_boxed();
-                    self.check_status(status, pc, false);
+                    self.check_status_over_borrowed(status, pc);
                     self.state.pop();
                     let words = self.unload_top();
+                    self.note_dynamic_push(pc, true);
                     for (var, word) in vars.into_iter().zip(words) {
                         self.b.def_var(var, word);
                     }
@@ -4044,7 +4371,7 @@ impl Gen<'_, '_> {
                     self.switch_to(hit);
                     let from = self.b.block_params(hit)[0];
                     let words = self.words_at(from);
-                    self.retain_words(words);
+                    self.retain_or_note(words, pc);
                     for (var, word) in vars.into_iter().zip(words) {
                         self.b.def_var(var, word);
                     }
@@ -4064,9 +4391,10 @@ impl Gen<'_, '_> {
                         )
                         .expect("a status");
                     self.push_boxed();
-                    self.check_status(status, pc, false);
+                    self.check_status_over_borrowed(status, pc);
                     self.state.pop();
                     let words = self.unload_top();
+                    self.note_dynamic_push(pc, true);
                     for (var, word) in vars.into_iter().zip(words) {
                         self.b.def_var(var, word);
                     }
@@ -4287,16 +4615,15 @@ impl Gen<'_, '_> {
                         Some(CallKind::Typed { kind, read, entry })
                             if kind_agrees(kind, result_kind) =>
                         {
-                            let mask = self.masks[pc];
                             match (read, entry) {
                                 (Some(ReadInPlace::ListAt), _) if count == 2 => {
-                                    self.list_at_in_place(*function, mask, pc);
+                                    self.list_at_in_place(*function, pc);
                                 }
                                 (_, Some(entry)) if (1..=32).contains(&count) => {
                                     let takes = matches!(entry, Entry::Takes);
-                                    self.call_in_place(*function, count, kind, takes, mask, pc);
+                                    self.call_in_place(*function, count, kind, takes, pc);
                                 }
-                                _ => self.call_typed(*function, count, kind, mask, pc),
+                                _ => self.call_typed(*function, count, kind, pc),
                             }
                         }
                         Some(CallKind::Pure { entry: Some(entry) })
@@ -4304,8 +4631,7 @@ impl Gen<'_, '_> {
                         {
                             let kind = entry_kind(self.program, *function);
                             let takes = matches!(entry, Entry::Takes);
-                            let mask = self.masks[pc];
-                            self.call_in_place(*function, count, kind, takes, mask, pc);
+                            self.call_in_place(*function, count, kind, takes, pc);
                         }
                         Some(CallKind::Pure { .. }) => self.call_through_helper(
                             "rt_call_pure",
@@ -5562,7 +5888,9 @@ impl Gen<'_, '_> {
     /// item is copied, since the release may free the list. Anything else
     /// (a guarded or a big operand, a failure among the items) takes the
     /// typed call's general path, the operands untouched.
-    fn list_at_in_place(&mut self, function: usize, mask: u32, pc: usize) {
+    fn list_at_in_place(&mut self, function: usize, pc: usize) {
+        let mask = self.borrowed.masks[pc];
+        let dynamic = self.borrowed.dynamic[pc];
         let flags = MemFlagsData::trusted();
         let pointer = self.pointer;
         let depth = self.state.len();
@@ -5647,6 +5975,8 @@ impl Gen<'_, '_> {
             .collect();
         if mask & 1 == 0 {
             self.release(list_at);
+        } else if dynamic & 1 != 0 {
+            self.release_if_owned(list_at, 0);
         }
         for (word, offset) in words.into_iter().zip([0, 8, 16]) {
             self.b.ins().store(flags, word, list_at, offset);
@@ -5657,6 +5987,8 @@ impl Gen<'_, '_> {
         self.switch_to(past);
         if mask & 1 == 0 {
             self.release(list_at);
+        } else if dynamic & 1 != 0 {
+            self.release_if_owned(list_at, 0);
         }
         let nothing = self.iconst(types::I32, TAG_NOTHING as i64);
         self.b.ins().istore8(flags, nothing, list_at, 0);
@@ -5665,7 +5997,7 @@ impl Gen<'_, '_> {
         // the general path: it pops the operands and pushes the answer
         self.b.seal_block(slow);
         self.switch_to(slow);
-        self.call_typed(function, 2, TypedKind::Value, mask, pc);
+        self.call_typed(function, 2, TypedKind::Value, pc);
         self.b.ins().jump(join, &[]);
         self.b.seal_block(join);
         self.switch_to(join);
@@ -5691,7 +6023,6 @@ impl Gen<'_, '_> {
         count: usize,
         kind: TypedKind,
         takes: bool,
-        mask: u32,
         pc: usize,
     ) {
         self.box_top(count);
@@ -5714,7 +6045,7 @@ impl Gen<'_, '_> {
             }
         };
         let count_value = self.u32(count as u32);
-        let mask_value = self.u32(mask);
+        let mask_value = self.runtime_mask(pc);
         let pc_value = self.u32(pc as u32);
         let call = self.b.ins().call_indirect(
             sig_ref,
@@ -5765,7 +6096,7 @@ impl Gen<'_, '_> {
             self.b.seal_block(general);
             self.switch_to(general);
         }
-        self.call_typed(function, count, kind, mask, pc);
+        self.call_typed(function, count, kind, pc);
         self.b.ins().jump(join, &[]);
         // the answer: a scalar read from the boxed value the entry wrote
         // (small, a Boolean or a Float by its contract), or the boxed
@@ -5804,11 +6135,11 @@ impl Gen<'_, '_> {
     /// declined and the general path answered, the answer is boxed on the
     /// stack (`BOXED`) and is unboxed as a call through `rt_call` is,
     /// handing the frame to the interpreter where it does not fit.
-    fn call_typed(&mut self, function: usize, count: usize, kind: TypedKind, mask: u32, pc: usize) {
+    fn call_typed(&mut self, function: usize, count: usize, kind: TypedKind, pc: usize) {
         let pc_value = self.u32(pc as u32);
         let function_value = self.usize(function);
         let count_value = self.u32(count as u32);
-        let mask_value = self.u32(mask);
+        let mask_value = self.runtime_mask(pc);
         let out = self.out_address();
         let status = self
             .helper_on_stack(
@@ -6012,7 +6343,8 @@ impl Gen<'_, '_> {
         // the parameters passed borrowed (decision AW5): the callee's leave
         // skips them and its other ways out give them a reference first;
         // the callee's grant as its record has it (decision AW6)
-        let borrowed_mask = self.iconst(types::I64, self.masks[pc] as i64);
+        let borrowed_bits = self.runtime_mask(pc);
+        let borrowed_mask = self.b.ins().uextend(types::I64, borrowed_bits);
         let mut arguments = vec![self.vm, base, pc0, one, borrowed_mask, grant];
         for (index, kind) in kinds.iter().enumerate() {
             let depth = first + index;
@@ -6257,7 +6589,7 @@ impl Gen<'_, '_> {
             self.compare_sum_variants(op, pc, join, fielded);
         }
         let op_value = self.u8(binary_code(op));
-        let mask_value = self.u32(self.masks[pc]);
+        let mask_value = self.runtime_mask(pc);
         let pc_value = self.u32(pc as u32);
         let out = self.out_address();
         let status = self
@@ -6491,12 +6823,14 @@ impl Gen<'_, '_> {
         let answer = self.b.block_params(answered)[0];
         // an operand a `Load`, a `Const` or `Nothing` pushed borrowed holds
         // no reference of its own
-        let mask = self.masks[pc];
-        if mask & 1 == 0 {
-            self.release_operand(n - 2);
-        }
-        if mask & 2 == 0 {
-            self.release_operand(n - 1);
+        let mask = self.borrowed.masks[pc];
+        let dynamic = self.borrowed.dynamic[pc];
+        for (index, depth) in [(0, n - 2), (1, n - 1)] {
+            if mask & (1 << index) == 0 {
+                self.release_operand(depth);
+            } else if dynamic & (1 << index) != 0 {
+                self.release_operand_if_owned(depth, index);
+            }
         }
         let depth = self.state.len() - 2;
         self.store_height(height - dropped);

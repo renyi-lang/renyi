@@ -32,10 +32,11 @@ use crate::extension::TypedKind;
 use crate::native::codegen::{
     borrowed_operands, entry_kind, field_cache_offset, frames_offset, handlers_offset,
     helper_index, is_comparison, kind_agrees, native_state_offset, stack_offset,
-    unit_variants_offset, Skipped, FRAME_BASE, FRAME_CODE, FRAME_GRANT, FRAME_HANDLER_BASE,
-    FRAME_PC, FRAME_SIZE, GLOBAL_READY, GLOBAL_SIZE, GLOBAL_VALUE, SIGNATURES, SITE_INDEX,
-    SITE_SIZE, SITE_TAG, SITE_TY, STACK_SAFE, STATE_CONSTANTS, STATE_DEPTH, STATE_ENTRIES,
-    STATE_GLOBALS, STATE_HELPERS, STATE_HOTNESS, STATE_IN_PLACE, STATE_LIST_ITEMS, STATE_LIST_LEN,
+    unit_variants_offset, Borrowed, Skipped, FRAME_BASE, FRAME_CODE, FRAME_GRANT,
+    FRAME_HANDLER_BASE, FRAME_PC, FRAME_SIZE, GLOBAL_READY, GLOBAL_SIZE, GLOBAL_VALUE, SIGNATURES,
+    SITE_INDEX, SITE_SIZE, SITE_TAG, SITE_TY, STACK_SAFE, STATE_CONSTANTS, STATE_DEPTH,
+    STATE_ENTRIES, STATE_GLOBALS, STATE_HELPERS, STATE_HOTNESS, STATE_IN_PLACE, STATE_LIST_ITEMS,
+    STATE_LIST_LEN,
 };
 use crate::native::infer::{
     abs_of_constant, abs_of_result, analyse, is_integer, is_text, sum_compared, update_by_index,
@@ -229,8 +230,13 @@ pub fn compile(
     // AW22): every value lies on the stack
     let analysis = analyse(program, code, &[], false, false).map_err(Skipped::Analysis)?;
     // every parameter passed owned on this tier (decision AW5: the
-    // borrowed protocol is the Cranelift tier's)
-    let (borrowed, masks) = borrowed_operands(program, code, &analysis, calls, false);
+    // borrowed protocol is the Cranelift tier's), and every field read
+    // and module constant retained (decision AW25: the shorter walk)
+    let Borrowed {
+        ops: borrowed,
+        masks,
+        ..
+    } = borrowed_operands(program, code, &analysis, calls, false, false);
     let abi = host_abi();
     let mut asm = Asm::new();
     let labels = (0..=code.ops().len()).map(|_| asm.label()).collect();

@@ -465,7 +465,14 @@ where one decided, the status. The dates are those of the decisions.
     (decision AW24, 2026-10-13: a direct call pushes no record, the
     callee's node in its machine frame and the records made when a
     helper reads them; the check row 1,493.5 to 1,482.7, -0.7%; the
-    ratio 3.36). B4 (the counts by dataflow) is next.
+    ratio 3.36). B4 (the counts by dataflow) done (decision AW25,
+    2026-10-13: a field read and a module constant pushed borrowed for
+    their consumer, a store releasing nothing where the slot holds no
+    reference, and the walk of the borrowed operands stopped where
+    another path enters, a leak since AU13 fixed on both tiers; the
+    check row 1,482.7 to 1,437.8, -3.0%; the ratio 3.26). The four
+    stages of road (B) are measured; what comes next is the owner's
+    call.
 
 ## 3. The tracks
 
@@ -502,7 +509,9 @@ state of each line.
   1,482.3, -3.0%, the ratio to 3.36), B3 measured and left off and the
   leak of stages 2b to B2 fixed (AW23, the check row 1,493.5, the
   ratio 3.38), B1 done (AW24, the check row to 1,482.7, -0.7%,
-  the ratio to 3.36), B4 in work.
+  the ratio to 3.36), B4 done (AW25, the check row to 1,437.8, -3.0%,
+  the ratio to 3.26); the four stages measured, the next step
+  the owner's call.
 - **E. Packages, the FFI and Python**: stages 15, 18. Done; candidates
   not decided: record types from dataclasses in the binder, a deadline
   per Python call, one worker across a test run.
@@ -575,8 +584,10 @@ operands in registers, the check row to 1,482.3, -3.0%, the
 ratio to 3.36) and B3 measured and left off with the leak of stages
 2b to B2 fixed (AW23, 2026-10-12: the check row 1,493.5, the ratio
 3.38) and B1 done (AW24, 2026-10-13: the frame record lazy, the
-check row to 1,482.7, -0.7%, the ratio to 3.36; B4
-next); then, when the ratio is within 3, the switch
+check row to 1,482.7, -0.7%, the ratio to 3.36) and B4 done (AW25,
+2026-10-13: the counts by dataflow, the check row to 1,437.8,
+-3.0%, the ratio to 3.26; the four stages measured, the
+next step the owner's call); then, when the ratio is within 3, the switch
 of the binary's front end to the compiler written in Renyi. Candidates
 beside it, none decided: the emitter's own round for the compile row,
 the Rust front end's name sets as bits, the C API, the language server's

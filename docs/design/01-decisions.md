@@ -8485,3 +8485,109 @@ the current compiler, the check row, gain. Kept by the owner's rule
 (AW21: the check row down by at least 0.5%, or AT1's synchronous
 estimate down at all: -0.7% and +2.2%). Next in AW21's order: B4, the
 counts by dataflow.
+
+**AW25. Stage B4 of the new code generator: the counts by dataflow.**
+The fourth and last stage of road (B) in AW21's order, built on
+2026-10-13 and measured as AW21 prescribes against stage B1 (`renyi_b1`,
+the tree of AW24's commit d664c2d). As built, three parts. First, a leak
+found on the way, since decision AU13, fixed on both tiers:
+`borrowed_operands` in `codegen.rs` walks back from a comparison or a
+call over the pushes just before it and marks them borrowed (decisions
+AU13 and AW5), and the walk crossed a position another path enters at,
+so that the value of an `if` expression or of an `otherwise` compared at
+once had the push of the branch before the comparison marked borrowed
+while the other branch's push, moved out of its slot, was released by
+nobody: 100 KB a turn in the probe (`scratch_b4/leakprobe.ry` in the
+perf lane: 2.4 GB resident over 20,000 turns on the Cranelift tier and
+on the template tier, 20 MB on the interpreter). `jump_targets` marks
+every target of a jump, a handler's landing or a loop's exit, and the
+walk (`pushes_before`, `simple_pushes`) stops before one;
+`accepted_params` walks the same way, so that the bits every caller
+computes stay a function of the ops. Second, on the Cranelift tier a
+`LoadField` of a slot that is not a pair, pushing a value, and a
+`Global` are pushed borrowed for their consumer (a comparison, a typed
+or in-place entry, a direct call's accepted parameter): the fast paths
+(the field read in place by the holder's static type or through the
+site's cache; the constant copied from the VM's table) skip the retain,
+since the holder's slot, which no op between the push and the consumer
+writes, and the table, which keeps a constant once built, hold the value
+through the consumer (a field is not borrowed where its holder is moved
+into the same call); the helper paths (`rt_load_field`, which
+synthesizes a guarded field, and `rt_global`, which builds the constant)
+push a value with a reference of its own, which the generated code notes
+in a Cranelift variable, `slow_owned` (bit `i` for the consumer's
+operand `i`, cleared by a fast path and set by a helper path,
+`note_dynamic_push`), and every consumer masks its static bits by it at
+run time (`runtime_mask`: `rt_compare`, `rt_call_typed`, the in-place
+shim and the direct call's `borrowed_params`; `compare_sum_variants`,
+`list_at_in_place` and `retain_borrowed_arguments` release or retain
+such an operand by its bit); a helper that fails with borrowed operands
+below it gives them a reference first (`check_status_over_borrowed`,
+`Borrowed::below`), since whoever releases the frame counts every
+operand as owned; a typed field goes in a register and stops the walk,
+since its unboxing may hand the frame back with the operands below it on
+the stack, and a `TakeField` is never borrowed, since it moves the field
+out of a record held once. The template tier keeps the shorter walk
+(`fields` false): its field reads retain and its helper paths give
+nothing back, as AW21 (7) asks. Third, a store releases the slot's old
+value only where the owned analysis of AW4 says the slot may hold a
+reference at the op (`release_in_slot`): a fresh local, a slot moved out
+at its last read and a slot holding a typed value hold `Nothing` or a
+plain value and need no release. The study's third lever, a `Load` of a
+slot dead after it treated as a move where the emitters wrote none, is
+not built: the emitters' rule (AU55) is syntactic, the loads it leaves
+are read again on some path (a parameter read in a loop, a name
+mentioned twice in a statement), and a path-sensitive liveness in the
+tier would find the rest, unsized. The interpreter, the bytecode, the
+emitters and the code format are untouched: the generated code's
+contract with the VM did not change, and an image of this version built
+before the stage runs, with the leak of the first part. The tests:
+`tests/leaks.rs`, a new test binary with a counting allocator around the
+system's, where a program run twice on a tier (the Cranelift tier, the
+template tier, the interpreter) holds no more after its second run than
+after its first, 100 KB a turn otherwise (the joins of the first part,
+which held 2,000,617 bytes on the Cranelift tier before the fix; a field
+read through the cache and through the helper, an `Admin` passed where a
+`User` is; a field passed to a direct call; a constant compared and
+passed to a typed entry; a store over the value of the turn before; a
+constant whose construction crashes with a borrowed operand below it),
+and in `tests/native.rs`
+`fields_and_constants_borrowed_by_their_consumers_print_as_the_interpreter_prints`
+and
+`the_borrowed_walk_stops_where_another_path_enters_and_finds_the_field_reads`
+(the bits of `Borrowed` on five functions under both walks). Every gate
+passed: 417 tests, the four judges byte-equal, the conformance suite 55
+of 55 on both tiers.
+
+The measure against `renyi_b1`: the check row 1,482.7 to 1,437.8 million
+instructions (-3.0%), the parse row 685.3 to 670.0 (-2.2%), the compile
+row 2,656.9 to 2,598.6 (-2.2%); the ratios by instructions 3.26, 2.35
+and 7.11 against the gate's 3 (the Rust rows within 0.3% of the base's);
+the generated code 744.9 to 708.2 million, the calls through the VM 8.2
+to 8.2, the counts and drops 130.6 to 131.0, the natives 254.2 to 245.6;
+AT1's synchronous row 5,228.4 to 5,172.5 (-1.1%) and its estimate
+7,557.1 to 7,477.1 (-1.1%), the image row 3,208.5 to 3,145.7 (-2.0%) and
+4,795.5 to 4,680.7 by the estimate (-2.4%), the cached run 3,291.7 to
+3,229.1 (-1.9%), the interpreter 11,012.8 to 11,012.8 (within 0.05%),
+the image 10,383,184 to 9,561,248 bytes (-7.9%); the micro programs per
+turn `calls_typed` 116 to 117, `calls_boxed` 199 to 198, `boxed_fields`
+122 to 122, `boxed_moves` 120 to 113; the benchmarks `primes` within
+0.05%, `strings` -0.3%, `records` -1.2%, `json_round_trip` -0.1%. The
+gain is where the study put it, and larger than its estimate of about 30
+million: the generated code 744.9 to 708.2 million (the releases at the
+stores and the retains at the field reads and the constants gone with
+their cold blocks, which the image's 7.9% shows), the natives 254.2 to
+245.6 (the in-place entries' shims 290.4 to 282.2 million inclusive: a
+borrowed argument is released by nobody), against 0.4 million more in
+the counts and drops (33,410 more clones, `take_or_clone` copying a
+borrowed field into an entry that takes it); the frees are unchanged
+(`rt_drop_at` 155.1 million on both builds), so the compiler leaked
+nothing through the joins the first part fixes; the interpreter row is
+unchanged to five digits and the template tier untouched; `boxed_moves`
+120 to 113 per turn is the store's release gone from its loop. The probe
+of the leak on the stage's binary: 31 MB resident on the Cranelift tier
+and 21 MB on the template tier over the 20,000 turns, where the base
+held 2.4 GB on each. Kept by the owner's rule (AW21: the check row down
+by at least 0.5%, or AT1's synchronous estimate down at all: -3.0% and
+-1.1%). The four stages of road (B) are measured; what comes next is the
+owner's call.

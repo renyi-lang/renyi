@@ -106,8 +106,11 @@ measured and left off (decision AW23: +6.0% on the check row
 against the base with the leak fixed), and the leak of stages 2b to
 B2 its measure found fixed (AW23: the check row 1,493.5, the ratio
 3.38); B1, the frame record lazy, done (decision AW24: the check
-row to 1,482.7, -0.7%; the ratio to 3.36); the work now
-is B4, the counts by dataflow (the start-here item 1).
+row to 1,482.7, -0.7%; the ratio to 3.36); B4, the counts by
+dataflow, done (decision AW25: the check row to 1,437.8,
+-3.0%; the ratio to 3.26); the four stages of road (B)
+are measured, and what comes next is the owner's call (the start-here
+item 1).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -454,8 +457,13 @@ and push there directly.
    3.38); B1, the frame record lazy, done (decision AW24, "Stage B1
    as built" after B3's: the check row to 1,482.7, -0.7%; the
    ratio to 3.36; `renyi_b1`, the base of the next measure);
-   the work now is B4, the counts by dataflow. Each stage: the code,
-   the gates of item
+   B4, the counts by dataflow, done (decision AW25, "Stage B4 as
+   built" after B1's: the check row to 1,437.8, -3.0%; the ratio
+   to 3.26; `renyi_b4`, the base of the next measure); the four
+   stages of road (B) are measured, and the next step is the owner's
+   call: the reserve of AW21 (8), the checker's own cuts, the emitter's
+   round, or the switch of the front end at the ratio as it stands.
+   Each stage: the code, the gates of item
    3, the measure
    (AU58's: the checker's image run under callgrind with the study's
    table by category beside it, AT1's rows, the benchmarks by
@@ -496,8 +504,8 @@ and push there directly.
    commit), `renyi_5b` (0f17f67, stage 5b's commit) and
    `renyi_b2` (2758464, stage B2's commit), `renyi_b3` (stage B3 as
    built, left off) and `renyi_b2fix` (stage B2 with the owned analysis
-   fixed, AW23's commit) and `renyi_b1` (stage B1's commit, the base of
-   the next measure),
+   fixed, AW23's commit), `renyi_b1` (stage B1's commit) and `renyi_b4`
+   (stage B4's commit, the base of the next measure),
    each with its
    `study/` directory. The
    road is months long (AU58); the gate is decided on the measure at
@@ -4194,6 +4202,34 @@ the image 10,383,184 bytes (+0.5%); `calls_typed` 120 to 116 per turn,
 `renyi_b1` and the study `study/b1/` in the perf lane. Next in AW21's
 order: B4, the counts by dataflow.
 
+**Stage B4 as built (decision AW25, 2026-10-13).** The fourth and last
+stage of road (B), three parts. A leak since AU13 fixed on both tiers:
+the walk of `borrowed_operands` crossed a position another path enters
+at, so that the value of an `if` expression or of an `otherwise`
+compared at once had one branch's push borrowed and the other's, moved
+out of its slot, released by nobody (100 KB a turn in the probe);
+`jump_targets` in `codegen.rs`, and the walk stops before a target. On
+the Cranelift tier a `LoadField` of a slot that is not a pair, pushing a
+value, and a `Global` are pushed borrowed for a comparison, a typed or
+in-place entry or a direct call's accepted parameter: the fast paths
+skip the retain, the helper paths note the reference they take in the
+variable `slow_owned`, which every consumer masks its static bits by at
+run time (`runtime_mask`), and give the borrowed operands below them a
+reference when the helper fails (`check_status_over_borrowed`); the
+template tier keeps the shorter walk. A store releases the slot's old
+value only where the owned analysis of AW4 says the slot may hold one
+(`release_in_slot`). The interpreter, the emitters and the code format
+untouched; the tests `tests/leaks.rs` (a program twice per tier under a
+counting allocator) and two in `tests/native.rs`. The measure against
+`renyi_b1`: the check row 1,482.7 to 1,437.8 (-3.0%), the parse row
+670.0 (-2.2%), the compile row 2,598.6 (-2.2%); the ratio 3.26; the
+generated code 744.9 to 708.2; the counts and drops 130.6 to 131.0;
+AT1's synchronous row 5,172.5 (-1.1%) and its estimate 7,477.1 (-1.1%);
+the image 9,561,248 bytes (-7.9%); `calls_typed` 116 to 117 per turn,
+`boxed_fields` 122 to 122. Kept by the owner's rule (AW21). The binary
+`renyi_b4` and the study `study/b4/` in the perf lane. The four stages
+of road (B) are measured; what comes next is the owner's call.
+
 ## Stage 29, the new backend: the design study (session 14)
 
 The study decision AU58 asked for, written before any code and put to
@@ -7169,6 +7205,28 @@ holds between calls.
   `render_aw24.py`, `apply_docs_b1.py`, `update_memory_b1.py`,
   `msg_b1.txt`, `numbers_b1.json`) copied to `scratch_b1/`; the measure
   in AW24 and in "Stage B1 as built".
+- Stage B4 (decision AW25, the commit after d664c2d): `jump_targets`,
+  `pushes_before`, `simple_pushes` with the guard, `borrowed_operands`
+  returning `Borrowed` (the ops, the masks, the indices, the dynamic
+  bits, the bits below a helper's push), the variable `slow_owned`,
+  `runtime_mask`, `note_dynamic_push`, `retain_or_note`,
+  `release_operand_if_owned`, `release_if_owned`,
+  `retain_operand_if_lent`, `check_status_over_borrowed` and
+  `release_in_slot` in `native/codegen.rs`, the field, constant, store
+  and consumer sites through them; the template tier's call with both
+  flags off in `native/template/mod.rs`; the test binary
+  `tests/leaks.rs`; the tests
+  `fields_and_constants_borrowed_by_their_consumers_print_as_the_interpreter_prints`
+  and
+  `the_borrowed_walk_stops_where_another_path_enters_and_finds_the_field_reads`
+  in `tests/native.rs`; the lane's `after_measure_b4.sh`, `chain_b4.sh`,
+  `gates_then_chain_b4.sh`, `renyi_b4`, `study/b4/` and
+  `micro_b_b4.log`, the probe `scratch_b4/leakprobe.ry` with
+  `leakprobe.sh`, and the scratchpad's scripts (`apply_b4.py`,
+  `add_b4_tests.py`, `leaks.rs`, `aw25_template.md`, `render_aw24.py`
+  (reused), `apply_docs_b4.py`, `update_memory_b4.py`, `msg_b4.txt`,
+  `numbers_b4.json`) copied to `scratch_b4/`; the measure in AW25 and in
+  "Stage B4 as built".
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 
