@@ -5,30 +5,38 @@
 //! Diagnostics are published for every file of the folder after every
 //! change, as `renyi check` reports them, the layout's included; hover
 //! gives the signature and the purpose of what is under the cursor;
-//! definition goes to its declaration; document symbols list a file's
-//! items. Positions count UTF-16 code units, the protocol's default. The
+//! definition goes to its declaration; references lists every place it
+//! is named in the workspace and rename edits them all (decision AW38,
+//! `lsp/refer.rs`); document symbols list a file's items. Positions
+//! count UTF-16 code units, the protocol's default. The
 //! base protocol frames each message with a `Content-Length` header.
 
 mod describe;
+mod refer;
 
 use std::collections::BTreeMap;
 use std::io::{BufRead, Write};
 use std::process::ExitCode;
 
-use renyi_check::ModuleId;
+use renyi_check::check::Target;
+use renyi_check::{CheckedProject, Library, ModuleId};
 use renyi_syntax::layout::check_layout;
-use renyi_syntax::{Diagnostic, Severity, SourceFile};
+use renyi_syntax::{Diagnostic, Severity, SourceFile, Span};
 use renyi_vm::natives::json::{read_json, write_json, Json};
 use renyi_workspace::Workspace;
 
 use crate::library;
 use crate::mcp::{as_text, field, obj, text};
-use describe::{offset_of, position_of, symbols_of, what_is_at, Symbol};
+use describe::{offset_of, position_of, symbols_of, target_at, what_is_at, Symbol};
+use refer::{check_after, check_name, class_of, family, occurrences, target_module, target_name};
 
 const PARSE_ERROR: i64 = -32700;
 const INVALID_PARAMS: i64 = -32602;
 const METHOD_NOT_FOUND: i64 = -32601;
 const NOT_INITIALIZED: i64 = -32002;
+/// A request the server understood and refuses, with the reason in the
+/// message (a rename the program would not check with).
+const REQUEST_FAILED: i64 = -32803;
 
 /// `renyi lsp`: serve an editor until it says `exit` or closes the input.
 pub fn serve(args: &[String]) -> ExitCode {
@@ -119,9 +127,11 @@ fn write_message(output: &mut impl Write, message: &Json) -> std::io::Result<()>
 struct Server {
     /// The workspace, from `initialize` on.
     workspace: Option<Workspace>,
+    /// The library the checker knows, for the check of a rename.
+    library: Library,
     /// The library's declaration files, for what hover shows of a
     /// library definition.
-    library: Vec<SourceFile>,
+    library_files: Vec<SourceFile>,
     /// The open documents: the file's path as the URI gives it, and the
     /// URI the editor spells it with.
     open: BTreeMap<String, String>,
@@ -136,12 +146,14 @@ type Response = Result<Json, (i64, String)>;
 
 impl Server {
     fn new() -> Server {
+        let library = library();
         Server {
             workspace: None,
-            library: library()
+            library_files: library
                 .modules()
                 .map(|(name, source)| SourceFile::new(name, source))
                 .collect(),
+            library,
             open: BTreeMap::new(),
             published: BTreeMap::new(),
             shutdown: false,
@@ -196,6 +208,9 @@ impl Server {
             "textDocument/hover" => self.hover(params, out),
             "textDocument/definition" => self.definition(params, out),
             "textDocument/documentSymbol" => self.document_symbols(params, out),
+            "textDocument/references" => self.references(params, out),
+            "textDocument/prepareRename" => self.prepare_rename(params, out),
+            "textDocument/rename" => self.rename(params, out),
             other => Err((METHOD_NOT_FOUND, format!("method not found: {other}"))),
         }
     }
@@ -271,6 +286,11 @@ impl Server {
                     ("hoverProvider", Json::Boolean(true)),
                     ("definitionProvider", Json::Boolean(true)),
                     ("documentSymbolProvider", Json::Boolean(true)),
+                    ("referencesProvider", Json::Boolean(true)),
+                    (
+                        "renameProvider",
+                        obj(vec![("prepareProvider", Json::Boolean(true))]),
+                    ),
                 ]),
             ),
             (
@@ -384,7 +404,7 @@ impl Server {
             return Ok(Json::Null);
         };
         let checked = workspace.checked().expect("a refreshed workspace");
-        let library = &self.library;
+        let library = &self.library_files;
         let source_of = |module: ModuleId| -> Option<&SourceFile> {
             workspace.file_of(module).or_else(|| {
                 let name = &checked.world.modules[module].name;
@@ -449,6 +469,158 @@ impl Server {
                 .map(|symbol| symbol_json(&file.text, symbol))
                 .collect(),
         ))
+    }
+
+    /// What a request's position names: the document's path, the span of
+    /// the name there and its target.
+    fn named_at(&mut self, params: &Json, out: &mut Vec<Json>) -> Option<(String, Span, Target)> {
+        let (path, module) = self.document(params, out)?;
+        let workspace = self.workspace.as_ref()?;
+        let file = workspace.file(&path)?;
+        let offset = position_param(params, &file.text)?;
+        let (span, target) = target_at(workspace.checked()?, module, offset)?;
+        Some((path, span, target))
+    }
+
+    /// Every place the declaration under the position is named in the
+    /// workspace, its own declaration included when the request asks.
+    fn references(&mut self, params: &Json, out: &mut Vec<Json>) -> Response {
+        let Some((_, _, target)) = self.named_at(params, out) else {
+            return Ok(Json::Null);
+        };
+        let include_declaration = field(params, "context")
+            .and_then(|context| field(context, "includeDeclaration"))
+            == Some(&Json::Boolean(true));
+        let workspace = self.workspace.as_ref().expect("a workspace");
+        let checked = workspace.checked().expect("a refreshed workspace");
+        let in_workspace = |module: ModuleId| workspace.file_of(module).is_some();
+        let members = family(&checked.world, &target);
+        let mut locations = Vec::new();
+        for occurrence in occurrences(checked, &in_workspace, &members) {
+            if occurrence.declaration && !include_declaration {
+                continue;
+            }
+            let Some(file) = workspace.file_of(occurrence.module) else {
+                continue;
+            };
+            locations.push(obj(vec![
+                ("uri", text(&self.uri_of(file))),
+                (
+                    "range",
+                    range_json(&file.text, occurrence.span.start, occurrence.span.end),
+                ),
+            ]));
+        }
+        Ok(Json::Array(locations))
+    }
+
+    /// The name under the position and its range, when it can be renamed.
+    fn prepare_rename(&mut self, params: &Json, out: &mut Vec<Json>) -> Response {
+        let Some((path, span, target)) = self.named_at(params, out) else {
+            return Ok(Json::Null);
+        };
+        let workspace = self.workspace.as_ref().expect("a workspace");
+        let checked = workspace.checked().expect("a refreshed workspace");
+        self.renameable(checked, &family(&checked.world, &target))?;
+        let file = workspace.file(&path).expect("a file of the workspace");
+        Ok(obj(vec![
+            ("range", range_json(&file.text, span.start, span.end)),
+            ("placeholder", text(&file.text[span.start..span.end])),
+        ]))
+    }
+
+    /// The edits that rename the declaration under the position, its
+    /// family with it, everywhere it is named in the workspace: refused
+    /// when a member is the library's or a dependency's, when the new
+    /// name is not a name of the right class or is reserved, and when the
+    /// project checked with the edits applied gains an error.
+    fn rename(&mut self, params: &Json, out: &mut Vec<Json>) -> Response {
+        let Some((_, _, target)) = self.named_at(params, out) else {
+            return Ok(Json::Null);
+        };
+        let new_name = field(params, "newName")
+            .and_then(as_text)
+            .ok_or_else(|| (INVALID_PARAMS, "a rename needs `newName`".to_string()))?;
+        let workspace = self.workspace.as_ref().expect("a workspace");
+        let checked = workspace.checked().expect("a refreshed workspace");
+        let members = family(&checked.world, &target);
+        self.renameable(checked, &members)?;
+        check_name(&new_name, class_of(&target)).map_err(|reason| (REQUEST_FAILED, reason))?;
+        let in_workspace = |module: ModuleId| workspace.file_of(module).is_some();
+        let mut edits: BTreeMap<String, Vec<(Span, String)>> = BTreeMap::new();
+        for occurrence in occurrences(checked, &in_workspace, &members) {
+            let Some(file) = workspace.file_of(occurrence.module) else {
+                continue;
+            };
+            edits
+                .entry(file.name.clone())
+                .or_default()
+                .push((occurrence.span, new_name.clone()));
+        }
+        let sources: Vec<SourceFile> = workspace.sources().cloned().collect();
+        let before = |name: &str| workspace.diagnostics(name).unwrap_or(&[]).to_vec();
+        let display = |name: &str| relative_name(workspace, name);
+        check_after(&self.library, &sources, &edits, &before, &display)
+            .map_err(|reason| (REQUEST_FAILED, reason))?;
+        let changes = edits
+            .iter()
+            .map(|(name, spans)| {
+                let file = workspace
+                    .file(name)
+                    .expect("an edited file of the workspace");
+                let text_edits = spans
+                    .iter()
+                    .map(|(span, new_text)| {
+                        obj(vec![
+                            ("range", range_json(&file.text, span.start, span.end)),
+                            ("newText", text(new_text)),
+                        ])
+                    })
+                    .collect();
+                (self.uri_of(file), Json::Array(text_edits))
+            })
+            .collect();
+        Ok(obj(vec![("changes", Json::Object(changes))]))
+    }
+
+    /// The refusal of a rename, if any: a member of the family is declared
+    /// in the library or in a dependency, which the workspace does not
+    /// own.
+    fn renameable(
+        &self,
+        checked: &CheckedProject,
+        members: &[Target],
+    ) -> Result<(), (i64, String)> {
+        let workspace = self.workspace.as_ref().expect("a workspace");
+        for member in members {
+            let Some(module) = target_module(&checked.world, member) else {
+                continue;
+            };
+            let name = target_name(&checked.world, member);
+            let owner = &checked.world.modules[module].name;
+            match workspace.file_of(module) {
+                None => {
+                    return Err((
+                        REQUEST_FAILED,
+                        format!(
+                            "`{name}` is declared in the library module `{owner}`, which cannot be renamed"
+                        ),
+                    ))
+                }
+                Some(file) => {
+                    if let Some(package) = &file.package {
+                        return Err((
+                            REQUEST_FAILED,
+                            format!(
+                                "`{name}` is declared in the dependency `{} {}`, which cannot be renamed",
+                                package.name, package.version
+                            ),
+                        ));
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 }
 

@@ -9345,3 +9345,61 @@ was; `dsitemup`, `wall62_1`, `sttminus` and `stfgod0` are in the art
 unused. The lesson of 33d repeated: a heading with the id `game`
 beside the canvas broke the play page again, renamed `the-game`.
 Next: 35a, the references and the rename of declarations.
+
+**AW38. Stage 35a built: references and rename of declarations in the
+language server.** 2026-10-13, the first stage of AW34's order. `renyi
+lsp` answers `textDocument/references`, `textDocument/prepareRename` and
+`textDocument/rename` (`crates/renyi/src/lsp/refer.rs`; the capabilities
+`referencesProvider` and `renameProvider` with `prepareProvider`). What a
+position names, `target_at` in `lsp/describe.rs`: the innermost of the
+bodies' references the checker recorded whose target has a name (a
+function, an ability's method, a constant, a type, a variant, an
+ability; the VM's annotations left aside), else a type or an ability
+named in a signature (the parameters, the result, the failures and the
+constraints of a function; the fields, the base and the derives of a
+type; the requirements of an ability and its methods' signatures; the
+head, the target, the constraints and the methods' signatures of an
+implementation; a constant's type: `renyi_index::signature_references`,
+the collectors the map's drafts had, over every item of a module as a
+public function), else a name an import exposes, else the declaration
+whose own name is there; hover and definition answer at those places too
+now. The occurrences of a definition are those references across the
+modules the workspace owns (its own files and its dependencies'; a
+library definition's occurrences are the workspace's alone) and its
+declaration, which `references` lists when the request asks
+(`includeDeclaration`). A method is renamed with its family: an
+ability's method and the method of every implementation of the ability
+share a name, a call on a value of a concrete type resolving to the
+implementation's function and one on a constrained type parameter to
+the ability's method, so the family is the ability's method with every
+implementation's method of that name, found from either end. A rename is
+refused as a response error (`-32803`, the protocol's `RequestFailed`)
+whose message the editor shows: when a member of the family is declared
+in the library or in a dependency (`Workspace::file_of` none, or the
+file tagged with a package); when the new name is not one word of the
+class (lowercase for a function, a method or a constant, capitalized for
+a type, a variant or an ability) or is a reserved word of reference
+section 17, which the lexer decides as it does for a program; and when
+the project checked again with the edits applied (`Workspace::sources`
+gives every file as the check read it, the edits go into copies,
+`check_project_in` runs on them) has in some file more errors of a code
+than it has now, the checker's message with its line naming the reason
+("`square` is a function of this module" for a function renamed to the
+name of its own parameter): the rules of the language, not a second
+scoping in the server. The edits are a `WorkspaceEdit` with a `TextEdit`
+per occurrence, grouped by file; `prepareRename` answers the name's
+range and the name, null where nothing is named, the refusal where the
+family cannot be renamed. The VS Code client needs no change. Tested in
+`crates/renyi/tests/lsp.rs` on the two-file project grown by an ability
+and its implementation: the references of a function from its call
+(the declaration and the call), of a type from its declaration (the
+parameter's type, the implementation's target, the exposing import, the
+construction), of a library function (its calls alone); `prepareRename`
+on a method call; the rename of the method through the ability, the
+implementation and the call; the four refusals (the parameter's
+shadowing found by the check after, a reserved word, the wrong class, a
+library function); hover on a type in a signature; and `refer.rs`'s own
+tests of the name rule and the edits. A field is not a target (a field
+is read by name on a value the checker typed, no reference recorded), so
+a field has no references and no rename; the locals are 35b. Next: 35b,
+the locals recorded as references by both checkers.

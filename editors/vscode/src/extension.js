@@ -1,7 +1,8 @@
 // The client of the Renyi language server (decision AN2): starts `renyi
 // lsp` for the workspace and lets the language client library do the
-// rest (diagnostics, hover, go to definition, the outline). The binary is
-// `renyi` on the PATH unless the setting `renyi.path` says otherwise.
+// rest (diagnostics, hover, go to definition, references, rename, the
+// outline). The binary is `renyi` on the PATH unless the setting
+// `renyi.path` says otherwise.
 "use strict";
 
 const vscode = require("vscode");

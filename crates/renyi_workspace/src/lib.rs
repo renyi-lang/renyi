@@ -440,6 +440,14 @@ impl Workspace {
         self.own.iter().map(String::as_str)
     }
 
+    /// Every file as `file` gives it, the own files then the
+    /// dependencies', in the order of the checked project's modules.
+    pub fn sources(&self) -> impl Iterator<Item = &SourceFile> {
+        self.order()
+            .filter_map(|name| self.sources.get(name))
+            .map(|source| &source.text)
+    }
+
     /// The own files, then the dependencies': the order of the checked
     /// project's modules.
     fn order(&self) -> impl Iterator<Item = &String> {

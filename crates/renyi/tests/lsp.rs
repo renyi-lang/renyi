@@ -1,7 +1,8 @@
 //! `renyi lsp`: the language server over pipes (decision AN2): the
 //! handshake, diagnostics published for every file of the folder and
-//! again when a buffer changes, hover, definition and document symbols
-//! on a two-file project, positions in UTF-16 units, the clean exit.
+//! again when a buffer changes, hover, definition and document symbols,
+//! references and rename (decision AW38) on a two-file project,
+//! positions in UTF-16 units, the clean exit.
 
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -15,6 +16,17 @@ const SHAPES: &str = "module shapes
 public type Square
   purpose: A square by its side.
   has side: Integer
+end
+
+public ability Named
+  purpose: Anything that says what it is.
+  function label(self) returns Text
+end
+
+ability Named for Square
+  function label(self) returns Text
+    return \"square\"
+  end
 end
 
 public function area(square: Square) returns Integer
@@ -35,6 +47,7 @@ public function main() needs console
 
   let square be Square(side: 3)
   console.print(\"\u{1F600} {shapes.area(square)}\")
+  console.print(square.label())
 end
 ";
 
@@ -118,6 +131,72 @@ fn at(uri: &str, line: usize, character: usize) -> Json {
             ]),
         ),
     ])
+}
+
+/// The position with a references context.
+fn with_context(mut params: Json, include_declaration: bool) -> Json {
+    if let Json::Object(fields) = &mut params {
+        fields.push((
+            "context".to_string(),
+            obj(vec![(
+                "includeDeclaration",
+                Json::Boolean(include_declaration),
+            )]),
+        ));
+    }
+    params
+}
+
+/// The position with the new name of a rename.
+fn renaming(mut params: Json, new_name: &str) -> Json {
+    if let Json::Object(fields) = &mut params {
+        fields.push(("newName".to_string(), text(new_name)));
+    }
+    params
+}
+
+/// The locations of a references answer: URI, line and character, sorted.
+fn locations_of(response: &Json) -> Vec<(String, usize, usize)> {
+    let Json::Array(items) = get(response, &["result"]) else {
+        panic!("not an array: {response:?}");
+    };
+    sorted(
+        items
+            .iter()
+            .map(|location| {
+                (
+                    text_of(get(location, &["uri"])).to_string(),
+                    number_of(get(location, &["range", "start", "line"])),
+                    number_of(get(location, &["range", "start", "character"])),
+                )
+            })
+            .collect(),
+    )
+}
+
+fn sorted(mut items: Vec<(String, usize, usize)>) -> Vec<(String, usize, usize)> {
+    items.sort();
+    items
+}
+
+/// The edits of one file in a rename answer: line, character and the new
+/// text, sorted.
+fn edits_of(changes: &Json, uri: &str) -> Vec<(usize, usize, String)> {
+    let Json::Array(items) = get(changes, &[uri]) else {
+        panic!("no edits for {uri}: {changes:?}");
+    };
+    let mut out: Vec<(usize, usize, String)> = items
+        .iter()
+        .map(|edit| {
+            (
+                number_of(get(edit, &["range", "start", "line"])),
+                number_of(get(edit, &["range", "start", "character"])),
+                text_of(get(edit, &["newText"])).to_string(),
+            )
+        })
+        .collect();
+    out.sort();
+    out
 }
 
 /// Send the messages to a fresh server and collect every message it
@@ -249,6 +328,17 @@ fn the_server_publishes_diagnostics_and_answers_hover_definition_and_symbols() {
     let (hover_line, hover_character) = line_and_character(REPORT, "area(square)");
     let (print_line, print_character) = line_and_character(REPORT, "print(");
     let (area_line, area_character) = line_and_character(SHAPES, "area(square: Square)");
+    let (square_line, square_character) = line_and_character(SHAPES, "Square\n  purpose");
+    let (param_line, param_character) = line_and_character(SHAPES, "Square) returns");
+    let (target_line, target_character) = line_and_character(SHAPES, "Square\n  function");
+    let (exposed_line, exposed_character) = line_and_character(REPORT, "Square\n");
+    let (built_line, built_character) = line_and_character(REPORT, "Square(side");
+    let (label_line, label_character) = line_and_character(REPORT, "label()");
+    let (ability_label_line, ability_label_character) =
+        line_and_character(SHAPES, "label(self) returns Text\nend");
+    let (impl_label_line, impl_label_character) =
+        line_and_character(SHAPES, "label(self) returns Text\n    return");
+    let (print2_line, print2_character) = line_and_character(REPORT, "print(square.label())");
 
     let (messages, clean_exit) = exchange(&[
         request(
@@ -308,6 +398,56 @@ fn the_server_publishes_diagnostics_and_answers_hover_definition_and_symbols() {
         ),
         request(6, "textDocument/hover", at(&report, 0, 0)),
         request(7, "workspace/symbol", obj(vec![("query", text(""))])),
+        request(
+            9,
+            "textDocument/references",
+            with_context(at(&report, hover_line, hover_character), true),
+        ),
+        request(
+            10,
+            "textDocument/references",
+            with_context(at(&shapes, square_line, square_character), false),
+        ),
+        request(
+            11,
+            "textDocument/prepareRename",
+            at(&report, label_line, label_character),
+        ),
+        request(
+            12,
+            "textDocument/rename",
+            renaming(at(&report, label_line, label_character), "title"),
+        ),
+        request(
+            13,
+            "textDocument/rename",
+            renaming(at(&report, hover_line, hover_character), "square"),
+        ),
+        request(
+            14,
+            "textDocument/rename",
+            renaming(at(&report, hover_line, hover_character), "end"),
+        ),
+        request(
+            15,
+            "textDocument/rename",
+            renaming(at(&report, hover_line, hover_character), "Area"),
+        ),
+        request(
+            16,
+            "textDocument/rename",
+            renaming(at(&report, print_line, print_character), "say"),
+        ),
+        request(
+            17,
+            "textDocument/references",
+            with_context(at(&report, print_line, print_character), true),
+        ),
+        request(
+            18,
+            "textDocument/hover",
+            at(&shapes, param_line, param_character),
+        ),
         request(8, "shutdown", Json::Null),
         notification("exit", Json::Null),
     ]);
@@ -335,8 +475,6 @@ fn the_server_publishes_diagnostics_and_answers_hover_definition_and_symbols() {
     let report_published = published(&messages, &report);
     assert_eq!(report_published.len(), 3, "{report_published:?}");
     assert_eq!(report_published[0], &Json::Array(Vec::new()));
-    // the binding `square` is unused now too, an error of its own before
-    // this one
     let Json::Array(items) = report_published[1] else {
         panic!("not an array: {:?}", report_published[1]);
     };
@@ -398,7 +536,7 @@ fn the_server_publishes_diagnostics_and_answers_hover_definition_and_symbols() {
         .iter()
         .map(|symbol| text_of(get(symbol, &["name"])))
         .collect();
-    assert_eq!(names, ["Square", "area"]);
+    assert_eq!(names, ["Square", "Named", "Named for Square", "area"]);
     assert_eq!(
         get(&symbols[0], &["kind"]),
         &number(23),
@@ -408,18 +546,124 @@ fn the_server_publishes_diagnostics_and_answers_hover_definition_and_symbols() {
         text_of(get(&symbols[0], &["children", "0", "name"])),
         "side"
     );
-    assert_eq!(get(&symbols[1], &["kind"]), &number(12), "a function");
     assert_eq!(
-        number_of(get(&symbols[1], &["selectionRange", "start", "line"])),
+        get(&symbols[1], &["kind"]),
+        &number(11),
+        "an ability is an interface"
+    );
+    assert_eq!(
+        text_of(get(&symbols[2], &["children", "0", "name"])),
+        "label",
+        "an implementation's methods are its children"
+    );
+    assert_eq!(get(&symbols[3], &["kind"]), &number(12), "a function");
+    assert_eq!(
+        number_of(get(&symbols[3], &["selectionRange", "start", "line"])),
         area_line
     );
 
-    // nothing under the cursor, an unknown method, the shutdown
+    // nothing under the cursor, an unknown method
     assert_eq!(get(response(&messages, 6), &["result"]), &Json::Null);
     assert_eq!(
         get(response(&messages, 7), &["error", "code"]),
         &Json::Number("-32601".to_string())
     );
+
+    // references of `area` from its call: its declaration and the call
+    assert_eq!(
+        locations_of(response(&messages, 9)),
+        sorted(vec![
+            (shapes.clone(), area_line, area_character),
+            (report.clone(), hover_line, hover_character),
+        ])
+    );
+    // references of `Square` from its declaration, the declaration left
+    // out: the parameter's type and the implementation's target in
+    // shapes.ry, the exposing import and the construction in report.ry
+    assert_eq!(
+        locations_of(response(&messages, 10)),
+        sorted(vec![
+            (shapes.clone(), param_line, param_character),
+            (shapes.clone(), target_line, target_character),
+            (report.clone(), exposed_line, exposed_character),
+            (report.clone(), built_line, built_character),
+        ])
+    );
+    // prepareRename on a call of `label`: the name's range and the name
+    let prepared = get(response(&messages, 11), &["result"]);
+    assert_eq!(text_of(get(prepared, &["placeholder"])), "label");
+    assert_eq!(
+        number_of(get(prepared, &["range", "start", "line"])),
+        label_line
+    );
+    assert_eq!(
+        number_of(get(prepared, &["range", "start", "character"])),
+        label_character
+    );
+    assert_eq!(
+        number_of(get(prepared, &["range", "end", "character"])),
+        label_character + "label".len()
+    );
+    // rename `label` to `title`: the ability's method, the
+    // implementation's and the call, one family
+    let changes = get(response(&messages, 12), &["result", "changes"]);
+    assert_eq!(
+        edits_of(changes, &shapes),
+        vec![
+            (
+                ability_label_line,
+                ability_label_character,
+                "title".to_string()
+            ),
+            (impl_label_line, impl_label_character, "title".to_string()),
+        ]
+    );
+    assert_eq!(
+        edits_of(changes, &report),
+        vec![(label_line, label_character, "title".to_string())]
+    );
+    // renames refused: a name the parameter `square` would shadow (the
+    // project checked with the rename applied), a reserved word, the
+    // wrong class, a library function
+    let refused =
+        |id: usize| text_of(get(response(&messages, id), &["error", "message"])).to_string();
+    assert!(
+        refused(13).contains("`square` is a function of this module"),
+        "{}",
+        refused(13)
+    );
+    assert!(
+        refused(13).contains("`shapes.ry` at line"),
+        "{}",
+        refused(13)
+    );
+    assert!(refused(14).contains("reserved word"), "{}", refused(14));
+    assert!(
+        refused(15).contains("not a function, method or constant name"),
+        "{}",
+        refused(15)
+    );
+    assert!(
+        refused(16).contains("library module `std.console`"),
+        "{}",
+        refused(16)
+    );
+    // references of a library function: its calls in the workspace alone
+    assert_eq!(
+        locations_of(response(&messages, 17)),
+        sorted(vec![
+            (report.clone(), print_line, print_character),
+            (report.clone(), print2_line, print2_character),
+        ])
+    );
+    // hover on a type named in a signature
+    let hover = text_of(get(
+        response(&messages, 18),
+        &["result", "contents", "value"],
+    ));
+    assert!(hover.contains("Square(side: Integer)"), "{hover}");
+
+    // the shutdown
     assert_eq!(get(response(&messages, 8), &["result"]), &Json::Null);
 }
 

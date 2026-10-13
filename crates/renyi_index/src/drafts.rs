@@ -101,23 +101,7 @@ pub fn type_draft(
 ) -> Draft {
     let id = world.modules[module].types[&def.name.text];
     let mut refs = Vec::new();
-    match &def.kind {
-        ast::TypeKind::Record { fields, derives } => {
-            for field in fields {
-                type_refs(world, module, &field.ty, &mut refs);
-            }
-            derive_refs(world, module, derives, &mut refs);
-        }
-        ast::TypeKind::Sum { variants, derives } => {
-            for variant in variants {
-                for field in &variant.fields {
-                    type_refs(world, module, &field.ty, &mut refs);
-                }
-            }
-            derive_refs(world, module, derives, &mut refs);
-        }
-        ast::TypeKind::Subtype { base, .. } => type_refs(world, module, base, &mut refs),
-    }
+    type_def_refs(world, module, def, &mut refs);
     Draft {
         key: Key::Type(id),
         module,
@@ -147,13 +131,7 @@ pub fn ability_draft(
 ) -> Draft {
     let id = world.modules[module].abilities[&ability.name.text];
     let mut refs = Vec::new();
-    for requirement in &ability.requirements {
-        if let ast::Type::Named { name, .. } = requirement {
-            if let Some(required) = world.lookup_ability(module, &name.text) {
-                refs.push((Target::Ability(required), name.span));
-            }
-        }
-    }
+    requirement_refs(world, module, &ability.requirements, &mut refs);
     for function in &ability.functions {
         signature_refs(world, module, function, &mut refs);
     }
@@ -412,6 +390,93 @@ fn collapse(source: &str) -> String {
 }
 
 // ------------------------------------------------------------- references
+
+/// The types and abilities every item of a module names outside its
+/// bodies, each at its name token: a function's parameters, result,
+/// failures and constraints; a type's fields, base and derives; an
+/// ability's requirements and its methods' signatures; an
+/// implementation's head, target, constraints and methods' signatures; a
+/// constant's type. The checker records the bodies' references; these
+/// are the rest, for a tool that looks for every mention of a definition
+/// (the language server's references and rename, decision AW38).
+pub fn signature_references(world: &World, module: ModuleId) -> Vec<(Target, Span)> {
+    let mut refs = Vec::new();
+    for item in &world.modules[module].ast.items {
+        match item {
+            ast::Item::Function(function) => signature_refs(world, module, function, &mut refs),
+            ast::Item::Type(def) => type_def_refs(world, module, def, &mut refs),
+            ast::Item::Ability(ability) => {
+                requirement_refs(world, module, &ability.requirements, &mut refs);
+                for function in &ability.functions {
+                    signature_refs(world, module, function, &mut refs);
+                }
+            }
+            ast::Item::Implementation(implementation) => {
+                if let ast::Type::Named { name, args, .. } = &implementation.ability {
+                    if let Some(id) = world.lookup_ability(module, &name.text) {
+                        refs.push((Target::Ability(id), name.span));
+                    }
+                    for arg in args {
+                        type_refs(world, module, arg, &mut refs);
+                    }
+                }
+                type_refs(world, module, &implementation.target, &mut refs);
+                if let Some(for_any) = &implementation.type_params {
+                    for_any_refs(world, module, for_any, &mut refs);
+                }
+                for function in &implementation.functions {
+                    signature_refs(world, module, function, &mut refs);
+                }
+            }
+            ast::Item::Constant(constant) => type_refs(world, module, &constant.ty, &mut refs),
+            ast::Item::Test(_) => {}
+        }
+    }
+    refs
+}
+
+/// The types and abilities a type's declaration names: its fields'
+/// types, its base, its derives.
+fn type_def_refs(
+    world: &World,
+    module: ModuleId,
+    def: &ast::TypeDef,
+    refs: &mut Vec<(Target, Span)>,
+) {
+    match &def.kind {
+        ast::TypeKind::Record { fields, derives } => {
+            for field in fields {
+                type_refs(world, module, &field.ty, refs);
+            }
+            derive_refs(world, module, derives, refs);
+        }
+        ast::TypeKind::Sum { variants, derives } => {
+            for variant in variants {
+                for field in &variant.fields {
+                    type_refs(world, module, &field.ty, refs);
+                }
+            }
+            derive_refs(world, module, derives, refs);
+        }
+        ast::TypeKind::Subtype { base, .. } => type_refs(world, module, base, refs),
+    }
+}
+
+/// The abilities an ability requires of its implementers.
+fn requirement_refs(
+    world: &World,
+    module: ModuleId,
+    requirements: &[ast::Type],
+    refs: &mut Vec<(Target, Span)>,
+) {
+    for requirement in requirements {
+        if let ast::Type::Named { name, .. } = requirement {
+            if let Some(required) = world.lookup_ability(module, &name.text) {
+                refs.push((Target::Ability(required), name.span));
+            }
+        }
+    }
+}
 
 /// The types and abilities a signature names, each at its name token.
 fn signature_refs(

@@ -575,7 +575,15 @@ where one decided, the status. The dates are those of the decisions.
     what the server and the checker's record have, the shadowing rule,
     what each feature needs, the cost, the measure, the stages 35a
     references and rename of declarations, 35b the locals, 35c
-    completion); its four questions asked.
+    completion); its four questions answered (decision AW34). 35a
+    done (decision AW38, 2026-10-13): `textDocument/references`,
+    `prepareRename` and `rename` over the checker's recorded
+    references, the signatures' (`renyi_index::signature_references`)
+    and the exposing imports; a method renamed with its ability's
+    and every implementation's; a rename refused when a member is the
+    library's or a dependency's, when the new name is not a name of
+    its class or is reserved, and when the project checked with the
+    edits applied gains an error. 35b and 35c follow.
 
 36. **The DOOM look** (session 14, 2026-10-13, done; decisions AW35,
     the owner's call after the play page, and AW37). The showcase game made
@@ -731,7 +739,9 @@ its design study done on 2026-10-13 and its four questions answered
 (decision AW34); stage 36, the DOOM look, was opened the same day in
 parallel with it (decision AW35: the owner's call after the play
 page) and is done (decision AW37: the game's page of the site at 55
-to 60 frames a second in the browser), so 35a is next. Release 0.2
+to 60 frames a second in the browser); 35a is done (decision AW38:
+references and rename of declarations), so 35b, the locals, is
+next. Release 0.2
 follows stage 35 (decision AW36,
 the owner's answer of 2026-10-13), with the extension published to
 the Marketplace and Open VSX from the owner's publisher and the

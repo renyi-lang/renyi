@@ -1,12 +1,13 @@
-//! What the language server says about a position: the reference or the
-//! declaration under it, described by its signature and its purpose and
-//! located at its declared name; a file's items as document symbols; and
+//! What the language server says about a position: the declaration named
+//! there (by a body's reference, a signature, an exposing import or its
+//! own name), described by its signature and its purpose and located at
+//! its declared name; a file's items as document symbols; and
 //! positions as the protocol counts them (zero-based lines, UTF-16 code
 //! units).
 
 use renyi_check::check::Target;
 use renyi_check::{BodyLocation, CheckedProject, FunctionId, ModuleId, World};
-use renyi_index::{function_signature, type_signature};
+use renyi_index::{function_signature, signature_references, type_signature};
 use renyi_syntax::ast::{AbilityDecl, Constant, Function, Item, Module, TypeDef, TypeKind};
 use renyi_syntax::{type_text, SourceFile, Span};
 
@@ -79,9 +80,8 @@ fn contains(span: Span, offset: usize) -> bool {
 
 // ------------------------------------------------------------ describing
 
-/// What is at a byte offset of a module's file: the reference there (the
-/// innermost, when they nest), else the declaration whose name is there;
-/// with the span of what was found. `source_of` gives a module's file,
+/// What is at a byte offset of a module's file, described, with the span
+/// of its name there (`target_at`). `source_of` gives a module's file,
 /// for the signature of a type.
 pub fn what_is_at<'a>(
     checked: &'a CheckedProject,
@@ -89,19 +89,73 @@ pub fn what_is_at<'a>(
     module: ModuleId,
     offset: usize,
 ) -> Option<(Span, Described)> {
+    let (span, target) = target_at(checked, module, offset)?;
+    let described = describe_target(&checked.world, source_of, &target)?;
+    Some((span, described))
+}
+
+/// The declaration named at a byte offset of a module's file, with the
+/// span of its name there: the innermost of the bodies' references the
+/// checker recorded, else a type or an ability named in a signature, else
+/// a name an import exposes, else the declaration whose own name is
+/// there.
+pub fn target_at(
+    checked: &CheckedProject,
+    module: ModuleId,
+    offset: usize,
+) -> Option<(Span, Target)> {
     let world = &checked.world;
-    let reference = checked
+    let body = checked
         .references
         .iter()
-        .filter(|(owner, _, reference)| *owner == module && contains(reference.span, offset))
+        .filter(|(owner, _, reference)| {
+            *owner == module && is_named(&reference.target) && contains(reference.span, offset)
+        })
         .min_by_key(|(_, _, reference)| reference.span.len())
-        .map(|(_, _, reference)| reference);
-    if let Some(reference) = reference {
-        if let Some(described) = describe_target(world, source_of, &reference.target) {
-            return Some((reference.span, described));
-        }
-    }
-    declaration_at(world, source_of, module, offset)
+        .map(|(_, _, reference)| (reference.span, reference.target.clone()));
+    body.or_else(|| {
+        signature_references(world, module)
+            .into_iter()
+            .find(|(_, span)| contains(*span, offset))
+            .map(|(target, span)| (span, target))
+    })
+    .or_else(|| exposed_at(world, module, offset))
+    .or_else(|| declaration_target_at(world, module, offset))
+}
+
+/// A target with a name: what a reference, a hover or a rename can be
+/// about (the VM's annotations are not).
+fn is_named(target: &Target) -> bool {
+    matches!(
+        target,
+        Target::Function(_)
+            | Target::AbilityMethod(..)
+            | Target::Constant(..)
+            | Target::Type(_)
+            | Target::Variant(..)
+            | Target::Ability(_)
+    )
+}
+
+/// A name an import of the module exposes, at the offset.
+fn exposed_at(world: &World, module: ModuleId, offset: usize) -> Option<(Span, Target)> {
+    let info = &world.modules[module];
+    let exposed = info
+        .ast
+        .imports
+        .iter()
+        .flat_map(|import| &import.exposing)
+        .find(|exposed| contains(exposed.span, offset))?;
+    let target = info
+        .exposed_types
+        .get(&exposed.text)
+        .map(|&id| Target::Type(id))
+        .or_else(|| {
+            info.exposed_abilities
+                .get(&exposed.text)
+                .map(|&id| Target::Ability(id))
+        })?;
+    Some((exposed.span, target))
 }
 
 fn describe_target<'a>(
@@ -141,59 +195,56 @@ fn describe_target<'a>(
     }
 }
 
-/// The declaration whose name is at the offset: a function, a method, a
-/// type, a variant, an ability, an ability's method or a constant.
-fn declaration_at<'a>(
-    world: &'a World,
-    source_of: &dyn Fn(ModuleId) -> Option<&'a SourceFile>,
-    module: ModuleId,
-    offset: usize,
-) -> Option<(Span, Described)> {
-    for item in &world.modules[module].ast.items {
+/// The declaration whose own name is at the offset, as a target: a
+/// function, a method, a type, a variant, an ability, an ability's method
+/// or a constant.
+fn declaration_target_at(world: &World, module: ModuleId, offset: usize) -> Option<(Span, Target)> {
+    let info = &world.modules[module];
+    for (index, item) in info.ast.items.iter().enumerate() {
         match item {
             Item::Function(function) => {
                 if contains(function.name.span, offset) {
-                    return Some((function.name.span, describe_function(module, function)));
+                    let id = function_declared(world, module, BodyLocation::Item(index))?;
+                    return Some((function.name.span, Target::Function(id)));
                 }
             }
             Item::Implementation(implementation) => {
-                for function in &implementation.functions {
+                for (method, function) in implementation.functions.iter().enumerate() {
                     if contains(function.name.span, offset) {
-                        return Some((function.name.span, describe_function(module, function)));
+                        let body = BodyLocation::Implementation(index, method);
+                        let id = function_declared(world, module, body)?;
+                        return Some((function.name.span, Target::Function(id)));
                     }
                 }
             }
             Item::Type(def) => {
+                let id = || info.types.get(&def.name.text).copied();
                 if contains(def.name.span, offset) {
-                    return Some((
-                        def.name.span,
-                        describe_type(module, def, source_of(module), None),
-                    ));
+                    return Some((def.name.span, Target::Type(id()?)));
                 }
                 if let TypeKind::Sum { variants, .. } = &def.kind {
-                    for (index, variant) in variants.iter().enumerate() {
-                        if contains(variant.name.span, offset) {
-                            return Some((
-                                variant.name.span,
-                                describe_type(module, def, source_of(module), Some(index)),
-                            ));
+                    for (variant, declared) in variants.iter().enumerate() {
+                        if contains(declared.name.span, offset) {
+                            return Some((declared.name.span, Target::Variant(id()?, variant)));
                         }
                     }
                 }
             }
             Item::Ability(decl) => {
+                let id = || info.abilities.get(&decl.name.text).copied();
                 if contains(decl.name.span, offset) {
-                    return Some((decl.name.span, describe_ability(module, decl)));
+                    return Some((decl.name.span, Target::Ability(id()?)));
                 }
-                for function in &decl.functions {
+                for (method, function) in decl.functions.iter().enumerate() {
                     if contains(function.name.span, offset) {
-                        return Some((function.name.span, describe_function(module, function)));
+                        return Some((function.name.span, Target::AbilityMethod(id()?, method)));
                     }
                 }
             }
             Item::Constant(constant) => {
                 if contains(constant.name.span, offset) {
-                    return Some((constant.name.span, describe_constant(module, constant)));
+                    let target = Target::Constant(module, constant.name.text.clone());
+                    return Some((constant.name.span, target));
                 }
             }
             Item::Test(_) => {}
@@ -202,8 +253,16 @@ fn declaration_at<'a>(
     None
 }
 
+/// The function the world declared from a body location of the module.
+fn function_declared(world: &World, module: ModuleId, body: BodyLocation) -> Option<FunctionId> {
+    world
+        .functions
+        .iter()
+        .position(|info| info.module == module && info.body == body)
+}
+
 /// The syntax of a function the world declared, by where its body lives.
-fn function_item(world: &World, id: FunctionId) -> Option<(ModuleId, &Function)> {
+pub(super) fn function_item(world: &World, id: FunctionId) -> Option<(ModuleId, &Function)> {
     let info = &world.functions[id];
     let items = &world.modules[info.module].ast.items;
     let function = match info.body {
@@ -220,7 +279,7 @@ fn function_item(world: &World, id: FunctionId) -> Option<(ModuleId, &Function)>
     Some((info.module, function))
 }
 
-fn type_item(world: &World, id: renyi_check::TypeId) -> Option<(ModuleId, &TypeDef)> {
+pub(super) fn type_item(world: &World, id: renyi_check::TypeId) -> Option<(ModuleId, &TypeDef)> {
     let info = &world.types[id];
     let def = world.modules[info.module]
         .ast
@@ -233,7 +292,10 @@ fn type_item(world: &World, id: renyi_check::TypeId) -> Option<(ModuleId, &TypeD
     Some((info.module, def))
 }
 
-fn ability_item(world: &World, id: renyi_check::AbilityId) -> Option<(ModuleId, &AbilityDecl)> {
+pub(super) fn ability_item(
+    world: &World,
+    id: renyi_check::AbilityId,
+) -> Option<(ModuleId, &AbilityDecl)> {
     let info = &world.abilities[id];
     let decl = world.modules[info.module]
         .ast

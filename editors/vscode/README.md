@@ -16,8 +16,12 @@ in `end` indent and outdent.
 folder): the diagnostics of `renyi check` for every file of the folder,
 updated as you type; hover on a call, a type, a constant or a
 declaration for its signature and its purpose, the standard library's
-included; go to definition; the outline of a file (functions, types with
-their fields or variants, abilities, implementations, constants, tests).
+included; go to definition; find all references and rename of a
+function, a method, a type, a variant, an ability or a constant across
+the folder (a method with the ability's and every implementation's; a
+rename the program would not check with is refused, with the reason);
+the outline of a file (functions, types with their fields or variants,
+abilities, implementations, constants, tests).
 
 The toolchain is a separate install: <https://renyi-lang.org> (or
 `cargo install renyi`). The extension runs `renyi` from the PATH; the

@@ -150,8 +150,10 @@ decision AW36 (0.2 after stage 35; the Marketplace and Open VSX from
 the owner's publisher; GitHub's front set; Linguist's bar; the
 announcements at 0.2; `docs/RELEASE.md` section 6), and the Open VSX
 namespace `renyi-lang` exists with the owner's token verified against
-it, the publish waiting for 0.2; the work now is stage 35a, the
-references and the rename of declarations (the start-here item 1).
+it, the publish waiting for 0.2; stage 35a is built (decision AW38:
+references and rename of declarations in the language server, the
+paragraph "Stage 35a as built" at the end of the stage 35 study's
+section); the work now is 35b, the locals (the start-here item 1).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -596,8 +598,27 @@ and push there directly.
    namespace `renyi-lang` exists and the owner's token was verified
    against it on 2026-10-13 (the token is the owner's, kept outside
    the repository and every log; the owner chose to publish at 0.2,
-   not the 0.1.0 package, which is the grammar alone). The work now
-   is 35a. The wasm lane is
+   not the 0.1.0 package, which is the grammar alone). 35a is done
+   (decision AW38; the paragraph "Stage 35a as built" at the end of
+   the study's section): references and rename of declarations, a
+   method with its ability's and every implementation's, the refusals
+   by the library, the class, the reserved words and the project
+   checked again with the edits applied. The work now is 35b, the
+   locals (AW34 (2)): the checker records every use of a binding as a
+   reference, `Target::Local` with the binding's declaration span, in
+   `crates/renyi_check/src/check.rs` (`infer_name`, `Change`,
+   `SelfValue`, the in-place receiver, the query's binding) and the
+   same in `compiler/bodies.ry` (the judges compare the diagnostics,
+   which do not print the references, so the two records are kept
+   equal by hand); the consumers of `Target` gain an arm (the map and
+   the VM ignore it); the server then answers references and rename
+   for a binding from its declaration or a use, within the body,
+   refused for `self`, a reserved word or a name the function binds,
+   imports or declares (the check after the edits covers the last);
+   `renyi check compiler/bodies.ry` by instructions in the perf lane
+   is the measure of the record's cost, if it moves beyond the noise.
+   Then 35c, completion with signature help and workspace symbols
+   (AW34 (3) and (4)). The wasm lane is
    `D:\Projects\.worktrees\Renyi\wasm\` (its target directory for the
    wasm32 builds, `check_asis.log` the trial build, the gates logs,
    the measures and the scripts of each stage; of stage 36:
@@ -4188,6 +4209,33 @@ locals, the module's items, the imports, the prelude's bare functions
 and the statement words (recommended), names only, or the module's and
 the imports' names only; (4) the extras: signature help and workspace
 symbols (recommended), neither, or signature help alone.
+
+**Stage 35a as built** (decision AW38, 2026-10-13). `textDocument/references`,
+`textDocument/prepareRename` and `textDocument/rename` in `renyi lsp`
+(`crates/renyi/src/lsp/refer.rs`; `lsp/describe.rs`'s `target_at`). What a
+position names: the innermost body reference with a named target, else a
+type or an ability in a signature (`renyi_index::signature_references`,
+the drafts' collectors over every item of a module, public now), else a
+name an import exposes, else the declaration whose own name is there;
+hover and definition use the same lookup, so they answer in signatures
+and exposing lists now. The occurrences: the bodies' references, the
+signatures', the exposing names and the declaration, across the modules
+that have a file in the workspace. The family of a method: the ability's
+method and every implementation's method of that name, from either end
+(`family`), since a call resolves to one or the other by the receiver's
+type. The refusals, as `-32803` with the reason: a member declared in the
+library or a dependency; a new name that is not one word of the class or
+is reserved (the lexer decides, `check_name`); a project that, checked
+again with the edits applied to copies of every file
+(`Workspace::sources`, `check_after`), has more errors of some code in
+some file than now, the checker's message with its line as the reason.
+Tested over pipes in `crates/renyi/tests/lsp.rs` (the project grown by
+an ability and its implementation: references of a function, a type and
+a library function; prepareRename; the rename of a method through the
+ability, the implementation and the call; the four refusals; hover on a
+signature's type) and by `refer.rs`'s own tests. Not covered: fields (no
+target records them), the locals (35b). The lane's `lsp35a/` holds the
+test project as checked before the test was built.
 
 ## Stage 33, the WASM target: the design study (session 14)
 
@@ -8158,6 +8206,20 @@ holds between calls.
   printed line; the token was never printed or written. The owner
   chose to publish at 0.2 (the 0.1.0 package of the release is the
   grammar alone: no client, no icon).
+- Stage 35a (decision AW38, the commit after a03a334): references and
+  rename of declarations in the language server: `lsp/refer.rs` (the
+  family, the occurrences, the name rule, the check after the edits),
+  `lsp/describe.rs`'s `target_at` (hover and definition on it too),
+  `renyi_index::signature_references` (the drafts' collectors over a
+  module's items, `type_def_refs` and `requirement_refs` factored
+  out), `Workspace::sources`, the three requests and the two
+  capabilities in `lsp.rs`; the test over pipes grown by an ability,
+  its implementation and a second call; the extension's README,
+  CHANGELOG, description and comment (the bundle rebuilt); the
+  reference's row; the scratchpad's `patch_35a_code.py`,
+  `patch_35a_test.py` and `patch_35a_docs.py`, copied to the wasm
+  lane's `scratch_35a/`; the test project checked first in the lane's
+  `lsp35a/`.
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 
