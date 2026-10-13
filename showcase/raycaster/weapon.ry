@@ -1,0 +1,127 @@
+module weapon
+  purpose: The shotgun: the trigger, the shells, the frames of a shot from the blast to the pump.
+
+import std.screen exposing Shape
+
+public type Gun
+  purpose: The shotgun: the shells left and the milliseconds since the last shot.
+  has shells: Integer
+  has since: Integer
+  can ToText
+end
+
+public type Pull
+  purpose: The shotgun after one frame, whether it fired, and the sounds it made.
+  has gun: Gun
+  has fired: Boolean
+  has sounds: List of Text
+end
+
+public type Pose
+  purpose: Where one image of the weapon goes on the screen at scale 1.
+  has image: Text
+  has screen_x: Integer
+  has screen_y: Integer
+  has width: Integer
+  has height: Integer
+  can ToText
+end
+
+public let cycle: Integer be 940
+  purpose: The milliseconds from one shot to the next: the blast, the pump and the return.
+
+let pump_at: Integer be 320
+  purpose: The milliseconds after the blast when the pump is worked, and its sound plays.
+
+public let full_load: Integer be 50
+  purpose: The shells a full load holds, which the player starts with.
+
+public function new_gun() returns Gun
+  purpose: A loaded shotgun, ready to fire.
+  example: new_gun().shells is 50
+
+  return Gun(shells: full_load, since: cycle)
+end
+
+public function pulled(gun: Gun, fresh: Boolean, elapsed: Integer) returns Pull
+  purpose: One frame of the shotgun: it runs through its cycle and fires on a fresh pull when ready.
+  example: pulled(gun: new_gun(), fresh: true, elapsed: 64).fired is true
+  example: pulled(gun: new_gun(), fresh: true, elapsed: 64).gun is Gun(shells: 49, since: 0)
+  example: pulled(gun: Gun(shells: 49, since: 0), fresh: true, elapsed: 64).fired is false
+  example: pulled(gun: Gun(shells: 0, since: 940), fresh: true, elapsed: 64).sounds is ["dsnoway"]
+  example: pulled(gun: Gun(shells: 9, since: 300), fresh: false, elapsed: 64).sounds is ["dssgcock"]
+
+  let since be (gun.since + elapsed).at_most(cycle)
+  let mutable sounds: List of Text be []
+  if gun.since is less than pump_at and since is at least pump_at then
+    change sounds to ["dssgcock"]
+  end
+  let ticked be gun with since: since
+  if not fresh or since is less than cycle then
+    return Pull(gun: ticked, fired: false, sounds: sounds)
+  end
+  if gun.shells is 0 then return Pull(gun: ticked, fired: false, sounds: ["dsnoway"]) end
+  let blasted be Gun(shells: gun.shells - 1, since: 0)
+  return Pull(gun: blasted, fired: true, sounds: sounds.append("dsshotgn"))
+end
+
+public function frame_of(since: Integer) returns Pose
+  purpose: The shotgun's image at a time after the blast: still, pulled back, pumped, returning.
+  example: frame_of(0).image is "shtga0"
+  example: frame_of(250).image is "shtgb0"
+  example: frame_of(350).image is "shtgc0"
+  example: frame_of(450).image is "shtgd0"
+  example: frame_of(940).image is "shtga0"
+
+  if since is less than 215 or since is at least 730 then
+    return Pose(image: "shtga0", screen_x: 127, screen_y: 120, width: 67, height: 62)
+  end
+  if since is less than 320 or since is at least 620 then
+    return Pose(image: "shtgb0", screen_x: 142, screen_y: 78, width: 88, height: 128)
+  end
+  if since is less than 430 or since is at least 515 then
+    return Pose(image: "shtgc0", screen_x: 140, screen_y: 64, width: 94, height: 143)
+  end
+  return Pose(image: "shtgd0", screen_x: 136, screen_y: 78, width: 108, height: 129)
+end
+
+public function flash_of(since: Integer) returns maybe Pose
+  purpose: The muzzle flash over the barrel just after the blast, in two frames, then none.
+  example: flash_of(0) is Pose(image: "shtfa0", screen_x: 142, screen_y: 76, width: 36, height: 47)
+  example: flash_of(100)
+    is Pose(image: "shtfb0", screen_x: 131, screen_y: 68, width: 58, height: 55)
+  example: flash_of(200) is nothing
+
+  if since is less than 85 then
+    return Pose(image: "shtfa0", screen_x: 142, screen_y: 76, width: 36, height: 47)
+  end
+  if since is less than 150 then
+    return Pose(image: "shtfb0", screen_x: 131, screen_y: 68, width: 58, height: 55)
+  end
+  return nothing
+end
+
+public function pictures(gun: Gun, sway_x: Integer, sway_y: Integer) returns List of Shape
+  purpose: The shotgun in the player's hands, moved by the sway of walking, the flash over it.
+  example: pictures(gun: new_gun(), sway_x: 0, sway_y: 0)
+    is [Picture(screen_x: 127, screen_y: 120, width: 67, height: 62, image: "shtga0", shade: 100)]
+  example: pictures(gun: Gun(shells: 9, since: 0), sway_x: 0, sway_y: 0).length() is 2
+
+  let body be frame_of(gun.since)
+  let held be pictured(pose: body, sway_x: sway_x, sway_y: sway_y)
+  let flash be flash_of(gun.since) otherwise return [held]
+  return [held, pictured(pose: flash, sway_x: sway_x, sway_y: sway_y)]
+end
+
+function pictured(pose: Pose, sway_x: Integer, sway_y: Integer) returns Shape
+  purpose: The Picture of a pose, moved by the sway.
+
+  return Picture(
+    screen_x: pose.screen_x + sway_x,
+    screen_y: pose.screen_y + sway_y,
+    width: pose.width,
+    height: pose.height,
+    image: pose.image,
+    shade: 100
+  )
+end

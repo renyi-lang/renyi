@@ -9,8 +9,9 @@ Links between the documents are rewritten to the pages; every link is
 relative, so the site works under a path such as `/renyi/`.
 
 A page makes no request beyond the site: no font, no stylesheet and no script
-from elsewhere (the play page loads its script, the toolchain's module and the
-game's sources from `assets/`, decision AW33). The colours of both themes are custom properties (`LIGHT`,
+from elsewhere (the play page and the game's page load their script, the
+toolchain's module, the game's sources and its art from `assets/`, decisions
+AW33 and AW35). The colours of both themes are custom properties (`LIGHT`,
 `DARK`). Code is highlighted here: Renyi by the token classes of reference
 section 1 with the reserved words of its section 17, the grammar as EBNF,
 and the other languages the documents quote by a small lexicon each. A
@@ -18,9 +19,10 @@ short inline script (`SCRIPT`) adds a theme switch, copy buttons, the
 section being read in the contents, and plays the terminal once it comes
 into view; every page works without it.
 
-The front page, `docs/index.md`, `docs/how-it-works.md` and the play page,
-`docs/play.md`, are HTML blocks, the first two with inline SVG drawn in the
-theme's colours, each with a layout of its own (`LAYOUTS`). Every other page gets the name of its group above its title, a
+The front page, `docs/index.md`, `docs/how-it-works.md`, the play page,
+`docs/play.md`, and the game's page, `docs/game.md`, are HTML blocks, the
+first two with inline SVG drawn in the theme's colours, each with a layout of
+its own (`LAYOUTS`). Every other page gets the name of its group above its title, a
 one-sentence lead under it (`LEADS`), and a long one a table of its
 sections built from its headings, beside it at wide widths and in a
 disclosure on narrow ones; the sections of the decision record fold, and
@@ -32,8 +34,8 @@ it replaces `<div class="terminal"></div>`.
 
 Usage: python tools/site.py [<output directory>] [--module <renyi_web.wasm>]
 (the directory defaults to _site; the module, built by `cargo build -p renyi_web
---target wasm32-unknown-unknown --release`, is copied beside the play page when
-it is given). Requires the `markdown` package (`pip install markdown`).
+--target wasm32-unknown-unknown --release`, is copied beside the pages when it
+is given). Requires the `markdown` package (`pip install markdown`).
 """
 
 from __future__ import annotations
@@ -63,12 +65,16 @@ HOME = "docs/index.md"
 CORPUS = "examples/README.md"
 REPOSITORY = "https://github.com/renyi-lang/renyi"
 
-# The play page (decision AW33) and what it loads from `assets/`: its script,
-# the showcase game's sources (the main file first) and the toolchain's module.
+# The play page (decision AW33) and the game's page (decision AW35), and what
+# they load from `assets/`: their script, the showcase game's sources (the main
+# file first), its art (the images and the sounds with their index and the
+# license) and the toolchain's module.
 PLAY = "docs/play.md"
+GAME_PAGE = "docs/game.md"
 PLAY_SCRIPT = "docs/assets/play.js"
 GAME = "showcase/raycaster"
 GAME_MAIN = "raycaster.ry"
+ART = "showcase/raycaster/art"
 
 # The navigation, grouped; a target is a repository path or an address.
 GROUPS = [
@@ -148,7 +154,8 @@ LEADS = {
 }
 
 # Pages with a layout of their own: the class of their `main`.
-LAYOUTS = {HOME: "home", "docs/how-it-works.md": "feature", PLAY: "feature"}
+LAYOUTS = {HOME: "home", "docs/how-it-works.md": "feature", PLAY: "feature",
+           GAME_PAGE: "game"}
 
 # The decision record folds its lettered sections; the last stays open.
 FOLDED = {"docs/design/01-decisions.md"}
@@ -535,7 +542,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--text); font-family: var(--display); }
            letter-spacing: .09em; line-height: 1.4; text-transform: uppercase; }
 .eyebrow a { color: inherit; text-decoration: none; }
 .eyebrow a:hover { text-decoration: underline; }
-.doc h1, .feature h1 { margin: 0 0 1rem; font-size: clamp(2rem, 1.55rem + 1.6vw, 2.75rem);
+.doc h1, .feature h1, .game h1 { margin: 0 0 1rem; font-size: clamp(2rem, 1.55rem + 1.6vw, 2.75rem);
                        font-weight: 700; letter-spacing: -0.03em; line-height: 1.12;
                        text-wrap: balance; }
 h1.file { font-family: var(--mono); font-weight: 650; letter-spacing: -0.035em; }
@@ -950,7 +957,7 @@ figcaption { margin-top: 1rem; color: var(--text-2); font-size: .875rem; line-he
 /* How it works: each mechanism beside its drawing from 1100px, one session above. */
 .feature { width: 100%; max-width: calc(var(--wide) + 2 * var(--gutter)); margin: 0 auto;
            padding: clamp(2.5rem, 1.5rem + 3vw, 4rem) var(--gutter) 5rem; }
-.feature .lead { max-width: 44rem; }
+.feature .lead, .game .lead { max-width: 44rem; }
 .chapters ol { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0 0 1rem; padding: 0;
                list-style: none; }
 .chapters a { display: inline-flex; align-items: center; gap: .5rem; padding: .45rem .85rem;
@@ -998,15 +1005,21 @@ figcaption { margin-top: 1rem; color: var(--text-2); font-size: .875rem; line-he
   .foot-main { grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 4rem; }
 }
 
-/* The play page (decision AW33): the game's screen and the playground's desk. */
-.arcade canvas { display: block; width: 100%; max-width: 640px; aspect-ratio: 320 / 200;
-                 border: 1px solid var(--line-strong); border-radius: 14px; background: #000;
-                 box-shadow: var(--shadow-md); image-rendering: pixelated; }
-.arcade canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-.feature .row { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1rem;
-                margin: 1rem 0 0; }
-.feature .status { margin: 0; color: var(--text-2); font-size: .9375rem; }
-.feature .status:empty { display: none; }
+/* The play page (decision AW33): the game's poster and the playground's desk,
+   whose screen shows once a program presents a frame. */
+.arcade .poster { display: block; width: 100%; max-width: 640px; height: auto;
+                  aspect-ratio: 320 / 200; border: 1px solid var(--line-strong);
+                  border-radius: 14px; background: #000; box-shadow: var(--shadow-md);
+                  image-rendering: pixelated; }
+.desk canvas { display: block; width: 100%; max-width: 640px; margin-top: 1rem;
+               aspect-ratio: 320 / 200; border: 1px solid var(--line-strong);
+               border-radius: 14px; background: #000; box-shadow: var(--shadow-md);
+               image-rendering: pixelated; }
+.desk canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.feature .row, .game .row { display: flex; flex-wrap: wrap; align-items: center;
+                            gap: .75rem 1rem; margin: 1rem 0 0; }
+.feature .status, .game .status { margin: 0; color: var(--text-2); font-size: .9375rem; }
+.feature .status:empty, .game .status:empty { display: none; }
 button.button { font-family: inherit; cursor: pointer; }
 button.button:disabled { cursor: default; opacity: .6; }
 .desk textarea, .desk .output { box-sizing: border-box; width: 100%; margin: 0;
@@ -1023,13 +1036,35 @@ button.button:disabled { cursor: default; opacity: .6; }
 .args input { height: 2.75rem; padding: 0 .9rem; border: 1px solid var(--line-strong);
               border-radius: 10px; background: var(--bg); color: var(--text);
               font: .9375rem var(--mono); }
-.feature kbd { padding: .1rem .4rem; border: 1px solid var(--line-strong);
+.feature kbd, .game kbd { padding: .1rem .4rem; border: 1px solid var(--line-strong);
                border-bottom-width: 2px; border-radius: 6px; background: var(--surface);
                font-size: .8125rem; }
 @media (min-width: 1100px) {
   .feature .arcade { grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr);
                      align-items: start; }
 }
+
+/* The game's page (decision AW35): the screen as wide as the window allows,
+   its height kept to the window's, and the whole of it in full screen. */
+.game { width: 100%; max-width: calc(var(--wide) + 2 * var(--gutter)); margin: 0 auto;
+        padding: 2.5rem var(--gutter) 4rem; box-sizing: border-box; }
+.game .prose { max-width: 44rem; }
+.game .prose p { margin: 0 0 1.15rem; }
+.game .lead { margin-bottom: 1.5rem; }
+.stage { display: grid; place-items: center; margin: 1.5rem 0 0; border-radius: 14px;
+         border: 1px solid var(--line-strong); background: #000; box-shadow: var(--shadow-md);
+         overflow: hidden; }
+.stage canvas { display: block; width: 100%;
+                max-width: min(100%, calc((100vh - 16rem) * 1.6)); aspect-ratio: 320 / 200;
+                background: #000; image-rendering: pixelated; }
+.stage canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+.stage:fullscreen { border: 0; border-radius: 0; }
+.stage:fullscreen canvas { width: min(100vw, calc(100vh * 1.6)); max-width: none; }
+.game .controls { margin: 1rem 0 1.5rem; }
+.game .keys { color: var(--text-2); font-size: .9375rem; }
+.check { display: inline-flex; align-items: center; gap: .4rem; color: var(--text-2);
+         font-size: .9375rem; }
+.check input { width: 1.1rem; height: 1.1rem; margin: 0; accent-color: var(--accent); }
 
 /* Motion is a courtesy: without it everything is shown at once, highlighted. */
 @media (prefers-reduced-motion: reduce) {
@@ -1685,8 +1720,8 @@ def layout(source: str, text: str, body: str, contents: Contents, page: str,
     for a long page, its sections in a disclosure there and in a sticky column
     beside it; at its end the pages before and after it and its source."""
     style = LAYOUTS.get(source)
-    if style == "home":
-        return f'<main id="content" class="home">\n{body}\n</main>'
+    if style in {"home", "game"}:
+        return f'<main id="content" class="{style}">\n{body}\n</main>'
     above = group_of(source)
     if source.endswith(".ry"):
         index = relative(page, known[CORPUS])
@@ -1765,9 +1800,11 @@ def build(out: Path) -> int:
 
 
 def play_files(out: Path, module: Path | None) -> str:
-    """The play page's files under `assets/` (decision AW33): the page's
-    script, the game's sources with their index, the main file first, and
-    the toolchain's module when one is given; what was put there."""
+    """The files the play page and the game's page load from `assets/`
+    (decisions AW33 and AW35): their script, the game's sources with their
+    index, the main file first, the game's art (the images and the sounds
+    with an index of their names and the license beside them) and the
+    toolchain's module when one is given; what was put there."""
     assets = out / "assets"
     assets.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(ROOT / PLAY_SCRIPT, assets / "play.js")
@@ -1779,10 +1816,22 @@ def play_files(out: Path, module: Path | None) -> str:
     for name in names:
         shutil.copyfile(ROOT / GAME / name, game / name)
     (game / "index.json").write_text(json.dumps(names) + "\n", encoding="utf-8", newline="\n")
+    art = assets / "art"
+    art.mkdir(exist_ok=True)
+    files = sorted(path for path in (ROOT / ART).iterdir() if path.suffix in {".png", ".wav"})
+    for path in files:
+        shutil.copyfile(path, art / path.name)
+    shutil.copyfile(ROOT / ART / "COPYING.adoc", art / "COPYING.adoc")
+    index = {
+        "images": [path.stem for path in files if path.suffix == ".png"],
+        "sounds": [path.stem for path in files if path.suffix == ".wav"],
+    }
+    (art / "index.json").write_text(json.dumps(index) + "\n", encoding="utf-8", newline="\n")
+    put = f"the pages' script, the game's {len(names)} files and {len(files)} files of its art"
     if module is None:
-        return f"the play page's script and the game's {len(names)} files, without the module"
+        return f"{put}, without the module"
     shutil.copyfile(module, assets / "renyi_web.wasm")
-    return f"the play page's script, the game's {len(names)} files and the module"
+    return f"{put} and the module"
 
 
 def main() -> int:

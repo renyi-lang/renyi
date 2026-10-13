@@ -129,7 +129,7 @@ end</code></pre>
 <li><a href="reference.md"><strong>Reference</strong><span>Each construct with its grammar, its meaning, its rules and its behaviour at run time.</span></a></li>
 <li><a href="../examples/README.md"><strong>Examples</strong><span>Complete programs, one per file, that fixed the surface of the language.</span></a></li>
 <li><a href="../starter/README.md"><strong>Starter pack</strong><span>What an agent needs in its first hour: the skill, the MCP configuration, five workflows.</span></a></li>
-<li><a href="play.md"><strong>Play</strong><span>The showcase game and a playground in your browser, on the toolchain compiled to WebAssembly.</span></a></li>
+<li><a href="play.md"><strong>Play</strong><span>The Doom-style showcase game on a page of its own, and a playground, in your browser on the toolchain compiled to WebAssembly.</span></a></li>
 <li><a href="ROADMAP.md"><strong>Roadmap</strong><span>Every stage of the project, in order and by track, and what comes next.</span></a></li>
 <li><a href="https://github.com/renyi-lang/renyi"><strong>GitHub</strong><span>The repository, under the Apache-2.0 license.</span></a></li>
 </ul>

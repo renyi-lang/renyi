@@ -93,9 +93,9 @@ public function moved(maze: Level, origin: Vector, offset: Vector) returns Moved
 end
 
 function blocked(maze: Level, cell: Cell) returns Boolean
-  purpose: Whether the tile of a cell stops the player.
+  purpose: Whether a cell stops a body: a wall, the exit, or a door not yet open enough.
 
-  return level.is_solid(level.tile_at(level: maze, column: cell.column, row: cell.row))
+  return not level.passable(level: maze, column: cell.column, row: cell.row)
 end
 
 test "walking into a wall stops short of it and names the cell"

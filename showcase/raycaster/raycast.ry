@@ -2,7 +2,7 @@ module raycast
   purpose: The raycaster: one ray per screen column stepped through the grid cell by cell (DDA).
 
 import fixed
-import level exposing Level, Tile
+import level exposing Level, Tile, Cell
 
 public type Vector
   purpose: A direction or an offset in fixed-point map units.
@@ -19,11 +19,12 @@ public type Side is one of
 end
 
 public type Hit
-  purpose: Where a ray stopped: the perpendicular distance, the tile, the face, the offset on it.
+  purpose: Where a ray stopped: the distance, the tile, the face, the offset on it, how open a door.
   has distance: Integer
   has tile: Tile
   has side: Side
   has offset: Integer
+  has opening: Integer
   can ToText
 end
 
@@ -41,19 +42,42 @@ public function facing(angle: Integer) returns Vector
   return Vector(dx: fixed.cosine(angle), dy: fixed.sine(angle))
 end
 
-public function ray_for(angle: Integer, column: Integer, columns: Integer) returns Vector
+public type Camera
+  purpose: The view of one frame: the facing, and the camera plane to its right at its full width.
+  has ahead: Vector
+  has plane: Vector
+  can ToText
+end
+
+public function camera(angle: Integer) returns Camera
+  purpose: The camera of a facing, worked out once a frame for all its rays.
+  example: camera(0) is Camera(ahead: Vector(dx: 4096, dy: 0), plane: Vector(dx: 0, dy: 2703))
+
+  let ahead be facing(angle)
+  let plane be Vector(
+    dx: fixed.multiply(left: 0 - ahead.dy, right: plane_scale),
+    dy: fixed.multiply(left: ahead.dx, right: plane_scale)
+  )
+  return Camera(ahead: ahead, plane: plane)
+end
+
+public function ray_through(view: Camera, column: Integer, columns: Integer) returns Vector
   purpose: The ray through a screen column: the facing plus a share of the camera plane.
+  example: ray_through(view: camera(0), column: 0, columns: 2) is Vector(dx: 4096, dy: -1351)
+
+  let share be ((2 * column + 1) * fixed.unit).quotient(columns) - fixed.unit
+  return Vector(
+    dx: view.ahead.dx + fixed.multiply(left: view.plane.dx, right: share),
+    dy: view.ahead.dy + fixed.multiply(left: view.plane.dy, right: share)
+  )
+end
+
+public function ray_for(angle: Integer, column: Integer, columns: Integer) returns Vector
+  purpose: The ray through a screen column for a facing.
   example: ray_for(angle: 0, column: 0, columns: 2) is Vector(dx: 4096, dy: -1351)
   example: ray_for(angle: 0, column: 1, columns: 2) is Vector(dx: 4096, dy: 1351)
 
-  let ahead be facing(angle)
-  let camera be ((2 * column + 1) * fixed.unit).quotient(columns) - fixed.unit
-  let plane_x be fixed.multiply(left: 0 - ahead.dy, right: plane_scale)
-  let plane_y be fixed.multiply(left: ahead.dx, right: plane_scale)
-  return Vector(
-    dx: ahead.dx + fixed.multiply(left: plane_x, right: camera),
-    dy: ahead.dy + fixed.multiply(left: plane_y, right: camera)
-  )
+  return ray_through(view: camera(angle), column: column, columns: columns)
 end
 
 function cells_per_crossing(component: Integer) returns Integer
@@ -82,93 +106,111 @@ function step_of(component: Integer) returns Integer
   return 1
 end
 
-type Walker
-  purpose: A ray on its way through the grid: its cell, the next crossing on each axis, its face.
+type Stop
+  purpose: Where a ray's walk ended: the cell it entered, the distance there, the face it crossed.
   has column: Integer
   has row: Integer
-  has next_x: Integer
-  has next_y: Integer
-  has per_x: Integer
-  has per_y: Integer
-  has step_x: Integer
-  has step_y: Integer
   has distance: Integer
   has side: Side
-  has crossings: Integer
 end
 
-function started(origin: Vector, ray: Vector) returns Walker
-  purpose: A ray at its origin, before it crosses its first grid line.
+function walked(maze: Level, origin: Vector, ray: Vector, skip: Integer) returns Stop
+  purpose: The ray stepped cell by cell until a cell stops it, passing `skip` doors open part way.
 
   let per_x be cells_per_crossing(ray.dx)
   let per_y be cells_per_crossing(ray.dy)
-  return Walker(
-    column: fixed.cell_of(origin.dx),
-    row: fixed.cell_of(origin.dy),
-    next_x: first_crossing(position: origin.dx, component: ray.dx, per_cell: per_x),
-    next_y: first_crossing(position: origin.dy, component: ray.dy, per_cell: per_y),
-    per_x: per_x,
-    per_y: per_y,
-    step_x: step_of(ray.dx),
-    step_y: step_of(ray.dy),
-    distance: 0,
-    side: AcrossX,
-    crossings: 0
-  )
-end
-
-function stepped(walker: Walker) returns Walker
-  purpose: The ray moved into the next cell, across whichever grid line comes first.
-
-  let crossings be walker.crossings + 1
-  if walker.next_x is less than walker.next_y then
-    let across be walker with column: walker.column + walker.step_x, side: AcrossX
-    return across
-      with next_x: walker.next_x + walker.per_x, distance: walker.next_x, crossings: crossings
+  let step_x be step_of(ray.dx)
+  let step_y be step_of(ray.dy)
+  let mutable column be fixed.cell_of(origin.dx)
+  let mutable row be fixed.cell_of(origin.dy)
+  let mutable next_x be first_crossing(position: origin.dx, component: ray.dx, per_cell: per_x)
+  let mutable next_y be first_crossing(position: origin.dy, component: ray.dy, per_cell: per_y)
+  let mutable distance be 0
+  let mutable side be AcrossX
+  let mutable crossings be 0
+  let mutable doors_left be skip
+  repeat until crossings is at least farthest
+    change crossings to crossings + 1
+    if next_x is less than next_y then
+      change column to column + step_x
+      change distance to next_x
+      change next_x to next_x + per_x
+      change side to AcrossX
+    otherwise
+      change row to row + step_y
+      change distance to next_y
+      change next_y to next_y + per_y
+      change side to AcrossY
+    end
+    let tile be level.tile_at(level: maze, column: column, row: row)
+    if tile is not Floor then
+      if tile is not Door then break end
+      let opening be level.opening_at(level: maze, column: column, row: row)
+      if opening is less than level.fully_open then
+        if doors_left is 0 or opening is 0 then break end
+        change doors_left to doors_left - 1
+      end
+    end
   end
-  let down be walker with row: walker.row + walker.step_y, side: AcrossY
-  return down
-    with next_y: walker.next_y + walker.per_y, distance: walker.next_y, crossings: crossings
-end
-
-function walked(maze: Level, walker: Walker) returns Walker
-  purpose: The ray stepped until it enters a solid cell, or gives up after the farthest crossing.
-
-  let mutable current be stepped(walker)
-  repeat until current.crossings is at least farthest or solid(maze: maze, walker: current)
-    change current to stepped(current)
-  end
-  return current
-end
-
-function solid(maze: Level, walker: Walker) returns Boolean
-  purpose: Whether the cell the ray is in stops it.
-
-  return level.is_solid(level.tile_at(level: maze, column: walker.column, row: walker.row))
+  return Stop(column: column, row: row, distance: distance, side: side)
 end
 
 public function cast(maze: Level, origin: Vector, ray: Vector) returns Hit
   purpose: The first solid tile on the ray; the distance is along the facing, so it has no fish-eye.
-  see also: ray_for
+  see also: ray_for, cast_past
 
-  let walker be walked(maze: maze, walker: started(origin: origin, ray: ray))
+  return cast_past(maze: maze, origin: origin, ray: ray, skip: 0)
+end
+
+public function cast_past(maze: Level, origin: Vector, ray: Vector, skip: Integer) returns Hit
+  purpose: The tile the ray stops at once it has passed `skip` doors open part way.
+
+  let walker be walked(maze: maze, origin: origin, ray: ray, skip: skip)
+  let tile be level.tile_at(level: maze, column: walker.column, row: walker.row)
   return Hit(
     distance: walker.distance,
-    tile: level.tile_at(level: maze, column: walker.column, row: walker.row),
+    tile: tile,
     side: walker.side,
-    offset: offset_of(origin: origin, ray: ray, distance: walker.distance, side: walker.side)
+    offset: offset_of(origin: origin, ray: ray, distance: walker.distance, side: walker.side),
+    opening: if tile is Door then level.opening_at(
+      level: maze,
+      column: walker.column,
+      row: walker.row
+    )
+    otherwise 0
+    end
   )
 end
 
-function offset_of(origin: Vector, ray: Vector, distance: Integer, side: Side) returns Integer
-  purpose: Where along the face the ray struck, from 0 to the unit.
+public function offset_of(origin: Vector, ray: Vector, distance: Integer, side: Side)
+  returns Integer
+  purpose: Where along the face the ray struck, 0 to the unit, from the left as the face is seen.
+  example: offset_of(
+    origin: Vector(dx: 0, dy: 1000),
+    ray: Vector(dx: 4096, dy: 0),
+    distance: 4096,
+    side: AcrossX
+  ) is 1000
+  example: offset_of(
+    origin: Vector(dx: 0, dy: 1000),
+    ray: Vector(dx: -4096, dy: 0),
+    distance: 4096,
+    side: AcrossX
+  ) is 3095
 
   let struck_at be
     match side
       when AcrossX then origin.dy + fixed.multiply(left: distance, right: ray.dy)
       when AcrossY then origin.dx + fixed.multiply(left: distance, right: ray.dx)
     end
-  return struck_at remainder fixed.unit
+  let along_face be struck_at remainder fixed.unit
+  let mirrored be
+    match side
+      when AcrossX then ray.dx is less than 0
+      when AcrossY then ray.dy is greater than 0
+    end
+  if mirrored then return fixed.unit - 1 - along_face end
+  return along_face
 end
 
 public function along(offset: Vector, direction: Vector) returns Integer
@@ -251,4 +293,19 @@ test "a ray stops at a closed door and names it"
   let hit be cast(maze: maze, origin: Vector(dx: 6144, dy: 6144), ray: facing(0))
   check hit.tile is Door
   check hit.distance is 6144
+  check hit.opening is 0
+end
+
+test "a door open part way stops the ray, and the ray cast past it meets the wall behind"
+  let shut be level.parse_level(["######", "#..D.#", "######"])
+  let maze be level.with_opening(level: shut, cell: Cell(column: 3, row: 1), amount: 2048)
+  let origin be Vector(dx: 6144, dy: 6144)
+  let door be cast(maze: maze, origin: origin, ray: facing(0))
+  check door.tile is Door
+  check door.opening is 2048
+  let behind be cast_past(maze: maze, origin: origin, ray: facing(0), skip: 1)
+  check behind.tile is Stone
+  check behind.distance is 14336
+  let wide_open be level.with_opening(level: shut, cell: Cell(column: 3, row: 1), amount: 4096)
+  check cast(maze: wide_open, origin: origin, ray: facing(0)).tile is Stone
 end

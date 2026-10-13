@@ -1,0 +1,142 @@
+module hud
+  purpose: The status bar at the foot of the screen: ammo, health, the face, armor, arms and shells.
+
+import game exposing State, Status
+import std.screen exposing Shape
+import weapon
+
+public let bar_top: Integer be 168
+  purpose: The first row of the status bar, which is 32 rows high.
+
+let digit_width: Integer be 13
+  purpose: The width of a large red digit of the status bar.
+
+let small_width: Integer be 4
+  purpose: The width of a small yellow digit of the status bar.
+
+let looks: List of Integer be [1, 0, 1, 2]
+  purpose: The face's glances in turn: ahead, to one side, ahead, to the other.
+
+public function face_level(health: Integer) returns Integer
+  purpose: The face's damage by health, banded as in the original game: 0 well, 4 near death.
+  example: face_level(100) is 0
+  example: face_level(80) is 0
+  example: face_level(79) is 1
+  example: face_level(39) is 3
+  example: face_level(19) is 4
+  example: face_level(0) is 4
+
+  return ((100 - health.at_least(0).at_most(100)) * 5).quotient(101)
+end
+
+public function face_of(state: State) returns Text
+  purpose: The face to show: dead, in pain, grinning at a kill, firing, or glancing about.
+  example: face_of(game.new_game(["###", "#S#", "###"])) is "stfst01"
+
+  let level be face_level(state.hero.health)
+  if state.status is Fallen or state.hero.health is 0 then return "stfdead0" end
+  if state.hurt is greater than 0 then return "stfouch{level}" end
+  if state.grin is greater than 0 then return "stfevl{level}" end
+  if state.gun.since is less than 300 then return "stfkill{level}" end
+  let look be looks.at(state.clock.quotient(700) remainder 4) otherwise 1
+  return "stfst{level}{look}"
+end
+
+public function number(value: Integer, right: Integer, screen_y: Integer, small: Boolean)
+  returns List of Shape
+  purpose: A number in the bar's digits, its last digit ending at the column `right`.
+  example: number(value: 42, right: 44, screen_y: 171, small: false)
+    is [
+      Picture(screen_x: 18, screen_y: 171, width: 13, height: 16, image: "sttnum4", shade: 100),
+      Picture(screen_x: 31, screen_y: 171, width: 13, height: 16, image: "sttnum2", shade: 100)
+    ]
+  example: number(value: 7, right: 288, screen_y: 179, small: true)
+    is [Picture(screen_x: 284, screen_y: 179, width: 4, height: 6, image: "stysnum7", shade: 100)]
+
+  let digits be value.at_least(0).to_text().characters()
+  let width be if small then small_width otherwise digit_width end
+  let height be if small then 6 otherwise 16 end
+  let stem be if small then "stysnum" otherwise "sttnum" end
+  let start be right - digits.length() * width
+  let shapes be
+    for each digit, place in digits.with_index()
+    collect Picture(
+      screen_x: start + place * width,
+      screen_y: screen_y,
+      width: width,
+      height: height,
+      image: "{stem}{digit}",
+      shade: 100
+    )
+  return shapes
+end
+
+function percent_at(screen_x: Integer) returns Shape
+  purpose: The large percent sign after a number of the bar.
+
+  return Picture(
+    screen_x: screen_x,
+    screen_y: 171,
+    width: digit_width,
+    height: 16,
+    image: "sttprcnt",
+    shade: 100
+  )
+end
+
+public function status_bar(state: State) returns List of Shape
+  purpose: The bar and what is on it, at the positions the original game puts them.
+
+  let shells be state.gun.shells
+  let mutable drawn: List of Shape be [
+    Picture(screen_x: 0, screen_y: bar_top, width: 320, height: 32, image: "stbar", shade: 100),
+    Picture(screen_x: 104, screen_y: bar_top, width: 38, height: 32, image: "starms", shade: 100),
+    Picture(screen_x: 123, screen_y: 172, width: 4, height: 6, image: "stysnum3", shade: 100),
+    Picture(screen_x: 147, screen_y: 169, width: 24, height: 31, image: face_of(state), shade: 100),
+    percent_at(90),
+    percent_at(221)
+  ]
+  change drawn to drawn.append_all(number(value: shells, right: 44, screen_y: 171, small: false))
+  change drawn to drawn.append_all(
+    number(value: state.hero.health, right: 90, screen_y: 171, small: false)
+  )
+  change drawn to drawn.append_all(number(value: 0, right: 221, screen_y: 171, small: false))
+  return drawn.append_all(ammo_tallies(shells))
+end
+
+function ammo_tallies(shells: Integer) returns List of Shape
+  purpose: The small counts on the right of the bar: bullets, shells, rockets and cells, and maxima.
+
+  let rows be [173, 179, 185, 191]
+  let held be [0, shells, 0, 0]
+  let maxima be [200, weapon.full_load, 50, 300]
+  let mutable drawn: List of Shape be []
+  for each row, index in rows.with_index()
+    let amount be held.at(index) otherwise 0
+    let limit be maxima.at(index) otherwise 0
+    change drawn to drawn.append_all(number(value: amount, right: 288, screen_y: row, small: true))
+    change drawn to drawn.append_all(number(value: limit, right: 314, screen_y: row, small: true))
+  end
+  return drawn
+end
+
+test "the face is the dead one once the game is lost, and winces while hurt"
+  let state be game.new_game(["###", "#S#", "###"])
+  check face_of(state with status: Fallen) is "stfdead0"
+  check face_of(state with hurt: 100, hero: (state.hero with health: 50)) is "stfouch2"
+  check face_of(state with grin: 100) is "stfevl0"
+  check face_of(state with clock: 700) is "stfst00"
+end
+
+test "the bar holds the bar, the arms, the face, two percent signs and the numbers"
+  let shapes be status_bar(game.new_game(["###", "#S#", "###"]))
+  check shapes.at(0) is Picture(
+    screen_x: 0,
+    screen_y: 168,
+    width: 320,
+    height: 32,
+    image: "stbar",
+    shade: 100
+  )
+  check shapes.length() is 6 + 2 + 3 + 1 + 15
+end

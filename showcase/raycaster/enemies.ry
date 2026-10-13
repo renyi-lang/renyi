@@ -1,5 +1,5 @@
 module enemies
-  purpose: The enemies: they chase the player they can see, bite on contact and fall when shot.
+  purpose: The demons: they wake when they see the player, chase, bite up close and fall when shot.
 
 import fixed
 import level exposing Level, Cell
@@ -7,47 +7,70 @@ import player
 import raycast exposing Vector
 
 public type Enemy
-  purpose: One enemy: where it stands, its health, and its bite and flash timers in milliseconds.
+  purpose: One demon: where it stands and faces, its health, and its timers in milliseconds.
   has position: Vector
+  has heading: Vector
   has health: Integer
   has cooldown: Integer
   has flash: Integer
+  has biting: Integer
+  has stride: Integer
+  has fallen: Integer
+  has awake: Boolean
   can ToText
 end
 
 public type Advance
-  purpose: An enemy after one frame and the damage it dealt to the player in that frame.
+  purpose: A demon after one frame, the damage it dealt to the player and the sounds it made.
   has enemy: Enemy
   has damage: Integer
+  has sounds: List of Text
 end
 
 type Rules
-  purpose: The numbers of an enemy's behaviour, in fixed-point units and milliseconds.
+  purpose: The numbers of a demon's behaviour, in fixed-point units and milliseconds.
   has sight: Integer
   has reach: Integer
   has bite: Integer
   has bite_pause: Integer
+  has bite_time: Integer
+  has pain_time: Integer
+  has growl_every: Integer
 end
 
-let rules: Rules be Rules(sight: 32768, reach: 3072, bite: 10, bite_pause: 800)
-  purpose: Enemies see eight cells, bite within three quarters of a cell for 10, every 800 ms.
+let rules: Rules be Rules(
+  sight: 32768,
+  reach: 3072,
+  bite: 10,
+  bite_pause: 800,
+  bite_time: 600,
+  pain_time: 200,
+  growl_every: 4000
+)
+  purpose: Demons see eight cells and bite within three quarters of a cell for 10, every 800 ms.
 
-public function spawn(cell: Cell) returns Enemy
-  purpose: A fresh enemy at the centre of a cell, with two hit points.
-  example: spawn(Cell(column: 2, row: 1)).position is Vector(dx: 10240, dy: 6144)
+public function spawn(cell: Cell, angle: Integer) returns Enemy
+  purpose: A fresh, sleeping demon at the centre of a cell, facing the angle, with two hit points.
+  example: spawn(cell: Cell(column: 2, row: 1), angle: 0).position is Vector(dx: 10240, dy: 6144)
+  example: spawn(cell: Cell(column: 2, row: 1), angle: 2048).heading is Vector(dx: -4096, dy: 0)
 
   let centre be fixed.unit.quotient(2)
   return Enemy(
     position: Vector(dx: cell.column * fixed.unit + centre, dy: cell.row * fixed.unit + centre),
+    heading: raycast.facing(angle),
     health: 2,
     cooldown: 0,
-    flash: 0
+    flash: 0,
+    biting: 0,
+    stride: 0,
+    fallen: 0,
+    awake: false
   )
 end
 
 public function is_alive(enemy: Enemy) returns Boolean
-  purpose: Whether the enemy still stands.
-  example: is_alive(spawn(Cell(column: 1, row: 1))) is true
+  purpose: Whether the demon still stands.
+  example: is_alive(spawn(cell: Cell(column: 1, row: 1), angle: 0)) is true
 
   return enemy.health is greater than 0
 end
@@ -61,7 +84,7 @@ public function length_of(offset: Vector) returns Integer
 end
 
 public function can_see(maze: Level, origin: Vector, target: Vector) returns Boolean
-  purpose: Whether no solid tile lies between two points, sampled every quarter cell.
+  purpose: Whether no wall or closed door lies between two points, sampled every quarter cell.
   example: can_see(
     maze: level.parse_level(["#####", "#...#", "#####"]),
     origin: Vector(dx: 6144, dy: 6144),
@@ -79,7 +102,7 @@ public function can_see(maze: Level, origin: Vector, target: Vector) returns Boo
   for each sample from 1 to samples
     let column be fixed.cell_of(origin.dx + (span_x * sample).quotient(samples))
     let row be fixed.cell_of(origin.dy + (span_y * sample).quotient(samples))
-    if level.is_solid(level.tile_at(level: maze, column: column, row: row)) then return false end
+    if not level.passable(level: maze, column: column, row: row) then return false end
   end
   return true
 end
@@ -92,9 +115,10 @@ public function distance_between(origin: Vector, target: Vector) returns Integer
 end
 
 public function advance(maze: Level, enemy: Enemy, target: Vector, elapsed: Integer) returns Advance
-  purpose: One frame of an enemy: bite a target in reach, else chase it if it is in sight.
+  purpose: One frame of a demon: a corpse lies, a living one bites in reach or chases what it sees.
 
   let timed be ticked(enemy: enemy, elapsed: elapsed)
+  if not is_alive(timed) then return Advance(enemy: timed, damage: 0, sounds: []) end
   return bitten(enemy: timed, target: target) otherwise chased(
     maze: maze,
     enemy: timed,
@@ -104,27 +128,35 @@ public function advance(maze: Level, enemy: Enemy, target: Vector, elapsed: Inte
 end
 
 function ticked(enemy: Enemy, elapsed: Integer) returns Enemy
-  purpose: The enemy with its timers run down by the elapsed milliseconds.
+  purpose: The demon with its timers run down by the elapsed milliseconds, a corpse's run up.
 
+  if not is_alive(enemy) then return enemy with fallen: enemy.fallen + elapsed end
   let cooldown be (enemy.cooldown - elapsed).at_least(0)
-  return enemy with cooldown: cooldown, flash: (enemy.flash - elapsed).at_least(0)
+  let flash be (enemy.flash - elapsed).at_least(0)
+  return enemy with cooldown: cooldown, flash: flash, biting: (enemy.biting - elapsed).at_least(0)
+end
+
+function toward(enemy: Enemy, target: Vector) returns Vector
+  purpose: The offset from the demon to the target.
+
+  return Vector(dx: target.dx - enemy.position.dx, dy: target.dy - enemy.position.dy)
 end
 
 function bitten(enemy: Enemy, target: Vector) returns maybe Advance
-  purpose: The bite of a living enemy within reach of the target, or nothing when out of reach.
+  purpose: The bite of a demon within reach of the target, or nothing when out of reach.
 
-  if not is_alive(enemy) then return nothing end
   if distance_between(origin: enemy.position, target: target) is greater than rules.reach then
     return nothing
   end
-  if enemy.cooldown is greater than 0 then return Advance(enemy: enemy, damage: 0) end
-  return Advance(enemy: (enemy with cooldown: rules.bite_pause), damage: rules.bite)
+  let facing be enemy with heading: toward(enemy: enemy, target: target), awake: true
+  if enemy.cooldown is greater than 0 then return Advance(enemy: facing, damage: 0, sounds: []) end
+  let biting be facing with cooldown: rules.bite_pause, biting: rules.bite_time
+  return Advance(enemy: biting, damage: rules.bite, sounds: ["dssgtatk"])
 end
 
 function in_pursuit(maze: Level, enemy: Enemy, target: Vector) returns Boolean
-  purpose: Whether a living enemy sees the target within its sight.
+  purpose: Whether the demon sees the target within its sight.
 
-  if not is_alive(enemy) then return false end
   if distance_between(origin: enemy.position, target: target) is greater than rules.sight then
     return false
   end
@@ -136,31 +168,42 @@ function pursuit(enemy: Enemy, target: Vector, elapsed: Integer) returns Vector
 
   let distance be distance_between(origin: enemy.position, target: target).at_least(1)
   let pace be (elapsed.at_most(100) * fixed.unit * 3).quotient(2000)
-  let gap_x be target.dx - enemy.position.dx
-  let gap_y be target.dy - enemy.position.dy
-  return Vector(dx: (gap_x * pace).quotient(distance), dy: (gap_y * pace).quotient(distance))
+  let gap be toward(enemy: enemy, target: target)
+  return Vector(dx: (gap.dx * pace).quotient(distance), dy: (gap.dy * pace).quotient(distance))
 end
 
 function chased(maze: Level, enemy: Enemy, target: Vector, elapsed: Integer) returns Advance
-  purpose: The enemy moved toward a target it pursues, stopped by walls; otherwise it stays.
+  purpose: A demon that sees the target wakes (it shouts) and walks toward it unless in pain.
 
   if not in_pursuit(maze: maze, enemy: enemy, target: target) then
-    return Advance(enemy: enemy, damage: 0)
+    return Advance(enemy: enemy, damage: 0, sounds: [])
+  end
+  let mutable sounds: List of Text be []
+  if not enemy.awake then change sounds to ["dssgtsit"] end
+  let woken be enemy with awake: true, heading: toward(enemy: enemy, target: target)
+  if enemy.flash is greater than 0 or enemy.biting is greater than 0 then
+    return Advance(enemy: woken, damage: 0, sounds: sounds)
   end
   let step be player.moved(
     maze: maze,
     origin: enemy.position,
     offset: pursuit(enemy: enemy, target: target, elapsed: elapsed)
   )
-  return Advance(enemy: (enemy with position: step.position), damage: 0)
+  let stride be enemy.stride + elapsed
+  let growls be rules.growl_every
+  if stride.quotient(growls) is greater than enemy.stride.quotient(growls) then
+    change sounds to sounds.append("dsdmact")
+  end
+  let walked be woken with position: step.position, stride: stride
+  return Advance(enemy: walked, damage: 0, sounds: sounds)
 end
 
 let aim_width: Integer be 1434
-  purpose: How far beside the line of fire a shot still hits: 0.35 of a cell.
+  purpose: How far beside the line of fire a shot hits up close: 0.35 of a cell; the spread grows.
 
 public function target_of(crowd: List of Enemy, origin: Vector, angle: Integer, wall: Integer)
   returns maybe Integer
-  purpose: The index of the nearest living enemy on the line of fire, closer than the wall ahead.
+  purpose: The index of the nearest living demon on the line of fire, closer than the wall ahead.
 
   let mutable best: maybe Integer be nothing
   let mutable best_depth be wall
@@ -168,10 +211,10 @@ public function target_of(crowd: List of Enemy, origin: Vector, angle: Integer, 
     if not is_alive(enemy) then continue end
     let seen be raycast.seen_from(origin: origin, angle: angle, point: enemy.position)
     let depth be seen.dx
-    let beside be seen.dy
+    let spread be aim_width + depth.quotient(12)
     if depth is greater than 0
       and depth is less than best_depth
-      and beside.absolute() is less than aim_width then
+      and seen.dy.absolute() is less than spread then
       change best to index
       change best_depth to depth
     end
@@ -180,42 +223,70 @@ public function target_of(crowd: List of Enemy, origin: Vector, angle: Integer, 
 end
 
 public function wounded(enemy: Enemy) returns Enemy
-  purpose: The enemy after one shot: one hit point less, flashing for 150 milliseconds.
-  example: wounded(spawn(Cell(column: 1, row: 1))).health is 1
+  purpose: The demon after one shot: a hit point less, awake, in pain; at none it starts to fall.
+  example: wounded(spawn(cell: Cell(column: 1, row: 1), angle: 0)).health is 1
+  example: wounded(spawn(cell: Cell(column: 1, row: 1), angle: 0)).flash is 200
 
-  return enemy with health: enemy.health - 1, flash: 150
+  let hit be enemy with health: enemy.health - 1, awake: true, biting: 0
+  if is_alive(hit) then return hit with flash: rules.pain_time end
+  return hit with fallen: 0, flash: 0
 end
 
-test "an enemy in sight walks toward the player"
+test "a demon in sight wakes with a shout and walks toward the player"
   let maze be level.parse_level(["##########", "#........#", "##########"])
-  let enemy be spawn(Cell(column: 7, row: 1))
+  let enemy be spawn(cell: Cell(column: 7, row: 1), angle: 0)
   let result be advance(maze: maze, enemy: enemy, target: Vector(dx: 6144, dy: 6144), elapsed: 100)
   check result.enemy.position is Vector(dx: 30720 - 614, dy: 6144)
+  check result.enemy.awake is true
+  check result.enemy.heading.dx is less than 0
   check result.damage is 0
+  check result.sounds is ["dssgtsit"]
+  let next be advance(
+    maze: maze,
+    enemy: result.enemy,
+    target: Vector(dx: 6144, dy: 6144),
+    elapsed: 100
+  )
+  check next.sounds is []
+  check next.enemy.stride is 200
 end
 
-test "an enemy behind a wall stays where it is"
+test "a demon behind a wall stays where it is, asleep"
   let maze be level.parse_level(["##########", "#...#....#", "##########"])
-  let enemy be spawn(Cell(column: 7, row: 1))
+  let enemy be spawn(cell: Cell(column: 7, row: 1), angle: 0)
   let result be advance(maze: maze, enemy: enemy, target: Vector(dx: 6144, dy: 6144), elapsed: 100)
   check result.enemy.position is enemy.position
+  check result.enemy.awake is false
 end
 
-test "an enemy in reach bites, then waits before it bites again"
+test "a demon in reach bites, then waits before it bites again"
   let maze be level.parse_level(["#####", "#...#", "#####"])
-  let enemy be spawn(Cell(column: 2, row: 1))
+  let enemy be spawn(cell: Cell(column: 2, row: 1), angle: 0)
   let target be Vector(dx: 8192, dy: 6144)
   let first_frame be advance(maze: maze, enemy: enemy, target: target, elapsed: 50)
   check first_frame.damage is 10
+  check first_frame.sounds is ["dssgtatk"]
+  check first_frame.enemy.biting is 600
   let second_frame be advance(maze: maze, enemy: first_frame.enemy, target: target, elapsed: 50)
   check second_frame.damage is 0
   check second_frame.enemy.cooldown is 750
+  check second_frame.enemy.biting is 550
 end
 
-test "a shot hits the nearest enemy on the line of fire, not one behind a wall"
-  let near be spawn(Cell(column: 3, row: 1))
-  let far be spawn(Cell(column: 5, row: 1))
-  let aside be spawn(Cell(column: 2, row: 3))
+test "a fallen demon lies still and counts the time since it fell"
+  let maze be level.parse_level(["#####", "#...#", "#####"])
+  let corpse be wounded(wounded(spawn(cell: Cell(column: 2, row: 1), angle: 0)))
+  let target be Vector(dx: 8192, dy: 6144)
+  let result be advance(maze: maze, enemy: corpse, target: target, elapsed: 50)
+  check result.damage is 0
+  check result.enemy.fallen is 50
+  check result.enemy.position is corpse.position
+end
+
+test "a shot hits the nearest demon on the line of fire, not one behind a wall"
+  let near be spawn(cell: Cell(column: 3, row: 1), angle: 0)
+  let far be spawn(cell: Cell(column: 5, row: 1), angle: 0)
+  let aside be spawn(cell: Cell(column: 2, row: 3), angle: 0)
   let origin be Vector(dx: 6144, dy: 6144)
   check target_of(crowd: [far, near, aside], origin: origin, angle: 0, wall: 40960) is 1
   check target_of(crowd: [far], origin: origin, angle: 0, wall: 8192) is nothing

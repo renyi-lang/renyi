@@ -9286,3 +9286,62 @@ what a reviewer sees first; the publishers are accounts, which are the
 owner's; the front costs nothing and is read before the README; the
 channels are where the first users are (decision AH1); Linguist's bar
 is theirs to set. (user)
+
+**AW37. Stage 36 built: the contract, the art, the game and its page;
+the DOOM look measured in the browser.** 2026-10-13, the four parts of
+AW35. 36a (commit 79ad76c): `Strip`, `Picture` and `play` in
+`std.screen` as AW35 drew them, the VM's shapes and `Screen::play`, the
+console host's blocks of the shade's glyph, the web crate's `strip` and
+`picture` lines and the sounds of a call through `renyi_sounds`; the
+cheat sheet at its budget exactly. Its CI run was red: the game's text
+view matched the shapes without the new two, which the gates of 33b do
+not check (they leave `showcase/` to CI); 36b made it exhaustive. 36b
+(commit c868686): `tools/freedoom_art.py`, the 201 files under
+`showcase/raycaster/art/` (472 KB) with the license and a README of
+their sources, and `art.ry`. 36c, the subagent's (Opus 5.5, medium
+effort, 37 minutes, 134 tool calls): the game rewritten on the contract
+in sixteen modules of 3,045 lines: ten tile types with a texture each
+(`level.ry`); the camera once per frame and the DDA on plain counters
+(`raycast.ry`, which took the frame from 7 to 9 ms to about 5 in the
+module); doors that rise in 520 ms, stay and come down (`level.ry`,
+`player.ry`, `game.ry`); demons that sleep until they see the player,
+shout, chase, bite, flinch and die, a sound per event (`enemies.ry`;
+`sprites.ry` the frame A to N from the state and the rotation 1 to 8
+from the angle in integers, 6 to 8 the images of 2 to 4 mirrored); the
+shotgun on a fresh pull, again after 940 ms, 50 shells (`weapon.ry`);
+the large font laid out as pictures (`font.ry`); the status bar at the
+original's positions with the face by health (`hud.ry`); the title, the
+play and the end screens, each frame's sounds in the state (`game.ry`,
+`view.ry`); `play` playing them after `present` (`raycaster.ry`).
+Measured: 192 examples and tests pass, `check --strict` prints nothing,
+the layout is canonical; the demo escapes at frame 279 with the score
+1,120 (CI's expected lines updated, its play script with a fire first
+to leave the title); under node 306 frames, 38 shapes in the first (the
+title), 3.85 to 4.46 ms a frame in the module over three runs; the
+busiest frame 698 shapes by the subagent's count, a rising door drawn
+with the wall behind it in every column. 36d: the game's page
+`docs/game.md` (the layout `game`: the canvas as wide as the window and
+no taller than it, full screen on request, sound on with a switch, the
+keys on the window while the game runs, the program's last line and the
+rate under the canvas), the play page kept for the playground with a
+poster linking to the game and a screen under its output;
+`docs/assets/play.js` draws a strip as one column of an image through
+`drawImage` and a picture stretched, keeps each image in sixteen shades
+made once with `source-atop` so that a sprite's transparent pixels stay
+transparent, plays the sounds through an audio context made at the
+first click, and loads the art six files at a time with two retries
+(two hundred fetches at once overflowed the listen queue of five of
+`python -m http.server`, which a local build is seen with; the lane's
+measure serves with a node script instead); `tools/site.py` copies the
+art with an index and the license. In a headless Chrome 155 on the
+owner's Windows machine (GPU off, coarse): 55 to 60 frames a second at
+3.0 to 3.8 ms a frame in the VM, no console error or warning, the title
+screen, the maze and the status bar drawn as the lane's screenshots
+show. Left as it is, for the owner to ask for: a rising door is drawn
+squashed, a `Strip` stretching the whole column (a source range on
+`Strip` would draw it sliding, a contract change); the kills show on
+the end screen only; no pain flash; the shotgun's sway stops where it
+was; `dsitemup`, `wall62_1`, `sttminus` and `stfgod0` are in the art
+unused. The lesson of 33d repeated: a heading with the id `game`
+beside the canvas broke the play page again, renamed `the-game`.
+Next: 35a, the references and the rename of declarations.

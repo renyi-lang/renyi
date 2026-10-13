@@ -1,0 +1,142 @@
+module sprites
+  purpose: Which image of the demon to draw: the frame by its state, the rotation by the angle.
+
+import art exposing Image
+import enemies exposing Enemy
+import level exposing Cell
+import raycast exposing Vector
+
+public type Pose
+  purpose: An image of the demon, whether to draw it mirrored, and its anchor: middle and feet.
+  has image: Image
+  has mirrored: Boolean
+  has anchor_x: Integer
+  has anchor_y: Integer
+  can ToText
+end
+
+let letters: List of Text be ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n"]
+  purpose: The frame letters of the demon: A to D walking, E to G biting, H hurt, I to N dying.
+
+let rotated_frames: Integer be 8
+  purpose: How many frame letters have rotations; the rest, the dying frames, have one view.
+
+let poses: List of Image be build_poses()
+  purpose: The demon's images, five rotations of each of A to H, then I to N: looked up once.
+
+function build_poses() returns List of Image
+  purpose: The table of poses, in the order rotation_index reads it.
+
+  let mutable table: List of Image be []
+  for each letter, index in letters.with_index()
+    if index is less than rotated_frames then
+      let views be [
+        "sarg{letter}1",
+        "sarg{letter}2{letter}8",
+        "sarg{letter}3{letter}7",
+        "sarg{letter}4{letter}6",
+        "sarg{letter}5"
+      ]
+      for each view in views
+        change table to table.append(art.image(view))
+      end
+    otherwise
+      change table to table.append(art.image("sarg{letter}0"))
+    end
+  end
+  return table
+end
+
+let tangent_of_eighth: Integer be 1697
+  purpose: The tangent of 22.5 degrees in fixed point: where one rotation's sector ends.
+
+public function rotation(heading: Vector, to_viewer: Vector) returns Integer
+  purpose: The rotation 1 to 8 the viewer sees: 1 face on, 3 the demon's left, 5 its back, 7 right.
+  example: rotation(heading: Vector(dx: 4096, dy: 0), to_viewer: Vector(dx: 9000, dy: 0)) is 1
+  example: rotation(heading: Vector(dx: 4096, dy: 0), to_viewer: Vector(dx: -9000, dy: 10)) is 5
+  example: rotation(heading: Vector(dx: 4096, dy: 0), to_viewer: Vector(dx: 0, dy: -9000)) is 3
+  example: rotation(heading: Vector(dx: 4096, dy: 0), to_viewer: Vector(dx: 0, dy: 9000)) is 7
+  example: rotation(heading: Vector(dx: 4096, dy: 0), to_viewer: Vector(dx: 5000, dy: -5000)) is 2
+  example: rotation(heading: Vector(dx: 4096, dy: 0), to_viewer: Vector(dx: 5000, dy: 5000)) is 8
+  example: rotation(heading: Vector(dx: 4096, dy: 0), to_viewer: Vector(dx: -5000, dy: -5000)) is 4
+  example: rotation(heading: Vector(dx: 4096, dy: 0), to_viewer: Vector(dx: -5000, dy: 5000)) is 6
+
+  let ahead be heading.dx * to_viewer.dx + heading.dy * to_viewer.dy
+  let right be heading.dx * to_viewer.dy - heading.dy * to_viewer.dx
+  let along be ahead.absolute()
+  let across be right.absolute()
+  if across * 4096 is at most along * tangent_of_eighth then
+    return if ahead is at least 0 then 1 otherwise 5 end
+  end
+  if along * 4096 is at most across * tangent_of_eighth then
+    return if right is less than 0 then 3 otherwise 7 end
+  end
+  if ahead is greater than 0 then return if right is less than 0 then 2 otherwise 8 end end
+  return if right is less than 0 then 4 otherwise 6 end
+end
+
+public function frame_index(enemy: Enemy, clock: Integer) returns Integer
+  purpose: The frame letter of a demon as an index from A: by its fall, pain, bite, walk or rest.
+  example: frame_index(enemy: enemies.wounded(enemies.wounded(sleeper)), clock: 0) is 8
+  example: frame_index(
+    enemy: (enemies.wounded(enemies.wounded(sleeper)) with fallen: 999),
+    clock: 0
+  ) is 13
+  example: frame_index(enemy: enemies.wounded(sleeper), clock: 0) is 7
+  example: frame_index(enemy: (sleeper with biting: 600), clock: 0) is 4
+  example: frame_index(enemy: (sleeper with biting: 100), clock: 0) is 6
+  example: frame_index(enemy: (sleeper with awake: true, stride: 400), clock: 0) is 3
+  example: frame_index(enemy: sleeper, clock: 300) is 1
+
+  if not enemies.is_alive(enemy) then return 8 + enemy.fallen.quotient(120).at_most(5) end
+  if enemy.flash is greater than 0 then return 7 end
+  if enemy.biting is greater than 0 then return 4 + ((600 - enemy.biting) * 3).quotient(601) end
+  if enemy.awake then return enemy.stride.quotient(130) remainder 4 end
+  return clock.quotient(285) remainder 2
+end
+
+let sleeper: Enemy be enemies.spawn(cell: level_cell, angle: 0)
+  purpose: A sleeping demon for the examples.
+
+let level_cell: Cell be Cell(column: 1, row: 1)
+  purpose: The cell of the examples' demon.
+
+public function pose_of(enemy: Enemy, to_viewer: Vector, clock: Integer) returns Pose
+  purpose: The image to draw for a demon seen from an offset, and whether to mirror it.
+  example: pose_of(enemy: sleeper, to_viewer: Vector(dx: 9000, dy: 0), clock: 0).image.name
+    is "sarga1"
+  example: pose_of(enemy: sleeper, to_viewer: Vector(dx: 0, dy: 9000), clock: 0).image.name
+    is "sarga3a7"
+  example: pose_of(enemy: sleeper, to_viewer: Vector(dx: 0, dy: 9000), clock: 0).mirrored is true
+
+  let frame be frame_index(enemy: enemy, clock: clock)
+  let turned be rotation(heading: enemy.heading, to_viewer: to_viewer)
+  let view be if turned is greater than 5 then 10 - turned otherwise turned end
+  let index be
+    if frame is less than rotated_frames then frame * 5 + view - 1
+    otherwise rotated_frames * 5 + frame - rotated_frames
+    end
+  let image be poses.at(index) otherwise crash with "no pose {index}"
+  let mirrored be frame is less than rotated_frames and turned is greater than 5
+  return Pose(
+    image: image,
+    mirrored: mirrored,
+    anchor_x: if image.offset_x is 0 then image.width.quotient(2) otherwise image.offset_x end,
+    anchor_y: if image.offset_y is 0 then image.height - 4 otherwise image.offset_y end
+  )
+end
+
+public function image_column(pose: Pose, column: Integer) returns Integer
+  purpose: The column of the image to draw at a column of the drawn sprite, mirrored or not.
+  example: image_column(
+    pose: Pose(image: art.image("sarga1"), mirrored: false, anchor_x: 17, anchor_y: 55),
+    column: 3
+  ) is 3
+  example: image_column(
+    pose: Pose(image: art.image("sarga1"), mirrored: true, anchor_x: 17, anchor_y: 55),
+    column: 3
+  ) is 34
+
+  if pose.mirrored then return pose.image.width - 1 - column end
+  return column
+end

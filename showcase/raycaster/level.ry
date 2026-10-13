@@ -1,12 +1,18 @@
 module level
-  purpose: The maze: its tiles, its text rows, and where the player and the enemies start.
+  purpose: The maze: its tiles, its text rows, its doors, and where the player and the demons start.
+
+import fixed
 
 public type Tile is one of
-  purpose: What fills one cell of the map.
+  purpose: What fills one cell of the map: floor, a wall of one texture, a door or the exit.
   Floor
   Stone
   Brick
-  Wood
+  Bronze
+  Metal
+  Marble
+  Tech
+  Panel
   Door
   Exit
   can ToText
@@ -20,10 +26,11 @@ public type Cell
 end
 
 public type Level
-  purpose: A parsed map: the tiles row by row, the start of the player and the enemies.
+  purpose: A parsed map: the tiles and how far each door is open, row by row, and the starts.
   has width: Integer
   has height: Integer
   has tiles: List of Tile
+  has openings: List of Integer
   has start: Cell
   has enemy_cells: List of Cell
 end
@@ -34,29 +41,40 @@ public let maze_rows: List of Text be [
   "#....#..E...B...E..#",
   "#....D......BBB.BBB#",
   "#....#.............#",
-  "##D######WWDWW#D####",
-  "#......#W....W#....#",
-  "#..E...#W..E.W#..E.#",
-  "#......D.....W#....#",
-  "#......#WWWWWW#....#",
-  "###D####......D....#",
-  "#.......E.....######",
+  "##D######WWDWWTD####",
+  "#......GW....WT....P",
+  "#..E...GW..E.WT..E.P",
+  "#......D.....WT....P",
+  "#......GWWWWWWT....P",
+  "###DGGGG......D....P",
+  "#.......E.....MMMMMM",
   "#..BB....BB........X",
   "####################"
 ]
-  purpose: The level of the showcase: # stone, B brick, W wood, D door, X exit, S start, E enemy.
+  purpose: The level: # B W G T P M walls of seven textures, D door, X exit, S start, E demon.
+
+public let fully_open: Integer be fixed.unit
+  purpose: How far a door is open when it is all the way up, in fixed-point units of its height.
+
+let passable_opening: Integer be 3072
+  purpose: How far a door must be open for a body to pass and a sight line to cross: three quarters.
 
 public function tile_of(symbol: Text) returns Tile
-  purpose: The tile a map symbol stands for; the start and the enemies stand on floor.
+  purpose: The tile a map symbol stands for; the start and the demons stand on floor.
   example: tile_of("#") is Stone
   example: tile_of("E") is Floor
   example: tile_of("D") is Door
+  example: tile_of("G") is Marble
 
   match symbol
     when "#" then return Stone
     when " " then return Stone
     when "B" then return Brick
-    when "W" then return Wood
+    when "W" then return Bronze
+    when "M" then return Metal
+    when "G" then return Marble
+    when "T" then return Tech
+    when "P" then return Panel
     when "D" then return Door
     when "X" then return Exit
     otherwise return Floor
@@ -67,6 +85,7 @@ public function parse_level(rows: List of Text) returns Level
   purpose: The level drawn by the rows; short rows are padded with stone, the start defaults to 1,1.
   example: parse_level(["###", "#S#", "###"]).start is Cell(column: 1, row: 1)
   example: parse_level(["#E", "#"]).tiles is [Stone, Floor, Stone, Stone]
+  example: parse_level(["#D"]).openings is [0, 0]
 
   let width be for each line in rows collect line.length()
   let widest be width.largest() otherwise 0
@@ -85,9 +104,21 @@ public function parse_level(rows: List of Text) returns Level
     width: widest,
     height: rows.length(),
     tiles: tiles,
+    openings: zeros(tiles.length()),
     start: start,
     enemy_cells: enemies
   )
+end
+
+function zeros(length: Integer) returns List of Integer
+  purpose: A list of the given length holding 0 everywhere.
+  example: zeros(3) is [0, 0, 0]
+
+  let mutable made: List of Integer be []
+  repeat until made.length() is at least length
+    change made to made.append(0)
+  end
+  return made
 end
 
 public function tile_at(level: Level, column: Integer, row: Integer) returns Tile
@@ -100,19 +131,53 @@ public function tile_at(level: Level, column: Integer, row: Integer) returns Til
   return level.tiles.at(row * level.width + column) otherwise Stone
 end
 
+public function opening_at(level: Level, column: Integer, row: Integer) returns Integer
+  purpose: How far the door of a cell is open, 0 to fully_open; 0 for any other cell.
+  example: opening_at(level: parse_level(["#D"]), column: 1, row: 0) is 0
+
+  if column is less than 0 or row is less than 0 then return 0 end
+  if column is at least level.width or row is at least level.height then return 0 end
+  return level.openings.at(row * level.width + column) otherwise 0
+end
+
 public function is_solid(tile: Tile) returns Boolean
-  purpose: Whether a tile stops movement and rays; only floor lets both through.
+  purpose: Whether a tile is a wall, a door or the exit: everything but floor.
   example: is_solid(Floor) is false
   example: is_solid(Door) is true
 
   return tile is not Floor
 end
 
-public function opened(level: Level, cell: Cell) returns Level
-  purpose: The level with the door at the cell replaced by floor; any other tile is left alone.
-  example: opened(level: parse_level(["#D"]), cell: Cell(column: 1, row: 0)).tiles is [Stone, Floor]
+public function passable(level: Level, column: Integer, row: Integer) returns Boolean
+  purpose: Whether a body may enter a cell and a sight line cross it: floor, or a door open enough.
+  example: passable(level: parse_level(["#."]), column: 1, row: 0) is true
+  example: passable(level: parse_level(["#D"]), column: 1, row: 0) is false
+  example: passable(
+    level: with_opening(level: parse_level(["#D"]), cell: Cell(column: 1, row: 0), amount: 4096),
+    column: 1,
+    row: 0
+  ) is true
+
+  let tile be tile_at(level: level, column: column, row: row)
+  if tile is Floor then return true end
+  if tile is not Door then return false end
+  return opening_at(level: level, column: column, row: row) is at least passable_opening
+end
+
+public function with_opening(level: Level, cell: Cell, amount: Integer) returns Level
+  purpose: The level with the door of the cell open by the amount; any other cell is left alone.
+  example: opening_at(
+    level: with_opening(level: parse_level(["#D"]), cell: Cell(column: 1, row: 0), amount: 9),
+    column: 1,
+    row: 0
+  ) is 9
+  example: opening_at(
+    level: with_opening(level: parse_level(["#D"]), cell: Cell(column: 0, row: 0), amount: 9),
+    column: 0,
+    row: 0
+  ) is 0
 
   if tile_at(level: level, column: cell.column, row: cell.row) is not Door then return level end
   let index be cell.row * level.width + cell.column
-  return level with tiles: level.tiles.with_at(index: index, item: Floor)
+  return level with openings: level.openings.with_at(index: index, item: amount)
 end

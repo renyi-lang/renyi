@@ -1,0 +1,107 @@
+module font
+  purpose: The heads-up font of the art: a text laid out as one Picture per letter, at any scale.
+
+import art exposing Image
+import std.screen exposing Shape
+
+let order: Text be "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
+  purpose: The characters of the font as one text, from the code 33 up.
+
+let characters: List of Text be order.characters()
+  purpose: The characters the font draws, one by one; a character's index is its code less 33.
+
+let glyphs: List of Image be build_glyphs()
+  purpose: The image of every character of the font, in the order of `characters`.
+
+public let space_width: Integer be 4
+  purpose: The pixels a space takes at scale 1.
+
+public let line_height: Integer be 7
+  purpose: The height of every letter of the font at scale 1.
+
+function build_glyphs() returns List of Image
+  purpose: The glyph table, looked up in the art once.
+
+  let mutable table: List of Image be []
+  for each index from 0 to characters.length() - 1
+    change table to table.append(art.image(glyph_name(33 + index)))
+  end
+  return table
+end
+
+public function glyph_name(code: Integer) returns Text
+  purpose: The name of the image of the character with an ASCII code: STCFN and three digits.
+  example: glyph_name(65) is "stcfn065"
+  example: glyph_name(121) is "stcfn121"
+
+  if code is less than 100 then return "stcfn0{code}" end
+  return "stcfn{code}"
+end
+
+function glyph_of(letter: Text) returns maybe Image
+  purpose: The image of a letter, lower case drawn as upper case; nothing for a space or unknown.
+
+  let index be characters.index_of(letter.to_upper()) otherwise return nothing
+  return glyphs.at(index)
+end
+
+public function text_width(text: Text, scale: Integer) returns Integer
+  purpose: The pixels a text takes on a line at a scale.
+  example: text_width(text: "HI", scale: 1) is 13
+  example: text_width(text: "A B", scale: 2) is 42
+
+  let mutable width be 0
+  for each letter in text.characters()
+    let glyph be glyph_of(letter) otherwise Image(
+      name: " ",
+      width: space_width,
+      height: 0,
+      offset_x: 0,
+      offset_y: 0
+    )
+    change width to width + glyph.width * scale
+  end
+  return width
+end
+
+public function lettered(text: Text, screen_x: Integer, screen_y: Integer, scale: Integer)
+  returns List of Shape
+  purpose: The text in the font from a place to the right: a Picture per letter, a gap per space.
+  example: lettered(text: "HI", screen_x: 10, screen_y: 5, scale: 1)
+    is [
+      Picture(screen_x: 10, screen_y: 5, width: 7, height: 7, image: "stcfn072", shade: 100),
+      Picture(screen_x: 17, screen_y: 5, width: 6, height: 7, image: "stcfn073", shade: 100)
+    ]
+  example: lettered(text: "A B", screen_x: 0, screen_y: 0, scale: 2).at(1)
+    is Picture(screen_x: 26, screen_y: 0, width: 16, height: 14, image: "stcfn066", shade: 100)
+
+  let mutable drawn: List of Shape be []
+  let mutable place be screen_x
+  for each letter in text.characters()
+    match glyph_of(letter)
+      when some(glyph) then
+        change drawn to drawn.append(
+          Picture(
+            screen_x: place,
+            screen_y: screen_y,
+            width: glyph.width * scale,
+            height: glyph.height * scale,
+            image: glyph.name,
+            shade: 100
+          )
+        )
+        change place to place + glyph.width * scale
+      when nothing then change place to place + space_width * scale
+    end
+  end
+  return drawn
+end
+
+public function centred(text: Text, screen_y: Integer, scale: Integer) returns List of Shape
+  purpose: The text in the font centred across the screen at a row.
+  example: centred(text: "HI", screen_y: 0, scale: 1).at(0)
+    is Picture(screen_x: 153, screen_y: 0, width: 7, height: 7, image: "stcfn072", shade: 100)
+
+  let left be (screen.width() - text_width(text: text, scale: scale)).quotient(2)
+  return lettered(text: text, screen_x: left, screen_y: screen_y, scale: scale)
+end

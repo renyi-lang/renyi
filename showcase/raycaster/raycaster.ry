@@ -15,11 +15,11 @@ let frame_ms: Integer be 64
   purpose: The milliseconds one scripted frame lasts: about fifteen frames a second.
 
 let demo_moves: List of Text be [
-  "F5 R8 F22",
-  "L3 S1 W5 S1 W5",
+  "F5 R8 F30",
+  "L3 S1 W15 S1 W15",
   "R3 F6 L8 F5 R8 F30",
-  "L8 S1 W5 S1 W5 S1 W5",
-  "F45 R8 F5 L8 F50"
+  "L8 S1 W15 S1 W15",
+  "F45 R8 F5 L8 F60"
 ]
   purpose: The demo in five legs: open a door, shoot, cross a room, shoot again, run for the exit.
 
@@ -99,14 +99,20 @@ function play(script: List of Text, every: Integer, draw: Boolean) needs console
 end
 
 function play_live() needs console, screen
-  purpose: Play at the host's screen: every frame handed to it, its input stepping the game.
+  purpose: Play at the host's screen from the title: each frame drawn, its input stepping the game.
 
-  let mutable state be game.new_game(level.maze_rows)
-  repeat until state.status is not Playing
+  let mutable state be game.title(level.maze_rows)
+  repeat until state.status is Quit
     let controls be screen.present(view.render(state))
-    change state to game.step(state: state, controls: controls)
+    let next be game.step(state: state, controls: controls)
+    for each sound in next.sounds
+      screen.play(sound)
+    end
+    if state.status is Playing and next.status is not Playing then
+      console.print("final score {next.score}: {next.status}")
+    end
+    change state to next
   end
-  console.print("final score {state.score}: {state.status}")
 end
 
 public function main() needs console, environment, screen
@@ -123,9 +129,10 @@ public function main() needs console, environment, screen
   end
 end
 
-test "the demo script reaches the exit with two enemies down"
+test "the demo script reaches the exit with two demons down, bitten once"
   let final be game.played(state: game.new_game(level.maze_rows), frames: expanded(demo_script()))
   check final.status is Escaped
-  check game.remaining(final) is 4
-  check final.score is 1220
+  check game.kills(final) is 2
+  check final.hero.health is 90
+  check final.score is 1120
 end

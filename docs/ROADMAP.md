@@ -577,8 +577,8 @@ where one decided, the status. The dates are those of the decisions.
     references and rename of declarations, 35b the locals, 35c
     completion); its four questions asked.
 
-36. **The DOOM look** (session 14, 2026-10-13, in progress; decision
-    AW35, the owner's call after the play page). The showcase game made
+36. **The DOOM look** (session 14, 2026-10-13, done; decisions AW35,
+    the owner's call after the play page, and AW37). The showcase game made
     to look like the original: `std.screen` gains `Strip` (a column of
     a named image between two rows, shaded), `Picture` (a named image
     stretched to a size at a place, shaded) and `play(sound)`, the
@@ -590,7 +590,12 @@ where one decided, the status. The dates are those of the decisions.
     status bar, the sounds); a page of its own on the site with a title
     screen, full width; the frame rate measured again. The parts: 36a
     the contract and the hosts, 36b the art, 36c the game (the
-    subagent's), 36d the page and the measure. Stage 35 follows it.
+    subagent's: sixteen modules, 3,045 lines, 192 examples and tests),
+    36d the page and the measure. Measured: the demo escapes at frame
+    279 with the score 1,120; under node 3.85 to 4.46 ms a frame in the
+    module; in a headless Chrome 155 on the owner's machine 55 to 60
+    frames a second at 3.0 to 3.8 ms a frame in the VM, no console
+    error. Stage 35 follows it.
 
 ## 3. The tracks
 
@@ -725,7 +730,9 @@ language server's completion, references and rename are stage 35,
 its design study done on 2026-10-13 and its four questions answered
 (decision AW34); stage 36, the DOOM look, was opened the same day in
 parallel with it (decision AW35: the owner's call after the play
-page) and goes first. Release 0.2 follows stage 35 (decision AW36,
+page) and is done (decision AW37: the game's page of the site at 55
+to 60 frames a second in the browser), so 35a is next. Release 0.2
+follows stage 35 (decision AW36,
 the owner's answer of 2026-10-13), with the extension published to
 the Marketplace and Open VSX from the owner's publisher and the
 announcements of `docs/RELEASE.md` section 6. Not scheduled: the

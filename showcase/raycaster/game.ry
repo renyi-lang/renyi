@@ -8,9 +8,11 @@ import std.screen exposing Input
 import level exposing Level, Cell, Tile
 import player exposing Player
 import raycast exposing Vector
+import weapon exposing Gun
 
 public type Status is one of
-  purpose: Whether the game goes on, and how it ended.
+  purpose: Where the game is: the title screen, play, how it ended, or quit.
+  Title
   Playing
   Escaped
   Fallen
@@ -18,62 +20,130 @@ public type Status is one of
   can ToText
 end
 
+public type Gate
+  purpose: A door in motion: its cell, whether it rises (or stays up), the time it waits up.
+  has cell: Cell
+  has rising: Boolean
+  has wait: Integer
+  can ToText
+end
+
 public type State
-  purpose: Everything a frame needs: the maze, the player, the enemies, the score and the timers.
+  purpose: Everything a frame needs: the maze and its doors, the player, the demons, the timers.
+  has rows: List of Text
   has maze: Level
   has hero: Player
   has crowd: List of Enemy
+  has gates: List of Gate
+  has gun: Gun
+  has trigger: Boolean
   has score: Integer
   has status: Status
-  has reload: Integer
-  has muzzle: Integer
   has hurt: Integer
+  has grin: Integer
+  has stride: Integer
   has notice: Text
+  has notice_left: Integer
   has clock: Integer
+  has ended: Integer
+  has sounds: List of Text
 end
 
-let reload_time: Integer be 350
-  purpose: The milliseconds between two shots.
+let door_time: Integer be 520
+  purpose: The milliseconds a door takes to rise all the way, or to come down.
+
+let door_wait: Integer be 3000
+  purpose: The milliseconds a door stays up before it comes down again.
+
+let notice_time: Integer be 2500
+  purpose: The milliseconds a message stays at the top of the screen.
+
+let spawn_angles: List of Integer be [2048, 1024, 3072, 0]
+  purpose: The ways the demons face when they spawn, in turn: west, south, north, east.
 
 public function new_game(rows: List of Text) returns State
-  purpose: A game on the level drawn by the rows: full health, no score, facing east.
+  purpose: A game in play on the level of the rows: full health, a loaded shotgun, facing east.
   example: new_game(["###", "#S#", "###"]).hero.position is Vector(dx: 6144, dy: 6144)
+  example: new_game(["###", "#S#", "###"]).status is Playing
 
   let maze be level.parse_level(rows)
-  let crowd be for each cell in maze.enemy_cells collect enemies.spawn(cell)
+  let crowd be
+    for each cell, index in maze.enemy_cells.with_index()
+    collect enemies.spawn(cell: cell, angle: spawn_angles.at(index remainder 4) otherwise 0)
   let centre be fixed.unit.quotient(2)
   let start be Vector(
     dx: maze.start.column * fixed.unit + centre,
     dy: maze.start.row * fixed.unit + centre
   )
   return State(
+    rows: rows,
     maze: maze,
     hero: Player(position: start, angle: 0, health: 100),
     crowd: crowd,
+    gates: [],
+    gun: weapon.new_gun(),
+    trigger: false,
     score: 0,
     status: Playing,
-    reload: 0,
-    muzzle: 0,
     hurt: 0,
+    grin: 0,
+    stride: 0,
     notice: "FIND THE GREEN EXIT",
-    clock: 0
+    notice_left: notice_time,
+    clock: 0,
+    ended: 0,
+    sounds: []
   )
 end
 
-public function step(state: State, controls: Input) returns State
-  purpose: One frame: turn and move the player, open doors, shoot, then let the enemies act.
+public function title(rows: List of Text) returns State
+  purpose: The title screen in front of a new game on the level drawn by the rows.
+  example: title(["###", "#S#", "###"]).status is Title
 
-  if state.status is not Playing then return state end
-  if controls.quit then return state with status: Quit end
+  return new_game(rows) with status: Title
+end
+
+public function step(state: State, controls: Input) returns State
+  purpose: One frame: the title waits for fire, play goes on, an ended game waits to start again.
+
   let elapsed be controls.elapsed_ms.at_least(0).at_most(100)
-  let reload be (state.reload - elapsed).at_least(0)
-  let muzzle be (state.muzzle - elapsed).at_least(0)
+  let fresh be controls.fire and not state.trigger
+  let timed be state with clock: state.clock + elapsed, trigger: controls.fire, sounds: []
+  match state.status
+    when Title then
+      if controls.quit then return timed with status: Quit end
+      if fresh then return timed with status: Playing, clock: 0 end
+      return timed
+    when Playing then
+      return playing(state: timed, controls: controls, elapsed: elapsed, fresh: fresh)
+    when Quit then return timed
+    otherwise
+      if controls.quit then return timed with status: Quit end
+      if fresh and timed.clock - timed.ended is at least 1000 then
+        return title(state.rows) with trigger: true
+      end
+      return timed
+  end
+end
+
+function playing(state: State, controls: Input, elapsed: Integer, fresh: Boolean) returns State
+  purpose: One frame of play: doors move, the player turns and moves, shoots, then the demons act.
+
+  if controls.quit then return state with status: Quit, ended: state.clock end
   let hurt be (state.hurt - elapsed).at_least(0)
-  let timed be state with reload: reload, muzzle: muzzle, hurt: hurt, clock: state.clock + elapsed
-  let walked be walk(state: timed, controls: controls)
+  let grin be (state.grin - elapsed).at_least(0)
+  let notice_left be (state.notice_left - elapsed).at_least(0)
+  let timed be state with hurt: hurt, grin: grin, notice_left: notice_left
+  let walked be walk(state: doors_moved(state: timed, elapsed: elapsed), controls: controls)
   if walked.status is not Playing then return walked end
-  let shot be if controls.fire then fire(walked) otherwise walked end
+  let shot be shoot(state: walked, fresh: fresh, elapsed: elapsed)
   return enemies_act(state: shot, elapsed: elapsed)
+end
+
+function said(state: State, notice: Text) returns State
+  purpose: The state with a message shown at the top of the screen for a while.
+
+  return state with notice: notice, notice_left: notice_time
 end
 
 function walk(state: State, controls: Input) returns State
@@ -82,7 +152,9 @@ function walk(state: State, controls: Input) returns State
   let facing be player.turned(player: state.hero, controls: controls)
   let offset be player.stride(player: facing, controls: controls)
   let result be player.moved(maze: state.maze, origin: facing.position, offset: offset)
-  let moved be state with hero: (facing with position: result.position)
+  let still be offset.dx is 0 and offset.dy is 0
+  let stride be if still then state.stride otherwise state.stride + controls.elapsed_ms end
+  let moved be state with hero: (facing with position: result.position), stride: stride
   let cell be result.bumped otherwise return moved
   return bumped_into(state: moved, cell: cell)
 end
@@ -91,25 +163,113 @@ function bumped_into(state: State, cell: Cell) returns State
   purpose: What walking into a solid cell does: a door opens, the exit wins, a wall does nothing.
 
   match level.tile_at(level: state.maze, column: cell.column, row: cell.row)
-    when Door then return opened(state: state, cell: cell)
+    when Door then return door_opened(state: state, cell: cell)
     when Exit then
       let score be state.score + state.hero.health * 10
-      return state with status: Escaped, score: score, notice: "YOU ESCAPED"
+      let escaped be state with status: Escaped, score: score, ended: state.clock
+      return said(state: escaped, notice: "YOU ESCAPED") with sounds: ["dsdoropn"]
     otherwise return state
   end
 end
 
-function opened(state: State, cell: Cell) returns State
-  purpose: The state with the door at the cell opened and a notice saying so.
+function door_opened(state: State, cell: Cell) returns State
+  purpose: The door at the cell set rising, with its sound, unless it rises already.
 
-  return state with maze: level.opened(level: state.maze, cell: cell), notice: "A DOOR OPENS"
+  let mutable gates: List of Gate be []
+  let mutable found be false
+  let mutable sounds be state.sounds
+  for each gate in state.gates
+    if gate.cell is cell then
+      change found to true
+      if not gate.rising then change sounds to sounds.append("dsdoropn") end
+      change gates to gates.append(gate with rising: true, wait: door_wait)
+    otherwise
+      change gates to gates.append(gate)
+    end
+  end
+  if not found then
+    change gates to gates.append(Gate(cell: cell, rising: true, wait: door_wait))
+    change sounds to sounds.append("dsdoropn")
+  end
+  return state with gates: gates, sounds: sounds
 end
 
-function fire(state: State) returns State
-  purpose: A shot along the facing when the weapon is ready: a hit scores 10, a kill 100.
+type Swing
+  purpose: A door after one frame: the maze with its new opening, the gate if it still moves.
+  has maze: Level
+  has gate: maybe Gate
+  has sound: maybe Text
+end
 
-  if state.reload is greater than 0 then return state end
-  let fired be state with reload: reload_time, muzzle: 120
+function doors_moved(state: State, elapsed: Integer) returns State
+  purpose: Every door in motion moved by the elapsed time; a door at rest leaves the list.
+
+  let mutable maze be state.maze
+  let mutable gates: List of Gate be []
+  let mutable sounds be state.sounds
+  for each gate in state.gates
+    let blocked be occupied(state: state, cell: gate.cell)
+    let swing be swung(maze: maze, gate: gate, elapsed: elapsed, blocked: blocked)
+    change maze to swing.maze
+    match swing.gate
+      when some(moving) then change gates to gates.append(moving)
+      when nothing then continue
+    end
+    match swing.sound
+      when some(sound) then change sounds to sounds.append(sound)
+      when nothing then continue
+    end
+  end
+  return state with maze: maze, gates: gates, sounds: sounds
+end
+
+function swung(maze: Level, gate: Gate, elapsed: Integer, blocked: Boolean) returns Swing
+  purpose: One door's frame: rise, wait up, come down, or go back up when a body is in the way.
+
+  let opening be level.opening_at(level: maze, column: gate.cell.column, row: gate.cell.row)
+  let travel be (elapsed * fixed.unit).quotient(door_time)
+  if gate.rising then
+    let raised be (opening + travel).at_most(level.fully_open)
+    let up be level.with_opening(level: maze, cell: gate.cell, amount: raised)
+    if raised is less than level.fully_open then
+      return Swing(maze: up, gate: gate, sound: nothing)
+    end
+    let wait be (gate.wait - elapsed).at_least(0)
+    if wait is greater than 0 or blocked then
+      return Swing(maze: up, gate: (gate with wait: wait), sound: nothing)
+    end
+    return Swing(maze: up, gate: (gate with rising: false), sound: "dsdorcls")
+  end
+  if blocked then
+    return Swing(maze: maze, gate: (gate with rising: true, wait: door_wait), sound: "dsdoropn")
+  end
+  let lowered be (opening - travel).at_least(0)
+  let down be level.with_opening(level: maze, cell: gate.cell, amount: lowered)
+  if lowered is 0 then return Swing(maze: down, gate: nothing, sound: nothing) end
+  return Swing(maze: down, gate: gate, sound: nothing)
+end
+
+function cell_of(position: Vector) returns Cell
+  purpose: The map cell a position lies in.
+
+  return Cell(column: fixed.cell_of(position.dx), row: fixed.cell_of(position.dy))
+end
+
+function occupied(state: State, cell: Cell) returns Boolean
+  purpose: Whether the player or a living demon stands in a cell, so a door there must stay up.
+
+  if cell_of(state.hero.position) is cell then return true end
+  return for each enemy in state.crowd
+    any enemies.is_alive(enemy) and cell_of(enemy.position) is cell
+end
+
+function shoot(state: State, fresh: Boolean, elapsed: Integer) returns State
+  purpose: The shotgun's frame; a shot hits the nearest demon in line: 10 for a hit, 100 a kill.
+
+  let pull be weapon.pulled(gun: state.gun, fresh: fresh, elapsed: elapsed)
+  let armed be state with gun: pull.gun, sounds: state.sounds.append_all(pull.sounds)
+  if fresh and pull.gun.shells is 0 then return said(state: armed, notice: "OUT OF SHELLS") end
+  if not pull.fired then return armed end
   let ray be raycast.facing(state.hero.angle)
   let wall be raycast.cast(maze: state.maze, origin: state.hero.position, ray: ray)
   let index be enemies.target_of(
@@ -117,20 +277,22 @@ function fire(state: State) returns State
     origin: state.hero.position,
     angle: state.hero.angle,
     wall: wall.distance
-  ) otherwise return fired
-  let enemy be state.crowd.at(index) otherwise return fired
+  ) otherwise return armed
+  let enemy be state.crowd.at(index) otherwise return armed
   let hit be enemies.wounded(enemy)
-  let gained be if enemies.is_alive(hit) then 10 otherwise 100 end
-  let notice be if enemies.is_alive(hit) then "HIT" otherwise "ENEMY DOWN" end
   let crowd be state.crowd.with_at(index: index, item: hit)
-  return fired with crowd: crowd, score: state.score + gained, notice: notice
+  let struck be armed with crowd: crowd
+  if enemies.is_alive(hit) then return struck with score: state.score + 10, notice: "HIT" end
+  let felled be struck with score: state.score + 100, grin: 1200
+  return said(state: felled, notice: "DEMON DOWN") with sounds: felled.sounds.append("dssgtdth")
 end
 
 function enemies_act(state: State, elapsed: Integer) returns State
-  purpose: Every enemy takes its frame; bites lower the player's health, and zero health loses.
+  purpose: Every demon takes its frame; bites lower the player's health, and zero health loses.
 
   let mutable crowd: List of Enemy be []
   let mutable damage be 0
+  let mutable sounds be state.sounds
   for each enemy in state.crowd
     let result be enemies.advance(
       maze: state.maze,
@@ -140,19 +302,30 @@ function enemies_act(state: State, elapsed: Integer) returns State
     )
     change crowd to crowd.append(result.enemy)
     change damage to damage + result.damage
+    change sounds to sounds.append_all(result.sounds)
   end
   let health be (state.hero.health - damage).at_least(0)
-  let after be state with crowd: crowd, hero: (state.hero with health: health)
+  let after be state with crowd: crowd, hero: (state.hero with health: health), sounds: sounds
   if damage is 0 then return after end
-  if health is 0 then return after with status: Fallen, hurt: 300, notice: "YOU DIED" end
-  return after with hurt: 300, notice: "OUCH"
+  if health is 0 then
+    let fallen be after with status: Fallen, hurt: 300, ended: state.clock
+    return said(state: fallen, notice: "YOU DIED") with sounds: sounds.append("dspldeth")
+  end
+  return after with hurt: 300, notice: "OUCH", sounds: sounds.append("dsplpain")
 end
 
 public function remaining(state: State) returns Integer
-  purpose: How many enemies still stand.
+  purpose: How many demons still stand.
   example: remaining(new_game(["#####", "#SEE#", "#####"])) is 2
 
   return for each enemy in state.crowd where enemies.is_alive(enemy) count
+end
+
+public function kills(state: State) returns Integer
+  purpose: How many demons have fallen.
+  example: kills(new_game(["#####", "#SEE#", "#####"])) is 0
+
+  return state.crowd.length() - remaining(state)
 end
 
 public function played(state: State, frames: List of Input) returns State
@@ -166,13 +339,35 @@ public function played(state: State, frames: List of Input) returns State
   return current
 end
 
-test "walking into a door opens it, and the next steps pass through"
+test "walking into a door raises it with a sound, and the next steps pass through"
   let pushing be input.idle(64) with forward: true
-  let start be new_game(["#####", "#S.D.#", "#####"])
-  let state be played(state: start, frames: input.repeated(controls: pushing, times: 12))
-  check level.tile_at(level: start.maze, column: 3, row: 1) is Door
-  check level.tile_at(level: state.maze, column: 3, row: 1) is Floor
+  let start be new_game(["######", "#S.D.#", "######"])
+  let bumped be played(state: start, frames: input.repeated(controls: pushing, times: 8))
+  check bumped.gates.length() is 1
+  let state be played(state: start, frames: input.repeated(controls: pushing, times: 20))
+  check level.tile_at(level: state.maze, column: 3, row: 1) is Door
+  check level.opening_at(level: state.maze, column: 3, row: 1) is level.fully_open
   check state.hero.position.dx is greater than 3 * fixed.unit
+end
+
+test "a door comes down after its wait, but not on the player standing in it"
+  let pushing be input.idle(64) with forward: true
+  let start be new_game(["#######", "#S.D..#", "#######"])
+  let through be played(state: start, frames: input.repeated(controls: pushing, times: 30))
+  check through.hero.position.dx is greater than 4 * fixed.unit
+  let waited be played(state: through, frames: input.repeated(controls: input.idle(100), times: 40))
+  check level.opening_at(level: waited.maze, column: 3, row: 1) is 0
+  check waited.gates is []
+  let open_start be level.with_opening(
+    level: start.maze,
+    cell: Cell(column: 3, row: 1),
+    amount: level.fully_open
+  )
+  let moved_in be start.hero with position: Vector(dx: 14336, dy: 6144)
+  let gate be Gate(cell: Cell(column: 3, row: 1), rising: true, wait: 0)
+  let standing be start with maze: open_start, gates: [gate], hero: moved_in
+  let kept be played(state: standing, frames: input.repeated(controls: input.idle(100), times: 20))
+  check level.opening_at(level: kept.maze, column: 3, row: 1) is level.fully_open
 end
 
 test "reaching the exit wins and adds ten points per point of health"
@@ -183,7 +378,7 @@ test "reaching the exit wins and adds ten points per point of health"
   check state.score is 1000
 end
 
-test "enemies at the player's side bite until health runs out, and the game is lost"
+test "demons at the player's side bite until health runs out, and the game is lost"
   let start be new_game(["#######", "#SE...#", "#E....#", "#######"])
   let first_bites be played(
     state: start,
@@ -194,23 +389,41 @@ test "enemies at the player's side bite until health runs out, and the game is l
   let state be played(state: start, frames: input.repeated(controls: input.idle(100), times: 200))
   check state.status is Fallen
   check state.hero.health is 0
+  check state.sounds.contains("dspldeth")
 end
 
-test "two shots fell an enemy ahead and score 110"
+test "two shots, each a fresh pull once the shotgun is ready, fell a demon ahead and score 110"
   let shooting be input.idle(50) with fire: true
+  let waiting be input.idle(50)
   let start be new_game(["#######", "#S...E#", "#######"])
-  let state be played(state: start, frames: input.repeated(controls: shooting, times: 8))
+  let held be played(state: start, frames: input.repeated(controls: shooting, times: 40))
+  check held.gun.shells is 49
+  let pause be input.repeated(controls: waiting, times: 20)
+  let script be [shooting].append_all(pause).append(shooting).append_all(pause)
+  let state be played(state: start, frames: script)
   check remaining(start) is 1
   check remaining(state) is 0
+  check kills(state) is 1
   check state.score is 110
+  check state.gun.shells is 48
 end
 
-test "a finished game does not change"
-  let state be new_game(["###", "#S#", "###"]) with status: Fallen
-  check step(state: state, controls: input.idle(50) with forward: true) is state
+test "the title waits for fire; an ended game waits, then fire returns to the title"
+  let waiting be title(["###", "#S#", "###"])
+  check step(state: waiting, controls: input.idle(50)).status is Title
+  let started be step(state: waiting, controls: input.idle(50) with fire: true)
+  check started.status is Playing
+  check started.trigger is true
+  let ended be started with status: Fallen, ended: 0, trigger: false
+  check step(state: ended, controls: input.idle(50) with forward: true).hero is ended.hero
+  check step(state: ended, controls: input.idle(50) with fire: true).status is Fallen
+  let later be ended with clock: 2000
+  check step(state: later, controls: input.idle(50) with fire: true).status is Title
 end
 
 test "quitting ends the game"
   let state be new_game(["###", "#S#", "###"])
   check step(state: state, controls: input.idle(50) with quit: true).status is Quit
+  let quitting be input.idle(50) with quit: true
+  check step(state: title(["###", "#S#", "###"]), controls: quitting).status is Quit
 end
