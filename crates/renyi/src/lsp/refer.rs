@@ -3,7 +3,8 @@
 //! references the checker recorded, the signatures', the names imports
 //! expose, the declaration itself), the family a method belongs to (an
 //! ability's method and the method of every implementation of the
-//! ability, renamed together), the rules a new name must pass, and the
+//! ability, renamed together), a binding's uses and declaration within
+//! its module (decision AW39), the rules a new name must pass, and the
 //! project checked again with the rename applied.
 
 use std::collections::BTreeMap;
@@ -83,7 +84,11 @@ pub fn target_module(world: &World, target: &Target) -> Option<ModuleId> {
         }
         Target::Constant(module, _) => Some(*module),
         Target::Type(id) | Target::Variant(id, _) => Some(world.types[*id].module),
-        Target::Number(_) | Target::Result(_) | Target::Typed(_) | Target::Otherwise { .. } => None,
+        Target::Number(_)
+        | Target::Result(_)
+        | Target::Typed(_)
+        | Target::Otherwise { .. }
+        | Target::Local(_) => None,
     }
 }
 
@@ -101,9 +106,11 @@ pub fn target_name(world: &World, target: &Target) -> String {
             _ => world.types[*id].name.clone(),
         },
         Target::Ability(id) => world.abilities[*id].name.clone(),
-        Target::Number(_) | Target::Result(_) | Target::Typed(_) | Target::Otherwise { .. } => {
-            String::new()
-        }
+        Target::Number(_)
+        | Target::Result(_)
+        | Target::Typed(_)
+        | Target::Otherwise { .. }
+        | Target::Local(_) => String::new(),
     }
 }
 
@@ -140,8 +147,42 @@ pub fn declaration_of(world: &World, target: &Target) -> Option<(ModuleId, Span)
             let (module, decl) = ability_item(world, *id)?;
             Some((module, decl.name.span))
         }
-        Target::Number(_) | Target::Result(_) | Target::Typed(_) | Target::Otherwise { .. } => None,
+        Target::Number(_)
+        | Target::Result(_)
+        | Target::Typed(_)
+        | Target::Otherwise { .. }
+        | Target::Local(_) => None,
     }
+}
+
+/// Every place a binding of a module's bodies is named: its uses, which
+/// the checker recorded with the binding's declaration, and the
+/// declaration itself.
+pub fn local_occurrences(
+    checked: &CheckedProject,
+    module: ModuleId,
+    declared: Span,
+) -> Vec<Occurrence> {
+    let mut found: Vec<Occurrence> = checked
+        .references
+        .iter()
+        .filter(|(owner, _, reference)| {
+            *owner == module && reference.target == Target::Local(declared)
+        })
+        .map(|(_, _, reference)| Occurrence {
+            module,
+            span: reference.span,
+            declaration: false,
+        })
+        .collect();
+    found.push(Occurrence {
+        module,
+        span: declared,
+        declaration: true,
+    });
+    found.sort_by_key(|occurrence| (occurrence.span.start, !occurrence.declaration));
+    found.dedup_by_key(|occurrence| (occurrence.span.start, occurrence.span.end));
+    found
 }
 
 /// Every place a member of the family is named in the modules

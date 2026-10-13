@@ -583,7 +583,16 @@ where one decided, the status. The dates are those of the decisions.
     and every implementation's; a rename refused when a member is the
     library's or a dependency's, when the new name is not a name of
     its class or is reserved, and when the project checked with the
-    edits applied gains an error. 35b and 35c follow.
+    edits applied gains an error. 35b done (decision AW39,
+    2026-10-13): both checkers record every use of a binding as a
+    reference to its declaration (`Target::Local`, `LocalTarget`),
+    the server answers references, definition and rename for a
+    binding within its body, `self` refused; the record's cost on the
+    check row -2.9% by instructions once the Renyi checker's
+    references were kept per body (the first build +12.2%: an append
+    through a checker held twice copies the module's list, found by a
+    probe). 35c follows the RAG adaptation the owner asked for on
+    2026-10-13.
 
 36. **The DOOM look** (session 14, 2026-10-13, done; decisions AW35,
     the owner's call after the play page, and AW37). The showcase game made
@@ -739,9 +748,12 @@ its design study done on 2026-10-13 and its four questions answered
 (decision AW34); stage 36, the DOOM look, was opened the same day in
 parallel with it (decision AW35: the owner's call after the play
 page) and is done (decision AW37: the game's page of the site at 55
-to 60 frames a second in the browser); 35a is done (decision AW38:
-references and rename of declarations), so 35b, the locals, is
-next. Release 0.2
+to 60 frames a second in the browser); 35a and 35b are done
+(decisions AW38 and AW39: references and rename of declarations,
+then of the locals), so the next stage is the adaptation of the map
+for retrieval by embedding (the owner's request of 2026-10-13, its
+design study first), then 35c, completion with signature help and
+workspace symbols. Release 0.2
 follows stage 35 (decision AW36,
 the owner's answer of 2026-10-13), with the extension published to
 the Marketplace and Open VSX from the owner's publisher and the

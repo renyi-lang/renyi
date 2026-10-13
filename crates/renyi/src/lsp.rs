@@ -7,7 +7,8 @@
 //! gives the signature and the purpose of what is under the cursor;
 //! definition goes to its declaration; references lists every place it
 //! is named in the workspace and rename edits them all (decision AW38,
-//! `lsp/refer.rs`); document symbols list a file's items. Positions
+//! `lsp/refer.rs`; a binding's uses within its body too, decision AW39);
+//! document symbols list a file's items. Positions
 //! count UTF-16 code units, the protocol's default. The
 //! base protocol frames each message with a `Content-Length` header.
 
@@ -28,7 +29,10 @@ use renyi_workspace::Workspace;
 use crate::library;
 use crate::mcp::{as_text, field, obj, text};
 use describe::{offset_of, position_of, symbols_of, target_at, what_is_at, Symbol};
-use refer::{check_after, check_name, class_of, family, occurrences, target_module, target_name};
+use refer::{
+    check_after, check_name, class_of, family, local_occurrences, occurrences, target_module,
+    target_name, Occurrence,
+};
 
 const PARSE_ERROR: i64 = -32700;
 const INVALID_PARAMS: i64 = -32602;
@@ -438,6 +442,16 @@ impl Server {
             return Ok(Json::Null);
         };
         let checked = workspace.checked().expect("a refreshed workspace");
+        // a binding: its declaration, in the same file
+        if let Some((_, Target::Local(declared))) = target_at(checked, module, offset) {
+            return Ok(obj(vec![
+                ("uri", text(&self.uri_of(file))),
+                (
+                    "range",
+                    range_json(&file.text, declared.start, declared.end),
+                ),
+            ]));
+        }
         let source_of = |module: ModuleId| workspace.file_of(module);
         let Some((_, described)) = what_is_at(checked, &source_of, module, offset) else {
             return Ok(Json::Null);
@@ -471,21 +485,44 @@ impl Server {
         ))
     }
 
-    /// What a request's position names: the document's path, the span of
-    /// the name there and its target.
-    fn named_at(&mut self, params: &Json, out: &mut Vec<Json>) -> Option<(String, Span, Target)> {
+    /// What a request's position names: the document's path and module,
+    /// the span of the name there and its target.
+    fn named_at(
+        &mut self,
+        params: &Json,
+        out: &mut Vec<Json>,
+    ) -> Option<(String, ModuleId, Span, Target)> {
         let (path, module) = self.document(params, out)?;
         let workspace = self.workspace.as_ref()?;
         let file = workspace.file(&path)?;
         let offset = position_param(params, &file.text)?;
         let (span, target) = target_at(workspace.checked()?, module, offset)?;
-        Some((path, span, target))
+        Some((path, module, span, target))
+    }
+
+    /// Every place a target is named: a binding's uses and declaration
+    /// within its module, else the family's occurrences across the
+    /// workspace.
+    fn occurrences_of(
+        &self,
+        checked: &CheckedProject,
+        module: ModuleId,
+        target: &Target,
+    ) -> Vec<Occurrence> {
+        let workspace = self.workspace.as_ref().expect("a workspace");
+        match target {
+            Target::Local(declared) => local_occurrences(checked, module, *declared),
+            _ => {
+                let in_workspace = |module: ModuleId| workspace.file_of(module).is_some();
+                occurrences(checked, &in_workspace, &family(&checked.world, target))
+            }
+        }
     }
 
     /// Every place the declaration under the position is named in the
     /// workspace, its own declaration included when the request asks.
     fn references(&mut self, params: &Json, out: &mut Vec<Json>) -> Response {
-        let Some((_, _, target)) = self.named_at(params, out) else {
+        let Some((_, module, _, target)) = self.named_at(params, out) else {
             return Ok(Json::Null);
         };
         let include_declaration = field(params, "context")
@@ -493,10 +530,8 @@ impl Server {
             == Some(&Json::Boolean(true));
         let workspace = self.workspace.as_ref().expect("a workspace");
         let checked = workspace.checked().expect("a refreshed workspace");
-        let in_workspace = |module: ModuleId| workspace.file_of(module).is_some();
-        let members = family(&checked.world, &target);
         let mut locations = Vec::new();
-        for occurrence in occurrences(checked, &in_workspace, &members) {
+        for occurrence in self.occurrences_of(checked, module, &target) {
             if occurrence.declaration && !include_declaration {
                 continue;
             }
@@ -516,13 +551,13 @@ impl Server {
 
     /// The name under the position and its range, when it can be renamed.
     fn prepare_rename(&mut self, params: &Json, out: &mut Vec<Json>) -> Response {
-        let Some((path, span, target)) = self.named_at(params, out) else {
+        let Some((path, _, span, target)) = self.named_at(params, out) else {
             return Ok(Json::Null);
         };
         let workspace = self.workspace.as_ref().expect("a workspace");
         let checked = workspace.checked().expect("a refreshed workspace");
-        self.renameable(checked, &family(&checked.world, &target))?;
         let file = workspace.file(&path).expect("a file of the workspace");
+        self.renameable(checked, &file.text[span.start..span.end], &target)?;
         Ok(obj(vec![
             ("range", range_json(&file.text, span.start, span.end)),
             ("placeholder", text(&file.text[span.start..span.end])),
@@ -535,7 +570,7 @@ impl Server {
     /// name is not a name of the right class or is reserved, and when the
     /// project checked with the edits applied gains an error.
     fn rename(&mut self, params: &Json, out: &mut Vec<Json>) -> Response {
-        let Some((_, _, target)) = self.named_at(params, out) else {
+        let Some((path, module, span, target)) = self.named_at(params, out) else {
             return Ok(Json::Null);
         };
         let new_name = field(params, "newName")
@@ -543,12 +578,11 @@ impl Server {
             .ok_or_else(|| (INVALID_PARAMS, "a rename needs `newName`".to_string()))?;
         let workspace = self.workspace.as_ref().expect("a workspace");
         let checked = workspace.checked().expect("a refreshed workspace");
-        let members = family(&checked.world, &target);
-        self.renameable(checked, &members)?;
+        let named = workspace.file(&path).expect("a file of the workspace");
+        self.renameable(checked, &named.text[span.start..span.end], &target)?;
         check_name(&new_name, class_of(&target)).map_err(|reason| (REQUEST_FAILED, reason))?;
-        let in_workspace = |module: ModuleId| workspace.file_of(module).is_some();
         let mut edits: BTreeMap<String, Vec<(Span, String)>> = BTreeMap::new();
-        for occurrence in occurrences(checked, &in_workspace, &members) {
+        for occurrence in self.occurrences_of(checked, module, &target) {
             let Some(file) = workspace.file_of(occurrence.module) else {
                 continue;
             };
@@ -583,16 +617,26 @@ impl Server {
         Ok(obj(vec![("changes", Json::Object(changes))]))
     }
 
-    /// The refusal of a rename, if any: a member of the family is declared
-    /// in the library or in a dependency, which the workspace does not
-    /// own.
+    /// The refusal of a rename, if any: `self`, which names the receiver
+    /// of a method; or a member of the family declared in the library or
+    /// in a dependency, which the workspace does not own.
     fn renameable(
         &self,
         checked: &CheckedProject,
-        members: &[Target],
+        name: &str,
+        target: &Target,
     ) -> Result<(), (i64, String)> {
+        if let Target::Local(_) = target {
+            if name == "self" {
+                return Err((
+                    REQUEST_FAILED,
+                    "`self` cannot be renamed: it names the receiver of a method".to_string(),
+                ));
+            }
+            return Ok(());
+        }
         let workspace = self.workspace.as_ref().expect("a workspace");
-        for member in members {
+        for member in &family(&checked.world, target) {
             let Some(module) = target_module(&checked.world, member) else {
                 continue;
             };

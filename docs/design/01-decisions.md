@@ -9403,3 +9403,80 @@ tests of the name rule and the edits. A field is not a target (a field
 is read by name on a value the checker typed, no reference recorded), so
 a field has no references and no rename; the locals are 35b. Next: 35b,
 the locals recorded as references by both checkers.
+
+**AW39. Stage 35b built: the locals recorded as references by both
+checkers; references, definition and rename of a binding in the
+language server; the Renyi checker's references kept per body.**
+2026-10-13, the second stage of AW34's order. A use of a binding is a
+reference now: `crates/renyi_check/src/check.rs` records
+`Target::Local(declared)`, the span of the binding's declaration (a
+parameter's name, `self` among them, a `let`'s, a pattern's, a loop's, a
+query's), at every name that resolves to a binding (`infer_name`), at
+the name a `change` statement updates, at `self` (the span of the
+expression) and at a call of a binding of function type; the checker's
+other lookups of a binding are tests (whether a receiver is a mutable
+binding, whether a namespace is a binding) whose expression is inferred
+through `infer_name` too. `compiler/bodies.ry` records
+`LocalTarget(declared:)` at the same four places (`infer_name`,
+`check_set`, `infer_self`, `call_by_name`); the judges compare the
+diagnostics, which do not print the references, so the two records are
+held equal by reading, as the other targets are. The consumers of
+`Target`: the map's edges leave the kind out (a binding's use is no edge
+of the map), both compilers pick their targets at a span by kind and
+passed every other kind over already (the loops' `_ => {}` and
+`otherwise continue` arms), and the server's `describe` gives a local no
+module, no name and no declaration item. In the server: `target_at`
+finds a binding at its declaration too (`local_declared_at`, the Local
+reference whose declared span holds the position); the occurrences of a
+binding are its uses and its declaration within the module
+(`local_occurrences`), so `references` lists them and `rename` edits
+them; definition from a use goes to the declaration; hover on a binding
+stays unanswered (the type the checker noted at the use, `Target::Typed`,
+would give it; not this stage). A rename of a binding is refused for
+`self` ("`self` cannot be renamed: it names the receiver of a method"),
+for a new name that is not one lowercase word or is reserved
+(`check_name`, the class of a local being lowercase), and when the
+project checked with the edits applied gains an error, which covers a
+new name the function binds, imports or declares ("`main` is a function
+of this module" for a local renamed to the module's function).
+
+The cost of the record, measured in the perf lane on the Linux release
+build under callgrind, the same input for every build, the base's
+`compiler/bodies.ry` (82566d4). The first build raised the Renyi
+checker's check row from 1,310.1 to 1,469.3 M instructions (+12.2%)
+while the Rust front end's `check` went from 173.8 to 175.9 M (+1.2%),
+the rise all in copies (memcpy +64.5 M at the same call count,
+`release_last` +34.0 M, `clone` +26.4 M, the generated code +3.9 M). A
+probe in the VM found the mechanism (the in-place `append` noting the
+length of a list it had to copy, the interpreter printing the running
+code object and its callers; `probe_list_copy.py`, applied for the
+measure and reverted): `record` appended to the module's references
+list through a checker its caller still held, 1,196 times in the run
+against 1,060 in the base (632 from `call_known` under
+`infer_method_call`, 292 from `record_variant_target`, 99 from
+`infer_name`, 66 from `check_set`, the rest smaller), and an append on
+a shared list copies the whole list (`list_append_in_place`, decision
+AU54), so each of those copied the module's references so far:
+925,813 elements in the base, 3,314,818 with the locals recorded, the
+lists three times longer. A rewrite of `record` as a `change` statement
+(the shape of decision AU11) measured the same, 1,469.6 M, the `return
+... with` form being in place already. The remedy is in the checker's
+shape: the references are kept per body (`body_references`, which
+`record` appends to) and joined to the module's list once the body is
+finished (`finish_body`), so that a checker held twice at a record
+copies the body's references, not the module's: 20,733 elements in
+1,756 copies after the change, the order of the references and the
+judges unchanged. The check row with it: 1,310.1 to 1,272.0 M
+(-2.9% against the base), the Rust row 173.8 to
+176.1 M (+1.3%). The four callers that hold a checker
+across a record are left as they are, a cut for a later round
+(`probe_list_copy.py` finds them). Tested in
+`crates/renyi_check/tests/rules.rs` (the uses of a parameter and of a
+`let`, by span) and over pipes in `crates/renyi/tests/lsp.rs` (the
+references of a local from a use, definition from a use, the rename
+from the declaration editing the three places, the refusals of `main`
+and of `self`, prepareRename on a use). Next, by the owner's call of
+2026-10-13 after this stage: the adaptation of the map for retrieval by
+embedding ("find a way to fit the RAG side"), its design study first,
+then 35c, completion with signature help and workspace symbols (AW34
+(3) and (4)), then release 0.2 (AW36).

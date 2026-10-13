@@ -177,6 +177,7 @@ public type Target is one of
   ResultTarget(ty: Ty)
   TypedTarget(ty: Ty)
   OtherwiseTarget(fallible: Boolean)
+  LocalTarget(declared: Span)
 end
 
 public type NumberKind is one of
@@ -205,6 +206,7 @@ public type Checker
   has module_id: Integer
   has diagnostics: List of Diagnostic
   has references: List of Reference
+  has body_references: List of Reference
   has owner: BodyLocation
   has vars: List of VarInfo
   has scopes: List of Scope
@@ -309,6 +311,7 @@ public function new_checker(world: World, module_id: Integer) returns Checker
     module_id: module_id,
     diagnostics: [],
     references: [],
+    body_references: [],
     owner: NoBody,
     vars: [],
     scopes: [],
@@ -464,13 +467,13 @@ function task_conflict(checker: Checker, name: Text, changing: Boolean) returns 
 end
 
 function record(checker: Checker, target: Target, span: Span) returns Checker
-  purpose: A reference of the body being checked; none while checking `example:` lines.
+  purpose: A reference of the body being checked; none while checking `example:` lines. Kept in the body's own list and joined to the module's once the body is finished, so that a checker held twice at a record copies the body's references, not the module's.
 
   match checker.owner
     when NoBody then return checker
     otherwise
       let reference be Reference(body: checker.owner, target: target, span: span)
-      return checker with references: checker.references.append(reference)
+      return checker with body_references: checker.body_references.append(reference)
   end
 end
 
@@ -2138,7 +2141,9 @@ function finish_body(checker: Checker) returns Checker
   for each item in deferred
     change updated to settle_deferred(checker: updated, item: item)
   end
-  return updated
+  let recorded be updated.body_references
+  change updated to updated with body_references: []
+  return updated with references: updated.references.append_all(recorded)
 end
 
 function settle_deferred(checker: Checker, item: Deferred) returns Checker
@@ -2483,6 +2488,11 @@ function check_set(checker: Checker, name: Name, value: Expr) returns Checker
       )
       return infer(checker: updated, expr: value, expected: nothing).checker
     when some(binding) then
+      change updated to record(
+        checker: updated,
+        target: LocalTarget(declared: binding.span),
+        span: name.span
+      )
       if not binding.is_mutable then
         change updated to push_error(
           checker: updated,
@@ -3524,7 +3534,9 @@ function infer_self(checker: Checker, span: Span) returns Done of Info
 
   match find_binding(checker: checker, name: "self")
     when some(binding) then
-      return Done(value: plain(binding.ty), checker: mark_used(checker: checker, name: "self"))
+      let used be mark_used(checker: checker, name: "self")
+      let recorded be record(checker: used, target: LocalTarget(declared: binding.span), span: span)
+      return Done(value: plain(binding.ty), checker: recorded)
     when nothing then
       let updated be push_error(
         checker: checker,
@@ -3931,7 +3943,13 @@ function infer_name(checker: Checker, name: Name) returns Done of Info
   end
   match find_binding(checker: updated, name: name.text)
     when some(binding) then
-      return Done(value: plain(binding.ty), checker: mark_used(checker: updated, name: name.text))
+      change updated to mark_used(checker: updated, name: name.text)
+      change updated to record(
+        checker: updated,
+        target: LocalTarget(declared: binding.span),
+        span: name.span
+      )
+      return Done(value: plain(binding.ty), checker: updated)
     when nothing then change updated to updated
   end
   match refinement_field_error(checker: updated, name: name)
@@ -4506,6 +4524,11 @@ function call_by_name(
   match find_binding(checker: updated, name: name.text)
     when some(binding) then
       change updated to mark_used(checker: updated, name: name.text)
+      change updated to record(
+        checker: updated,
+        target: LocalTarget(declared: binding.span),
+        span: name.span
+      )
       return call_binding(checker: updated, name: name, ty: binding.ty, args: args, span: span)
     when nothing then change updated to updated
   end

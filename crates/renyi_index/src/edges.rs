@@ -105,9 +105,12 @@ pub fn resolve_edges(
             }
             // a literal's number type, a context-decided result type, an
             // expression's type and the kind of an `otherwise` are for the
-            // VM, not edges
-            Target::Number(_) | Target::Result(_) | Target::Typed(_) | Target::Otherwise { .. } => {
-            }
+            // VM, and a binding's use for the language server: not edges
+            Target::Number(_)
+            | Target::Result(_)
+            | Target::Typed(_)
+            | Target::Otherwise { .. }
+            | Target::Local(_) => {}
         }
     }
     edges.callees.sort_unstable();

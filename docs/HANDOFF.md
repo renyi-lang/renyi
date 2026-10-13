@@ -150,10 +150,12 @@ decision AW36 (0.2 after stage 35; the Marketplace and Open VSX from
 the owner's publisher; GitHub's front set; Linguist's bar; the
 announcements at 0.2; `docs/RELEASE.md` section 6), and the Open VSX
 namespace `renyi-lang` exists with the owner's token verified against
-it, the publish waiting for 0.2; stage 35a is built (decision AW38:
-references and rename of declarations in the language server, the
-paragraph "Stage 35a as built" at the end of the stage 35 study's
-section); the work now is 35b, the locals (the start-here item 1).
+it, the publish waiting for 0.2; stages 35a and 35b are built (decisions
+AW38 and AW39: references and rename of declarations, then of the
+locals, in the language server, the paragraphs "Stage 35a as built"
+and "Stage 35b as built" at the end of the stage 35 study's section);
+the work now is the adaptation of the map for retrieval by embedding,
+the owner's request of 2026-10-13 (the start-here item 1), then 35c.
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -598,27 +600,43 @@ and push there directly.
    namespace `renyi-lang` exists and the owner's token was verified
    against it on 2026-10-13 (the token is the owner's, kept outside
    the repository and every log; the owner chose to publish at 0.2,
-   not the 0.1.0 package, which is the grammar alone). 35a is done
-   (decision AW38; the paragraph "Stage 35a as built" at the end of
-   the study's section): references and rename of declarations, a
-   method with its ability's and every implementation's, the refusals
-   by the library, the class, the reserved words and the project
-   checked again with the edits applied. The work now is 35b, the
-   locals (AW34 (2)): the checker records every use of a binding as a
-   reference, `Target::Local` with the binding's declaration span, in
-   `crates/renyi_check/src/check.rs` (`infer_name`, `Change`,
-   `SelfValue`, the in-place receiver, the query's binding) and the
-   same in `compiler/bodies.ry` (the judges compare the diagnostics,
-   which do not print the references, so the two records are kept
-   equal by hand); the consumers of `Target` gain an arm (the map and
-   the VM ignore it); the server then answers references and rename
-   for a binding from its declaration or a use, within the body,
-   refused for `self`, a reserved word or a name the function binds,
-   imports or declares (the check after the edits covers the last);
-   `renyi check compiler/bodies.ry` by instructions in the perf lane
-   is the measure of the record's cost, if it moves beyond the noise.
-   Then 35c, completion with signature help and workspace symbols
-   (AW34 (3) and (4)). The wasm lane is
+   not the 0.1.0 package, which is the grammar alone). 35a and 35b
+   are done (decisions AW38 and AW39; the paragraphs "Stage 35a as
+   built" and "Stage 35b as built" at the end of the study's
+   section): references and rename of declarations, a method with its
+   ability's and every implementation's, the refusals by the library,
+   the class, the reserved words and the project checked again with
+   the edits applied; then the locals: both checkers record every use
+   of a binding as a reference to its declaration (`Target::Local` in
+   `crates/renyi_check/src/check.rs`, `LocalTarget` in
+   `compiler/bodies.ry`), the server answers references, definition
+   and rename for a binding within its body, `self` refused; the
+   record's cost on the check row -2.9% by instructions, once
+   the Renyi checker's references were kept per body (the first build
+   was +12.2%, an append through a checker held twice copying the
+   module's list; AW39 has the probe and the numbers). The work now,
+   by the owner's call of 2026-10-13 ("find a way to fit the RAG
+   side; start after the current task"), is the adaptation of the map
+   for retrieval by embedding: a design study first, as a section of
+   this handoff, then the owner's questions in one batch of four, then
+   the stage. What the study starts from: the map's JSON gives one
+   record per definition (`renyi_index::render::definition_json`:
+   id and text hash, module, name, kind, signature, purpose, tags,
+   effects, fails, calls, uses, implements, tested_by, metrics,
+   coverage, location) and `renyi mcp`'s `definition` tool answers
+   the source text with the record; an embedding pipeline needs one
+   chunk per definition (the record's fields as text with the
+   definition's source), a stable id for incremental re-embedding
+   (the content hash), the metadata to filter by (module, kind,
+   effects, package) and a way to get them all and to get what
+   changed (`index --diff`); no model belongs in the toolchain, so
+   the export is a command or a tool that writes the chunks and the
+   host embeds them. The design documents never mention embedding or
+   RAG (checked on 2026-10-13: `05-agent-tooling.md`,
+   `08-positioning.md`, `GAPS.md`); positioning 2.3 is the point it
+   extends. Then 35c, completion with signature help and workspace
+   symbols (AW34 (3) and (4)), and release 0.2 (decision AW36). The
+   wasm lane is
    `D:\Projects\.worktrees\Renyi\wasm\` (its target directory for the
    wasm32 builds, `check_asis.log` the trial build, the gates logs,
    the measures and the scripts of each stage; of stage 36:
@@ -4236,6 +4254,51 @@ ability, the implementation and the call; the four refusals; hover on a
 signature's type) and by `refer.rs`'s own tests. Not covered: fields (no
 target records them), the locals (35b). The lane's `lsp35a/` holds the
 test project as checked before the test was built.
+
+**Stage 35b as built** (decision AW39, 2026-10-13). Both checkers record
+every use of a binding as a reference to its declaration:
+`Target::Local(declared)` in `crates/renyi_check/src/check.rs` at
+`infer_name`, the name of a `change`, `self` and a call of a binding of
+function type; `LocalTarget(declared:)` in `compiler/bodies.ry` at
+`infer_name`, `check_set`, `infer_self` and `call_by_name`; the other
+lookups of a binding in either checker are tests (a mutable receiver, a
+namespace that is a binding) whose expression is inferred through
+`infer_name` too. The map's edges and both compilers pass the new kind
+over. In the server: `target_at` finds a binding at its declaration too
+(`local_declared_at`); the occurrences of a binding are its uses and its
+declaration within the module (`local_occurrences`); `references`,
+`definition` (from a use to the declaration) and `rename` answer on
+them; `self` is refused, and a new name the function binds, imports or
+declares by the check after the edits. Hover on a binding stays
+unanswered. The record's cost, the perf lane under callgrind on the
+base's `bodies.ry` for every build: the first build +12.2% on the check
+row (1,310.1 to 1,469.3 M; the Rust `check` row +1.2%), all of it
+copies; the probe `probe_list_copy.py` (the wasm lane's `scratch_35b/`;
+the in-place `append` notes the length of a list it copies and the
+interpreter prints the running code object with its callers under
+`RENYI_PROBE_LIST_COPY`, run with `--interpret`) showed `record`
+appending to the module's references through a checker its caller still
+held, 1,196 times (1,060 in the base), each copying the module's list so
+far (3.3 M elements, 0.9 M in the base); the references are kept per
+body now (`body_references`, joined in `finish_body`), 20,733 elements
+copied after the change, and the check row is 1,310.1 to
+1,272.0 M (-2.9%), the Rust row 173.8 to 176.1 M
+(+1.3%). The four callers that hold a checker across a record
+(`call_known` under `infer_method_call`, `record_variant_target`,
+`infer_name`, `check_set`) are a cut for a later round. Tested in
+`crates/renyi_check/tests/rules.rs` (the uses of a parameter and a `let`
+by span) and over pipes in `crates/renyi/tests/lsp.rs` (requests 19 to
+24: references of a local from a use, definition from a use, the rename
+from the declaration, the refusals of `main` and `self`, prepareRename
+on a use). Not covered: hover on a binding; the names in scope at a
+position (35c needs them for completion; the declared spans the record
+carries give the bindings of a body, the scope rule is 35c's). The
+lane's `lsp35b/demo.ry` is the rules test's program as checked first;
+the perf lane's `study/35a/`, `study/35b/`, `study/35b_v2/` and
+`study/35b_v3/` are the four measures (the base, the first build, the
+`change`-shaped `record`, the references per body), `measure_check.sh`
+their script, `callers_of.sh` and `callers_diff.py` the caller trees
+that pointed at the copies.
 
 ## Stage 33, the WASM target: the design study (session 14)
 
@@ -8220,6 +8283,25 @@ holds between calls.
   `patch_35a_test.py` and `patch_35a_docs.py`, copied to the wasm
   lane's `scratch_35a/`; the test project checked first in the lane's
   `lsp35a/`.
+- Stage 35b (decision AW39, the commit after 82566d4): the locals
+  recorded as references by both checkers (`Target::Local` in
+  `check.rs` at four places, `LocalTarget` in `bodies.ry` at the
+  same four), the consumers' arms (`renyi_index`'s edges, the
+  server's `describe` and `refer`), `local_declared_at` and
+  `local_occurrences`, `definition`, `references` and `rename` of a
+  binding in `lsp.rs` with `self` refused; the rules test and the
+  test over pipes (requests 19 to 24); the record's cost measured in
+  the perf lane (`measure_check.sh`, the base worktree `base35a` at
+  82566d4, removed after the measure), the first build's +12.2%
+  traced with a probe to the module's references list copied at
+  every record through a checker held twice, and the Renyi checker's
+  references kept per body (`body_references`, joined in
+  `finish_body`); the extension's README and CHANGELOG, the
+  reference's row, decision AW39, the roadmap's entry 35; the
+  scratchpad's `patch_35b_code.py`, `patch_35b_lsp.py`,
+  `patch_35b_test.py`, `patch_35b_test_lsp.py`, `patch_35b_docs.py`
+  and the probe `probe_list_copy.py`, copied to the wasm lane's
+  `scratch_35b/` with the probe's logs.
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

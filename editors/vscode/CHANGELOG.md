@@ -4,8 +4,9 @@
 
 The language client (decision AN2): the extension starts `renyi lsp` for
 the workspace folder and shows its diagnostics, hover, go to definition,
-find all references, rename (decision AW38) and the outline; the
-setting `renyi.path` names the binary.
+find all references, rename (decision AW38 for declarations, AW39 for
+variables) and the outline; the setting `renyi.path` names the
+binary.
 
 ## 0.1.0
 

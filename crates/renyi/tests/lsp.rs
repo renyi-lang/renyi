@@ -1,8 +1,9 @@
 //! `renyi lsp`: the language server over pipes (decision AN2): the
 //! handshake, diagnostics published for every file of the folder and
 //! again when a buffer changes, hover, definition and document symbols,
-//! references and rename (decision AW38) on a two-file project,
-//! positions in UTF-16 units, the clean exit.
+//! references and rename of declarations (decision AW38) and of locals
+//! (decision AW39) on a two-file project, positions in UTF-16 units, the
+//! clean exit.
 
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -25,7 +26,7 @@ end
 
 ability Named for Square
   function label(self) returns Text
-    return \"square\"
+    return \"square of {self.side}\"
   end
 end
 
@@ -339,6 +340,10 @@ fn the_server_publishes_diagnostics_and_answers_hover_definition_and_symbols() {
     let (impl_label_line, impl_label_character) =
         line_and_character(SHAPES, "label(self) returns Text\n    return");
     let (print2_line, print2_character) = line_and_character(REPORT, "print(square.label())");
+    let (local_line, local_character) = line_and_character(REPORT, "square be");
+    let (use1_line, use1_character) = line_and_character(REPORT, "square)");
+    let (use2_line, use2_character) = line_and_character(REPORT, "square.label");
+    let (self_line, self_character) = line_and_character(SHAPES, "self.side");
 
     let (messages, clean_exit) = exchange(&[
         request(
@@ -447,6 +452,36 @@ fn the_server_publishes_diagnostics_and_answers_hover_definition_and_symbols() {
             18,
             "textDocument/hover",
             at(&shapes, param_line, param_character),
+        ),
+        request(
+            19,
+            "textDocument/references",
+            with_context(at(&report, use1_line, use1_character), true),
+        ),
+        request(
+            20,
+            "textDocument/definition",
+            at(&report, use2_line, use2_character),
+        ),
+        request(
+            21,
+            "textDocument/rename",
+            renaming(at(&report, local_line, local_character), "box"),
+        ),
+        request(
+            22,
+            "textDocument/rename",
+            renaming(at(&report, use1_line, use1_character), "main"),
+        ),
+        request(
+            23,
+            "textDocument/prepareRename",
+            at(&shapes, self_line, self_character),
+        ),
+        request(
+            24,
+            "textDocument/prepareRename",
+            at(&report, use2_line, use2_character),
         ),
         request(8, "shutdown", Json::Null),
         notification("exit", Json::Null),
@@ -662,6 +697,56 @@ fn the_server_publishes_diagnostics_and_answers_hover_definition_and_symbols() {
         &["result", "contents", "value"],
     ));
     assert!(hover.contains("Square(side: Integer)"), "{hover}");
+
+    // a local (decision AW39): its references from a use are its
+    // declaration and its uses; definition from a use is the declaration
+    assert_eq!(
+        locations_of(response(&messages, 19)),
+        sorted(vec![
+            (report.clone(), local_line, local_character),
+            (report.clone(), use1_line, use1_character),
+            (report.clone(), use2_line, use2_character),
+        ])
+    );
+    let definition = get(response(&messages, 20), &["result"]);
+    assert_eq!(text_of(get(definition, &["uri"])), report);
+    assert_eq!(
+        number_of(get(definition, &["range", "start", "line"])),
+        local_line
+    );
+    assert_eq!(
+        number_of(get(definition, &["range", "start", "character"])),
+        local_character
+    );
+    // rename `square` to `box` from its declaration: the three places
+    let changes = get(response(&messages, 21), &["result", "changes"]);
+    assert_eq!(
+        edits_of(changes, &report),
+        vec![
+            (local_line, local_character, "box".to_string()),
+            (use1_line, use1_character, "box".to_string()),
+            (use2_line, use2_character, "box".to_string()),
+        ]
+    );
+    // refused: `main` is a function of the module (the check after the
+    // edits), and `self`
+    assert!(
+        refused(22).contains("`main` is a function of this module"),
+        "{}",
+        refused(22)
+    );
+    assert!(
+        refused(23).contains("`self` cannot be renamed"),
+        "{}",
+        refused(23)
+    );
+    // prepareRename on a use of the local
+    let prepared = get(response(&messages, 24), &["result"]);
+    assert_eq!(text_of(get(prepared, &["placeholder"])), "square");
+    assert_eq!(
+        number_of(get(prepared, &["range", "start", "character"])),
+        use2_character
+    );
 
     // the shutdown
     assert_eq!(get(response(&messages, 8), &["result"]), &Json::Null);

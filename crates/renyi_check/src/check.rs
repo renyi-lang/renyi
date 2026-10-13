@@ -215,6 +215,11 @@ pub enum Target {
     /// failure of a fallible call (`true`) or the absence of a `maybe` value
     /// (`false`); the VM branches by it, the map ignores it.
     Otherwise { fallible: bool },
+    /// A use of a binding of the body (a parameter, a `let`, a loop or a
+    /// pattern variable, `self`), at the use's span, with the span of the
+    /// binding's declaration: the language server's references and rename
+    /// of locals read it (decision AW39); the map and the VM ignore it.
+    Local(Span),
 }
 
 /// The runtime type of a numeric literal.
@@ -1589,7 +1594,7 @@ impl<'w> Checker<'w> {
                     self.error_fix("task-independence", reason, name.span, TASK_FIX);
                 }
                 let target = match self.lookup(&name.text) {
-                    Some(binding) => Some((binding.ty.clone(), binding.mutable)),
+                    Some(binding) => Some((binding.ty.clone(), binding.mutable, binding.span)),
                     None => None,
                 };
                 match target {
@@ -1605,7 +1610,8 @@ impl<'w> Checker<'w> {
                         );
                         self.infer(value, None);
                     }
-                    Some((ty, mutable)) => {
+                    Some((ty, mutable, declared)) => {
+                        self.record(Target::Local(declared), name.span);
                         if !mutable {
                             self.error_fix(
                                 "immutable-binding",
@@ -2225,21 +2231,27 @@ impl<'w> Checker<'w> {
                     Info::plain(Ty::maybe(inner))
                 }
             },
-            ExprKind::SelfValue => match self.lookup("self") {
-                Some(binding) => {
+            ExprKind::SelfValue => {
+                let found = self.lookup("self").map(|binding| {
                     binding.used = true;
-                    Info::plain(binding.ty.clone())
+                    (binding.span, binding.ty.clone())
+                });
+                match found {
+                    Some((declared, ty)) => {
+                        self.record(Target::Local(declared), expr.span);
+                        Info::plain(ty)
+                    }
+                    None => {
+                        self.error_fix(
+                            "unknown-name",
+                            "`self` is only bound in a method",
+                            expr.span,
+                            "declare the function with `self` as its first parameter, in the module of its type",
+                        );
+                        Info::plain(Ty::Error)
+                    }
                 }
-                None => {
-                    self.error_fix(
-                        "unknown-name",
-                        "`self` is only bound in a method",
-                        expr.span,
-                        "declare the function with `self` as its first parameter, in the module of its type",
-                    );
-                    Info::plain(Ty::Error)
-                }
-            },
+            }
             ExprKind::Name(name) => self.infer_name(name),
             ExprKind::TypeName(name) => self.infer_bare_type_name(name, expected),
             ExprKind::Member { base, name } => self.infer_member(base, name, expr.span),
@@ -2464,9 +2476,13 @@ impl<'w> Checker<'w> {
         if let Some(reason) = self.task_conflict(&name.text, false) {
             self.error_fix("task-independence", reason, name.span, TASK_FIX);
         }
-        if let Some(binding) = self.lookup(&name.text) {
+        let found = self.lookup(&name.text).map(|binding| {
             binding.used = true;
-            return Info::plain(binding.ty.clone());
+            (binding.span, binding.ty.clone())
+        });
+        if let Some((declared, ty)) = found {
+            self.record(Target::Local(declared), name.span);
+            return Info::plain(ty);
         }
         // a refinement condition sees its own field alone (decision Y4)
         let other_field = self.condition.as_ref().and_then(|scope| {
@@ -2803,11 +2819,12 @@ impl<'w> Checker<'w> {
                 if let Some(reason) = self.task_conflict(&name.text, false) {
                     self.error_fix("task-independence", reason, name.span, TASK_FIX);
                 }
-                let binding_ty = self.lookup(&name.text).map(|b| {
+                let binding = self.lookup(&name.text).map(|b| {
                     b.used = true;
-                    b.ty.clone()
+                    (b.span, b.ty.clone())
                 });
-                if let Some(ty) = binding_ty {
+                if let Some((declared, ty)) = binding {
+                    self.record(Target::Local(declared), name.span);
                     return match self.resolve(&ty) {
                         Ty::Function(function) => {
                             self.call_function_type(&function, args, span, &name.text)

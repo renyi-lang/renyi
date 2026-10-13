@@ -94,11 +94,12 @@ pub fn what_is_at<'a>(
     Some((span, described))
 }
 
-/// The declaration named at a byte offset of a module's file, with the
-/// span of its name there: the innermost of the bodies' references the
-/// checker recorded, else a type or an ability named in a signature, else
-/// a name an import exposes, else the declaration whose own name is
-/// there.
+/// The declaration or the binding named at a byte offset of a module's
+/// file, with the span of its name there: the innermost of the bodies'
+/// references the checker recorded (a binding's use among them, decision
+/// AW39), else a type or an ability named in a signature, else a name an
+/// import exposes, else a binding declared there, else the declaration
+/// whose own name is there.
 pub fn target_at(
     checked: &CheckedProject,
     module: ModuleId,
@@ -120,7 +121,29 @@ pub fn target_at(
             .map(|(target, span)| (span, target))
     })
     .or_else(|| exposed_at(world, module, offset))
+    .or_else(|| local_declared_at(checked, module, offset))
     .or_else(|| declaration_target_at(world, module, offset))
+}
+
+/// A binding declared at the offset: the declaration span a use in the
+/// module's bodies was recorded with (a binding without a use is an
+/// error of the checker, so every binding that checks has one; `self`
+/// may go unused and is then not found here).
+fn local_declared_at(
+    checked: &CheckedProject,
+    module: ModuleId,
+    offset: usize,
+) -> Option<(Span, Target)> {
+    checked
+        .references
+        .iter()
+        .filter(|(owner, _, _)| *owner == module)
+        .find_map(|(_, _, reference)| match reference.target {
+            Target::Local(declared) if contains(declared, offset) => {
+                Some((declared, Target::Local(declared)))
+            }
+            _ => None,
+        })
 }
 
 /// A target with a name: what a reference, a hover or a rename can be
@@ -134,6 +157,7 @@ fn is_named(target: &Target) -> bool {
             | Target::Type(_)
             | Target::Variant(..)
             | Target::Ability(_)
+            | Target::Local(_)
     )
 }
 
@@ -191,7 +215,11 @@ fn describe_target<'a>(
             let (module, decl) = ability_item(world, *id)?;
             Some(describe_ability(module, decl))
         }
-        Target::Number(_) | Target::Result(_) | Target::Typed(_) | Target::Otherwise { .. } => None,
+        Target::Number(_)
+        | Target::Result(_)
+        | Target::Typed(_)
+        | Target::Otherwise { .. }
+        | Target::Local(_) => None,
     }
 }
 

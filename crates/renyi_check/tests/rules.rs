@@ -1273,3 +1273,51 @@ fn a_dependency_is_charged_with_its_package_named() {
         renyi_syntax::diagnostics::render_text(&main(" needs console"), &diagnostics)
     );
 }
+
+#[test]
+fn a_use_of_a_binding_is_recorded_with_its_declaration() {
+    // decision AW39: every read, change and call of a binding is a
+    // reference whose target is the binding's declaration span
+    let source = "module demo
+  purpose: Locals for the record test.
+
+public function twice(number: Integer) returns Integer
+  purpose: Twice the number, through a mutable total.
+
+  let mutable total be number
+  change total to total + number
+  return total
+end
+";
+    let checked = renyi_check::check_project(&[SourceFile::new("demo.ry", source)]);
+    let at = |needle: &str, length: usize| -> renyi_syntax::Span {
+        let start = source.find(needle).expect("the needle is in the source");
+        renyi_syntax::Span::new(start, start + length)
+    };
+    let uses_of = |declared: renyi_syntax::Span| -> Vec<renyi_syntax::Span> {
+        let mut uses: Vec<renyi_syntax::Span> = checked
+            .references
+            .iter()
+            .filter_map(|(_, _, reference)| match reference.target {
+                renyi_check::Target::Local(span) if span == declared => Some(reference.span),
+                _ => None,
+            })
+            .collect();
+        uses.sort_by_key(|span| span.start);
+        uses
+    };
+    // the parameter: read by the `let` and in the sum
+    assert_eq!(
+        uses_of(at("number: Integer", 6)),
+        [at("number\n  change", 6), at("number\n  return", 6)]
+    );
+    // the `let`: changed, read in the sum, returned
+    assert_eq!(
+        uses_of(at("total be", 5)),
+        [
+            at("total to", 5),
+            at("total + number", 5),
+            at("total\nend", 5)
+        ]
+    );
+}
