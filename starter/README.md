@@ -73,7 +73,7 @@ take the same command and arguments. The server's tools:
 | `run` | run a program's `main` under its grant, narrowed by `deny`, `allow_host`, `allow_read`, `allow_write` and `at_most`; `replay` answers every effect from a recording |
 | `run_tests` | every `example:` line and `test` block of a program, `replays` tests from their recordings |
 | `diff` | what changed since a saved map or a git revision, what each change reaches, the version bump it forces |
-| `chunks` | the project as chunks for retrieval by embedding: JSON Lines, one per module and per definition, each with an id that changes exactly when its text does; `module` narrows it |
+| `chunks` | the project as chunks for retrieval by embedding: JSON Lines, one per module and per definition, each with an id that changes exactly when its text does; `module` narrows it; `language` gives the language's own documents and library the same way |
 
 The server is the same code as the commands: a host without MCP runs the
 commands of section 5 instead.
@@ -158,3 +158,21 @@ answered from the recording, so nothing is sent or shown, and narrates
 the run on the standard error: purpose by purpose, each call with its
 arguments and its result. That is how a changed program is read against
 an old run.
+
+## 7. Retrieval by embedding
+
+`renyi index --chunks` writes a project as chunks for an embedding
+pipeline, and `renyi index --chunks --language` the language's own
+documents and library the same way; the toolchain writes, the host
+embeds. `retrieval/retrieve.py` is that host in eighty lines, shown once
+(`retrieval/README.md`): it keeps the vectors by chunk id, embeds only
+the chunks whose id it has not seen, drops the ids that are gone and
+answers a question with the nearest chunks and the chunks to read them
+with. Run from `retrieval/`:
+
+```sh
+pip install sentence-transformers
+renyi index --chunks ../workflows > project.jsonl
+renyi index --chunks --language > language.jsonl
+python retrieve.py project.jsonl language.jsonl --ask "which program reads the log and groups its errors"
+```

@@ -403,6 +403,32 @@ holds the shape, the order and the ids (the same after a formatting-only
 change and after a dependency's change, different after the
 definition's own text changed).
 
+`renyi index --chunks --language` writes the language's own documents
+the same way (decision AW43), for a host that embeds the language beside
+the project: one chunk per section of the cheat sheet and of the
+reference (a `##` section with text of its own, each `###` subsection
+under its section's heading, the text before the first heading; the
+document's title line heads every chunk; a heading inside a fenced code
+block is text; `kind` `section`, `module` the document's name, `name`
+the document and the heading, the location the document's lines), then
+per library module its chunk and one per public declaration from
+`library/std/` (the header above the declaration's text, the declared
+effects and failures; a method named `Type.method` as the edges spell a
+call to it, so that a host walks from a hit's `calls` to the library's
+chunk; `package` `std` and the version; a function overloaded by its
+receiver's type argument, `List.sum`, one chunk per overload under one
+name). The binary embeds the two documents (`crates/renyi/cheatsheet.md`
+and `crates/renyi/reference.md`, held equal to `docs/` by a test), so
+the chunks come from an installed `renyi` alone; the header line names
+the project `renyi` and the revision the version, and counts the
+sections apart. The tool `chunks` takes `language`. The sizes: the
+sections' median 765 characters, the longest 12,637 (appendix A of the
+reference); the declarations' median 333. `starter/retrieval/retrieve.py`
+is the host's side of the loop, shown once: a store of vectors by chunk
+id, only the ids not seen embedded with a local model, the ids gone
+dropped, a question answered with the nearest chunks and the chunks to
+read them with (`calls`, `tested_by`, `see_also`).
+
 ## 9. Order of work
 
 1. `renyi index` with the record, the six metrics and the hashes, measured
@@ -427,8 +453,9 @@ definition's own text changed).
    A development aid like `renyi tokens`: it is how the VM's own hot
    spots were found (`crates/renyi_vm/src/profile.rs`).
 6. The chunks for retrieval by embedding (done 2026-10-13, decisions
-   AW40 to AW42: the text settled by a measure, `renyi index --chunks`
-   and the tool `chunks`, section 8).
+   AW40 to AW43: the text settled by a measure, `renyi index --chunks`
+   and the tool `chunks`, the language's documents with `--language`,
+   the example pipeline in `starter/retrieval/`, section 8).
 
 ## 10. Open items
 

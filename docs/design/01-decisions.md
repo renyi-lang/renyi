@@ -9605,3 +9605,57 @@ and a paragraph, its skill the option; the reference's command row; the
 README's fourth point and its command list. Next: 37c, the extras of
 AW40: the language's documents as chunks (`--language`) and the example
 pipeline in `starter/`.
+
+**AW43. Stage 37c built: the language's documents as chunks and the
+example pipeline.** 2026-10-13. `renyi index --chunks --language` writes
+the language's own documents in the shape of a project's chunks
+(`renyi_index::language_chunks`): one chunk per section of the cheat
+sheet and of the reference (a `##` section with text of its own, each
+`###` subsection under its section's heading, the text before the first
+heading; the document's title line heads every chunk; a heading inside a
+fenced code block is text; `kind` `section`, `module` the document's
+name, `name` the document and the heading, the location the document's
+lines), then per module of the library (`renyi_check::LIBRARY`) the
+module's chunk and one per public declaration from its declaration file
+(the header of AW41 with the declared effects and failures, then the
+declaration's text; a method named `Type.method` as the map's edges
+spell a call to it, so that a host walks from a hit's `calls` to the
+library's chunk; `package` `std` and the version; a function overloaded
+by its receiver's type argument, `List.sum`, one chunk per overload
+under one name; `ability_signature` shared with the map's drafts). The
+binary embeds `docs/reference.md` as `crates/renyi/reference.md` beside
+the cheat sheet's copy, both held equal to the documents by
+`tests/cheat_sheet.rs` (decision AI5), so the chunks come from an
+installed `renyi` alone; the header line names the project `renyi`, the
+revision the version, and counts the sections apart (`sections`, now in
+every header line); `--language` needs `--chunks` and takes no path. The
+MCP tool `chunks` takes `language`. The export: 370 chunks (86
+sections, 16 modules, 268 declarations: 134 methods, 69 functions, 57
+types, 8 abilities), 432 KB; the sections' median 765 characters, the
+90th percentile 2,275, the longest 12,637 (appendix A of the
+reference); the declarations' median 333. The example pipeline,
+`starter/retrieval/retrieve.py` with its README and section 7 of the
+starter's README: the host's side of the loop in eighty lines, the
+chunks read, a store of vectors by chunk id, only the ids not seen
+embedded with a local model through `sentence-transformers` and the ids
+gone dropped, a question answered with the nearest chunks and the
+chunks to read them with (`calls`, `tested_by`, `see_also`). Run on the
+corpus and the language with the small model: 571 chunks embedded once
+and none the second time; "where do we round money to cents" answered
+with `Decimal.rounded`, `Float.rounded` and `invoice.total` with its
+`subtotal` and its two tests; "how does a needs clause grant a
+capability with a budget" with the reference's section 11, its grammar
+first. CI compiles the script (`py_compile`) and does not run it: a
+model is outside the toolchain. Held by tests: a document cut at its
+headings (the title's text, a section with text, two subsections under
+their section, a heading in a fence left as text, a heading with
+nothing of its own skipped, the lines and the locations); the real
+documents and library (the cheat sheet's `Control flow`, the reference's
+`8. Control flow / Meaning`, at least a chunk per `###` of the
+reference, `std.http` with `get_with` and `HttpError`,
+`Decimal.rounded` a method, a name and a signature one chunk, the
+header line's counts); the command and the tool through the binary;
+the copies equal to the documents. The documents: 05 section 8 a
+paragraph and its order of work, the reference's command row, the
+starter's README and skill, the notes. Stage 37 closes; 35c follows,
+then release 0.2 (AW36).

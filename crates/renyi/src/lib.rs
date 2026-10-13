@@ -149,6 +149,44 @@ unsafe impl std::alloc::GlobalAlloc for Allocator {
     }
 }
 
+/// The crate's copies of `docs/cheatsheet.md` and `docs/reference.md`,
+/// held equal to the documents by `tests/cheat_sheet.rs` (decision AI5):
+/// what `renyi mcp` serves as `cheat_sheet`, and what `renyi index
+/// --chunks --language` and the tool `chunks` write as chunks (decision
+/// AW43).
+pub(crate) const CHEAT_SHEET: &str = include_str!("../cheatsheet.md");
+pub(crate) const REFERENCE: &str = include_str!("../reference.md");
+
+/// The language's documents as `--chunks --language` and the tool
+/// `chunks` cut them into sections.
+pub(crate) fn language_documents() -> [renyi_index::Document<'static>; 2] {
+    [
+        renyi_index::Document {
+            name: "cheatsheet",
+            file: "docs/cheatsheet.md",
+            text: CHEAT_SHEET,
+        },
+        renyi_index::Document {
+            name: "reference",
+            file: "docs/reference.md",
+            text: REFERENCE,
+        },
+    ]
+}
+
+/// The chunks of the language's own documents and library (decision
+/// AW43), what `renyi index --chunks --language` writes.
+pub(crate) fn language_chunks() -> (renyi_index::Header, Vec<renyi_index::Chunk>) {
+    let version = env!("CARGO_PKG_VERSION");
+    let header = renyi_index::Header {
+        project: "renyi".to_string(),
+        revision: version.to_string(),
+        toolchain: toolchain(),
+    };
+    let chunks = renyi_index::language_chunks(&language_documents(), renyi_check::LIBRARY, version);
+    (header, chunks)
+}
+
 const USAGE: &str = "usage:
   renyi check [--json] [--strict] <file.ry>...
                                       report diagnostics (exit 1 when any error; --strict: a call
@@ -166,6 +204,9 @@ const USAGE: &str = "usage:
   renyi index --chunks [path]         the map's modules and definitions as chunks for retrieval by
                                       embedding: JSON Lines, a header line then one object per chunk with
                                       id (the hash of its text), text and metadata; no model involved
+  renyi index --chunks --language     the language's own documents as chunks in the same shape: the
+                                      cheat sheet's and the reference's sections, the library's modules
+                                      and public declarations
   renyi tools [path]                  the manifest of every function with `expose as tool`: JSON Schema
                                       from the parameters, the description from `purpose:`, the
                                       permissions from `needs`
@@ -1789,6 +1830,7 @@ fn index_command(args: &[String]) -> ExitCode {
     let mut json = false;
     let mut budgets = false;
     let mut chunks = false;
+    let mut language = false;
     let mut base: Option<String> = None;
     let mut path: Option<&str> = None;
     let mut rest = args.iter();
@@ -1797,6 +1839,7 @@ fn index_command(args: &[String]) -> ExitCode {
             "--json" => json = true,
             "--budgets" => budgets = true,
             "--chunks" => chunks = true,
+            "--language" => language = true,
             "--diff" => match rest.next() {
                 Some(value) => base = Some(value.clone()),
                 None => {
@@ -1819,6 +1862,24 @@ fn index_command(args: &[String]) -> ExitCode {
     if chunks && (json || budgets || base.is_some()) {
         eprintln!("renyi: --chunks is JSON Lines of its own and does not combine with --json, --budgets or --diff");
         return ExitCode::FAILURE;
+    }
+    if language && !chunks {
+        eprintln!("renyi: --language needs --chunks: the language's documents come as chunks");
+        return ExitCode::FAILURE;
+    }
+    if language && path.is_some() {
+        eprintln!(
+            "renyi: --chunks --language takes no path: the chunks are the language's own documents"
+        );
+        return ExitCode::FAILURE;
+    }
+    if language {
+        let (header, chunks) = language_chunks();
+        let rendered = renyi_index::chunks_lines(&header, &chunks);
+        let stdout = std::io::stdout();
+        let mut out = stdout.lock();
+        let _ = write!(out, "{rendered}");
+        return ExitCode::SUCCESS;
     }
     let path = Path::new(path.unwrap_or("."));
     let files = match renyi_index::load_project(path) {

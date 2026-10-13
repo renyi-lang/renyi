@@ -35,7 +35,7 @@ use renyi_workspace::Workspace;
 
 use crate::{
     compile_sources, diagnose, library, load_recording, parse_budget, read_source, registry,
-    scoped, toolchain, CompileError,
+    scoped, toolchain, CompileError, CHEAT_SHEET,
 };
 
 /// The revision this server answers per-request metadata with.
@@ -49,8 +49,6 @@ const SERVER_INFO_KEY: &str = "io.modelcontextprotocol/serverInfo";
 /// How long a client may keep the tool list and the discovery result: a
 /// day, since neither changes while the server runs.
 const CACHE_TTL_MS: &str = "86400000";
-// the crate's copy of `docs/cheatsheet.md`, held equal by a test (decision AI5)
-const CHEAT_SHEET: &str = include_str!("../cheatsheet.md");
 const INSTRUCTIONS: &str = "The Renyi toolchain. Read cheat_sheet before writing Renyi. Look library \
 names up with library_lookup instead of guessing them. project_map, definition and effects describe \
 the served project; check and format close the loop on source text; run and run_tests execute \
@@ -399,19 +397,35 @@ impl Server {
             }
             "chunks" => {
                 let module = optional_text(arguments, "module")?;
-                self.refresh()?;
-                let index = self.index();
-                if let Some(module) = &module {
-                    if !index.modules.iter().any(|m| m.name == *module) {
-                        return Err(format!("the served project has no module named `{module}`"));
+                let language = flag(arguments, "language")?;
+                let (header, chunks) = if language {
+                    crate::language_chunks()
+                } else {
+                    self.refresh()?;
+                    let index = self.index();
+                    (
+                        index.header.clone(),
+                        renyi_index::chunks(index, self.workspace.sources()),
+                    )
+                };
+                let chunks: Vec<renyi_index::Chunk> = match &module {
+                    Some(module) => {
+                        let narrowed: Vec<renyi_index::Chunk> = chunks
+                            .into_iter()
+                            .filter(|chunk| chunk.module == *module)
+                            .collect();
+                        if narrowed.is_empty() {
+                            return Err(if language {
+                                format!("the language has no module or document named `{module}`")
+                            } else {
+                                format!("the served project has no module named `{module}`")
+                            });
+                        }
+                        narrowed
                     }
-                }
-                let chunks: Vec<renyi_index::Chunk> =
-                    renyi_index::chunks(index, self.workspace.sources())
-                        .into_iter()
-                        .filter(|chunk| module.as_ref().is_none_or(|m| chunk.module == *m))
-                        .collect();
-                Ok(renyi_index::chunks_lines(&index.header, &chunks))
+                    None => chunks,
+                };
+                Ok(renyi_index::chunks_lines(&header, &chunks))
             }
             other => Err(format!("unknown tool {other}")),
         }
@@ -717,9 +731,14 @@ fn tool_json(name: &str) -> Json {
              text, which changes exactly when the text does), `text` (a header from the record, then \
              the canonical source) and `metadata` (the map's id and text hash, module, package, kind, \
              effects, edges, location). The host embeds; the toolchain only writes. `module` narrows \
-             it to one module.",
+             it to one module; `language` gives the language's own documents instead (the cheat \
+             sheet's and the reference's sections, the library's modules and public declarations, \
+             the same shape), for a host that embeds the language beside the project.",
             schema(
-                vec![("module", string_property("a module name, to give only that module's chunks"))],
+                vec![
+                    ("module", string_property("a module name, to give only that module's chunks (with `language`: a library module such as `std.http`, or `cheatsheet` or `reference`)")),
+                    ("language", boolean_property("true for the language's documents and library instead of the served project")),
+                ],
                 &[],
             ),
         ),

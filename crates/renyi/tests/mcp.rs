@@ -273,8 +273,9 @@ fn the_tools_answer_from_the_served_project() {
         call(9, "diff", r#"{"base":"HEAD"}"#),
         call(10, "chunks", r#"{"module":"invoice"}"#),
         call(11, "chunks", r#"{"module":"no_such_module"}"#),
+        call(12, "chunks", r#"{"language":true,"module":"std.http"}"#),
     ]);
-    assert_eq!(messages.len(), 11);
+    assert_eq!(messages.len(), 12);
     let lookup = content(&messages[0]);
     assert!(
         lookup.contains("std.http: public function get_with(url: Url, headers: Map of Text to Text) returns Response or fails with HttpError needs network.http"),
@@ -334,7 +335,7 @@ fn the_tools_answer_from_the_served_project() {
         "{first}"
     );
     assert!(
-        first.ends_with(", \"modules\": 1, \"definitions\": 7}"),
+        first.ends_with(", \"modules\": 1, \"definitions\": 7, \"sections\": 0}"),
         "{first}"
     );
     assert!(
@@ -351,4 +352,14 @@ fn the_tools_answer_from_the_served_project() {
         "{}",
         content(&messages[10])
     );
+    let language = content(&messages[11]);
+    assert!(
+        language.starts_with("{\"project\": \"renyi\", \"revision\": \""),
+        "{language}"
+    );
+    assert!(
+        language.contains("\"name\": \"std.http.get_with\", \"kind\": \"function\""),
+        "{language}"
+    );
+    assert!(!language.contains("\"name\": \"std.json"), "{language}");
 }

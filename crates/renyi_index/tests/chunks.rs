@@ -1,14 +1,17 @@
 //! The chunks for retrieval by embedding (stage 37, decisions AW40 to
-//! AW42): one per module and per definition of the corpus, in the text of
+//! AW43): one per module and per definition of the corpus, in the text of
 //! decision AW41; the id the hash of the text, the same after a
 //! formatting-only change and after a dependency's change, different
-//! after the definition's own text changed; the JSON Lines.
+//! after the definition's own text changed; the JSON Lines; the language's
+//! documents cut at their headings and the library's declarations.
 
+use std::collections::HashSet;
 use std::path::PathBuf;
 
-use renyi_check::{check_project_in, Library};
+use renyi_check::{check_project_in, Library, LIBRARY};
 use renyi_index::{
-    canonical_files, chunks, chunks_lines, index_checked, load_project, Chunk, Header, Index,
+    canonical_files, chunks, chunks_lines, index_checked, language_chunks, load_project, Chunk,
+    Document, Header, Index,
 };
 use renyi_syntax::json::Json;
 use renyi_syntax::SourceFile;
@@ -66,6 +69,14 @@ fn text_of(json: &Json) -> &str {
     match json {
         Json::String(text) => text,
         other => panic!("not a string: {other:?}"),
+    }
+}
+
+/// A chunk's signature, empty where it has none (a module, a section).
+fn signature_of(metadata: &Json) -> &str {
+    match field(metadata, "signature") {
+        Json::String(signature) => signature,
+        _ => "",
     }
 }
 
@@ -257,7 +268,7 @@ fn the_lines_are_one_object_each() {
     assert_eq!(
         lines[0],
         format!(
-            "{{\"project\": \"test\", \"revision\": \"0\", \"toolchain\": \"renyi test\", \"chunks\": {}, \"modules\": {}, \"definitions\": {}}}",
+            "{{\"project\": \"test\", \"revision\": \"0\", \"toolchain\": \"renyi test\", \"chunks\": {}, \"modules\": {}, \"definitions\": {}, \"sections\": 0}}",
             chunks.len(),
             index.modules.len(),
             index.definitions.len()
@@ -286,10 +297,197 @@ fn the_lines_are_one_object_each() {
     let narrowed = chunks_lines(&index.header, &invoice);
     assert!(
         narrowed.starts_with(&format!(
-            "{{\"project\": \"test\", \"revision\": \"0\", \"toolchain\": \"renyi test\", \"chunks\": {}, \"modules\": 1, \"definitions\": {}}}\n",
+            "{{\"project\": \"test\", \"revision\": \"0\", \"toolchain\": \"renyi test\", \"chunks\": {}, \"modules\": 1, \"definitions\": {}, \"sections\": 0}}\n",
             invoice.len(),
             invoice.len() - 1
         )),
         "{narrowed}"
+    );
+}
+
+#[test]
+fn a_document_is_cut_at_its_headings() {
+    const DOC: &str = "# A Title\n\nAn introduction.\n\n## One\n\nThe first section.\n\n```\n## not a heading\n```\n\n## Two\n\n### Two A\n\nThe first part.\n\n### Two B\n\nThe second part.\n\n## Three\n";
+    let document = Document {
+        name: "doc",
+        file: "doc.md",
+        text: DOC,
+    };
+    let chunks = language_chunks(&[document], &[], "0");
+    let names: Vec<&str> = chunks.iter().map(|chunk| chunk.name.as_str()).collect();
+    assert_eq!(
+        names,
+        [
+            "doc: A Title",
+            "doc: One",
+            "doc: Two / Two A",
+            "doc: Two / Two B"
+        ],
+        "a heading without text of its own is no chunk; a heading in a fence is text"
+    );
+    assert!(chunks
+        .iter()
+        .all(|chunk| chunk.kind == "section" && chunk.module == "doc"));
+    assert_eq!(chunks[0].text, "# A Title\nAn introduction.\n");
+    assert_eq!(
+        chunks[1].text,
+        "# A Title\n\n## One\nThe first section.\n\n```\n## not a heading\n```\n"
+    );
+    assert_eq!(
+        chunks[2].text,
+        "# A Title\n\n## Two\n\n### Two A\nThe first part.\n"
+    );
+    let location = field(&chunks[2].metadata, "location");
+    assert!(matches!(field(location, "line"), Json::Number(15)));
+    assert!(matches!(field(location, "end_line"), Json::Number(17)));
+    assert_eq!(text_of(field(location, "file")), "doc.md");
+    assert!(matches!(field(&chunks[2].metadata, "map_id"), Json::Null));
+}
+
+#[test]
+fn the_language_comes_as_sections_and_declarations() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let cheat_sheet =
+        std::fs::read_to_string(root.join("docs/cheatsheet.md")).expect("the cheat sheet");
+    let reference = std::fs::read_to_string(root.join("docs/reference.md")).expect("the reference");
+    let documents = [
+        Document {
+            name: "cheatsheet",
+            file: "docs/cheatsheet.md",
+            text: &cheat_sheet,
+        },
+        Document {
+            name: "reference",
+            file: "docs/reference.md",
+            text: &reference,
+        },
+    ];
+    let chunks = language_chunks(&documents, LIBRARY, "0");
+    for chunk in &chunks {
+        assert_eq!(
+            chunk.id,
+            format!("sha256:{:x}", Sha256::digest(chunk.text.as_bytes())),
+            "{}",
+            chunk.name
+        );
+        assert!(chunk.text.ends_with('\n'), "{}", chunk.name);
+    }
+    // the names are distinct but for a library function overloaded by its
+    // receiver's type argument (`List.sum`), one chunk per overload
+    let named: HashSet<(&str, &str)> = chunks
+        .iter()
+        .map(|chunk| (chunk.name.as_str(), signature_of(&chunk.metadata)))
+        .collect();
+    assert_eq!(
+        named.len(),
+        chunks.len(),
+        "a name and a signature are one chunk"
+    );
+    let names: HashSet<&str> = chunks.iter().map(|chunk| chunk.name.as_str()).collect();
+    assert!(
+        names.len() + 3 >= chunks.len(),
+        "{} names for {} chunks",
+        names.len(),
+        chunks.len()
+    );
+
+    // the documents: every `##` and `###` heading outside a fence
+    let control = find(&chunks, "cheatsheet: Control flow");
+    assert_eq!(control.kind, "section");
+    assert!(
+        control
+            .text
+            .starts_with("# Renyi Cheat Sheet\n\n## Control flow\n"),
+        "{}",
+        control.text
+    );
+    let meaning = find(&chunks, "reference: 8. Control flow / Meaning");
+    assert!(
+        meaning
+            .text
+            .starts_with("# Renyi Language Reference\n\n## 8. Control flow\n\n### Meaning\n"),
+        "{}",
+        meaning.text
+    );
+    assert_eq!(text_of(field(&meaning.metadata, "module")), "reference");
+    let subsections = reference
+        .lines()
+        .filter(|line| line.starts_with("### "))
+        .count();
+    let sections = chunks
+        .iter()
+        .filter(|chunk| chunk.module == "reference")
+        .count();
+    assert!(
+        sections >= subsections,
+        "{sections} chunks for {subsections} subsections"
+    );
+
+    // the library: a module's chunk and one per public declaration
+    let http = find(&chunks, "std.http");
+    assert_eq!(http.kind, "module");
+    assert!(
+        http.text
+            .starts_with("module std.http\npurpose: An HTTP client.\n\n"),
+        "{}",
+        http.text
+    );
+    assert!(
+        http.text.contains(
+            "\nfunction get(url: Url) returns Response or fails with HttpError needs network.http\n"
+        ),
+        "{}",
+        http.text
+    );
+    let get_with = find(&chunks, "std.http.get_with");
+    assert_eq!(get_with.kind, "function");
+    assert!(
+        get_with.text.starts_with(
+            "function std.http.get_with\nget_with(url: Url, headers: Map of Text to Text) returns Response or fails with HttpError needs network.http\n"
+        ),
+        "{}",
+        get_with.text
+    );
+    assert!(
+        get_with.text.contains(
+            "needs: network.http\nfails with: HttpError\nmodule std.http: An HTTP client.\n\npublic function get_with(url: Url, headers: Map of Text to Text) returns Response\n  or fails with HttpError\n  needs network.http\n"
+        ),
+        "{}",
+        get_with.text
+    );
+    assert_eq!(text_of(field(&get_with.metadata, "package")), "std 0");
+    assert_eq!(
+        text_of(field(field(&get_with.metadata, "location"), "file")),
+        "library/std/http.ry"
+    );
+    // a method is named as the map's edges spell a call to it
+    let rounded = find(&chunks, "std.prelude.Decimal.rounded");
+    assert_eq!(rounded.kind, "method");
+    assert!(
+        find(&chunks, "std.http.HttpError")
+            .text
+            .contains("\n  Status(url: Url, status: Integer, body: Text)\n"),
+        "a type's chunk carries its whole declaration"
+    );
+
+    // the header line counts the sections apart
+    let header = Header {
+        project: "renyi".into(),
+        revision: "0".into(),
+        toolchain: "renyi 0".into(),
+    };
+    let rendered = chunks_lines(&header, &chunks);
+    let first = rendered.lines().next().unwrap_or("");
+    let modules = chunks.iter().filter(|c| c.kind == "module").count();
+    let sections = chunks.iter().filter(|c| c.kind == "section").count();
+    assert_eq!(
+        first,
+        format!(
+            "{{\"project\": \"renyi\", \"revision\": \"0\", \"toolchain\": \"renyi 0\", \"chunks\": {}, \"modules\": {}, \"definitions\": {}, \"sections\": {}}}",
+            chunks.len(),
+            modules,
+            chunks.len() - modules - sections,
+            sections
+        )
     );
 }

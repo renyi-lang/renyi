@@ -156,6 +156,7 @@ fn the_chunks_are_json_lines() {
         get(&header, &["definitions"]),
         &Json::Number("2".to_string())
     );
+    assert_eq!(get(&header, &["sections"]), &Json::Number("0".to_string()));
     let module = line_json(lines[1]);
     assert_eq!(text_of(get(&module, &["metadata", "kind"])), "module");
     assert!(
@@ -185,4 +186,34 @@ fn the_chunks_are_json_lines() {
     let (ok, _, stderr) = renyi(&["index", "--chunks", "--json", &file]);
     assert!(!ok);
     assert!(stderr.contains("--chunks"), "{stderr}");
+}
+
+#[test]
+fn the_language_is_chunked_from_the_binary() {
+    let (ok, output, stderr) = renyi(&["index", "--chunks", "--language"]);
+    assert!(ok, "{stderr}");
+    let header = line_json(output.lines().next().unwrap_or(""));
+    assert_eq!(text_of(get(&header, &["project"])), "renyi");
+    assert_eq!(
+        text_of(get(&header, &["revision"])),
+        env!("CARGO_PKG_VERSION")
+    );
+    assert!(
+        output.contains("\"name\": \"cheatsheet: Effects\""),
+        "a section of the cheat sheet"
+    );
+    assert!(
+        output.contains("\"name\": \"reference: 11. Effects and capabilities / Meaning\""),
+        "a subsection of the reference"
+    );
+    assert!(
+        output.contains("\"name\": \"std.http.get\", \"kind\": \"function\""),
+        "a declaration of the library"
+    );
+    let (ok, _, stderr) = renyi(&["index", "--language"]);
+    assert!(!ok);
+    assert!(stderr.contains("--language needs --chunks"), "{stderr}");
+    let (ok, _, stderr) = renyi(&["index", "--chunks", "--language", "."]);
+    assert!(!ok);
+    assert!(stderr.contains("takes no path"), "{stderr}");
 }

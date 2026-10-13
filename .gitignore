@@ -3,6 +3,8 @@ target/
 __pycache__/
 examples/.scratch*.ry
 starter/workflows/out/
+starter/retrieval/*.jsonl
+starter/retrieval/retrieval-index.json
 _site/
 editors/vscode/node_modules/
 editors/vscode/out/

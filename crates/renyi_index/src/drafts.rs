@@ -135,23 +135,6 @@ pub fn ability_draft(
     for function in &ability.functions {
         signature_refs(world, module, function, &mut refs);
     }
-    let mut signature = ability.name.text.clone();
-    if !ability.type_params.is_empty() {
-        let params: Vec<&str> = ability
-            .type_params
-            .iter()
-            .map(|p| p.text.as_str())
-            .collect();
-        signature.push_str(&format!(" of {}", params.join(", ")));
-    }
-    if !ability.requirements.is_empty() {
-        let requirements: Vec<String> = ability.requirements.iter().map(type_text).collect();
-        signature.push_str(&format!(" where self can {}", requirements.join(" and ")));
-    }
-    if !ability.functions.is_empty() {
-        let methods: Vec<String> = ability.functions.iter().map(function_signature).collect();
-        signature.push_str(&format!(": {}", methods.join("; ")));
-    }
     Draft {
         key: Key::Ability(id),
         module,
@@ -159,7 +142,7 @@ pub fn ability_draft(
         kind: Kind::Ability,
         name: ability.name.text.clone(),
         public: ability.public,
-        signature,
+        signature: ability_signature(ability),
         docs: ability.docs.clone(),
         span: ability.span,
         name_span: Some(ability.name.span),
@@ -324,6 +307,28 @@ pub fn function_signature(function: &ast::Function) -> String {
         out.push_str(&for_any_text(for_any));
     }
     out
+}
+
+/// `Name of T where self can A: m(self) returns R; ...`, one line.
+pub fn ability_signature(ability: &ast::AbilityDecl) -> String {
+    let mut signature = ability.name.text.clone();
+    if !ability.type_params.is_empty() {
+        let params: Vec<&str> = ability
+            .type_params
+            .iter()
+            .map(|p| p.text.as_str())
+            .collect();
+        signature.push_str(&format!(" of {}", params.join(", ")));
+    }
+    if !ability.requirements.is_empty() {
+        let requirements: Vec<String> = ability.requirements.iter().map(type_text).collect();
+        signature.push_str(&format!(" where self can {}", requirements.join(" and ")));
+    }
+    if !ability.functions.is_empty() {
+        let methods: Vec<String> = ability.functions.iter().map(function_signature).collect();
+        signature.push_str(&format!(": {}", methods.join("; ")));
+    }
+    signature
 }
 
 /// A record as `Name(field: Type, ...)`, a sum type as `Name is A(...) or

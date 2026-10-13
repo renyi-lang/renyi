@@ -1612,7 +1612,7 @@ Python scripts under `tools/` are development aids.
 | `renyi format [--check] <file>...` | rewrite in canonical layout (section 16) | `--check`: 1 when a file differs |
 | `renyi tokens <file>` | the token stream | 1 on a lexical error |
 | `renyi parse [--json] [--declarations] <file>` | the syntax tree; `--declarations` reads a library declaration file, whose functions have no bodies | 1 on a parse error |
-| `renyi index [--json \| --budgets \| --diff <base> \| --chunks] [path]` | the project map, its budgets, the semantic diff, the chunks for retrieval by embedding (`design/05-agent-tooling.md`) | |
+| `renyi index [--json \| --budgets \| --diff <base> \| --chunks [--language]] [path]` | the project map, its budgets, the semantic diff, the chunks for retrieval by embedding, of the project or of the language's documents and library (`design/05-agent-tooling.md`) | |
 | `renyi tools [path]` | the tool manifest (section 15) | |
 | `renyi run [options] <file> [arguments]` | check, then run `main` under its grant | 0; 1 when `main` fails; 2 on a crash or over the memory budget of `--sandbox`; the code of `environment.exit` |
 | `renyi run --manifest ...` | also print the run manifest (toolchain, the extensions beyond the standard library, code hash, the dependencies with the lockfile's version and hash of each, grant, arguments, environment, outcome, output hash) | as `run` |

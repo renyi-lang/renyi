@@ -32,9 +32,9 @@ use renyi_syntax::{format, SourceFile, Span};
 use drafts::{Draft, Key};
 
 pub use budgets::{over_budget, Budgets};
-pub use chunks::{chunk_json, chunks, chunks_lines, Chunk};
+pub use chunks::{chunk_json, chunks, chunks_lines, language_chunks, Chunk, Document};
 pub use diff::{diff, diff_json, render_diff, Bump, Change, Diff, Entry};
-pub use drafts::{function_signature, signature_references, type_signature};
+pub use drafts::{ability_signature, function_signature, signature_references, type_signature};
 pub use render::{definition_json, to_json, to_text};
 pub use tools::{manifest_json, tools_of, tools_of_in, Tool};
 

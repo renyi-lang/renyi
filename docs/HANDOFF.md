@@ -626,24 +626,16 @@ and push there directly.
    Lines from `renyi index --chunks` and an MCP tool `chunks`, the
    measure by a query set, the stages 37a to 37c), and its four
    questions were answered on 2026-10-13, every one the recommended
-   option (decision AW40). 37a and 37b are done (decisions AW41 and
-   AW42; the paragraphs "Stage 37a as built" and "Stage 37b as built"
-   at the end of the study's section): the measure settled the chunk's
-   text, and `renyi index --chunks` and the MCP tool `chunks` write it
-   (design document 05, section 8). The work now is 37c, the extras:
-   the language's documents as chunks, `renyi index --chunks
-   --language` (one chunk per section of the cheat sheet, per section
-   of the reference and per declaration of the library with its
-   purpose, kind `section` or `library`, the same keys in the
-   metadata, the project header naming the toolchain), so that a host
-   embeds the language beside the project; and the example pipeline in
-   `starter/retrieval/` (a Python script of about sixty lines with its
-   README: read the JSON Lines, embed with a local model through
-   `sentence-transformers`, answer a question with the nearest chunks
-   and their neighbours by `calls` and `tested_by`; CI does not run it,
-   a model being outside the toolchain). Each with its decision entry,
-   its paragraph here, the documents (05 section 8, the starter's
-   README). Then
+   option (decision AW40). Stage 37 is closed: 37a, 37b and 37c are
+   done (decisions AW41 to AW43; the paragraphs "Stage 37a as built"
+   to "Stage 37c as built" at the end of the study's section): the
+   measure settled the chunk's text, `renyi index --chunks` and the
+   MCP tool `chunks` write it, `--language` writes the language's
+   documents and library the same way, and `starter/retrieval/` shows
+   the host's side (design document 05, section 8). The work now is
+   35c, completion in the language server (the study's plan in the
+   section "Stage 35, the design study", decision AW34): completion
+   of names in scope with signature help, and workspace symbols. Then
    35c, completion with signature help and workspace symbols (AW34
    (3) and (4)), and release 0.2 (decision AW36). The wasm lane is
    `D:\Projects\.worktrees\Renyi\wasm\` (its target directory for the
@@ -4240,6 +4232,37 @@ coarse; the check is most of it). The documents: 05 section 8 (the
 sections after it renumbered), its tool table and status, positioning
 2.3 and its table, the starter's README and skill, the reference's
 command row, the README, the notes.
+
+**Stage 37c as built** (decision AW43, 2026-10-13).
+`renyi_index::language_chunks`: one chunk per section of a Markdown
+document (a `##` section with text of its own, each `###` subsection
+under its section's heading, the text before the first heading; the
+title line heads every chunk; a heading in a fence is text), then per
+library module (`renyi_check::LIBRARY`) its chunk and one per public
+declaration from the parsed declaration file (the header of AW41 with
+the declared effects and failures, then the declaration's text; a
+method named `Type.method` as the edges spell a call; `package` `std`
+and the version; `ability_signature` shared with the drafts). The
+binary embeds `docs/reference.md` as `crates/renyi/reference.md`
+beside the cheat sheet's copy (`tests/cheat_sheet.rs` holds both
+equal); `renyi index --chunks --language` (no path; `--language` needs
+`--chunks`) and the tool `chunks` with `language` write them, the
+header line naming the project `renyi` and counting the sections apart
+(`sections`, now in every header line). The export: 370 chunks (86
+sections, 16 modules, 268 declarations), 432 KB; the sections' median
+765 characters, the longest 12,637 (appendix A). The example pipeline
+`starter/retrieval/retrieve.py` with its README, and section 7 of the
+starter's README; run on the corpus and the language with the small
+model in the lane: 571 chunks embedded once, none the second time, the
+answers in the decision entry; CI compiles it (`py_compile`) and does
+not run it. The tests: `a_document_is_cut_at_its_headings` and
+`the_language_comes_as_sections_and_declarations` in
+`crates/renyi_index/tests/chunks.rs`, the command in `tests/index.rs`,
+the tool in `tests/mcp.rs`, the copy in `tests/cheat_sheet.rs`. The
+documents: 05 section 8 a paragraph and the order of work, the
+reference's command row, the starter's README and skill, the notes.
+The lane's `rag_37b/language.jsonl` and `retrieval-index.json`; the
+scripts in `scratch_37/`.
 
 ## Stage 35, the language server's completion, references and rename: the design study (session 14)
 
@@ -8507,6 +8530,10 @@ holds between calls.
   `Json::render_line`, `renyi index --chunks`, the MCP tool `chunks`,
   the tests, the documents; the export checked against the prototype
   (the lane's `rag_37b/`, the scripts in `scratch_37/`).
+- Stage 37c (decision AW43): `language_chunks`, the reference's copy in
+  `crates/renyi/`, `renyi index --chunks --language`, the tool's
+  `language`, `starter/retrieval/`, the tests, the documents; stage 37
+  closed.
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

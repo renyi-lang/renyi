@@ -66,13 +66,15 @@ jobs:
 
       # the starter pack for agents (decision AI3): the five workflows
       # check clean, are in canonical layout and pass their tests from
-      # their recordings; the skill's cheat sheet is the repository's
+      # their recordings; the skill's cheat sheet is the repository's; the
+      # retrieval example (decision AW43) compiles (a model is not run here)
       - name: Starter pack
         run: |
           cargo run -q -- check starter/workflows/*.ry
           cargo run -q -- format --check starter/workflows/*.ry
           cargo run -q -- test starter/workflows/*.ry
           cmp docs/cheatsheet.md starter/skill/renyi/cheatsheet.md
+          python -m py_compile starter/retrieval/retrieve.py
 
       # the showcase game (decision AW28, stage 34) is held like the
       # starter pack: it checks clean under `--strict`, is in canonical

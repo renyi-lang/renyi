@@ -639,7 +639,11 @@ where one decided, the status. The dates are those of the decisions.
     the text) and the MCP tool `chunks`, held by tests and checked
     against the prototype byte for byte. 37c, the extras (the
     language's documents as chunks, the example pipeline in
-    `starter/`), is the work now. 35c follows it.
+    `starter/`) done (decision AW43, 2026-10-13): `renyi index --chunks
+    --language` (the cheat sheet's and the reference's sections, the
+    library's modules and public declarations, from the binary's own
+    copies), the tool's `language`, `starter/retrieval/retrieve.py`
+    with its README. Stage 37 closed; 35c follows.
 
 ## 3. The tracks
 
@@ -692,7 +696,7 @@ state of each line.
   35a and 35b done; 35c completion open), 37 (the map for retrieval by
   embedding, opened 2026-10-13, its study done and its questions
   answered, AW40; 37a the measure done, AW41; 37b the export done,
-  AW42; 37c the extras open).
+  AW42; 37c the extras done, AW43; the stage closed).
   Candidate not decided: the C API of decision A5.
 - **G. Release and the ecosystem**: stages 17, 30. Release 0.1.0 is
   out; every release after it follows `docs/RELEASE.md`; the icon and
@@ -786,8 +790,9 @@ by embedding (the owner's request of 2026-10-13; its design study is
 in the handoff and its four questions answered, decision AW40; 37a
 measured the chunk texts and settled the header, decision AW41; 37b
 built the export, `renyi index --chunks` and the tool `chunks`, decision
-AW42; 37c, the extras, is the work now), then 35c, completion with
-signature help and workspace symbols. Release 0.2
+AW42; 37c the language's documents and the example pipeline, decision
+AW43; the stage closed). 35c, completion with signature help and
+workspace symbols, is the work now. Release 0.2
 follows stage 35 (decision AW36,
 the owner's answer of 2026-10-13), with the extension published to
 the Marketplace and Open VSX from the owner's publisher and the
