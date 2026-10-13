@@ -577,6 +577,21 @@ where one decided, the status. The dates are those of the decisions.
     references and rename of declarations, 35b the locals, 35c
     completion); its four questions asked.
 
+36. **The DOOM look** (session 14, 2026-10-13, in progress; decision
+    AW35, the owner's call after the play page). The showcase game made
+    to look like the original: `std.screen` gains `Strip` (a column of
+    a named image between two rows, shaded), `Picture` (a named image
+    stretched to a size at a place, shaded) and `play(sound)`, the
+    console host drawing both as glyphs of their shade and the page
+    drawing them from the game's images and playing its sounds; the
+    art from Freedoom (3-clause BSD) taken by a script with its notice
+    and its sizes as constants; the game rewritten on the contract by a
+    subagent (textured walls, an animated demon, the shotgun, the
+    status bar, the sounds); a page of its own on the site with a title
+    screen, full width; the frame rate measured again. The parts: 36a
+    the contract and the hosts, 36b the art, 36c the game (the
+    subagent's), 36d the page and the measure. Stage 35 follows it.
+
 ## 3. The tracks
 
 The same stages grouped by the line of work they belong to, with the
@@ -707,7 +722,9 @@ library module `std.screen`, `present` suspending the program for the
 page, the game played in the browser after stage 33). Stages 33 and 34
 are done (decision AW33, 2026-10-13: the play page of the site); the
 language server's completion, references and rename are stage 35,
-its design study done on 2026-10-13 and its four questions asked.
-Not scheduled: the
+its design study done on 2026-10-13 and its four questions answered
+(decision AW34); stage 36, the DOOM look, was opened the same day in
+parallel with it (decision AW35: the owner's call after the play
+page) and goes first. Not scheduled: the
 Python binder's items of track E, the Rust front end's name sets as
 bits, the emitter's own round for the compile row.

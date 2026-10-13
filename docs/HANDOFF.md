@@ -547,7 +547,13 @@ and push there directly.
    with its design note first when it opens. Stage 35's study is the
    section "Stage 35, the language server's completion, references
    and rename: the design study (session 14)" below, its four
-   questions asked on 2026-10-13. The wasm lane is
+   questions answered on 2026-10-13 (decision AW34, every answer the
+   recommended one). The same day the owner, shown the play page,
+   asked for the DOOM look: stage 36 (decision AW35), opened in
+   parallel and going first: the contract (`Strip`, `Picture`,
+   `play`), the hosts and the page by this session, the art from
+   Freedoom by a script, the game by a subagent (Opus 5.5, medium);
+   then 35a. The wasm lane is
    `D:\Projects\.worktrees\Renyi\wasm\` (its target directory for the
    wasm32 builds, `check_asis.log` the trial build, the gates logs,
    the measures and the scripts of each stage).

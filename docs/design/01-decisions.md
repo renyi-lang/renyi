@@ -9155,3 +9155,88 @@ rate line on the page is the measure AW28 asked for, visible to anyone
 who plays. Stage 33 is done and stage 34 with it; the language
 server's completion, references and rename are next (AW28's order),
 then the C API.
+
+**AW34. The owner's answers after the design study of stage 35: the
+three sub-stages in order, the locals recorded by both checkers, the
+bare completion with the names and the statement words, signature help
+and workspace symbols included.** Asked on 2026-10-13 after the study
+(the handoff's section "Stage 35, the language server's completion,
+references and rename: the design study (session 14)"; AskUserQuestion,
+one batch of four), every answer the recommended option. (1) The split
+and the order: 35a references and rename of declarations, 35b the
+locals (the checker's record, then references, rename and the names in
+scope for them), 35c completion; each built, tested and committed in
+turn. (2) The locals: the checker records every use of a binding as a
+reference, `Target::Local` with the binding's declaration span, in
+`crates/renyi_check/src/check.rs` and the same in `compiler/bodies.ry`;
+the judges compare the diagnostics, which do not print the references,
+so the two records are kept equal by hand, as the transcription is.
+(3) The completion at a bare position: the bindings of the function
+declared before the position, the module's functions, constants and
+types, the imports' namespaces and exposed names, the prelude's
+functions that are not methods, and the words that start a statement
+as keywords, the locals first. (4) The extras:
+`textDocument/signatureHelp` and `workspace/symbol` join 35c. Why: the
+order puts the shared record (the declarations' references) first and
+the feature with the most judgment in it (completion) last; the
+checker is the one place that knows the scopes, so recording there
+keeps the server free of a second scoping; the statement words
+complete what a reader types most; the two extras cost little on the
+signatures and the map the server already has. (user)
+
+**AW35. The DOOM look: stage 36, opened in parallel with stage 35, the
+art from Freedoom, `Strip`, `Picture` and `play` in `std.screen`, a
+page of its own with sound.** The owner, shown the play page of AW33
+on 2026-10-13, found the game crude ("游戏看着太粗糙了"), floated a
+separate front end on a host such as Vercel, and asked for the showcase
+to be a DOOM replica in the literal sense ("直接就按字面意义复刻
+DOOM"). The diagnosis given: the look is the renderer's, not the
+host's; the page and the module are served by GitHub Pages already
+(`renyi-lang.org/play.html` answered 200 and the module
+`application/wasm`, checked that day), and a second host would draw the
+same flat-colour columns shaded by distance, the same two-tone figures
+and the same eight-pixel labels; what DOOM has is textured walls,
+animated sprites, a weapon in the foreground, a status bar and sound.
+The four answers (AskUserQuestion, one batch of four; every answer the
+recommended option): (1) now, in parallel: a subagent (Opus 5.5, medium
+effort, subscription quota, as for the game's first version, AW28)
+rewrites the game's rendering, animation, weapon and status bar on the
+extended contract, while this session extends `std.screen`, the two
+hosts and the page; stage 35 follows. (2) The art from Freedoom
+(github.com/freedoom/freedoom, the 3-clause BSD license of its
+`COPYING.adoc`, checked that day: the sprites, the wall patches, the
+flats and the graphics are PNG files of a DeuTex tree, the sounds WAV
+files, with DOOM's lump names; the demon `sarg*`, the shotgun `shtg*`
+and `shtf*`, the status bar `stbar`, `stfst*`, `stfouch*`, `stfdead0`,
+`sttnum*`, `sttprcnt`, `stysnum*`, the title picture, the sounds
+`dsshotgn`, `dssgtsit`, `dssgtatk`, `dssgtdth`, `dsplpain`, `dspldeth`,
+`dsdoropn`, `dsdorcls` among them); the copyright notice and the
+license kept beside the art in the repository, the README naming the
+source. (3) `std.screen` gains two shapes the host draws from named
+images and one call: `Strip(screen_x, top, bottom, image, column,
+shade)`, one column of the image stretched between two rows, its
+colours scaled by the shade in percent, the column taken modulo the
+image's width; `Picture(screen_x, screen_y, width, height, image,
+shade)`, the image stretched to a size at a place; `play(sound) needs
+screen`, the named sound played once by a host that can. The names are
+the host's to resolve: the page to the files served with the game, the
+terminal to nothing (a strip or a picture is a block of its shade's
+glyph there, a sound is ignored). Floors and ceilings stay flat shaded
+bands, so the VM's work stays one shape per column and the frame rate
+of AW33 holds; the per-pixel work is the host's. The owner declined a
+`Floor` shape that would hand the camera to the host (rendering math
+out of Renyi) and the game drawing pixels itself (sixty thousand shapes
+a frame, which the interpreter cannot give at 60 frames a second). (4)
+A page of its own on the site, full width, with a title screen and the
+keys, the play page keeping the playground and linking to it; the
+sounds played by the page through `play`. The page and the game are
+named by the game, not by the trademark. The stages: 36a the contract,
+the VM, the console host and the web crate; 36b the art (a script that
+takes the chosen files from Freedoom, their sizes as constants for the
+game, the notice); 36c the game, the subagent's part; 36d the page and
+the measure. Why: the showcase is the first thing a visitor plays, and
+a Doom-style game that looks like 1992 says more about the language
+than one that looks like a sketch; Freedoom gives the look at no
+license cost; the contract stays a list of shapes, each a few
+integers and a name, so recording, replay and the console host keep
+working and the game stays a pure function of its state. (user)
