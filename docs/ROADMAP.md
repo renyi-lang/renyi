@@ -625,7 +625,12 @@ where one decided, the status. The dates are those of the decisions.
     query set (hit@1 and hit@5 with one embedding model); no model in
     the toolchain. The design study is the handoff's section "Stage 37,
     the map for retrieval by embedding: the design study (session 14)";
-    its four questions are with the owner. 35c follows it.
+    its four questions answered the same day, every one the recommended
+    option (decision AW40: the prototype measures the three chunk texts
+    first; `index --chunks` and the MCP tool `chunks`; the id the hash
+    of the embedded text; module and test chunks in 37b, the documents
+    and the example in 37c). 37a, the prototype and the measure, is the
+    work now. 35c follows it.
 
 ## 3. The tracks
 
@@ -676,8 +681,8 @@ state of each line.
   server), 19 (the resident world, the language server, the watch, the
   embedding API), 35 (references and rename in the language server,
   35a and 35b done; 35c completion open), 37 (the map for retrieval by
-  embedding, opened 2026-10-13, its study done). Candidate not decided:
-  the C API of decision A5.
+  embedding, opened 2026-10-13, its study done and its questions
+  answered, AW40). Candidate not decided: the C API of decision A5.
 - **G. Release and the ecosystem**: stages 17, 30. Release 0.1.0 is
   out; every release after it follows `docs/RELEASE.md`; the icon and
   the wordmark (AV1) are in the site, the README and the extension; the
@@ -767,8 +772,9 @@ to 60 frames a second in the browser); 35a and 35b are done
 (decisions AW38 and AW39: references and rename of declarations,
 then of the locals), so the next stage is 37, the map for retrieval
 by embedding (the owner's request of 2026-10-13; its design study is
-in the handoff, its four questions with the owner), then 35c,
-completion with signature help and workspace symbols. Release 0.2
+in the handoff and its four questions answered, decision AW40; 37a,
+the prototype and the measure, is the work now), then 35c, completion
+with signature help and workspace symbols. Release 0.2
 follows stage 35 (decision AW36,
 the owner's answer of 2026-10-13), with the extension published to
 the Marketplace and Open VSX from the owner's publisher and the

@@ -9480,3 +9480,30 @@ and of `self`, prepareRename on a use). Next, by the owner's call of
 embedding ("find a way to fit the RAG side"), its design study first,
 then 35c, completion with signature help and workspace symbols (AW34
 (3) and (4)), then release 0.2 (AW36).
+
+**AW40. The owner's answers on stage 37, the map for retrieval by
+embedding.** 2026-10-13, after the study (the handoff's section "Stage
+37, the map for retrieval by embedding: the design study (session 14)"),
+every answer the recommended option. (1) The chunk's text is settled by
+a prototype that measures the three candidates on a query set (the
+canonical source alone; a header from the record, the qualified name,
+the kind, the signature, the purpose, the tags, the transitive effects
+and the module's purpose, with the source; the header, the source and
+the purposes of what the definition calls), hit@1 and hit@5 with one
+embedding model, and the best is built. (2) The export lives in `renyi
+index --chunks`, JSON Lines with a header line, and in an MCP tool
+`chunks` with the same answer. (3) A chunk's id is the hash of the
+embedded text, so that the host re-embeds exactly what changed, with
+the map's `id` and `text_hash` in the metadata for the semantic
+identity. (4) Module chunks and test chunks are part of 37b; the
+language's documents as chunks (`--language`: the cheat sheet, the
+reference's sections, the library's declarations) and an example
+pipeline in `starter/` are 37c. The stages: 37a the prototype and the
+measure (`tools/chunks_prototype.py` over `index --json` and the
+sources, the query set under `tests/retrieval/`, the three texts
+measured, the text settled, the numbers in its decision entry); 37b the
+export in Rust (`renyi_index::chunks`, `index --chunks`, the MCP tool,
+the tests of the ids' stability and of the shape, `05-agent-tooling.md`,
+positioning 2.3, the starter's README, the MCP table); 37c the extras.
+No model and no network in the toolchain: Renyi writes, the host
+embeds. 35c follows stage 37; release 0.2 follows stage 35 (AW36).

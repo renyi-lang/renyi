@@ -625,9 +625,15 @@ and push there directly.
    host's side needs, the chunk's text, its id, the metadata, JSON
    Lines from `renyi index --chunks` and an MCP tool `chunks`, the
    measure by a query set, the stages 37a to 37c), and its four
-   questions were put to the owner on 2026-10-13 (the answers become
-   decision AW40, then 37a starts: the prototype in Python over
-   `index --json` and the measure of the three chunk texts). Then
+   questions were answered on 2026-10-13, every one the recommended
+   option (decision AW40). The work now is 37a, the prototype and the
+   measure: `tools/chunks_prototype.py` over `index --json` and the
+   sources writes the three chunk texts as JSON Lines, the query set
+   under `tests/retrieval/` (about forty questions over `examples/`
+   and `compiler/` with the definition each targets), the measure
+   hit@1 and hit@5 with one local embedding model, the text settled
+   by it and the numbers in 37a's decision entry; then 37b, the
+   export in Rust with the MCP tool, and 37c the extras. Then
    35c, completion with signature help and workspace symbols (AW34
    (3) and (4)), and release 0.2 (decision AW36). The wasm lane is
    `D:\Projects\.worktrees\Renyi\wasm\` (its target directory for the
@@ -4172,7 +4178,8 @@ the MCP tool alone; (3) the chunk's id: the hash of the embedded text
 with `id` and `text_hash` in the metadata (recommended), `text_hash`,
 `id`; (4) the extras: module and test chunks in 37b, the language's
 documents and the example pipeline in 37c (recommended), definitions
-only, everything in one stage.
+only, everything in one stage. Answered on 2026-10-13, every one the
+recommended option: decision AW40.
 
 ## Stage 35, the language server's completion, references and rename: the design study (session 14)
 
@@ -8427,8 +8434,9 @@ holds between calls.
   design study of the map for retrieval by embedding (the section
   "Stage 37, the map for retrieval by embedding: the design study
   (session 14)"), the roadmap's entry 37 and its track line; the four
-  questions put to the owner; the study's draft kept in the wasm
-  lane's `scratch_37/`.
+  questions put to the owner and answered the same day, every one the
+  recommended option (decision AW40); the study's draft and the
+  scripts kept in the wasm lane's `scratch_37/`.
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 
