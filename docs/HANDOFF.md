@@ -544,7 +544,10 @@ and push there directly.
    completion, references and rename (AW28's order; decisions AN2 and
    AN3 describe the server as it is, `crates/renyi/src/lsp.rs` and
    `lsp/describe.rs`), then the C API of decision A5; each is a stage
-   with its design note first when it opens. The wasm lane is
+   with its design note first when it opens. Stage 35's study is the
+   section "Stage 35, the language server's completion, references
+   and rename: the design study (session 14)" below, its four
+   questions asked on 2026-10-13. The wasm lane is
    `D:\Projects\.worktrees\Renyi\wasm\` (its target directory for the
    wasm32 builds, `check_asis.log` the trial build, the gates logs,
    the measures and the scripts of each stage).
@@ -3949,6 +3952,181 @@ iterator in two slots, the Rust front end's name sets).
 Then the first stage the owner confirms. Done in session 14: the study is
 the section "Stage 29, the new backend: the design study (session 14)"
 below, and the owner's answers are decision AW1.
+
+## Stage 35, the language server's completion, references and rename: the design study (session 14)
+
+**What the owner ordered (AW28)**: after the WASM target, the language
+server's completion, references and rename, then the C API of decision
+A5, each a stage with its design note first and its questions in a
+batch of four, the recommended option first.
+
+**What exists.** `renyi lsp` (decisions AN2 and AN3;
+`crates/renyi/src/lsp.rs`, 687 lines, and `lsp/describe.rs`, 436): one
+`Workspace` of `renyi_workspace` over the folder in `as_written` mode,
+the editor's buffers as overlays, whole-text synchronization, positions
+in UTF-16 units; the capabilities `hoverProvider`, `definitionProvider`
+and `documentSymbolProvider`; every request refreshes the workspace and
+publishes the diagnostics that changed first. Hover and definition rest
+on `what_is_at`: the innermost of the checker's references containing
+the offset (`CheckedProject::references`, a `(ModuleId, BodyLocation,
+Reference { target, span })` per resolved name of a body), else the
+declaration whose name token is there (`declaration_at`, over the
+module's items). The VS Code client (`editors/vscode/src/extension.js`)
+is a `LanguageClient` of a few lines that needs no change for a new
+capability. `crates/renyi/tests/lsp.rs` (438 lines) drives the binary
+over pipes on a two-file project written under `target/lsp/project/`
+and checks the handshake, the diagnostics, hover, definition, the
+symbols and the exit; a request the server does not know,
+`workspace/symbol` among them, is answered with `method not found`.
+
+**The checker's record.** `Target` in `crates/renyi_check/src/check.rs`
+has ten variants: `Function`, `AbilityMethod`, `Constant`, `Type`,
+`Variant`, `Ability` (recorded by the tools that read signatures, never
+by the checker), and four the VM reads and the map ignores (`Number`,
+`Result`, `Typed` of decision AU1, `Otherwise`). `record(target, span)`
+keeps one while a body is being checked (13 sites for the named
+targets). A local is not recorded: a binding is `Binding { name, ty,
+mutable, used, span, kind }` in the scopes, found by `lookup(name)` from
+the innermost scope; `infer_name` marks it used and answers its type,
+`StmtKind::Change` looks its mutability up, `SelfValue` looks `self` up,
+an update in place looks its receiver up and a query its binding; the
+declaration's span is in the binding, the use's span is dropped. The
+checker written in Renyi mirrors the record (`compiler/bodies.ry`:
+`Target` with the same ten variants, `Reference(body, target, span)`,
+`find_binding`, `mark_used`, the same sites); the judge compares the
+diagnostics of `renyi check --json`, which do not print the references,
+so a new target in the record is kept equal by hand, as the
+transcription is; the emitter in Renyi reads `FunctionTarget`,
+`TypedTarget` and `OtherwiseTarget` alone. The consumers that match
+`Target` exhaustively: `renyi_index::edges` (one arm for the ignored
+kinds), `lsp/describe.rs` (`describe_target`), and the VM's compiler in
+`compile/expr.rs` and `compile/pattern.rs` (five matches, to be checked
+for a wildcard). Signatures: `renyi_index::drafts` collects the
+references of a definition's signature (`signature_refs`, `type_refs`:
+the types of parameters and results, the abilities) as `(Target,
+Span)` for the map's edges; they are private to the drafts and not in
+`CheckedProject::references`.
+
+**The shadowing rule helps.** A name is bound once per function
+(`shadowing`; a binding may not take an import's namespace or a module
+function's name either), so a local's name is unique within its
+function, a use resolves to the one binding of that name, and renaming
+a local cannot capture a use of another binding of the same name; what
+a rename can do is clash with a function, an import or another binding,
+which the same rule names.
+
+**What each feature needs.**
+
+*References of a declaration* (`textDocument/references`): the
+declaration under the cursor by `what_is_at`, then every reference of
+the workspace whose target is the same (`Target` is `PartialEq`): the
+body references of every module from `CheckedProject::references`, the
+signature references the map collects for a type or an ability (to be
+made reachable: `drafts::signature_refs` as a public function over a
+module's items), the `exposing` names of imports (recorded nowhere: found
+in the module's `imports` by name), and the declaration itself when
+`includeDeclaration` says so; a library definition's references in the
+workspace's files alone. A `Location` per reference: the file's URI by
+`uri_of`, the range by `range_json`.
+
+*Rename of a declaration* (`textDocument/rename`,
+`textDocument/prepareRename`): the same set as edits
+(`WorkspaceEdit.changes`, a `TextEdit` per reference and the
+declaration's name token, grouped by URI), refused for a library
+definition or one declared in a dependency (`workspace.file_of(module)`
+none, or the file tagged with a package), for a new name that is not an
+identifier of the right class (a function, a constant or a field lower
+snake; a type, a variant or an ability Capitalized, as reference section
+1 spells the classes), that is a reserved word of section 17, or that is
+already declared in the module (a function, a type, a constant or an
+import by that name) or bound in a body that references it (the
+shadowing rule). The refusal is a response error with the reason, which
+the editor shows; `prepareRename` answers the name's range and the
+current name, or null where there is nothing to rename.
+
+*Locals* (references and rename of a variable, a parameter, a loop or a
+pattern variable): the checker records the use of a binding as a
+reference, `Target::Local(declared: Span)`, the binding's declaration
+span, at `infer_name`, `Change`, `SelfValue`, the in-place receiver and
+the query's binding, in `check.rs` and the same in `bodies.ry`
+(`LocalTarget(declared: Span)`); the consumers gain an arm (the map and
+the VM ignore it). The server then finds the binding whose declaration
+or use is under the cursor and answers the uses within the body; rename
+edits the declaration and the uses, refused for `self`, for a reserved
+word or for a name the function already binds, imports or declares. The
+record costs one push per name read; `renyi check` of
+`compiler/bodies.ry` is the measure (the check row by instructions in
+the perf lane, if it moves beyond the noise).
+
+*Completion* (`textDocument/completion`, trigger `.`): the context from
+the text before the position on its line, lexed with `renyi_syntax`'s
+lexer: (i) `namespace.` where the namespace is an import of the module:
+the public functions, constants and types of that module (the library's
+from its declaration file, the project's from its checked module), each
+a `CompletionItem` with the signature as `detail` and the purpose as
+`documentation`, kind Function, Constant or Class; (ii) an expression
+followed by `.`: the type of the expression from the innermost
+`Target::Typed` reference ending at the dot (every expression's type is
+recorded at its span, decision AU1), then the methods of that type: the
+functions whose first parameter is `self` of that type (or of its base,
+for a subtype) in the module declaring the type and in the prelude, and
+the methods of the abilities the type has; (iii) after `import ` or
+`import std.`: the library modules and the project's modules; (iv) in a
+`needs` clause: the capabilities of the tree; (v) otherwise the names in
+scope: the bindings of the function declared before the position (from
+the local references once they exist: every `Local` declaration span
+before the position within the item's span), the module's functions,
+constants and types, the imports' namespaces and exposed names, the
+prelude's functions that are not methods, and the words that start a
+statement (`let`, `change`, `for each`, `if`, `match`, `repeat until`,
+`return`, `fail with`, `check`, `break`, `continue`, `run
+concurrently`) as keywords; the items sorted locals first, then the
+module's, the imports', the prelude's and the keywords (`sortText`), the
+editor filtering by the prefix typed.
+
+*Signature help* (`textDocument/signatureHelp`, triggers `(` and `,`;
+an option): the call being written, found by the innermost unclosed `(`
+on the line before the position, its callee resolved as completion
+resolves a name or a method; the signature as `function_signature`
+spells it with one `ParameterInformation` per parameter (the label
+`name: Type`), the active parameter the count of commas before the
+position. *Workspace symbols* (`workspace/symbol`; an option): every
+definition of the workspace whose name contains the query, as the map's
+records list them, with its location.
+
+**The cost.** The server: completion about 250 lines (the contexts, the
+candidates, the items), references and rename about 200 (the collection,
+the validation, the edits), signature help about 100, workspace symbols
+about 40; `describe.rs` gains the local and signature targets; the
+checker's `Local` target about 30 lines in `check.rs` and the same in
+`bodies.ry`; the tests in `tests/lsp.rs` (a third file in the project
+with a local, a method and a rename across files) about 250 lines; the
+reference's appendix B row of `renyi lsp`, the README's and the
+extension's README's line; decision AN2's scope sentence superseded by
+the new entry.
+
+**The measure of the stage**: the server's tests; the time of a
+completion, a references and a rename request on `compiler/` (the
+largest project of the repository, `bodies.ry` 7,878 lines) through the
+test harness, wall-clock, coarse; the check row by instructions before
+and after the local references, if it moves beyond the noise.
+
+**The stages proposed**: 35a references and rename of declarations (the
+collection, the validation, the edits, the tests); 35b the local
+references in both checkers, then references, rename and the names in
+scope for locals; 35c completion with its contexts, and signature help
+and workspace symbols if the owner takes them. Each with its decision
+entry and its paragraph here.
+
+**The questions for the owner** (asked on 2026-10-13, AskUserQuestion,
+one batch of four): (1) the split and the order: 35a, 35b and 35c as
+proposed (recommended), completion first, or one stage; (2) the locals:
+recorded by the checker in both checkers (recommended), resolved by the
+server's own walk of the tree, or left out; (3) the bare completion:
+locals, the module's items, the imports, the prelude's bare functions
+and the statement words (recommended), names only, or the module's and
+the imports' names only; (4) the extras: signature help and workspace
+symbols (recommended), neither, or signature help alone.
 
 ## Stage 33, the WASM target: the design study (session 14)
 

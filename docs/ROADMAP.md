@@ -562,6 +562,21 @@ where one decided, the status. The dates are those of the decisions.
     of the site, where the game is played in the browser, at 33d
     (decision AW33), which closes the stage.
 
+35. **The language server's completion, references and rename** (session
+    14, 2026-10-13, in progress; decision AW28, the owner's order). The
+    server of decisions AN2 and AN3 gains `textDocument/references`,
+    `textDocument/rename` with `prepareRename`, `textDocument/completion`
+    and, if the owner takes them, `signatureHelp` and `workspace/symbol`;
+    the checker records the uses of locals as references
+    (`Target::Local`, mirrored in `compiler/bodies.ry`) so that a
+    variable has references and a rename too. The design study done on
+    2026-10-13 (the handoff's section "Stage 35, the language server's
+    completion, references and rename: the design study (session 14)":
+    what the server and the checker's record have, the shadowing rule,
+    what each feature needs, the cost, the measure, the stages 35a
+    references and rename of declarations, 35b the locals, 35c
+    completion); its four questions asked.
+
 ## 3. The tracks
 
 The same stages grouped by the line of work they belong to, with the
@@ -691,7 +706,8 @@ parallel (stage 34: a Doom-style raycaster in Renyi by a subagent, the
 library module `std.screen`, `present` suspending the program for the
 page, the game played in the browser after stage 33). Stages 33 and 34
 are done (decision AW33, 2026-10-13: the play page of the site); the
-language server's completion, references and rename are the next
-stage. Not scheduled: the
+language server's completion, references and rename are stage 35,
+its design study done on 2026-10-13 and its four questions asked.
+Not scheduled: the
 Python binder's items of track E, the Rust front end's name sets as
 bits, the emitter's own round for the compile row.
