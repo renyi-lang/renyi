@@ -21,7 +21,7 @@ branches of the repository.
 | M3 | the VM: `run`, `record`, `run --replay`, `reproduce`, `--explain`, `--profile`, `test` with `replays`, budgets, the grant stack, the run manifest, every library module | done (stage 7) |
 | M4 | the library and the package manager: packages, `std.process`, the foreign function interface | done (stage 15) |
 | M5 | the integration: the registration API, the Python bridge and binder, the resident world, the language server, `serve --watch`, the embedding API | done (stages 18 and 19) |
-| M6 | ahead-of-time code: machine code for the bytecode, the baseline JIT, the template tier, `renyi build` images and self-contained executables | the machine code exists (stages 16, 21, 22, 24, 26); the WASM target is stage 33 (its study AW28 and AW29; the toolchain built for wasm32 at 33a, AW30, the suspension and `std.screen` at 33b, AW31, the console host and the game on the library's types at 33c, AW32; the pages follow); the C API comes after the language server's completion (AW28) |
+| M6 | ahead-of-time code: machine code for the bytecode, the baseline JIT, the template tier, `renyi build` images and self-contained executables | the machine code exists (stages 16, 21, 22, 24, 26); the WASM target is stage 33 (its study AW28 and AW29; the toolchain built for wasm32 at 33a, AW30, the suspension and `std.screen` at 33b, AW31, the console host and the game on the library's types at 33c, AW32, the pages at 33d, AW33: stage 33 done on 2026-10-13); the C API comes after the language server's completion (AW28) |
 | Self-hosting | the compiler written in Renyi (lexer, parser, checker, emitter) held equal to the Rust toolchain by the judges; the binary switches to it when it is within 3 times the Rust front end's time (decision AU35 ii) | the compiler exists and is judged (stages 11, 12, 14, 15); the speed round (stages 25 to 32) closed at the gate on 2026-10-13, the ratio 2.96 against 3 (AW26); the switch deferred by the owner, the Rust front end kept (AW27) |
 
 ## 2. The stages, in order
@@ -495,7 +495,7 @@ where one decided, the status. The dates are those of the decisions.
     end kept, the speed round closed; the next stage is one of the
     candidates of section 4, the owner's choice.
 
-33. **The WASM target** (session 14, 2026-10-13, in progress; decision
+33. **The WASM target** (session 14, 2026-10-13, done; decision
     AW28, the owner's order). The VM for the browser: the interpreter
     compiled to WebAssembly with the natives that cannot exist there
     left out or stubbed, a page on the site that runs a program, and the
@@ -536,9 +536,17 @@ where one decided, the status. The dates are those of the decisions.
     frame as text at the terminal's size and a line read per frame,
     given by `renyi run`, `record` and `test` to a program that needs
     `screen`; the game on the library's types with its `play` mode;
-    `screen` in the page's grant); 33d is next.
+    `screen` in the page's grant); 33d done on 2026-10-13 (decision
+    AW33: the page as the host of `std.screen`, the web crate's session
+    holding a suspended run, `renyi_resume`, `renyi_frame` and the
+    status `SUSPENDED` in the C ABI, the play page of the site with the
+    game on a canvas and a playground, `tools/site.py --module`, the
+    Pages workflow building the module, `tools/wasm_check.js --script`
+    and CI's run of the game's `play` mode; in a headless Chrome 60
+    frames a second at 3.98 to 5.51 ms a frame in the VM, coarse
+    wall-clock), which closes the stage.
 
-34. **The showcase game** (session 14, 2026-10-13, in progress, in
+34. **The showcase game** (session 14, 2026-10-13, done, in
     parallel with stage 33; decision AW28). A Doom-style raycasting maze
     written in Renyi under `showcase/raycaster/` by a subagent (Opus
     5.5, medium effort): the map, the player, the rays, the enemies, the
@@ -550,8 +558,9 @@ where one decided, the status. The dates are those of the decisions.
     module `std.screen` (the frame handed to the host, the input
     returned, `present` suspending) built at 33b (decision AW31) and
     the game on its types with its `play` mode at 33c (decision AW32:
-    playable at the terminal through `renyi run`); then the page on
-    the site where the game is played in the browser (33d).
+    playable at the terminal through `renyi run`); and the play page
+    of the site, where the game is played in the browser, at 33d
+    (decision AW33), which closes the stage.
 
 ## 3. The tracks
 
@@ -680,6 +689,9 @@ first), then the language server's completion, references and rename,
 then the C API of decision A5, in that order, with the showcase game in
 parallel (stage 34: a Doom-style raycaster in Renyi by a subagent, the
 library module `std.screen`, `present` suspending the program for the
-page, the game played in the browser after stage 33). Not scheduled: the
+page, the game played in the browser after stage 33). Stages 33 and 34
+are done (decision AW33, 2026-10-13: the play page of the site); the
+language server's completion, references and rename are the next
+stage. Not scheduled: the
 Python binder's items of track E, the Rust front end's name sets as
 bits, the emitter's own round for the compile row.

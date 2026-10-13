@@ -89,8 +89,12 @@ end
 
 ## In the browser
 
-The page of the site is a host of `std.screen` (stage 33d): the same
-`play` runs there, the page draws the shapes on a canvas and fills `Input`
-from the keyboard, and `present` suspends the program between frames so
-that the page can draw. Nothing in the game changes between the terminal
-and the browser.
+The play page of the site (`docs/play.md`, decision AW33) is a host of
+`std.screen`: the toolchain built for WebAssembly compiles these sources
+in the browser, the same `play` runs there, `present` suspends the
+program between frames, and the page draws the shapes on a canvas and
+fills `Input` from the keyboard (`W` and `S` or the arrows move, `A` and
+`D` turn, `Space` fires, `Escape` quits). Nothing in the game changes
+between the terminal and the browser. `tools/wasm_check.js --script`
+drives the same loop under node with the demo's moves, and CI checks
+that it ends as the demo does.

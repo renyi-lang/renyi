@@ -128,7 +128,8 @@ jobs:
   # the toolchain for the browser (decision AW29, stage 33a): the web
   # crate lints and builds for wasm32-unknown-unknown, and the module runs
   # the hello program of the corpus and the showcase game's demo under
-  # node, through the same script the page's glue mirrors
+  # node, and the game's play mode driven frame by frame with the demo's
+  # moves (decision AW33), through the same script the page's glue mirrors
   wasm:
     name: The toolchain for the browser
     runs-on: ubuntu-latest
@@ -148,9 +149,11 @@ jobs:
       - name: Build the module
         run: cargo build -p renyi_web --target wasm32-unknown-unknown --release
 
-      - name: Run hello and the game's demo under node
+      - name: Run hello and the game under node
         run: |
           module=target/wasm32-unknown-unknown/release/renyi_web.wasm
           ls -l "$module"
           test "$(node tools/wasm_check.js "$module" examples/hello.ry)" = "Hello, world!"
           test "$(node tools/wasm_check.js "$module" showcase/raycaster/raycaster.ry showcase/raycaster/*.ry -- demo | tail -1)" = "final score 1220: Escaped"
+          moves="F5 R8 F22 L3 S1 W5 S1 W5 R3 F6 L8 F5 R8 F30 L8 S1 W5 S1 W5 S1 W5 F45 R8 F5 L8 F50"
+          test "$(node tools/wasm_check.js "$module" showcase/raycaster/raycaster.ry showcase/raycaster/*.ry --script "$moves" -- play | tail -1)" = "final score 1220: Escaped"

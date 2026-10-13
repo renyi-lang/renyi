@@ -9067,3 +9067,91 @@ library; the constants over `width()` and `height()` keep the game's
 other modules untouched; and `screen` in the page's grant now, with the
 crash until 33d, keeps CI's demo run honest about what the page serves.
 Next: 33d, the pages.
+
+**AW33. Stage 33d, the pages.** Built on 2026-10-13, the last stage of
+the WASM target as decision AW29 set it, which closes stages 33 and 34.
+(1) The web crate's session across a suspension: the page is the host
+of `std.screen`, `PageScreen` in `crates/renyi_web/src/lib.rs`, which
+keeps the frame and answers `Later`, so a run that presents suspends
+inside the call (AW31). A suspended run lives on as `Live`: the VM, the
+program it borrows (boxed and held by a raw pointer, freed by `Drop`
+after the VM: `Vm` borrows its program for its lifetime and a page's
+loop must return to the browser between frames), the log and the host.
+`run` answers the outcome and the run, `resume` continues it with an
+`Input`, and `settle` maps the result to a status, the sixth being
+`SUSPENDED`, 6, the text being what the program wrote during that call
+(the log drained per call, so a frame loop that prints does not grow
+the answer). The frame crosses the C ABI as text, one shape per line
+(`column <x> <top> <bottom> <r> <g> <b>`, `rectangle <x> <y> <width>
+<height> <r> <g> <b>`, `label <x> <y> <r> <g> <b> <text>`, a line break
+in a label's text made a space), read through `renyi_frame` and
+`renyi_frame_len`; `renyi_resume` takes the six keys as 0 or 1 and the
+milliseconds elapsed as a 32-bit integer and answers as `renyi_run`
+does; a `renyi_resume` with no run suspended is a crash that says so;
+`renyi_run` and `renyi_clear` abandon a suspended run. (2) The page:
+`docs/play.md`, "Play", in the Learn group of the site with a lead and
+the layout of How it works, two sections, the maze and the playground.
+`docs/assets/play.js` loads the module from `assets/renyi_web.wasm`
+(`instantiateStreaming` when the server says `application/wasm`, the
+bytes otherwise) and the game's eleven sources from `assets/raycaster/`
+by the index `tools/site.py` writes with the main file first; draws a
+frame on a canvas of 640 by 400 at the scale of 2 (a column one
+logical pixel wide, a label in an 8-pixel monospace); reads the keys on
+the canvas (W and S or the arrows, A and D or the arrows, Space or F,
+Escape or Q, a key held until released, every key released when the
+canvas loses the focus) and drives the run from
+`requestAnimationFrame`, the elapsed time clamped to 100 ms so that a
+tab in the background does not step the game by minutes; a line under
+the canvas gives the frames of the last second and the time per frame
+inside the VM. The playground is a text area with a program, Check and
+Run, arguments and an output; the editor's text is the session's one
+file, named after its module; a program that presents frames plays on
+the same canvas; a `main` that needs more than the page serves is
+refused before it runs with the capability named, as the sandbox
+refuses a call. Without the script the page says what it needs. (3)
+The site: `tools/site.py` takes `--module <renyi_web.wasm>` and copies
+the page's script, the game's sources with their index and the module
+under `assets/` (`play_files`), the one exception to "no request leaves
+a page": the play page loads its own files from the site; the front
+page's links gain Play. The Pages workflow installs the Rust toolchain
+with the wasm32 target and builds the module before the site. (4)
+`tools/wasm_check.js` drives a suspended run as the page does:
+`--script <moves>` in the game's own notation, 64 ms a frame, then
+`quit` until the run ends, with the frames, the shapes of the first and
+the time per frame on standard error; CI's `wasm` job runs the game's
+`play` mode with the demo's moves and checks that it ends as the demo
+does. (5) Tests: `crates/renyi_web` three more, eight: a frame loop
+suspended at every frame and resumed with the input (the text per
+call, the frame's text, `fire` and `elapsed_ms` reaching the program,
+`quit` ending it), a label's text on one line, and the C ABI driving a
+suspended run (a resume with none, a run abandoned by the next and by
+`renyi_clear`). The whole suite 436 tests, the conformance suite 56 of
+56, clippy clean natively and for wasm32; the module 3,049,093 bytes
+(2.91 MiB), 986,578 gzipped (0.94 MiB). (6) The measure: under node the
+demo's 237 frames through `play` at 4.86 to 5.56 ms a frame in the
+module (three runs; the first frame is 329 shapes); in a headless
+Chrome 155 on the owner's machine (the wasm lane's
+`measure_33d/measure.js` over the DevTools protocol against the built
+site served by `python -m http.server`, the forward key held), 60
+frames a second at 3.98 to 5.51 ms a frame in the VM over two runs of
+six seconds, the game quit by Escape with its final score and played
+again after a run of the playground, the playground's program run, a
+`main` that needs `filesystem.read` checked clean and refused at the
+run, a typo diagnosed with its fix, no console error; all wall-clock,
+coarse.
+
+Why: the page is the third host of the mechanism and the one AW28
+asked for, so the game is played in the browser without a line of the
+game changed, as its README promised; the frame as text keeps the ABI
+plain and readable under node, and a frame of 329 shapes is a few
+kilobytes a tick, which the measure shows costs nothing visible beside
+the VM's 4 ms; the program boxed behind a raw pointer is the stage's
+one unsafe construct beyond the ABI's own pointer reads, documented,
+because `Vm` borrows its program and the page's loop must return
+between frames; the text drained per call keeps a printing loop from
+growing the answer; the module copied by the site script rather than
+fetched from CI's job keeps the Pages workflow self-contained; and the
+rate line on the page is the measure AW28 asked for, visible to anyone
+who plays. Stage 33 is done and stage 34 with it; the language
+server's completion, references and rename are next (AW28's order),
+then the C API.

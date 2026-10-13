@@ -109,7 +109,7 @@ a major bump, one added or widened a minor bump, anything else a patch.
 | the release workflow | `.github/workflows/release.yml` |
 | the installers | `install.sh`, `install.ps1` |
 | the VS Code extension | `editors/vscode/` |
-| the documentation site | `.github/workflows/pages.yml`, `tools/site.py`, `docs/` |
+| the documentation site | `.github/workflows/pages.yml` (which builds the module for wasm32 first, decision AW33), `tools/site.py`, `docs/`, `docs/assets/play.js` |
 | the starter pack for agents | `starter/` |
 | the wording of announcements | `docs/design/08-positioning.md`, section 6 |
 

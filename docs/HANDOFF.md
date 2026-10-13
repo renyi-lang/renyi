@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated: 2026-10-12, session 14, on the owner's machine. Its work:
+Last updated: 2026-10-13, session 14, on the owner's machine. Its work:
 the design study of stage 29, the new backend for the VM (the section
 "Stage 29, the new backend: the design study (session 14)" below: the
 checker's image run attributed by category under callgrind, eleven
@@ -130,8 +130,13 @@ passed through `execute`, the host `Options::screen`, `Vm::resume`,
 the module `std.screen` and the capability `screen`); stage 33c is
 built (decision AW32: the console host `ConsoleScreen`, given by `renyi
 run`, `record` and `test`, the game on the library's types with its
-`play` mode); the work now is stage 33d, the pages (the start-here
-item 1).
+`play` mode); stage 33d, the pages, is built (decision AW33: the page
+as the host of `std.screen`, a suspended run held by the web crate's
+session, `renyi_resume` and `renyi_frame` in the C ABI, the play page
+of the site with the game on a canvas and a playground, the Pages
+workflow building the module; 60 frames a second in a headless
+Chrome), which closes stages 33 and 34; the work now is the language
+server's completion, references and rename (the start-here item 1).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -528,17 +533,21 @@ and push there directly.
    33b's paragraph: `ConsoleScreen` in `screen.rs`, the frame as text
    at the terminal's size and a line read per frame, given by `renyi
    run`, `record` and `test`; the game's `play` mode; `screen` in the
-   page's grant), 33d the pages, next (the web crate's session holding
-   the program and the VM across a suspension, `renyi_frame` and
-   `renyi_resume` in the C ABI, `docs/assets/play.js` drawing the
-   shapes on a canvas and reading the keys, `docs/play.md` with the
-   playground and the game, the Pages workflow building the module
-   with a Rust step; the frame rate in a browser measured)
-   (the playground, the game, the Pages workflow), which closes stage
-   34; each gets its entry and its paragraph at the end of the study's
-   section; the wasm lane is `D:\Projects\.worktrees\Renyi\wasm\` (its
-   target directory for the wasm32 builds, `check_asis.log` the trial
-   build).
+   page's grant), 33d the pages, done (decision AW33, "Stage 33d as
+   built" after 33c's paragraph: the page as the host, `Live` in the
+   web crate holding a suspended run, `renyi_resume`, `renyi_frame`
+   and the status `SUSPENDED`, `docs/play.md` and
+   `docs/assets/play.js`, `tools/site.py --module`, the Pages
+   workflow's Rust step, `tools/wasm_check.js --script`; 60 frames a
+   second at about 4 ms a frame in the VM in a headless Chrome), which
+   closes stages 33 and 34. The work now is the language server's
+   completion, references and rename (AW28's order; decisions AN2 and
+   AN3 describe the server as it is, `crates/renyi/src/lsp.rs` and
+   `lsp/describe.rs`), then the C API of decision A5; each is a stage
+   with its design note first when it opens. The wasm lane is
+   `D:\Projects\.worktrees\Renyi\wasm\` (its target directory for the
+   wasm32 builds, `check_asis.log` the trial build, the gates logs,
+   the measures and the scripts of each stage).
    Each stage: the code, the gates of item
    3, the measure
    (AU58's: the checker's image run under callgrind with the study's
@@ -4299,6 +4308,38 @@ suite 433 tests, the conformance suite 56; the module 3,038,512
 bytes, 982,497 gzipped; hello and the game's demo run through it under
 node with `main` needing `screen`. The reasons are in AW32.
 
+**Stage 33d as built (decision AW33, 2026-10-13).** `crates/renyi_web/src/lib.rs`:
+`PageScreen` (the frame kept, `Later`, `suspends`), `Live` (the VM in a
+`ManuallyDrop`, the program behind a raw pointer from `Box::into_raw`,
+the log, the host; `Drop` drops the VM then frees the program;
+`frame()` the frame as text), `Outcome`, `run` answering the outcome
+and the live run, `resume`, `settle` (the statuses with `SUSPENDED`,
+6; the log drained per call), `frame_text`; the session's `live` and
+`frame` with `Session::answer`; `renyi_clear` abandoning the run,
+`renyi_run` abandoning the previous one, `renyi_resume(forward,
+backward, turn_left, turn_right, fire, quit, elapsed_ms)`,
+`renyi_frame`, `renyi_frame_len`; eight tests. `docs/play.md` (the maze
+and the playground as HTML sections in the feature layout; the
+heading's id is `maze`, the canvas's `game`) and `docs/assets/play.js`
+(the `Toolchain` class over the exports, the loader, the game's files
+by the index, `draw`, `tick`, `begin`, `ended`, `stop`, the keys on the
+canvas, the playground's `stage`, Check and Run). `tools/site.py`:
+`PLAY`, `PLAY_SCRIPT`, `GAME`, `GAME_MAIN`, the navigation, lead and
+layout of the page, its styles, `play_files(out, module)` and
+`--module`. `docs/index.md` the Play link. `.github/workflows/pages.yml`
+the Rust toolchain with the wasm32 target, `rust-cache`, the module
+built, `--module` passed. `tools/wasm_check.js` with `--script`, the
+frame loop and its measure on standard error; `.github/workflows/ci.yml`
+the play run with the demo's moves. The game's README's browser
+section. The measure in the wasm lane's `measure_33d/` (`node
+measure.js <chrome.exe> <url of play.html> [seconds]` over the DevTools
+protocol against `python -m http.server` on the built site in
+`_site_33d/`; `play.png` the screenshot, `measure_4.log` the run
+recorded): 60 frames a second, 3.98 to 5.51 ms a frame in the VM; under
+node 4.86 to 5.56 ms a frame. The suite 436 tests, the conformance
+suite 56; the module 3,049,093 bytes, 986,578 gzipped. The reasons are
+in AW33.
+
 ## Stage 32, the second round of the checker's own cuts (session 14)
 
 **Stage 32 as built (decision AW26, 2026-10-13).** The reserve of AW21
@@ -7788,6 +7829,20 @@ holds between calls.
   chain run again: a flake to watch (the allocator counts for the
   whole process; an allocation from outside the counted window is
   the suspect), not investigated in this stage.
+- Stage 33d (decision AW33, the commit after 2e69eea): the page as the
+  host of `std.screen`, `Live` in the web crate, `renyi_resume`,
+  `renyi_frame` and `SUSPENDED` in the C ABI, `docs/play.md`,
+  `docs/assets/play.js`, `tools/site.py --module` and `play_files`,
+  the Pages workflow's Rust step, `tools/wasm_check.js --script`, CI's
+  play run, the game's README, three more tests of the web crate;
+  measured under node and in a headless Chrome through the lane's
+  `measure_33d/measure.js`; the scratchpad's `patch_33d_web.py` (with
+  `web_middle.rs.txt`, `web_abi.rs.txt`, `web_tests.rs.txt`),
+  `patch_33d_site.py`, `wasm_check.js` and `apply_docs_33d.py`, copied
+  to the wasm lane's `scratch_33d/`. A duplicate id (`game` on the
+  maze's heading and on the canvas) made the script fail in the first
+  headless run; the heading's id is `maze` now. Stages 33 and 34
+  closed.
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 
@@ -9215,11 +9270,13 @@ on a fresh clone).
   file without the copies fails `cargo test` or CI, which is the
   point, but the failure names the file to copy rather than copying
   it.
-- **The site is checked as text, not in a browser**: the live pages
-  were fetched over HTTP (status, size, titles, the example links,
-  the build stamp) and the generator's output inspected as text; no
-  one has looked at the rendering. The `markdown` package renders the
-  documents' tables and fenced blocks; nothing highlights Renyi.
+- **The site is checked as text, the play page in a headless Chrome by
+  hand**: the live pages were fetched over HTTP (status, size, titles,
+  the example links, the build stamp) and the generator's output
+  inspected as text; the play page was driven in a headless Chrome by
+  the wasm lane's `measure_33d/measure.js` (stage 33d: the game played,
+  the playground run, no console error), which CI does not run; no one
+  has looked at the other pages' rendering in a browser.
 - **The FFI.** `natives/foreign.rs` and `foreign_abi.rs` are the VM's
   only unsafe code: a declaration that does not match the C side (a
   width, a missing length, a pointer the function keeps) is undefined

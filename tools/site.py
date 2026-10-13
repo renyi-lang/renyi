@@ -8,8 +8,9 @@ written to a directory GitHub Pages serves (`.github/workflows/pages.yml`).
 Links between the documents are rewritten to the pages; every link is
 relative, so the site works under a path such as `/renyi/`.
 
-A page makes no request beyond itself: no font, no stylesheet and no script
-from elsewhere. The colours of both themes are custom properties (`LIGHT`,
+A page makes no request beyond the site: no font, no stylesheet and no script
+from elsewhere (the play page loads its script, the toolchain's module and the
+game's sources from `assets/`, decision AW33). The colours of both themes are custom properties (`LIGHT`,
 `DARK`). Code is highlighted here: Renyi by the token classes of reference
 section 1 with the reserved words of its section 17, the grammar as EBNF,
 and the other languages the documents quote by a small lexicon each. A
@@ -17,9 +18,9 @@ short inline script (`SCRIPT`) adds a theme switch, copy buttons, the
 section being read in the contents, and plays the terminal once it comes
 into view; every page works without it.
 
-The front page, `docs/index.md`, and `docs/how-it-works.md` are HTML blocks
-with inline SVG drawn in the theme's colours, each with a layout of its own
-(`LAYOUTS`). Every other page gets the name of its group above its title, a
+The front page, `docs/index.md`, `docs/how-it-works.md` and the play page,
+`docs/play.md`, are HTML blocks, the first two with inline SVG drawn in the
+theme's colours, each with a layout of its own (`LAYOUTS`). Every other page gets the name of its group above its title, a
 one-sentence lead under it (`LEADS`), and a long one a table of its
 sections built from its headings, beside it at wide widths and in a
 disclosure on narrow ones; the sections of the decision record fold, and
@@ -29,16 +30,20 @@ before and after it in the corpus index. The terminal demo (`SESSION`) is a
 real session with the release binary, as text whose lines appear in turn;
 it replaces `<div class="terminal"></div>`.
 
-Usage: python tools/site.py [<output directory>]      (default: _site)
-Requires the `markdown` package (`pip install markdown`).
+Usage: python tools/site.py [<output directory>] [--module <renyi_web.wasm>]
+(the directory defaults to _site; the module, built by `cargo build -p renyi_web
+--target wasm32-unknown-unknown --release`, is copied beside the play page when
+it is given). Requires the `markdown` package (`pip install markdown`).
 """
 
 from __future__ import annotations
 
 import functools
 import html
+import json
 import posixpath
 import re
+import shutil
 import subprocess
 import sys
 from collections import Counter
@@ -58,6 +63,13 @@ HOME = "docs/index.md"
 CORPUS = "examples/README.md"
 REPOSITORY = "https://github.com/renyi-lang/renyi"
 
+# The play page (decision AW33) and what it loads from `assets/`: its script,
+# the showcase game's sources (the main file first) and the toolchain's module.
+PLAY = "docs/play.md"
+PLAY_SCRIPT = "docs/assets/play.js"
+GAME = "showcase/raycaster"
+GAME_MAIN = "raycaster.ry"
+
 # The navigation, grouped; a target is a repository path or an address.
 GROUPS = [
     ("Learn", [
@@ -65,6 +77,7 @@ GROUPS = [
         ("Examples", CORPUS),
         ("Starter pack", "starter/README.md"),
         ("How it works", "docs/how-it-works.md"),
+        ("Play", PLAY),
     ]),
     ("Reference", [
         ("Reference", "docs/reference.md"),
@@ -92,6 +105,8 @@ LEADS = {
                           "program writes it.",
     "docs/how-it-works.md": "Each of the four promises drawn as the mechanism that keeps it, and "
                             "one real session at the terminal.",
+    PLAY: "The toolchain compiled to WebAssembly: the showcase game played in your "
+          "browser, and a playground that checks and runs what you write.",
     "docs/reference.md": "The normative description of Renyi: for each construct its grammar, "
                          "its meaning, its static rules with their codes and its behaviour at "
                          "run time.",
@@ -133,7 +148,7 @@ LEADS = {
 }
 
 # Pages with a layout of their own: the class of their `main`.
-LAYOUTS = {HOME: "home", "docs/how-it-works.md": "feature"}
+LAYOUTS = {HOME: "home", "docs/how-it-works.md": "feature", PLAY: "feature"}
 
 # The decision record folds its lettered sections; the last stays open.
 FOLDED = {"docs/design/01-decisions.md"}
@@ -983,6 +998,39 @@ figcaption { margin-top: 1rem; color: var(--text-2); font-size: .875rem; line-he
   .foot-main { grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 4rem; }
 }
 
+/* The play page (decision AW33): the game's screen and the playground's desk. */
+.arcade canvas { display: block; width: 100%; max-width: 640px; aspect-ratio: 320 / 200;
+                 border: 1px solid var(--line-strong); border-radius: 14px; background: #000;
+                 box-shadow: var(--shadow-md); image-rendering: pixelated; }
+.arcade canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.feature .row { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1rem;
+                margin: 1rem 0 0; }
+.feature .status { margin: 0; color: var(--text-2); font-size: .9375rem; }
+.feature .status:empty { display: none; }
+button.button { font-family: inherit; cursor: pointer; }
+button.button:disabled { cursor: default; opacity: .6; }
+.desk textarea, .desk .output { box-sizing: border-box; width: 100%; margin: 0;
+                               padding: 1rem 1.2rem; border: 1px solid var(--line-strong);
+                               border-radius: 14px; background: var(--surface);
+                               color: var(--text); font: .8125rem/1.6 var(--mono); tab-size: 2; }
+.desk textarea { display: block; min-height: 20rem; resize: vertical; }
+.desk .output { min-height: 5rem; margin-top: 1rem; overflow: auto; color: var(--text-2);
+                white-space: pre-wrap; }
+.desk textarea:focus-visible, .desk .output:focus-visible, .args input:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px; }
+.args { display: inline-flex; align-items: center; gap: .5rem; color: var(--text-2);
+        font-size: .9375rem; }
+.args input { height: 2.75rem; padding: 0 .9rem; border: 1px solid var(--line-strong);
+              border-radius: 10px; background: var(--bg); color: var(--text);
+              font: .9375rem var(--mono); }
+.feature kbd { padding: .1rem .4rem; border: 1px solid var(--line-strong);
+               border-bottom-width: 2px; border-radius: 6px; background: var(--surface);
+               font-size: .8125rem; }
+@media (min-width: 1100px) {
+  .feature .arcade { grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr);
+                     align-items: start; }
+}
+
 /* Motion is a courtesy: without it everything is shown at once, highlighted. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -1716,10 +1764,38 @@ def build(out: Path) -> int:
     return len(known)
 
 
+def play_files(out: Path, module: Path | None) -> str:
+    """The play page's files under `assets/` (decision AW33): the page's
+    script, the game's sources with their index, the main file first, and
+    the toolchain's module when one is given; what was put there."""
+    assets = out / "assets"
+    assets.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(ROOT / PLAY_SCRIPT, assets / "play.js")
+    game = assets / "raycaster"
+    game.mkdir(exist_ok=True)
+    names = sorted(path.name for path in (ROOT / GAME).glob("*.ry"))
+    names.remove(GAME_MAIN)
+    names.insert(0, GAME_MAIN)
+    for name in names:
+        shutil.copyfile(ROOT / GAME / name, game / name)
+    (game / "index.json").write_text(json.dumps(names) + "\n", encoding="utf-8", newline="\n")
+    if module is None:
+        return f"the play page's script and the game's {len(names)} files, without the module"
+    shutil.copyfile(module, assets / "renyi_web.wasm")
+    return f"the play page's script, the game's {len(names)} files and the module"
+
+
 def main() -> int:
-    out = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "_site"
+    arguments = sys.argv[1:]
+    module = None
+    if "--module" in arguments:
+        at = arguments.index("--module")
+        module = Path(arguments[at + 1])
+        del arguments[at:at + 2]
+    out = Path(arguments[0]) if arguments else ROOT / "_site"
     count = build(out)
-    print(f"{count} pages written to {out}")
+    files = play_files(out, module)
+    print(f"{count} pages written to {out}, with {files}")
     return 0
 
 
