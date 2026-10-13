@@ -17,6 +17,71 @@ public function glyph(colour: Colour) returns Text
   return ramp.at((luma * ramp.length()).quotient(256)) otherwise "@"
 end
 
+public function shade_glyph(shade: Integer) returns Text
+  purpose: The character for a shade in percent, the grey of that brightness.
+  example: shade_glyph(100) is "@"
+  example: shade_glyph(50) is "="
+  example: shade_glyph(0) is " "
+
+  let level be (shade.at_least(0).at_most(100) * 255).quotient(100)
+  return glyph(Colour(red: level, green: level, blue: level))
+end
+
+public type Block
+  purpose: The columns and rows a shape covers, both ends included, and the character filling them.
+  has left: Integer
+  has right: Integer
+  has top: Integer
+  has bottom: Integer
+  has symbol: Text
+  can ToText
+end
+
+public function block_of(shape: Shape) returns Block
+  purpose: The block a shape paints; a column or a strip is one column wide, a label paints nothing.
+  example: block_of(
+    Column(screen_x: 3, top: 1, bottom: 9, colour: Colour(red: 255, green: 255, blue: 255))
+  ) is Block(left: 3, right: 3, top: 1, bottom: 9, symbol: "@")
+  example: block_of(Strip(screen_x: 3, top: 1, bottom: 9, image: "wall", column: 70, shade: 50))
+    is Block(left: 3, right: 3, top: 1, bottom: 9, symbol: "=")
+  example: block_of(
+    Picture(screen_x: 0, screen_y: 168, width: 320, height: 32, image: "bar", shade: 100)
+  ) is Block(left: 0, right: 319, top: 168, bottom: 199, symbol: "@")
+  example: block_of(
+    Label(screen_x: 1, screen_y: 2, text: "HI", colour: Colour(red: 0, green: 0, blue: 0))
+  ) is Block(left: 0, right: -1, top: 0, bottom: -1, symbol: " ")
+
+  match shape
+    when Column(screen_x, top, bottom, colour) then
+      return Block(left: screen_x, right: screen_x, top: top, bottom: bottom, symbol: glyph(colour))
+    when Rectangle(screen_x, screen_y, width, height, colour) then
+      return Block(
+        left: screen_x,
+        right: screen_x + width - 1,
+        top: screen_y,
+        bottom: screen_y + height - 1,
+        symbol: glyph(colour)
+      )
+    when Label then return Block(left: 0, right: -1, top: 0, bottom: -1, symbol: " ")
+    when Strip(screen_x, top, bottom, shade) then
+      return Block(
+        left: screen_x,
+        right: screen_x,
+        top: top,
+        bottom: bottom,
+        symbol: shade_glyph(shade)
+      )
+    when Picture(screen_x, screen_y, width, height, shade) then
+      return Block(
+        left: screen_x,
+        right: screen_x + width - 1,
+        top: screen_y,
+        bottom: screen_y + height - 1,
+        symbol: shade_glyph(shade)
+      )
+  end
+end
+
 public function cells_covering(start: Integer, stop: Integer, size: Integer, limit: Integer)
   returns Range
   purpose: The cells of the size whose sample point, the cell's middle, lies from start to stop.
@@ -53,31 +118,25 @@ public function text_view(frame: List of Shape, columns: Integer, rows: Integer)
   let mutable grid be " ".repeat(columns * rows).characters()
   for each shape in frame
     match shape
-      when Column(screen_x, top, bottom, colour) then
-        let across be cells_covering(
-          start: screen_x,
-          stop: screen_x,
-          size: cell_width,
-          limit: columns
-        )
-        let down be cells_covering(start: top, stop: bottom, size: cell_height, limit: rows)
-        change grid to painted(
+      when Label(screen_x, screen_y, text) then
+        change grid to lettered(
           grid: grid,
           width: columns,
-          across: across,
-          down: down,
-          symbol: glyph(colour)
+          column: screen_x.quotient(cell_width),
+          row: screen_y.quotient(cell_height),
+          text: text
         )
-      when Rectangle(screen_x, screen_y, width, height, colour) then
+      otherwise
+        let block be block_of(shape)
         let across be cells_covering(
-          start: screen_x,
-          stop: screen_x + width - 1,
+          start: block.left,
+          stop: block.right,
           size: cell_width,
           limit: columns
         )
         let down be cells_covering(
-          start: screen_y,
-          stop: screen_y + height - 1,
+          start: block.top,
+          stop: block.bottom,
           size: cell_height,
           limit: rows
         )
@@ -86,15 +145,7 @@ public function text_view(frame: List of Shape, columns: Integer, rows: Integer)
           width: columns,
           across: across,
           down: down,
-          symbol: glyph(colour)
-        )
-      when Label(screen_x, screen_y, text) then
-        change grid to lettered(
-          grid: grid,
-          width: columns,
-          column: screen_x.quotient(cell_width),
-          row: screen_y.quotient(cell_height),
-          text: text
+          symbol: block.symbol
         )
     end
   end
@@ -137,4 +188,15 @@ test "a column lands in the cells its sample points fall in, under a label"
     Label(screen_x: 0, screen_y: 150, text: "HI", colour: white)
   ]
   check text_view(frame: frame, columns: 4, rows: 2) is " @  \nHI  "
+end
+
+test "a strip and a picture are blocks of their shade's glyph, as the console host draws them"
+  let white be Colour(red: 255, green: 255, blue: 255)
+  let frame be [
+    Column(screen_x: 120, top: 0, bottom: 99, colour: white),
+    Label(screen_x: 0, screen_y: 150, text: "HI", colour: white),
+    Strip(screen_x: 200, top: 0, bottom: 99, image: "wall", column: 1, shade: 50),
+    Picture(screen_x: 240, screen_y: 100, width: 80, height: 100, image: "bar", shade: 100)
+  ]
+  check text_view(frame: frame, columns: 4, rows: 2) is " @= \nHI @"
 end

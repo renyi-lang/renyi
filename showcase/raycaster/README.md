@@ -48,15 +48,17 @@ millisecond, so `R8` is a quarter turn. Walking covers 3 cells a second.
 | `enemies.ry` | chasing, line of sight, bites, the hit scan |
 | `game.ry` | `State`, `new_game`, `step`, `played` |
 | `view.ry` | `render`: sky and floor, wall columns, sprites, the HUD |
-| `text_view.ry` | `text_view`, which samples a frame into a character grid |
+| `text_view.ry` | `text_view`, which samples a frame into a character grid; a strip or a picture a block of its shade's glyph |
+| `art.ry` | the images of `art/` with their sizes and anchors, and the sounds, written by `tools/freedoom_art.py` |
 | `raycaster.ry` | `main`: `play` at the host's screen, or a script played and printed as text |
 
 ## The display contract
 
-The display contract is the library module `std.screen` (decision AW31):
-the types the game draws with, the input it receives, and one call,
-`screen.present(frame)`, which hands a frame to the host and returns the
-frame's input.
+The display contract is the library module `std.screen` (decisions AW31
+and AW35): the types the game draws with, the input it receives, and
+two calls, `screen.present(frame)`, which hands a frame to the host and
+returns the frame's input, and `screen.play(sound)`, which plays a
+named sound once on a host that can.
 
 ```
 type Colour            red, green, blue: Integer, 0 to 255
@@ -64,9 +66,17 @@ type Shape is one of
   Column(screen_x, top, bottom, colour)          a strip at column screen_x, rows top..bottom inclusive
   Rectangle(screen_x, screen_y, width, height, colour)
   Label(screen_x, screen_y, text, colour)
+  Strip(screen_x, top, bottom, image, column, shade)   one column of a named image, stretched between
+                                                       the rows; column modulo the image's width; shade in percent
+  Picture(screen_x, screen_y, width, height, image, shade)   a named image stretched to a size
 type Input             forward, backward, turn_left, turn_right, fire, quit: Boolean
                        elapsed_ms: Integer (the milliseconds since the previous frame)
 ```
+
+An image or a sound is named by the stem of a file under `art/`; the
+page in the browser draws and plays those files, and the console host
+draws a strip or a picture as a block of its shade's glyph and ignores
+a sound.
 
 The logical screen is 320 columns by 200 rows (`screen.width()` and
 `screen.height()`), with the origin at the top left. A frame is a `List of
@@ -98,3 +108,17 @@ fills `Input` from the keyboard (`W` and `S` or the arrows move, `A` and
 between the terminal and the browser. `tools/wasm_check.js --script`
 drives the same loop under node with the demo's moves, and CI checks
 that it ends as the demo does.
+
+## The art
+
+The images and the sounds under `art/` come from
+[Freedoom](https://github.com/freedoom/freedoom), which publishes them
+under the 3-clause BSD license, kept there verbatim as `COPYING.adoc`
+(decision AW35). `tools/freedoom_art.py` downloads the chosen files at a
+pinned commit, writes `art/README.md` with what came from where, and
+writes `art.ry`, which lists every image with its size in pixels and
+its anchor and every sound by name:
+
+```
+python -I tools/freedoom_art.py showcase/raycaster/art --ry showcase/raycaster/art.ry
+```
