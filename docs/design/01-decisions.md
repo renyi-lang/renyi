@@ -8721,3 +8721,39 @@ application, the WASM target of M6, the language server's completion,
 references and rename, the C API of decision A5, the Python binder's
 items, the Rust front end's name sets as bits, the emitter's own round),
 chosen by the owner; the question is put with this entry.
+
+**AW28. The next stages: the WASM target, the language server's
+completion, the C API, in that order, and the showcase game in
+parallel.** The owner's answer on 2026-10-13 to the question AW27 put:
+of the roadmap's candidates, the WASM target of M6 first, then the
+language server's completion, references and rename, then the C API of
+decision A5, in that order; and the showcase application in parallel, by
+a subagent (Opus 5.5 at medium effort, the owner's choice of model and
+effort): a classic game recreated in Renyi, to be shown on the site and
+played in the browser. Four questions were put with the choice and
+answered at once. (1) The game: a Doom-style raycasting maze
+(Wolfenstein and Doom's 2.5D: a grid map, one ray per screen column,
+vertical strips; walls, doors, enemies that are hit or shot, a score),
+over a Minecraft-style voxel world, too heavy for the interpreter in
+WASM, and over a 2D classic. (2) The display: a new library module,
+`std.screen`; a program declares `needs screen` and hands each frame's
+drawing (columns, rectangles and labels with colours) to the host, which
+draws it: the page's canvas in the browser, text on the console under a
+native `renyi run`, with no window library in the binary. (3) The frame
+loop: the program writes its own loop, and `screen.present` suspends the
+program and hands control back to the host, which resumes it at the next
+frame; the owner chose this over a host-driven `frame` function, so the
+VM must be able to suspend inside a native call and resume later, on
+every platform, and the design of that suspension belongs to the WASM
+stage's study. (4) The subagent dispatched at once, writing the game's
+logic with a text display for local runs, against a contract of three
+types in the game's own modules (`Colour`; `Shape` with `Column`,
+`Rectangle` and `Label` on a logical screen of 320 by 200; `Input` with
+the keys held and the milliseconds elapsed), so that `std.screen` plugs
+in when it exists; it does not run cargo or git, and its work is
+reviewed and committed by the main thread. The stages: 33, the WASM
+target, its design study first and the study's questions to the owner in
+a batch; 34, the showcase game and its page on the site, the subagent's
+part first and the integration after stage 33; then the language
+server's completion, references and rename, and the C API, each a stage
+of its own when it starts.

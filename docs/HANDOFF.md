@@ -115,8 +115,10 @@ is stage 32, the second round of the checker's own cuts, done
 check row to 1,307.5, -9.1%; the ratio to 2.96,
 within the gate of 3); the owner's decision after it (AW27): the switch
 of the front end deferred, the Rust front end kept, the speed round
-closed; the next stage is one of the roadmap's candidates, the owner's
-choice (the start-here item 1).
+closed; the owner's choice after it (AW28): the WASM target, then the
+language server's completion, then the C API, in that order, with the
+showcase game in parallel by a subagent; the work now is stage 33's
+design study and stage 34's game (the start-here item 1).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -475,9 +477,17 @@ and push there directly.
    the base of the next measure); the owner's decision after it (AW27,
    2026-10-13): the switch of the front end deferred although its gate
    is met, the Rust front end kept, the speed round closed at the gate;
-   the next stage is one of the roadmap's candidates (section 4 of
-   `docs/ROADMAP.md`), the owner's choice, asked at the end of session
-   14 and to be asked again at the start of the next if unanswered.
+   the owner's choice after it (AW28, 2026-10-13): stage 33, the WASM
+   target, first (its design study first: the blockers surveyed by an
+   exploring agent, the suspension of a program at `screen.present`
+   designed, the questions to the owner in a batch of four), then the
+   language server's completion, references and rename, then the C API;
+   and in parallel stage 34, the showcase game, a Doom-style raycaster
+   under `showcase/raycaster/` written by a subagent (Opus 5.5, medium
+   effort, dispatched 2026-10-13 with the contract of AW28 (4); it runs
+   no cargo and no git; review its report, run `renyi check`, `format`
+   and `test` on its files, then commit them), whose `std.screen` module
+   and page on the site come after stage 33.
    Each stage: the code, the gates of item
    3, the measure
    (AU58's: the checker's image run under callgrind with the study's
@@ -7307,6 +7317,13 @@ holds between calls.
   speed round closed at the gate; the roadmap's milestone row, stage
   32's close, track D and "what is next", this handoff's summary and
   start-here item 1, CLAUDE.md's decisions cell.
+- The owner's choice of the next stages (AW28, the commit after the
+  AW27 commit): the WASM target, the language server's completion and
+  the C API in that order, the showcase game in parallel; the roadmap's
+  stages 33 and 34, its M6 row and "what is next", this handoff's
+  summary and start-here item 1, CLAUDE.md's decisions cell; the game
+  subagent dispatched with the contract of AW28 (4) and the survey of
+  the wasm32 blockers started.
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

@@ -21,7 +21,7 @@ branches of the repository.
 | M3 | the VM: `run`, `record`, `run --replay`, `reproduce`, `--explain`, `--profile`, `test` with `replays`, budgets, the grant stack, the run manifest, every library module | done (stage 7) |
 | M4 | the library and the package manager: packages, `std.process`, the foreign function interface | done (stage 15) |
 | M5 | the integration: the registration API, the Python bridge and binder, the resident world, the language server, `serve --watch`, the embedding API | done (stages 18 and 19) |
-| M6 | ahead-of-time code: machine code for the bytecode, the baseline JIT, the template tier, `renyi build` images and self-contained executables | the machine code exists (stages 16, 21, 22, 24, 26); no WASM or C API target |
+| M6 | ahead-of-time code: machine code for the bytecode, the baseline JIT, the template tier, `renyi build` images and self-contained executables | the machine code exists (stages 16, 21, 22, 24, 26); the WASM target is stage 33 (in progress, its study first, AW28); the C API comes after the language server's completion (AW28) |
 | Self-hosting | the compiler written in Renyi (lexer, parser, checker, emitter) held equal to the Rust toolchain by the judges; the binary switches to it when it is within 3 times the Rust front end's time (decision AU35 ii) | the compiler exists and is judged (stages 11, 12, 14, 15); the speed round (stages 25 to 32) closed at the gate on 2026-10-13, the ratio 2.96 against 3 (AW26); the switch deferred by the owner, the Rust front end kept (AW27) |
 
 ## 2. The stages, in order
@@ -495,6 +495,27 @@ where one decided, the status. The dates are those of the decisions.
     end kept, the speed round closed; the next stage is one of the
     candidates of section 4, the owner's choice.
 
+33. **The WASM target** (session 14, 2026-10-13, in progress; decision
+    AW28, the owner's order). The VM for the browser: the interpreter
+    compiled to WebAssembly with the natives that cannot exist there
+    left out or stubbed, a page on the site that runs a program, and the
+    suspension of a program inside a native call (`screen.present`,
+    decision AW28 (3)) so that a frame loop hands control back to the
+    page. The design study first (the blockers surveyed, the target and
+    the host interface chosen), its questions to the owner in a batch,
+    then the stages the answers set.
+
+34. **The showcase game** (session 14, 2026-10-13, in progress, in
+    parallel with stage 33; decision AW28). A Doom-style raycasting maze
+    written in Renyi under `showcase/raycaster/` by a subagent (Opus
+    5.5, medium effort): the map, the player, the rays, the enemies, the
+    score, every frame a pure function of the state and the input,
+    rendered as a list of shapes (`Column`, `Rectangle`, `Label`) on a
+    320 by 200 screen and, for local runs, as text; then the library
+    module `std.screen` (the frame handed to the host, the input
+    returned, `present` suspending) and the page on the site where the
+    game is played in the browser, after stage 33.
+
 ## 3. The tracks
 
 The same stages grouped by the line of work they belong to, with the
@@ -617,8 +638,12 @@ cuts, the check row to 1,307.5, -9.1%, the ratio to
 2.96, within the gate of 3); the owner's decision after it (AW27,
 2026-10-13): the switch of the binary's front end to the compiler
 written in Renyi is deferred although its gate is met, the Rust front
-end stays, and the speed round closes. What comes next is one of the
-candidates, none decided yet: the showcase application, the WASM target
-of M6, the language server's completion, references and rename, the C
-API of decision A5, the Python binder's items of track E, the Rust front
-end's name sets as bits, the emitter's own round for the compile row.
+end stays, and the speed round closes. The owner's choice after it (AW28, 2026-10-13): the WASM target of M6
+(stage 33, its design study first), then the language server's
+completion, references and rename, then the C API of decision A5, in
+that order, with the showcase game in parallel (stage 34: a Doom-style
+raycaster in Renyi by a subagent, the library module `std.screen`,
+`present` suspending the program for the page, the game played in the
+browser after stage 33). Not scheduled: the Python binder's items of
+track E, the Rust front end's name sets as bits, the emitter's own round
+for the compile row.
