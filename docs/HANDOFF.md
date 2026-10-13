@@ -105,8 +105,9 @@ the ratio 3.46 to 3.36); B3, the locals in registers, built,
 measured and left off (decision AW23: +6.0% on the check row
 against the base with the leak fixed), and the leak of stages 2b to
 B2 its measure found fixed (AW23: the check row 1,493.5, the ratio
-3.38); the work now is B1, the frame record lazy (the start-here
-item 1).
+3.38); B1, the frame record lazy, done (decision AW24: the check
+row to 1,482.7, -0.7%; the ratio to 3.36); the work now
+is B4, the counts by dataflow (the start-here item 1).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -450,8 +451,11 @@ and push there directly.
    the whole rise in the generated code), and the leak of stages 2b to
    B2 its measure found is fixed (AW23: the owned analysis past an
    `otherwise` region; `renyi_b2fix`, the check row 1,493.5, the ratio
-   3.38, the base of the next measure); the work now is B1, the frame
-   record lazy. Each stage: the code, the gates of item
+   3.38); B1, the frame record lazy, done (decision AW24, "Stage B1
+   as built" after B3's: the check row to 1,482.7, -0.7%; the
+   ratio to 3.36; `renyi_b1`, the base of the next measure);
+   the work now is B4, the counts by dataflow. Each stage: the code,
+   the gates of item
    3, the measure
    (AU58's: the checker's image run under callgrind with the study's
    table by category beside it, AT1's rows, the benchmarks by
@@ -492,7 +496,8 @@ and push there directly.
    commit), `renyi_5b` (0f17f67, stage 5b's commit) and
    `renyi_b2` (2758464, stage B2's commit), `renyi_b3` (stage B3 as
    built, left off) and `renyi_b2fix` (stage B2 with the owned analysis
-   fixed, AW23's commit, the base of the next measure),
+   fixed, AW23's commit) and `renyi_b1` (stage B1's commit, the base of
+   the next measure),
    each with its
    `study/` directory. The
    road is months long (AU58); the gate is decided on the measure at
@@ -4163,6 +4168,32 @@ the fix in `owned_slots` and its test in `tests/native.rs` are AW23's
 code; B2 with the fix is the base of B1 (the check row 1,493.5, +0.8%;
 the ratio 3.38). Next in AW21's order: B1, the frame record lazy.
 
+**Stage B1 as built (decision AW24, 2026-10-13).** The third stage of
+road (B): a direct call between compiled bodies pushes no record on
+`Vm::frames`; the callee keeps a node in its machine frame (`FrameNode`
+in `vm.rs`: the caller's node, the code, the base, the grant, whether
+the record is made; the pc a helper syncs while the record is unmade
+beside the head, `NativeState::head_pc`), linked as `NativeState::head`
+by the prologue of a body entered directly (`link_node`) and unlinked by
+every return (`unlink_node`); `Vm::record_frames` makes the chain's
+records in call order, cuts the links and leaves the head null (a null
+head the whole test of whether the innermost frame has its record)
+before anything reads a frame by its record (`push_frame_in_place`,
+`interrupt`, `rt_deopt`, `denied`), and `effective_grant`,
+`frame_grant`, `sync_pc` and `leave_frame` read the unrecorded head
+instead; the leave in generated code pops the record only when made;
+code format 24; the template tier, the trampoline, the interpreter and
+the emitters untouched; the test
+`direct_calls_make_their_frame_records_only_when_a_helper_reads_them` in
+`tests/native.rs`. The measure against `renyi_b2fix`: the check row
+1,493.5 to 1,482.7 (-0.7%), the parse row 685.3 (-0.5%), the compile row
+2,656.9 (-0.6%); the ratio 3.36; the generated code 757.4 to 744.9;
+AT1's synchronous row 5,228.4 (+0.8%) and its estimate 7,557.1 (+2.2%);
+the image 10,383,184 bytes (+0.5%); `calls_typed` 120 to 116 per turn,
+`calls_boxed` 202 to 199. Kept by the owner's rule (AW21). The binary
+`renyi_b1` and the study `study/b1/` in the perf lane. Next in AW21's
+order: B4, the counts by dataflow.
+
 ## Stage 29, the new backend: the design study (session 14)
 
 The study decision AU58 asked for, written before any code and put to
@@ -7120,6 +7151,24 @@ holds between calls.
   `study/b2fix/`; the probes (`probe_frees.py`, `probe_hist.py`,
   `probe_skip.py`, `probe_dump2.py`, `bisect_leak.py`, `ops_of.py`,
   `fix_owned.py`, `add_owned_test.py`) in `scratch_b3/`.
+- Stage B1 (decision AW24, the commit after 1048e84): `FrameNode`,
+  `NativeState::head`, `unrecorded_head`, `innermost_grant_index` and
+  `record_frames` and `record_chain` in `vm.rs`, with `effective_grant`,
+  `frame_grant`, `frame_grant_under`, `denied` and `push_frame_in_place`
+  reading or making the records; `interrupt`, `rt_deopt`, `sync_pc` and
+  `leave_frame` in `native/runtime.rs`; `link_node`, `unlink_node`, the
+  node slot, the leave's conditional pop and `push_frame_inline` without
+  the record in `native/codegen.rs`, the frames' room check gone from
+  the prologue; code format 24 in `native/image.rs`; the test
+  `direct_calls_make_their_frame_records_only_when_a_helper_reads_them`
+  in `tests/native.rs`; the lane's `after_measure_b1.sh`, `chain_b1.sh`,
+  `renyi_b1`, `study/b1/` and `micro_b_b1.log`, and the scratchpad's
+  scripts (`apply_b1.py`, `fix_b1_slots.py`, `add_b1_tests.py`,
+  `refine_b1.py` (folded into `apply_b1.py`), `refine2_b1.py`,
+  `refine3_b1.py`, `refine4_b1.py`, `aw24_template.md`,
+  `render_aw24.py`, `apply_docs_b1.py`, `update_memory_b1.py`,
+  `msg_b1.txt`, `numbers_b1.json`) copied to `scratch_b1/`; the measure
+  in AW24 and in "Stage B1 as built".
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

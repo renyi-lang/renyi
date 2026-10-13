@@ -15,7 +15,8 @@ use std::rc::Rc;
 
 use renyi_syntax::SourceFile;
 use renyi_vm::bytecode::Op;
-use renyi_vm::{compile_project, run_program, Options, Program, RunOutcome};
+use renyi_vm::grant::parse_capability;
+use renyi_vm::{compile_project, run_program, Narrowing, Options, Program, RunOutcome};
 
 fn compile(source: &str) -> Program {
     let file = SourceFile::new("demo.ry", source);
@@ -65,6 +66,33 @@ fn run(source: &str, interpret: bool) -> (RunOutcome, String) {
             stderr: Box::new(Capture::default()),
             stdin: Box::new(std::io::Cursor::new(Vec::new())),
             interpret,
+            ..Options::default()
+        },
+    )
+    .outcome;
+    (outcome, stdout.text())
+}
+
+/// `run` under a sandbox grant (decision AP1) named by its capabilities.
+fn run_sandboxed(source: &str, interpret: bool, sandbox: &[&str]) -> (RunOutcome, String) {
+    std::env::set_var("RENYI_NATIVE_HOT", "0");
+    let program = compile(source);
+    let stdout = Capture::default();
+    let grant = sandbox
+        .iter()
+        .map(|text| parse_capability(text).expect("a capability"))
+        .collect();
+    let outcome = run_program(
+        &program,
+        Options {
+            stdout: Box::new(stdout.clone()),
+            stderr: Box::new(Capture::default()),
+            stdin: Box::new(std::io::Cursor::new(Vec::new())),
+            interpret,
+            narrowing: Narrowing {
+                sandbox: Some(grant),
+                ..Narrowing::default()
+            },
             ..Options::default()
         },
     )
@@ -2255,13 +2283,14 @@ end
 }
 
 #[test]
-fn a_direct_call_passes_the_grant_and_checks_its_room_once() {
+fn a_direct_call_passes_the_grant_and_leaves_its_record_unmade() {
     // decision AW6: the frame's grant travels in the body's signature and
-    // a direct call writes the callee's record from it (the helper only
+    // a direct call passes the callee its own from it (the helper only
     // for a callee that narrows it); the stack's length is written by the
-    // callee's prologue, where the room is checked, and the frames' room
-    // for the records this body's direct calls push is checked there
-    // once; every shape (a narrowing callee from `main` and from another
+    // callee's prologue, where the room is checked; the callee's record
+    // is not made at all until a helper reads the frames (decision AW24),
+    // which the recursion past the depth limit does for a chain of two
+    // hundred; every shape (a narrowing callee from `main` and from another
     // narrowing one, a callee that inherits the grant and calls on,
     // recursion past the frames' capacity and the machine stack's depth
     // limit, typed parameters before a boxed one at the deepest operand
@@ -2820,3 +2849,127 @@ public function main() needs console
   console.print("{total}")
 end
 "#;
+
+#[test]
+fn direct_calls_make_their_frame_records_only_when_a_helper_reads_them() {
+    // decision AW24: a direct call between compiled bodies pushes no
+    // record on the VM's frames; the callee keeps a node in its machine
+    // frame, and a helper that reads a frame by its record (a crash's
+    // location, a hand-back, a call through the VM's path, a denial's
+    // owner) makes the records of the chain first, in call order. Every
+    // shape against the interpreter: a crash three direct calls deep
+    // located at the innermost line; a frame handed back two direct calls
+    // deep inside a loop, whose callers then take its big result through
+    // hand-backs of their own; and a denial inside a narrowing callee
+    // called directly, whose message names that callee and its grant
+    // rather than its caller's
+    let crash = r#"module demo
+  purpose: A crash three direct calls deep names the innermost line.
+
+import std.console
+
+function inner(value: Integer, divisor: Integer) returns Integer
+  purpose: The remainder, crashing when the divisor is zero.
+
+  return value remainder divisor
+end
+
+function middle(value: Integer, divisor: Integer) returns Integer
+  purpose: One level up.
+
+  return inner(value: value, divisor: divisor) + 1
+end
+
+function outer(value: Integer, divisor: Integer) returns Integer
+  purpose: Two levels up.
+
+  return middle(value: value, divisor: divisor) + 1
+end
+
+public function main() needs console
+  purpose: Print one result, then crash on the next.
+
+  console.print("{outer(value: 7, divisor: 3)}")
+  console.print("{outer(value: 7, divisor: 0)}")
+end
+"#;
+    let (outcome, printed) = both_ways(crash);
+    assert_eq!(printed, "3\n");
+    match outcome {
+        RunOutcome::Crashed { message, location } => {
+            assert_eq!(message, "division by zero");
+            assert_eq!(location.as_deref(), Some("demo.ry:9"));
+        }
+        other => panic!("expected a crash, got {other:?}"),
+    }
+    let handed = r#"module demo
+  purpose: A frame handed back two direct calls deep, its callers taking the big result.
+
+import std.console
+
+function grow(value: Integer, times: Integer) returns Integer
+  purpose: The value doubled this many times; past the machine word it carries on in the interpreter.
+
+  let mutable result be value
+  let mutable remaining be times
+  repeat until remaining is 0
+    change result to result * 2
+    change remaining to remaining - 1
+  end
+  return result
+end
+
+function relay(value: Integer, times: Integer) returns Integer
+  purpose: One level between main and the frame handed back.
+
+  return grow(value: value, times: times) + 1
+end
+
+public function main() needs console
+  purpose: A digest over calls, the last of which hand their frames back.
+
+  let mutable total be 0
+  for each index from 1 to 70
+    change total to total + relay(value: 1, times: index)
+  end
+  console.print("{total}")
+end
+"#;
+    let (outcome, printed) = both_ways(handed);
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(printed, "2361183241434822606916\n");
+    let denied = r#"module demo
+  purpose: A denial inside a narrowing callee called directly names that callee.
+
+import std.console
+import std.random
+
+function pick(limit: Integer) returns Integer needs random
+  purpose: A random Integer up to the limit.
+
+  return random.integer(lowest: 1, highest: limit)
+end
+
+function relay(limit: Integer) returns Integer needs random
+  purpose: A level between main and the narrowing callee.
+
+  return pick(limit) + 1
+end
+
+public function main() needs console, random
+  purpose: Print a pick; under a sandbox without random the pick is denied.
+
+  console.print("{relay(6)}")
+end
+"#;
+    let native = run_sandboxed(denied, false, &["console"]);
+    let interpreted = run_sandboxed(denied, true, &["console"]);
+    assert_eq!(native, interpreted, "machine code against the interpreter");
+    match native.0 {
+        RunOutcome::Crashed { message, location } => {
+            assert!(message.contains("of `demo.pick`"), "{message}");
+            assert_eq!(location.as_deref(), Some("demo.ry:10"));
+        }
+        other => panic!("expected a denial, got {other:?}"),
+    }
+}

@@ -181,6 +181,27 @@ pub(crate) struct Frame {
     pub(crate) grant: u32,
 }
 
+/// The frame of a compiled body whose record is not on `Vm::frames`
+/// (decision AW24): a direct call between compiled bodies pushes no
+/// record, and the callee's machine frame holds this node instead, linked
+/// to its caller's, the innermost named by `NativeState::head`. A helper
+/// that reads or pushes a frame first makes the records of the chain's
+/// nodes in call order (`Vm::record_frames`), marks them, cuts their
+/// links and leaves the head null; a leave pops its record when marked.
+/// A body entered through its trampoline has its record from whoever
+/// pushed it and is marked from the start, so that a null head or a
+/// marked one says the innermost frame has its record.
+#[repr(C)]
+pub(crate) struct FrameNode {
+    /// The caller's node; null under the outermost compiled frame.
+    pub(crate) link: *mut FrameNode,
+    pub(crate) code: usize,
+    pub(crate) base: usize,
+    pub(crate) grant: u32,
+    /// Whether the frame's record is on `Vm::frames`: 0 or 1.
+    pub(crate) recorded: u8,
+}
+
 /// What the generated code reaches through the VM pointer (decision AS1),
 /// so that it holds no address of its own and an image of it loads
 /// anywhere: how many generated frames are nested on the machine stack,
@@ -216,6 +237,18 @@ pub(crate) struct NativeState {
     /// AW11), which the generated code calls directly, else null; the JIT
     /// owns the table.
     pub(crate) in_place: *const *const u8,
+    /// The node of the innermost compiled frame (decision AW24), null
+    /// while none runs: a body links its node here at its entry and puts
+    /// its caller's back before it returns; `Vm::record_frames` leaves
+    /// null here as it makes the records, and a trampoline's caller's
+    /// node is marked made, so that a null head or a marked one says the
+    /// innermost frame has its record.
+    pub(crate) head: *mut FrameNode,
+    /// The pc `Vm::sync_pc` writes while the head's record is unmade
+    /// (decision AW24): what the head's record carries once made. Only
+    /// the innermost frame's pc locates a crash, and every helper that
+    /// raises an interrupt syncs it first.
+    pub(crate) head_pc: usize,
 }
 
 /// A module constant as the generated code reads it (decision AU53): the
@@ -241,6 +274,8 @@ impl Default for NativeState {
             list_len: list_len as i64,
             globals: std::ptr::null(),
             in_place: std::ptr::null(),
+            head: std::ptr::null_mut(),
+            head_pc: 0,
         }
     }
 }
@@ -850,23 +885,118 @@ impl<'p> Vm<'p> {
     /// The grant in force where the next primitive call happens: the
     /// innermost frame's, or the run's before any frame.
     pub fn effective_grant(&self) -> &[Capability] {
+        // a compiled frame whose record is unmade is the innermost frame
+        // (decision AW24)
+        let node = self.unrecorded_head();
+        if !node.is_null() {
+            // SAFETY: see `unrecorded_head`
+            let grant = unsafe { (*node).grant };
+            return self.grants[grant as usize].as_slice();
+        }
         match self.frames.last() {
             Some(frame) => self.grants[frame.grant as usize].as_slice(),
             None => self.grant.as_slice(),
         }
     }
 
+    /// The node of the innermost compiled frame when its record is not
+    /// made (decision AW24), else null: `NativeState::head` unless the
+    /// node it names is marked made (a trampoline's caller made its
+    /// record); `record_frames` leaves the head null. Such a frame is the
+    /// innermost frame of all: every way a frame goes above it (the
+    /// interpreter's push, a hand-back, a call through the VM's path)
+    /// makes the records first, and the template tier's calls run above a
+    /// made chain.
+    ///
+    /// SAFETY of every read through the pointer: a node lives in the
+    /// machine frame of a compiled body that is still running, which
+    /// linked it at its entry and unlinks it before it returns, so the
+    /// node is valid whenever the VM's own code runs beneath that body.
+    #[inline]
+    pub(crate) fn unrecorded_head(&self) -> *mut FrameNode {
+        let node = self.native_state.head;
+        // SAFETY: as above
+        if node.is_null() || unsafe { (*node).recorded } != 0 {
+            std::ptr::null_mut()
+        } else {
+            node
+        }
+    }
+
+    /// The grant of the innermost frame by its index in `grants`: the
+    /// unrecorded node's (decision AW24), else the record's on top; 0
+    /// before any frame.
+    fn innermost_grant_index(&self) -> u32 {
+        let node = self.unrecorded_head();
+        if !node.is_null() {
+            // SAFETY: see `unrecorded_head`
+            return unsafe { (*node).grant };
+        }
+        self.frames.last().map_or(0, |frame| frame.grant)
+    }
+
+    /// The records of the compiled frames that made none (decision AW24),
+    /// pushed in call order, outermost first, the nodes marked, their
+    /// links cut and the head left null: before anything reads a frame by
+    /// its record (a push over them, an interrupt, a hand-back, a
+    /// denial's owner). Their handler base is the handlers' height now:
+    /// the generated code pushes no handler, and whatever ran above these
+    /// frames since they were entered has taken its own back. The
+    /// innermost's pc is the one synced (`head_pc`); an outer one's
+    /// record starts at 0, as a record a call pushes does, and nothing
+    /// reads it before a hand-back sets it. The test of the head is
+    /// inline, on the path of every call through the VM; the walk is a
+    /// call of its own.
+    #[inline]
+    pub(crate) fn record_frames(&mut self) {
+        if !self.unrecorded_head().is_null() {
+            self.record_chain();
+        }
+    }
+
+    /// `record_frames` with an unrecorded head.
+    #[inline(never)]
+    fn record_chain(&mut self) {
+        let mut node = self.unrecorded_head();
+        let first = self.frames.len();
+        let handler_base = self.handlers.len();
+        let mut pc = self.native_state.head_pc;
+        // SAFETY: see `unrecorded_head`; the walk stops at the first node
+        // whose record is made (a trampoline's caller made it), the links
+        // of the ones made here being cut
+        while !node.is_null() && unsafe { (*node).recorded } == 0 {
+            let unmade = unsafe { &mut *node };
+            self.frames.push(Frame {
+                code: unmade.code,
+                pc,
+                base: unmade.base,
+                handler_base,
+                grant: unmade.grant,
+            });
+            unmade.recorded = 1;
+            pc = 0;
+            node = std::mem::replace(&mut unmade.link, std::ptr::null_mut());
+        }
+        self.native_state.head = std::ptr::null_mut();
+        // pushed innermost first: into call order
+        self.frames[first..].reverse();
+    }
+
     /// The grant of a new frame, as its index in `grants`: the enclosing
-    /// one, narrowed by the `needs` of the function the code belongs to
+    /// one (the innermost frame's, by its record or its node, decision
+    /// AW24), narrowed by the `needs` of the function the code belongs to
     /// (decision Q1), remembered per function while the enclosing grant
     /// stays the same; a code object that narrows nothing takes its
     /// caller's index.
     #[inline]
     pub(crate) fn frame_grant(&mut self, code: CodeId) -> u32 {
-        let enclosing = match self.frames.last() {
-            Some(frame) => frame.grant,
-            None => 0,
-        };
+        let enclosing = self.innermost_grant_index();
+        self.frame_grant_under(enclosing, code)
+    }
+
+    /// `frame_grant` under the enclosing grant given by its index: the
+    /// record's on top, after `record_frames`.
+    fn frame_grant_under(&mut self, enclosing: u32, code: CodeId) -> u32 {
         if !self.narrows[code] {
             return enclosing;
         }
@@ -1325,6 +1455,8 @@ impl<'p> Vm<'p> {
         effect: &Capability,
         args: &[Value],
     ) -> Result<Value, Interrupt> {
+        // the owner's name walks the records (decision AW24)
+        self.record_frames();
         let names = ["PermissionDenied", "HostNotAllowed", "ProgramNotAllowed"];
         match self.boundary_failure(function, &names, effect, args) {
             Some(failure) => Ok(failure),
@@ -1652,7 +1784,11 @@ impl<'p> Vm<'p> {
     /// stack: they stay there as its first locals (decision X3).
     #[inline]
     pub(crate) fn push_frame_in_place(&mut self, code: CodeId, count: usize) {
-        let grant = self.frame_grant(code);
+        // the records of the compiled frames below go first (decision
+        // AW24), and the caller is then the record on top
+        self.record_frames();
+        let enclosing = self.frames.last().map_or(0, |frame| frame.grant);
+        let grant = self.frame_grant_under(enclosing, code);
         let base = self
             .stack
             .len()

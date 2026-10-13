@@ -94,8 +94,9 @@ const PART_ALIGN: usize = 16;
 /// among the helpers, without a status (decision AW12). 22: a loop's
 /// iterator in two slots of the frame, the source and the position,
 /// which the generated code reads in place (decision AW14). 23: `JumpByTag`,
-/// a `match` by a table (decision AW15).
-pub const CODE_FORMAT: u32 = 23;
+/// a `match` by a table (decision AW15). 24: the state's `head` and the
+/// node a body keeps for its record (decision AW24).
+pub const CODE_FORMAT: u32 = 24;
 
 /// The extension of an image file.
 pub const EXTENSION: &str = "ryi";

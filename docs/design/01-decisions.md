@@ -8373,3 +8373,115 @@ test alone, and B1 next in AW21's order, the frame record lazy, on the
 fixed base. A held slot as one word (the pointer of a record whose type
 the checker settled, the tag implied) is the variant B3 did not try,
 noted for the day B1 and B4 fall short, beside AW21's reserve.
+
+**AW24. Stage B1 of the new code generator: the frame record lazy.** The
+third stage of road (B) in AW21's order, built on 2026-10-13 and
+measured as AW21 prescribes against stage B2 with the leak fixed
+(`renyi_b2fix`, the tree of AW23's commit 1048e84, the base AW23 named).
+As built: a direct call between compiled bodies pushes no record on
+`Vm::frames`. The callee's body keeps a node in its machine frame
+instead (`FrameNode` in `vm.rs`: the link to the caller's node, the code
+object, the base, the grant the signature passed, and whether the record
+is made), linked as the head of the chain `NativeState::head` names by
+the prologue of a body entered directly (`link_node` in `codegen.rs`:
+one load and six stores, where the record cost four loads and seven
+stores at the call and the prologue a check of the frames' room) and
+unlinked by every return (`unlink_node` in `return_with`, which every
+way out of a body goes through); a body entered through its trampoline,
+whose record the interpreter or the template tier pushed, is marked made
+from the start (`direct` 0), a direct call's not. The records are made
+by `Vm::record_frames` (the test of the head inline on the path of every
+call through the VM, the walk a call of its own, `record_chain`), which
+walks the chain from the head to the first node marked made, pushes a
+record per node before it, innermost first and reversed in place into
+call order (the innermost's pc the one a helper synced beside the head,
+`NativeState::head_pc`, since only the innermost frame's pc locates a
+crash and every helper that raises an interrupt syncs first; an outer
+one's 0, as a call's record starts; the handler base the handlers'
+height now, since the generated code pushes no handler and whatever ran
+above these frames has taken its own back), marks them, cuts their links
+and leaves the head null, so that a null head or a marked one says the
+innermost frame has its record (a select at every entry, which would
+have let a null alone say it, cost 4.0 million on the check row in the
+second build below, more than the readers' test of the mark costs
+there); it runs before anything reads a frame by its record:
+`push_frame_in_place` (a call through the VM's path, `rt_call`, a
+callback from a native, a function value), `interrupt` in `runtime.rs`
+(every interrupt parked, `status`'s too: the frames are abandoned by
+their records on the way out, and the innermost's pc locates a crash),
+`rt_deopt` (the frame goes to the interpreter by its record) and
+`denied` (the owner's name walks the records). The readers that need no
+record: `effective_grant` reads the unrecorded head's grant first (such
+a frame is the innermost of all, since every way a frame goes above it
+makes the records first and the template tier's calls run above a made
+chain), `frame_grant` takes the enclosing grant from it
+(`innermost_grant_index`; `rt_frame_grant` unchanged, right for the
+template tier too, whose own record is on top) and
+`push_frame_in_place`, the records made, from the record on top
+(`frame_grant_under`), `sync_pc` writes `head_pc` while the head's
+record is unmade, else the record's pc, and `leave_frame` (`rt_fail`,
+`rt_unhandled`, `rt_check_failed`) cuts the stack to the node's base
+when the record is unmade, with no handler of its own to take back. The
+leave in generated code pops the record only when the node says it is
+made (a cold block, the handlers' height restored from the record);
+`push_frame_inline` keeps the argument moves and the grant;
+`rt_grow_frames` stays for the template tier. The template tier, the
+trampoline (which reads the record's grant, on top for every trampolined
+frame), the interpreter, the bytecode and the emitters are untouched;
+code format 23 to 24, since the generated code's view of `NativeState`
+changed. The tests:
+`direct_calls_make_their_frame_records_only_when_a_helper_reads_them` in
+`tests/native.rs` (a crash three direct calls deep located at the
+innermost line, which the chain blinded puts at `main`'s; a frame handed
+back two direct calls deep inside a loop, its callers taking the big
+result through hand-backs of their own; a denial under a sandbox inside
+a narrowing callee called directly, whose message names that callee and
+its grant; each against the interpreter), and AW6's test of the grant
+renamed, its room check gone. Every gate passed: 411 tests, the four
+judges byte-equal, the conformance suite 55 of 55 on both tiers.
+
+The measure against `renyi_b2fix`: the check row 1,493.5 to 1,482.7
+million instructions (-0.7%), the parse row 688.6 to 685.3 (-0.5%), the
+compile row 2,673.0 to 2,656.9 (-0.6%); the ratios by instructions 3.36,
+2.41 and 7.27 against the gate's 3 (the Rust rows within 0.1% of the
+base's); the generated code 757.4 to 744.9 million, the calls through
+the VM 8.0 to 8.2, the counts and drops 130.6 to 130.6, the natives
+254.2 to 254.2; AT1's synchronous row 5,188.5 to 5,228.4 (+0.8%) and its
+estimate 7,394.5 to 7,557.1 (+2.2%), the image row 3,203.6 to 3,208.5
+(+0.2%) and 4,743.0 to 4,795.5 by the estimate (+1.1%), the cached run
+3,287.1 to 3,291.7 (+0.1%), the interpreter 10,937.5 to 11,012.8
+(+0.7%), the image 10,330,704 to 10,383,184 bytes (+0.5%); the micro
+programs per turn `calls_typed` 120 to 116, `calls_boxed` 202 to 199,
+`boxed_fields` 122 to 122, `boxed_moves` 119 to 120; the benchmarks
+`primes` +0.2%, `strings` +0.7%, `records` +0.5%, `json_round_trip`
++0.1%. Four builds were measured on the way, the earlier ones kept in
+the lane (`study/b1_first`, `study/b1_refined2` and their logs): the
+first (the synced pc in the node, the records collected into a vector,
+every reader testing the head's mark) at 1,485.8 million on the check
+row (−0.5%) and 7,547.3 million by AT1's estimate (+2.1%), whose
+profiles on the self-check (which calls function values 446,259 times
+through the VM's path and so records most of its frames: `record_frames`
+21.2 million of its own, `frame_grant` 12.5 to 17.4 million, the
+allocator 161.4 to 176.0 million) and on the synchronous row (the
+runtime's helpers 10.6 million up, the code generator's own 2.5 million)
+led to the second (the pc beside the head, no vector, the chain's
+invariant tightened so that a null head alone said the record was made,
+by a select at every entry) at 1,487.9 million (−0.4%: the select cost
+4.0 million of generated code) and 7,537.3 million (+1.9%), whose
+interpreter profile put the 161.6 million of its row's rise (+1.5%) in
+`record_frames` called out of line at each of 5,407,462 pushes through
+the VM (97.3 million of its own and 81.1 million of spills in
+`push_frame_in_place`, against 21.6 million saved by
+`frame_grant_under`), which led to the third (the select gone, the
+readers testing the mark again) and the fourth (the test of the head
+inline, the walk a call of its own), measured together as the build
+above. What remains on AT1's rows is structural: the self-check records
+most of its frames, and a body entered through its trampoline writes a
+node its record makes needless, which the tiered runs (the synchronous
+row, the benchmarks) pay at every such entry; a later stage could let
+the interpreter and the template tier leave the record to the chain too,
+after which every compiled frame would be a node. The direct calls of
+the current compiler, the check row, gain. Kept by the owner's rule
+(AW21: the check row down by at least 0.5%, or AT1's synchronous
+estimate down at all: -0.7% and +2.2%). Next in AW21's order: B4, the
+counts by dataflow.

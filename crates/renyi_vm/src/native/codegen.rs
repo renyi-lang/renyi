@@ -51,7 +51,7 @@ use crate::value::layout::{
 };
 use crate::value::Value;
 use crate::vm::{
-    plain_record_type, plain_variant_type, unit_slot, CallKind, Entry, FieldSite, Frame,
+    plain_record_type, plain_variant_type, unit_slot, CallKind, Entry, FieldSite, Frame, FrameNode,
     GlobalSlot, NativeState, ReadInPlace, Vm,
 };
 
@@ -160,6 +160,16 @@ pub(crate) const STATE_LIST_ITEMS: i32 = std::mem::offset_of!(NativeState, list_
 pub(crate) const STATE_LIST_LEN: i32 = std::mem::offset_of!(NativeState, list_len) as i32;
 pub(crate) const STATE_GLOBALS: i32 = std::mem::offset_of!(NativeState, globals) as i32;
 pub(crate) const STATE_IN_PLACE: i32 = std::mem::offset_of!(NativeState, in_place) as i32;
+/// The node of the innermost compiled frame (decision AW24).
+const STATE_HEAD: i32 = std::mem::offset_of!(NativeState, head) as i32;
+/// The node a body keeps in its machine frame for its record (decision
+/// AW24): its size and the offsets of its fields.
+const NODE_SIZE: u32 = std::mem::size_of::<FrameNode>() as u32;
+const NODE_LINK: i32 = std::mem::offset_of!(FrameNode, link) as i32;
+const NODE_CODE: i32 = std::mem::offset_of!(FrameNode, code) as i32;
+const NODE_BASE: i32 = std::mem::offset_of!(FrameNode, base) as i32;
+const NODE_GRANT: i32 = std::mem::offset_of!(FrameNode, grant) as i32;
+const NODE_RECORDED: i32 = std::mem::offset_of!(FrameNode, recorded) as i32;
 /// A module constant's slot in the JIT's table (decision AU53): its size,
 /// the flag that says the VM has built it and the value.
 pub(crate) const GLOBAL_SIZE: usize = std::mem::size_of::<GlobalSlot>();
@@ -474,13 +484,10 @@ struct Gen<'a, 'b> {
     /// (`accepted_params`), the bits every caller reads.
     flagged: u64,
     /// The frame's grant (decision Q1), by its index in `Vm::grants`, as
-    /// the signature passed it (decision AW6): what a direct call writes
-    /// into the record of a callee that does not narrow it.
+    /// the signature passed it (decision AW6): what a direct call passes a
+    /// callee that does not narrow it, and what the frame's node carries
+    /// for its record (decision AW24).
     grant: IrValue,
-    /// Whether some `Call` of the body is made directly (`direct_call`):
-    /// the prologue then makes room in the frames for the record such a
-    /// call pushes (decision AW6).
-    calls_directly: bool,
     /// The typed parameters, each with its slot: in the registers the
     /// signature put them in.
     typed_params: Vec<(usize, IrValue)>,
@@ -527,6 +534,10 @@ struct Gen<'a, 'b> {
     /// A value's size on the machine stack, where a held value is written
     /// for the helper that drops it (decision AW22).
     scratch_slot: StackSlot,
+    /// The frame's node (decision AW24): what stands for its record on
+    /// `Vm::frames` until a helper makes the record; linked into the VM's
+    /// chain by the prologue and unlinked by every return.
+    node_slot: StackSlot,
     deopt_slot: StackSlot,
     deopts: Vec<DeoptPoint>,
     /// The blocks that hand the frame to the interpreter (`deopt_block`),
@@ -728,18 +739,6 @@ pub(crate) fn accepted_params(program: &Program, calls: &[CallKind], code_id: us
         .fold(0, |mask, slot| mask | 1 << slot)
 }
 
-/// Whether some `Call` of the code object is made directly
-/// (`direct_call`) at the state the analysis found there.
-fn has_direct_call(program: &Program, code: &Code, analysis: &Analysis) -> bool {
-    code.ops().iter().enumerate().any(|(pc, op)| match op {
-        Op::Call { function, args } => matches!(
-            analysis.entry.get(pc).and_then(|state| state.as_deref()),
-            Some(state) if direct_call(program, state, *function, *args as usize).is_some()
-        ),
-        _ => false,
-    })
-}
-
 /// The operands a typed call, a comparison or a direct call borrows
 /// (decisions AU1, AU13 and AW5): for a `Call` of a primitive with a
 /// typed entry, the arguments pushed by the `Load`s and `LoadMove`s of
@@ -886,7 +885,6 @@ pub fn compile(
     let analysis = analyse(program, code, globals, pairs, true).map_err(Skipped::Analysis)?;
     let (borrowed, masks) = borrowed_operands(program, code, &analysis, calls, true);
     let owned = owned_slots(code, &analysis, &borrowed);
-    let calls_directly = has_direct_call(program, code, &analysis);
     stats.analysis = started.elapsed();
     let mut headers: Vec<usize> = Vec::new();
     for (pc, op) in code.ops().iter().enumerate().take(original_len) {
@@ -972,6 +970,12 @@ pub fn compile(
         // (decision AW22)
         let scratch_slot =
             builder.create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, 24, 3));
+        // the frame's node (decision AW24)
+        let node_slot = builder.create_sized_stack_slot(StackSlotData::new(
+            StackSlotKind::ExplicitSlot,
+            NODE_SIZE,
+            3,
+        ));
         let max_depth = analysis
             .entry
             .iter()
@@ -1010,7 +1014,6 @@ pub fn compile(
             borrowed_params,
             flagged,
             grant,
-            calls_directly,
             typed_params,
             base24,
             frame_var,
@@ -1029,6 +1032,7 @@ pub fn compile(
             exits: Vec::new(),
             out_slot,
             scratch_slot,
+            node_slot,
             deopt_slot,
             deopts: Vec::new(),
             deopt_blocks: Vec::new(),
@@ -1400,12 +1404,13 @@ impl Gen<'_, '_> {
     fn return_direct(&mut self, status: i32) {
         let value = self.iconst(types::I32, status as i64);
         let payload = self.iconst(types::I64, 0);
-        self.b.ins().return_(&[value, payload]);
-        self.terminated = true;
+        self.return_with(value, payload);
     }
 
-    /// Leave the body with a status and the bits of a typed result.
+    /// Leave the body with a status and the bits of a typed result: the
+    /// frame's node unlinked first (decision AW24), on every way out.
     fn return_with(&mut self, status: IrValue, payload: IrValue) {
+        self.unlink_node();
         self.b.ins().return_(&[status, payload]);
         self.terminated = true;
     }
@@ -2603,6 +2608,49 @@ impl Gen<'_, '_> {
         self.b.ins().iadd(ptr, offset)
     }
 
+    /// The frame's node written and linked as the head of the VM's chain
+    /// (decision AW24): the caller's node, this code object, the base,
+    /// the grant the signature passed, and whether the record is made,
+    /// which it is for a trampoline's caller (`direct` is 0) and not for
+    /// a direct one.
+    fn link_node(&mut self) {
+        let flags = MemFlagsData::trusted();
+        let state = self.native_state();
+        let head = self.b.ins().load(self.pointer, flags, state, STATE_HEAD);
+        self.b
+            .ins()
+            .stack_store(self.pointer, head, self.node_slot, NODE_LINK);
+        let code = self.usize(self.code_id);
+        self.b
+            .ins()
+            .stack_store(self.pointer, code, self.node_slot, NODE_CODE);
+        self.b
+            .ins()
+            .stack_store(self.pointer, self.base, self.node_slot, NODE_BASE);
+        self.b
+            .ins()
+            .stack_store(self.pointer, self.grant, self.node_slot, NODE_GRANT);
+        let recorded = self.b.ins().bxor_imm_s(self.direct, 1);
+        self.b
+            .ins()
+            .stack_store(self.pointer, recorded, self.node_slot, NODE_RECORDED);
+        let node = self.b.ins().stack_addr(self.pointer, self.node_slot, 0);
+        self.b.ins().store(flags, node, state, STATE_HEAD);
+    }
+
+    /// The caller's node back as the head of the VM's chain (decision
+    /// AW24), before the body returns.
+    fn unlink_node(&mut self) {
+        let link = self
+            .b
+            .ins()
+            .stack_load(self.pointer, self.pointer, self.node_slot, NODE_LINK);
+        let state = self.native_state();
+        self.b
+            .ins()
+            .store(MemFlagsData::trusted(), link, state, STATE_HEAD);
+    }
+
     /// `Nothing` pushed on the stack at a height (as `push_typed_value`).
     fn push_nothing_at(&mut self, height: usize) {
         let to = self.address_at(height);
@@ -2613,15 +2661,16 @@ impl Gen<'_, '_> {
         self.store_height(height + 1);
     }
 
-    /// The callee's frame pushed in place (decision AR4), as
-    /// `Vm::push_frame_in_place` pushes one: the boxed arguments on top
-    /// of the stack move to their parameters' slots (every other local is
-    /// written `Nothing` by the callee's prologue, decision AT2, which
-    /// writes the stack's length too, decision AW6), and the frame record
-    /// carries the grant of decision Q1: this frame's, from the register
-    /// the signature passed it in, unless the callee narrows it, when the
-    /// helper computes it. The frames have room for the record by this
-    /// body's prologue (decision AW6), and the stack has room for the
+    /// The callee's frame placed in place (decision AR4), as
+    /// `Vm::push_frame_in_place` places one but without its record
+    /// (decision AW24: the callee's prologue links a node in its place,
+    /// and a helper that reads the frames makes the record): the boxed
+    /// arguments on top of the stack move to their parameters' slots
+    /// (every other local is written `Nothing` by the callee's prologue,
+    /// decision AT2, which writes the stack's length too, decision AW6),
+    /// and the callee's grant is this frame's, from the register the
+    /// signature passed it in, unless the callee narrows it, when the
+    /// helper computes it (decision Q1). The stack has room for the
     /// callee's locals by the callee's own prologue, except where an
     /// argument moves to a slot past the room this frame's prologue made,
     /// which is checked here first. The new frame's base and its grant
@@ -2684,24 +2733,6 @@ impl Gen<'_, '_> {
                 }
             }
         }
-        // the frame record
-        let frames = self.frames_vector();
-        let frames_len = self.b.ins().load(pointer, flags, frames, 8);
-        let frames_ptr = self.b.ins().load(pointer, flags, frames, 0);
-        let record = self.frame_address(frames_ptr, frames_len);
-        let code_value = self.usize(callee);
-        self.b.ins().store(flags, code_value, record, FRAME_CODE);
-        let zero = self.usize(0);
-        self.b.ins().store(flags, zero, record, FRAME_PC);
-        self.b.ins().store(flags, base, record, FRAME_BASE);
-        let handlers = self.handlers_vector();
-        let handlers_len = self.b.ins().load(pointer, flags, handlers, 8);
-        self.b
-            .ins()
-            .store(flags, handlers_len, record, FRAME_HANDLER_BASE);
-        self.b.ins().store(flags, grant, record, FRAME_GRANT);
-        let more = self.b.ins().iadd_imm_s(frames_len, 1);
-        self.b.ins().store(flags, more, frames, 8);
         (base, grant)
     }
 
@@ -2709,8 +2740,9 @@ impl Gen<'_, '_> {
     /// a reference at the op (`owned_slots`, decision AW4: a boxed slot
     /// moved out or updated in place holds `Nothing` and is skipped) and
     /// the `operands` boxed operands above the locals are released, the
-    /// stack is cut to the base, the handlers to the frame's height, and
-    /// the frame is popped. A typed local holds `Nothing` or a plain
+    /// stack is cut to the base and, when the frame's record was made
+    /// (decision AW24), the handlers to the frame's height and the record
+    /// is popped. A typed local holds `Nothing` or a plain
     /// value and needs no release. A read-only parameter is released only
     /// when the frame owns it (decision AW5: the caller's bit in
     /// `borrowed_params` says it was passed borrowed, and the caller's
@@ -2778,6 +2810,18 @@ impl Gen<'_, '_> {
             let zero = self.u32(0);
             self.call("rt_truncate", &[self.vm, self.base, zero, zero]);
         }
+        // the record popped when it was made (decision AW24): by a
+        // trampoline's caller, or by a helper that read the frames since
+        // the entry; a frame without one left no handler of its own either
+        let recorded =
+            self.b
+                .ins()
+                .stack_load(self.pointer, types::I8, self.node_slot, NODE_RECORDED);
+        let pop = self.b.create_block();
+        let cont = self.b.create_block();
+        self.b.ins().brif(recorded, pop, &[], cont, &[]);
+        self.b.set_cold_block(pop);
+        self.switch_to(pop);
         let frames = self.frames_vector();
         let frames_len = self.b.ins().load(pointer, flags, frames, 8);
         let top = self.b.ins().iadd_imm_s(frames_len, -1);
@@ -2790,6 +2834,8 @@ impl Gen<'_, '_> {
         let handlers = self.handlers_vector();
         self.b.ins().store(flags, handler_base, handlers, 8);
         self.b.ins().store(flags, top, frames, 8);
+        self.b.ins().jump(cont, &[]);
+        self.switch_to(cont);
     }
 
     /// Whether the parameter in `slot` may have been passed borrowed
@@ -2891,6 +2937,9 @@ impl Gen<'_, '_> {
     // ------------------------------------------------------------ the body
 
     fn prologue(&mut self) {
+        // the frame's node into the VM's chain first (decision AW24):
+        // every way out of the body unlinks it
+        self.link_node();
         // room on the stack for the frame's locals and its deepest operand
         // stack, checked once (decision AR4): every push of the body then
         // has it, and a frame handed over at a loop header has at most
@@ -2910,24 +2959,6 @@ impl Gen<'_, '_> {
         self.b.ins().jump(cont, &[]);
         self.switch_to(cont);
         self.reload_frame();
-        // room in the frames for the record a direct call of this body
-        // pushes (decision AW6), checked once: the frames' length is the
-        // same at every such call, this frame on top, and the capacity
-        // never falls
-        if self.calls_directly {
-            let frames = self.frames_vector();
-            let frames_len = self.b.ins().load(self.pointer, flags, frames, 8);
-            let frames_cap = self.b.ins().load(self.pointer, flags, frames, 16);
-            let full = self.b.ins().icmp(IntCC::Equal, frames_len, frames_cap);
-            let grow = self.b.create_block();
-            let cont = self.b.create_block();
-            self.b.ins().brif(full, grow, &[], cont, &[]);
-            self.b.set_cold_block(grow);
-            self.switch_to(grow);
-            self.call("rt_grow_frames", &[self.vm]);
-            self.b.ins().jump(cont, &[]);
-            self.switch_to(cont);
-        }
         // the stack's length is `base` plus the code object's own locals
         // as the caller left it; the expanded code's locals go on past
         // them (decision AU50), as the pairs' second cells do (decision

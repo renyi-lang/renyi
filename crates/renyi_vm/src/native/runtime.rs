@@ -132,14 +132,15 @@ fn status(vm: &mut Vm, result: Result<Value, Interrupt>) -> i32 {
                 CONTINUE
             }
         }
-        Err(interrupt) => {
-            vm.pending = Some(interrupt);
-            INTERRUPT
-        }
+        Err(error) => interrupt(vm, error),
     }
 }
 
+/// An interrupt parked in the VM: the records of the compiled frames are
+/// made first (decision AW24), since the frames are abandoned by their
+/// records on the way out and the innermost's pc locates a crash.
 fn interrupt(vm: &mut Vm, interrupt: Interrupt) -> i32 {
+    vm.record_frames();
     vm.pending = Some(interrupt);
     INTERRUPT
 }
@@ -265,14 +266,16 @@ pub(crate) unsafe extern "C" fn rt_room(vm: VmPtr, needed: usize) {
 }
 
 /// The frames have no room for a push: their capacity grows (decision
-/// AR4).
+/// AR4; the template tier's calls alone push a record in place since
+/// decision AW24).
 pub(crate) unsafe extern "C" fn rt_grow_frames(vm: VmPtr) {
     vm!(vm).frames.grow();
 }
 
 /// The effective grant of a frame of `code` that the generated code
-/// pushes (decision AR4): the enclosing grant narrowed by what the
-/// function declares (decision Q1). The caller's frame is still on top.
+/// enters (decision AR4): the enclosing grant narrowed by what the
+/// function declares (decision Q1). The caller's frame is the innermost,
+/// by its record on top or by its node (decision AW24).
 pub(crate) unsafe extern "C" fn rt_frame_grant(vm: VmPtr, code: usize) -> u32 {
     vm!(vm).frame_grant(code)
 }
@@ -1530,6 +1533,8 @@ pub(crate) unsafe extern "C" fn rt_deopt(
     values: *const u64,
 ) {
     let vm = vm!(vm);
+    // the frame goes to the interpreter by its record (decision AW24)
+    vm.record_frames();
     let jit = vm
         .native
         .as_mut()
@@ -1870,20 +1875,33 @@ impl Vm<'_> {
     }
 
     /// The frame's pc as the interpreter would have it while the op at
-    /// `pc` runs: one past it, which is what locates a crash.
+    /// `pc` runs: one past it, which is what locates a crash; beside the
+    /// head while its record is unmade (decision AW24, `head_pc`), else
+    /// into the record on top.
     #[inline]
     pub(crate) fn sync_pc(&mut self, pc: u32) {
-        if let Some(frame) = self.frames.last_mut() {
+        if !self.unrecorded_head().is_null() {
+            self.native_state.head_pc = pc as usize + 1;
+        } else if let Some(frame) = self.frames.last_mut() {
             frame.pc = pc as usize + 1;
         }
     }
 
     /// Pop the running frame with its result onto the caller's stack (the
     /// interpreter's `leave!` without the settling, which the caller does).
+    /// A compiled frame whose record is unmade (decision AW24) has none to
+    /// pop and no handler of its own on `Vm::handlers`: its stack goes.
     pub(crate) fn leave_frame(&mut self, value: Value) {
-        let left = self.frames.pop().expect("a frame");
-        self.stack.truncate_values(left.base);
-        self.handlers.truncate(left.handler_base);
+        let node = self.unrecorded_head();
+        if !node.is_null() {
+            // SAFETY: see `unrecorded_head`
+            let base = unsafe { (*node).base };
+            self.stack.truncate_values(base);
+        } else {
+            let left = self.frames.pop().expect("a frame");
+            self.stack.truncate_values(left.base);
+            self.handlers.truncate(left.handler_base);
+        }
         self.stack.push(value);
     }
 

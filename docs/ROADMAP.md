@@ -461,8 +461,11 @@ where one decided, the status. The dates are those of the decisions.
     spilled and moved); the leak its measure found, since stage 2b,
     the owned analysis stopping at an `otherwise` region a pair's
     call skips, fixed (AW23: the check row 1,482.3 to 1,493.5 for the
-    blocks now freed, the ratio 3.38). B1 (the frame record lazy) is
-    next.
+    blocks now freed, the ratio 3.38). B1 (the frame record lazy) done
+    (decision AW24, 2026-10-13: a direct call pushes no record, the
+    callee's node in its machine frame and the records made when a
+    helper reads them; the check row 1,493.5 to 1,482.7, -0.7%; the
+    ratio 3.36). B4 (the counts by dataflow) is next.
 
 ## 3. The tracks
 
@@ -498,7 +501,8 @@ state of each line.
   in four measured stages, in progress: B2 done (AW22, the check row to
   1,482.3, -3.0%, the ratio to 3.36), B3 measured and left off and the
   leak of stages 2b to B2 fixed (AW23, the check row 1,493.5, the
-  ratio 3.38), B1 in work.
+  ratio 3.38), B1 done (AW24, the check row to 1,482.7, -0.7%,
+  the ratio to 3.36), B4 in work.
 - **E. Packages, the FFI and Python**: stages 15, 18. Done; candidates
   not decided: record types from dataclasses in the binder, a deadline
   per Python call, one worker across a test run.
@@ -570,7 +574,9 @@ the study's estimate 340 million, the check row to about 1,190 million,
 operands in registers, the check row to 1,482.3, -3.0%, the
 ratio to 3.36) and B3 measured and left off with the leak of stages
 2b to B2 fixed (AW23, 2026-10-12: the check row 1,493.5, the ratio
-3.38; B1 next); then, when the ratio is within 3, the switch
+3.38) and B1 done (AW24, 2026-10-13: the frame record lazy, the
+check row to 1,482.7, -0.7%, the ratio to 3.36; B4
+next); then, when the ratio is within 3, the switch
 of the binary's front end to the compiler written in Renyi. Candidates
 beside it, none decided: the emitter's own round for the compile row,
 the Rust front end's name sets as bits, the C API, the language server's
