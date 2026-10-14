@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
 
 The language client (decision AN2): the extension starts `renyi lsp` for
 the workspace folder and shows its diagnostics, hover, go to definition,

@@ -299,7 +299,7 @@ fn add_fetches_a_package_names_its_effects_and_the_run_manifest_names_it() {
     ));
     let recording = read(&app.join("run.json"));
     assert!(
-        recording.contains("\"dependencies\": {\n    \"greeting\": {\n      \"version\": \"1.0.0\",\n      \"hash\": \"sha256:88ea984b2182d8618c0353b4c2c22d12ab418ffefb69ad2729cca379cd1709e9\"\n    }\n  },\n"),
+        recording.contains("\"dependencies\": {\n    \"greeting\": {\n      \"version\": \"1.0.0\",\n      \"hash\": \"sha256:fa4a0810a24aa87d33f96f7e7fcc0258c1358f443f08b71fd8783524ae973a66\"\n    }\n  },\n"),
         "{recording}"
     );
     let reproduced = renyi_in(&app, &["reproduce", "run.json"]);
@@ -307,7 +307,7 @@ fn add_fetches_a_package_names_its_effects_and_the_run_manifest_names_it() {
     // a recording made with another version of the package is refused
     write(
         &app.join("other.json"),
-        &recording.replace("sha256:88ea984b", "sha256:00000000"),
+        &recording.replace("sha256:fa4a0810", "sha256:00000000"),
     );
     let differs = refused(&renyi_in(&app, &["reproduce", "other.json"]));
     assert!(
