@@ -1,0 +1,9 @@
+# The build products of latexmk; renyi.bbl is kept for arXiv.
+*.aux
+*.log
+*.out
+*.fls
+*.fdb_latexmk
+*.blg
+*.synctex.gz
+*.pdf

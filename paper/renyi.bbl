@@ -1,0 +1,97 @@
+\begin{thebibliography}{13}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[{Anthropic}(2024)]{mcp}
+{Anthropic}.
+\newblock Model context protocol: Specification 2024-11-05.
+\newblock \url{https://modelcontextprotocol.io/specification/2024-11-05}, 2024.
+
+\bibitem[Brachth{\"a}user et~al.(2020)Brachth{\"a}user, Schuster, and
+  Ostermann]{brachthauser2020effekt}
+Jonathan~Immanuel Brachth{\"a}user, Philipp Schuster, and Klaus Ostermann.
+\newblock Effects as capabilities: Effect handlers and lightweight effect
+  polymorphism.
+\newblock \emph{Proceedings of the ACM on Programming Languages}, 4\penalty0
+  (OOPSLA):\penalty0 126:1--126:30, 2020.
+\newblock \doi{10.1145/3428194}.
+
+\bibitem[{Bytecode Alliance}(2026)]{cranelift}
+{Bytecode Alliance}.
+\newblock Cranelift: A code generator.
+\newblock \url{https://cranelift.dev/}, 2026.
+
+\bibitem[Chen et~al.(2021)]{chen2021codex}
+Mark Chen et~al.
+\newblock Evaluating large language models trained on code.
+\newblock \emph{arXiv preprint arXiv:2107.03374}, 2021.
+
+\bibitem[Clebsch et~al.(2015)Clebsch, Drossopoulou, Blessing, and
+  McNeil]{clebsch2015deny}
+Sylvan Clebsch, Sophia Drossopoulou, Sebastian Blessing, and Andy McNeil.
+\newblock Deny capabilities for safe, fast actors.
+\newblock In \emph{Proceedings of the 5th International Workshop on Programming
+  Based on Actors, Agents, and Decentralized Control (AGERE! 2015)}, pages
+  1--12. ACM, 2015.
+
+\bibitem[{Deno Land Inc.}(2026)]{deno}
+{Deno Land Inc.}
+\newblock Deno runtime: Security and permissions.
+\newblock \url{https://docs.deno.com/runtime/fundamentals/security/}, 2026.
+
+\bibitem[Ierusalimschy et~al.(1996)Ierusalimschy, de~Figueiredo, and
+  Celes]{ierusalimschy1996lua}
+Roberto Ierusalimschy, Luiz~Henrique de~Figueiredo, and Waldemar Celes.
+\newblock Lua---an extensible extension language.
+\newblock \emph{Software: Practice and Experience}, 26\penalty0 (6):\penalty0
+  635--652, 1996.
+
+\bibitem[Leijen(2014)]{leijen2014koka}
+Daan Leijen.
+\newblock Koka: Programming with row polymorphic effect types.
+\newblock In \emph{Proceedings of the 5th Workshop on Mathematically Structured
+  Functional Programming (MSFP 2014)}, volume 153 of \emph{EPTCS}, pages
+  100--126, 2014.
+\newblock arXiv:1406.2061.
+
+\bibitem[Melicher et~al.(2017)Melicher, Shi, Potanin, and
+  Aldrich]{melicher2017capability}
+Darya Melicher, Yangqingwei Shi, Alex Potanin, and Jonathan Aldrich.
+\newblock A capability-based module system for authority control.
+\newblock In \emph{31st European Conference on Object-Oriented Programming
+  (ECOOP 2017)}, volume~74 of \emph{LIPIcs}, pages 20:1--20:27, 2017.
+\newblock \doi{10.4230/LIPIcs.ECOOP.2017.20}.
+
+\bibitem[Miller(2006)]{miller2006robust}
+Mark~Samuel Miller.
+\newblock \emph{Robust Composition: Towards a Unified Approach to Access
+  Control and Concurrency Control}.
+\newblock PhD thesis, Johns Hopkins University, Baltimore, Maryland, 2006.
+
+\bibitem[O'Callahan et~al.(2017)O'Callahan, Jones, Froyd, Huey, Noll, and
+  Partush]{ocallahan2017rr}
+Robert O'Callahan, Chris Jones, Nathan Froyd, Kyle Huey, Albert Noll, and
+  Nimrod Partush.
+\newblock Engineering record and replay for deployability.
+\newblock In \emph{2017 USENIX Annual Technical Conference (USENIX ATC 17)},
+  2017.
+\newblock Extended technical report: arXiv:1705.05937.
+
+\bibitem[Schick et~al.(2023)Schick, Dwivedi-Yu, Dess{\`\i}, Raileanu, Lomeli,
+  Zettlemoyer, Cancedda, and Scialom]{schick2023toolformer}
+Timo Schick, Jane Dwivedi-Yu, Roberto Dess{\`\i}, Roberta Raileanu, Maria
+  Lomeli, Luke Zettlemoyer, Nicola Cancedda, and Thomas Scialom.
+\newblock Toolformer: Language models can teach themselves to use tools.
+\newblock \emph{arXiv preprint arXiv:2302.04761}, 2023.
+
+\bibitem[Yao et~al.(2023)Yao, Zhao, Yu, Du, Shafran, Narasimhan, and
+  Cao]{yao2023react}
+Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan,
+  and Yuan Cao.
+\newblock {ReAct}: Synergizing reasoning and acting in language models.
+\newblock \emph{arXiv preprint arXiv:2210.03629}, 2023.
+
+\end{thebibliography}
