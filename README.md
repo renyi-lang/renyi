@@ -260,16 +260,20 @@ python tools/bench.py target/debug/renyi              # the benchmarks of bench/
 cargo test
 ```
 
-Release 0.1.0 is out (2026-10-07; decisions AI1 to AI5, the
-procedure in `docs/RELEASE.md`); after it came the registration API for
-Rust natives (decisions AJ1 and AK1 to AK4; `docs/extensions.md`), the
-Python bridge (decisions AJ2, AJ3 and AL1 to AL4; `docs/python.md`), the
-resident world, the language server, the watch of `serve` and the
-embedding API (M5, decisions AN1 to AP2), and the rounds on the VM's
-speed and the front end's (decisions AQ to AU47). `docs/ROADMAP.md` is
-the map of every stage, numbered and grouped by track, with what comes
-next: the compiler written in Renyi brought within three times the Rust
-front end's time, when the binary switches to it.
+Release 0.2.0 is out (2026-10-13; the procedure in `docs/RELEASE.md`,
+decisions AI1 to AI5 and AW36; the extension is on Open VSX as
+`renyi-lang.renyi`). Between 0.1.0 (2026-10-07) and it came the
+registration API for Rust natives (decisions AJ1 and AK1 to AK4;
+`docs/extensions.md`), the Python bridge (decisions AJ2, AJ3 and AL1 to
+AL4; `docs/python.md`), the resident world, the language server with
+completion, references and rename, the watch of `serve` and the
+embedding API (M5, decisions AN1 to AP2, AW38, AW39 and AW44), the
+rounds on the VM's speed and the front end's (decisions AQ to AU, AW1
+to AW27), the toolchain for the browser with the play page and the
+showcase game (decisions AW29 to AW37), and the chunks for retrieval by
+embedding (decisions AW40 to AW43). `docs/ROADMAP.md` is the map of
+every stage, numbered and grouped by track, with what comes next (the
+C API of decision A5 is the next stage of AW28's order, not opened).
 
 ## Working on this repository
 

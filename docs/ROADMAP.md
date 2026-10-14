@@ -649,6 +649,16 @@ where one decided, the status. The dates are those of the decisions.
     library's modules and public declarations, from the binary's own
     copies), the tool's `language`, `starter/retrieval/retrieve.py`
     with its README. Stage 37 closed; 35c follows.
+38. **Release 0.2.0** (session 14, 2026-10-13, done; decision AW36,
+    `docs/RELEASE.md` sections 3 and 7). The version bumped with the
+    fixture's hash (commit 6c999d1, the gates and CI green), the eight
+    crates on crates.io in two minutes, the tag `v0.2.0` and its
+    release page (the three archives, their checksums, the `.vsix`),
+    the extension on Open VSX as `renyi-lang.renyi`, `cargo install
+    renyi` and `install.sh` checked against them. The owner's steps
+    after it: the Marketplace publisher and the publish there, the
+    social preview, the announcements from the texts written in the
+    lane.
 
 ## 3. The tracks
 
@@ -703,11 +713,13 @@ state of each line.
   answered, AW40; 37a the measure done, AW41; 37b the export done,
   AW42; 37c the extras done, AW43; the stage closed).
   Candidate not decided: the C API of decision A5.
-- **G. Release and the ecosystem**: stages 17, 30. Release 0.1.0 is
-  out; every release after it follows `docs/RELEASE.md`; the icon and
-  the wordmark (AV1) are in the site, the README and the extension; the
-  announcement, the three measurements of the positioning's section 5
-  and the upload of the social preview are the owner's pending actions.
+- **G. Release and the ecosystem**: stages 17, 30, 38. Releases 0.1.0
+  (2026-10-07) and 0.2.0 (2026-10-13) are out, the extension on Open
+  VSX since 0.2.0; every release follows `docs/RELEASE.md`; the icon
+  and the wordmark (AV1) are in the site, the README and the extension;
+  the Marketplace publisher, the announcements (the texts written), the
+  three measurements of the positioning's section 5 and the upload of
+  the social preview are the owner's pending actions.
 - **H. Readability**: stages 2, 6, 8. Four rounds exist under
   `tests/readability/`; they run only on request (V1).
 
@@ -798,9 +810,10 @@ built the export, `renyi index --chunks` and the tool `chunks`, decision
 AW42; 37c the language's documents and the example pipeline, decision
 AW43; the stage closed); 35c, completion with signature help and
 workspace symbols, is done (decision AW44), which closes stage 35.
-Release 0.2 is the work now (decision AW36,
-the owner's answer of 2026-10-13), with the extension published to
-the Marketplace and Open VSX from the owner's publisher and the
-announcements of `docs/RELEASE.md` section 6. Not scheduled: the
+Release 0.2.0 is out (stage 38, 2026-10-13: the crates, the tag, the
+release page, the extension on Open VSX; the Marketplace, the social
+preview and the announcements are the owner's steps, the texts
+written). Next, by AW28's order, the C API of decision A5, its design
+study first, when the owner opens it. Not scheduled: the
 Python binder's items of track E, the Rust front end's name sets as
 bits, the emitter's own round for the compile row.

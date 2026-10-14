@@ -157,9 +157,13 @@ the language server; the paragraphs "Stage 35a as built" to "Stage
 35c as built" at the end of the stage 35 study's section), and stage
 37 too (decisions AW41 to AW43, the map for retrieval by embedding;
 the section "Stage 37, the map for retrieval by embedding: the design
-study (session 14)" is its study); the work now is release 0.2
-(decision AW36; `docs/RELEASE.md` sections 3 and 6; the start-here
-item 1).
+study (session 14)" is its study), and release 0.2.0 shipped on
+2026-10-13 (decision AW36; `docs/RELEASE.md` section 7 is the record:
+the bump 6c999d1 with CI green, the eight crates on crates.io, the tag
+`v0.2.0` and its page, the extension on Open VSX; the Marketplace, the
+social preview and the announcements are the owner's steps, the texts
+in the lane); the work next is the C API of decision A5 by AW28's
+order, its design study first, when the owner opens it.
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -639,11 +643,18 @@ and push there directly.
    the stage 35 study's section): completion with its contexts,
    signature help and workspace symbols, both checkers recording
    every binding's declaration, a line the parser refuses repaired
-   for the request; stage 35 is closed. The work now is release 0.2
-   (decision AW36; `docs/RELEASE.md` section 3 for the tag and
-   section 6 for the platforms; the Open VSX publish through the
-   lane's `ovsx_publish.py`, the token read from the owner's mailbox
-   and never printed). The wasm lane is
+   for the request; stage 35 is closed. Release 0.2.0 shipped on
+   2026-10-13 (decision AW36; `docs/RELEASE.md` section 7 is the
+   record: the bump 6c999d1 with CI green, the eight crates on
+   crates.io in two minutes, the tag `v0.2.0` and its page, the
+   extension published to Open VSX through the lane's
+   `ovsx_publish.py` with the token read from the owner's mailbox and
+   never printed, `cargo install` and `install.sh` checked). The work
+   next: the C API of decision A5 by AW28's order, its design study
+   first, when the owner opens it; the owner's steps of
+   `docs/RELEASE.md` section 6 (the Marketplace publisher, the social
+   preview, the announcements from the lane's
+   `announcements_0.2.0.md`). The wasm lane is
    `D:\Projects\.worktrees\Renyi\wasm\` (its target directory for the
    wasm32 builds, `check_asis.log` the trial build, the gates logs,
    the measures and the scripts of each stage; of stage 36:
@@ -823,16 +834,17 @@ decision AR1 is in (the section "The baseline JIT" below: the fused op
 layout, decisions AR2 to AR4, the tiering AR5) and `renyi build`
 writes the image a run loads in place of compiling and, with `--exe`,
 the self-contained executable (decisions AS1 to AS4).
-Release 0.1.0 is out
-(2026-10-07, the section "Release 0.1 engineering" below): the
-repository is public at `github.com/renyi-lang/renyi`, the release
-page carries the three archives, their checksums and the `.vsix`,
-the seven crates of 0.1.0 are on crates.io (`cargo install renyi` builds
-0.1.0), the installers were run against the release, and the site is
-at `renyi-lang.org` (the GitHub Pages address redirects there), with
-the toolchain for the browser behind its play page and the showcase
-game on its game page since stages 33 and 36 (decisions AW33 and
-AW37). Release 0.2 follows stage 35 (decision AW36). Design decisions
+Releases 0.1.0 (2026-10-07, the section "Release 0.1 engineering"
+below) and 0.2.0 (2026-10-13, `docs/RELEASE.md` section 7) are out:
+the repository is public at `github.com/renyi-lang/renyi`, each
+release page carries the three archives, their checksums and the
+`.vsix`, the eight crates of 0.2.0 are on crates.io (`cargo install
+renyi` builds 0.2.0), the extension is on Open VSX as
+`renyi-lang.renyi`, the installers were run against the release, and
+the site is at `renyi-lang.org` (the GitHub Pages address redirects
+there), with the toolchain for the browser behind its play page and
+the showcase game on its game page since stages 33 and 36 (decisions
+AW33 and AW37). Design decisions
 are in sections 0 to AW of `01-decisions.md`; the positioning in
 `08-positioning.md`; the agent tooling in
 `05-agent-tooling.md`, the signature capabilities in
@@ -8583,7 +8595,12 @@ holds between calls.
   (completion, signature help, workspace symbols, the repair of the
   position's line), the three capabilities and handlers in `lsp.rs`,
   the declaration recorded by both checkers, the tests, the documents;
-  stage 35 closed. Release 0.2 is next.
+  stage 35 closed.
+- Release 0.2.0 (decision AW36; `docs/RELEASE.md` section 7): the
+  version bump with the fixture's hash (6c999d1), the gates and CI, the
+  eight crates published, the tag and the release page, `cargo install`
+  and `install.sh` checked, the extension on Open VSX, the announcement
+  texts and the game's screenshots in the lane; the documents.
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 
@@ -9780,19 +9797,19 @@ on a fresh clone).
   (Settings, General, Social preview); GitHub offers no other way to set
   it. The VS Code Marketplace, when the extension is published there,
   takes its icon from `editors/vscode/package.json` already.
-- **Release 0.2 and the platforms** (decision AW36, 2026-10-13;
-  `docs/RELEASE.md` section 6): the release follows stage 35. Before
-  it, the owner creates the Marketplace publisher `renyi-lang` (a
-  Microsoft account, an Azure DevOps token with the scope
-  "Marketplace: Manage"); a session runs the publish with the
-  release's `.vsix`. Open VSX is ready: the namespace `renyi-lang`
-  exists and the owner's token was verified against it on
-  2026-10-13; the publish waits for 0.2 by the owner's choice (the
-  token is the owner's, outside the repository). The announcements
-  go out at 0.2 with texts a session writes (Show HN, lobste.rs, the
-  MCP directories and the awesome lists, the owner's X and
-  LinkedIn); the owner posts them. GitHub's front (the description,
-  the homepage, the topics) is set.
+- **After release 0.2.0** (decision AW36; `docs/RELEASE.md` sections
+  6 and 7): the Marketplace publisher `renyi-lang` (a Microsoft
+  account, an Azure DevOps token with the scope "Marketplace:
+  Manage", kept outside the repository, in the environment variable
+  `VSCE_PAT` that `vsce` reads); a session then publishes the
+  release's `.vsix` (the lane's `release02/vsix/renyi-v0.2.0.vsix`, or
+  the release page's). Open VSX is done: `renyi-lang.renyi` 0.2.0,
+  published 2026-10-13 through the lane's `ovsx_publish.py`. The
+  announcements: the texts are in the lane's `announcements_0.2.0.md`
+  (Show HN, lobste.rs, X, LinkedIn, the MCP directories' entry and the
+  awesome-list line) with the game's screenshots under `shots/`; the
+  owner posts them. GitHub's front (the description, the homepage,
+  the topics) is set.
 - **Release 0.1.0 is out** (2026-10-07). The domain
   renyi-lang.org is in front of the site (AI4, 2026-10-07, late):
   the zone is on Cloudflare, its records name GitHub Pages, the

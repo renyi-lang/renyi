@@ -227,3 +227,57 @@ by section 3 above.
    positioning document, with the game's page (`docs/game.md`) and the
    starter pack as the hooks and a screenshot of the game; the owner
    posts them.
+
+## 7. Release 0.2.0, as it went (2026-10-13)
+
+Section 3's steps ran in order in about fifteen minutes, the checks
+after them in fifteen more; the lane
+`D:\Projects\.worktrees\Renyi\wasm\release02\` keeps the logs and
+the scripts. What the procedure did not say:
+
+1. The bump touched the nine `version` lines of `Cargo.toml` and one
+   more since 0.1.0: `crates/renyi_web/Cargo.toml` names `renyi_vm`
+   with its own path and version (decision AW29, to turn the default
+   features off), so it is bumped by hand with the table. Then `cargo
+   update --workspace`, the fixture's toolchain line and its new hash
+   in the lockfile and the two places of the packages test (section 2,
+   step 4), the extension's `package.json`, its `package-lock.json`
+   (the root entry, twice) and the changelog's "Unreleased" heading.
+   The gates (fmt, clippy, the 64 suites and 452 tests, the lint, the
+   token budget) passed at the first run; the commit is 6c999d1, and
+   CI was green on it before anything was published.
+2. The crates: the eight `cargo publish -p` ran in one loop that waits
+   on a 429, which never came. A new version of an existing crate is
+   not limited like a new crate: the eight were on crates.io in two
+   minutes (00:35 to 00:37 UTC on the 14th), each verified from its
+   tarball by cargo, with the login already on the machine. `cargo
+   install renyi --version 0.2.0` then built the binary from crates.io
+   on the owner's machine in 2 minutes 20 seconds and ran the hello
+   program.
+3. The tag was pushed after the last crate, as section 2 orders it.
+   The Release workflow took eight minutes (00:40 to 00:48 UTC): the
+   three builds in parallel with the extension, then the release. The
+   page carries the three archives (5.8 to 7.4 MB), their `.sha256`
+   files and `renyi-v0.2.0.vsix` (128 KB: the bundled client, the
+   grammar, the icon, the readme, the changelog, the license).
+   `install.sh` under WSL installed 0.2.0 from the release into the
+   lane and ran `examples/hello.ry` and the tests of
+   `examples/invoice.ry`.
+4. Open VSX: the release's `.vsix`, downloaded from the release page
+   with `gh release download`, was published with the lane's
+   `ovsx_publish.py` (`ovsx verify-pat renyi-lang`, then `ovsx
+   publish`; "Published renyi-lang.renyi v0.2.0"). The script reads
+   the owner's token from the owner's mailbox into the environment of
+   `ovsx` and masks it in its output; no token was printed or written.
+   Two things to know: `ovsx` prints an emoji before every line, which
+   Windows's console code page refuses, so the script decodes its
+   output as UTF-8 and runs under `python -X utf8`; and the registry's
+   API (`/api/renyi-lang/renyi`) still answered "not found" for some
+   minutes after the publish, which is its processing, not a failure.
+5. The Marketplace waits for the owner's publisher (section 6, item
+   1). The announcements' texts (Show HN, lobste.rs, X, LinkedIn, the
+   MCP directories' entry and the awesome-list line) are in the lane's
+   `announcements_0.2.0.md`, with screenshots of the game's page taken
+   through Playwright's headless Chromium by `game_shot.py` (the keys
+   held for a few hundred milliseconds: the game reads them per frame,
+   and a press shorter than a frame is lost); the owner posts them.
