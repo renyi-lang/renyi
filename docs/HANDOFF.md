@@ -680,9 +680,10 @@ and push there directly.
    browser (the Chrome extension was not connected on 2026-10-14);
    then `python cf.py <secret> txt renyi-lang.org <name> <text>` in the
    selfhost lane adds it and the page's Verify button is clicked. The
-   Open VSX claim is issue 14214 on EclipseFdn/open-vsx.org, opened
-   from the owner's account on 2026-10-14; wait for the answer. The
-   wasm lane is
+   Open VSX claim, issue 14214 on EclipseFdn/open-vsx.org opened from
+   the owner's account on 2026-10-14, was closed as completed the same
+   evening: the namespace answers `verified: true`; the extension's
+   own flag follows at the next publish. The wasm lane is
    `D:\Projects\.worktrees\Renyi\wasm\` (its target directory for the
    wasm32 builds, `check_asis.log` the trial build, the gates logs,
    the measures and the scripts of each stage; of stage 36:
@@ -9881,11 +9882,9 @@ on a fresh clone).
 - **After AW45** (2026-10-14): the review-time measure of the
   positioning's section 5 (a person, a `main` signature, under a
   minute); the Marketplace's verified domain (the record from the
-  publisher's page, then `cf.py txt`); the Open VSX namespace claim,
-  opened on 2026-10-14 from the owner's account with the owner's
-  consent (EclipseFdn/open-vsx.org issue 14214, option 1 of the
-  template; the registry answers `verified: false` until the
-  foundation acts); the article's author line,
+  publisher's page, then `cf.py txt`; the Open VSX namespace claim
+  is done, issue 14214 closed as completed on 2026-10-14 and the
+  namespace `verified: true`); the article's author line,
   affiliation and the submission to arXiv (`paper/README.md`; the
   section on how the work was done is one sentence since the owner's
   answer of 2026-10-14); the second
