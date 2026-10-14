@@ -8646,7 +8646,13 @@ holds between calls.
   renyi-lang.org, which serves it with `Access-Control-Allow-Origin:
   *`; CI and Pages green on the first push); the article
   `paper/renyi.tex` with `renyi.bib` (commit 7332868 and the table
-  from the quiet benchmark run after it); the DNS script's `txt`
+  from the quiet benchmark run after it; in the evening the article
+  went through the de-AI pipeline of the sci-paper plugin, profile-free:
+  twenty-two paragraphs rewritten, the lexical targets at zero, the
+  structure, residue and length gates clean against the snapshot
+  `measure02/deai/document-baseline.tex`, every rewrite through the
+  fidelity gate with its claim record under `measure02/deai/fidelity/`,
+  the colon advisories left as list specifications); the DNS script's `txt`
   command in the selfhost lane's `cf.py`. Later the same day: the
   repository `renyi-lang/renyi-tools` (sitegen, todo, bills, each by a
   subagent from the skill, the cheat sheet and the starter workflows;
@@ -9880,7 +9886,8 @@ on a fresh clone).
   consent (EclipseFdn/open-vsx.org issue 14214, option 1 of the
   template; the registry answers `verified: false` until the
   foundation acts); the article's author line,
-  affiliation and submission to arXiv (`paper/README.md`); the second
+  affiliation, the owner's decision on the section "How this work was
+  done" and the submission to arXiv (`paper/README.md`); the second
   release that lets `renyi-tools`' sitegen and bills declare
   `filesystem.read(".")` (the fix is on `main`; their READMEs say so).
 - **Release 0.1.0 is out** (2026-10-07). The domain
