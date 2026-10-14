@@ -566,18 +566,17 @@ ahead of time.
 \toprule
 Program & native & interpreter & image & CPython 3.13 & ratio \\
 \midrule
-primes (integer loops) & 65 ms & 926 ms & 79 ms & 614 ms & 9.4 \\
-strings (text building) & 105 ms & 179 ms & 132 ms & 134 ms & 1.3 \\
-records (records in lists) & 68 ms & 99 ms & 76 ms & 232 ms & 3.4 \\
-json round trip & 148 ms & 137 ms & 129 ms & 229 ms & 1.5 \\
-checker on bodies.ry & 707 ms & 1,331 ms & 457 ms & -- & -- \\
-hello & 40 ms & 41 ms & 38 ms & -- & -- \\
+primes (integer loops) & 53 ms & 866 ms & 52 ms & 426 ms & 8.0 \\
+strings (text building) & 94 ms & 131 ms & 100 ms & 129 ms & 1.4 \\
+records (records in lists) & 72 ms & 84 ms & 62 ms & 255 ms & 3.5 \\
+json round trip & 148 ms & 133 ms & 157 ms & 255 ms & 1.7 \\
+checker on bodies.ry & 727 ms & 1,072 ms & 380 ms & -- & -- \\
+hello & 44 ms & 47 ms & 40 ms & -- & -- \\
 \bottomrule
 \end{tabular}
 \caption{The benchmark set on release 0.2.0, Windows 11, best of three
 wall-clock runs of the whole process (the front end included; the caches
-off); the ratio is CPython's time over the native column's. Measured on a
-loaded machine; see the repository's \texttt{bench/} for the programs.}
+off); the ratio is CPython's time over the native column's; the programs are in the repository's \texttt{bench/}.}
 \label{tab:bench}
 \end{table}
 

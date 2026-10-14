@@ -13,7 +13,7 @@ cd paper && latexmk -pdf renyi
 Every number in the text is read from the repository at the time of
 writing and names its source in `docs/design/01-decisions.md` or a
 measure's lane; the benchmark table is `tools/bench.py` on the release
-build. When a number changes, the sentence that carries it changes in
+build (the lane's `measure02/bench_quiet.log`). When a number changes, the sentence that carries it changes in
 the same commit.
 
 For arXiv: submit `renyi.tex`, `renyi.bbl` (which `latexmk` writes; arXiv

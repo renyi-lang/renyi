@@ -162,8 +162,16 @@ study (session 14)" is its study), and release 0.2.0 shipped on
 the bump 6c999d1 with CI green, the eight crates on crates.io, the tag
 `v0.2.0` and its page, the extension on Open VSX and the Marketplace,
 the social preview uploaded; the announcements are the owner's step,
-the texts in the lane); the work next is the C API of decision A5 by AW28's
-order, its design study first, when the owner opens it.
+the texts in the lane), and the day after (2026-10-14, decision AW45,
+roadmap stage 39) two of the positioning's three measures were taken
+on it (reproduction five of five across Windows and Linux; the
+first-run rate one, one, one, three and two attempts on five tasks),
+the repository `renyi-lang/renyi-games` was made (four games over
+`std.screen` with their page) and the article `paper/renyi.tex` was
+written; the work next is the C API of decision A5 by AW28's
+order, its design study first, when the owner opens it, with the open
+items of AW45 beside it (`renyi-tools`, the verified domain, the
+namespace claim, the article's submission).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -655,7 +663,25 @@ and push there directly.
    `docs/RELEASE.md` section 6 (the announcements from the lane's
    `announcements_0.2.0.md`; the Marketplace publisher, the extension
    there and the social preview were done through the owner's browser
-   the same evening, section 7 item 5). The wasm lane is
+   the same evening, section 7 item 5). After AW45 (2026-10-14): the
+   measure lane `D:\Projects\.worktrees\Renyi\wasm\measure02\` (the
+   recordings `rec/`, the first-run tasks and programs
+   `firstrun/tasks/` with `results.md`, the benchmark logs, the paper's
+   build logs, `openvsx_namespace_issue.md` the claim's text), the
+   games lane `D:\Projects\.worktrees\Renyi\games\` (the clone of
+   `renyi-lang/renyi-games` as it was made: `check.sh` is its gate,
+   `python tools/index.py .` writes the games' indexes and the site's
+   copies, `site_test/` the page's screenshots), and `paper/` in the
+   repository (`latexmk -pdf renyi`; the owner's steps: the author line
+   and the affiliation, the section on how the work was done, the
+   arXiv submission with `renyi.bbl`, an endorsement for cs.PL if
+   asked). The Marketplace's verified domain waits for the record's
+   name and text from the publisher's Details page in the owner's
+   browser (the Chrome extension was not connected on 2026-10-14);
+   then `python cf.py <secret> txt renyi-lang.org <name> <text>` in the
+   selfhost lane adds it and the page's Verify button is clicked. The
+   Open VSX claim: the owner opens the issue from the lane's text. The
+   wasm lane is
    `D:\Projects\.worktrees\Renyi\wasm\` (its target directory for the
    wasm32 builds, `check_asis.log` the trial build, the gates logs,
    the measures and the scripts of each stage; of stage 36:
@@ -8604,6 +8630,23 @@ holds between calls.
   texts and the game's screenshots in the lane; the documents. Then,
   through the owner's browser: the Marketplace publisher `renyi-lang`
   and the extension uploaded there, the social preview uploaded.
+- **After release 0.2.0, the owner's answers of 2026-10-14 (decision
+  AW45)**: the measures of the positioning's section 5 on 0.2.0
+  (reproduction five of five, the five starter workflows recorded on
+  Windows and reproduced under WSL with the `install.sh` binary; the
+  first-run rate with five subagents given the skill file and the
+  cheat sheet alone, one, one, one, three and two attempts, the gaps
+  they named one bullet more in `starter/skill/renyi/SKILL.md`; the
+  review time pending), the section 5 note and the entry (commit
+  e02a99a); the repository `renyi-lang/renyi-games` (Snake, Blocks,
+  Sokoban, Mines, each by a subagent from the skill, the cheat sheet
+  and the showcase; `check.sh`, CI through `install.sh`, the page under
+  `site/` on GitHub Pages through a workflow, loading the module from
+  renyi-lang.org, which serves it with `Access-Control-Allow-Origin:
+  *`; CI and Pages green on the first push); the article
+  `paper/renyi.tex` with `renyi.bib` (commit 7332868 and the table
+  from the quiet benchmark run after it); the DNS script's `txt`
+  command in the selfhost lane's `cf.py`.
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 
@@ -9808,6 +9851,14 @@ on a fresh clone).
   directories' entry and the awesome-list line) with the game's
   screenshots under `shots/`; the owner posts them. GitHub's front
   (the description, the homepage, the topics) is set.
+- **After AW45** (2026-10-14): the review-time measure of the
+  positioning's section 5 (a person, a `main` signature, under a
+  minute); the Marketplace's verified domain (the record from the
+  publisher's page, then `cf.py txt`); the Open VSX namespace claim
+  (the issue from the owner's GitHub account, the text in
+  `measure02/openvsx_namespace_issue.md`); the article's author line,
+  affiliation and submission to arXiv (`paper/README.md`); the second
+  showcase repository `renyi-tools` when the owner opens it.
 - **Release 0.1.0 is out** (2026-10-07). The domain
   renyi-lang.org is in front of the site (AI4, 2026-10-07, late):
   the zone is on Cloudflare, its records name GitHub Pages, the
