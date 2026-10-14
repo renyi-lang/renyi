@@ -9748,3 +9748,49 @@ the symbols by a part of the name and all) and by the module's own
 tests (the contexts, the calls, the repairs). The documents: the
 reference's command row, the extension's README and changelog, the
 notes. Stage 35 closes; release 0.2 follows (AW36).
+
+**AW45. After release 0.2.0: the measures of the positioning's
+section 5, the showcase repositories, the article, the badges.**
+2026-10-14, the owner's answers after the release and the Marketplace
+publish. (i) The announcements (the lane's texts of AW36) are posted by
+the owner. (ii) Two showcase repositories under the organisation, each
+with a README, tests and CI: `renyi-games` first, small games over
+`std.screen` that run at the terminal and in the browser, then
+`renyi-tools`, tools that do real work (a static site generator,
+Markdown to HTML, a to-do command, bills). (iii) An article on Renyi,
+in LaTeX, for arXiv under cs.PL cross-listed to cs.AI: the design, the
+implementation and the measures below with the benchmarks of AG4, the
+readability rounds and the self-hosting ratio; the owner's arXiv
+account has published in astronomy only, so an endorsement for cs.PL
+may be asked at submission. (iv) Both badges: the Marketplace's
+verified domain (a TXT record on the site's zone through the one-hour
+token flow of AI2, the session adds it) and Open VSX's namespace claim
+(an issue on the registry's tracker from the owner's account, the text
+written in the lane, the owner asked before it is opened). The measures
+of `08-positioning.md` section 5, taken the same day against release
+0.2.0: claim 3, reproduction: the five workflows of the starter pack
+were recorded on Windows with `renyi record` (0.2.0 from `cargo
+install`) and `renyi reproduce` passed on every recording under Linux
+with the binary `install.sh` put in place ("the outcome and the output
+are the recorded ones", five of five). Claim 2, the first-run rate:
+five tasks of the workflows' kind (expenses by category from a CSV, a
+log's levels and top errors, word frequencies, an inventory's low
+stock and value from JSON, a rename plan from a directory listing and
+an argument), each given to a fresh agent (a Claude Code subagent)
+with the skill file and the cheat sheet alone, no MCP server, no other
+file of the repository, and the release binary; the attempts to a
+clean `renyi check`: one, one, one, three, two; `renyi test` and
+`renyi run` passed on the same attempt in every task, the outputs
+checked against an independent computation. Every failed attempt but
+one was answered by a diagnostic whose fix the agent applied
+(`unknown-field` on `path.name`, fix `.name()`; `error-not-declared`
+naming `JsonError`); the exception was `expected` on `or fails with
+FileError, JsonError`, whose fix did not name the spelling with `or`,
+found by a guess. The gaps the agents named (the spelling of two error
+types, `JsonError`, the library types' members as methods, what
+`filesystem.list` and `Map.entries` answer, which library calls answer
+`maybe`) are one bullet more in `starter/skill/renyi/SKILL.md`; the
+cheat sheet, token-budgeted, is unchanged. Claim 1, the review time,
+is a person's measure and is the owner's; pending. The lane:
+`measure02/` (the recordings `rec/`, the tasks and the programs
+`firstrun/tasks/`, the results `firstrun/results.md`).

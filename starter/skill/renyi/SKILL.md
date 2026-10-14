@@ -81,6 +81,14 @@ parentheses.
   encodes with `can ToJson`. A library type is imported by name:
   `import std.filesystem exposing Path, FileError`; the module's
   functions are called qualified: `filesystem.read_text(path)`.
+- Two error types in a signature are joined by `or`: `or fails with
+  FileError or JsonError` (`std.json`'s error, imported like
+  `FileError`). A library type's members are methods, not fields:
+  `path.name()`, `path.extension()`; `filesystem.list(path)` answers a
+  `List of Path` or fails with `FileError`; `map.entries()` answers
+  `Pair`s whose fields are `left` (the key) and `right` (the value);
+  `map.get(key)` answers `maybe`; `text.to_integer()` and
+  `text.to_decimal()` answer `maybe`.
 - There is no `=`, no `==`, no `null` and no anonymous function
   (`equals-sign`, `symbolic-operator`): `let total be 0`, `is`,
   `nothing`, a named function passed by name.

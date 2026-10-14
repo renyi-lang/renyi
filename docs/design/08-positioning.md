@@ -152,6 +152,14 @@ AI3 before release 0.1 and reported with it:
    reproduce` passes on it after a rebuild of the toolchain on another
    operating system.
 
+Measured on 2026-10-14 against release 0.2.0 (decision AW45): claim 3
+holds on the five workflows of the starter pack (recorded on Windows,
+reproduced on Linux); claim 2 held on four of five tasks given to
+agents with the skill file alone (one, two, one, one attempts) and took
+three on the fifth, whose second failure was answered by a diagnostic
+whose fix did not name the spelling, `or fails with A or B`, since
+added to the skill file; claim 1 is the owner's measure and is pending.
+
 ## 6. How it is said
 
 The one line: *Renyi is the scripting language of AI agents: the agent
