@@ -9886,8 +9886,9 @@ on a fresh clone).
   consent (EclipseFdn/open-vsx.org issue 14214, option 1 of the
   template; the registry answers `verified: false` until the
   foundation acts); the article's author line,
-  affiliation, the owner's decision on the section "How this work was
-  done" and the submission to arXiv (`paper/README.md`); the second
+  affiliation and the submission to arXiv (`paper/README.md`; the
+  section on how the work was done is one sentence since the owner's
+  answer of 2026-10-14); the second
   release that lets `renyi-tools`' sitegen and bills declare
   `filesystem.read(".")` (the fix is on `main`; their READMEs say so).
 - **Release 0.1.0 is out** (2026-10-07). The domain
