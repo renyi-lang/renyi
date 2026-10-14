@@ -180,6 +180,8 @@ by section 3 above.
    publisher, the icon, the license, the repository, the categories and
    the keywords the Marketplace requires; its page shows `README.md`
    and `CHANGELOG.md`. The token never enters the repository or a log.
+   Done on 2026-10-13 through the upload path, without a token
+   (section 7, item 5).
 2. Open VSX (the registry of VSCodium, Cursor, Gitpod and others): an
    Eclipse account with the publisher agreement signed, an access
    token from <https://open-vsx.org/user-settings/tokens>; once
@@ -201,7 +203,7 @@ by section 3 above.
    `reproducibility`, `sandbox`, `rust`, `webassembly`,
    `language-server`, `vscode-extension`. (owner) The social preview
    image `docs/assets/social-preview.png` (decision AV1) uploaded in the
-   repository's settings.
+   repository's settings: done on 2026-10-13 (section 7, item 5).
 4. GitHub's recognition of `.ry` as a language is Linguist's
    (`github-linguist/linguist`), and Linguist adds a language only once
    GitHub's search finds at least 2,000 files of the extension indexed
@@ -274,8 +276,25 @@ the scripts. What the procedure did not say:
    output as UTF-8 and runs under `python -X utf8`; and the registry's
    API (`/api/renyi-lang/renyi`) still answered "not found" for some
    minutes after the publish, which is its processing, not a failure.
-5. The Marketplace waits for the owner's publisher (section 6, item
-   1). The announcements' texts (Show HN, lobste.rs, X, LinkedIn, the
+5. The Marketplace, later the same evening, through the owner's Chrome
+   with the Claude extension (the owner's sessions and password
+   manager; the session never saw or entered a credential). The owner
+   signed in with the Microsoft account of `skyman.bp@gmail.com` (the
+   first use of the Visual Studio services on an account asks for a
+   profile and the terms; the owner clicked that page's Continue), the
+   session filled the publisher form (the ID `renyi-lang`, the name
+   `Renyi`, the one line of the positioning document, the icon, the
+   site, the issues page, the repository; the form's inputs take typed
+   text, not a programmatic value, and the ID field copies the name as
+   it is typed, so the ID is set after the name), the owner approved
+   the publisher agreement, and the release's `.vsix` was uploaded
+   through "New extension, Visual Studio Code" on the publisher's page.
+   No token was created, and none is needed on this path (section 6,
+   item 1 names the token path for `vsce`); the Marketplace verifies
+   the package for some minutes before the page is public. The social
+   preview (section 6, item 3) was uploaded the same way in the
+   repository's settings.
+6. The announcements' texts (Show HN, lobste.rs, X, LinkedIn, the
    MCP directories' entry and the awesome-list line) are in the lane's
    `announcements_0.2.0.md`, with screenshots of the game's page taken
    through Playwright's headless Chromium by `game_shot.py` (the keys

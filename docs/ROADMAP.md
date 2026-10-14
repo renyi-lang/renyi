@@ -654,11 +654,13 @@ where one decided, the status. The dates are those of the decisions.
     fixture's hash (commit 6c999d1, the gates and CI green), the eight
     crates on crates.io in two minutes, the tag `v0.2.0` and its
     release page (the three archives, their checksums, the `.vsix`),
-    the extension on Open VSX as `renyi-lang.renyi`, `cargo install
-    renyi` and `install.sh` checked against them. The owner's steps
-    after it: the Marketplace publisher and the publish there, the
-    social preview, the announcements from the texts written in the
-    lane.
+    the extension on Open VSX and, through the owner's browser the
+    same evening, on the Visual Studio Marketplace as
+    `renyi-lang.renyi` (the publisher `renyi-lang` created, the
+    `.vsix` uploaded by hand, no token), `cargo install renyi` and
+    `install.sh` checked against them, the social preview uploaded.
+    The owner's step after it: the announcements from the texts
+    written in the lane.
 
 ## 3. The tracks
 
@@ -714,12 +716,12 @@ state of each line.
   AW42; 37c the extras done, AW43; the stage closed).
   Candidate not decided: the C API of decision A5.
 - **G. Release and the ecosystem**: stages 17, 30, 38. Releases 0.1.0
-  (2026-10-07) and 0.2.0 (2026-10-13) are out, the extension on Open
-  VSX since 0.2.0; every release follows `docs/RELEASE.md`; the icon
-  and the wordmark (AV1) are in the site, the README and the extension;
-  the Marketplace publisher, the announcements (the texts written), the
-  three measurements of the positioning's section 5 and the upload of
-  the social preview are the owner's pending actions.
+  (2026-10-07) and 0.2.0 (2026-10-13) are out, the extension on the
+  Marketplace and Open VSX since 0.2.0; every release follows
+  `docs/RELEASE.md`; the icon and the wordmark (AV1) are in the site,
+  the README, the extension and the repository's social preview; the
+  announcements (the texts written) and the three measurements of the
+  positioning's section 5 are the owner's pending actions.
 - **H. Readability**: stages 2, 6, 8. Four rounds exist under
   `tests/readability/`; they run only on request (V1).
 
@@ -811,9 +813,9 @@ AW42; 37c the language's documents and the example pipeline, decision
 AW43; the stage closed); 35c, completion with signature help and
 workspace symbols, is done (decision AW44), which closes stage 35.
 Release 0.2.0 is out (stage 38, 2026-10-13: the crates, the tag, the
-release page, the extension on Open VSX; the Marketplace, the social
-preview and the announcements are the owner's steps, the texts
-written). Next, by AW28's order, the C API of decision A5, its design
+release page, the extension on Open VSX and the Marketplace, the social
+preview; the announcements are the owner's step, the texts written).
+Next, by AW28's order, the C API of decision A5, its design
 study first, when the owner opens it. Not scheduled: the
 Python binder's items of track E, the Rust front end's name sets as
 bits, the emitter's own round for the compile row.

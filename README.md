@@ -261,8 +261,9 @@ cargo test
 ```
 
 Release 0.2.0 is out (2026-10-13; the procedure in `docs/RELEASE.md`,
-decisions AI1 to AI5 and AW36; the extension is on Open VSX as
-`renyi-lang.renyi`). Between 0.1.0 (2026-10-07) and it came the
+decisions AI1 to AI5 and AW36; the extension is on the Visual Studio
+Marketplace and Open VSX as `renyi-lang.renyi`). Between 0.1.0
+(2026-10-07) and it came the
 registration API for Rust natives (decisions AJ1 and AK1 to AK4;
 `docs/extensions.md`), the Python bridge (decisions AJ2, AJ3 and AL1 to
 AL4; `docs/python.md`), the resident world, the language server with
