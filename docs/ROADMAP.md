@@ -675,7 +675,17 @@ where one decided, the status. The dates are those of the decisions.
     the page at renyi-lang.github.io/renyi-games driven by the main
     site's module. The article `paper/renyi.tex` (eleven pages, builds
     with `latexmk`; the citations checked; for arXiv cs.PL with cs.AI).
-    Open: `renyi-tools` (the second repository of AW45 ii), the
+    The repository `renyi-lang/renyi-tools` the same day: a static
+    site generator with a Markdown converter, a to-do list in a JSON
+    file, shared bills from a CSV, each with pure modules under
+    examples, its effects tested through recordings, sample data with
+    the expected outputs CI compares (61, 81 and 41 tests pass). Two of
+    its three subagents found that a scope of the current directory,
+    `filesystem.read(".")`, refused every relative path at 0.2.0 (the
+    scope normalises to the empty text and the prefix test then asked
+    for a leading separator): fixed on `main` in the checker's
+    `scope_contains` and its mirror `compiler/effects.ry`, the
+    reference's sentence and a semantics test. Open: the
     Marketplace's verified domain (the TXT record through `cf.py txt`,
     which waits for the record's name and text from the publisher's
     page in the owner's browser), the Open VSX namespace claim (the
@@ -839,7 +849,9 @@ release page, the extension on Open VSX and the Marketplace, the social
 preview; the announcements are the owner's step, the texts written), and
 stage 39 followed it (AW45, 2026-10-14: the measures, the games
 repository, the article). Open from AW45: `renyi-tools`, the verified
-domain, the namespace claim, the article's submission by the owner.
+domain, the namespace claim, the article's submission by the owner;
+`renyi-tools` exists too, and the scope of the current directory is
+fixed for the next release.
 Next, by AW28's order, the C API of decision A5, its design
 study first, when the owner opens it. Not scheduled: the
 Python binder's items of track E, the Rust front end's name sets as

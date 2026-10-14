@@ -164,6 +164,44 @@ end
 }
 
 #[test]
+fn the_current_directory_scope_contains_relative_paths() {
+    // The test runs in the crate's directory: its own Cargo.toml lies in
+    // the scope `.`, the workspace's above it does not.
+    let source = r#"module demo
+  purpose: A scope of the current directory contains relative paths and nothing above.
+
+import std.console
+import std.filesystem exposing Path, FileError
+
+function head_of(name: Text) returns Text or fails with FileError needs filesystem.read(".")
+  purpose: The first line of the file named relative to the current directory.
+
+  let text be filesystem.read_text(Path(name)) otherwise fail
+  return text.lines().first() otherwise ""
+end
+
+public function main() needs console, filesystem.read(".")
+  purpose: Read a file of the current directory, then one above it.
+
+  match head_of("Cargo.toml")
+    when success(line) then console.print(line)
+    when failure(error) then console.print(error.to_text())
+  end
+  match head_of("../Cargo.toml")
+    when success(line) then console.print(line)
+    when failure(error) then console.print(error.to_text())
+  end
+end
+"#;
+    let (outcome, printed) = run(source, Options::default());
+    assert_eq!(outcome, RunOutcome::Finished);
+    assert_eq!(
+        printed,
+        "[package]\nPermissionDenied(path: \"../Cargo.toml\")\n"
+    );
+}
+
+#[test]
 fn a_copy_needs_its_target_in_the_write_scope() {
     let dir = scratch("semantics-copy");
     let source = format!(

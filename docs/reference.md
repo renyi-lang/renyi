@@ -1127,7 +1127,9 @@ an extension reports through its own type (decision AK4). A primitive
 that cannot fail (`filesystem.exists`, `environment.get`) crashes instead,
 naming the function whose `needs` narrowed the grant. A path scope
 contains a path by its text once `.`, `..` and the separators are
-normalized: nothing is resolved on disk, so a symbolic link under the
+normalized, and the scope `.` is the current directory, which contains
+every relative path that does not climb out of it and no absolute one:
+nothing is resolved on disk, so a symbolic link under the
 scope reaches wherever it points. The command line
 narrows the grant and can only tighten it: `--deny capability` refuses to
 start when any function needs it, `--allow-host`, `--allow-read` and

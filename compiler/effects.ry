@@ -138,9 +138,21 @@ public function scope_contains(path: List of Text, granted: Text, wanted: Text) 
   let head be path.first() otherwise ""
   if head is "filesystem" then
     let trimmed be without_trailing_slashes(granted)
+    if trimmed is "" or trimmed is "." then return within_current_directory(wanted) end
     return wanted is trimmed or wanted.starts_with("{trimmed}/")
   end
   return granted is wanted
+end
+
+function within_current_directory(wanted: Text) returns Boolean
+  purpose: Whether a path stays under the current directory: not absolute, not climbing out.
+  example: within_current_directory("data/sales.csv") is true
+  example: within_current_directory("../secrets") is false
+  example: within_current_directory("/etc/passwd") is false
+  example: within_current_directory("C:/secrets") is false
+
+  let absolute be wanted.starts_with("/") or wanted.take(2).ends_with(":")
+  return not absolute and wanted is not ".." and not wanted.starts_with("../")
 end
 
 function without_trailing_slashes(text: Text) returns Text

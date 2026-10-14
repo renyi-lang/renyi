@@ -8646,7 +8646,27 @@ holds between calls.
   *`; CI and Pages green on the first push); the article
   `paper/renyi.tex` with `renyi.bib` (commit 7332868 and the table
   from the quiet benchmark run after it); the DNS script's `txt`
-  command in the selfhost lane's `cf.py`.
+  command in the selfhost lane's `cf.py`. Later the same day: the
+  repository `renyi-lang/renyi-tools` (sitegen, todo, bills, each by a
+  subagent from the skill, the cheat sheet and the starter workflows;
+  `check.sh` the gate with the outputs diffed against `expected/`, CI
+  through `install.sh`, green on the first push; the lane
+  `D:\Projects\.worktrees\Renyi\tools\` is its clone), and the fix of
+  the scope of the current directory, which two of the three subagents
+  found: `filesystem.read(".")` refused every relative path, since
+  `normalize_path(".")` is the empty text and `scope_contains` then
+  tested for a leading separator; `scope_contains` in
+  `crates/renyi_check/src/effects.rs` (and `compiler/effects.ry`, the
+  mirror of AD1) now treats the empty scope and `.` as the current
+  directory, which contains every relative path that does not climb
+  out through `..` and no absolute one (a leading separator or a drive
+  letter); the reference's sentence in section 11, a unit test and
+  `the_current_directory_scope_contains_relative_paths` in
+  `crates/renyi_vm/tests/semantics.rs` hold it. Two findings the
+  subagents also named, by design and documented: a function's scoped
+  `needs` covers a callee's unscoped need only for a library primitive
+  (so a test with a scoped grant cannot call the program's own
+  unscoped function), and repeated `--allow-read` flags intersect.
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 
@@ -9858,7 +9878,8 @@ on a fresh clone).
   (the issue from the owner's GitHub account, the text in
   `measure02/openvsx_namespace_issue.md`); the article's author line,
   affiliation and submission to arXiv (`paper/README.md`); the second
-  showcase repository `renyi-tools` when the owner opens it.
+  release that lets `renyi-tools`' sitegen and bills declare
+  `filesystem.read(".")` (the fix is on `main`; their READMEs say so).
 - **Release 0.1.0 is out** (2026-10-07). The domain
   renyi-lang.org is in front of the site (AI4, 2026-10-07, late):
   the zone is on Cloudflare, its records name GitHub Pages, the

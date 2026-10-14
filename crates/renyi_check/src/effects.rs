@@ -103,14 +103,28 @@ impl Capability {
 
 /// A path prefix contains its sub-paths; a host, a variable, a program
 /// name or a package contains only itself. The runtime uses the same rule
-/// for the grant it narrows and the paths it checks.
+/// for the grant it narrows and the paths it checks. The scope `.` (which
+/// the runtime normalizes to the empty text) is the current directory: it
+/// contains every relative path that does not climb out of it, and no
+/// absolute one.
 pub fn scope_contains(path: &[String], granted: &str, wanted: &str) -> bool {
     if path.first().map(String::as_str) == Some("filesystem") {
         let granted = granted.trim_end_matches('/');
+        if granted.is_empty() || granted == "." {
+            return within_current_directory(wanted);
+        }
         wanted == granted || wanted.starts_with(&format!("{granted}/"))
     } else {
         granted == wanted
     }
+}
+
+/// Whether a path, normalized or as written, stays under the current
+/// directory: not absolute (no leading separator, no drive letter) and
+/// not climbing out through `..`.
+fn within_current_directory(wanted: &str) -> bool {
+    let absolute = wanted.starts_with('/') || wanted.as_bytes().get(1) == Some(&b':');
+    !absolute && wanted != ".." && !wanted.starts_with("../")
 }
 
 /// Whether any granted capability covers the needed one.
@@ -149,5 +163,23 @@ mod tests {
         assert!(!cap("network.http", Some("a.example.com"))
             .covers(&cap("network.http", Some("b.example.com")), false));
         assert!(!cap("console", None).covers(&cap("time", None), false));
+    }
+
+    #[test]
+    fn the_current_directory_contains_relative_paths_only() {
+        for scope in [".", "./", ""] {
+            assert!(cap("filesystem.read", Some(scope))
+                .covers(&cap("filesystem.read", Some("data/sales.csv")), false));
+            assert!(cap("filesystem.read", Some(scope))
+                .covers(&cap("filesystem.read", Some("notes.txt")), false));
+            assert!(!cap("filesystem.read", Some(scope))
+                .covers(&cap("filesystem.read", Some("../secrets")), false));
+            assert!(!cap("filesystem.read", Some(scope))
+                .covers(&cap("filesystem.read", Some("..")), false));
+            assert!(!cap("filesystem.read", Some(scope))
+                .covers(&cap("filesystem.read", Some("/etc/passwd")), false));
+            assert!(!cap("filesystem.read", Some(scope))
+                .covers(&cap("filesystem.read", Some("C:/secrets")), false));
+        }
     }
 }
