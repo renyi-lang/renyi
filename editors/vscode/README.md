@@ -22,7 +22,14 @@ the folder (a method with the ability's and every implementation's; a
 rename the program would not check with is refused, with the reason)
 and of a variable within its function (`self` excepted); the outline
 of a file (functions, types with their fields or variants, abilities,
-implementations, constants, tests).
+implementations, constants, tests); completion of the names in scope
+(the variables of the function, the module's functions, constants and
+types, the imports and what they expose, the words that start a
+statement), of a value's fields and methods after a dot, of the modules
+after `import` and of the capabilities after `needs`, each with its
+signature and its purpose; signature help as a call is written, with
+the parameter the cursor is at; and the symbols of the whole folder by
+name (Go to Symbol in Workspace).
 
 The toolchain is a separate install: <https://renyi-lang.org> (or
 `cargo install renyi`). The extension runs `renyi` from the PATH; the

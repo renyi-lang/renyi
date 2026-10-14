@@ -150,14 +150,16 @@ decision AW36 (0.2 after stage 35; the Marketplace and Open VSX from
 the owner's publisher; GitHub's front set; Linguist's bar; the
 announcements at 0.2; `docs/RELEASE.md` section 6), and the Open VSX
 namespace `renyi-lang` exists with the owner's token verified against
-it, the publish waiting for 0.2; stages 35a and 35b are built (decisions
-AW38 and AW39: references and rename of declarations, then of the
-locals, in the language server, the paragraphs "Stage 35a as built"
-and "Stage 35b as built" at the end of the stage 35 study's section);
-the work now is stage 37, the map for retrieval by embedding, the
-owner's request of 2026-10-13 (the start-here item 1; the section
-"Stage 37, the map for retrieval by embedding: the design study
-(session 14)" is its study), then 35c.
+it, the publish waiting for 0.2; stage 35 is built and closed (decisions
+AW38, AW39 and AW44: references and rename of declarations, then of
+the locals, then completion, signature help and workspace symbols, in
+the language server; the paragraphs "Stage 35a as built" to "Stage
+35c as built" at the end of the stage 35 study's section), and stage
+37 too (decisions AW41 to AW43, the map for retrieval by embedding;
+the section "Stage 37, the map for retrieval by embedding: the design
+study (session 14)" is its study); the work now is release 0.2
+(decision AW36; `docs/RELEASE.md` sections 3 and 6; the start-here
+item 1).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -632,12 +634,16 @@ and push there directly.
    measure settled the chunk's text, `renyi index --chunks` and the
    MCP tool `chunks` write it, `--language` writes the language's
    documents and library the same way, and `starter/retrieval/` shows
-   the host's side (design document 05, section 8). The work now is
-   35c, completion in the language server (the study's plan in the
-   section "Stage 35, the design study", decision AW34): completion
-   of names in scope with signature help, and workspace symbols. Then
-   35c, completion with signature help and workspace symbols (AW34
-   (3) and (4)), and release 0.2 (decision AW36). The wasm lane is
+   the host's side (design document 05, section 8). 35c is done
+   (decision AW44; the paragraph "Stage 35c as built" at the end of
+   the stage 35 study's section): completion with its contexts,
+   signature help and workspace symbols, both checkers recording
+   every binding's declaration, a line the parser refuses repaired
+   for the request; stage 35 is closed. The work now is release 0.2
+   (decision AW36; `docs/RELEASE.md` section 3 for the tag and
+   section 6 for the platforms; the Open VSX publish through the
+   lane's `ovsx_publish.py`, the token read from the owner's mailbox
+   and never printed). The wasm lane is
    `D:\Projects\.worktrees\Renyi\wasm\` (its target directory for the
    wasm32 builds, `check_asis.log` the trial build, the gates logs,
    the measures and the scripts of each stage; of stage 36:
@@ -4510,6 +4516,45 @@ the perf lane's `study/35a/`, `study/35b/`, `study/35b_v2/` and
 `change`-shaped `record`, the references per body), `measure_check.sh`
 their script, `callers_of.sh` and `callers_diff.py` the caller trees
 that pointed at the copies.
+
+**Stage 35c as built** (decision AW44, 2026-10-13). `textDocument/completion`,
+`textDocument/signatureHelp` and `workspace/symbol` in `renyi lsp`
+(`crates/renyi/src/lsp/complete.rs`). The context from the line's tokens
+before the position: an `import` path (the library's and the project's
+modules, the path replaced), a `needs` clause (the capability tree), a
+dot after an import's namespace (its public functions, constants and
+types), any other dot (the members of the type the checker recorded
+for the longest expression ending at the dot: a record's fields, the
+declared methods, the abilities' methods, the base's for a subtype,
+the constraints' for a type parameter), else a bare name (the bindings
+declared before the position in the enclosing item, the module's
+functions, constants and types, the imports' namespaces and exposed
+names, the prelude's non-method functions, which are none today, and
+the statement words inside a body), the groups in that order through
+`sortText`, every item with hover's signature and purpose. Signature
+help by the innermost parenthesis still open on the line, the callee a
+bare name, `one.name`, `expression.name` or a record or variant built,
+one parameter label per argument the caller writes, every overload.
+Workspace symbols from the outlines of every file, by a part of the
+name, the module as the container. Both checkers record a binding's
+declaration as a reference to itself at `bind` (a binding without a
+use was absent from AW39's record), and the rules test lists it
+first; `local_declared_at` is gone from `lsp/describe.rs`. A file the
+parser refuses has no module, and the line being completed is such a
+line as a rule, so the server repairs the position's line for the
+request (an operand `xx` where one is missing, the brackets closed,
+`ignore` before a bare expression, else the line blanked; each tried
+with the parser first), maps the request's offsets into the repaired
+text, answers, and puts the editor's text back; a receiver the repair
+took away is found by its name (a parameter's declared type, else a
+use's recorded type). Measured on `compiler/` through the lane's
+driver (wall-clock, coarse): initialize 15 ms; a bare completion in `bodies.ry` 13 ms (431 items, the four bindings first); the members after `checker.` on a line that parses 5 ms (24 fields); the signature of `record(` 6 ms; `workspace/symbol` for `check` 17 ms (102 symbols); the members after `checker.` on a line the parser refuses, inserted by a `didChange` just before, 509 ms (the project checked again after the change and once more after the repair, both in the time), the same 24 fields; the medians of three turns, the lane's `timing_35c.log`. Tested over pipes in
+`crates/renyi/tests/lsp.rs` (requests 25 to 34: four buffers with a
+line the parser refuses and the clean text) and by the module's own
+tests. The lane's `lsp35c/` holds the driver `lsp_drive.py` (initialize
+on a root, open a buffer, `change=<file>`, requests as
+`method@line:character[@query]`, the time per answer), the buffers
+and the gates' logs.
 
 ## Stage 33, the WASM target: the design study (session 14)
 
@@ -8534,6 +8579,11 @@ holds between calls.
   `crates/renyi/`, `renyi index --chunks --language`, the tool's
   `language`, `starter/retrieval/`, the tests, the documents; stage 37
   closed.
+- Stage 35c (decision AW44): `crates/renyi/src/lsp/complete.rs`
+  (completion, signature help, workspace symbols, the repair of the
+  position's line), the three capabilities and handlers in `lsp.rs`,
+  the declaration recorded by both checkers, the tests, the documents;
+  stage 35 closed. Release 0.2 is next.
 
 ## Done in session 13 (A2, B5, B1 to B4, the owner's choice of a new backend, and the icon, in the cloud environment)
 

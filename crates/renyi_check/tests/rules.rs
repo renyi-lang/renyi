@@ -1277,7 +1277,8 @@ fn a_dependency_is_charged_with_its_package_named() {
 #[test]
 fn a_use_of_a_binding_is_recorded_with_its_declaration() {
     // decision AW39: every read, change and call of a binding is a
-    // reference whose target is the binding's declaration span
+    // reference whose target is the binding's declaration span; the
+    // declaration itself is one too (decision AW44)
     let source = "module demo
   purpose: Locals for the record test.
 
@@ -1306,15 +1307,20 @@ end
         uses.sort_by_key(|span| span.start);
         uses
     };
-    // the parameter: read by the `let` and in the sum
+    // the parameter: its declaration, then read by the `let` and in the sum
     assert_eq!(
         uses_of(at("number: Integer", 6)),
-        [at("number\n  change", 6), at("number\n  return", 6)]
+        [
+            at("number: Integer", 6),
+            at("number\n  change", 6),
+            at("number\n  return", 6)
+        ]
     );
-    // the `let`: changed, read in the sum, returned
+    // the `let`: its declaration, then changed, read in the sum, returned
     assert_eq!(
         uses_of(at("total be", 5)),
         [
+            at("total be", 5),
             at("total to", 5),
             at("total + number", 5),
             at("total\nend", 5)

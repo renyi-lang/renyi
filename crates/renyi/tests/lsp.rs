@@ -2,7 +2,8 @@
 //! handshake, diagnostics published for every file of the folder and
 //! again when a buffer changes, hover, definition and document symbols,
 //! references and rename of declarations (decision AW38) and of locals
-//! (decision AW39) on a two-file project, positions in UTF-16 units, the
+//! (decision AW39), completion, signature help and workspace symbols
+//! (decision AW44) on a two-file project, positions in UTF-16 units, the
 //! clean exit.
 
 use std::io::{Read, Write};
@@ -119,6 +120,23 @@ fn notification(method: &str, params: Json) -> Json {
 
 fn document(uri: &str) -> Json {
     obj(vec![("uri", text(uri))])
+}
+
+/// A `didChange` carrying the whole text.
+fn changed(uri: &str, version: usize, content: &str) -> Json {
+    notification(
+        "textDocument/didChange",
+        obj(vec![
+            (
+                "textDocument",
+                obj(vec![("uri", text(uri)), ("version", number(version))]),
+            ),
+            (
+                "contentChanges",
+                Json::Array(vec![obj(vec![("text", text(content))])]),
+            ),
+        ]),
+    )
 }
 
 fn at(uri: &str, line: usize, character: usize) -> Json {
@@ -344,6 +362,33 @@ fn the_server_publishes_diagnostics_and_answers_hover_definition_and_symbols() {
     let (use1_line, use1_character) = line_and_character(REPORT, "square)");
     let (use2_line, use2_character) = line_and_character(REPORT, "square.label");
     let (self_line, self_character) = line_and_character(SHAPES, "self.side");
+    // stage 35c (decision AW44): a bare name, a member and a call being
+    // written, each a line the parser refuses, an import being written,
+    // and positions in the clean text
+    let bare_text = REPORT.replace(
+        "  let square be Square(side: 3)\n",
+        "  let square be Square(side: 3)\n  tot\n",
+    );
+    let (bare_line, bare_character) = line_and_character(&bare_text, "tot\n");
+    let member_text = REPORT.replace(
+        "  let square be Square(side: 3)\n",
+        "  let square be Square(side: 3)\n  square.\n",
+    );
+    let (member_line, member_character) = line_and_character(&member_text, "  square.\n");
+    let call_text = REPORT.replace(
+        "  let square be Square(side: 3)\n",
+        "  let square be Square(side: 3)\n  let total be square.label(\n",
+    );
+    let (call_line, call_character) = line_and_character(&call_text, "label(\n");
+    let import_text = REPORT.replace(
+        "import shapes exposing Square\n",
+        "import shapes exposing Square\nimport std.\n",
+    );
+    let (import_line, import_character) = line_and_character(&import_text, "std.\n");
+    let (area_call_line, area_call_character) = line_and_character(REPORT, "square)}");
+    let (side_line, side_character) = line_and_character(REPORT, "3)");
+    let (namespace_line, namespace_character) = line_and_character(REPORT, "print(\"");
+    let (needs_line, needs_character) = line_and_character(REPORT, "console\n  purpose");
 
     let (messages, clean_exit) = exchange(&[
         request(
@@ -368,19 +413,7 @@ fn the_server_publishes_diagnostics_and_answers_hover_definition_and_symbols() {
                 ]),
             )]),
         ),
-        notification(
-            "textDocument/didChange",
-            obj(vec![
-                (
-                    "textDocument",
-                    obj(vec![("uri", text(&report)), ("version", number(2))]),
-                ),
-                (
-                    "contentChanges",
-                    Json::Array(vec![obj(vec![("text", text(REPORT))])]),
-                ),
-            ]),
-        ),
+        changed(&report, 2, REPORT),
         request(
             2,
             "textDocument/hover",
@@ -402,7 +435,7 @@ fn the_server_publishes_diagnostics_and_answers_hover_definition_and_symbols() {
             obj(vec![("textDocument", document(&shapes))]),
         ),
         request(6, "textDocument/hover", at(&report, 0, 0)),
-        request(7, "workspace/symbol", obj(vec![("query", text(""))])),
+        request(7, "textDocument/typeDefinition", at(&report, 0, 0)),
         request(
             9,
             "textDocument/references",
@@ -483,6 +516,53 @@ fn the_server_publishes_diagnostics_and_answers_hover_definition_and_symbols() {
             "textDocument/prepareRename",
             at(&report, use2_line, use2_character),
         ),
+        changed(&report, 3, &bare_text),
+        request(
+            25,
+            "textDocument/completion",
+            at(&report, bare_line, bare_character + "tot".len()),
+        ),
+        changed(&report, 4, &member_text),
+        request(
+            26,
+            "textDocument/completion",
+            at(&report, member_line, member_character + "  square.".len()),
+        ),
+        changed(&report, 5, &call_text),
+        request(
+            27,
+            "textDocument/signatureHelp",
+            at(&report, call_line, call_character + "label(".len()),
+        ),
+        changed(&report, 6, &import_text),
+        request(
+            28,
+            "textDocument/completion",
+            at(&report, import_line, import_character + "std.".len()),
+        ),
+        changed(&report, 7, REPORT),
+        request(
+            29,
+            "textDocument/signatureHelp",
+            at(&report, area_call_line, area_call_character),
+        ),
+        request(
+            30,
+            "textDocument/signatureHelp",
+            at(&report, side_line, side_character),
+        ),
+        request(
+            31,
+            "textDocument/completion",
+            at(&report, namespace_line, namespace_character),
+        ),
+        request(
+            32,
+            "textDocument/completion",
+            at(&report, needs_line, needs_character),
+        ),
+        request(33, "workspace/symbol", obj(vec![("query", text("ar"))])),
+        request(34, "workspace/symbol", obj(vec![("query", text(""))])),
         request(8, "shutdown", Json::Null),
         notification("exit", Json::Null),
     ]);
@@ -508,7 +588,7 @@ fn the_server_publishes_diagnostics_and_answers_hover_definition_and_symbols() {
     let shapes_published = published(&messages, &shapes);
     assert_eq!(shapes_published, vec![&Json::Array(Vec::new())]);
     let report_published = published(&messages, &report);
-    assert_eq!(report_published.len(), 3, "{report_published:?}");
+    assert_eq!(report_published.len(), 8, "{report_published:?}");
     assert_eq!(report_published[0], &Json::Array(Vec::new()));
     let Json::Array(items) = report_published[1] else {
         panic!("not an array: {:?}", report_published[1]);
@@ -527,6 +607,13 @@ fn the_server_publishes_diagnostics_and_answers_hover_definition_and_symbols() {
         bad_character
     );
     assert_eq!(report_published[2], &Json::Array(Vec::new()));
+    // the buffers of stage 35c: a line the parser refuses in each of the
+    // first three, an import without a module in the fourth, then clean
+    // again; the repairs made for the requests publish nothing
+    for (index, published) in report_published.iter().enumerate().take(7).skip(3) {
+        assert_ne!(*published, &Json::Array(Vec::new()), "buffer {index}");
+    }
+    assert_eq!(report_published[7], &Json::Array(Vec::new()));
 
     // hover on a call: the signature and the purpose of the function
     let hover = text_of(get(
@@ -746,6 +833,179 @@ fn the_server_publishes_diagnostics_and_answers_hover_definition_and_symbols() {
     assert_eq!(
         number_of(get(prepared, &["range", "start", "character"])),
         use2_character
+    );
+
+    // completion at a bare name (decision AW44), the line repaired for the
+    // request: the local first, then the module's function, the imports'
+    // namespaces and the exposed type, then the statement words
+    let items_of = |id: usize| -> Vec<(String, String)> {
+        let Json::Array(items) = get(response(&messages, id), &["result"]) else {
+            panic!("not an array: {:?}", response(&messages, id));
+        };
+        items
+            .iter()
+            .map(|item| {
+                (
+                    text_of(get(item, &["label"])).to_string(),
+                    text_of(get(item, &["sortText"])).to_string(),
+                )
+            })
+            .collect()
+    };
+    let detail_of = |id: usize, label: &str| -> String {
+        let Json::Array(items) = get(response(&messages, id), &["result"]) else {
+            panic!("not an array: {:?}", response(&messages, id));
+        };
+        let item = items
+            .iter()
+            .find(|item| text_of(get(item, &["label"])) == label)
+            .unwrap_or_else(|| panic!("no item `{label}` in the answer to {id}"));
+        text_of(get(item, &["detail"])).to_string()
+    };
+    let has = |items: &[(String, String)], label: &str, sort: &str| {
+        items
+            .iter()
+            .any(|(found, order)| found == label && order == sort)
+    };
+    let bare = items_of(25);
+    assert!(has(&bare, "square", "0square"), "{bare:?}");
+    assert!(has(&bare, "main", "1main"), "{bare:?}");
+    assert!(has(&bare, "console", "2console"), "{bare:?}");
+    assert!(has(&bare, "shapes", "2shapes"), "{bare:?}");
+    assert!(has(&bare, "Square", "2Square"), "{bare:?}");
+    assert!(has(&bare, "for each", "4for each"), "{bare:?}");
+    assert!(has(&bare, "let", "4let"), "{bare:?}");
+    assert!(
+        !bare
+            .iter()
+            .any(|(label, _)| label == "area" || label == "self"),
+        "{bare:?}"
+    );
+    assert_eq!(detail_of(25, "main"), "main() needs console");
+    // after a dot: the record's field, the implementation's method and the
+    // method every type has
+    let member = items_of(26);
+    assert!(has(&member, "side", "0side"), "{member:?}");
+    assert!(has(&member, "label", "1label"), "{member:?}");
+    assert!(has(&member, "equals", "2equals"), "{member:?}");
+    assert!(
+        !member.iter().any(|(label, _)| label == "area"),
+        "{member:?}"
+    );
+    assert_eq!(detail_of(26, "side"), "side: Integer");
+    assert_eq!(detail_of(26, "label"), "label(self) returns Text");
+    // signature help of a method call on a line the parser refused
+    let help = get(response(&messages, 27), &["result"]);
+    assert_eq!(
+        text_of(get(help, &["signatures", "0", "label"])),
+        "label(self) returns Text"
+    );
+    assert_eq!(
+        get(help, &["signatures", "0", "parameters"]),
+        &Json::Array(Vec::new())
+    );
+    assert_eq!(get(help, &["activeParameter"]), &number(0));
+    // an import being written: the library's modules, replacing the path
+    // typed so far
+    let imports = items_of(28);
+    assert!(has(&imports, "std.console", "0std.console"), "{imports:?}");
+    assert!(has(&imports, "std.json", "0std.json"), "{imports:?}");
+    assert!(
+        !imports.iter().any(|(label, _)| label == "shapes"),
+        "{imports:?}"
+    );
+    let Json::Array(items) = get(response(&messages, 28), &["result"]) else {
+        panic!("not an array");
+    };
+    let edit = get(&items[0], &["textEdit"]);
+    assert_eq!(
+        number_of(get(edit, &["range", "start", "line"])),
+        import_line
+    );
+    assert_eq!(
+        number_of(get(edit, &["range", "start", "character"])),
+        import_character
+    );
+    assert_eq!(
+        text_of(get(edit, &["newText"])),
+        text_of(get(&items[0], &["label"]))
+    );
+    // the clean text: a function of an import called inside a hole, with
+    // its purpose; a record built
+    let help = get(response(&messages, 29), &["result"]);
+    assert_eq!(
+        text_of(get(help, &["signatures", "0", "label"])),
+        "area(square: Square) returns Integer"
+    );
+    assert_eq!(
+        text_of(get(help, &["signatures", "0", "parameters", "0", "label"])),
+        "square: Square"
+    );
+    assert_eq!(
+        text_of(get(help, &["signatures", "0", "documentation"])),
+        "The area of the square."
+    );
+    let help = get(response(&messages, 30), &["result"]);
+    assert_eq!(
+        text_of(get(help, &["signatures", "0", "label"])),
+        "Square(side: Integer)"
+    );
+    assert_eq!(
+        text_of(get(help, &["signatures", "0", "parameters", "0", "label"])),
+        "side: Integer"
+    );
+    // a namespace's members, the signature as the detail
+    let members = items_of(31);
+    assert!(has(&members, "print", "0print"), "{members:?}");
+    assert!(
+        !members.iter().any(|(label, _)| label == "label"),
+        "{members:?}"
+    );
+    assert_eq!(detail_of(31, "print"), "print(text: Text) needs console");
+    // the capabilities after `needs`
+    let capabilities = items_of(32);
+    assert!(
+        has(&capabilities, "console", "0console"),
+        "{capabilities:?}"
+    );
+    assert!(
+        has(&capabilities, "filesystem.read", "0filesystem.read"),
+        "{capabilities:?}"
+    );
+    // workspace symbols by a part of the name, and every one
+    let symbols_of = |id: usize| -> Vec<(String, String)> {
+        let Json::Array(items) = get(response(&messages, id), &["result"]) else {
+            panic!("not an array: {:?}", response(&messages, id));
+        };
+        items
+            .iter()
+            .map(|item| {
+                (
+                    text_of(get(item, &["name"])).to_string(),
+                    text_of(get(item, &["containerName"])).to_string(),
+                )
+            })
+            .collect()
+    };
+    let named = symbols_of(33);
+    assert!(
+        named.contains(&("area".to_string(), "shapes".to_string())),
+        "{named:?}"
+    );
+    assert!(!named.iter().any(|(name, _)| name == "main"), "{named:?}");
+    let all = symbols_of(34);
+    assert!(all.len() >= 7, "{all:?}");
+    assert!(
+        all.contains(&("side".to_string(), "shapes.Square".to_string())),
+        "{all:?}"
+    );
+    assert!(
+        all.contains(&("label".to_string(), "shapes.Named for Square".to_string())),
+        "{all:?}"
+    );
+    assert!(
+        all.contains(&("main".to_string(), "report".to_string())),
+        "{all:?}"
     );
 
     // the shutdown

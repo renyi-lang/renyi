@@ -1543,7 +1543,7 @@ end
 
 function bind(checker: Checker, name: Name, ty: Ty, is_mutable: Boolean, kind: BindingKind)
   returns Checker
-  purpose: Bind a name in the innermost scope; a name is bound once per function.
+  purpose: Bind a name in the innermost scope, once per function, and record its declaration.
 
   let mutable updated be checker
   if name.text is not "self" then
@@ -1560,7 +1560,8 @@ function bind(checker: Checker, name: Name, ty: Ty, is_mutable: Boolean, kind: B
   let scope be updated.scopes.last() otherwise crash with "a scope"
   let index be updated.scopes.length() - 1
   let replaced be Scope(bindings: scope.bindings.append(binding))
-  return updated with scopes: updated.scopes.with_at(index: index, item: replaced)
+  let bound be updated with scopes: updated.scopes.with_at(index: index, item: replaced)
+  return record(checker: bound, target: LocalTarget(declared: name.span), span: name.span)
 end
 
 function check_shadowing(checker: Checker, name: Name) returns Checker

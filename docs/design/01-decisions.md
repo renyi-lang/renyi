@@ -9659,3 +9659,92 @@ the copies equal to the documents. The documents: 05 section 8 a
 paragraph and its order of work, the reference's command row, the
 starter's README and skill, the notes. Stage 37 closes; 35c follows,
 then release 0.2 (AW36).
+
+**AW44. Stage 35c: completion, signature help and workspace symbols in
+the language server; both checkers record every binding's
+declaration.** 2026-10-13, the third stage of AW34's order, which
+closes stage 35. `renyi lsp` answers `textDocument/completion` (the
+trigger `.`), `textDocument/signatureHelp` (the triggers `(` and `,`)
+and `workspace/symbol` (`crates/renyi/src/lsp/complete.rs`). The
+context of a position is read from the tokens of its line before it,
+by the lexer: after `import`, the modules of the library and of the
+project whose names start with the path typed, each item replacing
+the path (`textEdit`); in a `needs` clause, the capability tree
+(`effects::TREE`); after a dot whose receiver is one identifier naming
+an import, that module's public functions that are not methods, its
+constants and its types; after any other dot, the members of the
+receiver's type, the longest expression the checker typed ending at the
+dot (`Target::Typed`, decision AU1): a record's fields, the methods
+declared on the type (`World::method_index`), the methods of the
+abilities it has (`Equal` for every data type, what it derives, what
+is implemented for it), the same of its base for a subtype and the
+constraints' abilities' for a type parameter, each name once; at a
+bare position, AW34 (3): the bindings declared before the position in
+the enclosing item, the module's functions that are not methods, its
+constants and its types, the imports' namespaces and the names they
+expose, the prelude's functions that are not methods (none today:
+every function of the prelude is a method) and, inside a body, the
+words that start a statement by the grammar (`let`, `change`, `if`,
+`match`, `for each`, `repeat until`, `run concurrently`, `return`,
+`fail`, `crash with`, `break`, `continue`, `ignore`, `check`); the
+items sorted by group through `sortText` (the locals 0, the module's
+1, the imports' 2, the prelude's 3, the keywords 4) and by name, the
+editor filtering by the prefix typed; every item described as hover
+describes it, the signature as `detail` and the purpose as
+`documentation`. A prefix that ends inside a text literal is read from
+the hole being written (the lexer's `Error` token starts at the
+quote). Signature help: the call found by the innermost parenthesis
+still open on the line (a bracket open at depth zero is a list or a
+record: no call), the active parameter the commas before the cursor
+at that depth; the callee a bare name (the module's function, else
+the prelude's), `one.name` (the import's function or type, else a
+method of the binding `one`), `expression.name` (a method of the
+receiver's type: declared, else an ability's, else the base's for a
+subtype) or `Name(` (a record among the module's types, the exposed
+ones and the prelude's, else a variant of a sum type among them); the
+signature as hover spells it (`function_signature`), one label per
+parameter the caller writes (`self` left out), each a part of the
+label, the purpose as its documentation; an overloaded method gives
+every signature. Workspace symbols: the outline of every file of the
+workspace (`symbols_of`), the parts too, by a case-insensitive part of
+the name (every one for the empty query), each with its module as the
+container (`module.Item` for a part). *The declarations recorded.* A
+binding without a use is not in the record of AW39, and a body being
+written has such bindings, so both checkers record a binding's
+declaration as a reference to itself at `bind` (`Target::Local` at
+the name's span in `check.rs`, `LocalTarget` in `bodies.ry`), one push
+per binding; `local_occurrences` kept a declaration once already, the
+server's `local_declared_at` is gone, and the rules test lists the
+declaration first. *The repair.* The checker refuses a file the parser
+refuses (`CheckedModule.id` none), and the line being completed is
+such a line as a rule (a dot without a member, a call not closed, a
+bare name): the workspace would know nothing of the file. For a
+completion or a signature request on a file without a module, the
+position's line is repaired in the workspace for the request and the
+editor's text put back after the answer; the diagnostics are
+published before the repair and the repair's never. The line is first
+completed: `xx` (two letters, the lexer refusing one) where an operand
+is missing after a dot, a comma, a parenthesis, a colon, an operator
+or a reserved word and none follows; the brackets still open closed
+at the line's end; `ignore` before a line that starts with an operand,
+which moves the line's offsets by seven; else the line is blanked;
+each tried with the parser alone before the workspace is touched, and
+the offsets the request names are mapped into the repaired text
+(`Mapping`). A receiver the repair took away, or one that did not
+check, is found by its name when it is one: a parameter of the
+enclosing function by the function's record, else a binding by the
+type the checker recorded at one of its uses. Why: the error-tolerant
+analysis editors assume is a parser that keeps a tree and a checker
+that checks it; this parser recovers into a tree, but the checker's
+contract, no module for a file with a parse error, is what `renyi
+check` and the judges hold, and a repair of one line in the server
+keeps that contract at the cost of two refreshes of one file. Measured
+on `compiler/` through the lane's driver (`lsp_drive.py`; wall-clock,
+coarse; the release binary): initialize 15 ms; a bare completion in `bodies.ry` 13 ms (431 items, the four bindings first); the members after `checker.` on a line that parses 5 ms (24 fields); the signature of `record(` 6 ms; `workspace/symbol` for `check` 17 ms (102 symbols); the members after `checker.` on a line the parser refuses, inserted by a `didChange` just before, 509 ms (the project checked again after the change and once more after the repair, both in the time), the same 24 fields; the medians of three turns, the lane's `timing_35c.log`. Held by
+`crates/renyi/tests/lsp.rs` (four buffers and the clean text: the
+bare name, the member, the method call being written, the import; the
+call inside a hole, the record built, the namespace, the capabilities,
+the symbols by a part of the name and all) and by the module's own
+tests (the contexts, the calls, the repairs). The documents: the
+reference's command row, the extension's README and changelog, the
+notes. Stage 35 closes; release 0.2 follows (AW36).

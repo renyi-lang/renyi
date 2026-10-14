@@ -8,10 +8,15 @@
 //! definition goes to its declaration; references lists every place it
 //! is named in the workspace and rename edits them all (decision AW38,
 //! `lsp/refer.rs`; a binding's uses within its body too, decision AW39);
-//! document symbols list a file's items. Positions
-//! count UTF-16 code units, the protocol's default. The
-//! base protocol frames each message with a `Content-Length` header.
+//! completion offers the names in scope, the members after a dot, the
+//! modules after `import` and the capabilities after `needs`, signature
+//! help the call being written, and workspace symbols every definition
+//! by name (decision AW44, `lsp/complete.rs`); document symbols list a
+//! file's items. Positions count UTF-16 code units, the protocol's
+//! default. The base protocol frames each message with a
+//! `Content-Length` header.
 
+mod complete;
 mod describe;
 mod refer;
 
@@ -28,6 +33,10 @@ use renyi_workspace::Workspace;
 
 use crate::library;
 use crate::mcp::{as_text, field, obj, text};
+use complete::{
+    call_at, candidates, context_at, repair, signatures, At, Call, Candidate, Context, Mapping,
+    Signature,
+};
 use describe::{offset_of, position_of, symbols_of, target_at, what_is_at, Symbol};
 use refer::{
     check_after, check_name, class_of, family, local_occurrences, occurrences, target_module,
@@ -148,6 +157,18 @@ struct Server {
 
 type Response = Result<Json, (i64, String)>;
 
+/// A request's document and position (completion, signature help): the
+/// path, the text as the editor has it, the offset, the mapping of the
+/// editor's offsets into the text the world read, and, when the line was
+/// repaired for the request, the overlay to put back (none to clear).
+struct Positioned {
+    path: String,
+    text: String,
+    offset: usize,
+    mapping: Mapping,
+    restore: Option<Option<String>>,
+}
+
 impl Server {
     fn new() -> Server {
         let library = library();
@@ -215,6 +236,9 @@ impl Server {
             "textDocument/references" => self.references(params, out),
             "textDocument/prepareRename" => self.prepare_rename(params, out),
             "textDocument/rename" => self.rename(params, out),
+            "textDocument/completion" => self.completion(params, out),
+            "textDocument/signatureHelp" => self.signature_help(params, out),
+            "workspace/symbol" => self.workspace_symbols(params, out),
             other => Err((METHOD_NOT_FOUND, format!("method not found: {other}"))),
         }
     }
@@ -295,6 +319,18 @@ impl Server {
                         "renameProvider",
                         obj(vec![("prepareProvider", Json::Boolean(true))]),
                     ),
+                    (
+                        "completionProvider",
+                        obj(vec![("triggerCharacters", Json::Array(vec![text(".")]))]),
+                    ),
+                    (
+                        "signatureHelpProvider",
+                        obj(vec![(
+                            "triggerCharacters",
+                            Json::Array(vec![text("("), text(",")]),
+                        )]),
+                    ),
+                    ("workspaceSymbolProvider", Json::Boolean(true)),
                 ]),
             ),
             (
@@ -666,6 +702,176 @@ impl Server {
         }
         Ok(())
     }
+
+    /// A document at a position, for completion or signature help. A file
+    /// the parser refuses has no module: the position's line is then
+    /// repaired in the workspace for the request (`complete::repair`),
+    /// which `restore` undoes after the answer.
+    fn positioned(&mut self, params: &Json, out: &mut Vec<Json>) -> Option<Positioned> {
+        let uri = document_uri(params)?;
+        let path = uri_to_path(&uri)?;
+        self.publish(out);
+        let workspace = self.workspace.as_mut()?;
+        let text = workspace.file(&path)?.text.clone();
+        let offset = position_param(params, &text)?;
+        let mut positioned = Positioned {
+            path: path.clone(),
+            text,
+            offset,
+            mapping: Mapping::same(),
+            restore: None,
+        };
+        if workspace.module_of(&path).is_some() {
+            return Some(positioned);
+        }
+        let Some(repaired) = repair(&positioned.text, offset) else {
+            return Some(positioned);
+        };
+        positioned.restore = Some(
+            self.open
+                .contains_key(&path)
+                .then(|| positioned.text.clone()),
+        );
+        positioned.mapping = repaired.mapping;
+        workspace.set_overlay(&path, repaired.text);
+        if let Err(detail) = workspace.refresh() {
+            eprintln!("renyi lsp: {detail}");
+        }
+        Some(positioned)
+    }
+
+    /// The editor's text put back after a request that repaired it.
+    fn restore(&mut self, positioned: &Positioned) {
+        let Some(previous) = &positioned.restore else {
+            return;
+        };
+        let Some(workspace) = self.workspace.as_mut() else {
+            return;
+        };
+        match previous {
+            Some(text) => workspace.set_overlay(&positioned.path, text.clone()),
+            None => workspace.clear_overlay(&positioned.path),
+        }
+    }
+
+    fn completion(&mut self, params: &Json, out: &mut Vec<Json>) -> Response {
+        let Some(positioned) = self.positioned(params, out) else {
+            return Ok(Json::Array(Vec::new()));
+        };
+        let context = context_at(&positioned.text, positioned.offset);
+        let items = self
+            .candidates_at(&positioned, &context)
+            .iter()
+            .map(|candidate| item_json(&positioned.text, candidate))
+            .collect();
+        self.restore(&positioned);
+        Ok(Json::Array(items))
+    }
+
+    /// The completion items at the position, from the world as refreshed.
+    fn candidates_at(&self, positioned: &Positioned, context: &Context) -> Vec<Candidate> {
+        let Some(workspace) = self.workspace.as_ref() else {
+            return Vec::new();
+        };
+        let (Some(checked), Some(file)) = (workspace.checked(), workspace.file(&positioned.path))
+        else {
+            return Vec::new();
+        };
+        let library = &self.library_files;
+        let source_of = |module: ModuleId| -> Option<&SourceFile> {
+            workspace.file_of(module).or_else(|| {
+                let name = &checked.world.modules[module].name;
+                library.iter().find(|file| file.name == *name)
+            })
+        };
+        let at = At {
+            checked,
+            module: workspace.module_of(&positioned.path),
+            text: &file.text,
+            offset: positioned.offset,
+            mapping: positioned.mapping,
+        };
+        let modules: Vec<String> = self
+            .library
+            .modules()
+            .map(|(name, _)| name.to_string())
+            .collect();
+        candidates(&at, &source_of, context, &modules)
+    }
+
+    fn signature_help(&mut self, params: &Json, out: &mut Vec<Json>) -> Response {
+        let Some(positioned) = self.positioned(params, out) else {
+            return Ok(Json::Null);
+        };
+        let answer = call_at(&positioned.text, positioned.offset)
+            .and_then(|call| self.signatures_at(&positioned, &call));
+        self.restore(&positioned);
+        Ok(answer.unwrap_or(Json::Null))
+    }
+
+    /// The signatures of the call at the position, with the parameter the
+    /// cursor is at.
+    fn signatures_at(&self, positioned: &Positioned, call: &Call) -> Option<Json> {
+        let workspace = self.workspace.as_ref()?;
+        let checked = workspace.checked()?;
+        let file = workspace.file(&positioned.path)?;
+        let at = At {
+            checked,
+            module: workspace.module_of(&positioned.path),
+            text: &file.text,
+            offset: positioned.offset,
+            mapping: positioned.mapping,
+        };
+        let found = signatures(&at, &call.callee);
+        if found.is_empty() {
+            return None;
+        }
+        Some(obj(vec![
+            (
+                "signatures",
+                Json::Array(found.iter().map(signature_json).collect()),
+            ),
+            ("activeSignature", Json::Number("0".to_string())),
+            ("activeParameter", Json::Number(call.active.to_string())),
+        ]))
+    }
+
+    /// Every definition of the workspace whose name contains the query,
+    /// with the module or the item it belongs to.
+    fn workspace_symbols(&mut self, params: &Json, out: &mut Vec<Json>) -> Response {
+        self.publish(out);
+        let query = field(params, "query").and_then(as_text).unwrap_or_default();
+        let workspace = self.workspace.as_ref().expect("a workspace");
+        let Some(checked) = workspace.checked() else {
+            return Ok(Json::Array(Vec::new()));
+        };
+        let files: Vec<(ModuleId, &SourceFile)> = workspace
+            .sources()
+            .filter_map(|file| Some((workspace.module_of(&file.name)?, file)))
+            .collect();
+        let symbols = complete::workspace_symbols(&checked.world, &files, &query)
+            .iter()
+            .filter_map(|found| {
+                let file = workspace.file_of(found.module)?;
+                Some(obj(vec![
+                    ("name", text(&found.name)),
+                    ("kind", Json::Number(found.kind.to_string())),
+                    (
+                        "location",
+                        obj(vec![
+                            ("uri", text(&self.uri_of(file))),
+                            (
+                                "range",
+                                range_json(&file.text, found.span.start, found.span.end),
+                            ),
+                        ]),
+                    ),
+                    ("containerName", text(&found.container)),
+                ]))
+            })
+            .collect();
+        Ok(Json::Array(symbols))
+    }
 }
 
 /// A file's name relative to the workspace root, with forward slashes.
@@ -743,6 +949,51 @@ fn symbol_json(text: &str, symbol: &Symbol) -> Json {
             ),
         ));
     }
+    obj(fields)
+}
+
+fn item_json(text: &str, candidate: &Candidate) -> Json {
+    let mut fields = vec![
+        ("label", Json::Text(candidate.label.clone())),
+        ("kind", Json::Number(candidate.kind.to_string())),
+        (
+            "sortText",
+            Json::Text(format!("{}{}", candidate.group, candidate.label)),
+        ),
+    ];
+    if let Some(detail) = &candidate.detail {
+        fields.push(("detail", Json::Text(detail.clone())));
+    }
+    if let Some(documentation) = &candidate.documentation {
+        fields.push(("documentation", Json::Text(documentation.clone())));
+    }
+    if let Some(span) = candidate.edit {
+        fields.push((
+            "textEdit",
+            obj(vec![
+                ("range", range_json(text, span.start, span.end)),
+                ("newText", Json::Text(candidate.label.clone())),
+            ]),
+        ));
+    }
+    obj(fields)
+}
+
+fn signature_json(signature: &Signature) -> Json {
+    let mut fields = vec![("label", Json::Text(signature.label.clone()))];
+    if let Some(documentation) = &signature.documentation {
+        fields.push(("documentation", Json::Text(documentation.clone())));
+    }
+    fields.push((
+        "parameters",
+        Json::Array(
+            signature
+                .parameters
+                .iter()
+                .map(|parameter| obj(vec![("label", Json::Text(parameter.clone()))]))
+                .collect(),
+        ),
+    ));
     obj(fields)
 }
 

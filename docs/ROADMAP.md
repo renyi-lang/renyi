@@ -563,7 +563,7 @@ where one decided, the status. The dates are those of the decisions.
     (decision AW33), which closes the stage.
 
 35. **The language server's completion, references and rename** (session
-    14, 2026-10-13, in progress; decision AW28, the owner's order). The
+    14, 2026-10-13, done; decision AW28, the owner's order). The
     server of decisions AN2 and AN3 gains `textDocument/references`,
     `textDocument/rename` with `prepareRename`, `textDocument/completion`
     and, if the owner takes them, `signatureHelp` and `workspace/symbol`;
@@ -591,8 +591,13 @@ where one decided, the status. The dates are those of the decisions.
     check row -2.9% by instructions once the Renyi checker's
     references were kept per body (the first build +12.2%: an append
     through a checker held twice copies the module's list, found by a
-    probe). 35c follows the RAG adaptation the owner asked for on
-    2026-10-13.
+    probe). 35c done (decision AW44, 2026-10-13): completion with its
+    contexts (an import's path, a `needs` clause, an import's members,
+    a type's members after a dot, the names in scope with the
+    statement words), signature help by the innermost open
+    parenthesis, workspace symbols from the outlines; both checkers
+    record a binding's declaration as a reference to itself; a line
+    the parser refuses is repaired for the request. Stage closed.
 
 36. **The DOOM look** (session 14, 2026-10-13, done; decisions AW35,
     the owner's call after the play page, and AW37). The showcase game made
@@ -692,8 +697,8 @@ state of each line.
   per Python call, one worker across a test run.
 - **F. The agent tooling and the integrations**: stages 5, 7 (the MCP
   server), 19 (the resident world, the language server, the watch, the
-  embedding API), 35 (references and rename in the language server,
-  35a and 35b done; 35c completion open), 37 (the map for retrieval by
+  embedding API), 35 (completion, references and rename in the
+  language server; done), 37 (the map for retrieval by
   embedding, opened 2026-10-13, its study done and its questions
   answered, AW40; 37a the measure done, AW41; 37b the export done,
   AW42; 37c the extras done, AW43; the stage closed).
@@ -791,9 +796,9 @@ in the handoff and its four questions answered, decision AW40; 37a
 measured the chunk texts and settled the header, decision AW41; 37b
 built the export, `renyi index --chunks` and the tool `chunks`, decision
 AW42; 37c the language's documents and the example pipeline, decision
-AW43; the stage closed). 35c, completion with signature help and
-workspace symbols, is the work now. Release 0.2
-follows stage 35 (decision AW36,
+AW43; the stage closed); 35c, completion with signature help and
+workspace symbols, is done (decision AW44), which closes stage 35.
+Release 0.2 is the work now (decision AW36,
 the owner's answer of 2026-10-13), with the extension published to
 the Marketplace and Open VSX from the owner's publisher and the
 announcements of `docs/RELEASE.md` section 6. Not scheduled: the

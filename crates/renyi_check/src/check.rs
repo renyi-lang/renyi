@@ -217,8 +217,10 @@ pub enum Target {
     Otherwise { fallible: bool },
     /// A use of a binding of the body (a parameter, a `let`, a loop or a
     /// pattern variable, `self`), at the use's span, with the span of the
-    /// binding's declaration: the language server's references and rename
-    /// of locals read it (decision AW39); the map and the VM ignore it.
+    /// binding's declaration, and the declaration itself at its own span
+    /// (decision AW44): the language server's references, rename and
+    /// completion of locals read it (decision AW39); the map and the VM
+    /// ignore it.
     Local(Span),
 }
 
@@ -1051,6 +1053,9 @@ impl<'w> Checker<'w> {
                 span: name.span,
                 kind,
             });
+        // the declaration is a reference to itself, so that the bindings
+        // of a body are known without a use of each (decision AW44)
+        self.record(Target::Local(name.span), name.span);
     }
 
     // ------------------------------------------------------------- functions
