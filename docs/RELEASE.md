@@ -416,3 +416,50 @@ first run of v0.4.0 failed there, `llvm-objcopy` refusing the MSVC
 archive `renyi_c.lib` ("unsupported object file format"; the local test
 had been on a GNU-toolchain archive), so the Windows static library
 keeps its bitcode (105 MB) and the step is skipped for it.
+
+## 10. Release 0.4.0, as it went (2026-10-15)
+
+The stable version, on the owner's order of the same night ("加速收尾
+项目，稳定版本", decision AW67): the memory budget in the grant (stages
+45 and 45b, decisions AW64 to AW66), the two unscheduled speed items
+(stage 46), and the static library's bitcode stripped (section 9's
+open item). Section 3 ran in order; the lane is
+`D:\Projects\.worktrees\Renyi\wasm\release040\`. What was new:
+
+1. The bump as section 7 item 1 says; the commit is f4947ba, the gates
+   and CI green on it at the first run.
+2. The crates: the lane's `publish_crates.sh`, the nine in order from
+   22:36 to 22:38 UTC, no rate limit, no wait this time.
+3. The MCP registry: `validate` then `publish` with the lane's key,
+   `org.renyi-lang/renyi` 0.4.0 active at 22:38 UTC.
+4. The tag on f4947ba: the first Release run (22:38 to 22:50 UTC)
+   failed on Windows at the new strip step, `llvm-objcopy` refusing
+   the MSVC archive (section 9's last paragraph). The step is limited
+   to Linux and macOS since b595f2e; the tag was deleted and made
+   again on that commit (the same version, nothing published yet),
+   and the second run (22:52 to 23:05 UTC) published the release at
+   23:05 UTC: the three binary archives (6.0 to 7.6 MB), the `.vsix`
+   (128 KB), the `renyi_c-v0.4.0-<target>` archives 13.2 MB (macOS),
+   16.3 MB (Linux) and 42.5 MB (Windows, its static library with the
+   bitcode still). The Linux archive's static library is 42.2 MB
+   unpacked and the shared one 16.1 MB; the C example compiled against
+   the static library under WSL and printed its expected output.
+5. Verified by hand: the Windows archive's checksum (the `.sha256`
+   files written on Windows end their line with CR LF, which
+   `install.ps1` trims and `sha256sum -c` does not: `tr -d '\r'`
+   first), its binary's version and the hello program; the `.vsix`
+   (publisher `renyi-lang`, the bundled client in it). Under WSL,
+   `install.sh` with `RENYI_VERSION=v0.4.0` (the tag's spelling; the
+   bare `0.4.0` asks for an archive that does not exist) installed the
+   Linux binary, and the five workflows' `replays` tests passed there
+   (15 tests), the article's reproduction claim on its stable version.
+6. Open VSX with the lane's `ovsx_publish.py`: "Published
+   renyi-lang.renyi v0.4.0". Glama's Auto-Release took the GitHub
+   release: the server's page names 0.4.0. The Marketplace upload is
+   the owner's step as before (section 7 item 5).
+
+After the release: the article's numbers brought to 0.4.0 (the
+repository's counts, the module's size, the benchmark table from the
+lane's `perf/bench_040.log`; the first-run measure keeps its date on
+0.2.0, said in the text) and the arXiv endorsement request written
+(`paper/endorsement.md`), for the owner's submission.

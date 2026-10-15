@@ -258,10 +258,18 @@ budgeted run on the JIT). The owner's order after it, the same night:
 0.4.0 with the arXiv endorsement request written, the roadmap's obvious
 work done before the tag. Stage 46 built the two speed items (AW67:
 the Rust front end's name sets as bits, the emitter's liveness walk in
-one pass; the handoff's section "Stage 46"). Left before the tag: the C
-archive's static library without fat LTO's bitcode (`docs/RELEASE.md`
-section 9); then release 0.4.0 by section 3 of that file; then the
-article. The watch rounds
+one pass; the handoff's section "Stage 46"). Then the C archive's
+static library without fat LTO's bitcode on Linux and macOS
+(`docs/RELEASE.md` section 9: `llvm-objcopy` in the release workflow,
+not for the MSVC archive), release 0.4.0 (section 10 of that file: the
+crates, the registry, the tag moved once to b595f2e for the Windows
+strip step, the release at 23:05 UTC, Open VSX, Glama, the Windows
+archive checked by hand, the five workflows reproduced on the Linux
+binary installed through `install.sh`; the handoff's section "Release
+0.4.0"), and the article's numbers brought to 0.4.0 with the
+endorsement request written (`paper/endorsement.md`). The project is at
+its stable version; what remains is the owner's (the Marketplace upload
+of the `.vsix`, the arXiv submission, the announcements). The watch rounds
 (Gmail, the notifications, the ten list pull requests, the Glama
 badge) were a cron of session 15, stopped on the owner's word of
 2026-10-15 evening ("如果有回复或者更新我通知你": the owner reports
@@ -4263,6 +4271,26 @@ iterator in two slots, the Rust front end's name sets).
 Then the first stage the owner confirms. Done in session 14: the study is
 the section "Stage 29, the new backend: the design study (session 14)"
 below, and the owner's answers are decision AW1.
+
+## Release 0.4.0, the stable version (session 15, night)
+
+`docs/RELEASE.md` section 10 is the record. The lane is
+`D:\Projects\.worktrees\Renyi\wasm\release040\` (the crates' logs,
+`dl/` with the Windows archive and the `.vsix` as downloaded,
+`ovsx_040.log`); the Linux check is `perf/linux_040.sh` with its log
+(`install.sh` under WSL with `RENYI_VERSION=v0.4.0`, the five workflows'
+`replays` tests, the C example against the archive's static library).
+Two things to know for the next release: the tag goes on the commit
+whose workflow is final (the first run of v0.4.0 failed on a step
+tested locally against a GNU archive, not the MSVC one, and the tag had
+to be moved), and the `.sha256` files written on Windows end in CR LF
+(the installer trims it; `sha256sum -c` wants `tr -d '\r'` first). The
+article (`paper/renyi.tex`) carries 0.4.0's numbers from the lane's
+`perf/bench_040.log` and the repository's counts, the first-run measure
+dated on 0.2.0 in the text; `paper/endorsement.md` is the request the
+owner sends with the submission's link. The owner's steps: the
+Marketplace upload (section 7 item 5 of the release document), the
+arXiv submission with the endorsement, the announcements.
 
 ## Stage 46, the liveness walk's residue on both sides (session 15, night)
 

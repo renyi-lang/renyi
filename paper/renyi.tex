@@ -285,7 +285,7 @@ way, and \texttt{-{}-refresh} records a test live once.
 
 \subsection{The surface}
 
-The grammar is a W3C EBNF of 227 lines, frozen by
+The grammar is a W3C EBNF of 228 lines, frozen by
 decision and held equal to the parser by a test that interprets it over
 the corpus. Its rules for the two readers:
 
@@ -326,8 +326,8 @@ one. Section~\ref{sec:readability} says how the rules were chosen.
 
 \subsection{The toolchain}
 
-The toolchain is one binary, \texttt{renyi}, written in Rust in nine
-crates (100,541 lines at release 0.2.0): the syntax crate (lexer,
+The toolchain is one binary, \texttt{renyi}, written in Rust in ten
+crates (103,194 lines at release 0.4.0): the syntax crate (lexer,
 parser, formatter, JSON encoder of the tree), the JSON crate the VM,
 the recordings and the packages share, the checker (declarations,
 bodies, effects, refinements on literals, the fixes), the package crate
@@ -335,12 +335,14 @@ bodies, effects, refinements on literals, the fixes), the package crate
 map, metrics, the semantic diff, the chunks), the workspace (the resident
 world a language server and an MCP server keep between calls), the VM,
 the binary's own crate (commands, the language server, the MCP server,
-the sandbox API) and the web crate (the toolchain for WebAssembly). The
-standard library is 16 modules declared in Renyi (794 lines of
+the sandbox API), the web crate (the toolchain for WebAssembly) and the
+C API crate (a shared and a static library over the sandbox API, with a
+Python binding). The
+standard library is 16 modules declared in Renyi (795 lines of
 declarations compiled into the checker) with native implementations in
 the VM. The language is specified by a reference of one section per
 construct with the grammar excerpt, the static rules with their codes
-and the run-time behaviour; a conformance suite of 56 cases (programs,
+and the run-time behaviour; a conformance suite of 67 cases (programs,
 commands, expected outputs, exit codes and diagnostic codes) runs
 against any \texttt{renyi} binary without the Rust crates, and the
 continuous integration runs it on Linux and Windows for every push.
@@ -382,8 +384,7 @@ hashes of every file the front end read.
 
 The front end, the checker and the interpreter build for
 \texttt{wasm32-unknown-unknown} as a module with a C ABI of sixteen
-exports, 3,049,093 bytes (986,578 gzipped) when the demonstration game
-was measured on 2026-10-13. A run that
+exports, 3,062,776 bytes (995,913 gzipped) at release 0.4.0. A run that
 presents a frame through \texttt{std.screen} suspends in the VM and is
 resumed by the page with the keys held and the time elapsed, which is how
 the project's demonstration game, a Doom-style raycaster of about two thousand
@@ -391,12 +392,12 @@ lines of Renyi in sixteen modules, plays on the project's site: the same
 program plays at the terminal under \texttt{renyi run}, where the frames
 are drawn as text. In a headless Chrome on the author's machine the game
 ran at 55 to 60 frames a second with 3.0 to 3.8 ms a frame spent in the
-interpreted VM.
+interpreted VM (measured on 2026-10-13).
 
 \subsection{The compiler written in Renyi}
 
 The lexer, the parser, the checker and the bytecode emitter are written
-again in Renyi, 25,847 lines in the repository's \texttt{compiler/}
+again in Renyi, 25,974 lines in the repository's \texttt{compiler/}
 directory, run by the Rust VM. Three judges in the test suite hold them
 equal to the Rust toolchain: the Renyi parser must print, byte for byte,
 what \texttt{renyi parse -{}-json} prints on every program of the corpus,
@@ -446,8 +447,12 @@ project checked with the edits applied gains an error.
 \label{sec:evaluation}
 
 The language's positioning document states the claims to be measured
-on the starter pack. We measured them on release 0.2.0 on 2026-10-14. The readability rounds and the benchmarks complete the
-picture.
+on the starter pack. The reproduction and the benchmarks were measured
+on release 0.4.0, the stable version, on 2026-10-15; the first-run
+measure was taken on release 0.2.0 on 2026-10-14 with the skill file
+and the cheat sheet of that release, which have since gained one line
+(the memory budget clause). The readability rounds and the benchmarks
+complete the picture.
 
 \subsection{Reproduction}
 
@@ -559,15 +564,15 @@ ahead of time.
 \toprule
 Program & native & interpreter & image & CPython 3.13 & ratio \\
 \midrule
-primes (integer loops) & 53 ms & 866 ms & 52 ms & 426 ms & 8.0 \\
-strings (text building) & 94 ms & 131 ms & 100 ms & 129 ms & 1.4 \\
-records (records in lists) & 72 ms & 84 ms & 62 ms & 255 ms & 3.5 \\
-json round trip & 148 ms & 133 ms & 157 ms & 255 ms & 1.7 \\
-checker on bodies.ry & 727 ms & 1,072 ms & 380 ms & -- & -- \\
-hello & 44 ms & 47 ms & 40 ms & -- & -- \\
+primes (integer loops) & 48 ms & 735 ms & 48 ms & 371 ms & 7.8 \\
+strings (text building) & 75 ms & 112 ms & 72 ms & 103 ms & 1.4 \\
+records (records in lists) & 59 ms & 76 ms & 53 ms & 169 ms & 2.9 \\
+json round trip & 108 ms & 107 ms & 115 ms & 179 ms & 1.7 \\
+checker on bodies.ry & 537 ms & 981 ms & 357 ms & -- & -- \\
+hello & 41 ms & 41 ms & 36 ms & -- & -- \\
 \bottomrule
 \end{tabular}
-\caption{The benchmark set on release 0.2.0, Windows 11, best of three
+\caption{The benchmark set on release 0.4.0, Windows 11, best of three
 wall-clock runs of the whole process (the front end included; the caches
 off); the ratio is CPython's time over the native column's; the programs are in the repository's \texttt{bench/}.}
 \label{tab:bench}

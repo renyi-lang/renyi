@@ -912,8 +912,11 @@ state of each line.
   and the C example done, AW47; 40b the Python binding, the archive
   and the measure done, AW48; 40c when a host asks).
 - **G. Release and the ecosystem**: stages 17, 30, 38, 39. Releases
-  0.1.0 (2026-10-07), 0.2.0 (2026-10-13), 0.2.1 (2026-10-14) and 0.3.0
-  (2026-10-15, the C API) are out, the extension on
+  0.1.0 (2026-10-07), 0.2.0 (2026-10-13), 0.2.1 (2026-10-14), 0.3.0
+  (2026-10-15, the C API) and 0.4.0 (2026-10-15 night, the stable
+  version of the owner's order AW67: the memory budget in the grant,
+  stage 46, the static library stripped; `docs/RELEASE.md` section 10)
+  are out, the extension on
   the Marketplace and Open VSX since 0.2.0; every release follows
   `docs/RELEASE.md`; the icon and the wordmark (AV1) are in the site,
   the README, the extension and the repository's social preview; two
@@ -1023,10 +1026,15 @@ VSX verified; `docs/RELEASE.md` section 8), the article went through
 the de-AI pass, and the namespace claim is done. Release 0.3.0 followed
 on 2026-10-15 (the C API and its Python binding, the archive per
 target, `renyi_c` the ninth crate, the registry and Open VSX at 0.3.0;
-`docs/RELEASE.md` section 9). Open from AW45: the Marketplace's
+`docs/RELEASE.md` section 9), and release 0.4.0, the stable version,
+the same night (`docs/RELEASE.md` section 10: the crates, the
+registry, the tag moved once for the Windows strip step, Open VSX,
+Glama; the five workflows reproduced on the Linux binary installed
+through `install.sh`). Open from AW45: the Marketplace's
 verified domain (not before 2027-04-13), the article's submission by
-the owner (after 0.3.0, so now open), the awesome list's Glama step
-(done: the three pull requests carry the badges).
+the owner (the article's numbers are 0.4.0's and the endorsement
+request is written, `paper/endorsement.md`), the awesome list's Glama
+step (done: the three pull requests carry the badges).
 The C API of decision A5 is stage 40, opened on 2026-10-15 by AW28's
 order (AW46: JSON texts across the boundary, the crate `renyi_c` with
 a hand-written header, C and Python first, a library archive per
@@ -1049,7 +1057,12 @@ image recording it, measured). The owner's order of 2026-10-15 night
 ("加速收尾项目，稳定版本"): the stable version is 0.4.0, tagged once the
 roadmap's remaining work is done; stage 46 (AW67) built the two
 items that were not scheduled, the Rust front end's name sets as bits
-and the liveness walk's residue. Before the tag: the C archive's
-static library without the bitcode of fat LTO (`docs/RELEASE.md`
-section 9's open item); after it, the article's numbers brought to
-0.4.0 and the arXiv endorsement request written for the owner.
+and the liveness walk's residue; the C archive's static library lost
+the bitcode of fat LTO on Linux and macOS (`docs/RELEASE.md` section
+9); release 0.4.0 went out the same night (section 10), the article's
+numbers are 0.4.0's and the arXiv endorsement request is written. The
+project is at its stable version. What remains is the owner's: the
+Marketplace upload of `renyi-v0.4.0.vsix`, the article's submission
+with the endorsement, the announcements; and the open items listed
+above by track (R3-1, 40c, the switch of the front end, the verified
+domain), none of them scheduled.
