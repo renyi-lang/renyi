@@ -639,7 +639,10 @@ mod tests {
             Some(("256".to_string(), "megabytes".to_string()))
         );
         assert_eq!(spell(&capability), spelled);
-        assert_eq!(memory_of(std::slice::from_ref(&capability)), Some(256 << 20));
+        assert_eq!(
+            memory_of(std::slice::from_ref(&capability)),
+            Some(256 << 20)
+        );
         let smaller = parse_capability("memory at most 1024 kilobytes").expect("parses");
         assert_eq!(memory_of(&[capability, smaller]), Some(1 << 20));
         assert_eq!(
