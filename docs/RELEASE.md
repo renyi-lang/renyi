@@ -355,3 +355,50 @@ on the official MCP registry. Section 3 ran in order; the lane is
    outside the scope), and the READMEs say so; the two test names were
    shortened to keep their heads under the line width. CI green on
    843d1f7.
+
+## 9. Release 0.3.0, as it went (2026-10-15)
+
+The C API (decisions AW46 to AW48: the crate `renyi_c`, the Python
+binding, a library archive per target) and the fix of a Windows path
+in `Sandbox::load`, the day after 0.2.1. Section 3 ran in order; the
+lane is `D:\Projects\.worktrees\Renyi\wasm\release030\`. What was
+new:
+
+1. The bump as section 7 item 1 says (ten `version` lines of
+   `Cargo.toml`, `renyi_web`'s line, the extension's manifest, lockfile
+   and changelog, `server.json`, the fixture's toolchain line and its
+   hash in the lockfile and the packages test), with the README's
+   release paragraph. The gates (fmt, clippy, 67 suites, the lint, the
+   token budget) passed at the first run; the commit is 303ee9a.
+2. CI failed on it: the C and the Python example printed the
+   toolchain's version on standard output, and the expected files CI
+   compares carried "renyi 0.2.1". Both examples print the version on
+   standard error since 2612957, and the expected files lose the line,
+   so a bump no longer touches them. Tag after CI is green on the bump,
+   as the procedure says; it took one fix this time.
+3. The crates: the lane's `publish_crates.sh` with `renyi_c` ninth,
+   14:41 to 14:43 UTC, no rate limit; cargo's wait for the new crate
+   `renyi_c` to be visible timed out, which is the index's delay and
+   not a failure (the publish had answered 200, and the crate's page
+   showed 0.3.0 within the minute).
+4. The tag after the last crate; the Release workflow twelve minutes
+   (14:44 to 14:56 UTC): the three binary archives (5.8 to 7.4 MB),
+   the `.vsix` (128 KB) and the three `renyi_c-v0.3.0-<target>`
+   archives (36 to 42 MB compressed; the static library is 105 to 112
+   MB unpacked, because `lto = "fat"` leaves LLVM bitcode in it; the
+   shared library is 14 to 16 MB). The Windows archives' checksums
+   were verified by hand and the Windows binary ran the hello program;
+   the Windows C archive's `example.py` ran against the `renyi_c.dll`
+   beside it, the archive's layout the binding looks in first.
+5. The MCP registry: `mcp_registry.py validate` then `publish` with the
+   lane's key, `org.renyi-lang/renyi` 0.3.0 active at 14:44 UTC, 0.2.1
+   kept as an earlier version.
+6. Open VSX with the lane's `ovsx_publish.py`: "Published
+   renyi-lang.renyi v0.3.0". The Marketplace upload is the owner's
+   step as before (section 7 item 5).
+7. Glama's Auto-Release took the GitHub release: the server's page
+   names 0.3.0 and the badge stays "rated A".
+
+Open after it: the static library's size (strip the bitcode, or a
+release profile for the archive without fat LTO) and the Marketplace
+upload of `renyi-v0.3.0.vsix`.

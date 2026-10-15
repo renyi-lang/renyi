@@ -183,10 +183,17 @@ archive `renyi_c-<version>-<target>` in `release.yml`, `renyi_c` the
 ninth crate of `docs/RELEASE.md`, the measure, and a Windows path
 with backslashes fixed in `Sandbox::load`. Stage 40 is closed but for
 40c, which waits for a host that asks (the screen callback, the value
-handles). The next release (0.3.0, when the owner calls it) publishes
-`renyi_c` to crates.io after `renyi` and carries the archive. The
-open items of AW45 stand beside it (the verified domain, the
-article's submission after 0.3.0).
+handles). Release 0.3.0 is out (2026-10-15, the owner's order after
+stage 40: "按顺序推1到3", the release first; `docs/RELEASE.md` section
+9: the nine crates, the tag, the release page with the three
+`renyi_c-v0.3.0-<target>` archives, the registry and Open VSX at
+0.3.0, Glama's auto-release; the Marketplace upload of
+`renyi-v0.3.0.vsix` is the owner's step). The work next, by the same
+order: (2) the Python binder's items of track E (record types from
+dataclasses, a deadline per Python call, one worker across a test
+run), then (3) the emitter's own round for the compile row, each with
+a design study first. The open items of AW45 stand beside them (the
+verified domain, the article's submission, now that 0.3.0 is out).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon

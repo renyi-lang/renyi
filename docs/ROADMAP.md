@@ -768,7 +768,8 @@ state of each line.
   and the C example done, AW47; 40b the Python binding, the archive
   and the measure done, AW48; 40c when a host asks).
 - **G. Release and the ecosystem**: stages 17, 30, 38, 39. Releases
-  0.1.0 (2026-10-07) and 0.2.0 (2026-10-13) are out, the extension on
+  0.1.0 (2026-10-07), 0.2.0 (2026-10-13), 0.2.1 (2026-10-14) and 0.3.0
+  (2026-10-15, the C API) are out, the extension on
   the Marketplace and Open VSX since 0.2.0; every release follows
   `docs/RELEASE.md`; the icon and the wordmark (AV1) are in the site,
   the README, the extension and the repository's social preview; two
@@ -875,9 +876,13 @@ repository, the article; `renyi-tools` the same day). Release 0.2.1
 followed (2026-10-14: the scope of the current directory fixed, the
 toolchain on the official MCP registry as `org.renyi-lang/renyi`, Open
 VSX verified; `docs/RELEASE.md` section 8), the article went through
-the de-AI pass, and the namespace claim is done. Open from AW45: the
-Marketplace's verified domain (not before 2027-04-13), the article's
-submission by the owner, the awesome list's Glama step.
+the de-AI pass, and the namespace claim is done. Release 0.3.0 followed
+on 2026-10-15 (the C API and its Python binding, the archive per
+target, `renyi_c` the ninth crate, the registry and Open VSX at 0.3.0;
+`docs/RELEASE.md` section 9). Open from AW45: the Marketplace's
+verified domain (not before 2027-04-13), the article's submission by
+the owner (after 0.3.0, so now open), the awesome list's Glama step
+(done: the three pull requests carry the badges).
 The C API of decision A5 is stage 40, opened on 2026-10-15 by AW28's
 order (AW46: JSON texts across the boundary, the crate `renyi_c` with
 a hand-written header, C and Python first, a library archive per
