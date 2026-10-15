@@ -10273,6 +10273,25 @@ on a fresh clone).
   their mailbox (arXiv's rule: a first paper in a category needs one
   endorser who published in it between three months and five years
   ago; the request is the link from the submission's email).
+  The owner's other repositories on Glama (2026-10-15, the owner's
+  request "MCP那条，插件范围不限"): `skymanbp/CodeEraser` (the
+  server `ce mcp`, the build steps download `ce` and `ce-core` 1.9.1
+  from the GitHub release, the command `["mcp-proxy", "--", "ce",
+  "mcp", "/app"]`) and `skymanbp/cc-memory` (Python) were submitted
+  and approved, their test builds passed, release 1.9.1 and release
+  2.18.0 are published (the form's "This version already exists"
+  after the first submit was the release just made: it existed; the
+  first click lands) and Auto-Release is on for both; the badges read
+  "rated B" within the hour; the awesome-mcp-servers pull requests
+  are 16488 (CodeEraser, Developer Tools) and 16489 (cc-memory,
+  Knowledge & Memory), each a branch of the fork from upstream's
+  `main` with the entry first in its section as 16459 placed Renyi's,
+  made by the scratchpad's `awesome_mcp.py`, no AI trailer. The
+  awesome-claude-code list takes one resource per form (100 stars or
+  14 days; `cc-tree` has 101), and the form text for the owner is in
+  the session's last message; `krispo/awesome-haskell` has no
+  contributing rules and was last pushed on 2026-08-03, so CodeEraser
+  was not submitted there.
 - **Release 0.1.0 is out** (2026-10-07). The domain
   renyi-lang.org is in front of the site (AI4, 2026-10-07, late):
   the zone is on Cloudflare, its records name GitHub Pages, the
