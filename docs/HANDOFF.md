@@ -234,12 +234,19 @@ skipped); 42g is done (decision AW59: `Set.union` extends its receiver
 in place, the compile row to 1,943.0, -0.8%, the walk 181.7 to 159.1)
 and the round is closed with it: the compile row 2,590.8 to 1,943.0
 million instructions, -25.0%, the ratio 7.09 to 5.31, the emitter's
-own part -50.0%, the parse row -14.4% through 42d. The work next, by
-the owner's order of 2026-10-15 (after the round, "收口 Renyi 的待办项
-后再说"): the article brought to release 0.3.0 (its three "release
-0.2.0" lines, the line count and the benchmark table re-read from
-their sources), then the owner's arXiv submission and the endorsement
-request. The open items of AW45 stand
+own part -50.0%, the parse row -14.4% through 42d. The article is
+not to be touched yet: the owner's word of 2026-10-15 evening,
+"文章更新先等后续内容完成了，版本稳定了再做" (the article waits for
+the work after this and a stable version; then its three "release
+0.2.0" lines, the line count and the benchmark table are re-read from
+their sources, then the owner's arXiv submission and the endorsement
+request). The work next is the owner's call at the next session: the
+roadmap's remaining candidates (the Rust front end's name sets as
+bits, the liveness walk's residue) or something new. The watch rounds
+(Gmail, the notifications, the ten list pull requests, the Glama
+badge, the blocked awesome-claude-code form) were a cron of session
+15 and stop with it; a new session runs one on "巡检一轮". The open
+items of AW45 stand
 beside it (the verified domain, the article's submission, now that
 0.3.0 is out).
 The session's record is "Done in session 14"
