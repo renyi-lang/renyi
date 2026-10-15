@@ -9892,9 +9892,9 @@ on a fresh clone).
   VSX, the official MCP registry as `org.renyi-lang/renyi` by DNS
   authentication with the lane's `mcp_registry.py` and the key in
   `release021/`; `renyi-tools` narrowed to `"."` and green); the
-  Marketplace upload of `renyi-v0.2.1.vsix` (the lane's `vsix/`) is
-  still to do through the publisher's page (the session's Chrome tab
-  of the manage page hung with an unsaved form); the verified domain, which cannot
+  Marketplace shows 0.2.1 since 2026-10-15 02:03 UTC (the `.vsix`
+  uploaded through the publisher's page, the gallery API confirming
+  it); the verified domain, which cannot
   be applied for before 2027-04-13: the Marketplace requires an
   extension listed for six months and a domain registered for six
   months (code.visualstudio.com, "Verify a publisher"; the publisher
@@ -9904,18 +9904,29 @@ on a fresh clone).
   completed on 2026-10-14 and the namespace `verified: true`; the
   awesome-mcp-servers pull request (punkpeye/awesome-mcp-servers
   16459, opened 2026-10-14 from the owner's fork, the lane
-  `D:\Projects\.worktrees\Renyi\awesome\`) waits for a Glama
-  listing and its score badge, which the list's bot now requires (a
-  Glama account and a Dockerfile that starts `renyi mcp`); the
+  `D:\Projects\.worktrees\Renyi\awesome\`) waits for the Glama
+  listing: submitted for review on 2026-10-14 (the 15th UTC) from the
+  owner's Glama account (name Renyi, the repository's URL, "Runs from
+  source"); Glama answers by email with the Dockerfile step (the
+  repository's `Dockerfile` is that), and once the listing is up the
+  badge `[![renyi-lang/renyi MCP server](https://glama.ai/mcp/servers/renyi-lang/renyi/badges/score.svg)](https://glama.ai/mcp/servers/renyi-lang/renyi)`
+  goes after the line's description in the pull request (the badge
+  URL answers "not listed" until then); the owner's GitHub sign-in to
+  Glama failed with "Authentication failed" in every browser after the
+  first sign-in's profile page was left unfinished, and an account
+  made with the email and then connected to GitHub worked; the
   official MCP registry lists `org.renyi-lang/renyi` 0.2.1 since the
   release (DNS authentication; a later version is `mcp_registry.py
   publish` again with the bumped `server.json`); the article's author line
   is set (Renyi-lang, zhezhang.dev@gmail.com, commit 22f1383) and the
   submission to arXiv needs an endorsement for cs (`paper/README.md`;
   the section on how the work was done is one sentence since the
-  owner's answer of 2026-10-14); the second
-  release that lets `renyi-tools`' sitegen and bills declare
-  `filesystem.read(".")` (the fix is on `main`; their READMEs say so).
+  owner's answer of 2026-10-14); the owner decided on 2026-10-14 to
+  submit after release 0.3.0, when the version is stable: the session
+  then writes the endorsement request and the owner sends it from
+  their mailbox (arXiv's rule: a first paper in a category needs one
+  endorser who published in it between three months and five years
+  ago; the request is the link from the submission's email).
 - **Release 0.1.0 is out** (2026-10-07). The domain
   renyi-lang.org is in front of the site (AI4, 2026-10-07, late):
   the zone is on Cloudflare, its records name GitHub Pages, the
