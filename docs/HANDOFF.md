@@ -9881,13 +9881,29 @@ on a fresh clone).
   (the description, the homepage, the topics) is set.
 - **After AW45** (2026-10-14): the review-time measure of the
   positioning's section 5 (a person, a `main` signature, under a
-  minute); the Marketplace's verified domain (the record from the
-  publisher's page, then `cf.py txt`; the Open VSX namespace claim
-  is done, issue 14214 closed as completed on 2026-10-14 and the
-  namespace `verified: true`); the article's author line,
-  affiliation and the submission to arXiv (`paper/README.md`; the
-  section on how the work was done is one sentence since the owner's
-  answer of 2026-10-14); the second
+  minute; the owner reported it passed on 2026-10-14, the numbers
+  not yet recorded); the Marketplace's verified domain, which cannot
+  be applied for before 2027-04-13: the Marketplace requires an
+  extension listed for six months and a domain registered for six
+  months (code.visualstudio.com, "Verify a publisher"; the publisher
+  was made 2026-10-13, the domain registered 2026-10-07; the Verify
+  button stays disabled until the domain is saved, and nothing was
+  saved); the Open VSX namespace claim is done, issue 14214 closed as
+  completed on 2026-10-14 and the namespace `verified: true`; the
+  awesome-mcp-servers pull request (punkpeye/awesome-mcp-servers
+  16459, opened 2026-10-14 from the owner's fork, the lane
+  `D:\Projects\.worktrees\Renyiwesome\`) waits for a Glama
+  listing and its score badge, which the list's bot now requires (a
+  Glama account and a Dockerfile that starts `renyi mcp`); the
+  official MCP registry lists a crates.io binary (`registryType:
+  cargo`) once the crate's README on crates.io carries a visible
+  `mcp-name: <server name>` line, so it comes with the next release
+  (authentication by DNS gives the namespace `org.renyi-lang/*`
+  through a TXT record, no browser login); the article's author line
+  is set (Renyi-lang, zhezhang.dev@gmail.com, commit 22f1383) and the
+  submission to arXiv needs an endorsement for cs (`paper/README.md`;
+  the section on how the work was done is one sentence since the
+  owner's answer of 2026-10-14); the second
   release that lets `renyi-tools`' sitegen and bills declare
   `filesystem.read(".")` (the fix is on `main`; their READMEs say so).
 - **Release 0.1.0 is out** (2026-10-07). The domain
