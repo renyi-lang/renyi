@@ -10759,7 +10759,14 @@ on a fresh clone).
   limited issue creation to collaborators (GitHub's interaction
   limit, a day to a week), so the form could not be opened; the
   contributing rules allow the web form only, no `gh`, no pull
-  request: try the form again in a later round; `krispo/awesome-haskell` has no
+  request: try the form again in a later round. Meanwhile (the owner's
+  order of 2026-10-15, "有的话就开") `cc-tree` was submitted to two lists
+  that merge entries of a few stars, by one-line pull requests from
+  forks under `D:\Projects\.worktrees\cc-tree\lists\`, no AI
+  trailer: VoltAgent/awesome-agent-skills#1214 (Community Skills,
+  Development and Testing, `Add skill: skymanbp/cc-tree`) and
+  hashgraph-online/awesome-ai-plugins#807 (Development & Workflow,
+  alphabetical); `krispo/awesome-haskell` has no
   contributing rules and was last pushed on 2026-08-03, so CodeEraser
   was not submitted there.
 - **Release 0.1.0 is out** (2026-10-07). The domain
