@@ -10261,3 +10261,68 @@ parenthesised type and the clause after `returns function(...)` belongs
 to the type; under this rule such a function that returns an effectful
 name is refused and has no way to declare what it needs. Gates: fmt (clean after rustfmt), clippy, cargo test 67 suites OK, the format check of compiler/ and bench/, the corpus lint, the token budget and the wasm build green (the perf lane's gates43.log).
 (Claude)
+
+**AW62. The owner's answers on gap 1.19, the clauses after a returned
+function type, and the correction of AW61 (2026-10-15 evening).** The
+study (`docs/HANDOFF.md`, stage 44) found the grammar unambiguous but
+unable to say one thing readably: after `returns function(...)` the
+three clauses are the function type's (`parser.rs`, `type_`; the Renyi
+parser the same), and the sketch, the corpus and the library never
+return a function type. AW61's residue said a function returning a
+function type "has no spelling for its own `needs`"; that was wrong,
+found while building: the clause word written twice is parsed as the
+type's then the declaration's (`function pick() returns function(Text)
+needs console needs console` checks, runs and is canonical, the probe
+`twice_needs`), so the gap is readability, not expressiveness, and the
+owner kept the decision after the correction ("照做括号"). The owner's
+answers, recommended first unless said:
+
+1. **A parenthesised type.** `Type ::= 'maybe' Type | FunctionType |
+   TypeName ('of' TypeArguments)? | '(' Type ')'`: the parentheses
+   group and are no type of their own, the tree has no node for them
+   (decision W1 untouched, both parsers give the inner type with its
+   own span), and a returned function type followed by the
+   declaration's clauses is written `returns (function(Text) needs
+   console) needs console`. The alternatives were the clauses after a
+   returned function type rebound to the declaration (a meaning change
+   for text that parses today, and the parentheses needed anyway for
+   the other reading) and leaving it.
+2. **The canonical layout parenthesises every returned function type**
+   (the owner's choice over "only where the declaration's clauses
+   follow"): `returns (function(Text))`, `returns maybe (function(Text)
+   needs console)`, in a declaration's signature and in a function
+   type's own `returns`; the formatter writes them and drops
+   parentheses around any other type, so the clause word twice formats
+   to the parenthesised form.
+3. **Parentheses group any type**: `(Integer)` and `List of (Text)` are
+   accepted and formatted away; one rule, no exception, no new
+   diagnostic (a parenthesis left open is the existing `expected`,
+   "write `)`").
+4. **The cheat sheet is unchanged**: it shows no function type and
+   stands at its budget; the reference and the grammar file carry the
+   rule.
+
+A surface change under V11: this entry, then the grammar file, the
+reference (sections 3, 4 and 16), the formatter, the conformance suite
+and both parsers in one commit. (user)
+
+**AW63. Stage 44 built: the parenthesised type (2026-10-15 evening).**
+`docs/grammar.ebnf` and the reference's excerpt gain the alternative;
+`parser.rs` reads `(` Type `)` inside `type_` with the nesting raised
+between the parentheses as a function type's parameter list does, and
+`compiler/parser.ry` the same in `parenthesised_type` (decision AD1:
+the same cursor moves, `past_symbol` for both parentheses, the inner
+type the node); `renyi parse --json` prints the same tree from both on
+the probes. The formatter's `returned_type_text` writes a returned
+function type in parentheses, directly or under `maybe`, in a
+declaration's signature and inside a function type, and drops them
+elsewhere; a format test holds the clause word twice to the
+parenthesised form and `List of (Integer)` to `List of Integer`. The
+conformance suite gains `function_type_parens.ry` (a returned function
+value under the returner's own `needs`, run); `grammar.rs` gains an
+accepted corner and a rejected one; `rules.rs` gains the clean twin
+of the `returned` shape; `function_value_returned.ry` is in its new
+canonical form. GAPS 1.19 and sketch R3-3 closed; the cheat sheet
+unchanged at 3,000 of 3,000 tokens. Gates: fmt, clippy, cargo test 67
+suites ok, format check of compiler/ and bench/, lint, tokens, wasm, all
+exit 0 (gates44.log, 19:29:47). (Claude)

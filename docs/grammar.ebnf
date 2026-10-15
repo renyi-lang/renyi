@@ -90,6 +90,7 @@ Budget              ::= 'at most' Integer 'per' ('second' | 'minute' | 'hour' | 
 Type                ::= 'maybe' Type
                       | FunctionType
                       | TypeName ('of' TypeArguments)?
+                      | '(' Type ')'
 TypeArguments       ::= Type 'to' Type | Type (',' Type)*
 FunctionType        ::= 'function' '(' (Type (',' Type)*)? ')' ('returns' Type)?
                         ('or fails with' Type ('or' Type)*)? ('needs' Capabilities)?

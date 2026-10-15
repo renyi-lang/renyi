@@ -208,7 +208,11 @@ automatically; a higher-order function declares only its own effects. The
 checker charges the needs of the function actually passed where it is
 passed, whatever the parameter's type lists (decision B1). At run time the
 function runs under the grant in force where it is called, so the
-higher-order function's own narrowing applies to it (decision Q1).
+higher-order function's own narrowing applies to it (decision Q1). A type
+may be written in parentheses, which group and are no type of their own;
+a returned function type is written so, `returns (function(Text) needs
+console) needs console`, and the clauses after the parenthesis are the
+declaration's (decision AW62).
 
 ---
 
@@ -902,11 +906,12 @@ open items start at R3-1 and are listed here when they arise.
 
 - R3-1: an `Iterable` ability, so that `for each` can walk a program's own
   types. Decided as V10: one method, `to_list`, in section 5.
-- R3-3: a function whose return type is a function type has no spelling
-  for its own `needs` or failures, since the clauses after `returns
-  function(...)` belong to the type (`docs/GAPS.md` 1.19, decision AW61).
-  Open: a parenthesised type, or the clauses after a returned function
-  type read as the declaration's.
+- R3-3: a function whose return type is a function type could write its
+  own `needs` or failures only by writing the clause word twice (the
+  type's, then its own), since the clauses after `returns function(...)`
+  belong to the type (`docs/GAPS.md` 1.19, decisions AW61 and AW62).
+  Decided as AW62: a type may be written in parentheses, grouping only,
+  and a returned function type is written so in the canonical layout.
 - R3-2: constraints with type arguments (`for any Bag where Bag can
   Iterable of Item`), so that generic code can walk a parameter. Deferred
   until after the bytecode emitter by decision Y4; decided as AB1 in

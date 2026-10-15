@@ -1500,6 +1500,18 @@ impl<'s> Parser<'s> {
                     span: token.span.join(end),
                 })
             }
+            TokenKind::LeftParen => {
+                // a type in parentheses groups and is the type itself (no
+                // node of its own): the one place it says something is a
+                // returned function type followed by the declaration's own
+                // clauses (decision AW62)
+                self.bump();
+                self.nesting += 1;
+                let inner = self.type_()?;
+                self.nesting -= 1;
+                self.expect(&TokenKind::RightParen, "`)`")?;
+                Ok(inner)
+            }
             TokenKind::TypeName => {
                 let name = self.type_name("a type")?;
                 let mut args = Vec::new();

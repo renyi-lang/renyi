@@ -233,6 +233,13 @@
       "exit_code": 1
     },
     {
+      "name": "a returned function type in parentheses leaves the clauses after it to the declaration",
+      "command": "run",
+      "program": "tests/conformance/programs/function_type_parens.ry",
+      "stdout": "tests/conformance/expected/function_type_parens.out",
+      "exit_code": 0
+    },
+    {
       "name": "exhaustiveness looks inside the patterns",
       "command": "check",
       "program": "tests/conformance/programs/match_nested.ry",

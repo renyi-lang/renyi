@@ -242,12 +242,13 @@ the work after this and a stable version; then its three "release
 their sources, then the owner's arXiv submission and the endorsement
 request). Stage 43 closed gap 1.11 the same evening (AW60, AW61: a
 function value charged where it is named, a function type's `needs` a
-bound; the handoff's section "Stage 43"); it left GAPS 1.19 (a
-function returning a function type cannot declare its own `needs`, a
-surface change, sketch item R3-3). The work next is the owner's call at
-the next session: GAPS 1.19, the roadmap's remaining candidates (the
-Rust front end's name sets as bits, the liveness walk's residue) or
-something new. The watch rounds
+bound; the handoff's section "Stage 43"), and stage 44 closed its
+residue, GAPS 1.19 (AW62, AW63: a type may be written in parentheses,
+a returned function type is written so; the handoff's section "Stage
+44"). The work next is the owner's call at the next session: GAPS 3.6
+(the memory budget has no syntax), the roadmap's remaining candidates
+(the Rust front end's name sets as bits, the liveness walk's residue)
+or something new. The watch rounds
 (Gmail, the notifications, the ten list pull requests, the Glama
 badge) were a cron of session 15, stopped on the owner's word of
 2026-10-15 evening ("如果有回复或者更新我通知你": the owner reports
@@ -4250,6 +4251,111 @@ Then the first stage the owner confirms. Done in session 14: the study is
 the section "Stage 29, the new backend: the design study (session 14)"
 below, and the owner's answers are decision AW1.
 
+## Stage 44, the clauses after a returned function type (GAPS 1.19, sketch R3-3): the design study (session 15)
+
+**The gap.** Found at stage 43's build (decision AW61): a function whose
+return type is a function type has no spelling for its own `needs` or
+failures. In `function pick() returns function(Text) needs console` the
+clause belongs to the type, and under AW60 a function that returns an
+effectful name is charged and refused with nothing it can write. The
+owner chose it as the next stage on 2026-10-15 evening, the study first.
+
+**The rule as it stands.** The grammar (`docs/grammar.ebnf`): `Type ::=
+'maybe' Type | FunctionType | TypeName ('of' TypeArguments)?` and
+`FunctionType ::= 'function' '(' (Type (',' Type)*)? ')' ('returns'
+Type)? ('or fails with' Type ('or' Type)*)? ('needs' Capabilities)?`;
+`Signature ::= ('returns' Type)? ('or fails with' Type ('or' Type)*)?
+('needs' Capabilities)? ...`. There is no parenthesised type. The Rust
+parser reads a function type's three clauses right after its parameter
+list (`parser.rs`, `type_`, lines 1477 to 1494) before `signature_clauses`
+(line 881) looks for the declaration's, so after `returns function(...)`
+every clause is the type's, and `maybe` changes nothing (`maybe
+function(Text) needs console`: the probe `ret2` is refused like
+`returned`). The Renyi parser mirrors it (`compiler/parser.ry`,
+`function_type` and `result_clauses`, `signature_clauses` line 1253). The
+formatter prints a function type with its clauses (`format.rs`,
+`type_text`, line 1631) and the declaration's after it, so a round trip is
+byte-equal: the text is unambiguous, only unable to say one of the two
+things. The reference's section 4 says "a type expression is a type name
+with its arguments after `of`, `maybe T`, or a function type"; the cheat
+sheet shows no function type and stands at 3,000 of 3,000 tokens.
+
+**Where it bites, and where it does not.** The corpus, the starter pack,
+the showcase, the compiler and the library have no function returning a
+function type (the only one is the conformance case
+`function_value_returned.ry`, written at stage 43 to be refused). Inside
+a parameter list and inside type arguments a function type's clauses are
+read correctly: the probe `typeargs` parses `table: Map of Text to
+function(Text) needs console, text: Text` and `Map of function(Text)
+needs console to Integer` (the parser's comma rule of GAPS 11 and the
+`to` of a map). Only the signature's return position is ambiguous, for
+`or fails with` and `needs` alike (`for any` is not a type's clause, so
+`returns function(Item) for any Item` is already the declaration's).
+
+**The candidates.**
+
+A. **A parenthesised type.** `Type ::= ... | '(' Type ')'`, grouping
+only: no new node in the tree (the JSON of `renyi parse` is the inner
+type's, decision W1 untouched), the parentheses a spelling the formatter
+owns. A returned function type that is followed by the declaration's
+clauses is written in parentheses, `returns (function(Text) needs
+console) needs console`, and the declaration's clauses follow as
+everywhere else; `returns function(Text) needs console` keeps its meaning
+(the type's). The canonical layout: the formatter writes the parentheses
+exactly where the declaration has `or fails with` or `needs` after a
+returned function type (the one place they say something) and drops them
+anywhere else, so `(Integer)` or `List of (Text)` is accepted and
+formatted away. Cost: one alternative in the grammar file; six lines in
+`parser.rs` and a `when` in `parser.ry` (decision AD1: the same
+diagnostic when `)` is missing, the existing `expected`); the signature
+printer of `format.rs`; the reference's sections 3 and 4 with the grammar
+excerpt; a conformance case that parses, checks and runs a function
+returning an effectful function under its own `needs`, and the canonical
+form in a format case; the corner lists of `tests/grammar.rs`; the sketch's
+section 3 and R3-3 closed; the cheat sheet unchanged, since it shows no
+function type and has no room. A new decision entry under V11's rule,
+superseding nothing.
+
+B. **The clauses rebound.** In a signature, the clauses after a returned
+function type belong to the declaration, and a returned function type's
+own clauses need parentheses: `returns (function(Text) needs console)`.
+Reads the way most readers expect (`pick() returns function(Text) needs
+console`: `pick` needs console), but changes the meaning of text that
+parses today, needs A's parentheses anyway for the other reading, and
+gives the return position a rule the parameter position does not have.
+Cost: A's work plus a second parsing path for the return position in
+both parsers and a conformance case for the changed meaning.
+
+C. **Leave it.** GAPS 1.19 stays; a function that returns an effectful
+function value is not writable. Cost: nothing; the rule of AW60 keeps a
+hole in the surface.
+
+The recommendation is A: it adds a spelling without changing one.
+
+**The questions for the owner** (asked 2026-10-15 evening): the rule (A,
+B or C); the canonical layout (parentheses only where the declaration's
+clauses follow a returned function type, or always around a returned
+function type, or kept as written); whether parentheses group any type
+(formatted away where they say nothing) or only a function type; and
+the cheat sheet (unchanged, or a line added with another trimmed).
+
+**The owner's answers (AW62), a correction, and the build (AW63).** A;
+every returned function type in parentheses (the owner's choice over
+the study's "only where needed"); parentheses around any type; the
+cheat sheet unchanged. While building, the study's premise was
+corrected: the clause word twice, `returns function(Text) needs console
+needs console`, already parsed, checked, ran and was canonical (the
+first `needs` the type's, the second the declaration's; the probe
+`twice_needs`), so the gap was readability, and the owner kept the
+decision ("照做括号"). Built the same evening: the grammar file and the
+reference's excerpt; `type_` in `parser.rs` and `parenthesised_type` in
+`compiler/parser.ry`, the trees equal; `returned_type_text` in the
+formatter with a test; `function_type_parens.ry` in the conformance
+suite; the corner lists of `grammar.rs`; the reference's sections 3, 4
+and 16; the sketch's section 3 and R3-3; GAPS 1.19 closed. Gates:
+fmt, clippy, cargo test 67 suites ok, format check of compiler/ and
+bench/, lint, tokens, wasm, all exit 0 (gates44.log, 19:29:47).
+
 ## Stage 43, the effects of a function value bound, stored or returned (GAPS 1.11): the design study (session 15)
 
 **The gap.** `docs/GAPS.md` 1.11 and decision V9 say it in one sentence:
@@ -4416,7 +4522,10 @@ selfhost judge green. The probes `bound`, `stored`, `field` are now
 `pick`, which exposes the residue: a function returning a function type
 has no spelling for its own `needs` (the clause after `returns
 function(...)` is the type's), GAPS 1.19 and sketch item R3-3, a
-surface change for a later decision. Gates: {GATES}.
+surface change for a later decision. Gates: fmt exit 1 (rustfmt applied,
+the check clean after), clippy, cargo test 67 suites ok, format check of
+compiler/ and bench/, lint, tokens, wasm exit 0 (gates43.log, 18:50:08);
+CI green on e53898e.
 
 ## Stage 42, the emitter's own round for the compile row: the design study (session 15)
 

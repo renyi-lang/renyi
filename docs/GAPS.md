@@ -152,18 +152,23 @@ Ordered by how much they matter to the language's promises.
     `check_condition_body` and `infer_name`; conformance case
     `refinement_field.ry`). `--redact` works by name by decision S3,
     which is the design, not a gap.
-19. Found in stage 43 (decision AW61): **a function whose return type is
-    a function type cannot declare its own `needs` or failures.** The
-    grammar has no parenthesised type, so in `function pick() returns
+19. Found in stage 43 (decision AW61), corrected and done in stage 44
+    (decisions AW62 and AW63): **a function whose return type is a
+    function type could declare its own `needs` or failures only by
+    writing the clause word twice.** In `function pick() returns
     function(Text) needs console` the clause belongs to the function
-    type (`FunctionType` in `docs/grammar.ebnf`, greedy), and `pick` has
-    no spelling for its own. Under AW60 a function that returns an
-    effectful name is charged and refused with nothing it can write.
-    A surface change (a parenthesised type, or a rule that the clauses
-    after a returned function type belong to the declaration) is a
-    decision first (V11), then the grammar, the reference, the cheat
-    sheet, the formatter and the conformance suite in one commit;
-    sketch item R3-3.
+    type (`FunctionType` in `docs/grammar.ebnf`, greedy); AW61 said
+    `pick` had no spelling for its own, which was wrong: `returns
+    function(Text) needs console needs console` parsed, checked, ran and
+    was canonical, the first `needs` the type's and the second `pick`'s
+    (the probe `twice_needs`), only unreadable. Now a type may be written
+    in parentheses, grouping only (`Type ::= ... | '(' Type ')'`, both
+    parsers, no node in the tree), and the canonical layout writes a
+    returned function type in parentheses, directly or under `maybe`,
+    so the clauses after it read as the declaration's: `returns
+    (function(Text) needs console) needs console`. Conformance case
+    `function_type_parens.ry`; the corner lists of `grammar.rs`; a
+    format test. Sketch item R3-3 decided.
 
 ## 2. Promised compile-time checks that nobody wrote
 

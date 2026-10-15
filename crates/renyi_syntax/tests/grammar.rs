@@ -837,6 +837,10 @@ fn every_conformance_program_gets_the_parser_verdict() {
 /// accept.
 const ACCEPTED: &[(&str, &str)] = &[
     (
+        "a parenthesised type (decision AW62)",
+        "module corner\n\nfunction pick() returns (function(Text) needs console) needs console\n  return announce\nend\n\nfunction maybe_pick() returns maybe (function(Text)) or fails with Text needs console\n  return announce\nend\n\nfunction size(items: List of (Integer)) returns (Integer)\n  return items.length()\nend\n",
+    ),
+    (
         "a line break inside brackets before a dot or a call's parenthesis",
         "module corner\n\nfunction go(items: List of Integer) returns Integer\n  let total be items.append(\n    1\n  ).length()\n  console.print(\n    items\n      .length()\n      .to_text()\n  )\n  return total\nend\n",
     ),
@@ -877,6 +881,11 @@ const ACCEPTED: &[(&str, &str)] = &[
 /// Spellings both reject: the parser with the fix named here, the grammar
 /// by having no derivation.
 const REJECTED: &[(&str, &str, &str)] = &[
+    (
+        "a parenthesised type left open",
+        "module corner\n\nfunction go() returns (Integer\n  return 1\nend\n",
+        "write `)`",
+    ),
     (
         "a trailing comma in a list",
         "module corner\n\nfunction go() returns Integer\n  let items be [1, 2,]\n  return items.length()\nend\n",

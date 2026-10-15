@@ -1,0 +1,19 @@
+module function_type_parens
+  purpose: A returned function type in parentheses, the declaration's needs after it (decision AW62).
+
+import std.console
+
+function announce(text: Text) needs console
+  console.print(text)
+end
+
+function pick() returns (function(Text) needs console) needs console
+  return announce
+end
+
+public function main() needs console
+  purpose: Call a returned function.
+
+  let say be pick()
+  say("hello")
+end

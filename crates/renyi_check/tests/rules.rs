@@ -839,10 +839,17 @@ fn a_function_named_as_a_value_is_charged_where_it_is_named() {
     let returned = format!(
         "{head}function pick() returns function(Text) needs console\n  return announce\nend\n\npublic function main()\n  purpose: Run.\n\n  let say be pick()\n  say(\"hi\")\nend\n"
     );
-    // `pick` cannot declare `needs console` itself: after `returns
-    // function(Text)` the clause belongs to the function type (the grammar
-    // has no parenthesised type), which stage 43 records as a gap
+    // after `returns function(Text)` the clause belongs to the function
+    // type; `pick`'s own follows a parenthesised type (decision AW62)
     raises(&program(&returned), "capability-missing");
+    clean(&program(
+        &returned
+            .replace(
+                "function pick() returns function(Text) needs console",
+                "function pick() returns (function(Text) needs console) needs console",
+            )
+            .replace("main()", "main() needs console"),
+    ));
     let field = format!(
         "type Handler\n  has action: function(Text) needs console\nend\n\n{head}public function main()\n  purpose: Run.\n\n  let handler be Handler(action: announce)\n  let act be handler.action\n  act(\"hi\")\nend\n"
     );

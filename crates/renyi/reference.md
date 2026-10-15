@@ -341,7 +341,11 @@ charged where it is named, whatever the value then does: passed, bound,
 stored in a collection or a field, or returned, the name charges the
 function that writes it (decisions B1 and AW60); a higher-order function
 declares only its own effects. A function type that lists `needs` takes a
-value that needs at most what it lists; one without takes any.
+value that needs at most what it lists; one without takes any. After
+`returns function(...)` the clauses belong to the function type, so a
+returned function type is written in parentheses and the declaration's
+own clauses follow: `returns (function(Text) needs console) needs
+console` (decision AW62).
 
 ### Static rules
 
@@ -390,6 +394,7 @@ and V9); its kinds are what the name's charge put in `main`'s grant.
 Type                ::= 'maybe' Type
                       | FunctionType
                       | TypeName ('of' TypeArguments)?
+                      | '(' Type ')'
 TypeArguments       ::= Type 'to' Type | Type (',' Type)*
 FunctionType        ::= 'function' '(' (Type (',' Type)*)? ')' ('returns' Type)?
                         ('or fails with' Type ('or' Type)*)? ('needs' Capabilities)?
@@ -412,8 +417,11 @@ of`, a subset with `where`, an ability with `can`.
 
 A **type expression** is a type name with its arguments after `of`
 (`List of Text`, `Map of Text to Integer`, `Pair of Text, Integer`),
-`maybe T` for an optional value, or a function type. Type arguments nest to
-the right: in `List of Pair of Text, Integer` the comma belongs to `Pair`.
+`maybe T` for an optional value, a function type, or a type in parentheses,
+which group and are not a type of their own: `(function(Text) needs
+console)` is the function type with its clauses inside (decision AW62).
+Type arguments nest to the right: in `List of Pair of Text, Integer` the
+comma belongs to `Pair`.
 
 A **record** (`has`) has public fields. Construction names every field,
 `User(name: "Ann", age: 30, email: nothing)`; a `maybe` field still needs
@@ -1411,6 +1419,9 @@ reports a file that differs from its canonical form. The canonical form:
 - One blank line between top-level definitions; none inside a clause
   group; one between the clause group and the body; the clauses in the
   order of section 13.
+- A returned function type is written in parentheses, directly or under
+  `maybe`, so that the clauses after it read as the declaration's;
+  parentheses around any other type are dropped (decision AW62).
 - Signature clauses share the head line when they fit, otherwise one per
   line indented once, in canonical order; a `needs` clause wider than the
   line breaks after its commas, one capability per line indented once

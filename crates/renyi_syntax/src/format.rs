@@ -520,7 +520,7 @@ impl Formatter<'_> {
         };
         let mut clauses = Vec::new();
         if let Some(returns) = &function.returns {
-            clauses.push(text(format!("returns {}", type_text(returns))));
+            clauses.push(text(format!("returns {}", returned_type_text(returns))));
         }
         if !function.fails.is_empty() {
             let names: Vec<String> = function.fails.iter().map(type_text).collect();
@@ -1656,7 +1656,7 @@ pub fn type_text(ty: &Type) -> String {
             let params: Vec<String> = params.iter().map(type_text).collect();
             let mut out = format!("function({})", params.join(", "));
             if let Some(returns) = returns {
-                out.push_str(&format!(" returns {}", type_text(returns)));
+                out.push_str(&format!(" returns {}", returned_type_text(returns)));
             }
             if !fails.is_empty() {
                 let fails: Vec<String> = fails.iter().map(type_text).collect();
@@ -1670,6 +1670,19 @@ pub fn type_text(ty: &Type) -> String {
     }
 }
 
+/// A returned type: a function type is written in parentheses, directly or
+/// under `maybe`, so that the clauses after it read as the declaration's
+/// (decision AW62); parentheses around any other type are dropped.
+pub fn returned_type_text(ty: &Type) -> String {
+    match ty {
+        Type::Function { .. } => format!("({})", type_text(ty)),
+        Type::Maybe(inner, _) if matches!(**inner, Type::Function { .. }) => {
+            format!("maybe ({})", type_text(inner))
+        }
+        _ => type_text(ty),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1677,6 +1690,43 @@ mod tests {
     fn formatted(source: &str) -> String {
         let file = SourceFile::new("t.ry", source);
         format(&file).unwrap_or_else(|diagnostics| panic!("{diagnostics:#?}"))
+    }
+
+    #[test]
+    fn a_returned_function_type_is_parenthesised() {
+        // decision AW62: the clause word twice reads as the parenthesised
+        // form, and parentheses around any other type are dropped
+        let source = "module demo
+
+function pick() returns function(Text) needs console needs console
+  return announce
+end
+
+function maybe_pick() returns maybe function(Text) needs console needs console
+  return announce
+end
+
+function size(items: List of (Integer)) returns (Integer)
+  return items.length()
+end
+";
+        assert_eq!(
+            formatted(source),
+            "module demo
+
+function pick() returns (function(Text) needs console) needs console
+  return announce
+end
+
+function maybe_pick() returns maybe (function(Text) needs console) needs console
+  return announce
+end
+
+function size(items: List of Integer) returns Integer
+  return items.length()
+end
+"
+        );
     }
 
     #[test]

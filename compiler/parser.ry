@@ -2156,6 +2156,8 @@ function parse_type(cursor: Cursor) returns Parsed of Type or fails with Halt
       return Parsed(node: MaybeType(inner: inner.node, span: span), cursor: inner.cursor)
     when Word(spelling: "function") then
       return function_type(moved(cursor: cursor, look: look)) otherwise fail
+    when Symbol(text: "(") then
+      return parenthesised_type(moved(cursor: cursor, look: look)) otherwise fail
     when TypeIdentifier then return named_type(moved(cursor: cursor, look: look)) otherwise fail
     when Identifier then
       let text be token.text
@@ -2198,6 +2200,21 @@ function function_type(cursor: Cursor) returns Parsed of Type or fails with Halt
     span: join(left: keyword_token.span, right: previous(clauses.cursor).span)
   )
   return Parsed(node: node, cursor: clauses.cursor)
+end
+
+function parenthesised_type(cursor: Cursor) returns Parsed of Type or fails with Halt
+  purpose: A type in parentheses: grouping only, the type itself the node (decision AW62).
+
+  let opened be past_symbol(
+    cursor: cursor,
+    code: words.symbol_code("("),
+    what: "`(`"
+  ) otherwise fail
+  let inner be parse_type(with_nesting(cursor: opened, nesting: opened.nesting + 1)) otherwise fail
+  let inner_cursor be inner.cursor
+  let back be with_nesting(cursor: inner_cursor, nesting: inner_cursor.nesting - 1)
+  let closed be past_symbol(cursor: back, code: words.symbol_code(")"), what: "`)`") otherwise fail
+  return Parsed(node: inner.node, cursor: closed)
 end
 
 function named_type(cursor: Cursor) returns Parsed of Type or fails with Halt

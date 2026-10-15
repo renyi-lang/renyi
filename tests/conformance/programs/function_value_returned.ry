@@ -7,7 +7,7 @@ function announce(text: Text) needs console
   console.print(text)
 end
 
-function pick() returns function(Text) needs console
+function pick() returns (function(Text) needs console)
   return announce
 end
 
