@@ -10766,7 +10766,24 @@ on a fresh clone).
   trailer: VoltAgent/awesome-agent-skills#1214 (Community Skills,
   Development and Testing, `Add skill: skymanbp/cc-tree`) and
   hashgraph-online/awesome-ai-plugins#807 (Development & Workflow,
-  alphabetical); `krispo/awesome-haskell` has no
+  alphabetical). The owner's other repositories the same evening, by
+  the owner's choice: hashgraph-online/awesome-ai-plugins#808
+  (cc-enforcer), #809 (cc-memory), #810 (sci-paper), each one line in
+  Development & Workflow from its own branch of the fork (the three
+  insert at neighbouring lines, so a merge of one may need the others
+  rebased), and VoltAgent/awesome-agent-skills#1215 (`Add skill:
+  skymanbp/sci-paper`, Productivity and Collaboration). Not submitted:
+  autoshade to ibaaj/awesome-OpenSourcePhotography, whose
+  CONTRIBUTING.md says "Tools that heavily rely on external AI systems
+  are not allowed" (the fork under
+  `D:\Projects\.worktreesutoshade\lists\` has no branch);
+  CodeEraser to analysis-tools-dev/static-analysis, which needs six
+  months since the repository's creation (2026-08-07, so from
+  2027-02-07) and a second human contributor. Already merged:
+  rust-unofficial/awesome-rust#2926 (autoshade, 2026-10-15); open:
+  ai-for-developers/awesome-ai-coding-tools#963 (CodeEraser),
+  awesome-mcp-servers 16459, 16488, 16489, winget 452920;
+  `krispo/awesome-haskell` has no
   contributing rules and was last pushed on 2026-08-03, so CodeEraser
   was not submitted there.
 - **Release 0.1.0 is out** (2026-10-07). The domain
